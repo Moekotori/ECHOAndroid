@@ -210,6 +210,9 @@ fun EchoMobileApp(viewModel: EchoAndroidViewModel = viewModel()) {
     val homeLoadedTracks = tracks.itemSnapshotList.items
     val homeAlbumCount = remember(homeLoadedTracks) { buildAlbumSummaries(homeLoadedTracks).size }
     val homeArtistCount = remember(homeLoadedTracks) { buildArtistSummaries(homeLoadedTracks).size }
+    val homeRecommendedTracks = remember(homeLoadedTracks) {
+        homeLoadedTracks.distinctBy { it.id }.take(8)
+    }
     var selectedTab by remember { mutableIntStateOf(EchoTab.Now.ordinal) }
 
     LaunchedEffect(hasAudioPermission) {
@@ -276,11 +279,14 @@ fun EchoMobileApp(viewModel: EchoAndroidViewModel = viewModel()) {
                             trackCount = tracks.itemCount,
                             albumCount = homeAlbumCount,
                             artistCount = homeArtistCount,
+                            recommendedTracks = homeRecommendedTracks,
                             onPlayPause = viewModel::playPause,
                             onNext = viewModel::skipNext,
                             onPrevious = viewModel::skipPrevious,
                             onCycleRepeatMode = viewModel::cycleRepeatMode,
                             onToggleShuffle = viewModel::toggleShuffle,
+                            onRefreshRecommendations = viewModel::refreshLibrary,
+                            onPlayRecommendation = viewModel::playQueue,
                             onOpenLibrary = { selectedTab = EchoTab.Library.ordinal },
                             onOpenConnect = { selectedTab = EchoTab.Connect.ordinal },
                         )
@@ -357,13 +363,6 @@ private fun LibraryScreen(
                         scope.launch { pagerState.animateScrollToPage(mode.ordinal) }
                     },
                 )
-                if (tracks.itemCount > 0) {
-                    LibraryOverview(
-                        trackCount = tracks.itemCount,
-                        albumCount = albums.size,
-                        artistCount = artists.size,
-                    )
-                }
                 HorizontalPager(
                     state = pagerState,
                     modifier = Modifier.weight(1f),
@@ -609,10 +608,10 @@ private fun AlbumWall(
         return
     }
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 142.dp),
+        columns = GridCells.Fixed(3),
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
         contentPadding = PaddingValues(bottom = 10.dp),
     ) {
         gridItems(albums, key = { it.title + it.artist }) { album ->
@@ -628,12 +627,9 @@ private fun AlbumWallCard(
 ) {
     Column(
         modifier = Modifier
-            .clip(RoundedCornerShape(18.dp))
-            .background(Color.White.copy(alpha = 0.66f))
-            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.86f)), RoundedCornerShape(18.dp))
             .clickable(onClick = onClick)
-            .padding(10.dp),
-        verticalArrangement = Arrangement.spacedBy(9.dp),
+            .padding(bottom = 2.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         ArtworkTile(
             artworkUri = album.artworkUri,
@@ -642,12 +638,11 @@ private fun AlbumWallCard(
                 .aspectRatio(1f),
             accent = EchoAccent,
             showSignal = album.artworkUri == null,
-            cornerRadius = 14.dp,
-            elevation = 6.dp,
+            cornerRadius = 12.dp,
+            elevation = 0.dp,
         )
-        Text(album.title, color = RoonInk, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Text(album.artist, color = RoonMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text("${album.tracks.size} 首", color = EchoAccentText, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
+        Text(album.title, color = RoonInk, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(album.artist, color = RoonMuted, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -842,11 +837,14 @@ private fun NowPlayingScreen(
     trackCount: Int,
     albumCount: Int,
     artistCount: Int,
+    recommendedTracks: List<LibraryTrackEntity>,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onCycleRepeatMode: () -> Unit,
     onToggleShuffle: () -> Unit,
+    onRefreshRecommendations: () -> Unit,
+    onPlayRecommendation: (List<LibraryTrackEntity>, Int) -> Unit,
     onOpenLibrary: () -> Unit,
     onOpenConnect: () -> Unit,
 ) {
@@ -879,6 +877,15 @@ private fun NowPlayingScreen(
                 status = status,
                 onPlayPause = onPlayPause,
                 onOpenLibrary = onOpenLibrary,
+            )
+            Spacer(Modifier.height(if (compactViewport) 14.dp else 20.dp))
+            HomeRecommendationsSection(
+                tracks = recommendedTracks,
+                onRefresh = onRefreshRecommendations,
+                onOpenLibrary = onOpenLibrary,
+                onPlayTrack = { index ->
+                    onPlayRecommendation(recommendedTracks, index)
+                },
             )
             Spacer(Modifier.height(if (compactViewport) 44.dp else 62.dp))
         }
@@ -985,40 +992,7 @@ private fun RoonRecentActivitySection(
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                 )
-                if (false) {
-                    Text(
-                    "本机会话",
-                    color = Color.White,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    )
-                }
-                Surface(
-                    shape = RoundedCornerShape(28.dp),
-                    color = EchoAccentDeep.copy(alpha = 0.14f),
-                    contentColor = EchoAccentText,
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.62f)),
-                ) {
-                    Text(
-                        "曲库",
-                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp),
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(28.dp), verticalAlignment = Alignment.Bottom) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("正在播放", color = EchoAccentText, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Box(
-                        Modifier
-                            .width(74.dp)
-                            .height(4.dp)
-                            .clip(RoundedCornerShape(99.dp))
-                            .background(EchoAccent),
-                    )
-                }
-                Text("最近导入", color = RoonMuted, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                RecentActivityTabs()
             }
         }
         Row(
@@ -1049,6 +1023,45 @@ private fun RoonRecentActivitySection(
                 onClick = onOpenLibrary,
             )
         }
+    }
+}
+
+@Composable
+private fun RecentActivityTabs() {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = Color.White.copy(alpha = 0.56f),
+        border = BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.78f)),
+    ) {
+        Row(
+            modifier = Modifier.padding(3.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RecentActivityTab(label = "已播放", selected = true)
+            RecentActivityTab(label = "添加于", selected = false)
+        }
+    }
+}
+
+@Composable
+private fun RecentActivityTab(
+    label: String,
+    selected: Boolean,
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(9.dp))
+            .background(if (selected) EchoAccentDeep.copy(alpha = 0.16f) else Color.Transparent)
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            color = if (selected) EchoAccentText else RoonMuted,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+        )
     }
 }
 
@@ -1107,6 +1120,141 @@ private fun RoonRecentActivityCard(
             subtitle,
             color = RoonMuted,
             style = MaterialTheme.typography.titleSmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun HomeRecommendationsSection(
+    tracks: List<LibraryTrackEntity>,
+    onRefresh: () -> Unit,
+    onOpenLibrary: () -> Unit,
+    onPlayTrack: (Int) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+            .clip(RoundedCornerShape(26.dp))
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        Color.White.copy(alpha = 0.70f),
+                        EchoHomeMist.copy(alpha = 0.56f),
+                        EchoAccentDeep.copy(alpha = 0.07f),
+                    ),
+                ),
+            )
+            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.86f)), RoundedCornerShape(26.dp))
+            .padding(top = 16.dp, bottom = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "为你推荐",
+                color = RoonInk,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+            )
+            Surface(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(14.dp))
+                    .clickable(onClick = onRefresh),
+                shape = RoundedCornerShape(14.dp),
+                color = Color.White.copy(alpha = 0.50f),
+                border = BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.78f)),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(Icons.Rounded.Refresh, contentDescription = null, tint = RoonMuted, modifier = Modifier.size(16.dp))
+                    Text("刷新", color = RoonMuted, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+        if (tracks.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 18.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Color.White.copy(alpha = 0.52f))
+                    .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.72f)), RoundedCornerShape(18.dp))
+                    .clickable(onClick = onOpenLibrary)
+                    .padding(16.dp),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    EchoIconBadge(Icons.Rounded.LibraryMusic)
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("扫描后生成推荐", color = RoonInk, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                        Text("从本机曲库挑几首开始。", color = RoonMuted, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 18.dp),
+                horizontalArrangement = Arrangement.spacedBy(18.dp),
+            ) {
+                tracks.forEachIndexed { index, track ->
+                    RecommendationCard(
+                        track = track,
+                        onClick = { onPlayTrack(index) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecommendationCard(
+    track: LibraryTrackEntity,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .width(118.dp)
+            .clickable(onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        ArtworkTile(
+            artworkUri = track.artworkUri,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f),
+            accent = EchoAccentDeep,
+            showSignal = track.artworkUri == null,
+            cornerRadius = 4.dp,
+            elevation = 0.dp,
+        )
+        Text(
+            track.title,
+            color = RoonInk,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            "${track.artist} · ${formatDuration(track.durationMs)}",
+            color = RoonMuted,
+            style = MaterialTheme.typography.labelMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -2719,10 +2867,11 @@ private fun BottomDock(
 ) {
     val shape = RoundedCornerShape(26.dp)
     val dockBackground = if (onLightSurface) {
-        Brush.verticalGradient(
+        Brush.linearGradient(
             listOf(
-                Color(0xFF5D6678).copy(alpha = 0.58f),
-                Color(0xFF30394E).copy(alpha = 0.46f),
+                Color.White.copy(alpha = 0.42f),
+                EchoHomeMist.copy(alpha = 0.24f),
+                EchoAccentDeep.copy(alpha = 0.14f),
             ),
         )
     } else {
@@ -2734,7 +2883,7 @@ private fun BottomDock(
         )
     }
     val borderColor = if (onLightSurface) {
-        Color.White.copy(alpha = 0.18f)
+        EchoGlassBorder.copy(alpha = 0.82f)
     } else {
         Color.White.copy(alpha = 0.24f)
     }
@@ -2785,14 +2934,14 @@ private fun DockItem(
     val contentColor = when {
         selected && onLightSurface -> Color(0xFFFFBCD5)
         selected -> EchoAccentText
-        onLightSurface -> Color.White.copy(alpha = 0.70f)
+        onLightSurface -> RoonMuted.copy(alpha = 0.78f)
         else -> Color.White.copy(alpha = 0.68f)
     }
     val selectedBackground = if (onLightSurface) {
         Brush.verticalGradient(
             listOf(
-                Color.White.copy(alpha = 0.12f),
-                Color.White.copy(alpha = 0.06f),
+                EchoAccentDeep.copy(alpha = 0.16f),
+                Color.White.copy(alpha = 0.16f),
             ),
         )
     } else {
@@ -2804,7 +2953,7 @@ private fun DockItem(
         )
     }
     val selectedBorder = if (onLightSurface) {
-        Color.White.copy(alpha = 0.14f)
+        Color.White.copy(alpha = 0.42f)
     } else {
         EchoAccent.copy(alpha = 0.38f)
     }
