@@ -1,0 +1,12 @@
+.gradle/
+.android-sdk/
+.idea/
+.kotlin/
+.codex-temp/
+build/
+local.properties
+captures/
+test/*.flac
+*.iml
+*.apk
+*.aab
