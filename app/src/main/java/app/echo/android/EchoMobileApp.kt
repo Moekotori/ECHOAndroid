@@ -45,12 +45,16 @@ import androidx.compose.material.icons.rounded.Devices
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.LibraryMusic
+import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
@@ -151,39 +155,26 @@ fun EchoMobileApp(viewModel: EchoAndroidViewModel = viewModel()) {
     val darkTheme = isSystemInDarkTheme()
 
     EchoMobileTheme(darkTheme = darkTheme) {
-        val appBackground = Brush.verticalGradient(
-            if (darkTheme) {
-                listOf(
-                    MaterialTheme.colorScheme.background,
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.46f),
-                    MaterialTheme.colorScheme.surface,
-                )
-            } else {
-                listOf(
-                    MaterialTheme.colorScheme.surface,
-                    MaterialTheme.colorScheme.background,
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.34f),
-                )
-            },
+        val appBackground = Brush.linearGradient(
+            listOf(
+                Color(0xFF516A9E),
+                Color(0xFF8C4C99),
+                Color(0xFF2C3B63),
+                Color(0xFF141725),
+            ),
         )
-        val bottomChromeColor = if (darkTheme) {
-            MaterialTheme.colorScheme.background
-        } else {
-            MaterialTheme.colorScheme.surface
-        }
 
         Scaffold(
-            containerColor = MaterialTheme.colorScheme.background,
+            containerColor = Color.Transparent,
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(bottomChromeColor)
                         .navigationBarsPadding()
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(7.dp),
                 ) {
                     val shouldShowMiniPlayer = selectedTab != EchoTab.Now.ordinal &&
                         (playbackStatus.track != null || playbackStatus.state != EchoPlaybackState.Idle)
@@ -428,27 +419,221 @@ private fun NowPlayingScreen(
     onOpenLibrary: () -> Unit,
     onOpenConnect: () -> Unit,
 ) {
-    val hasTrack = status.track != null
     val configuration = LocalConfiguration.current
     val compactViewport = configuration.screenHeightDp < 620 ||
         configuration.screenWidthDp > configuration.screenHeightDp
-    PageChrome(title = "正在播放", subtitle = "专注播放，本机优先", badge = "会话", scrollable = true) {
-        NowPlayingHero(
-            status = status,
-            compact = compactViewport,
-            onPlayPause = onPlayPause,
-            onNext = onNext,
-            onPrevious = onPrevious,
+    val scrollState = rememberScrollState()
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val horizontalPadding = if (maxWidth < 390.dp) 14.dp else 18.dp
+        val topGap = if (compactViewport) 10.dp else 18.dp
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .verticalScroll(scrollState)
+                .padding(horizontal = horizontalPadding, vertical = topGap),
+            verticalArrangement = Arrangement.spacedBy(if (compactViewport) 12.dp else 16.dp),
+        ) {
+            HomeTopChrome(onOpenLibrary = onOpenLibrary)
+            HomeGreeting(status = status)
+            DailyRecommendationCard(
+                status = status,
+                onClick = if (status.track != null) onPlayPause else onOpenLibrary,
+            )
+            NowPlayingHero(
+                status = status,
+                compact = compactViewport,
+                onPlayPause = onPlayPause,
+                onNext = onNext,
+                onPrevious = onPrevious,
+            )
+            HomeModeRibbon(
+                repeatMode = status.repeatMode,
+                shuffleEnabled = status.shuffleEnabled,
+                onCycleRepeatMode = onCycleRepeatMode,
+                onToggleShuffle = onToggleShuffle,
+                onOpenLibrary = onOpenLibrary,
+                onOpenConnect = onOpenConnect,
+            )
+            Spacer(Modifier.height(12.dp))
+        }
+    }
+}
+
+@Composable
+private fun HomeTopChrome(onOpenLibrary: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        GlassIconButton(
+            icon = Icons.Rounded.Menu,
+            description = "打开曲库",
+            onClick = onOpenLibrary,
         )
-        Spacer(Modifier.height(if (compactViewport) 8.dp else 12.dp))
-        PlaybackQueuePanel(
-            status = status,
-            compact = compactViewport,
-            onOpenLibrary = onOpenLibrary,
-            onOpenConnect = onOpenConnect,
-            onCycleRepeatMode = onCycleRepeatMode,
-            onToggleShuffle = onToggleShuffle,
+        GlassSurface(
+            modifier = Modifier
+                .weight(1f)
+                .heightIn(min = 46.dp),
+            alpha = 0.18f,
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Rounded.Search, contentDescription = null, tint = Color.White.copy(alpha = 0.76f), modifier = Modifier.size(20.dp))
+                Text("搜索本机音乐...", color = Color.White.copy(alpha = 0.72f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeGreeting(status: EchoPlaybackStatus) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            "Good Evening",
+            color = Color.White.copy(alpha = 0.68f),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
         )
+        Text(
+            status.track?.artist?.takeIf { it.isNotBlank() } ?: "ECHO Mobile",
+            color = Color.White,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            if (status.track != null) "不是所有的旅途都有终点" else "让本机音乐醒过来",
+            color = Color.White,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun DailyRecommendationCard(
+    status: EchoPlaybackStatus,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 154.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        Color(0xFF62D8FF),
+                        Color(0xFF7A7CFF),
+                        Color(0xFFFFA86B),
+                        Color(0xFF4D357B),
+                    ),
+                ),
+            ),
+    ) {
+        AmbientPlanet(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 14.dp, end = 34.dp),
+        )
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                if (status.track != null) "继续播放" else "每日推荐",
+                color = Color.White,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                status.track?.title ?: "发现好音乐",
+                color = Color.White.copy(alpha = 0.88f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomeModeRibbon(
+    repeatMode: EchoRepeatMode,
+    shuffleEnabled: Boolean,
+    onCycleRepeatMode: () -> Unit,
+    onToggleShuffle: () -> Unit,
+    onOpenLibrary: () -> Unit,
+    onOpenConnect: () -> Unit,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        HomeModeChip(
+            icon = if (repeatMode == EchoRepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
+            label = repeatModeLabel(repeatMode),
+            selected = repeatMode != EchoRepeatMode.Off,
+            onClick = onCycleRepeatMode,
+            modifier = Modifier.weight(1f),
+        )
+        HomeModeChip(
+            icon = Icons.Rounded.Shuffle,
+            label = if (shuffleEnabled) "随机" else "顺序",
+            selected = shuffleEnabled,
+            onClick = onToggleShuffle,
+            modifier = Modifier.weight(1f),
+        )
+        HomeModeChip(
+            icon = Icons.Rounded.LibraryMusic,
+            label = "曲库",
+            selected = false,
+            onClick = onOpenLibrary,
+            modifier = Modifier.weight(1f),
+        )
+        HomeModeChip(
+            icon = Icons.Rounded.Devices,
+            label = "接力",
+            selected = false,
+            onClick = onOpenConnect,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun HomeModeChip(
+    icon: ImageVector,
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier
+            .heightIn(min = 58.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(24.dp),
+        color = Color.White.copy(alpha = if (selected) 0.24f else 0.14f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = if (selected) 0.42f else 0.24f)),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Icon(icon, contentDescription = label, tint = if (selected) Color(0xFFFFB5CB) else Color.White.copy(alpha = 0.82f), modifier = Modifier.size(21.dp))
+            Text(label, color = Color.White.copy(alpha = 0.82f), style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
     }
 }
 
@@ -753,23 +938,12 @@ private fun NowPlayingHero(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
 ) {
-    val darkTheme = isSystemInDarkTheme()
     val heroBrush = Brush.linearGradient(
-        if (darkTheme) {
-            listOf(
-                MaterialTheme.colorScheme.surfaceVariant,
-                MaterialTheme.colorScheme.surface,
-                MaterialTheme.colorScheme.tertiary.copy(alpha = 0.30f),
-                MaterialTheme.colorScheme.secondary.copy(alpha = 0.20f),
-            )
-        } else {
-            listOf(
-                MaterialTheme.colorScheme.surface,
-                MaterialTheme.colorScheme.surfaceVariant,
-                MaterialTheme.colorScheme.tertiary.copy(alpha = 0.16f),
-                MaterialTheme.colorScheme.secondary.copy(alpha = 0.10f),
-            )
-        },
+        listOf(
+            Color.White.copy(alpha = 0.24f),
+            Color.White.copy(alpha = 0.10f),
+            Color(0xFF231A42).copy(alpha = 0.18f),
+        ),
     )
     if (compact) {
         CompactNowPlayingHero(
@@ -784,12 +958,13 @@ private fun NowPlayingHero(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 292.dp)
+            .heightIn(min = 274.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(heroBrush)
+            .background(Color.White.copy(alpha = 0.08f))
             .padding(16.dp),
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -798,49 +973,44 @@ private fun NowPlayingHero(
                 Text(
                     "本机会话",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = Color.White.copy(alpha = 0.74f),
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
                     playbackStateLabel(status.state),
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = Color.White.copy(alpha = 0.78f),
                 )
             }
-            Spacer(Modifier.height(8.dp))
             ArtworkTile(
                 artworkUri = status.track?.artworkUri?.toString(),
                 modifier = Modifier
-                    .fillMaxWidth(0.34f)
+                    .fillMaxWidth(0.44f)
                     .aspectRatio(1f),
                 accent = EchoColors.Sky,
                 showSignal = true,
             )
-            Spacer(Modifier.height(8.dp))
             Text(
                 status.track?.title ?: "暂无播放",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
+                color = Color.White,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 status.track?.artist ?: "从曲库选择一首歌",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = Color.White.copy(alpha = 0.72f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.height(8.dp))
-            PlaybackProgress(status.positionMs, status.durationMs)
-            Spacer(Modifier.height(8.dp))
+            PlaybackProgress(status.positionMs, status.durationMs, light = true)
             TransportControls(
                 isPlaying = status.isPlaying,
                 onPlayPause = onPlayPause,
                 onNext = onNext,
                 onPrevious = onPrevious,
             )
-            Spacer(Modifier.height(8.dp))
-            HeroMetaRail(status)
         }
     }
 }
@@ -885,13 +1055,13 @@ private fun CompactNowPlayingHero(
                         Text(
                             "本机会话",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = Color.White.copy(alpha = 0.74f),
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
                             playbackStateLabel(status.state),
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = Color.White.copy(alpha = 0.78f),
                         )
                     }
                     TransportControls(
@@ -905,16 +1075,17 @@ private fun CompactNowPlayingHero(
                     status.track?.title ?: "暂无播放",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
+                    color = Color.White,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     status.track?.artist ?: "从曲库选择一首歌",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = Color.White.copy(alpha = 0.72f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                PlaybackProgress(status.positionMs, status.durationMs)
+                PlaybackProgress(status.positionMs, status.durationMs, light = true)
             }
         }
     }
@@ -1337,6 +1508,56 @@ private fun SignalBars(active: Boolean) {
 }
 
 @Composable
+private fun GlassSurface(
+    modifier: Modifier = Modifier,
+    alpha: Float = 0.16f,
+    content: @Composable () -> Unit,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(28.dp),
+        color = Color.White.copy(alpha = alpha),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.32f)),
+        content = { content() },
+    )
+}
+
+@Composable
+private fun GlassIconButton(
+    icon: ImageVector,
+    description: String,
+    onClick: () -> Unit,
+) {
+    GlassSurface(modifier = Modifier.size(46.dp)) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+            IconButton(onClick = onClick) {
+                Icon(icon, contentDescription = description, tint = Color.White, modifier = Modifier.size(25.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun AmbientPlanet(modifier: Modifier = Modifier) {
+    Box(modifier = modifier.size(86.dp), contentAlignment = Alignment.Center) {
+        Surface(
+            modifier = Modifier.size(78.dp),
+            shape = CircleShape,
+            color = Color.White.copy(alpha = 0.34f),
+            content = {},
+        )
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.84f)
+                .height(10.dp),
+            shape = RoundedCornerShape(8.dp),
+            color = Color(0xFFFFD18C).copy(alpha = 0.48f),
+            content = {},
+        )
+    }
+}
+
+@Composable
 private fun PageChrome(
     title: String,
     subtitle: String,
@@ -1412,17 +1633,16 @@ private fun BottomDock(
     onSelectTab: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val darkTheme = isSystemInDarkTheme()
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = if (darkTheme) 0.88f else 0.98f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f)),
+        shape = RoundedCornerShape(28.dp),
+        color = Color.White.copy(alpha = 0.16f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.30f)),
     ) {
         Row(
             modifier = Modifier
-                .heightIn(min = 64.dp)
-                .padding(horizontal = 5.dp, vertical = 5.dp),
+                .heightIn(min = 56.dp)
+                .padding(horizontal = 8.dp, vertical = 5.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -1445,20 +1665,19 @@ private fun DockItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val background = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f) else Color.Transparent
-    val contentColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    val background = if (selected) Color.White.copy(alpha = 0.18f) else Color.Transparent
+    val contentColor = if (selected) Color(0xFFFFB5CB) else Color.White.copy(alpha = 0.74f)
     Column(
         modifier = modifier
-            .heightIn(min = 54.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(22.dp))
             .background(background)
             .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
+            .padding(vertical = 5.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.Center,
     ) {
-        Icon(tab.icon, contentDescription = tab.label, tint = contentColor, modifier = Modifier.size(19.dp))
-        Text(tab.label, color = contentColor, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+        Icon(tab.icon, contentDescription = tab.label, tint = contentColor, modifier = Modifier.size(22.dp))
     }
 }
 
@@ -1468,34 +1687,33 @@ private fun MiniPlayer(
     onPlayPause: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val darkTheme = isSystemInDarkTheme()
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = if (darkTheme) 0.94f else 0.98f),
-        shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.34f)),
+        color = Color.White.copy(alpha = 0.18f),
+        shape = RoundedCornerShape(28.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.34f)),
     ) {
         Column(Modifier.fillMaxWidth()) {
             LinearProgressIndicator(
                 progress = { progressFraction(status.positionMs, status.durationMs) },
                 modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                color = Color(0xFFFFB5CB),
+                trackColor = Color.White.copy(alpha = 0.16f),
             )
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 ArtworkTile(status.track?.artworkUri?.toString(), Modifier.size(38.dp), accent = EchoColors.Brass)
                 Column(Modifier.weight(1f)) {
-                    Text(status.track?.title ?: "ECHO 移动端", maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
-                    Text(status.track?.artist ?: "就绪", maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(status.track?.title ?: "ECHO 移动端", maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, color = Color.White)
+                    Text(status.track?.artist ?: "就绪", maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color.White.copy(alpha = 0.68f))
                 }
                 IconButton(onClick = onPlayPause, enabled = status.state != EchoPlaybackState.Idle) {
-                    Icon(if (status.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, contentDescription = "播放或暂停")
+                    Icon(if (status.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, contentDescription = "播放或暂停", tint = Color.White)
                 }
             }
         }
@@ -1511,35 +1729,38 @@ private fun TransportControls(
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(18.dp), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = onPrevious) {
-            Icon(Icons.Rounded.SkipPrevious, contentDescription = "上一首")
+            Icon(Icons.Rounded.SkipPrevious, contentDescription = "上一首", tint = Color.White.copy(alpha = 0.84f))
         }
-        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary) {
+        Surface(shape = CircleShape, color = Color.White.copy(alpha = 0.92f)) {
             IconButton(onClick = onPlayPause) {
                 Icon(
                     if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                     contentDescription = "播放或暂停",
-                    tint = MaterialTheme.colorScheme.onPrimary,
+                    tint = Color(0xFF28345E),
                 )
             }
         }
         IconButton(onClick = onNext) {
-            Icon(Icons.Rounded.SkipNext, contentDescription = "下一首")
+            Icon(Icons.Rounded.SkipNext, contentDescription = "下一首", tint = Color.White.copy(alpha = 0.84f))
         }
     }
 }
 
 @Composable
-private fun PlaybackProgress(positionMs: Long, durationMs: Long) {
+private fun PlaybackProgress(positionMs: Long, durationMs: Long, light: Boolean = false) {
+    val foreground = if (light) Color.White else MaterialTheme.colorScheme.primary
+    val secondary = if (light) Color.White.copy(alpha = 0.70f) else MaterialTheme.colorScheme.onSurfaceVariant
+    val track = if (light) Color.White.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
     Column {
         LinearProgressIndicator(
             progress = { progressFraction(positionMs, durationMs) },
             modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+            color = foreground,
+            trackColor = track,
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(formatDuration(positionMs), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(formatDuration(durationMs), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(formatDuration(positionMs), color = secondary)
+            Text(formatDuration(durationMs), color = secondary)
         }
     }
 }
