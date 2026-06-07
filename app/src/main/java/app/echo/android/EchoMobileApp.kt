@@ -16,6 +16,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -49,6 +51,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CloudQueue
 import androidx.compose.material.icons.rounded.Devices
@@ -61,7 +64,6 @@ import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
@@ -77,6 +79,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -84,6 +88,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
@@ -127,6 +132,7 @@ import app.echo.android.playback.EchoPlaybackState
 import app.echo.android.playback.EchoPlaybackStatus
 import app.echo.android.playback.EchoRepeatMode
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private enum class EchoTab(
@@ -143,9 +149,11 @@ private enum class LibraryViewMode(
     val label: String,
     val icon: ImageVector,
 ) {
-    Songs("音乐排序", Icons.Rounded.QueueMusic),
-    Albums("专辑墙", Icons.Rounded.LibraryMusic),
-    Artists("艺人墙", Icons.Rounded.Person),
+    Songs("歌曲", Icons.AutoMirrored.Rounded.QueueMusic),
+    Folders("文件夹", Icons.Rounded.LibraryMusic),
+    Albums("专辑", Icons.Rounded.LibraryMusic),
+    Artists("艺术家", Icons.Rounded.Person),
+    Cloud("网盘", Icons.Rounded.CloudQueue),
 }
 
 private data class LibraryAlbumSummary(
@@ -165,20 +173,22 @@ private data class LibraryArtistSummary(
 private val EchoContentMaxWidth = 560.dp
 
 // === 默认主题：Roon 风格（Shakespeare 蓝 + 中性炭灰）。多主题切换时改这一组即可 ===
-private val EchoAccent = Color(0xFF62B0D9)       // Roon 品牌蓝
-private val EchoAccentText = Color(0xFF8FCDEC)   // 暗背景上的浅蓝文字
-private val EchoAccentDeep = Color(0xFF3E7BA8)   // 渐变深蓝
-private val EchoBgTop = Color(0xFF202024)        // 背景顶部
-private val EchoBgMid = Color(0xFF191A1D)        // 背景中段
-private val EchoBgBottom = Color(0xFF131315)     // 背景底部
-private val RoonBlue = Color(0xFF3E38F2)
+private val EchoAccent = Color(0xFF4DB7E8)
+private val EchoAccentText = Color(0xFF1E88C8)
+private val EchoAccentDeep = Color(0xFF7C6CF2)
+private val EchoBgTop = Color(0xFFFDFEFF)
+private val EchoBgMid = Color(0xFFF0F8FF)
+private val EchoBgBottom = Color(0xFFEAF2FF)
+private val RoonBlue = Color(0xFF5A6CFF)
 private val RoonInk = Color(0xFF25242A)
 private val RoonMuted = Color(0xFF6D6D73)
-private val RoonPaper = Color(0xFFFBFBFA)
-private val RoonPanel = Color(0xFFF5F3FB)
-private val EchoHomeBlue = Color(0xFF265F9C)
-private val EchoHomeBlueDeep = Color(0xFF162C4E)
-private val EchoHomeMist = Color(0xFFF0F5F8)
+private val RoonPaper = Color(0xFFFDFEFF)
+private val RoonPanel = Color(0xFFF4F8FF)
+private val EchoHomeBlue = Color(0xFF4DB7E8)
+private val EchoHomeBlueDeep = Color(0xFF7C6CF2)
+private val EchoHomeMist = Color(0xFFF4F8FF)
+private val EchoGlassBorder = Color(0xCCFFFFFF)
+private val EchoSoftLine = Color(0xFFD8E8F3)
 
 @Composable
 fun EchoMobileApp(viewModel: EchoAndroidViewModel = viewModel()) {
@@ -197,6 +207,9 @@ fun EchoMobileApp(viewModel: EchoAndroidViewModel = viewModel()) {
     val playbackStatus by viewModel.playbackStatus.collectAsStateWithLifecycle()
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
     val tracks = viewModel.tracks.collectAsLazyPagingItems()
+    val homeLoadedTracks = tracks.itemSnapshotList.items
+    val homeAlbumCount = remember(homeLoadedTracks) { buildAlbumSummaries(homeLoadedTracks).size }
+    val homeArtistCount = remember(homeLoadedTracks) { buildArtistSummaries(homeLoadedTracks).size }
     var selectedTab by remember { mutableIntStateOf(EchoTab.Now.ordinal) }
 
     LaunchedEffect(hasAudioPermission) {
@@ -208,48 +221,28 @@ fun EchoMobileApp(viewModel: EchoAndroidViewModel = viewModel()) {
     val darkTheme = isSystemInDarkTheme()
 
     EchoMobileTheme(darkTheme = darkTheme) {
+        Box(Modifier.fillMaxSize()) {
+            EchoGlassBackground(Modifier.fillMaxSize())
         Scaffold(
             containerColor = Color.Transparent,
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
-                val dockOnLightSurface = selectedTab == EchoTab.Now.ordinal
-                val bottomBarBackground = if (dockOnLightSurface) {
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.Transparent,
-                            EchoHomeMist.copy(alpha = 0.96f),
-                            EchoHomeMist,
-                        ),
-                    )
-                } else {
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.Transparent,
-                            EchoBgBottom.copy(alpha = 0.94f),
-                            EchoBgBottom,
-                        ),
-                    )
-                }
+                val dockOnLightSurface = true
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(bottomBarBackground)
                         .navigationBarsPadding()
-                        .padding(start = 14.dp, top = 6.dp, end = 14.dp, bottom = 8.dp),
+                        .padding(start = 14.dp, top = 8.dp, end = 14.dp, bottom = 18.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(7.dp),
                 ) {
-                    val shouldShowMiniPlayer = selectedTab != EchoTab.Now.ordinal &&
-                        (playbackStatus.track != null || playbackStatus.state != EchoPlaybackState.Idle)
-                    if (shouldShowMiniPlayer) {
-                        MiniPlayer(
-                            status = playbackStatus,
-                            onPlayPause = viewModel::playPause,
-                            modifier = Modifier
-                                .widthIn(max = EchoContentMaxWidth)
-                                .fillMaxWidth(),
-                        )
-                    }
+                    MiniPlayer(
+                        status = playbackStatus,
+                        onPlayPause = viewModel::playPause,
+                        modifier = Modifier
+                            .widthIn(max = EchoContentMaxWidth)
+                            .fillMaxWidth(),
+                    )
                     BottomDock(
                         selectedTab = selectedTab,
                         onLightSurface = dockOnLightSurface,
@@ -262,7 +255,6 @@ fun EchoMobileApp(viewModel: EchoAndroidViewModel = viewModel()) {
             },
         ) { padding ->
             Box(modifier = Modifier.fillMaxSize()) {
-                EchoDreamyBackground(Modifier.fillMaxSize())
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -281,6 +273,9 @@ fun EchoMobileApp(viewModel: EchoAndroidViewModel = viewModel()) {
 
                         EchoTab.Now -> NowPlayingScreen(
                             status = playbackStatus,
+                            trackCount = tracks.itemCount,
+                            albumCount = homeAlbumCount,
+                            artistCount = homeArtistCount,
                             onPlayPause = viewModel::playPause,
                             onNext = viewModel::skipNext,
                             onPrevious = viewModel::skipPrevious,
@@ -320,6 +315,7 @@ fun EchoMobileApp(viewModel: EchoAndroidViewModel = viewModel()) {
         }
     }
 }
+}
 
 @Composable
 private fun LibraryScreen(
@@ -330,10 +326,17 @@ private fun LibraryScreen(
     onScan: () -> Unit,
     onPlayQueue: (List<LibraryTrackEntity>, Int) -> Unit,
 ) {
+    val loadedTracks = tracks.itemSnapshotList.items
+    val albums = remember(loadedTracks) { buildAlbumSummaries(loadedTracks) }
+    val artists = remember(loadedTracks) { buildArtistSummaries(loadedTracks) }
+    val pagerState = rememberPagerState(pageCount = { LibraryViewMode.entries.size })
+    val scope = rememberCoroutineScope()
     PageChrome(
         title = "曲库",
-        subtitle = "本机音乐",
+        subtitle = null,
         badge = "本地",
+        showBrand = false,
+        compactHeader = true,
         actions = {
             LibraryScanAction(
                 hasPermission = hasPermission,
@@ -347,14 +350,363 @@ private fun LibraryScreen(
             !hasPermission -> EmptyState("授权后即可索引本机音乐。")
             scanState.isScanning || tracks.loadState.refresh is LoadState.Loading -> EmptyState("正在扫描音频文件...")
             tracks.loadState.refresh is LoadState.Error -> EmptyState("曲库查询失败。")
-            tracks.itemCount == 0 -> LibraryBootstrapState()
             else -> {
-                TrackList(
-                    tracks = tracks,
-                    onPlayQueue = onPlayQueue,
+                LibraryPagerTabs(
+                    selectedMode = LibraryViewMode.entries[pagerState.currentPage],
+                    onSelectMode = { mode ->
+                        scope.launch { pagerState.animateScrollToPage(mode.ordinal) }
+                    },
+                )
+                if (tracks.itemCount > 0) {
+                    LibraryOverview(
+                        trackCount = tracks.itemCount,
+                        albumCount = albums.size,
+                        artistCount = artists.size,
+                    )
+                }
+                HorizontalPager(
+                    state = pagerState,
                     modifier = Modifier.weight(1f),
+                ) { page ->
+                    when (LibraryViewMode.entries[page]) {
+                        LibraryViewMode.Songs -> {
+                            if (tracks.itemCount == 0) {
+                                LibraryBootstrapState()
+                            } else {
+                                TrackList(
+                                    tracks = tracks,
+                                    onPlayQueue = onPlayQueue,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
+                        }
+
+                        LibraryViewMode.Folders -> LibraryPlaceholderPage(
+                            title = "文件夹视图",
+                            subtitle = "按存储路径浏览本机音乐会放在这里。",
+                        )
+
+                        LibraryViewMode.Albums -> AlbumWall(
+                            albums = albums,
+                            onPlayAlbum = { albumTracks -> onPlayQueue(albumTracks, 0) },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+
+                        LibraryViewMode.Artists -> ArtistWall(
+                            artists = artists,
+                            onPlayArtist = { artistTracks -> onPlayQueue(artistTracks, 0) },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+
+                        LibraryViewMode.Cloud -> LibraryPlaceholderPage(
+                            title = "网盘音乐",
+                            subtitle = "之后可以接入云端曲库和同步播放列表。",
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LibraryPagerTabs(
+    selectedMode: LibraryViewMode,
+    onSelectMode: (LibraryViewMode) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(top = 0.dp, bottom = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(24.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        LibraryViewMode.entries.forEach { mode ->
+            val selected = selectedMode == mode
+            Text(
+                text = mode.label,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .clickable { onSelectMode(mode) }
+                    .padding(horizontal = 4.dp, vertical = 8.dp),
+                color = if (selected) EchoAccentText else RoonMuted,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+private fun LibraryPlaceholderPage(
+    title: String,
+    subtitle: String,
+) {
+    EchoPanel(Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            EchoIconBadge(Icons.Rounded.LibraryMusic)
+            Text(title, color = RoonInk, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(subtitle, color = RoonMuted, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
+@Composable
+private fun LibraryOverview(
+    trackCount: Int,
+    albumCount: Int,
+    artistCount: Int,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(22.dp))
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        Color.White.copy(alpha = 0.72f),
+                        EchoHomeMist.copy(alpha = 0.60f),
+                        EchoAccentDeep.copy(alpha = 0.08f),
+                    ),
+                ),
+            )
+            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.86f)), RoundedCornerShape(22.dp))
+            .padding(14.dp),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            LibraryMetric("歌曲", trackCount.toString(), Modifier.weight(1f))
+            LibraryMetric("专辑", albumCount.toString(), Modifier.weight(1f))
+            LibraryMetric("艺人", artistCount.toString(), Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun LibraryMetric(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(value, color = RoonInk, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(label, color = RoonMuted, style = MaterialTheme.typography.labelMedium)
+    }
+}
+
+@Composable
+private fun LibraryViewSwitcher(
+    selectedMode: LibraryViewMode,
+    onSelectMode: (LibraryViewMode) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color.White.copy(alpha = 0.54f))
+            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.74f)), RoundedCornerShape(18.dp))
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        LibraryViewMode.entries.forEach { mode ->
+            val selected = selectedMode == mode
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(if (selected) EchoHomeBlue.copy(alpha = 0.18f) else Color.Transparent)
+                    .clickable { onSelectMode(mode) }
+                    .padding(horizontal = 8.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    mode.icon,
+                    contentDescription = mode.label,
+                    tint = if (selected) EchoAccentText else RoonMuted,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    mode.label,
+                    color = if (selected) RoonInk else RoonMuted,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun LibraryViewModeMenu(
+    selectedMode: LibraryViewMode,
+    onSelectMode: (LibraryViewMode) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(Color.White.copy(alpha = 0.62f))
+                .border(BorderStroke(1.dp, EchoGlassBorder), RoundedCornerShape(14.dp))
+                .clickable { expanded = true },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                selectedMode.icon,
+                contentDescription = "切换曲库显示方式",
+                tint = EchoHomeBlue,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            containerColor = Color.White,
+        ) {
+            LibraryViewMode.entries.forEach { mode ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            mode.label,
+                            color = if (mode == selectedMode) EchoHomeBlue else RoonInk,
+                            fontWeight = if (mode == selectedMode) FontWeight.Bold else FontWeight.SemiBold,
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            mode.icon,
+                            contentDescription = null,
+                            tint = if (mode == selectedMode) EchoHomeBlue else RoonMuted,
+                        )
+                    },
+                    onClick = {
+                        onSelectMode(mode)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AlbumWall(
+    albums: List<LibraryAlbumSummary>,
+    onPlayAlbum: (List<LibraryTrackEntity>) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (albums.isEmpty()) {
+        EmptyState("当前加载范围内还没有可展示的专辑。")
+        return
+    }
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 142.dp),
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+        contentPadding = PaddingValues(bottom = 10.dp),
+    ) {
+        gridItems(albums, key = { it.title + it.artist }) { album ->
+            AlbumWallCard(album = album, onClick = { onPlayAlbum(album.tracks) })
+        }
+    }
+}
+
+@Composable
+private fun AlbumWallCard(
+    album: LibraryAlbumSummary,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color.White.copy(alpha = 0.66f))
+            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.86f)), RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick)
+            .padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(9.dp),
+    ) {
+        ArtworkTile(
+            artworkUri = album.artworkUri,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f),
+            accent = EchoAccent,
+            showSignal = album.artworkUri == null,
+            cornerRadius = 14.dp,
+            elevation = 6.dp,
+        )
+        Text(album.title, color = RoonInk, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(album.artist, color = RoonMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text("${album.tracks.size} 首", color = EchoAccentText, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun ArtistWall(
+    artists: List<LibraryArtistSummary>,
+    onPlayArtist: (List<LibraryTrackEntity>) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (artists.isEmpty()) {
+        EmptyState("当前加载范围内还没有可展示的艺人。")
+        return
+    }
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 158.dp),
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(bottom = 10.dp),
+    ) {
+        gridItems(artists, key = { it.name }) { artist ->
+            ArtistWallCard(artist = artist, onClick = { onPlayArtist(artist.tracks) })
+        }
+    }
+}
+
+@Composable
+private fun ArtistWallCard(
+    artist: LibraryArtistSummary,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .heightIn(min = 152.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        Color.White.copy(alpha = 0.66f),
+                        EchoAccent.copy(alpha = 0.18f),
+                        EchoAccentDeep.copy(alpha = 0.08f),
+                    ),
+                ),
+            )
+            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.84f)), RoundedCornerShape(22.dp))
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            ArtworkTile(
+                artworkUri = artist.artworkUri,
+                modifier = Modifier.size(70.dp),
+                accent = EchoColors.Coral,
+                showSignal = artist.artworkUri == null,
+                cornerRadius = 35.dp,
+                elevation = 5.dp,
+            )
+            Text(artist.name, color = RoonInk, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text("${artist.albumCount} 张专辑 / ${artist.tracks.size} 首", color = RoonMuted, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -373,10 +725,10 @@ private fun LibraryScanAction(
     }
     Box(
         modifier = Modifier
-            .size(42.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(EchoAccent.copy(alpha = 0.16f))
-            .border(BorderStroke(1.dp, EchoAccent.copy(alpha = 0.30f)), RoundedCornerShape(14.dp))
+                .size(42.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(Color.White.copy(alpha = 0.62f))
+                .border(BorderStroke(1.dp, EchoGlassBorder), RoundedCornerShape(14.dp))
             .clickable(
                 enabled = !scanState.isScanning,
                 onClick = if (hasPermission) onScan else onRequestPermission,
@@ -386,7 +738,7 @@ private fun LibraryScanAction(
         Icon(
             Icons.Rounded.Refresh,
             contentDescription = description,
-            tint = if (scanState.error != null) Color(0xFFE0796E) else EchoAccentText,
+            tint = if (scanState.error != null) Color(0xFFE0796E) else EchoHomeBlue,
             modifier = Modifier.size(20.dp),
         )
     }
@@ -402,10 +754,10 @@ private fun LibraryBootstrapState() {
         ) {
             EchoIconBadge(Icons.Rounded.LibraryMusic)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("暂无本机歌曲", color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("暂无本机歌曲", color = RoonInk, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(
                     "点右上角扫描本机音乐。",
-                    color = Color.White.copy(alpha = 0.6f),
+                    color = RoonMuted,
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -448,8 +800,8 @@ private fun TrackRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = 0.06f))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)), RoundedCornerShape(16.dp))
+            .background(Color.White.copy(alpha = 0.66f))
+            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.84f)), RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 9.dp),
     ) {
@@ -462,7 +814,7 @@ private fun TrackRow(
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     track.title,
-                    color = Color.White,
+                    color = RoonInk,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     fontWeight = FontWeight.SemiBold,
@@ -471,13 +823,13 @@ private fun TrackRow(
                     trackSubtitle(track),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    color = Color.White.copy(alpha = 0.6f),
+                    color = RoonMuted,
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
             Text(
                 formatDuration(track.durationMs),
-                color = Color.White.copy(alpha = 0.55f),
+                color = RoonMuted,
                 style = MaterialTheme.typography.labelMedium,
             )
         }
@@ -487,6 +839,9 @@ private fun TrackRow(
 @Composable
 private fun NowPlayingScreen(
     status: EchoPlaybackStatus,
+    trackCount: Int,
+    albumCount: Int,
+    artistCount: Int,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
@@ -503,22 +858,29 @@ private fun NowPlayingScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(RoonPaper)
                 .statusBarsPadding()
                 .verticalScroll(scrollState)
-                .padding(bottom = 14.dp),
+                .padding(bottom = 212.dp),
         ) {
             RoonHomeHeader(
                 status = status,
                 compact = compactViewport,
                 onOpenLibrary = onOpenLibrary,
             )
+            Box(Modifier.padding(horizontal = 24.dp)) {
+                LibraryOverview(
+                    trackCount = trackCount,
+                    albumCount = albumCount,
+                    artistCount = artistCount,
+                )
+            }
+            Spacer(Modifier.height(if (compactViewport) 14.dp else 22.dp))
             RoonRecentActivitySection(
                 status = status,
                 onPlayPause = onPlayPause,
                 onOpenLibrary = onOpenLibrary,
             )
-            RoonListenLaterPanel(onOpenConnect = onOpenConnect)
+            Spacer(Modifier.height(if (compactViewport) 44.dp else 62.dp))
         }
     }
 }
@@ -532,9 +894,8 @@ private fun RoonHomeHeader(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(RoonPaper)
-            .padding(horizontal = 22.dp, vertical = if (compact) 18.dp else 28.dp),
-        verticalArrangement = Arrangement.spacedBy(if (compact) 34.dp else 58.dp),
+            .padding(horizontal = 22.dp, vertical = if (compact) 10.dp else 16.dp),
+        verticalArrangement = Arrangement.spacedBy(if (compact) 14.dp else 22.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -549,20 +910,12 @@ private fun RoonHomeHeader(
             }
             Icon(Icons.Rounded.Search, contentDescription = "搜索", tint = RoonMuted, modifier = Modifier.size(34.dp))
         }
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(
-                text = "ECHO Mobile",
-                color = RoonInk,
-                style = if (compact) MaterialTheme.typography.displaySmall else MaterialTheme.typography.displayMedium,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(28.dp),
-                color = Color(0xFFF0F2F4),
-                border = BorderStroke(1.dp, Color(0xFFE4E6EA)),
+                color = Color.White.copy(alpha = 0.58f),
+                border = BorderStroke(1.dp, EchoGlassBorder),
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -573,13 +926,15 @@ private fun RoonHomeHeader(
                     Text("搜索本机音乐、专辑、歌手", color = RoonMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
-            Text(
+            if (false) {
+                Text(
                 text = status.track?.title ?: "让本机音乐醒过来",
                 color = RoonMuted,
                 style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-            )
+                )
+            }
         }
     }
 }
@@ -593,20 +948,31 @@ private fun RoonRecentActivitySection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+            .shadow(
+                elevation = 16.dp,
+                shape = RoundedCornerShape(30.dp),
+                ambientColor = EchoAccentDeep.copy(alpha = 0.16f),
+                spotColor = EchoHomeBlue.copy(alpha = 0.14f),
+            )
+            .clip(RoundedCornerShape(32.dp))
             .background(
-                Brush.verticalGradient(
+                Brush.linearGradient(
                     listOf(
-                        EchoHomeBlue,
-                        EchoHomeBlueDeep,
+                        Color.White.copy(alpha = 0.72f),
+                        EchoHomeMist.copy(alpha = 0.62f),
+                        EchoHomeBlue.copy(alpha = 0.13f),
+                        EchoAccentDeep.copy(alpha = 0.08f),
                     ),
                 ),
             )
-            .padding(top = 30.dp, bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(22.dp),
+            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.90f)), RoundedCornerShape(32.dp))
+            .padding(top = 18.dp, bottom = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 22.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.padding(horizontal = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -614,42 +980,52 @@ private fun RoonRecentActivitySection(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
+                    "最近活动",
+                    color = RoonInk,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+                if (false) {
+                    Text(
                     "本机会话",
                     color = Color.White,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                )
+                    )
+                }
                 Surface(
                     shape = RoundedCornerShape(28.dp),
-                    color = Color.White.copy(alpha = 0.34f),
-                    contentColor = Color.White,
+                    color = EchoAccentDeep.copy(alpha = 0.14f),
+                    contentColor = EchoAccentText,
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.62f)),
                 ) {
                     Text(
                         "曲库",
-                        modifier = Modifier.padding(horizontal = 22.dp, vertical = 10.dp),
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
                     )
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(34.dp), verticalAlignment = Alignment.Bottom) {
+            Row(horizontalArrangement = Arrangement.spacedBy(28.dp), verticalAlignment = Alignment.Bottom) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("正在播放", color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("正在播放", color = EchoAccentText, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Box(
                         Modifier
                             .width(74.dp)
                             .height(4.dp)
-                            .background(Color.White),
+                            .clip(RoundedCornerShape(99.dp))
+                            .background(EchoAccent),
                     )
                 }
-                Text("最近导入", color = Color.White.copy(alpha = 0.68f), style = MaterialTheme.typography.titleMedium)
+                Text("最近导入", color = RoonMuted, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             }
         }
         Row(
             modifier = Modifier
                 .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 22.dp),
-            horizontalArrangement = Arrangement.spacedBy(18.dp),
+                .padding(horizontal = 18.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             RoonRecentActivityCard(
                 title = status.track?.title ?: "本地音乐",
@@ -686,9 +1062,9 @@ private fun RoonRecentActivityCard(
 ) {
     Column(
         modifier = Modifier
-            .width(148.dp)
+            .width(126.dp)
             .clickable(onClick = onClick),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Box {
             ArtworkTile(
@@ -706,12 +1082,13 @@ private fun RoonRecentActivityCard(
                     .align(Alignment.BottomStart)
                     .padding(9.dp),
                 shape = CircleShape,
-                color = Color(0xFF101820),
+                color = Color.White.copy(alpha = 0.62f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.76f)),
             ) {
                 Icon(
                     Icons.Rounded.GraphicEq,
                     contentDescription = null,
-                    tint = EchoAccentText,
+                    tint = EchoHomeBlue,
                     modifier = Modifier
                         .padding(6.dp)
                         .size(22.dp),
@@ -720,7 +1097,7 @@ private fun RoonRecentActivityCard(
         }
         Text(
             title,
-            color = Color.White,
+            color = RoonInk,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             maxLines = 2,
@@ -728,7 +1105,7 @@ private fun RoonRecentActivityCard(
         )
         Text(
             subtitle,
-            color = Color.White.copy(alpha = 0.86f),
+            color = RoonMuted,
             style = MaterialTheme.typography.titleSmall,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -741,8 +1118,11 @@ private fun RoonListenLaterPanel(onOpenConnect: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(EchoHomeMist)
-            .padding(horizontal = 22.dp, vertical = 38.dp),
+            .padding(horizontal = 18.dp)
+            .clip(RoundedCornerShape(32.dp))
+            .background(Color.White.copy(alpha = 0.66f))
+            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.82f)), RoundedCornerShape(32.dp))
+            .padding(horizontal = 22.dp, vertical = 30.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -1265,9 +1645,9 @@ private fun NowPlayingHero(
 ) {
     val heroBrush = Brush.linearGradient(
         listOf(
-            Color.White.copy(alpha = 0.14f),
-            Color.White.copy(alpha = 0.06f),
-            EchoAccent.copy(alpha = 0.10f),
+            Color.White.copy(alpha = 0.72f),
+            EchoHomeMist.copy(alpha = 0.58f),
+            EchoHomeBlue.copy(alpha = 0.12f),
         ),
     )
     if (compact) {
@@ -1286,7 +1666,7 @@ private fun NowPlayingHero(
             .heightIn(min = 274.dp)
             .clip(RoundedCornerShape(26.dp))
             .background(heroBrush)
-            .background(Color.White.copy(alpha = 0.08f))
+            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.84f)), RoundedCornerShape(26.dp))
             .padding(18.dp),
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1298,13 +1678,13 @@ private fun NowPlayingHero(
                 Text(
                     "本机会话",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(alpha = 0.74f),
+                    color = EchoAccentText,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
                     playbackStateLabel(status.state),
                     style = MaterialTheme.typography.labelMedium,
-                    color = Color.White.copy(alpha = 0.78f),
+                    color = RoonMuted,
                 )
             }
             ArtworkTile(
@@ -1321,17 +1701,17 @@ private fun NowPlayingHero(
                 status.track?.title ?: "暂无播放",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = RoonInk,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 status.track?.artist ?: "从曲库选择一首歌",
-                color = Color.White.copy(alpha = 0.72f),
+                color = RoonMuted,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            PlaybackProgress(status.positionMs, status.durationMs, light = true)
+            PlaybackProgress(status.positionMs, status.durationMs, light = false)
             TransportControls(
                 isPlaying = status.isPlaying,
                 onPlayPause = onPlayPause,
@@ -1355,6 +1735,7 @@ private fun CompactNowPlayingHero(
             .fillMaxWidth()
             .clip(RoundedCornerShape(22.dp))
             .background(heroBrush)
+            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.82f)), RoundedCornerShape(22.dp))
             .padding(14.dp),
     ) {
         val artworkSize = if (maxWidth < 420.dp) 76.dp else 92.dp
@@ -1384,13 +1765,13 @@ private fun CompactNowPlayingHero(
                         Text(
                             "本机会话",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.74f),
+                            color = EchoAccentText,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
                             playbackStateLabel(status.state),
                             style = MaterialTheme.typography.labelMedium,
-                            color = Color.White.copy(alpha = 0.78f),
+                            color = RoonMuted,
                         )
                     }
                     TransportControls(
@@ -1404,17 +1785,17 @@ private fun CompactNowPlayingHero(
                     status.track?.title ?: "暂无播放",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = RoonInk,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     status.track?.artist ?: "从曲库选择一首歌",
-                    color = Color.White.copy(alpha = 0.72f),
+                    color = RoonMuted,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                PlaybackProgress(status.positionMs, status.durationMs, light = true)
+                PlaybackProgress(status.positionMs, status.durationMs, light = false)
             }
         }
     }
@@ -1494,13 +1875,14 @@ private fun ConnectScreen(
                 .background(
                     Brush.linearGradient(
                         listOf(
-                            EchoAccent.copy(alpha = 0.22f),
-                            Color.White.copy(alpha = 0.05f),
+                            Color.White.copy(alpha = 0.70f),
+                            EchoHomeMist.copy(alpha = 0.62f),
+                            EchoHomeBlue.copy(alpha = 0.08f),
                         ),
                     ),
                 )
                 .border(
-                    BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)),
+                    BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.86f)),
                     RoundedCornerShape(20.dp),
                 ),
         ) {
@@ -1513,7 +1895,7 @@ private fun ConnectScreen(
                         modifier = Modifier
                             .size(46.dp)
                             .clip(RoundedCornerShape(13.dp))
-                            .background(EchoAccent.copy(alpha = 0.95f)),
+                            .background(EchoHomeBlue),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
@@ -1526,7 +1908,7 @@ private fun ConnectScreen(
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
                             pcTitle,
-                            color = Color.White,
+                            color = RoonInk,
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleMedium,
                             maxLines = 1,
@@ -1534,7 +1916,7 @@ private fun ConnectScreen(
                         )
                         Text(
                             remoteConnectionLabel(remoteState),
-                            color = Color.White.copy(alpha = 0.68f),
+                            color = RoonMuted,
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
@@ -1567,7 +1949,7 @@ private fun ConnectScreen(
                     )
                     if (connected) {
                         TextButton(onClick = onDisconnect) {
-                            Text("断开", color = Color.White.copy(alpha = 0.82f))
+                            Text("断开", color = EchoHomeBlue)
                         }
                     }
                 }
@@ -1595,13 +1977,14 @@ private fun ServiceCard(
             .background(
                 Brush.linearGradient(
                     listOf(
-                        brandColor.copy(alpha = if (locked) 0.16f else 0.28f),
-                        Color.White.copy(alpha = 0.05f),
+                        Color.White.copy(alpha = 0.70f),
+                        brandColor.copy(alpha = if (locked) 0.06f else 0.12f),
+                        EchoHomeMist.copy(alpha = 0.28f),
                     ),
                 ),
             )
             .border(
-                BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)),
+                BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.86f)),
                 RoundedCornerShape(20.dp),
             )
             .clickable(enabled = !locked, onClick = onClick)
@@ -1623,7 +2006,7 @@ private fun ServiceCard(
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     name,
-                    color = Color.White,
+                    color = RoonInk,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
@@ -1631,7 +2014,7 @@ private fun ServiceCard(
                 )
                 Text(
                     subtitle,
-                    color = Color.White.copy(alpha = 0.68f),
+                    color = RoonMuted,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -1649,13 +2032,13 @@ private fun ServiceStatusPill(
     locked: Boolean,
 ) {
     val background = when {
-        locked -> Color.White.copy(alpha = 0.14f)
+        locked -> Color.White.copy(alpha = 0.52f)
         active -> Color(0xFF35C28E).copy(alpha = 0.22f)
         else -> EchoAccent.copy(alpha = 0.22f)
     }
     val foreground = when {
-        locked -> Color.White.copy(alpha = 0.78f)
-        active -> Color(0xFF8FF0C8)
+        locked -> RoonMuted
+        active -> Color(0xFF1A9B68)
         else -> EchoAccentText
     }
     Surface(shape = RoundedCornerShape(20.dp), color = background) {
@@ -1686,8 +2069,8 @@ private fun PcLinkStatusStrip(connected: Boolean) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.34f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f)),
+        color = Color.White.copy(alpha = 0.56f),
+        border = BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.76f)),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
@@ -1752,8 +2135,8 @@ private fun RemoteNowPlaying(
 ) {
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.24f)),
+        color = Color.White.copy(alpha = 0.58f),
+        border = BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.76f)),
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -1855,13 +2238,13 @@ private fun SignalHeroCard(
             .background(
                 Brush.linearGradient(
                     listOf(
-                        EchoAccent.copy(alpha = 0.30f),
-                        EchoAccent.copy(alpha = 0.20f),
-                        EchoAccent.copy(alpha = 0.16f),
+                        Color.White.copy(alpha = 0.72f),
+                        EchoHomeMist.copy(alpha = 0.64f),
+                        EchoHomeBlue.copy(alpha = 0.12f),
                     ),
                 ),
             )
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)), RoundedCornerShape(22.dp))
+            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.86f)), RoundedCornerShape(22.dp))
             .padding(16.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -1873,13 +2256,13 @@ private fun SignalHeroCard(
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(
                         "链路总览",
-                        color = Color.White,
+                        color = RoonInk,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
                         if (status.isPlaying) "正在输出稳定音频流" else "等待播放，链路保持就绪",
-                        color = Color.White.copy(alpha = 0.66f),
+                        color = RoonMuted,
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
@@ -1900,7 +2283,7 @@ private fun SignalHeroCard(
 
 @Composable
 private fun StatePill(label: String, active: Boolean) {
-    val accent = if (active) Color(0xFF8FF0C8) else EchoAccentText
+    val accent = if (active) Color(0xFF1A9B68) else EchoAccentText
     Surface(
         shape = RoundedCornerShape(20.dp),
         color = accent.copy(alpha = 0.18f),
@@ -1926,8 +2309,8 @@ private fun SignalStatTile(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(14.dp))
-            .background(Color.White.copy(alpha = 0.07f))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)), RoundedCornerShape(14.dp))
+            .background(Color.White.copy(alpha = 0.62f))
+            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.80f)), RoundedCornerShape(14.dp))
             .padding(horizontal = 12.dp, vertical = 11.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1939,7 +2322,7 @@ private fun SignalStatTile(
             )
             Text(
                 value,
-                color = Color.White,
+                color = RoonInk,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -1959,8 +2342,8 @@ private fun SignalFlowPanel(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(Color.White.copy(alpha = 0.06f))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(20.dp))
+            .background(Color.White.copy(alpha = 0.64f))
+            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.84f)), RoundedCornerShape(20.dp))
             .padding(16.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -2006,7 +2389,7 @@ private fun SignalFlowStage(
             Text(title, color = accent, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
             Text(
                 detail,
-                color = Color.White,
+                color = RoonInk,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 fontWeight = FontWeight.Bold,
@@ -2021,7 +2404,7 @@ private fun FlowArrow() {
     Text(
         "→",
         modifier = Modifier.padding(horizontal = 4.dp),
-        color = Color.White.copy(alpha = 0.5f),
+        color = RoonMuted,
         style = MaterialTheme.typography.titleMedium,
     )
 }
@@ -2032,9 +2415,9 @@ private fun FlowChip(label: String, selected: Boolean, modifier: Modifier = Modi
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(if (selected) accent.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.05f))
+            .background(if (selected) accent.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.54f))
             .border(
-                BorderStroke(1.dp, if (selected) accent.copy(alpha = 0.34f) else Color.White.copy(alpha = 0.10f)),
+                BorderStroke(1.dp, if (selected) accent.copy(alpha = 0.28f) else EchoGlassBorder.copy(alpha = 0.74f)),
                 RoundedCornerShape(20.dp),
             )
             .padding(vertical = 7.dp),
@@ -2042,7 +2425,7 @@ private fun FlowChip(label: String, selected: Boolean, modifier: Modifier = Modi
     ) {
         Text(
             label,
-            color = if (selected) EchoAccentText else Color.White.copy(alpha = 0.6f),
+            color = if (selected) EchoHomeBlue else RoonMuted,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
@@ -2060,8 +2443,8 @@ private fun CurrentStreamPanel(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(Color.White.copy(alpha = 0.06f))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(20.dp))
+            .background(Color.White.copy(alpha = 0.64f))
+            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.84f)), RoundedCornerShape(20.dp))
             .padding(16.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -2081,8 +2464,8 @@ private fun HealthPanel(status: EchoPlaybackStatus) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(Color.White.copy(alpha = 0.06f))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(20.dp))
+            .background(Color.White.copy(alpha = 0.64f))
+            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.84f)), RoundedCornerShape(20.dp))
             .padding(16.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -2105,7 +2488,8 @@ private fun SignalBars(active: Boolean) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(Color.White.copy(alpha = 0.06f))
+            .background(Color.White.copy(alpha = 0.46f))
+            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.62f)), RoundedCornerShape(14.dp))
             .padding(horizontal = 14.dp, vertical = 14.dp),
     ) {
         Row(
@@ -2164,7 +2548,7 @@ private fun GlassIconButton(
 }
 
 @Composable
-private fun EchoDreamyBackground(modifier: Modifier = Modifier) {
+private fun EchoGlassBackground(modifier: Modifier = Modifier) {
     // Roon 风格：平面中性炭灰，极克制的顶部冷光，无光斑、无星点
     val baseGradient = Brush.verticalGradient(
         listOf(
@@ -2179,9 +2563,23 @@ private fun EchoDreamyBackground(modifier: Modifier = Modifier) {
         // 顶部一抹极淡的 Roon 蓝冷光，给纯黑一点层次
         drawRect(
             brush = Brush.radialGradient(
-                colors = listOf(EchoAccent.copy(alpha = 0.06f), Color.Transparent),
-                center = Offset(w * 0.5f, h * -0.04f),
-                radius = h * 0.5f,
+                colors = listOf(EchoHomeBlue.copy(alpha = 0.22f), Color.Transparent),
+                center = Offset(w * 0.08f, h * 0.18f),
+                radius = h * 0.40f,
+            ),
+        )
+        drawRect(
+            brush = Brush.radialGradient(
+                colors = listOf(EchoAccentDeep.copy(alpha = 0.18f), Color.Transparent),
+                center = Offset(w * 0.92f, h * 0.28f),
+                radius = h * 0.46f,
+            ),
+        )
+        drawRect(
+            brush = Brush.radialGradient(
+                colors = listOf(Color(0xFFFFC7E3).copy(alpha = 0.18f), Color.Transparent),
+                center = Offset(w * 0.40f, h * 0.78f),
+                radius = h * 0.44f,
             ),
         )
     }
@@ -2210,9 +2608,11 @@ private fun AmbientPlanet(modifier: Modifier = Modifier) {
 @Composable
 private fun PageChrome(
     title: String,
-    subtitle: String,
+    subtitle: String?,
     badge: String = "移动端",
     scrollable: Boolean = false,
+    showBrand: Boolean = false,
+    compactHeader: Boolean = false,
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -2224,49 +2624,82 @@ private fun PageChrome(
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(alpha = 0.66f),
+                            EchoHomeMist.copy(alpha = 0.78f),
+                            Color(0xFFEAF2FF).copy(alpha = 0.86f),
+                        ),
+                    ),
+                )
                 .statusBarsPadding(),
         ) {
             val horizontalPadding = if (maxWidth >= 720.dp) 28.dp else 16.dp
-            val topPadding = if (compactChrome) 8.dp else 14.dp
-            val headerGap = if (compactChrome) 6.dp else 8.dp
-            val contentGap = if (compactChrome) 8.dp else 12.dp
-            val titleStyle = if (compactChrome) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.headlineMedium
+            val topPadding = when {
+                compactHeader -> 2.dp
+                compactChrome -> 8.dp
+                else -> 14.dp
+            }
+            val headerGap = when {
+                compactHeader -> 4.dp
+                compactChrome -> 6.dp
+                else -> 8.dp
+            }
+            val contentGap = when {
+                compactHeader -> 4.dp
+                compactChrome -> 8.dp
+                else -> 12.dp
+            }
+            val titleStyle = when {
+                compactHeader -> MaterialTheme.typography.headlineMedium
+                compactChrome -> MaterialTheme.typography.headlineSmall
+                else -> MaterialTheme.typography.headlineMedium
+            }
             Column(
                 modifier = Modifier
                     .widthIn(max = EchoContentMaxWidth)
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
                     .then(contentScroll)
-                    .padding(start = horizontalPadding, end = horizontalPadding, top = topPadding, bottom = 12.dp),
+                    .padding(start = horizontalPadding, end = horizontalPadding, top = topPadding, bottom = 212.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("ECHO 移动端", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    if (showBrand) {
+                        Text("ECHO 移动端", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    } else {
+                        Text(title, style = titleStyle, fontWeight = FontWeight.Bold, color = RoonInk)
+                    }
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.68f),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)),
+                            color = Color.White.copy(alpha = 0.56f),
+                            border = BorderStroke(1.dp, EchoGlassBorder),
                         ) {
                             Text(
                                 badge,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = RoonInk,
                             )
                         }
                         actions()
                     }
                 }
-                Spacer(Modifier.height(headerGap))
-                Text(title, style = titleStyle, fontWeight = FontWeight.Bold)
-                Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (showBrand) {
+                    Spacer(Modifier.height(headerGap))
+                    Text(title, style = titleStyle, fontWeight = FontWeight.Bold, color = RoonInk)
+                }
+                if (subtitle != null) {
+                    Text(subtitle, color = RoonMuted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
                 Spacer(Modifier.height(contentGap))
                 content()
                 if (scrollable) {
@@ -2288,8 +2721,8 @@ private fun BottomDock(
     val dockBackground = if (onLightSurface) {
         Brush.verticalGradient(
             listOf(
-                Color.White.copy(alpha = 0.96f),
-                Color(0xFFE8EDF2).copy(alpha = 0.92f),
+                Color(0xFF5D6678).copy(alpha = 0.58f),
+                Color(0xFF30394E).copy(alpha = 0.46f),
             ),
         )
     } else {
@@ -2301,7 +2734,7 @@ private fun BottomDock(
         )
     }
     val borderColor = if (onLightSurface) {
-        Color(0xFFCCD4DD)
+        Color.White.copy(alpha = 0.18f)
     } else {
         Color.White.copy(alpha = 0.24f)
     }
@@ -2350,16 +2783,16 @@ private fun DockItem(
     modifier: Modifier = Modifier,
 ) {
     val contentColor = when {
-        selected && onLightSurface -> EchoHomeBlue
+        selected && onLightSurface -> Color(0xFFFFBCD5)
         selected -> EchoAccentText
-        onLightSurface -> RoonMuted
+        onLightSurface -> Color.White.copy(alpha = 0.70f)
         else -> Color.White.copy(alpha = 0.68f)
     }
     val selectedBackground = if (onLightSurface) {
         Brush.verticalGradient(
             listOf(
-                EchoAccent.copy(alpha = 0.22f),
-                Color.White.copy(alpha = 0.20f),
+                Color.White.copy(alpha = 0.12f),
+                Color.White.copy(alpha = 0.06f),
             ),
         )
     } else {
@@ -2371,7 +2804,7 @@ private fun DockItem(
         )
     }
     val selectedBorder = if (onLightSurface) {
-        EchoAccent.copy(alpha = 0.28f)
+        Color.White.copy(alpha = 0.14f)
     } else {
         EchoAccent.copy(alpha = 0.38f)
     }
@@ -2411,65 +2844,116 @@ private fun MiniPlayer(
     onPlayPause: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val shape = RoundedCornerShape(28.dp)
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
+            .shadow(
+                elevation = 18.dp,
+                shape = shape,
+                ambientColor = EchoAccentDeep.copy(alpha = 0.16f),
+                spotColor = EchoHomeBlue.copy(alpha = 0.12f),
+            )
+            .clip(shape)
             .background(
-                Brush.verticalGradient(
+                Brush.linearGradient(
                     listOf(
-                        Color.White.copy(alpha = 0.18f),
-                        Color.White.copy(alpha = 0.07f),
+                        Color.White.copy(alpha = 0.50f),
+                        EchoHomeMist.copy(alpha = 0.34f),
+                        EchoAccentDeep.copy(alpha = 0.14f),
                     ),
                 ),
             )
-            .border(
-                BorderStroke(1.dp, Color.White.copy(alpha = 0.24f)),
-                RoundedCornerShape(24.dp),
-            ),
+            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.76f)), shape)
+            .padding(horizontal = 12.dp, vertical = 9.dp),
     ) {
-        Column(Modifier.fillMaxWidth()) {
-            LinearProgressIndicator(
-                progress = { progressFraction(status.positionMs, status.durationMs) },
-                modifier = Modifier.fillMaxWidth(),
-                color = EchoAccent,
-                trackColor = Color.White.copy(alpha = 0.14f),
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            ArtworkTile(
+                artworkUri = status.track?.artworkUri?.toString(),
+                modifier = Modifier.size(52.dp),
+                accent = EchoAccent,
+                showSignal = status.track?.artworkUri == null,
+                cornerRadius = 12.dp,
+                elevation = 2.dp,
             )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 7.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(5.dp),
             ) {
-                ArtworkTile(status.track?.artworkUri?.toString(), Modifier.size(40.dp), accent = EchoAccent, cornerRadius = 10.dp)
-                Column(Modifier.weight(1f)) {
-                    Text(status.track?.title ?: "ECHO 移动端", maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, color = Color.White)
-                    Text(status.track?.artist ?: "就绪", maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color.White.copy(alpha = 0.68f))
-                }
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.92f))
-                        .clickable(
-                            enabled = status.state != EchoPlaybackState.Idle,
-                            onClick = onPlayPause,
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Icon(
-                        if (status.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                        contentDescription = "播放或暂停",
-                        tint = Color(0xFF11202B),
-                        modifier = Modifier.size(22.dp),
+                        Icons.Rounded.MusicNote,
+                        contentDescription = null,
+                        tint = EchoAccentDeep.copy(alpha = 0.74f),
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Text(
+                        status.track?.title ?: "ECHO Mobile",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        fontWeight = FontWeight.Bold,
+                        color = RoonInk,
+                        style = MaterialTheme.typography.titleMedium,
                     )
                 }
+                Text(
+                    status.track?.artist ?: "就绪",
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = RoonMuted,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                LinearProgressIndicator(
+                    progress = { progressFraction(status.positionMs, status.durationMs) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(99.dp)),
+                    color = Color(0xFFFF9FC8),
+                    trackColor = Color.White.copy(alpha = 0.46f),
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(CircleShape)
+                    .background(EchoAccentDeep.copy(alpha = 0.16f))
+                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.58f)), CircleShape)
+                    .clickable(
+                        enabled = status.state != EchoPlaybackState.Idle || status.track != null,
+                        onClick = onPlayPause,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    if (status.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    contentDescription = "播放或暂停",
+                    tint = EchoAccentText.copy(alpha = 0.92f),
+                    modifier = Modifier.size(34.dp),
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = {}),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Rounded.QueueMusic,
+                    contentDescription = "播放队列",
+                    tint = RoonMuted,
+                    modifier = Modifier.size(32.dp),
+                )
             }
         }
     }
 }
-
 @Composable
 private fun TransportControls(
     isPlaying: Boolean,
@@ -2482,7 +2966,7 @@ private fun TransportControls(
             Icon(
                 Icons.Rounded.SkipPrevious,
                 contentDescription = "上一首",
-                tint = Color.White.copy(alpha = 0.9f),
+                tint = EchoHomeBlue,
                 modifier = Modifier.size(28.dp),
             )
         }
@@ -2502,7 +2986,7 @@ private fun TransportControls(
             Icon(
                 if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                 contentDescription = "播放或暂停",
-                tint = Color(0xFF11202B),
+                tint = EchoHomeBlue,
                 modifier = Modifier.size(30.dp),
             )
         }
@@ -2510,7 +2994,7 @@ private fun TransportControls(
             Icon(
                 Icons.Rounded.SkipNext,
                 contentDescription = "下一首",
-                tint = Color.White.copy(alpha = 0.9f),
+                tint = EchoHomeBlue,
                 modifier = Modifier.size(28.dp),
             )
         }
@@ -2681,6 +3165,52 @@ private fun trackSubtitle(track: LibraryTrackEntity): String =
         .mapNotNull { value -> value?.takeIf { it.isNotBlank() } }
         .ifEmpty { listOf("本机音频") }
         .joinToString(" / ")
+
+private fun buildAlbumSummaries(tracks: List<LibraryTrackEntity>): List<LibraryAlbumSummary> =
+    tracks
+        .filter { !it.album.isNullOrBlank() }
+        .groupBy { "${it.album.orEmpty()}::${it.albumArtist ?: it.artist}" }
+        .values
+        .map { albumTracks ->
+            val sortedTracks = albumTracks.sortedWith(
+                compareBy<LibraryTrackEntity>(
+                    { it.discNumber ?: 0 },
+                    { it.trackNumber ?: 0 },
+                    { it.title.lowercase() },
+                ),
+            )
+            val first = sortedTracks.first()
+            LibraryAlbumSummary(
+                title = first.album.orEmpty(),
+                artist = first.albumArtist?.takeIf { it.isNotBlank() } ?: first.artist,
+                artworkUri = sortedTracks.firstNotNullOfOrNull { it.artworkUri },
+                tracks = sortedTracks,
+            )
+        }
+        .sortedWith(compareBy({ it.artist.lowercase() }, { it.title.lowercase() }))
+
+private fun buildArtistSummaries(tracks: List<LibraryTrackEntity>): List<LibraryArtistSummary> =
+    tracks
+        .filter { it.artist.isNotBlank() }
+        .groupBy { it.artist }
+        .values
+        .map { artistTracks ->
+            val sortedTracks = artistTracks.sortedWith(
+                compareBy<LibraryTrackEntity>(
+                    { it.album.orEmpty().lowercase() },
+                    { it.discNumber ?: 0 },
+                    { it.trackNumber ?: 0 },
+                    { it.title.lowercase() },
+                ),
+            )
+            LibraryArtistSummary(
+                name = sortedTracks.first().artist,
+                artworkUri = sortedTracks.firstNotNullOfOrNull { it.artworkUri },
+                albumCount = sortedTracks.mapNotNull { it.album?.takeIf(String::isNotBlank) }.distinct().size,
+                tracks = sortedTracks,
+            )
+        }
+        .sortedBy { it.name.lowercase() }
 
 private fun playbackStateLabel(state: EchoPlaybackState): String =
     when (state) {

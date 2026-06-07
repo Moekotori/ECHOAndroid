@@ -34,9 +34,9 @@ fun EchoPanel(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.56f))
+            .background(Color.White.copy(alpha = 0.62f))
             .border(
-                BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)),
+                BorderStroke(1.dp, Color.White.copy(alpha = 0.78f)),
                 RoundedCornerShape(20.dp),
             ),
     ) {
@@ -91,12 +91,12 @@ fun EchoInfoChip(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.64f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)),
+        color = Color.White.copy(alpha = 0.62f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.78f)),
     ) {
         Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
             Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-            Text(value, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
+            Text(value, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, color = Color(0xFF25242A))
         }
     }
 }
@@ -111,21 +111,21 @@ fun EchoMetricTile(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.66f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)),
+        color = Color.White.copy(alpha = 0.62f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.78f)),
     ) {
         Column(
             Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-            Text(value, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold)
+            Text(value, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold, color = Color(0xFF25242A))
             if (detail != null) {
                 Text(
                     detail,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = Color(0xFF6D6D73),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -145,21 +145,21 @@ fun EchoSegmentChip(
         color = if (selected) {
             MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
         } else {
-            MaterialTheme.colorScheme.surface.copy(alpha = 0.64f)
+            Color.White.copy(alpha = 0.58f)
         },
         border = BorderStroke(
             1.dp,
             if (selected) {
                 MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
             } else {
-                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)
+                Color.White.copy(alpha = 0.76f)
             },
         ),
     ) {
         Text(
             label,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (selected) MaterialTheme.colorScheme.primary else Color(0xFF6D6D73),
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -174,8 +174,8 @@ fun EchoSectionTitle(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color(0xFF25242A))
+        Text(subtitle, color = Color(0xFF6D6D73), maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -187,12 +187,12 @@ fun EchoPlaceholderLine(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.34f),
+        color = Color.White.copy(alpha = 0.50f),
     ) {
         Text(
             text,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = Color(0xFF6D6D73),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
