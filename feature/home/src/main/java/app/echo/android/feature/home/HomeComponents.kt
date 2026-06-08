@@ -99,13 +99,13 @@ internal fun LibraryOverview(
             .background(
                 Brush.linearGradient(
                     listOf(
-                        Color.White.copy(alpha = 0.72f),
-                        EchoHomeMist.copy(alpha = 0.60f),
-                        EchoAccentDeep.copy(alpha = 0.08f),
+                        Color.White,
+                        EchoHomeMist,
+                        Color(0xFFEFEAFF),
                     ),
                 ),
             )
-            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.86f)), RoundedCornerShape(22.dp))
+            .border(BorderStroke(1.dp, EchoGlassBorder), RoundedCornerShape(22.dp))
             .padding(14.dp),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
@@ -157,7 +157,7 @@ internal fun RoonHomeHeader(
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(28.dp),
-                color = Color.White.copy(alpha = 0.58f),
+                color = Color.White.copy(alpha = 0.94f),
                 border = BorderStroke(1.dp, EchoGlassBorder),
             ) {
                 Row(
@@ -202,14 +202,14 @@ internal fun RoonRecentActivitySection(
             .background(
                 Brush.linearGradient(
                     listOf(
-                        Color.White.copy(alpha = 0.72f),
-                        EchoHomeMist.copy(alpha = 0.62f),
-                        EchoHomeBlue.copy(alpha = 0.13f),
-                        EchoAccentDeep.copy(alpha = 0.08f),
+                        Color.White,
+                        EchoHomeMist,
+                        Color(0xFFEAF6FF),
+                        Color(0xFFEFEAFF),
                     ),
                 ),
             )
-            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.90f)), RoundedCornerShape(32.dp))
+            .border(BorderStroke(1.dp, EchoGlassBorder), RoundedCornerShape(32.dp))
             .padding(top = 18.dp, bottom = 18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -266,8 +266,8 @@ internal fun RoonRecentActivitySection(
 internal fun RecentActivityTabs() {
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = Color.White.copy(alpha = 0.56f),
-        border = BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.78f)),
+        color = Color.White.copy(alpha = 0.94f),
+        border = BorderStroke(1.dp, EchoGlassBorder),
     ) {
         Row(
             modifier = Modifier.padding(3.dp),
@@ -331,8 +331,8 @@ internal fun RoonRecentActivityCard(
                     .align(Alignment.BottomStart)
                     .padding(9.dp),
                 shape = CircleShape,
-                color = Color.White.copy(alpha = 0.62f),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.76f)),
+                color = Color.White.copy(alpha = 0.92f),
+                border = BorderStroke(1.dp, Color.White),
             ) {
                 Icon(
                     Icons.Rounded.GraphicEq,
@@ -377,13 +377,13 @@ internal fun HomeRecommendationsSection(
             .background(
                 Brush.linearGradient(
                     listOf(
-                        Color.White.copy(alpha = 0.70f),
-                        EchoHomeMist.copy(alpha = 0.56f),
-                        EchoAccentDeep.copy(alpha = 0.07f),
+                        Color.White,
+                        EchoHomeMist,
+                        Color(0xFFEFEAFF),
                     ),
                 ),
             )
-            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.86f)), RoundedCornerShape(26.dp))
+            .border(BorderStroke(1.dp, EchoGlassBorder), RoundedCornerShape(26.dp))
             .padding(top = 16.dp, bottom = 18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -405,8 +405,8 @@ internal fun HomeRecommendationsSection(
                     .clip(RoundedCornerShape(14.dp))
                     .clickable(onClick = onRefresh),
                 shape = RoundedCornerShape(14.dp),
-                color = Color.White.copy(alpha = 0.50f),
-                border = BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.78f)),
+                color = Color.White.copy(alpha = 0.94f),
+                border = BorderStroke(1.dp, EchoGlassBorder),
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -424,8 +424,8 @@ internal fun HomeRecommendationsSection(
                     .padding(horizontal = 18.dp)
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(18.dp))
-                    .background(Color.White.copy(alpha = 0.52f))
-                    .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.72f)), RoundedCornerShape(18.dp))
+                    .background(Color.White.copy(alpha = 0.94f))
+                    .border(BorderStroke(1.dp, EchoGlassBorder), RoundedCornerShape(18.dp))
                     .clickable(onClick = onOpenLibrary)
                     .padding(16.dp),
             ) {
@@ -504,8 +504,8 @@ internal fun RoonListenLaterPanel(onOpenConnect: () -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = 18.dp)
             .clip(RoundedCornerShape(32.dp))
-            .background(Color.White.copy(alpha = 0.66f))
-            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.82f)), RoundedCornerShape(32.dp))
+            .background(Color.White.copy(alpha = 0.94f))
+            .border(BorderStroke(1.dp, EchoGlassBorder), RoundedCornerShape(32.dp))
             .padding(horizontal = 22.dp, vertical = 30.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),

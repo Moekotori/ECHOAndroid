@@ -39,6 +39,7 @@ fun EchoTrack.toLibraryTrackEntity(): LibraryTrackEntity =
         sizeBytes = sizeBytes,
         dateModifiedSeconds = dateModifiedSeconds,
         source = source.id,
+        relativePath = null,
         lastSeenScanRunId = 0L,
         fingerprint = buildTrackFingerprint(this),
         normalizedTitle = title.normalizedForSearch(),
@@ -87,6 +88,7 @@ internal fun buildTrackFingerprint(track: LibraryTrackEntity): String =
         track.discNumber?.toString().orEmpty(),
         track.year?.toString().orEmpty(),
         track.mimeType.orEmpty(),
+        track.relativePath.orEmpty(),
     ).joinToString("|")
 
 internal fun String.normalizedForSearch(): String =

@@ -34,9 +34,9 @@ fun EchoPanel(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(Color.White.copy(alpha = 0.62f))
+            .background(Color.White.copy(alpha = 0.92f))
             .border(
-                BorderStroke(1.dp, Color.White.copy(alpha = 0.78f)),
+                BorderStroke(1.dp, Color.White.copy(alpha = 0.96f)),
                 RoundedCornerShape(20.dp),
             ),
     ) {
@@ -91,8 +91,8 @@ fun EchoInfoChip(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(8.dp),
-        color = Color.White.copy(alpha = 0.62f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.78f)),
+        color = Color.White.copy(alpha = 0.92f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.96f)),
     ) {
         Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
             Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
@@ -111,8 +111,8 @@ fun EchoMetricTile(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(8.dp),
-        color = Color.White.copy(alpha = 0.62f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.78f)),
+        color = Color.White.copy(alpha = 0.92f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.96f)),
     ) {
         Column(
             Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
@@ -145,14 +145,14 @@ fun EchoSegmentChip(
         color = if (selected) {
             MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
         } else {
-            Color.White.copy(alpha = 0.58f)
+            Color.White.copy(alpha = 0.92f)
         },
         border = BorderStroke(
             1.dp,
             if (selected) {
                 MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
             } else {
-                Color.White.copy(alpha = 0.76f)
+                Color.White.copy(alpha = 0.96f)
             },
         ),
     ) {
@@ -187,7 +187,7 @@ fun EchoPlaceholderLine(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
-        color = Color.White.copy(alpha = 0.50f),
+        color = Color.White.copy(alpha = 0.90f),
     ) {
         Text(
             text,

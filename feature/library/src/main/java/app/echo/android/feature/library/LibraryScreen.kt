@@ -36,7 +36,6 @@ import androidx.compose.material.icons.rounded.CloudQueue
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -101,12 +100,20 @@ fun LibraryScreen(
     tracks: LazyPagingItems<EchoTrack>,
     albums: LazyPagingItems<AlbumSummary>,
     artists: LazyPagingItems<ArtistSummary>,
+    selectedAlbum: AlbumSummary?,
+    selectedArtist: ArtistSummary?,
+    albumDetailTracks: LazyPagingItems<EchoTrack>?,
+    artistDetailTracks: LazyPagingItems<EchoTrack>?,
     onRequestPermission: () -> Unit,
-    onScan: () -> Unit,
+    onScanFolder: () -> Unit,
+    onScanAll: () -> Unit,
     onCancelScan: () -> Unit,
-    onPlayQueue: (List<EchoTrack>, Int) -> Unit,
+    onPlayTrack: (EchoTrack) -> Unit,
     onPlayAlbum: (AlbumSummary) -> Unit,
     onPlayArtist: (ArtistSummary) -> Unit,
+    onOpenAlbum: (AlbumSummary) -> Unit,
+    onOpenArtist: (ArtistSummary) -> Unit,
+    onCloseDetail: () -> Unit,
 ) {
     val pagerState = rememberPagerState(pageCount = { LibraryViewMode.entries.size })
     val scope = rememberCoroutineScope()
@@ -121,19 +128,58 @@ fun LibraryScreen(
                 hasPermission = hasPermission,
                 scanState = scanState,
                 onRequestPermission = onRequestPermission,
-                onScan = onScan,
+                onScanFolder = onScanFolder,
+                onScanAll = onScanAll,
                 onCancelScan = onCancelScan,
             )
         },
     ) {
+        val activeAlbum = selectedAlbum
+        val activeArtist = selectedArtist
         when {
             !hasPermission -> EmptyState("授权后即可索引本机音乐。")
+            activeAlbum != null && albumDetailTracks != null -> LibraryDetailPage(
+                title = activeAlbum.title,
+                subtitle = activeAlbum.albumArtist ?: activeAlbum.artist,
+                tracks = albumDetailTracks,
+                onBack = onCloseDetail,
+                onPlayAll = { onPlayAlbum(activeAlbum) },
+                onPlayTrack = onPlayTrack,
+                modifier = Modifier.fillMaxSize(),
+            )
+            activeArtist != null && artistDetailTracks != null -> LibraryDetailPage(
+                title = activeArtist.name,
+                subtitle = "${activeArtist.albumCount} albums / ${activeArtist.trackCount} tracks",
+                tracks = artistDetailTracks,
+                onBack = onCloseDetail,
+                onPlayAll = { onPlayArtist(activeArtist) },
+                onPlayTrack = onPlayTrack,
+                modifier = Modifier.fillMaxSize(),
+            )
             scanState.isScanning -> LibraryScanStatus(scanState = scanState, onCancelScan = onCancelScan)
-            tracks.loadState.refresh is LoadState.Loading -> EmptyState("正在加载曲库...")
-            tracks.loadState.refresh is LoadState.Error -> EmptyState("曲库查询失败。")
+            tracks.loadState.refresh is LoadState.Loading -> {
+                LibraryBrowserHeader(
+                    scanState = scanState,
+                    selectedMode = LibraryViewMode.entries[pagerState.currentPage],
+                    onSelectMode = { mode ->
+                        scope.launch { pagerState.animateScrollToPage(mode.ordinal) }
+                    },
+                )
+                EmptyState("正在加载曲库...")
+            }
+            tracks.loadState.refresh is LoadState.Error -> {
+                LibraryBrowserHeader(
+                    scanState = scanState,
+                    selectedMode = LibraryViewMode.entries[pagerState.currentPage],
+                    onSelectMode = { mode ->
+                        scope.launch { pagerState.animateScrollToPage(mode.ordinal) }
+                    },
+                )
+                EmptyState("曲库查询失败。")
+            }
             else -> {
-                LibraryScanResultBanner(scanState)
-                LibraryPagerTabs(
+                LibraryBrowserHeader(
+                    scanState = scanState,
                     selectedMode = LibraryViewMode.entries[pagerState.currentPage],
                     onSelectMode = { mode ->
                         scope.launch { pagerState.animateScrollToPage(mode.ordinal) }
@@ -150,7 +196,7 @@ fun LibraryScreen(
                             } else {
                                 TrackList(
                                     tracks = tracks,
-                                    onPlayQueue = onPlayQueue,
+                                    onPlayTrack = onPlayTrack,
                                     modifier = Modifier.fillMaxSize(),
                                 )
                             }
@@ -163,13 +209,13 @@ fun LibraryScreen(
 
                         LibraryViewMode.Albums -> AlbumWall(
                             albums = albums,
-                            onPlayAlbum = onPlayAlbum,
+                            onOpenAlbum = onOpenAlbum,
                             modifier = Modifier.fillMaxSize(),
                         )
 
                         LibraryViewMode.Artists -> ArtistWall(
                             artists = artists,
-                            onPlayArtist = onPlayArtist,
+                            onOpenArtist = onOpenArtist,
                             modifier = Modifier.fillMaxSize(),
                         )
 
@@ -184,3 +230,15 @@ fun LibraryScreen(
     }
 }
 
+@Composable
+private fun LibraryBrowserHeader(
+    scanState: LibraryScanProgress,
+    selectedMode: LibraryViewMode,
+    onSelectMode: (LibraryViewMode) -> Unit,
+) {
+    LibraryScanResultBanner(scanState)
+    LibraryPagerTabs(
+        selectedMode = selectedMode,
+        onSelectMode = onSelectMode,
+    )
+}

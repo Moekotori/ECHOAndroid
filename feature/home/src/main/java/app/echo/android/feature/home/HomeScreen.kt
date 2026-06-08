@@ -81,6 +81,7 @@ import app.echo.android.design.RoonInk
 import app.echo.android.design.RoonMuted
 import app.echo.android.design.formatDuration
 import app.echo.android.design.progressFraction
+import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
@@ -92,6 +93,7 @@ fun HomeScreen(
     trackCount: Int,
     albumCount: Int,
     artistCount: Int,
+    recentAlbums: List<AlbumSummary>,
     recommendedTracks: List<EchoTrack>,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
@@ -100,6 +102,7 @@ fun HomeScreen(
     onToggleShuffle: () -> Unit,
     onRefreshRecommendations: () -> Unit,
     onPlayRecommendation: (List<EchoTrack>, Int) -> Unit,
+    onOpenAlbum: (AlbumSummary) -> Unit,
     onOpenLibrary: () -> Unit,
     onOpenConnect: () -> Unit,
 ) {
@@ -112,8 +115,7 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .verticalScroll(scrollState)
-                .padding(bottom = 212.dp),
+                .verticalScroll(scrollState),
         ) {
             RoonHomeHeader(
                 status = status,
@@ -129,20 +131,11 @@ fun HomeScreen(
             }
             Spacer(Modifier.height(if (compactViewport) 14.dp else 22.dp))
             RoonRecentActivitySection(
-                status = status,
-                onPlayPause = onPlayPause,
+                albums = recentAlbums,
+                onOpenAlbum = onOpenAlbum,
                 onOpenLibrary = onOpenLibrary,
             )
-            Spacer(Modifier.height(if (compactViewport) 14.dp else 20.dp))
-            HomeRecommendationsSection(
-                tracks = recommendedTracks,
-                onRefresh = onRefreshRecommendations,
-                onOpenLibrary = onOpenLibrary,
-                onPlayTrack = { index ->
-                    onPlayRecommendation(recommendedTracks, index)
-                },
-            )
-            Spacer(Modifier.height(if (compactViewport) 44.dp else 62.dp))
+            Spacer(Modifier.height(if (compactViewport) 180.dp else 212.dp))
         }
     }
 }

@@ -16,7 +16,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
-import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
@@ -35,11 +34,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoAccent
-import app.echo.android.design.EchoAccentDeep
-import app.echo.android.design.EchoAccentText
-import app.echo.android.design.EchoGlassBorder
-import app.echo.android.design.EchoHomeBlue
-import app.echo.android.design.EchoHomeMist
 import app.echo.android.design.RoonInk
 import app.echo.android.design.RoonMuted
 import app.echo.android.design.progressFraction
@@ -52,86 +46,78 @@ fun MiniPlayer(
     onPlayPause: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(28.dp)
+    val shape = RoundedCornerShape(26.dp)
     Box(
         modifier = modifier
             .fillMaxWidth()
             .shadow(
-                elevation = 18.dp,
+                elevation = 9.dp,
                 shape = shape,
-                ambientColor = EchoAccentDeep.copy(alpha = 0.16f),
-                spotColor = EchoHomeBlue.copy(alpha = 0.12f),
+                ambientColor = Color.Black.copy(alpha = 0.05f),
+                spotColor = Color.Black.copy(alpha = 0.09f),
             )
             .clip(shape)
             .background(
-                Brush.linearGradient(
+                Brush.verticalGradient(
                     listOf(
-                        Color.White.copy(alpha = 0.50f),
-                        EchoHomeMist.copy(alpha = 0.34f),
-                        EchoAccentDeep.copy(alpha = 0.14f),
+                        Color.White,
+                        Color(0xFFFAFAFA),
+                        Color(0xFFF4F4F5),
                     ),
                 ),
             )
-            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.76f)), shape)
-            .padding(horizontal = 12.dp, vertical = 9.dp),
+            .border(BorderStroke(1.dp, Color(0xFFE9E9EC)), shape)
+            .padding(start = 14.dp, top = 5.dp, end = 8.dp, bottom = 5.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             ArtworkTile(
                 artworkUri = status.track?.artworkUri,
-                modifier = Modifier.size(52.dp),
+                modifier = Modifier.size(36.dp),
                 accent = EchoAccent,
-                showSignal = status.track?.artworkUri == null,
-                cornerRadius = 12.dp,
-                elevation = 2.dp,
+                showSignal = false,
+                cornerRadius = 8.dp,
+                elevation = 1.dp,
+                placeholderIconSize = 22.dp,
             )
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(5.dp),
+                verticalArrangement = Arrangement.spacedBy(1.dp),
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Icon(
-                        Icons.Rounded.MusicNote,
-                        contentDescription = null,
-                        tint = EchoAccentDeep.copy(alpha = 0.74f),
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Text(
-                        status.track?.title ?: "ECHO Mobile",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        fontWeight = FontWeight.Bold,
-                        color = RoonInk,
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                }
+                Text(
+                    status.track?.title ?: "ECHO Mobile",
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontWeight = FontWeight.SemiBold,
+                    color = RoonInk,
+                    style = MaterialTheme.typography.bodyLarge,
+                )
                 Text(
                     status.track?.artist ?: "就绪",
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     color = RoonMuted,
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
                 LinearProgressIndicator(
                     progress = { progressFraction(status.positionMs, status.durationMs) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(3.dp)
+                        .height(2.dp)
                         .clip(RoundedCornerShape(99.dp)),
-                    color = Color(0xFFFF9FC8),
-                    trackColor = Color.White.copy(alpha = 0.46f),
+                    color = Color(0xFFFF2D55).copy(alpha = 0.58f),
+                    trackColor = Color(0xFFE8E8EA),
                 )
             }
             Box(
                 modifier = Modifier
-                    .size(50.dp)
+                    .size(36.dp)
                     .clip(CircleShape)
-                    .background(EchoAccentDeep.copy(alpha = 0.16f))
-                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.58f)), CircleShape)
+                    .background(Color.Transparent)
                     .clickable(
                         enabled = status.state != EchoPlaybackState.Idle || status.track != null,
                         onClick = onPlayPause,
@@ -141,13 +127,13 @@ fun MiniPlayer(
                 Icon(
                     if (status.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                     contentDescription = "播放或暂停",
-                    tint = EchoAccentText.copy(alpha = 0.92f),
-                    modifier = Modifier.size(34.dp),
+                    tint = Color.Black.copy(alpha = 0.90f),
+                    modifier = Modifier.size(29.dp),
                 )
             }
             Box(
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(34.dp)
                     .clip(CircleShape)
                     .clickable(onClick = {}),
                 contentAlignment = Alignment.Center,
@@ -155,8 +141,8 @@ fun MiniPlayer(
                 Icon(
                     Icons.AutoMirrored.Rounded.QueueMusic,
                     contentDescription = "播放队列",
-                    tint = RoonMuted,
-                    modifier = Modifier.size(32.dp),
+                    tint = Color.Black.copy(alpha = 0.64f),
+                    modifier = Modifier.size(26.dp),
                 )
             }
         }

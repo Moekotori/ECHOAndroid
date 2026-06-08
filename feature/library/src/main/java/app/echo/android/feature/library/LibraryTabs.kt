@@ -36,7 +36,7 @@ import androidx.compose.material.icons.rounded.CloudQueue
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Scanner
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -277,7 +277,7 @@ internal fun LibraryViewModeMenu(
 @Composable
 internal fun AlbumWall(
     albums: LazyPagingItems<AlbumSummary>,
-    onPlayAlbum: (AlbumSummary) -> Unit,
+    onOpenAlbum: (AlbumSummary) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (albums.loadState.refresh is LoadState.Loading) {
@@ -297,14 +297,14 @@ internal fun AlbumWall(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
-        contentPadding = PaddingValues(bottom = 10.dp),
+        contentPadding = PaddingValues(bottom = LibraryBottomControlsPadding),
     ) {
         items(
             count = albums.itemCount,
             key = { index: Int -> albums.peek(index)?.albumKey ?: "album-$index" },
         ) { index: Int ->
             albums[index]?.let { album ->
-                AlbumWallCard(album = album, onClick = { onPlayAlbum(album) })
+                AlbumWallCard(album = album, onClick = { onOpenAlbum(album) })
             }
         }
     }
@@ -340,7 +340,7 @@ internal fun AlbumWallCard(
 @Composable
 internal fun ArtistWall(
     artists: LazyPagingItems<ArtistSummary>,
-    onPlayArtist: (ArtistSummary) -> Unit,
+    onOpenArtist: (ArtistSummary) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (artists.loadState.refresh is LoadState.Loading) {
@@ -360,14 +360,14 @@ internal fun ArtistWall(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(bottom = 10.dp),
+        contentPadding = PaddingValues(bottom = LibraryBottomControlsPadding),
     ) {
         items(
             count = artists.itemCount,
             key = { index: Int -> artists.peek(index)?.artistKey ?: "artist-$index" },
         ) { index: Int ->
             artists[index]?.let { artist ->
-                ArtistWallCard(artist = artist, onClick = { onPlayArtist(artist) })
+                ArtistWallCard(artist = artist, onClick = { onOpenArtist(artist) })
             }
         }
     }
@@ -411,43 +411,6 @@ internal fun ArtistWallCard(
 }
 
 @Composable
-internal fun LibraryScanAction(
-    hasPermission: Boolean,
-    scanState: LibraryScanProgress,
-    onRequestPermission: () -> Unit,
-    onScan: () -> Unit,
-    onCancelScan: () -> Unit,
-) {
-    val description = when {
-        !hasPermission -> "授权音乐权限"
-        scanState.isScanning -> "取消扫描曲库"
-        else -> "扫描曲库"
-    }
-    Box(
-        modifier = Modifier
-                .size(42.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(Color.White.copy(alpha = 0.62f))
-                .border(BorderStroke(1.dp, EchoGlassBorder), RoundedCornerShape(14.dp))
-            .clickable(
-                onClick = when {
-                    !hasPermission -> onRequestPermission
-                    scanState.isScanning -> onCancelScan
-                    else -> onScan
-                },
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            Icons.Rounded.Refresh,
-            contentDescription = description,
-            tint = if (scanState.error != null) Color(0xFFE0796E) else EchoHomeBlue,
-            modifier = Modifier.size(20.dp),
-        )
-    }
-}
-
-@Composable
 internal fun LibraryScanStatus(
     scanState: LibraryScanProgress,
     onCancelScan: () -> Unit,
@@ -462,7 +425,7 @@ internal fun LibraryScanStatus(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                EchoIconBadge(Icons.Rounded.Refresh)
+                EchoIconBadge(Icons.Rounded.Scanner)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
                         text = scanPhaseLabel(scanState.phase),
@@ -524,6 +487,7 @@ internal fun LibraryScanResultBanner(scanState: LibraryScanProgress) {
         LibraryScanPhase.Completed -> "扫描完成：${scanState.scannedCount} 首，新增 ${scanState.insertedCount}，更新 ${scanState.updatedCount}，删除 ${scanState.deletedCount}"
         LibraryScanPhase.Cancelled -> "扫描已取消，已保留现有曲库。"
         LibraryScanPhase.Error -> scanState.error ?: "曲库扫描失败。"
+        LibraryScanPhase.Idle -> "扫描完成：${scanState.scannedCount} 首，新增 ${scanState.insertedCount}，更新 ${scanState.updatedCount}，删除 ${scanState.deletedCount}"
         else -> null
     } ?: return
 
@@ -559,15 +523,77 @@ internal fun LibraryBootstrapState() {
 }
 
 @Composable
+internal fun LibraryDetailPage(
+    title: String,
+    subtitle: String?,
+    tracks: LazyPagingItems<EchoTrack>,
+    onBack: () -> Unit,
+    onPlayAll: () -> Unit,
+    onPlayTrack: (EchoTrack) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        EchoPanel(Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            title,
+                            color = RoonInk,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        subtitle?.takeIf { it.isNotBlank() }?.let { value ->
+                            Text(
+                                value,
+                                color = RoonMuted,
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                    EchoTextButton(text = "返回", onClick = onBack)
+                    EchoTextButton(text = "播放全部", onClick = onPlayAll)
+                }
+            }
+        }
+
+        when {
+            tracks.loadState.refresh is LoadState.Loading -> EmptyState("正在加载曲目...")
+            tracks.loadState.refresh is LoadState.Error -> EmptyState("曲目加载失败。")
+            tracks.itemCount == 0 -> EmptyState("暂无曲目。")
+            else -> TrackList(
+                tracks = tracks,
+                onPlayTrack = onPlayTrack,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
 internal fun TrackList(
     tracks: LazyPagingItems<EchoTrack>,
-    onPlayQueue: (List<EchoTrack>, Int) -> Unit,
+    onPlayTrack: (EchoTrack) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(bottom = 10.dp),
+        contentPadding = PaddingValues(bottom = LibraryBottomControlsPadding),
     ) {
         items(
             count = tracks.itemCount,
@@ -576,11 +602,7 @@ internal fun TrackList(
             tracks[index]?.let { track ->
                 TrackRow(
                     track = track,
-                    onClick = {
-                        val loadedQueue = tracks.itemSnapshotList.items
-                        val queueIndex = loadedQueue.indexOfFirst { it.id == track.id }.takeIf { it >= 0 } ?: index
-                        onPlayQueue(loadedQueue.ifEmpty { listOf(track) }, queueIndex)
-                    },
+                    onClick = { onPlayTrack(track) },
                 )
             }
         }
@@ -637,3 +659,5 @@ internal fun trackSubtitle(track: EchoTrack): String =
         .mapNotNull { value -> value?.takeIf { it.isNotBlank() } }
         .ifEmpty { listOf("本机音频") }
         .joinToString(" / ")
+
+private val LibraryBottomControlsPadding = 150.dp

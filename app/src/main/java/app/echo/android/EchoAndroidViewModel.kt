@@ -2,6 +2,7 @@ package app.echo.android
 
 import android.app.Application
 import android.content.ComponentName
+import android.net.Uri
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -14,6 +15,7 @@ import androidx.paging.cachedIn
 import androidx.paging.map
 import app.echo.android.data.EchoLibraryDatabase
 import app.echo.android.data.EchoLibraryRepository
+import app.echo.android.data.MediaStoreAudioFolder
 import app.echo.android.data.MediaStoreTrackScanner
 import app.echo.android.data.toEchoTrack
 import app.echo.android.model.library.AlbumSummary
@@ -87,6 +89,16 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         repository.observeRecommendedTracks()
             .map { tracks -> tracks.map { it.toEchoTrack() } }
 
+    fun albumTrackPaging(albumKey: String): Flow<PagingData<EchoTrack>> =
+        repository.pagedAlbumTracks(albumKey)
+            .map { pagingData -> pagingData.map { it.toEchoTrack() } }
+            .cachedIn(viewModelScope)
+
+    fun artistTrackPaging(artistKey: String): Flow<PagingData<EchoTrack>> =
+        repository.pagedArtistTracks(artistKey)
+            .map { pagingData -> pagingData.map { it.toEchoTrack() } }
+            .cachedIn(viewModelScope)
+
     private val _scanState = MutableStateFlow(LibraryScanProgress())
     val scanState: StateFlow<LibraryScanProgress> = _scanState.asStateFlow()
 
@@ -102,10 +114,27 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun refreshLibrary() {
+        refreshLibrary(relativePathPrefix = null)
+    }
+
+    fun refreshLibraryFolder(treeUri: Uri) {
+        val folder = MediaStoreAudioFolder.fromTreeUri(treeUri)
+        if (folder == null) {
+            _scanState.value = LibraryScanProgress(
+                phase = LibraryScanPhase.Error,
+                error = "暂不支持这个目录来源。请选择内部存储中的音乐文件夹，或使用全盘扫描。",
+                isCompleted = true,
+            )
+            return
+        }
+        refreshLibrary(relativePathPrefix = folder.relativePathPrefix)
+    }
+
+    private fun refreshLibrary(relativePathPrefix: String?) {
         if (scanJob?.isActive == true) return
         scanJob = viewModelScope.launch {
             try {
-                repository.refreshMediaStoreSnapshot()
+                repository.refreshMediaStoreSnapshot(relativePathPrefix = relativePathPrefix)
                     .collect { progress -> _scanState.value = progress }
             } catch (error: CancellationException) {
                 _scanState.value = _scanState.value.copy(
@@ -161,10 +190,23 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun playTrackFromLibrary(trackId: String) {
+        viewModelScope.launch {
+            val queue = withContext(Dispatchers.IO) {
+                repository.queueAroundTrack(
+                    query = _libraryQuery.value,
+                    anchorTrackId = trackId,
+                ).map { it.toEchoTrack() }
+            }
+            val startIndex = queue.indexOfFirst { it.id == trackId }.takeIf { it >= 0 } ?: 0
+            if (queue.isNotEmpty()) playQueue(queue, startIndex)
+        }
+    }
+
     fun playAlbum(albumKey: String) {
         viewModelScope.launch {
             val queue = withContext(Dispatchers.IO) {
-                repository.albumTracks(albumKey).map { it.toEchoTrack() }
+                repository.albumTracksForPlayback(albumKey).map { it.toEchoTrack() }
             }
             if (queue.isNotEmpty()) playQueue(queue, 0)
         }
@@ -173,7 +215,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun playArtist(artistKey: String) {
         viewModelScope.launch {
             val queue = withContext(Dispatchers.IO) {
-                repository.artistTracks(artistKey).map { it.toEchoTrack() }
+                repository.artistTracksForPlayback(artistKey).map { it.toEchoTrack() }
             }
             if (queue.isNotEmpty()) playQueue(queue, 0)
         }

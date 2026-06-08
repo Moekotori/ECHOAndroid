@@ -223,7 +223,7 @@ fun PageChrome(
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
                     .then(contentScroll)
-                    .padding(start = horizontalPadding, end = horizontalPadding, top = topPadding, bottom = 212.dp),
+                    .padding(start = horizontalPadding, end = horizontalPadding, top = topPadding),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -279,6 +279,7 @@ fun ArtworkTile(
     showSignal: Boolean = false,
     cornerRadius: Dp = 14.dp,
     elevation: Dp = 0.dp,
+    placeholderIconSize: Dp? = null,
 ) {
     val context = LocalContext.current
     val shape = RoundedCornerShape(cornerRadius)
@@ -324,7 +325,7 @@ fun ArtworkTile(
                     Icons.Rounded.Headphones,
                     contentDescription = null,
                     tint = Color.White.copy(alpha = 0.88f),
-                    modifier = Modifier.size(if (showSignal) 38.dp else 32.dp),
+                    modifier = Modifier.size(placeholderIconSize ?: if (showSignal) 38.dp else 32.dp),
                 )
                 if (showSignal) {
                     Spacer(Modifier.height(18.dp))
@@ -365,7 +366,7 @@ fun EmptyState(message: String) {
         Text(
             text = message,
             modifier = Modifier.padding(18.dp),
-            color = Color.White.copy(alpha = 0.66f),
+            color = RoonMuted,
         )
     }
 }

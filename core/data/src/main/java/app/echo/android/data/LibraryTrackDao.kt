@@ -5,8 +5,10 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.RawQuery
 import androidx.room.Transaction
 import androidx.room.Upsert
+import androidx.sqlite.db.SupportSQLiteQuery
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.library.LibraryStats
@@ -63,6 +65,61 @@ interface LibraryTrackDao {
 
     @Query("SELECT trackId FROM library_tracks_fts WHERE library_tracks_fts MATCH :matchQuery LIMIT 1")
     suspend fun validateFtsQuery(matchQuery: String): String?
+
+    @Query("SELECT * FROM library_tracks WHERE id = :trackId LIMIT 1")
+    suspend fun getTrackById(trackId: String): LibraryTrackEntity?
+
+    @Query(
+        """
+        SELECT * FROM library_tracks
+        ORDER BY title COLLATE NOCASE ASC
+        LIMIT :limit
+        """,
+    )
+    suspend fun getTrackQueue(limit: Int): List<LibraryTrackEntity>
+
+    @Query(
+        """
+        SELECT library_tracks.* FROM library_tracks
+        JOIN library_tracks_fts ON library_tracks.id = library_tracks_fts.trackId
+        WHERE library_tracks_fts MATCH :matchQuery
+        ORDER BY
+            CASE
+                WHEN library_tracks.normalizedTitle LIKE :rankQuery THEN 0
+                WHEN library_tracks.normalizedArtist LIKE :rankQuery THEN 1
+                WHEN library_tracks.normalizedAlbum LIKE :rankQuery THEN 2
+                ELSE 3
+            END,
+            library_tracks.title COLLATE NOCASE ASC
+        LIMIT :limit
+        """,
+    )
+    suspend fun getTrackQueueByFts(
+        matchQuery: String,
+        rankQuery: String,
+        limit: Int,
+    ): List<LibraryTrackEntity>
+
+    @Query(
+        """
+        SELECT * FROM library_tracks
+        WHERE title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%' OR album LIKE '%' || :query || '%'
+        ORDER BY
+            CASE
+                WHEN normalizedTitle LIKE :rankQuery THEN 0
+                WHEN normalizedArtist LIKE :rankQuery THEN 1
+                WHEN normalizedAlbum LIKE :rankQuery THEN 2
+                ELSE 3
+            END,
+            title COLLATE NOCASE ASC
+        LIMIT :limit
+        """,
+    )
+    suspend fun getTrackQueueByLike(
+        query: String,
+        rankQuery: String,
+        limit: Int,
+    ): List<LibraryTrackEntity>
 
     @Query(
         """
@@ -197,6 +254,9 @@ interface LibraryTrackDao {
     )
     suspend fun getTracksByAlbum(albumKey: String): List<LibraryTrackEntity>
 
+    @RawQuery
+    suspend fun getAlbumTracksForPlayback(query: SupportSQLiteQuery): List<LibraryTrackEntity>
+
     @Query(
         """
         SELECT * FROM library_tracks
@@ -209,6 +269,9 @@ interface LibraryTrackDao {
         """,
     )
     suspend fun getTracksByArtist(artistKey: String): List<LibraryTrackEntity>
+
+    @RawQuery
+    suspend fun getArtistTracksForPlayback(query: SupportSQLiteQuery): List<LibraryTrackEntity>
 
     @Query("SELECT COUNT(*) FROM library_tracks")
     suspend fun countTracks(): Int
@@ -223,6 +286,18 @@ interface LibraryTrackDao {
         """,
     )
     suspend fun getExistingMediaStoreFingerprints(source: String = "mediastore"): List<TrackFingerprint>
+
+    @Query(
+        """
+        SELECT id, contentUri, fingerprint FROM library_tracks
+        WHERE source = :source
+          AND relativePath LIKE :relativePathLike ESCAPE '\'
+        """,
+    )
+    suspend fun getExistingMediaStoreFingerprintsInRelativePath(
+        source: String,
+        relativePathLike: String,
+    ): List<TrackFingerprint>
 
     @Upsert
     suspend fun upsertBatch(tracks: List<LibraryTrackEntity>)
@@ -273,4 +348,32 @@ interface LibraryTrackDao {
 
     @Query("DELETE FROM library_tracks WHERE source = :source AND lastSeenScanRunId != :scanRunId")
     suspend fun deleteMissingFromSource(source: String, scanRunId: Long): Int
+
+    @Query(
+        """
+        SELECT id FROM library_tracks
+        WHERE source = :source
+          AND relativePath LIKE :relativePathLike ESCAPE '\'
+          AND lastSeenScanRunId != :scanRunId
+        """,
+    )
+    suspend fun getMissingTrackIdsFromRelativePath(
+        source: String,
+        relativePathLike: String,
+        scanRunId: Long,
+    ): List<String>
+
+    @Query(
+        """
+        DELETE FROM library_tracks
+        WHERE source = :source
+          AND relativePath LIKE :relativePathLike ESCAPE '\'
+          AND lastSeenScanRunId != :scanRunId
+        """,
+    )
+    suspend fun deleteMissingFromRelativePath(
+        source: String,
+        relativePathLike: String,
+        scanRunId: Long,
+    ): Int
 }

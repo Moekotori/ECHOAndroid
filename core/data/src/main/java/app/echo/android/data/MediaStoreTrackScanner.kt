@@ -3,6 +3,8 @@ package app.echo.android.data
 import android.content.ContentResolver
 import android.database.Cursor
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import androidx.core.database.getLongOrNull
@@ -15,21 +17,25 @@ class MediaStoreTrackScanner(
 ) {
     suspend fun scanAudio(
         batchSize: Int = DefaultBatchSize,
+        relativePathPrefix: String? = null,
+        onTotalCount: suspend (Int?) -> Unit = {},
         onBatch: suspend (List<LibraryTrackEntity>) -> Unit,
         onProgress: suspend (scannedCount: Int, currentTrack: LibraryTrackEntity?) -> Unit,
     ): Int {
         val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-        val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
+        val normalizedRelativePath = normalizeRelativePathPrefix(relativePathPrefix)
+        val (selection, selectionArgs) = audioSelection(normalizedRelativePath)
         val sortOrder = "${MediaStore.Audio.Media.TITLE} COLLATE NOCASE ASC"
 
-        return contentResolver.query(collection, Projection, selection, null, sortOrder)
-            ?.use { cursor -> cursor.scanTrackBatches(collection, batchSize, onBatch, onProgress) }
+        return contentResolver.query(collection, projection(), selection, selectionArgs, sortOrder)
+            ?.use { cursor -> cursor.scanTrackBatches(collection, batchSize, onTotalCount, onBatch, onProgress) }
             ?: 0
     }
 
     private suspend fun Cursor.scanTrackBatches(
         collection: Uri,
         batchSize: Int,
+        onTotalCount: suspend (Int?) -> Unit,
         onBatch: suspend (List<LibraryTrackEntity>) -> Unit,
         onProgress: suspend (scannedCount: Int, currentTrack: LibraryTrackEntity?) -> Unit,
     ): Int {
@@ -37,6 +43,7 @@ class MediaStoreTrackScanner(
         val safeBatchSize = batchSize.coerceAtLeast(1)
         val batch = ArrayList<LibraryTrackEntity>(safeBatchSize)
         var scannedCount = 0
+        onTotalCount(count.takeIf { it >= 0 })
 
         while (moveToNext()) {
             coroutineContext.ensureActive()
@@ -86,7 +93,35 @@ class MediaStoreTrackScanner(
             mimeType = getStringOrNull(columns.mimeIndex),
             sizeBytes = getLongOrNull(columns.sizeIndex) ?: 0L,
             dateModifiedSeconds = getLongOrNull(columns.modifiedIndex) ?: 0L,
+            relativePath = relativePath(columns),
         ).withScanMetadata()
+    }
+
+    private fun Cursor.relativePath(columns: MediaStoreColumns): String? =
+        when {
+            columns.relativePathIndex != null -> getStringOrNull(columns.relativePathIndex)
+                ?.let(::normalizeRelativePathPrefix)
+            columns.dataIndex != null -> legacyRelativePath(getStringOrNull(columns.dataIndex))
+            else -> null
+        }
+
+    private fun legacyRelativePath(dataPath: String?): String? {
+        val path = dataPath
+            ?.replace('\\', '/')
+            ?.takeIf { it.isNotBlank() }
+            ?: return null
+        val parent = path.substringBeforeLast('/', missingDelimiterValue = "")
+        if (parent.isBlank()) return null
+
+        @Suppress("DEPRECATION")
+        val storageRoot = Environment.getExternalStorageDirectory()
+            .absolutePath
+            .replace('\\', '/')
+            .trimEnd('/')
+        return parent
+            .removePrefix(storageRoot)
+            .trim('/')
+            .let(::normalizeRelativePathPrefix)
     }
 
     private data class MediaStoreColumns(
@@ -102,6 +137,8 @@ class MediaStoreTrackScanner(
         val mimeIndex: Int,
         val sizeIndex: Int,
         val modifiedIndex: Int,
+        val relativePathIndex: Int?,
+        val dataIndex: Int?,
     ) {
         companion object {
             fun from(cursor: Cursor): MediaStoreColumns =
@@ -118,15 +155,53 @@ class MediaStoreTrackScanner(
                     mimeIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.MIME_TYPE),
                     sizeIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE),
                     modifiedIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED),
+                    relativePathIndex = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        cursor.getColumnIndex(MediaStore.Audio.Media.RELATIVE_PATH).takeIf { it >= 0 }
+                    } else {
+                        null
+                    },
+                    dataIndex = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                        @Suppress("DEPRECATION")
+                        cursor.getColumnIndex(MediaStore.Audio.Media.DATA).takeIf { it >= 0 }
+                    } else {
+                        null
+                    },
                 )
         }
     }
+
+    private fun audioSelection(relativePathPrefix: String?): Pair<String, Array<String>?> {
+        val musicSelection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
+        if (relativePathPrefix == null) return musicSelection to null
+
+        val escapedPrefix = "${escapeSqlLikeArgument(relativePathPrefix)}%"
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            "$musicSelection AND ${MediaStore.Audio.Media.RELATIVE_PATH} LIKE ? ESCAPE '\\'" to
+                arrayOf(escapedPrefix)
+        } else {
+            @Suppress("DEPRECATION")
+            val root = Environment.getExternalStorageDirectory()
+                .absolutePath
+                .replace('\\', '/')
+                .trimEnd('/')
+            @Suppress("DEPRECATION")
+            "$musicSelection AND ${MediaStore.Audio.Media.DATA} LIKE ? ESCAPE '\\'" to
+                arrayOf("${escapeSqlLikeArgument("$root/$relativePathPrefix")}%")
+        }
+    }
+
+    private fun projection(): Array<String> =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            QProjection
+        } else {
+            LegacyProjection
+        }
 
     private companion object {
         const val DefaultBatchSize = 500
         const val TAG = "MediaStoreTrackScanner"
 
-        val Projection = arrayOf(
+        val BaseProjection = arrayOf(
             MediaStore.Audio.Media._ID,
             MediaStore.Audio.Media.TITLE,
             MediaStore.Audio.Media.ARTIST,
@@ -140,5 +215,10 @@ class MediaStoreTrackScanner(
             MediaStore.Audio.Media.SIZE,
             MediaStore.Audio.Media.DATE_MODIFIED,
         )
+
+        val QProjection = BaseProjection + MediaStore.Audio.Media.RELATIVE_PATH
+
+        @Suppress("DEPRECATION")
+        val LegacyProjection = BaseProjection + MediaStore.Audio.Media.DATA
     }
 }

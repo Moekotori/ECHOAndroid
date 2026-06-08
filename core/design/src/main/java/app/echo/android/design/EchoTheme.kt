@@ -2,10 +2,13 @@ package app.echo.android.design
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 
 object EchoColors {
     // Roon 风格中性炭灰 + Shakespeare 蓝
@@ -54,6 +57,28 @@ private val EchoLightScheme = lightColorScheme(
     outlineVariant = Color(0xFFDDE0EA),
 )
 
+private val OutfitFontFamily = FontFamily(Font(R.font.outfit))
+
+private val EchoTypography = Typography().let { typography ->
+    typography.copy(
+        displayLarge = typography.displayLarge.copy(fontFamily = OutfitFontFamily),
+        displayMedium = typography.displayMedium.copy(fontFamily = OutfitFontFamily),
+        displaySmall = typography.displaySmall.copy(fontFamily = OutfitFontFamily),
+        headlineLarge = typography.headlineLarge.copy(fontFamily = OutfitFontFamily),
+        headlineMedium = typography.headlineMedium.copy(fontFamily = OutfitFontFamily),
+        headlineSmall = typography.headlineSmall.copy(fontFamily = OutfitFontFamily),
+        titleLarge = typography.titleLarge.copy(fontFamily = OutfitFontFamily),
+        titleMedium = typography.titleMedium.copy(fontFamily = OutfitFontFamily),
+        titleSmall = typography.titleSmall.copy(fontFamily = OutfitFontFamily),
+        bodyLarge = typography.bodyLarge.copy(fontFamily = OutfitFontFamily),
+        bodyMedium = typography.bodyMedium.copy(fontFamily = OutfitFontFamily),
+        bodySmall = typography.bodySmall.copy(fontFamily = OutfitFontFamily),
+        labelLarge = typography.labelLarge.copy(fontFamily = OutfitFontFamily),
+        labelMedium = typography.labelMedium.copy(fontFamily = OutfitFontFamily),
+        labelSmall = typography.labelSmall.copy(fontFamily = OutfitFontFamily),
+    )
+}
+
 @Composable
 fun EchoMobileTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -61,6 +86,7 @@ fun EchoMobileTheme(
 ) {
     MaterialTheme(
         colorScheme = if (darkTheme) EchoDarkScheme else EchoLightScheme,
+        typography = EchoTypography,
         content = content,
     )
 }

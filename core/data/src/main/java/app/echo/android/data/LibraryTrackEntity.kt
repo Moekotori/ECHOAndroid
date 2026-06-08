@@ -17,6 +17,7 @@ import androidx.room.PrimaryKey
         Index(value = ["normalizedArtist"]),
         Index(value = ["normalizedAlbumArtist"]),
         Index(value = ["normalizedAlbum", "normalizedAlbumArtist"]),
+        Index(value = ["source", "relativePath"]),
     ],
 )
 data class LibraryTrackEntity(
@@ -35,6 +36,7 @@ data class LibraryTrackEntity(
     val sizeBytes: Long,
     val dateModifiedSeconds: Long,
     val source: String = "mediastore",
+    val relativePath: String? = null,
     val lastSeenScanRunId: Long = 0L,
     val fingerprint: String? = null,
     val normalizedTitle: String? = null,

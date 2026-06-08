@@ -1,0 +1,214 @@
+package app.echo.android.feature.library
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.LibraryMusic
+import androidx.compose.material.icons.rounded.Scanner
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import app.echo.android.design.EchoAccent
+import app.echo.android.design.EchoAccentDeep
+import app.echo.android.design.EchoGlassBorder
+import app.echo.android.design.EchoHomeBlue
+import app.echo.android.design.RoonInk
+import app.echo.android.design.RoonMuted
+import app.echo.android.model.library.LibraryScanProgress
+
+@Composable
+internal fun LibraryScanAction(
+    hasPermission: Boolean,
+    scanState: LibraryScanProgress,
+    onRequestPermission: () -> Unit,
+    onScanFolder: () -> Unit,
+    onScanAll: () -> Unit,
+    onCancelScan: () -> Unit,
+) {
+    var showScanOptions by remember { mutableStateOf(false) }
+    val description = when {
+        !hasPermission -> "授权音乐权限"
+        scanState.isScanning -> "取消扫描曲库"
+        else -> "选择扫描范围"
+    }
+
+    Box(
+        modifier = Modifier
+            .size(42.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color.White.copy(alpha = 0.62f))
+            .border(BorderStroke(1.dp, EchoGlassBorder), RoundedCornerShape(14.dp))
+            .clickable(
+                onClick = when {
+                    !hasPermission -> onRequestPermission
+                    scanState.isScanning -> onCancelScan
+                    else -> {
+                        { showScanOptions = true }
+                    }
+                },
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            Icons.Rounded.Scanner,
+            contentDescription = description,
+            tint = if (scanState.error != null) Color(0xFFE0796E) else EchoHomeBlue,
+            modifier = Modifier.size(20.dp),
+        )
+    }
+
+    if (showScanOptions) {
+        LibraryScanOptionsDialog(
+            onDismiss = { showScanOptions = false },
+            onScanFolder = {
+                showScanOptions = false
+                onScanFolder()
+            },
+            onScanAll = {
+                showScanOptions = false
+                onScanAll()
+            },
+        )
+    }
+}
+
+@Composable
+private fun LibraryScanOptionsDialog(
+    onDismiss: () -> Unit,
+    onScanFolder: () -> Unit,
+    onScanAll: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(26.dp),
+            color = Color.White.copy(alpha = 0.96f),
+            border = BorderStroke(1.dp, EchoGlassBorder),
+            tonalElevation = 0.dp,
+        ) {
+            Column(
+                modifier = Modifier.padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = "扫描曲库",
+                            color = RoonInk,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            text = "选择本次索引范围",
+                            color = RoonMuted,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Rounded.Close, contentDescription = "关闭", tint = RoonMuted)
+                    }
+                }
+
+                LibraryScanOption(
+                    icon = Icons.Rounded.FolderOpen,
+                    title = "扫描单个文件夹",
+                    subtitle = "适合刚拷入音乐，只更新选中的目录",
+                    onClick = onScanFolder,
+                    accent = EchoHomeBlue,
+                )
+                LibraryScanOption(
+                    icon = Icons.Rounded.LibraryMusic,
+                    title = "全盘扫描",
+                    subtitle = "重新同步本机所有音乐，并清理已删除项目",
+                    onClick = onScanAll,
+                    accent = EchoAccentDeep,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LibraryScanOption(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    accent: Color,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(accent.copy(alpha = 0.10f))
+            .border(BorderStroke(1.dp, accent.copy(alpha = 0.16f)), RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Surface(
+            modifier = Modifier.size(42.dp),
+            shape = RoundedCornerShape(14.dp),
+            color = Color.White.copy(alpha = 0.74f),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.88f)),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(22.dp))
+            }
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(
+                text = title,
+                color = RoonInk,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = subtitle,
+                color = RoonMuted,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Spacer(Modifier.width(2.dp))
+        Icon(Icons.Rounded.Scanner, contentDescription = null, tint = EchoAccent, modifier = Modifier.size(19.dp))
+    }
+}

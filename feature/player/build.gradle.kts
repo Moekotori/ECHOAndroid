@@ -24,7 +24,6 @@ android {
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:design"))
-    implementation(project(":feature:home"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.foundation)

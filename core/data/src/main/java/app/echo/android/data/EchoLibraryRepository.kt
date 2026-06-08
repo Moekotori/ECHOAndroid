@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
+import androidx.sqlite.db.SimpleSQLiteQuery
 import app.echo.android.model.library.AlbumSortMode
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSortMode
@@ -106,14 +107,48 @@ class EchoLibraryRepository(
     suspend fun artistTracks(artistKey: String): List<LibraryTrackEntity> =
         database.trackDao().getTracksByArtist(artistKey)
 
-    fun refreshMediaStoreSnapshot(batchSize: Int = ScanBatchSize): Flow<LibraryScanProgress> = flow {
+    suspend fun queueAroundTrack(
+        query: String?,
+        anchorTrackId: String,
+        limit: Int = TrackQueueLimit,
+    ): List<LibraryTrackEntity> {
+        val dao = database.trackDao()
+        val safeLimit = limit.coerceAtLeast(1)
+        val anchor = dao.getTrackById(anchorTrackId)
+        val candidates = trackQueueCandidates(
+            dao = dao,
+            query = query,
+            limit = safeLimit,
+        )
+        return withAnchorTrack(anchor, candidates, safeLimit)
+    }
+
+    suspend fun albumTracksForPlayback(
+        albumKey: String,
+        limit: Int = AggregationQueueLimit,
+    ): List<LibraryTrackEntity> =
+        database.trackDao().getAlbumTracksForPlayback(albumPlaybackQuery(albumKey, limit.coerceAtLeast(1)))
+
+    suspend fun artistTracksForPlayback(
+        artistKey: String,
+        limit: Int = AggregationQueueLimit,
+    ): List<LibraryTrackEntity> =
+        database.trackDao().getArtistTracksForPlayback(artistPlaybackQuery(artistKey, limit.coerceAtLeast(1)))
+
+    fun refreshMediaStoreSnapshot(
+        relativePathPrefix: String? = null,
+        batchSize: Int = ScanBatchSize,
+    ): Flow<LibraryScanProgress> = flow {
         val dao = database.trackDao()
         val source = LibrarySource.MediaStore.id
+        val normalizedRelativePath = normalizeRelativePathPrefix(relativePathPrefix)
+        val relativePathLike = normalizedRelativePath?.let { "${escapeSqlLikeArgument(it)}%" }
         val scanRunId = System.currentTimeMillis()
         var progress = LibraryScanProgress(phase = LibraryScanPhase.Preparing)
         var insertedCount = 0
         var updatedCount = 0
         var scannedCount = 0
+        var totalCount: Int? = null
         var lastProgressEmitCount = 0
 
         suspend fun emitProgress(
@@ -129,7 +164,7 @@ class EchoLibraryRepository(
                 insertedCount = insertedCount,
                 updatedCount = updatedCount,
                 deletedCount = deletedCount,
-                totalCount = null,
+                totalCount = totalCount,
                 currentTitle = currentTitle,
                 error = error,
                 isCompleted = isCompleted,
@@ -142,12 +177,21 @@ class EchoLibraryRepository(
             coroutineContext.ensureActive()
 
             emitProgress(phase = LibraryScanPhase.Diffing)
-            val existingFingerprints = dao.getExistingMediaStoreFingerprints(source)
+            val existingFingerprints = if (relativePathLike == null) {
+                dao.getExistingMediaStoreFingerprints(source)
+            } else {
+                dao.getExistingMediaStoreFingerprintsInRelativePath(source, relativePathLike)
+            }
                 .associateBy(TrackFingerprint::id)
 
             emitProgress(phase = LibraryScanPhase.QueryingMediaStore)
             scanner.scanAudio(
                 batchSize = batchSize,
+                relativePathPrefix = normalizedRelativePath,
+                onTotalCount = { count ->
+                    totalCount = count
+                    emitProgress(phase = LibraryScanPhase.QueryingMediaStore)
+                },
                 onProgress = { count, currentTrack ->
                     scannedCount = count
                     if (count == 0 || count - lastProgressEmitCount >= ProgressEmitStride) {
@@ -190,8 +234,16 @@ class EchoLibraryRepository(
 
             coroutineContext.ensureActive()
             emitProgress(phase = LibraryScanPhase.CleaningRemoved)
-            val missingTrackIds = dao.getMissingTrackIdsFromSource(source, scanRunId)
-            val deletedCount = dao.deleteMissingFromSource(source, scanRunId)
+            val missingTrackIds = if (relativePathLike == null) {
+                dao.getMissingTrackIdsFromSource(source, scanRunId)
+            } else {
+                dao.getMissingTrackIdsFromRelativePath(source, relativePathLike, scanRunId)
+            }
+            val deletedCount = if (relativePathLike == null) {
+                dao.deleteMissingFromSource(source, scanRunId)
+            } else {
+                dao.deleteMissingFromRelativePath(source, relativePathLike, scanRunId)
+            }
             missingTrackIds.chunked(DatabaseBatchSize).forEach { trackIds ->
                 dao.deleteFtsByTrackIds(trackIds)
             }
@@ -228,6 +280,69 @@ class EchoLibraryRepository(
             Log.w(TAG, "FTS search failed; falling back to LIKE query.", error)
         }.getOrDefault(false)
 
+    private suspend fun trackQueueCandidates(
+        dao: LibraryTrackDao,
+        query: String?,
+        limit: Int,
+    ): List<LibraryTrackEntity> {
+        val trimmedQuery = query?.trim().orEmpty()
+        val matchQuery = sanitizeFtsQuery(trimmedQuery)
+        val rankQuery = ftsRankQuery(trimmedQuery)
+        return when {
+            trimmedQuery.isBlank() -> dao.getTrackQueue(limit)
+            matchQuery == null -> dao.getTrackQueueByLike(trimmedQuery, rankQuery, limit)
+            canUseFts(dao, matchQuery) -> dao.getTrackQueueByFts(matchQuery, rankQuery, limit)
+            else -> dao.getTrackQueueByLike(trimmedQuery, rankQuery, limit)
+        }
+    }
+
+    private fun withAnchorTrack(
+        anchor: LibraryTrackEntity?,
+        candidates: List<LibraryTrackEntity>,
+        limit: Int,
+    ): List<LibraryTrackEntity> {
+        if (anchor == null) return candidates.take(limit)
+        if (candidates.any { it.id == anchor.id }) return candidates.take(limit)
+        return (listOf(anchor) + candidates.filterNot { it.id == anchor.id }).take(limit)
+    }
+
+    private fun albumPlaybackQuery(albumKey: String, limit: Int): SimpleSQLiteQuery {
+        val fallbackParts = albumKey.split("::", limit = 2)
+        val fallbackAlbum = fallbackParts.getOrElse(0) { albumKey }
+        val fallbackArtist = fallbackParts.getOrElse(1) { albumKey }
+        return SimpleSQLiteQuery(
+            """
+            SELECT * FROM library_tracks
+            WHERE (
+                COALESCE(NULLIF(normalizedAlbum, ''), ?) ||
+                '::' ||
+                COALESCE(NULLIF(normalizedAlbumArtist, ''), NULLIF(normalizedArtist, ''), ?)
+            ) = ?
+            ORDER BY
+                CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
+                CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
+                title COLLATE NOCASE ASC
+            LIMIT ?
+            """.trimIndent(),
+            arrayOf<Any>(fallbackAlbum, fallbackArtist, albumKey, limit),
+        )
+    }
+
+    private fun artistPlaybackQuery(artistKey: String, limit: Int): SimpleSQLiteQuery =
+        SimpleSQLiteQuery(
+            """
+            SELECT * FROM library_tracks
+            WHERE COALESCE(NULLIF(normalizedArtist, ''), ?) = ?
+            ORDER BY
+                album COLLATE NOCASE ASC,
+                CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
+                CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
+                title COLLATE NOCASE ASC
+            LIMIT ?
+            """.trimIndent(),
+            arrayOf<Any>(artistKey, artistKey, limit),
+        )
+
     private fun defaultPagingConfig(): PagingConfig =
         PagingConfig(
             pageSize = 60,
@@ -241,5 +356,7 @@ class EchoLibraryRepository(
         const val DatabaseBatchSize = 500
         const val ProgressEmitStride = 100
         const val RecommendedTrackLimit = 8
+        const val TrackQueueLimit = 200
+        const val AggregationQueueLimit = 500
     }
 }

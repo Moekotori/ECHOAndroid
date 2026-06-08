@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [LibraryTrackEntity::class, LibraryTrackFtsEntity::class],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 abstract class EchoLibraryDatabase : RoomDatabase() {
@@ -18,16 +18,16 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
     companion object {
         fun create(context: Context): EchoLibraryDatabase =
             Room.databaseBuilder(context, EchoLibraryDatabase::class.java, "echo-library.db")
-                .addMigrations(Migration1To2, Migration2To3, Migration3To4, Migration4To5)
+                .addMigrations(Migration1To2, Migration2To3, Migration3To4, Migration4To5, Migration5To6)
                 .build()
 
-        private val Migration1To2 = object : Migration(1, 2) {
+        internal val Migration1To2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE library_tracks ADD COLUMN artworkUri TEXT")
             }
         }
 
-        private val Migration2To3 = object : Migration(2, 3) {
+        internal val Migration2To3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE library_tracks ADD COLUMN lastSeenScanRunId INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE library_tracks ADD COLUMN fingerprint TEXT")
@@ -51,7 +51,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
             }
         }
 
-        private val Migration3To4 = object : Migration(3, 4) {
+        internal val Migration3To4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
                     """
@@ -82,7 +82,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
             }
         }
 
-        private val Migration4To5 = object : Migration(4, 5) {
+        internal val Migration4To5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE library_tracks ADD COLUMN normalizedAlbumArtist TEXT")
                 db.execSQL(
@@ -102,6 +102,18 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                     """
                     CREATE INDEX IF NOT EXISTS index_library_tracks_normalizedAlbum_normalizedAlbumArtist
                     ON library_tracks(normalizedAlbum, normalizedAlbumArtist)
+                    """.trimIndent(),
+                )
+            }
+        }
+
+        internal val Migration5To6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE library_tracks ADD COLUMN relativePath TEXT")
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS index_library_tracks_source_relativePath
+                    ON library_tracks(source, relativePath)
                     """.trimIndent(),
                 )
             }
