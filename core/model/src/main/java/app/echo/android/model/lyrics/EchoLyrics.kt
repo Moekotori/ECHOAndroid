@@ -20,6 +20,7 @@ enum class EchoLyricsFormat {
     Ass,
     Yrc,
     Qrc,
+    Krc,
     PlainText,
 }
 

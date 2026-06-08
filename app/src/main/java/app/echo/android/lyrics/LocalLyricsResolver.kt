@@ -6,7 +6,6 @@ import android.os.Build
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import app.echo.android.data.LibraryTrackEntity
-import app.echo.android.lyrics.EchoLyricsParser
 import app.echo.android.model.lyrics.EchoLyrics
 import java.io.File
 
@@ -35,26 +34,28 @@ class LocalLyricsResolver(
             .map { File(parent, it) }
             .firstOrNull { it.isFile && it.canRead() }
             ?.let { file ->
-                EchoLyricsParser.parse(file.readText(), sourceLabel = file.name)
+                readText(file)?.let { text -> EchoLyricsParser.parse(text, sourceLabel = file.name) }
             }
     }
 
     private fun loadFromMediaStore(track: LibraryTrackEntity, candidates: List<String>): EchoLyrics? {
         val relativePath = track.relativePath?.takeIf { it.isNotBlank() } ?: return null
+        if (candidates.isEmpty()) return null
         val collection = MediaStore.Files.getContentUri("external")
         val projection = arrayOf(
             MediaStore.Files.FileColumns._ID,
             MediaStore.Files.FileColumns.DISPLAY_NAME,
         )
+        val candidateLookup = candidates.associateBy { it.normalizedLyricsName() }
         val displayNamePlaceholders = candidates.joinToString(",") { "?" }
         val selection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             "${MediaStore.Files.FileColumns.RELATIVE_PATH} = ? AND " +
-                "${MediaStore.Files.FileColumns.DISPLAY_NAME} IN ($displayNamePlaceholders)"
+                "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?"
         } else {
             "${MediaStore.Files.FileColumns.DISPLAY_NAME} IN ($displayNamePlaceholders)"
         }
         val selectionArgs = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            arrayOf(relativePath) + candidates.toTypedArray()
+            arrayOf(relativePath, "%.%")
         } else {
             candidates.toTypedArray()
         }
@@ -66,6 +67,15 @@ class LocalLyricsResolver(
                 while (cursor.moveToNext()) {
                     val id = cursor.getLong(idIndex)
                     val displayName = cursor.getString(nameIndex)
+                    if (displayName.substringAfterLast('.', missingDelimiterValue = "")
+                            .lowercase()
+                            .let { ".$it" } !in LyricsExtensions
+                    ) {
+                        continue
+                    }
+                    if (displayName.normalizedLyricsName() !in candidateLookup) {
+                        continue
+                    }
                     val lyricsUri = Uri.withAppendedPath(collection, id.toString())
                     val parsed = readText(lyricsUri)
                         ?.let { EchoLyricsParser.parse(it, sourceLabel = displayName) }
@@ -78,9 +88,12 @@ class LocalLyricsResolver(
     private fun readText(uri: Uri): String? =
         runCatching {
             contentResolver.openInputStream(uri)?.use { input ->
-                input.bufferedReader().use { it.readText() }
+                EchoLyricsTextDecoder.decode(input.readBytes())
             }
         }.getOrNull()
+
+    private fun readText(file: File): String? =
+        runCatching { EchoLyricsTextDecoder.decode(file.readBytes()) }.getOrNull()
 
     private fun buildCandidateNames(track: LibraryTrackEntity): List<String> {
         val bases = linkedSetOf<String>()
@@ -129,6 +142,12 @@ class LocalLyricsResolver(
             }
         }
 
+    private fun String.normalizedLyricsName(): String =
+        trim()
+            .substringBeforeLast('.', missingDelimiterValue = this)
+            .lowercase()
+            .replace(Regex("""[\s._\-]+"""), "")
+
     private companion object {
         val LyricsExtensions = listOf(
             ".lrc",
@@ -142,6 +161,7 @@ class LocalLyricsResolver(
             ".ass",
             ".ssa",
             ".qrc",
+            ".krc",
             ".txt",
         )
     }

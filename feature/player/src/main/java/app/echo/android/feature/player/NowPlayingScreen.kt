@@ -40,12 +40,15 @@ import androidx.compose.material.icons.automirrored.rounded.VolumeDown
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.FastRewind
+import androidx.compose.material.icons.rounded.KeyboardDoubleArrowLeft
+import androidx.compose.material.icons.rounded.KeyboardDoubleArrowRight
 import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Polyline
 import androidx.compose.material.icons.rounded.RepeatOne
+import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.material3.Icon
@@ -103,6 +106,8 @@ fun NowPlayingScreen(
     onSeek: (Long) -> Unit,
     onCyclePlayMode: () -> Unit,
     onImportLyrics: () -> Unit,
+    onAdjustLyricsOffset: (Long) -> Unit,
+    onResetLyricsOffset: () -> Unit,
     onOpenArtist: () -> Unit,
     onOpenAlbum: () -> Unit,
     modifier: Modifier = Modifier,
@@ -139,6 +144,8 @@ fun NowPlayingScreen(
                     onSeek = onSeek,
                     onCloseLyrics = { showLyrics = false },
                     onImportLyrics = onImportLyrics,
+                    onAdjustLyricsOffset = onAdjustLyricsOffset,
+                    onResetLyricsOffset = onResetLyricsOffset,
                     modifier = Modifier.weight(1f),
                 )
             } else {
@@ -238,6 +245,8 @@ private fun NowPlayingLyricsPage(
     onSeek: (Long) -> Unit,
     onCloseLyrics: () -> Unit,
     onImportLyrics: () -> Unit,
+    onAdjustLyricsOffset: (Long) -> Unit,
+    onResetLyricsOffset: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -259,13 +268,19 @@ private fun NowPlayingLyricsPage(
                 is EchoLyricsLoadState.Ready -> LyricsLineList(
                     lyrics = lyricsState.lyrics,
                     positionMs = status.positionMs,
+                    onSeek = onSeek,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
         }
 
         readyLyrics?.let { lyrics ->
-            LyricsSourceStrip(lyrics = lyrics, onImportLyrics = onImportLyrics)
+            LyricsControlDeck(
+                lyrics = lyrics,
+                onImportLyrics = onImportLyrics,
+                onAdjustLyricsOffset = onAdjustLyricsOffset,
+                onResetLyricsOffset = onResetLyricsOffset,
+            )
             Spacer(Modifier.height(10.dp))
         }
         NowPlayingScrubber(
@@ -314,6 +329,7 @@ private fun NowPlayingLyricsPage(
 private fun LyricsLineList(
     lyrics: EchoLyrics,
     positionMs: Long,
+    onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val synced = lyrics.isSynced
@@ -343,10 +359,20 @@ private fun LyricsLineList(
             key = { index, line -> "${line.startMs}-$index-${line.text}" },
         ) { index, line ->
             val active = synced && index == activeIndex
+            val seekable = synced && line.startMs >= 0L
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = if (active) 0.dp else 10.dp),
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (active) Color.White.copy(alpha = 0.08f) else Color.Transparent)
+                    .then(
+                        if (seekable) {
+                            Modifier.clickable { onSeek(line.startMs) }
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .padding(horizontal = if (active) 10.dp else 12.dp, vertical = 6.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
@@ -452,38 +478,106 @@ private fun LyricsEmptyState(
 }
 
 @Composable
-private fun LyricsSourceStrip(
+private fun LyricsControlDeck(
     lyrics: EchoLyrics,
     onImportLyrics: () -> Unit,
+    onAdjustLyricsOffset: (Long) -> Unit,
+    onResetLyricsOffset: () -> Unit,
 ) {
-    Row(
+    val userOffsetMs = lyrics.metadata["user_offset_ms"]?.toLongOrNull() ?: 0L
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color.White.copy(alpha = 0.10f))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        FormatChip(text = "Lyrics", highlight = true)
-        FormatChip(text = lyrics.format.label(), highlight = false)
-        lyrics.sourceLabel?.takeIf { it.isNotBlank() }?.let { source ->
-            Text(
-                text = source,
-                color = OnArtMuted,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FormatChip(text = "Lyrics", highlight = true)
+                FormatChip(text = lyrics.format.label(), highlight = false)
+                lyrics.sourceLabel?.takeIf { it.isNotBlank() }?.let { source ->
+                    Text(
+                        text = source,
+                        color = OnArtMuted,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            GlyphButton(
+                icon = Icons.Rounded.UploadFile,
+                description = "更换歌词",
+                touchSize = 34.dp,
+                iconSize = 20.dp,
+                tint = OnArtMuted,
+                background = Color.Transparent,
+                onClick = onImportLyrics,
             )
         }
-        GlyphButton(
-            icon = Icons.Rounded.UploadFile,
-            description = "更换歌词",
-            touchSize = 36.dp,
-            iconSize = 20.dp,
-            tint = OnArtMuted,
-            background = Color.Transparent,
-            onClick = onImportLyrics,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FormatChip(text = "Sync", highlight = true)
+                Text(
+                    text = formatLyricsOffset(userOffsetMs),
+                    color = OnArtMuted,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                GlyphButton(
+                    icon = Icons.Rounded.KeyboardDoubleArrowLeft,
+                    description = "歌词提前 0.25 秒",
+                    touchSize = 34.dp,
+                    iconSize = 21.dp,
+                    tint = OnArtMuted,
+                    background = Color.Transparent,
+                    onClick = { onAdjustLyricsOffset(-250L) },
+                )
+                GlyphButton(
+                    icon = Icons.Rounded.RestartAlt,
+                    description = "重置歌词偏移",
+                    touchSize = 34.dp,
+                    iconSize = 20.dp,
+                    tint = if (userOffsetMs == 0L) OnArtFaint else OnArtMuted,
+                    background = Color.Transparent,
+                    onClick = onResetLyricsOffset,
+                )
+                GlyphButton(
+                    icon = Icons.Rounded.KeyboardDoubleArrowRight,
+                    description = "歌词延后 0.25 秒",
+                    touchSize = 34.dp,
+                    iconSize = 21.dp,
+                    tint = OnArtMuted,
+                    background = Color.Transparent,
+                    onClick = { onAdjustLyricsOffset(250L) },
+                )
+            }
+        }
     }
 }
 
@@ -496,7 +590,18 @@ private fun EchoLyricsFormat.label(): String = when (this) {
     EchoLyricsFormat.Ass -> "ASS/SSA"
     EchoLyricsFormat.Yrc -> "YRC"
     EchoLyricsFormat.Qrc -> "QRC"
+    EchoLyricsFormat.Krc -> "KRC"
     EchoLyricsFormat.PlainText -> "Plain"
+}
+
+private fun formatLyricsOffset(offsetMs: Long): String {
+    val sign = when {
+        offsetMs > 0L -> "+"
+        offsetMs < 0L -> "-"
+        else -> ""
+    }
+    val seconds = kotlin.math.abs(offsetMs) / 1000f
+    return "$sign${"%.2f".format(seconds)}s"
 }
 
 @Composable

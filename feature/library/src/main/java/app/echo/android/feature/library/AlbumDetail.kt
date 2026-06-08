@@ -43,6 +43,7 @@ import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import app.echo.android.design.ArtworkPalette
 import app.echo.android.design.ArtworkTile
+import app.echo.android.design.BlurredArtworkBackground
 import app.echo.android.design.EchoContentMaxWidth
 import app.echo.android.design.RoonInk
 import app.echo.android.design.RoonMuted
@@ -53,6 +54,8 @@ import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.library.EchoTrack
 
 private val AlbumDetailBottomPadding = 168.dp
+private val AlbumOnArtwork = Color.White
+private val AlbumOnArtworkMuted = Color.White.copy(alpha = 0.70f)
 
 @Composable
 internal fun AlbumDetailPage(
@@ -67,20 +70,11 @@ internal fun AlbumDetailPage(
     val palette = rememberArtworkPalette(album.artworkUri, seedKey = album.albumKey)
     val loadedTracks = tracks.itemSnapshotList.items
     Box(modifier = modifier.fillMaxSize()) {
-        // 从封面提取的色调渐变，仅渲染在上半屏，下方融入页面底色
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(440.dp)
-                .background(
-                    Brush.verticalGradient(
-                        0f to palette.vibrant.copy(alpha = 0.55f),
-                        0.45f to palette.deep.copy(alpha = 0.30f),
-                        1f to Color.Transparent,
-                    ),
-                ),
+        BlurredArtworkBackground(
+            artworkUri = album.artworkUri,
+            palette = palette,
+            modifier = Modifier.fillMaxSize(),
         )
-
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -96,7 +90,7 @@ internal fun AlbumDetailPage(
                 ) {
                     AlbumDetailTopBar(onBack = onBack)
                     Spacer(Modifier.height(8.dp))
-                    AlbumHero(album = album, palette = palette)
+                    AlbumHero(album = album, palette = palette, onArtworkBackground = true)
                     Spacer(Modifier.height(18.dp))
                     AlbumActionBar(palette = palette, onPlayAll = onPlayAll, onShuffle = onShuffle)
                     Spacer(Modifier.height(18.dp))
@@ -106,7 +100,11 @@ internal fun AlbumDetailPage(
                         palette = palette,
                     )
                     Spacer(Modifier.height(22.dp))
-                    AlbumTracksHeader(count = album.trackCount)
+                    AlbumTracksHeader(
+                        count = album.trackCount,
+                        titleColor = AlbumOnArtwork,
+                        metaColor = AlbumOnArtworkMuted,
+                    )
                     Spacer(Modifier.height(10.dp))
                 }
             }
@@ -301,7 +299,14 @@ private fun AlbumDetailTopBar(onBack: () -> Unit) {
 }
 
 @Composable
-private fun AlbumHero(album: AlbumSummary, palette: ArtworkPalette) {
+private fun AlbumHero(
+    album: AlbumSummary,
+    palette: ArtworkPalette,
+    onArtworkBackground: Boolean = false,
+) {
+    val titleColor = if (onArtworkBackground) AlbumOnArtwork else RoonInk
+    val artistColor = if (onArtworkBackground) AlbumOnArtwork.copy(alpha = 0.88f) else palette.deep
+    val metaColor = if (onArtworkBackground) AlbumOnArtworkMuted else RoonMuted
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -319,7 +324,7 @@ private fun AlbumHero(album: AlbumSummary, palette: ArtworkPalette) {
         Spacer(Modifier.height(20.dp))
         Text(
             album.title,
-            color = RoonInk,
+            color = titleColor,
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -329,7 +334,7 @@ private fun AlbumHero(album: AlbumSummary, palette: ArtworkPalette) {
         Spacer(Modifier.height(6.dp))
         Text(
             album.albumArtist ?: album.artist ?: "未知艺术家",
-            color = palette.deep,
+            color = artistColor,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
@@ -339,7 +344,7 @@ private fun AlbumHero(album: AlbumSummary, palette: ArtworkPalette) {
         Spacer(Modifier.height(8.dp))
         Text(
             albumMetaLine(album),
-            color = RoonMuted,
+            color = metaColor,
             style = MaterialTheme.typography.labelLarge,
             textAlign = TextAlign.Center,
         )
@@ -474,7 +479,11 @@ private fun DetailInsightCard(
 }
 
 @Composable
-private fun AlbumTracksHeader(count: Int) {
+private fun AlbumTracksHeader(
+    count: Int,
+    titleColor: Color = RoonInk,
+    metaColor: Color = RoonMuted,
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -482,13 +491,13 @@ private fun AlbumTracksHeader(count: Int) {
     ) {
         Text(
             "曲目",
-            color = RoonInk,
+            color = titleColor,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
         )
         Text(
             "$count 首",
-            color = RoonMuted,
+            color = metaColor,
             style = MaterialTheme.typography.labelLarge,
         )
     }

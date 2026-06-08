@@ -26,6 +26,9 @@ import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.LibraryScanPhase
 import app.echo.android.model.library.LibraryScanProgress
 import app.echo.android.model.library.LibraryStats
+import app.echo.android.model.lyrics.EchoLyricLine
+import app.echo.android.model.lyrics.EchoLyricWord
+import app.echo.android.model.lyrics.EchoLyrics
 import app.echo.android.model.lyrics.EchoLyricsLoadState
 import app.echo.android.model.playback.EchoAudioErrorKind
 import app.echo.android.model.playback.EchoPlaybackDiagnostics
@@ -124,6 +127,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     private var scanJob: Job? = null
     private var lyricsJob: Job? = null
     private var lastLyricsTrackId: String? = null
+    private var currentLyricsUserOffsetMs: Long = 0L
     private var lastRecentPlaybackTrackId: String? = null
     private val albumPlaybackCounts = mutableMapOf<String, Int>()
     private val artistPlaybackCounts = mutableMapOf<String, Int>()
@@ -338,22 +342,56 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         lyricsJob?.cancel()
         _lyricsState.value = EchoLyricsLoadState.Loading
         lyricsJob = viewModelScope.launch {
-            val state = withContext(Dispatchers.IO) {
+            val result = withContext(Dispatchers.IO) {
                 runCatching {
+                    val userOffsetMs = trackIdAtImport?.let { importedLyricsStore.lyricsOffsetForTrack(it) } ?: 0L
                     lyricsResolver.loadFromUri(uri)
                         ?.takeIf { it.lines.isNotEmpty() }
                         ?.also {
-                            if (trackIdAtImport != null) importedLyricsStore.bindLyrics(trackIdAtImport, uri)
+                            if (trackIdAtImport != null) {
+                                runCatching { importedLyricsStore.bindLyrics(trackIdAtImport, uri) }
+                            }
                         }
+                        ?.withUserOffset(userOffsetMs)
                         ?.let(EchoLyricsLoadState::Ready)
+                        ?.let { LyricsLoadResult(state = it, userOffsetMs = userOffsetMs) }
                         ?: EchoLyricsLoadState.Error("歌词文件为空，或不是支持的文本歌词格式")
+                            .let(::LyricsLoadResult)
                 }.getOrElse { error ->
-                    EchoLyricsLoadState.Error(error.message ?: "歌词导入失败")
+                    LyricsLoadResult(EchoLyricsLoadState.Error(error.message ?: "歌词导入失败"))
                 }
             }
             if (_playbackStatus.value.track?.id == trackIdAtImport) {
-                _lyricsState.value = state
+                currentLyricsUserOffsetMs = result.userOffsetMs
+                _lyricsState.value = result.state
             }
+        }
+    }
+
+    fun adjustLyricsOffset(deltaMs: Long) {
+        val trackId = _playbackStatus.value.track?.id ?: return
+        val ready = _lyricsState.value as? EchoLyricsLoadState.Ready ?: return
+        val targetOffset = (currentLyricsUserOffsetMs + deltaMs).coerceIn(-30_000L, 30_000L)
+        val actualDelta = targetOffset - currentLyricsUserOffsetMs
+        if (actualDelta == 0L) return
+
+        currentLyricsUserOffsetMs = targetOffset
+        _lyricsState.value = EchoLyricsLoadState.Ready(ready.lyrics.shiftedBy(actualDelta, userOffsetMs = targetOffset))
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { importedLyricsStore.setLyricsOffset(trackId, targetOffset) }
+        }
+    }
+
+    fun resetLyricsOffset() {
+        val trackId = _playbackStatus.value.track?.id ?: return
+        val ready = _lyricsState.value as? EchoLyricsLoadState.Ready ?: return
+        val actualDelta = -currentLyricsUserOffsetMs
+        if (actualDelta == 0L) return
+
+        currentLyricsUserOffsetMs = 0L
+        _lyricsState.value = EchoLyricsLoadState.Ready(ready.lyrics.shiftedBy(actualDelta, userOffsetMs = 0L))
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { importedLyricsStore.setLyricsOffset(trackId, 0L) }
         }
     }
 
@@ -454,26 +492,70 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         lastLyricsTrackId = trackId
         lyricsJob?.cancel()
         if (trackId == null) {
+            currentLyricsUserOffsetMs = 0L
             _lyricsState.value = EchoLyricsLoadState.Idle
             return
         }
 
         _lyricsState.value = EchoLyricsLoadState.Loading
         lyricsJob = viewModelScope.launch {
-            val state = withContext(Dispatchers.IO) {
+            val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    val track = repository.trackForLyrics(trackId) ?: return@withContext EchoLyricsLoadState.Missing
-                    val importedLyrics = importedLyricsStore.lyricsUriForTrack(trackId)
-                        ?.let(lyricsResolver::loadFromUri)
-                    (importedLyrics ?: lyricsResolver.loadForTrack(track))
-                        ?.takeIf { it.lines.isNotEmpty() }
-                        ?.let(EchoLyricsLoadState::Ready)
-                        ?: EchoLyricsLoadState.Missing
+                    val track = repository.trackForLyrics(trackId)
+                    if (track == null) {
+                        LyricsLoadResult(EchoLyricsLoadState.Missing)
+                    } else {
+                        val userOffsetMs = importedLyricsStore.lyricsOffsetForTrack(trackId)
+                        val importedLyrics = importedLyricsStore.lyricsUriForTrack(trackId)
+                            ?.let(lyricsResolver::loadFromUri)
+                        (importedLyrics ?: lyricsResolver.loadForTrack(track))
+                            ?.takeIf { it.lines.isNotEmpty() }
+                            ?.withUserOffset(userOffsetMs)
+                            ?.let(EchoLyricsLoadState::Ready)
+                            ?.let { LyricsLoadResult(state = it, userOffsetMs = userOffsetMs) }
+                            ?: LyricsLoadResult(EchoLyricsLoadState.Missing)
+                    }
                 }.getOrElse { error ->
-                    EchoLyricsLoadState.Error(error.message ?: "歌词读取失败")
+                    LyricsLoadResult(EchoLyricsLoadState.Error(error.message ?: "歌词读取失败"))
                 }
             }
-            _lyricsState.value = state
+            currentLyricsUserOffsetMs = result.userOffsetMs
+            _lyricsState.value = result.state
         }
     }
+
+    private data class LyricsLoadResult(
+        val state: EchoLyricsLoadState,
+        val userOffsetMs: Long = 0L,
+    )
+
+    private fun EchoLyrics.withUserOffset(userOffsetMs: Long): EchoLyrics =
+        if (userOffsetMs == 0L) {
+            this
+        } else {
+            shiftedBy(userOffsetMs, userOffsetMs = userOffsetMs)
+        }
+
+    private fun EchoLyrics.shiftedBy(deltaMs: Long, userOffsetMs: Long): EchoLyrics =
+        copy(
+            lines = lines.map { it.shiftedBy(deltaMs) },
+            offsetMs = offsetMs + deltaMs,
+            metadata = metadata + ("user_offset_ms" to userOffsetMs.toString()),
+        )
+
+    private fun EchoLyricLine.shiftedBy(deltaMs: Long): EchoLyricLine =
+        copy(
+            startMs = shiftTimestamp(startMs, deltaMs),
+            endMs = endMs?.let { shiftTimestamp(it, deltaMs) },
+            words = words.map { it.shiftedBy(deltaMs) },
+        )
+
+    private fun EchoLyricWord.shiftedBy(deltaMs: Long): EchoLyricWord =
+        copy(
+            startMs = shiftTimestamp(startMs, deltaMs),
+            endMs = endMs?.let { shiftTimestamp(it, deltaMs) },
+        )
+
+    private fun shiftTimestamp(valueMs: Long, deltaMs: Long): Long =
+        if (valueMs < 0L) valueMs else (valueMs + deltaMs).coerceAtLeast(0L)
 }

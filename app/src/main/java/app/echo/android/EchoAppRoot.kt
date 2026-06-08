@@ -328,6 +328,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     onSeek = viewModel::seekTo,
                     onCyclePlayMode = viewModel::cyclePlayMode,
                     onImportLyrics = { lyricsImportLauncher.launch(LyricsDocumentMimeTypes) },
+                    onAdjustLyricsOffset = viewModel::adjustLyricsOffset,
+                    onResetLyricsOffset = viewModel::resetLyricsOffset,
                     onOpenArtist = {
                         viewModel.openCurrentPlaybackArtist { artist ->
                             selectedAlbum = null

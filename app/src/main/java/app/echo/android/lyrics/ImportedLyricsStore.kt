@@ -33,10 +33,33 @@ class ImportedLyricsStore(
         }
     }
 
+    suspend fun lyricsOffsetForTrack(trackId: String): Long =
+        context.echoImportedLyrics.data
+            .map { preferences ->
+                preferences[Keys.Offsets]
+                    ?.let(::parseBindings)
+                    ?.optLong(trackId, 0L)
+                    ?: 0L
+            }
+            .first()
+
+    suspend fun setLyricsOffset(trackId: String, offsetMs: Long) {
+        context.echoImportedLyrics.edit { preferences ->
+            val offsets = preferences[Keys.Offsets]?.let(::parseBindings) ?: JSONObject()
+            if (offsetMs == 0L) {
+                offsets.remove(trackId)
+            } else {
+                offsets.put(trackId, offsetMs)
+            }
+            preferences[Keys.Offsets] = offsets.toString()
+        }
+    }
+
     private fun parseBindings(raw: String): JSONObject =
         runCatching { JSONObject(raw) }.getOrDefault(JSONObject())
 
     private object Keys {
         val Bindings = stringPreferencesKey("track_lyrics_uri_bindings")
+        val Offsets = stringPreferencesKey("track_lyrics_offsets")
     }
 }

@@ -227,6 +227,7 @@ object EchoLyricsParser {
             sourceLabel = sourceLabel,
             format = when {
                 sourceLabel?.endsWith(".qrc", ignoreCase = true) == true -> EchoLyricsFormat.Qrc
+                sourceLabel?.endsWith(".krc", ignoreCase = true) == true -> EchoLyricsFormat.Krc
                 else -> EchoLyricsFormat.Yrc
             },
         )
@@ -235,9 +236,13 @@ object EchoLyricsParser {
     private fun parseDurationWords(body: String, lineStartMs: Long): List<EchoLyricWord> =
         DurationWordRegex.findAll(body)
             .mapNotNull { match ->
-                val startMs = match.groupValues[1].toLongOrNull() ?: return@mapNotNull null
-                val durationMs = match.groupValues[2].toLongOrNull() ?: 0L
-                val text = decodeEntities(stripTags(match.groupValues[3])).takeIf { it.isNotBlank() }
+                val startMs = (match.groupValues[1].ifBlank { match.groupValues[3] })
+                    .toLongOrNull()
+                    ?: return@mapNotNull null
+                val durationMs = (match.groupValues[2].ifBlank { match.groupValues[4] })
+                    .toLongOrNull()
+                    ?: 0L
+                val text = decodeEntities(stripTags(match.groupValues[5])).takeIf { it.isNotBlank() }
                     ?: return@mapNotNull null
                 val absoluteStartMs = if (startMs < lineStartMs) lineStartMs + startMs else startMs
                 EchoLyricWord(
@@ -342,8 +347,9 @@ object EchoLyricsParser {
             (text.contains("[Events]", ignoreCase = true) && text.contains("Dialogue:", ignoreCase = true))
 
     private fun looksLikeLineDurationLyrics(text: String, sourceLabel: String?): Boolean =
-        sourceLabel?.endsWith(".yrc", ignoreCase = true) == true ||
+            sourceLabel?.endsWith(".yrc", ignoreCase = true) == true ||
             sourceLabel?.endsWith(".qrc", ignoreCase = true) == true ||
+            sourceLabel?.endsWith(".krc", ignoreCase = true) == true ||
             LineDurationRegex.containsMatchIn(text)
 
     private fun looksLikeLrc(text: String, sourceLabel: String?): Boolean =
@@ -355,7 +361,7 @@ object EchoLyricsParser {
     private val LrcTimeRegex = Regex("""\[\d{1,3}:\d{1,2}(?:[\.:]\d{1,3})?]""")
     private val LrcMetadataRegex = Regex("""^\[([A-Za-z][\w-]*):(.*)]$""")
     private val LineDurationRegex = Regex("""^\[(\d{1,8}),(\d{1,8})](.*)$""")
-    private val DurationWordRegex = Regex("""\((\d{1,8}),(\d{1,8})(?:,\d+)?\)([^()]*)""")
+    private val DurationWordRegex = Regex("""(?:\((\d{1,8}),(\d{1,8})(?:,\d+)?\)|<(\d{1,8}),(\d{1,8})(?:,\d+)?>)([^()<]*)""")
     private val ClockRegex = Regex("""(?:(\d{1,2}):)?(\d{1,2}):(\d{1,2})(?:\.(\d{1,3}))?""")
     private val SrtBlockRegex = Regex(
         """(?ms)(?:^\s*\d+\s*\n)?\s*(\d{1,2}:\d{2}:\d{2}[,.]\d{1,3})\s*-->\s*(\d{1,2}:\d{2}:\d{2}[,.]\d{1,3})(?:[^\n]*)\n(.*?)(?=\n\s*\n|\z)""",
