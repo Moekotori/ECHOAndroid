@@ -81,6 +81,7 @@ import app.echo.android.design.RoonInk
 import app.echo.android.design.RoonMuted
 import app.echo.android.design.formatDuration
 import app.echo.android.design.progressFraction
+import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
@@ -184,6 +185,178 @@ internal fun RoonHomeHeader(
 
 @Composable
 internal fun RoonRecentActivitySection(
+    albums: List<AlbumSummary>,
+    onOpenAlbum: (AlbumSummary) -> Unit,
+    onOpenLibrary: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+            .shadow(
+                elevation = 16.dp,
+                shape = RoundedCornerShape(30.dp),
+                ambientColor = EchoAccentDeep.copy(alpha = 0.16f),
+                spotColor = EchoHomeBlue.copy(alpha = 0.14f),
+            )
+            .clip(RoundedCornerShape(32.dp))
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        Color.White,
+                        EchoHomeMist,
+                        Color(0xFFEAF6FF),
+                        Color(0xFFEFEAFF),
+                    ),
+                ),
+            )
+            .border(BorderStroke(1.dp, EchoGlassBorder), RoundedCornerShape(32.dp))
+            .padding(top = 18.dp, bottom = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "最近活动",
+                color = RoonInk,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+            )
+            RecentPlayedAlbumsTab()
+        }
+        Row(
+            modifier = Modifier
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 18.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            if (albums.isEmpty()) {
+                EmptyRecentAlbumsCard(onClick = onOpenLibrary)
+            } else {
+                albums.forEach { album ->
+                    RecentAlbumCard(
+                        album = album,
+                        onClick = { onOpenAlbum(album) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun RecentPlayedAlbumsTab() {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = Color.White.copy(alpha = 0.94f),
+        border = BorderStroke(1.dp, EchoGlassBorder),
+    ) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(9.dp))
+                .background(EchoAccentDeep.copy(alpha = 0.16f))
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                "已播放",
+                color = EchoAccentText,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+internal fun RecentAlbumCard(
+    album: AlbumSummary,
+    onClick: () -> Unit,
+) {
+    val artistLabel = album.albumArtist ?: album.artist ?: "未知艺人"
+    Column(
+        modifier = Modifier
+            .width(128.dp)
+            .clickable(onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        ArtworkTile(
+            artworkUri = album.artworkUri,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f),
+            accent = EchoAccent,
+            showSignal = album.artworkUri == null,
+            cornerRadius = 2.dp,
+            elevation = 0.dp,
+        )
+        Text(
+            album.title,
+            color = RoonInk,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            artistLabel,
+            color = RoonMuted,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+internal fun EmptyRecentAlbumsCard(onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .width(160.dp)
+            .clickable(onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(4.dp))
+                .background(Color.White.copy(alpha = 0.74f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Icons.Rounded.LibraryMusic,
+                contentDescription = null,
+                tint = EchoHomeBlue,
+                modifier = Modifier.size(34.dp),
+            )
+        }
+        Text(
+            "暂无专辑",
+            color = RoonInk,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+        )
+        Text(
+            "扫描曲库后显示",
+            color = RoonMuted,
+            style = MaterialTheme.typography.titleSmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+internal fun RoonRecentActivitySection(
     status: EchoPlaybackStatus,
     onPlayPause: () -> Unit,
     onOpenLibrary: () -> Unit,
@@ -259,6 +432,123 @@ internal fun RoonRecentActivitySection(
                 onClick = onOpenLibrary,
             )
         }
+    }
+}
+
+@Composable
+internal fun HomeAlbumRecommendationsSection(
+    albums: List<AlbumSummary>,
+    onRefresh: () -> Unit,
+    onOpenLibrary: () -> Unit,
+    onOpenAlbum: (AlbumSummary) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+            .clip(RoundedCornerShape(26.dp))
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        Color.White,
+                        EchoHomeMist,
+                        Color(0xFFEFEAFF),
+                    ),
+                ),
+            )
+            .border(BorderStroke(1.dp, EchoGlassBorder), RoundedCornerShape(26.dp))
+            .padding(top = 16.dp, bottom = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "为你推荐",
+                color = RoonInk,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
+            )
+            Surface(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(14.dp))
+                    .clickable(onClick = onRefresh),
+                shape = RoundedCornerShape(14.dp),
+                color = Color.White.copy(alpha = 0.94f),
+                border = BorderStroke(1.dp, EchoGlassBorder),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(Icons.Rounded.Refresh, contentDescription = null, tint = RoonMuted, modifier = Modifier.size(16.dp))
+                    Text("刷新", color = RoonMuted, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+        Row(
+            modifier = Modifier
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 18.dp),
+            horizontalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            if (albums.isEmpty()) {
+                EmptyRecentAlbumsCard(onClick = onOpenLibrary)
+            } else {
+                albums.forEach { album ->
+                    RecommendedAlbumCard(
+                        album = album,
+                        onClick = { onOpenAlbum(album) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun RecommendedAlbumCard(
+    album: AlbumSummary,
+    onClick: () -> Unit,
+) {
+    val artistLabel = album.albumArtist ?: album.artist ?: "未知艺人"
+    Column(
+        modifier = Modifier
+            .width(118.dp)
+            .clickable(onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        ArtworkTile(
+            artworkUri = album.artworkUri,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f),
+            accent = EchoAccentDeep,
+            showSignal = album.artworkUri == null,
+            cornerRadius = 2.dp,
+            elevation = 0.dp,
+        )
+        Text(
+            album.title,
+            color = RoonInk,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            artistLabel,
+            color = RoonMuted,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

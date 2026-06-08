@@ -57,10 +57,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
+import app.echo.android.design.ArtworkPalette
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoAccent
 import app.echo.android.design.EchoAccentDeep
@@ -329,8 +331,8 @@ internal fun AlbumWallCard(
                 .aspectRatio(1f),
             accent = EchoAccent,
             showSignal = album.artworkUri == null,
-            cornerRadius = 12.dp,
-            elevation = 0.dp,
+            cornerRadius = 14.dp,
+            elevation = 8.dp,
         )
         Text(album.title, color = RoonInk, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Text("$artistLabel / ${album.trackCount} 首", color = RoonMuted, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -378,34 +380,53 @@ internal fun ArtistWallCard(
     artist: ArtistSummary,
     onClick: () -> Unit,
 ) {
+    // 每位艺人按标识生成稳定柔和的取色，呼应详情页（同步、无额外位图解码）
+    val palette = remember(artist.artistKey) { ArtworkPalette.fromSeed(artist.artistKey) }
     Box(
         modifier = Modifier
-            .heightIn(min = 152.dp)
-            .clip(RoundedCornerShape(22.dp))
+            .heightIn(min = 170.dp)
+            .clip(RoundedCornerShape(24.dp))
             .background(
-                Brush.linearGradient(
+                Brush.verticalGradient(
                     listOf(
-                        Color.White.copy(alpha = 0.66f),
-                        EchoAccent.copy(alpha = 0.18f),
-                        EchoAccentDeep.copy(alpha = 0.08f),
+                        Color.White.copy(alpha = 0.82f),
+                        palette.soft.copy(alpha = 0.55f),
+                        palette.vibrant.copy(alpha = 0.14f),
                     ),
                 ),
             )
-            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.84f)), RoundedCornerShape(22.dp))
+            .border(BorderStroke(1.dp, palette.vibrant.copy(alpha = 0.28f)), RoundedCornerShape(24.dp))
             .clickable(onClick = onClick)
-            .padding(14.dp),
+            .padding(vertical = 18.dp, horizontal = 12.dp),
+        contentAlignment = Alignment.TopCenter,
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
             ArtworkTile(
                 artworkUri = artist.artworkUri,
-                modifier = Modifier.size(70.dp),
-                accent = EchoColors.Coral,
+                modifier = Modifier.size(84.dp),
+                accent = palette.vibrant,
                 showSignal = artist.artworkUri == null,
-                cornerRadius = 35.dp,
-                elevation = 5.dp,
+                cornerRadius = 42.dp,
+                elevation = 8.dp,
             )
-            Text(artist.name, color = RoonInk, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text("${artist.albumCount} 张专辑 / ${artist.trackCount} 首", color = RoonMuted, style = MaterialTheme.typography.bodySmall)
+            Text(
+                artist.name,
+                color = RoonInk,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                "${artist.albumCount} 张专辑 · ${artist.trackCount} 首",
+                color = RoonMuted,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }

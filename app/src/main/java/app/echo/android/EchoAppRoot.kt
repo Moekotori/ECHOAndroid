@@ -1,9 +1,11 @@
 package app.echo.android
 
 import android.content.pm.PackageManager
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -28,6 +30,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
@@ -36,7 +40,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,11 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -64,6 +63,7 @@ import app.echo.android.feature.connect.ConnectScreen
 import app.echo.android.feature.home.HomeScreen
 import app.echo.android.feature.library.LibraryScreen
 import app.echo.android.feature.player.MiniPlayer
+import app.echo.android.feature.player.NowPlayingScreen
 import app.echo.android.feature.settings.DiagnosticsScreen
 import app.echo.android.model.connect.EchoRemoteCommand
 import app.echo.android.model.connect.EchoRemoteEndpoint
@@ -94,11 +94,15 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     val playbackStatus by viewModel.playbackStatus.collectAsStateWithLifecycle()
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
     val libraryStats by viewModel.libraryStats.collectAsStateWithLifecycle(LibraryStats())
-    val homeRecommendedTracks by viewModel.recommendedTracks.collectAsStateWithLifecycle(emptyList())
     val tracks = viewModel.tracks.collectAsLazyPagingItems()
     val albums = viewModel.albums.collectAsLazyPagingItems()
     val artists = viewModel.artists.collectAsLazyPagingItems()
-    val homeRecentAlbums = albums.itemSnapshotList.items.take(12)
+    val homeAlbumSnapshot = albums.itemSnapshotList.items
+    val homeRecentAlbums = homeAlbumSnapshot.take(12)
+    var homeRecommendationSeed by remember { mutableIntStateOf(0) }
+    val homeRecommendedAlbums = remember(homeRecommendationSeed, homeAlbumSnapshot.map(AlbumSummary::albumKey)) {
+        homeAlbumSnapshot.shuffled().take(8)
+    }
     var selectedAlbum by remember { mutableStateOf<AlbumSummary?>(null) }
     var selectedArtist by remember { mutableStateOf<ArtistSummary?>(null) }
     val selectedAlbumKey = selectedAlbum?.albumKey
@@ -111,15 +115,15 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     }
     var selectedTab by remember { mutableIntStateOf(EchoTab.Now.ordinal) }
     var bottomDockExpanded by remember { mutableStateOf(true) }
-    val hideDockOnScroll = remember {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (source == NestedScrollSource.UserInput && available.y < -8f) {
-                    bottomDockExpanded = false
-                }
-                return Offset.Zero
-            }
-        }
+    var nowPlayingExpanded by remember { mutableStateOf(false) }
+
+    // 四个主页面横向滑动切换，与底部 dock 双向联动
+    val tabPagerState = rememberPagerState(initialPage = selectedTab, pageCount = { EchoTab.entries.size })
+    LaunchedEffect(selectedTab) {
+        if (tabPagerState.currentPage != selectedTab) tabPagerState.animateScrollToPage(selectedTab)
+    }
+    LaunchedEffect(tabPagerState.settledPage) {
+        if (tabPagerState.settledPage != selectedTab) selectedTab = tabPagerState.settledPage
     }
 
     LaunchedEffect(hasAudioPermission) {
@@ -128,16 +132,19 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         }
     }
 
+    BackHandler(enabled = nowPlayingExpanded) { nowPlayingExpanded = false }
+
     EchoMobileTheme(darkTheme = isSystemInDarkTheme()) {
         Box(Modifier.fillMaxSize()) {
             EchoGlassBackground(Modifier.fillMaxSize())
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .nestedScroll(hideDockOnScroll),
+                modifier = Modifier.fillMaxSize(),
             ) {
-                key(selectedTab) {
-                    when (EchoTab.entries[selectedTab]) {
+                HorizontalPager(
+                    state = tabPagerState,
+                    modifier = Modifier.fillMaxSize(),
+                ) { page ->
+                    when (EchoTab.entries[page]) {
                         EchoTab.Library -> LibraryScreen(
                                 hasPermission = hasAudioPermission,
                                 scanState = scanState,
@@ -154,7 +161,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onCancelScan = viewModel::cancelScan,
                                 onPlayTrack = { track -> viewModel.playTrackFromLibrary(track.id) },
                                 onPlayAlbum = { album -> viewModel.playAlbum(album.albumKey) },
+                                onShuffleAlbum = { album -> viewModel.shuffleAlbum(album.albumKey) },
                                 onPlayArtist = { artist -> viewModel.playArtist(artist.artistKey) },
+                                onShuffleArtist = { artist -> viewModel.shuffleArtist(artist.artistKey) },
                                 onOpenAlbum = { album ->
                                     selectedArtist = null
                                     selectedAlbum = album
@@ -175,14 +184,16 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 albumCount = libraryStats.albumCount,
                                 artistCount = libraryStats.artistCount,
                                 recentAlbums = homeRecentAlbums,
-                                recommendedTracks = homeRecommendedTracks,
+                                recommendedAlbums = homeRecommendedAlbums,
                                 onPlayPause = viewModel::playPause,
                                 onNext = viewModel::skipNext,
                                 onPrevious = viewModel::skipPrevious,
                                 onCycleRepeatMode = viewModel::cycleRepeatMode,
                                 onToggleShuffle = viewModel::toggleShuffle,
-                                onRefreshRecommendations = viewModel::refreshLibrary,
-                                onPlayRecommendation = viewModel::playQueue,
+                                onRefreshRecommendations = {
+                                    homeRecommendationSeed += 1
+                                    viewModel.refreshLibrary()
+                                },
                                 onOpenAlbum = { album ->
                                     selectedArtist = null
                                     selectedAlbum = album
@@ -215,7 +226,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             )
 
                         EchoTab.Diagnostics -> DiagnosticsScreen(status = playbackStatus)
-                        }
+                    }
                 }
                 Column(
                     modifier = Modifier
@@ -249,7 +260,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 status = playbackStatus,
                                 selectedTab = selectedTab,
                                 onPlayPause = viewModel::playPause,
+                                onHideDock = { bottomDockExpanded = false },
                                 onSelectTab = { selectedTab = it },
+                                onExpand = { nowPlayingExpanded = true },
+                                onNext = viewModel::skipNext,
+                                onPrevious = viewModel::skipPrevious,
                                 modifier = Modifier
                                     .widthIn(max = EchoContentMaxWidth)
                                     .fillMaxWidth(),
@@ -260,6 +275,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onPlayPause = viewModel::playPause,
                                 onShowDock = { bottomDockExpanded = true },
                                 onOpenQueue = {},
+                                onExpand = { nowPlayingExpanded = true },
+                                onNext = viewModel::skipNext,
+                                onPrevious = viewModel::skipPrevious,
                                 modifier = Modifier
                                     .widthIn(max = EchoContentMaxWidth)
                                     .fillMaxWidth(),
@@ -267,6 +285,25 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                         }
                     }
                 }
+            }
+
+            AnimatedVisibility(
+                visible = nowPlayingExpanded,
+                enter = slideInVertically(tween(durationMillis = 360, easing = DockMotionEasing)) { height -> height } +
+                    fadeIn(tween(durationMillis = 220)),
+                exit = slideOutVertically(tween(durationMillis = 300, easing = DockMotionEasing)) { height -> height } +
+                    fadeOut(tween(durationMillis = 200)),
+            ) {
+                NowPlayingScreen(
+                    status = playbackStatus,
+                    onDismiss = { nowPlayingExpanded = false },
+                    onPlayPause = viewModel::playPause,
+                    onNext = viewModel::skipNext,
+                    onPrevious = viewModel::skipPrevious,
+                    onSeek = viewModel::seekTo,
+                    onCyclePlayMode = viewModel::cyclePlayMode,
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
         }
     }
@@ -277,7 +314,11 @@ private fun ExpandedBottomControls(
     status: app.echo.android.model.playback.EchoPlaybackStatus,
     selectedTab: Int,
     onPlayPause: () -> Unit,
+    onHideDock: () -> Unit,
     onSelectTab: (Int) -> Unit,
+    onExpand: () -> Unit,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -288,6 +329,10 @@ private fun ExpandedBottomControls(
         MiniPlayer(
             status = status,
             onPlayPause = onPlayPause,
+            onHideDock = onHideDock,
+            onExpand = onExpand,
+            onNext = onNext,
+            onPrevious = onPrevious,
             modifier = Modifier.fillMaxWidth(),
         )
         BottomDock(
@@ -305,6 +350,9 @@ private fun CompactBottomControls(
     onPlayPause: () -> Unit,
     onShowDock: () -> Unit,
     onOpenQueue: () -> Unit,
+    onExpand: () -> Unit,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -320,6 +368,9 @@ private fun CompactBottomControls(
         MiniPlayer(
             status = status,
             onPlayPause = onPlayPause,
+            onExpand = onExpand,
+            onNext = onNext,
+            onPrevious = onPrevious,
             modifier = Modifier.weight(1f),
         )
         RoundDockButton(

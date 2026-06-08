@@ -110,13 +110,46 @@ fun LibraryScreen(
     onCancelScan: () -> Unit,
     onPlayTrack: (EchoTrack) -> Unit,
     onPlayAlbum: (AlbumSummary) -> Unit,
+    onShuffleAlbum: (AlbumSummary) -> Unit,
     onPlayArtist: (ArtistSummary) -> Unit,
+    onShuffleArtist: (ArtistSummary) -> Unit,
     onOpenAlbum: (AlbumSummary) -> Unit,
     onOpenArtist: (ArtistSummary) -> Unit,
     onCloseDetail: () -> Unit,
 ) {
     val pagerState = rememberPagerState(pageCount = { LibraryViewMode.entries.size })
     val scope = rememberCoroutineScope()
+
+    // 专辑详情走全屏沉浸式页面，不套用曲库的 PageChrome
+    val activeAlbumDetail = selectedAlbum
+    if (hasPermission && activeAlbumDetail != null && albumDetailTracks != null) {
+        AlbumDetailPage(
+            album = activeAlbumDetail,
+            tracks = albumDetailTracks,
+            onBack = onCloseDetail,
+            onPlayAll = { onPlayAlbum(activeAlbumDetail) },
+            onShuffle = { onShuffleAlbum(activeAlbumDetail) },
+            onPlayTrack = onPlayTrack,
+            modifier = Modifier.fillMaxSize(),
+        )
+        return
+    }
+
+    // 艺术家详情同样走全屏沉浸式页面
+    val activeArtistDetail = selectedArtist
+    if (hasPermission && activeArtistDetail != null && artistDetailTracks != null) {
+        ArtistDetailPage(
+            artist = activeArtistDetail,
+            tracks = artistDetailTracks,
+            onBack = onCloseDetail,
+            onPlayAll = { onPlayArtist(activeArtistDetail) },
+            onShuffle = { onShuffleArtist(activeArtistDetail) },
+            onPlayTrack = onPlayTrack,
+            modifier = Modifier.fillMaxSize(),
+        )
+        return
+    }
+
     PageChrome(
         title = "曲库",
         subtitle = null,
@@ -134,28 +167,8 @@ fun LibraryScreen(
             )
         },
     ) {
-        val activeAlbum = selectedAlbum
-        val activeArtist = selectedArtist
         when {
             !hasPermission -> EmptyState("授权后即可索引本机音乐。")
-            activeAlbum != null && albumDetailTracks != null -> LibraryDetailPage(
-                title = activeAlbum.title,
-                subtitle = activeAlbum.albumArtist ?: activeAlbum.artist,
-                tracks = albumDetailTracks,
-                onBack = onCloseDetail,
-                onPlayAll = { onPlayAlbum(activeAlbum) },
-                onPlayTrack = onPlayTrack,
-                modifier = Modifier.fillMaxSize(),
-            )
-            activeArtist != null && artistDetailTracks != null -> LibraryDetailPage(
-                title = activeArtist.name,
-                subtitle = "${activeArtist.albumCount} albums / ${activeArtist.trackCount} tracks",
-                tracks = artistDetailTracks,
-                onBack = onCloseDetail,
-                onPlayAll = { onPlayArtist(activeArtist) },
-                onPlayTrack = onPlayTrack,
-                modifier = Modifier.fillMaxSize(),
-            )
             scanState.isScanning -> LibraryScanStatus(scanState = scanState, onCancelScan = onCancelScan)
             tracks.loadState.refresh is LoadState.Loading -> {
                 LibraryBrowserHeader(

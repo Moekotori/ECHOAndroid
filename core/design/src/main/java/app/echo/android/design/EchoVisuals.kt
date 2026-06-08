@@ -36,14 +36,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -378,6 +383,174 @@ private fun loadArtworkBitmap(contentResolver: android.content.ContentResolver, 
             BitmapFactory.decodeStream(stream)
         }
     }.getOrNull()
+}
+
+/**
+ * 从专辑封面提取的配色，用于沉浸式详情页的渐变背景与强调色。
+ */
+@Immutable
+data class ArtworkPalette(
+    val vibrant: Color,
+    val deep: Color,
+    val soft: Color,
+    val onColor: Color,
+) {
+    companion object {
+        val Default = ArtworkPalette(
+            vibrant = EchoAccent,
+            deep = EchoAccentDeep,
+            soft = EchoHomeMist,
+            onColor = Color.White,
+        )
+
+        /** 没有封面时，用标识串生成一个稳定且好看的配色。 */
+        fun fromSeed(seed: String?): ArtworkPalette {
+            if (seed.isNullOrBlank()) return Default
+            val hue = ((seed.hashCode() % 360) + 360) % 360
+            val hsv = floatArrayOf(hue.toFloat(), 0.46f, 0.82f)
+            val vibrant = Color(android.graphics.Color.HSVToColor(hsv))
+            val deep = Color(android.graphics.Color.HSVToColor(floatArrayOf(hue.toFloat(), 0.58f, 0.42f)))
+            val soft = Color(android.graphics.Color.HSVToColor(floatArrayOf(hue.toFloat(), 0.22f, 0.96f)))
+            return ArtworkPalette(vibrant = vibrant, deep = deep, soft = soft, onColor = Color.White)
+        }
+    }
+}
+
+@Composable
+fun rememberArtworkPalette(artworkUri: String?, seedKey: String? = artworkUri): ArtworkPalette {
+    val context = LocalContext.current
+    val palette by produceState(ArtworkPalette.fromSeed(seedKey), artworkUri, seedKey) {
+        value = withContext(Dispatchers.IO) {
+            val bitmap = loadArtworkSwatch(context.contentResolver, artworkUri)
+            if (bitmap != null) {
+                extractPalette(bitmap).also { bitmap.recycle() }
+            } else {
+                ArtworkPalette.fromSeed(seedKey)
+            }
+        }
+    }
+    return palette
+}
+
+private fun loadArtworkSwatch(
+    contentResolver: android.content.ContentResolver,
+    artworkUri: String?,
+): Bitmap? {
+    if (artworkUri.isNullOrBlank()) return null
+    return runCatching {
+        contentResolver.openInputStream(Uri.parse(artworkUri))?.use { stream ->
+            val options = BitmapFactory.Options().apply { inSampleSize = 8 }
+            BitmapFactory.decodeStream(stream, null, options)
+        }
+    }.getOrNull()
+}
+
+private fun extractPalette(source: Bitmap): ArtworkPalette {
+    val sample = runCatching { Bitmap.createScaledBitmap(source, 32, 32, true) }.getOrNull()
+        ?: return ArtworkPalette.Default
+    var rSum = 0L
+    var gSum = 0L
+    var bSum = 0L
+    var count = 0
+    var bestScore = -1f
+    var bestColor = 0
+    val hsv = FloatArray(3)
+    for (y in 0 until sample.height) {
+        for (x in 0 until sample.width) {
+            val pixel = sample.getPixel(x, y)
+            val r = android.graphics.Color.red(pixel)
+            val g = android.graphics.Color.green(pixel)
+            val b = android.graphics.Color.blue(pixel)
+            rSum += r
+            gSum += g
+            bSum += b
+            count++
+            android.graphics.Color.colorToHSV(pixel, hsv)
+            val s = hsv[1]
+            val v = hsv[2]
+            // 偏好鲜艳、亮度适中的像素作为强调色
+            if (v in 0.28f..0.96f) {
+                val score = s * 1.4f + (1f - kotlin.math.abs(v - 0.62f))
+                if (score > bestScore) {
+                    bestScore = score
+                    bestColor = pixel
+                }
+            }
+        }
+    }
+    sample.recycle()
+    if (count == 0) return ArtworkPalette.Default
+
+    val avgColor = android.graphics.Color.rgb((rSum / count).toInt(), (gSum / count).toInt(), (bSum / count).toInt())
+    val accentSource = if (bestScore > 0f) bestColor else avgColor
+
+    android.graphics.Color.colorToHSV(accentSource, hsv)
+    val baseHue = hsv[0]
+    val baseSat = hsv[1].coerceIn(0.2f, 0.85f)
+    val vibrant = Color(android.graphics.Color.HSVToColor(floatArrayOf(baseHue, (baseSat + 0.06f).coerceAtMost(0.9f), 0.78f)))
+    val deep = Color(android.graphics.Color.HSVToColor(floatArrayOf(baseHue, (baseSat + 0.12f).coerceAtMost(0.95f), 0.40f)))
+    val soft = Color(android.graphics.Color.HSVToColor(floatArrayOf(baseHue, (baseSat * 0.4f).coerceIn(0.06f, 0.30f), 0.96f)))
+    val onColor = if (hsv[2] > 0.7f && baseSat < 0.45f) Color(0xFF1C1C20) else Color.White
+    return ArtworkPalette(vibrant = vibrant, deep = deep, soft = soft, onColor = onColor)
+}
+
+/**
+ * Apple Music 风格：把当前封面放大模糊成毛玻璃背景，随歌变色；无封面或低版本回退到取色渐变。
+ */
+@Composable
+fun BlurredArtworkBackground(
+    artworkUri: String?,
+    palette: ArtworkPalette,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val bitmap by produceState<Bitmap?>(initialValue = null, artworkUri) {
+        value = withContext(Dispatchers.IO) {
+            loadArtworkBitmap(context.contentResolver, artworkUri)
+        }
+    }
+    Box(modifier = modifier.fillMaxSize()) {
+        // 取色底，保证无封面/低于 API 31 时也有沉浸色
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            palette.vibrant,
+                            palette.deep,
+                            lerp(palette.deep, Color.Black, 0.40f),
+                        ),
+                    ),
+                ),
+        )
+        bitmap?.let { bmp ->
+            Image(
+                bitmap = bmp.asImageBitmap(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .scale(1.4f)
+                    .blur(52.dp)
+                    .alpha(0.7f),
+            )
+        }
+        // 压暗的毛玻璃罩，保证白色文字与控件可读
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.Black.copy(alpha = 0.16f),
+                            Color.Black.copy(alpha = 0.05f),
+                            Color.Black.copy(alpha = 0.42f),
+                        ),
+                    ),
+                ),
+        )
+    }
 }
 
 fun progressFraction(positionMs: Long, durationMs: Long): Float =

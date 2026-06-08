@@ -212,12 +212,36 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun shuffleAlbum(albumKey: String) {
+        viewModelScope.launch {
+            val queue = withContext(Dispatchers.IO) {
+                repository.albumTracksForPlayback(albumKey).map { it.toEchoTrack() }.shuffled()
+            }
+            if (queue.isNotEmpty()) {
+                playQueue(queue, 0)
+                controller?.shuffleModeEnabled = true
+            }
+        }
+    }
+
     fun playArtist(artistKey: String) {
         viewModelScope.launch {
             val queue = withContext(Dispatchers.IO) {
                 repository.artistTracksForPlayback(artistKey).map { it.toEchoTrack() }
             }
             if (queue.isNotEmpty()) playQueue(queue, 0)
+        }
+    }
+
+    fun shuffleArtist(artistKey: String) {
+        viewModelScope.launch {
+            val queue = withContext(Dispatchers.IO) {
+                repository.artistTracksForPlayback(artistKey).map { it.toEchoTrack() }.shuffled()
+            }
+            if (queue.isNotEmpty()) {
+                playQueue(queue, 0)
+                controller?.shuffleModeEnabled = true
+            }
         }
     }
 
@@ -253,6 +277,35 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun toggleShuffle() {
         controller?.run {
             shuffleModeEnabled = !shuffleModeEnabled
+            updatePlaybackStatus(this)
+        }
+    }
+
+    /**
+     * 单按钮循环切换播放顺序：顺序播放 → 列表循环 → 单曲循环 → 随机播放 → 顺序播放。
+     */
+    fun cyclePlayMode() {
+        controller?.run {
+            when {
+                !shuffleModeEnabled && repeatMode == Player.REPEAT_MODE_OFF -> {
+                    // 顺序播放 → 列表循环
+                    repeatMode = Player.REPEAT_MODE_ALL
+                }
+                !shuffleModeEnabled && repeatMode == Player.REPEAT_MODE_ALL -> {
+                    // 列表循环 → 单曲循环
+                    repeatMode = Player.REPEAT_MODE_ONE
+                }
+                !shuffleModeEnabled && repeatMode == Player.REPEAT_MODE_ONE -> {
+                    // 单曲循环 → 随机播放
+                    repeatMode = Player.REPEAT_MODE_ALL
+                    shuffleModeEnabled = true
+                }
+                else -> {
+                    // 随机播放 → 顺序播放
+                    shuffleModeEnabled = false
+                    repeatMode = Player.REPEAT_MODE_OFF
+                }
+            }
             updatePlaybackStatus(this)
         }
     }

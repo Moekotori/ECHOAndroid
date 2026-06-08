@@ -82,7 +82,6 @@ import app.echo.android.design.RoonMuted
 import app.echo.android.design.formatDuration
 import app.echo.android.design.progressFraction
 import app.echo.android.model.library.AlbumSummary
-import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoRepeatMode
@@ -94,14 +93,13 @@ fun HomeScreen(
     albumCount: Int,
     artistCount: Int,
     recentAlbums: List<AlbumSummary>,
-    recommendedTracks: List<EchoTrack>,
+    recommendedAlbums: List<AlbumSummary>,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onCycleRepeatMode: () -> Unit,
     onToggleShuffle: () -> Unit,
     onRefreshRecommendations: () -> Unit,
-    onPlayRecommendation: (List<EchoTrack>, Int) -> Unit,
     onOpenAlbum: (AlbumSummary) -> Unit,
     onOpenLibrary: () -> Unit,
     onOpenConnect: () -> Unit,
@@ -134,6 +132,13 @@ fun HomeScreen(
                 albums = recentAlbums,
                 onOpenAlbum = onOpenAlbum,
                 onOpenLibrary = onOpenLibrary,
+            )
+            Spacer(Modifier.height(if (compactViewport) 14.dp else 20.dp))
+            HomeAlbumRecommendationsSection(
+                albums = recommendedAlbums,
+                onRefresh = onRefreshRecommendations,
+                onOpenLibrary = onOpenLibrary,
+                onOpenAlbum = onOpenAlbum,
             )
             Spacer(Modifier.height(if (compactViewport) 180.dp else 212.dp))
         }
