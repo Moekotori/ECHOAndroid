@@ -1,9 +1,5 @@
 package app.echo.android.feature.player
 
-import android.content.Context
-import android.media.AudioManager
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -17,7 +13,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -31,24 +26,23 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
-import androidx.compose.material.icons.automirrored.rounded.VolumeDown
-import androidx.compose.material.icons.automirrored.rounded.VolumeUp
-import androidx.compose.material.icons.rounded.FastForward
-import androidx.compose.material.icons.rounded.FastRewind
+import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.KeyboardDoubleArrowLeft
 import androidx.compose.material.icons.rounded.KeyboardDoubleArrowRight
 import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Polyline
-import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.RestartAlt
+import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.material3.Icon
@@ -59,23 +53,24 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.ArtworkTile
+import androidx.compose.ui.unit.sp
 import app.echo.android.design.BlurredArtworkBackground
 import app.echo.android.design.formatDuration
 import app.echo.android.design.progressFraction
@@ -86,15 +81,22 @@ import app.echo.android.model.lyrics.EchoLyricsFormat
 import app.echo.android.model.lyrics.EchoLyricsLoadState
 import app.echo.android.model.playback.EchoPlaybackDiagnostics
 import app.echo.android.model.playback.EchoPlaybackStatus
-import app.echo.android.model.playback.EchoRepeatMode
 import app.echo.android.model.playback.PlaybackPositionState
+import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 // 封面毛玻璃背景上的前景色：白色为主，半透明分级
 private val OnArt = Color.White
 private val OnArtMuted = Color.White.copy(alpha = 0.74f)
 private val OnArtFaint = Color.White.copy(alpha = 0.28f)
 private val OnArtChip = Color.White.copy(alpha = 0.16f)
+
+private enum class NowPlayingPage {
+    Back,
+    Cover,
+    Lyrics,
+}
 
 @Composable
 fun NowPlayingScreen(
@@ -106,7 +108,6 @@ fun NowPlayingScreen(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onSeek: (Long) -> Unit,
-    onCyclePlayMode: () -> Unit,
     onImportLyrics: () -> Unit,
     onAdjustLyricsOffset: (Long) -> Unit,
     onResetLyricsOffset: () -> Unit,
@@ -117,15 +118,48 @@ fun NowPlayingScreen(
 ) {
     val track = status.track
     val palette = rememberArtworkPalette(track?.artworkUri, seedKey = track?.id)
-    var showLyrics by remember { mutableStateOf(false) }
+    val pagerState = rememberPagerState(
+        initialPage = NowPlayingPage.Cover.ordinal,
+        pageCount = { NowPlayingPage.entries.size },
+    )
+    val pageScope = rememberCoroutineScope()
     val activePositionMs = positionState?.positionMs ?: status.positionMs
     val activeDurationMs = positionState?.durationMs?.takeIf { it > 0L } ?: status.durationMs
+    val lyricsPageOffset = (pagerState.currentPage - NowPlayingPage.Lyrics.ordinal) +
+        pagerState.currentPageOffsetFraction
+    val lyricsReveal = (1f - abs(lyricsPageOffset)).coerceIn(0f, 1f)
+
+    LaunchedEffect(pagerState.settledPage) {
+        if (pagerState.settledPage == NowPlayingPage.Back.ordinal) {
+            onDismiss()
+        }
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
         BlurredArtworkBackground(
             artworkUri = track?.artworkUri,
             palette = palette,
             modifier = Modifier.fillMaxSize(),
+            artworkScale = 1.04f + 0.16f * lyricsReveal,
+            artworkBlur = 30.dp * lyricsReveal,
+            artworkAlpha = 0.92f - 0.12f * lyricsReveal,
+            overlayStartAlpha = 0.18f + 0.14f * lyricsReveal,
+            overlayMidAlpha = 0.34f + 0.14f * lyricsReveal,
+            overlayEndAlpha = 0.78f,
+        )
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .height(170.dp)
+                .background(
+                    Brush.verticalGradient(
+                        0f to Color.Black.copy(alpha = 0.44f - 0.12f * lyricsReveal),
+                        0.48f to Color.Black.copy(alpha = 0.18f - 0.08f * lyricsReveal),
+                        1f to Color.Transparent,
+                    ),
+                ),
         )
 
         Column(
@@ -139,93 +173,112 @@ fun NowPlayingScreen(
         ) {
             NowPlayingTopBar(onDismiss = onDismiss)
 
-            if (showLyrics) {
-                NowPlayingLyricsPage(
-                    status = status,
-                    lyricsState = lyricsState,
-                    showLyricsControlDeck = showLyricsControlDeck,
-                    onPlayPause = onPlayPause,
-                    onNext = onNext,
-                    onPrevious = onPrevious,
-                    onSeek = onSeek,
-                    positionMs = activePositionMs,
-                    durationMs = activeDurationMs,
-                    onCloseLyrics = { showLyrics = false },
-                    onImportLyrics = onImportLyrics,
-                    onAdjustLyricsOffset = onAdjustLyricsOffset,
-                    onResetLyricsOffset = onResetLyricsOffset,
-                    modifier = Modifier.weight(1f),
-                )
-            } else {
-                Spacer(Modifier.height(6.dp))
-                val artScale by animateFloatAsState(
-                    targetValue = if (status.isPlaying) 1f else 0.95f,
-                    animationSpec = tween(durationMillis = 420),
-                    label = "art-scale",
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .padding(vertical = 4.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    ArtworkTile(
-                        artworkUri = track?.artworkUri,
-                        modifier = Modifier
-                            .fillMaxWidth(0.94f)
-                            .aspectRatio(1f)
-                            .scale(artScale),
-                        accent = palette.vibrant,
-                        showSignal = track?.artworkUri == null,
-                        cornerRadius = 26.dp,
-                        elevation = 28.dp,
+            HorizontalPager(
+                state = pagerState,
+                beyondViewportPageCount = 1,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+            ) { page ->
+                when (NowPlayingPage.entries[page]) {
+                    NowPlayingPage.Back -> Spacer(Modifier.fillMaxSize())
+                    NowPlayingPage.Cover -> NowPlayingCoverPage(
+                        status = status,
+                        positionMs = activePositionMs,
+                        durationMs = activeDurationMs,
+                        onPlayPause = onPlayPause,
+                        onNext = onNext,
+                        onPrevious = onPrevious,
+                        onSeek = onSeek,
+                        onOpenLyrics = {
+                            pageScope.launch {
+                                pagerState.animateScrollToPage(NowPlayingPage.Lyrics.ordinal)
+                            }
+                        },
+                        onOpenArtist = onOpenArtist,
+                        onOpenAlbum = onOpenAlbum,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    NowPlayingPage.Lyrics -> NowPlayingLyricsPage(
+                        status = status,
+                        lyricsState = lyricsState,
+                        showLyricsControlDeck = showLyricsControlDeck,
+                        onPlayPause = onPlayPause,
+                        onNext = onNext,
+                        onPrevious = onPrevious,
+                        onSeek = onSeek,
+                        positionMs = activePositionMs,
+                        durationMs = activeDurationMs,
+                        onCloseLyrics = {
+                            pageScope.launch {
+                                pagerState.animateScrollToPage(NowPlayingPage.Cover.ordinal)
+                            }
+                        },
+                        onImportLyrics = onImportLyrics,
+                        onAdjustLyricsOffset = onAdjustLyricsOffset,
+                        onResetLyricsOffset = onResetLyricsOffset,
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
-
-                Spacer(Modifier.height(16.dp))
-                NowPlayingTrackInfo(
-                    title = track?.title ?: "未在播放",
-                    artist = track?.artist ?: "选择一首歌开始",
-                    album = track?.album,
-                    onOpenArtist = onOpenArtist,
-                    onOpenAlbum = onOpenAlbum,
-                )
-
-                Spacer(Modifier.height(8.dp))
-                NowPlayingFormatInfo(diagnostics = status.diagnostics)
-
-                Spacer(Modifier.height(12.dp))
-                NowPlayingScrubber(
-                    positionMs = activePositionMs,
-                    durationMs = activeDurationMs,
-                    onSeek = onSeek,
-                )
-
-                Spacer(Modifier.height(6.dp))
-                NowPlayingTransport(
-                    isPlaying = status.isPlaying,
-                    onPlayPause = onPlayPause,
-                    onNext = onNext,
-                    onPrevious = onPrevious,
-                )
-
-                Spacer(Modifier.height(12.dp))
-                NowPlayingVolume()
-
-                Spacer(Modifier.height(12.dp))
-                NowPlayingSecondaryControls(
-                    repeatMode = status.repeatMode,
-                    lyricsSelected = false,
-                    onOpenLyrics = { showLyrics = true },
-                    onCyclePlayMode = onCyclePlayMode,
-                )
-                Spacer(Modifier.height(12.dp))
             }
         }
     }
 }
 
+@Composable
+private fun NowPlayingCoverPage(
+    status: EchoPlaybackStatus,
+    positionMs: Long,
+    durationMs: Long,
+    onPlayPause: () -> Unit,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit,
+    onSeek: (Long) -> Unit,
+    onOpenLyrics: () -> Unit,
+    onOpenArtist: () -> Unit,
+    onOpenAlbum: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val track = status.track
+
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Spacer(Modifier.weight(1f))
+
+        NowPlayingTrackInfo(
+            title = track?.title ?: "未在播放",
+            artist = track?.artist ?: "选择一首歌开始",
+            album = track?.album,
+            onOpenArtist = onOpenArtist,
+            onOpenAlbum = onOpenAlbum,
+        )
+
+        Spacer(Modifier.height(8.dp))
+        NowPlayingFormatInfo(diagnostics = status.diagnostics)
+
+        Spacer(Modifier.height(10.dp))
+        NowPlayingScrubber(
+            positionMs = positionMs,
+            durationMs = durationMs,
+            onSeek = onSeek,
+        )
+
+        Spacer(Modifier.height(10.dp))
+        NowPlayingControlDock(
+            isPlaying = status.isPlaying,
+            leadingIcon = Icons.Rounded.Lyrics,
+            leadingDescription = "歌词",
+            onLeadingAction = onOpenLyrics,
+            onPlayPause = onPlayPause,
+            onNext = onNext,
+            onPrevious = onPrevious,
+            onOpenQueue = {},
+        )
+        Spacer(Modifier.height(14.dp))
+    }
+}
 @Composable
 private fun NowPlayingTopBar(onDismiss: () -> Unit) {
     Box(
@@ -237,7 +290,7 @@ private fun NowPlayingTopBar(onDismiss: () -> Unit) {
                 .padding(top = 8.dp)
                 .size(width = 38.dp, height = 5.dp)
                 .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.5f))
+                .background(Color.White.copy(alpha = 0.38f))
                 .clickable(onClick = onDismiss),
         )
     }
@@ -260,15 +313,16 @@ private fun NowPlayingLyricsPage(
     onResetLyricsOffset: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val readyLyrics = (lyricsState as? EchoLyricsLoadState.Ready)?.lyrics
     Column(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        val readyLyrics = (lyricsState as? EchoLyricsLoadState.Ready)?.lyrics
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f),
+                .weight(1f)
+                .padding(top = 8.dp, bottom = 14.dp),
             contentAlignment = Alignment.Center,
         ) {
             when (lyricsState) {
@@ -280,7 +334,9 @@ private fun NowPlayingLyricsPage(
                     lyrics = lyricsState.lyrics,
                     positionMs = positionMs,
                     onSeek = onSeek,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 4.dp),
                 )
             }
         }
@@ -301,40 +357,18 @@ private fun NowPlayingLyricsPage(
             durationMs = durationMs,
             onSeek = onSeek,
         )
-        Spacer(Modifier.height(4.dp))
-        NowPlayingTransport(
+        Spacer(Modifier.height(10.dp))
+        NowPlayingControlDock(
             isPlaying = status.isPlaying,
+            leadingIcon = Icons.Rounded.Album,
+            leadingDescription = "返回封面",
+            onLeadingAction = onCloseLyrics,
             onPlayPause = onPlayPause,
             onNext = onNext,
             onPrevious = onPrevious,
+            onOpenQueue = {},
         )
-        Spacer(Modifier.height(4.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            SignalPathIndicator()
-            GlyphButton(
-                icon = Icons.Rounded.Lyrics,
-                description = "返回封面",
-                touchSize = 52.dp,
-                iconSize = 30.dp,
-                tint = OnArt,
-                background = Color.Transparent,
-                onClick = onCloseLyrics,
-            )
-            GlyphButton(
-                icon = Icons.AutoMirrored.Rounded.QueueMusic,
-                description = "播放队列",
-                touchSize = 48.dp,
-                iconSize = 28.dp,
-                tint = OnArtMuted,
-                background = Color.Transparent,
-                onClick = {},
-            )
-        }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(14.dp))
     }
 }
 
@@ -345,75 +379,108 @@ private fun LyricsLineList(
     onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val synced = lyrics.isSynced
-    val activeIndex = remember(lyrics, positionMs, synced) {
-        if (synced) {
-            lyrics.lines.indexOfLast { line -> line.startMs <= positionMs + 80L }
-                .coerceAtLeast(0)
-        } else {
-            -1
+    BoxWithConstraints(modifier = modifier) {
+        val synced = lyrics.isSynced
+        val activeIndex = remember(lyrics, positionMs, synced) {
+            if (synced) {
+                lyrics.lines.indexOfLast { line -> line.startMs <= positionMs + 80L }
+                    .coerceAtLeast(0)
+            } else {
+                -1
+            }
         }
-    }
-    val listState = rememberLazyListState()
-    LaunchedEffect(activeIndex, lyrics.lines.size, synced) {
-        if (synced && lyrics.lines.isNotEmpty()) {
-            listState.animateScrollToItem(activeIndex.coerceIn(0, lyrics.lines.lastIndex))
+        val listState = rememberLazyListState()
+        LaunchedEffect(activeIndex, lyrics.lines.size, synced) {
+            if (synced && lyrics.lines.isNotEmpty()) {
+                listState.animateScrollToItem(activeIndex.coerceIn(0, lyrics.lines.lastIndex))
+            }
         }
-    }
 
-    LazyColumn(
-        state = listState,
-        modifier = modifier,
-        contentPadding = PaddingValues(vertical = 72.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        itemsIndexed(
-            items = lyrics.lines,
-            key = { index, line -> "${line.startMs}-$index-${line.text}" },
-        ) { index, line ->
-            val active = synced && index == activeIndex
-            val seekable = synced && line.startMs >= 0L
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(if (active) Color.White.copy(alpha = 0.08f) else Color.Transparent)
-                    .then(
-                        if (seekable) {
-                            Modifier.clickable { onSeek(line.startMs) }
-                        } else {
-                            Modifier
-                        },
-                    )
-                    .padding(horizontal = if (active) 10.dp else 12.dp, vertical = 6.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = line.displayText(active = active, positionMs = positionMs),
-                    color = if (active) OnArt else Color.White.copy(alpha = 0.42f),
-                    style = if (active) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.titleLarge,
-                    fontWeight = if (active) FontWeight.ExtraBold else FontWeight.Bold,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                line.translation?.takeIf { it.isNotBlank() }?.let { translation ->
-                    Text(
-                        text = translation,
-                        color = if (active) OnArtMuted else Color.White.copy(alpha = 0.30f),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                top = maxHeight * 0.54f,
+                bottom = maxHeight * 0.46f,
+            ),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            itemsIndexed(
+                items = lyrics.lines,
+                key = { index, line -> "${line.startMs}-$index-${line.text}" },
+            ) { index, line ->
+                val active = synced && index == activeIndex
+                val focusDistance = if (activeIndex >= 0) abs(index - activeIndex).coerceAtMost(4) else 1
+                val seekable = synced && line.startMs >= 0L
+                val primaryAlpha = when (focusDistance) {
+                    0 -> 1f
+                    1 -> 0.56f
+                    2 -> 0.30f
+                    3 -> 0.16f
+                    else -> 0.08f
                 }
-                line.romanization?.takeIf { it.isNotBlank() }?.let { romanization ->
+                val secondaryAlpha = when (focusDistance) {
+                    0 -> 0.72f
+                    1 -> 0.38f
+                    2 -> 0.22f
+                    3 -> 0.12f
+                    else -> 0.06f
+                }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(
+                            if (seekable) {
+                                Modifier.clickable { onSeek(line.startMs) }
+                            } else {
+                                Modifier
+                            },
+                        )
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
                     Text(
-                        text = romanization,
-                        color = Color.White.copy(alpha = if (active) 0.54f else 0.24f),
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 2,
+                        text = line.displayText(active = active, positionMs = positionMs),
+                        modifier = Modifier.fillMaxWidth(),
+                        color = OnArt.copy(alpha = primaryAlpha),
+                        style = if (active) {
+                            MaterialTheme.typography.headlineLarge.copy(fontSize = 34.sp, lineHeight = 40.sp)
+                        } else {
+                            MaterialTheme.typography.titleLarge.copy(fontSize = 24.sp, lineHeight = 30.sp)
+                        },
+                        fontWeight = if (active) FontWeight.ExtraBold else FontWeight.SemiBold,
+                        textAlign = TextAlign.Center,
+                        maxLines = if (active) 3 else 2,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    line.translation?.takeIf { it.isNotBlank() }?.let { translation ->
+                        Text(
+                            text = translation,
+                            modifier = Modifier.fillMaxWidth(),
+                            color = OnArt.copy(alpha = secondaryAlpha),
+                            style = if (active) {
+                                MaterialTheme.typography.titleSmall.copy(fontSize = 16.sp, lineHeight = 22.sp)
+                            } else {
+                                MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, lineHeight = 20.sp)
+                            },
+                            fontWeight = FontWeight.SemiBold,
+                            textAlign = TextAlign.Center,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    line.romanization?.takeIf { it.isNotBlank() }?.let { romanization ->
+                        Text(
+                            text = romanization,
+                            modifier = Modifier.fillMaxWidth(),
+                            color = OnArt.copy(alpha = secondaryAlpha * 0.82f),
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp, lineHeight = 18.sp),
+                            textAlign = TextAlign.Center,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
         }
@@ -429,7 +496,7 @@ private fun EchoLyricLine.displayText(active: Boolean, positionMs: Long) =
                 val nextStartMs = words.getOrNull(index + 1)?.startMs
                 val endMs = word.endMs ?: nextStartMs ?: this@displayText.endMs ?: Long.MAX_VALUE
                 val isCurrentWord = positionMs in word.startMs until endMs
-                val color = if (isCurrentWord) OnArt else Color.White.copy(alpha = 0.48f)
+                val color = if (isCurrentWord) OnArt else Color.White.copy(alpha = 0.62f)
                 pushStyle(
                     SpanStyle(
                         color = color,
@@ -625,62 +692,73 @@ private fun NowPlayingTrackInfo(
     onOpenArtist: () -> Unit,
     onOpenAlbum: () -> Unit,
 ) {
-    Row(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                title,
-                color = OnArt,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                artist,
-                modifier = Modifier.clickable(onClick = onOpenArtist),
-                color = OnArtMuted,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            album?.takeIf { it.isNotBlank() }?.let { value ->
+        Text(
+            title,
+            color = OnArt,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 Text(
-                    value,
-                    modifier = Modifier.clickable(onClick = onOpenAlbum),
-                    color = Color.White.copy(alpha = 0.58f),
-                    style = MaterialTheme.typography.bodySmall,
+                    artist,
+                    modifier = Modifier.clickable(onClick = onOpenArtist),
+                    color = OnArtMuted,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                album?.takeIf { it.isNotBlank() }?.let { value ->
+                    Text(
+                        value,
+                        modifier = Modifier.clickable(onClick = onOpenAlbum),
+                        color = Color.White.copy(alpha = 0.56f),
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                GlyphButton(
+                    icon = Icons.Rounded.StarBorder,
+                    description = "收藏",
+                    touchSize = 40.dp,
+                    iconSize = 21.dp,
+                    tint = Color.White.copy(alpha = 0.88f),
+                    background = Color.White.copy(alpha = 0.11f),
+                    onClick = {},
+                )
+                GlyphButton(
+                    icon = Icons.Rounded.MoreHoriz,
+                    description = "更多",
+                    touchSize = 40.dp,
+                    iconSize = 21.dp,
+                    tint = Color.White.copy(alpha = 0.88f),
+                    background = Color.White.copy(alpha = 0.11f),
+                    onClick = {},
+                )
             }
         }
-        Spacer(Modifier.width(10.dp))
-        GlyphButton(
-            icon = Icons.Rounded.StarBorder,
-            description = "收藏",
-            touchSize = 42.dp,
-            iconSize = 22.dp,
-            tint = OnArt,
-            background = OnArtChip,
-            onClick = {},
-        )
-        Spacer(Modifier.width(8.dp))
-        GlyphButton(
-            icon = Icons.Rounded.MoreHoriz,
-            description = "更多",
-            touchSize = 42.dp,
-            iconSize = 22.dp,
-            tint = OnArt,
-            background = OnArtChip,
-            onClick = {},
-        )
     }
 }
-
 @Composable
 private fun NowPlayingFormatInfo(diagnostics: EchoPlaybackDiagnostics) {
     val chips = buildList {
@@ -705,7 +783,7 @@ private fun NowPlayingFormatInfo(diagnostics: EchoPlaybackDiagnostics) {
         bitrateKbps?.let { kbps ->
             Text(
                 "$kbps kbps",
-                color = OnArtMuted,
+                color = Color.White.copy(alpha = 0.62f),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.padding(start = 2.dp),
@@ -719,14 +797,14 @@ private fun FormatChip(text: String, highlight: Boolean) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
-            .background(if (highlight) Color.White.copy(alpha = 0.24f) else Color.White.copy(alpha = 0.12f))
-            .padding(horizontal = 8.dp, vertical = 3.dp),
+            .background(if (highlight) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.09f))
+            .padding(horizontal = 7.dp, vertical = 2.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text,
-            color = if (highlight) OnArt else OnArtMuted,
-            style = MaterialTheme.typography.labelMedium,
+            color = if (highlight) Color.White.copy(alpha = 0.94f) else Color.White.copy(alpha = 0.68f),
+            style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.SemiBold,
         )
     }
@@ -767,6 +845,9 @@ private fun NowPlayingScrubber(
                 }
                 scrubFraction = null
             },
+            trackHeight = 4.dp,
+            thumbSize = 10.dp,
+            inactiveColor = Color.White.copy(alpha = 0.18f),
         )
         Spacer(Modifier.height(2.dp))
         Row(
@@ -775,35 +856,48 @@ private fun NowPlayingScrubber(
         ) {
             Text(
                 formatDuration(currentMs),
-                color = OnArtMuted,
-                style = MaterialTheme.typography.labelMedium,
+                color = Color.White.copy(alpha = 0.64f),
+                style = MaterialTheme.typography.labelSmall,
             )
             Text(
                 "-" + formatDuration(remainingMs),
-                color = OnArtMuted,
-                style = MaterialTheme.typography.labelMedium,
+                color = Color.White.copy(alpha = 0.64f),
+                style = MaterialTheme.typography.labelSmall,
             )
         }
     }
 }
 
 @Composable
-private fun NowPlayingTransport(
+private fun NowPlayingControlDock(
     isPlaying: Boolean,
+    leadingIcon: ImageVector,
+    leadingDescription: String,
+    onLeadingAction: () -> Unit,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
+    onOpenQueue: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(36.dp, Alignment.CenterHorizontally),
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         GlyphButton(
-            icon = Icons.Rounded.FastRewind,
+            icon = leadingIcon,
+            description = leadingDescription,
+            touchSize = 44.dp,
+            iconSize = 24.dp,
+            tint = Color.White.copy(alpha = 0.70f),
+            background = Color.Transparent,
+            onClick = onLeadingAction,
+        )
+        GlyphButton(
+            icon = Icons.Rounded.SkipPrevious,
             description = "上一首",
-            touchSize = 64.dp,
-            iconSize = 46.dp,
+            touchSize = 50.dp,
+            iconSize = 34.dp,
             tint = OnArt,
             background = Color.Transparent,
             onClick = onPrevious,
@@ -811,123 +905,29 @@ private fun NowPlayingTransport(
         GlyphButton(
             icon = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
             description = "播放或暂停",
-            touchSize = 88.dp,
-            iconSize = 68.dp,
+            touchSize = 72.dp,
+            iconSize = 54.dp,
             tint = OnArt,
             background = Color.Transparent,
             onClick = onPlayPause,
         )
         GlyphButton(
-            icon = Icons.Rounded.FastForward,
+            icon = Icons.Rounded.SkipNext,
             description = "下一首",
-            touchSize = 64.dp,
-            iconSize = 46.dp,
+            touchSize = 50.dp,
+            iconSize = 34.dp,
             tint = OnArt,
             background = Color.Transparent,
             onClick = onNext,
         )
-    }
-}
-
-@Composable
-private fun NowPlayingVolume() {
-    val context = LocalContext.current
-    val audio = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
-    val maxVolume = remember { audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1) }
-    var volumeFraction by remember {
-        mutableStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() / maxVolume)
-    }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Icon(
-            Icons.AutoMirrored.Rounded.VolumeDown,
-            contentDescription = null,
-            tint = OnArtMuted,
-            modifier = Modifier.size(20.dp),
-        )
-        ThinSlider(
-            fraction = volumeFraction,
-            onValueChange = { fraction ->
-                volumeFraction = fraction
-                val target = (fraction * maxVolume).roundToInt().coerceIn(0, maxVolume)
-                runCatching { audio.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0) }
-            },
-            onValueChangeFinished = {},
-            modifier = Modifier.weight(1f),
-            trackHeight = 5.dp,
-            thumbSize = 12.dp,
-        )
-        Icon(
-            Icons.AutoMirrored.Rounded.VolumeUp,
-            contentDescription = null,
-            tint = OnArtMuted,
-            modifier = Modifier.size(23.dp),
-        )
-    }
-}
-
-@Composable
-private fun NowPlayingSecondaryControls(
-    repeatMode: EchoRepeatMode,
-    lyricsSelected: Boolean,
-    onOpenLyrics: () -> Unit,
-    onCyclePlayMode: () -> Unit,
-) {
-    val singleRepeatEnabled = repeatMode == EchoRepeatMode.One
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        // 左：Signal Path 占位（暂不可点）
-        SignalPathIndicator()
-        // 歌词页入口
-        GlyphButton(
-            icon = Icons.Rounded.Lyrics,
-            description = "歌词",
-            touchSize = 52.dp,
-            iconSize = 30.dp,
-            tint = if (lyricsSelected) OnArt else OnArtMuted,
-            background = Color.Transparent,
-            onClick = onOpenLyrics,
-        )
-        // 中：只在顺序播放和单曲循环之间切换
-        GlyphButton(
-            icon = Icons.Rounded.RepeatOne,
-            description = if (singleRepeatEnabled) "关闭单曲循环" else "单曲循环",
-            touchSize = 52.dp,
-            iconSize = 30.dp,
-            tint = if (singleRepeatEnabled) OnArt else OnArtMuted,
-            background = Color.Transparent,
-            onClick = onCyclePlayMode,
-        )
-        // 右：播放队列
         GlyphButton(
             icon = Icons.AutoMirrored.Rounded.QueueMusic,
             description = "播放队列",
-            touchSize = 48.dp,
-            iconSize = 28.dp,
-            tint = OnArtMuted,
+            touchSize = 44.dp,
+            iconSize = 24.dp,
+            tint = Color.White.copy(alpha = 0.70f),
             background = Color.Transparent,
-            onClick = {},
-        )
-    }
-}
-
-@Composable
-private fun SignalPathIndicator() {
-    Box(
-        modifier = Modifier.size(48.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            Icons.Rounded.Polyline,
-            contentDescription = "Signal Path（信号链路）",
-            tint = Color.White.copy(alpha = 0.55f),
-            modifier = Modifier.size(28.dp),
+            onClick = onOpenQueue,
         )
     }
 }

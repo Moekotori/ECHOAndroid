@@ -417,7 +417,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     onNext = viewModel::skipNext,
                     onPrevious = viewModel::skipPrevious,
                     onSeek = viewModel::seekTo,
-                    onCyclePlayMode = viewModel::cyclePlayMode,
                     onImportLyrics = { lyricsImportLauncher.launch(LyricsDocumentMimeTypes) },
                     onAdjustLyricsOffset = viewModel::adjustLyricsOffset,
                     onResetLyricsOffset = viewModel::resetLyricsOffset,
