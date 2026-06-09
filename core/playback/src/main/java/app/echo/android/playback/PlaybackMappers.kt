@@ -11,6 +11,10 @@ import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoRepeatMode
 import app.echo.android.model.playback.EchoTrackRef
+import app.echo.android.model.playback.PlaybackControlsState
+import app.echo.android.model.playback.PlaybackDiagnosticsState
+import app.echo.android.model.playback.PlaybackMetadataState
+import app.echo.android.model.playback.PlaybackPositionState
 
 fun MediaItem.toEchoTrackRef(durationMs: Long = 0L): EchoTrackRef {
     val metadata = mediaMetadata
@@ -54,46 +58,91 @@ fun EchoTrack.toMediaItem(): MediaItem =
     toEchoTrackRef().toMediaItem()
 
 fun Player.toEchoPlaybackStatus(): EchoPlaybackStatus {
-    val item = currentMediaItem
-    val track = item?.toEchoTrackRef(durationMs = duration.takeIf { it > 0L } ?: 0L)
-    val safeDuration = duration.takeIf { it > 0L } ?: track?.durationMs ?: 0L
+    val metadata = toPlaybackMetadataState()
+    val position = toPlaybackPositionState()
+    val controls = toPlaybackControlsState()
+    val diagnostics = toPlaybackDiagnosticsState().diagnostics
     return EchoPlaybackStatus(
-        state = toEchoPlaybackState(),
+        state = controls.state,
+        track = metadata.track,
+        positionMs = position.positionMs,
+        durationMs = position.durationMs,
+        isPlaying = controls.isPlaying,
+        repeatMode = controls.repeatMode,
+        shuffleEnabled = controls.shuffleEnabled,
+        diagnostics = diagnostics,
+    )
+}
+
+fun Player.toPlaybackMetadataState(): PlaybackMetadataState {
+    val item = currentMediaItem
+    val safeDuration = duration.takeIf { it > 0L } ?: 0L
+    val track = item?.toEchoTrackRef(durationMs = safeDuration)
+    return PlaybackMetadataState(
         track = track,
+        title = track?.title.orEmpty(),
+        artist = track?.artist.orEmpty(),
+        album = track?.album,
+        artworkUri = track?.artworkUri,
+        durationMs = track?.durationMs ?: 0L,
+        mediaId = item?.mediaId,
+    )
+}
+
+fun Player.toPlaybackPositionState(): PlaybackPositionState {
+    val safeDuration = duration.takeIf { it > 0L }
+        ?: currentMediaItem?.toEchoTrackRef(durationMs = 0L)?.durationMs
+        ?: 0L
+    return PlaybackPositionState(
         positionMs = currentPosition.coerceAtLeast(0L),
-        durationMs = safeDuration,
+        durationMs = safeDuration.coerceAtLeast(0L),
+        bufferedMs = (bufferedPosition - currentPosition).coerceAtLeast(0L),
+        updateTimeEpochMs = System.currentTimeMillis(),
+    )
+}
+
+fun Player.toPlaybackControlsState(): PlaybackControlsState =
+    PlaybackControlsState(
+        state = toEchoPlaybackState(),
         isPlaying = isPlaying,
         repeatMode = repeatMode.toEchoRepeatMode(),
         shuffleEnabled = shuffleModeEnabled,
-        diagnostics = run {
-            val format = currentAudioFormat()
-            val bitDepth = format?.takeIf { it.pcmEncoding != Format.NO_VALUE }
-                ?.let { pcmBitDepth(it.pcmEncoding) }
-            val sampleRate = format?.sampleRate?.takeIf { it != Format.NO_VALUE }
-            val channels = format?.channelCount?.takeIf { it != Format.NO_VALUE }
-            val codec = codecLabel(format?.sampleMimeType)
-            val rawBitrate = listOf(format?.bitrate, format?.averageBitrate)
-                .firstOrNull { it != null && it != Format.NO_VALUE }
-            val bitrate = rawBitrate ?: run {
-                // PCM/WAV 等无内嵌码率时按 采样率×位深×声道 估算
-                if (codec == "PCM" && sampleRate != null && bitDepth != null && channels != null) {
-                    sampleRate * bitDepth * channels
-                } else {
-                    null
-                }
-            }
-            EchoPlaybackDiagnostics(
-                codec = codec,
-                sampleRateHz = sampleRate,
-                channelCount = channels,
-                bitDepth = bitDepth,
-                bitrate = bitrate,
-                outputRoute = "Media3 / AudioTrack",
-                bufferedMs = (bufferedPosition - currentPosition).coerceAtLeast(0L),
-                requestToken = item?.mediaId?.hashCode()?.toLong() ?: 0L,
-                lastCommand = if (isPlaying) "play" else "idle",
-            )
-        },
+        canSkipNext = hasNextMediaItem(),
+        canSkipPrevious = hasPreviousMediaItem(),
+        canSeek = isCurrentMediaItemSeekable,
+    )
+
+fun Player.toPlaybackDiagnosticsState(): PlaybackDiagnosticsState {
+    val item = currentMediaItem
+    val format = currentAudioFormat()
+    val bitDepth = format?.takeIf { it.pcmEncoding != Format.NO_VALUE }
+        ?.let { pcmBitDepth(it.pcmEncoding) }
+    val sampleRate = format?.sampleRate?.takeIf { it != Format.NO_VALUE }
+    val channels = format?.channelCount?.takeIf { it != Format.NO_VALUE }
+    val codec = codecLabel(format?.sampleMimeType)
+    val rawBitrate = listOf(format?.bitrate, format?.averageBitrate)
+        .firstOrNull { it != null && it != Format.NO_VALUE }
+    val bitrate = rawBitrate ?: run {
+        if (codec == "PCM" && sampleRate != null && bitDepth != null && channels != null) {
+            sampleRate * bitDepth * channels
+        } else {
+            null
+        }
+    }
+    val diagnostics = EchoPlaybackDiagnostics(
+        codec = codec,
+        sampleRateHz = sampleRate,
+        channelCount = channels,
+        bitDepth = bitDepth,
+        bitrate = bitrate,
+        outputRoute = "Media3 / AudioTrack",
+        bufferedMs = (bufferedPosition - currentPosition).coerceAtLeast(0L),
+        requestToken = item?.mediaId?.hashCode()?.toLong() ?: 0L,
+        lastCommand = if (isPlaying) "play" else "idle",
+    )
+    return PlaybackDiagnosticsState(
+        diagnostics = diagnostics,
+        lastError = diagnostics.lastError,
     )
 }
 

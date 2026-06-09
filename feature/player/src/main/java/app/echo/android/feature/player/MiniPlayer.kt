@@ -53,6 +53,7 @@ import app.echo.android.design.RoonMuted
 import app.echo.android.design.progressFraction
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
+import app.echo.android.model.playback.PlaybackPositionState
 import kotlinx.coroutines.launch
 
 @Composable
@@ -60,6 +61,7 @@ fun MiniPlayer(
     status: EchoPlaybackStatus,
     onPlayPause: () -> Unit,
     modifier: Modifier = Modifier,
+    positionState: PlaybackPositionState? = null,
     onHideDock: (() -> Unit)? = null,
     onExpand: (() -> Unit)? = null,
     onNext: (() -> Unit)? = null,
@@ -70,6 +72,8 @@ fun MiniPlayer(
     val offsetX = remember { Animatable(0f) }
     var widthPx by remember { mutableStateOf(1f) }
     val canSwitch = onNext != null && onPrevious != null && status.track != null
+    val activePositionMs = positionState?.positionMs ?: status.positionMs
+    val activeDurationMs = positionState?.durationMs?.takeIf { it > 0L } ?: status.durationMs
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -175,7 +179,7 @@ fun MiniPlayer(
                         fontWeight = FontWeight.SemiBold,
                     )
                     LinearProgressIndicator(
-                        progress = { progressFraction(status.positionMs, status.durationMs) },
+                        progress = { progressFraction(activePositionMs, activeDurationMs) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(2.dp)

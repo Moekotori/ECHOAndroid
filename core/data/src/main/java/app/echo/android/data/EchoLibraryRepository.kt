@@ -324,14 +324,14 @@ class EchoLibraryRepository(
     }
 
     private fun LibraryTrackEntity.albumKey(): String =
-        "${normalizedAlbum.normalizedKeyFallback("未知专辑")}::" +
-            normalizedAlbumArtist.normalizedKeyFallback(normalizedArtist.normalizedKeyFallback("未知艺术家"))
+        libraryAlbumKey(
+            normalizedAlbum = normalizedAlbum,
+            normalizedAlbumArtist = normalizedAlbumArtist,
+            normalizedArtist = normalizedArtist,
+        )
 
     private fun LibraryTrackEntity.artistKey(): String =
-        normalizedArtist.normalizedKeyFallback("未知艺术家")
-
-    private fun String?.normalizedKeyFallback(fallback: String): String =
-        this?.takeIf { it.isNotBlank() } ?: fallback
+        libraryArtistKey(normalizedArtist)
 
     private fun albumPlaybackQuery(albumKey: String, limit: Int): SimpleSQLiteQuery {
         val fallbackParts = albumKey.split("::", limit = 2)

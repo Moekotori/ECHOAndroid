@@ -5,7 +5,6 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -29,7 +28,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -51,7 +49,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -60,6 +57,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -286,14 +284,10 @@ fun ArtworkTile(
     elevation: Dp = 0.dp,
     placeholderIconSize: Dp? = null,
 ) {
-    val context = LocalContext.current
     val shape = RoundedCornerShape(cornerRadius)
-    val bitmap by produceState<Bitmap?>(initialValue = null, artworkUri) {
-        value = withContext(Dispatchers.IO) {
-            loadArtworkBitmap(context.contentResolver, artworkUri)
-        }
-    }
-    Box(
+    EchoArtworkImage(
+        artworkUri = artworkUri,
+        contentDescription = null,
         modifier = modifier
             .then(
                 if (elevation > 0.dp) {
@@ -302,67 +296,13 @@ fun ArtworkTile(
                     Modifier
                 },
             )
-            .clip(shape)
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        accent,
-                        MaterialTheme.colorScheme.surfaceVariant,
-                        MaterialTheme.colorScheme.surface,
-                    ),
-                ),
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (bitmap != null) {
-            Image(
-                bitmap = bitmap!!.asImageBitmap(),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-            )
-        } else {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Icon(
-                    Icons.Rounded.Headphones,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.88f),
-                    modifier = Modifier.size(placeholderIconSize ?: if (showSignal) 38.dp else 32.dp),
-                )
-                if (showSignal) {
-                    Spacer(Modifier.height(18.dp))
-                    EchoSignalStrip()
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun EchoSignalStrip() {
-    val heights = listOf(12.dp, 24.dp, 16.dp, 34.dp, 22.dp, 42.dp, 28.dp, 18.dp, 30.dp)
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        heights.forEachIndexed { index, height ->
-            Surface(
-                modifier = Modifier
-                    .width(4.dp)
-                    .height(height),
-                shape = RoundedCornerShape(8.dp),
-                color = if (index % 3 == 0) {
-                    EchoAccent.copy(alpha = 0.92f)
-                } else {
-                    Color.White.copy(alpha = 0.64f)
-                },
-                content = {},
-            )
-        }
-    }
+            .clip(shape),
+        shape = shape,
+        sizeClass = if (cornerRadius >= 24.dp) EchoArtworkSize.Hero else EchoArtworkSize.Thumbnail,
+        accent = accent,
+        showSignal = showSignal,
+        placeholderIconSize = placeholderIconSize,
+    )
 }
 
 @Composable
@@ -374,15 +314,6 @@ fun EmptyState(message: String) {
             color = RoonMuted,
         )
     }
-}
-
-private fun loadArtworkBitmap(contentResolver: android.content.ContentResolver, artworkUri: String?): Bitmap? {
-    if (artworkUri.isNullOrBlank()) return null
-    return runCatching {
-        contentResolver.openInputStream(Uri.parse(artworkUri))?.use { stream ->
-            BitmapFactory.decodeStream(stream)
-        }
-    }.getOrNull()
 }
 
 /**
@@ -503,12 +434,6 @@ fun BlurredArtworkBackground(
     palette: ArtworkPalette,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
-    val bitmap by produceState<Bitmap?>(initialValue = null, artworkUri) {
-        value = withContext(Dispatchers.IO) {
-            loadArtworkBitmap(context.contentResolver, artworkUri)
-        }
-    }
     Box(modifier = modifier.fillMaxSize()) {
         // 取色底，保证无封面/低于 API 31 时也有沉浸色
         Box(
@@ -524,9 +449,9 @@ fun BlurredArtworkBackground(
                     ),
                 ),
         )
-        bitmap?.let { bmp ->
-            Image(
-                bitmap = bmp.asImageBitmap(),
+        if (!artworkUri.isNullOrBlank()) {
+            AsyncImage(
+                model = artworkUri,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier

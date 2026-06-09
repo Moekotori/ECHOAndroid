@@ -137,7 +137,7 @@ object EchoLrcParser {
         val words: List<EchoLyricWord>,
     )
 
-    private val MetadataRegex = Regex("""^\[([A-Za-z][\w-]*):(.*)]$""")
-    private val TimeTagRegex = Regex("""\[(\d{1,3}):(\d{1,2})(?:[\.:](\d{1,3}))?]""")
+    private val MetadataRegex = Regex("""^\[([A-Za-z][\w-]*):(.*)\]$""")
+    private val TimeTagRegex = Regex("""\[(\d{1,3}):(\d{1,2})(?:[\.:](\d{1,3}))?\]""")
     private val EnhancedTimeRegex = Regex("""<(\d{1,3}):(\d{1,2})(?:[\.:](\d{1,3}))?(?:,\d+)?>""")
 }

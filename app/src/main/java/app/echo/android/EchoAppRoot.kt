@@ -72,6 +72,7 @@ import app.echo.android.model.connect.EchoRemotePlaybackState
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.library.LibraryStats
+import app.echo.android.model.playback.PlaybackPositionState
 
 private val DockMotionEasing = CubicBezierEasing(0.16f, 1f, 0.30f, 1f)
 private val LyricsDocumentMimeTypes = arrayOf("text/*", "application/xml", "application/octet-stream", "*/*")
@@ -105,6 +106,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     val remoteClient = remember { EchoRemoteClient() }
     val remoteStatus by remoteClient.status.collectAsStateWithLifecycle()
     val playbackStatus by viewModel.playbackStatus.collectAsStateWithLifecycle()
+    val playbackPosition by viewModel.playbackPosition.collectAsStateWithLifecycle()
     val lyricsState by viewModel.lyricsState.collectAsStateWithLifecycle()
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
     val libraryStats by viewModel.libraryStats.collectAsStateWithLifecycle(LibraryStats())
@@ -282,6 +284,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                         if (it) {
                             ExpandedBottomControls(
                                 status = playbackStatus,
+                                positionState = playbackPosition,
                                 selectedTab = selectedTab,
                                 onPlayPause = viewModel::playPause,
                                 onHideDock = { bottomDockExpanded = false },
@@ -296,6 +299,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                         } else {
                             CompactBottomControls(
                                 status = playbackStatus,
+                                positionState = playbackPosition,
                                 onPlayPause = viewModel::playPause,
                                 onShowDock = { bottomDockExpanded = true },
                                 onOpenQueue = {},
@@ -320,6 +324,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             ) {
                 NowPlayingScreen(
                     status = playbackStatus,
+                    positionState = playbackPosition,
                     lyricsState = lyricsState,
                     onDismiss = { nowPlayingExpanded = false },
                     onPlayPause = viewModel::playPause,
@@ -356,6 +361,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
 @Composable
 private fun ExpandedBottomControls(
     status: app.echo.android.model.playback.EchoPlaybackStatus,
+    positionState: PlaybackPositionState,
     selectedTab: Int,
     onPlayPause: () -> Unit,
     onHideDock: () -> Unit,
@@ -372,6 +378,7 @@ private fun ExpandedBottomControls(
     ) {
         MiniPlayer(
             status = status,
+            positionState = positionState,
             onPlayPause = onPlayPause,
             onHideDock = onHideDock,
             onExpand = onExpand,
@@ -391,6 +398,7 @@ private fun ExpandedBottomControls(
 @Composable
 private fun CompactBottomControls(
     status: app.echo.android.model.playback.EchoPlaybackStatus,
+    positionState: PlaybackPositionState,
     onPlayPause: () -> Unit,
     onShowDock: () -> Unit,
     onOpenQueue: () -> Unit,
@@ -411,6 +419,7 @@ private fun CompactBottomControls(
         )
         MiniPlayer(
             status = status,
+            positionState = positionState,
             onPlayPause = onPlayPause,
             onExpand = onExpand,
             onNext = onNext,

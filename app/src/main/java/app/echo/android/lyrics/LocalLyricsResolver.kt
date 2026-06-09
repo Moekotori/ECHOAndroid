@@ -24,6 +24,19 @@ class LocalLyricsResolver(
             ?.let { EchoLyricsParser.parse(it, sourceLabel = sourceLabel) }
     }
 
+    fun importFromUri(uri: Uri): EchoLyrics {
+        val sourceLabel = displayName(uri) ?: uri.lastPathSegment
+        val text = readText(uri)
+            ?: throw IllegalArgumentException("无法读取歌词文件，请确认文件权限或编码")
+        val lyrics = runCatching { EchoLyricsParser.parse(text, sourceLabel = sourceLabel) }
+            .getOrElse { error ->
+                throw IllegalArgumentException("歌词解析失败：${error.readableMessage()}", error)
+            }
+        return lyrics
+            .takeIf { it.lines.isNotEmpty() }
+            ?: throw IllegalArgumentException("歌词文件为空，或不是支持的文本歌词格式")
+    }
+
     private fun loadFromFileUri(contentUri: String, candidates: List<String>): EchoLyrics? {
         val uri = runCatching { Uri.parse(contentUri) }.getOrNull() ?: return null
         if (uri.scheme != ContentResolver.SCHEME_FILE) return null
@@ -87,13 +100,30 @@ class LocalLyricsResolver(
 
     private fun readText(uri: Uri): String? =
         runCatching {
-            contentResolver.openInputStream(uri)?.use { input ->
+            openLyricsInputStream(uri)?.use { input ->
                 EchoLyricsTextDecoder.decode(input.readBytes())
             }
         }.getOrNull()
 
+    private fun openLyricsInputStream(uri: Uri) =
+        contentResolver.openInputStream(uri)
+            ?: runCatching { contentResolver.openTypedAssetFileDescriptor(uri, "text/*", null)?.createInputStream() }
+                .getOrNull()
+            ?: runCatching { contentResolver.openTypedAssetFileDescriptor(uri, "*/*", null)?.createInputStream() }
+                .getOrNull()
+
     private fun readText(file: File): String? =
         runCatching { EchoLyricsTextDecoder.decode(file.readBytes()) }.getOrNull()
+
+    private fun Throwable.readableMessage(): String =
+        rootCause().let { root ->
+            root.message?.takeIf { it.isNotBlank() }
+                ?: root.javaClass.simpleName.takeIf { it.isNotBlank() }
+        }
+            ?: "未知错误"
+
+    private tailrec fun Throwable.rootCause(): Throwable =
+        cause?.takeIf { it !== this }?.rootCause() ?: this
 
     private fun buildCandidateNames(track: LibraryTrackEntity): List<String> {
         val bases = linkedSetOf<String>()

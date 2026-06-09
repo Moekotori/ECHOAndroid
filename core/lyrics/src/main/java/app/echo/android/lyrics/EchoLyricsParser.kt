@@ -321,7 +321,7 @@ object EchoLyricsParser {
             .replace("&apos;", "'")
 
     private fun String.compactWhitespace(): String =
-        replace(Regex("""[ \t\x0B\f\r]+"""), " ")
+        replace(CompactWhitespaceRegex, " ")
             .lineSequence()
             .map(String::trim)
             .filter(String::isNotBlank)
@@ -358,11 +358,12 @@ object EchoLyricsParser {
             sourceLabel?.endsWith(".lrcx", ignoreCase = true) == true ||
             LrcTimeRegex.containsMatchIn(text)
 
-    private val LrcTimeRegex = Regex("""\[\d{1,3}:\d{1,2}(?:[\.:]\d{1,3})?]""")
-    private val LrcMetadataRegex = Regex("""^\[([A-Za-z][\w-]*):(.*)]$""")
-    private val LineDurationRegex = Regex("""^\[(\d{1,8}),(\d{1,8})](.*)$""")
+    private val LrcTimeRegex = Regex("""\[\d{1,3}:\d{1,2}(?:[\.:]\d{1,3})?\]""")
+    private val LrcMetadataRegex = Regex("""^\[([A-Za-z][\w-]*):(.*)\]$""")
+    private val LineDurationRegex = Regex("""^\[(\d{1,8}),(\d{1,8})\](.*)$""")
     private val DurationWordRegex = Regex("""(?:\((\d{1,8}),(\d{1,8})(?:,\d+)?\)|<(\d{1,8}),(\d{1,8})(?:,\d+)?>)([^()<]*)""")
     private val ClockRegex = Regex("""(?:(\d{1,2}):)?(\d{1,2}):(\d{1,2})(?:\.(\d{1,3}))?""")
+    private val CompactWhitespaceRegex = Regex("[ \\t\\u000B\\f\\r]+")
     private val SrtBlockRegex = Regex(
         """(?ms)(?:^\s*\d+\s*\n)?\s*(\d{1,2}:\d{2}:\d{2}[,.]\d{1,3})\s*-->\s*(\d{1,2}:\d{2}:\d{2}[,.]\d{1,3})(?:[^\n]*)\n(.*?)(?=\n\s*\n|\z)""",
     )

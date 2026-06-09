@@ -87,6 +87,7 @@ import app.echo.android.model.lyrics.EchoLyricsLoadState
 import app.echo.android.model.playback.EchoPlaybackDiagnostics
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoRepeatMode
+import app.echo.android.model.playback.PlaybackPositionState
 import kotlin.math.roundToInt
 
 // 封面毛玻璃背景上的前景色：白色为主，半透明分级
@@ -111,10 +112,13 @@ fun NowPlayingScreen(
     onOpenArtist: () -> Unit,
     onOpenAlbum: () -> Unit,
     modifier: Modifier = Modifier,
+    positionState: PlaybackPositionState? = null,
 ) {
     val track = status.track
     val palette = rememberArtworkPalette(track?.artworkUri, seedKey = track?.id)
     var showLyrics by remember { mutableStateOf(false) }
+    val activePositionMs = positionState?.positionMs ?: status.positionMs
+    val activeDurationMs = positionState?.durationMs?.takeIf { it > 0L } ?: status.durationMs
 
     Box(modifier = modifier.fillMaxSize()) {
         BlurredArtworkBackground(
@@ -142,6 +146,8 @@ fun NowPlayingScreen(
                     onNext = onNext,
                     onPrevious = onPrevious,
                     onSeek = onSeek,
+                    positionMs = activePositionMs,
+                    durationMs = activeDurationMs,
                     onCloseLyrics = { showLyrics = false },
                     onImportLyrics = onImportLyrics,
                     onAdjustLyricsOffset = onAdjustLyricsOffset,
@@ -189,8 +195,8 @@ fun NowPlayingScreen(
 
                 Spacer(Modifier.height(12.dp))
                 NowPlayingScrubber(
-                    positionMs = status.positionMs,
-                    durationMs = status.durationMs,
+                    positionMs = activePositionMs,
+                    durationMs = activeDurationMs,
                     onSeek = onSeek,
                 )
 
@@ -243,6 +249,8 @@ private fun NowPlayingLyricsPage(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onSeek: (Long) -> Unit,
+    positionMs: Long,
+    durationMs: Long,
     onCloseLyrics: () -> Unit,
     onImportLyrics: () -> Unit,
     onAdjustLyricsOffset: (Long) -> Unit,
@@ -267,7 +275,7 @@ private fun NowPlayingLyricsPage(
                 is EchoLyricsLoadState.Error -> LyricsEmptyState(lyricsState.message, onImportLyrics)
                 is EchoLyricsLoadState.Ready -> LyricsLineList(
                     lyrics = lyricsState.lyrics,
-                    positionMs = status.positionMs,
+                    positionMs = positionMs,
                     onSeek = onSeek,
                     modifier = Modifier.fillMaxSize(),
                 )
@@ -284,8 +292,8 @@ private fun NowPlayingLyricsPage(
             Spacer(Modifier.height(10.dp))
         }
         NowPlayingScrubber(
-            positionMs = status.positionMs,
-            durationMs = status.durationMs,
+            positionMs = positionMs,
+            durationMs = durationMs,
             onSeek = onSeek,
         )
         Spacer(Modifier.height(4.dp))
