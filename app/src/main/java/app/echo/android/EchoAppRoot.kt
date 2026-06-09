@@ -44,6 +44,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,6 +67,8 @@ import app.echo.android.feature.library.LibraryScreen
 import app.echo.android.feature.player.MiniPlayer
 import app.echo.android.feature.player.NowPlayingScreen
 import app.echo.android.feature.settings.DiagnosticsScreen
+import app.echo.android.feature.settings.SettingsScreen
+import app.echo.android.data.EchoPlaybackSettings
 import app.echo.android.model.connect.EchoRemoteCommand
 import app.echo.android.model.connect.EchoRemoteEndpoint
 import app.echo.android.model.connect.EchoRemotePlaybackState
@@ -73,9 +76,35 @@ import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.library.LibraryStats
 import app.echo.android.model.playback.PlaybackPositionState
+import kotlinx.coroutines.launch
 
 private val DockMotionEasing = CubicBezierEasing(0.16f, 1f, 0.30f, 1f)
 private val LyricsDocumentMimeTypes = arrayOf("text/*", "application/xml", "application/octet-stream", "*/*")
+
+private enum class EchoPagerPage {
+    Settings,
+    Now,
+    Library,
+    Connect,
+    Diagnostics,
+}
+
+private val EchoTab.pagerPage: EchoPagerPage
+    get() = when (this) {
+        EchoTab.Now -> EchoPagerPage.Now
+        EchoTab.Library -> EchoPagerPage.Library
+        EchoTab.Connect -> EchoPagerPage.Connect
+        EchoTab.Diagnostics -> EchoPagerPage.Diagnostics
+    }
+
+private val EchoPagerPage.dockTab: EchoTab?
+    get() = when (this) {
+        EchoPagerPage.Now -> EchoTab.Now
+        EchoPagerPage.Library -> EchoTab.Library
+        EchoPagerPage.Connect -> EchoTab.Connect
+        EchoPagerPage.Diagnostics -> EchoTab.Diagnostics
+        EchoPagerPage.Settings -> null
+    }
 
 @Composable
 fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
@@ -106,6 +135,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     val remoteClient = remember { EchoRemoteClient() }
     val remoteStatus by remoteClient.status.collectAsStateWithLifecycle()
     val playbackStatus by viewModel.playbackStatus.collectAsStateWithLifecycle()
+    val playbackSettings by viewModel.playbackSettings.collectAsStateWithLifecycle(EchoPlaybackSettings())
     val playbackPosition by viewModel.playbackPosition.collectAsStateWithLifecycle()
     val lyricsState by viewModel.lyricsState.collectAsStateWithLifecycle()
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
@@ -123,6 +153,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     }
     var selectedAlbum by remember { mutableStateOf<AlbumSummary?>(null) }
     var selectedArtist by remember { mutableStateOf<ArtistSummary?>(null) }
+    var detailReturnPage by remember { mutableStateOf<EchoPagerPage?>(null) }
     val selectedAlbumKey = selectedAlbum?.albumKey
     val selectedArtistKey = selectedArtist?.artistKey
     val albumDetailTracks = selectedAlbumKey?.let { albumKey ->
@@ -134,14 +165,32 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     var selectedTab by remember { mutableIntStateOf(EchoTab.Now.ordinal) }
     var bottomDockExpanded by remember { mutableStateOf(true) }
     var nowPlayingExpanded by remember { mutableStateOf(false) }
+    val libraryDetailOpen = selectedAlbum != null || selectedArtist != null
 
     // 四个主页面横向滑动切换，与底部 dock 双向联动
-    val tabPagerState = rememberPagerState(initialPage = selectedTab, pageCount = { EchoTab.entries.size })
-    LaunchedEffect(selectedTab) {
-        if (tabPagerState.currentPage != selectedTab) tabPagerState.animateScrollToPage(selectedTab)
+    val tabPagerState = rememberPagerState(
+        initialPage = EchoPagerPage.Now.ordinal,
+        pageCount = { EchoPagerPage.entries.size },
+    )
+    val appScope = rememberCoroutineScope()
+    fun navigateToPage(page: EchoPagerPage) {
+        page.dockTab?.let { selectedTab = it.ordinal }
+        appScope.launch {
+            if (tabPagerState.currentPage != page.ordinal) tabPagerState.animateScrollToPage(page.ordinal)
+        }
+    }
+    fun selectDockTab(tab: EchoTab) = navigateToPage(tab.pagerPage)
+    fun closeLibraryDetail() {
+        val returnPage = detailReturnPage ?: EchoPagerPage.Library
+        detailReturnPage = null
+        selectedAlbum = null
+        selectedArtist = null
+        navigateToPage(returnPage)
     }
     LaunchedEffect(tabPagerState.settledPage) {
-        if (tabPagerState.settledPage != selectedTab) selectedTab = tabPagerState.settledPage
+        EchoPagerPage.entries[tabPagerState.settledPage].dockTab?.let { settledTab ->
+            if (settledTab.ordinal != selectedTab) selectedTab = settledTab.ordinal
+        }
     }
 
     LaunchedEffect(hasAudioPermission) {
@@ -151,6 +200,12 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     }
 
     BackHandler(enabled = nowPlayingExpanded) { nowPlayingExpanded = false }
+    BackHandler(enabled = !nowPlayingExpanded && libraryDetailOpen) {
+        closeLibraryDetail()
+    }
+    BackHandler(enabled = !nowPlayingExpanded && tabPagerState.currentPage == EchoPagerPage.Settings.ordinal) {
+        selectDockTab(EchoTab.Now)
+    }
 
     EchoMobileTheme(darkTheme = isSystemInDarkTheme()) {
         Box(Modifier.fillMaxSize()) {
@@ -160,10 +215,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             ) {
                 HorizontalPager(
                     state = tabPagerState,
+                    userScrollEnabled = !libraryDetailOpen,
                     modifier = Modifier.fillMaxSize(),
                 ) { page ->
-                    when (EchoTab.entries[page]) {
-                        EchoTab.Library -> LibraryScreen(
+                    when (EchoPagerPage.entries[page]) {
+                        EchoPagerPage.Library -> LibraryScreen(
                                 hasPermission = hasAudioPermission,
                                 scanState = scanState,
                                 tracks = tracks,
@@ -183,20 +239,19 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onPlayArtist = { artist -> viewModel.playArtist(artist.artistKey) },
                                 onShuffleArtist = { artist -> viewModel.shuffleArtist(artist.artistKey) },
                                 onOpenAlbum = { album ->
+                                    detailReturnPage = EchoPagerPage.Library
                                     selectedArtist = null
                                     selectedAlbum = album
                                 },
                                 onOpenArtist = { artist ->
+                                    detailReturnPage = EchoPagerPage.Library
                                     selectedAlbum = null
                                     selectedArtist = artist
                                 },
-                                onCloseDetail = {
-                                    selectedAlbum = null
-                                    selectedArtist = null
-                                },
+                                onCloseDetail = { closeLibraryDetail() },
                             )
 
-                        EchoTab.Now -> HomeScreen(
+                        EchoPagerPage.Now -> HomeScreen(
                                 status = playbackStatus,
                                 trackCount = libraryStats.trackCount,
                                 albumCount = libraryStats.albumCount,
@@ -216,20 +271,33 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                     viewModel.refreshLibrary()
                                 },
                                 onOpenAlbum = { album ->
+                                    detailReturnPage = EchoPagerPage.Now
                                     selectedArtist = null
                                     selectedAlbum = album
-                                    selectedTab = EchoTab.Library.ordinal
+                                    selectDockTab(EchoTab.Library)
                                 },
                                 onOpenArtist = { artist ->
+                                    detailReturnPage = EchoPagerPage.Now
                                     selectedAlbum = null
                                     selectedArtist = artist
-                                    selectedTab = EchoTab.Library.ordinal
+                                    selectDockTab(EchoTab.Library)
                                 },
-                                onOpenLibrary = { selectedTab = EchoTab.Library.ordinal },
-                                onOpenConnect = { selectedTab = EchoTab.Connect.ordinal },
+                                onOpenLibrary = { selectDockTab(EchoTab.Library) },
+                                onOpenConnect = { selectDockTab(EchoTab.Connect) },
                             )
 
-                        EchoTab.Connect -> ConnectScreen(
+                        EchoPagerPage.Settings -> SettingsScreen(
+                                status = playbackStatus,
+                                trackCount = libraryStats.trackCount,
+                                albumCount = libraryStats.albumCount,
+                                artistCount = libraryStats.artistCount,
+                                showLyricsControlDeck = playbackSettings.showLyricsControlDeck,
+                                onShowLyricsControlDeckChange = viewModel::setShowLyricsControlDeck,
+                                onOpenLibrary = { selectDockTab(EchoTab.Library) },
+                                onOpenConnect = { selectDockTab(EchoTab.Connect) },
+                            )
+
+                        EchoPagerPage.Connect -> ConnectScreen(
                                 remoteState = remoteStatus.connectionState,
                                 pcTitle = remoteStatus.endpoint?.name ?: "PC ECHO",
                                 trackTitle = remoteStatus.playback.track?.title ?: "未连接",
@@ -251,7 +319,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onDisconnect = remoteClient::disconnect,
                             )
 
-                        EchoTab.Diagnostics -> DiagnosticsScreen(status = playbackStatus)
+                        EchoPagerPage.Diagnostics -> DiagnosticsScreen(status = playbackStatus)
                     }
                 }
                 Column(
@@ -288,7 +356,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 selectedTab = selectedTab,
                                 onPlayPause = viewModel::playPause,
                                 onHideDock = { bottomDockExpanded = false },
-                                onSelectTab = { selectedTab = it },
+                                onSelectTab = { selectDockTab(EchoTab.entries[it]) },
                                 onExpand = { nowPlayingExpanded = true },
                                 onNext = viewModel::skipNext,
                                 onPrevious = viewModel::skipPrevious,
@@ -326,6 +394,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     status = playbackStatus,
                     positionState = playbackPosition,
                     lyricsState = lyricsState,
+                    showLyricsControlDeck = playbackSettings.showLyricsControlDeck,
                     onDismiss = { nowPlayingExpanded = false },
                     onPlayPause = viewModel::playPause,
                     onNext = viewModel::skipNext,
@@ -337,17 +406,19 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     onResetLyricsOffset = viewModel::resetLyricsOffset,
                     onOpenArtist = {
                         viewModel.openCurrentPlaybackArtist { artist ->
+                            detailReturnPage = EchoTab.entries[selectedTab].pagerPage
                             selectedAlbum = null
                             selectedArtist = artist
-                            selectedTab = EchoTab.Library.ordinal
+                            selectDockTab(EchoTab.Library)
                             nowPlayingExpanded = false
                         }
                     },
                     onOpenAlbum = {
                         viewModel.openCurrentPlaybackAlbum { album ->
+                            detailReturnPage = EchoTab.entries[selectedTab].pagerPage
                             selectedArtist = null
                             selectedAlbum = album
-                            selectedTab = EchoTab.Library.ordinal
+                            selectDockTab(EchoTab.Library)
                             nowPlayingExpanded = false
                         }
                     },
@@ -442,7 +513,7 @@ private fun RoundDockButton(
 ) {
     Box(
         modifier = Modifier
-            .size(62.dp)
+            .size(48.dp)
             .shadow(
                 elevation = 9.dp,
                 shape = CircleShape,
@@ -459,7 +530,7 @@ private fun RoundDockButton(
             imageVector = icon,
             contentDescription = description,
             tint = Color(0xFFFF2D55),
-            modifier = Modifier.size(31.dp),
+            modifier = Modifier.size(24.dp),
         )
     }
 }

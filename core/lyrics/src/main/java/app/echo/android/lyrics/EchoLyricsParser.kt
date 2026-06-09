@@ -374,5 +374,5 @@ object EchoLyricsParser {
     private val TtmlSpanRegex = Regex("""(?is)<span\b([^>]*)>(.*?)</span>""")
     private val TtmlMetadataRegex = Regex("""(?is)<metadata\b[^>]*>.*?<([^/>:\s]+)[^>]*>(.*?)</\1>.*?</metadata>""")
     private val TagRegex = Regex("""<[^>]+>""")
-    private val AssOverrideTagRegex = Regex("""\{[^}]*}""")
+    private val AssOverrideTagRegex = Regex("""\{[^}]*\}""")
 }

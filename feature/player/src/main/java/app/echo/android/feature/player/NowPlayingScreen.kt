@@ -100,6 +100,7 @@ private val OnArtChip = Color.White.copy(alpha = 0.16f)
 fun NowPlayingScreen(
     status: EchoPlaybackStatus,
     lyricsState: EchoLyricsLoadState,
+    showLyricsControlDeck: Boolean,
     onDismiss: () -> Unit,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
@@ -142,6 +143,7 @@ fun NowPlayingScreen(
                 NowPlayingLyricsPage(
                     status = status,
                     lyricsState = lyricsState,
+                    showLyricsControlDeck = showLyricsControlDeck,
                     onPlayPause = onPlayPause,
                     onNext = onNext,
                     onPrevious = onPrevious,
@@ -245,6 +247,7 @@ private fun NowPlayingTopBar(onDismiss: () -> Unit) {
 private fun NowPlayingLyricsPage(
     status: EchoPlaybackStatus,
     lyricsState: EchoLyricsLoadState,
+    showLyricsControlDeck: Boolean,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
@@ -282,14 +285,16 @@ private fun NowPlayingLyricsPage(
             }
         }
 
-        readyLyrics?.let { lyrics ->
-            LyricsControlDeck(
-                lyrics = lyrics,
-                onImportLyrics = onImportLyrics,
-                onAdjustLyricsOffset = onAdjustLyricsOffset,
-                onResetLyricsOffset = onResetLyricsOffset,
-            )
-            Spacer(Modifier.height(10.dp))
+        if (showLyricsControlDeck) {
+            readyLyrics?.let { lyrics ->
+                LyricsControlDeck(
+                    lyrics = lyrics,
+                    onImportLyrics = onImportLyrics,
+                    onAdjustLyricsOffset = onAdjustLyricsOffset,
+                    onResetLyricsOffset = onResetLyricsOffset,
+                )
+                Spacer(Modifier.height(10.dp))
+            }
         }
         NowPlayingScrubber(
             positionMs = positionMs,

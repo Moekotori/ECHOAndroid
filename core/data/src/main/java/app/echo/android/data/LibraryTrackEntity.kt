@@ -34,6 +34,7 @@ data class LibraryTrackEntity(
     val year: Int?,
     val mimeType: String?,
     val sizeBytes: Long,
+    val sampleRateHz: Int? = null,
     val dateModifiedSeconds: Long,
     val source: String = "mediastore",
     val relativePath: String? = null,

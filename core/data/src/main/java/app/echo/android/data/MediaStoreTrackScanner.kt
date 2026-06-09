@@ -2,6 +2,7 @@ package app.echo.android.data
 
 import android.content.ContentResolver
 import android.database.Cursor
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -92,10 +93,29 @@ class MediaStoreTrackScanner(
             year = getLongOrNull(columns.yearIndex)?.toInt()?.takeIf { it > 0 },
             mimeType = getStringOrNull(columns.mimeIndex),
             sizeBytes = getLongOrNull(columns.sizeIndex) ?: 0L,
+            sampleRateHz = sampleRateHz(contentUri),
             dateModifiedSeconds = getLongOrNull(columns.modifiedIndex) ?: 0L,
             relativePath = relativePath(columns),
         ).withScanMetadata()
     }
+
+    private fun sampleRateHz(contentUri: String): Int? =
+        runCatching {
+            val uri = Uri.parse(contentUri)
+            val retriever = MediaMetadataRetriever()
+            try {
+                contentResolver.openFileDescriptor(uri, "r")?.use { descriptor ->
+                    retriever.setDataSource(descriptor.fileDescriptor)
+                    retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)
+                        ?.toIntOrNull()
+                        ?.takeIf { it > 0 }
+                }
+            } finally {
+                retriever.release()
+            }
+        }.onFailure { error ->
+            Log.d(TAG, "Unable to read audio sample rate for $contentUri.", error)
+        }.getOrNull()
 
     private fun Cursor.relativePath(columns: MediaStoreColumns): String? =
         when {

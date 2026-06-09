@@ -30,7 +30,6 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Devices
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.LibraryMusic
-import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -123,7 +122,6 @@ fun HomeScreen(
             RoonHomeHeader(
                 status = status,
                 compact = compactViewport,
-                onOpenLibrary = onOpenLibrary,
             )
             Box(Modifier.padding(horizontal = 24.dp)) {
                 LibraryOverview(

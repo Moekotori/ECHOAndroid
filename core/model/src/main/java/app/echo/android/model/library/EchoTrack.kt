@@ -14,6 +14,7 @@ data class EchoTrack(
     val year: Int? = null,
     val mimeType: String? = null,
     val sizeBytes: Long = 0L,
+    val sampleRateHz: Int? = null,
     val dateModifiedSeconds: Long = 0L,
     val source: LibrarySource = LibrarySource.MediaStore,
 )

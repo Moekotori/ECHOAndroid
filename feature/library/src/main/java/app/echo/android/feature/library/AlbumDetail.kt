@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.Icon
@@ -33,8 +36,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,6 +63,12 @@ import app.echo.android.model.library.EchoTrack
 private val AlbumDetailBottomPadding = 168.dp
 private val AlbumOnArtwork = Color.White
 private val AlbumOnArtworkMuted = Color.White.copy(alpha = 0.70f)
+private val AlbumTextShadow = Shadow(
+    color = Color.Black.copy(alpha = 0.28f),
+    offset = Offset(0f, 1.5f),
+    blurRadius = 8f,
+)
+private const val DetailBackSwipeThresholdPx = 120f
 
 @Composable
 internal fun AlbumDetailPage(
@@ -69,8 +82,12 @@ internal fun AlbumDetailPage(
 ) {
     val palette = rememberArtworkPalette(album.artworkUri, seedKey = album.albumKey)
     val loadedTracks = tracks.itemSnapshotList.items
-    Box(modifier = modifier.fillMaxSize()) {
-        BlurredArtworkBackground(
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .detailBackSwipe(onBack),
+    ) {
+        AlbumDetailLightBackground(
             artworkUri = album.artworkUri,
             palette = palette,
             modifier = Modifier.fillMaxSize(),
@@ -96,7 +113,7 @@ internal fun AlbumDetailPage(
                     Spacer(Modifier.height(18.dp))
                     AlbumDetailInsights(
                         source = sourceInsight(loadedTracks),
-                        info = albumInfoInsight(album, loadedTracks),
+                        info = formatInsight(loadedTracks),
                         palette = palette,
                     )
                     Spacer(Modifier.height(22.dp))
@@ -156,15 +173,19 @@ internal fun ArtistDetailPage(
 ) {
     val palette = rememberArtworkPalette(artist.artworkUri, seedKey = artist.artistKey)
     val loadedTracks = tracks.itemSnapshotList.items
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .detailBackSwipe(onBack),
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(440.dp)
                 .background(
                     Brush.verticalGradient(
-                        0f to palette.vibrant.copy(alpha = 0.55f),
-                        0.45f to palette.deep.copy(alpha = 0.30f),
+                        0f to palette.vibrant.copy(alpha = 0.34f),
+                        0.45f to palette.deep.copy(alpha = 0.18f),
                         1f to Color.Transparent,
                     ),
                 ),
@@ -191,7 +212,7 @@ internal fun ArtistDetailPage(
                     Spacer(Modifier.height(18.dp))
                     AlbumDetailInsights(
                         source = sourceInsight(loadedTracks),
-                        info = artistInfoInsight(artist, loadedTracks),
+                        info = formatInsight(loadedTracks),
                         palette = palette,
                     )
                     Spacer(Modifier.height(22.dp))
@@ -235,6 +256,52 @@ internal fun ArtistDetailPage(
     }
 }
 
+private fun Modifier.detailBackSwipe(onBack: () -> Unit): Modifier = pointerInput(onBack) {
+    var dragX = 0f
+    detectHorizontalDragGestures(
+        onDragStart = { dragX = 0f },
+        onHorizontalDrag = { _, dragAmount ->
+            dragX += dragAmount
+        },
+        onDragEnd = {
+            if (kotlin.math.abs(dragX) >= DetailBackSwipeThresholdPx) onBack()
+        },
+        onDragCancel = { dragX = 0f },
+    )
+}
+
+@Composable
+private fun AlbumDetailLightBackground(
+    artworkUri: String?,
+    palette: ArtworkPalette,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier) {
+        BlurredArtworkBackground(
+            artworkUri = artworkUri,
+            palette = palette,
+            modifier = Modifier.fillMaxSize(),
+            artworkScale = 1.12f,
+            artworkBlur = 14.dp,
+            artworkAlpha = 0.84f,
+            overlayStartAlpha = 0f,
+            overlayMidAlpha = 0f,
+            overlayEndAlpha = 0.03f,
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        0f to Color.White.copy(alpha = 0.30f),
+                        0.42f to Color.White.copy(alpha = 0.22f),
+                        1f to Color(0xFFE5F5FA).copy(alpha = 0.18f),
+                    ),
+                ),
+        )
+    }
+}
+
 @Composable
 private fun ArtistHero(artist: ArtistSummary, palette: ArtworkPalette) {
     Column(
@@ -255,7 +322,7 @@ private fun ArtistHero(artist: ArtistSummary, palette: ArtworkPalette) {
         Text(
             artist.name,
             color = RoonInk,
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.headlineSmall.copy(shadow = AlbumTextShadow),
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
             maxLines = 2,
@@ -325,7 +392,9 @@ private fun AlbumHero(
         Text(
             album.title,
             color = titleColor,
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.headlineSmall.copy(
+                shadow = if (onArtworkBackground) AlbumTextShadow else null,
+            ),
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
             maxLines = 2,
@@ -335,7 +404,9 @@ private fun AlbumHero(
         Text(
             album.albumArtist ?: album.artist ?: "未知艺术家",
             color = artistColor,
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleMedium.copy(
+                shadow = if (onArtworkBackground) AlbumTextShadow else null,
+            ),
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
             maxLines = 1,
@@ -345,7 +416,9 @@ private fun AlbumHero(
         Text(
             albumMetaLine(album),
             color = metaColor,
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.labelLarge.copy(
+                shadow = if (onArtworkBackground) AlbumTextShadow else null,
+            ),
             textAlign = TextAlign.Center,
         )
     }
@@ -422,16 +495,30 @@ private fun AlbumDetailInsights(
     palette: ArtworkPalette,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(76.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color.White.copy(alpha = 0.58f))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.78f)), RoundedCornerShape(18.dp))
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        DetailInsightCard(
+        DetailInsightCell(
             insight = source,
+            icon = Icons.Rounded.MusicNote,
             accent = palette.vibrant,
             modifier = Modifier.weight(1f),
         )
-        DetailInsightCard(
+        Box(
+            modifier = Modifier
+                .width(1.dp)
+                .height(42.dp)
+                .background(Color.White.copy(alpha = 0.66f)),
+        )
+        DetailInsightCell(
             insight = info,
+            icon = Icons.Rounded.GraphicEq,
             accent = palette.deep,
             modifier = Modifier.weight(1f),
         )
@@ -439,42 +526,49 @@ private fun AlbumDetailInsights(
 }
 
 @Composable
-private fun DetailInsightCard(
+private fun DetailInsightCell(
     insight: DetailInsight,
+    icon: ImageVector,
     accent: Color,
     modifier: Modifier = Modifier,
 ) {
-    Column(
+    Row(
         modifier = modifier
-            .clip(RoundedCornerShape(18.dp))
-            .background(Color.White.copy(alpha = 0.62f))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.78f)), RoundedCornerShape(18.dp))
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(5.dp),
+            .padding(horizontal = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            insight.title,
-            color = accent,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.88f),
+            modifier = Modifier.size(26.dp),
         )
-        Text(
-            insight.primary,
-            color = RoonInk,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-            insight.secondary,
-            color = RoonMuted,
-            style = MaterialTheme.typography.labelMedium,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
+            Text(
+                insight.title,
+                color = accent,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                insight.primary,
+                color = RoonInk,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                insight.secondary,
+                color = RoonMuted,
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 
@@ -516,16 +610,7 @@ private fun sourceInsight(tracks: List<EchoTrack>): DetailInsight {
         .singleOrNull()
         ?.let(::sourceLabel)
         ?: if (tracks.isEmpty()) "本机媒体库" else "多来源"
-    val formats = tracks
-        .mapNotNull { formatMimeType(it.mimeType) }
-        .distinct()
-        .take(3)
-    val size = tracks.sumOf { it.sizeBytes }.takeIf { it > 0L }?.let(::formatFileSize)
-    val secondary = buildList {
-        if (formats.isNotEmpty()) add(formats.joinToString(" / "))
-        size?.let { add(it) }
-        if (isEmpty()) add("等待曲目信息")
-    }.joinToString(" · ")
+    val secondary = if (tracks.isEmpty()) "等待曲目信息" else "${tracks.size} 首"
     return DetailInsight("来源", sourceLabel, secondary)
 }
 
@@ -553,6 +638,18 @@ private fun artistInfoInsight(artist: ArtistSummary, tracks: List<EchoTrack>): D
     return DetailInsight("信息", primary, secondary)
 }
 
+private fun formatInsight(tracks: List<EchoTrack>): DetailInsight {
+    val formats = tracks.mapNotNull { formatMimeType(it.mimeType) }.distinct().take(3)
+    val primary = formats.takeIf { it.isNotEmpty() }?.joinToString(" / ") ?: "格式待解析"
+    val size = tracks.sumOf { it.sizeBytes }.takeIf { it > 0L }?.let(::formatFileSize)
+    val sampleRate = formatSampleRates(tracks.mapNotNull { it.sampleRateHz?.takeIf { hz -> hz > 0 } }.distinct())
+    val secondary = buildList {
+        size?.let { add(it) }
+        add(sampleRate ?: "采样率待解析")
+    }.joinToString(" · ")
+    return DetailInsight("格式", primary, secondary)
+}
+
 private fun sourceLabel(sourceId: String): String = when (sourceId.lowercase()) {
     "mediastore" -> "本机媒体库"
     "unknown" -> "未知来源"
@@ -573,6 +670,25 @@ private fun formatMimeType(mimeType: String?): String? {
         else -> raw.uppercase()
     }
 }
+
+private fun formatSampleRates(sampleRates: List<Int>): String? {
+    if (sampleRates.isEmpty()) return null
+    val sorted = sampleRates.sorted()
+    val first = sorted.first()
+    val last = sorted.last()
+    return if (first == last) {
+        formatSampleRate(first)
+    } else {
+        "${formatSampleRate(first)}-${formatSampleRate(last)}"
+    }
+}
+
+private fun formatSampleRate(hz: Int): String =
+    if (hz % 1000 == 0) {
+        "${hz / 1000} kHz"
+    } else {
+        String.format("%.1f kHz", hz / 1000.0)
+    }
 
 private fun formatFileSize(bytes: Long): String {
     if (bytes < 1024L) return "$bytes B"

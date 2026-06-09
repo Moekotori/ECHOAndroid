@@ -433,6 +433,12 @@ fun BlurredArtworkBackground(
     artworkUri: String?,
     palette: ArtworkPalette,
     modifier: Modifier = Modifier,
+    artworkScale: Float = 1.4f,
+    artworkBlur: Dp = 52.dp,
+    artworkAlpha: Float = 0.7f,
+    overlayStartAlpha: Float = 0.16f,
+    overlayMidAlpha: Float = 0.05f,
+    overlayEndAlpha: Float = 0.42f,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         // 取色底，保证无封面/低于 API 31 时也有沉浸色
@@ -456,9 +462,9 @@ fun BlurredArtworkBackground(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxSize()
-                    .scale(1.4f)
-                    .blur(52.dp)
-                    .alpha(0.7f),
+                    .scale(artworkScale)
+                    .blur(artworkBlur)
+                    .alpha(artworkAlpha),
             )
         }
         // 压暗的毛玻璃罩，保证白色文字与控件可读
@@ -468,9 +474,9 @@ fun BlurredArtworkBackground(
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            Color.Black.copy(alpha = 0.16f),
-                            Color.Black.copy(alpha = 0.05f),
-                            Color.Black.copy(alpha = 0.42f),
+                            Color.Black.copy(alpha = overlayStartAlpha),
+                            Color.Black.copy(alpha = overlayMidAlpha),
+                            Color.Black.copy(alpha = overlayEndAlpha),
                         ),
                     ),
                 ),

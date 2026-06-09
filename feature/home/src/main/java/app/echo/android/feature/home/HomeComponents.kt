@@ -1,14 +1,17 @@
 package app.echo.android.feature.home
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -21,16 +24,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Devices
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.LibraryMusic
-import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -139,27 +142,18 @@ internal fun LibraryMetric(
 internal fun RoonHomeHeader(
     status: EchoPlaybackStatus,
     compact: Boolean,
-    onOpenLibrary: () -> Unit,
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 22.dp, vertical = if (compact) 10.dp else 16.dp),
-        verticalArrangement = Arrangement.spacedBy(if (compact) 14.dp else 22.dp),
+            .padding(
+                start = 22.dp,
+                top = if (compact) 4.dp else 8.dp,
+                end = 22.dp,
+                bottom = if (compact) 8.dp else 12.dp,
+            ),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onOpenLibrary, modifier = Modifier.size(42.dp)) {
-                    Icon(Icons.Rounded.Menu, contentDescription = "打开曲库", tint = RoonMuted, modifier = Modifier.size(32.dp))
-                }
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null, tint = Color(0xFFD5D5D7), modifier = Modifier.size(30.dp))
-            }
-            Icon(Icons.Rounded.Search, contentDescription = "搜索", tint = RoonMuted, modifier = Modifier.size(34.dp))
-        }
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -229,20 +223,20 @@ internal fun RoonRecentActivitySection(
                 onSelect = { selectedMode = it },
             )
         }
-        Row(
-            modifier = Modifier
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 18.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 18.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             if (albums.isEmpty()) {
-                RecentActivityEmptyAlbumCard(
-                    title = if (selectedMode == RecentActivityMode.Played) "\u6682\u65e0\u5df2\u64ad\u653e" else "\u6682\u65e0\u65b0\u589e\u4e13\u8f91",
-                    subtitle = if (selectedMode == RecentActivityMode.Played) "\u64ad\u653e\u4e13\u8f91\u540e\u663e\u793a" else "\u626b\u63cf\u66f2\u5e93\u540e\u663e\u793a",
-                    onClick = onOpenLibrary,
-                )
+                item {
+                    RecentActivityEmptyAlbumCard(
+                        title = if (selectedMode == RecentActivityMode.Played) "\u6682\u65e0\u5df2\u64ad\u653e" else "\u6682\u65e0\u65b0\u589e\u4e13\u8f91",
+                        subtitle = if (selectedMode == RecentActivityMode.Played) "\u64ad\u653e\u4e13\u8f91\u540e\u663e\u793a" else "\u626b\u63cf\u66f2\u5e93\u540e\u663e\u793a",
+                        onClick = onOpenLibrary,
+                    )
+                }
             } else {
-                albums.forEach { album ->
+                items(albums, key = { it.albumKey }) { album ->
                     RecentAlbumCard(
                         album = album,
                         mode = selectedMode,
@@ -337,6 +331,7 @@ internal fun RecentPlayedAlbumsTab() {
 }
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 internal fun RecentAlbumCard(
     album: AlbumSummary,
     mode: RecentActivityMode,
@@ -345,7 +340,7 @@ internal fun RecentAlbumCard(
     val artistLabel = album.albumArtist ?: album.artist ?: "未知艺人"
     Column(
         modifier = Modifier
-            .width(128.dp)
+            .width(124.dp)
             .clickable(onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -361,11 +356,16 @@ internal fun RecentAlbumCard(
         )
         Text(
             album.title,
+            modifier = Modifier.basicMarquee(
+                iterations = Int.MAX_VALUE,
+                initialDelayMillis = 900,
+                repeatDelayMillis = 1800,
+            ),
             color = RoonInk,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.ExtraBold,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
+            maxLines = 1,
+            overflow = TextOverflow.Clip,
         )
         Text(
             recentAlbumSubtitle(album, mode, artistLabel),
@@ -622,16 +622,16 @@ internal fun HomeAlbumRecommendationsSection(
                 }
             }
         }
-        Row(
-            modifier = Modifier
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 18.dp),
-            horizontalArrangement = Arrangement.spacedBy(18.dp),
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 18.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             if (albums.isEmpty()) {
-                EmptyRecentAlbumsCard(onClick = onOpenLibrary)
+                item {
+                    EmptyRecentAlbumsCard(onClick = onOpenLibrary)
+                }
             } else {
-                albums.forEach { album ->
+                items(albums, key = { it.albumKey }) { album ->
                     RecommendedAlbumCard(
                         album = album,
                         onClick = { onOpenAlbum(album) },
@@ -643,6 +643,7 @@ internal fun HomeAlbumRecommendationsSection(
 }
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 internal fun RecommendedAlbumCard(
     album: AlbumSummary,
     onClick: () -> Unit,
@@ -650,7 +651,7 @@ internal fun RecommendedAlbumCard(
     val artistLabel = album.albumArtist ?: album.artist ?: "未知艺人"
     Column(
         modifier = Modifier
-            .width(118.dp)
+            .width(122.dp)
             .clickable(onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
@@ -666,11 +667,16 @@ internal fun RecommendedAlbumCard(
         )
         Text(
             album.title,
+            modifier = Modifier.basicMarquee(
+                iterations = Int.MAX_VALUE,
+                initialDelayMillis = 900,
+                repeatDelayMillis = 1800,
+            ),
             color = RoonInk,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.ExtraBold,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
+            maxLines = 1,
+            overflow = TextOverflow.Clip,
         )
         Text(
             artistLabel,
@@ -1168,7 +1174,7 @@ internal fun HomeTopChrome(onOpenLibrary: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         GlassIconButton(
-            icon = Icons.Rounded.Menu,
+            icon = Icons.Rounded.LibraryMusic,
             description = "打开曲库",
             onClick = onOpenLibrary,
         )

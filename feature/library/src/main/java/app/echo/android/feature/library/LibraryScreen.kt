@@ -25,8 +25,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -45,9 +43,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,7 +78,6 @@ import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.LibraryScanProgress
-import kotlinx.coroutines.launch
 
 internal enum class LibraryViewMode(
     val label: String,
@@ -117,8 +114,8 @@ fun LibraryScreen(
     onOpenArtist: (ArtistSummary) -> Unit,
     onCloseDetail: () -> Unit,
 ) {
-    val pagerState = rememberPagerState(pageCount = { LibraryViewMode.entries.size })
-    val scope = rememberCoroutineScope()
+    var selectedModeIndex by remember { mutableIntStateOf(LibraryViewMode.Songs.ordinal) }
+    val selectedMode = LibraryViewMode.entries[selectedModeIndex]
 
     // 专辑详情走全屏沉浸式页面，不套用曲库的 PageChrome
     val activeAlbumDetail = selectedAlbum
@@ -173,36 +170,27 @@ fun LibraryScreen(
             tracks.loadState.refresh is LoadState.Loading -> {
                 LibraryBrowserHeader(
                     scanState = scanState,
-                    selectedMode = LibraryViewMode.entries[pagerState.currentPage],
-                    onSelectMode = { mode ->
-                        scope.launch { pagerState.animateScrollToPage(mode.ordinal) }
-                    },
+                    selectedMode = selectedMode,
+                    onSelectMode = { mode -> selectedModeIndex = mode.ordinal },
                 )
                 EmptyState("正在加载曲库...")
             }
             tracks.loadState.refresh is LoadState.Error -> {
                 LibraryBrowserHeader(
                     scanState = scanState,
-                    selectedMode = LibraryViewMode.entries[pagerState.currentPage],
-                    onSelectMode = { mode ->
-                        scope.launch { pagerState.animateScrollToPage(mode.ordinal) }
-                    },
+                    selectedMode = selectedMode,
+                    onSelectMode = { mode -> selectedModeIndex = mode.ordinal },
                 )
                 EmptyState("曲库查询失败。")
             }
             else -> {
                 LibraryBrowserHeader(
                     scanState = scanState,
-                    selectedMode = LibraryViewMode.entries[pagerState.currentPage],
-                    onSelectMode = { mode ->
-                        scope.launch { pagerState.animateScrollToPage(mode.ordinal) }
-                    },
+                    selectedMode = selectedMode,
+                    onSelectMode = { mode -> selectedModeIndex = mode.ordinal },
                 )
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier.weight(1f),
-                ) { page ->
-                    when (LibraryViewMode.entries[page]) {
+                Box(modifier = Modifier.weight(1f)) {
+                    when (selectedMode) {
                         LibraryViewMode.Songs -> {
                             if (tracks.itemCount == 0) {
                                 LibraryBootstrapState()

@@ -18,6 +18,7 @@ fun LibraryTrackEntity.toEchoTrack(): EchoTrack =
         year = year,
         mimeType = mimeType,
         sizeBytes = sizeBytes,
+        sampleRateHz = sampleRateHz,
         dateModifiedSeconds = dateModifiedSeconds,
         source = LibrarySource(source),
     )
@@ -37,6 +38,7 @@ fun EchoTrack.toLibraryTrackEntity(): LibraryTrackEntity =
         year = year,
         mimeType = mimeType,
         sizeBytes = sizeBytes,
+        sampleRateHz = sampleRateHz,
         dateModifiedSeconds = dateModifiedSeconds,
         source = source.id,
         relativePath = null,
@@ -62,6 +64,7 @@ internal fun buildTrackFingerprint(track: EchoTrack): String =
     listOf(
         track.uri,
         track.sizeBytes.toString(),
+        track.sampleRateHz?.toString().orEmpty(),
         track.dateModifiedSeconds.toString(),
         track.title,
         track.artist,
@@ -78,6 +81,7 @@ internal fun buildTrackFingerprint(track: LibraryTrackEntity): String =
     listOf(
         track.contentUri,
         track.sizeBytes.toString(),
+        track.sampleRateHz?.toString().orEmpty(),
         track.dateModifiedSeconds.toString(),
         track.title,
         track.artist,

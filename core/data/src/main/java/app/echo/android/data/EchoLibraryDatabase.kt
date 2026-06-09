@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [LibraryTrackEntity::class, LibraryTrackFtsEntity::class],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 abstract class EchoLibraryDatabase : RoomDatabase() {
@@ -18,7 +18,14 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
     companion object {
         fun create(context: Context): EchoLibraryDatabase =
             Room.databaseBuilder(context, EchoLibraryDatabase::class.java, "echo-library.db")
-                .addMigrations(Migration1To2, Migration2To3, Migration3To4, Migration4To5, Migration5To6)
+                .addMigrations(
+                    Migration1To2,
+                    Migration2To3,
+                    Migration3To4,
+                    Migration4To5,
+                    Migration5To6,
+                    Migration6To7,
+                )
                 .build()
 
         internal val Migration1To2 = object : Migration(1, 2) {
@@ -116,6 +123,12 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                     ON library_tracks(source, relativePath)
                     """.trimIndent(),
                 )
+            }
+        }
+
+        internal val Migration6To7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE library_tracks ADD COLUMN sampleRateHz INTEGER")
             }
         }
     }

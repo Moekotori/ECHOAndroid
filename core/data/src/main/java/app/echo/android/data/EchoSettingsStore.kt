@@ -13,6 +13,7 @@ private val Context.echoSettings by preferencesDataStore(name = "echo-settings")
 data class EchoPlaybackSettings(
     val preferOffload: Boolean = true,
     val lastOutputRoute: String = "system",
+    val showLyricsControlDeck: Boolean = false,
 )
 
 class EchoSettingsStore(
@@ -23,6 +24,7 @@ class EchoSettingsStore(
             EchoPlaybackSettings(
                 preferOffload = preferences[Keys.PreferOffload] ?: true,
                 lastOutputRoute = preferences[Keys.LastOutputRoute] ?: "system",
+                showLyricsControlDeck = preferences[Keys.ShowLyricsControlDeck] ?: false,
             )
         }
 
@@ -34,8 +36,13 @@ class EchoSettingsStore(
         context.echoSettings.edit { it[Keys.LastOutputRoute] = route }
     }
 
+    suspend fun setShowLyricsControlDeck(enabled: Boolean) {
+        context.echoSettings.edit { it[Keys.ShowLyricsControlDeck] = enabled }
+    }
+
     private object Keys {
         val PreferOffload = booleanPreferencesKey("prefer_offload")
         val LastOutputRoute = stringPreferencesKey("last_output_route")
+        val ShowLyricsControlDeck = booleanPreferencesKey("show_lyrics_control_deck")
     }
 }

@@ -8,6 +8,8 @@ import androidx.media3.common.util.UnstableApi
 import androidx.paging.PagingData
 import app.echo.android.data.EchoLibraryDatabase
 import app.echo.android.data.EchoLibraryRepository
+import app.echo.android.data.EchoPlaybackSettings
+import app.echo.android.data.EchoSettingsStore
 import app.echo.android.data.MediaStoreTrackScanner
 import app.echo.android.lyrics.ImportedLyricsStore
 import app.echo.android.lyrics.LocalLyricsResolver
@@ -37,6 +39,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         database = database,
         scanner = MediaStoreTrackScanner(application.contentResolver),
     )
+    private val settingsStore = EchoSettingsStore(application)
 
     private val libraryController = LibraryController(
         repository = repository,
@@ -70,6 +73,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     val playbackControls: StateFlow<PlaybackControlsState> = playbackController.playbackControls
     val playbackDiagnostics: StateFlow<PlaybackDiagnosticsState> = playbackController.playbackDiagnostics
     val lyricsState: StateFlow<EchoLyricsLoadState> = lyricsController.lyricsState
+    val playbackSettings: Flow<EchoPlaybackSettings> = settingsStore.playbackSettings
 
     private val _recentPlaybackAlbums = MutableStateFlow<List<AlbumSummary>>(emptyList())
     val recentPlaybackAlbums: StateFlow<List<AlbumSummary>> = _recentPlaybackAlbums.asStateFlow()
@@ -203,6 +207,14 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun resetLyricsOffset() {
         lyricsController.resetLyricsOffset(playbackController.currentTrackId)
+    }
+
+    fun setShowLyricsControlDeck(enabled: Boolean) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                settingsStore.setShowLyricsControlDeck(enabled)
+            }
+        }
     }
 
     override fun onCleared() {

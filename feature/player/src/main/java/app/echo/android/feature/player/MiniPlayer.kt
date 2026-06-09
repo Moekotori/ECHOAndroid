@@ -5,8 +5,10 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -20,7 +22,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -57,6 +58,7 @@ import app.echo.android.model.playback.PlaybackPositionState
 import kotlinx.coroutines.launch
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 fun MiniPlayer(
     status: EchoPlaybackStatus,
     onPlayPause: () -> Unit,
@@ -123,13 +125,13 @@ fun MiniPlayer(
                                             when {
                                                 settled <= -threshold -> {
                                                     offsetX.animateTo(-widthPx, tween(160))
-                                                    onNext?.invoke()
+                                                    onNext()
                                                     offsetX.snapTo(widthPx)
                                                     offsetX.animateTo(0f, tween(300))
                                                 }
                                                 settled >= threshold -> {
                                                     offsetX.animateTo(widthPx, tween(160))
-                                                    onPrevious?.invoke()
+                                                    onPrevious()
                                                     offsetX.snapTo(-widthPx)
                                                     offsetX.animateTo(0f, tween(300))
                                                 }
@@ -164,8 +166,13 @@ fun MiniPlayer(
                 ) {
                     Text(
                         status.track?.title ?: "ECHO Mobile",
+                        modifier = Modifier.basicMarquee(
+                            iterations = Int.MAX_VALUE,
+                            initialDelayMillis = 700,
+                            repeatDelayMillis = 1600,
+                        ),
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        overflow = TextOverflow.Clip,
                         fontWeight = FontWeight.SemiBold,
                         color = RoonInk,
                         style = MaterialTheme.typography.bodyLarge,
@@ -207,19 +214,21 @@ fun MiniPlayer(
                     modifier = Modifier.size(29.dp),
                 )
             }
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(CircleShape)
-                    .clickable(onClick = onHideDock ?: {}),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    if (onHideDock != null) Icons.Rounded.KeyboardArrowDown else Icons.AutoMirrored.Rounded.QueueMusic,
-                    contentDescription = if (onHideDock != null) "隐藏底栏" else "播放队列",
-                    tint = Color.Black.copy(alpha = 0.64f),
-                    modifier = Modifier.size(26.dp),
-                )
+            if (onHideDock != null) {
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .clickable(onClick = onHideDock),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Rounded.KeyboardArrowDown,
+                        contentDescription = "隐藏底栏",
+                        tint = Color.Black.copy(alpha = 0.64f),
+                        modifier = Modifier.size(26.dp),
+                    )
+                }
             }
         }
     }

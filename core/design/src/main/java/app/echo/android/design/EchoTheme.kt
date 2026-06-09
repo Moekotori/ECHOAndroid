@@ -7,8 +7,8 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 
 object EchoColors {
     // Roon 风格中性炭灰 + Shakespeare 蓝
@@ -57,25 +57,25 @@ private val EchoLightScheme = lightColorScheme(
     outlineVariant = Color(0xFFDDE0EA),
 )
 
-private val OutfitFontFamily = FontFamily(Font(R.font.outfit))
+private val EchoReadableFontFamily = FontFamily.SansSerif
 
 private val EchoTypography = Typography().let { typography ->
     typography.copy(
-        displayLarge = typography.displayLarge.copy(fontFamily = OutfitFontFamily),
-        displayMedium = typography.displayMedium.copy(fontFamily = OutfitFontFamily),
-        displaySmall = typography.displaySmall.copy(fontFamily = OutfitFontFamily),
-        headlineLarge = typography.headlineLarge.copy(fontFamily = OutfitFontFamily),
-        headlineMedium = typography.headlineMedium.copy(fontFamily = OutfitFontFamily),
-        headlineSmall = typography.headlineSmall.copy(fontFamily = OutfitFontFamily),
-        titleLarge = typography.titleLarge.copy(fontFamily = OutfitFontFamily),
-        titleMedium = typography.titleMedium.copy(fontFamily = OutfitFontFamily),
-        titleSmall = typography.titleSmall.copy(fontFamily = OutfitFontFamily),
-        bodyLarge = typography.bodyLarge.copy(fontFamily = OutfitFontFamily),
-        bodyMedium = typography.bodyMedium.copy(fontFamily = OutfitFontFamily),
-        bodySmall = typography.bodySmall.copy(fontFamily = OutfitFontFamily),
-        labelLarge = typography.labelLarge.copy(fontFamily = OutfitFontFamily),
-        labelMedium = typography.labelMedium.copy(fontFamily = OutfitFontFamily),
-        labelSmall = typography.labelSmall.copy(fontFamily = OutfitFontFamily),
+        displayLarge = typography.displayLarge.copy(fontFamily = EchoReadableFontFamily, fontWeight = FontWeight.SemiBold),
+        displayMedium = typography.displayMedium.copy(fontFamily = EchoReadableFontFamily, fontWeight = FontWeight.SemiBold),
+        displaySmall = typography.displaySmall.copy(fontFamily = EchoReadableFontFamily, fontWeight = FontWeight.SemiBold),
+        headlineLarge = typography.headlineLarge.copy(fontFamily = EchoReadableFontFamily, fontWeight = FontWeight.SemiBold),
+        headlineMedium = typography.headlineMedium.copy(fontFamily = EchoReadableFontFamily, fontWeight = FontWeight.SemiBold),
+        headlineSmall = typography.headlineSmall.copy(fontFamily = EchoReadableFontFamily, fontWeight = FontWeight.SemiBold),
+        titleLarge = typography.titleLarge.copy(fontFamily = EchoReadableFontFamily, fontWeight = FontWeight.SemiBold),
+        titleMedium = typography.titleMedium.copy(fontFamily = EchoReadableFontFamily, fontWeight = FontWeight.Medium),
+        titleSmall = typography.titleSmall.copy(fontFamily = EchoReadableFontFamily, fontWeight = FontWeight.Medium),
+        bodyLarge = typography.bodyLarge.copy(fontFamily = EchoReadableFontFamily, fontWeight = FontWeight.Normal),
+        bodyMedium = typography.bodyMedium.copy(fontFamily = EchoReadableFontFamily, fontWeight = FontWeight.Normal),
+        bodySmall = typography.bodySmall.copy(fontFamily = EchoReadableFontFamily, fontWeight = FontWeight.Normal),
+        labelLarge = typography.labelLarge.copy(fontFamily = EchoReadableFontFamily, fontWeight = FontWeight.Medium),
+        labelMedium = typography.labelMedium.copy(fontFamily = EchoReadableFontFamily, fontWeight = FontWeight.Medium),
+        labelSmall = typography.labelSmall.copy(fontFamily = EchoReadableFontFamily, fontWeight = FontWeight.Medium),
     )
 }
 
