@@ -54,14 +54,16 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.EchoAccent
 import app.echo.android.design.EchoAccentDeep
 import app.echo.android.design.EchoGlassBorder
-import app.echo.android.design.EchoHomeBlue
+import app.echo.android.design.EchoGlassCyan
 import app.echo.android.design.EchoHomeMist
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.EchoSectionTitle
 import app.echo.android.design.PageChrome
+import app.echo.android.design.echoDarkGlassBorder
+import app.echo.android.design.echoGlassContainerBrush
+import app.echo.android.design.echoGlassRowBrush
 import app.echo.android.model.playback.EchoPlaybackStatus
 import kotlin.math.roundToInt
 
@@ -250,8 +252,8 @@ fun SettingsScreen(
                     title = "玻璃覆盖",
                     detail = "${(customBackgroundGlass * 100f).roundToInt()}%",
                     value = customBackgroundGlass,
-                    valueRange = 0.18f..0.90f,
-                    steps = 11,
+                    valueRange = 0.08f..0.90f,
+                    steps = 13,
                     onValueChange = onCustomBackgroundGlassChange,
                 )
             }
@@ -538,12 +540,9 @@ private fun SettingsTextInputRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(scheme.surface.copy(alpha = if (dark) 0.70f else 0.64f))
+            .background(echoGlassRowBrush())
             .border(
-                BorderStroke(
-                    1.dp,
-                    if (dark) scheme.outlineVariant.copy(alpha = 0.52f) else EchoGlassBorder.copy(alpha = 0.78f),
-                ),
+                if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.78f)),
                 RoundedCornerShape(16.dp),
             )
             .padding(horizontal = 12.dp, vertical = 11.dp),
@@ -639,9 +638,9 @@ private fun SettingsHeroCard(
     val heroColors = if (dynamicArtwork) {
         if (dark) {
             listOf(
-                scheme.surface.copy(alpha = 0.92f),
-                scheme.surfaceVariant.copy(alpha = 0.78f),
-                scheme.primary.copy(alpha = 0.22f),
+                EchoGlassCyan.copy(alpha = 0.24f),
+                scheme.primary.copy(alpha = 0.18f),
+                Color.Transparent,
             )
         } else {
             listOf(
@@ -653,9 +652,9 @@ private fun SettingsHeroCard(
     } else {
         if (dark) {
             listOf(
-                scheme.surface.copy(alpha = 0.92f),
-                scheme.surfaceVariant.copy(alpha = 0.72f),
-                scheme.surface.copy(alpha = 0.88f),
+                scheme.primary.copy(alpha = 0.16f),
+                EchoGlassCyan.copy(alpha = 0.14f),
+                Color.Transparent,
             )
         } else {
             listOf(
@@ -670,10 +669,10 @@ private fun SettingsHeroCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(26.dp))
             .background(
-                Brush.linearGradient(heroColors),
+                if (dark) echoGlassContainerBrush(1.12f, accent = EchoGlassCyan) else Brush.linearGradient(heroColors),
             )
             .border(
-                BorderStroke(1.dp, if (dark) scheme.outlineVariant.copy(alpha = 0.62f) else EchoGlassBorder),
+                if (dark) echoDarkGlassBorder(dynamicArtwork) else BorderStroke(1.dp, EchoGlassBorder),
                 RoundedCornerShape(26.dp),
             )
             .padding(18.dp),
@@ -724,9 +723,9 @@ private fun SettingsSectionCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(22.dp))
-            .background(scheme.surface.copy(alpha = if (dark) 0.78f else 0.74f))
+            .background(if (dark) echoGlassContainerBrush(0.92f) else Brush.linearGradient(listOf(Color.White.copy(alpha = 0.78f), EchoHomeMist.copy(alpha = 0.56f))))
             .border(
-                BorderStroke(1.dp, if (dark) scheme.outlineVariant.copy(alpha = 0.62f) else EchoGlassBorder),
+                if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, EchoGlassBorder),
                 RoundedCornerShape(22.dp),
             )
             .animateContentSize()
@@ -782,12 +781,9 @@ private fun SettingsBackgroundSourceRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(scheme.surface.copy(alpha = if (dark) 0.70f else 0.64f))
+            .background(echoGlassRowBrush())
             .border(
-                BorderStroke(
-                    1.dp,
-                    if (dark) scheme.outlineVariant.copy(alpha = 0.52f) else EchoGlassBorder.copy(alpha = 0.78f),
-                ),
+                if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.78f)),
                 RoundedCornerShape(16.dp),
             )
             .padding(horizontal = 12.dp, vertical = 11.dp),
@@ -858,23 +854,10 @@ private fun BackgroundSourceAction(
             .height(34.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(
-                if (selected) {
-                    scheme.primary.copy(alpha = 0.14f)
-                } else {
-                    scheme.surfaceVariant.copy(alpha = 0.34f)
-                },
+                echoGlassRowBrush(selected = selected, accent = scheme.primary),
             )
             .border(
-                BorderStroke(
-                    1.dp,
-                    if (selected) {
-                        scheme.primary.copy(alpha = 0.26f)
-                    } else if (dark) {
-                        scheme.outlineVariant.copy(alpha = 0.50f)
-                    } else {
-                        EchoGlassBorder.copy(alpha = 0.56f)
-                    },
-                ),
+                if (dark) echoDarkGlassBorder(selected) else BorderStroke(1.dp, if (selected) scheme.primary.copy(alpha = 0.26f) else EchoGlassBorder.copy(alpha = 0.56f)),
                 RoundedCornerShape(12.dp),
             )
             .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
@@ -973,18 +956,9 @@ private fun SettingsOptionChip(
         modifier = Modifier
             .height(34.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(if (selected) scheme.primary.copy(alpha = 0.14f) else scheme.surfaceVariant.copy(alpha = 0.34f))
+            .background(echoGlassRowBrush(selected = selected, accent = scheme.primary))
             .border(
-                BorderStroke(
-                    1.dp,
-                    if (selected) {
-                        scheme.primary.copy(alpha = 0.26f)
-                    } else if (dark) {
-                        scheme.outlineVariant.copy(alpha = 0.50f)
-                    } else {
-                        EchoGlassBorder.copy(alpha = 0.56f)
-                    },
-                ),
+                if (dark) echoDarkGlassBorder(selected) else BorderStroke(1.dp, if (selected) scheme.primary.copy(alpha = 0.26f) else EchoGlassBorder.copy(alpha = 0.56f)),
                 RoundedCornerShape(12.dp),
             )
             .clickable(onClick = onClick)
@@ -1017,12 +991,9 @@ private fun SettingsSliderRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(scheme.surface.copy(alpha = if (dark) 0.70f else 0.64f))
+            .background(echoGlassRowBrush())
             .border(
-                BorderStroke(
-                    1.dp,
-                    if (dark) scheme.outlineVariant.copy(alpha = 0.52f) else EchoGlassBorder.copy(alpha = 0.78f),
-                ),
+                if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.78f)),
                 RoundedCornerShape(16.dp),
             )
             .padding(horizontal = 12.dp, vertical = 11.dp),
@@ -1059,7 +1030,7 @@ private fun SettingsSliderRow(
                 colors = SliderDefaults.colors(
                     thumbColor = scheme.primary,
                     activeTrackColor = scheme.primary.copy(alpha = 0.82f),
-                    inactiveTrackColor = scheme.outlineVariant.copy(alpha = if (dark) 0.42f else 0.72f),
+                    inactiveTrackColor = if (dark) Color.White.copy(alpha = 0.16f) else scheme.outlineVariant.copy(alpha = 0.72f),
                     activeTickColor = Color.Transparent,
                     inactiveTickColor = Color.Transparent,
                 ),
@@ -1082,12 +1053,9 @@ private fun SettingsRowShell(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(scheme.surface.copy(alpha = if (dark) 0.70f else 0.64f))
+            .background(echoGlassRowBrush())
             .border(
-                BorderStroke(
-                    1.dp,
-                    if (dark) scheme.outlineVariant.copy(alpha = 0.52f) else EchoGlassBorder.copy(alpha = 0.78f),
-                ),
+                if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.78f)),
                 RoundedCornerShape(16.dp),
             )
             .padding(horizontal = 12.dp, vertical = 11.dp),
@@ -1124,8 +1092,8 @@ private fun SettingsIconBubble(icon: ImageVector) {
         modifier = Modifier
             .size(42.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(scheme.primary.copy(alpha = if (dark) 0.18f else 0.14f))
-            .border(BorderStroke(1.dp, scheme.primary.copy(alpha = 0.20f)), RoundedCornerShape(14.dp)),
+            .background(echoGlassRowBrush(selected = true, accent = scheme.primary))
+            .border(if (dark) echoDarkGlassBorder(true) else BorderStroke(1.dp, scheme.primary.copy(alpha = 0.20f)), RoundedCornerShape(14.dp)),
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(22.dp))
@@ -1143,12 +1111,9 @@ private fun SettingsStatTile(
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(scheme.surface.copy(alpha = if (dark) 0.70f else 0.64f))
+            .background(echoGlassRowBrush())
             .border(
-                BorderStroke(
-                    1.dp,
-                    if (dark) scheme.outlineVariant.copy(alpha = 0.52f) else EchoGlassBorder.copy(alpha = 0.78f),
-                ),
+                if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.78f)),
                 RoundedCornerShape(16.dp),
             )
             .padding(horizontal = 12.dp, vertical = 10.dp),

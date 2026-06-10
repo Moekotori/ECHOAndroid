@@ -83,6 +83,14 @@ val EchoHomeBlueDeep = Color(0xFF7C6CF2)
 val EchoHomeMist = Color(0xFFF4F8FF)
 val EchoGlassBorder = Color(0xCCFFFFFF)
 val EchoSoftLine = Color(0xFFD8E8F3)
+val EchoGlassNight = Color(0xFF0B1020)
+val EchoGlassInk = Color(0xFF141A31)
+val EchoGlassPanel = Color(0xFF1D2442)
+val EchoGlassViolet = Color(0xFF8B7CFF)
+val EchoGlassCyan = Color(0xFF50D6FF)
+val EchoGlassRose = Color(0xFFFF7AB8)
+val EchoDarkGlassBorder = Color.White.copy(alpha = 0.22f)
+val EchoDarkGlassLine = Color.White.copy(alpha = 0.13f)
 
 @Composable
 fun GlassSurface(
@@ -95,12 +103,96 @@ fun GlassSurface(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(28.dp),
-        color = if (dark) scheme.surface.copy(alpha = (alpha + 0.54f).coerceAtMost(0.84f)) else Color.White.copy(alpha = alpha),
+        color = if (dark) EchoGlassPanel.copy(alpha = (alpha + 0.46f).coerceIn(0.46f, 0.76f)) else Color.White.copy(alpha = alpha),
         border = BorderStroke(
             1.dp,
-            if (dark) scheme.outlineVariant.copy(alpha = 0.58f) else Color.White.copy(alpha = 0.32f),
+            if (dark) EchoDarkGlassBorder else Color.White.copy(alpha = 0.32f),
         ),
         content = { content() },
+    )
+}
+
+@Composable
+fun echoDarkGlassBrush(strength: Float = 1f): Brush {
+    val dark = LocalEchoDarkTheme.current
+    val clamped = strength.coerceIn(0.45f, 1.25f)
+    return Brush.linearGradient(
+        if (dark) {
+            listOf(
+                EchoGlassPanel.copy(alpha = 0.68f * clamped),
+                EchoGlassInk.copy(alpha = 0.52f * clamped),
+                EchoGlassViolet.copy(alpha = 0.20f * clamped),
+                EchoGlassCyan.copy(alpha = 0.14f * clamped),
+            )
+        } else {
+            listOf(
+                Color.White.copy(alpha = 0.96f),
+                EchoHomeMist.copy(alpha = 0.90f),
+                EchoAccentDeep.copy(alpha = 0.08f),
+            )
+        },
+    )
+}
+
+@Composable
+fun echoGlassContainerBrush(
+    strength: Float = 1f,
+    accent: Color = EchoGlassCyan,
+): Brush {
+    val dark = LocalEchoDarkTheme.current
+    val clamped = strength.coerceIn(0.40f, 1.20f)
+    return Brush.linearGradient(
+        if (dark) {
+            listOf(
+                EchoGlassPanel.copy(alpha = 0.58f * clamped),
+                EchoGlassInk.copy(alpha = 0.40f * clamped),
+                accent.copy(alpha = 0.16f * clamped),
+                EchoGlassViolet.copy(alpha = 0.12f * clamped),
+            )
+        } else {
+            listOf(
+                Color.White.copy(alpha = 0.88f),
+                EchoHomeMist.copy(alpha = 0.72f),
+                accent.copy(alpha = 0.08f),
+            )
+        },
+    )
+}
+
+@Composable
+fun echoGlassRowBrush(
+    selected: Boolean = false,
+    accent: Color = EchoGlassCyan,
+): Brush {
+    val dark = LocalEchoDarkTheme.current
+    return Brush.linearGradient(
+        if (dark) {
+            listOf(
+                EchoGlassPanel.copy(alpha = if (selected) 0.58f else 0.44f),
+                EchoGlassInk.copy(alpha = if (selected) 0.34f else 0.28f),
+                accent.copy(alpha = if (selected) 0.20f else 0.08f),
+            )
+        } else {
+            listOf(
+                Color.White.copy(alpha = 0.74f),
+                EchoHomeMist.copy(alpha = 0.50f),
+                accent.copy(alpha = if (selected) 0.12f else 0.04f),
+            )
+        },
+    )
+}
+
+@Composable
+fun echoDarkGlassBorder(selected: Boolean = false): BorderStroke {
+    val dark = LocalEchoDarkTheme.current
+    val scheme = MaterialTheme.colorScheme
+    return BorderStroke(
+        1.dp,
+        if (dark) {
+            if (selected) scheme.primary.copy(alpha = 0.36f) else EchoDarkGlassBorder
+        } else {
+            if (selected) scheme.primary.copy(alpha = 0.24f) else Color.White.copy(alpha = 0.84f)
+        },
     )
 }
 
@@ -122,13 +214,13 @@ fun GlassIconButton(
 @Composable
 fun EchoGlassBackground(modifier: Modifier = Modifier) {
     val dark = LocalEchoDarkTheme.current
-    // 大胆现代：深邃蓝黑底 + 多彩弥散光晕（蓝 / 紫 / 粉 / 青），类磨砂玻璃氛围
     val baseGradient = Brush.verticalGradient(
         if (dark) {
             listOf(
-                Color(0xFF0A0C13),
-                Color(0xFF121520),
-                Color(0xFF0C0E17),
+                EchoGlassNight,
+                Color(0xFF111B34),
+                Color(0xFF211A3A),
+                Color(0xFF101326),
             )
         } else {
             listOf(
@@ -141,36 +233,32 @@ fun EchoGlassBackground(modifier: Modifier = Modifier) {
     Canvas(modifier = modifier.background(baseGradient)) {
         val w = size.width
         val h = size.height
-        // 左上：主蓝色冷光
         drawRect(
-            brush = Brush.radialGradient(
-                colors = listOf(EchoHomeBlue.copy(alpha = if (dark) 0.20f else 0.30f), Color.Transparent),
-                center = Offset(w * 0.06f, h * 0.14f),
-                radius = h * 0.48f,
+            brush = Brush.linearGradient(
+                colors = listOf(EchoGlassCyan.copy(alpha = if (dark) 0.24f else 0.22f), Color.Transparent),
+                start = Offset(0f, h * 0.05f),
+                end = Offset(w * 0.78f, h * 0.54f),
             ),
         )
-        // 右上：电光紫
         drawRect(
-            brush = Brush.radialGradient(
-                colors = listOf(EchoAccentDeep.copy(alpha = if (dark) 0.18f else 0.24f), Color.Transparent),
-                center = Offset(w * 0.94f, h * 0.24f),
-                radius = h * 0.52f,
+            brush = Brush.linearGradient(
+                colors = listOf(Color.Transparent, EchoGlassViolet.copy(alpha = if (dark) 0.30f else 0.20f)),
+                start = Offset(w * 0.20f, 0f),
+                end = Offset(w, h * 0.66f),
             ),
         )
-        // 中下：霓虹粉晕
         drawRect(
-            brush = Brush.radialGradient(
-                colors = listOf(Color(0xFFFF8AC2).copy(alpha = if (dark) 0.10f else 0.20f), Color.Transparent),
-                center = Offset(w * 0.38f, h * 0.80f),
-                radius = h * 0.48f,
+            brush = Brush.linearGradient(
+                colors = listOf(Color.Transparent, EchoGlassRose.copy(alpha = if (dark) 0.14f else 0.18f), Color.Transparent),
+                start = Offset(0f, h * 0.42f),
+                end = Offset(w, h),
             ),
         )
-        // 右下：一抹青色，平衡整体色温
         drawRect(
-            brush = Brush.radialGradient(
-                colors = listOf(Color(0xFF3FD8C7).copy(alpha = if (dark) 0.08f else 0.14f), Color.Transparent),
-                center = Offset(w * 0.88f, h * 0.92f),
-                radius = h * 0.40f,
+            brush = Brush.verticalGradient(
+                colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (dark) 0.16f else 0.06f)),
+                startY = h * 0.50f,
+                endY = h,
             ),
         )
     }
@@ -218,9 +306,10 @@ fun PageChrome(
         val chromeGradient = if (dark) {
             Brush.verticalGradient(
                 listOf(
-                    Color(0xFF11141E).copy(alpha = 0.97f),
-                    scheme.surface.copy(alpha = 0.90f),
-                    Color(0xFF0C0E17).copy(alpha = 0.97f),
+                    EchoGlassNight.copy(alpha = 0.58f),
+                    EchoGlassInk.copy(alpha = 0.42f),
+                    EchoGlassViolet.copy(alpha = 0.18f),
+                    Color.Transparent,
                 ),
             )
         } else {
@@ -283,10 +372,10 @@ fun PageChrome(
                     ) {
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = scheme.surface.copy(alpha = if (dark) 0.72f else 0.56f),
+                            color = if (dark) EchoGlassPanel.copy(alpha = 0.46f) else scheme.surface.copy(alpha = 0.56f),
                             border = BorderStroke(
                                 1.dp,
-                                if (dark) scheme.outlineVariant.copy(alpha = 0.62f) else EchoGlassBorder,
+                                if (dark) EchoDarkGlassBorder else EchoGlassBorder,
                             ),
                         ) {
                             Text(
@@ -501,7 +590,7 @@ fun BlurredArtworkBackground(
                         listOf(
                             palette.vibrant,
                             palette.deep,
-                            lerp(palette.deep, Color.Black, 0.40f),
+                            lerp(palette.deep, EchoGlassNight, 0.32f),
                         ),
                     ),
                 ),
@@ -525,9 +614,9 @@ fun BlurredArtworkBackground(
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            Color.Black.copy(alpha = overlayStartAlpha),
-                            Color.Black.copy(alpha = overlayMidAlpha),
-                            Color.Black.copy(alpha = overlayEndAlpha),
+                            EchoGlassNight.copy(alpha = overlayStartAlpha * 0.70f),
+                            EchoGlassInk.copy(alpha = overlayMidAlpha * 0.72f),
+                            lerp(palette.deep, EchoGlassPanel, 0.42f).copy(alpha = overlayEndAlpha * 0.86f),
                         ),
                     ),
                 ),

@@ -28,6 +28,11 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import app.echo.android.data.EchoAppSettings
 import app.echo.android.data.EchoBackgroundMode
+import app.echo.android.design.EchoGlassCyan
+import app.echo.android.design.EchoGlassInk
+import app.echo.android.design.EchoGlassNight
+import app.echo.android.design.EchoGlassPanel
+import app.echo.android.design.EchoGlassViolet
 import app.echo.android.design.EchoGlassBackground
 import app.echo.android.design.LocalEchoDarkTheme
 import coil.compose.AsyncImage
@@ -147,7 +152,7 @@ private fun EchoVideoWallpaper(
 private fun EchoBrightnessOverlay(brightness: Float) {
     val clamped = brightness.coerceIn(0.35f, 1.15f)
     val overlay = if (clamped < 1f) {
-        Color.Black.copy(alpha = (1f - clamped).coerceIn(0f, 0.65f))
+        Color.Black.copy(alpha = ((1f - clamped) * 0.72f).coerceIn(0f, 0.42f))
     } else {
         Color.White.copy(alpha = ((clamped - 1f) * 0.35f).coerceIn(0f, 0.12f))
     }
@@ -159,9 +164,9 @@ private fun EchoBackgroundGlassOverlay(glass: Float) {
     val dark = LocalEchoDarkTheme.current
     val colors = if (dark) {
         listOf(
-            Color(0xFF080A0F).copy(alpha = (glass * 0.74f).coerceIn(0f, 0.78f)),
-            Color(0xFF10131A).copy(alpha = (glass * 0.58f).coerceIn(0f, 0.64f)),
-            Color.Black.copy(alpha = (glass * 0.78f).coerceIn(0f, 0.82f)),
+            EchoGlassNight.copy(alpha = (glass * 0.32f).coerceIn(0f, 0.48f)),
+            EchoGlassInk.copy(alpha = (glass * 0.26f).coerceIn(0f, 0.40f)),
+            EchoGlassPanel.copy(alpha = (glass * 0.40f).coerceIn(0f, 0.52f)),
         )
     } else {
         listOf(
@@ -177,4 +182,19 @@ private fun EchoBackgroundGlassOverlay(glass: Float) {
                 Brush.verticalGradient(colors),
             ),
     )
+    if (dark) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            EchoGlassCyan.copy(alpha = (glass * 0.10f).coerceIn(0f, 0.16f)),
+                            Color.Transparent,
+                            EchoGlassViolet.copy(alpha = (glass * 0.12f).coerceIn(0f, 0.18f)),
+                        ),
+                    ),
+                ),
+        )
+    }
 }

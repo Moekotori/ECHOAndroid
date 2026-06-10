@@ -52,6 +52,8 @@ import app.echo.android.design.ArtworkPalette
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.BlurredArtworkBackground
 import app.echo.android.design.EchoContentMaxWidth
+import app.echo.android.design.EchoDarkGlassBorder
+import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.RoonInk
 import app.echo.android.design.RoonMuted
@@ -84,9 +86,9 @@ private fun rememberDetailGlassColors(): DetailGlassColors {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
     return DetailGlassColors(
-        surface = if (dark) scheme.surface.copy(alpha = 0.74f) else Color.White.copy(alpha = 0.62f),
-        elevatedSurface = if (dark) scheme.surfaceVariant.copy(alpha = 0.62f) else Color.White.copy(alpha = 0.78f),
-        border = if (dark) scheme.outlineVariant.copy(alpha = 0.54f) else Color.White.copy(alpha = 0.78f),
+        surface = if (dark) EchoGlassPanel.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.62f),
+        elevatedSurface = if (dark) EchoGlassPanel.copy(alpha = 0.42f) else Color.White.copy(alpha = 0.78f),
+        border = if (dark) EchoDarkGlassBorder else Color.White.copy(alpha = 0.78f),
         content = if (dark) scheme.onSurface else RoonInk,
         muted = if (dark) scheme.onSurfaceVariant.copy(alpha = 0.92f) else RoonMuted,
     )

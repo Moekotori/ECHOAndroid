@@ -29,14 +29,18 @@ data class EchoAppSettings(
     val equalizerBandGains: List<Float> = EchoEqualizerPresets.gainsForPreset(EchoEqualizerPreset.Flat),
     val customBackgroundMode: String = EchoBackgroundMode.Default,
     val customBackgroundUri: String? = null,
-    val customBackgroundBlur: Float = 32f,
-    val customBackgroundBrightness: Float = 0.72f,
-    val customBackgroundGlass: Float = 0.62f,
+    val customBackgroundBlur: Float = 24f,
+    val customBackgroundBrightness: Float = 0.88f,
+    val customBackgroundGlass: Float = 0.42f,
     val uiFontFamily: String = EchoFontFamilyMode.System,
     val uiFontScale: Float = 1f,
     val uiDensityScale: Float = 1f,
-    val lyricsFontFamily: String = EchoFontFamilyMode.System,
+    val lyricsFontFamily: String = EchoFontFamilyMode.Outfit,
     val lyricsFontScale: Float = 1f,
+    val lyricsColorMode: String = EchoLyricsColorMode.White,
+    val lyricsShowTranslation: Boolean = true,
+    val lyricsShowRomanization: Boolean = true,
+    val lyricsFocusGlowEnabled: Boolean = true,
     val importedFontUri: String? = null,
     val themeMode: String = EchoThemeMode.System,
     val scheduledDarkModeEnabled: Boolean = false,
@@ -70,6 +74,14 @@ object EchoFontFamilyMode {
     const val Imported = "imported"
 }
 
+object EchoLyricsColorMode {
+    const val White = "white"
+    const val Warm = "warm"
+    const val Blue = "blue"
+    const val Violet = "violet"
+    const val Mint = "mint"
+}
+
 object EchoThemeMode {
     const val System = "system"
     const val Light = "light"
@@ -99,14 +111,18 @@ class EchoSettingsStore(
                 ),
                 customBackgroundMode = preferences[Keys.CustomBackgroundMode] ?: EchoBackgroundMode.Default,
                 customBackgroundUri = preferences[Keys.CustomBackgroundUri],
-                customBackgroundBlur = (preferences[Keys.CustomBackgroundBlur] ?: 32f).coerceIn(0f, 80f),
-                customBackgroundBrightness = (preferences[Keys.CustomBackgroundBrightness] ?: 0.72f).coerceIn(0.35f, 1.15f),
-                customBackgroundGlass = (preferences[Keys.CustomBackgroundGlass] ?: 0.62f).coerceIn(0.18f, 0.90f),
+                customBackgroundBlur = (preferences[Keys.CustomBackgroundBlur] ?: 24f).coerceIn(0f, 80f),
+                customBackgroundBrightness = (preferences[Keys.CustomBackgroundBrightness] ?: 0.88f).coerceIn(0.35f, 1.15f),
+                customBackgroundGlass = (preferences[Keys.CustomBackgroundGlass] ?: 0.42f).coerceIn(0.08f, 0.90f),
                 uiFontFamily = preferences[Keys.UiFontFamily] ?: EchoFontFamilyMode.System,
                 uiFontScale = (preferences[Keys.UiFontScale] ?: 1f).coerceIn(0.88f, 1.18f),
                 uiDensityScale = (preferences[Keys.UiDensityScale] ?: 1f).coerceIn(0.90f, 1.12f),
-                lyricsFontFamily = preferences[Keys.LyricsFontFamily] ?: EchoFontFamilyMode.System,
+                lyricsFontFamily = preferences[Keys.LyricsFontFamily] ?: EchoFontFamilyMode.Outfit,
                 lyricsFontScale = (preferences[Keys.LyricsFontScale] ?: 1f).coerceIn(0.82f, 1.28f),
+                lyricsColorMode = preferences[Keys.LyricsColorMode] ?: EchoLyricsColorMode.White,
+                lyricsShowTranslation = preferences[Keys.LyricsShowTranslation] ?: true,
+                lyricsShowRomanization = preferences[Keys.LyricsShowRomanization] ?: true,
+                lyricsFocusGlowEnabled = preferences[Keys.LyricsFocusGlowEnabled] ?: true,
                 importedFontUri = preferences[Keys.ImportedFontUri],
                 themeMode = preferences[Keys.ThemeMode] ?: EchoThemeMode.System,
                 scheduledDarkModeEnabled = preferences[Keys.ScheduledDarkModeEnabled] ?: false,
@@ -213,7 +229,7 @@ class EchoSettingsStore(
     }
 
     suspend fun setCustomBackgroundGlass(value: Float) {
-        context.echoSettings.edit { it[Keys.CustomBackgroundGlass] = value.coerceIn(0.18f, 0.90f) }
+        context.echoSettings.edit { it[Keys.CustomBackgroundGlass] = value.coerceIn(0.08f, 0.90f) }
     }
 
     suspend fun setUiFontFamily(value: String) {
@@ -236,6 +252,22 @@ class EchoSettingsStore(
         context.echoSettings.edit { it[Keys.LyricsFontScale] = value.coerceIn(0.82f, 1.28f) }
     }
 
+    suspend fun setLyricsColorMode(value: String) {
+        context.echoSettings.edit { it[Keys.LyricsColorMode] = value }
+    }
+
+    suspend fun setLyricsShowTranslation(enabled: Boolean) {
+        context.echoSettings.edit { it[Keys.LyricsShowTranslation] = enabled }
+    }
+
+    suspend fun setLyricsShowRomanization(enabled: Boolean) {
+        context.echoSettings.edit { it[Keys.LyricsShowRomanization] = enabled }
+    }
+
+    suspend fun setLyricsFocusGlowEnabled(enabled: Boolean) {
+        context.echoSettings.edit { it[Keys.LyricsFocusGlowEnabled] = enabled }
+    }
+
     suspend fun setImportedFontUri(uri: String?) {
         context.echoSettings.edit {
             if (uri.isNullOrBlank()) {
@@ -244,7 +276,7 @@ class EchoSettingsStore(
                     it[Keys.UiFontFamily] = EchoFontFamilyMode.System
                 }
                 if (it[Keys.LyricsFontFamily] == EchoFontFamilyMode.Imported) {
-                    it[Keys.LyricsFontFamily] = EchoFontFamilyMode.System
+                    it[Keys.LyricsFontFamily] = EchoFontFamilyMode.Outfit
                 }
             } else {
                 it[Keys.ImportedFontUri] = uri
@@ -376,6 +408,10 @@ class EchoSettingsStore(
         val UiDensityScale = floatPreferencesKey("ui_density_scale")
         val LyricsFontFamily = stringPreferencesKey("lyrics_font_family")
         val LyricsFontScale = floatPreferencesKey("lyrics_font_scale")
+        val LyricsColorMode = stringPreferencesKey("lyrics_color_mode")
+        val LyricsShowTranslation = booleanPreferencesKey("lyrics_show_translation")
+        val LyricsShowRomanization = booleanPreferencesKey("lyrics_show_romanization")
+        val LyricsFocusGlowEnabled = booleanPreferencesKey("lyrics_focus_glow_enabled")
         val ImportedFontUri = stringPreferencesKey("imported_font_uri")
         val ThemeMode = stringPreferencesKey("theme_mode")
         val ScheduledDarkModeEnabled = booleanPreferencesKey("scheduled_dark_mode_enabled")

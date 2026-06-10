@@ -70,7 +70,11 @@ import app.echo.android.design.EchoAccent
 import app.echo.android.design.EchoAccentDeep
 import app.echo.android.design.EchoAccentText
 import app.echo.android.design.EchoColors
+import app.echo.android.design.EchoDarkGlassBorder
 import app.echo.android.design.EchoGlassBorder
+import app.echo.android.design.EchoGlassCyan
+import app.echo.android.design.EchoGlassPanel
+import app.echo.android.design.EchoGlassViolet
 import app.echo.android.design.EchoHomeBlue
 import app.echo.android.design.EchoHomeBlueDeep
 import app.echo.android.design.EchoHomeMist
@@ -87,6 +91,8 @@ import app.echo.android.design.GlassSurface
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.RoonInk
 import app.echo.android.design.RoonMuted
+import app.echo.android.design.echoDarkGlassBorder
+import app.echo.android.design.echoDarkGlassBrush
 import app.echo.android.design.formatDuration
 import app.echo.android.design.progressFraction
 import app.echo.android.model.library.AlbumSummary
@@ -107,7 +113,7 @@ private const val HomeHeatmapWeeks = 12
 @Composable
 private fun homePanelColor(lightAlpha: Float = 0.90f): Color {
     val scheme = MaterialTheme.colorScheme
-    return if (LocalEchoDarkTheme.current) scheme.surface.copy(alpha = 0.86f) else Color.White.copy(alpha = lightAlpha)
+    return if (LocalEchoDarkTheme.current) EchoGlassPanel.copy(alpha = 0.50f) else Color.White.copy(alpha = lightAlpha)
 }
 
 @Composable
@@ -115,29 +121,25 @@ private fun homePanelBorder(lightAlpha: Float = 0.94f): BorderStroke {
     val scheme = MaterialTheme.colorScheme
     return BorderStroke(
         1.dp,
-        if (LocalEchoDarkTheme.current) scheme.outlineVariant.copy(alpha = 0.58f) else Color.White.copy(alpha = lightAlpha),
+        if (LocalEchoDarkTheme.current) EchoDarkGlassBorder else Color.White.copy(alpha = lightAlpha),
     )
 }
 
 @Composable
 private fun homePanelBrush(): Brush {
     val scheme = MaterialTheme.colorScheme
-    return Brush.linearGradient(
-        if (LocalEchoDarkTheme.current) {
-            listOf(
-                scheme.surface.copy(alpha = 0.94f),
-                scheme.surfaceVariant.copy(alpha = 0.72f),
-                scheme.primary.copy(alpha = 0.18f),
-            )
-        } else {
+    return if (LocalEchoDarkTheme.current) {
+        echoDarkGlassBrush(1.04f)
+    } else {
+        Brush.linearGradient(
             listOf(
                 Color.White,
                 EchoHomeMist,
                 Color(0xFFEFEAFF),
                 Color(0xFFE6F3FF),
-            )
-        },
-    )
+            ),
+        )
+    }
 }
 
 @Composable
@@ -767,6 +769,7 @@ private fun ArtistRankRow(
     onClick: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val dark = LocalEchoDarkTheme.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -821,7 +824,7 @@ private fun ArtistRankRow(
                     .fillMaxWidth()
                     .height(4.dp)
                     .clip(RoundedCornerShape(99.dp))
-                    .background(scheme.surfaceVariant.copy(alpha = 0.52f)),
+                    .background(if (dark) Color.White.copy(alpha = 0.16f) else scheme.surfaceVariant.copy(alpha = 0.52f)),
             ) {
                 Box(
                     modifier = Modifier
@@ -909,11 +912,11 @@ private fun FavoriteAlbumHeatmap(days: List<PlaybackHeatmapDay>) {
             .padding(horizontal = 18.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(if (dark) scheme.surfaceVariant.copy(alpha = 0.42f) else EchoHomeMist.copy(alpha = 0.52f))
+            .background(if (dark) EchoGlassPanel.copy(alpha = 0.38f) else EchoHomeMist.copy(alpha = 0.52f))
             .border(
                 BorderStroke(
                     1.dp,
-                    if (dark) scheme.outlineVariant.copy(alpha = 0.48f) else EchoGlassBorder,
+                    if (dark) EchoDarkGlassBorder else EchoGlassBorder,
                 ),
                 RoundedCornerShape(14.dp),
             )
@@ -987,7 +990,7 @@ private fun FavoriteAlbumHeatmap(days: List<PlaybackHeatmapDay>) {
                                             .border(
                                                 BorderStroke(
                                                     1.dp,
-                                                    if (dark) scheme.outlineVariant.copy(alpha = 0.38f) else Color.White.copy(alpha = 0.58f),
+                                                    if (dark) Color.White.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.58f),
                                                 ),
                                                 RoundedCornerShape(3.dp),
                                             ),
@@ -1020,7 +1023,7 @@ private fun FavoriteAlbumHeatmap(days: List<PlaybackHeatmapDay>) {
                         .border(
                             BorderStroke(
                                 1.dp,
-                                if (dark) scheme.outlineVariant.copy(alpha = 0.38f) else Color.White.copy(alpha = 0.58f),
+                                if (dark) Color.White.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.58f),
                             ),
                             RoundedCornerShape(2.dp),
                         ),
@@ -1117,13 +1120,14 @@ private fun heatmapLevel(count: Int, maxCount: Int): Int {
     }
 }
 
+@Composable
 private fun heatmapLevelColor(level: Int): Color =
     when (level) {
         1 -> EchoHomeBlue.copy(alpha = 0.24f)
         2 -> EchoAccent.copy(alpha = 0.44f)
         3 -> EchoAccentDeep.copy(alpha = 0.62f)
-        4 -> EchoHomeBlueDeep.copy(alpha = 0.88f)
-        else -> Color.White.copy(alpha = 0.72f)
+        4 -> EchoGlassCyan.copy(alpha = 0.88f)
+        else -> if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.72f)
     }
 
 @Composable
@@ -1132,17 +1136,20 @@ private fun EmptyRankingNotice(
     subtitle: String,
     onClick: () -> Unit,
 ) {
+    val scheme = MaterialTheme.colorScheme
+    val dark = LocalEchoDarkTheme.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .background(EchoHomeMist.copy(alpha = 0.55f))
+            .background(if (dark) EchoGlassPanel.copy(alpha = 0.42f) else EchoHomeMist.copy(alpha = 0.55f))
+            .border(if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, Color.Transparent), RoundedCornerShape(18.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 14.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text(title, color = RoonInk, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-        Text(subtitle, color = RoonMuted, style = MaterialTheme.typography.labelLarge)
+        Text(title, color = if (dark) scheme.onSurface else RoonInk, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+        Text(subtitle, color = if (dark) scheme.onSurfaceVariant else RoonMuted, style = MaterialTheme.typography.labelLarge)
     }
 }
 
@@ -1733,14 +1740,12 @@ internal fun PlaybackModeButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val scheme = MaterialTheme.colorScheme
     Surface(
         modifier = modifier.clickable(onClick = onClick),
         shape = RoundedCornerShape(8.dp),
-        color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.60f),
-        border = BorderStroke(
-            1.dp,
-            if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f),
-        ),
+        color = if (selected) scheme.primary.copy(alpha = 0.14f) else homePanelColor(0.60f),
+        border = if (selected) BorderStroke(1.dp, scheme.primary.copy(alpha = 0.28f)) else homePanelBorder(0.66f),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
@@ -1750,7 +1755,7 @@ internal fun PlaybackModeButton(
             Icon(
                 icon,
                 contentDescription = title,
-                tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = if (selected) scheme.primary else scheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp),
             )
             Column(Modifier.weight(1f)) {
@@ -1759,7 +1764,7 @@ internal fun PlaybackModeButton(
                     detail,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = scheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -1775,14 +1780,12 @@ internal fun QueuePreviewItem(
     detail: String,
     active: Boolean,
 ) {
+    val scheme = MaterialTheme.colorScheme
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
-        color = if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.56f),
-        border = BorderStroke(
-            1.dp,
-            if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.20f),
-        ),
+        color = if (active) scheme.primary.copy(alpha = 0.12f) else homePanelColor(0.56f),
+        border = if (active) BorderStroke(1.dp, scheme.primary.copy(alpha = 0.24f)) else homePanelBorder(0.62f),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
@@ -1791,23 +1794,23 @@ internal fun QueuePreviewItem(
         ) {
             Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.primary.copy(alpha = if (active) 0.16f else 0.10f),
+                color = scheme.primary.copy(alpha = if (active) 0.18f else 0.12f),
             ) {
                 Icon(
                     icon,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = scheme.primary,
                     modifier = Modifier.padding(8.dp).size(20.dp),
                 )
             }
             Column(Modifier.weight(1f)) {
-                Text(label, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                Text(label, color = scheme.primary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
                 Text(
                     detail,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = scheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -1820,8 +1823,8 @@ internal fun PlaybackHandoffFlow(active: Boolean) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.30f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.20f)),
+        color = homePanelColor(0.58f),
+        border = homePanelBorder(0.64f),
     ) {
         Column(
             Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
@@ -1856,14 +1859,12 @@ internal fun HandoffStep(
     selected: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val scheme = MaterialTheme.colorScheme
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(8.dp),
-        color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.60f),
-        border = BorderStroke(
-            1.dp,
-            if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.20f),
-        ),
+        color = if (selected) scheme.primary.copy(alpha = 0.14f) else homePanelColor(0.60f),
+        border = if (selected) BorderStroke(1.dp, scheme.primary.copy(alpha = 0.24f)) else homePanelBorder(0.62f),
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
@@ -1888,8 +1889,8 @@ internal fun PlaybackActionCard(
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.30f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f)),
+        color = homePanelColor(0.58f),
+        border = homePanelBorder(0.64f),
     ) {
         Column(
             Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
@@ -2079,8 +2080,8 @@ internal fun HeroMetaRail(status: EchoPlaybackStatus) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.42f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
+        color = homePanelColor(0.48f),
+        border = homePanelBorder(0.58f),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),

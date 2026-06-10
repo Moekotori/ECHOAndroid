@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.paging.compose.LazyPagingItems
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoAccent
+import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.formatDuration
 import app.echo.android.model.library.EchoTrack
 
@@ -154,7 +155,7 @@ internal fun TrackRow(
                 .fillMaxWidth()
                 .height(1.dp)
                 .padding(start = 82.dp)
-                .background(scheme.outlineVariant.copy(alpha = 0.36f)),
+                .background(if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.10f) else scheme.outlineVariant.copy(alpha = 0.36f)),
         )
     }
 }

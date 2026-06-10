@@ -73,7 +73,9 @@ import app.echo.android.design.EchoAccentDeep
 import app.echo.android.design.EchoAccentText
 import app.echo.android.design.EchoContentMaxWidth
 import app.echo.android.design.EchoColors
+import app.echo.android.design.EchoDarkGlassBorder
 import app.echo.android.design.EchoGlassBorder
+import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.EchoHomeBlue
 import app.echo.android.design.EchoHomeMist
 import app.echo.android.design.EchoArtworkImage
@@ -108,9 +110,9 @@ private fun rememberLibraryGlassColors(): LibraryGlassColors {
     val dark = LocalEchoDarkTheme.current
     return remember(scheme, dark) {
         LibraryGlassColors(
-            surface = if (dark) scheme.surface.copy(alpha = 0.72f) else Color.White.copy(alpha = 0.66f),
-            elevatedSurface = if (dark) scheme.surfaceVariant.copy(alpha = 0.54f) else Color.White.copy(alpha = 0.62f),
-            border = if (dark) scheme.outlineVariant.copy(alpha = 0.50f) else EchoGlassBorder.copy(alpha = 0.84f),
+            surface = if (dark) EchoGlassPanel.copy(alpha = 0.48f) else Color.White.copy(alpha = 0.66f),
+            elevatedSurface = if (dark) EchoGlassPanel.copy(alpha = 0.38f) else Color.White.copy(alpha = 0.62f),
+            border = if (dark) EchoDarkGlassBorder else EchoGlassBorder.copy(alpha = 0.84f),
             content = if (dark) scheme.onSurface else RoonInk,
             muted = if (dark) scheme.onSurfaceVariant.copy(alpha = 0.90f) else RoonMuted,
         )

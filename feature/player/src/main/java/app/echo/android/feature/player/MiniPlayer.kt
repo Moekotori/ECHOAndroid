@@ -59,7 +59,10 @@ import androidx.compose.ui.unit.dp
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoAccent
 import app.echo.android.design.EchoAccentDeep
+import app.echo.android.design.EchoDarkGlassBorder
+import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.LocalEchoDarkTheme
+import app.echo.android.design.echoDarkGlassBrush
 import app.echo.android.design.progressFraction
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
@@ -105,7 +108,7 @@ fun MiniPlayer(
     val borderColor by animateColorAsState(
         targetValue = when {
             dark && status.isPlaying -> scheme.primary.copy(alpha = 0.34f)
-            dark -> scheme.outlineVariant.copy(alpha = 0.58f)
+            dark -> EchoDarkGlassBorder
             status.isPlaying -> scheme.primary.copy(alpha = 0.22f)
             else -> Color(0xFFE9E9EC)
         },
@@ -141,15 +144,12 @@ fun MiniPlayer(
                 spotColor = scheme.primary.copy(alpha = 0.16f),
             )
             .clip(shape)
+            .background(if (dark) EchoGlassPanel.copy(alpha = if (compactDock) 0.52f else 0.46f) else Color.Transparent)
             .background(
-                Brush.verticalGradient(
-                    if (dark) {
-                        listOf(
-                            Color(0xFF24262D),
-                            Color(0xFF20222A),
-                            Color(0xFF24262D),
-                        )
-                    } else {
+                if (dark) {
+                    echoDarkGlassBrush(if (compactDock) 1.02f else 0.92f)
+                } else {
+                    Brush.verticalGradient(
                         if (compactDock) {
                             listOf(
                                 Color.White,
@@ -163,8 +163,8 @@ fun MiniPlayer(
                                 Color(0xFFF4F4F5),
                             )
                         }
-                    },
-                ),
+                    )
+                },
             )
             .border(BorderStroke(1.dp, borderColor), shape)
             .padding(
@@ -261,7 +261,7 @@ fun MiniPlayer(
                         ),
                         maxLines = 1,
                         overflow = TextOverflow.Clip,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         color = scheme.onSurface,
                         style = MaterialTheme.typography.bodyLarge,
                     )
@@ -269,7 +269,7 @@ fun MiniPlayer(
                         status.track?.artist ?: "就绪",
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        color = scheme.onSurfaceVariant,
+                        color = if (dark) Color.White.copy(alpha = 0.68f) else scheme.onSurfaceVariant,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -282,7 +282,7 @@ fun MiniPlayer(
                             .clip(RoundedCornerShape(99.dp))
                             .graphicsLayer { alpha = progressAlpha },
                         color = scheme.primary,
-                        trackColor = scheme.outlineVariant.copy(alpha = if (dark) 0.44f else 0.90f),
+                        trackColor = if (dark) Color.White.copy(alpha = 0.14f) else scheme.outlineVariant.copy(alpha = 0.90f),
                     )
                 }
             }
@@ -348,7 +348,7 @@ private fun MiniPlayerActionButton(
     val containerColor by animateColorAsState(
         targetValue = when {
             !compact -> Color.Transparent
-            dark -> Color.White.copy(alpha = 0.08f)
+            dark -> EchoGlassPanel.copy(alpha = 0.56f)
             else -> scheme.primary.copy(alpha = 0.10f)
         },
         animationSpec = tween(durationMillis = 220, easing = MiniPlayerMotionEasing),
@@ -368,7 +368,7 @@ private fun MiniPlayerActionButton(
                 BorderStroke(
                     1.dp,
                     if (compact) {
-                        if (dark) scheme.outlineVariant.copy(alpha = 0.46f) else Color.White.copy(alpha = 0.72f)
+                        if (dark) EchoDarkGlassBorder else Color.White.copy(alpha = 0.72f)
                     } else {
                         Color.Transparent
                     },

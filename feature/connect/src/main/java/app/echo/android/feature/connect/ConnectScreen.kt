@@ -55,7 +55,12 @@ import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoAccent
 import app.echo.android.design.EchoAccentText
 import app.echo.android.design.EchoColors
+import app.echo.android.design.EchoDarkGlassBorder
 import app.echo.android.design.EchoGlassBorder
+import app.echo.android.design.EchoGlassCyan
+import app.echo.android.design.EchoGlassInk
+import app.echo.android.design.EchoGlassPanel
+import app.echo.android.design.EchoGlassViolet
 import app.echo.android.design.EchoHomeBlue
 import app.echo.android.design.EchoHomeMist
 import app.echo.android.design.EchoMetricTile
@@ -68,6 +73,7 @@ import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.PageChrome
 import app.echo.android.design.RoonInk
 import app.echo.android.design.RoonMuted
+import app.echo.android.design.echoDarkGlassBorder
 import app.echo.android.model.connect.EchoRemoteConnectionState
 import app.echo.android.model.library.LibraryScanPhase
 import app.echo.android.model.library.LibraryScanProgress
@@ -233,17 +239,14 @@ fun ConnectScreen(
                 .background(
                     Brush.linearGradient(
                         listOf(
-                            scheme.surface.copy(alpha = if (dark) 0.88f else 0.70f),
-                            if (dark) scheme.surfaceVariant.copy(alpha = 0.72f) else EchoHomeMist.copy(alpha = 0.62f),
-                            scheme.primary.copy(alpha = if (dark) 0.14f else 0.08f),
+                            if (dark) EchoGlassPanel.copy(alpha = 0.62f) else scheme.surface.copy(alpha = 0.70f),
+                            if (dark) EchoGlassCyan.copy(alpha = 0.18f) else EchoHomeMist.copy(alpha = 0.62f),
+                            if (dark) EchoGlassViolet.copy(alpha = 0.20f) else scheme.primary.copy(alpha = 0.08f),
                         ),
                     ),
                 )
                 .border(
-                    BorderStroke(
-                        1.dp,
-                        if (dark) scheme.outlineVariant.copy(alpha = 0.58f) else EchoGlassBorder.copy(alpha = 0.86f),
-                    ),
+                    if (dark) echoDarkGlassBorder(connected) else BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.86f)),
                     RoundedCornerShape(24.dp),
                 ),
         ) {
@@ -360,17 +363,14 @@ private fun RemoteSourcesPanel(
             .background(
                 Brush.linearGradient(
                     listOf(
-                        scheme.surface.copy(alpha = if (dark) 0.88f else 0.70f),
-                        EchoHomeBlue.copy(alpha = 0.12f),
-                        if (dark) scheme.surfaceVariant.copy(alpha = 0.56f) else EchoHomeMist.copy(alpha = 0.28f),
+                        if (dark) EchoGlassPanel.copy(alpha = 0.62f) else scheme.surface.copy(alpha = 0.70f),
+                        EchoHomeBlue.copy(alpha = if (dark) 0.20f else 0.12f),
+                        if (dark) EchoGlassViolet.copy(alpha = 0.16f) else EchoHomeMist.copy(alpha = 0.28f),
                     ),
                 ),
             )
             .border(
-                BorderStroke(
-                    1.dp,
-                    if (dark) scheme.outlineVariant.copy(alpha = 0.58f) else EchoGlassBorder.copy(alpha = 0.86f),
-                ),
+                if (dark) echoDarkGlassBorder(readyCount > 0) else BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.86f)),
                 RoundedCornerShape(20.dp),
             )
             .padding(15.dp),
@@ -508,12 +508,29 @@ private fun RemoteSourceProviderSection(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(scheme.surface.copy(alpha = if (dark) 0.42f else 0.30f))
+            .background(
+                if (dark) {
+                    Brush.linearGradient(
+                        listOf(
+                            EchoGlassInk.copy(alpha = 0.48f),
+                            EchoGlassPanel.copy(alpha = 0.34f),
+                            if (ready) EchoGlassCyan.copy(alpha = 0.12f) else EchoGlassViolet.copy(alpha = 0.08f),
+                        ),
+                    )
+                } else {
+                    Brush.linearGradient(
+                        listOf(
+                            scheme.surface.copy(alpha = 0.30f),
+                            EchoHomeMist.copy(alpha = 0.26f),
+                        ),
+                    )
+                },
+            )
             .border(
                 BorderStroke(
                     1.dp,
                     if (ready) scheme.primary.copy(alpha = if (dark) 0.36f else 0.24f)
-                    else if (dark) scheme.outlineVariant.copy(alpha = 0.42f)
+                    else if (dark) EchoDarkGlassBorder
                     else EchoGlassBorder.copy(alpha = 0.58f),
                 ),
                 RoundedCornerShape(16.dp),
@@ -533,7 +550,7 @@ private fun RemoteSourceProviderSection(
                     .width(4.dp)
                     .height(if (expanded) 38.dp else 30.dp)
                     .clip(RoundedCornerShape(99.dp))
-                    .background(if (ready) EchoHomeBlue else scheme.outlineVariant.copy(alpha = if (dark) 0.70f else 0.82f)),
+                    .background(if (ready) EchoHomeBlue else if (dark) Color.White.copy(alpha = 0.20f) else scheme.outlineVariant.copy(alpha = 0.82f)),
             )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(
@@ -643,12 +660,13 @@ private fun RemoteCompactAction(
             .height(38.dp)
             .clip(RoundedCornerShape(13.dp))
             .background(
-                if (enabled) scheme.primary.copy(alpha = 0.13f) else scheme.surfaceVariant.copy(alpha = 0.28f),
+                if (enabled) scheme.primary.copy(alpha = if (dark) 0.20f else 0.13f)
+                else if (dark) Color.White.copy(alpha = 0.08f) else scheme.surfaceVariant.copy(alpha = 0.28f),
             )
             .border(
                 BorderStroke(
                     1.dp,
-                    if (dark) scheme.outlineVariant.copy(alpha = 0.50f) else EchoGlassBorder.copy(alpha = 0.62f),
+                    if (dark) EchoDarkGlassBorder else EchoGlassBorder.copy(alpha = 0.62f),
                 ),
                 RoundedCornerShape(13.dp),
             )

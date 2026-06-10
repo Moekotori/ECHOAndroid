@@ -52,6 +52,8 @@ import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoAccent
 import app.echo.android.design.EchoAccentDeep
 import app.echo.android.design.EchoContentMaxWidth
+import app.echo.android.design.EchoDarkGlassBorder
+import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.RoonInk
 import app.echo.android.design.RoonMuted
@@ -80,9 +82,9 @@ private fun rememberFolderDetailColors(): FolderDetailColors {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
     return FolderDetailColors(
-        surface = if (dark) scheme.surface.copy(alpha = 0.72f) else Color.White.copy(alpha = 0.68f),
-        elevatedSurface = if (dark) scheme.surfaceVariant.copy(alpha = 0.58f) else Color.White.copy(alpha = 0.82f),
-        border = if (dark) scheme.outlineVariant.copy(alpha = 0.52f) else Color.White.copy(alpha = 0.82f),
+        surface = if (dark) EchoGlassPanel.copy(alpha = 0.48f) else Color.White.copy(alpha = 0.68f),
+        elevatedSurface = if (dark) EchoGlassPanel.copy(alpha = 0.40f) else Color.White.copy(alpha = 0.82f),
+        border = if (dark) EchoDarkGlassBorder else Color.White.copy(alpha = 0.82f),
         content = if (dark) scheme.onSurface else RoonInk,
         muted = if (dark) scheme.onSurfaceVariant.copy(alpha = 0.90f) else RoonMuted,
     )
@@ -98,6 +100,10 @@ internal fun FolderDetailPage(
     modifier: Modifier = Modifier,
 ) {
     val colors = rememberFolderDetailColors()
+    val heroArtworkUri = tracks.itemSnapshotList.items.firstOrNull()
+        ?.artworkUri
+        ?.takeIf { it.isNotBlank() }
+        ?: tracks.itemSnapshotList.items.firstOrNull { !it.artworkUri.isNullOrBlank() }?.artworkUri
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -119,7 +125,11 @@ internal fun FolderDetailPage(
                 ) {
                     FolderDetailTopBar(onBack = onBack)
                     Spacer(Modifier.height(10.dp))
-                    FolderHero(folder = folder, onPlayAll = onPlayAll)
+                    FolderHero(
+                        folder = folder,
+                        artworkUri = heroArtworkUri,
+                        onPlayAll = onPlayAll,
+                    )
                     Spacer(Modifier.height(14.dp))
                     FolderInsightGrid(folder = folder)
                     Spacer(Modifier.height(22.dp))
@@ -250,6 +260,7 @@ private fun FolderDetailTopBar(onBack: () -> Unit) {
 @Composable
 private fun FolderHero(
     folder: FolderSummary,
+    artworkUri: String?,
     onPlayAll: () -> Unit,
 ) {
     val colors = rememberFolderDetailColors()
@@ -271,22 +282,15 @@ private fun FolderHero(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(84.dp)
-                    .shadow(12.dp, RoundedCornerShape(26.dp), ambientColor = EchoAccent.copy(alpha = 0.16f))
-                    .clip(RoundedCornerShape(26.dp))
-                    .background(Brush.linearGradient(listOf(EchoAccent.copy(alpha = 0.24f), EchoAccentDeep.copy(alpha = 0.18f))))
-                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.58f)), RoundedCornerShape(26.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Rounded.FolderOpen,
-                    contentDescription = null,
-                    tint = EchoAccentDeep,
-                    modifier = Modifier.size(42.dp),
-                )
-            }
+            ArtworkTile(
+                artworkUri = artworkUri,
+                modifier = Modifier.size(104.dp),
+                accent = EchoAccent,
+                showSignal = artworkUri.isNullOrBlank(),
+                cornerRadius = 18.dp,
+                elevation = 14.dp,
+                placeholderIconSize = 44.dp,
+            )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(
                     folderDisplayName(folder),
@@ -372,12 +376,18 @@ private fun FolderTrackRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(colors.surface)
-            .border(BorderStroke(1.dp, colors.border), RoundedCornerShape(18.dp))
+            .padding(vertical = 5.dp)
+            .shadow(
+                elevation = 3.dp,
+                shape = RoundedCornerShape(16.dp),
+                ambientColor = Color.Black.copy(alpha = 0.03f),
+                spotColor = EchoAccent.copy(alpha = 0.05f),
+            )
+            .clip(RoundedCornerShape(16.dp))
+            .background(colors.elevatedSurface)
+            .border(BorderStroke(1.dp, colors.border.copy(alpha = 0.78f)), RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = 12.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -390,17 +400,18 @@ private fun FolderTrackRow(
         )
         ArtworkTile(
             artworkUri = track.artworkUri,
-            modifier = Modifier.size(48.dp),
+            modifier = Modifier.size(58.dp),
             accent = EchoAccent,
-            cornerRadius = 14.dp,
-            elevation = 2.dp,
+            cornerRadius = 10.dp,
+            elevation = 4.dp,
+            placeholderIconSize = 27.dp,
         )
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 track.title,
                 color = colors.content,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Black,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

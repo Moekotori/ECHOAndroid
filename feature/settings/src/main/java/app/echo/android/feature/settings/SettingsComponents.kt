@@ -46,7 +46,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoAccent
 import app.echo.android.design.EchoAccentText
+import app.echo.android.design.EchoDarkGlassBorder
 import app.echo.android.design.EchoGlassBorder
+import app.echo.android.design.EchoGlassCyan
+import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.EchoHomeBlue
 import app.echo.android.design.EchoHomeMist
 import app.echo.android.design.EchoPlaceholderLine
@@ -55,6 +58,8 @@ import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.PageChrome
 import app.echo.android.design.RoonInk
 import app.echo.android.design.RoonMuted
+import app.echo.android.design.echoDarkGlassBorder
+import app.echo.android.design.echoGlassContainerBrush
 import app.echo.android.design.formatDuration
 import app.echo.android.model.playback.EchoEqualizerPresets
 import app.echo.android.model.playback.EchoEqualizerState
@@ -68,17 +73,12 @@ import kotlin.math.roundToInt
 
 @Composable
 private fun signalPanelColor(lightAlpha: Float = 0.64f): Color {
-    val scheme = MaterialTheme.colorScheme
-    return if (LocalEchoDarkTheme.current) scheme.surface.copy(alpha = 0.86f) else Color.White.copy(alpha = lightAlpha)
+    return if (LocalEchoDarkTheme.current) EchoGlassPanel.copy(alpha = 0.48f) else Color.White.copy(alpha = lightAlpha)
 }
 
 @Composable
 private fun signalPanelBorder(lightAlpha: Float = 0.84f): BorderStroke {
-    val scheme = MaterialTheme.colorScheme
-    return BorderStroke(
-        1.dp,
-        if (LocalEchoDarkTheme.current) scheme.outlineVariant.copy(alpha = 0.58f) else EchoGlassBorder.copy(alpha = lightAlpha),
-    )
+    return if (LocalEchoDarkTheme.current) echoDarkGlassBorder() else BorderStroke(1.dp, EchoGlassBorder.copy(alpha = lightAlpha))
 }
 
 @Composable
@@ -86,11 +86,7 @@ private fun signalHeroBrush(): Brush {
     val scheme = MaterialTheme.colorScheme
     return Brush.linearGradient(
         if (LocalEchoDarkTheme.current) {
-            listOf(
-                scheme.surface.copy(alpha = 0.94f),
-                scheme.surfaceVariant.copy(alpha = 0.82f),
-                scheme.primary.copy(alpha = 0.14f),
-            )
+            return echoGlassContainerBrush(1.06f, accent = EchoGlassCyan)
         } else {
             listOf(
                 Color.White.copy(alpha = 0.72f),
@@ -576,7 +572,7 @@ private fun EqualizerBandSlider(
             colors = SliderDefaults.colors(
                 thumbColor = scheme.primary,
                 activeTrackColor = scheme.primary.copy(alpha = 0.84f),
-                inactiveTrackColor = scheme.outlineVariant.copy(alpha = if (dark) 0.42f else 0.72f),
+                inactiveTrackColor = if (dark) Color.White.copy(alpha = 0.16f) else scheme.outlineVariant.copy(alpha = 0.72f),
                 activeTickColor = Color.Transparent,
                 inactiveTickColor = Color.Transparent,
             ),
@@ -639,7 +635,7 @@ internal fun FlowChip(label: String, selected: Boolean, modifier: Modifier = Mod
             .border(
                 BorderStroke(
                     1.dp,
-                    if (selected) accent.copy(alpha = 0.28f) else if (dark) scheme.outlineVariant.copy(alpha = 0.52f) else EchoGlassBorder.copy(alpha = 0.74f),
+                    if (selected) accent.copy(alpha = 0.28f) else if (dark) EchoDarkGlassBorder else EchoGlassBorder.copy(alpha = 0.74f),
                 ),
                 RoundedCornerShape(20.dp),
             )

@@ -74,7 +74,13 @@ import androidx.compose.ui.unit.dp
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoAccent
 import app.echo.android.design.EchoAccentDeep
+import app.echo.android.design.EchoDarkGlassBorder
+import app.echo.android.design.EchoGlassInk
+import app.echo.android.design.EchoGlassNight
+import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.LocalEchoDarkTheme
+import app.echo.android.design.echoDarkGlassBorder
+import app.echo.android.design.echoDarkGlassBrush
 import app.echo.android.design.formatDuration
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoRepeatMode
@@ -114,7 +120,7 @@ fun PlaybackQueueSheet(
         val dragScope = rememberCoroutineScope()
         val density = LocalDensity.current
         val dismissThresholdPx = remember(density) { with(density) { 92.dp.toPx() } }
-        val scrimTargetAlpha = if (dark) 0.48f else 0.24f
+        val scrimTargetAlpha = if (dark) 0.58f else 0.24f
         val scrimAlpha by transition.animateFloat(
             transitionSpec = {
                 if (targetState == EnterExitState.Visible) {
@@ -160,7 +166,15 @@ fun PlaybackQueueSheet(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = scrimAlpha))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                EchoGlassNight.copy(alpha = scrimAlpha * 0.58f),
+                                EchoGlassInk.copy(alpha = scrimAlpha * 0.42f),
+                                EchoGlassPanel.copy(alpha = scrimAlpha * 0.50f),
+                            ),
+                        ),
+                    )
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -255,21 +269,21 @@ private fun QueueSheetSurface(
             .shadow(
                 elevation = 24.dp,
                 shape = shape,
-                ambientColor = Color.Black.copy(alpha = 0.12f),
+                ambientColor = EchoGlassNight.copy(alpha = 0.12f),
                 spotColor = scheme.primary.copy(alpha = 0.18f),
             )
             .clip(shape)
             .background(
-                Brush.verticalGradient(
-                    if (dark) {
-                        listOf(Color(0xFF24262D), Color(0xFF191B22))
-                    } else {
+                if (dark) {
+                    echoDarkGlassBrush(1.06f)
+                } else {
+                    Brush.verticalGradient(
                         listOf(Color.White.copy(alpha = 0.98f), Color(0xFFF4F8FF).copy(alpha = 0.98f))
-                    },
-                ),
+                    )
+                },
             )
             .border(
-                BorderStroke(1.dp, if (dark) scheme.outlineVariant.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.72f)),
+                if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, Color.White.copy(alpha = 0.72f)),
                 shape,
             )
             .navigationBarsPadding(),
@@ -292,7 +306,7 @@ private fun QueueSheetSurface(
                         onDrag = onHandleDrag,
                         onDragEnd = onHandleDragEnd,
                     )
-                    .background(scheme.onSurfaceVariant.copy(alpha = 0.28f)),
+                    .background(if (dark) Color.White.copy(alpha = 0.26f) else scheme.onSurfaceVariant.copy(alpha = 0.28f)),
             )
             Spacer(Modifier.height(14.dp))
             QueueSheetHeader(
@@ -419,7 +433,7 @@ private fun QueueTrackRow(
         targetValue = if (active) {
             scheme.primary.copy(alpha = if (LocalEchoDarkTheme.current) 0.24f else 0.13f)
         } else {
-            scheme.surface.copy(alpha = if (LocalEchoDarkTheme.current) 0.34f else 0.62f)
+            if (LocalEchoDarkTheme.current) EchoGlassPanel.copy(alpha = 0.42f) else scheme.surface.copy(alpha = 0.62f)
         },
         animationSpec = tween(durationMillis = 220, easing = QueueSheetMotionEasing),
         label = "queue-row-container",
@@ -428,7 +442,7 @@ private fun QueueTrackRow(
         targetValue = if (active) {
             scheme.primary.copy(alpha = 0.34f)
         } else {
-            scheme.outlineVariant.copy(alpha = 0.22f)
+            if (LocalEchoDarkTheme.current) EchoDarkGlassBorder else scheme.outlineVariant.copy(alpha = 0.22f)
         },
         animationSpec = tween(durationMillis = 220, easing = QueueSheetMotionEasing),
         label = "queue-row-border",
@@ -560,7 +574,11 @@ private fun QueuePillButton(
 ) {
     val scheme = MaterialTheme.colorScheme
     val containerColor by animateColorAsState(
-        targetValue = if (selected) scheme.primary.copy(alpha = 0.16f) else scheme.surface.copy(alpha = 0.50f),
+        targetValue = if (selected) {
+            scheme.primary.copy(alpha = if (LocalEchoDarkTheme.current) 0.22f else 0.16f)
+        } else {
+            if (LocalEchoDarkTheme.current) EchoGlassPanel.copy(alpha = 0.44f) else scheme.surface.copy(alpha = 0.50f)
+        },
         animationSpec = tween(durationMillis = 220, easing = QueueSheetMotionEasing),
         label = "queue-pill-container",
     )
@@ -572,7 +590,7 @@ private fun QueuePillButton(
             .border(
                 BorderStroke(
                     1.dp,
-                    if (selected) scheme.primary.copy(alpha = 0.24f) else scheme.outlineVariant.copy(alpha = 0.22f),
+                    if (selected) scheme.primary.copy(alpha = 0.30f) else if (LocalEchoDarkTheme.current) EchoDarkGlassBorder else scheme.outlineVariant.copy(alpha = 0.22f),
                 ),
                 RoundedCornerShape(18.dp),
             )
@@ -611,8 +629,8 @@ private fun QueueIconButton(
         modifier = Modifier
             .size(if (compact) 34.dp else 40.dp)
             .clip(CircleShape)
-            .background(scheme.surface.copy(alpha = if (LocalEchoDarkTheme.current) 0.22f else 0.68f))
-            .border(BorderStroke(1.dp, scheme.outlineVariant.copy(alpha = 0.22f)), CircleShape)
+            .background(if (LocalEchoDarkTheme.current) EchoGlassPanel.copy(alpha = 0.46f) else scheme.surface.copy(alpha = 0.68f))
+            .border(BorderStroke(1.dp, if (LocalEchoDarkTheme.current) EchoDarkGlassBorder else scheme.outlineVariant.copy(alpha = 0.22f)), CircleShape)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

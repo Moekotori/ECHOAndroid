@@ -39,24 +39,16 @@ fun EchoPanel(
         modifier = modifier
             .clip(shape)
             .background(
-                Brush.linearGradient(
-                    if (dark) {
-                        listOf(
-                            scheme.surface.copy(alpha = 0.90f),
-                            scheme.surfaceVariant.copy(alpha = 0.66f),
-                            scheme.primary.copy(alpha = 0.10f),
-                        )
-                    } else {
-                        listOf(
-                            Color.White.copy(alpha = 0.96f),
-                            Color.White.copy(alpha = 0.88f),
-                            scheme.primary.copy(alpha = 0.08f),
-                        )
-                    },
+                if (dark) echoGlassContainerBrush(1.02f) else Brush.linearGradient(
+                    listOf(
+                        Color.White.copy(alpha = 0.96f),
+                        Color.White.copy(alpha = 0.88f),
+                        scheme.primary.copy(alpha = 0.08f),
+                    ),
                 ),
             )
             .border(
-                BorderStroke(1.dp, if (dark) scheme.outlineVariant.copy(alpha = 0.58f) else Color.White.copy(alpha = 0.96f)),
+                if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, Color.White.copy(alpha = 0.96f)),
                 shape,
             ),
     ) {
@@ -113,8 +105,8 @@ fun EchoInfoChip(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        color = scheme.surface.copy(alpha = if (dark) 0.78f else 0.92f),
-        border = BorderStroke(1.dp, if (dark) scheme.outlineVariant.copy(alpha = 0.56f) else Color.White.copy(alpha = 0.96f)),
+        color = if (dark) EchoGlassPanel.copy(alpha = 0.56f) else scheme.surface.copy(alpha = 0.92f),
+        border = if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, Color.White.copy(alpha = 0.96f)),
     ) {
         Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
             Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = scheme.primary)
@@ -135,8 +127,8 @@ fun EchoMetricTile(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        color = scheme.surface.copy(alpha = if (dark) 0.78f else 0.92f),
-        border = BorderStroke(1.dp, if (dark) scheme.outlineVariant.copy(alpha = 0.56f) else Color.White.copy(alpha = 0.96f)),
+        color = if (dark) EchoGlassPanel.copy(alpha = 0.56f) else scheme.surface.copy(alpha = 0.92f),
+        border = if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, Color.White.copy(alpha = 0.96f)),
     ) {
         Column(
             Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
@@ -171,14 +163,14 @@ fun EchoSegmentChip(
         color = if (selected) {
             scheme.primary.copy(alpha = if (dark) 0.26f else 0.18f)
         } else {
-            scheme.surface.copy(alpha = if (dark) 0.78f else 0.92f)
+            if (dark) EchoGlassPanel.copy(alpha = 0.50f) else scheme.surface.copy(alpha = 0.92f)
         },
         border = BorderStroke(
             1.dp,
             if (selected) {
                 scheme.primary.copy(alpha = if (dark) 0.42f else 0.30f)
             } else {
-                if (dark) scheme.outlineVariant.copy(alpha = 0.56f) else Color.White.copy(alpha = 0.96f)
+                if (dark) EchoDarkGlassBorder else Color.White.copy(alpha = 0.96f)
             },
         ),
     ) {
@@ -216,7 +208,7 @@ fun EchoPlaceholderLine(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = scheme.surface.copy(alpha = if (dark) 0.78f else 0.90f),
+        color = if (dark) EchoGlassPanel.copy(alpha = 0.48f) else scheme.surface.copy(alpha = 0.90f),
     ) {
         Text(
             text,

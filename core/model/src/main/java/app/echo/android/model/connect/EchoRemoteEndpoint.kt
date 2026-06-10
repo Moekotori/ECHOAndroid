@@ -6,5 +6,6 @@ data class EchoRemoteEndpoint(
     val host: String,
     val port: Int,
     val token: String,
+    val scheme: String = "http",
     val protocolVersion: EchoProtocolVersion = EchoProtocolVersion.Current,
 )

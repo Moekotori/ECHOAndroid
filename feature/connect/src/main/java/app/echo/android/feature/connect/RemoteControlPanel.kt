@@ -45,7 +45,11 @@ import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoAccent
 import app.echo.android.design.EchoAccentText
 import app.echo.android.design.EchoColors
+import app.echo.android.design.EchoDarkGlassBorder
 import app.echo.android.design.EchoGlassBorder
+import app.echo.android.design.EchoGlassInk
+import app.echo.android.design.EchoGlassPanel
+import app.echo.android.design.EchoGlassViolet
 import app.echo.android.design.EchoHomeBlue
 import app.echo.android.design.EchoHomeMist
 import app.echo.android.design.EchoMetricTile
@@ -58,6 +62,7 @@ import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.PageChrome
 import app.echo.android.design.RoonInk
 import app.echo.android.design.RoonMuted
+import app.echo.android.design.echoDarkGlassBorder
 import app.echo.android.model.connect.EchoRemoteConnectionState
 
 @Composable
@@ -81,17 +86,14 @@ internal fun ServiceCard(
             .background(
                 Brush.linearGradient(
                     listOf(
-                        scheme.surface.copy(alpha = if (dark) 0.88f else 0.70f),
-                        brandColor.copy(alpha = if (locked) 0.08f else 0.14f),
-                        if (dark) scheme.surfaceVariant.copy(alpha = 0.56f) else EchoHomeMist.copy(alpha = 0.28f),
+                        if (dark) EchoGlassPanel.copy(alpha = 0.58f) else scheme.surface.copy(alpha = 0.70f),
+                        brandColor.copy(alpha = if (dark) if (locked) 0.16f else 0.25f else if (locked) 0.08f else 0.14f),
+                        if (dark) EchoGlassViolet.copy(alpha = 0.12f) else EchoHomeMist.copy(alpha = 0.28f),
                     ),
                 ),
             )
             .border(
-                BorderStroke(
-                    1.dp,
-                    if (dark) scheme.outlineVariant.copy(alpha = 0.58f) else EchoGlassBorder.copy(alpha = 0.86f),
-                ),
+                if (dark) echoDarkGlassBorder(active) else BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.86f)),
                 RoundedCornerShape(20.dp),
             )
             .clickable(enabled = !locked, onClick = onClick)
@@ -139,17 +141,22 @@ internal fun ServiceStatusPill(
     locked: Boolean,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val dark = LocalEchoDarkTheme.current
     val background = when {
-        locked -> scheme.surfaceVariant.copy(alpha = 0.52f)
-        active -> Color(0xFF35C28E).copy(alpha = 0.22f)
-        else -> EchoAccent.copy(alpha = 0.22f)
+        locked -> if (dark) EchoGlassInk.copy(alpha = 0.50f) else scheme.surfaceVariant.copy(alpha = 0.52f)
+        active -> Color(0xFF35C28E).copy(alpha = if (dark) 0.28f else 0.22f)
+        else -> EchoAccent.copy(alpha = if (dark) 0.28f else 0.22f)
     }
     val foreground = when {
         locked -> scheme.onSurfaceVariant
         active -> Color(0xFF1A9B68)
         else -> EchoAccentText
     }
-    Surface(shape = RoundedCornerShape(20.dp), color = background) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = background,
+        border = BorderStroke(1.dp, if (dark) EchoDarkGlassBorder else Color.Transparent),
+    ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -179,10 +186,10 @@ internal fun PcLinkStatusStrip(connected: Boolean) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
-        color = scheme.surface.copy(alpha = if (dark) 0.82f else 0.56f),
+        color = if (dark) EchoGlassPanel.copy(alpha = 0.44f) else scheme.surface.copy(alpha = 0.56f),
         border = BorderStroke(
             1.dp,
-            if (dark) scheme.outlineVariant.copy(alpha = 0.54f) else EchoGlassBorder.copy(alpha = 0.76f),
+            if (dark) EchoDarkGlassBorder else EchoGlassBorder.copy(alpha = 0.76f),
         ),
     ) {
         Row(
@@ -250,10 +257,10 @@ internal fun RemoteNowPlaying(
     val dark = LocalEchoDarkTheme.current
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = scheme.surface.copy(alpha = if (dark) 0.82f else 0.58f),
+        color = if (dark) EchoGlassPanel.copy(alpha = 0.44f) else scheme.surface.copy(alpha = 0.58f),
         border = BorderStroke(
             1.dp,
-            if (dark) scheme.outlineVariant.copy(alpha = 0.54f) else EchoGlassBorder.copy(alpha = 0.76f),
+            if (dark) EchoDarkGlassBorder else EchoGlassBorder.copy(alpha = 0.76f),
         ),
     ) {
         Row(
@@ -284,13 +291,15 @@ internal fun PairingPill(
     modifier: Modifier = Modifier,
     active: Boolean = false,
 ) {
+    val dark = LocalEchoDarkTheme.current
+    val scheme = MaterialTheme.colorScheme
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(8.dp),
-        color = if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.34f),
+        color = if (active) scheme.primary.copy(alpha = if (dark) 0.20f else 0.12f) else if (dark) EchoGlassPanel.copy(alpha = 0.38f) else scheme.surfaceVariant.copy(alpha = 0.34f),
         border = BorderStroke(
             1.dp,
-            if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.18f),
+            if (active) scheme.primary.copy(alpha = if (dark) 0.34f else 0.22f) else if (dark) EchoDarkGlassBorder else scheme.outlineVariant.copy(alpha = 0.18f),
         ),
     ) {
         Column(

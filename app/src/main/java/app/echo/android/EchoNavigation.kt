@@ -5,6 +5,8 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,12 +31,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.echo.android.design.EchoGlassPanel
+import app.echo.android.design.echoDarkGlassBorder
+import app.echo.android.design.echoDarkGlassBrush
 import app.echo.android.design.LocalEchoDarkTheme
 
 private val DockItemMotionEasing = CubicBezierEasing(0.16f, 1f, 0.30f, 1f)
@@ -60,13 +66,27 @@ fun BottomDock(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(if (dark) Color(0xFF17181E) else Color(0xFFEAF2FF)),
+            .background(Color.Transparent),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(horizontal = 10.dp, vertical = 4.dp),
+                .padding(horizontal = 10.dp, vertical = 5.dp)
+                .clip(RoundedCornerShape(30.dp))
+                .background(if (dark) EchoGlassPanel.copy(alpha = 0.52f) else Color.White.copy(alpha = 0.58f))
+                .background(
+                    if (dark) {
+                        echoDarkGlassBrush(1.00f)
+                    } else {
+                        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.72f), Color(0xFFEAF2FF).copy(alpha = 0.86f)))
+                    },
+                )
+                .border(
+                    if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, Color.White.copy(alpha = 0.82f)),
+                    RoundedCornerShape(30.dp),
+                )
+                .padding(horizontal = 2.dp, vertical = 3.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -94,20 +114,20 @@ private fun DockItem(
     val scheme = MaterialTheme.colorScheme
     val targetIconColor = when {
         selected && onLightSurface -> scheme.onSurface
-        selected -> Color.White
+        selected -> scheme.primary
         onLightSurface -> scheme.onSurfaceVariant
         else -> Color.White.copy(alpha = 0.62f)
     }
     val targetLabelColor = when {
         selected && onLightSurface -> scheme.onSurface
-        selected -> Color.White
+        selected -> Color.White.copy(alpha = 0.96f)
         onLightSurface -> scheme.onSurfaceVariant
         else -> Color.White.copy(alpha = 0.62f)
     }
     val targetContainerColor = when {
         !selected -> Color.Transparent
         onLightSurface -> scheme.primary.copy(alpha = 0.14f)
-        else -> Color.White.copy(alpha = 0.13f)
+        else -> EchoGlassPanel.copy(alpha = 0.48f)
     }
     val iconColor by animateColorAsState(
         targetValue = targetIconColor,

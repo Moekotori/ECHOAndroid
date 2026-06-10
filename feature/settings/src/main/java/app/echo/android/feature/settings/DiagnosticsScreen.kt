@@ -36,6 +36,8 @@ import app.echo.android.design.EchoSectionTitle
 import app.echo.android.design.PageChrome
 import app.echo.android.design.RoonInk
 import app.echo.android.design.RoonMuted
+import app.echo.android.design.echoDarkGlassBorder
+import app.echo.android.design.echoGlassContainerBrush
 import app.echo.android.design.formatDuration
 import app.echo.android.model.playback.EchoEqualizerState
 import app.echo.android.model.playback.EchoPlaybackState
@@ -111,12 +113,9 @@ private fun UsbOutputPanel(status: EchoPlaybackStatus) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(scheme.surface.copy(alpha = if (dark) 0.86f else 0.64f))
+            .background(if (dark) echoGlassContainerBrush(0.92f) else Brush.linearGradient(listOf(Color.White.copy(alpha = 0.64f), EchoHomeMist.copy(alpha = 0.42f))))
             .border(
-                BorderStroke(
-                    1.dp,
-                    if (dark) scheme.outlineVariant.copy(alpha = 0.58f) else EchoGlassBorder.copy(alpha = 0.84f),
-                ),
+                if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.84f)),
                 RoundedCornerShape(20.dp),
             )
             .padding(16.dp),

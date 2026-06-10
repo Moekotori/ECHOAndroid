@@ -43,6 +43,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -51,6 +52,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.collectAsLazyPagingItems
 import app.echo.android.connect.EchoRemoteClient
 import app.echo.android.design.EchoContentMaxWidth
+import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.EchoMobileTheme
 import app.echo.android.feature.connect.ConnectScreen
 import app.echo.android.feature.home.HomeScreen
@@ -665,6 +667,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             CompactBottomControls(
                                 status = playbackStatus,
                                 positionState = playbackPosition,
+                                darkTheme = darkTheme,
                                 onPlayPause = viewModel::playPause,
                                 onShowDock = { bottomDockExpanded = true },
                                 onOpenQueue = { queueSheetVisible = true },
@@ -694,7 +697,14 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     lyricsState = lyricsState,
                     showLyricsControlDeck = appSettings.showLyricsControlDeck,
                     lyricsFontFamily = lyricsFontFamily,
+                    lyricsFontMode = appSettings.lyricsFontFamily,
                     lyricsFontScale = appSettings.lyricsFontScale,
+                    lyricsColorMode = appSettings.lyricsColorMode,
+                    lyricsShowTranslation = appSettings.lyricsShowTranslation,
+                    lyricsShowRomanization = appSettings.lyricsShowRomanization,
+                    lyricsFocusGlowEnabled = appSettings.lyricsFocusGlowEnabled,
+                    importedFontUri = appSettings.importedFontUri,
+                    onlineLyricsEnabled = appSettings.onlineLyricsEnabled,
                     onDismiss = { nowPlayingExpanded = false },
                     onPlayPause = viewModel::playPause,
                     onNext = viewModel::skipNext,
@@ -702,8 +712,20 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     onSeek = viewModel::seekTo,
                     onOpenQueue = { queueSheetVisible = true },
                     onImportLyrics = { lyricsImportLauncher.launch(LyricsDocumentMimeTypes) },
+                    onImportLyricsFont = {
+                        fontImportTarget = FontImportTarget.Lyrics
+                        fontImportLauncher.launch(FontDocumentMimeTypes)
+                    },
                     onAdjustLyricsOffset = viewModel::adjustLyricsOffset,
                     onResetLyricsOffset = viewModel::resetLyricsOffset,
+                    onLyricsFontFamilyChange = viewModel::setLyricsFontFamily,
+                    onLyricsFontScaleChange = viewModel::setLyricsFontScale,
+                    onLyricsColorModeChange = viewModel::setLyricsColorMode,
+                    onLyricsShowTranslationChange = viewModel::setLyricsShowTranslation,
+                    onLyricsShowRomanizationChange = viewModel::setLyricsShowRomanization,
+                    onLyricsFocusGlowChange = viewModel::setLyricsFocusGlowEnabled,
+                    onShowLyricsControlDeckChange = viewModel::setShowLyricsControlDeck,
+                    onOnlineLyricsEnabledChange = viewModel::setOnlineLyricsEnabled,
                     onOpenArtist = {
                         viewModel.openCurrentPlaybackArtist { artist ->
                             detailReturnPage = EchoTab.entries[selectedTab].pagerPage
@@ -763,7 +785,25 @@ private fun ExpandedBottomControls(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.background(if (darkTheme) Color(0xFF17181E) else Color.Transparent),
+        modifier = modifier.background(
+            if (darkTheme) {
+                Brush.verticalGradient(
+                    listOf(
+                        Color.Transparent,
+                        EchoGlassPanel.copy(alpha = 0.44f),
+                        EchoGlassPanel.copy(alpha = 0.72f),
+                    ),
+                )
+            } else {
+                Brush.verticalGradient(
+                    listOf(
+                        Color.Transparent,
+                        Color(0xFFEAF2FF).copy(alpha = 0.76f),
+                        Color(0xFFEAF2FF).copy(alpha = 0.96f),
+                    ),
+                )
+            },
+        ),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
@@ -792,6 +832,7 @@ private fun ExpandedBottomControls(
 private fun CompactBottomControls(
     status: app.echo.android.model.playback.EchoPlaybackStatus,
     positionState: PlaybackPositionState,
+    darkTheme: Boolean,
     onPlayPause: () -> Unit,
     onShowDock: () -> Unit,
     onOpenQueue: () -> Unit,
@@ -800,19 +841,40 @@ private fun CompactBottomControls(
     onPrevious: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    MiniPlayer(
-        status = status,
-        positionState = positionState,
-        onPlayPause = onPlayPause,
-        onShowDock = onShowDock,
-        onOpenQueue = onOpenQueue,
-        onExpand = onExpand,
-        onNext = onNext,
-        onPrevious = onPrevious,
+    Box(
         modifier = modifier
-            .padding(horizontal = 10.dp, vertical = 4.dp)
-            .fillMaxWidth(),
-    )
+            .background(
+                if (darkTheme) {
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.Transparent,
+                            EchoGlassPanel.copy(alpha = 0.40f),
+                            EchoGlassPanel.copy(alpha = 0.66f),
+                        ),
+                    )
+                } else {
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.Transparent,
+                            Color(0xFFEAF2FF).copy(alpha = 0.82f),
+                        ),
+                    )
+                },
+            )
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+    ) {
+        MiniPlayer(
+            status = status,
+            positionState = positionState,
+            onPlayPause = onPlayPause,
+            onShowDock = onShowDock,
+            onOpenQueue = onOpenQueue,
+            onExpand = onExpand,
+            onNext = onNext,
+            onPrevious = onPrevious,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 }
 
 private fun currentMinuteNow(): Int {

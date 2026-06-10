@@ -520,6 +520,30 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun setLyricsColorMode(value: String) {
+        updateSettings {
+            setLyricsColorMode(value)
+        }
+    }
+
+    fun setLyricsShowTranslation(enabled: Boolean) {
+        updateSettings {
+            setLyricsShowTranslation(enabled)
+        }
+    }
+
+    fun setLyricsShowRomanization(enabled: Boolean) {
+        updateSettings {
+            setLyricsShowRomanization(enabled)
+        }
+    }
+
+    fun setLyricsFocusGlowEnabled(enabled: Boolean) {
+        updateSettings {
+            setLyricsFocusGlowEnabled(enabled)
+        }
+    }
+
     fun setImportedFontUri(uri: Uri?) {
         updateSettings {
             setImportedFontUri(uri?.toString())

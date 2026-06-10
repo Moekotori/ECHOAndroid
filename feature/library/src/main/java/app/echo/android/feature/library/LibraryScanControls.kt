@@ -40,7 +40,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import app.echo.android.design.EchoAccent
 import app.echo.android.design.EchoAccentDeep
+import app.echo.android.design.EchoDarkGlassBorder
 import app.echo.android.design.EchoGlassBorder
+import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.EchoHomeBlue
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.RoonInk
@@ -61,9 +63,9 @@ private fun rememberScanGlassColors(): ScanGlassColors {
     val dark = LocalEchoDarkTheme.current
     return remember(scheme, dark) {
         ScanGlassColors(
-            surface = if (dark) scheme.surface.copy(alpha = 0.88f) else Color.White.copy(alpha = 0.96f),
-            optionSurface = if (dark) scheme.surfaceVariant.copy(alpha = 0.58f) else Color.White.copy(alpha = 0.74f),
-            border = if (dark) scheme.outlineVariant.copy(alpha = 0.54f) else EchoGlassBorder,
+            surface = if (dark) EchoGlassPanel.copy(alpha = 0.54f) else Color.White.copy(alpha = 0.96f),
+            optionSurface = if (dark) EchoGlassPanel.copy(alpha = 0.42f) else Color.White.copy(alpha = 0.74f),
+            border = if (dark) EchoDarkGlassBorder else EchoGlassBorder,
             content = if (dark) scheme.onSurface else RoonInk,
             muted = if (dark) scheme.onSurfaceVariant.copy(alpha = 0.90f) else RoonMuted,
         )
