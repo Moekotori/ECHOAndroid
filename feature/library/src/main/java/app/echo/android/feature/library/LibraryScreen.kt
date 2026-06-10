@@ -18,7 +18,9 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,6 +30,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -44,6 +47,7 @@ import androidx.compose.material.icons.rounded.CloudQueue
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -51,6 +55,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -84,11 +89,18 @@ import app.echo.android.design.PageChrome
 import app.echo.android.design.RoonInk
 import app.echo.android.design.RoonMuted
 import app.echo.android.design.formatDuration
+import app.echo.android.model.connect.EchoRemoteLibraryState
+import app.echo.android.model.connect.EchoRemoteTrack
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
+import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.FolderSummary
 import app.echo.android.model.library.LibraryScanProgress
+import app.echo.android.model.library.LibrarySource
+import app.echo.android.model.library.NeteaseAccountState
+import app.echo.android.model.library.NeteaseAudioQuality
+import app.echo.android.model.library.NeteaseImportState
 
 private val LibraryFolderMotionEasing = CubicBezierEasing(0.16f, 1f, 0.30f, 1f)
 
@@ -101,6 +113,15 @@ internal enum class LibraryViewMode(
     Albums("专辑", Icons.Rounded.LibraryMusic),
     Artists("艺术家", Icons.Rounded.Person),
     Cloud("网盘", Icons.Rounded.CloudQueue),
+    Playlists("歌单", Icons.Rounded.LibraryMusic),
+}
+
+private enum class LinkedLibraryMode(
+    val label: String,
+    val icon: ImageVector,
+) {
+    Songs("歌曲", Icons.AutoMirrored.Rounded.QueueMusic),
+    Albums("专辑", Icons.Rounded.LibraryMusic),
 }
 
 @Composable
@@ -110,31 +131,70 @@ fun LibraryScreen(
     tracks: LazyPagingItems<EchoTrack>,
     albums: LazyPagingItems<AlbumSummary>,
     remoteAlbums: LazyPagingItems<AlbumSummary>,
+    linkedLibraryActive: Boolean,
+    linkedLibraryState: EchoRemoteLibraryState,
     artists: LazyPagingItems<ArtistSummary>,
     folders: LazyPagingItems<FolderSummary>,
+    neteaseImportedPlaylists: List<EchoPlaylist>,
+    neteaseAccountState: NeteaseAccountState,
+    neteaseImportState: NeteaseImportState,
+    neteaseQuality: NeteaseAudioQuality,
     selectedAlbum: AlbumSummary?,
     selectedArtist: ArtistSummary?,
     selectedFolder: FolderSummary?,
+    selectedPlaylist: EchoPlaylist?,
     albumDetailTracks: LazyPagingItems<EchoTrack>?,
     artistDetailTracks: LazyPagingItems<EchoTrack>?,
     folderDetailTracks: LazyPagingItems<EchoTrack>?,
+    playlistDetailTracks: LazyPagingItems<EchoTrack>?,
     onRequestPermission: () -> Unit,
     onScanFolder: () -> Unit,
     onScanAll: () -> Unit,
     onCancelScan: () -> Unit,
+    onRefreshLinkedLibrary: () -> Unit,
+    onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
     onPlayTrack: (EchoTrack) -> Unit,
     onPlayAlbum: (AlbumSummary) -> Unit,
     onShuffleAlbum: (AlbumSummary) -> Unit,
     onPlayArtist: (ArtistSummary) -> Unit,
     onShuffleArtist: (ArtistSummary) -> Unit,
     onPlayFolder: (FolderSummary) -> Unit,
+    onPlayPlaylist: (EchoPlaylist) -> Unit,
     onOpenAlbum: (AlbumSummary) -> Unit,
     onOpenArtist: (ArtistSummary) -> Unit,
     onOpenFolder: (FolderSummary) -> Unit,
+    onOpenPlaylist: (EchoPlaylist) -> Unit,
+    onLoginNeteaseByPhone: (String, String) -> Unit,
+    onLoginNeteaseWithCookie: (String) -> Unit,
+    onLogoutNetease: () -> Unit,
+    onRefreshNeteasePlaylists: () -> Unit,
+    onOpenNeteaseApp: () -> Unit,
+    onNeteaseQualityChange: (NeteaseAudioQuality) -> Unit,
+    onImportNeteasePlaylist: (Long) -> Unit,
     onCloseDetail: () -> Unit,
 ) {
     var selectedModeIndex by remember { mutableIntStateOf(LibraryViewMode.Songs.ordinal) }
     val selectedMode = LibraryViewMode.entries[selectedModeIndex]
+    var linkedMode by remember { mutableStateOf(LinkedLibraryMode.Songs) }
+    var selectedLinkedAlbumKey by remember { mutableStateOf<String?>(null) }
+
+    if (linkedLibraryActive) {
+        LinkedEchoLibraryPage(
+            state = linkedLibraryState,
+            selectedMode = linkedMode,
+            selectedAlbumKey = selectedLinkedAlbumKey,
+            onSelectMode = { mode ->
+                linkedMode = mode
+                selectedLinkedAlbumKey = null
+            },
+            onOpenAlbum = { album -> selectedLinkedAlbumKey = album.albumKey },
+            onCloseAlbum = { selectedLinkedAlbumKey = null },
+            onRefresh = onRefreshLinkedLibrary,
+            onPlayLinkedTrack = onPlayLinkedTrack,
+            modifier = Modifier.fillMaxSize(),
+        )
+        return
+    }
 
     // 专辑详情走全屏沉浸式页面，不套用曲库的 PageChrome
     val activeAlbumDetail = selectedAlbum
@@ -167,6 +227,20 @@ fun LibraryScreen(
     }
 
     val activeFolderDetail = selectedFolder
+    val activePlaylistDetail = selectedPlaylist
+    if (activePlaylistDetail != null && playlistDetailTracks != null) {
+        LibraryDetailPage(
+            title = activePlaylistDetail.name,
+            subtitle = "${activePlaylistDetail.trackCount} 首 · 网易云歌单",
+            tracks = playlistDetailTracks,
+            onBack = onCloseDetail,
+            onPlayAll = { onPlayPlaylist(activePlaylistDetail) },
+            onPlayTrack = onPlayTrack,
+            modifier = Modifier.fillMaxSize(),
+        )
+        return
+    }
+
     AnimatedContent(
         targetState = activeFolderDetail != null && folderDetailTracks != null,
         transitionSpec = {
@@ -285,6 +359,23 @@ fun LibraryScreen(
                                     onOpenAlbum = onOpenAlbum,
                                     modifier = Modifier.fillMaxSize(),
                                 )
+
+                                LibraryViewMode.Playlists -> NeteasePlaylistPanel(
+                                    accountState = neteaseAccountState,
+                                    importState = neteaseImportState,
+                                    importedPlaylists = neteaseImportedPlaylists,
+                                    selectedQuality = neteaseQuality,
+                                    onLoginByPhone = onLoginNeteaseByPhone,
+                                    onLoginWithCookie = onLoginNeteaseWithCookie,
+                                    onLogout = onLogoutNetease,
+                                    onRefreshRemotePlaylists = onRefreshNeteasePlaylists,
+                                    onOpenNeteaseApp = onOpenNeteaseApp,
+                                    onQualityChange = onNeteaseQualityChange,
+                                    onImportPlaylist = onImportNeteasePlaylist,
+                                    onOpenImportedPlaylist = onOpenPlaylist,
+                                    onPlayImportedPlaylist = onPlayPlaylist,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
                             }
                         }
                     }
@@ -293,6 +384,317 @@ fun LibraryScreen(
         }
     }
 }
+
+@Composable
+private fun LinkedEchoLibraryPage(
+    state: EchoRemoteLibraryState,
+    selectedMode: LinkedLibraryMode,
+    selectedAlbumKey: String?,
+    onSelectMode: (LinkedLibraryMode) -> Unit,
+    onOpenAlbum: (AlbumSummary) -> Unit,
+    onCloseAlbum: () -> Unit,
+    onRefresh: () -> Unit,
+    onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val tracks = state.tracks
+    val albums = remember(tracks) { tracks.toLinkedAlbums() }
+    val selectedAlbum = remember(albums, selectedAlbumKey) {
+        albums.firstOrNull { it.albumKey == selectedAlbumKey }
+    }
+    val selectedAlbumTracks = remember(tracks, selectedAlbumKey) {
+        if (selectedAlbumKey == null) {
+            emptyList()
+        } else {
+            tracks.filter { it.linkedAlbumKey() == selectedAlbumKey }
+        }
+    }
+
+    if (selectedAlbum != null) {
+        LinkedAlbumTracksPage(
+            album = selectedAlbum,
+            tracks = selectedAlbumTracks,
+            onBack = onCloseAlbum,
+            onPlayLinkedTrack = onPlayLinkedTrack,
+            modifier = modifier,
+        )
+        return
+    }
+
+    LinkedLibraryChrome(
+        title = "曲库",
+        subtitle = if (state.totalCount > 0) "PC ECHO · ${state.totalCount} 首" else "PC ECHO",
+        badge = "PC ECHO",
+        actions = {
+            IconButton(onClick = onRefresh, enabled = !state.isLoading) {
+                Icon(
+                    Icons.Rounded.Refresh,
+                    contentDescription = "刷新 PC ECHO 曲库",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        modifier = modifier,
+    ) {
+        val errorMessage = state.error
+        LinkedLibraryHeader(
+            selectedMode = selectedMode,
+            onSelectMode = onSelectMode,
+        )
+        when {
+            state.isLoading -> EmptyState("正在读取 PC ECHO 曲库...")
+            !errorMessage.isNullOrBlank() -> EmptyState(errorMessage)
+            selectedMode == LinkedLibraryMode.Songs && tracks.isEmpty() -> EmptyState("PC ECHO 暂无可显示歌曲。")
+            selectedMode == LinkedLibraryMode.Albums && albums.isEmpty() -> EmptyState("PC ECHO 暂无可显示专辑。")
+            selectedMode == LinkedLibraryMode.Songs -> LinkedTrackList(
+                tracks = tracks,
+                onPlayLinkedTrack = onPlayLinkedTrack,
+                modifier = Modifier.weight(1f),
+            )
+            selectedMode == LinkedLibraryMode.Albums -> LinkedAlbumWall(
+                albums = albums,
+                onOpenAlbum = onOpenAlbum,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LinkedLibraryHeader(
+    selectedMode: LinkedLibraryMode,
+    onSelectMode: (LinkedLibraryMode) -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(bottom = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(24.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        LinkedLibraryMode.entries.forEach { mode ->
+            val selected = mode == selectedMode
+            Column(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .clickable { onSelectMode(mode) }
+                    .padding(horizontal = 4.dp, vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    mode.label,
+                    color = if (selected) EchoAccentText else scheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+                Box(
+                    modifier = Modifier
+                        .width(20.dp)
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(99.dp))
+                        .background(
+                            if (selected) Brush.horizontalGradient(listOf(EchoAccent, EchoAccentDeep))
+                            else Brush.horizontalGradient(listOf(Color.Transparent, Color.Transparent)),
+                        ),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LinkedLibraryChrome(
+    title: String,
+    subtitle: String?,
+    badge: String,
+    actions: @Composable RowScope.() -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color.White.copy(alpha = 0.30f),
+                        EchoHomeMist.copy(alpha = 0.22f),
+                        Color.Transparent,
+                    ),
+                ),
+            )
+            .statusBarsPadding()
+            .padding(start = 16.dp, end = 16.dp, top = 2.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .widthIn(max = EchoContentMaxWidth)
+                .fillMaxSize()
+                .align(Alignment.TopCenter),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = scheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    subtitle?.takeIf { it.isNotBlank() }?.let { value ->
+                        Text(
+                            value,
+                            color = scheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = scheme.surface.copy(alpha = 0.50f),
+                        border = BorderStroke(1.dp, EchoGlassBorder),
+                    ) {
+                        Text(
+                            badge,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = scheme.onSurface,
+                        )
+                    }
+                    actions()
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            content()
+        }
+    }
+}
+
+@Composable
+private fun LinkedTrackList(
+    tracks: List<EchoRemoteTrack>,
+    onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyColumn(
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(bottom = LibraryBottomControlsPadding),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(
+            items = tracks,
+            key = { track -> track.id ?: "${track.title}-${track.artist}-${track.album.orEmpty()}" },
+        ) { track ->
+            TrackRow(
+                track = track.toEchoTrack(),
+                onClick = { onPlayLinkedTrack(track) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun LinkedAlbumWall(
+    albums: List<AlbumSummary>,
+    onOpenAlbum: (AlbumSummary) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(3),
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
+        contentPadding = PaddingValues(bottom = LibraryBottomControlsPadding),
+    ) {
+        gridItems(
+            items = albums,
+            key = { album -> album.albumKey },
+        ) { album ->
+            AlbumWallCard(album = album, onClick = { onOpenAlbum(album) })
+        }
+    }
+}
+
+@Composable
+private fun LinkedAlbumTracksPage(
+    album: AlbumSummary,
+    tracks: List<EchoRemoteTrack>,
+    onBack: () -> Unit,
+    onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val artistLabel = album.albumArtist ?: album.artist ?: "PC ECHO"
+    LinkedLibraryChrome(
+        title = album.title,
+        subtitle = "$artistLabel · ${tracks.size} 首",
+        badge = "PC 专辑",
+        actions = {
+            TextButton(onClick = onBack) {
+                Text("返回")
+            }
+        },
+        modifier = modifier,
+    ) {
+        if (tracks.isEmpty()) {
+            EmptyState("这个 PC 专辑暂无可显示歌曲。")
+        } else {
+            LinkedTrackList(
+                tracks = tracks,
+                onPlayLinkedTrack = onPlayLinkedTrack,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+private fun List<EchoRemoteTrack>.toLinkedAlbums(): List<AlbumSummary> =
+    groupBy { it.linkedAlbumKey() }
+        .values
+        .map { albumTracks ->
+            val first = albumTracks.first()
+            AlbumSummary(
+                albumKey = first.linkedAlbumKey(),
+                title = first.album?.takeIf { it.isNotBlank() } ?: "未知专辑",
+                albumArtist = first.artist.takeIf { it.isNotBlank() },
+                artist = first.artist.takeIf { it.isNotBlank() },
+                artworkUri = albumTracks.firstNotNullOfOrNull { it.artworkUrl?.takeIf(String::isNotBlank) },
+                trackCount = albumTracks.size,
+                durationMs = albumTracks.sumOf { it.durationMs.coerceAtLeast(0L) },
+                year = null,
+            )
+        }
+        .sortedWith(compareBy<AlbumSummary> { it.title.lowercase() }.thenBy { it.albumArtist.orEmpty().lowercase() })
+
+private fun EchoRemoteTrack.linkedAlbumKey(): String =
+    "echo-link:${album?.trim().orEmpty().lowercase()}|${artist.trim().lowercase()}"
+
+private fun EchoRemoteTrack.toEchoTrack(): EchoTrack =
+    EchoTrack(
+        id = "echo-link:${id ?: "${title.hashCode()}-${artist.hashCode()}-${album.hashCode()}"}",
+        uri = "",
+        title = title,
+        artist = artist.ifBlank { "PC ECHO" },
+        album = album,
+        artworkUri = artworkUrl,
+        durationMs = durationMs,
+        source = LibrarySource("echo-link"),
+    )
 
 @Composable
 private fun LibraryBrowserHeader(

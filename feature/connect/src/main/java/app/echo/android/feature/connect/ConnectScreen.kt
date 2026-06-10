@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.animateContentSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CloudQueue
@@ -28,11 +29,15 @@ import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -74,6 +79,8 @@ import app.echo.android.design.PageChrome
 import app.echo.android.design.RoonInk
 import app.echo.android.design.RoonMuted
 import app.echo.android.design.echoDarkGlassBorder
+import app.echo.android.design.echoGlassRowBrush
+import app.echo.android.design.formatDuration
 import app.echo.android.model.connect.EchoRemoteConnectionState
 import app.echo.android.model.library.LibraryScanPhase
 import app.echo.android.model.library.LibraryScanProgress
@@ -85,6 +92,12 @@ fun ConnectScreen(
     trackTitle: String,
     trackArtist: String,
     isPlaying: Boolean,
+    remoteError: String?,
+    scanMessage: String?,
+    savedPcAddress: String?,
+    savedPcToken: String?,
+    autoReconnectEnabled: Boolean,
+    linkedLibraryDefault: Boolean,
     discordPresenceEnabled: Boolean,
     discordPresenceReady: Boolean,
     discordPresenceTrackTitle: String?,
@@ -95,10 +108,14 @@ fun ConnectScreen(
     webDavUsername: String?,
     webDavPassword: String?,
     remoteScanState: LibraryScanProgress,
-    onPairDemo: () -> Unit,
+    onConnectPc: (String, String) -> Unit,
+    onScanPairingCode: () -> Unit,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onDisconnect: () -> Unit,
+    onForgetPc: () -> Unit,
+    onAutoReconnectChange: (Boolean) -> Unit,
+    onLinkedLibraryDefaultChange: (Boolean) -> Unit,
     onSyncSubsonicLibrary: (String, String, String) -> Unit,
     onSaveSubsonicCredentials: (String, String, String) -> Unit,
     onClearSubsonicCredentials: () -> Unit,
@@ -139,6 +156,11 @@ fun ConnectScreen(
                 !webDavPassword.isNullOrBlank(),
         )
     }
+    var pcAddressInput by rememberSaveable(savedPcAddress) { mutableStateOf(savedPcAddress.orEmpty()) }
+    var pcTokenInput by rememberSaveable(savedPcToken) { mutableStateOf(savedPcToken.orEmpty()) }
+    val hasSavedPc = !savedPcAddress.isNullOrBlank() && !savedPcToken.isNullOrBlank()
+    val canConnectPc = pcAddressInput.isNotBlank() &&
+        (pcTokenInput.isNotBlank() || pcAddressInput.trim().lowercase().startsWith("echo://pair"))
     PageChrome(title = "连接", subtitle = "串流服务 · PC 联动", badge = "互联", scrollable = true) {
         EchoSectionTitle("音乐服务", "连接你的曲库来源")
         Spacer(Modifier.height(12.dp))
@@ -239,9 +261,10 @@ fun ConnectScreen(
                 .background(
                     Brush.linearGradient(
                         listOf(
-                            if (dark) EchoGlassPanel.copy(alpha = 0.62f) else scheme.surface.copy(alpha = 0.70f),
-                            if (dark) EchoGlassCyan.copy(alpha = 0.18f) else EchoHomeMist.copy(alpha = 0.62f),
-                            if (dark) EchoGlassViolet.copy(alpha = 0.20f) else scheme.primary.copy(alpha = 0.08f),
+                            if (dark) Color.White.copy(alpha = 0.08f) else scheme.surface.copy(alpha = 0.70f),
+                            if (dark) EchoGlassPanel.copy(alpha = 0.34f) else EchoHomeMist.copy(alpha = 0.62f),
+                            if (dark) EchoGlassCyan.copy(alpha = 0.20f) else scheme.primary.copy(alpha = 0.08f),
+                            if (dark) EchoGlassViolet.copy(alpha = 0.14f) else scheme.primary.copy(alpha = 0.08f),
                         ),
                     ),
                 )
@@ -300,26 +323,250 @@ fun ConnectScreen(
                         onNext = onNext,
                     )
                 } else {
-                    EchoPlaceholderLine("局域网内发现 PC ECHO 后，输入配对码即可接管播放")
+                    PcPairingInputs(
+                        address = pcAddressInput,
+                        token = pcTokenInput,
+                        hasSavedPc = hasSavedPc,
+                        autoReconnectEnabled = autoReconnectEnabled,
+                        scanMessage = scanMessage,
+                        onAddressChange = { pcAddressInput = it },
+                        onTokenChange = { pcTokenInput = it },
+                        onAutoReconnectChange = onAutoReconnectChange,
+                        onScanPairingCode = onScanPairingCode,
+                    )
+                }
+                LinkedLibraryDefaultRow(
+                    checked = linkedLibraryDefault,
+                    connected = connected,
+                    onCheckedChange = onLinkedLibraryDefaultChange,
+                )
+                remoteError?.takeIf { it.isNotBlank() }?.let { error ->
+                    Text(
+                        error,
+                        color = scheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     EchoTextButton(
-                        text = if (connected) "已配对" else "配对 PC",
-                        onClick = onPairDemo,
-                        enabled = !connected,
+                        text = if (connected) "已连接" else "连接 PC",
+                        onClick = { onConnectPc(pcAddressInput, pcTokenInput) },
+                        enabled = !connected && canConnectPc,
                     )
                     if (connected) {
                         TextButton(onClick = onDisconnect) {
                             Text("断开", color = EchoHomeBlue)
+                        }
+                    } else if (hasSavedPc) {
+                        TextButton(
+                            onClick = {
+                                pcAddressInput = ""
+                                pcTokenInput = ""
+                                onForgetPc()
+                            },
+                        ) {
+                            Text("忘记", color = EchoHomeBlue)
                         }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun PcPairingInputs(
+    address: String,
+    token: String,
+    hasSavedPc: Boolean,
+    autoReconnectEnabled: Boolean,
+    scanMessage: String?,
+    onAddressChange: (String) -> Unit,
+    onTokenChange: (String) -> Unit,
+    onAutoReconnectChange: (Boolean) -> Unit,
+    onScanPairingCode: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val dark = LocalEchoDarkTheme.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(echoGlassRowBrush(accent = EchoGlassCyan))
+            .border(
+                if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.70f)),
+                RoundedCornerShape(18.dp),
+            )
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(
+            "输入 PC ECHO 地址和配对 Token",
+            color = scheme.onSurface,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            "支持 192.168.1.12:26789 或完整 http / https 地址",
+            color = scheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "PC 端显示二维码后可直接扫码配对",
+                color = scheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.weight(1f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            RemoteCompactAction(
+                text = "扫码配对",
+                enabled = true,
+                modifier = Modifier.width(92.dp),
+                onClick = onScanPairingCode,
+            )
+        }
+        scanMessage?.takeIf { it.isNotBlank() }?.let { message ->
+            Text(
+                message,
+                color = if (message.contains("不可用") || message.contains("没有识别")) scheme.error else scheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        RemoteTextInput(
+            label = "PC 地址",
+            value = address,
+            placeholder = "192.168.1.12:26789",
+            onValueChange = onAddressChange,
+        )
+        RemoteTextInput(
+            label = "配对 Token",
+            value = token,
+            placeholder = "从 PC ECHO 联动页复制",
+            secret = token.isNotBlank(),
+            onValueChange = onTokenChange,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    "自动重连",
+                    color = if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.94f) else scheme.onSurface,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    if (hasSavedPc) "下次打开 Connect 时尝试连接上次的 PC" else "连接成功并保存后可用",
+                    color = if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.70f) else scheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            EchoConnectSwitch(
+                checked = autoReconnectEnabled,
+                onCheckedChange = onAutoReconnectChange,
+                enabled = hasSavedPc,
+            )
+        }
+    }
+}
+
+@Composable
+private fun LinkedLibraryDefaultRow(
+    checked: Boolean,
+    connected: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val dark = LocalEchoDarkTheme.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                if (checked) EchoHomeBlue.copy(alpha = if (dark) 0.18f else 0.10f)
+                else if (dark) EchoGlassPanel.copy(alpha = 0.44f) else scheme.surfaceVariant.copy(alpha = 0.24f),
+            )
+            .border(
+                if (dark) echoDarkGlassBorder(checked) else BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.64f)),
+                RoundedCornerShape(16.dp),
+            )
+            .padding(horizontal = 12.dp, vertical = 11.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(
+                "默认读取联动曲库",
+                color = if (dark) Color.White.copy(alpha = 0.94f) else scheme.onSurface,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                when {
+                    checked && connected -> "联动 ECHO 曲库独立显示，已按 PC ECHO 作为当前联动源"
+                    checked -> "连接后自动读取 PC ECHO，不并入本地扫描库"
+                    else -> "本地曲库保持默认，可手动刷新联动曲库"
+                },
+                color = if (dark) Color.White.copy(alpha = 0.70f) else scheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        EchoConnectSwitch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+        )
+    }
+}
+
+@Composable
+private fun EchoConnectSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true,
+) {
+    val dark = LocalEchoDarkTheme.current
+    val scheme = MaterialTheme.colorScheme
+    Switch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        enabled = enabled,
+        colors = SwitchDefaults.colors(
+            checkedThumbColor = Color.White,
+            checkedTrackColor = scheme.primary.copy(alpha = if (dark) 0.86f else 0.76f),
+            checkedBorderColor = Color.White.copy(alpha = if (dark) 0.28f else 0.52f),
+            uncheckedThumbColor = if (dark) Color.White.copy(alpha = 0.58f) else scheme.onSurfaceVariant.copy(alpha = 0.72f),
+            uncheckedTrackColor = if (dark) Color.White.copy(alpha = 0.14f) else scheme.outlineVariant.copy(alpha = 0.55f),
+            uncheckedBorderColor = if (dark) Color.White.copy(alpha = 0.22f) else scheme.outlineVariant.copy(alpha = 0.76f),
+            disabledUncheckedThumbColor = if (dark) Color.White.copy(alpha = 0.30f) else scheme.onSurfaceVariant.copy(alpha = 0.36f),
+            disabledUncheckedTrackColor = if (dark) Color.White.copy(alpha = 0.08f) else scheme.outlineVariant.copy(alpha = 0.30f),
+            disabledUncheckedBorderColor = if (dark) Color.White.copy(alpha = 0.12f) else scheme.outlineVariant.copy(alpha = 0.34f),
+        ),
+    )
 }
 
 @Composable
@@ -363,9 +610,10 @@ private fun RemoteSourcesPanel(
             .background(
                 Brush.linearGradient(
                     listOf(
-                        if (dark) EchoGlassPanel.copy(alpha = 0.62f) else scheme.surface.copy(alpha = 0.70f),
+                        if (dark) Color.White.copy(alpha = 0.08f) else scheme.surface.copy(alpha = 0.70f),
+                        if (dark) EchoGlassPanel.copy(alpha = 0.58f) else scheme.surface.copy(alpha = 0.70f),
                         EchoHomeBlue.copy(alpha = if (dark) 0.20f else 0.12f),
-                        if (dark) EchoGlassViolet.copy(alpha = 0.16f) else EchoHomeMist.copy(alpha = 0.28f),
+                        if (dark) EchoGlassViolet.copy(alpha = 0.13f) else EchoHomeMist.copy(alpha = 0.28f),
                     ),
                 ),
             )
@@ -512,9 +760,10 @@ private fun RemoteSourceProviderSection(
                 if (dark) {
                     Brush.linearGradient(
                         listOf(
-                            EchoGlassInk.copy(alpha = 0.48f),
-                            EchoGlassPanel.copy(alpha = 0.34f),
-                            if (ready) EchoGlassCyan.copy(alpha = 0.12f) else EchoGlassViolet.copy(alpha = 0.08f),
+                            Color.White.copy(alpha = 0.06f),
+                            EchoGlassPanel.copy(alpha = 0.24f),
+                            EchoGlassInk.copy(alpha = 0.14f),
+                            if (ready) EchoGlassCyan.copy(alpha = 0.14f) else EchoGlassViolet.copy(alpha = 0.10f),
                         ),
                     )
                 } else {
@@ -635,6 +884,8 @@ private fun RemoteTextInput(
     secret: Boolean = false,
     onValueChange: (String) -> Unit,
 ) {
+    val scheme = MaterialTheme.colorScheme
+    val dark = LocalEchoDarkTheme.current
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
@@ -642,6 +893,20 @@ private fun RemoteTextInput(
         placeholder = { Text(placeholder, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         singleLine = true,
         visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
+        shape = RoundedCornerShape(15.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = scheme.onSurface,
+            unfocusedTextColor = scheme.onSurface,
+            focusedContainerColor = if (dark) Color.White.copy(alpha = 0.07f) else Color.White.copy(alpha = 0.48f),
+            unfocusedContainerColor = if (dark) Color.White.copy(alpha = 0.05f) else Color.White.copy(alpha = 0.34f),
+            focusedBorderColor = scheme.primary.copy(alpha = if (dark) 0.62f else 0.42f),
+            unfocusedBorderColor = if (dark) EchoDarkGlassBorder else EchoGlassBorder.copy(alpha = 0.74f),
+            cursorColor = scheme.primary,
+            focusedLabelColor = scheme.primary,
+            unfocusedLabelColor = scheme.onSurfaceVariant,
+            focusedPlaceholderColor = scheme.onSurfaceVariant.copy(alpha = 0.72f),
+            unfocusedPlaceholderColor = scheme.onSurfaceVariant.copy(alpha = 0.58f),
+        ),
         modifier = Modifier.fillMaxWidth(),
     )
 }

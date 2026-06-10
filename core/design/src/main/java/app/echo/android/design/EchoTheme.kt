@@ -67,7 +67,15 @@ private val EchoLightScheme = lightColorScheme(
 val LocalEchoDensityScale = staticCompositionLocalOf { 1f }
 val LocalEchoDarkTheme = staticCompositionLocalOf { false }
 
-private val EchoOutfitFontFamily = FontFamily(Font(R.font.outfit))
+private val EchoOutfitFontFamily = FontFamily(
+    Font(R.font.outfit_variable, weight = FontWeight.Light),
+    Font(R.font.outfit_variable, weight = FontWeight.Normal),
+    Font(R.font.outfit_variable, weight = FontWeight.Medium),
+    Font(R.font.outfit_variable, weight = FontWeight.SemiBold),
+    Font(R.font.outfit_variable, weight = FontWeight.Bold),
+    Font(R.font.outfit_variable, weight = FontWeight.ExtraBold),
+    Font(R.font.outfit_variable, weight = FontWeight.Black),
+)
 
 fun echoFontFamilyForMode(
     mode: String,
@@ -85,21 +93,21 @@ private fun echoTypography(
     fontScale: Float,
 ): Typography = Typography().let { typography ->
     typography.copy(
-        displayLarge = typography.displayLarge.echoFont(fontFamily, FontWeight.SemiBold, fontScale),
-        displayMedium = typography.displayMedium.echoFont(fontFamily, FontWeight.SemiBold, fontScale),
-        displaySmall = typography.displaySmall.echoFont(fontFamily, FontWeight.SemiBold, fontScale),
-        headlineLarge = typography.headlineLarge.echoFont(fontFamily, FontWeight.SemiBold, fontScale),
-        headlineMedium = typography.headlineMedium.echoFont(fontFamily, FontWeight.SemiBold, fontScale),
-        headlineSmall = typography.headlineSmall.echoFont(fontFamily, FontWeight.SemiBold, fontScale),
-        titleLarge = typography.titleLarge.echoFont(fontFamily, FontWeight.SemiBold, fontScale),
-        titleMedium = typography.titleMedium.echoFont(fontFamily, FontWeight.Medium, fontScale),
-        titleSmall = typography.titleSmall.echoFont(fontFamily, FontWeight.Medium, fontScale),
-        bodyLarge = typography.bodyLarge.echoFont(fontFamily, FontWeight.Normal, fontScale),
-        bodyMedium = typography.bodyMedium.echoFont(fontFamily, FontWeight.Normal, fontScale),
-        bodySmall = typography.bodySmall.echoFont(fontFamily, FontWeight.Normal, fontScale),
-        labelLarge = typography.labelLarge.echoFont(fontFamily, FontWeight.Medium, fontScale),
-        labelMedium = typography.labelMedium.echoFont(fontFamily, FontWeight.Medium, fontScale),
-        labelSmall = typography.labelSmall.echoFont(fontFamily, FontWeight.Medium, fontScale),
+        displayLarge = typography.displayLarge.echoFont(fontFamily, FontWeight.ExtraBold, fontScale),
+        displayMedium = typography.displayMedium.echoFont(fontFamily, FontWeight.ExtraBold, fontScale),
+        displaySmall = typography.displaySmall.echoFont(fontFamily, FontWeight.ExtraBold, fontScale),
+        headlineLarge = typography.headlineLarge.echoFont(fontFamily, FontWeight.Bold, fontScale),
+        headlineMedium = typography.headlineMedium.echoFont(fontFamily, FontWeight.Bold, fontScale),
+        headlineSmall = typography.headlineSmall.echoFont(fontFamily, FontWeight.Bold, fontScale),
+        titleLarge = typography.titleLarge.echoFont(fontFamily, FontWeight.Bold, fontScale),
+        titleMedium = typography.titleMedium.echoFont(fontFamily, FontWeight.Bold, fontScale),
+        titleSmall = typography.titleSmall.echoFont(fontFamily, FontWeight.Bold, fontScale),
+        bodyLarge = typography.bodyLarge.echoFont(fontFamily, FontWeight.SemiBold, fontScale),
+        bodyMedium = typography.bodyMedium.echoFont(fontFamily, FontWeight.SemiBold, fontScale),
+        bodySmall = typography.bodySmall.echoFont(fontFamily, FontWeight.SemiBold, fontScale),
+        labelLarge = typography.labelLarge.echoFont(fontFamily, FontWeight.Bold, fontScale),
+        labelMedium = typography.labelMedium.echoFont(fontFamily, FontWeight.Bold, fontScale),
+        labelSmall = typography.labelSmall.echoFont(fontFamily, FontWeight.Bold, fontScale),
     )
 }
 

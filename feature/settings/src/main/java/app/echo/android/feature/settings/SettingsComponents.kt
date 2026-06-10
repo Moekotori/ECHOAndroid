@@ -30,6 +30,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -327,7 +328,7 @@ internal fun EqualizerPanel(
                             .padding(2.dp)
                             .size(24.dp),
                     )
-                    Switch(
+                    EchoComponentSwitch(
                         checked = state.enabled,
                         onCheckedChange = onEnabledChange,
                     )
@@ -385,6 +386,27 @@ internal fun EqualizerPanel(
             }
         }
     }
+}
+
+@Composable
+private fun EchoComponentSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    val dark = LocalEchoDarkTheme.current
+    val scheme = MaterialTheme.colorScheme
+    Switch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        colors = SwitchDefaults.colors(
+            checkedThumbColor = Color.White,
+            checkedTrackColor = scheme.primary.copy(alpha = if (dark) 0.86f else 0.76f),
+            checkedBorderColor = Color.White.copy(alpha = if (dark) 0.28f else 0.52f),
+            uncheckedThumbColor = if (dark) Color.White.copy(alpha = 0.58f) else scheme.onSurfaceVariant.copy(alpha = 0.72f),
+            uncheckedTrackColor = if (dark) Color.White.copy(alpha = 0.14f) else scheme.outlineVariant.copy(alpha = 0.55f),
+            uncheckedBorderColor = if (dark) Color.White.copy(alpha = 0.22f) else scheme.outlineVariant.copy(alpha = 0.76f),
+        ),
+    )
 }
 
 @Composable

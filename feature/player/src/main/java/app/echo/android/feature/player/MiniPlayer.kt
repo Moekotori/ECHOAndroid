@@ -60,9 +60,9 @@ import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoAccent
 import app.echo.android.design.EchoAccentDeep
 import app.echo.android.design.EchoDarkGlassBorder
+import app.echo.android.design.EchoGlassInk
 import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.LocalEchoDarkTheme
-import app.echo.android.design.echoDarkGlassBrush
 import app.echo.android.design.progressFraction
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
@@ -107,8 +107,8 @@ fun MiniPlayer(
     )
     val borderColor by animateColorAsState(
         targetValue = when {
-            dark && status.isPlaying -> scheme.primary.copy(alpha = 0.34f)
-            dark -> EchoDarkGlassBorder
+            dark && status.isPlaying -> scheme.primary.copy(alpha = 0.42f)
+            dark -> Color.White.copy(alpha = 0.28f)
             status.isPlaying -> scheme.primary.copy(alpha = 0.22f)
             else -> Color(0xFFE9E9EC)
         },
@@ -144,10 +144,16 @@ fun MiniPlayer(
                 spotColor = scheme.primary.copy(alpha = 0.16f),
             )
             .clip(shape)
-            .background(if (dark) EchoGlassPanel.copy(alpha = if (compactDock) 0.52f else 0.46f) else Color.Transparent)
+            .background(if (dark) EchoGlassInk.copy(alpha = if (compactDock) 0.74f else 0.68f) else Color.Transparent)
             .background(
                 if (dark) {
-                    echoDarkGlassBrush(if (compactDock) 1.02f else 0.92f)
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(alpha = if (compactDock) 0.10f else 0.08f),
+                            EchoGlassPanel.copy(alpha = if (compactDock) 0.62f else 0.56f),
+                            EchoGlassInk.copy(alpha = if (compactDock) 0.78f else 0.70f),
+                        ),
+                    )
                 } else {
                     Brush.verticalGradient(
                         if (compactDock) {
@@ -262,14 +268,14 @@ fun MiniPlayer(
                         maxLines = 1,
                         overflow = TextOverflow.Clip,
                         fontWeight = FontWeight.Bold,
-                        color = scheme.onSurface,
-                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (dark) Color.White.copy(alpha = 0.96f) else scheme.onSurface,
+                        style = MaterialTheme.typography.titleSmall,
                     )
                     Text(
                         status.track?.artist ?: "就绪",
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        color = if (dark) Color.White.copy(alpha = 0.68f) else scheme.onSurfaceVariant,
+                        color = if (dark) Color.White.copy(alpha = 0.86f) else scheme.onSurfaceVariant,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -282,7 +288,7 @@ fun MiniPlayer(
                             .clip(RoundedCornerShape(99.dp))
                             .graphicsLayer { alpha = progressAlpha },
                         color = scheme.primary,
-                        trackColor = if (dark) Color.White.copy(alpha = 0.14f) else scheme.outlineVariant.copy(alpha = 0.90f),
+                        trackColor = if (dark) Color.White.copy(alpha = 0.28f) else scheme.outlineVariant.copy(alpha = 0.90f),
                     )
                 }
             }
@@ -348,14 +354,18 @@ private fun MiniPlayerActionButton(
     val containerColor by animateColorAsState(
         targetValue = when {
             !compact -> Color.Transparent
-            dark -> EchoGlassPanel.copy(alpha = 0.56f)
+            dark -> EchoGlassPanel.copy(alpha = 0.58f)
             else -> scheme.primary.copy(alpha = 0.10f)
         },
         animationSpec = tween(durationMillis = 220, easing = MiniPlayerMotionEasing),
         label = "mini-player-action-container",
     )
     val tint by animateColorAsState(
-        targetValue = if (compact) scheme.primary else scheme.onSurfaceVariant.copy(alpha = 0.84f),
+        targetValue = if (compact) {
+            if (dark) scheme.primary.copy(alpha = 0.96f) else scheme.primary
+        } else {
+            if (dark) Color.White.copy(alpha = 0.84f) else scheme.onSurfaceVariant.copy(alpha = 0.84f)
+        },
         animationSpec = tween(durationMillis = 220, easing = MiniPlayerMotionEasing),
         label = "mini-player-action-tint",
     )

@@ -36,6 +36,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -669,7 +670,7 @@ private fun SettingsHeroCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(26.dp))
             .background(
-                if (dark) echoGlassContainerBrush(1.12f, accent = EchoGlassCyan) else Brush.linearGradient(heroColors),
+                if (dark) echoGlassContainerBrush(1.00f, accent = EchoGlassCyan) else Brush.linearGradient(heroColors),
             )
             .border(
                 if (dark) echoDarkGlassBorder(dynamicArtwork) else BorderStroke(1.dp, EchoGlassBorder),
@@ -686,13 +687,13 @@ private fun SettingsHeroCard(
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(
                         "ECHO Mobile",
-                        color = scheme.onSurface,
+                        color = if (dark) Color.White.copy(alpha = 0.96f) else scheme.onSurface,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
                         status.track?.title ?: "本机播放就绪",
-                        color = scheme.onSurfaceVariant,
+                        color = if (dark) Color.White.copy(alpha = 0.74f) else scheme.onSurfaceVariant,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -723,7 +724,7 @@ private fun SettingsSectionCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(22.dp))
-            .background(if (dark) echoGlassContainerBrush(0.92f) else Brush.linearGradient(listOf(Color.White.copy(alpha = 0.78f), EchoHomeMist.copy(alpha = 0.56f))))
+            .background(if (dark) echoGlassContainerBrush(1.00f) else Brush.linearGradient(listOf(Color.White.copy(alpha = 0.78f), EchoHomeMist.copy(alpha = 0.56f))))
             .border(
                 if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, EchoGlassBorder),
                 RoundedCornerShape(22.dp),
@@ -747,7 +748,7 @@ private fun SettingsSectionCard(
         ) {
             Text(
                 title,
-                color = scheme.onSurface,
+                color = if (dark) Color.White.copy(alpha = 0.96f) else scheme.onSurface,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
@@ -755,7 +756,7 @@ private fun SettingsSectionCard(
                 Icon(
                     imageVector = if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
                     contentDescription = null,
-                    tint = scheme.onSurfaceVariant,
+                    tint = if (dark) Color.White.copy(alpha = 0.72f) else scheme.onSurfaceVariant,
                     modifier = Modifier.size(24.dp),
                 )
             }
@@ -794,7 +795,7 @@ private fun SettingsBackgroundSourceRow(
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 "背景来源",
-                color = scheme.onSurface,
+                color = if (dark) Color.White.copy(alpha = 0.94f) else scheme.onSurface,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -802,7 +803,7 @@ private fun SettingsBackgroundSourceRow(
             )
             Text(
                 backgroundDetail(mode, uri),
-                color = scheme.onSurfaceVariant,
+                color = if (dark) Color.White.copy(alpha = 0.70f) else scheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -848,7 +849,7 @@ private fun BackgroundSourceAction(
 ) {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
-    val accent = if (selected) scheme.primary else scheme.onSurfaceVariant
+    val accent = if (selected) scheme.primary else if (dark) Color.White.copy(alpha = 0.74f) else scheme.onSurfaceVariant
     Row(
         modifier = modifier
             .height(34.dp)
@@ -888,8 +889,34 @@ private fun SettingsSwitchRow(
     onCheckedChange: (Boolean) -> Unit,
 ) {
     SettingsRowShell(icon = icon, title = title, detail = detail) {
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        EchoSettingsSwitch(checked = checked, onCheckedChange = onCheckedChange)
     }
+}
+
+@Composable
+private fun EchoSettingsSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    val dark = LocalEchoDarkTheme.current
+    val scheme = MaterialTheme.colorScheme
+    Switch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        colors = SwitchDefaults.colors(
+            checkedThumbColor = Color.White,
+            checkedTrackColor = scheme.primary.copy(alpha = if (dark) 0.86f else 0.76f),
+            checkedBorderColor = Color.White.copy(alpha = if (dark) 0.28f else 0.52f),
+            uncheckedThumbColor = if (dark) Color.White.copy(alpha = 0.58f) else scheme.onSurfaceVariant.copy(alpha = 0.72f),
+            uncheckedTrackColor = if (dark) Color.White.copy(alpha = 0.14f) else scheme.outlineVariant.copy(alpha = 0.55f),
+            uncheckedBorderColor = if (dark) Color.White.copy(alpha = 0.22f) else scheme.outlineVariant.copy(alpha = 0.76f),
+            disabledCheckedThumbColor = Color.White.copy(alpha = 0.60f),
+            disabledCheckedTrackColor = scheme.primary.copy(alpha = 0.26f),
+            disabledUncheckedThumbColor = if (dark) Color.White.copy(alpha = 0.32f) else scheme.onSurfaceVariant.copy(alpha = 0.38f),
+            disabledUncheckedTrackColor = if (dark) Color.White.copy(alpha = 0.08f) else scheme.outlineVariant.copy(alpha = 0.34f),
+            disabledUncheckedBorderColor = if (dark) Color.White.copy(alpha = 0.12f) else scheme.outlineVariant.copy(alpha = 0.36f),
+        ),
+    )
 }
 
 @Composable
@@ -910,7 +937,7 @@ private fun SettingsActionRow(
     ) {
         Text(
             if (enabled) actionLabel else "关闭",
-            color = if (enabled) scheme.primary else scheme.onSurfaceVariant,
+            color = if (enabled) scheme.primary else if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.58f) else scheme.onSurfaceVariant,
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
         )
@@ -967,7 +994,7 @@ private fun SettingsOptionChip(
     ) {
         Text(
             label,
-            color = if (selected) scheme.primary else scheme.onSurfaceVariant,
+            color = if (selected) scheme.primary else if (dark) Color.White.copy(alpha = 0.74f) else scheme.onSurfaceVariant,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
@@ -1009,7 +1036,7 @@ private fun SettingsSliderRow(
             ) {
                 Text(
                     title,
-                    color = scheme.onSurface,
+                    color = if (dark) Color.White.copy(alpha = 0.94f) else scheme.onSurface,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -1017,7 +1044,7 @@ private fun SettingsSliderRow(
                 )
                 Text(
                     detail,
-                    color = scheme.onSurfaceVariant,
+                    color = if (dark) Color.White.copy(alpha = 0.72f) else scheme.onSurfaceVariant,
                     style = MaterialTheme.typography.labelMedium,
                     maxLines = 1,
                 )
@@ -1030,7 +1057,7 @@ private fun SettingsSliderRow(
                 colors = SliderDefaults.colors(
                     thumbColor = scheme.primary,
                     activeTrackColor = scheme.primary.copy(alpha = 0.82f),
-                    inactiveTrackColor = if (dark) Color.White.copy(alpha = 0.16f) else scheme.outlineVariant.copy(alpha = 0.72f),
+                    inactiveTrackColor = if (dark) Color.White.copy(alpha = 0.20f) else scheme.outlineVariant.copy(alpha = 0.72f),
                     activeTickColor = Color.Transparent,
                     inactiveTickColor = Color.Transparent,
                 ),
@@ -1066,7 +1093,7 @@ private fun SettingsRowShell(
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
                 title,
-                color = scheme.onSurface,
+                color = if (dark) Color.White.copy(alpha = 0.94f) else scheme.onSurface,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -1074,7 +1101,7 @@ private fun SettingsRowShell(
             )
             Text(
                 detail,
-                color = scheme.onSurfaceVariant,
+                color = if (dark) Color.White.copy(alpha = 0.70f) else scheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -1119,8 +1146,8 @@ private fun SettingsStatTile(
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(label, color = scheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
-        Text(value, color = scheme.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(label, color = if (dark) Color.White.copy(alpha = 0.70f) else scheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
+        Text(value, color = if (dark) Color.White.copy(alpha = 0.94f) else scheme.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
     }
 }
 

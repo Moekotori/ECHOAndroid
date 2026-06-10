@@ -7,6 +7,7 @@ data class LibrarySource(
         val MediaStore = LibrarySource("mediastore")
         val Subsonic = LibrarySource("subsonic")
         val WebDav = LibrarySource("webdav")
+        val Netease = LibrarySource("netease")
         val Unknown = LibrarySource("unknown")
     }
 }

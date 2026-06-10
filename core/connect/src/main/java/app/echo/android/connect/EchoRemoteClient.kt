@@ -1,48 +1,89 @@
 package app.echo.android.connect
 
+import app.echo.android.model.connect.EchoMobileDiscordPresenceSnapshot
 import app.echo.android.model.connect.EchoRemoteCommand
 import app.echo.android.model.connect.EchoRemoteConnectionState
 import app.echo.android.model.connect.EchoRemoteEndpoint
-import app.echo.android.model.connect.EchoMobileDiscordPresenceSnapshot
+import app.echo.android.model.connect.EchoRemoteLibraryState
 import app.echo.android.model.connect.EchoRemoteMessage
-import app.echo.android.model.connect.EchoRemotePlaybackSnapshot
-import app.echo.android.model.connect.EchoRemotePlaybackState
 import app.echo.android.model.connect.EchoRemoteStatus
 import app.echo.android.model.connect.EchoRemoteTrack
+import app.echo.android.model.library.EchoTrack
+import app.echo.android.model.library.LibrarySource
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
-class EchoRemoteClient {
+class EchoRemoteClient private constructor(
+    private val scope: CoroutineScope,
+    private val transport: EchoLinkTransport = OkHttpEchoLinkTransport(),
+) {
+    constructor(scope: CoroutineScope) : this(scope, OkHttpEchoLinkTransport())
+
     private val _status = MutableStateFlow(EchoRemoteStatus())
     val status: StateFlow<EchoRemoteStatus> = _status.asStateFlow()
 
-    fun pair(endpoint: EchoRemoteEndpoint) {
-        _status.value = EchoRemoteStatus(
-            connectionState = EchoRemoteConnectionState.Connected,
-            endpoint = endpoint,
-            playback = EchoRemotePlaybackSnapshot(
-                state = EchoRemotePlaybackState.Paused,
-                track = EchoRemoteTrack(
-                    id = "pc-demo-track",
-                    title = "PC ECHO 已就绪",
-                    artist = endpoint.name,
-                    album = "远程会话",
-                    artworkUrl = null,
-                    durationMs = 240_000L,
-                ),
-                positionMs = 42_000L,
-                durationMs = 240_000L,
-                volume = 0.72f,
-                outputMode = "WASAPI Shared",
-                updatedAtEpochMs = System.currentTimeMillis(),
-            ),
-        )
+    private val _library = MutableStateFlow(EchoRemoteLibraryState())
+    val library: StateFlow<EchoRemoteLibraryState> = _library.asStateFlow()
+
+    private var endpoint: EchoRemoteEndpoint? = null
+    private var statusPollJob: Job? = null
+
+    fun connectManual(address: String, token: String, refreshLibraryOnConnect: Boolean = true) {
+        val parsed = EchoPairingParser.parseManual(address, token)
+        if (parsed == null) {
+            _status.update {
+                it.copy(
+                    connectionState = EchoRemoteConnectionState.Error,
+                    error = "PC 地址或配对 Token 无效",
+                )
+            }
+            return
+        }
+        connect(parsed, refreshLibraryOnConnect)
+    }
+
+    fun pair(endpoint: EchoRemoteEndpoint, refreshLibraryOnConnect: Boolean = true) {
+        connect(endpoint, refreshLibraryOnConnect)
+    }
+
+    fun connect(nextEndpoint: EchoRemoteEndpoint, refreshLibraryOnConnect: Boolean = true) {
+        endpoint = nextEndpoint
+        statusPollJob?.cancel()
+        _status.update {
+            it.copy(
+                connectionState = EchoRemoteConnectionState.Connecting,
+                endpoint = nextEndpoint,
+                error = null,
+            )
+        }
+        scope.launch {
+            runCatching { transport.fetchStatus(nextEndpoint) }
+                .onSuccess { response ->
+                    applyStatus(nextEndpoint, response)
+                    if (refreshLibraryOnConnect) {
+                        refreshLibrary()
+                    } else {
+                        _library.value = EchoRemoteLibraryState()
+                    }
+                    startStatusPolling()
+                }
+                .onFailure { error -> markConnectionError(nextEndpoint, error) }
+        }
     }
 
     fun disconnect() {
-        _status.value = EchoRemoteStatus()
+        statusPollJob?.cancel()
+        statusPollJob = null
+        endpoint = null
+        _status.value = EchoRemoteStatus(mobileDiscordPresence = _status.value.mobileDiscordPresence)
+        _library.value = EchoRemoteLibraryState()
     }
 
     fun ingest(message: EchoRemoteMessage) {
@@ -73,7 +114,7 @@ class EchoRemoteClient {
             current.copy(
                 mobileDiscordPresence = snapshot,
                 error = when {
-                    snapshot?.enabled != true -> null
+                    snapshot?.enabled != true -> current.error
                     current.connectionState != EchoRemoteConnectionState.Connected -> "Discord Presence 等待 PC ECHO 配对"
                     else -> current.error
                 },
@@ -82,46 +123,159 @@ class EchoRemoteClient {
     }
 
     fun send(command: EchoRemoteCommand) {
-        _status.update { current ->
-            val playback = when (command) {
-                EchoRemoteCommand.PlayPause -> current.playback.copy(
-                    state = if (current.playback.state == EchoRemotePlaybackState.Playing) {
-                        EchoRemotePlaybackState.Paused
-                    } else {
-                        EchoRemotePlaybackState.Playing
-                    },
-                    updatedAtEpochMs = System.currentTimeMillis(),
-                )
-
-                EchoRemoteCommand.Next -> current.playback.copy(
-                    track = current.playback.track?.copy(title = "已请求下一首"),
-                    positionMs = 0L,
-                    updatedAtEpochMs = System.currentTimeMillis(),
-                )
-
-                EchoRemoteCommand.Previous -> current.playback.copy(
-                    track = current.playback.track?.copy(title = "已请求上一首"),
-                    positionMs = 0L,
-                    updatedAtEpochMs = System.currentTimeMillis(),
-                )
-
-                EchoRemoteCommand.Stop -> current.playback.copy(
-                    state = EchoRemotePlaybackState.Stopped,
-                    positionMs = 0L,
-                    updatedAtEpochMs = System.currentTimeMillis(),
-                )
-
-                is EchoRemoteCommand.SeekTo -> current.playback.copy(
-                    positionMs = command.positionMs.coerceIn(0L, current.playback.durationMs.coerceAtLeast(0L)),
-                    updatedAtEpochMs = System.currentTimeMillis(),
-                )
-
-                is EchoRemoteCommand.SetVolume -> current.playback.copy(
-                    volume = command.volume.coerceIn(0f, 1f),
-                    updatedAtEpochMs = System.currentTimeMillis(),
+        val target = endpoint ?: run {
+            _status.update {
+                it.copy(
+                    connectionState = EchoRemoteConnectionState.Error,
+                    error = "还没有连接 PC ECHO",
                 )
             }
-            current.copy(playback = playback, error = null)
+            return
         }
+        scope.launch {
+            runCatching { transport.sendCommand(target, command) }
+                .onSuccess { response ->
+                    if (response != null) {
+                        applyStatus(target, response)
+                    } else {
+                        refreshStatusOnce(target)
+                    }
+                }
+                .onFailure { error -> markConnectionError(target, error) }
+        }
+    }
+
+    fun refreshLibrary(query: String = _library.value.query) {
+        val target = endpoint ?: run {
+            _library.update { it.copy(isLoading = false, error = "还没有连接 PC ECHO") }
+            return
+        }
+        _library.update { it.copy(isLoading = true, query = query, error = null) }
+        scope.launch {
+                    runCatching { transport.fetchTracks(target, query, PcLibraryPageSize) }
+                .onSuccess { page ->
+                    if (endpoint?.id == target.id) {
+                        _library.value = EchoRemoteLibraryState(
+                            isLoading = false,
+                            query = query,
+                            tracks = page.tracks,
+                            totalCount = page.totalCount,
+                            error = null,
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    if (endpoint?.id == target.id) {
+                        _library.update {
+                            it.copy(isLoading = false, query = query, error = error.userMessage())
+                        }
+                    }
+                }
+        }
+    }
+
+    fun playTrackOnPc(track: EchoRemoteTrack) {
+        val trackId = track.id ?: run {
+            _library.update { it.copy(error = "PC 曲目缺少 trackId，不能远程播放") }
+            return
+        }
+        send(EchoRemoteCommand.PlayTrackOnPc(trackId))
+    }
+
+    fun playTrackOnPhone(track: EchoRemoteTrack, onTrackReady: (EchoTrack) -> Unit) {
+        val target = endpoint ?: run {
+            _library.update { it.copy(error = "还没有连接 PC ECHO") }
+            return
+        }
+        val trackId = track.id ?: run {
+            _library.update { it.copy(error = "PC 曲目缺少 trackId，不能在手机播放") }
+            return
+        }
+        _library.update { it.copy(error = null) }
+        scope.launch {
+            runCatching { transport.resolveStream(target, trackId) }
+                .onSuccess { stream ->
+                    val resolvedTrack = stream.track ?: track
+                    onTrackReady(resolvedTrack.toPhoneTrack(stream.streamUrl))
+                }
+                .onFailure { error ->
+                    _library.update { it.copy(error = error.userMessage()) }
+                }
+        }
+    }
+
+    private fun startStatusPolling() {
+        statusPollJob?.cancel()
+        statusPollJob = scope.launch {
+            while (isActive) {
+                delay(StatusPollIntervalMs)
+                endpoint?.let { refreshStatusOnce(it) }
+            }
+        }
+    }
+
+    private fun refreshStatusOnce(target: EchoRemoteEndpoint) {
+        scope.launch {
+            runCatching { transport.fetchStatus(target) }
+                .onSuccess { applyStatus(target, it) }
+                .onFailure { error ->
+                    if (endpoint?.id == target.id) {
+                        _status.update { current ->
+                            current.copy(
+                                connectionState = EchoRemoteConnectionState.Reconnecting,
+                                error = error.userMessage(),
+                            )
+                        }
+                    }
+                }
+        }
+    }
+
+    private fun applyStatus(target: EchoRemoteEndpoint, response: EchoLinkStatusResponse) {
+        if (endpoint?.id != target.id) return
+        val namedEndpoint = response.deviceName
+            ?.takeIf { it.isNotBlank() }
+            ?.let { target.copy(name = it) }
+            ?: target
+        endpoint = namedEndpoint
+        _status.update { current ->
+            current.copy(
+                connectionState = EchoRemoteConnectionState.Connected,
+                endpoint = namedEndpoint,
+                playback = response.playback,
+                error = null,
+            )
+        }
+    }
+
+    private fun markConnectionError(target: EchoRemoteEndpoint, error: Throwable) {
+        if (endpoint?.id != target.id) return
+        _status.update { current ->
+            current.copy(
+                connectionState = EchoRemoteConnectionState.Error,
+                endpoint = target,
+                error = error.userMessage(),
+            )
+        }
+    }
+
+    private fun EchoRemoteTrack.toPhoneTrack(streamUrl: String): EchoTrack =
+        EchoTrack(
+            id = "echo-link:${id ?: streamUrl.hashCode()}",
+            uri = streamUrl,
+            title = title,
+            artist = artist,
+            album = album,
+            artworkUri = artworkUrl,
+            durationMs = durationMs,
+            source = LibrarySource("echo-link"),
+        )
+
+    private fun Throwable.userMessage(): String =
+        message?.takeIf { it.isNotBlank() } ?: "PC ECHO 连接失败"
+
+    private companion object {
+        const val StatusPollIntervalMs = 5_000L
+        const val PcLibraryPageSize = 500
     }
 }

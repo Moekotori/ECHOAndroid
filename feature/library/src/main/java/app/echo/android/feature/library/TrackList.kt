@@ -2,6 +2,7 @@ package app.echo.android.feature.library
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.paging.compose.LazyPagingItems
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoAccent
+import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.formatDuration
 import app.echo.android.model.library.EchoTrack
@@ -45,6 +47,7 @@ internal fun TrackList(
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(bottom = LibraryBottomControlsPadding),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(
             count = tracks.itemCount,
@@ -61,11 +64,36 @@ internal fun TrackList(
 }
 
 @Composable
+internal fun TrackList(
+    tracks: List<EchoTrack>,
+    onPlayTrack: (EchoTrack) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyColumn(
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(bottom = LibraryBottomControlsPadding),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(
+            count = tracks.size,
+            key = { index -> tracks[index].id },
+        ) { index ->
+            val track = tracks[index]
+            TrackRow(
+                track = track,
+                onClick = { onPlayTrack(track) },
+            )
+        }
+    }
+}
+
+@Composable
 internal fun TrackRow(
     track: EchoTrack,
     onClick: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val dark = LocalEchoDarkTheme.current
     val subtitle = remember(track.artist, track.album) { trackSubtitle(track) }
     val duration = remember(track.durationMs) { formatDuration(track.durationMs) }
     val sampleRate = remember(track.sampleRateHz) { track.sampleRateHz?.let(::formatTrackSampleRate) }
@@ -75,15 +103,20 @@ internal fun TrackRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(18.dp))
+            .background(if (dark) EchoGlassPanel.copy(alpha = 0.46f) else Color.Transparent)
+            .border(
+                BorderStroke(1.dp, if (dark) Color.White.copy(alpha = 0.18f) else Color.Transparent),
+                RoundedCornerShape(18.dp),
+            )
             .clickable(onClick = onClick)
-            .padding(horizontal = 4.dp),
+            .padding(horizontal = 8.dp),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 90.dp)
-                .padding(vertical = 8.dp),
+                .heightIn(min = 92.dp)
+                .padding(vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
@@ -100,18 +133,19 @@ internal fun TrackRow(
             ) {
                 Text(
                     track.title,
-                    color = scheme.onSurface,
+                    color = if (dark) Color.White.copy(alpha = 0.98f) else scheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.ExtraBold,
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
                     subtitle,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    color = scheme.onSurfaceVariant,
+                    color = if (dark) Color.White.copy(alpha = 0.80f) else scheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
                 )
                 if (hasTags) {
                     Row(
@@ -143,9 +177,9 @@ internal fun TrackRow(
             ) {
                 Text(
                     duration,
-                    color = scheme.onSurfaceVariant,
+                    color = if (dark) Color.White.copy(alpha = 0.82f) else scheme.onSurfaceVariant,
                     style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                 )
             }
@@ -155,7 +189,7 @@ internal fun TrackRow(
                 .fillMaxWidth()
                 .height(1.dp)
                 .padding(start = 82.dp)
-                .background(if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.10f) else scheme.outlineVariant.copy(alpha = 0.36f)),
+                .background(if (dark) Color.White.copy(alpha = 0.16f) else scheme.outlineVariant.copy(alpha = 0.36f)),
         )
     }
 }

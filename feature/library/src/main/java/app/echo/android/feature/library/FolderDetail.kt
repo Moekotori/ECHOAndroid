@@ -53,6 +53,7 @@ import app.echo.android.design.EchoAccent
 import app.echo.android.design.EchoAccentDeep
 import app.echo.android.design.EchoContentMaxWidth
 import app.echo.android.design.EchoDarkGlassBorder
+import app.echo.android.design.EchoGlassInk
 import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.RoonInk
@@ -82,11 +83,11 @@ private fun rememberFolderDetailColors(): FolderDetailColors {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
     return FolderDetailColors(
-        surface = if (dark) EchoGlassPanel.copy(alpha = 0.48f) else Color.White.copy(alpha = 0.68f),
-        elevatedSurface = if (dark) EchoGlassPanel.copy(alpha = 0.40f) else Color.White.copy(alpha = 0.82f),
-        border = if (dark) EchoDarkGlassBorder else Color.White.copy(alpha = 0.82f),
-        content = if (dark) scheme.onSurface else RoonInk,
-        muted = if (dark) scheme.onSurfaceVariant.copy(alpha = 0.90f) else RoonMuted,
+        surface = if (dark) EchoGlassPanel.copy(alpha = 0.60f) else Color.White.copy(alpha = 0.68f),
+        elevatedSurface = if (dark) EchoGlassInk.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.82f),
+        border = if (dark) Color.White.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.82f),
+        content = if (dark) Color.White.copy(alpha = 0.96f) else RoonInk,
+        muted = if (dark) Color.White.copy(alpha = 0.74f) else RoonMuted,
     )
 }
 
@@ -206,13 +207,22 @@ private fun FolderDetailBackground() {
     val dark = LocalEchoDarkTheme.current
     Box(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
+            .height(520.dp)
             .background(
                 Brush.verticalGradient(
                     if (dark) {
-                        listOf(Color(0xFF151A22), Color(0xFF101219))
+                        listOf(
+                            EchoGlassInk.copy(alpha = 0.24f),
+                            EchoGlassPanel.copy(alpha = 0.10f),
+                            Color.Transparent,
+                        )
                     } else {
-                        listOf(Color(0xFFEAF7FF), Color(0xFFF6F2FF), Color(0xFFEFF6FF))
+                        listOf(
+                            Color.White.copy(alpha = 0.36f),
+                            Color.White.copy(alpha = 0.14f),
+                            Color.Transparent,
+                        )
                     },
                 ),
             ),
@@ -223,7 +233,11 @@ private fun FolderDetailBackground() {
             .height(420.dp)
             .background(
                 Brush.radialGradient(
-                    listOf(EchoAccent.copy(alpha = 0.30f), EchoAccentDeep.copy(alpha = 0.10f), Color.Transparent),
+                    listOf(
+                        EchoAccent.copy(alpha = if (dark) 0.20f else 0.30f),
+                        EchoAccentDeep.copy(alpha = if (dark) 0.12f else 0.10f),
+                        Color.Transparent,
+                    ),
                 ),
             ),
     )
@@ -270,7 +284,12 @@ private fun FolderHero(
             .clip(RoundedCornerShape(30.dp))
             .background(
                 Brush.linearGradient(
-                    listOf(colors.surface, colors.elevatedSurface, EchoAccent.copy(alpha = 0.10f)),
+                    listOf(
+                        if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.74f),
+                        colors.surface,
+                        colors.elevatedSurface,
+                        EchoAccent.copy(alpha = if (LocalEchoDarkTheme.current) 0.15f else 0.10f),
+                    ),
                 ),
             )
             .border(BorderStroke(1.dp, colors.border), RoundedCornerShape(30.dp))
@@ -352,7 +371,15 @@ private fun FolderInsightCard(
         modifier = modifier
             .height(66.dp)
             .clip(RoundedCornerShape(18.dp))
-            .background(colors.surface)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.72f),
+                        colors.surface,
+                        EchoAccent.copy(alpha = if (LocalEchoDarkTheme.current) 0.08f else 0.04f),
+                    ),
+                ),
+            )
             .border(BorderStroke(1.dp, colors.border), RoundedCornerShape(18.dp))
             .padding(horizontal = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -384,7 +411,15 @@ private fun FolderTrackRow(
                 spotColor = EchoAccent.copy(alpha = 0.05f),
             )
             .clip(RoundedCornerShape(16.dp))
-            .background(colors.elevatedSurface)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.07f) else Color.White.copy(alpha = 0.84f),
+                        colors.elevatedSurface,
+                        EchoAccentDeep.copy(alpha = if (LocalEchoDarkTheme.current) 0.10f else 0.04f),
+                    ),
+                ),
+            )
             .border(BorderStroke(1.dp, colors.border.copy(alpha = 0.78f)), RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 9.dp),

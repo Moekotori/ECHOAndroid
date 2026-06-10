@@ -73,6 +73,11 @@ internal fun EchoArtworkImage(
     val model = remember(context, artworkUri, sizeClass) {
         ImageRequest.Builder(context)
             .data(artworkUri)
+            .apply {
+                EchoArtworkRequestHeadersRegistry.headersFor(artworkUri).forEach { (name, value) ->
+                    setHeader(name, value)
+                }
+            }
             .crossfade(false)
             .apply {
                 if (sizeClass == EchoArtworkSize.Hero) {

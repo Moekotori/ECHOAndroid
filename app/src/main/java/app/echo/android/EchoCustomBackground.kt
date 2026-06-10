@@ -162,11 +162,12 @@ private fun EchoBrightnessOverlay(brightness: Float) {
 @Composable
 private fun EchoBackgroundGlassOverlay(glass: Float) {
     val dark = LocalEchoDarkTheme.current
+    val readableGlass = if (dark) glass.coerceAtLeast(0.58f) else glass
     val colors = if (dark) {
         listOf(
-            EchoGlassNight.copy(alpha = (glass * 0.32f).coerceIn(0f, 0.48f)),
-            EchoGlassInk.copy(alpha = (glass * 0.26f).coerceIn(0f, 0.40f)),
-            EchoGlassPanel.copy(alpha = (glass * 0.40f).coerceIn(0f, 0.52f)),
+            EchoGlassNight.copy(alpha = (readableGlass * 0.50f).coerceIn(0.28f, 0.60f)),
+            EchoGlassInk.copy(alpha = (readableGlass * 0.42f).coerceIn(0.24f, 0.52f)),
+            EchoGlassPanel.copy(alpha = (readableGlass * 0.54f).coerceIn(0.32f, 0.64f)),
         )
     } else {
         listOf(

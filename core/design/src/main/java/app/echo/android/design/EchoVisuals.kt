@@ -103,10 +103,10 @@ fun GlassSurface(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(28.dp),
-        color = if (dark) EchoGlassPanel.copy(alpha = (alpha + 0.46f).coerceIn(0.46f, 0.76f)) else Color.White.copy(alpha = alpha),
+        color = if (dark) EchoGlassPanel.copy(alpha = (alpha + 0.48f).coerceIn(0.56f, 0.76f)) else Color.White.copy(alpha = alpha),
         border = BorderStroke(
             1.dp,
-            if (dark) EchoDarkGlassBorder else Color.White.copy(alpha = 0.32f),
+            if (dark) Color.White.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.32f),
         ),
         content = { content() },
     )
@@ -119,10 +119,11 @@ fun echoDarkGlassBrush(strength: Float = 1f): Brush {
     return Brush.linearGradient(
         if (dark) {
             listOf(
-                EchoGlassPanel.copy(alpha = 0.68f * clamped),
+                Color.White.copy(alpha = 0.08f * clamped),
+                EchoGlassPanel.copy(alpha = 0.66f * clamped),
                 EchoGlassInk.copy(alpha = 0.52f * clamped),
-                EchoGlassViolet.copy(alpha = 0.20f * clamped),
-                EchoGlassCyan.copy(alpha = 0.14f * clamped),
+                EchoGlassViolet.copy(alpha = 0.18f * clamped),
+                EchoGlassCyan.copy(alpha = 0.12f * clamped),
             )
         } else {
             listOf(
@@ -144,10 +145,11 @@ fun echoGlassContainerBrush(
     return Brush.linearGradient(
         if (dark) {
             listOf(
-                EchoGlassPanel.copy(alpha = 0.58f * clamped),
-                EchoGlassInk.copy(alpha = 0.40f * clamped),
-                accent.copy(alpha = 0.16f * clamped),
-                EchoGlassViolet.copy(alpha = 0.12f * clamped),
+                Color.White.copy(alpha = 0.10f * clamped),
+                EchoGlassPanel.copy(alpha = 0.62f * clamped),
+                EchoGlassInk.copy(alpha = 0.46f * clamped),
+                accent.copy(alpha = 0.18f * clamped),
+                EchoGlassViolet.copy(alpha = 0.13f * clamped),
             )
         } else {
             listOf(
@@ -168,9 +170,10 @@ fun echoGlassRowBrush(
     return Brush.linearGradient(
         if (dark) {
             listOf(
-                EchoGlassPanel.copy(alpha = if (selected) 0.58f else 0.44f),
-                EchoGlassInk.copy(alpha = if (selected) 0.34f else 0.28f),
-                accent.copy(alpha = if (selected) 0.20f else 0.08f),
+                Color.White.copy(alpha = if (selected) 0.14f else 0.08f),
+                EchoGlassPanel.copy(alpha = if (selected) 0.58f else 0.48f),
+                EchoGlassInk.copy(alpha = if (selected) 0.42f else 0.34f),
+                accent.copy(alpha = if (selected) 0.24f else 0.12f),
             )
         } else {
             listOf(
@@ -189,7 +192,7 @@ fun echoDarkGlassBorder(selected: Boolean = false): BorderStroke {
     return BorderStroke(
         1.dp,
         if (dark) {
-            if (selected) scheme.primary.copy(alpha = 0.36f) else EchoDarkGlassBorder
+            if (selected) scheme.primary.copy(alpha = 0.44f) else Color.White.copy(alpha = 0.24f)
         } else {
             if (selected) scheme.primary.copy(alpha = 0.24f) else Color.White.copy(alpha = 0.84f)
         },
@@ -306,18 +309,18 @@ fun PageChrome(
         val chromeGradient = if (dark) {
             Brush.verticalGradient(
                 listOf(
-                    EchoGlassNight.copy(alpha = 0.58f),
-                    EchoGlassInk.copy(alpha = 0.42f),
-                    EchoGlassViolet.copy(alpha = 0.18f),
+                    EchoGlassNight.copy(alpha = 0.34f),
+                    EchoGlassInk.copy(alpha = 0.24f),
+                    EchoGlassViolet.copy(alpha = 0.12f),
                     Color.Transparent,
                 ),
             )
         } else {
             Brush.verticalGradient(
                 listOf(
-                    Color.White.copy(alpha = 0.66f),
-                    EchoHomeMist.copy(alpha = 0.78f),
-                    Color(0xFFEAF2FF).copy(alpha = 0.86f),
+                    Color.White.copy(alpha = 0.36f),
+                    EchoHomeMist.copy(alpha = 0.28f),
+                    Color(0xFFEAF2FF).copy(alpha = 0.22f),
                 ),
             )
         }
@@ -364,7 +367,12 @@ fun PageChrome(
                     if (showBrand) {
                         Text("ECHO 移动端", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                     } else {
-                        Text(title, style = titleStyle, fontWeight = FontWeight.Bold, color = scheme.onSurface)
+                        Text(
+                            title,
+                            style = titleStyle,
+                            fontWeight = FontWeight.Bold,
+                            color = if (dark) Color.White.copy(alpha = 0.96f) else scheme.onSurface,
+                        )
                     }
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -372,17 +380,17 @@ fun PageChrome(
                     ) {
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = if (dark) EchoGlassPanel.copy(alpha = 0.46f) else scheme.surface.copy(alpha = 0.56f),
+                            color = if (dark) EchoGlassPanel.copy(alpha = 0.24f) else scheme.surface.copy(alpha = 0.50f),
                             border = BorderStroke(
                                 1.dp,
-                                if (dark) EchoDarkGlassBorder else EchoGlassBorder,
+                                if (dark) Color.White.copy(alpha = 0.22f) else EchoGlassBorder,
                             ),
                         ) {
                             Text(
                                 badge,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = scheme.onSurface,
+                                color = if (dark) Color.White.copy(alpha = 0.88f) else scheme.onSurface,
                             )
                         }
                         actions()
@@ -390,10 +398,15 @@ fun PageChrome(
                 }
                 if (showBrand) {
                     Spacer(Modifier.height(headerGap))
-                    Text(title, style = titleStyle, fontWeight = FontWeight.Bold, color = scheme.onSurface)
+                    Text(title, style = titleStyle, fontWeight = FontWeight.Bold, color = if (dark) Color.White.copy(alpha = 0.96f) else scheme.onSurface)
                 }
                 if (subtitle != null) {
-                    Text(subtitle, color = scheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        subtitle,
+                        color = if (dark) Color.White.copy(alpha = 0.74f) else scheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
                 Spacer(Modifier.height(contentGap))
                 content()

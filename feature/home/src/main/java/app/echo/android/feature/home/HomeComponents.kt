@@ -72,6 +72,7 @@ import app.echo.android.design.EchoAccentText
 import app.echo.android.design.EchoColors
 import app.echo.android.design.EchoDarkGlassBorder
 import app.echo.android.design.EchoGlassBorder
+import app.echo.android.design.EchoGlassInk
 import app.echo.android.design.EchoGlassCyan
 import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.EchoGlassViolet
@@ -92,7 +93,6 @@ import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.RoonInk
 import app.echo.android.design.RoonMuted
 import app.echo.android.design.echoDarkGlassBorder
-import app.echo.android.design.echoDarkGlassBrush
 import app.echo.android.design.formatDuration
 import app.echo.android.design.progressFraction
 import app.echo.android.model.library.AlbumSummary
@@ -112,8 +112,11 @@ private const val HomeHeatmapWeeks = 12
 
 @Composable
 private fun homePanelColor(lightAlpha: Float = 0.90f): Color {
-    val scheme = MaterialTheme.colorScheme
-    return if (LocalEchoDarkTheme.current) EchoGlassPanel.copy(alpha = 0.50f) else Color.White.copy(alpha = lightAlpha)
+    return if (LocalEchoDarkTheme.current) {
+        EchoGlassPanel.copy(alpha = 0.60f)
+    } else {
+        Color.White.copy(alpha = lightAlpha.coerceAtMost(0.76f))
+    }
 }
 
 @Composable
@@ -121,22 +124,37 @@ private fun homePanelBorder(lightAlpha: Float = 0.94f): BorderStroke {
     val scheme = MaterialTheme.colorScheme
     return BorderStroke(
         1.dp,
-        if (LocalEchoDarkTheme.current) EchoDarkGlassBorder else Color.White.copy(alpha = lightAlpha),
+        if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.30f) else Color.White.copy(alpha = lightAlpha.coerceAtMost(0.82f)),
     )
 }
+
+@Composable
+private fun homeTitleColor(): Color =
+    if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.96f) else RoonInk
+
+@Composable
+private fun homeBodyColor(): Color =
+    if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.74f) else RoonMuted
 
 @Composable
 private fun homePanelBrush(): Brush {
     val scheme = MaterialTheme.colorScheme
     return if (LocalEchoDarkTheme.current) {
-        echoDarkGlassBrush(1.04f)
+        Brush.linearGradient(
+            listOf(
+                Color.White.copy(alpha = 0.08f),
+                EchoGlassPanel.copy(alpha = 0.62f),
+                EchoGlassInk.copy(alpha = 0.46f),
+                EchoGlassViolet.copy(alpha = 0.14f),
+            ),
+        )
     } else {
         Brush.linearGradient(
             listOf(
-                Color.White,
-                EchoHomeMist,
-                Color(0xFFEFEAFF),
-                Color(0xFFE6F3FF),
+                Color.White.copy(alpha = 0.68f),
+                EchoHomeMist.copy(alpha = 0.44f),
+                Color(0xFFEFEAFF).copy(alpha = 0.28f),
+                Color(0xFFE6F3FF).copy(alpha = 0.22f),
             ),
         )
     }
@@ -206,14 +224,14 @@ internal fun RoonHomeHeader(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Rounded.Search, contentDescription = null, tint = scheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-                    Text("搜索本机音乐、专辑、歌手", color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Icon(Icons.Rounded.Search, contentDescription = null, tint = homeBodyColor(), modifier = Modifier.size(20.dp))
+                    Text("搜索本机音乐、专辑、歌手", color = homeBodyColor(), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             if (false) {
                 Text(
                 text = status.track?.title ?: "让本机音乐醒过来",
-                color = RoonMuted,
+                color = homeBodyColor(),
                 style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -512,14 +530,14 @@ internal fun EmptyRecentAlbumsCard(
         }
         Text(
             "暂无专辑",
-            color = RoonInk,
+            color = homeTitleColor(),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
         )
         Text(
             "扫描曲库后显示",
-            color = RoonMuted,
+            color = homeBodyColor(),
             style = MaterialTheme.typography.titleSmall,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -569,7 +587,7 @@ internal fun RoonRecentActivitySection(
             ) {
                 Text(
                     "最近活动",
-                    color = RoonInk,
+                    color = homeTitleColor(),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                 )
@@ -1142,7 +1160,7 @@ private fun EmptyRankingNotice(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .background(if (dark) EchoGlassPanel.copy(alpha = 0.42f) else EchoHomeMist.copy(alpha = 0.55f))
+            .background(if (dark) EchoGlassPanel.copy(alpha = 0.28f) else EchoHomeMist.copy(alpha = 0.42f))
             .border(if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, Color.Transparent), RoundedCornerShape(18.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 14.dp),
@@ -1242,7 +1260,7 @@ internal fun RoonRecentActivityCard(
         }
         Text(
             title,
-            color = RoonInk,
+            color = homeTitleColor(),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             maxLines = 2,
@@ -1250,7 +1268,7 @@ internal fun RoonRecentActivityCard(
         )
         Text(
             subtitle,
-            color = RoonMuted,
+            color = homeBodyColor(),
             style = MaterialTheme.typography.titleSmall,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -1292,25 +1310,26 @@ internal fun HomeRecommendationsSection(
         ) {
             Text(
                 "为你推荐",
-                color = RoonInk,
+                color = homeTitleColor(),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
             )
+            val dark = LocalEchoDarkTheme.current
             Surface(
                 modifier = Modifier
                     .clip(RoundedCornerShape(14.dp))
                     .clickable(onClick = onRefresh),
                 shape = RoundedCornerShape(14.dp),
-                color = Color.White.copy(alpha = 0.94f),
-                border = BorderStroke(1.dp, EchoGlassBorder),
+                color = if (dark) EchoGlassPanel.copy(alpha = 0.62f) else Color.White.copy(alpha = 0.94f),
+                border = if (dark) BorderStroke(1.dp, Color.White.copy(alpha = 0.28f)) else BorderStroke(1.dp, EchoGlassBorder),
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Icon(Icons.Rounded.Refresh, contentDescription = null, tint = RoonMuted, modifier = Modifier.size(16.dp))
-                    Text("刷新", color = RoonMuted, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                    Icon(Icons.Rounded.Refresh, contentDescription = null, tint = homeBodyColor(), modifier = Modifier.size(16.dp))
+                    Text("刷新", color = homeBodyColor(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -1320,8 +1339,8 @@ internal fun HomeRecommendationsSection(
                     .padding(horizontal = 18.dp)
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(18.dp))
-                    .background(Color.White.copy(alpha = 0.94f))
-                    .border(BorderStroke(1.dp, EchoGlassBorder), RoundedCornerShape(18.dp))
+                    .background(homePanelColor(0.94f))
+                    .border(homePanelBorder(0.96f), RoundedCornerShape(18.dp))
                     .clickable(onClick = onOpenLibrary)
                     .padding(16.dp),
             ) {
@@ -1331,8 +1350,8 @@ internal fun HomeRecommendationsSection(
                 ) {
                     EchoIconBadge(Icons.Rounded.LibraryMusic)
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text("扫描后生成推荐", color = RoonInk, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                        Text("从本机曲库挑几首开始。", color = RoonMuted, style = MaterialTheme.typography.bodySmall)
+                        Text("扫描后生成推荐", color = homeTitleColor(), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                        Text("从本机曲库挑几首开始。", color = homeBodyColor(), style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
@@ -1377,7 +1396,7 @@ internal fun RecommendationCard(
         )
         Text(
             track.title,
-            color = RoonInk,
+            color = homeTitleColor(),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
             maxLines = 2,
@@ -1385,7 +1404,7 @@ internal fun RecommendationCard(
         )
         Text(
             "${track.artist} · ${formatDuration(track.durationMs)}",
-            color = RoonMuted,
+            color = homeBodyColor(),
             style = MaterialTheme.typography.labelMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -1400,27 +1419,27 @@ internal fun RoonListenLaterPanel(onOpenConnect: () -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = 18.dp)
             .clip(RoundedCornerShape(32.dp))
-            .background(Color.White.copy(alpha = 0.94f))
-            .border(BorderStroke(1.dp, EchoGlassBorder), RoundedCornerShape(32.dp))
+            .background(homePanelBrush())
+            .border(homePanelBorder(0.96f), RoundedCornerShape(32.dp))
             .padding(horizontal = 22.dp, vertical = 30.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(
             "稍后聆听",
-            color = RoonInk,
+            color = homeTitleColor(),
             style = MaterialTheme.typography.displaySmall,
             fontWeight = FontWeight.Bold,
         )
         Text(
             "为本机曲库留一条线索",
-            color = RoonInk,
+            color = homeTitleColor(),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
         )
         Text(
             "把想听的专辑、歌手和曲目先放在这里，稍后继续。",
-            color = RoonMuted,
+            color = homeBodyColor(),
             style = MaterialTheme.typography.bodyLarge,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
@@ -1958,7 +1977,7 @@ internal fun NowPlayingHero(
                 Text(
                     playbackStateLabel(status.state),
                     style = MaterialTheme.typography.labelMedium,
-                    color = RoonMuted,
+                    color = homeBodyColor(),
                 )
             }
             ArtworkTile(
@@ -1975,13 +1994,13 @@ internal fun NowPlayingHero(
                 status.track?.title ?: "暂无播放",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = RoonInk,
+                color = homeTitleColor(),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 status.track?.artist ?: "从曲库选择一首歌",
-                color = RoonMuted,
+                color = homeBodyColor(),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -2045,7 +2064,7 @@ internal fun CompactNowPlayingHero(
                         Text(
                             playbackStateLabel(status.state),
                             style = MaterialTheme.typography.labelMedium,
-                            color = RoonMuted,
+                            color = homeBodyColor(),
                         )
                     }
                     TransportControls(
@@ -2059,13 +2078,13 @@ internal fun CompactNowPlayingHero(
                     status.track?.title ?: "暂无播放",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = RoonInk,
+                    color = homeTitleColor(),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     status.track?.artist ?: "从曲库选择一首歌",
-                    color = RoonMuted,
+                    color = homeBodyColor(),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )

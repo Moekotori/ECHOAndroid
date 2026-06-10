@@ -50,8 +50,11 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.collectAsLazyPagingItems
+import app.echo.android.connect.EchoPairingParser
 import app.echo.android.connect.EchoRemoteClient
 import app.echo.android.design.EchoContentMaxWidth
+import app.echo.android.design.EchoArtworkRequestHeadersRegistry
+import app.echo.android.design.EchoGlassInk
 import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.EchoMobileTheme
 import app.echo.android.feature.connect.ConnectScreen
@@ -72,9 +75,14 @@ import app.echo.android.model.connect.EchoRemoteEndpoint
 import app.echo.android.model.connect.EchoRemotePlaybackState
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
+import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.FolderSummary
 import app.echo.android.model.library.LibraryStats
+import app.echo.android.model.library.NeteaseAudioQuality
 import app.echo.android.model.playback.PlaybackPositionState
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import app.echo.android.design.echoFontFamilyForMode
 import java.time.LocalTime
 import kotlin.math.absoluteValue
@@ -181,12 +189,108 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         }
     }
 
-    val remoteClient = remember { EchoRemoteClient() }
+    val remoteScope = rememberCoroutineScope()
+    val remoteClient = remember(remoteScope) { EchoRemoteClient(remoteScope) }
     val remoteStatus by remoteClient.status.collectAsStateWithLifecycle()
+    val remoteLibraryState by remoteClient.library.collectAsStateWithLifecycle()
     val playbackStatus by viewModel.playbackStatus.collectAsStateWithLifecycle()
     val playbackQueue by viewModel.playbackQueue.collectAsStateWithLifecycle()
     val appSettings by viewModel.appSettings.collectAsStateWithLifecycle(EchoAppSettings())
+    var lastEchoLinkAutoConnectKey by remember { mutableStateOf<String?>(null) }
+    val echoLinkSavedKey = remember(appSettings.echoLinkPcAddress, appSettings.echoLinkPcToken) {
+        val address = appSettings.echoLinkPcAddress?.takeIf { it.isNotBlank() }
+        val token = appSettings.echoLinkPcToken?.takeIf { it.isNotBlank() }
+        if (address != null && token != null) "$address|$token" else null
+    }
+    val echoLinkQrScanner = remember(context) {
+        val options = GmsBarcodeScannerOptions.Builder()
+            .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+            .build()
+        GmsBarcodeScanning.getClient(context, options)
+    }
+    var echoLinkScanMessage by remember { mutableStateOf<String?>(null) }
+
+    fun connectEchoLinkEndpoint(endpoint: EchoRemoteEndpoint) {
+        echoLinkScanMessage = null
+        viewModel.saveEchoLinkPcEndpoint(
+            address = "${endpoint.scheme}://${endpoint.host}:${endpoint.port}",
+            token = endpoint.token,
+        )
+        remoteClient.connect(
+            nextEndpoint = endpoint,
+            refreshLibraryOnConnect = appSettings.echoLinkPreferLinkedLibrary,
+        )
+    }
+
+    fun connectEchoLinkAddress(address: String, token: String) {
+        val endpoint = EchoPairingParser.parseManual(address, token)
+        if (endpoint != null) {
+            connectEchoLinkEndpoint(endpoint)
+        } else {
+            echoLinkScanMessage = null
+            remoteClient.connectManual(
+                address = address,
+                token = token,
+                refreshLibraryOnConnect = appSettings.echoLinkPreferLinkedLibrary,
+            )
+        }
+    }
+
+    fun scanEchoLinkPairingCode() {
+        echoLinkScanMessage = null
+        echoLinkQrScanner.startScan()
+            .addOnSuccessListener { barcode ->
+                val endpoint = barcode.rawValue
+                    ?.let(EchoPairingParser::parse)
+                if (endpoint != null) {
+                    connectEchoLinkEndpoint(endpoint)
+                } else {
+                    echoLinkScanMessage = "没有识别到 ECHO Link 配对码"
+                }
+            }
+            .addOnCanceledListener {
+                echoLinkScanMessage = "已取消扫码"
+            }
+            .addOnFailureListener { error ->
+                val detail = error.localizedMessage
+                    ?.takeIf { it.isNotBlank() }
+                    ?: error.message?.takeIf { it.isNotBlank() }
+                echoLinkScanMessage = detail?.let { "扫码不可用：$it" } ?: "扫码不可用，请手动输入配对码"
+            }
+    }
+
+    fun openNeteaseApp() {
+        val packageName = "com.netease.cloudmusic"
+        val launchIntent = context.packageManager.getLaunchIntentForPackage(packageName)
+        val fallbackUri = android.net.Uri.parse("https://music.163.com/")
+        val intent = launchIntent ?: Intent(Intent.ACTION_VIEW, fallbackUri)
+        runCatching { context.startActivity(intent) }
+    }
+
+    LaunchedEffect(echoLinkSavedKey, appSettings.echoLinkAutoReconnectEnabled) {
+        val address = appSettings.echoLinkPcAddress?.takeIf { it.isNotBlank() }
+        val token = appSettings.echoLinkPcToken?.takeIf { it.isNotBlank() }
+        if (!appSettings.echoLinkAutoReconnectEnabled) {
+            lastEchoLinkAutoConnectKey = null
+            return@LaunchedEffect
+        }
+        if (
+            address != null &&
+            token != null &&
+            echoLinkSavedKey != null &&
+            lastEchoLinkAutoConnectKey != echoLinkSavedKey
+        ) {
+            lastEchoLinkAutoConnectKey = echoLinkSavedKey
+            remoteClient.connectManual(
+                address = address,
+                token = token,
+                refreshLibraryOnConnect = appSettings.echoLinkPreferLinkedLibrary,
+            )
+        }
+    }
     val lastFmState by viewModel.lastFmState.collectAsStateWithLifecycle()
+    val neteaseAccountState by viewModel.neteaseAccountState.collectAsStateWithLifecycle()
+    val neteaseImportState by viewModel.neteaseImportState.collectAsStateWithLifecycle()
     val usbExclusiveTestResult by viewModel.usbExclusiveTestResult.collectAsStateWithLifecycle()
     val discordPresenceSnapshot by viewModel.discordPresenceSnapshot.collectAsStateWithLifecycle(null)
     val lastFmApiKey = appSettings.lastFmApiKey?.takeIf { it.isNotBlank() }
@@ -201,6 +305,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     val recentPlaybackArtists by viewModel.recentPlaybackArtists.collectAsStateWithLifecycle()
     val recentPlaybackHeatmap by viewModel.recentPlaybackHeatmap.collectAsStateWithLifecycle()
     val recentlyAddedAlbums by viewModel.recentlyAddedAlbums.collectAsStateWithLifecycle(emptyList())
+    val neteaseImportedPlaylists by viewModel.neteaseImportedPlaylists.collectAsStateWithLifecycle(emptyList())
     val tracks = viewModel.tracks.collectAsLazyPagingItems()
     val albums = viewModel.albums.collectAsLazyPagingItems()
     val remoteAlbums = viewModel.remoteAlbums.collectAsLazyPagingItems()
@@ -214,10 +319,12 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     var selectedAlbum by remember { mutableStateOf<AlbumSummary?>(null) }
     var selectedArtist by remember { mutableStateOf<ArtistSummary?>(null) }
     var selectedFolder by remember { mutableStateOf<FolderSummary?>(null) }
+    var selectedPlaylist by remember { mutableStateOf<EchoPlaylist?>(null) }
     var detailReturnPage by remember { mutableStateOf<EchoPagerPage?>(null) }
     val selectedAlbumKey = selectedAlbum?.albumKey
     val selectedArtistKey = selectedArtist?.artistKey
     val selectedFolderKey = selectedFolder?.folderKey
+    val selectedPlaylistId = selectedPlaylist?.id
     val albumDetailTracks = selectedAlbumKey?.let { albumKey ->
         remember(albumKey) { viewModel.albumTrackPaging(albumKey) }.collectAsLazyPagingItems()
     }
@@ -227,11 +334,14 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     val folderDetailTracks = selectedFolderKey?.let { folderKey ->
         remember(folderKey) { viewModel.folderTrackPaging(folderKey) }.collectAsLazyPagingItems()
     }
+    val playlistDetailTracks = selectedPlaylistId?.let { playlistId ->
+        remember(playlistId) { viewModel.playlistTrackPaging(playlistId) }.collectAsLazyPagingItems()
+    }
     var selectedTab by remember { mutableIntStateOf(EchoTab.Now.ordinal) }
     var bottomDockExpanded by remember { mutableStateOf(true) }
     var nowPlayingExpanded by remember { mutableStateOf(false) }
     var queueSheetVisible by remember { mutableStateOf(false) }
-    val libraryDetailOpen = selectedAlbum != null || selectedArtist != null || selectedFolder != null
+    val libraryDetailOpen = selectedAlbum != null || selectedArtist != null || selectedFolder != null || selectedPlaylist != null
     val systemDarkTheme = isSystemInDarkTheme()
     var currentMinuteOfDay by remember { mutableIntStateOf(currentMinuteNow()) }
     LaunchedEffect(appSettings.scheduledDarkModeEnabled) {
@@ -306,6 +416,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         selectedAlbum = null
         selectedArtist = null
         selectedFolder = null
+        selectedPlaylist = null
     }
     fun closeLibraryDetail() {
         val returnPage = detailReturnPage ?: EchoPagerPage.Library
@@ -336,6 +447,16 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         }
     }
 
+    LaunchedEffect(remoteStatus.connectionState, appSettings.echoLinkPreferLinkedLibrary) {
+        if (
+            remoteStatus.connectionState == EchoRemoteConnectionState.Connected &&
+            appSettings.echoLinkPreferLinkedLibrary &&
+            tabPagerState.currentPage == EchoPagerPage.Connect.ordinal
+        ) {
+            selectDockTab(EchoTab.Library)
+        }
+    }
+
     LaunchedEffect(hasAudioPermission) {
         if (hasAudioPermission && scanState.lastScanCount == null && !scanState.isScanning) {
             viewModel.refreshLibrary()
@@ -344,6 +465,14 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
 
     LaunchedEffect(discordPresenceSnapshot) {
         remoteClient.publishMobileDiscordPresence(discordPresenceSnapshot)
+    }
+
+    LaunchedEffect(remoteStatus.endpoint) {
+        val endpoint = remoteStatus.endpoint
+        EchoArtworkRequestHeadersRegistry.replaceEchoLinkAuthorization(
+            baseUrl = endpoint?.let { "${it.scheme}://${it.host}:${it.port}" },
+            token = endpoint?.token,
+        )
     }
 
     BackHandler(enabled = nowPlayingExpanded) { nowPlayingExpanded = false }
@@ -380,42 +509,73 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 tracks = tracks,
                                 albums = albums,
                                 remoteAlbums = remoteAlbums,
+                                linkedLibraryActive = remoteStatus.connectionState == EchoRemoteConnectionState.Connected &&
+                                    appSettings.echoLinkPreferLinkedLibrary,
+                                linkedLibraryState = remoteLibraryState,
                                 artists = artists,
                                 folders = folders,
+                                neteaseImportedPlaylists = neteaseImportedPlaylists,
+                                neteaseAccountState = neteaseAccountState,
+                                neteaseImportState = neteaseImportState,
+                                neteaseQuality = NeteaseAudioQuality.fromId(appSettings.neteaseAudioQuality),
                                 selectedAlbum = selectedAlbum,
                                 selectedArtist = selectedArtist,
                                 selectedFolder = selectedFolder,
+                                selectedPlaylist = selectedPlaylist,
                                 albumDetailTracks = albumDetailTracks,
                                 artistDetailTracks = artistDetailTracks,
                                 folderDetailTracks = folderDetailTracks,
+                                playlistDetailTracks = playlistDetailTracks,
                                 onRequestPermission = { permissionLauncher.launch(permission) },
                                 onScanFolder = { folderScanLauncher.launch(null) },
                                 onScanAll = viewModel::refreshLibrary,
                                 onCancelScan = viewModel::cancelScan,
+                                onRefreshLinkedLibrary = { remoteClient.refreshLibrary() },
+                                onPlayLinkedTrack = { track ->
+                                    remoteClient.playTrackOnPhone(track, viewModel::play)
+                                },
                                 onPlayTrack = { track -> viewModel.playTrackFromLibrary(track.id) },
                                 onPlayAlbum = { album -> viewModel.playAlbum(album.albumKey) },
                                 onShuffleAlbum = { album -> viewModel.shuffleAlbum(album.albumKey) },
                                 onPlayArtist = { artist -> viewModel.playArtist(artist.artistKey) },
                                 onShuffleArtist = { artist -> viewModel.shuffleArtist(artist.artistKey) },
                                 onPlayFolder = { folder -> viewModel.playFolder(folder.folderKey) },
+                                onPlayPlaylist = { playlist -> viewModel.playPlaylist(playlist.id) },
                                 onOpenAlbum = { album ->
                                     detailReturnPage = EchoPagerPage.Library
                                     selectedArtist = null
                                     selectedFolder = null
+                                    selectedPlaylist = null
                                     selectedAlbum = album
                                 },
                                 onOpenArtist = { artist ->
                                     detailReturnPage = EchoPagerPage.Library
                                     selectedAlbum = null
                                     selectedFolder = null
+                                    selectedPlaylist = null
                                     selectedArtist = artist
                                 },
                                 onOpenFolder = { folder ->
                                     detailReturnPage = EchoPagerPage.Library
                                     selectedAlbum = null
                                     selectedArtist = null
+                                    selectedPlaylist = null
                                     selectedFolder = folder
                                 },
+                                onOpenPlaylist = { playlist ->
+                                    detailReturnPage = EchoPagerPage.Library
+                                    selectedAlbum = null
+                                    selectedArtist = null
+                                    selectedFolder = null
+                                    selectedPlaylist = playlist
+                                },
+                                onLoginNeteaseByPhone = viewModel::loginNeteaseByPhone,
+                                onLoginNeteaseWithCookie = viewModel::loginNeteaseWithCookie,
+                                onLogoutNetease = viewModel::logoutNetease,
+                                onRefreshNeteasePlaylists = viewModel::refreshNeteasePlaylists,
+                                onOpenNeteaseApp = ::openNeteaseApp,
+                                onNeteaseQualityChange = { quality -> viewModel.setNeteaseAudioQuality(quality.id) },
+                                onImportNeteasePlaylist = viewModel::importNeteasePlaylist,
                                 onCloseDetail = { closeLibraryDetail() },
                             )
 
@@ -443,6 +603,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                     detailReturnPage = EchoPagerPage.Now
                                     selectedArtist = null
                                     selectedFolder = null
+                                    selectedPlaylist = null
                                     selectedAlbum = album
                                     selectDockTab(EchoTab.Library)
                                 },
@@ -450,6 +611,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                     detailReturnPage = EchoPagerPage.Now
                                     selectedAlbum = null
                                     selectedFolder = null
+                                    selectedPlaylist = null
                                     selectedArtist = artist
                                     selectDockTab(EchoTab.Library)
                                 },
@@ -567,6 +729,12 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 trackTitle = remoteStatus.playback.track?.title ?: "未连接",
                                 trackArtist = remoteStatus.playback.track?.artist ?: "点按配对",
                                 isPlaying = remoteStatus.playback.state == EchoRemotePlaybackState.Playing,
+                                remoteError = remoteStatus.error,
+                                scanMessage = echoLinkScanMessage,
+                                savedPcAddress = appSettings.echoLinkPcAddress,
+                                savedPcToken = appSettings.echoLinkPcToken,
+                                autoReconnectEnabled = appSettings.echoLinkAutoReconnectEnabled,
+                                linkedLibraryDefault = appSettings.echoLinkPreferLinkedLibrary,
                                 discordPresenceEnabled = appSettings.discordPresenceViaPcEnabled,
                                 discordPresenceReady = remoteStatus.connectionState == EchoRemoteConnectionState.Connected &&
                                     remoteStatus.mobileDiscordPresence?.enabled == true,
@@ -578,20 +746,22 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 webDavUsername = appSettings.webDavUsername,
                                 webDavPassword = appSettings.webDavPassword,
                                 remoteScanState = remoteScanState,
-                                onPairDemo = {
-                                    remoteClient.pair(
-                                        EchoRemoteEndpoint(
-                                            id = "echo-pc-demo",
-                                            name = "PC ECHO 演示",
-                                            host = "192.168.1.12",
-                                            port = 26789,
-                                            token = "demo-token-echo-remote",
-                                        ),
-                                    )
-                                },
+                                onConnectPc = ::connectEchoLinkAddress,
+                                onScanPairingCode = ::scanEchoLinkPairingCode,
                                 onPlayPause = { remoteClient.send(EchoRemoteCommand.PlayPause) },
                                 onNext = { remoteClient.send(EchoRemoteCommand.Next) },
                                 onDisconnect = remoteClient::disconnect,
+                                onForgetPc = {
+                                    remoteClient.disconnect()
+                                    viewModel.clearEchoLinkPcEndpoint()
+                                },
+                                onAutoReconnectChange = viewModel::setEchoLinkAutoReconnectEnabled,
+                                onLinkedLibraryDefaultChange = { enabled ->
+                                    viewModel.setEchoLinkPreferLinkedLibrary(enabled)
+                                    if (enabled && remoteStatus.connectionState == EchoRemoteConnectionState.Connected) {
+                                        remoteClient.refreshLibrary()
+                                    }
+                                },
                                 onSyncSubsonicLibrary = viewModel::syncSubsonicLibrary,
                                 onSaveSubsonicCredentials = viewModel::saveSubsonicCredentials,
                                 onClearSubsonicCredentials = viewModel::clearSubsonicCredentials,
@@ -731,6 +901,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             detailReturnPage = EchoTab.entries[selectedTab].pagerPage
                             selectedAlbum = null
                             selectedFolder = null
+                            selectedPlaylist = null
                             selectedArtist = artist
                             selectDockTab(EchoTab.Library)
                             nowPlayingExpanded = false
@@ -741,6 +912,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             detailReturnPage = EchoTab.entries[selectedTab].pagerPage
                             selectedArtist = null
                             selectedFolder = null
+                            selectedPlaylist = null
                             selectedAlbum = album
                             selectDockTab(EchoTab.Library)
                             nowPlayingExpanded = false
@@ -790,16 +962,17 @@ private fun ExpandedBottomControls(
                 Brush.verticalGradient(
                     listOf(
                         Color.Transparent,
-                        EchoGlassPanel.copy(alpha = 0.44f),
-                        EchoGlassPanel.copy(alpha = 0.72f),
+                        Color.White.copy(alpha = 0.06f),
+                        EchoGlassPanel.copy(alpha = 0.34f),
+                        EchoGlassInk.copy(alpha = 0.62f),
                     ),
                 )
             } else {
                 Brush.verticalGradient(
                     listOf(
                         Color.Transparent,
-                        Color(0xFFEAF2FF).copy(alpha = 0.76f),
-                        Color(0xFFEAF2FF).copy(alpha = 0.96f),
+                        Color(0xFFEAF2FF).copy(alpha = 0.78f),
+                        Color(0xFFEAF2FF).copy(alpha = 0.98f),
                     ),
                 )
             },
@@ -848,8 +1021,9 @@ private fun CompactBottomControls(
                     Brush.verticalGradient(
                         listOf(
                             Color.Transparent,
-                            EchoGlassPanel.copy(alpha = 0.40f),
-                            EchoGlassPanel.copy(alpha = 0.66f),
+                            Color.White.copy(alpha = 0.06f),
+                            EchoGlassPanel.copy(alpha = 0.32f),
+                            EchoGlassInk.copy(alpha = 0.58f),
                         ),
                     )
                 } else {

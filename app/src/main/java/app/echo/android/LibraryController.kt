@@ -12,6 +12,7 @@ import app.echo.android.data.toEchoTrack
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.library.EchoTrack
+import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.FolderSummary
 import app.echo.android.model.library.LibraryScanPhase
 import app.echo.android.model.library.LibraryScanProgress
@@ -73,6 +74,9 @@ internal class LibraryController(
             .flatMapLatest { query -> repository.pagedFolders(query) }
             .cachedIn(scope)
 
+    val neteasePlaylists: Flow<List<EchoPlaylist>> =
+        repository.observeNeteasePlaylists()
+
     val libraryStats: Flow<LibraryStats> = repository.observeLibraryStats()
 
     val recommendedTracks: Flow<List<EchoTrack>> =
@@ -105,6 +109,11 @@ internal class LibraryController(
 
     fun folderTrackPaging(folderKey: String): Flow<PagingData<EchoTrack>> =
         repository.pagedFolderTracks(folderKey)
+            .map { pagingData -> pagingData.map { it.toEchoTrack() } }
+            .cachedIn(scope)
+
+    fun playlistTrackPaging(playlistId: String): Flow<PagingData<EchoTrack>> =
+        repository.pagedPlaylistTracks(playlistId)
             .map { pagingData -> pagingData.map { it.toEchoTrack() } }
             .cachedIn(scope)
 
@@ -264,6 +273,11 @@ internal class LibraryController(
     suspend fun folderTracksForPlayback(folderKey: String): List<EchoTrack> =
         withContext(Dispatchers.IO) {
             repository.folderTracksForPlayback(folderKey).map { it.toEchoTrack() }
+        }
+
+    suspend fun playlistTracksForPlayback(playlistId: String): List<EchoTrack> =
+        withContext(Dispatchers.IO) {
+            repository.playlistTracksForPlayback(playlistId).map { it.toEchoTrack() }
         }
 
     fun clear() {

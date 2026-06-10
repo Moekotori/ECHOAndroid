@@ -75,6 +75,7 @@ import app.echo.android.design.EchoContentMaxWidth
 import app.echo.android.design.EchoColors
 import app.echo.android.design.EchoDarkGlassBorder
 import app.echo.android.design.EchoGlassBorder
+import app.echo.android.design.EchoGlassInk
 import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.EchoHomeBlue
 import app.echo.android.design.EchoHomeMist
@@ -110,11 +111,11 @@ private fun rememberLibraryGlassColors(): LibraryGlassColors {
     val dark = LocalEchoDarkTheme.current
     return remember(scheme, dark) {
         LibraryGlassColors(
-            surface = if (dark) EchoGlassPanel.copy(alpha = 0.48f) else Color.White.copy(alpha = 0.66f),
-            elevatedSurface = if (dark) EchoGlassPanel.copy(alpha = 0.38f) else Color.White.copy(alpha = 0.62f),
-            border = if (dark) EchoDarkGlassBorder else EchoGlassBorder.copy(alpha = 0.84f),
-            content = if (dark) scheme.onSurface else RoonInk,
-            muted = if (dark) scheme.onSurfaceVariant.copy(alpha = 0.90f) else RoonMuted,
+            surface = if (dark) EchoGlassPanel.copy(alpha = 0.58f) else Color.White.copy(alpha = 0.60f),
+            elevatedSurface = if (dark) EchoGlassInk.copy(alpha = 0.48f) else Color.White.copy(alpha = 0.56f),
+            border = if (dark) Color.White.copy(alpha = 0.30f) else EchoGlassBorder.copy(alpha = 0.78f),
+            content = if (dark) Color.White.copy(alpha = 0.96f) else RoonInk,
+            muted = if (dark) Color.White.copy(alpha = 0.74f) else RoonMuted,
         )
     }
 }
@@ -673,9 +674,9 @@ private fun ArtistWallAvatar(
             .background(
                 Brush.linearGradient(
                     listOf(
-                        palette.vibrant.copy(alpha = 0.55f),
-                        Color.White.copy(alpha = 0.70f),
-                        palette.soft.copy(alpha = 0.42f),
+                        palette.vibrant.copy(alpha = if (LocalEchoDarkTheme.current) 0.48f else 0.55f),
+                        Color.White.copy(alpha = if (LocalEchoDarkTheme.current) 0.16f else 0.70f),
+                        palette.soft.copy(alpha = if (LocalEchoDarkTheme.current) 0.24f else 0.42f),
                     ),
                 ),
             ),

@@ -39,7 +39,7 @@ fun EchoPanel(
         modifier = modifier
             .clip(shape)
             .background(
-                if (dark) echoGlassContainerBrush(1.02f) else Brush.linearGradient(
+                if (dark) echoGlassContainerBrush(1.00f) else Brush.linearGradient(
                     listOf(
                         Color.White.copy(alpha = 0.96f),
                         Color.White.copy(alpha = 0.88f),
@@ -48,7 +48,7 @@ fun EchoPanel(
                 ),
             )
             .border(
-                if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, Color.White.copy(alpha = 0.96f)),
+                if (dark) BorderStroke(1.dp, Color.White.copy(alpha = 0.30f)) else BorderStroke(1.dp, Color.White.copy(alpha = 0.96f)),
                 shape,
             ),
     ) {
@@ -105,12 +105,12 @@ fun EchoInfoChip(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        color = if (dark) EchoGlassPanel.copy(alpha = 0.56f) else scheme.surface.copy(alpha = 0.92f),
-        border = if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, Color.White.copy(alpha = 0.96f)),
+        color = if (dark) EchoGlassPanel.copy(alpha = 0.54f) else scheme.surface.copy(alpha = 0.92f),
+        border = if (dark) BorderStroke(1.dp, Color.White.copy(alpha = 0.30f)) else BorderStroke(1.dp, Color.White.copy(alpha = 0.96f)),
     ) {
         Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
             Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = scheme.primary)
-            Text(value, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, color = scheme.onSurface)
+            Text(value, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, color = if (dark) Color.White.copy(alpha = 0.94f) else scheme.onSurface)
         }
     }
 }
@@ -127,21 +127,21 @@ fun EchoMetricTile(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        color = if (dark) EchoGlassPanel.copy(alpha = 0.56f) else scheme.surface.copy(alpha = 0.92f),
-        border = if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, Color.White.copy(alpha = 0.96f)),
+        color = if (dark) EchoGlassPanel.copy(alpha = 0.54f) else scheme.surface.copy(alpha = 0.92f),
+        border = if (dark) BorderStroke(1.dp, Color.White.copy(alpha = 0.30f)) else BorderStroke(1.dp, Color.White.copy(alpha = 0.96f)),
     ) {
         Column(
             Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = scheme.primary)
-            Text(value, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold, color = scheme.onSurface)
+            Text(value, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold, color = if (dark) Color.White.copy(alpha = 0.94f) else scheme.onSurface)
             if (detail != null) {
                 Text(
                     detail,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    color = scheme.onSurfaceVariant,
+                    color = if (dark) Color.White.copy(alpha = 0.70f) else scheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -163,21 +163,21 @@ fun EchoSegmentChip(
         color = if (selected) {
             scheme.primary.copy(alpha = if (dark) 0.26f else 0.18f)
         } else {
-            if (dark) EchoGlassPanel.copy(alpha = 0.50f) else scheme.surface.copy(alpha = 0.92f)
+            if (dark) EchoGlassPanel.copy(alpha = 0.48f) else scheme.surface.copy(alpha = 0.92f)
         },
         border = BorderStroke(
             1.dp,
             if (selected) {
                 scheme.primary.copy(alpha = if (dark) 0.42f else 0.30f)
             } else {
-                if (dark) EchoDarkGlassBorder else Color.White.copy(alpha = 0.96f)
+                if (dark) Color.White.copy(alpha = 0.28f) else Color.White.copy(alpha = 0.96f)
             },
         ),
     ) {
         Text(
             label,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-            color = if (selected) scheme.primary else scheme.onSurfaceVariant,
+            color = if (selected) scheme.primary else if (dark) Color.White.copy(alpha = 0.74f) else scheme.onSurfaceVariant,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -192,9 +192,10 @@ fun EchoSectionTitle(
     modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val dark = LocalEchoDarkTheme.current
     Column(modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = scheme.onSurface)
-        Text(subtitle, color = scheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = if (dark) Color.White.copy(alpha = 0.96f) else scheme.onSurface)
+        Text(subtitle, color = if (dark) Color.White.copy(alpha = 0.72f) else scheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -213,7 +214,7 @@ fun EchoPlaceholderLine(
         Text(
             text,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            color = scheme.onSurfaceVariant,
+            color = if (dark) Color.White.copy(alpha = 0.72f) else scheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )

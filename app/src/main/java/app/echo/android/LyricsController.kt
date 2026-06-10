@@ -3,6 +3,7 @@ package app.echo.android
 import android.net.Uri
 import app.echo.android.data.EchoLibraryRepository
 import app.echo.android.data.LibraryTrackEntity
+import app.echo.android.data.parseNeteaseSongId
 import app.echo.android.lyrics.EchoLyricsSearchRequest
 import app.echo.android.lyrics.ImportedLyricsStore
 import app.echo.android.lyrics.LocalLyricsResolver
@@ -136,8 +137,9 @@ internal class LyricsController(
                         val importedLyrics = importedLyricsStore.lyricsUriForTrack(trackId)
                             ?.let(lyricsResolver::loadFromUri)
                         val localLyrics = importedLyrics ?: lyricsResolver.loadForTrack(track)
-                        val onlineLyrics = if (localLyrics == null && onlineLyricsEnabled) {
-                            cachedOnlineLyrics(track)
+                        val onlineLyrics = if (localLyrics == null) {
+                            directNeteaseLyrics(track)
+                                ?: if (onlineLyricsEnabled) cachedOnlineLyrics(track) else null
                         } else {
                             null
                         }
@@ -171,6 +173,14 @@ internal class LyricsController(
         val cacheKey = onlineLyricsCacheKey(track)
         onlineLyricsCache[cacheKey]?.let { return it }
         return onlineLyricsResolver.loadForTrack(track.toLyricsSearchRequest())
+            ?.also { onlineLyricsCache[cacheKey] = it }
+    }
+
+    private fun directNeteaseLyrics(track: LibraryTrackEntity): EchoLyrics? {
+        val songId = parseNeteaseSongId(track.id) ?: return null
+        val cacheKey = "netease:$songId"
+        onlineLyricsCache[cacheKey]?.let { return it }
+        return onlineLyricsResolver.loadFromNeteaseSongId(songId)
             ?.also { onlineLyricsCache[cacheKey] = it }
     }
 

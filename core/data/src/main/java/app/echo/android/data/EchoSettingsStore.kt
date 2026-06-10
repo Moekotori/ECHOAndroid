@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import app.echo.android.model.library.NeteaseAudioQuality
 import app.echo.android.model.playback.EchoEqualizerPreset
 import app.echo.android.model.playback.EchoEqualizerPresets
 import kotlinx.coroutines.flow.Flow
@@ -32,7 +33,7 @@ data class EchoAppSettings(
     val customBackgroundBlur: Float = 24f,
     val customBackgroundBrightness: Float = 0.88f,
     val customBackgroundGlass: Float = 0.42f,
-    val uiFontFamily: String = EchoFontFamilyMode.System,
+    val uiFontFamily: String = EchoFontFamilyMode.Outfit,
     val uiFontScale: Float = 1f,
     val uiDensityScale: Float = 1f,
     val lyricsFontFamily: String = EchoFontFamilyMode.Outfit,
@@ -52,12 +53,20 @@ data class EchoAppSettings(
     val lastFmUsername: String? = null,
     val lastFmSessionKey: String? = null,
     val discordPresenceViaPcEnabled: Boolean = false,
+    val echoLinkPcAddress: String? = null,
+    val echoLinkPcToken: String? = null,
+    val echoLinkAutoReconnectEnabled: Boolean = true,
+    val echoLinkPreferLinkedLibrary: Boolean = true,
     val subsonicServerUrl: String? = null,
     val subsonicUsername: String? = null,
     val subsonicPassword: String? = null,
     val webDavServerUrl: String? = null,
     val webDavUsername: String? = null,
     val webDavPassword: String? = null,
+    val neteaseUserId: Long? = null,
+    val neteaseNickname: String? = null,
+    val neteaseCookie: String? = null,
+    val neteaseAudioQuality: String = NeteaseAudioQuality.Default.id,
 )
 
 object EchoBackgroundMode {
@@ -114,7 +123,7 @@ class EchoSettingsStore(
                 customBackgroundBlur = (preferences[Keys.CustomBackgroundBlur] ?: 24f).coerceIn(0f, 80f),
                 customBackgroundBrightness = (preferences[Keys.CustomBackgroundBrightness] ?: 0.88f).coerceIn(0.35f, 1.15f),
                 customBackgroundGlass = (preferences[Keys.CustomBackgroundGlass] ?: 0.42f).coerceIn(0.08f, 0.90f),
-                uiFontFamily = preferences[Keys.UiFontFamily] ?: EchoFontFamilyMode.System,
+                uiFontFamily = preferences[Keys.UiFontFamily] ?: EchoFontFamilyMode.Outfit,
                 uiFontScale = (preferences[Keys.UiFontScale] ?: 1f).coerceIn(0.88f, 1.18f),
                 uiDensityScale = (preferences[Keys.UiDensityScale] ?: 1f).coerceIn(0.90f, 1.12f),
                 lyricsFontFamily = preferences[Keys.LyricsFontFamily] ?: EchoFontFamilyMode.Outfit,
@@ -134,12 +143,20 @@ class EchoSettingsStore(
                 lastFmUsername = preferences[Keys.LastFmUsername],
                 lastFmSessionKey = preferences[Keys.LastFmSessionKey],
                 discordPresenceViaPcEnabled = preferences[Keys.DiscordPresenceViaPcEnabled] ?: false,
+                echoLinkPcAddress = preferences[Keys.EchoLinkPcAddress],
+                echoLinkPcToken = preferences[Keys.EchoLinkPcToken],
+                echoLinkAutoReconnectEnabled = preferences[Keys.EchoLinkAutoReconnectEnabled] ?: true,
+                echoLinkPreferLinkedLibrary = preferences[Keys.EchoLinkPreferLinkedLibrary] ?: true,
                 subsonicServerUrl = preferences[Keys.SubsonicServerUrl],
                 subsonicUsername = preferences[Keys.SubsonicUsername],
                 subsonicPassword = preferences[Keys.SubsonicPassword],
                 webDavServerUrl = preferences[Keys.WebDavServerUrl],
                 webDavUsername = preferences[Keys.WebDavUsername],
                 webDavPassword = preferences[Keys.WebDavPassword],
+                neteaseUserId = preferences[Keys.NeteaseUserId]?.toLongOrNull(),
+                neteaseNickname = preferences[Keys.NeteaseNickname],
+                neteaseCookie = preferences[Keys.NeteaseCookie],
+                neteaseAudioQuality = NeteaseAudioQuality.fromId(preferences[Keys.NeteaseAudioQuality]).id,
             )
         }
 
@@ -273,7 +290,7 @@ class EchoSettingsStore(
             if (uri.isNullOrBlank()) {
                 it.remove(Keys.ImportedFontUri)
                 if (it[Keys.UiFontFamily] == EchoFontFamilyMode.Imported) {
-                    it[Keys.UiFontFamily] = EchoFontFamilyMode.System
+                    it[Keys.UiFontFamily] = EchoFontFamilyMode.Outfit
                 }
                 if (it[Keys.LyricsFontFamily] == EchoFontFamilyMode.Imported) {
                     it[Keys.LyricsFontFamily] = EchoFontFamilyMode.Outfit
@@ -331,6 +348,38 @@ class EchoSettingsStore(
         context.echoSettings.edit { it[Keys.DiscordPresenceViaPcEnabled] = enabled }
     }
 
+    suspend fun setEchoLinkPcEndpoint(
+        address: String,
+        token: String,
+    ) {
+        context.echoSettings.edit {
+            val safeAddress = address.trim().trimEnd('/')
+            val safeToken = token.trim()
+            if (safeAddress.isBlank() || safeToken.isBlank()) {
+                it.remove(Keys.EchoLinkPcAddress)
+                it.remove(Keys.EchoLinkPcToken)
+            } else {
+                it[Keys.EchoLinkPcAddress] = safeAddress
+                it[Keys.EchoLinkPcToken] = safeToken
+            }
+        }
+    }
+
+    suspend fun setEchoLinkAutoReconnectEnabled(enabled: Boolean) {
+        context.echoSettings.edit { it[Keys.EchoLinkAutoReconnectEnabled] = enabled }
+    }
+
+    suspend fun setEchoLinkPreferLinkedLibrary(enabled: Boolean) {
+        context.echoSettings.edit { it[Keys.EchoLinkPreferLinkedLibrary] = enabled }
+    }
+
+    suspend fun clearEchoLinkPcEndpoint() {
+        context.echoSettings.edit {
+            it.remove(Keys.EchoLinkPcAddress)
+            it.remove(Keys.EchoLinkPcToken)
+        }
+    }
+
     suspend fun setSubsonicCredentials(
         serverUrl: String,
         username: String,
@@ -385,6 +434,32 @@ class EchoSettingsStore(
         }
     }
 
+    suspend fun setNeteaseSession(
+        userId: Long,
+        nickname: String,
+        cookie: String,
+    ) {
+        context.echoSettings.edit {
+            it[Keys.NeteaseUserId] = userId.toString()
+            it[Keys.NeteaseNickname] = nickname.trim()
+            it[Keys.NeteaseCookie] = cookie
+        }
+    }
+
+    suspend fun clearNeteaseSession() {
+        context.echoSettings.edit {
+            it.remove(Keys.NeteaseUserId)
+            it.remove(Keys.NeteaseNickname)
+            it.remove(Keys.NeteaseCookie)
+        }
+    }
+
+    suspend fun setNeteaseAudioQuality(qualityId: String) {
+        context.echoSettings.edit {
+            it[Keys.NeteaseAudioQuality] = NeteaseAudioQuality.fromId(qualityId).id
+        }
+    }
+
     private object Keys {
         val PreferOffload = booleanPreferencesKey("prefer_offload")
         val LastOutputRoute = stringPreferencesKey("last_output_route")
@@ -423,12 +498,20 @@ class EchoSettingsStore(
         val LastFmUsername = stringPreferencesKey("lastfm_username")
         val LastFmSessionKey = stringPreferencesKey("lastfm_session_key")
         val DiscordPresenceViaPcEnabled = booleanPreferencesKey("discord_presence_via_pc_enabled")
+        val EchoLinkPcAddress = stringPreferencesKey("echo_link_pc_address")
+        val EchoLinkPcToken = stringPreferencesKey("echo_link_pc_token")
+        val EchoLinkAutoReconnectEnabled = booleanPreferencesKey("echo_link_auto_reconnect_enabled")
+        val EchoLinkPreferLinkedLibrary = booleanPreferencesKey("echo_link_prefer_linked_library")
         val SubsonicServerUrl = stringPreferencesKey("subsonic_server_url")
         val SubsonicUsername = stringPreferencesKey("subsonic_username")
         val SubsonicPassword = stringPreferencesKey("subsonic_password")
         val WebDavServerUrl = stringPreferencesKey("webdav_server_url")
         val WebDavUsername = stringPreferencesKey("webdav_username")
         val WebDavPassword = stringPreferencesKey("webdav_password")
+        val NeteaseUserId = stringPreferencesKey("netease_user_id")
+        val NeteaseNickname = stringPreferencesKey("netease_nickname")
+        val NeteaseCookie = stringPreferencesKey("netease_cookie")
+        val NeteaseAudioQuality = stringPreferencesKey("netease_audio_quality")
     }
 }
 

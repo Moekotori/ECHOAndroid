@@ -8,12 +8,18 @@ import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [LibraryTrackEntity::class, LibraryTrackFtsEntity::class],
-    version = 7,
+    entities = [
+        LibraryTrackEntity::class,
+        LibraryTrackFtsEntity::class,
+        LibraryPlaylistEntity::class,
+        LibraryPlaylistTrackEntity::class,
+    ],
+    version = 8,
     exportSchema = true,
 )
 abstract class EchoLibraryDatabase : RoomDatabase() {
     abstract fun trackDao(): LibraryTrackDao
+    abstract fun playlistDao(): LibraryPlaylistDao
 
     companion object {
         fun create(context: Context): EchoLibraryDatabase =
@@ -25,6 +31,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                     Migration4To5,
                     Migration5To6,
                     Migration6To7,
+                    Migration7To8,
                 )
                 .build()
 
@@ -129,6 +136,42 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
         internal val Migration6To7 = object : Migration(6, 7) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE library_tracks ADD COLUMN sampleRateHz INTEGER")
+            }
+        }
+
+        internal val Migration7To8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS library_playlists (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        source TEXT NOT NULL,
+                        artworkUri TEXT,
+                        trackCount INTEGER NOT NULL,
+                        updatedAtEpochMs INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_library_playlists_source ON library_playlists(source)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_library_playlists_updatedAtEpochMs ON library_playlists(updatedAtEpochMs)")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS library_playlist_tracks (
+                        playlistId TEXT NOT NULL,
+                        trackId TEXT NOT NULL,
+                        position INTEGER NOT NULL,
+                        PRIMARY KEY(playlistId, trackId)
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_library_playlist_tracks_trackId ON library_playlist_tracks(trackId)")
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS index_library_playlist_tracks_playlistId_position
+                    ON library_playlist_tracks(playlistId, position)
+                    """.trimIndent(),
+                )
             }
         }
     }

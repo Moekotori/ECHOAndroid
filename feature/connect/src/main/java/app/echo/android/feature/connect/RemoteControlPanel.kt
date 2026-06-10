@@ -222,7 +222,7 @@ internal fun PcHandoffPanel(connected: Boolean) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             EchoSectionTitle(
                 "接力控制台",
-                if (connected) "本机和 PC 队列保持同步" else "完成配对后接管 PC 播放",
+                if (connected) "本机和 PC 队列保持同步" else "完成配对后进入遥控器",
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 EchoSegmentChip("手机控制", selected = true, Modifier.weight(1f))

@@ -120,7 +120,7 @@ fun PlaybackQueueSheet(
         val dragScope = rememberCoroutineScope()
         val density = LocalDensity.current
         val dismissThresholdPx = remember(density) { with(density) { 92.dp.toPx() } }
-        val scrimTargetAlpha = if (dark) 0.58f else 0.24f
+        val scrimTargetAlpha = if (dark) 0.68f else 0.24f
         val scrimAlpha by transition.animateFloat(
             transitionSpec = {
                 if (targetState == EnterExitState.Visible) {
@@ -275,7 +275,7 @@ private fun QueueSheetSurface(
             .clip(shape)
             .background(
                 if (dark) {
-                    echoDarkGlassBrush(1.06f)
+                    echoDarkGlassBrush(1.18f)
                 } else {
                     Brush.verticalGradient(
                         listOf(Color.White.copy(alpha = 0.98f), Color(0xFFF4F8FF).copy(alpha = 0.98f))
@@ -283,7 +283,7 @@ private fun QueueSheetSurface(
                 },
             )
             .border(
-                if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, Color.White.copy(alpha = 0.72f)),
+                if (dark) BorderStroke(1.dp, Color.White.copy(alpha = 0.34f)) else BorderStroke(1.dp, Color.White.copy(alpha = 0.72f)),
                 shape,
             )
             .navigationBarsPadding(),
@@ -306,7 +306,7 @@ private fun QueueSheetSurface(
                         onDrag = onHandleDrag,
                         onDragEnd = onHandleDragEnd,
                     )
-                    .background(if (dark) Color.White.copy(alpha = 0.26f) else scheme.onSurfaceVariant.copy(alpha = 0.28f)),
+                    .background(if (dark) Color.White.copy(alpha = 0.34f) else scheme.onSurfaceVariant.copy(alpha = 0.28f)),
             )
             Spacer(Modifier.height(14.dp))
             QueueSheetHeader(

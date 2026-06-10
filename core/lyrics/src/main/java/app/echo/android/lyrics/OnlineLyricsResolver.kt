@@ -27,6 +27,28 @@ class OnlineLyricsResolver(
             ?: loadFromLrclib(request)
     }
 
+    fun loadFromNeteaseSongId(songId: Long): EchoLyrics? {
+        if (songId <= 0L) return null
+        val lyricsUrl = buildUrl(
+            base = "https://music.163.com/api/song/lyric",
+            params = listOf(
+                "id" to songId.toString(),
+                "lv" to "-1",
+                "kv" to "-1",
+                "tv" to "-1",
+            ),
+        )
+        val lyricsJson = httpGet(lyricsUrl, NeteaseHeaders) ?: return null
+        val rawLyrics = runCatching {
+            val root = JSONObject(lyricsJson)
+            root.optJSONObject("lrc")?.optLyricsText("lyric")
+                ?: root.optJSONObject("yrc")?.optLyricsText("lyric")
+                ?: root.optJSONObject("tlyric")?.optLyricsText("lyric")
+        }.getOrNull() ?: return null
+
+        return parseOnlineLyrics(rawLyrics, sourceLabel = "NetEase Cloud Music")
+    }
+
     private fun loadFromNetease(request: EchoLyricsSearchRequest): EchoLyrics? {
         val query = "${request.title} ${request.artist}".trim()
         val searchUrl = buildUrl(

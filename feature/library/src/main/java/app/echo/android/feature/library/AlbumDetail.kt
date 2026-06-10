@@ -53,6 +53,7 @@ import app.echo.android.design.ArtworkTile
 import app.echo.android.design.BlurredArtworkBackground
 import app.echo.android.design.EchoContentMaxWidth
 import app.echo.android.design.EchoDarkGlassBorder
+import app.echo.android.design.EchoGlassInk
 import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.RoonInk
@@ -86,11 +87,11 @@ private fun rememberDetailGlassColors(): DetailGlassColors {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
     return DetailGlassColors(
-        surface = if (dark) EchoGlassPanel.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.62f),
-        elevatedSurface = if (dark) EchoGlassPanel.copy(alpha = 0.42f) else Color.White.copy(alpha = 0.78f),
-        border = if (dark) EchoDarkGlassBorder else Color.White.copy(alpha = 0.78f),
-        content = if (dark) scheme.onSurface else RoonInk,
-        muted = if (dark) scheme.onSurfaceVariant.copy(alpha = 0.92f) else RoonMuted,
+        surface = if (dark) EchoGlassPanel.copy(alpha = 0.60f) else Color.White.copy(alpha = 0.62f),
+        elevatedSurface = if (dark) EchoGlassInk.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.78f),
+        border = if (dark) Color.White.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.78f),
+        content = if (dark) Color.White.copy(alpha = 0.96f) else RoonInk,
+        muted = if (dark) Color.White.copy(alpha = 0.74f) else RoonMuted,
     )
 }
 
@@ -300,6 +301,7 @@ private fun AlbumDetailLightBackground(
     palette: ArtworkPalette,
     modifier: Modifier = Modifier,
 ) {
+    val dark = LocalEchoDarkTheme.current
     Box(modifier = modifier) {
         BlurredArtworkBackground(
             artworkUri = artworkUri,
@@ -307,7 +309,7 @@ private fun AlbumDetailLightBackground(
             modifier = Modifier.fillMaxSize(),
             artworkScale = 1.12f,
             artworkBlur = 14.dp,
-            artworkAlpha = 0.84f,
+            artworkAlpha = if (dark) 0.58f else 0.78f,
             overlayStartAlpha = 0f,
             overlayMidAlpha = 0f,
             overlayEndAlpha = 0.03f,
@@ -316,11 +318,19 @@ private fun AlbumDetailLightBackground(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
-                    Brush.verticalGradient(
-                        0f to Color.White.copy(alpha = 0.30f),
-                        0.42f to Color.White.copy(alpha = 0.22f),
-                        1f to Color(0xFFE5F5FA).copy(alpha = 0.18f),
-                    ),
+                    if (dark) {
+                        Brush.verticalGradient(
+                            0f to EchoGlassInk.copy(alpha = 0.08f),
+                            0.42f to Color.Transparent,
+                            1f to EchoGlassPanel.copy(alpha = 0.12f),
+                        )
+                    } else {
+                        Brush.verticalGradient(
+                            0f to Color.White.copy(alpha = 0.26f),
+                            0.42f to Color.White.copy(alpha = 0.16f),
+                            1f to Color(0xFFE5F5FA).copy(alpha = 0.12f),
+                        )
+                    },
                 ),
         )
     }
@@ -763,7 +773,15 @@ private fun AlbumTrackRow(
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(colors.surface)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.07f) else Color.White.copy(alpha = 0.76f),
+                        colors.surface,
+                        accent.copy(alpha = if (LocalEchoDarkTheme.current) 0.10f else 0.05f),
+                    ),
+                ),
+            )
             .border(BorderStroke(1.dp, colors.border), RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 12.dp),

@@ -12,20 +12,24 @@ import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.library.FolderSummary
 import app.echo.android.model.library.LibraryScanPhase
 import app.echo.android.model.library.LibraryScanProgress
+import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.LibrarySource
 import app.echo.android.model.library.LibraryStats
+import app.echo.android.model.library.NeteaseAudioQuality
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.coroutineContext
 
 class EchoLibraryRepository(
     private val database: EchoLibraryDatabase,
     private val scanner: MediaStoreTrackScanner,
+    private val neteaseClient: NeteaseCloudMusicClient = NeteaseCloudMusicClient(),
 ) {
     fun pagedTracks(query: String? = null): Flow<PagingData<LibraryTrackEntity>> =
         flow {
@@ -138,6 +142,17 @@ class EchoLibraryRepository(
             pagingSourceFactory = { database.trackDao().pageTracksByFolder(folderKey) },
         ).flow
 
+    fun observeNeteasePlaylists(): Flow<List<EchoPlaylist>> =
+        database.playlistDao().observePlaylists(NeteaseSourceId)
+            .map { playlists -> playlists.map { it.toEchoPlaylist() } }
+            .flowOn(Dispatchers.IO)
+
+    fun pagedPlaylistTracks(playlistId: String): Flow<PagingData<LibraryTrackEntity>> =
+        Pager(
+            config = defaultPagingConfig(),
+            pagingSourceFactory = { database.playlistDao().pagePlaylistTracks(playlistId) },
+        ).flow
+
     suspend fun albumTracks(albumKey: String): List<LibraryTrackEntity> =
         RemoteAlbumKey.parse(albumKey)?.let { remoteAlbum ->
             database.trackDao().getTracksByRemoteAlbum(remoteAlbum.source, remoteAlbum.albumKey)
@@ -209,6 +224,38 @@ class EchoLibraryRepository(
         limit: Int = AggregationQueueLimit,
     ): List<LibraryTrackEntity> =
         database.trackDao().getTracksByFolderForPlayback(folderKey, limit.coerceAtLeast(1))
+
+    suspend fun playlistTracksForPlayback(
+        playlistId: String,
+        limit: Int = AggregationQueueLimit,
+    ): List<LibraryTrackEntity> =
+        database.playlistDao().getPlaylistTracksForPlayback(playlistId, limit.coerceAtLeast(1))
+
+    suspend fun importNeteasePlaylist(
+        session: NeteaseSession,
+        playlistId: Long,
+    ): NeteasePlaylistImport {
+        val imported = neteaseClient.fetchPlaylistImport(session, playlistId)
+        database.trackDao().upsertBatchWithFts(imported.tracks)
+        database.playlistDao().replacePlaylist(imported.playlist, imported.playlistTracks)
+        return imported
+    }
+
+    suspend fun resolveNeteasePlaybackUrls(
+        sessionCookie: String?,
+        songIds: List<Long>,
+        quality: NeteaseAudioQuality,
+    ): Map<Long, String> =
+        neteaseClient.resolvePlaybackUrls(sessionCookie, songIds, quality)
+
+    suspend fun fetchNeteaseUserPlaylists(session: NeteaseSession) =
+        neteaseClient.fetchUserPlaylists(session)
+
+    suspend fun loginNeteaseByPhone(phone: String, password: String): NeteaseSession =
+        neteaseClient.loginByPhone(phone, password)
+
+    suspend fun loginNeteaseWithCookie(cookie: String): NeteaseSession =
+        neteaseClient.loginWithCookie(cookie)
 
     fun refreshMediaStoreSnapshot(
         relativePathPrefix: String? = null,

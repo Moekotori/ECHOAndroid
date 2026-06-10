@@ -38,9 +38,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.echo.android.design.EchoGlassInk
 import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.echoDarkGlassBorder
-import app.echo.android.design.echoDarkGlassBrush
 import app.echo.android.design.LocalEchoDarkTheme
 
 private val DockItemMotionEasing = CubicBezierEasing(0.16f, 1f, 0.30f, 1f)
@@ -74,10 +74,16 @@ fun BottomDock(
                 .navigationBarsPadding()
                 .padding(horizontal = 10.dp, vertical = 5.dp)
                 .clip(RoundedCornerShape(30.dp))
-                .background(if (dark) EchoGlassPanel.copy(alpha = 0.52f) else Color.White.copy(alpha = 0.58f))
+                .background(if (dark) EchoGlassInk.copy(alpha = 0.72f) else Color.White.copy(alpha = 0.72f))
                 .background(
                     if (dark) {
-                        echoDarkGlassBrush(1.00f)
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(alpha = 0.08f),
+                                EchoGlassPanel.copy(alpha = 0.58f),
+                                EchoGlassInk.copy(alpha = 0.78f),
+                            ),
+                        )
                     } else {
                         Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.72f), Color(0xFFEAF2FF).copy(alpha = 0.86f)))
                     },
@@ -116,18 +122,18 @@ private fun DockItem(
         selected && onLightSurface -> scheme.onSurface
         selected -> scheme.primary
         onLightSurface -> scheme.onSurfaceVariant
-        else -> Color.White.copy(alpha = 0.62f)
+        else -> Color.White.copy(alpha = 0.86f)
     }
     val targetLabelColor = when {
         selected && onLightSurface -> scheme.onSurface
         selected -> Color.White.copy(alpha = 0.96f)
         onLightSurface -> scheme.onSurfaceVariant
-        else -> Color.White.copy(alpha = 0.62f)
+        else -> Color.White.copy(alpha = 0.84f)
     }
     val targetContainerColor = when {
         !selected -> Color.Transparent
         onLightSurface -> scheme.primary.copy(alpha = 0.14f)
-        else -> EchoGlassPanel.copy(alpha = 0.48f)
+        else -> EchoGlassPanel.copy(alpha = 0.62f)
     }
     val iconColor by animateColorAsState(
         targetValue = targetIconColor,
@@ -179,7 +185,7 @@ private fun DockItem(
                 text = tab.label,
                 color = labelColor,
                 style = MaterialTheme.typography.labelSmall,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

@@ -98,7 +98,6 @@ import app.echo.android.design.EchoGlassNight
 import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.echoDarkGlassBorder
-import app.echo.android.design.echoDarkGlassBrush
 import app.echo.android.design.formatDuration
 import app.echo.android.design.progressFraction
 import app.echo.android.design.rememberArtworkPalette
@@ -639,7 +638,13 @@ private fun LyricsSettingsPanel(
             .clip(panelShape)
             .background(
                 if (dark) {
-                    echoDarkGlassBrush(1.18f)
+                    Brush.verticalGradient(
+                        listOf(
+                            EchoGlassPanel.copy(alpha = 0.84f),
+                            EchoGlassInk.copy(alpha = 0.94f),
+                            EchoGlassNight.copy(alpha = 0.88f),
+                        ),
+                    )
                 } else {
                     Brush.verticalGradient(
                         listOf(
@@ -1007,17 +1012,17 @@ private fun LyricsLineList(
                 val seekable = synced && line.startMs >= 0L
                 val primaryAlpha = when (focusDistance) {
                     0 -> 1f
-                    1 -> 0.62f
-                    2 -> 0.36f
-                    3 -> 0.20f
-                    else -> 0.10f
+                    1 -> 0.68f
+                    2 -> 0.44f
+                    3 -> 0.26f
+                    else -> 0.16f
                 }
                 val secondaryAlpha = when (focusDistance) {
                     0 -> 0.76f
-                    1 -> 0.44f
-                    2 -> 0.26f
-                    3 -> 0.15f
-                    else -> 0.08f
+                    1 -> 0.50f
+                    2 -> 0.32f
+                    3 -> 0.20f
+                    else -> 0.12f
                 }
                 Column(
                     modifier = Modifier
@@ -1035,12 +1040,16 @@ private fun LyricsLineList(
                 ) {
                     val activeShadow = if (active && focusGlowEnabled) {
                         Shadow(
-                            color = lyricAccent.copy(alpha = 0.34f),
+                            color = lyricAccent.copy(alpha = 0.30f),
                             offset = Offset.Zero,
                             blurRadius = 18f,
                         )
                     } else {
-                        null
+                        Shadow(
+                            color = Color.Black.copy(alpha = if (active) 0.36f else 0.30f),
+                            offset = Offset(0f, 2f),
+                            blurRadius = if (active) 12f else 8f,
+                        )
                     }
                     Text(
                         text = line.displayText(active = active, positionMs = positionMs, activeColor = lyricAccent),
@@ -1193,7 +1202,15 @@ private fun LyricsControlDeck(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = 0.12f))
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        EchoGlassPanel.copy(alpha = 0.54f),
+                        EchoGlassInk.copy(alpha = 0.66f),
+                    ),
+                ),
+            )
+            .border(BorderStroke(1.dp, EchoDarkGlassBorder), RoundedCornerShape(16.dp))
             .padding(horizontal = 12.dp, vertical = 9.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -1504,7 +1521,19 @@ private fun NowPlayingControlDock(
     onOpenQueue: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(34.dp))
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        EchoGlassPanel.copy(alpha = 0.58f),
+                        EchoGlassInk.copy(alpha = 0.74f),
+                    ),
+                ),
+            )
+            .border(BorderStroke(1.dp, EchoDarkGlassBorder), RoundedCornerShape(34.dp))
+            .padding(horizontal = 8.dp, vertical = 7.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1513,8 +1542,9 @@ private fun NowPlayingControlDock(
             description = leadingDescription,
             touchSize = 44.dp,
             iconSize = 24.dp,
-            tint = Color.White.copy(alpha = 0.70f),
-            background = Color.Transparent,
+            tint = Color.White.copy(alpha = 0.78f),
+            background = Color.White.copy(alpha = 0.08f),
+            border = Color.White.copy(alpha = 0.12f),
             onClick = onLeadingAction,
         )
         GlyphButton(
@@ -1523,7 +1553,8 @@ private fun NowPlayingControlDock(
             touchSize = 54.dp,
             iconSize = 34.dp,
             tint = OnArt,
-            background = Color.White.copy(alpha = 0.12f),
+            background = Color.White.copy(alpha = 0.14f),
+            border = Color.White.copy(alpha = 0.16f),
             onClick = onPrevious,
         )
         GlyphButton(
@@ -1533,6 +1564,7 @@ private fun NowPlayingControlDock(
             iconSize = 42.dp,
             tint = Color(0xFF15161A),
             background = Color.White.copy(alpha = 0.96f),
+            border = Color.White.copy(alpha = 0.40f),
             onClick = onPlayPause,
         )
         GlyphButton(
@@ -1541,7 +1573,8 @@ private fun NowPlayingControlDock(
             touchSize = 54.dp,
             iconSize = 34.dp,
             tint = OnArt,
-            background = Color.White.copy(alpha = 0.12f),
+            background = Color.White.copy(alpha = 0.14f),
+            border = Color.White.copy(alpha = 0.16f),
             onClick = onNext,
         )
         GlyphButton(
@@ -1549,8 +1582,9 @@ private fun NowPlayingControlDock(
             description = "播放队列",
             touchSize = 44.dp,
             iconSize = 24.dp,
-            tint = Color.White.copy(alpha = 0.70f),
-            background = Color.Transparent,
+            tint = Color.White.copy(alpha = 0.78f),
+            background = Color.White.copy(alpha = 0.08f),
+            border = Color.White.copy(alpha = 0.12f),
             onClick = onOpenQueue,
         )
     }
@@ -1636,6 +1670,7 @@ private fun GlyphButton(
     iconSize: Dp,
     tint: Color,
     background: Color,
+    border: Color = Color.Transparent,
     onClick: () -> Unit,
 ) {
     Box(
@@ -1643,6 +1678,7 @@ private fun GlyphButton(
             .size(touchSize)
             .clip(CircleShape)
             .background(background)
+            .border(BorderStroke(1.dp, border), CircleShape)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
