@@ -24,13 +24,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
-import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -45,6 +45,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -55,6 +56,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoAccent
@@ -144,14 +146,14 @@ fun MiniPlayer(
                 spotColor = scheme.primary.copy(alpha = 0.16f),
             )
             .clip(shape)
-            .background(if (dark) EchoGlassInk.copy(alpha = if (compactDock) 0.74f else 0.68f) else Color.Transparent)
+            .background(if (dark) EchoGlassInk.copy(alpha = if (compactDock) 0.90f else 0.84f) else Color.Transparent)
             .background(
                 if (dark) {
                     Brush.verticalGradient(
                         listOf(
-                            Color.White.copy(alpha = if (compactDock) 0.10f else 0.08f),
-                            EchoGlassPanel.copy(alpha = if (compactDock) 0.62f else 0.56f),
-                            EchoGlassInk.copy(alpha = if (compactDock) 0.78f else 0.70f),
+                            Color.White.copy(alpha = if (compactDock) 0.12f else 0.10f),
+                            EchoGlassPanel.copy(alpha = if (compactDock) 0.76f else 0.70f),
+                            EchoGlassInk.copy(alpha = if (compactDock) 0.94f else 0.88f),
                         ),
                     )
                 } else {
@@ -275,7 +277,7 @@ fun MiniPlayer(
                         status.track?.artist ?: "就绪",
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        color = if (dark) Color.White.copy(alpha = 0.86f) else scheme.onSurfaceVariant,
+                        color = if (dark) Color.White.copy(alpha = 0.92f) else scheme.onSurfaceVariant,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -306,7 +308,13 @@ fun MiniPlayer(
                         scaleY = playButtonScale
                     }
                     .clip(CircleShape)
-                    .background(Brush.linearGradient(listOf(EchoAccent, EchoAccentDeep)))
+                    .background(
+                        if (dark) {
+                            Brush.linearGradient(listOf(EchoAccent, EchoAccentDeep))
+                        } else {
+                            Brush.linearGradient(listOf(Color(0xFF111318), Color(0xFF111318)))
+                        },
+                    )
                     .clickable(
                         enabled = status.state != EchoPlaybackState.Idle || status.track != null,
                         onClick = onPlayPause,
@@ -314,11 +322,21 @@ fun MiniPlayer(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    if (status.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    imageVector = Icons.Rounded.PlayArrow,
                     contentDescription = "播放或暂停",
                     tint = Color.White,
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier
+                        .size(24.dp)
+                        .alpha(if (status.isPlaying) 0f else 1f),
                 )
+                if (status.isPlaying) {
+                    PauseBarsIcon(
+                        tint = Color.White,
+                        height = 20.dp,
+                        barWidth = 5.dp,
+                        gap = 5.dp,
+                    )
+                }
             }
             when {
                 onHideDock != null -> {
@@ -338,6 +356,29 @@ fun MiniPlayer(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PauseBarsIcon(
+    tint: Color,
+    height: Dp,
+    barWidth: Dp,
+    gap: Dp,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(gap),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        repeat(2) {
+            Box(
+                modifier = Modifier
+                    .width(barWidth)
+                    .height(height)
+                    .clip(RoundedCornerShape(99.dp))
+                    .background(tint),
+            )
         }
     }
 }

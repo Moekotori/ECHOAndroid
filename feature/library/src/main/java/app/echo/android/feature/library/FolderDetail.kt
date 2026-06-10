@@ -83,9 +83,9 @@ private fun rememberFolderDetailColors(): FolderDetailColors {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
     return FolderDetailColors(
-        surface = if (dark) EchoGlassPanel.copy(alpha = 0.60f) else Color.White.copy(alpha = 0.68f),
-        elevatedSurface = if (dark) EchoGlassInk.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.82f),
-        border = if (dark) Color.White.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.82f),
+        surface = if (dark) EchoGlassPanel.copy(alpha = 0.82f) else Color.White.copy(alpha = 0.94f),
+        elevatedSurface = if (dark) EchoGlassInk.copy(alpha = 0.86f) else Color.White.copy(alpha = 0.98f),
+        border = if (dark) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.92f),
         content = if (dark) Color.White.copy(alpha = 0.96f) else RoonInk,
         muted = if (dark) Color.White.copy(alpha = 0.74f) else RoonMuted,
     )
@@ -227,20 +227,6 @@ private fun FolderDetailBackground() {
                 ),
             ),
     )
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(420.dp)
-            .background(
-                Brush.radialGradient(
-                    listOf(
-                        EchoAccent.copy(alpha = if (dark) 0.20f else 0.30f),
-                        EchoAccentDeep.copy(alpha = if (dark) 0.12f else 0.10f),
-                        Color.Transparent,
-                    ),
-                ),
-            ),
-    )
 }
 
 @Composable
@@ -285,10 +271,9 @@ private fun FolderHero(
             .background(
                 Brush.linearGradient(
                     listOf(
-                        if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.74f),
+                        if (LocalEchoDarkTheme.current) EchoGlassPanel.copy(alpha = 0.88f) else Color.White.copy(alpha = 0.98f),
                         colors.surface,
                         colors.elevatedSurface,
-                        EchoAccent.copy(alpha = if (LocalEchoDarkTheme.current) 0.15f else 0.10f),
                     ),
                 ),
             )
@@ -376,7 +361,6 @@ private fun FolderInsightCard(
                     listOf(
                         if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.72f),
                         colors.surface,
-                        EchoAccent.copy(alpha = if (LocalEchoDarkTheme.current) 0.08f else 0.04f),
                     ),
                 ),
             )
@@ -416,7 +400,6 @@ private fun FolderTrackRow(
                     listOf(
                         if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.07f) else Color.White.copy(alpha = 0.84f),
                         colors.elevatedSurface,
-                        EchoAccentDeep.copy(alpha = if (LocalEchoDarkTheme.current) 0.10f else 0.04f),
                     ),
                 ),
             )

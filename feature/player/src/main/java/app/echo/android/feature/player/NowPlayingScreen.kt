@@ -52,12 +52,9 @@ import androidx.compose.material.icons.rounded.KeyboardDoubleArrowLeft
 import androidx.compose.material.icons.rounded.KeyboardDoubleArrowRight
 import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material.icons.rounded.MoreHoriz
-import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.SkipNext
-import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.TextFields
 import androidx.compose.material.icons.rounded.Translate
@@ -114,9 +111,9 @@ import kotlinx.coroutines.launch
 
 // 封面毛玻璃背景上的前景色：白色为主，半透明分级
 private val OnArt = Color.White
-private val OnArtMuted = Color.White.copy(alpha = 0.74f)
-private val OnArtFaint = Color.White.copy(alpha = 0.28f)
-private val OnArtChip = Color.White.copy(alpha = 0.16f)
+private val OnArtMuted = Color.White.copy(alpha = 0.84f)
+private val OnArtFaint = Color.White.copy(alpha = 0.42f)
+private val OnArtChip = Color.White.copy(alpha = 0.24f)
 private val LyricsSettingsMotionEasing = CubicBezierEasing(0.16f, 1f, 0.30f, 1f)
 
 private data class LyricsColorOption(
@@ -157,7 +154,7 @@ fun NowPlayingScreen(
     modifier: Modifier = Modifier,
     positionState: PlaybackPositionState? = null,
     lyricsFontFamily: FontFamily? = null,
-    lyricsFontMode: String = "outfit",
+    lyricsFontMode: String = "system",
     lyricsFontScale: Float = 1f,
     lyricsColorMode: String = "white",
     lyricsShowTranslation: Boolean = true,
@@ -630,7 +627,7 @@ private fun LyricsSettingsPanel(
     val dark = LocalEchoDarkTheme.current
     val panelShape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
     val titleColor = if (dark) Color.White else Color(0xFF101722)
-    val mutedColor = if (dark) Color.White.copy(alpha = 0.62f) else Color(0xFF647084)
+    val mutedColor = if (dark) Color.White.copy(alpha = 0.78f) else Color(0xFF4F5C70)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -685,7 +682,7 @@ private fun LyricsSettingsPanel(
             }
             Column(Modifier.weight(1f)) {
                 Text("歌词设置", color = titleColor, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
-                Text("字体、颜色和显示方式", color = mutedColor, style = MaterialTheme.typography.bodySmall)
+                Text("字体、颜色和显示方式", color = mutedColor, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
             }
             GlyphButton(
                 icon = Icons.Rounded.Close,
@@ -736,7 +733,7 @@ private fun LyricsSettingsPanel(
                     onLyricsFontScaleChange(0.82f + fraction.coerceIn(0f, 1f) * (1.28f - 0.82f))
                 },
                 activeColor = lyricAccent,
-                inactiveColor = if (dark) Color.White.copy(alpha = 0.16f) else Color(0xFFB8C2D6).copy(alpha = 0.55f),
+                inactiveColor = if (dark) Color.White.copy(alpha = 0.28f) else Color(0xFFB8C2D6).copy(alpha = 0.55f),
                 thumbColor = Color.White,
             )
         }
@@ -779,7 +776,7 @@ private fun LyricsSettingsPanel(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(18.dp))
-                .background(if (dark) EchoGlassPanel.copy(alpha = 0.34f) else Color(0xFF101722).copy(alpha = 0.06f))
+                .background(if (dark) EchoGlassPanel.copy(alpha = 0.54f) else Color(0xFF101722).copy(alpha = 0.06f))
                 .border(if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, Color.Transparent), RoundedCornerShape(18.dp))
                 .clickable(onClick = onCloseLyrics)
                 .padding(horizontal = 14.dp, vertical = 12.dp),
@@ -802,21 +799,21 @@ private fun LyricsSettingsSection(
 ) {
     val dark = LocalEchoDarkTheme.current
     val titleColor = if (dark) Color.White else Color(0xFF101722)
-    val mutedColor = if (dark) Color.White.copy(alpha = 0.62f) else Color(0xFF647084)
+    val mutedColor = if (dark) Color.White.copy(alpha = 0.78f) else Color(0xFF4F5C70)
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(if (dark) EchoGlassPanel.copy(alpha = 0.34f) else Color.White.copy(alpha = 0.58f))
+            .background(if (dark) EchoGlassPanel.copy(alpha = 0.54f) else Color.White.copy(alpha = 0.58f))
             .border(if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, Color.White.copy(alpha = 0.72f)), RoundedCornerShape(20.dp))
             .padding(13.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-            Icon(icon, contentDescription = null, tint = Color(0xFF4F62F4), modifier = Modifier.size(19.dp))
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(19.dp))
             Text(title, color = titleColor, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
             Spacer(Modifier.weight(1f))
-            Text(detail, color = mutedColor, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(detail, color = mutedColor, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         content()
     }
@@ -838,7 +835,7 @@ private fun LyricsChoiceChip(
                 if (selected) {
                     accent.copy(alpha = if (dark) 0.24f else 0.28f)
                 } else {
-                    if (dark) Color.White.copy(alpha = 0.08f) else Color(0xFF101722).copy(alpha = 0.06f)
+                    if (dark) Color.White.copy(alpha = 0.16f) else Color(0xFF101722).copy(alpha = 0.06f)
                 },
             )
             .border(
@@ -866,7 +863,7 @@ private fun LyricsColorSwatch(
         modifier = modifier
             .height(54.dp)
             .clip(RoundedCornerShape(18.dp))
-            .background(if (selected) option.color.copy(alpha = 0.26f) else if (dark) EchoGlassPanel.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.48f))
+            .background(if (selected) option.color.copy(alpha = 0.30f) else if (dark) EchoGlassPanel.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.48f))
             .border(
                 BorderStroke(1.dp, if (selected) option.color.copy(alpha = 0.80f) else if (dark) EchoDarkGlassBorder else Color.White.copy(alpha = 0.68f)),
                 RoundedCornerShape(18.dp),
@@ -883,7 +880,7 @@ private fun LyricsColorSwatch(
                 .background(option.color)
                 .border(BorderStroke(1.dp, if (dark) Color.White.copy(alpha = 0.24f) else Color.Black.copy(alpha = 0.08f)), CircleShape),
         )
-        Text(option.label, color = if (dark) Color.White.copy(alpha = 0.86f) else Color(0xFF253142), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+        Text(option.label, color = if (dark) Color.White.copy(alpha = 0.94f) else Color(0xFF253142), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -900,7 +897,7 @@ private fun LyricsToggleTile(
         modifier = modifier
             .height(66.dp)
             .clip(RoundedCornerShape(18.dp))
-            .background(if (enabled) accent.copy(alpha = 0.22f) else if (dark) EchoGlassPanel.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.48f))
+            .background(if (enabled) accent.copy(alpha = 0.28f) else if (dark) EchoGlassPanel.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.48f))
             .border(
                 BorderStroke(1.dp, if (enabled) accent.copy(alpha = 0.38f) else if (dark) EchoDarkGlassBorder else Color.White.copy(alpha = 0.66f)),
                 RoundedCornerShape(18.dp),
@@ -910,7 +907,7 @@ private fun LyricsToggleTile(
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(title, color = if (dark) Color.White else Color(0xFF253142), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
-        Text(if (enabled) "开启" else "关闭", color = if (dark) Color.White.copy(alpha = 0.58f) else Color(0xFF647084), style = MaterialTheme.typography.labelSmall)
+        Text(if (enabled) "开启" else "关闭", color = if (dark) Color.White.copy(alpha = 0.78f) else Color(0xFF4F5C70), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -927,16 +924,16 @@ private fun LyricsToolButton(
         modifier = modifier
             .height(44.dp)
             .clip(RoundedCornerShape(18.dp))
-            .background(if (selected) Color.White.copy(alpha = if (dark) 0.16f else 0.12f) else if (dark) EchoGlassPanel.copy(alpha = 0.38f) else Color.White.copy(alpha = 0.54f))
+            .background(if (selected) Color.White.copy(alpha = if (dark) 0.22f else 0.12f) else if (dark) EchoGlassPanel.copy(alpha = 0.56f) else Color.White.copy(alpha = 0.54f))
             .border(if (dark) echoDarkGlassBorder(selected) else BorderStroke(1.dp, Color.White.copy(alpha = 0.68f)), RoundedCornerShape(18.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = if (dark) Color.White.copy(alpha = 0.84f) else Color(0xFF253142), modifier = Modifier.size(17.dp))
+        Icon(icon, contentDescription = null, tint = if (dark) Color.White.copy(alpha = 0.92f) else Color(0xFF253142), modifier = Modifier.size(17.dp))
         Spacer(Modifier.width(5.dp))
-        Text(title, color = if (dark) Color.White.copy(alpha = 0.88f) else Color(0xFF253142), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text(title, color = if (dark) Color.White.copy(alpha = 0.96f) else Color(0xFF253142), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black, maxLines = 1)
     }
 }
 
@@ -947,7 +944,6 @@ private fun lyricsColorLabel(mode: String): String =
     LyricsColorOptions.firstOrNull { it.value == mode }?.label ?: "白"
 
 private fun lyricsFontOptions(importedFontUri: String?): List<Pair<String, String>> = buildList {
-    add("outfit" to "Outfit")
     add("system" to "系统")
     add("serif" to "衬线")
     add("monospace" to "等宽")
@@ -956,12 +952,12 @@ private fun lyricsFontOptions(importedFontUri: String?): List<Pair<String, Strin
 
 private fun lyricsFontDetail(mode: String, importedFontUri: String?): String =
     when (mode) {
-        "outfit" -> "内置 Outfit"
+        "outfit" -> "系统字体"
         "system" -> "系统字体"
         "serif" -> "系统衬线"
         "monospace" -> "系统等宽"
         "imported" -> importedFontUri?.substringAfterLast('/')?.takeLast(18)?.let { "导入 $it" } ?: "选择字体文件"
-        else -> "内置 Outfit"
+        else -> "系统字体"
     }
 
 @Composable
@@ -1012,17 +1008,17 @@ private fun LyricsLineList(
                 val seekable = synced && line.startMs >= 0L
                 val primaryAlpha = when (focusDistance) {
                     0 -> 1f
-                    1 -> 0.68f
-                    2 -> 0.44f
-                    3 -> 0.26f
-                    else -> 0.16f
+                    1 -> 0.78f
+                    2 -> 0.58f
+                    3 -> 0.40f
+                    else -> 0.28f
                 }
                 val secondaryAlpha = when (focusDistance) {
-                    0 -> 0.76f
-                    1 -> 0.50f
-                    2 -> 0.32f
-                    3 -> 0.20f
-                    else -> 0.12f
+                    0 -> 0.84f
+                    1 -> 0.64f
+                    2 -> 0.48f
+                    3 -> 0.34f
+                    else -> 0.24f
                 }
                 Column(
                     modifier = Modifier
@@ -1069,7 +1065,7 @@ private fun LyricsLineList(
                                 lineHeight = (30f * lyricsFontScale.coerceIn(0.82f, 1.28f)).sp,
                             )
                         },
-                        fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                        fontWeight = if (active) FontWeight.ExtraBold else FontWeight.Bold,
                         textAlign = TextAlign.Center,
                         maxLines = if (active) 3 else 2,
                         overflow = TextOverflow.Ellipsis,
@@ -1092,7 +1088,7 @@ private fun LyricsLineList(
                                     lineHeight = (20f * lyricsFontScale.coerceIn(0.82f, 1.28f)).sp,
                                 )
                             },
-                            fontWeight = FontWeight.Medium,
+                            fontWeight = FontWeight.SemiBold,
                             textAlign = TextAlign.Center,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
@@ -1102,13 +1098,13 @@ private fun LyricsLineList(
                         Text(
                             text = romanization,
                             modifier = Modifier.fillMaxWidth(),
-                            color = lyricAccent.copy(alpha = secondaryAlpha * 0.82f),
+                            color = lyricAccent.copy(alpha = secondaryAlpha * 0.92f),
                             style = MaterialTheme.typography.bodySmall.copy(
                                 fontFamily = lyricsFontFamily,
                                 fontSize = (12f * lyricsFontScale.coerceIn(0.82f, 1.28f)).sp,
                                 lineHeight = (18f * lyricsFontScale.coerceIn(0.82f, 1.28f)).sp,
                             ),
-                            fontWeight = FontWeight.Medium,
+                            fontWeight = FontWeight.SemiBold,
                             textAlign = TextAlign.Center,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
@@ -1129,11 +1125,11 @@ private fun EchoLyricLine.displayText(active: Boolean, positionMs: Long, activeC
                 val nextStartMs = words.getOrNull(index + 1)?.startMs
                 val endMs = word.endMs ?: nextStartMs ?: this@displayText.endMs ?: Long.MAX_VALUE
                 val isCurrentWord = positionMs in word.startMs until endMs
-                val color = if (isCurrentWord) activeColor else activeColor.copy(alpha = 0.62f)
+                val color = if (isCurrentWord) activeColor else activeColor.copy(alpha = 0.74f)
                 pushStyle(
                     SpanStyle(
                         color = color,
-                        fontWeight = if (isCurrentWord) FontWeight.Bold else FontWeight.Medium,
+                        fontWeight = if (isCurrentWord) FontWeight.ExtraBold else FontWeight.Bold,
                     ),
                 )
                 append(word.text)
@@ -1161,7 +1157,7 @@ private fun LyricsEmptyState(
             text = message,
             color = OnArtMuted,
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
         )
         onImportLyrics?.let { onClick ->
             Row(
@@ -1183,7 +1179,7 @@ private fun LyricsEmptyState(
                     text = "导入歌词",
                     color = OnArt,
                     style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                 )
             }
         }
@@ -1233,7 +1229,7 @@ private fun LyricsControlDeck(
                         text = source,
                         color = OnArtMuted,
                         style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -1341,7 +1337,7 @@ private fun NowPlayingTrackInfo(
             title,
             color = OnArt,
             style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.ExtraBold,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
@@ -1358,7 +1354,7 @@ private fun NowPlayingTrackInfo(
                     modifier = Modifier.clickable(onClick = onOpenArtist),
                     color = OnArtMuted,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -1366,8 +1362,9 @@ private fun NowPlayingTrackInfo(
                     Text(
                         value,
                         modifier = Modifier.clickable(onClick = onOpenAlbum),
-                        color = Color.White.copy(alpha = 0.56f),
+                        color = Color.White.copy(alpha = 0.78f),
                         style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -1424,9 +1421,9 @@ private fun NowPlayingFormatInfo(diagnostics: EchoPlaybackDiagnostics) {
         bitrateKbps?.let { kbps ->
             Text(
                 "$kbps kbps",
-                color = Color.White.copy(alpha = 0.62f),
+                color = Color.White.copy(alpha = 0.78f),
                 style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 2.dp),
             )
         }
@@ -1438,15 +1435,15 @@ private fun FormatChip(text: String, highlight: Boolean) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(if (highlight) Color.White.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.10f))
+            .background(if (highlight) Color.White.copy(alpha = 0.26f) else Color.White.copy(alpha = 0.16f))
             .padding(horizontal = 8.dp, vertical = 3.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text,
-            color = if (highlight) Color.White.copy(alpha = 0.94f) else Color.White.copy(alpha = 0.68f),
+            color = if (highlight) Color.White.copy(alpha = 0.98f) else Color.White.copy(alpha = 0.82f),
             style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
         )
     }
 }
@@ -1497,13 +1494,15 @@ private fun NowPlayingScrubber(
         ) {
             Text(
                 formatDuration(currentMs),
-                color = Color.White.copy(alpha = 0.64f),
+                color = Color.White.copy(alpha = 0.82f),
                 style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
             )
             Text(
                 "-" + formatDuration(remainingMs),
-                color = Color.White.copy(alpha = 0.64f),
+                color = Color.White.copy(alpha = 0.82f),
                 style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
             )
         }
     }
@@ -1523,16 +1522,6 @@ private fun NowPlayingControlDock(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(34.dp))
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        EchoGlassPanel.copy(alpha = 0.58f),
-                        EchoGlassInk.copy(alpha = 0.74f),
-                    ),
-                ),
-            )
-            .border(BorderStroke(1.dp, EchoDarkGlassBorder), RoundedCornerShape(34.dp))
             .padding(horizontal = 8.dp, vertical = 7.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
@@ -1543,38 +1532,52 @@ private fun NowPlayingControlDock(
             touchSize = 44.dp,
             iconSize = 24.dp,
             tint = Color.White.copy(alpha = 0.78f),
-            background = Color.White.copy(alpha = 0.08f),
-            border = Color.White.copy(alpha = 0.12f),
+            background = Color.Transparent,
             onClick = onLeadingAction,
         )
         GlyphButton(
-            icon = Icons.Rounded.SkipPrevious,
+            icon = Icons.Rounded.KeyboardDoubleArrowLeft,
             description = "上一首",
             touchSize = 54.dp,
-            iconSize = 34.dp,
+            iconSize = 38.dp,
             tint = OnArt,
-            background = Color.White.copy(alpha = 0.14f),
-            border = Color.White.copy(alpha = 0.16f),
+            background = Color.Transparent,
             onClick = onPrevious,
         )
+        Box(
+            modifier = Modifier
+                .size(66.dp)
+                .clip(CircleShape)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onPlayPause,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (isPlaying) {
+                PauseBarsIcon(
+                    tint = Color.White,
+                    height = 48.dp,
+                    barWidth = 10.dp,
+                    gap = 10.dp,
+                )
+            } else {
+                Icon(
+                    Icons.Rounded.PlayArrow,
+                    contentDescription = "播放或暂停",
+                    tint = Color.White,
+                    modifier = Modifier.size(44.dp),
+                )
+            }
+        }
         GlyphButton(
-            icon = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-            description = "播放或暂停",
-            touchSize = 76.dp,
-            iconSize = 42.dp,
-            tint = Color(0xFF15161A),
-            background = Color.White.copy(alpha = 0.96f),
-            border = Color.White.copy(alpha = 0.40f),
-            onClick = onPlayPause,
-        )
-        GlyphButton(
-            icon = Icons.Rounded.SkipNext,
+            icon = Icons.Rounded.KeyboardDoubleArrowRight,
             description = "下一首",
             touchSize = 54.dp,
-            iconSize = 34.dp,
+            iconSize = 38.dp,
             tint = OnArt,
-            background = Color.White.copy(alpha = 0.14f),
-            border = Color.White.copy(alpha = 0.16f),
+            background = Color.Transparent,
             onClick = onNext,
         )
         GlyphButton(
@@ -1583,10 +1586,32 @@ private fun NowPlayingControlDock(
             touchSize = 44.dp,
             iconSize = 24.dp,
             tint = Color.White.copy(alpha = 0.78f),
-            background = Color.White.copy(alpha = 0.08f),
-            border = Color.White.copy(alpha = 0.12f),
+            background = Color.Transparent,
             onClick = onOpenQueue,
         )
+    }
+}
+
+@Composable
+private fun PauseBarsIcon(
+    tint: Color,
+    height: Dp,
+    barWidth: Dp,
+    gap: Dp,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(gap),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        repeat(2) {
+            Box(
+                modifier = Modifier
+                    .width(barWidth)
+                    .height(height)
+                    .clip(RoundedCornerShape(99.dp))
+                    .background(tint),
+            )
+        }
     }
 }
 
@@ -1678,7 +1703,7 @@ private fun GlyphButton(
             .size(touchSize)
             .clip(CircleShape)
             .background(background)
-            .border(BorderStroke(1.dp, border), CircleShape)
+            .then(if (border.alpha > 0f) Modifier.border(BorderStroke(1.dp, border), CircleShape) else Modifier)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,

@@ -5,6 +5,7 @@ import app.echo.android.data.EchoLibraryRepository
 import app.echo.android.data.LibraryTrackEntity
 import app.echo.android.data.parseNeteaseSongId
 import app.echo.android.lyrics.EchoLyricsSearchRequest
+import app.echo.android.lyrics.EchoLyricsParser
 import app.echo.android.lyrics.ImportedLyricsStore
 import app.echo.android.lyrics.LocalLyricsResolver
 import app.echo.android.lyrics.OnlineLyricsResolver
@@ -41,6 +42,11 @@ internal class LyricsController(
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, EchoLyrics>?): Boolean =
             size > MaxOnlineLyricsCacheEntries
     }
+    private val echoLinkLyricsCache = object : LinkedHashMap<String, EchoLyrics>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, EchoLyrics>?): Boolean =
+            size > MaxEchoLinkLyricsCacheEntries
+    }
+    private val echoLinkLyricsLock = Any()
 
     fun importLyrics(uri: Uri, currentTrackId: String?) {
         val trackIdAtImport = currentTrackId ?: lastLyricsTrackId
@@ -129,26 +135,35 @@ internal class LyricsController(
         lyricsJob = scope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    val track = repository.trackForLyrics(trackId)
-                    if (track == null) {
-                        LyricsLoadResult(EchoLyricsLoadState.Missing)
-                    } else {
+                    val echoLinkLyrics = cachedEchoLinkLyrics(trackId)
+                    if (echoLinkLyrics != null) {
                         val userOffsetMs = importedLyricsStore.lyricsOffsetForTrack(trackId)
-                        val importedLyrics = importedLyricsStore.lyricsUriForTrack(trackId)
-                            ?.let(lyricsResolver::loadFromUri)
-                        val localLyrics = importedLyrics ?: lyricsResolver.loadForTrack(track)
-                        val onlineLyrics = if (localLyrics == null) {
-                            directNeteaseLyrics(track)
-                                ?: if (onlineLyricsEnabled) cachedOnlineLyrics(track) else null
+                        LyricsLoadResult(
+                            state = EchoLyricsLoadState.Ready(echoLinkLyrics.withUserOffset(userOffsetMs)),
+                            userOffsetMs = userOffsetMs,
+                        )
+                    } else {
+                        val track = repository.trackForLyrics(trackId)
+                        if (track == null) {
+                            LyricsLoadResult(EchoLyricsLoadState.Missing)
                         } else {
-                            null
+                            val userOffsetMs = importedLyricsStore.lyricsOffsetForTrack(trackId)
+                            val importedLyrics = importedLyricsStore.lyricsUriForTrack(trackId)
+                                ?.let(lyricsResolver::loadFromUri)
+                            val localLyrics = importedLyrics ?: lyricsResolver.loadForTrack(track)
+                            val onlineLyrics = if (localLyrics == null) {
+                                directNeteaseLyrics(track)
+                                    ?: if (onlineLyricsEnabled) cachedOnlineLyrics(track) else null
+                            } else {
+                                null
+                            }
+                            (localLyrics ?: onlineLyrics)
+                                ?.takeIf { it.lines.isNotEmpty() }
+                                ?.withUserOffset(userOffsetMs)
+                                ?.let(EchoLyricsLoadState::Ready)
+                                ?.let { LyricsLoadResult(state = it, userOffsetMs = userOffsetMs) }
+                                ?: LyricsLoadResult(EchoLyricsLoadState.Missing)
                         }
-                        (localLyrics ?: onlineLyrics)
-                            ?.takeIf { it.lines.isNotEmpty() }
-                            ?.withUserOffset(userOffsetMs)
-                            ?.let(EchoLyricsLoadState::Ready)
-                            ?.let { LyricsLoadResult(state = it, userOffsetMs = userOffsetMs) }
-                            ?: LyricsLoadResult(EchoLyricsLoadState.Missing)
                     }
                 }.getOrElse { error ->
                     if (error is CancellationException) throw error
@@ -157,6 +172,27 @@ internal class LyricsController(
             }
             currentLyricsUserOffsetMs = result.userOffsetMs
             _lyricsState.value = result.state
+        }
+    }
+
+    fun setEchoLinkLyrics(trackId: String, rawText: String, sourceLabel: String?) {
+        if (trackId.isBlank() || rawText.isBlank()) return
+        scope.launch {
+            val lyrics = withContext(Dispatchers.IO) {
+                runCatching {
+                    EchoLyricsParser.parse(
+                        rawText = rawText,
+                        sourceLabel = sourceLabel ?: "PC ECHO",
+                    ).takeIf { it.lines.isNotEmpty() }
+                }.getOrNull()
+            } ?: return@launch
+
+            synchronized(echoLinkLyricsLock) {
+                echoLinkLyricsCache[trackId] = lyrics
+            }
+            if (lastLyricsTrackId == trackId) {
+                updateLyricsForTrack(trackId, force = true)
+            }
         }
     }
 
@@ -175,6 +211,11 @@ internal class LyricsController(
         return onlineLyricsResolver.loadForTrack(track.toLyricsSearchRequest())
             ?.also { onlineLyricsCache[cacheKey] = it }
     }
+
+    private fun cachedEchoLinkLyrics(trackId: String): EchoLyrics? =
+        synchronized(echoLinkLyricsLock) {
+            echoLinkLyricsCache[trackId]
+        }
 
     private fun directNeteaseLyrics(track: LibraryTrackEntity): EchoLyrics? {
         val songId = parseNeteaseSongId(track.id) ?: return null
@@ -232,5 +273,6 @@ internal class LyricsController(
 
     private companion object {
         const val MaxOnlineLyricsCacheEntries = 48
+        const val MaxEchoLinkLyricsCacheEntries = 32
     }
 }

@@ -31,6 +31,7 @@ import app.echo.android.model.library.NeteaseAudioQuality
 import app.echo.android.model.library.NeteaseImportState
 import app.echo.android.model.lyrics.EchoLyricsLoadState
 import app.echo.android.model.connect.EchoMobileDiscordPresenceSnapshot
+import app.echo.android.model.connect.EchoRemoteLyrics
 import app.echo.android.model.connect.EchoRemotePlaybackState
 import app.echo.android.model.connect.EchoRemoteTrack
 import app.echo.android.model.playback.EchoPlaybackStatus
@@ -366,6 +367,14 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun importLyrics(uri: Uri) {
         lyricsController.importLyrics(uri, playbackController.currentTrackId)
+    }
+
+    fun setEchoLinkLyrics(trackId: String, lyrics: EchoRemoteLyrics) {
+        lyricsController.setEchoLinkLyrics(
+            trackId = trackId,
+            rawText = lyrics.rawText,
+            sourceLabel = lyrics.sourceLabel,
+        )
     }
 
     fun adjustLyricsOffset(deltaMs: Long) {

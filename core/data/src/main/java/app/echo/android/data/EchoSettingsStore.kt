@@ -33,10 +33,10 @@ data class EchoAppSettings(
     val customBackgroundBlur: Float = 24f,
     val customBackgroundBrightness: Float = 0.88f,
     val customBackgroundGlass: Float = 0.42f,
-    val uiFontFamily: String = EchoFontFamilyMode.Outfit,
+    val uiFontFamily: String = EchoFontFamilyMode.System,
     val uiFontScale: Float = 1f,
     val uiDensityScale: Float = 1f,
-    val lyricsFontFamily: String = EchoFontFamilyMode.Outfit,
+    val lyricsFontFamily: String = EchoFontFamilyMode.System,
     val lyricsFontScale: Float = 1f,
     val lyricsColorMode: String = EchoLyricsColorMode.White,
     val lyricsShowTranslation: Boolean = true,
@@ -123,10 +123,10 @@ class EchoSettingsStore(
                 customBackgroundBlur = (preferences[Keys.CustomBackgroundBlur] ?: 24f).coerceIn(0f, 80f),
                 customBackgroundBrightness = (preferences[Keys.CustomBackgroundBrightness] ?: 0.88f).coerceIn(0.35f, 1.15f),
                 customBackgroundGlass = (preferences[Keys.CustomBackgroundGlass] ?: 0.42f).coerceIn(0.08f, 0.90f),
-                uiFontFamily = preferences[Keys.UiFontFamily] ?: EchoFontFamilyMode.Outfit,
+                uiFontFamily = normalizeFontFamilyMode(preferences[Keys.UiFontFamily]),
                 uiFontScale = (preferences[Keys.UiFontScale] ?: 1f).coerceIn(0.88f, 1.18f),
                 uiDensityScale = (preferences[Keys.UiDensityScale] ?: 1f).coerceIn(0.90f, 1.12f),
-                lyricsFontFamily = preferences[Keys.LyricsFontFamily] ?: EchoFontFamilyMode.Outfit,
+                lyricsFontFamily = normalizeFontFamilyMode(preferences[Keys.LyricsFontFamily]),
                 lyricsFontScale = (preferences[Keys.LyricsFontScale] ?: 1f).coerceIn(0.82f, 1.28f),
                 lyricsColorMode = preferences[Keys.LyricsColorMode] ?: EchoLyricsColorMode.White,
                 lyricsShowTranslation = preferences[Keys.LyricsShowTranslation] ?: true,
@@ -250,7 +250,7 @@ class EchoSettingsStore(
     }
 
     suspend fun setUiFontFamily(value: String) {
-        context.echoSettings.edit { it[Keys.UiFontFamily] = value }
+        context.echoSettings.edit { it[Keys.UiFontFamily] = normalizeFontFamilyMode(value) }
     }
 
     suspend fun setUiFontScale(value: Float) {
@@ -262,7 +262,7 @@ class EchoSettingsStore(
     }
 
     suspend fun setLyricsFontFamily(value: String) {
-        context.echoSettings.edit { it[Keys.LyricsFontFamily] = value }
+        context.echoSettings.edit { it[Keys.LyricsFontFamily] = normalizeFontFamilyMode(value) }
     }
 
     suspend fun setLyricsFontScale(value: Float) {
@@ -290,10 +290,10 @@ class EchoSettingsStore(
             if (uri.isNullOrBlank()) {
                 it.remove(Keys.ImportedFontUri)
                 if (it[Keys.UiFontFamily] == EchoFontFamilyMode.Imported) {
-                    it[Keys.UiFontFamily] = EchoFontFamilyMode.Outfit
+                    it[Keys.UiFontFamily] = EchoFontFamilyMode.System
                 }
                 if (it[Keys.LyricsFontFamily] == EchoFontFamilyMode.Imported) {
-                    it[Keys.LyricsFontFamily] = EchoFontFamilyMode.Outfit
+                    it[Keys.LyricsFontFamily] = EchoFontFamilyMode.System
                 }
             } else {
                 it[Keys.ImportedFontUri] = uri
@@ -514,6 +514,14 @@ class EchoSettingsStore(
         val NeteaseAudioQuality = stringPreferencesKey("netease_audio_quality")
     }
 }
+
+private fun normalizeFontFamilyMode(value: String?): String =
+    when (value) {
+        EchoFontFamilyMode.Serif,
+        EchoFontFamilyMode.Monospace,
+        EchoFontFamilyMode.Imported -> value
+        else -> EchoFontFamilyMode.System
+    }
 
 private fun parseEqualizerBandGains(value: String?, presetId: String): List<Float> {
     val parsed = value

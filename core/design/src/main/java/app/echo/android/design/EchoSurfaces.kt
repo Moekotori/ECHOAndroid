@@ -48,7 +48,7 @@ fun EchoPanel(
                 ),
             )
             .border(
-                if (dark) BorderStroke(1.dp, Color.White.copy(alpha = 0.30f)) else BorderStroke(1.dp, Color.White.copy(alpha = 0.96f)),
+                if (dark) BorderStroke(1.dp, EchoDarkGlassBorder) else BorderStroke(1.dp, Color.White.copy(alpha = 0.96f)),
                 shape,
             ),
     ) {
@@ -106,7 +106,7 @@ fun EchoInfoChip(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
         color = if (dark) EchoGlassPanel.copy(alpha = 0.54f) else scheme.surface.copy(alpha = 0.92f),
-        border = if (dark) BorderStroke(1.dp, Color.White.copy(alpha = 0.30f)) else BorderStroke(1.dp, Color.White.copy(alpha = 0.96f)),
+        border = if (dark) BorderStroke(1.dp, EchoDarkGlassBorder) else BorderStroke(1.dp, Color.White.copy(alpha = 0.96f)),
     ) {
         Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
             Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = scheme.primary)
@@ -128,7 +128,7 @@ fun EchoMetricTile(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
         color = if (dark) EchoGlassPanel.copy(alpha = 0.54f) else scheme.surface.copy(alpha = 0.92f),
-        border = if (dark) BorderStroke(1.dp, Color.White.copy(alpha = 0.30f)) else BorderStroke(1.dp, Color.White.copy(alpha = 0.96f)),
+        border = if (dark) BorderStroke(1.dp, EchoDarkGlassBorder) else BorderStroke(1.dp, Color.White.copy(alpha = 0.96f)),
     ) {
         Column(
             Modifier.padding(horizontal = 10.dp, vertical = 9.dp),

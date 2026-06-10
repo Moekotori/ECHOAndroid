@@ -532,7 +532,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onCancelScan = viewModel::cancelScan,
                                 onRefreshLinkedLibrary = { remoteClient.refreshLibrary() },
                                 onPlayLinkedTrack = { track ->
-                                    remoteClient.playTrackOnPhone(track, viewModel::play)
+                                    remoteClient.playTrackOnPhone(
+                                        track = track,
+                                        onTrackReady = viewModel::play,
+                                        onLyricsReady = viewModel::setEchoLinkLyrics,
+                                    )
                                 },
                                 onPlayTrack = { track -> viewModel.playTrackFromLibrary(track.id) },
                                 onPlayAlbum = { album -> viewModel.playAlbum(album.albumKey) },

@@ -70,11 +70,12 @@ internal fun EchoArtworkImage(
     placeholderIconSize: Dp? = null,
 ) {
     val context = LocalContext.current
-    val model = remember(context, artworkUri, sizeClass) {
+    val requestHeaders = EchoArtworkRequestHeadersRegistry.headersFor(artworkUri)
+    val model = remember(context, artworkUri, sizeClass, requestHeaders) {
         ImageRequest.Builder(context)
             .data(artworkUri)
             .apply {
-                EchoArtworkRequestHeadersRegistry.headersFor(artworkUri).forEach { (name, value) ->
+                requestHeaders.forEach { (name, value) ->
                     setHeader(name, value)
                 }
             }

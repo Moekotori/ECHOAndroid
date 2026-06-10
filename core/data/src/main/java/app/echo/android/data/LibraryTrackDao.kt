@@ -283,6 +283,7 @@ interface LibraryTrackDao {
         """
         SELECT COALESCE(NULLIF(relativePath, ''), '') AS folderKey,
                CASE WHEN relativePath IS NULL OR trim(relativePath) = '' THEN NULL ELSE relativePath END AS path,
+               MAX(NULLIF(artworkUri, '')) AS artworkUri,
                COUNT(*) AS trackCount,
                COUNT(DISTINCT (
                    COALESCE(NULLIF(normalizedAlbum, ''), '未知专辑') ||

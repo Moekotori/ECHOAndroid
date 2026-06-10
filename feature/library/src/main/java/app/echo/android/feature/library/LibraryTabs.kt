@@ -33,7 +33,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.CloudQueue
-import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Person
@@ -113,7 +112,7 @@ private fun rememberLibraryGlassColors(): LibraryGlassColors {
         LibraryGlassColors(
             surface = if (dark) EchoGlassPanel.copy(alpha = 0.58f) else Color.White.copy(alpha = 0.60f),
             elevatedSurface = if (dark) EchoGlassInk.copy(alpha = 0.48f) else Color.White.copy(alpha = 0.56f),
-            border = if (dark) Color.White.copy(alpha = 0.30f) else EchoGlassBorder.copy(alpha = 0.78f),
+            border = if (dark) Color.White.copy(alpha = 0.13f) else EchoGlassBorder.copy(alpha = 0.78f),
             content = if (dark) Color.White.copy(alpha = 0.96f) else RoonInk,
             muted = if (dark) Color.White.copy(alpha = 0.74f) else RoonMuted,
         )
@@ -237,45 +236,37 @@ private fun FolderRow(
         modifier = Modifier
             .fillMaxWidth()
             .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(22.dp),
-                ambientColor = Color.Black.copy(alpha = 0.04f),
-                spotColor = EchoAccent.copy(alpha = 0.08f),
+                elevation = if (dark) 0.dp else 6.dp,
+                shape = RoundedCornerShape(20.dp),
+                ambientColor = Color.Black.copy(alpha = 0.03f),
+                spotColor = Color.Black.copy(alpha = 0.05f),
             )
-            .clip(RoundedCornerShape(22.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(
-                Brush.linearGradient(
-                    listOf(
-                        colors.surface,
-                        colors.elevatedSurface,
-                        EchoAccent.copy(alpha = if (dark) 0.12f else 0.06f),
-                    ),
-                ),
+                if (dark) {
+                    EchoGlassPanel.copy(alpha = 0.42f)
+                } else {
+                    Color.White.copy(alpha = 0.72f)
+                },
             )
-            .border(BorderStroke(1.dp, colors.border), RoundedCornerShape(22.dp))
+            .border(BorderStroke(1.dp, colors.border), RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 13.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(58.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(Brush.linearGradient(listOf(EchoAccent.copy(alpha = 0.22f), EchoAccentDeep.copy(alpha = 0.13f))))
-                    .border(BorderStroke(1.dp, EchoAccent.copy(alpha = if (dark) 0.28f else 0.20f)), RoundedCornerShape(18.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Rounded.FolderOpen,
-                    contentDescription = null,
-                    tint = EchoAccentDeep,
-                    modifier = Modifier.size(29.dp),
-                )
-            }
+            ArtworkTile(
+                artworkUri = folder.artworkUri,
+                modifier = Modifier.size(64.dp),
+                accent = if (dark) Color.White.copy(alpha = 0.28f) else EchoAccent,
+                showSignal = folder.artworkUri.isNullOrBlank(),
+                cornerRadius = 13.dp,
+                elevation = if (dark) 0.dp else 3.dp,
+                placeholderIconSize = 28.dp,
+            )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(
                     folderDisplayName(folder),
@@ -308,7 +299,7 @@ private fun FolderRow(
             Icon(
                 Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                 contentDescription = "打开文件夹",
-                tint = EchoAccentText,
+                tint = if (dark) Color.White.copy(alpha = 0.68f) else EchoAccentText,
                 modifier = Modifier.size(26.dp),
             )
         }
@@ -324,13 +315,17 @@ private fun FolderMetaChip(
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(99.dp))
-            .background(MaterialTheme.colorScheme.primary.copy(alpha = if (LocalEchoDarkTheme.current) 0.18f else 0.10f))
-            .border(BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)), RoundedCornerShape(99.dp))
+            .background(if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.08f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.08f))
             .padding(horizontal = 8.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, tint = EchoAccentText, modifier = Modifier.size(14.dp))
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.72f) else EchoAccentText,
+            modifier = Modifier.size(14.dp),
+        )
         Text(
             text,
             color = colors.content,

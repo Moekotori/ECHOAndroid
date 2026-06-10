@@ -10,7 +10,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
@@ -22,11 +21,11 @@ object EchoColors {
     val Night = Color(0xFF0B1020)
     val Ink = Color(0xFF151B31)
     val Slate = Color(0xFF202744)
-    val DeepBlue = Color(0xFF3E7BA8)
+    val DeepBlue = Color(0xFF4B55E8)
     val Brass = Color(0xFFE1A33A)
     val Coral = Color(0xFFD7675D)
-    val Sky = Color(0xFF62B0D9)
-    val RoonBlue = Color(0xFF62B0D9)
+    val Sky = Color(0xFF4B55E8)
+    val RoonBlue = Color(0xFF4B55E8)
     val Paper = Color(0xFFF1F1F3)
     val Mist = Color(0xFFEEF0F6)
     val Smoke = Color(0xFFA8A8AE)
@@ -35,7 +34,7 @@ object EchoColors {
 private val EchoDarkScheme = darkColorScheme(
     primary = EchoColors.RoonBlue,
     onPrimary = Color(0xFF06121A),
-    secondary = EchoColors.RoonBlue,
+    secondary = Color(0xFF3239C7),
     onSecondary = Color(0xFF06121A),
     tertiary = EchoColors.Coral,
     background = EchoColors.Night,
@@ -51,7 +50,7 @@ private val EchoDarkScheme = darkColorScheme(
 private val EchoLightScheme = lightColorScheme(
     primary = EchoColors.DeepBlue,
     onPrimary = Color(0xFFFFFFFF),
-    secondary = Color(0xFFB84C45),
+    secondary = Color(0xFF3239C7),
     onSecondary = Color(0xFFFFFFFF),
     tertiary = Color(0xFF9B6200),
     background = EchoColors.Paper,
@@ -67,21 +66,10 @@ private val EchoLightScheme = lightColorScheme(
 val LocalEchoDensityScale = staticCompositionLocalOf { 1f }
 val LocalEchoDarkTheme = staticCompositionLocalOf { false }
 
-private val EchoOutfitFontFamily = FontFamily(
-    Font(R.font.outfit_variable, weight = FontWeight.Light),
-    Font(R.font.outfit_variable, weight = FontWeight.Normal),
-    Font(R.font.outfit_variable, weight = FontWeight.Medium),
-    Font(R.font.outfit_variable, weight = FontWeight.SemiBold),
-    Font(R.font.outfit_variable, weight = FontWeight.Bold),
-    Font(R.font.outfit_variable, weight = FontWeight.ExtraBold),
-    Font(R.font.outfit_variable, weight = FontWeight.Black),
-)
-
 fun echoFontFamilyForMode(
     mode: String,
     importedFontFamily: FontFamily? = null,
 ): FontFamily = when (mode) {
-    "outfit" -> EchoOutfitFontFamily
     "serif" -> FontFamily.Serif
     "monospace" -> FontFamily.Monospace
     "imported" -> importedFontFamily ?: FontFamily.SansSerif

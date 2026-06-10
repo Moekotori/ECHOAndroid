@@ -67,30 +67,30 @@ import kotlinx.coroutines.withContext
 val EchoContentMaxWidth = 560.dp
 
 // === 默认主题：Roon 风格（Shakespeare 蓝 + 中性炭灰）。多主题切换时改这一组即可 ===
-val EchoAccent = Color(0xFF4DB7E8)
-val EchoAccentText = Color(0xFF1E88C8)
-val EchoAccentDeep = Color(0xFF7C6CF2)
-val EchoBgTop = Color(0xFFFDFEFF)
-val EchoBgMid = Color(0xFFF0F8FF)
-val EchoBgBottom = Color(0xFFEAF2FF)
-val RoonBlue = Color(0xFF5A6CFF)
+val EchoAccent = Color(0xFF4B55E8)
+val EchoAccentText = Color(0xFF4B55E8)
+val EchoAccentDeep = Color(0xFF3239C7)
+val EchoBgTop = Color(0xFFF8FBFF)
+val EchoBgMid = Color(0xFFF1F5FB)
+val EchoBgBottom = Color(0xFFEAF0F8)
+val RoonBlue = Color(0xFF4B55E8)
 val RoonInk = Color(0xFF25242A)
 val RoonMuted = Color(0xFF6D6D73)
 val RoonPaper = Color(0xFFFDFEFF)
 val RoonPanel = Color(0xFFF4F8FF)
-val EchoHomeBlue = Color(0xFF4DB7E8)
-val EchoHomeBlueDeep = Color(0xFF7C6CF2)
-val EchoHomeMist = Color(0xFFF4F8FF)
-val EchoGlassBorder = Color(0xCCFFFFFF)
-val EchoSoftLine = Color(0xFFD8E8F3)
-val EchoGlassNight = Color(0xFF0B1020)
-val EchoGlassInk = Color(0xFF141A31)
-val EchoGlassPanel = Color(0xFF1D2442)
-val EchoGlassViolet = Color(0xFF8B7CFF)
-val EchoGlassCyan = Color(0xFF50D6FF)
-val EchoGlassRose = Color(0xFFFF7AB8)
-val EchoDarkGlassBorder = Color.White.copy(alpha = 0.22f)
-val EchoDarkGlassLine = Color.White.copy(alpha = 0.13f)
+val EchoHomeBlue = Color(0xFF4B55E8)
+val EchoHomeBlueDeep = Color(0xFF3239C7)
+val EchoHomeMist = Color(0xFFEFF4FA)
+val EchoGlassBorder = Color(0xFFE1E8F2)
+val EchoSoftLine = Color(0xFFD5E0EC)
+val EchoGlassNight = Color(0xFF10131C)
+val EchoGlassInk = Color(0xFF151A26)
+val EchoGlassPanel = Color(0xFF1B2230)
+val EchoGlassViolet = Color(0xFF202438)
+val EchoGlassCyan = Color(0xFF1D2935)
+val EchoGlassRose = Color(0xFF2B2029)
+val EchoDarkGlassBorder = Color.White.copy(alpha = 0.12f)
+val EchoDarkGlassLine = Color.White.copy(alpha = 0.08f)
 
 @Composable
 fun GlassSurface(
@@ -106,7 +106,7 @@ fun GlassSurface(
         color = if (dark) EchoGlassPanel.copy(alpha = (alpha + 0.48f).coerceIn(0.56f, 0.76f)) else Color.White.copy(alpha = alpha),
         border = BorderStroke(
             1.dp,
-            if (dark) Color.White.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.32f),
+            if (dark) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.32f),
         ),
         content = { content() },
     )
@@ -122,14 +122,14 @@ fun echoDarkGlassBrush(strength: Float = 1f): Brush {
                 Color.White.copy(alpha = 0.08f * clamped),
                 EchoGlassPanel.copy(alpha = 0.66f * clamped),
                 EchoGlassInk.copy(alpha = 0.52f * clamped),
-                EchoGlassViolet.copy(alpha = 0.18f * clamped),
-                EchoGlassCyan.copy(alpha = 0.12f * clamped),
+                EchoGlassViolet.copy(alpha = 0.10f * clamped),
+                EchoGlassCyan.copy(alpha = 0.08f * clamped),
             )
         } else {
             listOf(
-                Color.White.copy(alpha = 0.96f),
-                EchoHomeMist.copy(alpha = 0.90f),
-                EchoAccentDeep.copy(alpha = 0.08f),
+                Color.White.copy(alpha = 0.98f),
+                Color(0xFFF5F8FC),
+                Color(0xFFEEF3F9),
             )
         },
     )
@@ -148,14 +148,14 @@ fun echoGlassContainerBrush(
                 Color.White.copy(alpha = 0.10f * clamped),
                 EchoGlassPanel.copy(alpha = 0.62f * clamped),
                 EchoGlassInk.copy(alpha = 0.46f * clamped),
-                accent.copy(alpha = 0.18f * clamped),
-                EchoGlassViolet.copy(alpha = 0.13f * clamped),
+                accent.copy(alpha = 0.10f * clamped),
+                EchoGlassViolet.copy(alpha = 0.08f * clamped),
             )
         } else {
             listOf(
-                Color.White.copy(alpha = 0.88f),
-                EchoHomeMist.copy(alpha = 0.72f),
-                accent.copy(alpha = 0.08f),
+                Color.White.copy(alpha = 0.98f),
+                Color(0xFFF6F9FD),
+                EchoHomeMist.copy(alpha = 0.92f),
             )
         },
     )
@@ -173,13 +173,13 @@ fun echoGlassRowBrush(
                 Color.White.copy(alpha = if (selected) 0.14f else 0.08f),
                 EchoGlassPanel.copy(alpha = if (selected) 0.58f else 0.48f),
                 EchoGlassInk.copy(alpha = if (selected) 0.42f else 0.34f),
-                accent.copy(alpha = if (selected) 0.24f else 0.12f),
+                accent.copy(alpha = if (selected) 0.12f else 0.06f),
             )
         } else {
             listOf(
-                Color.White.copy(alpha = 0.74f),
-                EchoHomeMist.copy(alpha = 0.50f),
-                accent.copy(alpha = if (selected) 0.12f else 0.04f),
+                Color.White.copy(alpha = 0.98f),
+                EchoHomeMist.copy(alpha = 0.82f),
+                if (selected) accent.copy(alpha = 0.08f) else Color(0xFFF6F8FC),
             )
         },
     )
@@ -221,9 +221,9 @@ fun EchoGlassBackground(modifier: Modifier = Modifier) {
         if (dark) {
             listOf(
                 EchoGlassNight,
-                Color(0xFF111B34),
-                Color(0xFF211A3A),
-                Color(0xFF101326),
+                Color(0xFF121722),
+                Color(0xFF151A26),
+                EchoGlassNight,
             )
         } else {
             listOf(
@@ -236,30 +236,18 @@ fun EchoGlassBackground(modifier: Modifier = Modifier) {
     Canvas(modifier = modifier.background(baseGradient)) {
         val w = size.width
         val h = size.height
-        drawRect(
-            brush = Brush.linearGradient(
-                colors = listOf(EchoGlassCyan.copy(alpha = if (dark) 0.24f else 0.22f), Color.Transparent),
-                start = Offset(0f, h * 0.05f),
-                end = Offset(w * 0.78f, h * 0.54f),
-            ),
-        )
-        drawRect(
-            brush = Brush.linearGradient(
-                colors = listOf(Color.Transparent, EchoGlassViolet.copy(alpha = if (dark) 0.30f else 0.20f)),
-                start = Offset(w * 0.20f, 0f),
-                end = Offset(w, h * 0.66f),
-            ),
-        )
-        drawRect(
-            brush = Brush.linearGradient(
-                colors = listOf(Color.Transparent, EchoGlassRose.copy(alpha = if (dark) 0.14f else 0.18f), Color.Transparent),
-                start = Offset(0f, h * 0.42f),
-                end = Offset(w, h),
-            ),
-        )
+        if (!dark) {
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.28f), Color.Transparent),
+                    startY = 0f,
+                    endY = h * 0.45f,
+                ),
+            )
+        }
         drawRect(
             brush = Brush.verticalGradient(
-                colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (dark) 0.16f else 0.06f)),
+                colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (dark) 0.04f else 0.04f)),
                 startY = h * 0.50f,
                 endY = h,
             ),
@@ -311,7 +299,7 @@ fun PageChrome(
                 listOf(
                     EchoGlassNight.copy(alpha = 0.34f),
                     EchoGlassInk.copy(alpha = 0.24f),
-                    EchoGlassViolet.copy(alpha = 0.12f),
+                    EchoGlassViolet.copy(alpha = 0.05f),
                     Color.Transparent,
                 ),
             )

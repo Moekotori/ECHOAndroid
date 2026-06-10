@@ -113,48 +113,43 @@ private const val HomeHeatmapWeeks = 12
 @Composable
 private fun homePanelColor(lightAlpha: Float = 0.90f): Color {
     return if (LocalEchoDarkTheme.current) {
-        EchoGlassPanel.copy(alpha = 0.60f)
+        EchoGlassInk.copy(alpha = lightAlpha.coerceIn(0.86f, 0.94f))
     } else {
-        Color.White.copy(alpha = lightAlpha.coerceAtMost(0.76f))
+        Color.White.copy(alpha = lightAlpha.coerceIn(0.95f, 1.00f))
     }
 }
 
 @Composable
 private fun homePanelBorder(lightAlpha: Float = 0.94f): BorderStroke {
-    val scheme = MaterialTheme.colorScheme
     return BorderStroke(
         1.dp,
-        if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.30f) else Color.White.copy(alpha = lightAlpha.coerceAtMost(0.82f)),
+        if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.14f) else EchoSoftLine.copy(alpha = lightAlpha.coerceIn(0.74f, 0.96f)),
     )
 }
 
 @Composable
 private fun homeTitleColor(): Color =
-    if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.96f) else RoonInk
+    if (LocalEchoDarkTheme.current) Color.White else RoonInk
 
 @Composable
 private fun homeBodyColor(): Color =
-    if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.74f) else RoonMuted
+    if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.88f) else RoonMuted.copy(alpha = 0.94f)
 
 @Composable
 private fun homePanelBrush(): Brush {
-    val scheme = MaterialTheme.colorScheme
     return if (LocalEchoDarkTheme.current) {
         Brush.linearGradient(
             listOf(
-                Color.White.copy(alpha = 0.08f),
-                EchoGlassPanel.copy(alpha = 0.62f),
-                EchoGlassInk.copy(alpha = 0.46f),
-                EchoGlassViolet.copy(alpha = 0.14f),
+                EchoGlassPanel.copy(alpha = 0.88f),
+                EchoGlassInk.copy(alpha = 0.94f),
             ),
         )
     } else {
         Brush.linearGradient(
             listOf(
-                Color.White.copy(alpha = 0.68f),
-                EchoHomeMist.copy(alpha = 0.44f),
-                Color(0xFFEFEAFF).copy(alpha = 0.28f),
-                Color(0xFFE6F3FF).copy(alpha = 0.22f),
+                Color.White.copy(alpha = 1.00f),
+                Color(0xFFF7FAFE),
+                EchoHomeMist.copy(alpha = 0.76f),
             ),
         )
     }
@@ -188,10 +183,9 @@ internal fun LibraryMetric(
     value: String,
     modifier: Modifier = Modifier,
 ) {
-    val scheme = MaterialTheme.colorScheme
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(value, color = scheme.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Text(label, color = scheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
+        Text(value, color = homeTitleColor(), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(label, color = homeBodyColor(), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -200,7 +194,6 @@ internal fun RoonHomeHeader(
     status: EchoPlaybackStatus,
     compact: Boolean,
 ) {
-    val scheme = MaterialTheme.colorScheme
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -248,21 +241,36 @@ internal fun RoonRecentActivitySection(
     onOpenAlbum: (AlbumSummary) -> Unit,
     onOpenLibrary: () -> Unit,
 ) {
-    val scheme = MaterialTheme.colorScheme
     var selectedMode by remember { mutableStateOf(RecentActivityMode.Played) }
     val albums = when (selectedMode) {
         RecentActivityMode.Played -> recentPlayedAlbums
         RecentActivityMode.Added -> recentlyAddedAlbums
     }
+    val displayAlbums = if (albums.isEmpty() && selectedMode == RecentActivityMode.Played) {
+        recentlyAddedAlbums
+    } else {
+        albums
+    }
+    val displayMode = if (albums.isEmpty() && selectedMode == RecentActivityMode.Played && recentlyAddedAlbums.isNotEmpty()) {
+        RecentActivityMode.Added
+    } else {
+        selectedMode
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
+            .shadow(
+                elevation = if (LocalEchoDarkTheme.current) 0.dp else 14.dp,
+                shape = RoundedCornerShape(30.dp),
+                ambientColor = Color.Black.copy(alpha = 0.045f),
+                spotColor = Color.Black.copy(alpha = 0.035f),
+            )
             .clip(RoundedCornerShape(28.dp))
-            .background(homePanelColor(0.90f))
+            .background(homePanelBrush())
             .border(homePanelBorder(0.94f), RoundedCornerShape(28.dp))
-            .padding(top = 16.dp, bottom = 15.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .padding(top = 20.dp, bottom = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Row(
             modifier = Modifier
@@ -273,7 +281,7 @@ internal fun RoonRecentActivitySection(
         ) {
             Text(
                 "最近活动",
-                color = scheme.onSurface,
+                color = homeTitleColor(),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
             )
@@ -283,11 +291,11 @@ internal fun RoonRecentActivitySection(
             )
         }
         LazyRow(
-            modifier = Modifier.height(if (albums.isEmpty()) 220.dp else 190.dp),
+            modifier = Modifier.height(if (displayAlbums.isEmpty()) 220.dp else 256.dp),
             contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(22.dp),
         ) {
-            if (albums.isEmpty()) {
+            if (displayAlbums.isEmpty()) {
                 item {
                     RecentActivityEmptyAlbumCard(
                         title = if (selectedMode == RecentActivityMode.Played) "\u6682\u65e0\u5df2\u64ad\u653e" else "\u6682\u65e0\u65b0\u589e\u4e13\u8f91",
@@ -296,10 +304,10 @@ internal fun RoonRecentActivitySection(
                     )
                 }
             } else {
-                items(albums, key = { it.albumKey }) { album ->
+                items(displayAlbums, key = { it.albumKey }) { album ->
                     RecentAlbumCard(
                         album = album,
-                        mode = selectedMode,
+                        mode = displayMode,
                         onClick = { onOpenAlbum(album) },
                     )
                 }
@@ -351,14 +359,14 @@ private fun RecentActivityModeTab(
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(9.dp))
-            .background(if (selected) scheme.primary.copy(alpha = 0.16f) else Color.Transparent)
+            .background(if (selected) scheme.primary.copy(alpha = 0.24f) else Color.Transparent)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 7.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             label,
-            color = if (selected) scheme.primary else scheme.onSurfaceVariant,
+            color = if (selected) scheme.primary else homeBodyColor(),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
@@ -397,14 +405,13 @@ internal fun RecentAlbumCard(
     mode: RecentActivityMode,
     onClick: () -> Unit,
 ) {
-    val scheme = MaterialTheme.colorScheme
     val artistLabel = album.albumArtist ?: album.artist ?: "未知艺人"
     Column(
         modifier = Modifier
-            .width(116.dp)
-            .height(190.dp)
+            .width(150.dp)
+            .height(256.dp)
             .clickable(onClick = onClick),
-        verticalArrangement = Arrangement.spacedBy(3.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         ArtworkTile(
             artworkUri = album.artworkUri,
@@ -414,20 +421,20 @@ internal fun RecentAlbumCard(
             accent = EchoAccent,
             showSignal = album.artworkUri == null,
             cornerRadius = 14.dp,
-            elevation = 6.dp,
+            elevation = if (LocalEchoDarkTheme.current) 0.dp else 7.dp,
         )
         Text(
             album.title,
-            color = scheme.onSurface,
-            style = MaterialTheme.typography.titleSmall,
+            color = homeTitleColor(),
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.ExtraBold,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
         Text(
             recentAlbumSubtitle(album, mode, artistLabel),
-            color = scheme.onSurfaceVariant,
-            style = MaterialTheme.typography.titleSmall,
+            color = homeBodyColor(),
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -461,7 +468,6 @@ private fun RecentActivityEmptyAlbumCard(
     subtitle: String,
     onClick: () -> Unit,
 ) {
-    val scheme = MaterialTheme.colorScheme
     Column(
         modifier = Modifier
             .width(160.dp)
@@ -473,7 +479,7 @@ private fun RecentActivityEmptyAlbumCard(
                 .fillMaxWidth()
                 .aspectRatio(1f)
                 .clip(RoundedCornerShape(14.dp))
-                .background(homePanelColor(0.74f)),
+                .background(homePanelColor(0.88f)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -485,15 +491,16 @@ private fun RecentActivityEmptyAlbumCard(
         }
         Text(
             title,
-            color = scheme.onSurface,
+            color = homeTitleColor(),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
         )
         Text(
             subtitle,
-            color = scheme.onSurfaceVariant,
+            color = homeBodyColor(),
             style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -506,7 +513,6 @@ internal fun EmptyRecentAlbumsCard(
     subtitle: String = "\u626b\u63cf\u66f2\u5e93\u540e\u663e\u793a",
     onClick: () -> Unit,
 ) {
-    val scheme = MaterialTheme.colorScheme
     Column(
         modifier = Modifier
             .width(160.dp)
@@ -558,8 +564,8 @@ internal fun RoonRecentActivitySection(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(30.dp),
-                ambientColor = EchoAccentDeep.copy(alpha = 0.16f),
-                spotColor = EchoHomeBlue.copy(alpha = 0.14f),
+                ambientColor = Color.Black.copy(alpha = 0.04f),
+                spotColor = Color.Black.copy(alpha = 0.03f),
             )
             .clip(RoundedCornerShape(32.dp))
             .background(
@@ -567,8 +573,7 @@ internal fun RoonRecentActivitySection(
                     listOf(
                         Color.White,
                         EchoHomeMist,
-                        Color(0xFFEAF6FF),
-                        Color(0xFFEFEAFF),
+                        Color.White.copy(alpha = 0.92f),
                     ),
                 ),
             )
@@ -632,16 +637,21 @@ internal fun HomeAlbumRecommendationsSection(
     onOpenLibrary: () -> Unit,
     onOpenAlbum: (AlbumSummary) -> Unit,
 ) {
-    val scheme = MaterialTheme.colorScheme
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
+            .shadow(
+                elevation = if (LocalEchoDarkTheme.current) 0.dp else 12.dp,
+                shape = RoundedCornerShape(26.dp),
+                ambientColor = Color.Black.copy(alpha = 0.04f),
+                spotColor = Color.Black.copy(alpha = 0.03f),
+            )
             .clip(RoundedCornerShape(24.dp))
             .background(homePanelBrush())
             .border(homePanelBorder(), RoundedCornerShape(24.dp))
-            .padding(top = 15.dp, bottom = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(13.dp),
+            .padding(top = 18.dp, bottom = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Row(
             modifier = Modifier
@@ -652,7 +662,7 @@ internal fun HomeAlbumRecommendationsSection(
         ) {
             Text(
                 "为你推荐",
-                color = scheme.onSurface,
+                color = homeTitleColor(),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.ExtraBold,
             )
@@ -669,14 +679,14 @@ internal fun HomeAlbumRecommendationsSection(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(5.dp),
                 ) {
-                    Icon(Icons.Rounded.Refresh, contentDescription = null, tint = scheme.onSurfaceVariant, modifier = Modifier.size(15.dp))
-                    Text("刷新", color = scheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    Icon(Icons.Rounded.Refresh, contentDescription = null, tint = homeBodyColor(), modifier = Modifier.size(15.dp))
+                    Text("刷新", color = homeBodyColor(), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                 }
             }
         }
         LazyRow(
             contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             if (albums.isEmpty()) {
                 item {
@@ -699,13 +709,12 @@ internal fun RecommendedAlbumCard(
     album: AlbumSummary,
     onClick: () -> Unit,
 ) {
-    val scheme = MaterialTheme.colorScheme
     val artistLabel = album.albumArtist ?: album.artist ?: "未知艺人"
     Column(
         modifier = Modifier
-            .width(120.dp)
+            .width(136.dp)
             .clickable(onClick = onClick),
-        verticalArrangement = Arrangement.spacedBy(3.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         ArtworkTile(
             artworkUri = album.artworkUri,
@@ -715,11 +724,11 @@ internal fun RecommendedAlbumCard(
             accent = EchoAccentDeep,
             showSignal = album.artworkUri == null,
             cornerRadius = 14.dp,
-            elevation = 6.dp,
+            elevation = if (LocalEchoDarkTheme.current) 0.dp else 6.dp,
         )
         Text(
             album.title,
-            color = scheme.onSurface,
+            color = homeTitleColor(),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.ExtraBold,
             maxLines = 2,
@@ -727,7 +736,7 @@ internal fun RecommendedAlbumCard(
         )
         Text(
             artistLabel,
-            color = scheme.onSurfaceVariant,
+            color = homeBodyColor(),
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
@@ -1293,7 +1302,7 @@ internal fun HomeRecommendationsSection(
                     listOf(
                         Color.White,
                         EchoHomeMist,
-                        Color(0xFFEFEAFF),
+                        Color.White.copy(alpha = 0.92f),
                     ),
                 ),
             )

@@ -22,7 +22,7 @@ object EchoArtworkRequestHeadersRegistry {
             } else {
                 listOf(
                     EchoArtworkHeaderRule(
-                        urlPrefix = "$safeBaseUrl/echo-link/",
+                        urlPrefix = "$safeBaseUrl/",
                         headers = mapOf(
                             "Authorization" to "Bearer $safeToken",
                             "X-ECHO-Link-Version" to "1",

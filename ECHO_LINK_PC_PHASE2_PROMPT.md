@@ -8,9 +8,11 @@ Android Phase 2 status:
 - Android can paste a full `echo://pair?...` URI or enter `host:port + token`.
 - Android can scan a QR code using Google Code Scanner; the QR raw value must be the same `echo://pair?...` URI.
 - Android can search PC library preview with `GET /echo-link/v1/library/tracks?q=...`.
-- Android treats the linked PC ECHO library as an isolated source. It is displayed on the Connect surface and is not merged into the local Android library database.
+- Android treats the linked PC ECHO library as an isolated source. When the linked library option is enabled, the Library tab shows only PC ECHO songs/albums and does not merge them into the local Android Room database.
 - Android defaults to reading the linked PC ECHO library after connection unless the user disables the "default linked library" switch.
 - Android can forget the saved PC endpoint.
+- Android sends the bearer token when loading artwork URLs on the paired PC origin, so protected artwork endpoints are supported if they are same-origin with the ECHO Link server.
+- Android can request PC lyrics after starting phone playback with `GET /echo-link/v1/library/tracks/:trackId/lyrics`, falling back to `GET /echo-link/v1/lyrics/:trackId`.
 
 Do not change the Phase 1 contract. Add the items below compatibly.
 
@@ -57,9 +59,11 @@ Suggested Android-facing future discovery shape:
 
 Phase 1 only requires `/library/tracks`. Phase 2 should make it production-grade:
 - `GET /echo-link/v1/library/tracks?page=1&pageSize=25&q=<query>`
+- Android may request up to `pageSize=500` for the first linked-library screen; clamp server-side if needed, but return `totalCount` so Android can show the real library size.
 - Return stable `id`, `title`, `artist`, `album`, `albumArtist`, `artworkUrl`, `durationMs`, `sourceLabel`, `canPlayOnPhone`.
 - Keep paging cheap; do not load the full library.
 - Do not ask Android to write these rows into its local Room library. This is a live linked-source preview/stream path, not a sync/import path.
+- `artworkUrl` must be reachable from the Android device, not `localhost` or a Windows path. Prefer an absolute URL on the same `http://<pc-lan-host>:26789` origin. If the endpoint requires auth, accept the same `Authorization: Bearer <token>` header Android uses for ECHO Link.
 - Add optional endpoints if they fit existing LibraryService boundaries:
   - `GET /echo-link/v1/library/albums?page=1&pageSize=25&q=<query>`
   - `GET /echo-link/v1/library/albums/:albumId/tracks`
@@ -67,7 +71,35 @@ Phase 1 only requires `/library/tracks`. Phase 2 should make it production-grade
 
 If album/folder endpoints are too expensive right now, keep them out and document the omission.
 
-## 4. Queue And Handoff
+## 4. Artwork And Lyrics
+
+Artwork:
+- Return `artworkUrl` on both `/status` track objects and `/library/tracks` rows when cover art exists.
+- Serve artwork via a bounded token or same bearer auth. Do not expose raw local paths.
+- Support common image content types such as `image/jpeg`, `image/png`, and `image/webp`.
+- Keep artwork endpoints cheap: thumbnail or cached resized cover is fine; avoid blocking the server on heavy extraction for every list row.
+
+Lyrics:
+- Add `GET /echo-link/v1/library/tracks/:trackId/lyrics`.
+- Optional legacy-compatible fallback: `GET /echo-link/v1/lyrics/:trackId`.
+- Return either plain LRC/text or JSON:
+
+```json
+{
+  "lyrics": "[00:01.00]line one\n[00:03.00]line two",
+  "sourceLabel": "PC ECHO"
+}
+```
+
+Accepted JSON text fields on Android: `lyrics`, `lyric`, `rawText`, `text`, `syncedLyrics`, `plainLyrics`, or nested `lrc.lyric` / `yrc.lyric` / `tlyric.lyric`.
+
+Rules:
+- Use the same bearer auth as the rest of ECHO Link.
+- Return `404` or an empty body when no lyrics are available; Android will keep showing missing lyrics.
+- Keep lyrics lookup off the renderer and inside existing library/metadata service boundaries.
+- Do not write PC lyrics into Android local library; Android caches them in memory for the current linked playback session.
+
+## 5. Queue And Handoff
 
 Add compatible command bodies under existing `POST /echo-link/v1/playback/command`:
 
@@ -99,7 +131,7 @@ Status response should include optional queue fields:
 
 Android currently ignores unknown fields, so this is safe to add now.
 
-## 5. Phone Playback Stream Hardening
+## 6. Phone Playback Stream Hardening
 
 For `POST /echo-link/v1/library/tracks/:trackId/stream`:
 - Return short-lived stream tokens.
@@ -117,7 +149,7 @@ Suggested error body:
 }
 ```
 
-## 6. Diagnostics
+## 7. Diagnostics
 
 Add diagnostics to PC UI and optionally status:
 - Server running state.
@@ -125,17 +157,20 @@ Add diagnostics to PC UI and optionally status:
 - Last phone connection time.
 - Last auth failure time/count.
 - Last media token served and byte range summary.
+- Last artwork/lyrics request result.
 - Recent HTTP errors.
 
 Keep diagnostics bounded; no unbounded logs in memory.
 
-## 7. Tests
+## 8. Tests
 
 Add focused tests only:
 - Pairing token generation and rotation.
 - Auth reject/accept.
 - `/status` shape.
 - `/library/tracks` paging and query pass-through.
+- Artwork URL is phone-reachable and accepts bearer auth.
+- Lyrics endpoint returns LRC/text for a known library track and 404/empty for a track without lyrics.
 - `playTrack`, `handoff`, and `queueReplace` command dispatch.
 - Stream token expiry and Range response.
 - mDNS failure does not prevent manual server operation.

@@ -190,9 +190,9 @@ private fun EchoBackgroundGlassOverlay(glass: Float) {
                 .background(
                     Brush.linearGradient(
                         listOf(
-                            EchoGlassCyan.copy(alpha = (glass * 0.10f).coerceIn(0f, 0.16f)),
+                            EchoGlassCyan.copy(alpha = (glass * 0.04f).coerceIn(0f, 0.08f)),
                             Color.Transparent,
-                            EchoGlassViolet.copy(alpha = (glass * 0.12f).coerceIn(0f, 0.18f)),
+                            EchoGlassViolet.copy(alpha = (glass * 0.05f).coerceIn(0f, 0.09f)),
                         ),
                     ),
                 ),

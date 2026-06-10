@@ -601,7 +601,6 @@ private fun themeDetail(mode: String): String =
 
 private fun fontOptions(importedFontUri: String?): List<SettingsChoiceOption> = buildList {
     add(SettingsChoiceOption("system", "系统"))
-    add(SettingsChoiceOption("outfit", "Outfit"))
     add(SettingsChoiceOption("serif", "衬线"))
     add(SettingsChoiceOption("monospace", "等宽"))
     add(SettingsChoiceOption("imported", if (importedFontUri.isNullOrBlank()) "导入" else "导入字体"))
@@ -609,7 +608,7 @@ private fun fontOptions(importedFontUri: String?): List<SettingsChoiceOption> = 
 
 private fun fontDetail(mode: String, importedFontUri: String?): String =
     when (mode) {
-        "outfit" -> "使用内置 Outfit"
+        "outfit" -> "使用 Android 系统字体"
         "serif" -> "使用系统衬线字体"
         "monospace" -> "使用系统等宽字体"
         "imported" -> importedFontUri?.substringAfterLast('/')?.takeLast(28)?.let { "使用导入字体：$it" } ?: "选择 .ttf / .otf 文件"

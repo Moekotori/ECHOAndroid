@@ -5,6 +5,7 @@ import app.echo.android.model.connect.EchoRemoteCommand
 import app.echo.android.model.connect.EchoRemoteConnectionState
 import app.echo.android.model.connect.EchoRemoteEndpoint
 import app.echo.android.model.connect.EchoRemoteLibraryState
+import app.echo.android.model.connect.EchoRemoteLyrics
 import app.echo.android.model.connect.EchoRemoteMessage
 import app.echo.android.model.connect.EchoRemoteStatus
 import app.echo.android.model.connect.EchoRemoteTrack
@@ -182,7 +183,11 @@ class EchoRemoteClient private constructor(
         send(EchoRemoteCommand.PlayTrackOnPc(trackId))
     }
 
-    fun playTrackOnPhone(track: EchoRemoteTrack, onTrackReady: (EchoTrack) -> Unit) {
+    fun playTrackOnPhone(
+        track: EchoRemoteTrack,
+        onTrackReady: (EchoTrack) -> Unit,
+        onLyricsReady: (String, EchoRemoteLyrics) -> Unit = { _, _ -> },
+    ) {
         val target = endpoint ?: run {
             _library.update { it.copy(error = "还没有连接 PC ECHO") }
             return
@@ -196,10 +201,29 @@ class EchoRemoteClient private constructor(
             runCatching { transport.resolveStream(target, trackId) }
                 .onSuccess { stream ->
                     val resolvedTrack = stream.track ?: track
-                    onTrackReady(resolvedTrack.toPhoneTrack(stream.streamUrl))
+                    val phoneTrack = resolvedTrack.toPhoneTrack(stream.streamUrl)
+                    onTrackReady(phoneTrack)
+                    resolveLyricsForPhoneTrack(target, resolvedTrack, phoneTrack.id, onLyricsReady)
                 }
                 .onFailure { error ->
                     _library.update { it.copy(error = error.userMessage()) }
+                }
+        }
+    }
+
+    private fun resolveLyricsForPhoneTrack(
+        target: EchoRemoteEndpoint,
+        track: EchoRemoteTrack,
+        phoneTrackId: String,
+        onLyricsReady: (String, EchoRemoteLyrics) -> Unit,
+    ) {
+        val trackId = track.id ?: return
+        scope.launch {
+            runCatching { transport.fetchLyrics(target, trackId) }
+                .onSuccess { lyrics ->
+                    if (lyrics != null && endpoint?.id == target.id) {
+                        onLyricsReady(phoneTrackId, lyrics)
+                    }
                 }
         }
     }
