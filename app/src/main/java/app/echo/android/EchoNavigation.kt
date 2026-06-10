@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +29,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +39,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -42,6 +48,7 @@ import app.echo.android.design.EchoGlassInk
 import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.echoDarkGlassBorder
 import app.echo.android.design.LocalEchoDarkTheme
+import kotlin.math.abs
 
 private val DockItemMotionEasing = CubicBezierEasing(0.16f, 1f, 0.30f, 1f)
 
@@ -63,6 +70,8 @@ fun BottomDock(
     modifier: Modifier = Modifier,
 ) {
     val dark = LocalEchoDarkTheme.current
+    val swipeThresholdPx = with(LocalDensity.current) { 46.dp.toPx() }
+    var dragOffsetX by remember { mutableStateOf(0f) }
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -92,6 +101,29 @@ fun BottomDock(
                     if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, Color.White.copy(alpha = 0.82f)),
                     RoundedCornerShape(30.dp),
                 )
+                .pointerInput(selectedTab, swipeThresholdPx) {
+                    detectHorizontalDragGestures(
+                        onDragStart = { dragOffsetX = 0f },
+                        onHorizontalDrag = { change, dragAmount ->
+                            change.consume()
+                            dragOffsetX += dragAmount
+                        },
+                        onDragCancel = { dragOffsetX = 0f },
+                        onDragEnd = {
+                            if (abs(dragOffsetX) >= swipeThresholdPx) {
+                                val targetTab = if (dragOffsetX < 0f) {
+                                    (selectedTab + 1).coerceAtMost(EchoTab.entries.lastIndex)
+                                } else {
+                                    (selectedTab - 1).coerceAtLeast(0)
+                                }
+                                if (targetTab != selectedTab) {
+                                    onSelectTab(targetTab)
+                                }
+                            }
+                            dragOffsetX = 0f
+                        },
+                    )
+                }
                 .padding(horizontal = 2.dp, vertical = 3.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,

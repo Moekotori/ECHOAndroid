@@ -298,6 +298,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     val lastFmSharedSecret = appSettings.lastFmSharedSecret?.takeIf { it.isNotBlank() }
         ?: LastFmApiConfig.sharedSecret.takeIf { it.isNotBlank() }
     val lyricsState by viewModel.lyricsState.collectAsStateWithLifecycle()
+    val libraryQuery by viewModel.libraryQuery.collectAsStateWithLifecycle()
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
     val remoteScanState by viewModel.remoteScanState.collectAsStateWithLifecycle()
     val libraryStats by viewModel.libraryStats.collectAsStateWithLifecycle(LibraryStats())
@@ -506,6 +507,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             EchoPagerPage.Library -> LibraryScreen(
                                 hasPermission = hasAudioPermission,
                                 scanState = scanState,
+                                libraryQuery = libraryQuery,
                                 tracks = tracks,
                                 albums = albums,
                                 remoteAlbums = remoteAlbums,
@@ -528,6 +530,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 folderDetailTracks = folderDetailTracks,
                                 playlistDetailTracks = playlistDetailTracks,
                                 onRequestPermission = { permissionLauncher.launch(permission) },
+                                onLibraryQueryChange = viewModel::updateLibraryQuery,
                                 onScanFolder = { folderScanLauncher.launch(null) },
                                 onScanAll = viewModel::refreshLibrary,
                                 onCancelScan = viewModel::cancelScan,
@@ -860,10 +863,18 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
 
             AnimatedVisibility(
                 visible = nowPlayingExpanded,
-                enter = slideInVertically(tween(durationMillis = 360, easing = DockMotionEasing)) { height -> height } +
-                    fadeIn(tween(durationMillis = 220)),
-                exit = slideOutVertically(tween(durationMillis = 180, easing = DockMotionEasing)) { height -> height / 10 } +
-                    fadeOut(tween(durationMillis = 140)),
+                enter = slideInVertically(tween(durationMillis = 420, easing = DockMotionEasing)) { height -> height } +
+                    fadeIn(tween(durationMillis = 240, delayMillis = 40)) +
+                    scaleIn(
+                        initialScale = 0.985f,
+                        animationSpec = tween(durationMillis = 420, easing = DockMotionEasing),
+                    ),
+                exit = slideOutVertically(tween(durationMillis = 360, easing = DockMotionEasing)) { height -> height } +
+                    fadeOut(tween(durationMillis = 220, easing = DockMotionEasing)) +
+                    scaleOut(
+                        targetScale = 0.965f,
+                        animationSpec = tween(durationMillis = 360, easing = DockMotionEasing),
+                    ),
             ) {
                 val playbackPosition by viewModel.playbackPosition.collectAsStateWithLifecycle()
                 NowPlayingScreen(

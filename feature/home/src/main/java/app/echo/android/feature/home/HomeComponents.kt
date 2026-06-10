@@ -269,20 +269,20 @@ internal fun RoonRecentActivitySection(
             .clip(RoundedCornerShape(28.dp))
             .background(homePanelBrush())
             .border(homePanelBorder(0.94f), RoundedCornerShape(28.dp))
-            .padding(top = 20.dp, bottom = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .padding(top = 14.dp, bottom = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 14.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 "最近活动",
                 color = homeTitleColor(),
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
             RecentActivityTabs(
@@ -291,9 +291,9 @@ internal fun RoonRecentActivitySection(
             )
         }
         LazyRow(
-            modifier = Modifier.height(if (displayAlbums.isEmpty()) 220.dp else 256.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(22.dp),
+            modifier = Modifier.height(if (displayAlbums.isEmpty()) RecentActivityEmptyCardHeight else RecentActivityAlbumCardHeight),
+            contentPadding = PaddingValues(horizontal = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             if (displayAlbums.isEmpty()) {
                 item {
@@ -320,6 +320,11 @@ internal enum class RecentActivityMode {
     Played,
     Added,
 }
+
+private val RecentActivityAlbumCardWidth = 124.dp
+private val RecentActivityAlbumCardHeight = 202.dp
+private val RecentActivityEmptyCardWidth = 126.dp
+private val RecentActivityEmptyCardHeight = 184.dp
 
 @Composable
 internal fun RecentActivityTabs(
@@ -361,13 +366,13 @@ private fun RecentActivityModeTab(
             .clip(RoundedCornerShape(9.dp))
             .background(if (selected) scheme.primary.copy(alpha = 0.24f) else Color.Transparent)
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 7.dp),
+            .padding(horizontal = 10.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             label,
             color = if (selected) scheme.primary else homeBodyColor(),
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
         )
@@ -408,10 +413,10 @@ internal fun RecentAlbumCard(
     val artistLabel = album.albumArtist ?: album.artist ?: "未知艺人"
     Column(
         modifier = Modifier
-            .width(150.dp)
-            .height(256.dp)
+            .width(RecentActivityAlbumCardWidth)
+            .height(RecentActivityAlbumCardHeight)
             .clickable(onClick = onClick),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         ArtworkTile(
             artworkUri = album.artworkUri,
@@ -426,7 +431,7 @@ internal fun RecentAlbumCard(
         Text(
             album.title,
             color = homeTitleColor(),
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.ExtraBold,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
@@ -434,7 +439,7 @@ internal fun RecentAlbumCard(
         Text(
             recentAlbumSubtitle(album, mode, artistLabel),
             color = homeBodyColor(),
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -470,9 +475,9 @@ private fun RecentActivityEmptyAlbumCard(
 ) {
     Column(
         modifier = Modifier
-            .width(160.dp)
+            .width(RecentActivityEmptyCardWidth)
             .clickable(onClick = onClick),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Box(
             modifier = Modifier
@@ -492,14 +497,14 @@ private fun RecentActivityEmptyAlbumCard(
         Text(
             title,
             color = homeTitleColor(),
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
         )
         Text(
             subtitle,
             color = homeBodyColor(),
-            style = MaterialTheme.typography.titleSmall,
+            style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

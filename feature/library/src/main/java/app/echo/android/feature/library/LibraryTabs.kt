@@ -1,5 +1,14 @@
 package app.echo.android.feature.library
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -33,11 +42,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.CloudQueue
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Scanner
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -45,6 +56,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,12 +70,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
@@ -94,6 +112,7 @@ import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.FolderSummary
 import app.echo.android.model.library.LibraryScanPhase
 import app.echo.android.model.library.LibraryScanProgress
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private data class LibraryGlassColors(
@@ -125,6 +144,15 @@ internal fun LibraryPagerTabs(
     onSelectMode: (LibraryViewMode) -> Unit,
 ) {
     val colors = rememberLibraryGlassColors()
+    val visibleModes = remember {
+        listOf(
+            LibraryViewMode.Songs,
+            LibraryViewMode.Folders,
+            LibraryViewMode.Albums,
+            LibraryViewMode.Artists,
+            LibraryViewMode.Playlists,
+        )
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -133,7 +161,7 @@ internal fun LibraryPagerTabs(
         horizontalArrangement = Arrangement.spacedBy(24.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        LibraryViewMode.entries.forEach { mode ->
+        visibleModes.forEach { mode ->
             val selected = selectedMode == mode
             Column(
                 modifier = Modifier
@@ -185,6 +213,130 @@ internal fun LibraryPlaceholderPage(
         }
     }
 }
+
+@Composable
+internal fun LibrarySearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    expandedWidth: Dp = 220.dp,
+) {
+    val colors = rememberLibraryGlassColors()
+    val dark = LocalEchoDarkTheme.current
+    val shape = RoundedCornerShape(18.dp)
+    val focusRequester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    var expanded by remember { mutableStateOf(query.isNotBlank()) }
+    val width by animateDpAsState(
+        targetValue = if (expanded) expandedWidth else 46.dp,
+        animationSpec = tween(durationMillis = 240),
+        label = "library-search-width",
+    )
+
+    LaunchedEffect(query) {
+        if (query.isNotBlank()) expanded = true
+    }
+    LaunchedEffect(expanded) {
+        if (expanded) {
+            focusRequester.requestFocus()
+            keyboard?.show()
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .width(width)
+            .height(56.dp),
+        contentAlignment = Alignment.CenterEnd,
+    ) {
+        AnimatedVisibility(
+            visible = !expanded,
+            enter = fadeIn(animationSpec = tween(durationMillis = 150)),
+            exit = fadeOut(animationSpec = tween(durationMillis = 120)),
+        ) {
+            Surface(
+                modifier = Modifier.size(46.dp),
+                shape = RoundedCornerShape(16.dp),
+                color = if (dark) EchoGlassPanel.copy(alpha = 0.42f) else Color.White.copy(alpha = 0.54f),
+                border = BorderStroke(1.dp, colors.border),
+                onClick = { expanded = true },
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Rounded.Search,
+                        contentDescription = "搜索曲库",
+                        tint = colors.content,
+                        modifier = Modifier.size(21.dp),
+                    )
+                }
+            }
+        }
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandHorizontally(
+                expandFrom = Alignment.End,
+                animationSpec = tween(durationMillis = 260),
+            ) + fadeIn(animationSpec = tween(durationMillis = 180)),
+            exit = shrinkHorizontally(
+                shrinkTowards = Alignment.End,
+                animationSpec = tween(durationMillis = 200),
+            ) + fadeOut(animationSpec = tween(durationMillis = 130)),
+        ) {
+            TextField(
+                value = query,
+                onValueChange = onQueryChange,
+                modifier = Modifier
+                    .width(expandedWidth)
+                    .height(54.dp)
+                    .clip(shape)
+                    .border(BorderStroke(1.dp, colors.border), shape)
+                    .focusRequester(focusRequester),
+                singleLine = true,
+                leadingIcon = {
+                    Icon(
+                        Icons.Rounded.Search,
+                        contentDescription = null,
+                        tint = colors.muted,
+                        modifier = Modifier.size(20.dp),
+                    )
+                },
+                trailingIcon = {
+                    IconButton(
+                        onClick = {
+                            onQueryChange("")
+                            expanded = false
+                        },
+                    ) {
+                        Icon(
+                            Icons.Rounded.Close,
+                            contentDescription = "关闭搜索",
+                            tint = colors.muted,
+                        )
+                    }
+                },
+                placeholder = {
+                    Text(
+                        "搜索歌曲、艺术家、专辑",
+                        color = colors.muted,
+                        maxLines = 1,
+                    )
+                },
+                textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.content),
+                shape = shape,
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = if (dark) EchoGlassPanel.copy(alpha = 0.48f) else Color.White.copy(alpha = 0.58f),
+                    unfocusedContainerColor = if (dark) EchoGlassPanel.copy(alpha = 0.38f) else Color.White.copy(alpha = 0.52f),
+                    disabledContainerColor = if (dark) EchoGlassPanel.copy(alpha = 0.28f) else Color.White.copy(alpha = 0.42f),
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent,
+                    cursorColor = EchoAccentText,
+                ),
+            )
+        }
+    }
+}
+
 @Composable
 internal fun FolderList(
     folders: LazyPagingItems<FolderSummary>,
@@ -776,17 +928,30 @@ internal fun LibraryScanResultBanner(scanState: LibraryScanProgress) {
         LibraryScanPhase.Completed -> "扫描完成：${scanState.scannedCount} 首，新增 ${scanState.insertedCount}，更新 ${scanState.updatedCount}，删除 ${scanState.deletedCount}"
         LibraryScanPhase.Cancelled -> "扫描已取消，已保留现有曲库。"
         LibraryScanPhase.Error -> scanState.error ?: "曲库扫描失败。"
-        LibraryScanPhase.Idle -> "扫描完成：${scanState.scannedCount} 首，新增 ${scanState.insertedCount}，更新 ${scanState.updatedCount}，删除 ${scanState.deletedCount}"
         else -> null
     } ?: return
+    var visible by remember(message) { mutableStateOf(true) }
 
-    EchoPanel(Modifier.fillMaxWidth()) {
-        Text(
-            text = message,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-            color = if (scanState.phase == LibraryScanPhase.Error) Color(0xFFE0796E) else colors.muted,
-            style = MaterialTheme.typography.bodySmall,
-        )
+    LaunchedEffect(message, scanState.phase) {
+        if (scanState.phase != LibraryScanPhase.Error) {
+            delay(3_200L)
+            visible = false
+        }
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(durationMillis = 160)) + expandVertically(tween(durationMillis = 180)),
+        exit = fadeOut(tween(durationMillis = 180)) + shrinkVertically(tween(durationMillis = 220)),
+    ) {
+        EchoPanel(Modifier.fillMaxWidth()) {
+            Text(
+                text = message,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                color = if (scanState.phase == LibraryScanPhase.Error) Color(0xFFE0796E) else colors.muted,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
     }
 }
 

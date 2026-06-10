@@ -52,6 +52,7 @@ import androidx.compose.material.icons.rounded.KeyboardDoubleArrowLeft
 import androidx.compose.material.icons.rounded.KeyboardDoubleArrowRight
 import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Settings
@@ -1555,21 +1556,12 @@ private fun NowPlayingControlDock(
                 ),
             contentAlignment = Alignment.Center,
         ) {
-            if (isPlaying) {
-                PauseBarsIcon(
-                    tint = Color.White,
-                    height = 36.dp,
-                    barWidth = 8.dp,
-                    gap = 8.dp,
-                )
-            } else {
-                Icon(
-                    Icons.Rounded.PlayArrow,
-                    contentDescription = "播放或暂停",
-                    tint = Color.White,
-                    modifier = Modifier.size(44.dp),
-                )
-            }
+            Icon(
+                if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                contentDescription = "播放或暂停",
+                tint = Color.White,
+                modifier = Modifier.size(44.dp),
+            )
         }
         GlyphButton(
             icon = Icons.Rounded.KeyboardDoubleArrowRight,
@@ -1589,29 +1581,6 @@ private fun NowPlayingControlDock(
             background = Color.Transparent,
             onClick = onOpenQueue,
         )
-    }
-}
-
-@Composable
-private fun PauseBarsIcon(
-    tint: Color,
-    height: Dp,
-    barWidth: Dp,
-    gap: Dp,
-) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(gap),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        repeat(2) {
-            Box(
-                modifier = Modifier
-                    .width(barWidth)
-                    .height(height)
-                    .clip(RoundedCornerShape(99.dp))
-                    .background(tint),
-            )
-        }
     }
 }
 
