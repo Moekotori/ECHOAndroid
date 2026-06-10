@@ -283,6 +283,7 @@ fun PageChrome(
     scrollable: Boolean = false,
     showBrand: Boolean = false,
     compactHeader: Boolean = false,
+    badgeContent: (@Composable () -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -366,20 +367,24 @@ fun PageChrome(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (dark) EchoGlassPanel.copy(alpha = 0.24f) else scheme.surface.copy(alpha = 0.50f),
-                            border = BorderStroke(
-                                1.dp,
-                                if (dark) Color.White.copy(alpha = 0.22f) else EchoGlassBorder,
-                            ),
-                        ) {
-                            Text(
-                                badge,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (dark) Color.White.copy(alpha = 0.88f) else scheme.onSurface,
-                            )
+                        if (badgeContent != null) {
+                            badgeContent()
+                        } else {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (dark) EchoGlassPanel.copy(alpha = 0.24f) else scheme.surface.copy(alpha = 0.50f),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (dark) Color.White.copy(alpha = 0.22f) else EchoGlassBorder,
+                                ),
+                            ) {
+                                Text(
+                                    badge,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (dark) Color.White.copy(alpha = 0.88f) else scheme.onSurface,
+                                )
+                            }
                         }
                         actions()
                     }

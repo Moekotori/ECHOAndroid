@@ -44,6 +44,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.CloudQueue
+import androidx.compose.material.icons.rounded.Devices
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -57,6 +58,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -124,6 +126,15 @@ private enum class LinkedLibraryMode(
     Albums("专辑", Icons.Rounded.LibraryMusic),
 }
 
+private enum class LibrarySourceMode(
+    val label: String,
+    val icon: ImageVector,
+) {
+    Local("本地", Icons.Rounded.LibraryMusic),
+    PcEcho("PC ECHO", Icons.Rounded.Devices),
+    Cloud("网盘", Icons.Rounded.CloudQueue),
+}
+
 @Composable
 fun LibraryScreen(
     hasPermission: Boolean,
@@ -132,6 +143,7 @@ fun LibraryScreen(
     albums: LazyPagingItems<AlbumSummary>,
     remoteAlbums: LazyPagingItems<AlbumSummary>,
     linkedLibraryActive: Boolean,
+    linkedLibraryAvailable: Boolean,
     linkedLibraryState: EchoRemoteLibraryState,
     artists: LazyPagingItems<ArtistSummary>,
     folders: LazyPagingItems<FolderSummary>,
@@ -175,14 +187,39 @@ fun LibraryScreen(
 ) {
     var selectedModeIndex by remember { mutableIntStateOf(LibraryViewMode.Songs.ordinal) }
     val selectedMode = LibraryViewMode.entries[selectedModeIndex]
+    var selectedSource by remember {
+        mutableStateOf(if (linkedLibraryActive) LibrarySourceMode.PcEcho else LibrarySourceMode.Local)
+    }
     var linkedMode by remember { mutableStateOf(LinkedLibraryMode.Songs) }
     var selectedLinkedAlbumKey by remember { mutableStateOf<String?>(null) }
 
-    if (linkedLibraryActive) {
+    LaunchedEffect(linkedLibraryActive) {
+        if (linkedLibraryActive) {
+            selectedSource = LibrarySourceMode.PcEcho
+        }
+    }
+
+    fun selectSource(source: LibrarySourceMode) {
+        selectedSource = source
+        selectedLinkedAlbumKey = null
+        when (source) {
+            LibrarySourceMode.Local -> {
+                if (selectedMode == LibraryViewMode.Cloud) {
+                    selectedModeIndex = LibraryViewMode.Songs.ordinal
+                }
+            }
+            LibrarySourceMode.Cloud -> selectedModeIndex = LibraryViewMode.Cloud.ordinal
+            LibrarySourceMode.PcEcho -> if (linkedLibraryAvailable) onRefreshLinkedLibrary()
+        }
+    }
+
+    if (selectedSource == LibrarySourceMode.PcEcho && linkedLibraryAvailable) {
         LinkedEchoLibraryPage(
             state = linkedLibraryState,
             selectedMode = linkedMode,
             selectedAlbumKey = selectedLinkedAlbumKey,
+            selectedSource = selectedSource,
+            onSelectSource = ::selectSource,
             onSelectMode = { mode ->
                 linkedMode = mode
                 selectedLinkedAlbumKey = null
@@ -193,6 +230,35 @@ fun LibraryScreen(
             onPlayLinkedTrack = onPlayLinkedTrack,
             modifier = Modifier.fillMaxSize(),
         )
+        return
+    }
+
+    if (selectedSource == LibrarySourceMode.PcEcho) {
+        PageChrome(
+            title = "曲库",
+            subtitle = "PC ECHO",
+            badge = selectedSource.label,
+            showBrand = false,
+            compactHeader = true,
+            badgeContent = {
+                LibrarySourceMenu(
+                    selectedSource = selectedSource,
+                    linkedLibraryAvailable = linkedLibraryAvailable,
+                    onSelectSource = ::selectSource,
+                )
+            },
+            actions = {
+                IconButton(onClick = onRefreshLinkedLibrary) {
+                    Icon(
+                        Icons.Rounded.Refresh,
+                        contentDescription = "刷新 PC ECHO 曲库",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+        ) {
+            EmptyState("先到“互联”连接 PC ECHO，然后这里就能浏览 PC 曲库。")
+        }
         return
     }
 
@@ -282,9 +348,16 @@ fun LibraryScreen(
             PageChrome(
                 title = "曲库",
                 subtitle = null,
-                badge = "本地",
+                badge = selectedSource.label,
                 showBrand = false,
                 compactHeader = true,
+                badgeContent = {
+                    LibrarySourceMenu(
+                        selectedSource = selectedSource,
+                        linkedLibraryAvailable = linkedLibraryAvailable,
+                        onSelectSource = ::selectSource,
+                    )
+                },
                 actions = {
                     LibraryScanAction(
                         hasPermission = hasPermission,
@@ -302,7 +375,14 @@ fun LibraryScreen(
                         LibraryBrowserHeader(
                             scanState = scanState,
                             selectedMode = selectedMode,
-                            onSelectMode = { mode -> selectedModeIndex = mode.ordinal },
+                            onSelectMode = { mode ->
+                                selectedModeIndex = mode.ordinal
+                                selectedSource = if (mode == LibraryViewMode.Cloud) {
+                                    LibrarySourceMode.Cloud
+                                } else {
+                                    LibrarySourceMode.Local
+                                }
+                            },
                         )
                         EmptyState("正在加载曲库...")
                     }
@@ -310,7 +390,14 @@ fun LibraryScreen(
                         LibraryBrowserHeader(
                             scanState = scanState,
                             selectedMode = selectedMode,
-                            onSelectMode = { mode -> selectedModeIndex = mode.ordinal },
+                            onSelectMode = { mode ->
+                                selectedModeIndex = mode.ordinal
+                                selectedSource = if (mode == LibraryViewMode.Cloud) {
+                                    LibrarySourceMode.Cloud
+                                } else {
+                                    LibrarySourceMode.Local
+                                }
+                            },
                         )
                         EmptyState("曲库查询失败。")
                     }
@@ -318,7 +405,14 @@ fun LibraryScreen(
                         LibraryBrowserHeader(
                             scanState = scanState,
                             selectedMode = selectedMode,
-                            onSelectMode = { mode -> selectedModeIndex = mode.ordinal },
+                            onSelectMode = { mode ->
+                                selectedModeIndex = mode.ordinal
+                                selectedSource = if (mode == LibraryViewMode.Cloud) {
+                                    LibrarySourceMode.Cloud
+                                } else {
+                                    LibrarySourceMode.Local
+                                }
+                            },
                         )
                         Box(modifier = Modifier.weight(1f)) {
                             when (selectedMode) {
@@ -386,10 +480,88 @@ fun LibraryScreen(
 }
 
 @Composable
+private fun LibrarySourceMenu(
+    selectedSource: LibrarySourceMode,
+    linkedLibraryAvailable: Boolean,
+    onSelectSource: (LibrarySourceMode) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val scheme = MaterialTheme.colorScheme
+    Box {
+        Surface(
+            modifier = Modifier.clickable { expanded = true },
+            shape = RoundedCornerShape(8.dp),
+            color = scheme.surface.copy(alpha = 0.50f),
+            border = BorderStroke(1.dp, EchoGlassBorder),
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    selectedSource.icon,
+                    contentDescription = null,
+                    tint = scheme.onSurface,
+                    modifier = Modifier.size(15.dp),
+                )
+                Text(
+                    selectedSource.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = scheme.onSurface,
+                    maxLines = 1,
+                )
+            }
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            containerColor = scheme.surface,
+        ) {
+            LibrarySourceMode.entries.forEach { source ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            source.label,
+                            fontWeight = if (source == selectedSource) FontWeight.Bold else FontWeight.SemiBold,
+                            color = if (source == selectedSource) EchoAccentText else scheme.onSurface,
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            source.icon,
+                            contentDescription = null,
+                            tint = if (source == selectedSource) EchoAccentText else scheme.onSurfaceVariant,
+                        )
+                    },
+                    trailingIcon = if (source == LibrarySourceMode.PcEcho && !linkedLibraryAvailable) {
+                        {
+                            Text(
+                                "未连接",
+                                color = scheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
+                    } else {
+                        null
+                    },
+                    onClick = {
+                        onSelectSource(source)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun LinkedEchoLibraryPage(
     state: EchoRemoteLibraryState,
     selectedMode: LinkedLibraryMode,
     selectedAlbumKey: String?,
+    selectedSource: LibrarySourceMode,
+    onSelectSource: (LibrarySourceMode) -> Unit,
     onSelectMode: (LinkedLibraryMode) -> Unit,
     onOpenAlbum: (AlbumSummary) -> Unit,
     onCloseAlbum: () -> Unit,
@@ -425,6 +597,13 @@ private fun LinkedEchoLibraryPage(
         title = "曲库",
         subtitle = if (state.totalCount > 0) "PC ECHO · ${state.totalCount} 首" else "PC ECHO",
         badge = "PC ECHO",
+        badgeContent = {
+            LibrarySourceMenu(
+                selectedSource = selectedSource,
+                linkedLibraryAvailable = true,
+                onSelectSource = onSelectSource,
+            )
+        },
         actions = {
             IconButton(onClick = onRefresh, enabled = !state.isLoading) {
                 Icon(
@@ -511,6 +690,7 @@ private fun LinkedLibraryChrome(
     title: String,
     subtitle: String?,
     badge: String,
+    badgeContent: (@Composable () -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
@@ -565,17 +745,21 @@ private fun LinkedLibraryChrome(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = scheme.surface.copy(alpha = 0.50f),
-                        border = BorderStroke(1.dp, EchoGlassBorder),
-                    ) {
-                        Text(
-                            badge,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = scheme.onSurface,
-                        )
+                    if (badgeContent != null) {
+                        badgeContent()
+                    } else {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = scheme.surface.copy(alpha = 0.50f),
+                            border = BorderStroke(1.dp, EchoGlassBorder),
+                        ) {
+                            Text(
+                                badge,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = scheme.onSurface,
+                            )
+                        }
                     }
                     actions()
                 }

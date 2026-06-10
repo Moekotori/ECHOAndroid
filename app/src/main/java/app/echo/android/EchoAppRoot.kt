@@ -511,6 +511,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 remoteAlbums = remoteAlbums,
                                 linkedLibraryActive = remoteStatus.connectionState == EchoRemoteConnectionState.Connected &&
                                     appSettings.echoLinkPreferLinkedLibrary,
+                                linkedLibraryAvailable = remoteStatus.connectionState == EchoRemoteConnectionState.Connected,
                                 linkedLibraryState = remoteLibraryState,
                                 artists = artists,
                                 folders = folders,

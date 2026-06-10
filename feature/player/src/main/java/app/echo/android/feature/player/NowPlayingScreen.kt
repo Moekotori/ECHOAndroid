@@ -1558,9 +1558,9 @@ private fun NowPlayingControlDock(
             if (isPlaying) {
                 PauseBarsIcon(
                     tint = Color.White,
-                    height = 48.dp,
-                    barWidth = 10.dp,
-                    gap = 10.dp,
+                    height = 36.dp,
+                    barWidth = 8.dp,
+                    gap = 8.dp,
                 )
             } else {
                 Icon(
