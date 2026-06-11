@@ -86,15 +86,21 @@ internal fun LibraryScanAction(
     val description = when {
         !hasPermission -> "授权音乐权限"
         scanState.isScanning -> "取消扫描曲库"
-        else -> "选择扫描范围"
+        else -> "扫描曲库"
+    }
+    val label = when {
+        !hasPermission -> "授权"
+        scanState.isScanning -> "停止"
+        else -> "扫描"
+    }
+    val accent = when {
+        scanState.error != null -> Color(0xFFE0796E)
+        else -> colors.content
     }
 
-    Box(
+    Row(
         modifier = Modifier
-            .size(42.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(colors.optionSurface)
-            .border(BorderStroke(1.dp, colors.border), RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(12.dp))
             .clickable(
                 onClick = when {
                     !hasPermission -> onRequestPermission
@@ -103,14 +109,23 @@ internal fun LibraryScanAction(
                         { showScanOptions = true }
                     }
                 },
-            ),
-        contentAlignment = Alignment.Center,
+            )
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            Icons.Rounded.Scanner,
+            Icons.Rounded.LibraryMusic,
             contentDescription = description,
-            tint = if (scanState.error != null) Color(0xFFE0796E) else EchoHomeBlue,
+            tint = accent,
             modifier = Modifier.size(20.dp),
+        )
+        Text(
+            text = label,
+            color = accent,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
         )
     }
 

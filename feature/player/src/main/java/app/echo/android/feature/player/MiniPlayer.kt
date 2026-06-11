@@ -118,15 +118,6 @@ fun MiniPlayer(
         animationSpec = tween(durationMillis = miniPlayerMotionDuration(320, lightweight), easing = MiniPlayerMotionEasing),
         label = "mini-player-border",
     )
-    val playButtonScale by animateFloatAsState(
-        targetValue = if (status.isPlaying) 1f else 0.96f,
-        animationSpec = if (lightweight) {
-            tween(durationMillis = 120, easing = MiniPlayerMotionEasing)
-        } else {
-            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
-        },
-        label = "mini-player-play-scale",
-    )
     val progressAlpha by animateFloatAsState(
         targetValue = if (activeDurationMs > 0L) 1f else 0.42f,
         animationSpec = tween(durationMillis = miniPlayerMotionDuration(220, lightweight), easing = MiniPlayerMotionEasing),
@@ -323,45 +314,33 @@ fun MiniPlayer(
             Box(
                 modifier = Modifier
                     .size(38.dp)
-                    .shadow(
-                        elevation = 6.dp,
-                        shape = CircleShape,
-                        ambientColor = if (dark) Color.Black.copy(alpha = 0.16f) else EchoAccent.copy(alpha = 0.30f),
-                        spotColor = if (dark) MiniPlayerGlassBlue.copy(alpha = 0.10f) else EchoAccentDeep.copy(alpha = 0.34f),
-                    )
-                    .graphicsLayer {
-                        scaleX = playButtonScale
-                        scaleY = playButtonScale
-                    }
-                    .clip(CircleShape)
-                    .background(
-                        if (dark) {
-                            Brush.linearGradient(listOf(MiniPlayerGlassBlue, Color(0xFFAA838F)))
-                        } else {
-                            Brush.linearGradient(listOf(Color(0xFF111318), Color(0xFF111318)))
-                        },
-                    )
+                    .clip(RoundedCornerShape(12.dp))
                     .clickable(
                         enabled = status.state != EchoPlaybackState.Idle || status.track != null,
                         onClick = onPlayPause,
                     ),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.PlayArrow,
-                    contentDescription = "播放或暂停",
-                    tint = Color.White,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .alpha(if (status.isPlaying) 0f else 1f),
-                )
-                if (status.isPlaying) {
-                    PauseBarsIcon(
-                        tint = Color.White,
-                        height = 20.dp,
-                        barWidth = 5.dp,
-                        gap = 5.dp,
+                Box(
+                    modifier = Modifier.size(24.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.PlayArrow,
+                        contentDescription = "播放或暂停",
+                        tint = if (dark) MiniPlayerGlassBlue else scheme.primary,
+                        modifier = Modifier
+                            .size(24.dp)
+                            .alpha(if (status.isPlaying) 0f else 1f),
                     )
+                    if (status.isPlaying) {
+                        PauseBarsIcon(
+                            tint = if (dark) MiniPlayerGlassBlue else scheme.primary,
+                            height = 20.dp,
+                            barWidth = 5.dp,
+                            gap = 5.dp,
+                        )
+                    }
                 }
             }
             when {

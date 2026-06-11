@@ -750,6 +750,12 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun setLibrarySelectedSource(source: String) {
+        updateSettings {
+            setLibrarySelectedSource(source)
+        }
+    }
+
     fun clearEchoLinkPcEndpoint() {
         updateSettings {
             clearEchoLinkPcEndpoint()

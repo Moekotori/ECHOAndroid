@@ -1,6 +1,5 @@
 package app.echo.android.feature.settings
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -9,40 +8,21 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.EchoAccent
-import app.echo.android.design.EchoAccentText
-import app.echo.android.design.EchoGlassBorder
-import app.echo.android.design.EchoHomeBlue
-import app.echo.android.design.EchoHomeMist
-import app.echo.android.design.LocalEchoDarkTheme
-import app.echo.android.design.EchoPlaceholderLine
 import app.echo.android.design.EchoSectionTitle
 import app.echo.android.design.PageChrome
-import app.echo.android.design.RoonInk
-import app.echo.android.design.RoonMuted
-import app.echo.android.design.echoDarkGlassBorder
-import app.echo.android.design.echoGlassContainerBrush
-import app.echo.android.design.formatDuration
 import app.echo.android.model.playback.EchoEqualizerState
-import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
-import app.echo.android.model.playback.EchoRepeatMode
 import app.echo.android.model.playback.OpraHeadphoneCorrectionState
 
 @Composable
@@ -65,7 +45,7 @@ fun DiagnosticsScreen(
     val codec = diagnostics.codec ?: "Media3"
     val lastCommand = commandLabel(diagnostics.lastCommand)
     val dspActive = diagnostics.offloadActive || equalizerState.active
-    PageChrome(title = "信号", subtitle = "音频链路与解码状态", badge = "状态", scrollable = true) {
+    PageChrome(title = "信号", subtitle = "从曲目规格到输出设备的实时链路", badge = playbackStateLabel(status.state), scrollable = true) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SignalHeroCard(
                 status = status,
@@ -79,6 +59,10 @@ fun DiagnosticsScreen(
                 output = diagnostics.outputRoute,
                 dspActive = dspActive,
                 diagnostics = diagnostics,
+            )
+            AudioFormatPanel(
+                status = status,
+                equalizerState = equalizerState,
             )
             EqualizerPanel(
                 state = equalizerState,
@@ -107,22 +91,17 @@ fun DiagnosticsScreen(
 @Composable
 private fun UsbOutputPanel(status: EchoPlaybackStatus) {
     val diagnostics = status.diagnostics
-    val scheme = MaterialTheme.colorScheme
-    val dark = LocalEchoDarkTheme.current
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(if (dark) echoGlassContainerBrush(0.92f) else Brush.linearGradient(listOf(Color.White.copy(alpha = 0.64f), EchoHomeMist.copy(alpha = 0.42f))))
-            .border(
-                if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.84f)),
-                RoundedCornerShape(20.dp),
-            )
+            .background(signalPanelColor(0.64f))
+            .border(signalPanelBorder(0.84f), RoundedCornerShape(20.dp))
             .padding(16.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             EchoSectionTitle(
-                "USB 输出",
+                "USB 独占输出",
                 if (diagnostics.usbConnected) "已连接" else "未连接",
             )
             UsbOutputLine("设备", diagnostics.usbDeviceName ?: "无 USB DAC")
@@ -147,7 +126,7 @@ private fun UsbOutputPanel(status: EchoPlaybackStatus) {
             )
             UsbOutputLine(
                 "请求",
-                diagnostics.usbLastRequestedSampleRateHz?.let { "${it}Hz" } ?: "未请求",
+                diagnostics.usbLastRequestedSampleRateHz?.let(::formatUsbSampleRate) ?: "未请求",
             )
             if (diagnostics.usbConnected) {
                 UsbOutputLine(
@@ -208,7 +187,14 @@ private fun formatUsbSampleRates(sampleRates: List<Int>): String =
     if (sampleRates.isEmpty()) {
         "未上报"
     } else {
-        sampleRates.take(6).joinToString(" / ") { "${it / 1000}k" } +
+        sampleRates.take(6).joinToString(" / ") { formatUsbSampleRate(it) } +
             if (sampleRates.size > 6) " ..." else ""
+    }
+
+private fun formatUsbSampleRate(sampleRateHz: Int): String =
+    if (sampleRateHz % 1000 == 0) {
+        "${sampleRateHz / 1000} kHz"
+    } else {
+        "${sampleRateHz / 1000f} kHz"
     }
 

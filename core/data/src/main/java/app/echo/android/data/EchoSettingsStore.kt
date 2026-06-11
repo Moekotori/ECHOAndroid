@@ -68,6 +68,7 @@ data class EchoAppSettings(
     val echoLinkPcToken: String? = null,
     val echoLinkAutoReconnectEnabled: Boolean = true,
     val echoLinkPreferLinkedLibrary: Boolean = true,
+    val librarySelectedSource: String = EchoLibrarySelectedSource.Local,
     val subsonicServerUrl: String? = null,
     val subsonicUsername: String? = null,
     val subsonicPassword: String? = null,
@@ -118,6 +119,12 @@ object EchoThemeMode {
     const val System = "system"
     const val Light = "light"
     const val Dark = "dark"
+}
+
+object EchoLibrarySelectedSource {
+    const val Local = "local"
+    const val PcEcho = "pc_echo"
+    const val Cloud = "cloud"
 }
 
 class EchoSettingsStore(
@@ -193,6 +200,7 @@ class EchoSettingsStore(
                 echoLinkPcToken = preferences[Keys.EchoLinkPcToken],
                 echoLinkAutoReconnectEnabled = preferences[Keys.EchoLinkAutoReconnectEnabled] ?: true,
                 echoLinkPreferLinkedLibrary = preferences[Keys.EchoLinkPreferLinkedLibrary] ?: true,
+                librarySelectedSource = normalizeLibrarySelectedSource(preferences[Keys.LibrarySelectedSource]),
                 subsonicServerUrl = preferences[Keys.SubsonicServerUrl],
                 subsonicUsername = preferences[Keys.SubsonicUsername],
                 subsonicPassword = preferences[Keys.SubsonicPassword],
@@ -490,6 +498,12 @@ class EchoSettingsStore(
         context.echoSettings.edit { it[Keys.EchoLinkPreferLinkedLibrary] = enabled }
     }
 
+    suspend fun setLibrarySelectedSource(source: String) {
+        context.echoSettings.edit {
+            it[Keys.LibrarySelectedSource] = normalizeLibrarySelectedSource(source)
+        }
+    }
+
     suspend fun clearEchoLinkPcEndpoint() {
         context.echoSettings.edit {
             it.remove(Keys.EchoLinkPcAddress)
@@ -629,6 +643,7 @@ class EchoSettingsStore(
         val EchoLinkPcToken = stringPreferencesKey("echo_link_pc_token")
         val EchoLinkAutoReconnectEnabled = booleanPreferencesKey("echo_link_auto_reconnect_enabled")
         val EchoLinkPreferLinkedLibrary = booleanPreferencesKey("echo_link_prefer_linked_library")
+        val LibrarySelectedSource = stringPreferencesKey("library_selected_source")
         val SubsonicServerUrl = stringPreferencesKey("subsonic_server_url")
         val SubsonicUsername = stringPreferencesKey("subsonic_username")
         val SubsonicPassword = stringPreferencesKey("subsonic_password")
@@ -664,6 +679,13 @@ private fun normalizeLyricsMotionMode(value: String?): String =
         EchoLyricsMotionMode.Smooth,
         EchoLyricsMotionMode.Stage -> value
         else -> EchoLyricsMotionMode.Smooth
+    }
+
+private fun normalizeLibrarySelectedSource(value: String?): String =
+    when (value) {
+        EchoLibrarySelectedSource.PcEcho,
+        EchoLibrarySelectedSource.Cloud -> value
+        else -> EchoLibrarySelectedSource.Local
     }
 
 private fun parseEqualizerBandGains(value: String?, presetId: String): List<Float> {

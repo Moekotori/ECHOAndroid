@@ -254,21 +254,19 @@ internal fun LibrarySearchBar(
             enter = fadeIn(animationSpec = tween(durationMillis = 150)),
             exit = fadeOut(animationSpec = tween(durationMillis = 120)),
         ) {
-            Surface(
-                modifier = Modifier.size(46.dp),
-                shape = RoundedCornerShape(16.dp),
-                color = if (dark) EchoGlassPanel.copy(alpha = 0.42f) else Color.White.copy(alpha = 0.54f),
-                border = BorderStroke(1.dp, colors.border),
-                onClick = { expanded = true },
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .clickable { expanded = true },
+                contentAlignment = Alignment.Center,
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Rounded.Search,
-                        contentDescription = "搜索曲库",
-                        tint = colors.content,
-                        modifier = Modifier.size(21.dp),
-                    )
-                }
+                Icon(
+                    Icons.Rounded.Search,
+                    contentDescription = "搜索曲库",
+                    tint = if (dark) colors.content else EchoAccentText,
+                    modifier = Modifier.size(22.dp),
+                )
             }
         }
         AnimatedVisibility(

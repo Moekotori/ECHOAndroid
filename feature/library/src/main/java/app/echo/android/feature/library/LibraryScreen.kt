@@ -130,12 +130,19 @@ private enum class LinkedLibraryMode(
 }
 
 private enum class LibrarySourceMode(
+    val id: String,
     val label: String,
     val icon: ImageVector,
 ) {
-    Local("本地", Icons.Rounded.LibraryMusic),
-    PcEcho("PC ECHO", Icons.Rounded.Devices),
-    Cloud("网盘", Icons.Rounded.CloudQueue),
+    Local(LibrarySourceIds.Local, "本地", Icons.Rounded.LibraryMusic),
+    PcEcho(LibrarySourceIds.PcEcho, "PC ECHO", Icons.Rounded.Devices),
+    Cloud(LibrarySourceIds.Cloud, "网盘", Icons.Rounded.CloudQueue),
+}
+
+private object LibrarySourceIds {
+    const val Local = "local"
+    const val PcEcho = "pc_echo"
+    const val Cloud = "cloud"
 }
 
 private sealed interface LibraryDetailTransitionTarget {
@@ -173,6 +180,7 @@ fun LibraryScreen(
     linkedLibraryActive: Boolean,
     linkedLibraryAvailable: Boolean,
     linkedLibraryState: EchoRemoteLibraryState,
+    selectedLibrarySourceId: String,
     artists: LazyPagingItems<ArtistSummary>,
     folders: LazyPagingItems<FolderSummary>,
     neteaseImportedPlaylists: List<EchoPlaylist>,
@@ -190,6 +198,7 @@ fun LibraryScreen(
     playlistDetailTracks: LazyPagingItems<EchoTrack>?,
     onRequestPermission: () -> Unit,
     onLibraryQueryChange: (String) -> Unit,
+    onLibrarySourceChange: (String) -> Unit,
     onTrackSortModeChange: (LibraryTrackSortMode) -> Unit,
     onScanFolder: () -> Unit,
     onScanAll: () -> Unit,
@@ -218,21 +227,26 @@ fun LibraryScreen(
 ) {
     var selectedModeIndex by remember { mutableIntStateOf(LibraryViewMode.Songs.ordinal) }
     val selectedMode = LibraryViewMode.entries[selectedModeIndex]
-    var selectedSource by remember {
-        mutableStateOf(if (linkedLibraryActive) LibrarySourceMode.PcEcho else LibrarySourceMode.Local)
+    var selectedSource by remember(selectedLibrarySourceId, linkedLibraryActive) {
+        mutableStateOf(librarySourceModeFromId(selectedLibrarySourceId, linkedLibraryActive))
     }
     var linkedMode by remember { mutableStateOf(LinkedLibraryMode.Songs) }
     var selectedLinkedAlbumKey by remember { mutableStateOf<String?>(null) }
     var selectedLinkedArtistKey by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(linkedLibraryActive) {
-        if (linkedLibraryActive) {
-            selectedSource = LibrarySourceMode.PcEcho
+    LaunchedEffect(selectedLibrarySourceId, linkedLibraryActive) {
+        val persistedSource = librarySourceModeFromId(selectedLibrarySourceId, linkedLibraryActive)
+        if (persistedSource != selectedSource) {
+            selectedSource = persistedSource
+            selectedLinkedAlbumKey = null
+            selectedLinkedArtistKey = null
         }
     }
 
     fun selectSource(source: LibrarySourceMode) {
+        if (selectedSource == source) return
         selectedSource = source
+        onLibrarySourceChange(source.id)
         selectedLinkedAlbumKey = null
         selectedLinkedArtistKey = null
         when (source) {
@@ -253,9 +267,11 @@ fun LibraryScreen(
             selectedMode = linkedMode,
             selectedAlbumKey = selectedLinkedAlbumKey,
             selectedSource = selectedSource,
+            selectedSortMode = trackSortMode,
             showTrackAudioInfoTags = showTrackAudioInfoTags,
             onQueryChange = onLibraryQueryChange,
             onSelectSource = ::selectSource,
+            onSortModeChange = onTrackSortModeChange,
             onSelectMode = { mode ->
                 linkedMode = mode
                 selectedLinkedAlbumKey = null
@@ -456,12 +472,6 @@ fun LibraryScreen(
                                     onQueryChange = onLibraryQueryChange,
                                     expandedWidth = 240.dp,
                                 )
-                                if (selectedSource == LibrarySourceMode.Local && selectedMode == LibraryViewMode.Songs) {
-                                    LibraryTrackSortMenu(
-                                        selectedSortMode = trackSortMode,
-                                        onSortModeChange = onTrackSortModeChange,
-                                    )
-                                }
                                 LibraryScanAction(
                                     hasPermission = hasPermission,
                                     scanState = scanState,
@@ -481,12 +491,15 @@ fun LibraryScreen(
                                         linkedLibraryAvailable = linkedLibraryAvailable,
                                         onSelectSource = ::selectSource,
                                         selectedMode = selectedMode,
+                                        selectedSortMode = trackSortMode,
                                         onSelectMode = { mode ->
                                             selectedModeIndex = mode.ordinal
                                             if (selectedSource == LibrarySourceMode.Cloud && mode != LibraryViewMode.Albums) {
                                                 selectedSource = LibrarySourceMode.Local
+                                                onLibrarySourceChange(LibrarySourceMode.Local.id)
                                             }
                                         },
+                                        onSortModeChange = onTrackSortModeChange,
                                     )
                                     EmptyState("正在加载曲库...")
                                 }
@@ -497,12 +510,15 @@ fun LibraryScreen(
                                         linkedLibraryAvailable = linkedLibraryAvailable,
                                         onSelectSource = ::selectSource,
                                         selectedMode = selectedMode,
+                                        selectedSortMode = trackSortMode,
                                         onSelectMode = { mode ->
                                             selectedModeIndex = mode.ordinal
                                             if (selectedSource == LibrarySourceMode.Cloud && mode != LibraryViewMode.Albums) {
                                                 selectedSource = LibrarySourceMode.Local
+                                                onLibrarySourceChange(LibrarySourceMode.Local.id)
                                             }
                                         },
+                                        onSortModeChange = onTrackSortModeChange,
                                     )
                                     EmptyState("曲库查询失败。")
                                 }
@@ -513,12 +529,15 @@ fun LibraryScreen(
                                         linkedLibraryAvailable = linkedLibraryAvailable,
                                         onSelectSource = ::selectSource,
                                         selectedMode = selectedMode,
+                                        selectedSortMode = trackSortMode,
                                         onSelectMode = { mode ->
                                             selectedModeIndex = mode.ordinal
                                             if (selectedSource == LibrarySourceMode.Cloud && mode != LibraryViewMode.Albums) {
                                                 selectedSource = LibrarySourceMode.Local
+                                                onLibrarySourceChange(LibrarySourceMode.Local.id)
                                             }
                                         },
+                                        onSortModeChange = onTrackSortModeChange,
                                     )
                                     Box(modifier = Modifier.weight(1f)) {
                                         when (selectedMode) {
@@ -666,6 +685,17 @@ private fun LibrarySourceMenu(
     }
 }
 
+private fun librarySourceModeFromId(
+    sourceId: String,
+    linkedLibraryActive: Boolean,
+): LibrarySourceMode =
+    when (sourceId) {
+        LibrarySourceIds.PcEcho -> LibrarySourceMode.PcEcho
+        LibrarySourceIds.Cloud -> LibrarySourceMode.Cloud
+        LibrarySourceIds.Local -> LibrarySourceMode.Local
+        else -> if (linkedLibraryActive) LibrarySourceMode.PcEcho else LibrarySourceMode.Local
+    }
+
 @Composable
 private fun LibrarySourceStrip(
     selectedSource: LibrarySourceMode,
@@ -695,9 +725,11 @@ private fun LinkedEchoLibraryPage(
     selectedAlbumKey: String?,
     selectedArtistKey: String?,
     selectedSource: LibrarySourceMode,
+    selectedSortMode: LibraryTrackSortMode,
     showTrackAudioInfoTags: Boolean,
     onQueryChange: (String) -> Unit,
     onSelectSource: (LibrarySourceMode) -> Unit,
+    onSortModeChange: (LibraryTrackSortMode) -> Unit,
     onSelectMode: (LinkedLibraryMode) -> Unit,
     onOpenAlbum: (AlbumSummary) -> Unit,
     onOpenArtist: (ArtistSummary) -> Unit,
@@ -709,6 +741,9 @@ private fun LinkedEchoLibraryPage(
 ) {
     val tracks = state.tracks
     val filteredTracks = remember(tracks, query) { tracks.filterLinkedLibraryQuery(query) }
+    val sortedTracks = remember(filteredTracks, selectedSortMode) {
+        filteredTracks.sortedForLinkedLibrary(selectedSortMode)
+    }
     val albums = remember(filteredTracks) { filteredTracks.toLinkedAlbums() }
     val artists = remember(filteredTracks) { filteredTracks.toLinkedArtists() }
     val selectedAlbum = remember(albums, selectedAlbumKey) {
@@ -782,12 +817,14 @@ private fun LinkedEchoLibraryPage(
         )
         LinkedLibraryHeader(
             selectedMode = selectedMode,
+            selectedSortMode = selectedSortMode,
             onSelectMode = onSelectMode,
+            onSortModeChange = onSortModeChange,
         )
         when {
             state.isLoading -> EmptyState("正在读取 PC ECHO 曲库...")
             !errorMessage.isNullOrBlank() -> EmptyState(errorMessage)
-            selectedMode == LinkedLibraryMode.Songs && filteredTracks.isEmpty() -> {
+            selectedMode == LinkedLibraryMode.Songs && sortedTracks.isEmpty() -> {
                 EmptyState(if (query.isBlank()) "PC ECHO 暂无可显示歌曲。" else "PC ECHO 没有匹配的歌曲。")
             }
             selectedMode == LinkedLibraryMode.Albums && albums.isEmpty() -> {
@@ -797,7 +834,7 @@ private fun LinkedEchoLibraryPage(
                 EmptyState(if (query.isBlank()) "PC ECHO 暂无可显示艺术家。" else "PC ECHO 没有匹配的艺术家。")
             }
             selectedMode == LinkedLibraryMode.Songs -> LinkedTrackList(
-                tracks = filteredTracks,
+                tracks = sortedTracks,
                 onPlayLinkedTrack = onPlayLinkedTrack,
                 showAudioInfoTags = showTrackAudioInfoTags,
                 modifier = Modifier.weight(1f),
@@ -819,9 +856,25 @@ private fun LinkedEchoLibraryPage(
 @Composable
 private fun LinkedLibraryHeader(
     selectedMode: LinkedLibraryMode,
+    selectedSortMode: LibraryTrackSortMode,
     onSelectMode: (LinkedLibraryMode) -> Unit,
+    onSortModeChange: (LibraryTrackSortMode) -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 2.dp),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (selectedMode == LinkedLibraryMode.Songs) {
+            LibraryTrackSortMenu(
+                selectedSortMode = selectedSortMode,
+                onSortModeChange = onSortModeChange,
+            )
+        }
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -861,6 +914,35 @@ private fun LinkedLibraryHeader(
         }
     }
 }
+
+private fun List<EchoRemoteTrack>.sortedForLinkedLibrary(
+    sortMode: LibraryTrackSortMode,
+): List<EchoRemoteTrack> =
+    when (sortMode) {
+        LibraryTrackSortMode.Title,
+        LibraryTrackSortMode.FrequentlyPlayed,
+        LibraryTrackSortMode.RecentlyUpdated,
+        -> sortedWith(
+            compareBy<EchoRemoteTrack> { it.title.lowercase() }
+                .thenBy { it.artist.lowercase() }
+                .thenBy { it.album.orEmpty().lowercase() },
+        )
+        LibraryTrackSortMode.Duration -> sortedWith(
+            compareByDescending<EchoRemoteTrack> { it.durationMs }
+                .thenBy { it.title.lowercase() },
+        )
+        LibraryTrackSortMode.Random -> shuffled()
+        LibraryTrackSortMode.Artist -> sortedWith(
+            compareBy<EchoRemoteTrack> { it.artist.lowercase() }
+                .thenBy { it.album.orEmpty().lowercase() }
+                .thenBy { it.title.lowercase() },
+        )
+        LibraryTrackSortMode.Album -> sortedWith(
+            compareBy<EchoRemoteTrack> { it.album.orEmpty().lowercase() }
+                .thenBy { it.artist.lowercase() }
+                .thenBy { it.title.lowercase() },
+        )
+    }
 
 @Composable
 private fun LinkedLibraryChrome(
@@ -1180,13 +1262,29 @@ private fun LibraryBrowserHeader(
     linkedLibraryAvailable: Boolean,
     onSelectSource: (LibrarySourceMode) -> Unit,
     selectedMode: LibraryViewMode,
+    selectedSortMode: LibraryTrackSortMode,
     onSelectMode: (LibraryViewMode) -> Unit,
+    onSortModeChange: (LibraryTrackSortMode) -> Unit,
 ) {
-    LibrarySourceStrip(
-        selectedSource = selectedSource,
-        linkedLibraryAvailable = linkedLibraryAvailable,
-        onSelectSource = onSelectSource,
-    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 2.dp),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (selectedSource == LibrarySourceMode.Local && selectedMode == LibraryViewMode.Songs) {
+            LibraryTrackSortMenu(
+                selectedSortMode = selectedSortMode,
+                onSortModeChange = onSortModeChange,
+            )
+        }
+        LibrarySourceMenu(
+            selectedSource = selectedSource,
+            linkedLibraryAvailable = linkedLibraryAvailable,
+            onSelectSource = onSelectSource,
+        )
+    }
     LibraryScanResultBanner(scanState)
     LibraryPagerTabs(
         selectedMode = selectedMode,
