@@ -10,11 +10,19 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 @UnstableApi
 class EchoPlaybackService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
     private var player: ExoPlayer? = null
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     override fun onCreate() {
         super.onCreate()
@@ -29,9 +37,20 @@ class EchoPlaybackService : MediaSessionService() {
             )
             .setHandleAudioBecomingNoisy(true)
             .build()
-            .also { it.addListener(EchoPlayerListener()) }
+            .also {
+                it.addListener(EchoPlayerListener())
+                it.setSkipSilenceEnabled(EchoPlaybackRuntimeOptionsStore.options.value.skipSilenceEnabled)
+            }
 
         player = exoPlayer
+        serviceScope.launch {
+            EchoPlaybackRuntimeOptionsStore.options
+                .map { it.skipSilenceEnabled }
+                .distinctUntilChanged()
+                .collect { enabled ->
+                    player?.setSkipSilenceEnabled(enabled)
+                }
+        }
         mediaSession = MediaSession.Builder(this, exoPlayer)
             .setId("echo-mobile-main-session")
             .build()
@@ -52,6 +71,7 @@ class EchoPlaybackService : MediaSessionService() {
         }
         mediaSession = null
         player = null
+        serviceScope.cancel()
         super.onDestroy()
     }
 

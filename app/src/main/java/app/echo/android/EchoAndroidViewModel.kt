@@ -401,6 +401,26 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         playbackController.setPlaybackSpeed(speed, nightcore)
     }
 
+    fun setSleepTimer(minutes: Int) {
+        playbackController.setSleepTimer(minutes)
+    }
+
+    fun cancelSleepTimer() {
+        playbackController.cancelSleepTimer()
+    }
+
+    fun setReplayGain(enabled: Boolean, preampDb: Float) {
+        playbackController.setReplayGain(enabled, preampDb)
+    }
+
+    fun adjustReplayGainPreamp(deltaDb: Float) {
+        playbackController.adjustReplayGainPreamp(deltaDb)
+    }
+
+    fun setSkipSilenceEnabled(enabled: Boolean) {
+        playbackController.setSkipSilenceEnabled(enabled)
+    }
+
     fun cyclePlayMode() {
         playbackController.cyclePlayMode()
     }

@@ -10,5 +10,10 @@ data class EchoPlaybackStatus(
     val shuffleEnabled: Boolean = false,
     val playbackSpeed: Float = 1f,
     val playbackPitch: Float = 1f,
+    val sleepTimerRemainingMs: Long = 0L,
+    val replayGainEnabled: Boolean = false,
+    val replayGainPreampDb: Float = 0f,
+    val replayGainTrackGainDb: Float? = null,
+    val skipSilenceEnabled: Boolean = false,
     val diagnostics: EchoPlaybackDiagnostics = EchoPlaybackDiagnostics(),
 )

@@ -40,6 +40,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -61,6 +62,7 @@ import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ColorLens
 import androidx.compose.material.icons.rounded.FormatSize
+import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.KeyboardDoubleArrowLeft
 import androidx.compose.material.icons.rounded.KeyboardDoubleArrowRight
 import androidx.compose.material.icons.rounded.Lyrics
@@ -171,6 +173,7 @@ private val LyricsMotionOptions = listOf(
 )
 
 private val PlaybackSpeedOptions = listOf(0.75f, 1f, 1.25f, 1.5f, 2f)
+private val SleepTimerOptions = listOf(15, 30, 60)
 
 private enum class NowPlayingPage {
     Cover,
@@ -191,6 +194,11 @@ fun NowPlayingScreen(
     onCycleRepeatMode: () -> Unit,
     onToggleShuffle: () -> Unit,
     onSetPlaybackSpeed: (Float, Boolean) -> Unit,
+    onSetSleepTimer: (Int) -> Unit,
+    onCancelSleepTimer: () -> Unit,
+    onSetReplayGain: (Boolean, Float) -> Unit,
+    onAdjustReplayGainPreamp: (Float) -> Unit,
+    onSetSkipSilenceEnabled: (Boolean) -> Unit,
     onImportLyrics: () -> Unit,
     onAdjustLyricsOffset: (Long) -> Unit,
     onResetLyricsOffset: () -> Unit,
@@ -313,6 +321,11 @@ fun NowPlayingScreen(
                         onCycleRepeatMode = onCycleRepeatMode,
                         onToggleShuffle = onToggleShuffle,
                         onSetPlaybackSpeed = onSetPlaybackSpeed,
+                        onSetSleepTimer = onSetSleepTimer,
+                        onCancelSleepTimer = onCancelSleepTimer,
+                        onSetReplayGain = onSetReplayGain,
+                        onAdjustReplayGainPreamp = onAdjustReplayGainPreamp,
+                        onSetSkipSilenceEnabled = onSetSkipSilenceEnabled,
                         onOpenLyrics = {
                             pageScope.launch {
                                 pagerState.animateScrollToPage(NowPlayingPage.Lyrics.ordinal)
@@ -320,6 +333,9 @@ fun NowPlayingScreen(
                         },
                         onOpenArtist = onOpenArtist,
                         onOpenAlbum = onOpenAlbum,
+                        lyricsOffsetMs = readyLyrics?.metadata?.get("user_offset_ms")?.toLongOrNull() ?: 0L,
+                        onAdjustLyricsOffset = onAdjustLyricsOffset,
+                        onResetLyricsOffset = onResetLyricsOffset,
                         modifier = Modifier.fillMaxSize(),
                     )
                     NowPlayingPage.Lyrics -> NowPlayingLyricsPage(
@@ -442,9 +458,17 @@ private fun NowPlayingCoverPage(
     onCycleRepeatMode: () -> Unit,
     onToggleShuffle: () -> Unit,
     onSetPlaybackSpeed: (Float, Boolean) -> Unit,
+    onSetSleepTimer: (Int) -> Unit,
+    onCancelSleepTimer: () -> Unit,
+    onSetReplayGain: (Boolean, Float) -> Unit,
+    onAdjustReplayGainPreamp: (Float) -> Unit,
+    onSetSkipSilenceEnabled: (Boolean) -> Unit,
     onOpenLyrics: () -> Unit,
     onOpenArtist: () -> Unit,
     onOpenAlbum: () -> Unit,
+    lyricsOffsetMs: Long,
+    onAdjustLyricsOffset: (Long) -> Unit,
+    onResetLyricsOffset: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val track = status.track
@@ -478,6 +502,14 @@ private fun NowPlayingCoverPage(
                 onCycleRepeatMode = onCycleRepeatMode,
                 onToggleShuffle = onToggleShuffle,
                 onSetPlaybackSpeed = onSetPlaybackSpeed,
+                onSetSleepTimer = onSetSleepTimer,
+                onCancelSleepTimer = onCancelSleepTimer,
+                onSetReplayGain = onSetReplayGain,
+                onAdjustReplayGainPreamp = onAdjustReplayGainPreamp,
+                onSetSkipSilenceEnabled = onSetSkipSilenceEnabled,
+                lyricsOffsetMs = lyricsOffsetMs,
+                onAdjustLyricsOffset = onAdjustLyricsOffset,
+                onResetLyricsOffset = onResetLyricsOffset,
                 onOpenQueue = onOpenQueue,
                 modifier = Modifier.padding(top = 12.dp),
             )
@@ -2077,6 +2109,14 @@ private fun PlaybackSettingsPanel(
     onCycleRepeatMode: () -> Unit,
     onToggleShuffle: () -> Unit,
     onSetPlaybackSpeed: (Float, Boolean) -> Unit,
+    onSetSleepTimer: (Int) -> Unit,
+    onCancelSleepTimer: () -> Unit,
+    onSetReplayGain: (Boolean, Float) -> Unit,
+    onAdjustReplayGainPreamp: (Float) -> Unit,
+    onSetSkipSilenceEnabled: (Boolean) -> Unit,
+    lyricsOffsetMs: Long,
+    onAdjustLyricsOffset: (Long) -> Unit,
+    onResetLyricsOffset: () -> Unit,
     onOpenQueue: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -2087,6 +2127,8 @@ private fun PlaybackSettingsPanel(
             .clip(RoundedCornerShape(8.dp))
             .background(Color.White.copy(alpha = 0.12f))
             .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)), RoundedCornerShape(8.dp))
+            .heightIn(max = 360.dp)
+            .verticalScroll(rememberScrollState())
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -2117,6 +2159,32 @@ private fun PlaybackSettingsPanel(
                 fontWeight = FontWeight.Bold,
             )
         }
+        PlaybackSettingsLabel(
+            text = if (status.sleepTimerRemainingMs > 0L) {
+                "睡眠定时 · ${formatSleepTimerRemaining(status.sleepTimerRemainingMs)}"
+            } else {
+                "睡眠定时"
+            },
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            PlaybackSpeedChip(
+                text = "关闭",
+                selected = status.sleepTimerRemainingMs <= 0L,
+                onClick = onCancelSleepTimer,
+            )
+            SleepTimerOptions.forEach { minutes ->
+                PlaybackSpeedChip(
+                    text = "${minutes}m",
+                    selected = false,
+                    onClick = { onSetSleepTimer(minutes) },
+                )
+            }
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -2143,6 +2211,7 @@ private fun PlaybackSettingsPanel(
                 modifier = Modifier.weight(1f),
             )
         }
+        PlaybackSettingsLabel(text = "变速")
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -2176,7 +2245,88 @@ private fun PlaybackSettingsPanel(
                 )
             }
         }
+        PlaybackSettingsLabel(text = "ReplayGain")
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            PlaybackSettingButton(
+                icon = Icons.Rounded.GraphicEq,
+                title = if (status.replayGainEnabled) "已启用" else "未启用",
+                selected = status.replayGainEnabled,
+                onClick = { onSetReplayGain(!status.replayGainEnabled, status.replayGainPreampDb) },
+                modifier = Modifier.weight(1f),
+            )
+            PlaybackSettingButton(
+                icon = Icons.Rounded.KeyboardDoubleArrowLeft,
+                title = "-3dB",
+                selected = false,
+                onClick = { onAdjustReplayGainPreamp(-3f) },
+                modifier = Modifier.weight(1f),
+            )
+            PlaybackSettingButton(
+                icon = Icons.Rounded.KeyboardDoubleArrowRight,
+                title = "+3dB",
+                selected = false,
+                onClick = { onAdjustReplayGainPreamp(3f) },
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Text(
+            text = "标签 ${status.replayGainTrackGainDb?.let(::formatReplayGainDb) ?: "未读取"} · 预增益 ${formatReplayGainDb(status.replayGainPreampDb)}",
+            color = Color.White.copy(alpha = 0.62f),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            PlaybackSettingButton(
+                icon = Icons.Rounded.MoreHoriz,
+                title = if (status.skipSilenceEnabled) "跳过静音开" else "跳过静音关",
+                selected = status.skipSilenceEnabled,
+                onClick = { onSetSkipSilenceEnabled(!status.skipSilenceEnabled) },
+                modifier = Modifier.weight(1f),
+            )
+            PlaybackSettingButton(
+                icon = Icons.Rounded.RestartAlt,
+                title = "歌词 ${formatLyricsOffset(lyricsOffsetMs)}",
+                selected = lyricsOffsetMs != 0L,
+                onClick = onResetLyricsOffset,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            PlaybackSettingButton(
+                icon = Icons.Rounded.KeyboardDoubleArrowLeft,
+                title = "-0.5s",
+                selected = false,
+                onClick = { onAdjustLyricsOffset(-500L) },
+                modifier = Modifier.weight(1f),
+            )
+            PlaybackSettingButton(
+                icon = Icons.Rounded.KeyboardDoubleArrowRight,
+                title = "+0.5s",
+                selected = false,
+                onClick = { onAdjustLyricsOffset(500L) },
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
+}
+
+@Composable
+private fun PlaybackSettingsLabel(text: String) {
+    Text(
+        text,
+        color = Color.White.copy(alpha = 0.70f),
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.ExtraBold,
+    )
 }
 
 @Composable
@@ -2275,7 +2425,8 @@ private fun playbackSettingsSummary(status: EchoPlaybackStatus): String {
     }.joinToString(" · ").ifBlank { "等待音频信息" }
     val output = if (diagnostics.usbDeviceName != null) "USB 输出" else "系统输出"
     val mode = if (isNightcorePlayback(status)) "Nightcore 变调" else "普通变速"
-    return "$format · $output · $mode"
+    val silence = if (status.skipSilenceEnabled) "跳过静音" else null
+    return listOfNotNull(format, output, mode, silence).joinToString(" · ")
 }
 
 private fun isNightcorePlayback(status: EchoPlaybackStatus): Boolean =
@@ -2287,6 +2438,27 @@ private fun playbackSpeedLabel(speed: Float): String {
         "${rounded.toInt()}x"
     } else {
         "${"%.2f".format(rounded).trimEnd('0').trimEnd('.')}x"
+    }
+}
+
+private fun formatSleepTimerRemaining(remainingMs: Long): String {
+    val totalMinutes = ((remainingMs + 59_999L) / 60_000L).coerceAtLeast(1L)
+    val hours = totalMinutes / 60L
+    val minutes = totalMinutes % 60L
+    return if (hours > 0L) {
+        "${hours}h ${minutes}m"
+    } else {
+        "${minutes}m"
+    }
+}
+
+private fun formatReplayGainDb(value: Float): String {
+    val rounded = (value * 10f).roundToInt() / 10f
+    val sign = if (rounded > 0f) "+" else ""
+    return if (abs(rounded - rounded.toInt()) < 0.01f) {
+        "$sign${rounded.toInt()}dB"
+    } else {
+        "$sign${"%.1f".format(rounded)}dB"
     }
 }
 
