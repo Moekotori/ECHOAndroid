@@ -25,6 +25,7 @@ import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,10 +42,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoAccent
+import app.echo.android.design.EchoArtworkImage
+import app.echo.android.design.EchoArtworkSize
 import app.echo.android.design.EchoAccentText
-import app.echo.android.design.EchoColors
 import app.echo.android.design.EchoDarkGlassBorder
 import app.echo.android.design.EchoGlassBorder
 import app.echo.android.design.EchoGlassInk
@@ -248,9 +249,11 @@ internal fun PcHandoffPanel(connected: Boolean) {
 internal fun RemoteNowPlaying(
     title: String,
     artist: String,
+    artworkUrl: String?,
     isPlaying: Boolean,
     controlsEnabled: Boolean,
     onPlayPause: () -> Unit,
+    onPrevious: () -> Unit,
     onNext: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -268,10 +271,19 @@ internal fun RemoteNowPlaying(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            ArtworkTile(null, Modifier.size(56.dp), accent = EchoColors.Coral, cornerRadius = 14.dp, elevation = 6.dp)
+            EchoArtworkImage(
+                artworkUri = artworkUrl,
+                contentDescription = title,
+                modifier = Modifier.size(56.dp),
+                shape = RoundedCornerShape(14.dp),
+                sizeClass = EchoArtworkSize.Thumbnail,
+            )
             Column(Modifier.weight(1f)) {
                 Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
                 Text(artist, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            IconButton(onClick = onPrevious, enabled = controlsEnabled) {
+                Icon(Icons.Rounded.SkipPrevious, contentDescription = "PC 上一首")
             }
             IconButton(onClick = onPlayPause, enabled = controlsEnabled) {
                 Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, contentDescription = "播放或暂停 PC")

@@ -56,10 +56,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoAccent
 import app.echo.android.design.EchoAccentText
-import app.echo.android.design.EchoColors
 import app.echo.android.design.EchoDarkGlassBorder
 import app.echo.android.design.EchoGlassBorder
 import app.echo.android.design.EchoGlassCyan
@@ -91,6 +89,7 @@ fun ConnectScreen(
     pcTitle: String,
     trackTitle: String,
     trackArtist: String,
+    trackArtworkUrl: String?,
     isPlaying: Boolean,
     remoteError: String?,
     scanMessage: String?,
@@ -111,6 +110,7 @@ fun ConnectScreen(
     onConnectPc: (String, String) -> Unit,
     onScanPairingCode: () -> Unit,
     onPlayPause: () -> Unit,
+    onPrevious: () -> Unit,
     onNext: () -> Unit,
     onDisconnect: () -> Unit,
     onForgetPc: () -> Unit,
@@ -323,9 +323,11 @@ fun ConnectScreen(
                     RemoteNowPlaying(
                         title = trackTitle,
                         artist = trackArtist,
+                        artworkUrl = trackArtworkUrl,
                         isPlaying = isPlaying,
                         controlsEnabled = true,
                         onPlayPause = onPlayPause,
+                        onPrevious = onPrevious,
                         onNext = onNext,
                     )
                 } else {

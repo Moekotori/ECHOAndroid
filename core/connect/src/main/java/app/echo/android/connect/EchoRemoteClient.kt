@@ -7,6 +7,7 @@ import app.echo.android.model.connect.EchoRemoteEndpoint
 import app.echo.android.model.connect.EchoRemoteLibraryState
 import app.echo.android.model.connect.EchoRemoteLyrics
 import app.echo.android.model.connect.EchoRemoteMessage
+import app.echo.android.model.connect.EchoRemotePlaylist
 import app.echo.android.model.connect.EchoRemoteStatus
 import app.echo.android.model.connect.EchoRemoteTrack
 import app.echo.android.model.library.EchoTrack
@@ -162,20 +163,31 @@ class EchoRemoteClient private constructor(
                 isLoading = true,
                 query = query,
                 tracks = if (sameQuery) current.tracks else emptyList(),
+                playlists = if (sameQuery) current.playlists else emptyList(),
+                playlistTracks = if (sameQuery) current.playlistTracks else emptyMap(),
+                loadingPlaylistId = null,
                 totalCount = if (sameQuery) current.totalCount else 0,
                 error = null,
             )
         }
         libraryRefreshJob?.cancel()
         libraryRefreshJob = scope.launch {
-            runCatching { transport.fetchTracks(target, query, PcLibraryPageSize) }
-                .onSuccess { page ->
+            runCatching {
+                val trackPage = transport.fetchTracks(target, query, PcLibraryPageSize)
+                val playlistPage = transport.fetchPlaylists(target, query, PcLibraryPageSize)
+                trackPage to playlistPage
+            }
+                .onSuccess { (trackPage, playlistPage) ->
                     if (endpoint?.id == target.id) {
                         _library.value = EchoRemoteLibraryState(
                             isLoading = false,
                             query = query,
-                            tracks = page.tracks,
-                            totalCount = page.totalCount,
+                            tracks = trackPage.tracks,
+                            playlists = playlistPage.playlists,
+                            playlistTracks = playlistPage.playlists
+                                .filter { it.tracks.isNotEmpty() }
+                                .associate { it.id to it.tracks },
+                            totalCount = trackPage.totalCount,
                             error = null,
                         )
                     }
@@ -184,6 +196,49 @@ class EchoRemoteClient private constructor(
                     if (endpoint?.id == target.id) {
                         _library.update {
                             it.copy(isLoading = false, query = query, error = error.userMessage())
+                        }
+                    }
+                }
+        }
+    }
+
+    fun refreshPlaylistTracks(playlist: EchoRemotePlaylist) {
+        val target = endpoint ?: run {
+            _library.update { it.copy(error = "还没有连接 PC ECHO") }
+            return
+        }
+        if (playlist.id.isBlank()) {
+            _library.update { it.copy(error = "PC 歌单缺少 playlistId，不能打开") }
+            return
+        }
+        if (playlist.tracks.isNotEmpty() || _library.value.playlistTracks.containsKey(playlist.id)) {
+            _library.update { current ->
+                current.copy(
+                    playlistTracks = current.playlistTracks + (playlist.id to (current.playlistTracks[playlist.id] ?: playlist.tracks)),
+                    loadingPlaylistId = null,
+                    error = null,
+                )
+            }
+            return
+        }
+        _library.update { it.copy(loadingPlaylistId = playlist.id, error = null) }
+        scope.launch {
+            runCatching { transport.fetchPlaylistTracks(target, playlist.id, PcPlaylistTrackPageSize) }
+                .onSuccess { page ->
+                    if (endpoint?.id == target.id) {
+                        _library.update { current ->
+                            current.copy(
+                                playlistTracks = current.playlistTracks + (playlist.id to page.tracks),
+                                loadingPlaylistId = null,
+                                error = null,
+                            )
+                        }
+                    }
+                }
+                .onFailure { error ->
+                    if (endpoint?.id == target.id) {
+                        _library.update {
+                            it.copy(loadingPlaylistId = null, error = error.userMessage())
                         }
                     }
                 }
@@ -316,5 +371,6 @@ class EchoRemoteClient private constructor(
     private companion object {
         const val StatusPollIntervalMs = 5_000L
         const val PcLibraryPageSize = 500
+        const val PcPlaylistTrackPageSize = 500
     }
 }

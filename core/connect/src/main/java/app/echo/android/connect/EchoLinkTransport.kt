@@ -6,6 +6,7 @@ import app.echo.android.model.connect.EchoRemoteEndpoint
 import app.echo.android.model.connect.EchoRemoteLyrics
 import app.echo.android.model.connect.EchoRemotePlaybackSnapshot
 import app.echo.android.model.connect.EchoRemotePlaybackState
+import app.echo.android.model.connect.EchoRemotePlaylist
 import app.echo.android.model.connect.EchoRemoteTrack
 import java.io.IOException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -29,6 +30,11 @@ internal data class EchoLinkTrackPage(
     val totalCount: Int,
 )
 
+internal data class EchoLinkPlaylistPage(
+    val playlists: List<EchoRemotePlaylist>,
+    val totalCount: Int,
+)
+
 internal data class EchoLinkStreamResponse(
     val streamUrl: String,
     val track: EchoRemoteTrack?,
@@ -38,6 +44,8 @@ internal interface EchoLinkTransport {
     suspend fun fetchStatus(endpoint: EchoRemoteEndpoint): EchoLinkStatusResponse
     suspend fun sendCommand(endpoint: EchoRemoteEndpoint, command: EchoRemoteCommand): EchoLinkStatusResponse?
     suspend fun fetchTracks(endpoint: EchoRemoteEndpoint, query: String, pageSize: Int): EchoLinkTrackPage
+    suspend fun fetchPlaylists(endpoint: EchoRemoteEndpoint, query: String, pageSize: Int): EchoLinkPlaylistPage
+    suspend fun fetchPlaylistTracks(endpoint: EchoRemoteEndpoint, playlistId: String, pageSize: Int): EchoLinkTrackPage
     suspend fun resolveStream(endpoint: EchoRemoteEndpoint, trackId: String): EchoLinkStreamResponse
     suspend fun fetchLyrics(endpoint: EchoRemoteEndpoint, trackId: String): EchoRemoteLyrics?
 }
@@ -104,6 +112,74 @@ internal class OkHttpEchoLinkTransport(
         }
         val totalCount = json.optInt("totalCount", json.optInt("total", tracks.size))
         return EchoLinkTrackPage(tracks = tracks, totalCount = totalCount)
+    }
+
+    override suspend fun fetchPlaylists(
+        endpoint: EchoRemoteEndpoint,
+        query: String,
+        pageSize: Int,
+    ): EchoLinkPlaylistPage =
+        runCatching {
+            val json = executeJson(
+                Request.Builder()
+                    .url(
+                        endpoint.url("library", "playlists") {
+                            addQueryParameter("page", "1")
+                            addQueryParameter("pageSize", pageSize.coerceIn(1, 500).toString())
+                            query.trim().takeIf { it.isNotEmpty() }?.let { addQueryParameter("q", it) }
+                        },
+                    )
+                    .authorized(endpoint)
+                    .get()
+                    .build(),
+            )
+            val items = json.optJSONArray("playlists") ?: json.optJSONArray("items") ?: JSONArray()
+            val playlists = buildList {
+                for (index in 0 until items.length()) {
+                    items.optJSONObject(index)?.toRemotePlaylist(endpoint)?.let(::add)
+                }
+            }
+            EchoLinkPlaylistPage(
+                playlists = playlists,
+                totalCount = json.optInt("totalCount", json.optInt("total", playlists.size)),
+            )
+        }.getOrElse { EchoLinkPlaylistPage(playlists = emptyList(), totalCount = 0) }
+
+    override suspend fun fetchPlaylistTracks(
+        endpoint: EchoRemoteEndpoint,
+        playlistId: String,
+        pageSize: Int,
+    ): EchoLinkTrackPage {
+        val encodedPlaylistId = playlistId.trim()
+        val direct = runCatching {
+            executeJson(
+                Request.Builder()
+                    .url(
+                        endpoint.url("library", "playlists", encodedPlaylistId, "tracks") {
+                            addQueryParameter("page", "1")
+                            addQueryParameter("pageSize", pageSize.coerceIn(1, 500).toString())
+                        },
+                    )
+                    .authorized(endpoint)
+                    .get()
+                    .build(),
+            ).toTrackPage(endpoint)
+        }
+        return direct.getOrElse {
+            executeJson(
+                Request.Builder()
+                    .url(
+                        endpoint.url("library", "tracks") {
+                            addQueryParameter("page", "1")
+                            addQueryParameter("pageSize", pageSize.coerceIn(1, 500).toString())
+                            addQueryParameter("playlistId", encodedPlaylistId)
+                        },
+                    )
+                    .authorized(endpoint)
+                    .get()
+                    .build(),
+            ).toTrackPage(endpoint)
+        }
     }
 
     override suspend fun resolveStream(
@@ -258,6 +334,39 @@ private fun JSONObject.toRemoteTrack(endpoint: EchoRemoteEndpoint): EchoRemoteTr
         sourceLabel = optText("sourceLabel") ?: optText("source"),
         canPlayOnPhone = optBoolean("canPlayOnPhone", true),
     )
+}
+
+private fun JSONObject.toRemotePlaylist(endpoint: EchoRemoteEndpoint): EchoRemotePlaylist? {
+    val id = optText("id") ?: optText("playlistId") ?: optText("key") ?: return null
+    val name = optText("name") ?: optText("title") ?: "PC ECHO Playlist"
+    val tracksArray = optJSONArray("tracks") ?: optJSONArray("items")
+    val tracks = buildList {
+        if (tracksArray != null) {
+            for (index in 0 until tracksArray.length()) {
+                tracksArray.optJSONObject(index)?.toRemoteTrack(endpoint)?.let(::add)
+            }
+        }
+    }
+    return EchoRemotePlaylist(
+        id = id,
+        name = name,
+        artworkUrl = optArtworkUrl()?.toAbsoluteEchoLinkUrl(endpoint)
+            ?: tracks.firstNotNullOfOrNull { it.artworkUrl },
+        trackCount = optInt("trackCount", optInt("songCount", tracks.size)).coerceAtLeast(tracks.size),
+        sourceLabel = optText("sourceLabel") ?: optText("source") ?: optText("provider"),
+        tracks = tracks,
+    )
+}
+
+private fun JSONObject.toTrackPage(endpoint: EchoRemoteEndpoint): EchoLinkTrackPage {
+    val items = optJSONArray("tracks") ?: optJSONArray("items") ?: JSONArray()
+    val tracks = buildList {
+        for (index in 0 until items.length()) {
+            items.optJSONObject(index)?.toRemoteTrack(endpoint)?.let(::add)
+        }
+    }
+    val totalCount = optInt("totalCount", optInt("total", tracks.size))
+    return EchoLinkTrackPage(tracks = tracks, totalCount = totalCount)
 }
 
 private fun JSONObject.optArtworkUrl(): String? =

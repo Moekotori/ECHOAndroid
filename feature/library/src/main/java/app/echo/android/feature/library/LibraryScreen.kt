@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
@@ -96,6 +97,7 @@ import app.echo.android.design.RoonInk
 import app.echo.android.design.RoonMuted
 import app.echo.android.design.formatDuration
 import app.echo.android.model.connect.EchoRemoteLibraryState
+import app.echo.android.model.connect.EchoRemotePlaylist
 import app.echo.android.model.connect.EchoRemoteTrack
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
@@ -132,6 +134,7 @@ private enum class LinkedLibraryMode(
     Songs("歌曲", Icons.AutoMirrored.Rounded.QueueMusic),
     Albums("专辑", Icons.Rounded.LibraryMusic),
     Artists("艺术家", Icons.Rounded.Person),
+    Playlists("歌单", Icons.Rounded.LibraryMusic),
 }
 
 private enum class LibrarySourceMode(
@@ -209,6 +212,7 @@ fun LibraryScreen(
     onScanAll: () -> Unit,
     onCancelScan: () -> Unit,
     onRefreshLinkedLibrary: (String) -> Unit,
+    onOpenLinkedPlaylist: (EchoRemotePlaylist) -> Unit,
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
     onPlayTrack: (EchoTrack) -> Unit,
     onUpdateTrackMetadata: (EchoTrackMetadataUpdate) -> Unit,
@@ -242,6 +246,10 @@ fun LibraryScreen(
     var linkedMode by remember { mutableStateOf(LinkedLibraryMode.Songs) }
     var selectedLinkedAlbumKey by remember { mutableStateOf<String?>(null) }
     var selectedLinkedArtistKey by remember { mutableStateOf<String?>(null) }
+    var selectedLinkedPlaylistId by remember { mutableStateOf<String?>(null) }
+    val songListState = rememberLazyListState()
+    val showInitialTrackLoading = tracks.itemCount == 0 && tracks.loadState.refresh is LoadState.Loading
+    val showInitialTrackError = tracks.itemCount == 0 && tracks.loadState.refresh is LoadState.Error
 
     LaunchedEffect(selectedLibrarySourceId, linkedLibraryActive) {
         val persistedSource = librarySourceModeFromId(selectedLibrarySourceId, linkedLibraryActive)
@@ -249,6 +257,7 @@ fun LibraryScreen(
             selectedSource = persistedSource
             selectedLinkedAlbumKey = null
             selectedLinkedArtistKey = null
+            selectedLinkedPlaylistId = null
         }
     }
 
@@ -258,6 +267,7 @@ fun LibraryScreen(
         onLibrarySourceChange(source.id)
         selectedLinkedAlbumKey = null
         selectedLinkedArtistKey = null
+        selectedLinkedPlaylistId = null
         when (source) {
             LibrarySourceMode.Local -> {
                 if (selectedMode == LibraryViewMode.Cloud) {
@@ -278,6 +288,7 @@ fun LibraryScreen(
             selectedSource = selectedSource,
             selectedSortMode = trackSortMode,
             showTrackAudioInfoTags = showTrackAudioInfoTags,
+            selectedPlaylistId = selectedLinkedPlaylistId,
             onQueryChange = onLibraryQueryChange,
             onSelectSource = ::selectSource,
             onSortModeChange = onTrackSortModeChange,
@@ -285,12 +296,18 @@ fun LibraryScreen(
                 linkedMode = mode
                 selectedLinkedAlbumKey = null
                 selectedLinkedArtistKey = null
+                selectedLinkedPlaylistId = null
             },
             onOpenAlbum = { album -> selectedLinkedAlbumKey = album.albumKey },
             selectedArtistKey = selectedLinkedArtistKey,
             onOpenArtist = { artist -> selectedLinkedArtistKey = artist.artistKey },
+            onOpenPlaylist = { playlist ->
+                selectedLinkedPlaylistId = playlist.id
+                onOpenLinkedPlaylist(playlist)
+            },
             onCloseAlbum = { selectedLinkedAlbumKey = null },
             onCloseArtist = { selectedLinkedArtistKey = null },
+            onClosePlaylist = { selectedLinkedPlaylistId = null },
             onRefresh = onRefreshLinkedLibrary,
             onPlayLinkedTrack = onPlayLinkedTrack,
             modifier = Modifier.fillMaxSize(),
@@ -519,7 +536,7 @@ fun LibraryScreen(
                         ) {
                             when {
                                 scanState.isScanning -> LibraryScanStatus(scanState = scanState, onCancelScan = onCancelScan)
-                                tracks.loadState.refresh is LoadState.Loading -> {
+                                showInitialTrackLoading -> {
                                     LibraryBrowserHeader(
                                         scanState = scanState,
                                         selectedSource = selectedSource,
@@ -538,7 +555,7 @@ fun LibraryScreen(
                                     )
                                     EmptyState("正在加载曲库...")
                                 }
-                                tracks.loadState.refresh is LoadState.Error -> {
+                                showInitialTrackError -> {
                                     LibraryBrowserHeader(
                                         scanState = scanState,
                                         selectedSource = selectedSource,
@@ -590,6 +607,7 @@ fun LibraryScreen(
                                                         onPickArtwork = onPickTrackArtwork,
                                                         onMatchNeteaseMetadata = onApplyNeteaseMetadata,
                                                         showAudioInfoTags = showTrackAudioInfoTags,
+                                                        listState = songListState,
                                                         modifier = Modifier.fillMaxSize(),
                                                     )
                                                 }
@@ -862,19 +880,23 @@ private fun LinkedEchoLibraryPage(
     selectedSource: LibrarySourceMode,
     selectedSortMode: LibraryTrackSortMode,
     showTrackAudioInfoTags: Boolean,
+    selectedPlaylistId: String?,
     onQueryChange: (String) -> Unit,
     onSelectSource: (LibrarySourceMode) -> Unit,
     onSortModeChange: (LibraryTrackSortMode) -> Unit,
     onSelectMode: (LinkedLibraryMode) -> Unit,
     onOpenAlbum: (AlbumSummary) -> Unit,
     onOpenArtist: (ArtistSummary) -> Unit,
+    onOpenPlaylist: (EchoRemotePlaylist) -> Unit,
     onCloseAlbum: () -> Unit,
     onCloseArtist: () -> Unit,
+    onClosePlaylist: () -> Unit,
     onRefresh: (String) -> Unit,
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val tracks = state.tracks
+    val playlists = state.playlists
     val normalizedQuery = remember(query) { query.trim() }
     val remoteQuery = remember(state.query) { state.query.trim() }
     val filteredTracks = remember(tracks, normalizedQuery, remoteQuery) {
@@ -889,11 +911,21 @@ private fun LinkedEchoLibraryPage(
     }
     val albums = remember(filteredTracks) { filteredTracks.toLinkedAlbums() }
     val artists = remember(filteredTracks) { filteredTracks.toLinkedArtists() }
+    val filteredPlaylists = remember(playlists, normalizedQuery, remoteQuery) {
+        if (normalizedQuery.isNotBlank() && normalizedQuery == remoteQuery) {
+            playlists
+        } else {
+            playlists.filterLinkedPlaylistQuery(normalizedQuery)
+        }
+    }
     val selectedAlbum = remember(albums, selectedAlbumKey) {
         albums.firstOrNull { it.albumKey == selectedAlbumKey }
     }
     val selectedArtist = remember(artists, selectedArtistKey) {
         artists.firstOrNull { it.artistKey == selectedArtistKey }
+    }
+    val selectedPlaylist = remember(playlists, selectedPlaylistId) {
+        playlists.firstOrNull { it.id == selectedPlaylistId }
     }
     val selectedAlbumTracks = remember(filteredTracks, selectedAlbumKey) {
         if (selectedAlbumKey == null) {
@@ -916,6 +948,27 @@ private fun LinkedEchoLibraryPage(
             onRefresh(normalizedQuery)
         }
     }
+    var lastEmptyAutoRefreshQuery by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(
+        normalizedQuery,
+        remoteQuery,
+        state.isLoading,
+        state.error,
+        state.tracks.size,
+        state.totalCount,
+    ) {
+        val shouldRefreshEmptyLibrary =
+            normalizedQuery == remoteQuery &&
+                !state.isLoading &&
+                state.error.isNullOrBlank() &&
+                state.tracks.isEmpty() &&
+                state.totalCount == 0 &&
+                lastEmptyAutoRefreshQuery != normalizedQuery
+        if (shouldRefreshEmptyLibrary) {
+            lastEmptyAutoRefreshQuery = normalizedQuery
+            onRefresh(normalizedQuery)
+        }
+    }
 
     if (selectedAlbum != null) {
         LinkedAlbumTracksPage(
@@ -932,6 +985,18 @@ private fun LinkedEchoLibraryPage(
             artist = selectedArtist,
             tracks = selectedArtistTracks,
             onBack = onCloseArtist,
+            onPlayLinkedTrack = onPlayLinkedTrack,
+            modifier = modifier,
+        )
+        return
+    }
+    if (selectedPlaylist != null) {
+        LinkedPlaylistTracksPage(
+            playlist = selectedPlaylist,
+            tracks = state.playlistTracks[selectedPlaylist.id].orEmpty(),
+            isLoading = state.loadingPlaylistId == selectedPlaylist.id,
+            error = state.error,
+            onBack = onClosePlaylist,
             onPlayLinkedTrack = onPlayLinkedTrack,
             modifier = modifier,
         )
@@ -977,6 +1042,9 @@ private fun LinkedEchoLibraryPage(
             selectedMode == LinkedLibraryMode.Artists && artists.isEmpty() -> {
                 EmptyState(if (query.isBlank()) "PC ECHO 暂无可显示艺术家。" else "PC ECHO 没有匹配的艺术家。")
             }
+            selectedMode == LinkedLibraryMode.Playlists && filteredPlaylists.isEmpty() -> {
+                EmptyState(if (query.isBlank()) "PC ECHO 暂无可显示歌单。" else "PC ECHO 没有匹配的歌单。")
+            }
             selectedMode == LinkedLibraryMode.Songs -> LinkedTrackList(
                 tracks = sortedTracks,
                 onPlayLinkedTrack = onPlayLinkedTrack,
@@ -991,6 +1059,11 @@ private fun LinkedEchoLibraryPage(
             selectedMode == LinkedLibraryMode.Artists -> LinkedArtistWall(
                 artists = artists,
                 onOpenArtist = onOpenArtist,
+                modifier = Modifier.weight(1f),
+            )
+            selectedMode == LinkedLibraryMode.Playlists -> LinkedPlaylistList(
+                playlists = filteredPlaylists,
+                onOpenPlaylist = onOpenPlaylist,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -1167,6 +1240,157 @@ private fun LinkedTrackList(
 }
 
 @Composable
+private fun LinkedPlaylistList(
+    playlists: List<EchoRemotePlaylist>,
+    onOpenPlaylist: (EchoRemotePlaylist) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyColumn(
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(bottom = LibraryBottomControlsPadding),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        items(
+            items = playlists,
+            key = { playlist -> playlist.id },
+        ) { playlist ->
+            LinkedPlaylistRow(
+                playlist = playlist,
+                onOpen = { onOpenPlaylist(playlist) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun LinkedPlaylistRow(
+    playlist: EchoRemotePlaylist,
+    onOpen: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(EchoHomeMist.copy(alpha = 0.46f))
+            .clickable(onClick = onOpen)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ArtworkTile(
+            artworkUri = playlist.artworkUrl,
+            modifier = Modifier.size(58.dp),
+            accent = EchoAccent,
+            cornerRadius = 12.dp,
+            elevation = 3.dp,
+        )
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                playlist.name,
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                linkedPlaylistSubtitle(playlist),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Surface(
+            modifier = Modifier.size(38.dp),
+            color = EchoAccentDeep.copy(alpha = 0.10f),
+            border = BorderStroke(1.dp, EchoGlassBorder),
+            shape = RoundedCornerShape(12.dp),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    Icons.Rounded.PlayArrow,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LinkedPlaylistTracksPage(
+    playlist: EchoRemotePlaylist,
+    tracks: List<EchoRemoteTrack>,
+    isLoading: Boolean,
+    error: String?,
+    onBack: () -> Unit,
+    onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LinkedLibraryChrome(
+        actions = {
+            IconButton(onClick = onBack) {
+                Icon(
+                    Icons.Rounded.Close,
+                    contentDescription = "返回 PC ECHO 歌单",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        modifier = modifier,
+    ) {
+        EchoPanel(Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ArtworkTile(
+                    artworkUri = playlist.artworkUrl,
+                    modifier = Modifier.size(62.dp),
+                    accent = EchoAccent,
+                    cornerRadius = 14.dp,
+                    elevation = 4.dp,
+                )
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        playlist.name,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        linkedPlaylistSubtitle(playlist.copy(trackCount = playlist.trackCount.coerceAtLeast(tracks.size))),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        when {
+            isLoading -> EmptyState("正在读取 PC ECHO 歌单...")
+            tracks.isEmpty() && !error.isNullOrBlank() -> EmptyState(error)
+            tracks.isEmpty() -> EmptyState("这个 PC ECHO 歌单暂时没有可播放曲目。")
+            else -> LinkedTrackList(
+                tracks = tracks,
+                onPlayLinkedTrack = onPlayLinkedTrack,
+                showAudioInfoTags = false,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
 private fun LinkedAlbumWall(
     albums: List<AlbumSummary>,
     onOpenAlbum: (AlbumSummary) -> Unit,
@@ -1325,6 +1549,27 @@ private fun List<EchoRemoteTrack>.filterLinkedLibraryQuery(query: String): List<
         }.lowercase()
         terms.all(searchableText::contains)
     }
+}
+
+private fun List<EchoRemotePlaylist>.filterLinkedPlaylistQuery(query: String): List<EchoRemotePlaylist> {
+    val terms = query.trim()
+        .lowercase()
+        .split(Regex("\\s+"))
+        .filter(String::isNotBlank)
+    if (terms.isEmpty()) return this
+    return filter { playlist ->
+        val searchableText = buildString {
+            append(playlist.name)
+            append(' ')
+            append(playlist.sourceLabel.orEmpty())
+        }.lowercase()
+        terms.all(searchableText::contains)
+    }
+}
+
+private fun linkedPlaylistSubtitle(playlist: EchoRemotePlaylist): String {
+    val source = playlist.sourceLabel?.takeIf { it.isNotBlank() } ?: "PC ECHO"
+    return "${playlist.trackCount} 首 · $source"
 }
 
 @Composable

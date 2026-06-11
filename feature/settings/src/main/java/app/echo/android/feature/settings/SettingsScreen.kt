@@ -56,6 +56,7 @@ fun SettingsScreen(
     trackCount: Int,
     albumCount: Int,
     artistCount: Int,
+    appVersionLabel: String,
     dynamicArtworkEnabled: Boolean,
     compactModeEnabled: Boolean,
     performanceMode: String,
@@ -450,6 +451,12 @@ fun SettingsScreen(
                     title = "本地音乐",
                     detail = "查看歌曲、专辑、艺术家和扫描入口",
                     onClick = onOpenLibrary,
+                )
+            }
+            SettingsSectionCard(title = "关于") {
+                SettingsInfoRow(
+                    title = "版本号",
+                    detail = appVersionLabel,
                 )
             }
             Spacer(Modifier.height(156.dp))
@@ -912,6 +919,14 @@ private fun SettingsSwitchRow(
     SettingsRowShell(title = title, detail = detail) {
         EchoSettingsSwitch(checked = checked, onCheckedChange = onCheckedChange)
     }
+}
+
+@Composable
+private fun SettingsInfoRow(
+    title: String,
+    detail: String,
+) {
+    SettingsRowShell(title = title, detail = detail, trailing = {})
 }
 
 @Composable

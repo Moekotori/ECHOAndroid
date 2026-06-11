@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -992,6 +993,7 @@ internal fun LibraryDetailPage(
     modifier: Modifier = Modifier,
 ) {
     val colors = rememberLibraryGlassColors()
+    val trackListState = rememberLazyListState()
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -1043,6 +1045,7 @@ internal fun LibraryDetailPage(
                 onPickArtwork = onPickArtwork,
                 onMatchNeteaseMetadata = onMatchNeteaseMetadata,
                 showAudioInfoTags = showAudioInfoTags,
+                listState = trackListState,
                 modifier = Modifier.weight(1f),
             )
         }

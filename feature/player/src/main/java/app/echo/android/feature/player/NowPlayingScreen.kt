@@ -40,7 +40,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -261,6 +260,7 @@ fun NowPlayingScreen(
         readyLyrics?.lines?.any { !it.romanization.isNullOrBlank() } == true
     }
     var lyricsSettingsVisible by remember { mutableStateOf(false) }
+    var playbackSettingsVisible by remember { mutableStateOf(false) }
     val lyricAccent = lyricsColorForMode(lyricsColorMode)
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -318,14 +318,8 @@ fun NowPlayingScreen(
                         onPrevious = onPrevious,
                         onSeek = onSeek,
                         onOpenQueue = onOpenQueue,
-                        onCycleRepeatMode = onCycleRepeatMode,
-                        onToggleShuffle = onToggleShuffle,
-                        onSetPlaybackSpeed = onSetPlaybackSpeed,
-                        onSetSleepTimer = onSetSleepTimer,
-                        onCancelSleepTimer = onCancelSleepTimer,
-                        onSetReplayGain = onSetReplayGain,
-                        onAdjustReplayGainPreamp = onAdjustReplayGainPreamp,
-                        onSetSkipSilenceEnabled = onSetSkipSilenceEnabled,
+                        playbackSettingsExpanded = playbackSettingsVisible,
+                        onOpenPlaybackSettings = { playbackSettingsVisible = true },
                         onOpenLyrics = {
                             pageScope.launch {
                                 pagerState.animateScrollToPage(NowPlayingPage.Lyrics.ordinal)
@@ -333,9 +327,6 @@ fun NowPlayingScreen(
                         },
                         onOpenArtist = onOpenArtist,
                         onOpenAlbum = onOpenAlbum,
-                        lyricsOffsetMs = readyLyrics?.metadata?.get("user_offset_ms")?.toLongOrNull() ?: 0L,
-                        onAdjustLyricsOffset = onAdjustLyricsOffset,
-                        onResetLyricsOffset = onResetLyricsOffset,
                         modifier = Modifier.fillMaxSize(),
                     )
                     NowPlayingPage.Lyrics -> NowPlayingLyricsPage(
@@ -442,6 +433,24 @@ fun NowPlayingScreen(
             onOnlineLyricsEnabledChange = onOnlineLyricsEnabledChange,
             modifier = Modifier.fillMaxSize(),
         )
+        PlaybackSettingsDrawer(
+            visible = playbackSettingsVisible,
+            status = status,
+            onCycleRepeatMode = onCycleRepeatMode,
+            onToggleShuffle = onToggleShuffle,
+            onSetPlaybackSpeed = onSetPlaybackSpeed,
+            onSetSleepTimer = onSetSleepTimer,
+            onCancelSleepTimer = onCancelSleepTimer,
+            onSetReplayGain = onSetReplayGain,
+            onAdjustReplayGainPreamp = onAdjustReplayGainPreamp,
+            onSetSkipSilenceEnabled = onSetSkipSilenceEnabled,
+            lyricsOffsetMs = readyLyrics?.metadata?.get("user_offset_ms")?.toLongOrNull() ?: 0L,
+            onAdjustLyricsOffset = onAdjustLyricsOffset,
+            onResetLyricsOffset = onResetLyricsOffset,
+            onOpenQueue = onOpenQueue,
+            onDismiss = { playbackSettingsVisible = false },
+            modifier = Modifier.fillMaxSize(),
+        )
     }
 }
 
@@ -455,24 +464,14 @@ private fun NowPlayingCoverPage(
     onPrevious: () -> Unit,
     onSeek: (Long) -> Unit,
     onOpenQueue: () -> Unit,
-    onCycleRepeatMode: () -> Unit,
-    onToggleShuffle: () -> Unit,
-    onSetPlaybackSpeed: (Float, Boolean) -> Unit,
-    onSetSleepTimer: (Int) -> Unit,
-    onCancelSleepTimer: () -> Unit,
-    onSetReplayGain: (Boolean, Float) -> Unit,
-    onAdjustReplayGainPreamp: (Float) -> Unit,
-    onSetSkipSilenceEnabled: (Boolean) -> Unit,
+    playbackSettingsExpanded: Boolean,
+    onOpenPlaybackSettings: () -> Unit,
     onOpenLyrics: () -> Unit,
     onOpenArtist: () -> Unit,
     onOpenAlbum: () -> Unit,
-    lyricsOffsetMs: Long,
-    onAdjustLyricsOffset: (Long) -> Unit,
-    onResetLyricsOffset: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val track = status.track
-    var playbackSettingsExpanded by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier,
@@ -487,33 +486,8 @@ private fun NowPlayingCoverPage(
             onOpenArtist = onOpenArtist,
             onOpenAlbum = onOpenAlbum,
             playbackSettingsExpanded = playbackSettingsExpanded,
-            onOpenPlaybackSettings = { playbackSettingsExpanded = !playbackSettingsExpanded },
+            onOpenPlaybackSettings = onOpenPlaybackSettings,
         )
-
-        AnimatedVisibility(
-            visible = playbackSettingsExpanded,
-            enter = expandVertically(tween(durationMillis = 240, easing = LyricsSettingsMotionEasing)) +
-                fadeIn(tween(durationMillis = 180, easing = LyricsSettingsMotionEasing)),
-            exit = shrinkVertically(tween(durationMillis = 180, easing = LyricsSettingsMotionEasing)) +
-                fadeOut(tween(durationMillis = 140, easing = LyricsSettingsMotionEasing)),
-        ) {
-            PlaybackSettingsPanel(
-                status = status,
-                onCycleRepeatMode = onCycleRepeatMode,
-                onToggleShuffle = onToggleShuffle,
-                onSetPlaybackSpeed = onSetPlaybackSpeed,
-                onSetSleepTimer = onSetSleepTimer,
-                onCancelSleepTimer = onCancelSleepTimer,
-                onSetReplayGain = onSetReplayGain,
-                onAdjustReplayGainPreamp = onAdjustReplayGainPreamp,
-                onSetSkipSilenceEnabled = onSetSkipSilenceEnabled,
-                lyricsOffsetMs = lyricsOffsetMs,
-                onAdjustLyricsOffset = onAdjustLyricsOffset,
-                onResetLyricsOffset = onResetLyricsOffset,
-                onOpenQueue = onOpenQueue,
-                modifier = Modifier.padding(top = 12.dp),
-            )
-        }
 
         Spacer(Modifier.height(8.dp))
         NowPlayingFormatInfo(diagnostics = status.diagnostics)
@@ -2104,6 +2078,97 @@ private fun NowPlayingTrackInfo(
 }
 
 @Composable
+private fun PlaybackSettingsDrawer(
+    visible: Boolean,
+    status: EchoPlaybackStatus,
+    onCycleRepeatMode: () -> Unit,
+    onToggleShuffle: () -> Unit,
+    onSetPlaybackSpeed: (Float, Boolean) -> Unit,
+    onSetSleepTimer: (Int) -> Unit,
+    onCancelSleepTimer: () -> Unit,
+    onSetReplayGain: (Boolean, Float) -> Unit,
+    onAdjustReplayGainPreamp: (Float) -> Unit,
+    onSetSkipSilenceEnabled: (Boolean) -> Unit,
+    lyricsOffsetMs: Long,
+    onAdjustLyricsOffset: (Long) -> Unit,
+    onResetLyricsOffset: () -> Unit,
+    onOpenQueue: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val drawerState = remember { MutableTransitionState(false) }
+    drawerState.targetState = visible
+    AnimatedVisibility(
+        visibleState = drawerState,
+        enter = fadeIn(tween(durationMillis = 90, easing = LyricsSettingsMotionEasing)),
+        exit = fadeOut(tween(durationMillis = 180, easing = LyricsSettingsMotionEasing)),
+        modifier = modifier.fillMaxSize(),
+    ) {
+        Box(Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.18f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onDismiss,
+                    ),
+            )
+            AnimatedVisibility(
+                visibleState = drawerState,
+                enter = slideInVertically(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy,
+                        stiffness = Spring.StiffnessMediumLow,
+                    ),
+                ) { it } +
+                    expandVertically(
+                        expandFrom = Alignment.Bottom,
+                        animationSpec = tween(durationMillis = 360, easing = LyricsSettingsMotionEasing),
+                    ) +
+                    fadeIn(tween(durationMillis = 260, delayMillis = 35, easing = LyricsSettingsMotionEasing)) +
+                    scaleIn(
+                        initialScale = 0.965f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioLowBouncy,
+                            stiffness = Spring.StiffnessMediumLow,
+                        ),
+                    ),
+                exit = slideOutVertically(tween(durationMillis = 260, easing = LyricsSettingsMotionEasing)) { it } +
+                    shrinkVertically(
+                        shrinkTowards = Alignment.Bottom,
+                        animationSpec = tween(durationMillis = 260, easing = LyricsSettingsMotionEasing),
+                    ) +
+                    fadeOut(tween(durationMillis = 160, easing = LyricsSettingsMotionEasing)) +
+                    scaleOut(
+                        targetScale = 0.98f,
+                        animationSpec = tween(durationMillis = 260, easing = LyricsSettingsMotionEasing),
+                    ),
+                modifier = Modifier.align(Alignment.BottomCenter),
+            ) {
+                PlaybackSettingsPanel(
+                    status = status,
+                    onCycleRepeatMode = onCycleRepeatMode,
+                    onToggleShuffle = onToggleShuffle,
+                    onSetPlaybackSpeed = onSetPlaybackSpeed,
+                    onSetSleepTimer = onSetSleepTimer,
+                    onCancelSleepTimer = onCancelSleepTimer,
+                    onSetReplayGain = onSetReplayGain,
+                    onAdjustReplayGainPreamp = onAdjustReplayGainPreamp,
+                    onSetSkipSilenceEnabled = onSetSkipSilenceEnabled,
+                    lyricsOffsetMs = lyricsOffsetMs,
+                    onAdjustLyricsOffset = onAdjustLyricsOffset,
+                    onResetLyricsOffset = onResetLyricsOffset,
+                    onOpenQueue = onOpenQueue,
+                    onDismiss = onDismiss,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun PlaybackSettingsPanel(
     status: EchoPlaybackStatus,
     onCycleRepeatMode: () -> Unit,
@@ -2118,45 +2183,97 @@ private fun PlaybackSettingsPanel(
     onAdjustLyricsOffset: (Long) -> Unit,
     onResetLyricsOffset: () -> Unit,
     onOpenQueue: () -> Unit,
-    modifier: Modifier = Modifier,
+    onDismiss: () -> Unit,
 ) {
     val nightcore = isNightcorePlayback(status)
+    val dark = LocalEchoDarkTheme.current
+    val panelShape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
+    val titleColor = if (dark) Color.White else Color(0xFF101722)
+    val mutedColor = if (dark) Color.White.copy(alpha = 0.76f) else Color(0xFF4F5C70)
+    val accentColor = Color(0xFF9ED8FF)
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color.White.copy(alpha = 0.12f))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)), RoundedCornerShape(8.dp))
-            .heightIn(max = 360.dp)
+            .fillMaxHeight(0.62f)
+            .navigationBarsPadding()
+            .clip(panelShape)
+            .background(
+                if (dark) {
+                    Brush.verticalGradient(
+                        listOf(
+                            Color(0xFF292A30).copy(alpha = 0.98f),
+                            Color(0xFF202127).copy(alpha = 0.98f),
+                            Color(0xFF191A20).copy(alpha = 0.98f),
+                        ),
+                    )
+                } else {
+                    Brush.verticalGradient(
+                        listOf(
+                            Color(0xFFF7F8FC).copy(alpha = 0.98f),
+                            Color(0xFFEDEFF5).copy(alpha = 0.98f),
+                        ),
+                    )
+                },
+            )
+            .border(
+                BorderStroke(1.dp, if (dark) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.72f)),
+                panelShape,
+            )
             .verticalScroll(rememberScrollState())
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .animateContentSize(tween(durationMillis = 300, easing = LyricsSettingsMotionEasing))
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .size(width = 48.dp, height = 5.dp)
+                .clip(CircleShape)
+                .background(if (dark) Color.White.copy(alpha = 0.28f) else Color(0xFF253142).copy(alpha = 0.22f)),
+        )
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(accentColor.copy(alpha = 0.18f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Rounded.Settings,
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
             Column(Modifier.weight(1f)) {
                 Text(
                     "播放设置",
-                    color = Color.White.copy(alpha = 0.94f),
-                    style = MaterialTheme.typography.titleSmall,
+                    color = titleColor,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold,
                 )
                 Text(
                     playbackSettingsSummary(status),
-                    color = Color.White.copy(alpha = 0.64f),
-                    style = MaterialTheme.typography.labelSmall,
+                    color = mutedColor,
+                    style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Text(
-                playbackSpeedLabel(status.playbackSpeed),
-                color = Color.White.copy(alpha = 0.74f),
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
+            GlyphButton(
+                icon = Icons.Rounded.Close,
+                description = "关闭播放设置",
+                touchSize = 42.dp,
+                iconSize = 22.dp,
+                tint = titleColor,
+                background = Color.Transparent,
+                onClick = onDismiss,
             )
         }
         PlaybackSettingsLabel(

@@ -636,6 +636,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onScanAll = viewModel::refreshLibrary,
                                 onCancelScan = viewModel::cancelScan,
                                 onRefreshLinkedLibrary = { query -> remoteClient.refreshLibrary(query) },
+                                onOpenLinkedPlaylist = { playlist -> remoteClient.refreshPlaylistTracks(playlist) },
                                 onPlayLinkedTrack = { track ->
                                     remoteClient.playTrackOnPhone(
                                         track = track,
@@ -743,6 +744,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 trackCount = libraryStats.trackCount,
                                 albumCount = libraryStats.albumCount,
                                 artistCount = libraryStats.artistCount,
+                                appVersionLabel = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
                                 dynamicArtworkEnabled = appSettings.dynamicArtworkEnabled,
                                 compactModeEnabled = appSettings.compactModeEnabled,
                                 performanceMode = appSettings.performanceMode,
@@ -854,6 +856,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 pcTitle = remoteStatus.endpoint?.name ?: "PC ECHO",
                                 trackTitle = remoteStatus.playback.track?.title ?: "未连接",
                                 trackArtist = remoteStatus.playback.track?.artist ?: "点按配对",
+                                trackArtworkUrl = remoteStatus.playback.track?.artworkUrl,
                                 isPlaying = remoteStatus.playback.state == EchoRemotePlaybackState.Playing,
                                 remoteError = remoteStatus.error,
                                 scanMessage = echoLinkScanMessage,
@@ -875,6 +878,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onConnectPc = ::connectEchoLinkAddress,
                                 onScanPairingCode = ::scanEchoLinkPairingCode,
                                 onPlayPause = { remoteClient.send(EchoRemoteCommand.PlayPause) },
+                                onPrevious = { remoteClient.send(EchoRemoteCommand.Previous) },
                                 onNext = { remoteClient.send(EchoRemoteCommand.Next) },
                                 onDisconnect = remoteClient::disconnect,
                                 onForgetPc = {
