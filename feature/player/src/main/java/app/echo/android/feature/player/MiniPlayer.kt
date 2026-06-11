@@ -62,7 +62,6 @@ import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoAccent
 import app.echo.android.design.EchoAccentDeep
 import app.echo.android.design.EchoDarkGlassBorder
-import app.echo.android.design.EchoGlassInk
 import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.progressFraction
@@ -72,6 +71,7 @@ import app.echo.android.model.playback.PlaybackPositionState
 import kotlinx.coroutines.launch
 
 private val MiniPlayerMotionEasing = CubicBezierEasing(0.16f, 1f, 0.30f, 1f)
+private val MiniPlayerGlassBlue = Color(0xFF7DD3FC)
 
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
@@ -109,8 +109,8 @@ fun MiniPlayer(
     )
     val borderColor by animateColorAsState(
         targetValue = when {
-            dark && status.isPlaying -> scheme.primary.copy(alpha = 0.42f)
-            dark -> Color.White.copy(alpha = 0.28f)
+            dark && status.isPlaying -> MiniPlayerGlassBlue.copy(alpha = 0.34f)
+            dark -> Color.White.copy(alpha = 0.22f)
             status.isPlaying -> scheme.primary.copy(alpha = 0.22f)
             else -> Color(0xFFE9E9EC)
         },
@@ -142,18 +142,19 @@ fun MiniPlayer(
             .shadow(
                 elevation = surfaceElevation,
                 shape = shape,
-                ambientColor = Color.Black.copy(alpha = 0.08f),
-                spotColor = scheme.primary.copy(alpha = 0.16f),
+                ambientColor = if (dark) Color.Black.copy(alpha = 0.30f) else Color.Black.copy(alpha = 0.08f),
+                spotColor = if (dark) MiniPlayerGlassBlue.copy(alpha = 0.12f) else scheme.primary.copy(alpha = 0.16f),
             )
             .clip(shape)
-            .background(if (dark) EchoGlassInk.copy(alpha = if (compactDock) 0.90f else 0.84f) else Color.Transparent)
+            .background(if (dark) scheme.surface.copy(alpha = if (compactDock) 0.94f else 0.92f) else Color.Transparent)
             .background(
                 if (dark) {
-                    Brush.verticalGradient(
+                    Brush.linearGradient(
                         listOf(
-                            Color.White.copy(alpha = if (compactDock) 0.12f else 0.10f),
-                            EchoGlassPanel.copy(alpha = if (compactDock) 0.76f else 0.70f),
-                            EchoGlassInk.copy(alpha = if (compactDock) 0.94f else 0.88f),
+                            Color.White.copy(alpha = if (compactDock) 0.08f else 0.06f),
+                            scheme.surfaceVariant.copy(alpha = if (compactDock) 0.76f else 0.68f),
+                            scheme.surface.copy(alpha = if (compactDock) 0.98f else 0.96f),
+                            EchoGlassPanel.copy(alpha = if (compactDock) 0.88f else 0.82f),
                         ),
                     )
                 } else {
@@ -182,6 +183,23 @@ fun MiniPlayer(
                 bottom = if (compactDock) 7.dp else 5.dp,
             ),
     ) {
+        if (dark) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                Color.Transparent,
+                                Color.White.copy(alpha = 0.24f),
+                                Color.Transparent,
+                            ),
+                        ),
+                    ),
+            )
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -289,8 +307,8 @@ fun MiniPlayer(
                             .height(2.dp)
                             .clip(RoundedCornerShape(99.dp))
                             .graphicsLayer { alpha = progressAlpha },
-                        color = scheme.primary,
-                        trackColor = if (dark) Color.White.copy(alpha = 0.28f) else scheme.outlineVariant.copy(alpha = 0.90f),
+                        color = if (dark) MiniPlayerGlassBlue.copy(alpha = 0.90f) else scheme.primary,
+                        trackColor = if (dark) Color.White.copy(alpha = 0.24f) else scheme.outlineVariant.copy(alpha = 0.90f),
                     )
                 }
             }
@@ -300,8 +318,8 @@ fun MiniPlayer(
                     .shadow(
                         elevation = 6.dp,
                         shape = CircleShape,
-                        ambientColor = EchoAccent.copy(alpha = 0.30f),
-                        spotColor = EchoAccentDeep.copy(alpha = 0.34f),
+                        ambientColor = if (dark) MiniPlayerGlassBlue.copy(alpha = 0.24f) else EchoAccent.copy(alpha = 0.30f),
+                        spotColor = if (dark) EchoAccent.copy(alpha = 0.28f) else EchoAccentDeep.copy(alpha = 0.34f),
                     )
                     .graphicsLayer {
                         scaleX = playButtonScale
@@ -310,7 +328,7 @@ fun MiniPlayer(
                     .clip(CircleShape)
                     .background(
                         if (dark) {
-                            Brush.linearGradient(listOf(EchoAccent, EchoAccentDeep))
+                            Brush.linearGradient(listOf(Color(0xFF67D8FF), EchoAccent, EchoAccentDeep))
                         } else {
                             Brush.linearGradient(listOf(Color(0xFF111318), Color(0xFF111318)))
                         },
@@ -395,7 +413,7 @@ private fun MiniPlayerActionButton(
     val containerColor by animateColorAsState(
         targetValue = when {
             !compact -> Color.Transparent
-            dark -> EchoGlassPanel.copy(alpha = 0.58f)
+            dark -> Color.White.copy(alpha = 0.10f)
             else -> scheme.primary.copy(alpha = 0.10f)
         },
         animationSpec = tween(durationMillis = 220, easing = MiniPlayerMotionEasing),
@@ -403,7 +421,7 @@ private fun MiniPlayerActionButton(
     )
     val tint by animateColorAsState(
         targetValue = if (compact) {
-            if (dark) scheme.primary.copy(alpha = 0.96f) else scheme.primary
+            if (dark) Color.White.copy(alpha = 0.92f) else scheme.primary
         } else {
             if (dark) Color.White.copy(alpha = 0.84f) else scheme.onSurfaceVariant.copy(alpha = 0.84f)
         },

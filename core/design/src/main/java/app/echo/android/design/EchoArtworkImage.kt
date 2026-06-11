@@ -27,9 +27,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.echo.android.model.settings.EchoEffectivePerformanceMode
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
-import coil.size.Size
 
 enum class EchoArtworkSize {
     Tiny,
@@ -70,8 +70,10 @@ internal fun EchoArtworkImage(
     placeholderIconSize: Dp? = null,
 ) {
     val context = LocalContext.current
+    val effectivePerformanceMode = LocalEchoEffectivePerformanceMode.current
     val requestHeaders = EchoArtworkRequestHeadersRegistry.headersFor(artworkUri)
-    val model = remember(context, artworkUri, sizeClass, requestHeaders) {
+    val model = remember(context, artworkUri, sizeClass, requestHeaders, effectivePerformanceMode) {
+        val maxPixelSize = sizeClass.maxPixelSize(effectivePerformanceMode)
         ImageRequest.Builder(context)
             .data(artworkUri)
             .apply {
@@ -80,11 +82,7 @@ internal fun EchoArtworkImage(
                 }
             }
             .crossfade(false)
-            .apply {
-                if (sizeClass == EchoArtworkSize.Hero) {
-                    size(Size.ORIGINAL)
-                }
-            }
+            .size(maxPixelSize, maxPixelSize)
             .build()
     }
     Box(
@@ -189,4 +187,21 @@ private fun EchoArtworkSize.defaultIconSize(showSignal: Boolean): Dp =
         EchoArtworkSize.Thumbnail -> if (showSignal) 38.dp else 32.dp
         EchoArtworkSize.Card -> if (showSignal) 42.dp else 36.dp
         EchoArtworkSize.Hero -> if (showSignal) 48.dp else 42.dp
+    }
+
+private fun EchoArtworkSize.maxPixelSize(effectivePerformanceMode: EchoEffectivePerformanceMode): Int =
+    if (effectivePerformanceMode.isLightweight) {
+        when (this) {
+            EchoArtworkSize.Tiny -> 96
+            EchoArtworkSize.Thumbnail -> 160
+            EchoArtworkSize.Card -> 256
+            EchoArtworkSize.Hero -> 512
+        }
+    } else {
+        when (this) {
+            EchoArtworkSize.Tiny -> 128
+            EchoArtworkSize.Thumbnail -> 256
+            EchoArtworkSize.Card -> 512
+            EchoArtworkSize.Hero -> 1024
+        }
     }

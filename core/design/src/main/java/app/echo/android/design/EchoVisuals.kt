@@ -60,37 +60,36 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import coil.size.Size
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 val EchoContentMaxWidth = 560.dp
 
-// === 默认主题：Roon 风格（Shakespeare 蓝 + 中性炭灰）。多主题切换时改这一组即可 ===
-val EchoAccent = Color(0xFF4B55E8)
-val EchoAccentText = Color(0xFF4B55E8)
-val EchoAccentDeep = Color(0xFF3239C7)
+// === 默认主题：干净蓝青 + 中性炭灰。多主题切换时改这一组即可 ===
+val EchoAccent = Color(0xFF2F9CFF)
+val EchoAccentText = Color(0xFF5BB8FF)
+val EchoAccentDeep = Color(0xFF176BBD)
 val EchoBgTop = Color(0xFFF8FBFF)
 val EchoBgMid = Color(0xFFF1F5FB)
 val EchoBgBottom = Color(0xFFEAF0F8)
-val RoonBlue = Color(0xFF4B55E8)
+val RoonBlue = Color(0xFF2F9CFF)
 val RoonInk = Color(0xFF25242A)
 val RoonMuted = Color(0xFF6D6D73)
 val RoonPaper = Color(0xFFFDFEFF)
 val RoonPanel = Color(0xFFF4F8FF)
-val EchoHomeBlue = Color(0xFF4B55E8)
-val EchoHomeBlueDeep = Color(0xFF3239C7)
+val EchoHomeBlue = Color(0xFF2F9CFF)
+val EchoHomeBlueDeep = Color(0xFF176BBD)
 val EchoHomeMist = Color(0xFFEFF4FA)
 val EchoGlassBorder = Color(0xFFE1E8F2)
 val EchoSoftLine = Color(0xFFD5E0EC)
-val EchoGlassNight = Color(0xFF10131C)
-val EchoGlassInk = Color(0xFF151A26)
-val EchoGlassPanel = Color(0xFF1B2230)
-val EchoGlassViolet = Color(0xFF202438)
-val EchoGlassCyan = Color(0xFF1D2935)
+val EchoGlassNight = Color(0xFF080B12)
+val EchoGlassInk = Color(0xFF101722)
+val EchoGlassPanel = Color(0xFF182131)
+val EchoGlassViolet = Color(0xFF1B2635)
+val EchoGlassCyan = Color(0xFF142634)
 val EchoGlassRose = Color(0xFF2B2029)
-val EchoDarkGlassBorder = Color.White.copy(alpha = 0.12f)
-val EchoDarkGlassLine = Color.White.copy(alpha = 0.08f)
+val EchoDarkGlassBorder = Color.White.copy(alpha = 0.16f)
+val EchoDarkGlassLine = Color.White.copy(alpha = 0.10f)
 
 @Composable
 fun GlassSurface(
@@ -103,10 +102,10 @@ fun GlassSurface(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(28.dp),
-        color = if (dark) EchoGlassPanel.copy(alpha = (alpha + 0.48f).coerceIn(0.56f, 0.76f)) else Color.White.copy(alpha = alpha),
+        color = if (dark) EchoGlassInk.copy(alpha = (alpha + 0.64f).coerceIn(0.72f, 0.90f)) else Color.White.copy(alpha = alpha),
         border = BorderStroke(
             1.dp,
-            if (dark) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.32f),
+            if (dark) EchoDarkGlassBorder else Color.White.copy(alpha = 0.32f),
         ),
         content = { content() },
     )
@@ -119,11 +118,11 @@ fun echoDarkGlassBrush(strength: Float = 1f): Brush {
     return Brush.linearGradient(
         if (dark) {
             listOf(
-                Color.White.copy(alpha = 0.08f * clamped),
-                EchoGlassPanel.copy(alpha = 0.66f * clamped),
-                EchoGlassInk.copy(alpha = 0.52f * clamped),
-                EchoGlassViolet.copy(alpha = 0.10f * clamped),
-                EchoGlassCyan.copy(alpha = 0.08f * clamped),
+                Color.White.copy(alpha = 0.035f * clamped),
+                EchoGlassPanel.copy(alpha = 0.82f * clamped),
+                EchoGlassInk.copy(alpha = 0.90f * clamped),
+                EchoGlassViolet.copy(alpha = 0.16f * clamped),
+                EchoGlassCyan.copy(alpha = 0.10f * clamped),
             )
         } else {
             listOf(
@@ -145,11 +144,11 @@ fun echoGlassContainerBrush(
     return Brush.linearGradient(
         if (dark) {
             listOf(
-                Color.White.copy(alpha = 0.10f * clamped),
-                EchoGlassPanel.copy(alpha = 0.62f * clamped),
-                EchoGlassInk.copy(alpha = 0.46f * clamped),
-                accent.copy(alpha = 0.10f * clamped),
-                EchoGlassViolet.copy(alpha = 0.08f * clamped),
+                Color.White.copy(alpha = 0.045f * clamped),
+                EchoGlassPanel.copy(alpha = 0.78f * clamped),
+                EchoGlassInk.copy(alpha = 0.88f * clamped),
+                accent.copy(alpha = 0.12f * clamped),
+                EchoGlassViolet.copy(alpha = 0.10f * clamped),
             )
         } else {
             listOf(
@@ -170,10 +169,10 @@ fun echoGlassRowBrush(
     return Brush.linearGradient(
         if (dark) {
             listOf(
-                Color.White.copy(alpha = if (selected) 0.14f else 0.08f),
-                EchoGlassPanel.copy(alpha = if (selected) 0.58f else 0.48f),
-                EchoGlassInk.copy(alpha = if (selected) 0.42f else 0.34f),
-                accent.copy(alpha = if (selected) 0.12f else 0.06f),
+                Color.White.copy(alpha = if (selected) 0.07f else 0.035f),
+                EchoGlassPanel.copy(alpha = if (selected) 0.80f else 0.68f),
+                EchoGlassInk.copy(alpha = if (selected) 0.82f else 0.74f),
+                accent.copy(alpha = if (selected) 0.16f else 0.08f),
             )
         } else {
             listOf(
@@ -221,8 +220,8 @@ fun EchoGlassBackground(modifier: Modifier = Modifier) {
         if (dark) {
             listOf(
                 EchoGlassNight,
-                Color(0xFF121722),
-                Color(0xFF151A26),
+                Color(0xFF0C111A),
+                EchoGlassInk,
                 EchoGlassNight,
             )
         } else {
@@ -247,8 +246,8 @@ fun EchoGlassBackground(modifier: Modifier = Modifier) {
         }
         drawRect(
             brush = Brush.verticalGradient(
-                colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (dark) 0.04f else 0.04f)),
-                startY = h * 0.50f,
+                colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (dark) 0.20f else 0.04f)),
+                startY = h * 0.44f,
                 endY = h,
             ),
         )
@@ -298,10 +297,10 @@ fun PageChrome(
         val chromeGradient = if (dark) {
             Brush.verticalGradient(
                 listOf(
-                    EchoGlassNight.copy(alpha = 0.34f),
-                    EchoGlassInk.copy(alpha = 0.24f),
-                    EchoGlassViolet.copy(alpha = 0.05f),
-                    Color.Transparent,
+                    EchoGlassNight.copy(alpha = 0.92f),
+                    EchoGlassInk.copy(alpha = 0.78f),
+                    EchoGlassPanel.copy(alpha = 0.46f),
+                    EchoGlassNight.copy(alpha = 0.20f),
                 ),
             )
         } else {
@@ -372,10 +371,10 @@ fun PageChrome(
                         } else {
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
-                                color = if (dark) EchoGlassPanel.copy(alpha = 0.24f) else scheme.surface.copy(alpha = 0.50f),
+                                color = if (dark) EchoGlassPanel.copy(alpha = 0.74f) else scheme.surface.copy(alpha = 0.50f),
                                 border = BorderStroke(
                                     1.dp,
-                                    if (dark) Color.White.copy(alpha = 0.22f) else EchoGlassBorder,
+                                    if (dark) EchoDarkGlassBorder else EchoGlassBorder,
                                 ),
                             ) {
                                 Text(
@@ -486,6 +485,10 @@ data class ArtworkPalette(
 
 @Composable
 fun rememberArtworkPalette(artworkUri: String?, seedKey: String? = artworkUri): ArtworkPalette {
+    val effectivePerformanceMode = LocalEchoEffectivePerformanceMode.current
+    if (effectivePerformanceMode.isLightweight) {
+        return remember(seedKey) { ArtworkPalette.fromSeed(seedKey) }
+    }
     val context = LocalContext.current
     val palette by produceState(ArtworkPalette.fromSeed(seedKey), artworkUri, seedKey) {
         value = withContext(Dispatchers.IO) {
@@ -578,10 +581,17 @@ fun BlurredArtworkBackground(
     overlayEndAlpha: Float = 0.42f,
 ) {
     val context = LocalContext.current
-    val artworkModel = remember(context, artworkUri) {
+    val effectivePerformanceMode = LocalEchoEffectivePerformanceMode.current
+    val artworkMaxPixelSize = if (effectivePerformanceMode.isLightweight) 512 else 1024
+    val effectiveArtworkBlur = if (effectivePerformanceMode.isLightweight && artworkBlur > 8.dp) {
+        8.dp
+    } else {
+        artworkBlur
+    }
+    val artworkModel = remember(context, artworkUri, artworkMaxPixelSize) {
         ImageRequest.Builder(context)
             .data(artworkUri)
-            .size(Size.ORIGINAL)
+            .size(artworkMaxPixelSize, artworkMaxPixelSize)
             .bitmapConfig(Bitmap.Config.ARGB_8888)
             .crossfade(false)
             .build()
@@ -601,7 +611,7 @@ fun BlurredArtworkBackground(
                     ),
                 ),
         )
-        if (!artworkUri.isNullOrBlank()) {
+        if (!effectivePerformanceMode.isLightweight && !artworkUri.isNullOrBlank()) {
             AsyncImage(
                 model = artworkModel,
                 contentDescription = null,
@@ -609,7 +619,7 @@ fun BlurredArtworkBackground(
                 modifier = Modifier
                     .fillMaxSize()
                     .scale(artworkScale)
-                    .blur(artworkBlur)
+                    .blur(effectiveArtworkBlur)
                     .alpha(artworkAlpha),
             )
         }

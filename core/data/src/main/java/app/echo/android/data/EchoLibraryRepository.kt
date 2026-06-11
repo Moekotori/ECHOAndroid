@@ -10,6 +10,7 @@ import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSortMode
 import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.library.FolderSummary
+import app.echo.android.model.library.LibraryTrackSortMode
 import app.echo.android.model.library.LibraryScanPhase
 import app.echo.android.model.library.LibraryScanProgress
 import app.echo.android.model.library.EchoPlaylist
@@ -31,35 +32,31 @@ class EchoLibraryRepository(
     private val scanner: MediaStoreTrackScanner,
     private val neteaseClient: NeteaseCloudMusicClient = NeteaseCloudMusicClient(),
 ) {
-    fun pagedTracks(query: String? = null): Flow<PagingData<LibraryTrackEntity>> =
+    fun pagedTracks(
+        query: String? = null,
+        sort: LibraryTrackSortMode = LibraryTrackSortMode.Title,
+    ): Flow<PagingData<LibraryTrackEntity>> =
         flow {
             val dao = database.trackDao()
             val trimmedQuery = query?.trim().orEmpty()
             val matchQuery = sanitizeFtsQuery(trimmedQuery)
             val rankQuery = ftsRankQuery(trimmedQuery)
-            val pagingSourceFactory = when {
-                trimmedQuery.isBlank() -> {
-                    { dao.pageTracks() }
-                }
-                matchQuery == null -> {
-                    { dao.pageTracksByLike(trimmedQuery, rankQuery) }
-                }
-                canUseFts(dao, matchQuery) -> {
-                    { dao.pageTracksByFts(matchQuery, rankQuery) }
-                }
-                else -> {
-                    { dao.pageTracksByLike(trimmedQuery, rankQuery) }
-                }
-            }
+            val useFts = matchQuery != null && canUseFts(dao, matchQuery)
 
             emitAll(
                 Pager(
-                    config = PagingConfig(
-                        pageSize = 60,
-                        prefetchDistance = 20,
-                        enablePlaceholders = false,
-                    ),
-                    pagingSourceFactory = pagingSourceFactory,
+                    config = defaultPagingConfig(),
+                    pagingSourceFactory = {
+                        dao.pageTracksSorted(
+                            trackPagingQuery(
+                                query = trimmedQuery,
+                                matchQuery = matchQuery,
+                                rankQuery = rankQuery,
+                                useFts = useFts,
+                                sort = sort,
+                            ),
+                        )
+                    },
                 ).flow,
             )
         }.flowOn(Dispatchers.IO)
@@ -310,6 +307,7 @@ class EchoLibraryRepository(
             scanner.scanAudio(
                 batchSize = batchSize,
                 relativePathPrefix = normalizedRelativePath,
+                existingTracks = existingFingerprints,
                 onTotalCount = { count ->
                     totalCount = count
                     emitProgress(phase = LibraryScanPhase.QueryingMediaStore)
@@ -568,6 +566,13 @@ class EchoLibraryRepository(
 
     suspend fun countTracks(): Int = database.trackDao().countTracks()
 
+    suspend fun recordPlayback(trackId: String) {
+        database.trackDao().recordPlayback(
+            trackId = trackId,
+            playedAtEpochMs = System.currentTimeMillis(),
+        )
+    }
+
     private suspend fun canUseFts(dao: LibraryTrackDao, matchQuery: String): Boolean =
         runCatching {
             dao.validateFtsQuery(matchQuery)
@@ -591,6 +596,94 @@ class EchoLibraryRepository(
             else -> dao.getTrackQueueByLike(trimmedQuery, rankQuery, limit)
         }
     }
+
+    private fun trackPagingQuery(
+        query: String,
+        matchQuery: String?,
+        rankQuery: String,
+        useFts: Boolean,
+        sort: LibraryTrackSortMode,
+    ): SimpleSQLiteQuery {
+        val args = mutableListOf<Any>()
+        val sql = StringBuilder(
+            """
+            SELECT library_tracks.* FROM library_tracks
+            LEFT JOIN library_playback_stats
+                ON library_tracks.id = library_playback_stats.trackId
+            """.trimIndent(),
+        )
+        if (query.isNotBlank()) {
+            if (useFts && matchQuery != null) {
+                sql.appendLine()
+                sql.append("JOIN library_tracks_fts ON library_tracks.id = library_tracks_fts.trackId")
+                sql.appendLine()
+                sql.append("WHERE library_tracks_fts MATCH ?")
+                args += matchQuery
+            } else {
+                val likeQuery = "%${query.lowercase()}%"
+                sql.appendLine()
+                sql.append(
+                    """
+                    WHERE library_tracks.normalizedTitle LIKE ?
+                       OR library_tracks.normalizedArtist LIKE ?
+                       OR library_tracks.normalizedAlbum LIKE ?
+                       OR library_tracks.normalizedAlbumArtist LIKE ?
+                    """.trimIndent(),
+                )
+                repeat(4) { args += likeQuery }
+            }
+        }
+        sql.appendLine()
+        sql.append("ORDER BY ")
+        if (query.isNotBlank() && sort == LibraryTrackSortMode.Title) {
+            sql.append(
+                """
+                CASE
+                    WHEN library_tracks.normalizedTitle LIKE ? THEN 0
+                    WHEN library_tracks.normalizedArtist LIKE ? THEN 1
+                    WHEN library_tracks.normalizedAlbum LIKE ? THEN 2
+                    ELSE 3
+                END,
+                """.trimIndent(),
+            )
+            repeat(3) { args += rankQuery }
+            sql.appendLine()
+        }
+        sql.append(trackSortOrder(sort))
+        return SimpleSQLiteQuery(sql.toString(), args.toTypedArray())
+    }
+
+    private fun trackSortOrder(sort: LibraryTrackSortMode): String =
+        when (sort) {
+            LibraryTrackSortMode.Title -> "library_tracks.title COLLATE NOCASE ASC"
+            LibraryTrackSortMode.Duration -> "library_tracks.durationMs DESC, library_tracks.title COLLATE NOCASE ASC"
+            LibraryTrackSortMode.FrequentlyPlayed -> """
+                COALESCE(library_playback_stats.playCount, 0) DESC,
+                COALESCE(library_playback_stats.lastPlayedAtEpochMs, 0) DESC,
+                library_tracks.title COLLATE NOCASE ASC
+            """.trimIndent()
+            LibraryTrackSortMode.Random -> "RANDOM()"
+            LibraryTrackSortMode.Artist -> """
+                CASE WHEN trim(library_tracks.artist) = '' THEN 1 ELSE 0 END ASC,
+                library_tracks.artist COLLATE NOCASE ASC,
+                CASE WHEN library_tracks.album IS NULL OR trim(library_tracks.album) = '' THEN 1 ELSE 0 END ASC,
+                library_tracks.album COLLATE NOCASE ASC,
+                CASE WHEN library_tracks.discNumber IS NULL THEN 0 ELSE library_tracks.discNumber END ASC,
+                CASE WHEN library_tracks.trackNumber IS NULL THEN 0 ELSE library_tracks.trackNumber END ASC,
+                library_tracks.title COLLATE NOCASE ASC
+            """.trimIndent()
+            LibraryTrackSortMode.Album -> """
+                CASE WHEN library_tracks.album IS NULL OR trim(library_tracks.album) = '' THEN 1 ELSE 0 END ASC,
+                library_tracks.album COLLATE NOCASE ASC,
+                CASE WHEN library_tracks.discNumber IS NULL THEN 0 ELSE library_tracks.discNumber END ASC,
+                CASE WHEN library_tracks.trackNumber IS NULL THEN 0 ELSE library_tracks.trackNumber END ASC,
+                library_tracks.title COLLATE NOCASE ASC
+            """.trimIndent()
+            LibraryTrackSortMode.RecentlyUpdated -> """
+                library_tracks.dateModifiedSeconds DESC,
+                library_tracks.title COLLATE NOCASE ASC
+            """.trimIndent()
+        }
 
     private fun withAnchorTrack(
         anchor: LibraryTrackEntity?,

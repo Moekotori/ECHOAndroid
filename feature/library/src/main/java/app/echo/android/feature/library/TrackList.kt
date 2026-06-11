@@ -38,6 +38,7 @@ import app.echo.android.model.library.EchoTrack
 internal fun TrackList(
     tracks: LazyPagingItems<EchoTrack>,
     onPlayTrack: (EchoTrack) -> Unit,
+    showAudioInfoTags: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -53,6 +54,7 @@ internal fun TrackList(
                 TrackRow(
                     track = track,
                     onClick = { onPlayTrack(track) },
+                    showAudioInfoTags = showAudioInfoTags,
                 )
             }
         }
@@ -63,6 +65,7 @@ internal fun TrackList(
 internal fun TrackList(
     tracks: List<EchoTrack>,
     onPlayTrack: (EchoTrack) -> Unit,
+    showAudioInfoTags: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -78,6 +81,7 @@ internal fun TrackList(
             TrackRow(
                 track = track,
                 onClick = { onPlayTrack(track) },
+                showAudioInfoTags = showAudioInfoTags,
             )
         }
     }
@@ -87,13 +91,18 @@ internal fun TrackList(
 internal fun TrackRow(
     track: EchoTrack,
     onClick: () -> Unit,
+    showAudioInfoTags: Boolean = true,
 ) {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
     val subtitle = remember(track.artist, track.album) { trackSubtitle(track) }
     val duration = remember(track.durationMs) { formatDuration(track.durationMs) }
-    val sampleRate = remember(track.sampleRateHz) { track.sampleRateHz?.let(::formatTrackSampleRate) }
-    val format = remember(track.mimeType) { formatTrackMimeType(track.mimeType) }
+    val sampleRate = remember(showAudioInfoTags, track.sampleRateHz) {
+        if (showAudioInfoTags) track.sampleRateHz?.let(::formatTrackSampleRate) else null
+    }
+    val format = remember(showAudioInfoTags, track.mimeType) {
+        if (showAudioInfoTags) formatTrackMimeType(track.mimeType) else null
+    }
     val hasTags = format != null || sampleRate != null
 
     Column(

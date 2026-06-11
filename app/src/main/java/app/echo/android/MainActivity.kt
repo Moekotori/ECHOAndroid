@@ -7,14 +7,22 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import app.echo.android.data.readEchoStartupThemeSnapshotForLaunch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
+        val startupThemeSnapshot = applicationContext.readEchoStartupThemeSnapshotForLaunch()
+        val startupDarkTheme = resolveEchoDarkTheme(
+            systemDarkTheme = applicationContext.isEchoSystemDarkTheme(),
+            themeMode = startupThemeSnapshot.themeMode,
+            scheduledDarkModeEnabled = startupThemeSnapshot.scheduledDarkModeEnabled,
+            scheduledStartMinute = startupThemeSnapshot.scheduledDarkStartMinute,
+            scheduledEndMinute = startupThemeSnapshot.scheduledDarkEndMinute,
+            currentMinute = currentMinuteOfDayNow(),
         )
+        window.decorView.setBackgroundColor(startupWindowBackground(startupDarkTheme))
+        applyEdgeToEdge(startupDarkTheme)
         requestHighRefreshRate()
         setContent {
             EchoMobileApp()
@@ -25,6 +33,24 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         requestHighRefreshRate()
     }
+
+    private fun applyEdgeToEdge(darkTheme: Boolean) {
+        enableEdgeToEdge(
+            statusBarStyle = if (darkTheme) {
+                SystemBarStyle.dark(Color.TRANSPARENT)
+            } else {
+                SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+            },
+            navigationBarStyle = if (darkTheme) {
+                SystemBarStyle.dark(Color.TRANSPARENT)
+            } else {
+                SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+            },
+        )
+    }
+
+    private fun startupWindowBackground(darkTheme: Boolean): Int =
+        if (darkTheme) EchoDarkWindowBackground else EchoLightWindowBackground
 
     private fun requestHighRefreshRate() {
         val preferredMode = bestSupportedHighRefreshMode() ?: return
@@ -66,5 +92,7 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val MinHighRefreshRate = 90f
+        val EchoDarkWindowBackground: Int = Color.rgb(8, 11, 18)
+        val EchoLightWindowBackground: Int = Color.rgb(241, 241, 243)
     }
 }

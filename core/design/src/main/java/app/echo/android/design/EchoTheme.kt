@@ -15,17 +15,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.sp
+import app.echo.android.model.settings.EchoEffectivePerformanceMode
 
 object EchoColors {
-    // 深邃蓝黑 + Shakespeare 蓝：更现代的沉浸底色
-    val Night = Color(0xFF0B1020)
-    val Ink = Color(0xFF151B31)
-    val Slate = Color(0xFF202744)
-    val DeepBlue = Color(0xFF4B55E8)
+    // 深邃蓝黑 + 干净蓝青：深色模式先稳住底，再用清透冷色做点缀。
+    val Night = Color(0xFF080B12)
+    val Ink = Color(0xFF101722)
+    val Slate = Color(0xFF1A2230)
+    val DeepBlue = Color(0xFF176BBD)
     val Brass = Color(0xFFE1A33A)
     val Coral = Color(0xFFD7675D)
-    val Sky = Color(0xFF4B55E8)
-    val RoonBlue = Color(0xFF4B55E8)
+    val Sky = Color(0xFF5BB8FF)
+    val RoonBlue = Color(0xFF2F9CFF)
     val Paper = Color(0xFFF1F1F3)
     val Mist = Color(0xFFEEF0F6)
     val Smoke = Color(0xFFA8A8AE)
@@ -34,7 +35,7 @@ object EchoColors {
 private val EchoDarkScheme = darkColorScheme(
     primary = EchoColors.RoonBlue,
     onPrimary = Color(0xFF06121A),
-    secondary = Color(0xFF3239C7),
+    secondary = EchoColors.Sky,
     onSecondary = Color(0xFF06121A),
     tertiary = EchoColors.Coral,
     background = EchoColors.Night,
@@ -42,15 +43,15 @@ private val EchoDarkScheme = darkColorScheme(
     surface = EchoColors.Ink,
     onSurface = EchoColors.Paper,
     surfaceVariant = EchoColors.Slate,
-    onSurfaceVariant = EchoColors.Smoke,
-    outline = Color(0xFF4A4E5C),
-    outlineVariant = Color(0xFF40486A),
+    onSurfaceVariant = Color(0xFFC0C5D0),
+    outline = Color(0xFF596170),
+    outlineVariant = Color(0xFF2C3444),
 )
 
 private val EchoLightScheme = lightColorScheme(
     primary = EchoColors.DeepBlue,
     onPrimary = Color(0xFFFFFFFF),
-    secondary = Color(0xFF3239C7),
+    secondary = EchoColors.RoonBlue,
     onSecondary = Color(0xFFFFFFFF),
     tertiary = Color(0xFF9B6200),
     background = EchoColors.Paper,
@@ -65,6 +66,7 @@ private val EchoLightScheme = lightColorScheme(
 
 val LocalEchoDensityScale = staticCompositionLocalOf { 1f }
 val LocalEchoDarkTheme = staticCompositionLocalOf { false }
+val LocalEchoEffectivePerformanceMode = staticCompositionLocalOf { EchoEffectivePerformanceMode.Balanced }
 
 fun echoFontFamilyForMode(
     mode: String,
@@ -119,11 +121,13 @@ fun EchoMobileTheme(
     fontFamily: FontFamily = FontFamily.SansSerif,
     fontScale: Float = 1f,
     densityScale: Float = 1f,
+    effectivePerformanceMode: EchoEffectivePerformanceMode = EchoEffectivePerformanceMode.Balanced,
     content: @Composable () -> Unit,
 ) {
     CompositionLocalProvider(
         LocalEchoDensityScale provides densityScale.coerceIn(0.90f, 1.12f),
         LocalEchoDarkTheme provides darkTheme,
+        LocalEchoEffectivePerformanceMode provides effectivePerformanceMode,
     ) {
         MaterialTheme(
             colorScheme = if (darkTheme) EchoDarkScheme else EchoLightScheme,

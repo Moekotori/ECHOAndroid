@@ -50,7 +50,6 @@ import app.echo.android.design.EchoAccentText
 import app.echo.android.design.EchoDarkGlassBorder
 import app.echo.android.design.EchoGlassBorder
 import app.echo.android.design.EchoGlassCyan
-import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.EchoHomeBlue
 import app.echo.android.design.EchoHomeMist
 import app.echo.android.design.EchoPlaceholderLine
@@ -60,7 +59,6 @@ import app.echo.android.design.PageChrome
 import app.echo.android.design.RoonInk
 import app.echo.android.design.RoonMuted
 import app.echo.android.design.echoDarkGlassBorder
-import app.echo.android.design.echoGlassContainerBrush
 import app.echo.android.design.formatDuration
 import app.echo.android.model.playback.EchoEqualizerPresets
 import app.echo.android.model.playback.EchoEqualizerState
@@ -74,7 +72,8 @@ import kotlin.math.roundToInt
 
 @Composable
 private fun signalPanelColor(lightAlpha: Float = 0.64f): Color {
-    return if (LocalEchoDarkTheme.current) EchoGlassPanel.copy(alpha = 0.48f) else Color.White.copy(alpha = lightAlpha)
+    val scheme = MaterialTheme.colorScheme
+    return if (LocalEchoDarkTheme.current) scheme.surface.copy(alpha = 0.86f) else Color.White.copy(alpha = lightAlpha)
 }
 
 @Composable
@@ -87,7 +86,12 @@ private fun signalHeroBrush(): Brush {
     val scheme = MaterialTheme.colorScheme
     return Brush.linearGradient(
         if (LocalEchoDarkTheme.current) {
-            return echoGlassContainerBrush(1.06f, accent = EchoGlassCyan)
+            listOf(
+                Color.White.copy(alpha = 0.05f),
+                scheme.surfaceVariant.copy(alpha = 0.78f),
+                scheme.surface.copy(alpha = 0.90f),
+                EchoGlassCyan.copy(alpha = 0.10f),
+            )
         } else {
             listOf(
                 Color.White.copy(alpha = 0.72f),

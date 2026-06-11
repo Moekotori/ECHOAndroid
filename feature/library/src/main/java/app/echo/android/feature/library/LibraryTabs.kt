@@ -985,6 +985,7 @@ internal fun LibraryDetailPage(
     onBack: () -> Unit,
     onPlayAll: () -> Unit,
     onPlayTrack: (EchoTrack) -> Unit,
+    showAudioInfoTags: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val colors = rememberLibraryGlassColors()
@@ -1034,6 +1035,7 @@ internal fun LibraryDetailPage(
             else -> TrackList(
                 tracks = tracks,
                 onPlayTrack = onPlayTrack,
+                showAudioInfoTags = showAudioInfoTags,
                 modifier = Modifier.weight(1f),
             )
         }

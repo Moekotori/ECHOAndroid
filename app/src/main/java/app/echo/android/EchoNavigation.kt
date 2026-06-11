@@ -41,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -50,13 +51,16 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.EchoGlassInk
+import app.echo.android.design.EchoAccent
 import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.echoDarkGlassBorder
 import app.echo.android.design.LocalEchoDarkTheme
 import kotlin.math.abs
 
 private val DockItemMotionEasing = CubicBezierEasing(0.16f, 1f, 0.30f, 1f)
+private val DockGlassShape = RoundedCornerShape(31.dp)
+private val DockItemShape = RoundedCornerShape(22.dp)
+private val DockSelectedBlue = Color(0xFF7DD3FC)
 
 enum class EchoTab(
     val label: String,
@@ -92,15 +96,22 @@ fun BottomDock(
                 .fillMaxWidth()
                 .navigationBarsPadding()
                 .padding(horizontal = 10.dp, vertical = 5.dp)
-                .clip(RoundedCornerShape(30.dp))
-                .background(if (dark) EchoGlassInk.copy(alpha = 0.72f) else Color.White.copy(alpha = 0.72f))
+                .shadow(
+                    elevation = if (dark) 18.dp else 8.dp,
+                    shape = DockGlassShape,
+                    ambientColor = if (dark) Color.Black.copy(alpha = 0.28f) else Color.Black.copy(alpha = 0.05f),
+                    spotColor = if (dark) EchoAccent.copy(alpha = 0.14f) else Color.Black.copy(alpha = 0.06f),
+                )
+                .clip(DockGlassShape)
+                .background(if (dark) scheme.surface.copy(alpha = 0.94f) else Color.White.copy(alpha = 0.72f))
                 .background(
                     if (dark) {
                         Brush.verticalGradient(
                             listOf(
-                                Color.White.copy(alpha = 0.08f),
-                                EchoGlassPanel.copy(alpha = 0.58f),
-                                EchoGlassInk.copy(alpha = 0.78f),
+                                Color.White.copy(alpha = 0.07f),
+                                scheme.surfaceVariant.copy(alpha = 0.72f),
+                                scheme.surface.copy(alpha = 0.96f),
+                                EchoGlassPanel.copy(alpha = 0.88f),
                             ),
                         )
                     } else {
@@ -109,7 +120,7 @@ fun BottomDock(
                 )
                 .border(
                     if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, Color.White.copy(alpha = 0.82f)),
-                    RoundedCornerShape(30.dp),
+                    DockGlassShape,
                 )
                 .pointerInput(selectedTab, swipeThresholdPx) {
                     detectHorizontalDragGestures(
@@ -136,6 +147,23 @@ fun BottomDock(
                 }
                 .padding(horizontal = 2.dp, vertical = 3.dp),
         ) {
+            if (dark) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    Color.Transparent,
+                                    Color.White.copy(alpha = 0.22f),
+                                    Color.Transparent,
+                                ),
+                            ),
+                        ),
+                )
+            }
             val tabWidth = maxWidth / tabCount
             val tabWidthPx = with(density) { tabWidth.toPx() }.coerceAtLeast(1f)
             val dragProgress = (-dragOffsetX / tabWidthPx).coerceIn(-1f, 1f)
@@ -149,9 +177,20 @@ fun BottomDock(
                 ),
                 label = "dock-selected-pill-position",
             )
-            val indicatorColor = when {
-                onLightSurface -> scheme.primary.copy(alpha = 0.14f)
-                else -> EchoGlassPanel.copy(alpha = 0.62f)
+            val indicatorBrush = when {
+                onLightSurface -> Brush.horizontalGradient(
+                    listOf(
+                        scheme.primary.copy(alpha = 0.10f),
+                        scheme.primary.copy(alpha = 0.16f),
+                    ),
+                )
+                else -> Brush.horizontalGradient(
+                    listOf(
+                        DockSelectedBlue.copy(alpha = 0.20f),
+                        scheme.surfaceVariant.copy(alpha = 0.72f),
+                        Color.White.copy(alpha = 0.06f),
+                    ),
+                )
             }
             Box(
                 modifier = Modifier
@@ -160,23 +199,23 @@ fun BottomDock(
                     .width(tabWidth)
                     .height(50.dp)
                     .padding(horizontal = 3.dp, vertical = 2.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(indicatorColor),
+                    .clip(DockItemShape)
+                    .background(indicatorBrush),
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-            EchoTab.entries.forEach { tab ->
-                DockItem(
-                    tab = tab,
-                    selected = selectedTab == tab.ordinal,
-                    onLightSurface = onLightSurface,
-                    onClick = { onSelectTab(tab.ordinal) },
-                    modifier = Modifier.weight(1f),
-                )
-            }
+                EchoTab.entries.forEach { tab ->
+                    DockItem(
+                        tab = tab,
+                        selected = selectedTab == tab.ordinal,
+                        onLightSurface = onLightSurface,
+                        onClick = { onSelectTab(tab.ordinal) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
         }
     }
@@ -193,15 +232,15 @@ private fun DockItem(
     val scheme = MaterialTheme.colorScheme
     val targetIconColor = when {
         selected && onLightSurface -> scheme.onSurface
-        selected -> scheme.primary
+        selected -> DockSelectedBlue
         onLightSurface -> scheme.onSurfaceVariant
-        else -> Color.White.copy(alpha = 0.86f)
+        else -> Color.White.copy(alpha = 0.70f)
     }
     val targetLabelColor = when {
         selected && onLightSurface -> scheme.onSurface
         selected -> Color.White.copy(alpha = 0.96f)
         onLightSurface -> scheme.onSurfaceVariant
-        else -> Color.White.copy(alpha = 0.84f)
+        else -> Color.White.copy(alpha = 0.72f)
     }
     val iconColor by animateColorAsState(
         targetValue = targetIconColor,
@@ -214,7 +253,7 @@ private fun DockItem(
         label = "dock-label-color",
     )
     val iconScale by animateFloatAsState(
-        targetValue = if (selected) 1f else 0.92f,
+        targetValue = if (selected) 1.04f else 0.90f,
         animationSpec = tween(durationMillis = 220, easing = DockItemMotionEasing),
         label = "dock-icon-scale",
     )
@@ -227,7 +266,7 @@ private fun DockItem(
         Column(
             modifier = Modifier
                 .defaultMinSize(minWidth = 56.dp, minHeight = 48.dp)
-                .clip(RoundedCornerShape(18.dp))
+                .clip(DockItemShape)
                 .padding(horizontal = 2.dp, vertical = 1.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(2.dp),

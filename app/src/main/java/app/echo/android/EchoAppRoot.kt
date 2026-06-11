@@ -55,6 +55,7 @@ import app.echo.android.connect.EchoRemoteClient
 import app.echo.android.design.EchoContentMaxWidth
 import app.echo.android.design.EchoArtworkRequestHeadersRegistry
 import app.echo.android.design.EchoGlassInk
+import app.echo.android.design.EchoGlassNight
 import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.EchoMobileTheme
 import app.echo.android.feature.connect.ConnectScreen
@@ -68,7 +69,6 @@ import app.echo.android.feature.settings.SettingsScreen
 import app.echo.android.data.EchoAppSettings
 import app.echo.android.data.EchoBackgroundMode
 import app.echo.android.data.EchoFontFamilyMode
-import app.echo.android.data.EchoThemeMode
 import app.echo.android.model.connect.EchoRemoteCommand
 import app.echo.android.model.connect.EchoRemoteConnectionState
 import app.echo.android.model.connect.EchoRemoteEndpoint
@@ -84,7 +84,6 @@ import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import app.echo.android.design.echoFontFamilyForMode
-import java.time.LocalTime
 import kotlin.math.absoluteValue
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
@@ -102,7 +101,6 @@ private enum class FontImportTarget {
     Ui,
     Lyrics,
 }
-
 private enum class EchoPagerPage {
     Settings,
     Now,
@@ -195,7 +193,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     val remoteLibraryState by remoteClient.library.collectAsStateWithLifecycle()
     val playbackStatus by viewModel.playbackStatus.collectAsStateWithLifecycle()
     val playbackQueue by viewModel.playbackQueue.collectAsStateWithLifecycle()
-    val appSettings by viewModel.appSettings.collectAsStateWithLifecycle(EchoAppSettings())
+    val appSettings by viewModel.appSettings.collectAsStateWithLifecycle(viewModel.initialAppSettings)
     var lastEchoLinkAutoConnectKey by remember { mutableStateOf<String?>(null) }
     val echoLinkSavedKey = remember(appSettings.echoLinkPcAddress, appSettings.echoLinkPcToken) {
         val address = appSettings.echoLinkPcAddress?.takeIf { it.isNotBlank() }
@@ -299,6 +297,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         ?: LastFmApiConfig.sharedSecret.takeIf { it.isNotBlank() }
     val lyricsState by viewModel.lyricsState.collectAsStateWithLifecycle()
     val libraryQuery by viewModel.libraryQuery.collectAsStateWithLifecycle()
+    val libraryTrackSortMode by viewModel.libraryTrackSortMode.collectAsStateWithLifecycle()
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
     val remoteScanState by viewModel.remoteScanState.collectAsStateWithLifecycle()
     val libraryStats by viewModel.libraryStats.collectAsStateWithLifecycle(LibraryStats())
@@ -344,15 +343,15 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     var queueSheetVisible by remember { mutableStateOf(false) }
     val libraryDetailOpen = selectedAlbum != null || selectedArtist != null || selectedFolder != null || selectedPlaylist != null
     val systemDarkTheme = isSystemInDarkTheme()
-    var currentMinuteOfDay by remember { mutableIntStateOf(currentMinuteNow()) }
+    var currentMinuteOfDay by remember { mutableIntStateOf(currentMinuteOfDayNow()) }
     LaunchedEffect(appSettings.scheduledDarkModeEnabled) {
         if (appSettings.scheduledDarkModeEnabled) {
             while (true) {
-                currentMinuteOfDay = currentMinuteNow()
+                currentMinuteOfDay = currentMinuteOfDayNow()
                 delay(60_000L)
             }
         } else {
-            currentMinuteOfDay = currentMinuteNow()
+            currentMinuteOfDay = currentMinuteOfDayNow()
         }
     }
     val darkTheme = remember(
@@ -363,7 +362,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         appSettings.scheduledDarkStartMinute,
         appSettings.scheduledDarkEndMinute,
     ) {
-        resolveDarkTheme(
+        resolveEchoDarkTheme(
             systemDarkTheme = systemDarkTheme,
             themeMode = appSettings.themeMode,
             scheduledDarkModeEnabled = appSettings.scheduledDarkModeEnabled,
@@ -513,6 +512,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 hasPermission = hasAudioPermission,
                                 scanState = scanState,
                                 libraryQuery = libraryQuery,
+                                trackSortMode = libraryTrackSortMode,
                                 tracks = tracks,
                                 albums = albums,
                                 remoteAlbums = remoteAlbums,
@@ -526,6 +526,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 neteaseAccountState = neteaseAccountState,
                                 neteaseImportState = neteaseImportState,
                                 neteaseQuality = NeteaseAudioQuality.fromId(appSettings.neteaseAudioQuality),
+                                showTrackAudioInfoTags = appSettings.trackAudioInfoTagsVisible,
                                 selectedAlbum = selectedAlbum,
                                 selectedArtist = selectedArtist,
                                 selectedFolder = selectedFolder,
@@ -536,6 +537,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 playlistDetailTracks = playlistDetailTracks,
                                 onRequestPermission = { permissionLauncher.launch(permission) },
                                 onLibraryQueryChange = viewModel::updateLibraryQuery,
+                                onTrackSortModeChange = viewModel::updateLibraryTrackSortMode,
                                 onScanFolder = { folderScanLauncher.launch(null) },
                                 onScanAll = viewModel::refreshLibrary,
                                 onCancelScan = viewModel::cancelScan,
@@ -639,6 +641,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 artistCount = libraryStats.artistCount,
                                 dynamicArtworkEnabled = appSettings.dynamicArtworkEnabled,
                                 compactModeEnabled = appSettings.compactModeEnabled,
+                                trackAudioInfoTagsVisible = appSettings.trackAudioInfoTagsVisible,
                                 pcHandoffEnabled = appSettings.pcHandoffEnabled,
                                 discordPresenceViaPcEnabled = appSettings.discordPresenceViaPcEnabled,
                                 showLyricsControlDeck = appSettings.showLyricsControlDeck,
@@ -672,6 +675,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 lastFmSharedSecretLocked = LastFmApiConfig.hasSharedSecret,
                                 onDynamicArtworkEnabledChange = viewModel::setDynamicArtworkEnabled,
                                 onCompactModeEnabledChange = viewModel::setCompactModeEnabled,
+                                onTrackAudioInfoTagsVisibleChange = viewModel::setTrackAudioInfoTagsVisible,
                                 onPcHandoffEnabledChange = viewModel::setPcHandoffEnabled,
                                 onDiscordPresenceViaPcEnabledChange = viewModel::setDiscordPresenceViaPcEnabled,
                                 onShowLyricsControlDeckChange = viewModel::setShowLyricsControlDeck,
@@ -892,6 +896,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     lyricsFontMode = appSettings.lyricsFontFamily,
                     lyricsFontScale = appSettings.lyricsFontScale,
                     lyricsColorMode = appSettings.lyricsColorMode,
+                    lyricsAlignment = appSettings.lyricsAlignment,
+                    lyricsLineSpacing = appSettings.lyricsLineSpacing,
+                    lyricsBackgroundDim = appSettings.lyricsBackgroundDim,
+                    lyricsWordHighlightIntensity = appSettings.lyricsWordHighlightIntensity,
+                    lyricsMotionMode = appSettings.lyricsMotionMode,
                     lyricsShowTranslation = appSettings.lyricsShowTranslation,
                     lyricsShowRomanization = appSettings.lyricsShowRomanization,
                     lyricsFocusGlowEnabled = appSettings.lyricsFocusGlowEnabled,
@@ -913,6 +922,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     onLyricsFontFamilyChange = viewModel::setLyricsFontFamily,
                     onLyricsFontScaleChange = viewModel::setLyricsFontScale,
                     onLyricsColorModeChange = viewModel::setLyricsColorMode,
+                    onLyricsAlignmentChange = viewModel::setLyricsAlignment,
+                    onLyricsLineSpacingChange = viewModel::setLyricsLineSpacing,
+                    onLyricsBackgroundDimChange = viewModel::setLyricsBackgroundDim,
+                    onLyricsWordHighlightIntensityChange = viewModel::setLyricsWordHighlightIntensity,
+                    onLyricsMotionModeChange = viewModel::setLyricsMotionMode,
                     onLyricsShowTranslationChange = viewModel::setLyricsShowTranslation,
                     onLyricsShowRomanizationChange = viewModel::setLyricsShowRomanization,
                     onLyricsFocusGlowChange = viewModel::setLyricsFocusGlowEnabled,
@@ -985,9 +999,9 @@ private fun ExpandedBottomControls(
                 Brush.verticalGradient(
                     listOf(
                         Color.Transparent,
-                        Color.White.copy(alpha = 0.06f),
-                        EchoGlassPanel.copy(alpha = 0.34f),
-                        EchoGlassInk.copy(alpha = 0.62f),
+                        EchoGlassNight.copy(alpha = 0.28f),
+                        EchoGlassInk.copy(alpha = 0.78f),
+                        EchoGlassPanel.copy(alpha = 0.94f),
                     ),
                 )
             } else {
@@ -1024,7 +1038,6 @@ private fun ExpandedBottomControls(
         )
     }
 }
-
 @Composable
 private fun CompactBottomControls(
     status: app.echo.android.model.playback.EchoPlaybackStatus,
@@ -1045,9 +1058,9 @@ private fun CompactBottomControls(
                     Brush.verticalGradient(
                         listOf(
                             Color.Transparent,
-                            Color.White.copy(alpha = 0.06f),
-                            EchoGlassPanel.copy(alpha = 0.32f),
-                            EchoGlassInk.copy(alpha = 0.58f),
+                            EchoGlassNight.copy(alpha = 0.26f),
+                            EchoGlassInk.copy(alpha = 0.76f),
+                            EchoGlassPanel.copy(alpha = 0.92f),
                         ),
                     )
                 } else {
@@ -1072,43 +1085,5 @@ private fun CompactBottomControls(
             onPrevious = onPrevious,
             modifier = Modifier.fillMaxWidth(),
         )
-    }
-}
-
-private fun currentMinuteNow(): Int {
-    val now = LocalTime.now()
-    return now.hour * 60 + now.minute
-}
-
-private fun resolveDarkTheme(
-    systemDarkTheme: Boolean,
-    themeMode: String,
-    scheduledDarkModeEnabled: Boolean,
-    scheduledStartMinute: Int,
-    scheduledEndMinute: Int,
-    currentMinute: Int,
-): Boolean {
-    if (scheduledDarkModeEnabled && isMinuteInScheduledWindow(currentMinute, scheduledStartMinute, scheduledEndMinute)) {
-        return true
-    }
-    return when (themeMode) {
-        EchoThemeMode.Light -> false
-        EchoThemeMode.Dark -> true
-        else -> systemDarkTheme
-    }
-}
-
-private fun isMinuteInScheduledWindow(
-    currentMinute: Int,
-    startMinute: Int,
-    endMinute: Int,
-): Boolean {
-    val current = currentMinute.coerceIn(0, 23 * 60 + 59)
-    val start = startMinute.coerceIn(0, 23 * 60 + 59)
-    val end = endMinute.coerceIn(0, 23 * 60 + 59)
-    return when {
-        start == end -> false
-        start < end -> current in start until end
-        else -> current >= start || current < end
     }
 }

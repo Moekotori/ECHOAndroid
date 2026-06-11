@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.Flow
 data class TrackFingerprint(
     val id: String,
     val contentUri: String,
+    val sampleRateHz: Int?,
     val fingerprint: String?,
 )
 
@@ -69,6 +70,15 @@ interface LibraryTrackDao {
 
     @Query("SELECT * FROM library_tracks WHERE id = :trackId LIMIT 1")
     suspend fun getTrackById(trackId: String): LibraryTrackEntity?
+
+    @RawQuery(
+        observedEntities = [
+            LibraryTrackEntity::class,
+            LibraryTrackFtsEntity::class,
+            LibraryPlaybackStatsEntity::class,
+        ],
+    )
+    fun pageTracksSorted(query: SupportSQLiteQuery): PagingSource<Int, LibraryTrackEntity>
 
     @Query(
         """
@@ -531,7 +541,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT id, contentUri, fingerprint FROM library_tracks
+        SELECT id, contentUri, sampleRateHz, fingerprint FROM library_tracks
         WHERE source = :source
         """,
     )
@@ -539,7 +549,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT id, contentUri, fingerprint FROM library_tracks
+        SELECT id, contentUri, sampleRateHz, fingerprint FROM library_tracks
         WHERE source = :source
           AND relativePath LIKE :relativePathLike ESCAPE '\'
         """,
@@ -554,6 +564,33 @@ interface LibraryTrackDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFtsBatch(tracks: List<LibraryTrackFtsEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertPlaybackStats(stats: LibraryPlaybackStatsEntity): Long
+
+    @Query(
+        """
+        UPDATE library_playback_stats
+        SET playCount = playCount + 1,
+            lastPlayedAtEpochMs = :playedAtEpochMs
+        WHERE trackId = :trackId
+        """,
+    )
+    suspend fun incrementPlaybackStats(trackId: String, playedAtEpochMs: Long): Int
+
+    @Transaction
+    suspend fun recordPlayback(trackId: String, playedAtEpochMs: Long) {
+        val inserted = insertPlaybackStats(
+            LibraryPlaybackStatsEntity(
+                trackId = trackId,
+                playCount = 1,
+                lastPlayedAtEpochMs = playedAtEpochMs,
+            ),
+        )
+        if (inserted == -1L) {
+            incrementPlaybackStats(trackId, playedAtEpochMs)
+        }
+    }
 
     @Query("DELETE FROM library_tracks_fts WHERE trackId IN (:trackIds)")
     suspend fun deleteFtsByTrackIds(trackIds: List<String>): Int

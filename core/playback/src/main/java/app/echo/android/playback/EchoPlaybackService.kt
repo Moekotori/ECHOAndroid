@@ -1,5 +1,7 @@
 package app.echo.android.playback
 
+import android.content.Context
+import android.os.Process
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.Player
@@ -17,7 +19,7 @@ class EchoPlaybackService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
         val exoPlayer = ExoPlayer.Builder(this)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(echoRemoteAuthDataSourceFactory(this)))
+            .setMediaSourceFactory(DefaultMediaSourceFactory(echoPlaybackDataSourceFactory(this)))
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
@@ -35,7 +37,13 @@ class EchoPlaybackService : MediaSessionService() {
             .build()
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
+        mediaSession.takeIf {
+            EchoMediaSessionControllerGate.isAllowed(
+                context = this,
+                controllerInfo = controllerInfo,
+            )
+        }
 
     override fun onDestroy() {
         mediaSession?.run {
@@ -55,5 +63,14 @@ class EchoPlaybackService : MediaSessionService() {
         override fun onEvents(player: Player, events: Player.Events) {
             super.onEvents(player, events)
         }
+    }
+}
+
+internal object EchoMediaSessionControllerGate {
+    @UnstableApi
+    fun isAllowed(context: Context, controllerInfo: MediaSession.ControllerInfo): Boolean {
+        if (controllerInfo.isTrusted) return true
+        if (controllerInfo.uid == Process.myUid() || controllerInfo.uid == Process.SYSTEM_UID) return true
+        return controllerInfo.packageName == context.applicationContext.packageName
     }
 }

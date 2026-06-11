@@ -31,10 +31,10 @@ import app.echo.android.data.EchoBackgroundMode
 import app.echo.android.design.EchoGlassCyan
 import app.echo.android.design.EchoGlassInk
 import app.echo.android.design.EchoGlassNight
-import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.EchoGlassViolet
 import app.echo.android.design.EchoGlassBackground
 import app.echo.android.design.LocalEchoDarkTheme
+import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import coil.compose.AsyncImage
 
 @Composable
@@ -44,8 +44,11 @@ fun EchoCustomBackground(
 ) {
     val mode = settings.customBackgroundMode
     val uri = settings.customBackgroundUri
-    val hasCustomBackground = mode != EchoBackgroundMode.Default && !uri.isNullOrBlank()
-    val blur = settings.customBackgroundBlur.dp
+    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    val customVideoDisabled = lightweight && mode == EchoBackgroundMode.Video
+    val hasCustomBackground = mode != EchoBackgroundMode.Default && !uri.isNullOrBlank() && !customVideoDisabled
+    val maxBlur = if (lightweight) 8f else 80f
+    val blur = settings.customBackgroundBlur.coerceIn(0f, maxBlur).dp
     val brightness = settings.customBackgroundBrightness
     val glass = settings.customBackgroundGlass
 
@@ -150,8 +153,16 @@ private fun EchoVideoWallpaper(
 
 @Composable
 private fun EchoBrightnessOverlay(brightness: Float) {
+    val dark = LocalEchoDarkTheme.current
     val clamped = brightness.coerceIn(0.35f, 1.15f)
-    val overlay = if (clamped < 1f) {
+    val overlay = if (dark) {
+        val dim = if (clamped < 1f) {
+            0.18f + (1f - clamped) * 0.82f
+        } else {
+            0.18f - (clamped - 1f) * 0.12f
+        }
+        Color.Black.copy(alpha = dim.coerceIn(0.10f, 0.62f))
+    } else if (clamped < 1f) {
         Color.Black.copy(alpha = ((1f - clamped) * 0.72f).coerceIn(0f, 0.42f))
     } else {
         Color.White.copy(alpha = ((clamped - 1f) * 0.35f).coerceIn(0f, 0.12f))
@@ -162,12 +173,12 @@ private fun EchoBrightnessOverlay(brightness: Float) {
 @Composable
 private fun EchoBackgroundGlassOverlay(glass: Float) {
     val dark = LocalEchoDarkTheme.current
-    val readableGlass = if (dark) glass.coerceAtLeast(0.58f) else glass
+    val readableGlass = if (dark) glass.coerceAtLeast(0.78f) else glass
     val colors = if (dark) {
         listOf(
-            EchoGlassNight.copy(alpha = (readableGlass * 0.50f).coerceIn(0.28f, 0.60f)),
-            EchoGlassInk.copy(alpha = (readableGlass * 0.42f).coerceIn(0.24f, 0.52f)),
-            EchoGlassPanel.copy(alpha = (readableGlass * 0.54f).coerceIn(0.32f, 0.64f)),
+            EchoGlassNight.copy(alpha = (readableGlass * 0.86f).coerceIn(0.62f, 0.88f)),
+            EchoGlassInk.copy(alpha = (readableGlass * 0.76f).coerceIn(0.58f, 0.82f)),
+            EchoGlassNight.copy(alpha = (readableGlass * 0.90f).coerceIn(0.66f, 0.90f)),
         )
     } else {
         listOf(
@@ -192,7 +203,7 @@ private fun EchoBackgroundGlassOverlay(glass: Float) {
                         listOf(
                             EchoGlassCyan.copy(alpha = (glass * 0.04f).coerceIn(0f, 0.08f)),
                             Color.Transparent,
-                            EchoGlassViolet.copy(alpha = (glass * 0.05f).coerceIn(0f, 0.09f)),
+                            EchoGlassViolet.copy(alpha = (glass * 0.04f).coerceIn(0f, 0.07f)),
                         ),
                     ),
                 ),

@@ -43,8 +43,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.CloudQueue
 import androidx.compose.material.icons.rounded.Devices
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -99,6 +101,7 @@ import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.FolderSummary
 import app.echo.android.model.library.LibraryScanProgress
 import app.echo.android.model.library.LibrarySource
+import app.echo.android.model.library.LibraryTrackSortMode
 import app.echo.android.model.library.NeteaseAccountState
 import app.echo.android.model.library.NeteaseAudioQuality
 import app.echo.android.model.library.NeteaseImportState
@@ -144,11 +147,21 @@ private sealed interface LibraryAlbumTransitionTarget {
     ) : LibraryAlbumTransitionTarget
 }
 
+private sealed interface LibraryFolderTransitionTarget {
+    object Browser : LibraryFolderTransitionTarget
+
+    data class Detail(
+        val folder: FolderSummary,
+        val tracks: LazyPagingItems<EchoTrack>,
+    ) : LibraryFolderTransitionTarget
+}
+
 @Composable
 fun LibraryScreen(
     hasPermission: Boolean,
     scanState: LibraryScanProgress,
     libraryQuery: String,
+    trackSortMode: LibraryTrackSortMode,
     tracks: LazyPagingItems<EchoTrack>,
     albums: LazyPagingItems<AlbumSummary>,
     remoteAlbums: LazyPagingItems<AlbumSummary>,
@@ -161,6 +174,7 @@ fun LibraryScreen(
     neteaseAccountState: NeteaseAccountState,
     neteaseImportState: NeteaseImportState,
     neteaseQuality: NeteaseAudioQuality,
+    showTrackAudioInfoTags: Boolean,
     selectedAlbum: AlbumSummary?,
     selectedArtist: ArtistSummary?,
     selectedFolder: FolderSummary?,
@@ -171,6 +185,7 @@ fun LibraryScreen(
     playlistDetailTracks: LazyPagingItems<EchoTrack>?,
     onRequestPermission: () -> Unit,
     onLibraryQueryChange: (String) -> Unit,
+    onTrackSortModeChange: (LibraryTrackSortMode) -> Unit,
     onScanFolder: () -> Unit,
     onScanAll: () -> Unit,
     onCancelScan: () -> Unit,
@@ -233,6 +248,7 @@ fun LibraryScreen(
             selectedMode = linkedMode,
             selectedAlbumKey = selectedLinkedAlbumKey,
             selectedSource = selectedSource,
+            showTrackAudioInfoTags = showTrackAudioInfoTags,
             onQueryChange = onLibraryQueryChange,
             onSelectSource = ::selectSource,
             onSelectMode = { mode ->
@@ -358,6 +374,12 @@ fun LibraryScreen(
 
                 val activeFolderDetail = selectedFolder
                 val activePlaylistDetail = selectedPlaylist
+                val folderTransitionTarget =
+                    if (activeFolderDetail != null && folderDetailTracks != null) {
+                        LibraryFolderTransitionTarget.Detail(activeFolderDetail, folderDetailTracks)
+                    } else {
+                        LibraryFolderTransitionTarget.Browser
+                    }
                 if (activePlaylistDetail != null && playlistDetailTracks != null) {
                     LibraryDetailPage(
                         title = activePlaylistDetail.name,
@@ -366,50 +388,60 @@ fun LibraryScreen(
                         onBack = onCloseDetail,
                         onPlayAll = { onPlayPlaylist(activePlaylistDetail) },
                         onPlayTrack = onPlayTrack,
+                        showAudioInfoTags = showTrackAudioInfoTags,
                         modifier = Modifier.fillMaxSize(),
                     )
                     return@AnimatedContent
                 }
 
                 AnimatedContent(
-                    targetState = activeFolderDetail != null && folderDetailTracks != null,
+                    targetState = folderTransitionTarget,
+                    contentKey = { target ->
+                        when (target) {
+                            LibraryFolderTransitionTarget.Browser -> "folder-browser"
+                            is LibraryFolderTransitionTarget.Detail -> target.folder.folderKey
+                        }
+                    },
                     transitionSpec = {
-                        if (targetState) {
-                            val enter = slideInHorizontally(tween(durationMillis = 360, easing = LibraryFolderMotionEasing)) { it / 3 } +
-                                fadeIn(tween(durationMillis = 180, easing = LibraryFolderMotionEasing)) +
-                                scaleIn(
-                                    initialScale = 0.985f,
-                                    animationSpec = tween(durationMillis = 360, easing = LibraryFolderMotionEasing),
-                                )
-                            val exit = slideOutHorizontally(tween(durationMillis = 220, easing = LibraryFolderMotionEasing)) { -it / 8 } +
-                                fadeOut(tween(durationMillis = 140, easing = LibraryFolderMotionEasing)) +
-                                scaleOut(
-                                    targetScale = 0.992f,
-                                    animationSpec = tween(durationMillis = 220, easing = LibraryFolderMotionEasing),
-                                )
-                            enter togetherWith exit
+                        if (targetState is LibraryFolderTransitionTarget.Detail) {
+                            val enter = slideInHorizontally(
+                                tween(durationMillis = 300, delayMillis = 24, easing = LibraryFolderMotionEasing),
+                            ) { it / 7 } +
+                                fadeIn(tween(durationMillis = 180, delayMillis = 36, easing = LibraryFolderMotionEasing))
+                            val exit = slideOutHorizontally(
+                                tween(durationMillis = 180, easing = LibraryFolderMotionEasing),
+                            ) { -it / 28 } +
+                                fadeOut(tween(durationMillis = 110, easing = LibraryFolderMotionEasing))
+                            (enter togetherWith exit).apply {
+                                targetContentZIndex = 1f
+                            }
                         } else {
-                            val enter = slideInHorizontally(tween(durationMillis = 320, easing = LibraryFolderMotionEasing)) { -it / 5 } +
-                                fadeIn(tween(durationMillis = 160, easing = LibraryFolderMotionEasing))
-                            val exit = slideOutHorizontally(tween(durationMillis = 240, easing = LibraryFolderMotionEasing)) { it / 3 } +
-                                fadeOut(tween(durationMillis = 140, easing = LibraryFolderMotionEasing))
-                            enter togetherWith exit
+                            val enter = slideInHorizontally(
+                                tween(durationMillis = 180, delayMillis = 36, easing = LibraryFolderMotionEasing),
+                            ) { -it / 30 } +
+                                fadeIn(tween(durationMillis = 150, delayMillis = 30, easing = LibraryFolderMotionEasing))
+                            val exit = slideOutHorizontally(
+                                tween(durationMillis = 190, easing = LibraryFolderMotionEasing),
+                            ) { it / 7 } +
+                                fadeOut(tween(durationMillis = 120, easing = LibraryFolderMotionEasing))
+                            (enter togetherWith exit).apply {
+                                targetContentZIndex = -1f
+                            }
                         }
                     },
                     label = "library-folder-detail-transition",
                     modifier = Modifier.fillMaxSize(),
-                ) { showFolderDetail ->
-                    if (showFolderDetail && activeFolderDetail != null && folderDetailTracks != null) {
-                        FolderDetailPage(
-                            folder = activeFolderDetail,
-                            tracks = folderDetailTracks,
+                ) { target ->
+                    when (target) {
+                        is LibraryFolderTransitionTarget.Detail -> FolderDetailPage(
+                            folder = target.folder,
+                            tracks = target.tracks,
                             onBack = onCloseDetail,
-                            onPlayAll = { onPlayFolder(activeFolderDetail) },
+                            onPlayAll = { onPlayFolder(target.folder) },
                             onPlayTrack = onPlayTrack,
                             modifier = Modifier.fillMaxSize(),
                         )
-                    } else {
-                        PageChrome(
+                        LibraryFolderTransitionTarget.Browser -> PageChrome(
                 title = "曲库",
                 subtitle = null,
                 badge = selectedSource.label,
@@ -422,6 +454,12 @@ fun LibraryScreen(
                         onQueryChange = onLibraryQueryChange,
                         expandedWidth = 240.dp,
                     )
+                    if (selectedSource == LibrarySourceMode.Local && selectedMode == LibraryViewMode.Songs) {
+                        LibraryTrackSortMenu(
+                            selectedSortMode = trackSortMode,
+                            onSortModeChange = onTrackSortModeChange,
+                        )
+                    }
                     LibraryScanAction(
                         hasPermission = hasPermission,
                         scanState = scanState,
@@ -491,6 +529,7 @@ fun LibraryScreen(
                                         TrackList(
                                             tracks = tracks,
                                             onPlayTrack = onPlayTrack,
+                                            showAudioInfoTags = showTrackAudioInfoTags,
                                             modifier = Modifier.fillMaxSize(),
                                         )
                                     }
@@ -654,6 +693,7 @@ private fun LinkedEchoLibraryPage(
     selectedAlbumKey: String?,
     selectedArtistKey: String?,
     selectedSource: LibrarySourceMode,
+    showTrackAudioInfoTags: Boolean,
     onQueryChange: (String) -> Unit,
     onSelectSource: (LibrarySourceMode) -> Unit,
     onSelectMode: (LinkedLibraryMode) -> Unit,
@@ -757,6 +797,7 @@ private fun LinkedEchoLibraryPage(
             selectedMode == LinkedLibraryMode.Songs -> LinkedTrackList(
                 tracks = filteredTracks,
                 onPlayLinkedTrack = onPlayLinkedTrack,
+                showAudioInfoTags = showTrackAudioInfoTags,
                 modifier = Modifier.weight(1f),
             )
             selectedMode == LinkedLibraryMode.Albums -> LinkedAlbumWall(
@@ -908,6 +949,7 @@ private fun LinkedLibraryChrome(
 private fun LinkedTrackList(
     tracks: List<EchoRemoteTrack>,
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
+    showAudioInfoTags: Boolean,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -922,6 +964,7 @@ private fun LinkedTrackList(
             TrackRow(
                 track = track.toEchoTrack(),
                 onClick = { onPlayLinkedTrack(track) },
+                showAudioInfoTags = showAudioInfoTags,
             )
         }
     }
@@ -1085,6 +1128,46 @@ private fun List<EchoRemoteTrack>.filterLinkedLibraryQuery(query: String): List<
             append(track.album.orEmpty())
         }.lowercase()
         terms.all(searchableText::contains)
+    }
+}
+
+@Composable
+private fun LibraryTrackSortMenu(
+    selectedSortMode: LibraryTrackSortMode,
+    onSortModeChange: (LibraryTrackSortMode) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(
+                Icons.AutoMirrored.Rounded.Sort,
+                contentDescription = "设置歌曲排序",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            LibraryTrackSortMode.entries.forEach { mode ->
+                DropdownMenuItem(
+                    text = { Text(mode.label) },
+                    onClick = {
+                        expanded = false
+                        onSortModeChange(mode)
+                    },
+                    trailingIcon = {
+                        if (mode == selectedSortMode) {
+                            Icon(
+                                Icons.Rounded.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    },
+                )
+            }
+        }
     }
 }
 

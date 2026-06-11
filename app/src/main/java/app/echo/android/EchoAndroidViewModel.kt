@@ -26,6 +26,7 @@ import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.FolderSummary
 import app.echo.android.model.library.LibraryScanProgress
 import app.echo.android.model.library.LibraryStats
+import app.echo.android.model.library.LibraryTrackSortMode
 import app.echo.android.model.library.NeteaseAccountState
 import app.echo.android.model.library.NeteaseAudioQuality
 import app.echo.android.model.library.NeteaseImportState
@@ -98,6 +99,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     private var usbStartupPolicyApplied = false
 
     val libraryQuery: StateFlow<String> = libraryController.libraryQuery
+    val libraryTrackSortMode: StateFlow<LibraryTrackSortMode> = libraryController.trackSortMode
     val tracks: Flow<PagingData<EchoTrack>> = libraryController.tracks
     val albums: Flow<PagingData<AlbumSummary>> = libraryController.albums
     val remoteAlbums: Flow<PagingData<AlbumSummary>> = libraryController.remoteAlbums
@@ -118,6 +120,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     val playbackDiagnostics: StateFlow<PlaybackDiagnosticsState> = playbackController.playbackDiagnostics
     val equalizerState: StateFlow<EchoEqualizerState> = playbackController.equalizerState
     val lyricsState: StateFlow<EchoLyricsLoadState> = lyricsController.lyricsState
+    val initialAppSettings: EchoAppSettings = settingsStore.startupAppSettingsSnapshot()
     val appSettings: Flow<EchoAppSettings> = settingsStore.appSettings
     val lastFmState: StateFlow<LastFmUiState> = lastFmController.uiState
     val neteaseAccountState: StateFlow<NeteaseAccountState> = neteaseController.accountState
@@ -159,6 +162,9 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         )
         viewModelScope.launch {
             settingsStore.appSettings.collect { settings ->
+                withContext(Dispatchers.IO) {
+                    settingsStore.cacheStartupThemeSnapshot(settings)
+                }
                 latestNeteaseQuality = NeteaseAudioQuality.fromId(settings.neteaseAudioQuality)
                 neteaseController.restore(settings)
                 lyricsController.setOnlineLyricsEnabled(settings.onlineLyricsEnabled, playbackController.currentTrackId)
@@ -223,6 +229,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun updateLibraryQuery(query: String) {
         libraryController.updateLibraryQuery(query)
+    }
+
+    fun updateLibraryTrackSortMode(sortMode: LibraryTrackSortMode) {
+        libraryController.updateTrackSortMode(sortMode)
     }
 
     fun play(track: EchoTrack) {
@@ -394,6 +404,12 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun setCompactModeEnabled(enabled: Boolean) {
         updateSettings {
             setCompactModeEnabled(enabled)
+        }
+    }
+
+    fun setTrackAudioInfoTagsVisible(visible: Boolean) {
+        updateSettings {
+            setTrackAudioInfoTagsVisible(visible)
         }
     }
 
@@ -581,6 +597,36 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun setLyricsColorMode(value: String) {
         updateSettings {
             setLyricsColorMode(value)
+        }
+    }
+
+    fun setLyricsAlignment(value: String) {
+        updateSettings {
+            setLyricsAlignment(value)
+        }
+    }
+
+    fun setLyricsLineSpacing(value: Float) {
+        updateSettings {
+            setLyricsLineSpacing(value)
+        }
+    }
+
+    fun setLyricsBackgroundDim(value: Float) {
+        updateSettings {
+            setLyricsBackgroundDim(value)
+        }
+    }
+
+    fun setLyricsWordHighlightIntensity(value: Float) {
+        updateSettings {
+            setLyricsWordHighlightIntensity(value)
+        }
+    }
+
+    fun setLyricsMotionMode(value: String) {
+        updateSettings {
+            setLyricsMotionMode(value)
         }
     }
 
@@ -927,11 +973,9 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     private fun recordRecentPlayback(trackId: String) {
         viewModelScope.launch {
             recordPlaybackHeatmapTick()
-            val album = withContext(Dispatchers.IO) {
-                repository.albumSummaryForTrack(trackId)
-            }
-            val artist = withContext(Dispatchers.IO) {
-                repository.artistSummaryForTrack(trackId)
+            val (album, artist) = withContext(Dispatchers.IO) {
+                repository.recordPlayback(trackId)
+                repository.albumSummaryForTrack(trackId) to repository.artistSummaryForTrack(trackId)
             }
             album?.let { summary ->
                 albumPlaybackCounts[summary.albumKey] = (albumPlaybackCounts[summary.albumKey] ?: 0) + 1

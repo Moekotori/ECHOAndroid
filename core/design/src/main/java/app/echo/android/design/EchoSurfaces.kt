@@ -105,7 +105,7 @@ fun EchoInfoChip(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        color = if (dark) EchoGlassPanel.copy(alpha = 0.54f) else scheme.surface.copy(alpha = 0.92f),
+        color = if (dark) scheme.surface.copy(alpha = 0.86f) else scheme.surface.copy(alpha = 0.92f),
         border = if (dark) BorderStroke(1.dp, EchoDarkGlassBorder) else BorderStroke(1.dp, Color.White.copy(alpha = 0.96f)),
     ) {
         Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
@@ -127,7 +127,7 @@ fun EchoMetricTile(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        color = if (dark) EchoGlassPanel.copy(alpha = 0.54f) else scheme.surface.copy(alpha = 0.92f),
+        color = if (dark) scheme.surface.copy(alpha = 0.86f) else scheme.surface.copy(alpha = 0.92f),
         border = if (dark) BorderStroke(1.dp, EchoDarkGlassBorder) else BorderStroke(1.dp, Color.White.copy(alpha = 0.96f)),
     ) {
         Column(
@@ -163,14 +163,14 @@ fun EchoSegmentChip(
         color = if (selected) {
             scheme.primary.copy(alpha = if (dark) 0.26f else 0.18f)
         } else {
-            if (dark) EchoGlassPanel.copy(alpha = 0.48f) else scheme.surface.copy(alpha = 0.92f)
+            if (dark) scheme.surfaceVariant.copy(alpha = 0.72f) else scheme.surface.copy(alpha = 0.92f)
         },
         border = BorderStroke(
             1.dp,
             if (selected) {
                 scheme.primary.copy(alpha = if (dark) 0.42f else 0.30f)
             } else {
-                if (dark) Color.White.copy(alpha = 0.28f) else Color.White.copy(alpha = 0.96f)
+                if (dark) EchoDarkGlassBorder else Color.White.copy(alpha = 0.96f)
             },
         ),
     ) {
@@ -209,7 +209,7 @@ fun EchoPlaceholderLine(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = if (dark) EchoGlassPanel.copy(alpha = 0.48f) else scheme.surface.copy(alpha = 0.90f),
+        color = if (dark) scheme.surface.copy(alpha = 0.80f) else scheme.surface.copy(alpha = 0.90f),
     ) {
         Text(
             text,

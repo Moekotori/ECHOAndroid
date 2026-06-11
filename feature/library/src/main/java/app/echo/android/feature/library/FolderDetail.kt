@@ -196,7 +196,8 @@ private fun Modifier.folderBackSwipe(onBack: () -> Unit): Modifier = pointerInpu
         onDragStart = { dragX = 0f },
         onHorizontalDrag = { _, dragAmount -> dragX += dragAmount },
         onDragEnd = {
-            if (kotlin.math.abs(dragX) >= FolderBackSwipeThresholdPx) onBack()
+            if (dragX >= FolderBackSwipeThresholdPx) onBack()
+            dragX = 0f
         },
         onDragCancel = { dragX = 0f },
     )

@@ -13,8 +13,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LibraryTrackFtsEntity::class,
         LibraryPlaylistEntity::class,
         LibraryPlaylistTrackEntity::class,
+        LibraryPlaybackStatsEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
 )
 abstract class EchoLibraryDatabase : RoomDatabase() {
@@ -32,6 +33,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                     Migration5To6,
                     Migration6To7,
                     Migration7To8,
+                    Migration8To9,
                 )
                 .build()
 
@@ -170,6 +172,32 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                     """
                     CREATE INDEX IF NOT EXISTS index_library_playlist_tracks_playlistId_position
                     ON library_playlist_tracks(playlistId, position)
+                    """.trimIndent(),
+                )
+            }
+        }
+
+        internal val Migration8To9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS library_playback_stats (
+                        trackId TEXT NOT NULL PRIMARY KEY,
+                        playCount INTEGER NOT NULL,
+                        lastPlayedAtEpochMs INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS index_library_playback_stats_playCount
+                    ON library_playback_stats(playCount)
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS index_library_playback_stats_lastPlayedAtEpochMs
+                    ON library_playback_stats(lastPlayedAtEpochMs)
                     """.trimIndent(),
                 )
             }

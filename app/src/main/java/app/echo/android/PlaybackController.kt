@@ -21,6 +21,7 @@ import app.echo.android.model.playback.PlaybackMetadataState
 import app.echo.android.model.playback.PlaybackPositionState
 import app.echo.android.model.playback.PlaybackQueueState
 import app.echo.android.model.playback.OpraHeadphoneCorrectionPreset
+import app.echo.android.model.settings.EchoEffectivePerformanceMode
 import app.echo.android.playback.EchoEqualizerController
 import app.echo.android.playback.EchoPlaybackService
 import app.echo.android.playback.EchoUsbExclusiveDriverTester
@@ -32,6 +33,7 @@ import app.echo.android.playback.toPlaybackDiagnosticsState
 import app.echo.android.playback.toPlaybackMetadataState
 import app.echo.android.playback.toPlaybackPositionState
 import app.echo.android.playback.toPlaybackQueueState
+import app.echo.android.playback.toEchoPlaybackError
 import app.echo.android.playback.withUsbAudioStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -40,6 +42,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+internal enum class PlaybackProgressUiVisibility {
+    NowPlayingExpanded,
+    MiniPlayer,
+    Background,
+}
 
 @UnstableApi
 internal class PlaybackController(
@@ -73,6 +81,7 @@ internal class PlaybackController(
     private val usbExclusiveDriverTester = EchoUsbExclusiveDriverTester(application)
     private var controller: MediaController? = null
     private var progressJob: Job? = null
+    private var progressUpdateIntervalMs: Long? = MiniPlayerProgressIntervalMs
     private var usbAudioJob: Job? = null
     private var usbTransitionJob: Job? = null
     private var lastTrackId: String? = null
@@ -154,6 +163,17 @@ internal class PlaybackController(
     fun seekTo(positionMs: Long) {
         controller?.seekTo(positionMs)
         controller?.let(::updatePlaybackPosition)
+    }
+
+    fun setProgressUpdatePolicy(
+        effectivePerformanceMode: EchoEffectivePerformanceMode,
+        uiVisibility: PlaybackProgressUiVisibility,
+    ) {
+        val nextInterval = resolveProgressUpdateIntervalMs(effectivePerformanceMode, uiVisibility)
+        if (progressUpdateIntervalMs == nextInterval) return
+        progressUpdateIntervalMs = nextInterval
+        controller?.let(::updatePlaybackPosition)
+        startProgressUpdates()
     }
 
     fun skipNext() {
@@ -254,7 +274,7 @@ internal class PlaybackController(
                     val diagnostics = EchoPlaybackDiagnostics(
                         lastError = EchoPlaybackError(
                             kind = EchoAudioErrorKind.Unknown,
-                            message = error.message ?: "Media controller connection failed",
+                            message = "Media controller connection failed.",
                             recoverable = true,
                         ),
                     )
@@ -286,16 +306,17 @@ internal class PlaybackController(
         }
 
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-            updatePlaybackCore(controller ?: return)
+            updatePlaybackCore(controller ?: return, error.toEchoPlaybackError())
         }
     }
 
     private fun startProgressUpdates() {
         progressJob?.cancel()
+        val intervalMs = progressUpdateIntervalMs ?: return
         progressJob = scope.launch {
             while (true) {
                 controller?.let(::updatePlaybackPosition)
-                delay(500L)
+                delay(intervalMs)
             }
         }
     }
@@ -309,18 +330,38 @@ internal class PlaybackController(
         }
     }
 
-    private fun updatePlaybackCore(player: Player) {
+    private fun updatePlaybackCore(player: Player, playbackError: EchoPlaybackError? = null) {
         equalizerController.syncToAudioSession(player.audioSessionId)
         val metadata = player.toPlaybackMetadataState()
-        val controls = player.toPlaybackControlsState()
+        val activePlaybackError = playbackError ?: player.playerError?.toEchoPlaybackError()
+        val controls = player.toPlaybackControlsState().let { state ->
+            if (activePlaybackError == null) {
+                state
+            } else {
+                state.copy(
+                    state = EchoPlaybackState.Error,
+                    isPlaying = false,
+                )
+            }
+        }
         val sourceSampleRateHz = metadata.mediaId?.let(sampleRatesByMediaId::get)
         val diagnostics = player.toPlaybackDiagnosticsState(
             usbAudioStatus = usbAudioMonitor.status.value,
             sourceSampleRateHz = sourceSampleRateHz,
-        )
+        ).withPlaybackError(activePlaybackError)
         val position = player.toPlaybackPositionState()
         val queue = player.toPlaybackQueueState()
-        val status = player.toEchoPlaybackStatus(diagnostics.diagnostics)
+        val status = player.toEchoPlaybackStatus(diagnostics.diagnostics).let { state ->
+            if (activePlaybackError == null) {
+                state
+            } else {
+                state.copy(
+                    state = EchoPlaybackState.Error,
+                    isPlaying = false,
+                    diagnostics = diagnostics.diagnostics,
+                )
+            }
+        }
 
         updateState(_playbackMetadata, metadata)
         updateState(_playbackControls, controls)
@@ -369,9 +410,43 @@ internal class PlaybackController(
         updateState(_playbackPosition, player.toPlaybackPositionState())
     }
 
+    private fun PlaybackDiagnosticsState.withPlaybackError(error: EchoPlaybackError?): PlaybackDiagnosticsState {
+        if (error == null) return this
+        val diagnosticsWithError = diagnostics.copy(
+            lastCommand = "error",
+            lastError = error,
+        )
+        return copy(
+            diagnostics = diagnosticsWithError,
+            lastError = error,
+        )
+    }
+
     private fun <T> updateState(flow: MutableStateFlow<T>, value: T) {
         if (flow.value != value) {
             flow.value = value
         }
+    }
+
+    private fun resolveProgressUpdateIntervalMs(
+        effectivePerformanceMode: EchoEffectivePerformanceMode,
+        uiVisibility: PlaybackProgressUiVisibility,
+    ): Long? =
+        when (uiVisibility) {
+            PlaybackProgressUiVisibility.Background -> null
+            PlaybackProgressUiVisibility.NowPlayingExpanded -> NowPlayingProgressIntervalMs
+            PlaybackProgressUiVisibility.MiniPlayer -> {
+                if (effectivePerformanceMode.isLightweight) {
+                    LightweightProgressIntervalMs
+                } else {
+                    MiniPlayerProgressIntervalMs
+                }
+            }
+        }
+
+    private companion object {
+        const val NowPlayingProgressIntervalMs = 500L
+        const val MiniPlayerProgressIntervalMs = 1_000L
+        const val LightweightProgressIntervalMs = 1_000L
     }
 }

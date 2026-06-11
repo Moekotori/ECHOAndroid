@@ -19,6 +19,7 @@ class MediaStoreTrackScanner(
     suspend fun scanAudio(
         batchSize: Int = DefaultBatchSize,
         relativePathPrefix: String? = null,
+        existingTracks: Map<String, TrackFingerprint> = emptyMap(),
         onTotalCount: suspend (Int?) -> Unit = {},
         onBatch: suspend (List<LibraryTrackEntity>) -> Unit,
         onProgress: suspend (scannedCount: Int, currentTrack: LibraryTrackEntity?) -> Unit,
@@ -29,13 +30,23 @@ class MediaStoreTrackScanner(
         val sortOrder = "${MediaStore.Audio.Media.TITLE} COLLATE NOCASE ASC"
 
         return contentResolver.query(collection, projection(), selection, selectionArgs, sortOrder)
-            ?.use { cursor -> cursor.scanTrackBatches(collection, batchSize, onTotalCount, onBatch, onProgress) }
+            ?.use { cursor ->
+                cursor.scanTrackBatches(
+                    collection = collection,
+                    batchSize = batchSize,
+                    existingTracks = existingTracks,
+                    onTotalCount = onTotalCount,
+                    onBatch = onBatch,
+                    onProgress = onProgress,
+                )
+            }
             ?: 0
     }
 
     private suspend fun Cursor.scanTrackBatches(
         collection: Uri,
         batchSize: Int,
+        existingTracks: Map<String, TrackFingerprint>,
         onTotalCount: suspend (Int?) -> Unit,
         onBatch: suspend (List<LibraryTrackEntity>) -> Unit,
         onProgress: suspend (scannedCount: Int, currentTrack: LibraryTrackEntity?) -> Unit,
@@ -49,7 +60,7 @@ class MediaStoreTrackScanner(
         while (moveToNext()) {
             coroutineContext.ensureActive()
             runCatching {
-                toTrackEntity(collection, columns)
+                toTrackEntity(collection, columns, existingTracks)
             }.onSuccess { track ->
                 batch += track
                 scannedCount += 1
@@ -71,8 +82,14 @@ class MediaStoreTrackScanner(
         return scannedCount
     }
 
-    private fun Cursor.toTrackEntity(collection: Uri, columns: MediaStoreColumns): LibraryTrackEntity {
+    private fun Cursor.toTrackEntity(
+        collection: Uri,
+        columns: MediaStoreColumns,
+        existingTracks: Map<String, TrackFingerprint>,
+    ): LibraryTrackEntity {
         val mediaId = getLong(columns.idIndex)
+        val trackId = "mediastore:$mediaId"
+        val existingTrack = existingTracks[trackId]
         val contentUri = Uri.withAppendedPath(collection, mediaId.toString()).toString()
         val title = getStringOrNull(columns.titleIndex)?.takeIf { it.isNotBlank() } ?: "未知曲目"
         val artist = getStringOrNull(columns.artistIndex)?.takeIf { it.isNotBlank() } ?: "未知艺术家"
@@ -80,7 +97,7 @@ class MediaStoreTrackScanner(
         val albumId = getLongOrNull(columns.albumIdIndex)?.takeIf { it > 0L }
 
         return LibraryTrackEntity(
-            id = "mediastore:$mediaId",
+            id = trackId,
             contentUri = contentUri,
             title = title,
             artist = artist,
@@ -93,10 +110,11 @@ class MediaStoreTrackScanner(
             year = getLongOrNull(columns.yearIndex)?.toInt()?.takeIf { it > 0 },
             mimeType = getStringOrNull(columns.mimeIndex),
             sizeBytes = getLongOrNull(columns.sizeIndex) ?: 0L,
-            sampleRateHz = sampleRateHz(contentUri),
+            sampleRateHz = existingTrack?.sampleRateHz,
             dateModifiedSeconds = getLongOrNull(columns.modifiedIndex) ?: 0L,
             relativePath = relativePath(columns),
         ).withScanMetadata()
+            .withFastPathSampleRate(existingTrack, ::sampleRateHz)
     }
 
     private fun sampleRateHz(contentUri: String): Int? =
@@ -241,4 +259,13 @@ class MediaStoreTrackScanner(
         @Suppress("DEPRECATION")
         val LegacyProjection = BaseProjection + MediaStore.Audio.Media.DATA
     }
+}
+
+internal fun LibraryTrackEntity.withFastPathSampleRate(
+    existingTrack: TrackFingerprint?,
+    sampleRateReader: (String) -> Int?,
+): LibraryTrackEntity {
+    if (existingTrack != null && existingTrack.fingerprint == fingerprint) return this
+    return copy(sampleRateHz = sampleRateReader(contentUri))
+        .withScanMetadata(lastSeenScanRunId)
 }

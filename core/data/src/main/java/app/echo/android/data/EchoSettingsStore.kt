@@ -10,6 +10,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import app.echo.android.model.library.NeteaseAudioQuality
 import app.echo.android.model.playback.EchoEqualizerPreset
 import app.echo.android.model.playback.EchoEqualizerPresets
+import app.echo.android.model.settings.EchoPerformanceMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -20,6 +21,8 @@ data class EchoAppSettings(
     val lastOutputRoute: String = "system",
     val dynamicArtworkEnabled: Boolean = true,
     val compactModeEnabled: Boolean = false,
+    val performanceMode: String = EchoPerformanceMode.Auto.id,
+    val trackAudioInfoTagsVisible: Boolean = true,
     val pcHandoffEnabled: Boolean = true,
     val showLyricsControlDeck: Boolean = false,
     val onlineLyricsEnabled: Boolean = false,
@@ -39,9 +42,14 @@ data class EchoAppSettings(
     val lyricsFontFamily: String = EchoFontFamilyMode.System,
     val lyricsFontScale: Float = 1f,
     val lyricsColorMode: String = EchoLyricsColorMode.White,
+    val lyricsAlignment: String = EchoLyricsAlignment.Center,
+    val lyricsLineSpacing: Float = 1f,
+    val lyricsBackgroundDim: Float = 0f,
+    val lyricsWordHighlightIntensity: Float = 1f,
+    val lyricsMotionMode: String = EchoLyricsMotionMode.Smooth,
     val lyricsShowTranslation: Boolean = true,
     val lyricsShowRomanization: Boolean = true,
-    val lyricsFocusGlowEnabled: Boolean = true,
+    val lyricsFocusGlowEnabled: Boolean = false,
     val importedFontUri: String? = null,
     val themeMode: String = EchoThemeMode.System,
     val scheduledDarkModeEnabled: Boolean = false,
@@ -91,6 +99,18 @@ object EchoLyricsColorMode {
     const val Mint = "mint"
 }
 
+object EchoLyricsAlignment {
+    const val Start = "start"
+    const val Center = "center"
+    const val Dynamic = "dynamic"
+}
+
+object EchoLyricsMotionMode {
+    const val Calm = "calm"
+    const val Smooth = "smooth"
+    const val Stage = "stage"
+}
+
 object EchoThemeMode {
     const val System = "system"
     const val Light = "light"
@@ -100,6 +120,19 @@ object EchoThemeMode {
 class EchoSettingsStore(
     private val context: Context,
 ) {
+    @Volatile
+    private var cachedStartupThemeSnapshot: EchoStartupThemeSnapshot? = null
+
+    fun startupAppSettingsSnapshot(): EchoAppSettings =
+        context.readEchoStartupThemeSnapshot().toAppSettings()
+
+    fun cacheStartupThemeSnapshot(
+        settings: EchoAppSettings,
+        synchronous: Boolean = false,
+    ) {
+        cacheStartupThemeSnapshot(settings.toStartupThemeSnapshot(), synchronous)
+    }
+
     val appSettings: Flow<EchoAppSettings> =
         context.echoSettings.data.map { preferences ->
             EchoAppSettings(
@@ -107,6 +140,8 @@ class EchoSettingsStore(
                 lastOutputRoute = preferences[Keys.LastOutputRoute] ?: "system",
                 dynamicArtworkEnabled = preferences[Keys.DynamicArtworkEnabled] ?: true,
                 compactModeEnabled = preferences[Keys.CompactModeEnabled] ?: false,
+                performanceMode = EchoPerformanceMode.fromId(preferences[Keys.PerformanceMode]).id,
+                trackAudioInfoTagsVisible = preferences[Keys.TrackAudioInfoTagsVisible] ?: true,
                 pcHandoffEnabled = preferences[Keys.PcHandoffEnabled] ?: true,
                 showLyricsControlDeck = preferences[Keys.ShowLyricsControlDeck] ?: false,
                 onlineLyricsEnabled = preferences[Keys.OnlineLyricsEnabled] ?: false,
@@ -129,11 +164,16 @@ class EchoSettingsStore(
                 lyricsFontFamily = normalizeFontFamilyMode(preferences[Keys.LyricsFontFamily]),
                 lyricsFontScale = (preferences[Keys.LyricsFontScale] ?: 1f).coerceIn(0.82f, 1.28f),
                 lyricsColorMode = preferences[Keys.LyricsColorMode] ?: EchoLyricsColorMode.White,
+                lyricsAlignment = normalizeLyricsAlignment(preferences[Keys.LyricsAlignment]),
+                lyricsLineSpacing = (preferences[Keys.LyricsLineSpacing] ?: 1f).coerceIn(0.82f, 1.38f),
+                lyricsBackgroundDim = (preferences[Keys.LyricsBackgroundDim] ?: 0f).coerceIn(0f, 0.78f),
+                lyricsWordHighlightIntensity = (preferences[Keys.LyricsWordHighlightIntensity] ?: 1f).coerceIn(0.45f, 1.35f),
+                lyricsMotionMode = normalizeLyricsMotionMode(preferences[Keys.LyricsMotionMode]),
                 lyricsShowTranslation = preferences[Keys.LyricsShowTranslation] ?: true,
                 lyricsShowRomanization = preferences[Keys.LyricsShowRomanization] ?: true,
-                lyricsFocusGlowEnabled = preferences[Keys.LyricsFocusGlowEnabled] ?: true,
+                lyricsFocusGlowEnabled = preferences[Keys.LyricsFocusGlowEnabled] ?: false,
                 importedFontUri = preferences[Keys.ImportedFontUri],
-                themeMode = preferences[Keys.ThemeMode] ?: EchoThemeMode.System,
+                themeMode = normalizeThemeMode(preferences[Keys.ThemeMode]),
                 scheduledDarkModeEnabled = preferences[Keys.ScheduledDarkModeEnabled] ?: false,
                 scheduledDarkStartMinute = (preferences[Keys.ScheduledDarkStartMinute] ?: 22 * 60).coerceIn(0, 23 * 60 + 59),
                 scheduledDarkEndMinute = (preferences[Keys.ScheduledDarkEndMinute] ?: 7 * 60).coerceIn(0, 23 * 60 + 59),
@@ -160,6 +200,18 @@ class EchoSettingsStore(
             )
         }
 
+    private fun cacheStartupThemeSnapshot(
+        snapshot: EchoStartupThemeSnapshot,
+        synchronous: Boolean = false,
+    ) {
+        if (!synchronous && cachedStartupThemeSnapshot == snapshot) return
+        context.writeEchoStartupThemeSnapshot(snapshot, synchronous)
+        cachedStartupThemeSnapshot = snapshot
+    }
+
+    private fun currentStartupThemeSnapshot(): EchoStartupThemeSnapshot =
+        cachedStartupThemeSnapshot ?: context.readEchoStartupThemeSnapshot()
+
     suspend fun setPreferOffload(enabled: Boolean) {
         context.echoSettings.edit { it[Keys.PreferOffload] = enabled }
     }
@@ -174,6 +226,14 @@ class EchoSettingsStore(
 
     suspend fun setCompactModeEnabled(enabled: Boolean) {
         context.echoSettings.edit { it[Keys.CompactModeEnabled] = enabled }
+    }
+
+    suspend fun setPerformanceMode(value: String) {
+        context.echoSettings.edit { it[Keys.PerformanceMode] = EchoPerformanceMode.fromId(value).id }
+    }
+
+    suspend fun setTrackAudioInfoTagsVisible(visible: Boolean) {
+        context.echoSettings.edit { it[Keys.TrackAudioInfoTagsVisible] = visible }
     }
 
     suspend fun setPcHandoffEnabled(enabled: Boolean) {
@@ -273,6 +333,26 @@ class EchoSettingsStore(
         context.echoSettings.edit { it[Keys.LyricsColorMode] = value }
     }
 
+    suspend fun setLyricsAlignment(value: String) {
+        context.echoSettings.edit { it[Keys.LyricsAlignment] = normalizeLyricsAlignment(value) }
+    }
+
+    suspend fun setLyricsLineSpacing(value: Float) {
+        context.echoSettings.edit { it[Keys.LyricsLineSpacing] = value.coerceIn(0.82f, 1.38f) }
+    }
+
+    suspend fun setLyricsBackgroundDim(value: Float) {
+        context.echoSettings.edit { it[Keys.LyricsBackgroundDim] = value.coerceIn(0f, 0.78f) }
+    }
+
+    suspend fun setLyricsWordHighlightIntensity(value: Float) {
+        context.echoSettings.edit { it[Keys.LyricsWordHighlightIntensity] = value.coerceIn(0.45f, 1.35f) }
+    }
+
+    suspend fun setLyricsMotionMode(value: String) {
+        context.echoSettings.edit { it[Keys.LyricsMotionMode] = normalizeLyricsMotionMode(value) }
+    }
+
     suspend fun setLyricsShowTranslation(enabled: Boolean) {
         context.echoSettings.edit { it[Keys.LyricsShowTranslation] = enabled }
     }
@@ -302,19 +382,38 @@ class EchoSettingsStore(
     }
 
     suspend fun setThemeMode(value: String) {
-        context.echoSettings.edit { it[Keys.ThemeMode] = value }
+        val safeValue = normalizeThemeMode(value)
+        context.echoSettings.edit { it[Keys.ThemeMode] = safeValue }
+        cacheStartupThemeSnapshot(
+            currentStartupThemeSnapshot().copy(themeMode = safeValue),
+            synchronous = true,
+        )
     }
 
     suspend fun setScheduledDarkModeEnabled(enabled: Boolean) {
         context.echoSettings.edit { it[Keys.ScheduledDarkModeEnabled] = enabled }
+        cacheStartupThemeSnapshot(
+            currentStartupThemeSnapshot().copy(scheduledDarkModeEnabled = enabled),
+            synchronous = true,
+        )
     }
 
     suspend fun setScheduledDarkStartMinute(value: Int) {
-        context.echoSettings.edit { it[Keys.ScheduledDarkStartMinute] = value.coerceIn(0, 23 * 60 + 59) }
+        val safeValue = value.coerceIn(0, 23 * 60 + 59)
+        context.echoSettings.edit { it[Keys.ScheduledDarkStartMinute] = safeValue }
+        cacheStartupThemeSnapshot(
+            currentStartupThemeSnapshot().copy(scheduledDarkStartMinute = safeValue),
+            synchronous = true,
+        )
     }
 
     suspend fun setScheduledDarkEndMinute(value: Int) {
-        context.echoSettings.edit { it[Keys.ScheduledDarkEndMinute] = value.coerceIn(0, 23 * 60 + 59) }
+        val safeValue = value.coerceIn(0, 23 * 60 + 59)
+        context.echoSettings.edit { it[Keys.ScheduledDarkEndMinute] = safeValue }
+        cacheStartupThemeSnapshot(
+            currentStartupThemeSnapshot().copy(scheduledDarkEndMinute = safeValue),
+            synchronous = true,
+        )
     }
 
     suspend fun setLastFmEnabled(enabled: Boolean) {
@@ -465,6 +564,8 @@ class EchoSettingsStore(
         val LastOutputRoute = stringPreferencesKey("last_output_route")
         val DynamicArtworkEnabled = booleanPreferencesKey("dynamic_artwork_enabled")
         val CompactModeEnabled = booleanPreferencesKey("compact_mode_enabled")
+        val PerformanceMode = stringPreferencesKey("performance_mode")
+        val TrackAudioInfoTagsVisible = booleanPreferencesKey("track_audio_info_tags_visible")
         val PcHandoffEnabled = booleanPreferencesKey("pc_handoff_enabled")
         val ShowLyricsControlDeck = booleanPreferencesKey("show_lyrics_control_deck")
         val OnlineLyricsEnabled = booleanPreferencesKey("online_lyrics_enabled")
@@ -484,6 +585,11 @@ class EchoSettingsStore(
         val LyricsFontFamily = stringPreferencesKey("lyrics_font_family")
         val LyricsFontScale = floatPreferencesKey("lyrics_font_scale")
         val LyricsColorMode = stringPreferencesKey("lyrics_color_mode")
+        val LyricsAlignment = stringPreferencesKey("lyrics_alignment")
+        val LyricsLineSpacing = floatPreferencesKey("lyrics_line_spacing")
+        val LyricsBackgroundDim = floatPreferencesKey("lyrics_background_dim")
+        val LyricsWordHighlightIntensity = floatPreferencesKey("lyrics_word_highlight_intensity")
+        val LyricsMotionMode = stringPreferencesKey("lyrics_motion_mode")
         val LyricsShowTranslation = booleanPreferencesKey("lyrics_show_translation")
         val LyricsShowRomanization = booleanPreferencesKey("lyrics_show_romanization")
         val LyricsFocusGlowEnabled = booleanPreferencesKey("lyrics_focus_glow_enabled")
@@ -521,6 +627,22 @@ private fun normalizeFontFamilyMode(value: String?): String =
         EchoFontFamilyMode.Monospace,
         EchoFontFamilyMode.Imported -> value
         else -> EchoFontFamilyMode.System
+    }
+
+private fun normalizeLyricsAlignment(value: String?): String =
+    when (value) {
+        EchoLyricsAlignment.Start,
+        EchoLyricsAlignment.Center,
+        EchoLyricsAlignment.Dynamic -> value
+        else -> EchoLyricsAlignment.Center
+    }
+
+private fun normalizeLyricsMotionMode(value: String?): String =
+    when (value) {
+        EchoLyricsMotionMode.Calm,
+        EchoLyricsMotionMode.Smooth,
+        EchoLyricsMotionMode.Stage -> value
+        else -> EchoLyricsMotionMode.Smooth
     }
 
 private fun parseEqualizerBandGains(value: String?, presetId: String): List<Float> {

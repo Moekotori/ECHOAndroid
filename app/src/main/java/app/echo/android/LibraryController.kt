@@ -17,6 +17,7 @@ import app.echo.android.model.library.FolderSummary
 import app.echo.android.model.library.LibraryScanPhase
 import app.echo.android.model.library.LibraryScanProgress
 import app.echo.android.model.library.LibraryStats
+import app.echo.android.model.library.LibraryTrackSortMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -26,6 +27,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
@@ -41,6 +43,8 @@ internal class LibraryController(
 ) {
     private val _libraryQuery = MutableStateFlow("")
     val libraryQuery: StateFlow<String> = _libraryQuery.asStateFlow()
+    private val _trackSortMode = MutableStateFlow(LibraryTrackSortMode.Title)
+    val trackSortMode: StateFlow<LibraryTrackSortMode> = _trackSortMode.asStateFlow()
 
     private val debouncedLibraryQuery: Flow<String> =
         _libraryQuery
@@ -49,8 +53,8 @@ internal class LibraryController(
             .distinctUntilChanged()
 
     val tracks: Flow<PagingData<EchoTrack>> =
-        debouncedLibraryQuery
-            .flatMapLatest { query -> repository.pagedTracks(query) }
+        combine(debouncedLibraryQuery, _trackSortMode) { query, sort -> query to sort }
+            .flatMapLatest { (query, sort) -> repository.pagedTracks(query, sort) }
             .map { pagingData -> pagingData.map { it.toEchoTrack() } }
             .cachedIn(scope)
 
@@ -119,6 +123,10 @@ internal class LibraryController(
 
     fun updateLibraryQuery(query: String) {
         _libraryQuery.value = query
+    }
+
+    fun updateTrackSortMode(sortMode: LibraryTrackSortMode) {
+        _trackSortMode.value = sortMode
     }
 
     fun refreshLibrary() {
