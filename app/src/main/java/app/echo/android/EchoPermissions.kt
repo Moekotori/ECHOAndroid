@@ -9,3 +9,12 @@ fun audioPermissionName(): String =
     } else {
         Manifest.permission.READ_EXTERNAL_STORAGE
     }
+
+fun notificationPermissionName(): String? =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        Manifest.permission.POST_NOTIFICATIONS
+    } else {
+        null
+    }
+
+const val EchoPermissionDialogShownKey = "echo_permission_dialog_shown_v1"

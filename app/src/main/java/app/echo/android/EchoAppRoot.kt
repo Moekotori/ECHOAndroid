@@ -92,6 +92,12 @@ import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import app.echo.android.design.echoFontFamilyForMode
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AudioFile
+import androidx.compose.material.icons.rounded.Notifications
+import android.provider.Settings
+import android.net.Uri as AndroidUri
+import androidx.compose.material.icons.rounded.Storage
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
@@ -165,6 +171,25 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         hasAudioPermission = granted
         if (granted) viewModel.refreshLibrary()
+    }
+    val notifPermName = remember { notificationPermissionName() }
+    var hasNotifPermission by remember {
+        mutableStateOf(
+            notifPermName == null || ContextCompat.checkSelfPermission(context, notifPermName) == PackageManager.PERMISSION_GRANTED,
+        )
+    }
+    val notifPermissionLauncher = notifPermName?.let { perm ->
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            hasNotifPermission = granted
+        }
+    }
+    val prefs = remember(context) { context.getSharedPreferences("echo_prefs", Context.MODE_PRIVATE) }
+    var showPermissionDialog by remember {
+        mutableStateOf(!prefs.getBoolean(EchoPermissionDialogShownKey, false))
+    }
+    fun dismissPermissionDialog() {
+        showPermissionDialog = false
+        prefs.edit().putBoolean(EchoPermissionDialogShownKey, true).apply()
     }
     fun persistReadPermission(uri: android.net.Uri) {
         runCatching {
@@ -1105,6 +1130,53 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                 },
                 onError = { message ->
                     echoLinkScanMessage = message
+                },
+            )
+
+            val permissionEntries = remember(hasAudioPermission, hasNotifPermission) {
+                buildList {
+                    add(
+                        PermissionEntry(
+                            permission = audioPermissionName(),
+                            label = "音乐存储",
+                            description = "扫描并播放本地音乐文件",
+                            icon = Icons.Rounded.AudioFile,
+                            granted = hasAudioPermission,
+                            canRequest = true,
+                        ),
+                    )
+                    notifPermName?.let { perm ->
+                        add(
+                            PermissionEntry(
+                                permission = perm,
+                                label = "通知",
+                                description = "显示媒体播放控制通知",
+                                icon = Icons.Rounded.Notifications,
+                                granted = hasNotifPermission,
+                                canRequest = true,
+                            ),
+                        )
+                    }
+                }
+            }
+            EchoPermissionDialog(
+                visible = showPermissionDialog,
+                permissionStatuses = permissionEntries,
+                onDismiss = ::dismissPermissionDialog,
+                onRequestPermission = { perm ->
+                    when (perm) {
+                        audioPermissionName() -> permissionLauncher.launch(perm)
+                        notifPermName -> notifPermissionLauncher?.launch(perm)
+                    }
+                },
+                onOpenSettings = {
+                    runCatching {
+                        context.startActivity(
+                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = AndroidUri.fromParts("package", context.packageName, null)
+                            },
+                        )
+                    }
                 },
             )
         }
