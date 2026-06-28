@@ -15,7 +15,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LibraryPlaylistTrackEntity::class,
         LibraryPlaybackStatsEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true,
 )
 abstract class EchoLibraryDatabase : RoomDatabase() {
@@ -35,6 +35,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                     Migration7To8,
                     Migration8To9,
                     Migration9To10,
+                    Migration10To11,
                 )
                 .build()
 
@@ -207,6 +208,22 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
         internal val Migration9To10 = object : Migration(9, 10) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE library_tracks ADD COLUMN metadataEditedAtEpochMs INTEGER")
+            }
+        }
+
+        internal val Migration10To11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE library_tracks ADD COLUMN pinyinTitle TEXT")
+                db.execSQL("ALTER TABLE library_tracks ADD COLUMN pinyinArtist TEXT")
+                db.execSQL("ALTER TABLE library_tracks ADD COLUMN pinyinAlbum TEXT")
+                db.execSQL(
+                    """
+                    UPDATE library_tracks
+                    SET pinyinTitle = lower(trim(title)),
+                        pinyinArtist = lower(trim(artist)),
+                        pinyinAlbum = CASE WHEN album IS NULL THEN NULL ELSE lower(trim(album)) END
+                    """.trimIndent(),
+                )
             }
         }
     }

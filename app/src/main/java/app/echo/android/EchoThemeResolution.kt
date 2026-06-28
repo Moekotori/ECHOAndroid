@@ -36,12 +36,12 @@ private fun isMinuteInScheduledWindow(
     startMinute: Int,
     endMinute: Int,
 ): Boolean {
-    val current = currentMinute.coerceIn(0, 23 * 60 + 59)
-    val start = startMinute.coerceIn(0, 23 * 60 + 59)
-    val end = endMinute.coerceIn(0, 23 * 60 + 59)
+    val current = currentMinute.coerceIn(0..(23 * 60 + 59))
+    val start = startMinute.coerceIn(0..(23 * 60 + 59))
+    val end = endMinute.coerceIn(0..(23 * 60 + 59))
     return when {
         start == end -> false
         start < end -> current in start until end
-        else -> current >= start || current < end
+        else -> current !in end..<start
     }
 }

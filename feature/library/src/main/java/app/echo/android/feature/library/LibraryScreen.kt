@@ -112,6 +112,9 @@ import app.echo.android.model.library.LibraryTrackSortMode
 import kotlinx.coroutines.delay
 
 private val LibraryFolderMotionEasing = CubicBezierEasing(0.16f, 1f, 0.30f, 1f)
+private val LinkedLibraryHeaderTopPadding = 10.dp
+private val LinkedLibraryHeaderRowHeight = 56.dp
+private val LinkedLibraryHeaderBottomSpacing = 8.dp
 
 internal enum class LibraryViewMode(
     val label: String,
@@ -337,11 +340,6 @@ fun LibraryScreen(
             compactHeader = true,
             badgeContent = {},
             actions = {
-                LibrarySearchBar(
-                    query = libraryQuery,
-                    onQueryChange = onLibraryQueryChange,
-                    expandedWidth = 240.dp,
-                )
                 IconButton(onClick = { onRefreshLinkedLibrary(libraryQuery) }) {
                     Icon(
                         Icons.Rounded.Refresh,
@@ -349,6 +347,11 @@ fun LibraryScreen(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                LibrarySearchBar(
+                    query = libraryQuery,
+                    onQueryChange = onLibraryQueryChange,
+                    expandedWidth = 240.dp,
+                )
             },
         ) {
             LibrarySourceStrip(
@@ -519,11 +522,6 @@ fun LibraryScreen(
                             badgeContent = {},
                             titleContent = {},
                             actions = {
-                                LibrarySearchBar(
-                                    query = libraryQuery,
-                                    onQueryChange = onLibraryQueryChange,
-                                    expandedWidth = 240.dp,
-                                )
                                 if (selectedSource == LibrarySourceMode.Local && selectedMode == LibraryViewMode.Songs) {
                                     LibraryTrackSortMenu(
                                         selectedSortMode = trackSortMode,
@@ -540,6 +538,11 @@ fun LibraryScreen(
                                     onScanFolder = onScanFolder,
                                     onScanAll = onScanAll,
                                     onCancelScan = onCancelScan,
+                                )
+                                LibrarySearchBar(
+                                    query = libraryQuery,
+                                    onQueryChange = onLibraryQueryChange,
+                                    expandedWidth = 240.dp,
                                 )
                             },
                         ) {
@@ -1016,11 +1019,6 @@ private fun LinkedEchoLibraryPage(
 
     LinkedLibraryChrome(
         actions = {
-            LibrarySearchBar(
-                query = query,
-                onQueryChange = onQueryChange,
-                expandedWidth = 240.dp,
-            )
             IconButton(onClick = { onRefresh(normalizedQuery) }, enabled = !state.isLoading) {
                 Icon(
                     Icons.Rounded.Refresh,
@@ -1028,6 +1026,11 @@ private fun LinkedEchoLibraryPage(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            LibrarySearchBar(
+                query = query,
+                onQueryChange = onQueryChange,
+                expandedWidth = 240.dp,
+            )
         },
         modifier = modifier,
     ) {
@@ -1199,7 +1202,7 @@ private fun LinkedLibraryChrome(
                 ),
             )
             .statusBarsPadding()
-            .padding(start = 16.dp, end = 16.dp, top = 2.dp),
+            .padding(start = 16.dp, end = 16.dp, top = LinkedLibraryHeaderTopPadding),
     ) {
         Column(
             modifier = Modifier
@@ -1208,10 +1211,12 @@ private fun LinkedLibraryChrome(
                 .align(Alignment.TopCenter),
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(LinkedLibraryHeaderRowHeight),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                Spacer(Modifier.weight(1f))
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -1219,7 +1224,7 @@ private fun LinkedLibraryChrome(
                     actions()
                 }
             }
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(LinkedLibraryHeaderBottomSpacing))
             content()
         }
     }
@@ -1545,36 +1550,79 @@ private fun EchoRemoteTrack.toEchoTrack(): EchoTrack =
     )
 
 private fun List<EchoRemoteTrack>.filterLinkedLibraryQuery(query: String): List<EchoRemoteTrack> {
-    val terms = query.trim()
-        .lowercase()
-        .split(Regex("\\s+"))
-        .filter(String::isNotBlank)
+    val terms = normalizedSearchTerms(query)
     if (terms.isEmpty()) return this
     return filter { track ->
-        val searchableText = buildString {
-            append(track.title)
-            append(' ')
-            append(track.artist)
-            append(' ')
-            append(track.album.orEmpty())
-        }.lowercase()
+        val searchableText = searchableLibraryText(
+            track.title,
+            track.artist,
+            track.album.orEmpty(),
+        )
         terms.all(searchableText::contains)
     }
 }
 
 private fun List<EchoRemotePlaylist>.filterLinkedPlaylistQuery(query: String): List<EchoRemotePlaylist> {
-    val terms = query.trim()
+    val terms = normalizedSearchTerms(query)
+    if (terms.isEmpty()) return this
+    return filter { playlist ->
+        val searchableText = searchableLibraryText(
+            playlist.name,
+            playlist.sourceLabel.orEmpty(),
+        )
+        terms.all(searchableText::contains)
+    }
+}
+
+private fun normalizedSearchTerms(query: String): List<String> =
+    query.trim()
         .lowercase()
         .split(Regex("\\s+"))
         .filter(String::isNotBlank)
-    if (terms.isEmpty()) return this
-    return filter { playlist ->
-        val searchableText = buildString {
-            append(playlist.name)
-            append(' ')
-            append(playlist.sourceLabel.orEmpty())
-        }.lowercase()
-        terms.all(searchableText::contains)
+
+private fun searchableLibraryText(vararg parts: String): String =
+    buildString {
+        parts.filter(String::isNotBlank).forEach { part ->
+            if (isNotEmpty()) append(' ')
+            append(part.lowercase())
+            val pinyin = toLibrarySearchPinyin(part)
+            if (pinyin.isNotBlank()) {
+                append(' ')
+                append(pinyin)
+            }
+        }
+    }
+
+private fun toLibrarySearchPinyin(text: String): String {
+    if (text.isBlank()) return ""
+    val full = StringBuilder(text.length * 6)
+    val initials = StringBuilder(text.length)
+    return try {
+        val outputFormat = net.sourceforge.pinyin4j.format.HanyuPinyinOutputFormat().apply {
+            caseType = net.sourceforge.pinyin4j.format.HanyuPinyinCaseType.LOWERCASE
+            toneType = net.sourceforge.pinyin4j.format.HanyuPinyinToneType.WITHOUT_TONE
+            vCharType = net.sourceforge.pinyin4j.format.HanyuPinyinVCharType.WITH_V
+        }
+        text.forEach { ch ->
+            val pinyinArray = net.sourceforge.pinyin4j.PinyinHelper.toHanyuPinyinStringArray(ch, outputFormat)
+            if (!pinyinArray.isNullOrEmpty()) {
+                val syllable = pinyinArray[0]
+                full.append(syllable)
+                initials.append(syllable.first())
+            } else if (ch.isLetterOrDigit()) {
+                val normalized = ch.lowercaseChar()
+                full.append(normalized)
+                initials.append(normalized)
+            }
+        }
+        buildList {
+            val fullPinyin = full.toString()
+            val initialsPinyin = initials.toString()
+            if (fullPinyin.isNotBlank()) add(fullPinyin)
+            if (initialsPinyin.isNotBlank() && initialsPinyin != fullPinyin) add(initialsPinyin)
+        }.joinToString(" ")
+    } catch (_: Exception) {
+        text.lowercase()
     }
 }
 

@@ -1,6 +1,6 @@
 package app.echo.android
 
-import android.net.Uri
+import androidx.core.net.toUri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -55,14 +55,14 @@ fun EchoCustomBackground(
         if (hasCustomBackground) {
             when (mode) {
                 EchoBackgroundMode.Video -> EchoVideoWallpaper(
-                    uri = uri.orEmpty(),
+                    uri = uri,
                     blur = blur,
                     brightness = brightness,
                     backgroundScale = backgroundScale,
                 )
 
                 EchoBackgroundMode.Image -> EchoImageWallpaper(
-                    uri = uri.orEmpty(),
+                    uri = uri,
                     blur = blur,
                     brightness = brightness,
                     backgroundScale = backgroundScale,
@@ -114,7 +114,7 @@ private fun EchoVideoWallpaper(
             repeatMode = Player.REPEAT_MODE_ONE
             volume = 0f
             playWhenReady = true
-            setMediaItem(MediaItem.fromUri(Uri.parse(uri)))
+            setMediaItem(MediaItem.fromUri(uri.toUri()))
             prepare()
         }
     }

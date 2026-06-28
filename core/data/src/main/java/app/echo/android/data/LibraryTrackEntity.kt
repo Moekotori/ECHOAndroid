@@ -45,4 +45,7 @@ data class LibraryTrackEntity(
     val normalizedArtist: String? = null,
     val normalizedAlbum: String? = null,
     val normalizedAlbumArtist: String? = null,
+    val pinyinTitle: String? = null,
+    val pinyinArtist: String? = null,
+    val pinyinAlbum: String? = null,
 )

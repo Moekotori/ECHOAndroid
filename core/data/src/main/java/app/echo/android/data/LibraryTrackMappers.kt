@@ -46,20 +46,23 @@ fun EchoTrack.toLibraryTrackEntity(): LibraryTrackEntity =
         metadataEditedAtEpochMs = null,
         lastSeenScanRunId = 0L,
         fingerprint = buildTrackFingerprint(this),
-        normalizedTitle = title.normalizedForSearch(),
-        normalizedArtist = artist.normalizedForSearch(),
-        normalizedAlbum = album?.normalizedForSearch(),
-        normalizedAlbumArtist = albumArtist?.normalizedForSearch(),
-    )
+    ).withComputedSearchMetadata()
 
 internal fun LibraryTrackEntity.withScanMetadata(scanRunId: Long = lastSeenScanRunId): LibraryTrackEntity =
     copy(
         lastSeenScanRunId = scanRunId,
         fingerprint = buildTrackFingerprint(this),
+    ).withComputedSearchMetadata()
+
+internal fun LibraryTrackEntity.withComputedSearchMetadata(): LibraryTrackEntity =
+    copy(
         normalizedTitle = title.normalizedForSearch(),
         normalizedArtist = artist.normalizedForSearch(),
         normalizedAlbum = album?.normalizedForSearch(),
         normalizedAlbumArtist = albumArtist?.normalizedForSearch(),
+        pinyinTitle = ChinesePinyin.toPinyin(title),
+        pinyinArtist = ChinesePinyin.toPinyin(artist),
+        pinyinAlbum = album?.let { ChinesePinyin.toPinyin(it) },
     )
 
 internal fun LibraryTrackEntity.withUserMetadata(

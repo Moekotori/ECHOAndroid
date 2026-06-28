@@ -197,7 +197,10 @@ interface LibraryTrackDao {
                normalizedTitle LIKE '%' || lower(trim(:query)) || '%' OR
                normalizedArtist LIKE '%' || lower(trim(:query)) || '%' OR
                normalizedAlbum LIKE '%' || lower(trim(:query)) || '%' OR
-               normalizedAlbumArtist LIKE '%' || lower(trim(:query)) || '%')
+               normalizedAlbumArtist LIKE '%' || lower(trim(:query)) || '%' OR
+               pinyinTitle LIKE '%' || lower(trim(:query)) || '%' OR
+               pinyinArtist LIKE '%' || lower(trim(:query)) || '%' OR
+               pinyinAlbum LIKE '%' || lower(trim(:query)) || '%')
         GROUP BY albumKey
         ORDER BY
             CASE WHEN :sort = 'Artist' THEN albumArtist END COLLATE NOCASE ASC,
@@ -234,7 +237,10 @@ interface LibraryTrackDao {
                normalizedTitle LIKE '%' || lower(trim(:query)) || '%' OR
                normalizedArtist LIKE '%' || lower(trim(:query)) || '%' OR
                normalizedAlbum LIKE '%' || lower(trim(:query)) || '%' OR
-               normalizedAlbumArtist LIKE '%' || lower(trim(:query)) || '%')
+               normalizedAlbumArtist LIKE '%' || lower(trim(:query)) || '%' OR
+               pinyinTitle LIKE '%' || lower(trim(:query)) || '%' OR
+               pinyinArtist LIKE '%' || lower(trim(:query)) || '%' OR
+               pinyinAlbum LIKE '%' || lower(trim(:query)) || '%')
         GROUP BY source, (
             COALESCE(NULLIF(normalizedAlbum, ''), '未知专辑') ||
             '::' ||
@@ -294,7 +300,10 @@ interface LibraryTrackDao {
                normalizedArtist LIKE '%' || lower(trim(:query)) || '%' OR
                normalizedAlbumArtist LIKE '%' || lower(trim(:query)) || '%' OR
                normalizedTitle LIKE '%' || lower(trim(:query)) || '%' OR
-               normalizedAlbum LIKE '%' || lower(trim(:query)) || '%')
+               normalizedAlbum LIKE '%' || lower(trim(:query)) || '%' OR
+               pinyinArtist LIKE '%' || lower(trim(:query)) || '%' OR
+               pinyinTitle LIKE '%' || lower(trim(:query)) || '%' OR
+               pinyinAlbum LIKE '%' || lower(trim(:query)) || '%')
         GROUP BY artistKey
         ORDER BY
             CASE WHEN :sort = 'AlbumCount' THEN albumCount END DESC,
@@ -326,7 +335,10 @@ interface LibraryTrackDao {
                normalizedTitle LIKE '%' || lower(trim(:query)) || '%' OR
                normalizedArtist LIKE '%' || lower(trim(:query)) || '%' OR
                normalizedAlbum LIKE '%' || lower(trim(:query)) || '%' OR
-               normalizedAlbumArtist LIKE '%' || lower(trim(:query)) || '%')
+               normalizedAlbumArtist LIKE '%' || lower(trim(:query)) || '%' OR
+               pinyinTitle LIKE '%' || lower(trim(:query)) || '%' OR
+               pinyinArtist LIKE '%' || lower(trim(:query)) || '%' OR
+               pinyinAlbum LIKE '%' || lower(trim(:query)) || '%')
         GROUP BY folderKey
         ORDER BY
             CASE WHEN folderKey = '' THEN 1 ELSE 0 END,
@@ -616,6 +628,131 @@ interface LibraryTrackDao {
 
     @Query("SELECT * FROM library_tracks")
     suspend fun getAllTracksForFtsRebuild(): List<LibraryTrackEntity>
+
+    @Query(
+        """
+        SELECT library_tracks.id FROM library_tracks
+        LEFT JOIN library_tracks_fts ON library_tracks.id = library_tracks_fts.trackId
+        WHERE library_tracks_fts.trackId IS NULL
+           OR (pinyinTitle IS NOT NULL AND trim(pinyinTitle) != '' AND instr(library_tracks_fts.normalizedText, pinyinTitle) = 0)
+           OR (pinyinArtist IS NOT NULL AND trim(pinyinArtist) != '' AND instr(library_tracks_fts.normalizedText, pinyinArtist) = 0)
+           OR (pinyinAlbum IS NOT NULL AND trim(pinyinAlbum) != '' AND instr(library_tracks_fts.normalizedText, pinyinAlbum) = 0)
+        LIMIT 1
+        """,
+    )
+    suspend fun findTrackWithStaleFtsSearchData(): String?
+
+    @Query(
+        """
+        SELECT * FROM library_tracks
+        WHERE (title GLOB '*[^ -~]*' AND (pinyinTitle IS NULL OR pinyinTitle = normalizedTitle))
+           OR (artist GLOB '*[^ -~]*' AND (pinyinArtist IS NULL OR pinyinArtist = normalizedArtist))
+           OR (album IS NOT NULL AND album GLOB '*[^ -~]*' AND (pinyinAlbum IS NULL OR pinyinAlbum = normalizedAlbum))
+        LIMIT :limit
+        """,
+    )
+    suspend fun getTracksNeedingPinyinBackfill(limit: Int): List<LibraryTrackEntity>
+
+    @Query(
+        """
+        SELECT * FROM library_tracks
+        WHERE normalizedTitle LIKE '%' || lower(trim(:query)) || '%'
+           OR normalizedArtist LIKE '%' || lower(trim(:query)) || '%'
+           OR normalizedAlbum LIKE '%' || lower(trim(:query)) || '%'
+           OR normalizedAlbumArtist LIKE '%' || lower(trim(:query)) || '%'
+           OR pinyinTitle LIKE '%' || lower(trim(:query)) || '%'
+           OR pinyinArtist LIKE '%' || lower(trim(:query)) || '%'
+           OR pinyinAlbum LIKE '%' || lower(trim(:query)) || '%'
+        ORDER BY
+            CASE
+                WHEN normalizedTitle LIKE lower(trim(:query)) || '%' THEN 0
+                WHEN pinyinTitle LIKE lower(trim(:query)) || '%' THEN 1
+                WHEN normalizedArtist LIKE lower(trim(:query)) || '%' THEN 2
+                WHEN pinyinArtist LIKE lower(trim(:query)) || '%' THEN 3
+                WHEN normalizedAlbum LIKE lower(trim(:query)) || '%' THEN 4
+                WHEN pinyinAlbum LIKE lower(trim(:query)) || '%' THEN 5
+                ELSE 6
+            END,
+            title COLLATE NOCASE ASC
+        LIMIT :limit
+        """,
+    )
+    suspend fun searchTracks(query: String, limit: Int): List<LibraryTrackEntity>
+
+    @Query(
+        """
+        SELECT (
+                   COALESCE(NULLIF(normalizedAlbum, ''), '未知专辑') ||
+                   '::' ||
+                   COALESCE(NULLIF(normalizedAlbumArtist, ''), NULLIF(normalizedArtist, ''), '未知艺术家')
+               ) AS albumKey,
+               CASE WHEN album IS NULL OR trim(album) = '' THEN '未知专辑' ELSE album END AS title,
+               CASE
+                   WHEN albumArtist IS NOT NULL AND trim(albumArtist) != '' THEN albumArtist
+                   WHEN artist IS NOT NULL AND trim(artist) != '' THEN artist
+                   ELSE NULL
+               END AS albumArtist,
+               CASE WHEN artist IS NULL OR trim(artist) = '' THEN NULL ELSE artist END AS artist,
+               MAX(artworkUri) AS artworkUri,
+               COUNT(*) AS trackCount,
+               COALESCE(SUM(durationMs), 0) AS durationMs,
+               MIN(CASE WHEN year IS NOT NULL AND year > 0 THEN year ELSE NULL END) AS year,
+               MAX(dateModifiedSeconds) AS addedAtSeconds
+        FROM library_tracks
+        WHERE normalizedTitle LIKE '%' || lower(trim(:query)) || '%'
+           OR normalizedArtist LIKE '%' || lower(trim(:query)) || '%'
+           OR normalizedAlbum LIKE '%' || lower(trim(:query)) || '%'
+           OR normalizedAlbumArtist LIKE '%' || lower(trim(:query)) || '%'
+           OR pinyinTitle LIKE '%' || lower(trim(:query)) || '%'
+           OR pinyinArtist LIKE '%' || lower(trim(:query)) || '%'
+           OR pinyinAlbum LIKE '%' || lower(trim(:query)) || '%'
+        GROUP BY albumKey
+        ORDER BY
+            CASE
+                WHEN normalizedAlbum LIKE lower(trim(:query)) || '%' THEN 0
+                WHEN pinyinAlbum LIKE lower(trim(:query)) || '%' THEN 1
+                WHEN normalizedAlbumArtist LIKE lower(trim(:query)) || '%' THEN 2
+                WHEN pinyinArtist LIKE lower(trim(:query)) || '%' THEN 3
+                ELSE 4
+            END,
+            title COLLATE NOCASE ASC
+        LIMIT :limit
+        """,
+    )
+    suspend fun searchAlbums(query: String, limit: Int): List<AlbumSummary>
+
+    @Query(
+        """
+        SELECT COALESCE(NULLIF(normalizedArtist, ''), '未知艺术家') AS artistKey,
+               CASE WHEN artist IS NULL OR trim(artist) = '' THEN '未知艺术家' ELSE artist END AS name,
+               MAX(artworkUri) AS artworkUri,
+               COUNT(DISTINCT (
+                   COALESCE(NULLIF(normalizedAlbum, ''), '未知专辑') ||
+                   '::' ||
+                   COALESCE(NULLIF(normalizedAlbumArtist, ''), NULLIF(normalizedArtist, ''), '未知艺术家')
+               )) AS albumCount,
+               COUNT(*) AS trackCount,
+               COALESCE(SUM(durationMs), 0) AS durationMs
+        FROM library_tracks
+        WHERE normalizedArtist LIKE '%' || lower(trim(:query)) || '%'
+           OR normalizedAlbumArtist LIKE '%' || lower(trim(:query)) || '%'
+           OR normalizedTitle LIKE '%' || lower(trim(:query)) || '%'
+           OR normalizedAlbum LIKE '%' || lower(trim(:query)) || '%'
+           OR pinyinArtist LIKE '%' || lower(trim(:query)) || '%'
+           OR pinyinTitle LIKE '%' || lower(trim(:query)) || '%'
+           OR pinyinAlbum LIKE '%' || lower(trim(:query)) || '%'
+        GROUP BY artistKey
+        ORDER BY
+            CASE
+                WHEN normalizedArtist LIKE lower(trim(:query)) || '%' THEN 0
+                WHEN pinyinArtist LIKE lower(trim(:query)) || '%' THEN 1
+                ELSE 2
+            END,
+            name COLLATE NOCASE ASC
+        LIMIT :limit
+        """,
+    )
+    suspend fun searchArtists(query: String, limit: Int): List<ArtistSummary>
 
     @Transaction
     suspend fun upsertBatchWithFts(tracks: List<LibraryTrackEntity>) {

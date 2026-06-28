@@ -11,3 +11,6 @@ test/*.flac
 *.apk
 *.aab
 /.mimocode
+CLAUDE.md
+报错.txt
+AGENTS.md

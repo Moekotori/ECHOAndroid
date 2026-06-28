@@ -3,6 +3,7 @@ package app.echo.android
 import android.app.Application
 import android.content.ComponentName
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.core.content.ContextCompat
 import androidx.media3.common.PlaybackParameters
@@ -10,6 +11,8 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import app.echo.android.data.EchoSavedPlaybackSession
+import app.echo.android.data.EchoSettingsStore
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.playback.EchoEqualizerState
 import app.echo.android.model.playback.EchoAudioErrorKind
@@ -29,6 +32,7 @@ import app.echo.android.playback.EchoPlaybackService
 import app.echo.android.playback.EchoPlaybackRuntimeOptionsStore
 import app.echo.android.playback.EchoUsbExclusiveDriverTester
 import app.echo.android.playback.EchoUsbAudioMonitor
+import app.echo.android.playback.toEchoTrackRef
 import app.echo.android.playback.toEchoPlaybackStatus
 import app.echo.android.playback.toMediaItem
 import app.echo.android.playback.toPlaybackControlsState
@@ -43,6 +47,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -56,8 +61,10 @@ internal enum class PlaybackProgressUiVisibility {
 }
 
 @UnstableApi
+@Suppress("SpellCheckingInspection", "ConstPropertyName")
 internal class PlaybackController(
     private val application: Application,
+    private val settingsStore: EchoSettingsStore,
     private val scope: CoroutineScope,
     private val onTrackChanged: (String?) -> Unit,
     private val onTrackActivated: (String) -> Unit,
@@ -100,6 +107,9 @@ internal class PlaybackController(
     private var replayGainEnabled: Boolean = false
     private var replayGainPreampDb: Float = 0f
     private var skipSilenceEnabled: Boolean = false
+    private var restoredPlaybackSession = false
+    private var lastPersistedSessionSignature: String? = null
+    private var lastPersistedPositionBucket: Long = -1L
     private val sampleRatesByMediaId = mutableMapOf<String, Int?>()
     private val replayGainUrisByMediaId = mutableMapOf<String, String>()
     private val replayGainTrackGainsByMediaId = mutableMapOf<String, Float?>()
@@ -316,6 +326,7 @@ internal class PlaybackController(
     }
 
     fun clear() {
+        persistPlaybackSession(force = true)
         progressJob?.cancel()
         usbAudioJob?.cancel()
         usbTransitionJob?.cancel()
@@ -339,10 +350,11 @@ internal class PlaybackController(
                 }.onSuccess { mediaController ->
                     controller = mediaController
                     mediaController.addListener(playerListener)
+                    restorePlaybackSessionIfNeeded(mediaController)
                     applyReplayGainVolume()
                     updatePlaybackCore(mediaController)
                     startProgressUpdates()
-                }.onFailure { error ->
+                }.onFailure { _ ->
                     val diagnostics = EchoPlaybackDiagnostics(
                         lastError = EchoPlaybackError(
                             kind = EchoAudioErrorKind.Unknown,
@@ -388,7 +400,8 @@ internal class PlaybackController(
         progressJob = scope.launch {
             while (true) {
                 controller?.let(::updatePlaybackPosition)
-                delay(intervalMs)
+                persistPlaybackSession()
+                delay(intervalMs.milliseconds)
             }
         }
     }
@@ -453,6 +466,7 @@ internal class PlaybackController(
             lastActivatedTrackId = trackId
             onTrackActivated(trackId)
         }
+        persistPlaybackSession(force = queue.items.isEmpty())
     }
 
     private fun updateUsbDiagnostics(status: app.echo.android.playback.EchoUsbAudioStatus) {
@@ -473,7 +487,7 @@ internal class PlaybackController(
             val previousVolume = mediaController.volume
             mediaController.volume = 0f
             usbAudioMonitor.prepareForTrack(sampleRateHz)
-            delay(90L)
+            delay(90.milliseconds)
             if (controller === mediaController) {
                 mediaController.volume = previousVolume
             }
@@ -496,7 +510,7 @@ internal class PlaybackController(
                     return@launch
                 }
                 updatePlaybackStatusOptions()
-                delay(SleepTimerTickMs)
+                delay(SleepTimerTickMs.milliseconds)
             }
         }
     }
@@ -545,7 +559,7 @@ internal class PlaybackController(
         replayGainJob = scope.launch {
             val gainDb = withContext(Dispatchers.IO) {
                 runCatching {
-                    application.contentResolver.openInputStream(Uri.parse(uri))?.use(ReplayGainReader::readTrackGainDb)
+                    application.contentResolver.openInputStream(uri.toUri())?.use(ReplayGainReader::readTrackGainDb)
                 }.getOrNull()
             }
             replayGainTrackGainsByMediaId[trackId] = gainDb
@@ -572,6 +586,69 @@ internal class PlaybackController(
     private fun <T> updateState(flow: MutableStateFlow<T>, value: T) {
         if (flow.value != value) {
             flow.value = value
+        }
+    }
+
+    private fun restorePlaybackSessionIfNeeded(mediaController: MediaController) {
+        if (restoredPlaybackSession) return
+        restoredPlaybackSession = true
+        scope.launch {
+            val session = settingsStore.getSavedPlaybackSession() ?: return@launch
+            if (mediaController.mediaItemCount > 0 || mediaController.currentMediaItem != null) return@launch
+            sampleRatesByMediaId.clear()
+            replayGainUrisByMediaId.clear()
+            replayGainTrackGainsByMediaId.clear()
+            session.queue.forEach { track ->
+                replayGainUrisByMediaId[track.id] = track.uri
+            }
+            mediaController.setMediaItems(
+                session.queue.map { it.toMediaItem() },
+                session.currentIndex,
+                session.positionMs,
+            )
+            mediaController.prepare()
+            if (session.playWhenReady) {
+                mediaController.play()
+            } else {
+                mediaController.pause()
+            }
+        }
+    }
+
+    private fun persistPlaybackSession(force: Boolean = false) {
+        val mediaController = controller ?: return
+        val queue = mediaController.toPlaybackQueueState()
+        val currentTrack = mediaController.currentMediaItem?.toEchoTrackRef(
+            durationMs = mediaController.duration.takeIf { it > 0L } ?: 0L,
+        )
+        val signature = buildString {
+            append(queue.currentIndex)
+            append('|')
+            append(mediaController.playWhenReady)
+            append('|')
+            queue.items.forEach { item ->
+                append(item.id)
+                append(';')
+            }
+        }
+        val positionMs = mediaController.currentPosition.coerceAtLeast(0L)
+        val positionBucket = positionMs / PersistPositionBucketMs
+        if (!force && signature == lastPersistedSessionSignature && positionBucket == lastPersistedPositionBucket) return
+        lastPersistedSessionSignature = signature
+        lastPersistedPositionBucket = positionBucket
+        scope.launch {
+            settingsStore.savePlaybackSession(
+                if (queue.items.isEmpty() || currentTrack == null || queue.currentIndex !in queue.items.indices) {
+                    null
+                } else {
+                    EchoSavedPlaybackSession(
+                        queue = queue.items,
+                        currentIndex = queue.currentIndex,
+                        positionMs = positionMs,
+                        playWhenReady = mediaController.playWhenReady,
+                    )
+                },
+            )
         }
     }
 
@@ -603,5 +680,6 @@ internal class PlaybackController(
         const val MaxReplayGainPreampDb = 6f
         const val MinReplayGainVolume = 0.25f
         const val MaxReplayGainVolume = 1.4f
+        const val PersistPositionBucketMs = 5_000L
     }
 }

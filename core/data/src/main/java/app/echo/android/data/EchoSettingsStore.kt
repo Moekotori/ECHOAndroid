@@ -9,9 +9,13 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import app.echo.android.model.playback.EchoEqualizerPreset
 import app.echo.android.model.playback.EchoEqualizerPresets
+import app.echo.android.model.playback.EchoTrackRef
 import app.echo.android.model.settings.EchoPerformanceMode
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import org.json.JSONArray
+import org.json.JSONObject
 
 private val Context.echoSettings by preferencesDataStore(name = "echo-settings")
 private const val DefaultNeteaseAudioQuality = "lossless"
@@ -126,6 +130,13 @@ object EchoLibrarySelectedSource {
     const val PcEcho = "pc_echo"
     const val Cloud = "cloud"
 }
+
+data class EchoSavedPlaybackSession(
+    val queue: List<EchoTrackRef>,
+    val currentIndex: Int,
+    val positionMs: Long,
+    val playWhenReady: Boolean,
+)
 
 class EchoSettingsStore(
     private val context: Context,
@@ -505,6 +516,21 @@ class EchoSettingsStore(
         }
     }
 
+    suspend fun savePlaybackSession(session: EchoSavedPlaybackSession?) {
+        context.echoSettings.edit {
+            if (session == null || session.queue.isEmpty() || session.currentIndex !in session.queue.indices) {
+                it.remove(Keys.LastPlaybackSession)
+            } else {
+                it[Keys.LastPlaybackSession] = session.toPreferenceValue()
+            }
+        }
+    }
+
+    suspend fun getSavedPlaybackSession(): EchoSavedPlaybackSession? =
+        context.echoSettings.data
+            .map { preferences -> preferences[Keys.LastPlaybackSession]?.let(::parsePlaybackSession) }
+            .first()
+
     suspend fun clearEchoLinkPcEndpoint() {
         context.echoSettings.edit {
             it.remove(Keys.EchoLinkPcAddress)
@@ -619,6 +645,7 @@ class EchoSettingsStore(
         val EchoLinkAutoReconnectEnabled = booleanPreferencesKey("echo_link_auto_reconnect_enabled")
         val EchoLinkPreferLinkedLibrary = booleanPreferencesKey("echo_link_prefer_linked_library")
         val LibrarySelectedSource = stringPreferencesKey("library_selected_source")
+        val LastPlaybackSession = stringPreferencesKey("last_playback_session")
         val SubsonicServerUrl = stringPreferencesKey("subsonic_server_url")
         val SubsonicUsername = stringPreferencesKey("subsonic_username")
         val SubsonicPassword = stringPreferencesKey("subsonic_password")
@@ -675,3 +702,60 @@ private fun formatEqualizerBandGains(gainsDb: List<Float>): String =
     gainsDb.joinToString(",") { value ->
         ((value.coerceIn(-18f, 18f) * 10f).toInt() / 10f).toString()
     }
+
+private fun EchoSavedPlaybackSession.toPreferenceValue(): String =
+    JSONObject().apply {
+        put("currentIndex", currentIndex)
+        put("positionMs", positionMs.coerceAtLeast(0L))
+        put("playWhenReady", playWhenReady)
+        put(
+            "queue",
+            JSONArray().apply {
+                queue.forEach { track ->
+                    put(
+                        JSONObject().apply {
+                            put("id", track.id)
+                            put("uri", track.uri)
+                            put("title", track.title)
+                            put("artist", track.artist)
+                            put("album", track.album)
+                            put("artworkUri", track.artworkUri)
+                            put("durationMs", track.durationMs.coerceAtLeast(0L))
+                        },
+                    )
+                }
+            },
+        )
+    }.toString()
+
+private fun parsePlaybackSession(raw: String): EchoSavedPlaybackSession? =
+    runCatching {
+        val json = JSONObject(raw)
+        val queueJson = json.optJSONArray("queue") ?: return@runCatching null
+        val queue = buildList {
+            for (index in 0 until queueJson.length()) {
+                val item = queueJson.optJSONObject(index) ?: continue
+                val id = item.optString("id").takeIf { it.isNotBlank() } ?: continue
+                val uri = item.optString("uri").takeIf { it.isNotBlank() } ?: continue
+                add(
+                    EchoTrackRef(
+                        id = id,
+                        uri = uri,
+                        title = item.optString("title").ifBlank { "Unknown Track" },
+                        artist = item.optString("artist").ifBlank { "Unknown Artist" },
+                        album = item.optString("album").takeIf { it.isNotBlank() },
+                        artworkUri = item.optString("artworkUri").takeIf { it.isNotBlank() },
+                        durationMs = item.optLong("durationMs").coerceAtLeast(0L),
+                    ),
+                )
+            }
+        }
+        val currentIndex = json.optInt("currentIndex", -1)
+        if (queue.isEmpty() || currentIndex !in queue.indices) return@runCatching null
+        EchoSavedPlaybackSession(
+            queue = queue,
+            currentIndex = currentIndex,
+            positionMs = json.optLong("positionMs").coerceAtLeast(0L),
+            playWhenReady = json.optBoolean("playWhenReady", false),
+        )
+    }.getOrNull()

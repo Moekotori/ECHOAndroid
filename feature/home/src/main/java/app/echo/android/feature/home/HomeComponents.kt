@@ -38,6 +38,9 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.SkipNext
@@ -47,11 +50,15 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -108,10 +115,20 @@ import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
 
+enum class SearchResultType { Track, Album, Artist }
+
+data class SearchResult(
+    val type: SearchResultType,
+    val title: String,
+    val subtitle: String,
+    val id: String,
+    val artworkUri: String? = null,
+)
+
 private const val HomeHeatmapWeeks = 12
 
 @Composable
-private fun homePanelColor(lightAlpha: Float = 0.90f): Color {
+internal fun homePanelColor(lightAlpha: Float = 0.90f): Color {
     return if (LocalEchoDarkTheme.current) {
         EchoGlassPanel.copy(alpha = (lightAlpha * 0.58f).coerceIn(0.42f, 0.62f))
     } else {
@@ -132,7 +149,7 @@ private fun homeTitleColor(): Color =
     if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.92f) else RoonInk
 
 @Composable
-private fun homeBodyColor(): Color =
+internal fun homeBodyColor(): Color =
     if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.66f) else RoonMuted.copy(alpha = 0.94f)
 
 @Composable
@@ -194,6 +211,7 @@ internal fun LibraryMetric(
 internal fun RoonHomeHeader(
     status: EchoPlaybackStatus,
     compact: Boolean,
+    onOpenSearch: () -> Unit = {},
 ) {
     Column(
         modifier = Modifier
@@ -207,28 +225,92 @@ internal fun RoonHomeHeader(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            val shape = RoundedCornerShape(28.dp)
             Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(28.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpenSearch() },
+                shape = shape,
                 color = homePanelColor(0.94f),
                 border = homePanelBorder(0.88f),
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Icon(Icons.Rounded.Search, contentDescription = null, tint = homeBodyColor(), modifier = Modifier.size(20.dp))
-                    Text("搜索本机音乐、专辑、歌手", color = homeBodyColor(), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        "搜索本机音乐、专辑、歌手",
+                        color = homeBodyColor().copy(alpha = 0.5f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
-            if (false) {
-                Text(
-                text = status.track?.title ?: "让本机音乐醒过来",
+        }
+    }
+}
+
+@Composable
+private fun SearchResultItem(result: SearchResult, onClick: (SearchResult) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick(result) }
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        if (result.artworkUri.isNullOrBlank()) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(if (result.type == SearchResultType.Artist) CircleShape else RoundedCornerShape(6.dp))
+                    .background(homeBodyColor().copy(alpha = 0.08f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = when (result.type) {
+                        SearchResultType.Track -> Icons.Rounded.MusicNote
+                        SearchResultType.Album -> Icons.Rounded.Album
+                        SearchResultType.Artist -> Icons.Rounded.Person
+                    },
+                    contentDescription = null,
+                    tint = homeBodyColor().copy(alpha = 0.5f),
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        } else {
+            ArtworkTile(
+                artworkUri = result.artworkUri,
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(if (result.type == SearchResultType.Artist) CircleShape else RoundedCornerShape(6.dp)),
+                accent = EchoAccent,
+                showSignal = false,
+                cornerRadius = if (result.type == SearchResultType.Artist) 18.dp else 6.dp,
+                elevation = 0.dp,
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = result.title,
                 color = homeBodyColor(),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+            )
+            if (result.subtitle.isNotBlank()) {
+                Text(
+                    text = result.subtitle,
+                    color = homeBodyColor().copy(alpha = 0.45f),
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }

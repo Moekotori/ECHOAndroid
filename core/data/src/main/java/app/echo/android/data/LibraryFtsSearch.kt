@@ -31,6 +31,9 @@ internal fun LibraryTrackEntity.toFtsEntity(): LibraryTrackFtsEntity =
             normalizedArtist.orEmpty(),
             normalizedAlbum.orEmpty(),
             normalizedAlbumArtist.orEmpty(),
+            pinyinTitle.orEmpty(),
+            pinyinArtist.orEmpty(),
+            pinyinAlbum.orEmpty(),
         ),
     )
 
@@ -52,7 +55,15 @@ private fun buildFtsNormalizedText(vararg parts: String): String {
         .filter(Char::isCjk)
         .map(Char::toString)
         .joinToString(" ")
-    return listOf(joined, cjkTokens)
+    val pinyinParts = parts
+        .asSequence()
+        .flatMap { part ->
+            SearchTokenRegex.findAll(part.lowercase())
+                .map { it.value }
+                .filter { token -> token.all { c -> c.isLetterOrDigit() && c.code < 128 } }
+        }
+        .toList()
+    return listOf(joined, cjkTokens, *pinyinParts.toTypedArray())
         .filter { it.isNotBlank() }
         .joinToString(" ")
 }

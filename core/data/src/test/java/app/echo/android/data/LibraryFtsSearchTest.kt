@@ -29,7 +29,10 @@ class LibraryFtsSearchTest {
 
     @Test
     fun chineseQueryUsesCharacterTokens() {
-        assertEquals("青* AND 花* AND 瓷*", sanitizeFtsQuery("青花瓷"))
+        assertEquals(
+            "\u9752* AND \u82b1* AND \u74f7*",
+            sanitizeFtsQuery("\u9752\u82b1\u74f7"),
+        )
     }
 
     @Test
@@ -38,14 +41,14 @@ class LibraryFtsSearchTest {
     }
 
     @Test
-    fun ftsEntityContainsChineseCharacterTokens() {
+    fun ftsEntityContainsChineseCharacterTokensAndPinyin() {
         val entity = LibraryTrackEntity(
             id = "track-1",
             contentUri = "content://track/1",
-            title = "青花瓷",
-            artist = "周杰伦",
-            album = "我很忙",
-            albumArtist = "周杰伦",
+            title = "\u9752\u82b1\u74f7",
+            artist = "\u5468\u6770\u4f26",
+            album = "\u6211\u5f88\u5fd9",
+            albumArtist = "\u5468\u6770\u4f26",
             artworkUri = null,
             durationMs = 180_000L,
             trackNumber = 1,
@@ -59,8 +62,34 @@ class LibraryFtsSearchTest {
         val fts = entity.toFtsEntity()
 
         assertEquals("track-1", fts.trackId)
-        assertTrue(fts.normalizedText.contains("青花瓷"))
-        assertTrue(fts.normalizedText.contains("青 花 瓷"))
-        assertTrue(fts.normalizedText.contains("周 杰 伦"))
+        assertTrue(fts.normalizedText.contains("\u9752\u82b1\u74f7"))
+        assertTrue(fts.normalizedText.contains("\u9752 \u82b1 \u74f7"))
+        assertTrue(fts.normalizedText.contains("\u5468 \u6770 \u4f26"))
+        assertTrue(fts.normalizedText.contains("qinghuaci"))
+        assertTrue(fts.normalizedText.contains("qhc"))
+    }
+
+    @Test
+    fun pinyinStoresInitialsForChineseMatching() {
+        val entity = LibraryTrackEntity(
+            id = "track-2",
+            contentUri = "content://track/2",
+            title = "\u7d2b\u8587",
+            artist = "\u743c\u7476",
+            album = null,
+            albumArtist = null,
+            artworkUri = null,
+            durationMs = 180_000L,
+            trackNumber = 1,
+            discNumber = null,
+            year = 1998,
+            mimeType = "audio/flac",
+            sizeBytes = 1024L,
+            dateModifiedSeconds = 1L,
+        ).withScanMetadata()
+
+        assertEquals("ziwei zw", entity.pinyinTitle)
+        assertTrue(entity.toFtsEntity().normalizedText.contains("ziwei"))
+        assertTrue(entity.toFtsEntity().normalizedText.contains("zw"))
     }
 }

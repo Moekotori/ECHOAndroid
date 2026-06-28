@@ -32,6 +32,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.json)
     implementation(libs.okhttp)
+    implementation("com.belerweb:pinyin4j:2.5.1")
     ksp(libs.androidx.room.compiler)
 
     testImplementation(libs.junit)

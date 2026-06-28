@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.cancellation.CancellationException
 
+@Suppress("SpellCheckingInspection", "ConstPropertyName")
 internal class LyricsController(
     private val repository: EchoLibraryRepository,
     private val lyricsResolver: LocalLyricsResolver,
@@ -71,9 +72,8 @@ internal class LyricsController(
                     LyricsLoadResult(EchoLyricsLoadState.Error(error.lyricsErrorMessage("Lyrics import failed")))
                 }
             }
-            val latestTrackId = currentTrackId
-            if (trackIdAtImport == null || latestTrackId == null || latestTrackId == trackIdAtImport) {
-                val effectiveTrackId = trackIdAtImport ?: latestTrackId
+            if (trackIdAtImport == null || currentTrackId == null || currentTrackId == trackIdAtImport) {
+                val effectiveTrackId = trackIdAtImport ?: currentTrackId
                 if (effectiveTrackId != null && result.state is EchoLyricsLoadState.Ready) {
                     scope.launch(Dispatchers.IO) {
                         runCatching { importedLyricsStore.bindLyrics(effectiveTrackId, uri) }

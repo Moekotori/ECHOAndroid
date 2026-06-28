@@ -43,6 +43,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -53,11 +54,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.collectAsLazyPagingItems
+import app.echo.android.data.LocalLibrarySearchResults
+import app.echo.android.feature.home.SearchResult
+import app.echo.android.feature.home.SearchResultType
+import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.connect.EchoPairingParser
 import app.echo.android.connect.EchoRemoteClient
 import app.echo.android.design.EchoContentMaxWidth
@@ -68,6 +74,7 @@ import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.EchoMobileTheme
 import app.echo.android.feature.connect.ConnectScreen
 import app.echo.android.feature.home.HomeScreen
+import app.echo.android.feature.home.SearchScreen
 import app.echo.android.feature.library.LibraryScreen
 import app.echo.android.feature.player.MiniPlayer
 import app.echo.android.feature.player.NowPlayingScreen
@@ -76,6 +83,7 @@ import app.echo.android.feature.settings.DiagnosticsScreen
 import app.echo.android.feature.settings.SettingsScreen
 import app.echo.android.data.EchoBackgroundMode
 import app.echo.android.data.EchoFontFamilyMode
+import app.echo.android.data.toEchoTrack
 import app.echo.android.model.connect.EchoRemoteCommand
 import app.echo.android.model.connect.EchoRemoteConnectionState
 import app.echo.android.model.connect.EchoRemoteEndpoint
@@ -83,6 +91,7 @@ import app.echo.android.model.connect.EchoRemotePlaybackState
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.library.EchoPlaylist
+import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.FolderSummary
 import app.echo.android.model.library.LibraryStats
 import app.echo.android.model.playback.PlaybackPositionState
@@ -97,18 +106,19 @@ import androidx.compose.material.icons.rounded.AudioFile
 import androidx.compose.material.icons.rounded.Notifications
 import android.provider.Settings
 import android.net.Uri as AndroidUri
-import androidx.compose.material.icons.rounded.Storage
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 private val DockMotionEasing = CubicBezierEasing(0.16f, 1f, 0.30f, 1f)
 private val RouteMotionEasing = CubicBezierEasing(0.18f, 0.86f, 0.20f, 1f)
-private const val RouteMotionBaseDurationMs = 240
-private const val RouteMotionDistanceDurationMs = 28
-private const val RouteMotionMaxDurationMs = 320
+private const val RouteMotionBaseDurationMs = 150
+private const val RouteMotionDistanceDurationMs = 18
+private const val RouteMotionMaxDurationMs = 220
 private val LyricsDocumentMimeTypes = arrayOf("text/*", "application/xml", "application/octet-stream", "*/*")
 private val ArtworkDocumentMimeTypes = arrayOf("image/*", "application/octet-stream", "*/*")
 private val FontDocumentMimeTypes = arrayOf("font/*", "application/x-font-ttf", "application/x-font-otf", "application/octet-stream", "*/*")
@@ -156,11 +166,12 @@ private fun routeMotionSpec(
 
 private fun motionDuration(defaultMs: Int, effectivePerformanceMode: EchoEffectivePerformanceMode): Int =
     if (effectivePerformanceMode.isLightweight) {
-        (defaultMs * 0.48f).roundToInt().coerceIn(90, defaultMs)
+        (defaultMs * 0.40f).roundToInt().coerceIn(70, defaultMs)
     } else {
-        defaultMs
+        (defaultMs * 0.72f).roundToInt().coerceIn(110, defaultMs)
     }
 
+@Suppress("SpellCheckingInspection")
 @Composable
 fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     val context = LocalContext.current
@@ -178,7 +189,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             notifPermName == null || ContextCompat.checkSelfPermission(context, notifPermName) == PackageManager.PERMISSION_GRANTED,
         )
     }
-    val notifPermissionLauncher = notifPermName?.let { perm ->
+    val notifPermissionLauncher = notifPermName?.let { _ ->
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             hasNotifPermission = granted
         }
@@ -189,9 +200,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     }
     fun dismissPermissionDialog() {
         showPermissionDialog = false
-        prefs.edit().putBoolean(EchoPermissionDialogShownKey, true).apply()
+        prefs.edit { putBoolean(EchoPermissionDialogShownKey, true) }
     }
-    fun persistReadPermission(uri: android.net.Uri) {
+    fun persistReadPermission(uri: AndroidUri) {
         runCatching {
             context.contentResolver.takePersistableUriPermission(
                 uri,
@@ -401,6 +412,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     var selectedFolder by remember { mutableStateOf<FolderSummary?>(null) }
     var selectedPlaylist by remember { mutableStateOf<EchoPlaylist?>(null) }
     var detailReturnPage by remember { mutableStateOf<EchoPagerPage?>(null) }
+    var searchVisible by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
     val selectedAlbumKey = selectedAlbum?.albumKey
     val selectedArtistKey = selectedArtist?.artistKey
     val selectedFolderKey = selectedFolder?.folderKey
@@ -436,7 +449,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         if (appSettings.scheduledDarkModeEnabled) {
             while (true) {
                 currentMinuteOfDay = currentMinuteOfDayNow()
-                delay(60_000L)
+                delay(1.minutes)
             }
         } else {
             currentMinuteOfDay = currentMinuteOfDayNow()
@@ -585,6 +598,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         )
     }
 
+    BackHandler(enabled = searchVisible) {
+        searchVisible = false
+        searchQuery = ""
+    }
     BackHandler(enabled = nowPlayingExpanded) { nowPlayingExpanded = false }
     BackHandler(enabled = queueSheetVisible) { queueSheetVisible = false }
     BackHandler(enabled = !nowPlayingExpanded && libraryDetailOpen) {
@@ -740,6 +757,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 },
                                 onOpenLibrary = { selectDockTab(EchoTab.Library) },
                                 onOpenConnect = { selectDockTab(EchoTab.Connect) },
+                                onOpenSearch = { searchVisible = true },
                             )
 
                             EchoPagerPage.Settings -> SettingsScreen(
@@ -832,7 +850,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                             context.startActivity(
                                                 Intent(
                                                     Intent.ACTION_VIEW,
-                                                    android.net.Uri.parse(authUrl),
+                                                    AndroidUri.parse(authUrl),
                                                 ),
                                             )
                                         }
@@ -845,7 +863,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                         context.startActivity(
                                             Intent(
                                                 Intent.ACTION_VIEW,
-                                                android.net.Uri.parse("https://www.last.fm/api/accounts"),
+                                                AndroidUri.parse("https://www.last.fm/api/accounts"),
                                             ),
                                         )
                                     }
@@ -956,9 +974,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             enter togetherWith exit
                         },
                         label = "bottom-controls-transition",
-                    ) {
+                    ) { expanded ->
                         val playbackPosition by viewModel.playbackPosition.collectAsStateWithLifecycle()
-                        if (it) {
+                        if (expanded) {
                             ExpandedBottomControls(
                                 status = playbackStatus,
                                 positionState = playbackPosition,
@@ -1113,6 +1131,55 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                 },
                 modifier = Modifier.fillMaxSize(),
             )
+            if (searchVisible) {
+                val localSearchResults by produceState(
+                    initialValue = LocalHomeSearchResults(),
+                    key1 = searchQuery,
+                ) {
+                    val trimmedQuery = searchQuery.trim()
+                    value = if (trimmedQuery.isBlank()) {
+                        LocalHomeSearchResults()
+                    } else {
+                        delay(150.milliseconds)
+                        viewModel.searchLocalLibrary(trimmedQuery).toHomeSearchResults()
+                    }
+                }
+                val searchResults = remember(localSearchResults) { localSearchResults.toUiResults() }
+                SearchScreen(
+                    searchQuery = searchQuery,
+                    searchResults = searchResults,
+                    onSearchQueryChange = { searchQuery = it },
+                    onSearchResultClick = { result ->
+                        when (result.type) {
+                            SearchResultType.Album -> {
+                                localSearchResults.albums.find { it.albumKey == result.id }?.let { album ->
+                                    searchVisible = false
+                                    searchQuery = ""
+                                    selectedAlbum = album
+                                    selectDockTab(EchoTab.Library)
+                                }
+                            }
+                            SearchResultType.Artist -> {
+                                localSearchResults.artists.find { it.artistKey == result.id }?.let { artist ->
+                                    searchVisible = false
+                                    searchQuery = ""
+                                    selectedArtist = artist
+                                    selectDockTab(EchoTab.Library)
+                                }
+                            }
+                            SearchResultType.Track -> {
+                                searchVisible = false
+                                searchQuery = ""
+                                viewModel.playTrackFromLibrary(result.id)
+                            }
+                        }
+                    },
+                    onBack = {
+                        searchVisible = false
+                        searchQuery = ""
+                    },
+                )
+            }
             EchoLinkQrScannerFallback(
                 visible = echoLinkFallbackScannerVisible,
                 onResult = { rawValue ->
@@ -1183,6 +1250,57 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     }
 }
 
+private data class LocalHomeSearchResults(
+    val tracks: List<EchoTrack> = emptyList(),
+    val albums: List<AlbumSummary> = emptyList(),
+    val artists: List<ArtistSummary> = emptyList(),
+)
+
+private fun LocalLibrarySearchResults.toHomeSearchResults(): LocalHomeSearchResults =
+    LocalHomeSearchResults(
+        tracks = tracks.map { it.toEchoTrack() },
+        albums = albums,
+        artists = artists,
+    )
+
+private fun LocalHomeSearchResults.toUiResults(): List<SearchResult> =
+    buildList {
+        tracks.forEach { track ->
+            add(
+                SearchResult(
+                    type = SearchResultType.Track,
+                    title = track.title,
+                    subtitle = listOfNotNull(track.artist.takeIf { it.isNotBlank() }, track.album?.takeIf { it.isNotBlank() })
+                        .joinToString(" · "),
+                    id = track.id,
+                    artworkUri = track.artworkUri,
+                ),
+            )
+        }
+        albums.forEach { album ->
+            add(
+                SearchResult(
+                    type = SearchResultType.Album,
+                    title = album.title,
+                    subtitle = album.albumArtist ?: album.artist ?: "",
+                    id = album.albumKey,
+                    artworkUri = album.artworkUri,
+                ),
+            )
+        }
+        artists.forEach { artist ->
+            add(
+                SearchResult(
+                    type = SearchResultType.Artist,
+                    title = artist.name,
+                    subtitle = "${artist.albumCount} 张专辑",
+                    id = artist.artistKey,
+                    artworkUri = artist.artworkUri,
+                ),
+            )
+        }
+    }
+
 @Composable
 private fun rememberSystemPowerSaveMode(): Boolean {
     val context = LocalContext.current
@@ -1211,7 +1329,7 @@ private fun rememberSystemPowerSaveMode(): Boolean {
 
 @Composable
 private fun ExpandedBottomControls(
-    status: app.echo.android.model.playback.EchoPlaybackStatus,
+    status: EchoPlaybackStatus,
     positionState: PlaybackPositionState,
     darkTheme: Boolean,
     selectedTab: Int,
@@ -1271,7 +1389,7 @@ private fun ExpandedBottomControls(
 }
 @Composable
 private fun CompactBottomControls(
-    status: app.echo.android.model.playback.EchoPlaybackStatus,
+    status: EchoPlaybackStatus,
     positionState: PlaybackPositionState,
     darkTheme: Boolean,
     onPlayPause: () -> Unit,

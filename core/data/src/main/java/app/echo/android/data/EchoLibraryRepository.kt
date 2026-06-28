@@ -17,13 +17,16 @@ import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.EchoTrackMetadataUpdate
 import app.echo.android.model.library.LibrarySource
 import app.echo.android.model.library.LibraryStats
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.coroutineContext
 
@@ -32,6 +35,14 @@ class EchoLibraryRepository(
     private val scanner: MediaStoreTrackScanner,
     private val documentTreeScanner: DocumentTreeTrackScanner,
 ) {
+    private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    init {
+        repositoryScope.launch {
+            refreshLegacyLibrarySearchIndex()
+        }
+    }
+
     fun pagedTracks(
         query: String? = null,
         sort: LibraryTrackSortMode = LibraryTrackSortMode.Title,
@@ -41,7 +52,7 @@ class EchoLibraryRepository(
             val trimmedQuery = query?.trim().orEmpty()
             val matchQuery = sanitizeFtsQuery(trimmedQuery)
             val rankQuery = ftsRankQuery(trimmedQuery)
-            val useFts = matchQuery != null && canUseFts(dao, matchQuery)
+            val useFts = matchQuery != null && canUseFts(dao, matchQuery, trimmedQuery)
 
             emitAll(
                 Pager(
@@ -113,6 +124,20 @@ class EchoLibraryRepository(
                 database.trackDao().pageFolders(query?.trim()?.takeIf { it.isNotBlank() })
             },
         ).flow
+
+    suspend fun searchLocalLibrary(
+        query: String,
+        limitPerType: Int = SearchResultLimitPerType,
+    ): LocalLibrarySearchResults {
+        val trimmedQuery = query.trim()
+        if (trimmedQuery.isBlank()) return LocalLibrarySearchResults()
+        val dao = database.trackDao()
+        return LocalLibrarySearchResults(
+            tracks = dao.searchTracks(trimmedQuery, limitPerType),
+            albums = dao.searchAlbums(trimmedQuery, limitPerType),
+            artists = dao.searchArtists(trimmedQuery, limitPerType),
+        )
+    }
 
     fun pagedAlbumTracks(albumKey: String): Flow<PagingData<LibraryTrackEntity>> =
         Pager(
@@ -716,13 +741,10 @@ class EchoLibraryRepository(
         )
     }
 
-    private suspend fun canUseFts(dao: LibraryTrackDao, matchQuery: String): Boolean =
-        runCatching {
-            dao.validateFtsQuery(matchQuery)
-            true
-        }.onFailure { error ->
-            Log.w(TAG, "FTS search failed; falling back to LIKE query.", error)
-        }.getOrDefault(false)
+    private suspend fun canUseFts(dao: LibraryTrackDao, matchQuery: String, rawQuery: String): Boolean {
+        // Keep track search aligned with album/artist/folder matching rules.
+        return false
+    }
 
     private suspend fun trackQueueCandidates(
         dao: LibraryTrackDao,
@@ -735,7 +757,7 @@ class EchoLibraryRepository(
         return when {
             trimmedQuery.isBlank() -> dao.getTrackQueue(limit)
             matchQuery == null -> dao.getTrackQueueByLike(trimmedQuery, rankQuery, limit)
-            canUseFts(dao, matchQuery) -> dao.getTrackQueueByFts(matchQuery, rankQuery, limit)
+            canUseFts(dao, matchQuery, trimmedQuery) -> dao.getTrackQueueByFts(matchQuery, rankQuery, limit)
             else -> dao.getTrackQueueByLike(trimmedQuery, rankQuery, limit)
         }
     }
@@ -757,23 +779,49 @@ class EchoLibraryRepository(
         )
         if (query.isNotBlank()) {
             if (useFts && matchQuery != null) {
-                sql.appendLine()
-                sql.append("JOIN library_tracks_fts ON library_tracks.id = library_tracks_fts.trackId")
-                sql.appendLine()
-                sql.append("WHERE library_tracks_fts MATCH ?")
-                args += matchQuery
-            } else {
                 val likeQuery = "%${query.lowercase()}%"
+                val rawLike = "%$query%"
+                sql.appendLine()
+                sql.append("LEFT JOIN library_tracks_fts ON library_tracks.id = library_tracks_fts.trackId")
                 sql.appendLine()
                 sql.append(
                     """
-                    WHERE library_tracks.normalizedTitle LIKE ?
+                    WHERE library_tracks_fts MATCH ?
+                       OR library_tracks.title LIKE ?
+                       OR library_tracks.artist LIKE ?
+                       OR library_tracks.album LIKE ?
+                       OR library_tracks.normalizedTitle LIKE ?
                        OR library_tracks.normalizedArtist LIKE ?
                        OR library_tracks.normalizedAlbum LIKE ?
                        OR library_tracks.normalizedAlbumArtist LIKE ?
+                       OR library_tracks.pinyinTitle LIKE ?
+                       OR library_tracks.pinyinArtist LIKE ?
+                       OR library_tracks.pinyinAlbum LIKE ?
                     """.trimIndent(),
                 )
-                repeat(4) { args += likeQuery }
+                args += matchQuery
+                repeat(3) { args += rawLike }
+                repeat(7) { args += likeQuery }
+            } else {
+                val likeQuery = "%${query.lowercase()}%"
+                val rawLike = "%$query%"
+                sql.appendLine()
+                sql.append(
+                    """
+                    WHERE library_tracks.title LIKE ?
+                       OR library_tracks.artist LIKE ?
+                       OR library_tracks.album LIKE ?
+                       OR library_tracks.normalizedTitle LIKE ?
+                       OR library_tracks.normalizedArtist LIKE ?
+                       OR library_tracks.normalizedAlbum LIKE ?
+                       OR library_tracks.normalizedAlbumArtist LIKE ?
+                       OR library_tracks.pinyinTitle LIKE ?
+                       OR library_tracks.pinyinArtist LIKE ?
+                       OR library_tracks.pinyinAlbum LIKE ?
+                    """.trimIndent(),
+                )
+                repeat(3) { args += rawLike }
+                repeat(7) { args += likeQuery }
             }
         }
         sql.appendLine()
@@ -848,6 +896,18 @@ class EchoLibraryRepository(
     private fun LibraryTrackEntity.artistKey(): String =
         libraryArtistKey(normalizedArtist)
 
+    private suspend fun refreshLegacyLibrarySearchIndex() {
+        val dao = database.trackDao()
+        while (true) {
+            val staleTracks = dao.getTracksNeedingPinyinBackfill(PinyinBackfillBatchSize)
+            if (staleTracks.isEmpty()) break
+            dao.upsertBatch(staleTracks.map(LibraryTrackEntity::withComputedSearchMetadata))
+        }
+        if (dao.findTrackWithStaleFtsSearchData() != null) {
+            dao.rebuildFts()
+        }
+    }
+
     private fun albumPlaybackQuery(albumKey: String, limit: Int): SimpleSQLiteQuery {
         val fallbackParts = albumKey.split("::", limit = 2)
         val fallbackAlbum = fallbackParts.getOrElse(0) { albumKey }
@@ -920,13 +980,21 @@ class EchoLibraryRepository(
         const val ScanBatchSize = 500
         const val DocumentTreeScanBatchSize = 200
         const val DatabaseBatchSize = 500
+        const val PinyinBackfillBatchSize = 200
         const val ProgressEmitStride = 100
         const val RecommendedTrackLimit = 8
         const val RecentAlbumLimit = 12
+        const val SearchResultLimitPerType = 6
         const val TrackQueueLimit = 200
         const val AggregationQueueLimit = 500
     }
 }
+
+data class LocalLibrarySearchResults(
+    val tracks: List<LibraryTrackEntity> = emptyList(),
+    val albums: List<AlbumSummary> = emptyList(),
+    val artists: List<ArtistSummary> = emptyList(),
+)
 
 private fun LibraryTrackEntity.hasSameUserMetadata(other: LibraryTrackEntity): Boolean =
     title == other.title &&

@@ -20,6 +20,11 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+the<org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension>().compilerOptions {
+    freeCompilerArgs.add("-opt-in=androidx.media3.common.util.UnstableApi")
+    freeCompilerArgs.add("-opt-in=androidx.camera.core.ExperimentalGetImage")
+}
+
 android {
     namespace = "app.echo.android"
     compileSdk = 36
@@ -89,6 +94,7 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
     implementation(libs.mlkit.barcode.scanning)
+    implementation("com.belerweb:pinyin4j:2.5.1")
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 

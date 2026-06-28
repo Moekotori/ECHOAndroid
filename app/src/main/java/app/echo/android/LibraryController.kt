@@ -5,6 +5,7 @@ import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import androidx.paging.map
 import app.echo.android.data.EchoLibraryRepository
+import app.echo.android.data.LocalLibrarySearchResults
 import app.echo.android.data.MediaStoreAudioFolder
 import app.echo.android.data.SubsonicEndpoint
 import app.echo.android.data.WebDavEndpoint
@@ -37,8 +38,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
+@Suppress("SpellCheckingInspection")
 internal class LibraryController(
     private val repository: EchoLibraryRepository,
     private val scope: CoroutineScope,
@@ -51,7 +54,7 @@ internal class LibraryController(
     private val debouncedLibraryQuery: Flow<String> =
         _libraryQuery
             .map(String::trim)
-            .debounce(300L)
+            .debounce(300.milliseconds)
             .distinctUntilChanged()
 
     val tracks: Flow<PagingData<EchoTrack>> =
@@ -230,7 +233,6 @@ internal class LibraryController(
 
     fun refreshSubsonic(endpoint: SubsonicEndpoint) {
         startRemoteSync(
-            duplicateMessage = "已有远程曲库同步正在进行，请先取消或等待完成",
             fallbackError = "Subsonic / Navidrome 同步失败",
         ) {
             repository.refreshSubsonicSnapshot(endpoint)
@@ -239,7 +241,6 @@ internal class LibraryController(
 
     fun refreshWebDav(endpoint: WebDavEndpoint) {
         startRemoteSync(
-            duplicateMessage = "已有远程曲库同步正在进行，请先取消或等待完成",
             fallbackError = "WebDAV 同步失败",
         ) {
             repository.refreshWebDavSnapshot(endpoint)
@@ -247,14 +248,13 @@ internal class LibraryController(
     }
 
     private fun startRemoteSync(
-        duplicateMessage: String,
         fallbackError: String,
         progressFlow: () -> Flow<LibraryScanProgress>,
     ) {
         if (remoteScanJob?.isActive == true) {
             _remoteScanState.value = _remoteScanState.value.copy(
-                currentTitle = duplicateMessage,
-                error = duplicateMessage,
+                currentTitle = "已有远程曲库同步正在进行，请先取消或等待完成",
+                error = "已有远程曲库同步正在进行，请先取消或等待完成",
             )
             return
         }
@@ -330,6 +330,11 @@ internal class LibraryController(
     suspend fun playlistTracksForPlayback(playlistId: String): List<EchoTrack> =
         withContext(Dispatchers.IO) {
             repository.playlistTracksForPlayback(playlistId).map { it.toEchoTrack() }
+        }
+
+    suspend fun searchLocalLibrary(query: String): LocalLibrarySearchResults =
+        withContext(Dispatchers.IO) {
+            repository.searchLocalLibrary(query)
         }
 
     suspend fun updateTrackMetadata(update: EchoTrackMetadataUpdate): Boolean =

@@ -12,6 +12,7 @@ import app.echo.android.data.EchoAppSettings
 import app.echo.android.data.EchoSettingsStore
 import app.echo.android.data.DocumentTreeTrackScanner
 import app.echo.android.data.MediaStoreTrackScanner
+import app.echo.android.data.LocalLibrarySearchResults
 import app.echo.android.data.OpraHeadphoneCorrectionRepository
 import app.echo.android.data.SubsonicEndpoint
 import app.echo.android.data.WebDavEndpoint
@@ -58,6 +59,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @UnstableApi
+@Suppress("SpellCheckingInspection", "ConstPropertyName", "unused")
 class EchoAndroidViewModel(application: Application) : AndroidViewModel(application) {
     private val database = EchoLibraryDatabase.create(application)
     private val repository = EchoLibraryRepository(
@@ -81,6 +83,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     )
     private val playbackController = PlaybackController(
         application = application,
+        settingsStore = settingsStore,
         scope = viewModelScope,
         onTrackChanged = lyricsController::updateLyricsForTrack,
         onTrackActivated = ::recordRecentPlayback,
@@ -241,6 +244,9 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             if (queue.isNotEmpty()) playQueue(queue, startIndex)
         }
     }
+
+    suspend fun searchLocalLibrary(query: String): LocalLibrarySearchResults =
+        libraryController.searchLocalLibrary(query)
 
     fun updateTrackMetadata(update: EchoTrackMetadataUpdate) {
         viewModelScope.launch {

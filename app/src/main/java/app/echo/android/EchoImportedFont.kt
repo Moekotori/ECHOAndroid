@@ -1,7 +1,7 @@
 package app.echo.android
 
 import android.graphics.Typeface
-import android.net.Uri
+import androidx.core.net.toUri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -19,7 +19,7 @@ fun rememberImportedFontFamily(fontUri: String?): FontFamily? {
                 null
             } else {
                 runCatching {
-                    context.contentResolver.openFileDescriptor(Uri.parse(fontUri), "r")?.use { descriptor ->
+                    context.contentResolver.openFileDescriptor(fontUri.toUri(), "r")?.use { descriptor ->
                         FontFamily(Typeface.Builder(descriptor.fileDescriptor).build())
                     }
                 }.getOrNull()
