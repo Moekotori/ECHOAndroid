@@ -78,7 +78,7 @@ import app.echo.android.design.EchoGlassInk
 import app.echo.android.design.EchoGlassNight
 import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.LocalEchoDarkTheme
-import app.echo.android.design.echoDarkGlassBorder
+
 import app.echo.android.design.formatDuration
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoRepeatMode

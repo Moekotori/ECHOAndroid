@@ -60,7 +60,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoAccent
-import app.echo.android.design.EchoAccentDeep
+
 import app.echo.android.design.EchoDarkGlassBorder
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode

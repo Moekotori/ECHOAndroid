@@ -2,10 +2,6 @@ plugins {
     alias(libs.plugins.android.library)
 }
 
-the<org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension>().compilerOptions {
-    freeCompilerArgs.add("-opt-in=androidx.media3.common.util.UnstableApi")
-}
-
 android {
     namespace = "app.echo.android.playback"
     compileSdk = 36

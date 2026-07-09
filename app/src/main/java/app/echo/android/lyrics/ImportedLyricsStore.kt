@@ -17,7 +17,7 @@ class ImportedLyricsStore(
     suspend fun lyricsUriForTrack(trackId: String): Uri? =
         context.echoImportedLyrics.data
             .map { preferences ->
-                preferences[Keys.Bindings]
+                preferences[Keys.BINDINGS]
                     ?.let(::parseBindings)
                     ?.optString(trackId)
                     ?.takeIf(String::isNotBlank)
@@ -27,16 +27,16 @@ class ImportedLyricsStore(
 
     suspend fun bindLyrics(trackId: String, uri: Uri) {
         context.echoImportedLyrics.edit { preferences ->
-            val bindings = preferences[Keys.Bindings]?.let(::parseBindings) ?: JSONObject()
+            val bindings = preferences[Keys.BINDINGS]?.let(::parseBindings) ?: JSONObject()
             bindings.put(trackId, uri.toString())
-            preferences[Keys.Bindings] = bindings.toString()
+            preferences[Keys.BINDINGS] = bindings.toString()
         }
     }
 
     suspend fun lyricsOffsetForTrack(trackId: String): Long =
         context.echoImportedLyrics.data
             .map { preferences ->
-                preferences[Keys.Offsets]
+                preferences[Keys.OFFSETS]
                     ?.let(::parseBindings)
                     ?.optLong(trackId, 0L)
                     ?: 0L
@@ -45,13 +45,13 @@ class ImportedLyricsStore(
 
     suspend fun setLyricsOffset(trackId: String, offsetMs: Long) {
         context.echoImportedLyrics.edit { preferences ->
-            val offsets = preferences[Keys.Offsets]?.let(::parseBindings) ?: JSONObject()
+            val offsets = preferences[Keys.OFFSETS]?.let(::parseBindings) ?: JSONObject()
             if (offsetMs == 0L) {
                 offsets.remove(trackId)
             } else {
                 offsets.put(trackId, offsetMs)
             }
-            preferences[Keys.Offsets] = offsets.toString()
+            preferences[Keys.OFFSETS] = offsets.toString()
         }
     }
 
@@ -59,7 +59,7 @@ class ImportedLyricsStore(
         runCatching { JSONObject(raw) }.getOrDefault(JSONObject())
 
     private object Keys {
-        val Bindings = stringPreferencesKey("track_lyrics_uri_bindings")
-        val Offsets = stringPreferencesKey("track_lyrics_offsets")
+        val BINDINGS = stringPreferencesKey("track_lyrics_uri_bindings")
+        val OFFSETS = stringPreferencesKey("track_lyrics_offsets")
     }
 }

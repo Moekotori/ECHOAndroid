@@ -290,8 +290,7 @@ internal class LastFmClient(
         )
         track.album?.let { params["album"] = it }
         if (track.durationMs > 0L) params["duration"] = (track.durationMs / 1000L).toString()
-        postSigned(params, credentials.sharedSecret)
-        Unit
+        postSigned(params, credentials.sharedSecret).let { }
     }
 
     internal suspend fun scrobble(
@@ -308,8 +307,7 @@ internal class LastFmClient(
             "sk" to credentials.sessionKey,
         )
         track.album?.let { params["album"] = it }
-        postSigned(params, credentials.sharedSecret)
-        Unit
+        postSigned(params, credentials.sharedSecret).let { }
     }
 
     private suspend fun postSigned(

@@ -3,6 +3,7 @@ package app.echo.android
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
+import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 
 internal object ReplayGainReader {
@@ -26,14 +27,14 @@ internal object ReplayGainReader {
     private fun readId3TrackGain(input: InputStream, header: ByteArray): Float? {
         val majorVersion = header[3].toInt()
         if (majorVersion !in 2..4) return null
-        val tagSize = syncSafeInt(header, 6).takeIf { it in 1..MaxTagBytes } ?: return null
+        val tagSize = syncSafeInt(header, 6).takeIf { it in 1..MAX_TAG_BYTES } ?: return null
         val frames = ByteArrayInputStream(input.readExactly(tagSize) ?: return null)
         var albumGain: Float? = null
         while (frames.available() >= 10) {
             val frameHeader = frames.readExactly(10) ?: return null
             val frameId = frameHeader.copyOfRange(0, 4).toString(StandardCharsets.ISO_8859_1)
             if (frameId.all { it.code == 0 }) return albumGain
-            val frameSize = if (majorVersion == 4) syncSafeInt(frameHeader, 4) else int32(frameHeader, 4)
+            val frameSize = if (majorVersion == 4) syncSafeInt(frameHeader, 4) else int32(frameHeader)
             if (frameSize <= 0 || frameSize > frames.available()) return albumGain
             val payload = frames.readExactly(frameSize) ?: return albumGain
             if (frameId == "TXXX") {
@@ -50,7 +51,7 @@ internal object ReplayGainReader {
     private fun parseUserTextFrame(payload: ByteArray): UserTextEntry? {
         if (payload.size <= 2) return null
         val encoding = id3Encoding(payload[0])
-        val descriptionEnd = findTerminator(payload, start = 1, encoding = encoding) ?: return null
+        val descriptionEnd = findTerminator(payload, encoding) ?: return null
         val description = decodeId3Text(payload, 1, descriptionEnd, encoding)
         val valueStart = descriptionEnd + encoding.terminatorSize
         val value = decodeId3Text(payload, valueStart, payload.size, encoding)
@@ -58,16 +59,16 @@ internal object ReplayGainReader {
     }
 
     private fun readFlacTrackGain(input: InputStream): Float? {
-        repeat(MaxFlacMetadataBlocks) {
+        repeat(MAX_FLAC_METADATA_BLOCKS) {
             val header = input.readExactly(4) ?: return null
             val isLast = (header[0].toInt() and 0x80) != 0
             val type = header[0].toInt() and 0x7F
             val length = ((header[1].toInt() and 0xFF) shl 16) or
                 ((header[2].toInt() and 0xFF) shl 8) or
                 (header[3].toInt() and 0xFF)
-            if (length !in 0..MaxTagBytes) return null
+            if (length !in 0..MAX_TAG_BYTES) return null
             val payload = input.readExactly(length) ?: return null
-            if (type == FlacVorbisCommentBlock) {
+            if (type == FLAC_VORBIS_COMMENT_BLOCK) {
                 parseVorbisReplayGain(payload)?.let { return it }
             }
             if (isLast) return null
@@ -85,7 +86,7 @@ internal object ReplayGainReader {
         cursor += 4
 
         var albumGain: Float? = null
-        repeat(count.coerceAtMost(MaxVorbisComments)) {
+        repeat(count.coerceAtMost(MAX_VORBIS_COMMENTS)) {
             val length = littleEndianInt32(payload, cursor) ?: return null
             cursor += 4
             if (length < 0 || cursor + length > payload.size) return null
@@ -103,7 +104,7 @@ internal object ReplayGainReader {
 
     private fun parseGainDb(value: String): Float? {
         val match = GainPattern.find(value) ?: return null
-        return match.value.toFloatOrNull()?.takeIf { it in MinReplayGainDb..MaxReplayGainDb }
+        return match.value.toFloatOrNull()?.takeIf { it in MIN_REPLAY_GAIN_DB..MAX_REPLAY_GAIN_DB }
     }
 
     private fun id3Encoding(value: Byte): Id3TextEncoding =
@@ -121,8 +122,8 @@ internal object ReplayGainReader {
             payload.copyOfRange(start, end.coerceAtMost(payload.size)).toString(encoding.charset).trimEnd('\u0000')
         }
 
-    private fun findTerminator(payload: ByteArray, start: Int, encoding: Id3TextEncoding): Int? {
-        var index = start
+    private fun findTerminator(payload: ByteArray, encoding: Id3TextEncoding): Int? {
+        var index = 1
         while (index < payload.size) {
             if (encoding.terminatorSize == 1) {
                 if (payload[index] == 0.toByte()) return index
@@ -157,11 +158,11 @@ internal object ReplayGainReader {
             ((bytes[start + 2].toInt() and 0x7F) shl 7) or
             (bytes[start + 3].toInt() and 0x7F)
 
-    private fun int32(bytes: ByteArray, start: Int): Int =
-        ((bytes[start].toInt() and 0xFF) shl 24) or
-            ((bytes[start + 1].toInt() and 0xFF) shl 16) or
-            ((bytes[start + 2].toInt() and 0xFF) shl 8) or
-            (bytes[start + 3].toInt() and 0xFF)
+    private fun int32(bytes: ByteArray): Int =
+        ((bytes[4].toInt() and 0xFF) shl 24) or
+            ((bytes[5].toInt() and 0xFF) shl 16) or
+            ((bytes[6].toInt() and 0xFF) shl 8) or
+            (bytes[7].toInt() and 0xFF)
 
     private fun littleEndianInt32(bytes: ByteArray, start: Int): Int? {
         if (start + 4 > bytes.size) return null
@@ -177,15 +178,15 @@ internal object ReplayGainReader {
     )
 
     private data class Id3TextEncoding(
-        val charset: java.nio.charset.Charset,
+        val charset: Charset,
         val terminatorSize: Int,
     )
 
-    private const val MaxTagBytes = 2 * 1024 * 1024
-    private const val MaxFlacMetadataBlocks = 64
-    private const val MaxVorbisComments = 256
-    private const val FlacVorbisCommentBlock = 4
-    private const val MinReplayGainDb = -40f
-    private const val MaxReplayGainDb = 20f
+    private const val MAX_TAG_BYTES = 2 * 1024 * 1024
+    private const val MAX_FLAC_METADATA_BLOCKS = 64
+    private const val MAX_VORBIS_COMMENTS = 256
+    private const val FLAC_VORBIS_COMMENT_BLOCK = 4
+    private const val MIN_REPLAY_GAIN_DB = -40f
+    private const val MAX_REPLAY_GAIN_DB = 20f
     private val GainPattern = Regex("[+-]?\\d+(?:\\.\\d+)?")
 }

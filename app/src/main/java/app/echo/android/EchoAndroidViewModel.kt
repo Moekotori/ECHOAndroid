@@ -840,8 +840,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         password: String,
     ) {
         viewModelScope.launch {
-            val resolvedApiKey = apiKey.ifBlank { LastFmApiConfig.apiKey }
-            val resolvedSharedSecret = sharedSecret.ifBlank { LastFmApiConfig.sharedSecret }
+            val resolvedApiKey = apiKey.ifBlank { LastFmApiConfig.API_KEY }
+            val resolvedSharedSecret = sharedSecret.ifBlank { LastFmApiConfig.SHARED_SECRET }
             if (resolvedApiKey.isBlank()) {
                 lastFmController.setError("Missing Last.fm API key")
                 return@launch
@@ -879,8 +879,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun startLastFmWebAuth(onOpenAuthUrl: (String) -> Unit) {
         viewModelScope.launch {
-            val resolvedApiKey = LastFmApiConfig.apiKey
-            val resolvedSharedSecret = LastFmApiConfig.sharedSecret
+            val resolvedApiKey = LastFmApiConfig.API_KEY
+            val resolvedSharedSecret = LastFmApiConfig.SHARED_SECRET
             if (resolvedApiKey.isBlank()) {
                 lastFmController.setError("Missing Last.fm API key")
                 return@launch
@@ -915,8 +915,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                 lastFmController.setError("Open the Last.fm authorization page first")
                 return@launch
             }
-            val resolvedApiKey = LastFmApiConfig.apiKey
-            val resolvedSharedSecret = LastFmApiConfig.sharedSecret
+            val resolvedApiKey = LastFmApiConfig.API_KEY
+            val resolvedSharedSecret = LastFmApiConfig.SHARED_SECRET
             if (resolvedApiKey.isBlank() || resolvedSharedSecret.isBlank()) {
                 lastFmController.setError("Missing Last.fm app credentials")
                 return@launch
@@ -999,7 +999,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     private fun recordPlaybackHeatmapTick() {
         val today = LocalDate.now().toEpochDay()
-        val firstVisibleDay = today - HomeHeatmapVisibleDays + 1
+        val firstVisibleDay = today - HOME_HEATMAP_VISIBLE_DAYS + 1
         playbackHeatmapCounts[today] = (playbackHeatmapCounts[today] ?: 0) + 1
         playbackHeatmapCounts.keys.removeAll { it < firstVisibleDay }
         _recentPlaybackHeatmap.value = playbackHeatmapCounts
@@ -1051,7 +1051,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
 
     private companion object {
-        const val HomeHeatmapVisibleDays = 84L
+        const val HOME_HEATMAP_VISIBLE_DAYS = 84L
     }
 }
 

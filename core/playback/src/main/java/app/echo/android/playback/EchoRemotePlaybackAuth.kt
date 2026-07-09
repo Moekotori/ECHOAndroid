@@ -13,6 +13,7 @@ import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.CacheKeyFactory
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
+import androidx.media3.database.StandaloneDatabaseProvider
 import java.io.File
 import java.io.IOException
 import java.net.URLDecoder
@@ -42,6 +43,7 @@ object EchoRemotePlaybackAuthRegistry {
         )
     }
 
+    @UnstableApi
     internal fun resolve(dataSpec: DataSpec): DataSpec {
         val uri = dataSpec.uri
         val uriString = uri.toString()
@@ -152,6 +154,7 @@ private object EchoRemotePlaybackCache {
         cache ?: SimpleCache(
             File(context.cacheDir, "echo-remote-playback-cache"),
             LeastRecentlyUsedCacheEvictor(EchoPlaybackCachePolicy.maxCacheBytes),
+            StandaloneDatabaseProvider(context),
         ).also { cache = it }
 }
 

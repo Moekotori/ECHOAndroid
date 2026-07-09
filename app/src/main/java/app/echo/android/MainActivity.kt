@@ -7,11 +7,14 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 import app.echo.android.data.readEchoStartupThemeSnapshotForLaunch
 
 class MainActivity : ComponentActivity() {
     private var highRefreshRateRequested = false
 
+    @OptIn(UnstableApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val startupThemeSnapshot = applicationContext.readEchoStartupThemeSnapshotForLaunch()
@@ -65,7 +68,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startupWindowBackground(darkTheme: Boolean): Int =
-        if (darkTheme) EchoDarkWindowBackground else EchoLightWindowBackground
+        if (darkTheme) ECHO_DARK_WINDOW_BACKGROUND else ECHO_LIGHT_WINDOW_BACKGROUND
 
     private fun requestHighRefreshRate() {
         val preferredMode = bestSupportedHighRefreshMode() ?: return
@@ -85,7 +88,6 @@ class MainActivity : ComponentActivity() {
 
     @Suppress("DEPRECATION")
     private fun bestSupportedHighRefreshMode(): DisplayModePreference? {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return null
         val activeDisplay = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             display
         } else {
@@ -95,7 +97,7 @@ class MainActivity : ComponentActivity() {
         val preferredMode = activeDisplay
             .supportedModes
             .filter {
-                it.refreshRate >= MinHighRefreshRate &&
+                it.refreshRate >= MIN_HIGH_REFRESH_RATE &&
                     it.physicalWidth == currentMode.physicalWidth &&
                     it.physicalHeight == currentMode.physicalHeight
             }
@@ -113,8 +115,8 @@ class MainActivity : ComponentActivity() {
     )
 
     private companion object {
-        const val MinHighRefreshRate = 90f
-        val EchoDarkWindowBackground: Int = Color.rgb(8, 11, 18)
-        val EchoLightWindowBackground: Int = Color.rgb(241, 241, 243)
+        const val MIN_HIGH_REFRESH_RATE = 90f
+        val ECHO_DARK_WINDOW_BACKGROUND: Int = Color.rgb(8, 11, 18)
+        val ECHO_LIGHT_WINDOW_BACKGROUND: Int = Color.rgb(241, 241, 243)
     }
 }

@@ -95,27 +95,6 @@ fun EchoIconBadge(
 }
 
 @Composable
-fun EchoInfoChip(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-) {
-    val scheme = MaterialTheme.colorScheme
-    val dark = LocalEchoDarkTheme.current
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
-        color = if (dark) scheme.surface.copy(alpha = 0.58f) else scheme.surface.copy(alpha = 0.92f),
-        border = if (dark) BorderStroke(1.dp, EchoDarkGlassBorder) else BorderStroke(1.dp, Color.White.copy(alpha = 0.96f)),
-    ) {
-        Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
-            Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = scheme.primary)
-            Text(value, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, color = if (dark) Color.White.copy(alpha = 0.94f) else scheme.onSurface)
-        }
-    }
-}
-
-@Composable
 fun EchoMetricTile(
     label: String,
     value: String,

@@ -6,7 +6,6 @@ import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -21,13 +20,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -46,14 +43,14 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -65,18 +62,15 @@ import kotlinx.coroutines.withContext
 
 val EchoContentMaxWidth = 560.dp
 
-// === 默认主题：干净蓝青 + 中性炭灰。多主题切换时改这一组即可 ===
+// === 榛樿涓婚锛氬共鍑€钃濋潚 + 涓€х偔鐏般€傚涓婚鍒囨崲鏃舵敼杩欎竴缁勫嵆鍙?===
 val EchoAccent = Color(0xFF2F9CFF)
 val EchoAccentText = Color(0xFF5BB8FF)
 val EchoAccentDeep = Color(0xFF176BBD)
 val EchoBgTop = Color(0xFFF8FBFF)
 val EchoBgMid = Color(0xFFF1F5FB)
 val EchoBgBottom = Color(0xFFEAF0F8)
-val RoonBlue = Color(0xFF2F9CFF)
 val RoonInk = Color(0xFF25242A)
 val RoonMuted = Color(0xFF6D6D73)
-val RoonPaper = Color(0xFFFDFEFF)
-val RoonPanel = Color(0xFFF4F8FF)
 val EchoHomeBlue = Color(0xFF2F9CFF)
 val EchoHomeBlueDeep = Color(0xFF176BBD)
 val EchoHomeMist = Color(0xFFEFF4FA)
@@ -87,9 +81,7 @@ val EchoGlassInk = Color(0xFF202126)
 val EchoGlassPanel = Color(0xFF2A2B30)
 val EchoGlassViolet = Color(0xFF252329)
 val EchoGlassCyan = Color(0xFF2D2E33)
-val EchoGlassRose = Color(0xFF3A3035)
 val EchoDarkGlassBorder = Color.White.copy(alpha = 0.08f)
-val EchoDarkGlassLine = Color.White.copy(alpha = 0.06f)
 
 @Composable
 fun GlassSurface(
@@ -98,7 +90,6 @@ fun GlassSurface(
     content: @Composable () -> Unit,
 ) {
     val dark = LocalEchoDarkTheme.current
-    val scheme = MaterialTheme.colorScheme
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(28.dp),
@@ -108,28 +99,6 @@ fun GlassSurface(
             if (dark) EchoDarkGlassBorder else Color.White.copy(alpha = 0.32f),
         ),
         content = { content() },
-    )
-}
-
-@Composable
-fun echoDarkGlassBrush(strength: Float = 1f): Brush {
-    val dark = LocalEchoDarkTheme.current
-    val clamped = strength.coerceIn(0.45f, 1.25f)
-    return Brush.linearGradient(
-        if (dark) {
-            listOf(
-                Color.White.copy(alpha = 0.030f * clamped),
-                EchoGlassPanel.copy(alpha = 0.54f * clamped),
-                EchoGlassInk.copy(alpha = 0.62f * clamped),
-                EchoGlassRose.copy(alpha = 0.08f * clamped),
-            )
-        } else {
-            listOf(
-                Color.White.copy(alpha = 0.98f),
-                Color(0xFFF5F8FC),
-                Color(0xFFEEF3F9),
-            )
-        },
     )
 }
 
@@ -231,7 +200,6 @@ fun EchoGlassBackground(modifier: Modifier = Modifier) {
         },
     )
     Canvas(modifier = modifier.background(baseGradient)) {
-        val w = size.width
         val h = size.height
         if (!dark) {
             drawRect(
@@ -287,12 +255,14 @@ fun PageChrome(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     key(title) {
-        val configuration = LocalConfiguration.current
+        val windowInfo = LocalWindowInfo.current
+        val density = LocalDensity.current
         val densityScale = LocalEchoDensityScale.current
         val dark = LocalEchoDarkTheme.current
         val scheme = MaterialTheme.colorScheme
-        val compactChrome = configuration.screenHeightDp < 620 ||
-            configuration.screenWidthDp > configuration.screenHeightDp
+        val heightDp = (windowInfo.containerSize.height / density.density).dp
+        val widthDp = (windowInfo.containerSize.width / density.density).dp
+        val compactChrome = heightDp < 620.dp || widthDp > heightDp
         val contentScroll = if (scrollable) Modifier.verticalScroll(rememberScrollState()) else Modifier
         val chromeGradient = if (dark) {
             Brush.verticalGradient(
@@ -457,7 +427,7 @@ fun EmptyState(message: String) {
 }
 
 /**
- * 从专辑封面提取的配色，用于沉浸式详情页的渐变背景与强调色。
+ * 浠庝笓杈戝皝闈㈡彁鍙栫殑閰嶈壊锛岀敤浜庢矇娴稿紡璇︽儏椤电殑娓愬彉鑳屾櫙涓庡己璋冭壊銆?
  */
 @Immutable
 data class ArtworkPalette(
@@ -474,7 +444,7 @@ data class ArtworkPalette(
             onColor = Color.White,
         )
 
-        /** 没有封面时，用标识串生成一个稳定且好看的配色。 */
+        /** 娌℃湁灏侀潰鏃讹紝鐢ㄦ爣璇嗕覆鐢熸垚涓€涓ǔ瀹氫笖濂界湅鐨勯厤鑹层€?*/
         fun fromSeed(seed: String?): ArtworkPalette {
             if (seed.isNullOrBlank()) return Default
             val hue = ((seed.hashCode() % 360) + 360) % 360
@@ -493,10 +463,11 @@ fun rememberArtworkPalette(artworkUri: String?, seedKey: String? = artworkUri): 
     if (effectivePerformanceMode.isLightweight) {
         return remember(seedKey) { ArtworkPalette.fromSeed(seedKey) }
     }
+    val sampleSize = if (effectivePerformanceMode.isHighPerformance) 8 else 16
     val context = LocalContext.current
-    val palette by produceState(ArtworkPalette.fromSeed(seedKey), artworkUri, seedKey) {
+    val palette by produceState(ArtworkPalette.fromSeed(seedKey), artworkUri, seedKey, sampleSize) {
         value = withContext(Dispatchers.IO) {
-            val bitmap = loadArtworkSwatch(context.contentResolver, artworkUri)
+            val bitmap = loadArtworkSwatch(context.contentResolver, artworkUri, sampleSize)
             if (bitmap != null) {
                 extractPalette(bitmap).also { bitmap.recycle() }
             } else {
@@ -510,11 +481,12 @@ fun rememberArtworkPalette(artworkUri: String?, seedKey: String? = artworkUri): 
 private fun loadArtworkSwatch(
     contentResolver: android.content.ContentResolver,
     artworkUri: String?,
+    sampleSize: Int,
 ): Bitmap? {
     if (artworkUri.isNullOrBlank()) return null
     return runCatching {
         contentResolver.openInputStream(Uri.parse(artworkUri))?.use { stream ->
-            val options = BitmapFactory.Options().apply { inSampleSize = 8 }
+            val options = BitmapFactory.Options().apply { inSampleSize = sampleSize.coerceAtLeast(1) }
             BitmapFactory.decodeStream(stream, null, options)
         }
     }.getOrNull()
@@ -543,7 +515,7 @@ private fun extractPalette(source: Bitmap): ArtworkPalette {
             android.graphics.Color.colorToHSV(pixel, hsv)
             val s = hsv[1]
             val v = hsv[2]
-            // 偏好鲜艳、亮度适中的像素作为强调色
+            // 鍋忓ソ椴滆壋銆佷寒搴﹂€備腑鐨勫儚绱犱綔涓哄己璋冭壊
             if (v in 0.28f..0.96f) {
                 val score = s * 1.4f + (1f - kotlin.math.abs(v - 0.62f))
                 if (score > bestScore) {
@@ -570,7 +542,7 @@ private fun extractPalette(source: Bitmap): ArtworkPalette {
 }
 
 /**
- * Apple Music 风格：把当前封面放大模糊成毛玻璃背景，随歌变色；无封面或低版本回退到取色渐变。
+ * Apple Music 椋庢牸锛氭妸褰撳墠灏侀潰鏀惧ぇ妯＄硦鎴愭瘺鐜荤拑鑳屾櫙锛岄殢姝屽彉鑹诧紱鏃犲皝闈㈡垨浣庣増鏈洖閫€鍒板彇鑹叉笎鍙樸€?
  */
 @Composable
 fun BlurredArtworkBackground(
@@ -586,22 +558,31 @@ fun BlurredArtworkBackground(
 ) {
     val context = LocalContext.current
     val effectivePerformanceMode = LocalEchoEffectivePerformanceMode.current
-    val artworkMaxPixelSize = if (effectivePerformanceMode.isLightweight) 512 else 1024
-    val effectiveArtworkBlur = if (effectivePerformanceMode.isLightweight && artworkBlur > 8.dp) {
-        8.dp
+    val artworkMaxPixelSize = when {
+        effectivePerformanceMode.isLightweight -> 512
+        effectivePerformanceMode.isHighPerformance -> 1280
+        else -> 768
+    }
+    val effectiveArtworkBlur = when {
+        effectivePerformanceMode.isLightweight && artworkBlur > 4.dp -> 4.dp
+        effectivePerformanceMode.isBalanced && artworkBlur > 28.dp -> 28.dp
+        else -> artworkBlur
+    }
+    val effectiveArtworkAlpha = if (effectivePerformanceMode.isBalanced) {
+        artworkAlpha.coerceAtMost(0.52f)
     } else {
-        artworkBlur
+        artworkAlpha
     }
     val artworkModel = remember(context, artworkUri, artworkMaxPixelSize) {
         ImageRequest.Builder(context)
             .data(artworkUri)
             .size(artworkMaxPixelSize, artworkMaxPixelSize)
-            .bitmapConfig(Bitmap.Config.ARGB_8888)
+            .bitmapConfig(if (effectivePerformanceMode.isHighPerformance) Bitmap.Config.ARGB_8888 else Bitmap.Config.RGB_565)
             .crossfade(false)
             .build()
     }
     Box(modifier = modifier.fillMaxSize()) {
-        // 取色底，保证无封面/低于 API 31 时也有沉浸色
+        // 鍙栬壊搴曪紝淇濊瘉鏃犲皝闈?浣庝簬 API 31 鏃朵篃鏈夋矇娴歌壊
         Box(
             Modifier
                 .fillMaxSize()
@@ -624,10 +605,10 @@ fun BlurredArtworkBackground(
                     .fillMaxSize()
                     .scale(artworkScale)
                     .blur(effectiveArtworkBlur)
-                    .alpha(artworkAlpha),
+                    .alpha(effectiveArtworkAlpha),
             )
         }
-        // 压暗的毛玻璃罩，保证白色文字与控件可读
+        // 鍘嬫殫鐨勬瘺鐜荤拑缃╋紝淇濊瘉鐧借壊鏂囧瓧涓庢帶浠跺彲璇?
         Box(
             Modifier
                 .fillMaxSize()
