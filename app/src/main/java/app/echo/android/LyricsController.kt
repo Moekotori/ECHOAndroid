@@ -41,11 +41,11 @@ internal class LyricsController(
     private var onlineLyricsEnabled: Boolean = false
     private val onlineLyricsCache = object : LinkedHashMap<String, EchoLyrics>(32, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, EchoLyrics>?): Boolean =
-            size > MaxOnlineLyricsCacheEntries
+            size > MAX_ONLINE_LYRICS_CACHE_ENTRIES
     }
     private val echoLinkLyricsCache = object : LinkedHashMap<String, EchoLyrics>(16, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, EchoLyrics>?): Boolean =
-            size > MaxEchoLinkLyricsCacheEntries
+            size > MAX_ECHO_LINK_LYRICS_CACHE_ENTRIES
     }
     private val echoLinkLyricsLock = Any()
 
@@ -272,7 +272,7 @@ internal class LyricsController(
             ?: fallback
 
     private companion object {
-        const val MaxOnlineLyricsCacheEntries = 48
-        const val MaxEchoLinkLyricsCacheEntries = 32
+        const val MAX_ONLINE_LYRICS_CACHE_ENTRIES = 48
+        const val MAX_ECHO_LINK_LYRICS_CACHE_ENTRIES = 32
     }
 }

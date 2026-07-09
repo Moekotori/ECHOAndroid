@@ -21,8 +21,6 @@ plugins {
 }
 
 the<org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension>().compilerOptions {
-    freeCompilerArgs.add("-opt-in=androidx.media3.common.util.UnstableApi")
-    freeCompilerArgs.add("-opt-in=androidx.camera.core.ExperimentalGetImage")
 }
 
 android {

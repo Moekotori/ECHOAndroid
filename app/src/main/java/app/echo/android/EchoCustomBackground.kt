@@ -1,5 +1,6 @@
 package app.echo.android
 
+import android.graphics.Bitmap
 import androidx.core.net.toUri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -15,6 +16,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -34,6 +36,7 @@ import app.echo.android.design.EchoGlassBackground
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 
 @Composable
 fun EchoCustomBackground(
@@ -42,10 +45,21 @@ fun EchoCustomBackground(
 ) {
     val mode = settings.customBackgroundMode
     val uri = settings.customBackgroundUri
-    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    val effectivePerformanceMode = LocalEchoEffectivePerformanceMode.current
+    val lightweight = effectivePerformanceMode.isLightweight
+    val highPerformance = effectivePerformanceMode.isHighPerformance
     val customVideoDisabled = lightweight && mode == EchoBackgroundMode.Video
     val hasCustomBackground = mode != EchoBackgroundMode.Default && !uri.isNullOrBlank() && !customVideoDisabled
-    val maxBlur = if (lightweight) 8f else 80f
+    val imageMaxPixelSize = when {
+        lightweight -> 640
+        highPerformance -> 2048
+        else -> 1024
+    }
+    val maxBlur = when {
+        lightweight -> 4f
+        highPerformance -> 80f
+        else -> 28f
+    }
     val blur = settings.customBackgroundBlur.coerceIn(0f, maxBlur).dp
     val brightness = settings.customBackgroundBrightness
     val glass = settings.customBackgroundGlass
@@ -66,6 +80,8 @@ fun EchoCustomBackground(
                     blur = blur,
                     brightness = brightness,
                     backgroundScale = backgroundScale,
+                    maxPixelSize = imageMaxPixelSize,
+                    highQuality = highPerformance,
                 )
 
                 else -> EchoGlassBackground(Modifier.fillMaxSize())
@@ -80,13 +96,24 @@ fun EchoCustomBackground(
 @Composable
 private fun EchoImageWallpaper(
     uri: String,
-    blur: androidx.compose.ui.unit.Dp,
+    blur: Dp,
     brightness: Float,
     backgroundScale: Float,
+    maxPixelSize: Int,
+    highQuality: Boolean,
 ) {
+    val context = LocalContext.current
+    val imageRequest = remember(context, uri, maxPixelSize, highQuality) {
+        ImageRequest.Builder(context)
+            .data(uri)
+            .size(maxPixelSize, maxPixelSize)
+            .bitmapConfig(if (highQuality) Bitmap.Config.ARGB_8888 else Bitmap.Config.RGB_565)
+            .crossfade(false)
+            .build()
+    }
     Box(Modifier.fillMaxSize()) {
         AsyncImage(
-            model = uri,
+            model = imageRequest,
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier
@@ -103,7 +130,7 @@ private fun EchoImageWallpaper(
 @Composable
 private fun EchoVideoWallpaper(
     uri: String,
-    blur: androidx.compose.ui.unit.Dp,
+    blur: Dp,
     brightness: Float,
     backgroundScale: Float,
 ) {

@@ -2,10 +2,9 @@ package app.echo.android
 
 import android.app.Application
 import android.content.ComponentName
-import android.net.Uri
+import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
-import androidx.core.content.ContextCompat
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -14,45 +13,46 @@ import androidx.media3.session.SessionToken
 import app.echo.android.data.EchoSavedPlaybackSession
 import app.echo.android.data.EchoSettingsStore
 import app.echo.android.model.library.EchoTrack
-import app.echo.android.model.playback.EchoEqualizerState
 import app.echo.android.model.playback.EchoAudioErrorKind
+import app.echo.android.model.playback.EchoEqualizerState
 import app.echo.android.model.playback.EchoPlaybackDiagnostics
 import app.echo.android.model.playback.EchoPlaybackError
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
+import app.echo.android.model.playback.OpraHeadphoneCorrectionPreset
 import app.echo.android.model.playback.PlaybackControlsState
 import app.echo.android.model.playback.PlaybackDiagnosticsState
 import app.echo.android.model.playback.PlaybackMetadataState
 import app.echo.android.model.playback.PlaybackPositionState
 import app.echo.android.model.playback.PlaybackQueueState
-import app.echo.android.model.playback.OpraHeadphoneCorrectionPreset
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
 import app.echo.android.playback.EchoEqualizerController
-import app.echo.android.playback.EchoPlaybackService
 import app.echo.android.playback.EchoPlaybackRuntimeOptionsStore
-import app.echo.android.playback.EchoUsbExclusiveDriverTester
+import app.echo.android.playback.EchoPlaybackService
 import app.echo.android.playback.EchoUsbAudioMonitor
-import app.echo.android.playback.toEchoTrackRef
+import app.echo.android.playback.EchoUsbAudioStatus
+import app.echo.android.playback.EchoUsbExclusiveDriverTester
+import app.echo.android.playback.toEchoPlaybackError
 import app.echo.android.playback.toEchoPlaybackStatus
+import app.echo.android.playback.toEchoTrackRef
 import app.echo.android.playback.toMediaItem
 import app.echo.android.playback.toPlaybackControlsState
 import app.echo.android.playback.toPlaybackDiagnosticsState
 import app.echo.android.playback.toPlaybackMetadataState
 import app.echo.android.playback.toPlaybackPositionState
 import app.echo.android.playback.toPlaybackQueueState
-import app.echo.android.playback.toEchoPlaybackError
 import app.echo.android.playback.withUsbAudioStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.pow
+import kotlin.time.Duration.Companion.milliseconds
 
 internal enum class PlaybackProgressUiVisibility {
     NowPlayingExpanded,
@@ -61,7 +61,7 @@ internal enum class PlaybackProgressUiVisibility {
 }
 
 @UnstableApi
-@Suppress("SpellCheckingInspection", "ConstPropertyName")
+@Suppress("SpellCheckingInspection")
 internal class PlaybackController(
     private val application: Application,
     private val settingsStore: EchoSettingsStore,
@@ -94,7 +94,7 @@ internal class PlaybackController(
     private val usbExclusiveDriverTester = EchoUsbExclusiveDriverTester(application)
     private var controller: MediaController? = null
     private var progressJob: Job? = null
-    private var progressUpdateIntervalMs: Long? = MiniPlayerProgressIntervalMs
+    private var progressUpdateIntervalMs: Long? = MINI_PLAYER_PROGRESS_INTERVAL_MS
     private var usbAudioJob: Job? = null
     private var usbTransitionJob: Job? = null
     private var sleepTimerJob: Job? = null
@@ -261,7 +261,7 @@ internal class PlaybackController(
     }
 
     fun setPlaybackSpeed(speed: Float, nightcore: Boolean) {
-        val safeSpeed = speed.coerceIn(MinPlaybackSpeed, MaxPlaybackSpeed)
+        val safeSpeed = speed.coerceIn(MIN_PLAYBACK_SPEED, MAX_PLAYBACK_SPEED)
         val pitch = if (nightcore) safeSpeed else 1f
         controller?.run {
             setPlaybackParameters(PlaybackParameters(safeSpeed, pitch))
@@ -274,7 +274,7 @@ internal class PlaybackController(
             cancelSleepTimer()
             return
         }
-        sleepTimerEndTimeEpochMs = System.currentTimeMillis() + minutes.coerceAtMost(MaxSleepTimerMinutes) * 60_000L
+        sleepTimerEndTimeEpochMs = System.currentTimeMillis() + minutes.coerceAtMost(MAX_SLEEP_TIMER_MINUTES) * 60_000L
         updatePlaybackStatusOptions()
         startSleepTimerUpdates()
     }
@@ -288,7 +288,7 @@ internal class PlaybackController(
 
     fun setReplayGain(enabled: Boolean, preampDb: Float = replayGainPreampDb) {
         replayGainEnabled = enabled
-        replayGainPreampDb = preampDb.coerceIn(MinReplayGainPreampDb, MaxReplayGainPreampDb)
+        replayGainPreampDb = preampDb.coerceIn(MIN_REPLAY_GAIN_PREAMP_DB, MAX_REPLAY_GAIN_PREAMP_DB)
         if (enabled) {
             loadReplayGainForTrack(activeReplayGainTrackId ?: currentTrackId)
         }
@@ -469,7 +469,7 @@ internal class PlaybackController(
         persistPlaybackSession(force = queue.items.isEmpty())
     }
 
-    private fun updateUsbDiagnostics(status: app.echo.android.playback.EchoUsbAudioStatus) {
+    private fun updateUsbDiagnostics(status: EchoUsbAudioStatus) {
         val diagnostics = _playbackDiagnostics.value.diagnostics.withUsbAudioStatus(status)
         updateState(_playbackDiagnostics, PlaybackDiagnosticsState(diagnostics, diagnostics.lastError))
         updateState(_playbackStatus, _playbackStatus.value.copy(diagnostics = diagnostics).withPlaybackOptions())
@@ -510,7 +510,7 @@ internal class PlaybackController(
                     return@launch
                 }
                 updatePlaybackStatusOptions()
-                delay(SleepTimerTickMs.milliseconds)
+                delay(SLEEP_TIMER_TICK_MS.milliseconds)
             }
         }
     }
@@ -540,7 +540,7 @@ internal class PlaybackController(
     private fun replayGainVolume(): Float =
         if (replayGainEnabled) {
             val gainDb = replayGainPreampDb + (activeReplayGainTrackGainDb ?: 0f)
-            10.0.pow(gainDb / 20.0).toFloat().coerceIn(MinReplayGainVolume, MaxReplayGainVolume)
+            10.0.pow(gainDb / 20.0).toFloat().coerceIn(MIN_REPLAY_GAIN_VOLUME, MAX_REPLAY_GAIN_VOLUME)
         } else {
             1f
         }
@@ -632,7 +632,7 @@ internal class PlaybackController(
             }
         }
         val positionMs = mediaController.currentPosition.coerceAtLeast(0L)
-        val positionBucket = positionMs / PersistPositionBucketMs
+        val positionBucket = positionMs / PERSIST_POSITION_BUCKET_MS
         if (!force && signature == lastPersistedSessionSignature && positionBucket == lastPersistedPositionBucket) return
         lastPersistedSessionSignature = signature
         lastPersistedPositionBucket = positionBucket
@@ -658,28 +658,37 @@ internal class PlaybackController(
     ): Long? =
         when (uiVisibility) {
             PlaybackProgressUiVisibility.Background -> null
-            PlaybackProgressUiVisibility.NowPlayingExpanded -> NowPlayingProgressIntervalMs
+            PlaybackProgressUiVisibility.NowPlayingExpanded -> {
+                when {
+                    effectivePerformanceMode.isLightweight -> LIGHTWEIGHT_NOW_PLAYING_PROGRESS_INTERVAL_MS
+                    effectivePerformanceMode.isHighPerformance -> HIGH_PERFORMANCE_NOW_PLAYING_PROGRESS_INTERVAL_MS
+                    else -> NOW_PLAYING_PROGRESS_INTERVAL_MS
+                }
+            }
             PlaybackProgressUiVisibility.MiniPlayer -> {
-                if (effectivePerformanceMode.isLightweight) {
-                    LightweightProgressIntervalMs
-                } else {
-                    MiniPlayerProgressIntervalMs
+                when {
+                    effectivePerformanceMode.isLightweight -> LIGHTWEIGHT_PROGRESS_INTERVAL_MS
+                    effectivePerformanceMode.isHighPerformance -> HIGH_PERFORMANCE_PROGRESS_INTERVAL_MS
+                    else -> MINI_PLAYER_PROGRESS_INTERVAL_MS
                 }
             }
         }
 
     private companion object {
-        const val NowPlayingProgressIntervalMs = 500L
-        const val MiniPlayerProgressIntervalMs = 1_000L
-        const val LightweightProgressIntervalMs = 1_000L
-        const val MinPlaybackSpeed = 0.5f
-        const val MaxPlaybackSpeed = 2.0f
-        const val SleepTimerTickMs = 1_000L
-        const val MaxSleepTimerMinutes = 180
-        const val MinReplayGainPreampDb = -12f
-        const val MaxReplayGainPreampDb = 6f
-        const val MinReplayGainVolume = 0.25f
-        const val MaxReplayGainVolume = 1.4f
-        const val PersistPositionBucketMs = 5_000L
+        const val NOW_PLAYING_PROGRESS_INTERVAL_MS = 500L
+        const val HIGH_PERFORMANCE_NOW_PLAYING_PROGRESS_INTERVAL_MS = 250L
+        const val LIGHTWEIGHT_NOW_PLAYING_PROGRESS_INTERVAL_MS = 1_000L
+        const val HIGH_PERFORMANCE_PROGRESS_INTERVAL_MS = 500L
+        const val MINI_PLAYER_PROGRESS_INTERVAL_MS = 1_000L
+        const val LIGHTWEIGHT_PROGRESS_INTERVAL_MS = 2_000L
+        const val MIN_PLAYBACK_SPEED = 0.5f
+        const val MAX_PLAYBACK_SPEED = 2.0f
+        const val SLEEP_TIMER_TICK_MS = 1_000L
+        const val MAX_SLEEP_TIMER_MINUTES = 180
+        const val MIN_REPLAY_GAIN_PREAMP_DB = -12f
+        const val MAX_REPLAY_GAIN_PREAMP_DB = 6f
+        const val MIN_REPLAY_GAIN_VOLUME = 0.25f
+        const val MAX_REPLAY_GAIN_VOLUME = 1.4f
+        const val PERSIST_POSITION_BUCKET_MS = 5_000L
     }
 }

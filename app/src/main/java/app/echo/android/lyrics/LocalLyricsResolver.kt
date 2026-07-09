@@ -95,7 +95,7 @@ class LocalLyricsResolver(
                     val displayName = cursor.getString(nameIndex)
                     if (displayName.substringAfterLast('.', missingDelimiterValue = "")
                             .lowercase()
-                            .let { ".$it" } !in LyricsExtensions
+                            .let { ".$it" } !in LYRICS_EXTENSIONS
                     ) {
                         continue
                     }
@@ -144,7 +144,7 @@ class LocalLyricsResolver(
         track.title.takeIf { it.isNotBlank() }?.let(bases::add)
 
         return bases
-            .flatMap { base -> LyricsExtensions.map { extension -> "$base$extension" } }
+            .flatMap { base -> LYRICS_EXTENSIONS.map { extension -> "$base$extension" } }
             .distinct()
     }
 
@@ -192,7 +192,7 @@ class LocalLyricsResolver(
             .replace(Regex("""[\s._\-]+"""), "")
 
     private companion object {
-        val LyricsExtensions = listOf(
+        val LYRICS_EXTENSIONS = listOf(
             ".lrc",
             ".elrc",
             ".lrcx",

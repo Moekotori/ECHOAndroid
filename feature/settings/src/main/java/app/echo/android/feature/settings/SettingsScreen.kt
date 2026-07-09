@@ -44,6 +44,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.LocalEchoDarkTheme
+import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.PageChrome
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
@@ -653,17 +654,20 @@ private fun performanceModeOptions(): List<SettingsChoiceOption> = listOf(
     SettingsChoiceOption(EchoPerformanceMode.Auto.id, "自动"),
     SettingsChoiceOption(EchoPerformanceMode.Balanced.id, "平衡"),
     SettingsChoiceOption(EchoPerformanceMode.Lightweight.id, "轻量"),
+    SettingsChoiceOption(EchoPerformanceMode.HighPerformance.id, "性能"),
 )
 
 private fun performanceModeDetail(mode: String, effectiveMode: String): String {
     val effectiveLabel = when (EchoEffectivePerformanceMode.entries.firstOrNull { it.id == effectiveMode }) {
         EchoEffectivePerformanceMode.Lightweight -> "当前轻量策略"
+        EchoEffectivePerformanceMode.HighPerformance -> "当前性能策略"
         else -> "当前平衡策略"
     }
     return when (EchoPerformanceMode.fromId(mode)) {
         EchoPerformanceMode.Auto -> "$effectiveLabel；系统省电开启时自动轻量"
         EchoPerformanceMode.Balanced -> "保持完整视觉和默认刷新策略"
         EchoPerformanceMode.Lightweight -> "降低背景、封面、动画和扫描开销"
+        EchoPerformanceMode.HighPerformance -> "提高刷新率和动画完整度，保留视频背景与高质量封面"
     }
 }
 
@@ -751,12 +755,13 @@ private fun SettingsSectionCard(
 ) {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
+    val animateSize = !LocalEchoEffectivePerformanceMode.current.isLightweight
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(28.dp))
             .background(settingsPanelColor())
-            .animateContentSize()
+            .then(if (animateSize) Modifier.animateContentSize() else Modifier)
             .padding(horizontal = 20.dp, vertical = 18.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {

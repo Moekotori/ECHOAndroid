@@ -1,6 +1,6 @@
 package app.echo.android.data
 
-import android.util.Log
+
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
@@ -76,11 +76,11 @@ class EchoLibraryRepository(
         database.trackDao().observeLibraryStats()
             .flowOn(Dispatchers.IO)
 
-    fun observeRecommendedTracks(limit: Int = RecommendedTrackLimit): Flow<List<LibraryTrackEntity>> =
+    fun observeRecommendedTracks(limit: Int = RECOMMENDED_TRACK_LIMIT): Flow<List<LibraryTrackEntity>> =
         database.trackDao().observeRecommendedTracks(limit)
             .flowOn(Dispatchers.IO)
 
-    fun observeRecentlyAddedAlbums(limit: Int = RecentAlbumLimit): Flow<List<AlbumSummary>> =
+    fun observeRecentlyAddedAlbums(limit: Int = RECENT_ALBUM_LIMIT): Flow<List<AlbumSummary>> =
         database.trackDao().observeRecentlyAddedAlbums(limit)
             .flowOn(Dispatchers.IO)
 
@@ -127,7 +127,7 @@ class EchoLibraryRepository(
 
     suspend fun searchLocalLibrary(
         query: String,
-        limitPerType: Int = SearchResultLimitPerType,
+        limitPerType: Int = SEARCH_RESULT_LIMIT_PER_TYPE,
     ): LocalLibrarySearchResults {
         val trimmedQuery = query.trim()
         if (trimmedQuery.isBlank()) return LocalLibrarySearchResults()
@@ -186,7 +186,7 @@ class EchoLibraryRepository(
     suspend fun queueAroundTrack(
         query: String?,
         anchorTrackId: String,
-        limit: Int = TrackQueueLimit,
+        limit: Int = TRACK_QUEUE_LIMIT,
     ): List<LibraryTrackEntity> {
         val dao = database.trackDao()
         val safeLimit = limit.coerceAtLeast(1)
@@ -242,7 +242,7 @@ class EchoLibraryRepository(
 
     suspend fun albumTracksForPlayback(
         albumKey: String,
-        limit: Int = AggregationQueueLimit,
+        limit: Int = AGGREGATION_QUEUE_LIMIT,
     ): List<LibraryTrackEntity> {
         val safeLimit = limit.coerceAtLeast(1)
         val remoteAlbum = RemoteAlbumKey.parse(albumKey)
@@ -261,25 +261,25 @@ class EchoLibraryRepository(
 
     suspend fun artistTracksForPlayback(
         artistKey: String,
-        limit: Int = AggregationQueueLimit,
+        limit: Int = AGGREGATION_QUEUE_LIMIT,
     ): List<LibraryTrackEntity> =
         database.trackDao().getArtistTracksForPlayback(artistPlaybackQuery(artistKey, limit.coerceAtLeast(1)))
 
     suspend fun folderTracksForPlayback(
         folderKey: String,
-        limit: Int = AggregationQueueLimit,
+        limit: Int = AGGREGATION_QUEUE_LIMIT,
     ): List<LibraryTrackEntity> =
         database.trackDao().getTracksByFolderForPlayback(folderKey, limit.coerceAtLeast(1))
 
     suspend fun playlistTracksForPlayback(
         playlistId: String,
-        limit: Int = AggregationQueueLimit,
+        limit: Int = AGGREGATION_QUEUE_LIMIT,
     ): List<LibraryTrackEntity> =
         database.playlistDao().getPlaylistTracksForPlayback(playlistId, limit.coerceAtLeast(1))
 
     fun refreshMediaStoreSnapshot(
         relativePathPrefix: String? = null,
-        batchSize: Int = ScanBatchSize,
+        batchSize: Int = SCAN_BATCH_SIZE,
         skipSampleRateRead: Boolean = false,
     ): Flow<LibraryScanProgress> = flow {
         val dao = database.trackDao()
@@ -326,11 +326,6 @@ class EchoLibraryRepository(
                 dao.getExistingMediaStoreFingerprintsInRelativePath(source, relativePathLike)
             }
                 .associateBy(TrackFingerprint::id)
-            val editedTracks = if (relativePathLike == null) {
-                dao.getMetadataEditedTracks(source)
-            } else {
-                dao.getMetadataEditedTracksInRelativePath(source, relativePathLike)
-            }.associateBy(LibraryTrackEntity::id)
 
             emitProgress(phase = LibraryScanPhase.QueryingMediaStore)
             scanner.scanAudio(
@@ -344,7 +339,7 @@ class EchoLibraryRepository(
                 },
                 onProgress = { count, currentTrack ->
                     scannedCount = count
-                    if (count == 0 || count - lastProgressEmitCount >= ProgressEmitStride) {
+                    if (count == 0 || count - lastProgressEmitCount >= PROGRESS_EMIT_STRIDE) {
                         lastProgressEmitCount = count
                         emitProgress(
                             phase = LibraryScanPhase.QueryingMediaStore,
@@ -369,10 +364,10 @@ class EchoLibraryRepository(
                     }
 
                     emitProgress(phase = LibraryScanPhase.WritingDatabase)
-                    (inserts + updates).chunked(DatabaseBatchSize).forEach { chunk ->
+                    (inserts + updates).chunked(DATABASE_BATCH_SIZE).forEach { chunk ->
                         dao.upsertBatchWithFts(chunk)
                     }
-                    unchangedIds.chunked(DatabaseBatchSize).forEach { ids ->
+                    unchangedIds.chunked(DATABASE_BATCH_SIZE).forEach { ids ->
                         dao.markSeen(ids, scanRunId)
                     }
                     insertedCount += inserts.size
@@ -394,7 +389,7 @@ class EchoLibraryRepository(
             } else {
                 dao.deleteMissingFromRelativePath(source, relativePathLike, scanRunId)
             }
-            missingTrackIds.chunked(DatabaseBatchSize).forEach { trackIds ->
+            missingTrackIds.chunked(DATABASE_BATCH_SIZE).forEach { trackIds ->
                 dao.deleteFtsByTrackIds(trackIds)
             }
             emitProgress(
@@ -423,7 +418,7 @@ class EchoLibraryRepository(
     fun refreshDocumentTreeSnapshot(
         treeUri: android.net.Uri,
         relativePathPrefix: String,
-        batchSize: Int = DocumentTreeScanBatchSize,
+        batchSize: Int = DOCUMENT_TREE_SCAN_BATCH_SIZE,
         skipSampleRateRead: Boolean = false,
     ): Flow<LibraryScanProgress> = flow {
         val dao = database.trackDao()
@@ -481,7 +476,7 @@ class EchoLibraryRepository(
                 readSampleRate = !skipSampleRateRead,
                 onProgress = { count, currentTrack ->
                     scannedCount = count
-                    if (count == 0 || count - lastProgressEmitCount >= ProgressEmitStride) {
+                    if (count == 0 || count - lastProgressEmitCount >= PROGRESS_EMIT_STRIDE) {
                         lastProgressEmitCount = count
                         emitProgress(
                             phase = LibraryScanPhase.QueryingMediaStore,
@@ -508,10 +503,10 @@ class EchoLibraryRepository(
                     }
 
                     emitProgress(phase = LibraryScanPhase.WritingDatabase)
-                    (inserts + updates).chunked(DatabaseBatchSize).forEach { chunk ->
+                    (inserts + updates).chunked(DATABASE_BATCH_SIZE).forEach { chunk ->
                         dao.upsertBatchWithFts(chunk)
                     }
-                    unchangedIds.chunked(DatabaseBatchSize).forEach { ids ->
+                    unchangedIds.chunked(DATABASE_BATCH_SIZE).forEach { ids ->
                         dao.markSeen(ids, scanRunId)
                     }
                     insertedCount += inserts.size
@@ -533,7 +528,7 @@ class EchoLibraryRepository(
                 relativePathLike = relativePathLike,
                 scanRunId = scanRunId,
             )
-            missingTrackIds.chunked(DatabaseBatchSize).forEach { trackIds ->
+            missingTrackIds.chunked(DATABASE_BATCH_SIZE).forEach { trackIds ->
                 dao.deleteFtsByTrackIds(trackIds)
             }
             emitProgress(
@@ -560,7 +555,7 @@ class EchoLibraryRepository(
 
     fun refreshSubsonicSnapshot(
         endpoint: SubsonicEndpoint,
-        batchSize: Int = ScanBatchSize,
+        batchSize: Int = SCAN_BATCH_SIZE,
     ): Flow<LibraryScanProgress> = flow {
         val client = SubsonicClient(endpoint)
         val dao = database.trackDao()
@@ -635,7 +630,7 @@ class EchoLibraryRepository(
             emitProgress(phase = LibraryScanPhase.CleaningRemoved, currentTitle = null)
             val missingTrackIds = dao.getMissingTrackIdsFromSource(source, scanRunId)
             deletedCount = dao.deleteMissingFromSource(source, scanRunId)
-            missingTrackIds.chunked(DatabaseBatchSize).forEach { trackIds ->
+            missingTrackIds.chunked(DATABASE_BATCH_SIZE).forEach { trackIds ->
                 dao.deleteFtsByTrackIds(trackIds)
             }
             emitProgress(phase = LibraryScanPhase.Completed, currentTitle = null, isCompleted = true)
@@ -654,7 +649,7 @@ class EchoLibraryRepository(
 
     fun refreshWebDavSnapshot(
         endpoint: WebDavEndpoint,
-        batchSize: Int = ScanBatchSize,
+        batchSize: Int = SCAN_BATCH_SIZE,
     ): Flow<LibraryScanProgress> = flow {
         val client = WebDavClient(endpoint)
         val dao = database.trackDao()
@@ -715,7 +710,7 @@ class EchoLibraryRepository(
             emitProgress(phase = LibraryScanPhase.CleaningRemoved, currentTitle = null)
             val missingTrackIds = dao.getMissingTrackIdsFromSource(source, scanRunId)
             deletedCount = dao.deleteMissingFromSource(source, scanRunId)
-            missingTrackIds.chunked(DatabaseBatchSize).forEach { trackIds ->
+            missingTrackIds.chunked(DATABASE_BATCH_SIZE).forEach { trackIds ->
                 dao.deleteFtsByTrackIds(trackIds)
             }
             emitProgress(phase = LibraryScanPhase.Completed, currentTitle = null, isCompleted = true)
@@ -899,7 +894,7 @@ class EchoLibraryRepository(
     private suspend fun refreshLegacyLibrarySearchIndex() {
         val dao = database.trackDao()
         while (true) {
-            val staleTracks = dao.getTracksNeedingPinyinBackfill(PinyinBackfillBatchSize)
+            val staleTracks = dao.getTracksNeedingPinyinBackfill(PINYIN_BACKFILL_BATCH_SIZE)
             if (staleTracks.isEmpty()) break
             dao.upsertBatch(staleTracks.map(LibraryTrackEntity::withComputedSearchMetadata))
         }
@@ -976,17 +971,16 @@ class EchoLibraryRepository(
         )
 
     private companion object {
-        const val TAG = "EchoLibraryRepository"
-        const val ScanBatchSize = 500
-        const val DocumentTreeScanBatchSize = 200
-        const val DatabaseBatchSize = 500
-        const val PinyinBackfillBatchSize = 200
-        const val ProgressEmitStride = 100
-        const val RecommendedTrackLimit = 8
-        const val RecentAlbumLimit = 12
-        const val SearchResultLimitPerType = 6
-        const val TrackQueueLimit = 200
-        const val AggregationQueueLimit = 500
+        const val SCAN_BATCH_SIZE = 500
+        const val DOCUMENT_TREE_SCAN_BATCH_SIZE = 200
+        const val DATABASE_BATCH_SIZE = 500
+        const val PINYIN_BACKFILL_BATCH_SIZE = 200
+        const val PROGRESS_EMIT_STRIDE = 100
+        const val RECOMMENDED_TRACK_LIMIT = 8
+        const val RECENT_ALBUM_LIMIT = 12
+        const val SEARCH_RESULT_LIMIT_PER_TYPE = 6
+        const val TRACK_QUEUE_LIMIT = 200
+        const val AGGREGATION_QUEUE_LIMIT = 500
     }
 }
 

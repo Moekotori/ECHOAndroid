@@ -1,5 +1,6 @@
 package app.echo.android.design
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -86,6 +87,7 @@ internal fun EchoArtworkImage(
             }
             .crossfade(false)
             .size(maxPixelSize, maxPixelSize)
+            .bitmapConfig(if (effectivePerformanceMode.isHighPerformance) Bitmap.Config.ARGB_8888 else Bitmap.Config.RGB_565)
             .build()
     }
     Box(
@@ -291,18 +293,23 @@ private fun EchoArtworkSize.signalBottomPadding(): Dp =
     }
 
 private fun EchoArtworkSize.maxPixelSize(effectivePerformanceMode: EchoEffectivePerformanceMode): Int =
-    if (effectivePerformanceMode.isLightweight) {
-        when (this) {
+    when {
+        effectivePerformanceMode.isLightweight -> when (this) {
             EchoArtworkSize.Tiny -> 96
             EchoArtworkSize.Thumbnail -> 160
             EchoArtworkSize.Card -> 256
             EchoArtworkSize.Hero -> 512
         }
-    } else {
-        when (this) {
+        effectivePerformanceMode.isHighPerformance -> when (this) {
             EchoArtworkSize.Tiny -> 128
             EchoArtworkSize.Thumbnail -> 256
             EchoArtworkSize.Card -> 512
             EchoArtworkSize.Hero -> 1024
+        }
+        else -> when (this) {
+            EchoArtworkSize.Tiny -> 112
+            EchoArtworkSize.Thumbnail -> 192
+            EchoArtworkSize.Card -> 384
+            EchoArtworkSize.Hero -> 768
         }
     }

@@ -116,9 +116,9 @@ import kotlinx.coroutines.launch
 
 private val DockMotionEasing = CubicBezierEasing(0.16f, 1f, 0.30f, 1f)
 private val RouteMotionEasing = CubicBezierEasing(0.18f, 0.86f, 0.20f, 1f)
-private const val RouteMotionBaseDurationMs = 150
-private const val RouteMotionDistanceDurationMs = 18
-private const val RouteMotionMaxDurationMs = 220
+private const val ROUTE_MOTION_BASE_DURATION_MS = 150
+private const val ROUTE_MOTION_DISTANCE_DURATION_MS = 18
+private const val ROUTE_MOTION_MAX_DURATION_MS = 220
 private val LyricsDocumentMimeTypes = arrayOf("text/*", "application/xml", "application/octet-stream", "*/*")
 private val ArtworkDocumentMimeTypes = arrayOf("image/*", "application/octet-stream", "*/*")
 private val FontDocumentMimeTypes = arrayOf("font/*", "application/x-font-ttf", "application/x-font-otf", "application/octet-stream", "*/*")
@@ -158,17 +158,17 @@ private fun routeMotionSpec(
     effectivePerformanceMode: EchoEffectivePerformanceMode,
 ): AnimationSpec<Float> {
     val distance = (toPage - fromPage).absoluteValue.coerceAtLeast(1)
-    val duration = (RouteMotionBaseDurationMs + (distance - 1) * RouteMotionDistanceDurationMs)
-        .coerceAtMost(RouteMotionMaxDurationMs)
+    val duration = (ROUTE_MOTION_BASE_DURATION_MS + (distance - 1) * ROUTE_MOTION_DISTANCE_DURATION_MS)
+        .coerceAtMost(ROUTE_MOTION_MAX_DURATION_MS)
         .let { motionDuration(it, effectivePerformanceMode) }
     return tween(durationMillis = duration, easing = RouteMotionEasing)
 }
 
 private fun motionDuration(defaultMs: Int, effectivePerformanceMode: EchoEffectivePerformanceMode): Int =
-    if (effectivePerformanceMode.isLightweight) {
-        (defaultMs * 0.40f).roundToInt().coerceIn(70, defaultMs)
-    } else {
-        (defaultMs * 0.72f).roundToInt().coerceIn(110, defaultMs)
+    when {
+        effectivePerformanceMode.isLightweight -> (defaultMs * 0.20f).roundToInt().coerceIn(45, 120)
+        effectivePerformanceMode.isHighPerformance -> defaultMs
+        else -> (defaultMs * 0.72f).roundToInt().coerceIn(110, defaultMs)
     }
 
 @Suppress("SpellCheckingInspection")
@@ -196,11 +196,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     }
     val prefs = remember(context) { context.getSharedPreferences("echo_prefs", Context.MODE_PRIVATE) }
     var showPermissionDialog by remember {
-        mutableStateOf(!prefs.getBoolean(EchoPermissionDialogShownKey, false))
+        mutableStateOf(!prefs.getBoolean(ECHO_PERMISSION_DIALOG_SHOWN_KEY, false))
     }
     fun dismissPermissionDialog() {
         showPermissionDialog = false
-        prefs.edit { putBoolean(EchoPermissionDialogShownKey, true) }
+        prefs.edit { putBoolean(ECHO_PERMISSION_DIALOG_SHOWN_KEY, true) }
     }
     fun persistReadPermission(uri: AndroidUri) {
         runCatching {
@@ -383,9 +383,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     val usbExclusiveTestResult by viewModel.usbExclusiveTestResult.collectAsStateWithLifecycle()
     val discordPresenceSnapshot by viewModel.discordPresenceSnapshot.collectAsStateWithLifecycle(null)
     val lastFmApiKey = appSettings.lastFmApiKey?.takeIf { it.isNotBlank() }
-        ?: LastFmApiConfig.apiKey.takeIf { it.isNotBlank() }
+        ?: LastFmApiConfig.API_KEY.takeIf { it.isNotBlank() }
     val lastFmSharedSecret = appSettings.lastFmSharedSecret?.takeIf { it.isNotBlank() }
-        ?: LastFmApiConfig.sharedSecret.takeIf { it.isNotBlank() }
+        ?: LastFmApiConfig.SHARED_SECRET.takeIf { it.isNotBlank() }
     val lyricsState by viewModel.lyricsState.collectAsStateWithLifecycle()
     val libraryQuery by viewModel.libraryQuery.collectAsStateWithLifecycle()
     val libraryTrackSortMode by viewModel.libraryTrackSortMode.collectAsStateWithLifecycle()
@@ -478,7 +478,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     val activity = context as? ComponentActivity
 
     SideEffect {
-        (activity as? MainActivity)?.setHighRefreshRateRequested(!effectivePerformanceMode.isLightweight)
+        (activity as? MainActivity)?.setHighRefreshRateRequested(effectivePerformanceMode.prefersHighRefreshRate)
         activity?.enableEdgeToEdge(
             statusBarStyle = if (darkTheme) {
                 SystemBarStyle.dark(AndroidColor.TRANSPARENT)
@@ -510,10 +510,14 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         routeNavigationJob[0]?.cancel()
         routeNavigationJob[0] = appScope.launch {
             if (needsPagerSettle(targetPage)) {
-                tabPagerState.animateScrollToPage(
-                    page = targetPage,
-                    animationSpec = routeMotionSpec(tabPagerState.currentPage, targetPage, effectivePerformanceMode),
-                )
+                if (effectivePerformanceMode.isLightweight) {
+                    tabPagerState.scrollToPage(targetPage)
+                } else {
+                    tabPagerState.animateScrollToPage(
+                        page = targetPage,
+                        animationSpec = routeMotionSpec(tabPagerState.currentPage, targetPage, effectivePerformanceMode),
+                    )
+                }
             }
         }
     }
@@ -542,10 +546,14 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             try {
                 val targetPage = returnPage.ordinal
                 if (needsPagerSettle(targetPage)) {
-                    tabPagerState.animateScrollToPage(
-                        page = targetPage,
-                        animationSpec = routeMotionSpec(tabPagerState.currentPage, targetPage, effectivePerformanceMode),
-                    )
+                    if (effectivePerformanceMode.isLightweight) {
+                        tabPagerState.scrollToPage(targetPage)
+                    } else {
+                        tabPagerState.animateScrollToPage(
+                            page = targetPage,
+                            animationSpec = routeMotionSpec(tabPagerState.currentPage, targetPage, effectivePerformanceMode),
+                        )
+                    }
                 }
             } finally {
                 clearLibraryDetail()
@@ -559,14 +567,18 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     }
     LaunchedEffect(tabPagerState.isScrollInProgress, tabPagerState.currentPage) {
         if (!tabPagerState.isScrollInProgress && tabPagerState.currentPageOffsetFraction.absoluteValue > 0.001f) {
-            tabPagerState.animateScrollToPage(
-                page = tabPagerState.currentPage,
-                animationSpec = routeMotionSpec(
-                    tabPagerState.settledPage,
-                    tabPagerState.currentPage,
-                    effectivePerformanceMode,
-                ),
-            )
+            if (effectivePerformanceMode.isLightweight) {
+                tabPagerState.scrollToPage(tabPagerState.currentPage)
+            } else {
+                tabPagerState.animateScrollToPage(
+                    page = tabPagerState.currentPage,
+                    animationSpec = routeMotionSpec(
+                        tabPagerState.settledPage,
+                        tabPagerState.currentPage,
+                        effectivePerformanceMode,
+                    ),
+                )
+            }
         }
     }
 
@@ -801,8 +813,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 lastFmStatusLabel = lastFmState.lastMessage,
                                 lastFmErrorLabel = lastFmState.lastError,
                                 lastFmWebAuthPending = lastFmState.webAuthPending,
-                                lastFmApiKeyLocked = LastFmApiConfig.hasApiKey,
-                                lastFmSharedSecretLocked = LastFmApiConfig.hasSharedSecret,
+                                lastFmApiKeyLocked = LastFmApiConfig.HAS_API_KEY,
+                                lastFmSharedSecretLocked = LastFmApiConfig.HAS_SHARED_SECRET,
                                 onDynamicArtworkEnabledChange = viewModel::setDynamicArtworkEnabled,
                                 onCompactModeEnabledChange = viewModel::setCompactModeEnabled,
                                 onPerformanceModeChange = viewModel::setPerformanceMode,
@@ -953,25 +965,30 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     AnimatedContent(
                         targetState = bottomDockExpanded,
                         transitionSpec = {
-                            val enter = fadeIn(
-                                tween(
-                                    durationMillis = motionDuration(220, effectivePerformanceMode),
-                                    delayMillis = if (effectivePerformanceMode.isLightweight) 0 else 70,
-                                    easing = DockMotionEasing,
-                                ),
-                            ) +
-                                slideInVertically(tween(durationMillis = motionDuration(460, effectivePerformanceMode), easing = DockMotionEasing)) { height -> height / 3 } +
-                                scaleIn(
-                                    initialScale = 0.96f,
-                                    animationSpec = tween(durationMillis = motionDuration(460, effectivePerformanceMode), easing = DockMotionEasing),
-                                )
-                            val exit = fadeOut(tween(durationMillis = motionDuration(150, effectivePerformanceMode), easing = DockMotionEasing)) +
-                                slideOutVertically(tween(durationMillis = motionDuration(260, effectivePerformanceMode), easing = DockMotionEasing)) { height -> height / 5 } +
-                                scaleOut(
-                                    targetScale = 0.985f,
-                                    animationSpec = tween(durationMillis = motionDuration(260, effectivePerformanceMode), easing = DockMotionEasing),
-                                )
-                            enter togetherWith exit
+                            if (effectivePerformanceMode.isLightweight) {
+                                fadeIn(tween(durationMillis = motionDuration(90, effectivePerformanceMode))) togetherWith
+                                    fadeOut(tween(durationMillis = motionDuration(90, effectivePerformanceMode)))
+                            } else {
+                                val enter = fadeIn(
+                                    tween(
+                                        durationMillis = motionDuration(220, effectivePerformanceMode),
+                                        delayMillis = 70,
+                                        easing = DockMotionEasing,
+                                    ),
+                                ) +
+                                    slideInVertically(tween(durationMillis = motionDuration(460, effectivePerformanceMode), easing = DockMotionEasing)) { height -> height / 3 } +
+                                    scaleIn(
+                                        initialScale = 0.96f,
+                                        animationSpec = tween(durationMillis = motionDuration(460, effectivePerformanceMode), easing = DockMotionEasing),
+                                    )
+                                val exit = fadeOut(tween(durationMillis = motionDuration(150, effectivePerformanceMode), easing = DockMotionEasing)) +
+                                    slideOutVertically(tween(durationMillis = motionDuration(260, effectivePerformanceMode), easing = DockMotionEasing)) { height -> height / 5 } +
+                                    scaleOut(
+                                        targetScale = 0.985f,
+                                        animationSpec = tween(durationMillis = motionDuration(260, effectivePerformanceMode), easing = DockMotionEasing),
+                                    )
+                                enter togetherWith exit
+                            }
                         },
                         label = "bottom-controls-transition",
                     ) { expanded ->
@@ -1013,23 +1030,31 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
 
             AnimatedVisibility(
                 visible = nowPlayingExpanded,
-                enter = slideInVertically(tween(durationMillis = motionDuration(420, effectivePerformanceMode), easing = DockMotionEasing)) { height -> height } +
-                    fadeIn(
-                        tween(
-                            durationMillis = motionDuration(240, effectivePerformanceMode),
-                            delayMillis = if (effectivePerformanceMode.isLightweight) 0 else 40,
-                        ),
-                    ) +
-                    scaleIn(
-                        initialScale = 0.985f,
-                        animationSpec = tween(durationMillis = motionDuration(420, effectivePerformanceMode), easing = DockMotionEasing),
-                    ),
-                exit = slideOutVertically(tween(durationMillis = motionDuration(360, effectivePerformanceMode), easing = DockMotionEasing)) { height -> height } +
-                    fadeOut(tween(durationMillis = motionDuration(220, effectivePerformanceMode), easing = DockMotionEasing)) +
-                    scaleOut(
-                        targetScale = 0.965f,
-                        animationSpec = tween(durationMillis = motionDuration(360, effectivePerformanceMode), easing = DockMotionEasing),
-                    ),
+                enter = if (effectivePerformanceMode.isLightweight) {
+                    fadeIn(tween(durationMillis = motionDuration(90, effectivePerformanceMode)))
+                } else {
+                    slideInVertically(tween(durationMillis = motionDuration(420, effectivePerformanceMode), easing = DockMotionEasing)) { height -> height } +
+                        fadeIn(
+                            tween(
+                                durationMillis = motionDuration(240, effectivePerformanceMode),
+                                delayMillis = if (effectivePerformanceMode.isLightweight) 0 else 40,
+                            ),
+                        ) +
+                        scaleIn(
+                            initialScale = 0.985f,
+                            animationSpec = tween(durationMillis = motionDuration(420, effectivePerformanceMode), easing = DockMotionEasing),
+                        )
+                },
+                exit = if (effectivePerformanceMode.isLightweight) {
+                    fadeOut(tween(durationMillis = motionDuration(90, effectivePerformanceMode)))
+                } else {
+                    slideOutVertically(tween(durationMillis = motionDuration(360, effectivePerformanceMode), easing = DockMotionEasing)) { height -> height } +
+                        fadeOut(tween(durationMillis = motionDuration(220, effectivePerformanceMode), easing = DockMotionEasing)) +
+                        scaleOut(
+                            targetScale = 0.965f,
+                            animationSpec = tween(durationMillis = motionDuration(360, effectivePerformanceMode), easing = DockMotionEasing),
+                        )
+                },
             ) {
                 val playbackPosition by viewModel.playbackPosition.collectAsStateWithLifecycle()
                 NowPlayingScreen(

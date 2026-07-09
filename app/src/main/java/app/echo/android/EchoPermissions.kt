@@ -17,4 +17,4 @@ fun notificationPermissionName(): String? =
         null
     }
 
-const val EchoPermissionDialogShownKey = "echo_permission_dialog_shown_v1"
+const val ECHO_PERMISSION_DIALOG_SHOWN_KEY = "echo_permission_dialog_shown_v1"

@@ -29,7 +29,7 @@ internal object EmbeddedLyricsReader {
     private fun readId3v2(input: InputStream, header: ByteArray): EmbeddedLyricsText? {
         val majorVersion = header[3].toInt()
         if (majorVersion !in 2..4) return null
-        val tagSize = syncSafeInt(header, 6).takeIf { it in 1..MaxTagBytes } ?: return null
+        val tagSize = syncSafeInt(header, 6).takeIf { it in 1..MAX_TAG_BYTES } ?: return null
         val tagBytes = input.readExactly(tagSize) ?: return null
         val frames = ByteArrayInputStream(tagBytes)
 
@@ -86,16 +86,16 @@ internal object EmbeddedLyricsReader {
     }
 
     private fun readFlac(input: InputStream): EmbeddedLyricsText? {
-        repeat(MaxFlacMetadataBlocks) {
+        repeat(MAX_FLAC_METADATA_BLOCKS) {
             val header = input.readExactly(4) ?: return null
             val isLast = (header[0].toInt() and 0x80) != 0
             val type = header[0].toInt() and 0x7F
             val length = ((header[1].toInt() and 0xFF) shl 16) or
                 ((header[2].toInt() and 0xFF) shl 8) or
                 (header[3].toInt() and 0xFF)
-            if (length !in 0..MaxTagBytes) return null
+            if (length !in 0..MAX_TAG_BYTES) return null
             val payload = input.readExactly(length) ?: return null
-            if (type == FlacVorbisCommentBlock) {
+            if (type == FLAC_VORBIS_COMMENT_BLOCK) {
                 parseVorbisComments(payload)?.let { return it }
             }
             if (isLast) return null
@@ -112,7 +112,7 @@ internal object EmbeddedLyricsReader {
         if (count < 0) return null
         cursor += 4
 
-        repeat(count.coerceAtMost(MaxVorbisComments)) {
+        repeat(count.coerceAtMost(MAX_VORBIS_COMMENTS)) {
             val length = littleEndianInt32(payload, cursor) ?: return null
             cursor += 4
             if (length < 0 || cursor + length > payload.size) return null
@@ -205,10 +205,11 @@ internal object EmbeddedLyricsReader {
         val terminatorSize: Int,
     )
 
-    private const val MaxTagBytes = 2 * 1024 * 1024
-    private const val MaxFlacMetadataBlocks = 64
-    private const val MaxVorbisComments = 256
-    private const val FlacVorbisCommentBlock = 4
+    private const val MAX_TAG_BYTES = 2 * 1024 * 1024
+    private const val MAX_FLAC_METADATA_BLOCKS = 64
+    private const val MAX_VORBIS_COMMENTS = 256
+    private const val FLAC_VORBIS_COMMENT_BLOCK = 4
+    @Suppress("SpellCheckingInspection")
     private val VorbisLyricsKeys = setOf("LYRICS", "UNSYNCEDLYRICS", "SYNCEDLYRICS")
 }
 
