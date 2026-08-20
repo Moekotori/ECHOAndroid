@@ -59,6 +59,9 @@ data class EchoUsbAudioStatus(
 class EchoUsbAudioMonitor(context: Context) {
     private companion object {
         const val ACTION_USB_PERMISSION = "app.echo.android.playback.USB_PERMISSION"
+
+        @Volatile
+        var retainedExclusiveEnabled: Boolean = false
     }
 
     private val appContext = context.applicationContext
@@ -66,9 +69,9 @@ class EchoUsbAudioMonitor(context: Context) {
     private val usbManager = appContext.getSystemService(Context.USB_SERVICE) as UsbManager
     private val usbAudioProbe = UsbAudioProbe(appContext)
     private val mainHandler = Handler(Looper.getMainLooper())
+    private var exclusiveEnabled = retainedExclusiveEnabled
     private val _status = MutableStateFlow(scan())
     val status: StateFlow<EchoUsbAudioStatus> = _status.asStateFlow()
-    private var exclusiveEnabled = false
     private var receiverRegistered = false
     private var permissionRequestPendingDeviceName: String? = null
 
@@ -120,6 +123,7 @@ class EchoUsbAudioMonitor(context: Context) {
     fun setExclusiveEnabled(enabled: Boolean) {
         if (exclusiveEnabled == enabled) return
         exclusiveEnabled = enabled
+        retainedExclusiveEnabled = enabled
         if (!enabled) {
             permissionRequestPendingDeviceName = null
             clearPreferredMixerAttributes()
@@ -132,7 +136,6 @@ class EchoUsbAudioMonitor(context: Context) {
     fun prepareForTrack(sampleRateHz: Int?) {
         val safeSampleRate = sampleRateHz?.takeIf { it > 0 }
         if (!exclusiveEnabled) {
-            refresh()
             return
         }
         requestUsbHostPermissionIfNeeded()
@@ -200,7 +203,17 @@ class EchoUsbAudioMonitor(context: Context) {
 
     private fun scan(): EchoUsbAudioStatus {
         val device = findUsbOutputDevice()
-        val usbSnapshot = usbAudioProbe.snapshot(permissionRequestPendingDeviceName)
+        val usbSnapshot = if (exclusiveEnabled) {
+            usbAudioProbe.snapshot(permissionRequestPendingDeviceName)
+        } else {
+            val usbDevice = findUsbAudioDevice()
+            UsbAudioDeviceSnapshot(
+                connected = device != null || usbDevice != null,
+                deviceName = usbDevice?.deviceName,
+                displayName = device?.getDisplayName() ?: usbDevice?.getDisplayName(),
+                permissionGranted = usbDevice?.let(usbManager::hasPermission) == true,
+            )
+        }
         val usbDevice = findUsbAudioDevice()
         val hostPermissionGranted = usbSnapshot.permissionGranted || usbDevice?.let(usbManager::hasPermission) == true
         val pendingDeviceName = permissionRequestPendingDeviceName
@@ -210,11 +223,11 @@ class EchoUsbAudioMonitor(context: Context) {
             permissionRequestPendingDeviceName = null
         }
         val hostPermissionPending = !hostPermissionGranted && (usbSnapshot.permissionPending || pendingDeviceMatches)
-        if (device == null) {
+        if (device == null || !exclusiveEnabled) {
             return EchoUsbAudioStatus(
                 exclusiveEnabled = exclusiveEnabled,
-                deviceName = usbSnapshot.displayName ?: usbDevice?.getDisplayName(),
-                connected = usbSnapshot.connected || usbDevice != null,
+                deviceName = usbSnapshot.displayName ?: usbDevice?.getDisplayName() ?: device?.getDisplayName(),
+                connected = usbSnapshot.connected || usbDevice != null || device != null,
                 hostPermissionGranted = hostPermissionGranted,
                 hostPermissionPending = hostPermissionPending,
                 audioClass = usbSnapshot.audioClassLabel(),
@@ -294,7 +307,7 @@ class EchoUsbAudioMonitor(context: Context) {
 
         permissionRequestPendingDeviceName = device.deviceName
         val intent = Intent(ACTION_USB_PERMISSION).setPackage(appContext.packageName)
-        val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         val permissionIntent = PendingIntent.getBroadcast(appContext, 0, intent, flags)
         runCatching {
             usbManager.requestPermission(device, permissionIntent)

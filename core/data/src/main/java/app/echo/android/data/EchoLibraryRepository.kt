@@ -132,8 +132,15 @@ class EchoLibraryRepository(
         val trimmedQuery = query.trim()
         if (trimmedQuery.isBlank()) return LocalLibrarySearchResults()
         val dao = database.trackDao()
+        val matchQuery = sanitizeFtsQuery(trimmedQuery)
+        val rankQuery = ftsRankQuery(trimmedQuery)
+        val tracks = if (matchQuery != null && canUseFts(dao, matchQuery, trimmedQuery)) {
+            dao.searchTracksByFts(matchQuery, rankQuery, limitPerType)
+        } else {
+            dao.searchTracks(trimmedQuery, limitPerType)
+        }
         return LocalLibrarySearchResults(
-            tracks = dao.searchTracks(trimmedQuery, limitPerType),
+            tracks = tracks,
             albums = dao.searchAlbums(trimmedQuery, limitPerType),
             artists = dao.searchArtists(trimmedQuery, limitPerType),
         )
@@ -328,7 +335,12 @@ class EchoLibraryRepository(
                 .associateBy(TrackFingerprint::id)
 
             emitProgress(phase = LibraryScanPhase.QueryingMediaStore)
-            scanner.scanAudio(
+            val editedTracks = if (relativePathLike == null) {
+                dao.getMetadataEditedTracks(source)
+            } else {
+                dao.getMetadataEditedTracksInRelativePath(source, relativePathLike)
+            }.associateBy(LibraryTrackEntity::id)
+            val scanOutcome = scanner.scanAudio(
                 batchSize = batchSize,
                 relativePathPrefix = normalizedRelativePath,
                 existingTracks = existingFingerprints,
@@ -354,7 +366,8 @@ class EchoLibraryRepository(
                     val unchangedIds = ArrayList<String>(batch.size)
 
                     batch.forEach { rawTrack ->
-                        val track = rawTrack.withScanMetadata(scanRunId)
+                        val preserved = rawTrack.withPreservedUserMetadata(editedTracks[rawTrack.id])
+                        val track = preserved.withScanMetadata(scanRunId)
                         val existing = existingFingerprints[track.id]
                         when {
                             existing == null -> inserts += track
@@ -376,22 +389,27 @@ class EchoLibraryRepository(
                     emitProgress(phase = LibraryScanPhase.QueryingMediaStore)
                 },
             )
+            scannedCount = scanOutcome.scannedCount
 
             coroutineContext.ensureActive()
             emitProgress(phase = LibraryScanPhase.CleaningRemoved)
-            val missingTrackIds = if (relativePathLike == null) {
-                dao.getMissingTrackIdsFromSource(source, scanRunId)
-            } else {
-                dao.getMissingTrackIdsFromRelativePath(source, relativePathLike, scanRunId)
-            }
-            val deletedCount = if (relativePathLike == null) {
-                dao.deleteMissingFromSource(source, scanRunId)
-            } else {
-                dao.deleteMissingFromRelativePath(source, relativePathLike, scanRunId)
-            }
-            missingTrackIds.chunked(DATABASE_BATCH_SIZE).forEach { trackIds ->
-                dao.deleteFtsByTrackIds(trackIds)
-            }
+            val completeness = LibraryScanCompleteness(
+                querySucceeded = scanOutcome.querySucceeded,
+                scannedCount = scannedCount,
+                existingCount = existingFingerprints.size,
+            )
+            val deletedCount = deleteMissingIfComplete(
+                dao = dao,
+                completeness = completeness,
+                missingIds = {
+                    if (relativePathLike == null) {
+                        dao.getMissingNativeMediaStoreTrackIds(source, scanRunId)
+                    } else {
+                        dao.getMissingTrackIdsFromRelativePath(source, relativePathLike, scanRunId)
+                            .filter(LibraryScanPolicy::isMediaStoreNativeId)
+                    }
+                },
+            )
             emitProgress(
                 phase = LibraryScanPhase.Completed,
                 currentTitle = null,
@@ -422,7 +440,7 @@ class EchoLibraryRepository(
         skipSampleRateRead: Boolean = false,
     ): Flow<LibraryScanProgress> = flow {
         val dao = database.trackDao()
-        val source = LibrarySource.MediaStore.id
+        val source = LibraryScanPolicy.SafSourceId
         val normalizedRelativePath = normalizeRelativePathPrefix(relativePathPrefix)
             ?: error("Document tree scan requires a relative path")
         val relativePathLike = "${escapeSqlLikeArgument(normalizedRelativePath)}%"
@@ -459,20 +477,33 @@ class EchoLibraryRepository(
             coroutineContext.ensureActive()
 
             emitProgress(phase = LibraryScanPhase.Diffing)
-            val existingFingerprints = dao.getExistingMediaStoreFingerprintsInRelativePath(
-                source = source,
-                relativePathLike = relativePathLike,
-            ).associateBy(TrackFingerprint::id)
-            val editedTracks = dao.getMetadataEditedTracksInRelativePath(
-                source = source,
-                relativePathLike = relativePathLike,
-            ).associateBy(LibraryTrackEntity::id)
+            val existingFingerprints = (
+                dao.getExistingMediaStoreFingerprintsInRelativePath(
+                    source = LibrarySource.MediaStore.id,
+                    relativePathLike = relativePathLike,
+                ).filter { LibraryScanPolicy.isSafTrackId(it.id) } +
+                    dao.getExistingMediaStoreFingerprintsInRelativePath(
+                        source = source,
+                        relativePathLike = relativePathLike,
+                    )
+                ).associateBy(TrackFingerprint::id)
+            val editedTracks = (
+                dao.getMetadataEditedTracksInRelativePath(
+                    source = LibrarySource.MediaStore.id,
+                    relativePathLike = relativePathLike,
+                ).filter { LibraryScanPolicy.isSafTrackId(it.id) } +
+                    dao.getMetadataEditedTracksInRelativePath(
+                        source = source,
+                        relativePathLike = relativePathLike,
+                    )
+                ).associateBy(LibraryTrackEntity::id)
 
             emitProgress(phase = LibraryScanPhase.QueryingMediaStore)
             documentTreeScanner.scanAudioTree(
                 treeUri = treeUri,
                 relativePathPrefix = normalizedRelativePath,
                 batchSize = batchSize,
+                existingTracks = existingFingerprints,
                 readSampleRate = !skipSampleRateRead,
                 onProgress = { count, currentTrack ->
                     scannedCount = count
@@ -491,14 +522,14 @@ class EchoLibraryRepository(
                     val unchangedIds = ArrayList<String>(batch.size)
 
                     batch.forEach { rawTrack ->
-                        val track = rawTrack
-                            .withPreservedUserMetadata(editedTracks[rawTrack.id])
-                            .withScanMetadata(scanRunId)
-                        val existing = existingFingerprints[track.id]
+                        val preserved = rawTrack.withPreservedUserMetadata(editedTracks[rawTrack.id])
+                        val existing = existingFingerprints[preserved.id]
+                        val incomingFingerprint = preserved.fingerprint ?: buildTrackFingerprint(preserved)
                         when {
-                            existing == null -> inserts += track
-                            existing.fingerprint != track.fingerprint -> updates += track
-                            else -> unchangedIds += track.id
+                            existing == null -> inserts += preserved.withScanMetadata(scanRunId)
+                            existing.fingerprint != incomingFingerprint ->
+                                updates += preserved.withScanMetadata(scanRunId)
+                            else -> unchangedIds += preserved.id
                         }
                     }
 
@@ -518,19 +549,21 @@ class EchoLibraryRepository(
 
             coroutineContext.ensureActive()
             emitProgress(phase = LibraryScanPhase.CleaningRemoved, currentTitle = null)
-            val missingTrackIds = dao.getMissingTrackIdsFromRelativePath(
-                source = source,
-                relativePathLike = relativePathLike,
-                scanRunId = scanRunId,
+            deletedCount = deleteMissingIfComplete(
+                dao = dao,
+                completeness = LibraryScanCompleteness(
+                    querySucceeded = true,
+                    scannedCount = scannedCount,
+                    existingCount = existingFingerprints.size,
+                ),
+                missingIds = {
+                    dao.getMissingSafTrackIdsFromRelativePath(
+                        source = source,
+                        relativePathLike = relativePathLike,
+                        scanRunId = scanRunId,
+                    )
+                },
             )
-            deletedCount = dao.deleteMissingFromRelativePath(
-                source = source,
-                relativePathLike = relativePathLike,
-                scanRunId = scanRunId,
-            )
-            missingTrackIds.chunked(DATABASE_BATCH_SIZE).forEach { trackIds ->
-                dao.deleteFtsByTrackIds(trackIds)
-            }
             emitProgress(
                 phase = LibraryScanPhase.Completed,
                 currentTitle = null,
@@ -628,11 +661,16 @@ class EchoLibraryRepository(
             }
 
             emitProgress(phase = LibraryScanPhase.CleaningRemoved, currentTitle = null)
-            val missingTrackIds = dao.getMissingTrackIdsFromSource(source, scanRunId)
-            deletedCount = dao.deleteMissingFromSource(source, scanRunId)
-            missingTrackIds.chunked(DATABASE_BATCH_SIZE).forEach { trackIds ->
-                dao.deleteFtsByTrackIds(trackIds)
-            }
+            deletedCount = deleteMissingIfComplete(
+                dao = dao,
+                completeness = LibraryScanCompleteness(
+                    querySucceeded = true,
+                    scannedCount = scannedCount,
+                    existingCount = existingFingerprints.size,
+                    hitVisitCap = albums.size >= SubsonicClient.MaxAlbumsPerSync,
+                ),
+                missingIds = { dao.getMissingTrackIdsFromSource(source, scanRunId) },
+            )
             emitProgress(phase = LibraryScanPhase.Completed, currentTitle = null, isCompleted = true)
         } catch (error: CancellationException) {
             emitProgress(phase = LibraryScanPhase.Cancelled, currentTitle = null, isCompleted = true)
@@ -689,7 +727,7 @@ class EchoLibraryRepository(
                 .associateBy(TrackFingerprint::id)
 
             emitProgress(phase = LibraryScanPhase.QueryingMediaStore, currentTitle = "扫描 WebDAV 目录")
-            client.scanAudioFiles { file ->
+            val visit = client.scanAudioFiles { file ->
                 coroutineContext.ensureActive()
                 scannedCount += 1
                 pending += file.toLibraryTrackEntity(endpoint, scanRunId)
@@ -708,11 +746,16 @@ class EchoLibraryRepository(
             }
 
             emitProgress(phase = LibraryScanPhase.CleaningRemoved, currentTitle = null)
-            val missingTrackIds = dao.getMissingTrackIdsFromSource(source, scanRunId)
-            deletedCount = dao.deleteMissingFromSource(source, scanRunId)
-            missingTrackIds.chunked(DATABASE_BATCH_SIZE).forEach { trackIds ->
-                dao.deleteFtsByTrackIds(trackIds)
-            }
+            deletedCount = deleteMissingIfComplete(
+                dao = dao,
+                completeness = LibraryScanCompleteness(
+                    querySucceeded = true,
+                    scannedCount = scannedCount,
+                    existingCount = existingFingerprints.size,
+                    hitVisitCap = visit.hitVisitCap,
+                ),
+                missingIds = { dao.getMissingTrackIdsFromSource(source, scanRunId) },
+            )
             emitProgress(phase = LibraryScanPhase.Completed, currentTitle = null, isCompleted = true)
         } catch (error: CancellationException) {
             emitProgress(phase = LibraryScanPhase.Cancelled, currentTitle = null, isCompleted = true)
@@ -737,8 +780,8 @@ class EchoLibraryRepository(
     }
 
     private suspend fun canUseFts(dao: LibraryTrackDao, matchQuery: String, rawQuery: String): Boolean {
-        // Keep track search aligned with album/artist/folder matching rules.
-        return false
+        if (matchQuery.isBlank() || rawQuery.isBlank()) return false
+        return runCatching { dao.validateFtsQuery(matchQuery) }.isSuccess
     }
 
     private suspend fun trackQueueCandidates(
@@ -766,13 +809,22 @@ class EchoLibraryRepository(
     ): SimpleSQLiteQuery {
         val args = mutableListOf<Any>()
         val sql = StringBuilder(
-            """
-            SELECT library_tracks.* FROM library_tracks
-            LEFT JOIN library_playback_stats
-                ON library_tracks.id = library_playback_stats.trackId
-            """.trimIndent(),
+            buildString {
+                append("SELECT library_tracks.* FROM library_tracks")
+                if (sort == LibraryTrackSortMode.FrequentlyPlayed) {
+                    appendLine()
+                    append(
+                        """
+                        LEFT JOIN library_playback_stats
+                            ON library_tracks.id = library_playback_stats.trackId
+                        """.trimIndent(),
+                    )
+                }
+            },
         )
+        var hasWhere = false
         if (query.isNotBlank()) {
+            hasWhere = true
             if (useFts && matchQuery != null) {
                 val likeQuery = "%${query.lowercase()}%"
                 val rawLike = "%$query%"
@@ -781,7 +833,7 @@ class EchoLibraryRepository(
                 sql.appendLine()
                 sql.append(
                     """
-                    WHERE library_tracks_fts MATCH ?
+                    WHERE (library_tracks_fts MATCH ?
                        OR library_tracks.title LIKE ?
                        OR library_tracks.artist LIKE ?
                        OR library_tracks.album LIKE ?
@@ -791,7 +843,7 @@ class EchoLibraryRepository(
                        OR library_tracks.normalizedAlbumArtist LIKE ?
                        OR library_tracks.pinyinTitle LIKE ?
                        OR library_tracks.pinyinArtist LIKE ?
-                       OR library_tracks.pinyinAlbum LIKE ?
+                       OR library_tracks.pinyinAlbum LIKE ?)
                     """.trimIndent(),
                 )
                 args += matchQuery
@@ -803,7 +855,7 @@ class EchoLibraryRepository(
                 sql.appendLine()
                 sql.append(
                     """
-                    WHERE library_tracks.title LIKE ?
+                    WHERE (library_tracks.title LIKE ?
                        OR library_tracks.artist LIKE ?
                        OR library_tracks.album LIKE ?
                        OR library_tracks.normalizedTitle LIKE ?
@@ -812,12 +864,20 @@ class EchoLibraryRepository(
                        OR library_tracks.normalizedAlbumArtist LIKE ?
                        OR library_tracks.pinyinTitle LIKE ?
                        OR library_tracks.pinyinArtist LIKE ?
-                       OR library_tracks.pinyinAlbum LIKE ?
+                       OR library_tracks.pinyinAlbum LIKE ?)
                     """.trimIndent(),
                 )
                 repeat(3) { args += rawLike }
                 repeat(7) { args += likeQuery }
             }
+        }
+        if (hasWhere) {
+            sql.append(" AND ")
+            sql.append(LibraryScanPolicy.LocalSourceSql)
+        } else {
+            sql.appendLine()
+            sql.append("WHERE ")
+            sql.append(LibraryScanPolicy.LocalSourceSql)
         }
         sql.appendLine()
         sql.append("ORDER BY ")
@@ -848,7 +908,8 @@ class EchoLibraryRepository(
                 COALESCE(library_playback_stats.lastPlayedAtEpochMs, 0) DESC,
                 library_tracks.title COLLATE NOCASE ASC
             """.trimIndent()
-            LibraryTrackSortMode.Random -> "RANDOM()"
+            LibraryTrackSortMode.Random ->
+                "(length(library_tracks.id) * 31 + length(library_tracks.title) * 17 + COALESCE(library_tracks.durationMs, 0)) % 997, library_tracks.id"
             LibraryTrackSortMode.Artist -> """
                 CASE WHEN trim(library_tracks.artist) = '' THEN 1 ELSE 0 END ASC,
                 library_tracks.artist COLLATE NOCASE ASC,
@@ -898,9 +959,6 @@ class EchoLibraryRepository(
             if (staleTracks.isEmpty()) break
             dao.upsertBatch(staleTracks.map(LibraryTrackEntity::withComputedSearchMetadata))
         }
-        if (dao.findTrackWithStaleFtsSearchData() != null) {
-            dao.rebuildFts()
-        }
     }
 
     private fun albumPlaybackQuery(albumKey: String, limit: Int): SimpleSQLiteQuery {
@@ -910,7 +968,8 @@ class EchoLibraryRepository(
         return SimpleSQLiteQuery(
             """
             SELECT * FROM library_tracks
-            WHERE (
+            WHERE (source = 'mediastore' OR source = 'saf')
+              AND (
                 COALESCE(NULLIF(normalizedAlbum, ''), ?) ||
                 '::' ||
                 COALESCE(NULLIF(normalizedAlbumArtist, ''), NULLIF(normalizedArtist, ''), ?)
@@ -952,7 +1011,8 @@ class EchoLibraryRepository(
         SimpleSQLiteQuery(
             """
             SELECT * FROM library_tracks
-            WHERE COALESCE(NULLIF(normalizedArtist, ''), ?) = ?
+            WHERE (source = 'mediastore' OR source = 'saf')
+              AND COALESCE(NULLIF(normalizedArtist, ''), ?) = ?
             ORDER BY
                 album COLLATE NOCASE ASC,
                 CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
@@ -969,6 +1029,22 @@ class EchoLibraryRepository(
             prefetchDistance = 20,
             enablePlaceholders = false,
         )
+
+    private suspend fun deleteMissingIfComplete(
+        dao: LibraryTrackDao,
+        completeness: LibraryScanCompleteness,
+        missingIds: suspend () -> List<String>,
+    ): Int {
+        if (!LibraryScanPolicy.shouldDeleteMissingLibraryRows(completeness)) {
+            return 0
+        }
+        val ids = missingIds()
+        ids.chunked(DATABASE_BATCH_SIZE).forEach { chunk ->
+            dao.deleteTracksByIds(chunk)
+            dao.deleteFtsByTrackIds(chunk)
+        }
+        return ids.size
+    }
 
     private companion object {
         const val SCAN_BATCH_SIZE = 500

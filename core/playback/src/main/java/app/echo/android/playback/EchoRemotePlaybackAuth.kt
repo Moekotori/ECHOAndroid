@@ -11,7 +11,6 @@ import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.datasource.TransferListener
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.CacheKeyFactory
-import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.database.StandaloneDatabaseProvider
 import java.io.File
@@ -153,7 +152,7 @@ private object EchoRemotePlaybackCache {
     fun get(context: Context): SimpleCache =
         cache ?: SimpleCache(
             File(context.cacheDir, "echo-remote-playback-cache"),
-            LeastRecentlyUsedCacheEvictor(EchoPlaybackCachePolicy.maxCacheBytes),
+            EchoPlaybackCacheEvictor(),
             StandaloneDatabaseProvider(context),
         ).also { cache = it }
 }

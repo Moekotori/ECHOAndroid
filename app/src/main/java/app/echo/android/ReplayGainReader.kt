@@ -1,7 +1,6 @@
 package app.echo.android
 
 import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
@@ -140,16 +139,14 @@ internal object ReplayGainReader {
 
     private fun InputStream.readExactly(size: Int): ByteArray? {
         if (size < 0) return null
-        val output = ByteArrayOutputStream(size.coerceAtMost(DEFAULT_BUFFER_SIZE))
-        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-        var remaining = size
-        while (remaining > 0) {
-            val read = read(buffer, 0, minOf(buffer.size, remaining))
+        val output = ByteArray(size)
+        var offset = 0
+        while (offset < size) {
+            val read = read(output, offset, size - offset)
             if (read < 0) return null
-            output.write(buffer, 0, read)
-            remaining -= read
+            offset += read
         }
-        return output.toByteArray()
+        return output
     }
 
     private fun syncSafeInt(bytes: ByteArray, start: Int): Int =

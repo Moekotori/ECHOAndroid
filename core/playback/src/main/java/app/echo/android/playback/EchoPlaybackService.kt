@@ -40,6 +40,10 @@ class EchoPlaybackService : MediaSessionService() {
                 true,
             )
             .setHandleAudioBecomingNoisy(true)
+            .setWakeMode(C.WAKE_MODE_NETWORK)
+            .setSeekBackIncrementMs(PREVIOUS_RESTART_THRESHOLD_MS)
+            .setSeekForwardIncrementMs(SEEK_FORWARD_INCREMENT_MS)
+            .setMaxSeekToPreviousPositionMs(PREVIOUS_RESTART_THRESHOLD_MS)
             .build()
             .also {
                 it.addListener(EchoPlayerListener())
@@ -122,6 +126,8 @@ private fun Context.createLaunchPendingIntent(): PendingIntent? {
 }
 
 private const val EchoPlaybackLaunchRequestCode = 2101
+private const val PREVIOUS_RESTART_THRESHOLD_MS = 3_000L
+private const val SEEK_FORWARD_INCREMENT_MS = 10_000L
 
 internal object EchoMediaSessionControllerGate {
     @UnstableApi

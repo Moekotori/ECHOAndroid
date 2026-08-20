@@ -86,7 +86,7 @@ internal fun classifyPlaybackError(
             EchoPlaybackError(
                 kind = EchoAudioErrorKind.DecodeFailure,
                 message = playbackMessage("Audio decoder failed", errorCode, rawMessage),
-                recoverable = true,
+                recoverable = false,
             )
 
         else ->

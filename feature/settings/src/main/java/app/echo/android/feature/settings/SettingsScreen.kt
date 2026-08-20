@@ -28,7 +28,9 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -1053,6 +1055,8 @@ private fun SettingsSliderRow(
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
     val controlColor = settingsControlColor()
+    var localValue by rememberSaveable { mutableFloatStateOf(value) }
+    LaunchedEffect(value) { localValue = value }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1082,8 +1086,9 @@ private fun SettingsSliderRow(
                 )
             }
             Slider(
-                value = value,
-                onValueChange = onValueChange,
+                value = localValue,
+                onValueChange = { localValue = it },
+                onValueChangeFinished = { onValueChange(localValue) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(28.dp),

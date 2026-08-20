@@ -2,6 +2,7 @@ package app.echo.android.playback
 
 import androidx.media3.common.PlaybackException
 import app.echo.android.model.playback.EchoAudioErrorKind
+import app.echo.android.model.playback.EchoPlaybackError
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -58,5 +59,7 @@ class EchoPlaybackErrorMapperTest {
 
         assertEquals(EchoAudioErrorKind.UnsupportedFormat, unsupported.kind)
         assertEquals(EchoAudioErrorKind.DecodeFailure, decode.kind)
+        assertFalse(decode.recoverable)
+        assertTrue(decode.shouldAutoSkipTrack())
     }
 }

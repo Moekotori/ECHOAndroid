@@ -46,18 +46,24 @@ import app.echo.android.model.playback.PlaybackQueueState
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
 import app.echo.android.playback.EchoRemotePlaybackAuthRegistry
 import app.echo.android.playback.EchoPlaybackCachePolicy
+import app.echo.android.playback.EchoPlaybackProcessRuntime
 import app.echo.android.playback.EchoWebDavPlaybackCredential
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @UnstableApi
 @Suppress("SpellCheckingInspection", "ConstPropertyName", "unused")
 class EchoAndroidViewModel(application: Application) : AndroidViewModel(application) {
@@ -90,7 +96,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     )
     private val lastFmClient = LastFmClient()
     private val lastFmController = LastFmScrobbleController(
-        scope = viewModelScope,
+        scope = EchoPlaybackProcessRuntime.scope,
         client = lastFmClient,
     )
     private var pendingLastFmAuthToken: String? = null
@@ -124,17 +130,27 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     val appSettings: Flow<EchoAppSettings> = settingsStore.appSettings
     val lastFmState: StateFlow<LastFmUiState> = lastFmController.uiState
     val discordPresenceSnapshot: Flow<EchoMobileDiscordPresenceSnapshot?> =
-        combine(
-            settingsStore.appSettings,
-            playbackController.playbackStatus,
-            playbackController.playbackPosition,
-        ) { settings, status, position ->
-            if (!settings.discordPresenceViaPcEnabled) {
-                null
-            } else {
-                status.toMobileDiscordPresence(position)
+        settingsStore.appSettings
+            .distinctUntilChanged { previous, next ->
+                previous.discordPresenceViaPcEnabled == next.discordPresenceViaPcEnabled
             }
-        }
+            .flatMapLatest { settings ->
+                if (!settings.discordPresenceViaPcEnabled) {
+                    flowOf(null)
+                } else {
+                    combine(
+                        playbackController.playbackStatus,
+                        playbackController.playbackPosition,
+                    ) { status, position ->
+                        status.toMobileDiscordPresence(position)
+                    }.distinctUntilChanged { previous, next ->
+                        previous.state == next.state &&
+                            previous.track?.id == next.track?.id &&
+                            previous.positionMs / DISCORD_PRESENCE_POSITION_BUCKET_MS ==
+                            next.positionMs / DISCORD_PRESENCE_POSITION_BUCKET_MS
+                    }
+                }
+            }
 
     private val _recentPlaybackAlbums = MutableStateFlow<List<AlbumSummary>>(emptyList())
     val recentPlaybackAlbums: StateFlow<List<AlbumSummary>> = _recentPlaybackAlbums.asStateFlow()
@@ -157,6 +173,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             playbackPosition = playbackController.playbackPosition,
         )
         viewModelScope.launch {
+            var lastEqualizerSignature: String? = null
             settingsStore.appSettings.collect { settings ->
                 withContext(Dispatchers.IO) {
                     settingsStore.cacheStartupThemeSnapshot(settings)
@@ -164,24 +181,28 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                 lyricsController.setOnlineLyricsEnabled(settings.onlineLyricsEnabled, playbackController.currentTrackId)
                 val firstSettingsEmission = !usbStartupPolicyApplied
                 usbStartupPolicyApplied = true
-                val shouldEnableUsbExclusive = if (firstSettingsEmission) {
+                val usbAlreadyActive = playbackController.isUsbExclusiveEnabled()
+                val shouldEnableUsbExclusive = if (firstSettingsEmission && !usbAlreadyActive) {
                     settings.usbExclusiveEnabled && settings.usbExclusiveAutoRequestOnStartup
                 } else {
                     settings.usbExclusiveEnabled
                 }
                 playbackController.setUsbExclusiveEnabled(shouldEnableUsbExclusive)
-                playbackController.setEqualizerConfig(
-                    enabled = settings.equalizerEnabled,
-                    presetId = settings.equalizerPreset,
-                    gainsDb = settings.equalizerBandGains,
-                )
+                val equalizerSignature = "${settings.equalizerEnabled}|${settings.equalizerPreset}|${settings.equalizerBandGains}"
+                if (equalizerSignature != lastEqualizerSignature) {
+                    lastEqualizerSignature = equalizerSignature
+                    playbackController.setEqualizerConfig(
+                        enabled = settings.equalizerEnabled,
+                        presetId = settings.equalizerPreset,
+                        gainsDb = settings.equalizerBandGains,
+                    )
+                }
                 if (firstSettingsEmission &&
                     settings.usbExclusiveEnabled &&
-                    !settings.usbExclusiveAutoRequestOnStartup
+                    !settings.usbExclusiveAutoRequestOnStartup &&
+                    !usbAlreadyActive
                 ) {
-                    withContext(Dispatchers.IO) {
-                        settingsStore.setUsbExclusiveEnabled(false)
-                    }
+                    playbackController.setUsbExclusiveEnabled(false)
                 }
                 if (settings.lastFmEnabled && !settings.lastFmUsername.isNullOrBlank()) {
                     lastFmController.setConnected(settings.lastFmUsername.orEmpty())
@@ -207,6 +228,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun refreshLibrary() {
         libraryController.refreshLibrary()
+    }
+
+    fun refreshLibraryIfEmpty() {
+        libraryController.refreshLibraryIfEmpty()
     }
 
     fun refreshLibraryFolder(treeUri: Uri) {
@@ -283,9 +308,9 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun shuffleAlbum(albumKey: String) {
         viewModelScope.launch {
-            val queue = libraryController.albumTracksForPlayback(albumKey).shuffled()
+            val queue = libraryController.albumTracksForPlayback(albumKey)
             if (queue.isNotEmpty()) {
-                playQueue(queue, 0)
+                playQueue(queue, queue.indices.random())
                 playbackController.enableShuffle()
             }
         }
@@ -314,9 +339,9 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun shuffleArtist(artistKey: String) {
         viewModelScope.launch {
-            val queue = libraryController.artistTracksForPlayback(artistKey).shuffled()
+            val queue = libraryController.artistTracksForPlayback(artistKey)
             if (queue.isNotEmpty()) {
-                playQueue(queue, 0)
+                playQueue(queue, queue.indices.random())
                 playbackController.enableShuffle()
             }
         }
@@ -1032,7 +1057,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             positionMs = position.positionMs,
             durationMs = maxOf(durationMs, position.durationMs, currentTrack?.durationMs ?: 0L),
             deviceName = "ECHOAndroid",
-            updatedAtEpochMs = System.currentTimeMillis(),
+            updatedAtEpochMs = position.positionMs / DISCORD_PRESENCE_POSITION_BUCKET_MS,
         )
     }
 
@@ -1052,6 +1077,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     private companion object {
         const val HOME_HEATMAP_VISIBLE_DAYS = 84L
+        const val DISCORD_PRESENCE_POSITION_BUCKET_MS = 5_000L
     }
 }
 

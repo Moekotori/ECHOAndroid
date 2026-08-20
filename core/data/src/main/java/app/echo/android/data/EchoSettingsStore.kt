@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import app.echo.android.model.playback.EchoEqualizerPreset
 import app.echo.android.model.playback.EchoEqualizerPresets
+import app.echo.android.model.playback.EchoRepeatMode
 import app.echo.android.model.playback.EchoTrackRef
 import app.echo.android.model.settings.EchoPerformanceMode
 import kotlinx.coroutines.flow.first
@@ -136,6 +137,10 @@ data class EchoSavedPlaybackSession(
     val currentIndex: Int,
     val positionMs: Long,
     val playWhenReady: Boolean,
+    val shuffleEnabled: Boolean = false,
+    val repeatMode: EchoRepeatMode = EchoRepeatMode.Off,
+    val playbackSpeed: Float = 1f,
+    val playbackPitch: Float = 1f,
 )
 
 class EchoSettingsStore(
@@ -703,11 +708,15 @@ private fun formatEqualizerBandGains(gainsDb: List<Float>): String =
         ((value.coerceIn(-18f, 18f) * 10f).toInt() / 10f).toString()
     }
 
-private fun EchoSavedPlaybackSession.toPreferenceValue(): String =
+internal fun EchoSavedPlaybackSession.toPreferenceValue(): String =
     JSONObject().apply {
         put("currentIndex", currentIndex)
         put("positionMs", positionMs.coerceAtLeast(0L))
         put("playWhenReady", playWhenReady)
+        put("shuffleEnabled", shuffleEnabled)
+        put("repeatMode", repeatMode.toPreferenceValue())
+        put("playbackSpeed", playbackSpeed.toDouble())
+        put("playbackPitch", playbackPitch.toDouble())
         put(
             "queue",
             JSONArray().apply {
@@ -728,7 +737,7 @@ private fun EchoSavedPlaybackSession.toPreferenceValue(): String =
         )
     }.toString()
 
-private fun parsePlaybackSession(raw: String): EchoSavedPlaybackSession? =
+internal fun parsePlaybackSession(raw: String): EchoSavedPlaybackSession? =
     runCatching {
         val json = JSONObject(raw)
         val queueJson = json.optJSONArray("queue") ?: return@runCatching null
@@ -757,5 +766,21 @@ private fun parsePlaybackSession(raw: String): EchoSavedPlaybackSession? =
             currentIndex = currentIndex,
             positionMs = json.optLong("positionMs").coerceAtLeast(0L),
             playWhenReady = json.optBoolean("playWhenReady", false),
+            shuffleEnabled = json.optBoolean("shuffleEnabled", false),
+            repeatMode = parseSavedRepeatMode(json.optString("repeatMode")),
+            playbackSpeed = json.optDouble("playbackSpeed", 1.0).toFloat().coerceIn(0.5f, 2.0f),
+            playbackPitch = json.optDouble("playbackPitch", 1.0).toFloat().coerceIn(0.5f, 2.0f),
         )
     }.getOrNull()
+
+internal fun EchoRepeatMode.toPreferenceValue(): String = when (this) {
+    EchoRepeatMode.All -> "all"
+    EchoRepeatMode.One -> "one"
+    EchoRepeatMode.Off -> "off"
+}
+
+internal fun parseSavedRepeatMode(raw: String?): EchoRepeatMode = when (raw?.lowercase()) {
+    "all" -> EchoRepeatMode.All
+    "one" -> EchoRepeatMode.One
+    else -> EchoRepeatMode.Off
+}

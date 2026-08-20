@@ -20,6 +20,7 @@ import app.echo.android.model.playback.PlaybackQueueState
 
 fun MediaItem.toEchoTrackRef(durationMs: Long = 0L): EchoTrackRef {
     val metadata = mediaMetadata
+    val metadataDurationMs = metadata.durationMs?.takeIf { it > 0L } ?: 0L
     return EchoTrackRef(
         id = mediaId,
         uri = localConfiguration?.uri?.toString().orEmpty(),
@@ -27,7 +28,7 @@ fun MediaItem.toEchoTrackRef(durationMs: Long = 0L): EchoTrackRef {
         artist = metadata.artist?.toString().orEmpty().ifBlank { "Unknown Artist" },
         album = metadata.albumTitle?.toString(),
         artworkUri = metadata.artworkUri?.toString(),
-        durationMs = durationMs.coerceAtLeast(0L),
+        durationMs = durationMs.takeIf { it > 0L } ?: metadataDurationMs,
     )
 }
 
@@ -41,6 +42,9 @@ fun EchoTrackRef.toMediaItem(): MediaItem =
                 .setArtist(artist)
                 .setAlbumTitle(album)
                 .setArtworkUri(artworkUri?.let(Uri::parse))
+                .also { builder ->
+                    if (durationMs > 0L) builder.setDurationMs(durationMs)
+                }
                 .setExtras(embeddedArtworkExtras())
                 .build(),
         )
@@ -96,15 +100,26 @@ fun Player.toPlaybackMetadataState(): PlaybackMetadataState {
 }
 
 fun Player.toPlaybackPositionState(): PlaybackPositionState {
-    val safeDuration = duration.takeIf { it > 0L }
-        ?: currentMediaItem?.toEchoTrackRef(durationMs = 0L)?.durationMs
-        ?: 0L
+    val safeDuration = duration.takeIf { it > 0L } ?: 0L
     return PlaybackPositionState(
         positionMs = currentPosition.coerceAtLeast(0L),
         durationMs = safeDuration.coerceAtLeast(0L),
         bufferedMs = (bufferedPosition - currentPosition).coerceAtLeast(0L),
-        updateTimeEpochMs = System.currentTimeMillis(),
     )
+}
+
+fun Player.playbackQueueSignature(): String {
+    val currentIndex = currentMediaItemIndex.takeIf { it in 0 until mediaItemCount } ?: -1
+    return buildString(capacity = 16 + mediaItemCount * 24) {
+        append(currentIndex)
+        append('|')
+        append(playWhenReady)
+        append('|')
+        for (index in 0 until mediaItemCount) {
+            append(getMediaItemAt(index).mediaId)
+            append(';')
+        }
+    }
 }
 
 fun Player.toPlaybackQueueState(): PlaybackQueueState {
@@ -210,13 +225,23 @@ private fun pcmBitDepth(pcmEncoding: Int): Int? = when (pcmEncoding) {
     else -> null
 }
 
-fun Player.toEchoPlaybackState(): EchoPlaybackState = when {
-    playbackState == Player.STATE_IDLE && currentMediaItem == null -> EchoPlaybackState.Idle
+fun Player.toEchoPlaybackState(): EchoPlaybackState =
+    echoPlaybackState(
+        playbackState = playbackState,
+        isPlaying = isPlaying,
+        hasCurrentMediaItem = currentMediaItem != null,
+    )
+
+fun echoPlaybackState(
+    playbackState: Int,
+    isPlaying: Boolean,
+    hasCurrentMediaItem: Boolean,
+): EchoPlaybackState = when {
+    playbackState == Player.STATE_IDLE && !hasCurrentMediaItem -> EchoPlaybackState.Idle
     playbackState == Player.STATE_IDLE -> EchoPlaybackState.Stopped
     playbackState == Player.STATE_BUFFERING -> EchoPlaybackState.Buffering
     playbackState == Player.STATE_ENDED -> EchoPlaybackState.Ended
     isPlaying -> EchoPlaybackState.Playing
-    playWhenReady -> EchoPlaybackState.Loading
     else -> EchoPlaybackState.Paused
 }
 

@@ -39,7 +39,6 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -49,7 +48,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -59,28 +57,28 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.paging.compose.collectAsLazyPagingItems
 import app.echo.android.data.LocalLibrarySearchResults
 import app.echo.android.feature.home.SearchResult
 import app.echo.android.feature.home.SearchResultType
-import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.connect.EchoPairingParser
 import app.echo.android.connect.EchoRemoteClient
-import app.echo.android.design.EchoContentMaxWidth
 import app.echo.android.design.EchoArtworkRequestHeadersRegistry
-import app.echo.android.design.EchoGlassInk
-import app.echo.android.design.EchoGlassNight
-import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.EchoMobileTheme
 import app.echo.android.feature.connect.ConnectScreen
-import app.echo.android.feature.home.HomeScreen
 import app.echo.android.feature.home.SearchScreen
-import app.echo.android.feature.library.LibraryScreen
-import app.echo.android.feature.player.MiniPlayer
-import app.echo.android.feature.player.NowPlayingScreen
 import app.echo.android.feature.player.PlaybackQueueSheet
 import app.echo.android.feature.settings.DiagnosticsScreen
 import app.echo.android.feature.settings.SettingsScreen
+import app.echo.android.ui.discord.EchoDiscordPresenceBridge
+import app.echo.android.ui.home.EchoHomePage
+import app.echo.android.ui.library.EchoLibraryPage
+import app.echo.android.ui.playback.EchoNowPlayingHost
+import app.echo.android.ui.shell.EchoBottomDockHost
+import app.echo.android.ui.shell.EchoPagerPage
+import app.echo.android.ui.shell.dockTab
+import app.echo.android.ui.shell.motionDuration
+import app.echo.android.ui.shell.pagerPage
+import app.echo.android.ui.shell.routeMotionSpec
 import app.echo.android.data.EchoBackgroundMode
 import app.echo.android.data.EchoFontFamilyMode
 import app.echo.android.data.toEchoTrack
@@ -94,7 +92,6 @@ import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.FolderSummary
 import app.echo.android.model.library.LibraryStats
-import app.echo.android.model.playback.PlaybackPositionState
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
 import app.echo.android.model.settings.EchoPerformanceMode
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -107,7 +104,6 @@ import androidx.compose.material.icons.rounded.Notifications
 import android.provider.Settings
 import android.net.Uri as AndroidUri
 import kotlin.math.absoluteValue
-import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.delay
@@ -115,10 +111,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 private val DockMotionEasing = CubicBezierEasing(0.16f, 1f, 0.30f, 1f)
-private val RouteMotionEasing = CubicBezierEasing(0.18f, 0.86f, 0.20f, 1f)
-private const val ROUTE_MOTION_BASE_DURATION_MS = 150
-private const val ROUTE_MOTION_DISTANCE_DURATION_MS = 18
-private const val ROUTE_MOTION_MAX_DURATION_MS = 220
 private val LyricsDocumentMimeTypes = arrayOf("text/*", "application/xml", "application/octet-stream", "*/*")
 private val ArtworkDocumentMimeTypes = arrayOf("image/*", "application/octet-stream", "*/*")
 private val FontDocumentMimeTypes = arrayOf("font/*", "application/x-font-ttf", "application/x-font-otf", "application/octet-stream", "*/*")
@@ -127,49 +119,6 @@ private enum class FontImportTarget {
     Ui,
     Lyrics,
 }
-private enum class EchoPagerPage {
-    Settings,
-    Now,
-    Library,
-    Connect,
-    Diagnostics,
-}
-
-private val EchoTab.pagerPage: EchoPagerPage
-    get() = when (this) {
-        EchoTab.Now -> EchoPagerPage.Now
-        EchoTab.Library -> EchoPagerPage.Library
-        EchoTab.Connect -> EchoPagerPage.Connect
-        EchoTab.Diagnostics -> EchoPagerPage.Diagnostics
-    }
-
-private val EchoPagerPage.dockTab: EchoTab?
-    get() = when (this) {
-        EchoPagerPage.Now -> EchoTab.Now
-        EchoPagerPage.Library -> EchoTab.Library
-        EchoPagerPage.Connect -> EchoTab.Connect
-        EchoPagerPage.Diagnostics -> EchoTab.Diagnostics
-        EchoPagerPage.Settings -> null
-    }
-
-private fun routeMotionSpec(
-    fromPage: Int,
-    toPage: Int,
-    effectivePerformanceMode: EchoEffectivePerformanceMode,
-): AnimationSpec<Float> {
-    val distance = (toPage - fromPage).absoluteValue.coerceAtLeast(1)
-    val duration = (ROUTE_MOTION_BASE_DURATION_MS + (distance - 1) * ROUTE_MOTION_DISTANCE_DURATION_MS)
-        .coerceAtMost(ROUTE_MOTION_MAX_DURATION_MS)
-        .let { motionDuration(it, effectivePerformanceMode) }
-    return tween(durationMillis = duration, easing = RouteMotionEasing)
-}
-
-private fun motionDuration(defaultMs: Int, effectivePerformanceMode: EchoEffectivePerformanceMode): Int =
-    when {
-        effectivePerformanceMode.isLightweight -> (defaultMs * 0.20f).roundToInt().coerceIn(45, 120)
-        effectivePerformanceMode.isHighPerformance -> defaultMs
-        else -> (defaultMs * 0.72f).roundToInt().coerceIn(110, defaultMs)
-    }
 
 @Suppress("SpellCheckingInspection")
 @Composable
@@ -381,32 +330,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     }
     val lastFmState by viewModel.lastFmState.collectAsStateWithLifecycle()
     val usbExclusiveTestResult by viewModel.usbExclusiveTestResult.collectAsStateWithLifecycle()
-    val discordPresenceSnapshot by viewModel.discordPresenceSnapshot.collectAsStateWithLifecycle(null)
     val lastFmApiKey = appSettings.lastFmApiKey?.takeIf { it.isNotBlank() }
         ?: LastFmApiConfig.API_KEY.takeIf { it.isNotBlank() }
     val lastFmSharedSecret = appSettings.lastFmSharedSecret?.takeIf { it.isNotBlank() }
         ?: LastFmApiConfig.SHARED_SECRET.takeIf { it.isNotBlank() }
-    val lyricsState by viewModel.lyricsState.collectAsStateWithLifecycle()
-    val libraryQuery by viewModel.libraryQuery.collectAsStateWithLifecycle()
-    val libraryTrackSortMode by viewModel.libraryTrackSortMode.collectAsStateWithLifecycle()
-    val scanState by viewModel.scanState.collectAsStateWithLifecycle()
     val remoteScanState by viewModel.remoteScanState.collectAsStateWithLifecycle()
-    val libraryStats by viewModel.libraryStats.collectAsStateWithLifecycle(LibraryStats())
-    val recentPlaybackAlbums by viewModel.recentPlaybackAlbums.collectAsStateWithLifecycle()
-    val recentPlaybackArtists by viewModel.recentPlaybackArtists.collectAsStateWithLifecycle()
-    val recentPlaybackHeatmap by viewModel.recentPlaybackHeatmap.collectAsStateWithLifecycle()
-    val recentlyAddedAlbums by viewModel.recentlyAddedAlbums.collectAsStateWithLifecycle(emptyList())
-    val localPlaylists by viewModel.localPlaylists.collectAsStateWithLifecycle(emptyList())
-    val tracks = viewModel.tracks.collectAsLazyPagingItems()
-    val albums = viewModel.albums.collectAsLazyPagingItems()
-    val remoteAlbums = viewModel.remoteAlbums.collectAsLazyPagingItems()
-    val artists = viewModel.artists.collectAsLazyPagingItems()
-    val folders = viewModel.folders.collectAsLazyPagingItems()
-    val homeAlbumSnapshot = albums.itemSnapshotList.items
-    var homeRecommendationSeed by remember { mutableIntStateOf(0) }
-    val homeRecommendedAlbums = remember(homeRecommendationSeed, homeAlbumSnapshot.map(AlbumSummary::albumKey)) {
-        homeAlbumSnapshot.shuffled().take(8)
-    }
     var selectedAlbum by remember { mutableStateOf<AlbumSummary?>(null) }
     var selectedArtist by remember { mutableStateOf<ArtistSummary?>(null) }
     var selectedFolder by remember { mutableStateOf<FolderSummary?>(null) }
@@ -414,22 +342,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     var detailReturnPage by remember { mutableStateOf<EchoPagerPage?>(null) }
     var searchVisible by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
-    val selectedAlbumKey = selectedAlbum?.albumKey
-    val selectedArtistKey = selectedArtist?.artistKey
-    val selectedFolderKey = selectedFolder?.folderKey
-    val selectedPlaylistId = selectedPlaylist?.id
-    val albumDetailTracks = selectedAlbumKey?.let { albumKey ->
-        remember(albumKey) { viewModel.albumTrackPaging(albumKey) }.collectAsLazyPagingItems()
-    }
-    val artistDetailTracks = selectedArtistKey?.let { artistKey ->
-        remember(artistKey) { viewModel.artistTrackPaging(artistKey) }.collectAsLazyPagingItems()
-    }
-    val folderDetailTracks = selectedFolderKey?.let { folderKey ->
-        remember(folderKey) { viewModel.folderTrackPaging(folderKey) }.collectAsLazyPagingItems()
-    }
-    val playlistDetailTracks = selectedPlaylistId?.let { playlistId ->
-        remember(playlistId) { viewModel.playlistTrackPaging(playlistId) }.collectAsLazyPagingItems()
-    }
     var selectedTab by remember { mutableIntStateOf(EchoTab.Now.ordinal) }
     var bottomDockExpanded by remember { mutableStateOf(true) }
     var nowPlayingExpanded by remember { mutableStateOf(false) }
@@ -477,7 +389,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     val lyricsFontFamily = echoFontFamilyForMode(appSettings.lyricsFontFamily, importedFontFamily)
     val activity = context as? ComponentActivity
 
-    SideEffect {
+    LaunchedEffect(darkTheme, effectivePerformanceMode.prefersHighRefreshRate) {
         (activity as? MainActivity)?.setHighRefreshRateRequested(effectivePerformanceMode.prefersHighRefreshRate)
         activity?.enableEdgeToEdge(
             statusBarStyle = if (darkTheme) {
@@ -522,11 +434,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         }
     }
     fun selectDockTab(tab: EchoTab) = navigateToPage(tab.pagerPage)
-    val dockTabProgress = (
-        tabPagerState.currentPage +
-            tabPagerState.currentPageOffsetFraction -
-            EchoPagerPage.Now.ordinal
-        ).coerceIn(0f, EchoTab.entries.lastIndex.toFloat())
     fun clearLibraryDetail() {
         selectedAlbum = null
         selectedArtist = null
@@ -593,17 +500,25 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     }
 
     LaunchedEffect(hasAudioPermission) {
-        if (hasAudioPermission && scanState.lastScanCount == null && !scanState.isScanning) {
-            viewModel.refreshLibrary()
+        if (hasAudioPermission) {
+            viewModel.refreshLibraryIfEmpty()
         }
     }
 
-    LaunchedEffect(discordPresenceSnapshot) {
-        remoteClient.publishMobileDiscordPresence(discordPresenceSnapshot)
-    }
+    EchoDiscordPresenceBridge(
+        enabled = appSettings.discordPresenceViaPcEnabled,
+        snapshots = viewModel.discordPresenceSnapshot,
+        publish = remoteClient::publishMobileDiscordPresence,
+    )
 
-    LaunchedEffect(remoteStatus.endpoint) {
+    LaunchedEffect(remoteStatus.endpoint, remoteStatus.connectionState) {
         val endpoint = remoteStatus.endpoint
+        if (remoteStatus.connectionState == EchoRemoteConnectionState.Connected && endpoint != null) {
+            viewModel.saveEchoLinkPcEndpoint(
+                address = "${endpoint.scheme}://${endpoint.host}:${endpoint.port}",
+                token = endpoint.token,
+            )
+        }
         EchoArtworkRequestHeadersRegistry.replaceEchoLinkAuthorization(
             baseUrl = endpoint?.let { "${it.scheme}://${it.host}:${it.port}" },
             token = endpoint?.token,
@@ -643,49 +558,18 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                 ) { page ->
                     Box(modifier = Modifier.fillMaxSize()) {
                         when (EchoPagerPage.entries[page]) {
-                            EchoPagerPage.Library -> LibraryScreen(
-                                hasPermission = hasAudioPermission,
-                                scanState = scanState,
-                                libraryQuery = libraryQuery,
-                                trackSortMode = libraryTrackSortMode,
-                                tracks = tracks,
-                                albums = albums,
-                                remoteAlbums = remoteAlbums,
-                                linkedLibraryActive = remoteStatus.connectionState == EchoRemoteConnectionState.Connected &&
-                                    appSettings.echoLinkPreferLinkedLibrary,
-                                linkedLibraryAvailable = remoteStatus.connectionState == EchoRemoteConnectionState.Connected,
-                                linkedLibraryState = remoteLibraryState,
-                                selectedLibrarySourceId = appSettings.librarySelectedSource,
-                                artists = artists,
-                                folders = folders,
-                                playlists = localPlaylists,
-                                showTrackAudioInfoTags = appSettings.trackAudioInfoTagsVisible,
+                            EchoPagerPage.Library -> EchoLibraryPage(
+                                viewModel = viewModel,
+                                remoteClient = remoteClient,
+                                remoteStatus = remoteStatus,
+                                appSettings = appSettings,
+                                hasAudioPermission = hasAudioPermission,
                                 selectedAlbum = selectedAlbum,
                                 selectedArtist = selectedArtist,
                                 selectedFolder = selectedFolder,
                                 selectedPlaylist = selectedPlaylist,
-                                albumDetailTracks = albumDetailTracks,
-                                artistDetailTracks = artistDetailTracks,
-                                folderDetailTracks = folderDetailTracks,
-                                playlistDetailTracks = playlistDetailTracks,
                                 onRequestPermission = { permissionLauncher.launch(permission) },
-                                onLibraryQueryChange = viewModel::updateLibraryQuery,
-                                onLibrarySourceChange = viewModel::setLibrarySelectedSource,
-                                onTrackSortModeChange = viewModel::updateLibraryTrackSortMode,
                                 onScanFolder = { folderScanLauncher.launch(null) },
-                                onScanAll = viewModel::refreshLibrary,
-                                onCancelScan = viewModel::cancelScan,
-                                onRefreshLinkedLibrary = { query -> remoteClient.refreshLibrary(query) },
-                                onOpenLinkedPlaylist = { playlist -> remoteClient.refreshPlaylistTracks(playlist) },
-                                onPlayLinkedTrack = { track ->
-                                    remoteClient.playTrackOnPhone(
-                                        track = track,
-                                        onTrackReady = viewModel::play,
-                                        onLyricsReady = viewModel::setEchoLinkLyrics,
-                                    )
-                                },
-                                onPlayTrack = { track -> viewModel.playTrackFromLibrary(track.id) },
-                                onUpdateTrackMetadata = viewModel::updateTrackMetadata,
                                 onImportLyricsForTrack = { track ->
                                     lyricsImportTrackId = track.id
                                     lyricsImportLauncher.launch(LyricsDocumentMimeTypes)
@@ -694,12 +578,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                     artworkImportTrackId = track.id
                                     artworkImportLauncher.launch(ArtworkDocumentMimeTypes)
                                 },
-                                onPlayAlbum = { album -> viewModel.playAlbum(album.albumKey) },
-                                onShuffleAlbum = { album -> viewModel.shuffleAlbum(album.albumKey) },
-                                onPlayArtist = { artist -> viewModel.playArtist(artist.artistKey) },
-                                onShuffleArtist = { artist -> viewModel.shuffleArtist(artist.artistKey) },
-                                onPlayFolder = { folder -> viewModel.playFolder(folder.folderKey) },
-                                onPlayPlaylist = { playlist -> viewModel.playPlaylist(playlist.id) },
                                 onOpenAlbum = { album ->
                                     detailReturnPage = EchoPagerPage.Library
                                     selectedArtist = null
@@ -731,26 +609,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onCloseDetail = { closeLibraryDetail() },
                             )
 
-                            EchoPagerPage.Now -> HomeScreen(
-                                status = playbackStatus,
-                                trackCount = libraryStats.trackCount,
-                                albumCount = libraryStats.albumCount,
-                                artistCount = libraryStats.artistCount,
-                                recentPlayedAlbums = recentPlaybackAlbums,
-                                recentlyAddedAlbums = recentlyAddedAlbums,
-                                recommendedAlbums = homeRecommendedAlbums,
-                                topArtists = recentPlaybackArtists,
-                                favoriteAlbums = recentPlaybackAlbums.take(4),
-                                heatmapDays = recentPlaybackHeatmap,
-                                onPlayPause = viewModel::playPause,
-                                onNext = viewModel::skipNext,
-                                onPrevious = viewModel::skipPrevious,
-                                onCycleRepeatMode = viewModel::cycleRepeatMode,
-                                onToggleShuffle = viewModel::toggleShuffle,
-                                onRefreshRecommendations = {
-                                    homeRecommendationSeed += 1
-                                    viewModel.refreshLibrary()
-                                },
+                            EchoPagerPage.Now -> EchoHomePage(
+                                viewModel = viewModel,
+                                playbackStatus = playbackStatus,
                                 onOpenAlbum = { album ->
                                     detailReturnPage = EchoPagerPage.Now
                                     selectedArtist = null
@@ -772,7 +633,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onOpenSearch = { searchVisible = true },
                             )
 
-                            EchoPagerPage.Settings -> SettingsScreen(
+                            EchoPagerPage.Settings -> {
+                            val libraryStats by viewModel.libraryStats.collectAsStateWithLifecycle(LibraryStats())
+                            SettingsScreen(
                                 status = playbackStatus,
                                 trackCount = libraryStats.trackCount,
                                 albumCount = libraryStats.albumCount,
@@ -883,6 +746,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onOpenLibrary = { selectDockTab(EchoTab.Library) },
                                 onOpenConnect = { selectDockTab(EchoTab.Connect) },
                             )
+                            }
 
                             EchoPagerPage.Connect -> ConnectScreen(
                                 remoteState = remoteStatus.connectionState,
@@ -955,77 +819,24 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                         }
                     }
                 }
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .padding(top = 6.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    AnimatedContent(
-                        targetState = bottomDockExpanded,
-                        transitionSpec = {
-                            if (effectivePerformanceMode.isLightweight) {
-                                fadeIn(tween(durationMillis = motionDuration(90, effectivePerformanceMode))) togetherWith
-                                    fadeOut(tween(durationMillis = motionDuration(90, effectivePerformanceMode)))
-                            } else {
-                                val enter = fadeIn(
-                                    tween(
-                                        durationMillis = motionDuration(220, effectivePerformanceMode),
-                                        delayMillis = 70,
-                                        easing = DockMotionEasing,
-                                    ),
-                                ) +
-                                    slideInVertically(tween(durationMillis = motionDuration(460, effectivePerformanceMode), easing = DockMotionEasing)) { height -> height / 3 } +
-                                    scaleIn(
-                                        initialScale = 0.96f,
-                                        animationSpec = tween(durationMillis = motionDuration(460, effectivePerformanceMode), easing = DockMotionEasing),
-                                    )
-                                val exit = fadeOut(tween(durationMillis = motionDuration(150, effectivePerformanceMode), easing = DockMotionEasing)) +
-                                    slideOutVertically(tween(durationMillis = motionDuration(260, effectivePerformanceMode), easing = DockMotionEasing)) { height -> height / 5 } +
-                                    scaleOut(
-                                        targetScale = 0.985f,
-                                        animationSpec = tween(durationMillis = motionDuration(260, effectivePerformanceMode), easing = DockMotionEasing),
-                                    )
-                                enter togetherWith exit
-                            }
-                        },
-                        label = "bottom-controls-transition",
-                    ) { expanded ->
-                        val playbackPosition by viewModel.playbackPosition.collectAsStateWithLifecycle()
-                        if (expanded) {
-                            ExpandedBottomControls(
-                                status = playbackStatus,
-                                positionState = playbackPosition,
-                                darkTheme = darkTheme,
-                                selectedTab = selectedTab,
-                                selectedTabProgress = dockTabProgress,
-                                onPlayPause = viewModel::playPause,
-                                onHideDock = { bottomDockExpanded = false },
-                                onSelectTab = { selectDockTab(EchoTab.entries[it]) },
-                                onExpand = { nowPlayingExpanded = true },
-                                onNext = viewModel::skipNext,
-                                onPrevious = viewModel::skipPrevious,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        } else {
-                            CompactBottomControls(
-                                status = playbackStatus,
-                                positionState = playbackPosition,
-                                darkTheme = darkTheme,
-                                onPlayPause = viewModel::playPause,
-                                onShowDock = { bottomDockExpanded = true },
-                                onOpenQueue = { queueSheetVisible = true },
-                                onExpand = { nowPlayingExpanded = true },
-                                onNext = viewModel::skipNext,
-                                onPrevious = viewModel::skipPrevious,
-                                modifier = Modifier
-                                    .widthIn(max = EchoContentMaxWidth)
-                                    .fillMaxWidth(),
-                            )
-                        }
-                    }
-                }
+                EchoBottomDockHost(
+                    viewModel = viewModel,
+                    pagerState = tabPagerState,
+                    playbackStatus = playbackStatus,
+                    darkTheme = darkTheme,
+                    selectedTab = selectedTab,
+                    bottomDockExpanded = bottomDockExpanded,
+                    effectivePerformanceMode = effectivePerformanceMode,
+                    onPlayPause = viewModel::playPause,
+                    onHideDock = { bottomDockExpanded = false },
+                    onShowDock = { bottomDockExpanded = true },
+                    onSelectTab = { selectDockTab(EchoTab.entries[it]) },
+                    onExpand = { nowPlayingExpanded = true },
+                    onOpenQueue = { queueSheetVisible = true },
+                    onNext = viewModel::skipNext,
+                    onPrevious = viewModel::skipPrevious,
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                )
             }
 
             AnimatedVisibility(
@@ -1056,45 +867,14 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                         )
                 },
             ) {
-                val playbackPosition by viewModel.playbackPosition.collectAsStateWithLifecycle()
-                NowPlayingScreen(
-                    status = playbackStatus,
-                    positionState = playbackPosition,
-                    lyricsState = lyricsState,
-                    showLyricsControlDeck = appSettings.showLyricsControlDeck,
+                EchoNowPlayingHost(
+                    viewModel = viewModel,
+                    playbackStatus = playbackStatus,
+                    appSettings = appSettings,
                     lyricsFontFamily = lyricsFontFamily,
-                    lyricsFontMode = appSettings.lyricsFontFamily,
-                    lyricsFontScale = appSettings.lyricsFontScale,
-                    lyricsColorMode = appSettings.lyricsColorMode,
-                    lyricsAlignment = appSettings.lyricsAlignment,
-                    lyricsLineSpacing = appSettings.lyricsLineSpacing,
-                    lyricsBackgroundDim = appSettings.lyricsBackgroundDim,
-                    lyricsWordHighlightEnabled = appSettings.lyricsWordHighlightEnabled,
-                    lyricsWordHighlightIntensity = appSettings.lyricsWordHighlightIntensity,
-                    lyricsImmersiveModeEnabled = appSettings.lyricsImmersiveModeEnabled,
-                    lyricsMotionMode = appSettings.lyricsMotionMode,
-                    lyricsShowTranslation = appSettings.lyricsShowTranslation,
-                    lyricsShowRomanization = appSettings.lyricsShowRomanization,
-                    lyricsFocusGlowEnabled = appSettings.lyricsFocusGlowEnabled,
-                    importedFontUri = appSettings.importedFontUri,
-                    onlineLyricsEnabled = appSettings.onlineLyricsEnabled,
                     onDismiss = { nowPlayingExpanded = false },
-                    onPlayPause = viewModel::playPause,
-                    onNext = viewModel::skipNext,
-                    onPrevious = viewModel::skipPrevious,
-                    onSeek = viewModel::seekTo,
                     onOpenQueue = { queueSheetVisible = true },
-                    onCycleRepeatMode = viewModel::cycleRepeatMode,
-                    onToggleShuffle = viewModel::toggleShuffle,
-                    onSetPlaybackSpeed = viewModel::setPlaybackSpeed,
-                    onSetSleepTimer = viewModel::setSleepTimer,
-                    onCancelSleepTimer = viewModel::cancelSleepTimer,
-                    onSetReplayGain = viewModel::setReplayGain,
-                    onAdjustReplayGainPreamp = viewModel::adjustReplayGainPreamp,
-                    onSetSkipSilenceEnabled = viewModel::setSkipSilenceEnabled,
                     onImportLyrics = { lyricsImportLauncher.launch(LyricsDocumentMimeTypes) },
-                    onAdjustLyricsOffset = viewModel::adjustLyricsOffset,
-                    onResetLyricsOffset = viewModel::resetLyricsOffset,
                     onOpenArtist = {
                         viewModel.openCurrentPlaybackArtist { artist ->
                             detailReturnPage = EchoTab.entries[selectedTab].pagerPage
@@ -1121,22 +901,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                         fontImportTarget = FontImportTarget.Lyrics
                         fontImportLauncher.launch(FontDocumentMimeTypes)
                     },
-                    onLyricsFontFamilyChange = viewModel::setLyricsFontFamily,
-                    onLyricsFontScaleChange = viewModel::setLyricsFontScale,
-                    onLyricsColorModeChange = viewModel::setLyricsColorMode,
-                    onLyricsAlignmentChange = viewModel::setLyricsAlignment,
-                    onLyricsLineSpacingChange = viewModel::setLyricsLineSpacing,
-                    onLyricsBackgroundDimChange = viewModel::setLyricsBackgroundDim,
-                    onLyricsWordHighlightEnabledChange = viewModel::setLyricsWordHighlightEnabled,
-                    onLyricsWordHighlightIntensityChange = viewModel::setLyricsWordHighlightIntensity,
-                    onLyricsImmersiveModeChange = viewModel::setLyricsImmersiveModeEnabled,
-                    onLyricsMotionModeChange = viewModel::setLyricsMotionMode,
-                    onLyricsShowTranslationChange = viewModel::setLyricsShowTranslation,
-                    onLyricsShowRomanizationChange = viewModel::setLyricsShowRomanization,
-                    onLyricsFocusGlowChange = viewModel::setLyricsFocusGlowEnabled,
-                    onShowLyricsControlDeckChange = viewModel::setShowLyricsControlDeck,
-                    onOnlineLyricsEnabledChange = viewModel::setOnlineLyricsEnabled,
-                    modifier = Modifier.fillMaxSize(),
                 )
             }
             PlaybackQueueSheet(
@@ -1180,6 +944,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 localSearchResults.albums.find { it.albumKey == result.id }?.let { album ->
                                     searchVisible = false
                                     searchQuery = ""
+                                    detailReturnPage = EchoPagerPage.Now
                                     selectedAlbum = album
                                     selectDockTab(EchoTab.Library)
                                 }
@@ -1188,6 +953,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 localSearchResults.artists.find { it.artistKey == result.id }?.let { artist ->
                                     searchVisible = false
                                     searchQuery = ""
+                                    detailReturnPage = EchoPagerPage.Now
                                     selectedArtist = artist
                                     selectDockTab(EchoTab.Library)
                                 }
@@ -1350,114 +1116,4 @@ private fun rememberSystemPowerSaveMode(): Boolean {
         }
     }
     return powerSaveMode
-}
-
-@Composable
-private fun ExpandedBottomControls(
-    status: EchoPlaybackStatus,
-    positionState: PlaybackPositionState,
-    darkTheme: Boolean,
-    selectedTab: Int,
-    selectedTabProgress: Float,
-    onPlayPause: () -> Unit,
-    onHideDock: () -> Unit,
-    onSelectTab: (Int) -> Unit,
-    onExpand: () -> Unit,
-    onNext: () -> Unit,
-    onPrevious: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier.background(
-            if (darkTheme) {
-                Brush.verticalGradient(
-                    listOf(
-                        Color.Transparent,
-                        EchoGlassNight.copy(alpha = 0.28f),
-                        EchoGlassInk.copy(alpha = 0.78f),
-                        EchoGlassPanel.copy(alpha = 0.94f),
-                    ),
-                )
-            } else {
-                Brush.verticalGradient(
-                    listOf(
-                        Color.Transparent,
-                        Color(0xFFEAF2FF).copy(alpha = 0.78f),
-                        Color(0xFFEAF2FF).copy(alpha = 0.98f),
-                    ),
-                )
-            },
-        ),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(0.dp),
-    ) {
-        MiniPlayer(
-            status = status,
-            positionState = positionState,
-            onPlayPause = onPlayPause,
-            onHideDock = onHideDock,
-            onExpand = onExpand,
-            onNext = onNext,
-            onPrevious = onPrevious,
-            modifier = Modifier
-                .padding(horizontal = 4.dp)
-                .fillMaxWidth(),
-        )
-        BottomDock(
-            selectedTab = selectedTab,
-            selectedTabProgress = selectedTabProgress,
-            onLightSurface = !darkTheme,
-            onSelectTab = onSelectTab,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-}
-@Composable
-private fun CompactBottomControls(
-    status: EchoPlaybackStatus,
-    positionState: PlaybackPositionState,
-    darkTheme: Boolean,
-    onPlayPause: () -> Unit,
-    onShowDock: () -> Unit,
-    onOpenQueue: () -> Unit,
-    onExpand: () -> Unit,
-    onNext: () -> Unit,
-    onPrevious: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .background(
-                if (darkTheme) {
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.Transparent,
-                            EchoGlassNight.copy(alpha = 0.26f),
-                            EchoGlassInk.copy(alpha = 0.76f),
-                            EchoGlassPanel.copy(alpha = 0.92f),
-                        ),
-                    )
-                } else {
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.Transparent,
-                            Color(0xFFEAF2FF).copy(alpha = 0.82f),
-                        ),
-                    )
-                },
-            )
-            .padding(horizontal = 10.dp, vertical = 4.dp),
-    ) {
-        MiniPlayer(
-            status = status,
-            positionState = positionState,
-            onPlayPause = onPlayPause,
-            onShowDock = onShowDock,
-            onOpenQueue = onOpenQueue,
-            onExpand = onExpand,
-            onNext = onNext,
-            onPrevious = onPrevious,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
 }

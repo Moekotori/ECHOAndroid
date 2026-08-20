@@ -48,15 +48,20 @@ internal class WebDavClient(
         maxFolders: Int = MaxFoldersPerSync,
         maxTracks: Int = MaxTracksPerSync,
         onFile: suspend (WebDavAudioFile) -> Unit,
-    ): Int {
+    ): RemoteSyncVisit {
         val root = URI(endpoint.normalizedBaseUrl)
         val queue = ArrayDeque<URI>()
         val visited = HashSet<String>()
         queue += root
         var folderCount = 0
         var trackCount = 0
+        var hitVisitCap = false
 
-        while (queue.isNotEmpty() && folderCount < maxFolders && trackCount < maxTracks) {
+        while (queue.isNotEmpty()) {
+            if (folderCount >= maxFolders || trackCount >= maxTracks) {
+                hitVisitCap = true
+                break
+            }
             val folder = queue.removeFirst()
             val folderKey = folder.normalize().toString()
             if (!visited.add(folderKey)) continue
@@ -65,22 +70,28 @@ internal class WebDavClient(
             for (entry in propfind(folder)) {
                 if (entry.href.normalize().toString() == folderKey) continue
                 if (entry.isDirectory) {
+                    if (folderCount + queue.size >= maxFolders) {
+                        hitVisitCap = true
+                    }
                     queue += entry.href
                 } else if (entry.href.isSupportedAudio()) {
                     onFile(entry.toAudioFile(root))
                     trackCount += 1
-                    if (trackCount >= maxTracks) break
+                    if (trackCount >= maxTracks) {
+                        hitVisitCap = true
+                        break
+                    }
                 }
             }
         }
-        return trackCount
+        return RemoteSyncVisit(visitedCount = trackCount, hitVisitCap = hitVisitCap)
     }
 
     private fun propfind(uri: URI): List<WebDavEntry> {
         val request = Request.Builder()
             .url(uri.toString())
             .header("Depth", "1")
-            .header("Authorization", Credentials.basic(endpoint.username.trim(), endpoint.password))
+            .header("Authorization", webDavBasicAuthorization(endpoint.username.trim(), endpoint.password))
             .method("PROPFIND", PropfindBody)
             .build()
         client.newCall(request).execute().use { response ->
@@ -234,3 +245,9 @@ private fun String.parseHttpDateSeconds(): Long? =
 
 private fun webDavStableHash(value: String): String =
     value.hashCode().let { if (it == Int.MIN_VALUE) 0 else kotlin.math.abs(it) }.toString(36)
+
+internal fun webDavBasicAuthorization(username: String, password: String): String {
+    val raw = "$username:$password"
+    val encoded = java.util.Base64.getEncoder().encodeToString(raw.toByteArray(java.nio.charset.StandardCharsets.UTF_8))
+    return "Basic $encoded"
+}

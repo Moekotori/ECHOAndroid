@@ -8,4 +8,9 @@ data class EchoRemoteEndpoint(
     val token: String,
     val scheme: String = "http",
     val protocolVersion: EchoProtocolVersion = EchoProtocolVersion.Current,
-)
+    val pairingId: String? = null,
+    val pairingSecret: String? = null,
+) {
+    val needsV2PairExchange: Boolean
+        get() = !pairingId.isNullOrBlank() && !pairingSecret.isNullOrBlank()
+}

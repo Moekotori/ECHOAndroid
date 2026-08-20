@@ -20,6 +20,8 @@ data class TrackFingerprint(
     val contentUri: String,
     val sampleRateHz: Int?,
     val fingerprint: String?,
+    val sizeBytes: Long = 0L,
+    val dateModifiedSeconds: Long = 0L,
 )
 
 @Dao
@@ -99,6 +101,7 @@ interface LibraryTrackDao {
     @Query(
         """
         SELECT * FROM library_tracks
+        WHERE (source = 'mediastore' OR source = 'saf')
         ORDER BY title COLLATE NOCASE ASC
         LIMIT :limit
         """,
@@ -151,6 +154,7 @@ interface LibraryTrackDao {
     @Query(
         """
         SELECT * FROM library_tracks
+        WHERE (source = 'mediastore' OR source = 'saf')
         ORDER BY dateModifiedSeconds DESC, title COLLATE NOCASE ASC
         LIMIT :limit
         """,
@@ -169,6 +173,7 @@ interface LibraryTrackDao {
                COALESCE(SUM(durationMs), 0) AS durationMs,
                COALESCE(SUM(sizeBytes), 0) AS totalSizeBytes
         FROM library_tracks
+        WHERE (source = 'mediastore' OR source = 'saf')
         """,
     )
     fun observeLibraryStats(): Flow<LibraryStats>
@@ -193,7 +198,8 @@ interface LibraryTrackDao {
                MIN(CASE WHEN year IS NOT NULL AND year > 0 THEN year ELSE NULL END) AS year,
                MAX(dateModifiedSeconds) AS addedAtSeconds
         FROM library_tracks
-        WHERE (:query IS NULL OR
+        WHERE (source = 'mediastore' OR source = 'saf')
+          AND (:query IS NULL OR
                normalizedTitle LIKE '%' || lower(trim(:query)) || '%' OR
                normalizedArtist LIKE '%' || lower(trim(:query)) || '%' OR
                normalizedAlbum LIKE '%' || lower(trim(:query)) || '%' OR
@@ -233,6 +239,7 @@ interface LibraryTrackDao {
                MAX(dateModifiedSeconds) AS addedAtSeconds
         FROM library_tracks
         WHERE source != 'mediastore'
+          AND source != 'saf'
           AND (:query IS NULL OR
                normalizedTitle LIKE '%' || lower(trim(:query)) || '%' OR
                normalizedArtist LIKE '%' || lower(trim(:query)) || '%' OR
@@ -276,6 +283,7 @@ interface LibraryTrackDao {
                MIN(CASE WHEN year IS NOT NULL AND year > 0 THEN year ELSE NULL END) AS year,
                MAX(dateModifiedSeconds) AS addedAtSeconds
         FROM library_tracks
+        WHERE (source = 'mediastore' OR source = 'saf')
         GROUP BY albumKey
         ORDER BY addedAtSeconds DESC, title COLLATE NOCASE ASC
         LIMIT :limit
@@ -296,7 +304,8 @@ interface LibraryTrackDao {
                COUNT(*) AS trackCount,
                COALESCE(SUM(durationMs), 0) AS durationMs
         FROM library_tracks
-        WHERE (:query IS NULL OR
+        WHERE (source = 'mediastore' OR source = 'saf')
+          AND (:query IS NULL OR
                normalizedArtist LIKE '%' || lower(trim(:query)) || '%' OR
                normalizedAlbumArtist LIKE '%' || lower(trim(:query)) || '%' OR
                normalizedTitle LIKE '%' || lower(trim(:query)) || '%' OR
@@ -330,7 +339,8 @@ interface LibraryTrackDao {
                COALESCE(SUM(sizeBytes), 0) AS totalSizeBytes,
                MAX(dateModifiedSeconds) AS latestModifiedSeconds
         FROM library_tracks
-        WHERE (:query IS NULL OR
+        WHERE (source = 'mediastore' OR source = 'saf')
+          AND (:query IS NULL OR
                relativePath LIKE '%' || trim(:query) || '%' OR
                normalizedTitle LIKE '%' || lower(trim(:query)) || '%' OR
                normalizedArtist LIKE '%' || lower(trim(:query)) || '%' OR
@@ -367,7 +377,8 @@ interface LibraryTrackDao {
                MIN(CASE WHEN year IS NOT NULL AND year > 0 THEN year ELSE NULL END) AS year,
                MAX(dateModifiedSeconds) AS addedAtSeconds
         FROM library_tracks
-        WHERE (
+        WHERE (source = 'mediastore' OR source = 'saf')
+          AND (
             COALESCE(NULLIF(normalizedAlbum, ''), '未知专辑') ||
             '::' ||
             COALESCE(NULLIF(normalizedAlbumArtist, ''), NULLIF(normalizedArtist, ''), '未知艺术家')
@@ -427,7 +438,8 @@ interface LibraryTrackDao {
                COUNT(*) AS trackCount,
                COALESCE(SUM(durationMs), 0) AS durationMs
         FROM library_tracks
-        WHERE COALESCE(NULLIF(normalizedArtist, ''), '未知艺术家') = :artistKey
+        WHERE (source = 'mediastore' OR source = 'saf')
+          AND COALESCE(NULLIF(normalizedArtist, ''), '未知艺术家') = :artistKey
         GROUP BY artistKey
         LIMIT 1
         """,
@@ -437,7 +449,8 @@ interface LibraryTrackDao {
     @Query(
         """
         SELECT * FROM library_tracks
-        WHERE (
+        WHERE (source = 'mediastore' OR source = 'saf')
+          AND (
             COALESCE(NULLIF(normalizedAlbum, ''), '未知专辑') ||
             '::' ||
             COALESCE(NULLIF(normalizedAlbumArtist, ''), NULLIF(normalizedArtist, ''), '未知艺术家')
@@ -470,7 +483,8 @@ interface LibraryTrackDao {
     @Query(
         """
         SELECT * FROM library_tracks
-        WHERE COALESCE(NULLIF(normalizedArtist, ''), '未知艺术家') = :artistKey
+        WHERE (source = 'mediastore' OR source = 'saf')
+          AND COALESCE(NULLIF(normalizedArtist, ''), '未知艺术家') = :artistKey
         ORDER BY
             album COLLATE NOCASE ASC,
             CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
@@ -483,8 +497,11 @@ interface LibraryTrackDao {
     @Query(
         """
         SELECT * FROM library_tracks
-        WHERE (:folderKey = '' AND (relativePath IS NULL OR trim(relativePath) = ''))
-           OR relativePath = :folderKey
+        WHERE (source = 'mediastore' OR source = 'saf')
+          AND (
+            (:folderKey = '' AND (relativePath IS NULL OR trim(relativePath) = ''))
+            OR relativePath = :folderKey
+          )
         ORDER BY
             album COLLATE NOCASE ASC,
             CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
@@ -497,7 +514,8 @@ interface LibraryTrackDao {
     @Query(
         """
         SELECT * FROM library_tracks
-        WHERE (
+        WHERE (source = 'mediastore' OR source = 'saf')
+          AND (
             COALESCE(NULLIF(normalizedAlbum, ''), '未知专辑') ||
             '::' ||
             COALESCE(NULLIF(normalizedAlbumArtist, ''), NULLIF(normalizedArtist, ''), '未知艺术家')
@@ -533,7 +551,8 @@ interface LibraryTrackDao {
     @Query(
         """
         SELECT * FROM library_tracks
-        WHERE COALESCE(NULLIF(normalizedArtist, ''), '未知艺术家') = :artistKey
+        WHERE (source = 'mediastore' OR source = 'saf')
+          AND COALESCE(NULLIF(normalizedArtist, ''), '未知艺术家') = :artistKey
         ORDER BY
             album COLLATE NOCASE ASC,
             CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
@@ -546,8 +565,11 @@ interface LibraryTrackDao {
     @Query(
         """
         SELECT * FROM library_tracks
-        WHERE (:folderKey = '' AND (relativePath IS NULL OR trim(relativePath) = ''))
-           OR relativePath = :folderKey
+        WHERE (source = 'mediastore' OR source = 'saf')
+          AND (
+            (:folderKey = '' AND (relativePath IS NULL OR trim(relativePath) = ''))
+            OR relativePath = :folderKey
+          )
         ORDER BY
             album COLLATE NOCASE ASC,
             CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
@@ -569,7 +591,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT id, contentUri, sampleRateHz, fingerprint FROM library_tracks
+        SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds FROM library_tracks
         WHERE source = :source
         """,
     )
@@ -577,7 +599,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT id, contentUri, sampleRateHz, fingerprint FROM library_tracks
+        SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds FROM library_tracks
         WHERE source = :source
           AND relativePath LIKE :relativePathLike ESCAPE '\'
         """,
@@ -656,13 +678,16 @@ interface LibraryTrackDao {
     @Query(
         """
         SELECT * FROM library_tracks
-        WHERE normalizedTitle LIKE '%' || lower(trim(:query)) || '%'
-           OR normalizedArtist LIKE '%' || lower(trim(:query)) || '%'
-           OR normalizedAlbum LIKE '%' || lower(trim(:query)) || '%'
-           OR normalizedAlbumArtist LIKE '%' || lower(trim(:query)) || '%'
-           OR pinyinTitle LIKE '%' || lower(trim(:query)) || '%'
-           OR pinyinArtist LIKE '%' || lower(trim(:query)) || '%'
-           OR pinyinAlbum LIKE '%' || lower(trim(:query)) || '%'
+        WHERE (source = 'mediastore' OR source = 'saf')
+          AND (
+            normalizedTitle LIKE '%' || lower(trim(:query)) || '%'
+            OR normalizedArtist LIKE '%' || lower(trim(:query)) || '%'
+            OR normalizedAlbum LIKE '%' || lower(trim(:query)) || '%'
+            OR normalizedAlbumArtist LIKE '%' || lower(trim(:query)) || '%'
+            OR pinyinTitle LIKE '%' || lower(trim(:query)) || '%'
+            OR pinyinArtist LIKE '%' || lower(trim(:query)) || '%'
+            OR pinyinAlbum LIKE '%' || lower(trim(:query)) || '%'
+          )
         ORDER BY
             CASE
                 WHEN normalizedTitle LIKE lower(trim(:query)) || '%' THEN 0
@@ -678,6 +703,26 @@ interface LibraryTrackDao {
         """,
     )
     suspend fun searchTracks(query: String, limit: Int): List<LibraryTrackEntity>
+
+    @Query(
+        """
+        SELECT library_tracks.* FROM library_tracks
+        JOIN library_tracks_fts ON library_tracks.id = library_tracks_fts.trackId
+        WHERE library_tracks_fts MATCH :matchQuery
+        ORDER BY
+            CASE
+                WHEN library_tracks.normalizedTitle LIKE :rankQuery THEN 0
+                WHEN library_tracks.pinyinTitle LIKE :rankQuery THEN 1
+                WHEN library_tracks.normalizedArtist LIKE :rankQuery THEN 2
+                WHEN library_tracks.pinyinArtist LIKE :rankQuery THEN 3
+                WHEN library_tracks.normalizedAlbum LIKE :rankQuery THEN 4
+                ELSE 5
+            END,
+            library_tracks.title COLLATE NOCASE ASC
+        LIMIT :limit
+        """,
+    )
+    suspend fun searchTracksByFts(matchQuery: String, rankQuery: String, limit: Int): List<LibraryTrackEntity>
 
     @Query(
         """
@@ -699,13 +744,16 @@ interface LibraryTrackDao {
                MIN(CASE WHEN year IS NOT NULL AND year > 0 THEN year ELSE NULL END) AS year,
                MAX(dateModifiedSeconds) AS addedAtSeconds
         FROM library_tracks
-        WHERE normalizedTitle LIKE '%' || lower(trim(:query)) || '%'
-           OR normalizedArtist LIKE '%' || lower(trim(:query)) || '%'
-           OR normalizedAlbum LIKE '%' || lower(trim(:query)) || '%'
-           OR normalizedAlbumArtist LIKE '%' || lower(trim(:query)) || '%'
-           OR pinyinTitle LIKE '%' || lower(trim(:query)) || '%'
-           OR pinyinArtist LIKE '%' || lower(trim(:query)) || '%'
-           OR pinyinAlbum LIKE '%' || lower(trim(:query)) || '%'
+        WHERE (source = 'mediastore' OR source = 'saf')
+          AND (
+            normalizedTitle LIKE '%' || lower(trim(:query)) || '%'
+            OR normalizedArtist LIKE '%' || lower(trim(:query)) || '%'
+            OR normalizedAlbum LIKE '%' || lower(trim(:query)) || '%'
+            OR normalizedAlbumArtist LIKE '%' || lower(trim(:query)) || '%'
+            OR pinyinTitle LIKE '%' || lower(trim(:query)) || '%'
+            OR pinyinArtist LIKE '%' || lower(trim(:query)) || '%'
+            OR pinyinAlbum LIKE '%' || lower(trim(:query)) || '%'
+          )
         GROUP BY albumKey
         ORDER BY
             CASE
@@ -734,13 +782,16 @@ interface LibraryTrackDao {
                COUNT(*) AS trackCount,
                COALESCE(SUM(durationMs), 0) AS durationMs
         FROM library_tracks
-        WHERE normalizedArtist LIKE '%' || lower(trim(:query)) || '%'
-           OR normalizedAlbumArtist LIKE '%' || lower(trim(:query)) || '%'
-           OR normalizedTitle LIKE '%' || lower(trim(:query)) || '%'
-           OR normalizedAlbum LIKE '%' || lower(trim(:query)) || '%'
-           OR pinyinArtist LIKE '%' || lower(trim(:query)) || '%'
-           OR pinyinTitle LIKE '%' || lower(trim(:query)) || '%'
-           OR pinyinAlbum LIKE '%' || lower(trim(:query)) || '%'
+        WHERE (source = 'mediastore' OR source = 'saf')
+          AND (
+            normalizedArtist LIKE '%' || lower(trim(:query)) || '%'
+            OR normalizedAlbumArtist LIKE '%' || lower(trim(:query)) || '%'
+            OR normalizedTitle LIKE '%' || lower(trim(:query)) || '%'
+            OR normalizedAlbum LIKE '%' || lower(trim(:query)) || '%'
+            OR pinyinArtist LIKE '%' || lower(trim(:query)) || '%'
+            OR pinyinTitle LIKE '%' || lower(trim(:query)) || '%'
+            OR pinyinAlbum LIKE '%' || lower(trim(:query)) || '%'
+          )
         GROUP BY artistKey
         ORDER BY
             CASE
@@ -788,6 +839,59 @@ interface LibraryTrackDao {
 
     @Query("DELETE FROM library_tracks WHERE source = :source AND lastSeenScanRunId != :scanRunId")
     suspend fun deleteMissingFromSource(source: String, scanRunId: Long): Int
+
+    @Query("DELETE FROM library_tracks WHERE id IN (:trackIds)")
+    suspend fun deleteTracksByIds(trackIds: List<String>): Int
+
+    @Query(
+        """
+        SELECT id FROM library_tracks
+        WHERE source = :source
+          AND lastSeenScanRunId != :scanRunId
+          AND id LIKE 'mediastore:%'
+        """,
+    )
+    suspend fun getMissingNativeMediaStoreTrackIds(source: String, scanRunId: Long): List<String>
+
+    @Query(
+        """
+        DELETE FROM library_tracks
+        WHERE source = :source
+          AND lastSeenScanRunId != :scanRunId
+          AND id LIKE 'mediastore:%'
+        """,
+    )
+    suspend fun deleteMissingNativeMediaStoreTracks(source: String, scanRunId: Long): Int
+
+    @Query(
+        """
+        SELECT id FROM library_tracks
+        WHERE source = :source
+          AND relativePath LIKE :relativePathLike ESCAPE '\'
+          AND lastSeenScanRunId != :scanRunId
+          AND id LIKE 'saf:%'
+        """,
+    )
+    suspend fun getMissingSafTrackIdsFromRelativePath(
+        source: String,
+        relativePathLike: String,
+        scanRunId: Long,
+    ): List<String>
+
+    @Query(
+        """
+        DELETE FROM library_tracks
+        WHERE source = :source
+          AND relativePath LIKE :relativePathLike ESCAPE '\'
+          AND lastSeenScanRunId != :scanRunId
+          AND id LIKE 'saf:%'
+        """,
+    )
+    suspend fun deleteMissingSafTracksFromRelativePath(
+        source: String,
+        relativePathLike: String,
+        scanRunId: Long,
+    ): Int
 
     @Query(
         """

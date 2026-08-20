@@ -41,6 +41,22 @@ class MediaStoreSampleRateFastPathTest {
     }
 
     @Test
+    fun balancedScanReadsSampleRateWhenStoredRateIsNullEvenIfFingerprintMatches() {
+        val existingTrack = testTrack(sampleRateHz = null)
+        val existingFingerprint = existingTrack.toTrackFingerprint()
+        var sampleRateReads = 0
+
+        val scannedTrack = testTrack(sampleRateHz = null)
+            .withFastPathSampleRate(existingFingerprint) {
+                sampleRateReads += 1
+                96_000
+            }
+
+        assertEquals(1, sampleRateReads)
+        assertEquals(96_000, scannedTrack.sampleRateHz)
+    }
+
+    @Test
     fun lightweightScanSkipsSampleRateReadEvenWhenFingerprintChanged() {
         val existingTrack = testTrack(sampleRateHz = 48_000)
         val existingFingerprint = existingTrack.toTrackFingerprint()

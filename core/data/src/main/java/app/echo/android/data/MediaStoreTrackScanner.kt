@@ -24,25 +24,24 @@ class MediaStoreTrackScanner(
         onTotalCount: suspend (Int?) -> Unit = {},
         onBatch: suspend (List<LibraryTrackEntity>) -> Unit,
         onProgress: suspend (scannedCount: Int, currentTrack: LibraryTrackEntity?) -> Unit,
-    ): Int {
+    ): MediaStoreScanOutcome {
         val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
         val normalizedRelativePath = normalizeRelativePathPrefix(relativePathPrefix)
         val (selection, selectionArgs) = audioSelection(normalizedRelativePath)
-        val sortOrder = "${MediaStore.Audio.Media.TITLE} COLLATE NOCASE ASC"
-
-        return contentResolver.query(collection, projection(), selection, selectionArgs, sortOrder)
-            ?.use { cursor ->
-                cursor.scanTrackBatches(
-                    collection = collection,
-                    batchSize = batchSize,
-                    existingTracks = existingTracks,
-                    readSampleRate = readSampleRate,
-                    onTotalCount = onTotalCount,
-                    onBatch = onBatch,
-                    onProgress = onProgress,
-                )
-            }
-            ?: 0
+        val cursor = contentResolver.query(collection, projection(), selection, selectionArgs, null)
+            ?: return MediaStoreScanOutcome(scannedCount = 0, querySucceeded = false)
+        val scannedCount = cursor.use {
+            it.scanTrackBatches(
+                collection = collection,
+                batchSize = batchSize,
+                existingTracks = existingTracks,
+                readSampleRate = readSampleRate,
+                onTotalCount = onTotalCount,
+                onBatch = onBatch,
+                onProgress = onProgress,
+            )
+        }
+        return MediaStoreScanOutcome(scannedCount = scannedCount, querySucceeded = true)
     }
 
     private suspend fun Cursor.scanTrackBatches(
@@ -100,7 +99,7 @@ class MediaStoreTrackScanner(
         val rawTrack = getLongOrNull(columns.trackIndex)?.toInt()
         val albumId = getLongOrNull(columns.albumIdIndex)?.takeIf { it > 0L }
 
-        return LibraryTrackEntity(
+        val entity = LibraryTrackEntity(
             id = trackId,
             contentUri = contentUri,
             title = title,
@@ -117,7 +116,12 @@ class MediaStoreTrackScanner(
             sampleRateHz = existingTrack?.sampleRateHz,
             dateModifiedSeconds = getLongOrNull(columns.modifiedIndex) ?: 0L,
             relativePath = relativePath(columns),
-        ).withScanMetadata()
+        )
+        val fingerprint = buildTrackFingerprint(entity)
+        if (existingTrack != null && existingTrack.fingerprint == fingerprint) {
+            return entity.copy(fingerprint = fingerprint)
+        }
+        return entity.withScanMetadata()
             .withFastPathSampleRate(existingTrack, readSampleRate, ::sampleRateHz)
     }
 
@@ -271,7 +275,11 @@ internal fun LibraryTrackEntity.withFastPathSampleRate(
     sampleRateReader: (String) -> Int?,
 ): LibraryTrackEntity {
     if (!readSampleRate) return this
-    if (existingTrack != null && existingTrack.fingerprint == fingerprint) return this
-    return copy(sampleRateHz = sampleRateReader(contentUri))
+    val fingerprintMatches = existingTrack != null && existingTrack.fingerprint == fingerprint
+    val missingSampleRate = sampleRateHz == null || sampleRateHz <= 0
+    if (fingerprintMatches && !missingSampleRate) return this
+    val readRate = sampleRateReader(contentUri) ?: sampleRateHz
+    if (readRate == sampleRateHz && fingerprintMatches) return this
+    return copy(sampleRateHz = readRate)
         .withScanMetadata(lastSeenScanRunId)
 }

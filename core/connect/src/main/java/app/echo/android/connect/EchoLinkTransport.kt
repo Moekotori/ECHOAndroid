@@ -41,9 +41,10 @@ internal data class EchoLinkStreamResponse(
 )
 
 internal interface EchoLinkTransport {
+    suspend fun completePairing(endpoint: EchoRemoteEndpoint): EchoRemoteEndpoint
     suspend fun fetchStatus(endpoint: EchoRemoteEndpoint): EchoLinkStatusResponse
     suspend fun sendCommand(endpoint: EchoRemoteEndpoint, command: EchoRemoteCommand): EchoLinkStatusResponse?
-    suspend fun fetchTracks(endpoint: EchoRemoteEndpoint, query: String, pageSize: Int): EchoLinkTrackPage
+    suspend fun fetchTracks(endpoint: EchoRemoteEndpoint, query: String, page: Int, pageSize: Int): EchoLinkTrackPage
     suspend fun fetchPlaylists(endpoint: EchoRemoteEndpoint, query: String, pageSize: Int): EchoLinkPlaylistPage
     suspend fun fetchPlaylistTracks(endpoint: EchoRemoteEndpoint, playlistId: String, pageSize: Int): EchoLinkTrackPage
     suspend fun resolveStream(endpoint: EchoRemoteEndpoint, trackId: String): EchoLinkStreamResponse
@@ -58,6 +59,34 @@ internal class OkHttpEchoLinkTransport(
         .build(),
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : EchoLinkTransport {
+    override suspend fun completePairing(endpoint: EchoRemoteEndpoint): EchoRemoteEndpoint {
+        if (!endpoint.needsV2PairExchange) {
+            return endpoint
+        }
+        val json = executeJson(
+            Request.Builder()
+                .url(endpoint.versionedUrl(2, "pair"))
+                .post(
+                    JSONObject()
+                        .put("pairingId", endpoint.pairingId)
+                        .put("secret", endpoint.pairingSecret)
+                        .put("clientName", "ECHO Android")
+                        .put("platform", "android")
+                        .toString()
+                        .toRequestBody(JsonMediaType),
+                )
+                .build(),
+        )
+        val accessToken = json.optText("accessToken")
+            ?: throw EchoLinkHttpException("PC ECHO did not return an access token")
+        return endpoint.copy(
+            token = accessToken,
+            pairingId = null,
+            pairingSecret = null,
+            protocolVersion = EchoProtocolVersion.Current,
+        )
+    }
+
     override suspend fun fetchStatus(endpoint: EchoRemoteEndpoint): EchoLinkStatusResponse {
         val json = executeJson(
             Request.Builder()
@@ -89,17 +118,12 @@ internal class OkHttpEchoLinkTransport(
     override suspend fun fetchTracks(
         endpoint: EchoRemoteEndpoint,
         query: String,
+        page: Int,
         pageSize: Int,
     ): EchoLinkTrackPage {
         val json = executeJson(
             Request.Builder()
-                .url(
-                    endpoint.url("library", "tracks") {
-                        addQueryParameter("page", "1")
-                        addQueryParameter("pageSize", pageSize.coerceIn(1, 500).toString())
-                        query.trim().takeIf { it.isNotEmpty() }?.let { addQueryParameter("q", it) }
-                    },
-                )
+                .url(echoLinkLibraryTracksUrl(endpoint, query, page, pageSize))
                 .authorized(endpoint)
                 .get()
                 .build(),
@@ -150,36 +174,14 @@ internal class OkHttpEchoLinkTransport(
         playlistId: String,
         pageSize: Int,
     ): EchoLinkTrackPage {
-        val encodedPlaylistId = playlistId.trim()
-        val direct = runCatching {
-            executeJson(
-                Request.Builder()
-                    .url(
-                        endpoint.url("library", "playlists", encodedPlaylistId, "tracks") {
-                            addQueryParameter("page", "1")
-                            addQueryParameter("pageSize", pageSize.coerceIn(1, 500).toString())
-                        },
-                    )
-                    .authorized(endpoint)
-                    .get()
-                    .build(),
-            ).toTrackPage(endpoint)
-        }
-        return direct.getOrElse {
-            executeJson(
-                Request.Builder()
-                    .url(
-                        endpoint.url("library", "tracks") {
-                            addQueryParameter("page", "1")
-                            addQueryParameter("pageSize", pageSize.coerceIn(1, 500).toString())
-                            addQueryParameter("playlistId", encodedPlaylistId)
-                        },
-                    )
-                    .authorized(endpoint)
-                    .get()
-                    .build(),
-            ).toTrackPage(endpoint)
-        }
+        val json = executeJson(
+            Request.Builder()
+                .url(echoLinkPlaylistTracksUrl(endpoint, playlistId, pageSize))
+                .authorized(endpoint)
+                .get()
+                .build(),
+        )
+        return json.toTrackPage(endpoint)
     }
 
     override suspend fun resolveStream(
@@ -254,13 +256,19 @@ internal class OkHttpEchoLinkTransport(
     private fun EchoRemoteEndpoint.url(
         vararg segments: String,
         configure: HttpUrl.Builder.() -> Unit = {},
+    ): HttpUrl = versionedUrl(protocolVersion.number, *segments, configure = configure)
+
+    private fun EchoRemoteEndpoint.versionedUrl(
+        version: Int,
+        vararg segments: String,
+        configure: HttpUrl.Builder.() -> Unit = {},
     ): HttpUrl {
         val builder = HttpUrl.Builder()
             .scheme(scheme)
             .host(host)
             .port(port)
         builder.addPathSegment("echo-link")
-        builder.addPathSegment("v${protocolVersion.number}")
+        builder.addPathSegment("v${version.coerceAtLeast(1)}")
         segments.forEach(builder::addPathSegment)
         builder.configure()
         return builder.build()
@@ -273,33 +281,6 @@ internal class OkHttpEchoLinkTransport(
     private companion object {
         val JsonMediaType = "application/json; charset=utf-8".toMediaType()
     }
-}
-
-private val EchoProtocolVersion.number: Int
-    get() = major.coerceAtLeast(1)
-
-private fun EchoRemoteCommand.toJson(): JSONObject {
-    val json = JSONObject()
-    when (this) {
-        EchoRemoteCommand.PlayPause -> json.put("command", "playPause")
-        EchoRemoteCommand.Next -> json.put("command", "next")
-        EchoRemoteCommand.Previous -> json.put("command", "previous")
-        EchoRemoteCommand.Stop -> json.put("command", "stop")
-        is EchoRemoteCommand.SeekTo -> {
-            json.put("command", "seekTo")
-            json.put("positionMs", positionMs)
-        }
-        is EchoRemoteCommand.SetVolume -> {
-            json.put("command", "setVolume")
-            json.put("volume", volume.coerceIn(0f, 1f))
-        }
-        is EchoRemoteCommand.PlayTrackOnPc -> {
-            json.put("command", "playTrack")
-            json.put("trackId", trackId)
-            json.put("output", "pc")
-        }
-    }
-    return json
 }
 
 private fun JSONObject.toStatusResponse(endpoint: EchoRemoteEndpoint): EchoLinkStatusResponse {

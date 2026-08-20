@@ -86,7 +86,10 @@ internal class LibraryController(
     val localPlaylists: Flow<List<EchoPlaylist>> =
         repository.observeLocalPlaylists()
 
-    val libraryStats: Flow<LibraryStats> = repository.observeLibraryStats()
+    val libraryStats: Flow<LibraryStats> =
+        repository.observeLibraryStats()
+            .debounce(400.milliseconds)
+            .distinctUntilChanged()
 
     val recommendedTracks: Flow<List<EchoTrack>> =
         repository.observeRecommendedTracks()
@@ -110,22 +113,18 @@ internal class LibraryController(
     fun albumTrackPaging(albumKey: String): Flow<PagingData<EchoTrack>> =
         repository.pagedAlbumTracks(albumKey)
             .map { pagingData -> pagingData.map { it.toEchoTrack() } }
-            .cachedIn(scope)
 
     fun artistTrackPaging(artistKey: String): Flow<PagingData<EchoTrack>> =
         repository.pagedArtistTracks(artistKey)
             .map { pagingData -> pagingData.map { it.toEchoTrack() } }
-            .cachedIn(scope)
 
     fun folderTrackPaging(folderKey: String): Flow<PagingData<EchoTrack>> =
         repository.pagedFolderTracks(folderKey)
             .map { pagingData -> pagingData.map { it.toEchoTrack() } }
-            .cachedIn(scope)
 
     fun playlistTrackPaging(playlistId: String): Flow<PagingData<EchoTrack>> =
         repository.pagedPlaylistTracks(playlistId)
             .map { pagingData -> pagingData.map { it.toEchoTrack() } }
-            .cachedIn(scope)
 
     fun updateLibraryQuery(query: String) {
         _libraryQuery.value = query
@@ -141,6 +140,15 @@ internal class LibraryController(
 
     fun refreshLibrary() {
         refreshLibrary(relativePathPrefix = null)
+    }
+
+    fun refreshLibraryIfEmpty() {
+        if (scanJob?.isActive == true) return
+        scope.launch {
+            val trackCount = withContext(Dispatchers.IO) { repository.countTracks() }
+            if (trackCount > 0) return@launch
+            refreshLibrary()
+        }
     }
 
     fun refreshLibraryFolder(treeUri: Uri) {

@@ -22,9 +22,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-class EchoRemoteClient private constructor(
+class EchoRemoteClient internal constructor(
     private val scope: CoroutineScope,
     private val transport: EchoLinkTransport = OkHttpEchoLinkTransport(),
+    private val connectRetryDelayMs: Long = 500L,
 ) {
     constructor(scope: CoroutineScope) : this(scope, OkHttpEchoLinkTransport())
 
@@ -37,6 +38,8 @@ class EchoRemoteClient private constructor(
     private var endpoint: EchoRemoteEndpoint? = null
     private var statusPollJob: Job? = null
     private var libraryRefreshJob: Job? = null
+    private var playOnPhoneGeneration = 0L
+    private var connectGeneration = 0L
 
     fun connectManual(address: String, token: String, refreshLibraryOnConnect: Boolean = true) {
         val parsed = EchoPairingParser.parseManual(address, token)
@@ -57,6 +60,7 @@ class EchoRemoteClient private constructor(
     }
 
     fun connect(nextEndpoint: EchoRemoteEndpoint, refreshLibraryOnConnect: Boolean = true) {
+        val generation = ++connectGeneration
         endpoint = nextEndpoint
         statusPollJob?.cancel()
         libraryRefreshJob?.cancel()
@@ -69,17 +73,46 @@ class EchoRemoteClient private constructor(
             )
         }
         scope.launch {
-            runCatching { transport.fetchStatus(nextEndpoint) }
-                .onSuccess { response ->
-                    applyStatus(nextEndpoint, response)
+            var attempt = 0
+            while (isActive) {
+                if (!EchoLinkRequestPolicy.shouldApplyResolvedPlay(generation, connectGeneration)) {
+                    return@launch
+                }
+                val paired = runCatching { transport.completePairing(nextEndpoint) }
+                val target = paired.getOrNull()
+                if (target == null) {
+                    attempt += 1
+                    if (attempt == 1) {
+                        markReconnecting(nextEndpoint, paired.exceptionOrNull())
+                        delay(connectRetryDelayMs)
+                        continue
+                    }
+                    markReconnecting(nextEndpoint, paired.exceptionOrNull())
+                    startStatusPolling()
+                    return@launch
+                }
+                endpoint = target
+                val status = runCatching { transport.fetchStatus(target) }
+                status.onSuccess { response ->
+                    applyStatus(target, response)
                     if (refreshLibraryOnConnect) {
                         refreshLibrary()
                     } else {
                         _library.value = EchoRemoteLibraryState()
                     }
                     startStatusPolling()
+                    return@launch
                 }
-                .onFailure { error -> markConnectionError(nextEndpoint, error) }
+                attempt += 1
+                if (attempt == 1) {
+                    markReconnecting(target, status.exceptionOrNull())
+                    delay(connectRetryDelayMs)
+                    continue
+                }
+                markReconnecting(target, status.exceptionOrNull())
+                startStatusPolling()
+                return@launch
+            }
         }
     }
 
@@ -173,7 +206,7 @@ class EchoRemoteClient private constructor(
         libraryRefreshJob?.cancel()
         libraryRefreshJob = scope.launch {
             runCatching {
-                val trackPage = transport.fetchTracks(target, query, PcLibraryPageSize)
+                val trackPage = fetchAllTrackPages(target, query)
                 val playlistPage = transport.fetchPlaylists(target, query, PcLibraryPageSize)
                 trackPage to playlistPage
             }
@@ -253,6 +286,14 @@ class EchoRemoteClient private constructor(
         send(EchoRemoteCommand.PlayTrackOnPc(trackId))
     }
 
+    fun handoffToPc(track: EchoRemoteTrack, positionMs: Long) {
+        val trackId = track.id ?: run {
+            _library.update { it.copy(error = "PC 曲目缺少 trackId，不能交接播放") }
+            return
+        }
+        send(EchoRemoteCommand.HandoffToPc(trackId, positionMs.coerceAtLeast(0L)))
+    }
+
     fun playTrackOnPhone(
         track: EchoRemoteTrack,
         onTrackReady: (EchoTrack) -> Unit,
@@ -266,17 +307,30 @@ class EchoRemoteClient private constructor(
             _library.update { it.copy(error = "PC 曲目缺少 trackId，不能在手机播放") }
             return
         }
+        if (!track.canPlayOnPhone) {
+            _library.update { it.copy(error = "这首歌暂时不能串流到手机") }
+            return
+        }
         _library.update { it.copy(error = null) }
+        val generation = ++playOnPhoneGeneration
         scope.launch {
             runCatching { transport.resolveStream(target, trackId) }
                 .onSuccess { stream ->
+                    if (!EchoLinkRequestPolicy.shouldApplyResolvedPlay(generation, playOnPhoneGeneration)) {
+                        return@onSuccess
+                    }
+                    if (!EchoLinkRequestPolicy.isSameEndpoint(endpoint, target)) {
+                        return@onSuccess
+                    }
                     val resolvedTrack = stream.track ?: track
                     val phoneTrack = resolvedTrack.toPhoneTrack(stream.streamUrl)
                     onTrackReady(phoneTrack)
                     resolveLyricsForPhoneTrack(target, resolvedTrack, phoneTrack.id, onLyricsReady)
                 }
                 .onFailure { error ->
-                    _library.update { it.copy(error = error.userMessage()) }
+                    if (EchoLinkRequestPolicy.shouldApplyResolvedPlay(generation, playOnPhoneGeneration)) {
+                        _library.update { it.copy(error = error.userMessage()) }
+                    }
                 }
         }
     }
@@ -342,6 +396,40 @@ class EchoRemoteClient private constructor(
         }
     }
 
+    private suspend fun fetchAllTrackPages(
+        target: EchoRemoteEndpoint,
+        query: String,
+    ): EchoLinkTrackPage {
+        val tracks = mutableListOf<EchoRemoteTrack>()
+        var totalCount = 0
+        var page = 1
+        while (page <= MaxLibraryPages) {
+            val pageResult = transport.fetchTracks(target, query, page, PcLibraryPageSize)
+            totalCount = pageResult.totalCount
+            if (pageResult.tracks.isEmpty()) {
+                break
+            }
+            tracks += pageResult.tracks
+            if (tracks.size >= totalCount) {
+                break
+            }
+            page += 1
+        }
+        return EchoLinkTrackPage(tracks = tracks, totalCount = totalCount.coerceAtLeast(tracks.size))
+    }
+
+    private fun markReconnecting(target: EchoRemoteEndpoint, error: Throwable?) {
+        if (endpoint?.id != null && endpoint?.id != target.id) return
+        endpoint = target
+        _status.update { current ->
+            current.copy(
+                connectionState = EchoRemoteConnectionState.Reconnecting,
+                endpoint = target,
+                error = error?.userMessage(),
+            )
+        }
+    }
+
     private fun markConnectionError(target: EchoRemoteEndpoint, error: Throwable) {
         if (endpoint?.id != target.id) return
         _status.update { current ->
@@ -372,5 +460,6 @@ class EchoRemoteClient private constructor(
         const val StatusPollIntervalMs = 5_000L
         const val PcLibraryPageSize = 500
         const val PcPlaylistTrackPageSize = 500
+        const val MaxLibraryPages = 40
     }
 }

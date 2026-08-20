@@ -20,6 +20,7 @@ class DocumentTreeTrackScanner(
         treeUri: Uri,
         relativePathPrefix: String,
         batchSize: Int = DefaultBatchSize,
+        existingTracks: Map<String, TrackFingerprint> = emptyMap(),
         readSampleRate: Boolean = true,
         onBatch: suspend (List<LibraryTrackEntity>) -> Unit,
         onProgress: suspend (scannedCount: Int, currentTrack: LibraryTrackEntity?) -> Unit,
@@ -57,14 +58,17 @@ class DocumentTreeTrackScanner(
 
                     if (!isSupportedAudio(name, mimeType)) continue
                     val documentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId)
+                    val sizeBytes = cursor.getOptionalLong(columns.sizeIndex) ?: 0L
+                    val lastModifiedMs = cursor.getOptionalLong(columns.lastModifiedIndex) ?: 0L
                     runCatching {
                         documentUri.toTrackEntity(
                             documentId = documentId,
                             displayName = name,
                             mimeType = resolvedAudioMimeType(name, mimeType),
-                            sizeBytes = cursor.getOptionalLong(columns.sizeIndex) ?: 0L,
-                            lastModifiedMs = cursor.getOptionalLong(columns.lastModifiedIndex) ?: 0L,
+                            sizeBytes = sizeBytes,
+                            lastModifiedMs = lastModifiedMs,
                             relativePath = combineRelativePath(relativePathPrefix, directory.relativePath),
+                            existingTrack = existingTracks["saf:${Uri.encode(documentId)}"],
                             readSampleRate = readSampleRate,
                         )
                     }.onSuccess { track ->
@@ -97,8 +101,36 @@ class DocumentTreeTrackScanner(
         sizeBytes: Long,
         lastModifiedMs: Long,
         relativePath: String,
+        existingTrack: TrackFingerprint?,
         readSampleRate: Boolean,
     ): LibraryTrackEntity {
+        val dateModifiedSeconds = lastModifiedMs.toEpochSeconds()
+        if (
+            existingTrack != null &&
+            existingTrack.sizeBytes == sizeBytes &&
+            existingTrack.dateModifiedSeconds == dateModifiedSeconds
+        ) {
+            return LibraryTrackEntity(
+                id = "saf:${Uri.encode(documentId)}",
+                contentUri = toString(),
+                title = displayName.removeAudioExtension(),
+                artist = "Unknown artist",
+                album = null,
+                albumArtist = null,
+                artworkUri = null,
+                durationMs = 0L,
+                trackNumber = null,
+                discNumber = null,
+                year = null,
+                mimeType = mimeType,
+                sizeBytes = sizeBytes,
+                sampleRateHz = existingTrack.sampleRateHz,
+                dateModifiedSeconds = dateModifiedSeconds,
+                relativePath = relativePath,
+                fingerprint = existingTrack.fingerprint,
+                source = LibraryScanPolicy.SafSourceId,
+            )
+        }
         val metadata = readMetadata(this, readSampleRate)
         val title = metadata.title?.takeIf { it.isNotBlank() } ?: displayName.removeAudioExtension()
         val artist = metadata.artist?.takeIf { it.isNotBlank() } ?: "Unknown artist"
@@ -119,6 +151,7 @@ class DocumentTreeTrackScanner(
             sampleRateHz = metadata.sampleRateHz,
             dateModifiedSeconds = lastModifiedMs.toEpochSeconds(),
             relativePath = relativePath,
+            source = LibraryScanPolicy.SafSourceId,
         ).withScanMetadata()
     }
 

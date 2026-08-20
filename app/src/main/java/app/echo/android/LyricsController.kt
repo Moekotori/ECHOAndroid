@@ -19,6 +19,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.cancellation.CancellationException
@@ -169,6 +170,10 @@ internal class LyricsController(
                     if (error is CancellationException) throw error
                     LyricsLoadResult(EchoLyricsLoadState.Error(error.lyricsErrorMessage("Lyrics load failed")))
                 }
+            }
+            if (!isActive) return@launch
+            if (!app.echo.android.lyrics.LyricsApplyPolicy.shouldApplyLyricsResult(trackId, lastLyricsTrackId)) {
+                return@launch
             }
             currentLyricsUserOffsetMs = result.userOffsetMs
             _lyricsState.value = result.state

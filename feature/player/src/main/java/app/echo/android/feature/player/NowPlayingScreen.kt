@@ -59,6 +59,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.ColorLens
 import androidx.compose.material.icons.rounded.FormatSize
 import androidx.compose.material.icons.rounded.GraphicEq
@@ -124,7 +125,9 @@ import app.echo.android.model.lyrics.EchoLyricLine
 import app.echo.android.model.lyrics.EchoLyrics
 import app.echo.android.model.lyrics.EchoLyricsFormat
 import app.echo.android.model.lyrics.EchoLyricsLoadState
+import app.echo.android.model.playback.EchoAudioErrorKind
 import app.echo.android.model.playback.EchoPlaybackDiagnostics
+import app.echo.android.model.playback.EchoPlaybackError
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoRepeatMode
 import app.echo.android.model.playback.PlaybackPositionState
@@ -269,7 +272,7 @@ fun NowPlayingScreen(
             palette = palette,
             modifier = Modifier.fillMaxSize(),
             artworkScale = 1.04f + 0.16f * lyricsReveal,
-            artworkBlur = 30.dp * lyricsReveal,
+            artworkBlur = if (lyricsReveal > 0.5f) 18.dp else 0.dp,
             artworkAlpha = 0.92f - 0.12f * lyricsReveal,
             overlayStartAlpha = 0.18f + 0.14f * lyricsReveal,
             overlayMidAlpha = 0.34f + 0.14f * lyricsReveal,
@@ -300,10 +303,19 @@ fun NowPlayingScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             NowPlayingTopBar(onDismiss = onDismiss)
+            status.diagnostics.lastError?.let { playbackError ->
+                NowPlayingErrorBanner(
+                    error = playbackError,
+                    autoSkipped = status.diagnostics.lastCommand == "skip_error",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp, bottom = 4.dp),
+                )
+            }
 
             HorizontalPager(
                 state = pagerState,
-                beyondViewportPageCount = 1,
+                beyondViewportPageCount = 0,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
@@ -1655,11 +1667,6 @@ private fun LyricsLineList(
                     0 -> if (immersive) 0.08f else 0f
                     else -> 0f
                 }
-                val lineBlur by animateDpAsState(
-                    targetValue = if (immersive && !active) 10.dp else 0.dp,
-                    animationSpec = tween(durationMillis = 260, easing = LyricsSettingsMotionEasing),
-                    label = "lyrics-line-blur",
-                )
                 val animatedPrimaryAlpha by animateFloatAsState(
                     targetValue = primaryAlpha,
                     animationSpec = tween(durationMillis = 220, easing = LyricsSettingsMotionEasing),
@@ -1679,7 +1686,6 @@ private fun LyricsLineList(
                     modifier = Modifier
                         .fillMaxWidth()
                         .offset(y = lineOffset)
-                        .blur(lineBlur)
                         .graphicsLayer {
                             scaleX = lineScale
                             scaleY = lineScale
@@ -2583,6 +2589,61 @@ private fun repeatModeLabel(mode: EchoRepeatMode): String = when (mode) {
     EchoRepeatMode.Off -> "循环关闭"
     EchoRepeatMode.All -> "全部循环"
     EchoRepeatMode.One -> "单曲循环"
+}
+
+@Composable
+private fun NowPlayingErrorBanner(
+    error: EchoPlaybackError,
+    autoSkipped: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val title = if (autoSkipped) "已跳过无法播放的曲目" else "无法播放"
+    val detail = playbackErrorLabel(error)
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xCC7A1F2B))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)), RoundedCornerShape(16.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Icon(
+            Icons.Rounded.ErrorOutline,
+            contentDescription = null,
+            tint = Color(0xFFFFC7CE),
+            modifier = Modifier.size(18.dp),
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                title,
+                color = Color.White,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Black,
+            )
+            Text(
+                detail,
+                color = Color.White.copy(alpha = 0.82f),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+private fun playbackErrorLabel(error: EchoPlaybackError): String = when (error.kind) {
+    EchoAudioErrorKind.FileMissing -> "音频文件不存在"
+    EchoAudioErrorKind.UnsupportedFormat -> "音频格式不支持"
+    EchoAudioErrorKind.DecodeFailure -> "音频解码失败"
+    EchoAudioErrorKind.NetworkFailure -> "网络播放失败"
+    EchoAudioErrorKind.AuthenticationFailed -> "远程认证失败"
+    EchoAudioErrorKind.PermissionDenied -> "没有播放权限"
+    EchoAudioErrorKind.OutputRouteFailure -> "输出设备失败"
+    EchoAudioErrorKind.AudioFocusLost -> "音频焦点丢失"
+    EchoAudioErrorKind.SystemInterrupted -> "播放被系统中断"
+    EchoAudioErrorKind.Unknown -> error.message.ifBlank { "播放失败" }
 }
 
 @Composable

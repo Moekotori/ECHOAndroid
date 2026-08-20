@@ -62,6 +62,9 @@ private data class LastFmPlaybackSnapshot(
 private data class ActiveScrobble(
     val track: LastFmTrack,
     val startedAtEpochSeconds: Long,
+    val accumulatedPlayMs: Long = 0L,
+    val lastTickEpochMs: Long = 0L,
+    val wasPlaying: Boolean = false,
     val nowPlayingSent: Boolean = false,
     val scrobbled: Boolean = false,
 )
@@ -91,12 +94,17 @@ internal class LastFmScrobbleController(
             ) { appSettings, status, position ->
                 settings = appSettings
                 LastFmPlaybackSnapshot(status = status, position = position)
+            }.distinctUntilChanged { previous, next ->
+                previous.status.track?.id == next.status.track?.id &&
+                    previous.status.isPlaying == next.status.isPlaying &&
+                    (!next.status.isPlaying ||
+                        previous.position.positionMs / 1_000L == next.position.positionMs / 1_000L)
             }.collect(::handleSnapshot)
         }
     }
 
     fun clear() {
-        collectJob?.cancel()
+        // Keep collecting after the UI ViewModel dies; start() replaces this job.
     }
 
     fun setConnecting() {
@@ -154,46 +162,51 @@ internal class LastFmScrobbleController(
             return
         }
 
+        val nowEpochMs = System.currentTimeMillis()
         val current = active
-        if (current?.track?.id != track.id) {
-            active = ActiveScrobble(
+        active = if (current?.track?.id != track.id) {
+            ActiveScrobble(
                 track = track,
-                startedAtEpochSeconds = currentEpochSeconds() - (snapshot.position.positionMs / 1000L),
+                startedAtEpochSeconds = nowEpochMs / 1000L,
+                lastTickEpochMs = if (snapshot.status.isPlaying) nowEpochMs else 0L,
+                wasPlaying = snapshot.status.isPlaying,
+            )
+        } else {
+            current.copy(
+                track = current.track.copy(durationMs = maxOf(current.track.durationMs, track.durationMs)),
+                accumulatedPlayMs = LastFmScrobbleRules.accumulatedPlayMs(
+                    previouslyAccumulatedMs = current.accumulatedPlayMs,
+                    wasPlaying = current.wasPlaying,
+                    lastTickEpochMs = current.lastTickEpochMs,
+                    nowEpochMs = nowEpochMs,
+                ),
+                lastTickEpochMs = if (snapshot.status.isPlaying) nowEpochMs else 0L,
+                wasPlaying = snapshot.status.isPlaying,
             )
         }
 
-        val activeScrobble = active ?: return
-        if (!snapshot.status.isPlaying) return
-
-        if (!activeScrobble.nowPlayingSent) {
-            active = activeScrobble.copy(nowPlayingSent = true)
+        var activeScrobble = active ?: return
+        if (!activeScrobble.scrobbled &&
+            LastFmScrobbleRules.shouldScrobble(activeScrobble.track.durationMs, activeScrobble.accumulatedPlayMs)
+        ) {
+            val scrobbleTrack = activeScrobble.track
+            val startedAt = activeScrobble.startedAtEpochSeconds
+            activeScrobble = activeScrobble.copy(scrobbled = true)
+            active = activeScrobble
             scope.launch(Dispatchers.IO) {
-                client.updateNowPlaying(credentials, activeScrobble.track)
+                client.scrobble(credentials, scrobbleTrack, startedAt)
                     .onSuccess {
                         _uiState.value = LastFmUiState(
-                            lastMessage = "Last.fm 正在显示：${activeScrobble.track.title}",
+                            lastMessage = "Last.fm 已记录：${scrobbleTrack.title}",
+                            lastSubmittedTrackId = scrobbleTrack.id,
                         )
                     }
                     .onFailure { error ->
-                        _uiState.value = LastFmUiState(
-                            lastMessage = "Last.fm 当前播放未提交",
-                            lastError = error.message ?: "Now playing failed",
-                        )
-                    }
-            }
-        }
-
-        if (!activeScrobble.scrobbled && shouldScrobble(activeScrobble.track, snapshot.position.positionMs)) {
-            active = activeScrobble.copy(scrobbled = true)
-            scope.launch(Dispatchers.IO) {
-                client.scrobble(credentials, activeScrobble.track, activeScrobble.startedAtEpochSeconds)
-                    .onSuccess {
-                        _uiState.value = LastFmUiState(
-                            lastMessage = "Last.fm 已记录：${activeScrobble.track.title}",
-                            lastSubmittedTrackId = activeScrobble.track.id,
-                        )
-                    }
-                    .onFailure { error ->
+                        if (active?.track?.id == scrobbleTrack.id &&
+                            !LastFmScrobbleRules.keepSubmittedFlag(false)
+                        ) {
+                            active = active?.copy(scrobbled = false)
+                        }
                         _uiState.value = LastFmUiState(
                             lastMessage = "Last.fm scrobble 失败",
                             lastError = error.message ?: "Scrobble failed",
@@ -201,12 +214,31 @@ internal class LastFmScrobbleController(
                     }
             }
         }
-    }
+        if (!snapshot.status.isPlaying) return
 
-    private fun shouldScrobble(track: LastFmTrack, positionMs: Long): Boolean {
-        if (track.durationMs <= 30_000L) return false
-        val threshold = minOf(track.durationMs / 2L, 240_000L)
-        return positionMs >= threshold
+        if (!activeScrobble.nowPlayingSent) {
+            val nowPlayingTrack = activeScrobble.track
+            active = activeScrobble.copy(nowPlayingSent = true)
+            scope.launch(Dispatchers.IO) {
+                client.updateNowPlaying(credentials, nowPlayingTrack)
+                    .onSuccess {
+                        _uiState.value = LastFmUiState(
+                            lastMessage = "Last.fm 正在显示：${nowPlayingTrack.title}",
+                        )
+                    }
+                    .onFailure { error ->
+                        if (active?.track?.id == nowPlayingTrack.id &&
+                            !LastFmScrobbleRules.keepSubmittedFlag(false)
+                        ) {
+                            active = active?.copy(nowPlayingSent = false)
+                        }
+                        _uiState.value = LastFmUiState(
+                            lastMessage = "Last.fm 当前播放未提交",
+                            lastError = error.message ?: "Now playing failed",
+                        )
+                    }
+            }
+        }
     }
 
     private fun EchoAppSettings.lastFmCredentialsOrNull(): LastFmCredentials? {
@@ -221,8 +253,6 @@ internal class LastFmScrobbleController(
             apiKey.isNotBlank() && sharedSecret.isNotBlank() && sessionKey.isNotBlank()
         }
     }
-
-    private fun currentEpochSeconds(): Long = System.currentTimeMillis() / 1000L
 }
 
 internal class LastFmClient(

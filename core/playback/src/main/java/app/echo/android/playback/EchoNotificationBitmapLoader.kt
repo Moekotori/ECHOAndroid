@@ -50,7 +50,18 @@ internal class EchoNotificationBitmapLoader(
         return try {
             retriever.setDataSource(context, sourceUri)
             val data = retriever.embeddedPicture ?: return null
-            BitmapFactory.decodeByteArray(data, 0, data.size)
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(data, 0, data.size, bounds)
+            val longest = maxOf(bounds.outWidth, bounds.outHeight).coerceAtLeast(1)
+            var sampleSize = 1
+            while (longest / sampleSize > NotificationArtworkMaxEdgePx) {
+                sampleSize *= 2
+            }
+            val decode = BitmapFactory.Options().apply {
+                inSampleSize = sampleSize
+                inPreferredConfig = Bitmap.Config.RGB_565
+            }
+            BitmapFactory.decodeByteArray(data, 0, data.size, decode)
         } catch (_: RuntimeException) {
             null
         } finally {
@@ -60,3 +71,4 @@ internal class EchoNotificationBitmapLoader(
 }
 
 internal const val EchoEmbeddedArtworkSourceUriExtra = "app.echo.android.playback.EMBEDDED_ARTWORK_SOURCE_URI"
+private const val NotificationArtworkMaxEdgePx = 512

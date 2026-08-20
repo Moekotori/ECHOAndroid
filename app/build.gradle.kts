@@ -36,12 +36,12 @@ android {
         buildConfigField(
             "String",
             "LASTFM_API_KEY",
-            "\"${lastFmBuildValue("LASTFM_API_KEY", "c9badea6f4f4d280800653b9458d3dbd")}\"",
+            "\"${lastFmBuildValue("LASTFM_API_KEY")}\"",
         )
         buildConfigField(
             "String",
             "LASTFM_SHARED_SECRET",
-            "\"${lastFmBuildValue("LASTFM_SHARED_SECRET", "0f6494a849ea09829817963350eab8e7")}\"",
+            "\"${lastFmBuildValue("LASTFM_SHARED_SECRET")}\"",
         )
     }
 

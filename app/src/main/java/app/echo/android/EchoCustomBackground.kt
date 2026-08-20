@@ -57,8 +57,8 @@ fun EchoCustomBackground(
     }
     val maxBlur = when {
         lightweight -> 4f
-        highPerformance -> 80f
-        else -> 28f
+        highPerformance -> 28f
+        else -> 16f
     }
     val blur = settings.customBackgroundBlur.coerceIn(0f, maxBlur).dp
     val brightness = settings.customBackgroundBrightness
@@ -174,7 +174,6 @@ private fun EchoVideoWallpaper(
             modifier = Modifier
                 .fillMaxSize()
                 .scale(backgroundScale)
-                .blur(blur)
                 .alpha(brightness.coerceIn(0.35f, 1.15f)),
         )
         EchoBrightnessOverlay(brightness)

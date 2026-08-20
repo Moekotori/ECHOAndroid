@@ -77,10 +77,8 @@ internal class SubsonicClient(
                 ),
             ).subsonicRoot()
             val batch = root.optJSONObject("albumList2")
-                ?.optJSONArray("album")
-                ?.objects()
+                ?.jsonObjects("album")
                 ?.map { it.toSubsonicAlbum() }
-                ?.toList()
                 .orEmpty()
             if (batch.isEmpty()) break
             albums += batch
@@ -96,11 +94,7 @@ internal class SubsonicClient(
             params = listOf("id" to album.id),
         ).subsonicRoot()
         val albumObject = root.optJSONObject("album") ?: return emptyList()
-        return albumObject.optJSONArray("song")
-            ?.objects()
-            ?.map { it.toSubsonicSong(album) }
-            ?.toList()
-            .orEmpty()
+        return albumObject.jsonObjects("song").map { it.toSubsonicSong(album) }
     }
 
     fun streamUrl(songId: String): String =
@@ -136,7 +130,7 @@ internal class SubsonicClient(
         }
     }
 
-    private companion object {
+    internal companion object {
         const val ApiVersion = "1.16.1"
         const val ClientId = "ECHOAndroid"
         const val AlbumPageSize = 100
@@ -166,7 +160,7 @@ internal fun SubsonicSong.toLibraryTrackEntity(
         mimeType = contentType ?: suffix?.let { "audio/$it" },
         sizeBytes = sizeBytes,
         sampleRateHz = null,
-        dateModifiedSeconds = System.currentTimeMillis() / 1000L,
+        dateModifiedSeconds = 0L,
         source = endpoint.sourceId,
         relativePath = path?.substringBeforeLast('/', missingDelimiterValue = ""),
         lastSeenScanRunId = scanRunId,
