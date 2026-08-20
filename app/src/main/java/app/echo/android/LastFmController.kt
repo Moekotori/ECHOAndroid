@@ -112,7 +112,13 @@ internal class LastFmScrobbleController(
     }
 
     fun setConnected(username: String) {
-        _uiState.value = LastFmUiState(lastMessage = "Last.fm 已连接：$username")
+        val current = _uiState.value
+        _uiState.value = current.copy(
+            isConnecting = false,
+            lastMessage = "Last.fm 已连接：$username",
+            lastError = null,
+            webAuthPending = false,
+        )
     }
 
     fun setWebAuthPending() {
@@ -142,10 +148,15 @@ internal class LastFmScrobbleController(
 
     private fun handleSnapshot(snapshot: LastFmPlaybackSnapshot) {
         val credentials = settings.lastFmCredentialsOrNull()
-        if (!settings.lastFmEnabled || credentials == null) {
+        if (
+            LastFmScrobbleRules.shouldClearActiveScrobble(
+                credentialsReady = settings.lastFmEnabled && credentials != null,
+            )
+        ) {
             active = null
             return
         }
+        checkNotNull(credentials)
 
         val track = snapshot.status.track?.let {
             LastFmTrack(
@@ -158,7 +169,18 @@ internal class LastFmScrobbleController(
         }?.takeIf { it.title.isNotBlank() && it.artist.isNotBlank() }
 
         if (track == null) {
-            active = null
+            val current = active ?: return
+            val nowEpochMs = System.currentTimeMillis()
+            active = current.copy(
+                accumulatedPlayMs = LastFmScrobbleRules.accumulatedPlayMs(
+                    previouslyAccumulatedMs = current.accumulatedPlayMs,
+                    wasPlaying = current.wasPlaying,
+                    lastTickEpochMs = current.lastTickEpochMs,
+                    nowEpochMs = nowEpochMs,
+                ),
+                lastTickEpochMs = 0L,
+                wasPlaying = false,
+            )
             return
         }
 

@@ -34,4 +34,15 @@ object PlaybackSessionPolicy {
         playWhenReadyChanged
         return timelineChanged
     }
+
+    fun shouldSkipUnchangedSessionPersist(
+        force: Boolean,
+        signature: String,
+        lastSignature: String?,
+        positionBucket: Long,
+        lastPositionBucket: Long?,
+    ): Boolean = !force && signature == lastSignature && positionBucket == lastPositionBucket
+
+    fun shouldReuseCachedQueueSnapshot(cachedItemCount: Int, playerItemCount: Int): Boolean =
+        cachedItemCount > 0 && cachedItemCount == playerItemCount
 }

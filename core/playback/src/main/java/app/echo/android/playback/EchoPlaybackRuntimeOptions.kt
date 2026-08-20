@@ -33,6 +33,14 @@ object EchoPlaybackProcessRuntime {
         private set
 
     @Volatile
+    var replayGainEnabled: Boolean = false
+        private set
+
+    @Volatile
+    var replayGainPreampDb: Float = 0f
+        private set
+
+    @Volatile
     private var equalizer: EchoEqualizerController? = null
 
     @Volatile
@@ -78,6 +86,11 @@ object EchoPlaybackProcessRuntime {
         sleepTimerEndTimeEpochMs =
             System.currentTimeMillis() + minutes.coerceAtMost(maxMinutes) * 60_000L
         ensureSleepTimer()
+    }
+
+    fun setReplayGain(enabled: Boolean, preampDb: Float) {
+        replayGainEnabled = enabled
+        replayGainPreampDb = preampDb
     }
 
     fun cancelSleepTimer() {

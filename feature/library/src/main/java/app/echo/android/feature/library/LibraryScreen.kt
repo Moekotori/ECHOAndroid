@@ -886,6 +886,10 @@ private fun LinkedEchoLibraryPage(
     val playlists = state.playlists
     val normalizedQuery = remember(query) { query.trim() }
     val remoteQuery = remember(state.query) { state.query.trim() }
+    val includeSortedTracks = selectedMode == LinkedLibraryMode.Songs
+    val includeAlbums = selectedMode == LinkedLibraryMode.Albums || selectedAlbumKey != null
+    val includeArtists = selectedMode == LinkedLibraryMode.Artists || selectedArtistKey != null
+    val includePlaylists = selectedMode == LinkedLibraryMode.Playlists || selectedPlaylistId != null
     val catalog by produceState(
         initialValue = LinkedLibraryCatalog.Empty,
         tracks,
@@ -893,6 +897,10 @@ private fun LinkedEchoLibraryPage(
         normalizedQuery,
         remoteQuery,
         selectedSortMode,
+        includeSortedTracks,
+        includeAlbums,
+        includeArtists,
+        includePlaylists,
     ) {
         value = withContext(Dispatchers.Default) {
             LinkedLibraryCatalog.build(
@@ -901,6 +909,10 @@ private fun LinkedEchoLibraryPage(
                 query = normalizedQuery,
                 remoteQuery = remoteQuery,
                 sortMode = selectedSortMode,
+                includeSortedTracks = includeSortedTracks,
+                includeAlbums = includeAlbums,
+                includeArtists = includeArtists,
+                includePlaylists = includePlaylists,
             )
         }
     }

@@ -31,7 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
-import coil.compose.SubcomposeAsyncImage
+import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlin.math.min
 
@@ -112,27 +112,11 @@ internal fun EchoArtworkImage(
                 iconSize = placeholderIconSize,
             )
         } else {
-            SubcomposeAsyncImage(
+            AsyncImage(
                 model = model,
                 contentDescription = contentDescription,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
-                loading = {
-                    EchoArtworkPlaceholder(
-                        sizeClass = sizeClass,
-                        accent = accent,
-                        showSignal = showSignal,
-                        iconSize = placeholderIconSize,
-                    )
-                },
-                error = {
-                    EchoArtworkPlaceholder(
-                        sizeClass = sizeClass,
-                        accent = accent,
-                        showSignal = showSignal,
-                        iconSize = placeholderIconSize,
-                    )
-                },
             )
         }
     }

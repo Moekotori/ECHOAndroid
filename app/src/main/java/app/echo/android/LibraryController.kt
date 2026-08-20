@@ -2,7 +2,6 @@ package app.echo.android
 
 import android.net.Uri
 import androidx.paging.PagingData
-import androidx.paging.cachedIn
 import androidx.paging.map
 import app.echo.android.data.EchoLibraryRepository
 import app.echo.android.data.LocalLibrarySearchResults
@@ -61,27 +60,22 @@ internal class LibraryController(
         combine(debouncedLibraryQuery, _trackSortMode) { query, sort -> query to sort }
             .flatMapLatest { (query, sort) -> repository.pagedTracks(query, sort) }
             .map { pagingData -> pagingData.map { it.toEchoTrack() } }
-            .cachedIn(scope)
 
     val albums: Flow<PagingData<AlbumSummary>> =
         debouncedLibraryQuery
             .flatMapLatest { query -> repository.pagedAlbums(query) }
-            .cachedIn(scope)
 
     val remoteAlbums: Flow<PagingData<AlbumSummary>> =
         debouncedLibraryQuery
             .flatMapLatest { query -> repository.pagedRemoteAlbums(query) }
-            .cachedIn(scope)
 
     val artists: Flow<PagingData<ArtistSummary>> =
         debouncedLibraryQuery
             .flatMapLatest { query -> repository.pagedArtists(query) }
-            .cachedIn(scope)
 
     val folders: Flow<PagingData<FolderSummary>> =
         debouncedLibraryQuery
             .flatMapLatest { query -> repository.pagedFolders(query) }
-            .cachedIn(scope)
 
     val localPlaylists: Flow<List<EchoPlaylist>> =
         repository.observeLocalPlaylists()

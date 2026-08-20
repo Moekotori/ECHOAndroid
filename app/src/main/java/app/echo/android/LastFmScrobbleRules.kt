@@ -27,4 +27,6 @@ internal object LastFmScrobbleRules {
     }
 
     fun keepSubmittedFlag(attemptSucceeded: Boolean): Boolean = attemptSucceeded
+
+    fun shouldClearActiveScrobble(credentialsReady: Boolean): Boolean = !credentialsReady
 }

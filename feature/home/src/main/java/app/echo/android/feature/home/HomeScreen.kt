@@ -1,15 +1,12 @@
 package app.echo.android.feature.home
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -46,20 +43,22 @@ fun HomeScreen(
     val configuration = LocalConfiguration.current
     val compactViewport = configuration.screenHeightDp < 620 ||
         configuration.screenWidthDp > configuration.screenHeightDp
-    val scrollState = rememberScrollState()
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .verticalScroll(scrollState),
-        ) {
+    val sectionGap = if (compactViewport) 14.dp else 22.dp
+    val blockGap = if (compactViewport) 14.dp else 20.dp
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding(),
+    ) {
+        item(key = "header") {
             RoonHomeHeader(
                 status = status,
                 compact = compactViewport,
                 onOpenSearch = onOpenSearch,
             )
-            Spacer(Modifier.height(if (compactViewport) 14.dp else 22.dp))
+        }
+        item(key = "overview") {
+            Spacer(Modifier.height(sectionGap))
             Box(Modifier.padding(horizontal = 24.dp)) {
                 LibraryOverview(
                     trackCount = trackCount,
@@ -67,33 +66,43 @@ fun HomeScreen(
                     artistCount = artistCount,
                 )
             }
-            Spacer(Modifier.height(if (compactViewport) 14.dp else 22.dp))
+        }
+        item(key = "recent") {
+            Spacer(Modifier.height(sectionGap))
             RoonRecentActivitySection(
                 recentPlayedAlbums = recentPlayedAlbums,
                 recentlyAddedAlbums = recentlyAddedAlbums,
                 onOpenAlbum = onOpenAlbum,
                 onOpenLibrary = onOpenLibrary,
             )
-            Spacer(Modifier.height(if (compactViewport) 14.dp else 20.dp))
+        }
+        item(key = "recommended") {
+            Spacer(Modifier.height(blockGap))
             HomeAlbumRecommendationsSection(
                 albums = recommendedAlbums,
                 onRefresh = onRefreshRecommendations,
                 onOpenLibrary = onOpenLibrary,
                 onOpenAlbum = onOpenAlbum,
             )
-            Spacer(Modifier.height(if (compactViewport) 14.dp else 20.dp))
+        }
+        item(key = "artists") {
+            Spacer(Modifier.height(blockGap))
             HomeArtistRankingSection(
                 artists = topArtists,
                 onOpenArtist = onOpenArtist,
                 onOpenLibrary = onOpenLibrary,
             )
-            Spacer(Modifier.height(if (compactViewport) 14.dp else 20.dp))
+        }
+        item(key = "favorites") {
+            Spacer(Modifier.height(blockGap))
             HomeFavoriteAlbumsSection(
                 albums = favoriteAlbums,
                 heatmapDays = heatmapDays,
                 onOpenAlbum = onOpenAlbum,
                 onOpenLibrary = onOpenLibrary,
             )
+        }
+        item(key = "bottom-inset") {
             Spacer(Modifier.height(if (compactViewport) 252.dp else 304.dp))
         }
     }

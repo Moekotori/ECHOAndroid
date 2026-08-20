@@ -108,19 +108,46 @@ fun Player.toPlaybackPositionState(): PlaybackPositionState {
     )
 }
 
-fun Player.playbackQueueSignature(): String {
-    val currentIndex = currentMediaItemIndex.takeIf { it in 0 until mediaItemCount } ?: -1
-    return buildString(capacity = 16 + mediaItemCount * 24) {
+fun playbackSessionPersistSignature(
+    currentIndex: Int,
+    playWhenReady: Boolean,
+    mediaIds: Iterable<String>,
+    shuffleEnabled: Boolean,
+    repeatMode: Int,
+    playbackSpeed: Float,
+    playbackPitch: Float,
+): String {
+    val ids = mediaIds.toList()
+    return buildString(capacity = 32 + ids.size * 24) {
         append(currentIndex)
         append('|')
         append(playWhenReady)
         append('|')
-        for (index in 0 until mediaItemCount) {
-            append(getMediaItemAt(index).mediaId)
+        append(shuffleEnabled)
+        append('|')
+        append(repeatMode)
+        append('|')
+        append(playbackSpeed)
+        append('|')
+        append(playbackPitch)
+        append('|')
+        for (id in ids) {
+            append(id)
             append(';')
         }
     }
 }
+
+fun Player.playbackQueueSignature(): String =
+    playbackSessionPersistSignature(
+        currentIndex = currentMediaItemIndex.takeIf { it in 0 until mediaItemCount } ?: -1,
+        playWhenReady = playWhenReady,
+        mediaIds = (0 until mediaItemCount).map { getMediaItemAt(it).mediaId },
+        shuffleEnabled = shuffleModeEnabled,
+        repeatMode = repeatMode,
+        playbackSpeed = playbackParameters.speed,
+        playbackPitch = playbackParameters.pitch,
+    )
 
 fun Player.toPlaybackQueueState(): PlaybackQueueState {
     val currentIndex = currentMediaItemIndex.takeIf { it in 0 until mediaItemCount } ?: -1

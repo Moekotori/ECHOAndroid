@@ -2,6 +2,7 @@ package app.echo.android.data
 
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SubsonicJsonTest {
@@ -46,5 +47,44 @@ class SubsonicJsonTest {
     @Test
     fun missingKeyReturnsEmpty() {
         assertEquals(0, JSONObject("{}").jsonObjects("album").size)
+    }
+
+    @Test
+    fun readsSearch3SongArray() {
+        val root = JSONObject(
+            """
+            {"searchResult3":{"song":[{"id":"s1","title":"One"},{"id":"s2","title":"Two"}]}}
+            """.trimIndent(),
+        )
+        val songs = root.getJSONObject("searchResult3").jsonObjects("song")
+        assertEquals(2, songs.size)
+        assertEquals("s1", songs[0].getString("id"))
+        assertEquals("Two", songs[1].getString("title"))
+    }
+
+    @Test
+    fun search3ClientSkipsPerAlbumRequests() {
+        val requested = ArrayList<String>()
+        val client = SubsonicClient(
+            endpoint = SubsonicEndpoint(
+                baseUrl = "https://navidrome.example",
+                username = "user",
+                password = "pass",
+            ),
+            httpGet = { url ->
+                requested += url.substringAfter("/rest/").substringBefore('?')
+                when {
+                    url.contains("search3.view") ->
+                        """{"subsonic-response":{"status":"ok","version":"1.16.1","searchResult3":{"song":[{"id":"s1","title":"Bulk","artist":"A","album":"B","duration":12,"size":8}]}}}"""
+                    else -> """{"subsonic-response":{"status":"ok","version":"1.16.1"}}"""
+                }
+            },
+        )
+        val songs = client.fetchSongsBySearch3()
+        assertEquals(1, songs.size)
+        assertEquals("Bulk", songs[0].title)
+        assertEquals("s1", songs[0].id)
+        assertTrue(requested.contains("search3.view"))
+        assertTrue(!requested.contains("getAlbum.view"))
     }
 }

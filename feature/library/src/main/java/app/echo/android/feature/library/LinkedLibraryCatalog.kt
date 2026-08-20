@@ -26,23 +26,37 @@ internal data class LinkedLibraryCatalog(
             query: String,
             remoteQuery: String,
             sortMode: LibraryTrackSortMode,
+            includeSortedTracks: Boolean = true,
+            includeAlbums: Boolean = true,
+            includeArtists: Boolean = true,
+            includePlaylists: Boolean = true,
         ): LinkedLibraryCatalog {
             val normalizedQuery = query.trim()
             val normalizedRemoteQuery = remoteQuery.trim()
-            val filteredTracks = if (normalizedQuery.isNotBlank() && normalizedQuery == normalizedRemoteQuery) {
+            val filteredTracks = if (
+                !includeSortedTracks && !includeAlbums && !includeArtists
+            ) {
+                emptyList()
+            } else if (normalizedQuery.isNotBlank() && normalizedQuery == normalizedRemoteQuery) {
                 tracks
             } else {
                 tracks.filterLinkedLibraryQuery(normalizedQuery)
             }
-            val filteredPlaylists = if (normalizedQuery.isNotBlank() && normalizedQuery == normalizedRemoteQuery) {
+            val filteredPlaylists = if (!includePlaylists) {
+                emptyList()
+            } else if (normalizedQuery.isNotBlank() && normalizedQuery == normalizedRemoteQuery) {
                 playlists
             } else {
                 playlists.filterLinkedPlaylistQuery(normalizedQuery)
             }
             return LinkedLibraryCatalog(
-                tracks = filteredTracks.sortedForLinkedLibrary(sortMode),
-                albums = filteredTracks.toLinkedAlbums(),
-                artists = filteredTracks.toLinkedArtists(),
+                tracks = if (includeSortedTracks) {
+                    filteredTracks.sortedForLinkedLibrary(sortMode)
+                } else {
+                    filteredTracks
+                },
+                albums = if (includeAlbums) filteredTracks.toLinkedAlbums() else emptyList(),
+                artists = if (includeArtists) filteredTracks.toLinkedArtists() else emptyList(),
                 playlists = filteredPlaylists,
             )
         }

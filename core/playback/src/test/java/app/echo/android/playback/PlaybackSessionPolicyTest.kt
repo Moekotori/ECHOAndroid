@@ -83,6 +83,44 @@ class PlaybackSessionPolicyTest {
     }
 
     @Test
+    fun unchangedSignatureSkipsSessionPersist() {
+        assertTrue(
+            PlaybackSessionPolicy.shouldSkipUnchangedSessionPersist(
+                force = false,
+                signature = "1|false|a;b;",
+                lastSignature = "1|false|a;b;",
+                positionBucket = 3L,
+                lastPositionBucket = 3L,
+            ),
+        )
+        assertFalse(
+            PlaybackSessionPolicy.shouldSkipUnchangedSessionPersist(
+                force = true,
+                signature = "1|false|a;b;",
+                lastSignature = "1|false|a;b;",
+                positionBucket = 3L,
+                lastPositionBucket = 3L,
+            ),
+        )
+        assertFalse(
+            PlaybackSessionPolicy.shouldSkipUnchangedSessionPersist(
+                force = false,
+                signature = "2|false|a;b;",
+                lastSignature = "1|false|a;b;",
+                positionBucket = 3L,
+                lastPositionBucket = 3L,
+            ),
+        )
+    }
+
+    @Test
+    fun cachedQueueSnapshotIsReusedWhenCountsMatch() {
+        assertTrue(PlaybackSessionPolicy.shouldReuseCachedQueueSnapshot(12, 12))
+        assertFalse(PlaybackSessionPolicy.shouldReuseCachedQueueSnapshot(0, 12))
+        assertFalse(PlaybackSessionPolicy.shouldReuseCachedQueueSnapshot(11, 12))
+    }
+
+    @Test
     fun driverTestDoesNotClaimWhilePlaying() {
         assertFalse(PlaybackSessionPolicy.shouldClaimUsbInterfaceForDriverTest(isPlayingToUsb = true))
         assertTrue(PlaybackSessionPolicy.shouldClaimUsbInterfaceForDriverTest(isPlayingToUsb = false))

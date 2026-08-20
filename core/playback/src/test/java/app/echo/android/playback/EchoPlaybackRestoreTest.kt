@@ -24,4 +24,29 @@ class EchoPlaybackRestoreTest {
         assertTrue(shouldRestoreSavedSessionBeforeFlushingPending(emptyList()))
         assertFalse(shouldRestoreSavedSessionBeforeFlushingPending(listOf(true)))
     }
+
+    @Test
+    fun commandsStayQueuedUntilRestoreAndFlushComplete() {
+        assertTrue(shouldQueueControllerActionUntilSessionReady(sessionReadyForCommands = false))
+        assertFalse(shouldQueueControllerActionUntilSessionReady(sessionReadyForCommands = true))
+    }
+
+    @Test
+    fun playPauseIntentIsCapturedAtTapNotToggledAtFlush() {
+        assertTrue(pendingPlayPauseShouldPlay(currentlyPlaying = false))
+        assertFalse(pendingPlayPauseShouldPlay(currentlyPlaying = true))
+    }
+
+    @Test
+    fun restoreLoadFailureDoesNotMarkRestoreComplete() {
+        assertFalse(shouldMarkSavedSessionRestoreComplete(sessionLoadFailed = true))
+        assertTrue(shouldMarkSavedSessionRestoreComplete(sessionLoadFailed = false))
+        assertFalse(
+            PlaybackSessionPolicy.shouldPersistSavedSession(
+                restoreCompleted = shouldMarkSavedSessionRestoreComplete(sessionLoadFailed = true),
+                hasPendingPlay = false,
+                queueEmpty = true,
+            ),
+        )
+    }
 }

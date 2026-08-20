@@ -46,4 +46,10 @@ class LastFmScrobbleRulesTest {
         assertFalse(LastFmScrobbleRules.keepSubmittedFlag(attemptSucceeded = false))
         assertTrue(LastFmScrobbleRules.keepSubmittedFlag(attemptSucceeded = true))
     }
+
+    @Test
+    fun missingTrackDoesNotClearActiveScrobbleWhenCredentialsReady() {
+        assertFalse(LastFmScrobbleRules.shouldClearActiveScrobble(credentialsReady = true))
+        assertTrue(LastFmScrobbleRules.shouldClearActiveScrobble(credentialsReady = false))
+    }
 }

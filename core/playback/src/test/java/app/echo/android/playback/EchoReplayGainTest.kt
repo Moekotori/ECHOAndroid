@@ -31,4 +31,19 @@ class EchoReplayGainTest {
         assertEquals(1f, output.playerVolume, 0.001f)
         assertEquals(0, output.enhancerGainMb)
     }
+
+    @Test
+    fun boostAboveUnityDoesNotWriteClampedPlayerVolume() {
+        val output = echoReplayGainOutput(
+            enabled = true,
+            preampDb = 6f,
+            trackGainDb = 6f,
+        )
+        val clampedLinear = 10.0.pow(12.0 / 20.0).toFloat().coerceIn(0.25f, 1.4f)
+        assertEquals(1f, output.playerVolume, 0.001f)
+        assertEquals(1_200, output.enhancerGainMb)
+        assertEquals(1.4f, clampedLinear, 0.001f)
+        assertTrue(output.playerVolume <= 1f)
+        assertTrue(output.playerVolume != clampedLinear)
+    }
 }

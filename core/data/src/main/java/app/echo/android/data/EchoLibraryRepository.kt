@@ -20,6 +20,9 @@ import app.echo.android.model.library.LibraryStats
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
@@ -208,7 +211,7 @@ class EchoLibraryRepository(
 
     suspend fun albumSummaryForTrack(trackId: String): AlbumSummary? {
         val track = database.trackDao().getTrackById(trackId) ?: return null
-        return if (track.source == LibrarySource.MediaStore.id) {
+        return if (LibraryScanPolicy.isLocalLibrarySource(track.source)) {
             database.trackDao().getAlbumSummary(track.albumKey())
         } else {
             database.trackDao().getRemoteAlbumSummary(track.source, track.albumKey())
@@ -612,35 +615,55 @@ class EchoLibraryRepository(
             emitProgress(phase = LibraryScanPhase.QueryingMediaStore, currentTitle = "连接 Navidrome/Subsonic")
             client.ping()
             val albums = client.fetchAlbums()
-            totalCount = albums.sumOf { it.songCount.coerceAtLeast(1) }
+            val expectedSongCount = albums.sumOf { it.songCount.coerceAtLeast(0) }
+            totalCount = expectedSongCount.takeIf { it > 0 } ?: albums.size
             emitProgress(phase = LibraryScanPhase.QueryingMediaStore, currentTitle = "发现 ${albums.size} 张远程专辑")
 
             val pending = ArrayList<LibraryTrackEntity>(batchSize)
-            for (album in albums) {
-                coroutineContext.ensureActive()
-                val songs = client.fetchAlbumSongs(album)
-                for (song in songs) {
-                    coroutineContext.ensureActive()
-                    scannedCount += 1
-                    pending += song.toLibraryTrackEntity(endpoint, client, scanRunId)
-                    if (pending.size >= batchSize) {
-                        val written = writeRemoteBatch(dao, pending, existingFingerprints)
-                        insertedCount += written.insertedCount
-                        updatedCount += written.updatedCount
-                        seenIds.addAll(written.seenIds)
-                        pending.clear()
-                        emitProgress(phase = LibraryScanPhase.WritingDatabase, currentTitle = album.name)
-                    }
-                }
-                emitProgress(phase = LibraryScanPhase.QueryingMediaStore, currentTitle = album.name)
-            }
-            if (pending.isNotEmpty()) {
+            suspend fun flushPending(title: String?) {
+                if (pending.isEmpty()) return
                 val written = writeRemoteBatch(dao, pending, existingFingerprints)
                 insertedCount += written.insertedCount
                 updatedCount += written.updatedCount
                 seenIds.addAll(written.seenIds)
                 pending.clear()
+                emitProgress(phase = LibraryScanPhase.WritingDatabase, currentTitle = title)
             }
+
+            suspend fun ingestSongs(songs: List<SubsonicSong>, title: String?) {
+                for (song in songs) {
+                    coroutineContext.ensureActive()
+                    scannedCount += 1
+                    pending += song.toLibraryTrackEntity(endpoint, client, scanRunId)
+                    if (pending.size >= batchSize) {
+                        flushPending(title)
+                    }
+                }
+            }
+
+            val bulkSongs = runCatching { client.fetchSongsBySearch3() }.getOrDefault(emptyList())
+            val usedSearch3 = SubsonicSyncPolicy.shouldPreferSearch3Bulk(expectedSongCount, bulkSongs.size)
+            if (usedSearch3) {
+                emitProgress(
+                    phase = LibraryScanPhase.QueryingMediaStore,
+                    currentTitle = "已批量读取 ${bulkSongs.size} 首远程歌曲",
+                )
+                ingestSongs(bulkSongs, title = "search3")
+            } else {
+                for (chunk in albums.chunked(SubsonicSyncPolicy.AlbumFetchConcurrency)) {
+                    coroutineContext.ensureActive()
+                    val chunkSongs = coroutineScope {
+                        chunk.map { album ->
+                            async { album to client.fetchAlbumSongs(album) }
+                        }.awaitAll()
+                    }
+                    for ((album, songs) in chunkSongs) {
+                        ingestSongs(songs, album.name)
+                        emitProgress(phase = LibraryScanPhase.QueryingMediaStore, currentTitle = album.name)
+                    }
+                }
+            }
+            flushPending(title = null)
 
             emitProgress(phase = LibraryScanPhase.CleaningRemoved, currentTitle = null)
             deletedCount = deleteMissingIfComplete(
@@ -649,7 +672,8 @@ class EchoLibraryRepository(
                     querySucceeded = true,
                     scannedCount = scannedCount,
                     existingCount = existingFingerprints.size,
-                    hitVisitCap = albums.size >= SubsonicClient.MaxAlbumsPerSync,
+                    hitVisitCap = albums.size >= SubsonicClient.MaxAlbumsPerSync ||
+                        (usedSearch3 && bulkSongs.size >= SubsonicClient.MaxSongsPerSync),
                 ),
                 missingIds = { LibraryScanPolicy.unseenIds(existingFingerprints.keys, seenIds) },
             )

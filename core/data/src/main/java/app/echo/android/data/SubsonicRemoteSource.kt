@@ -97,6 +97,39 @@ internal class SubsonicClient(
         return albumObject.jsonObjects("song").map { it.toSubsonicSong(album) }
     }
 
+    fun fetchSongsBySearch3(
+        pageSize: Int = SongPageSize,
+        maxSongs: Int = MaxSongsPerSync,
+    ): List<SubsonicSong> {
+        for (query in listOf("*", "")) {
+            val songs = ArrayList<SubsonicSong>()
+            var offset = 0
+            while (songs.size < maxSongs) {
+                val remaining = (maxSongs - songs.size).coerceAtMost(pageSize)
+                val root = request(
+                    path = "search3.view",
+                    params = listOf(
+                        "query" to query,
+                        "songCount" to remaining.toString(),
+                        "songOffset" to offset.toString(),
+                        "albumCount" to "0",
+                        "artistCount" to "0",
+                    ),
+                ).subsonicRoot()
+                val batch = root.optJSONObject("searchResult3")
+                    ?.jsonObjects("song")
+                    ?.map { it.toSubsonicSong() }
+                    .orEmpty()
+                if (batch.isEmpty()) break
+                songs += batch
+                if (batch.size < remaining) break
+                offset += batch.size
+            }
+            if (songs.isNotEmpty()) return songs
+        }
+        return emptyList()
+    }
+
     fun streamUrl(songId: String): String =
         buildUrl("stream.view", listOf("id" to songId))
 
@@ -134,7 +167,9 @@ internal class SubsonicClient(
         const val ApiVersion = "1.16.1"
         const val ClientId = "ECHOAndroid"
         const val AlbumPageSize = 100
+        const val SongPageSize = 500
         const val MaxAlbumsPerSync = 2_000
+        const val MaxSongsPerSync = 20_000
     }
 }
 
@@ -189,18 +224,18 @@ private fun JSONObject.toSubsonicAlbum(): SubsonicAlbum =
         songCount = optInt("songCount").coerceAtLeast(0),
     )
 
-private fun JSONObject.toSubsonicSong(album: SubsonicAlbum): SubsonicSong =
+private fun JSONObject.toSubsonicSong(album: SubsonicAlbum? = null): SubsonicSong =
     SubsonicSong(
         id = optString("id"),
         title = optString("title"),
-        artist = optString("artist").ifBlank { album.artist.orEmpty() },
-        album = optString("album").ifBlank { album.name }.takeIf { it.isNotBlank() },
-        albumArtist = optString("albumArtist").ifBlank { album.artist.orEmpty() }.takeIf { it.isNotBlank() },
-        coverArt = optString("coverArt").ifBlank { album.coverArt.orEmpty() }.takeIf { it.isNotBlank() },
+        artist = optString("artist").ifBlank { album?.artist.orEmpty() },
+        album = optString("album").ifBlank { album?.name.orEmpty() }.takeIf { it.isNotBlank() },
+        albumArtist = optString("albumArtist").ifBlank { album?.artist.orEmpty() }.takeIf { it.isNotBlank() },
+        coverArt = optString("coverArt").ifBlank { album?.coverArt.orEmpty() }.takeIf { it.isNotBlank() },
         durationSeconds = optLong("duration", 0L),
         trackNumber = optInt("track").takeIf { it > 0 },
         discNumber = optInt("discNumber").takeIf { it > 0 },
-        year = optInt("year").takeIf { it > 0 } ?: album.year,
+        year = optInt("year").takeIf { it > 0 } ?: album?.year,
         contentType = optString("contentType").takeIf { it.isNotBlank() },
         suffix = optString("suffix").takeIf { it.isNotBlank() },
         sizeBytes = optLong("size", 0L),
