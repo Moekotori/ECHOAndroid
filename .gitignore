@@ -1,19 +1,34 @@
+# Gradle
 .gradle/
+build/
+
+# Local machine / secrets
+local.properties
+keystore.properties
+*.jks
+*.keystore
+Android-key-signed/
+
+# Android / IDE
 .android-sdk/
 .idea/
 .kotlin/
-.codex-temp/
-build/
-local.properties
-captures/
-test/*.flac
 *.iml
+captures/
 *.apk
 *.aab
-/.mimocode
+*.hprof
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local agent scratch (AGENTS.md is versioned — do not ignore it)
+.codex-temp/
+.mimocode/
+.reasonix/
 CLAUDE.md
 报错.txt
-AGENTS.md
-Android-key-signed/
-app/
-/.reasonix
+
+# Test fixtures
+test/*.flac

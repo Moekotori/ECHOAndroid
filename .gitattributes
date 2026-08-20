@@ -1,0 +1,20 @@
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.jar binary
+*.so binary
+*.apk binary
+*.aab binary
+*.mp3 binary
+*.flac binary
+*.wav binary
+*.tflite binary

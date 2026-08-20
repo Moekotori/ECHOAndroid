@@ -1,0 +1,20 @@
+#!/bin/sh
+# Block secrets and keep AGENTS.md versioned.
+
+if git check-ignore -q AGENTS.md 2>/dev/null; then
+  echo "error: AGENTS.md must not be gitignored" >&2
+  exit 1
+fi
+
+fail=0
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+for f in $staged; do
+  case "$f" in
+    local.properties|*/local.properties|keystore.properties|*/keystore.properties|*.jks|*.keystore)
+      echo "error: refusing to commit $f" >&2
+      fail=1
+      ;;
+  esac
+done
+
+exit "$fail"
