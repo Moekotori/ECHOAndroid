@@ -8,6 +8,7 @@ import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
+import java.security.SecureRandom
 import java.util.Locale
 import kotlin.math.absoluteValue
 import org.json.JSONArray
@@ -55,6 +56,7 @@ internal data class SubsonicSong(
 internal class SubsonicClient(
     private val endpoint: SubsonicEndpoint,
     private val httpGet: (String) -> String? = ::defaultHttpGet,
+    private val saltFactory: () -> String = ::randomTokenSalt,
 ) {
     fun ping() {
         val response = request("ping.view")
@@ -145,7 +147,8 @@ internal class SubsonicClient(
     }
 
     private fun buildUrl(path: String, params: List<Pair<String, String>>): String {
-        val salt = tokenSalt(endpoint)
+        val salt = saltFactory().takeIf { it.isNotBlank() }
+            ?: error("Subsonic authentication salt is blank")
         val token = md5(endpoint.password + salt)
         val authParams = listOf(
             "u" to endpoint.username.trim(),
@@ -284,8 +287,12 @@ private fun JSONArray.objects(): Sequence<JSONObject> =
 private fun String.urlEncode(): String =
     URLEncoder.encode(this, StandardCharsets.UTF_8.name())
 
-private fun tokenSalt(endpoint: SubsonicEndpoint): String =
-    stableSourceHash("${endpoint.normalizedBaseUrl}|${endpoint.username}|echo")
+private val TokenSaltRandom = SecureRandom()
+
+private fun randomTokenSalt(): String =
+    ByteArray(12)
+        .also(TokenSaltRandom::nextBytes)
+        .joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and 0xff) }
 
 private fun stableSourceHash(value: String): String =
     value.hashCode().absoluteValue.toString(36)

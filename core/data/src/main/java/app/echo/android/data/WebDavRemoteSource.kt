@@ -153,7 +153,7 @@ internal fun WebDavAudioFile.toLibraryTrackEntity(
         lastSeenScanRunId = scanRunId,
     ).withScanMetadata(scanRunId)
 
-private data class WebDavEntry(
+internal data class WebDavEntry(
     val href: URI,
     val isDirectory: Boolean,
     val contentType: String?,
@@ -182,7 +182,7 @@ private val PropfindBody =
     </D:propfind>
     """.trimIndent().toRequestBody("application/xml; charset=utf-8".toMediaType())
 
-private fun parseWebDavEntries(base: URI, xml: String): List<WebDavEntry> {
+internal fun parseWebDavEntries(base: URI, xml: String): List<WebDavEntry> {
     val document = DocumentBuilderFactory.newInstance()
         .apply {
             isNamespaceAware = true
@@ -196,20 +196,42 @@ private fun parseWebDavEntries(base: URI, xml: String): List<WebDavEntry> {
         val response = responses.item(index) as? Element ?: continue
         val hrefText = response.childText("href") ?: continue
         val href = runCatching { base.resolve(hrefText) }.getOrNull() ?: continue
-        val propstat = response.getElementsByTagNameNS("*", "propstat").item(0) as? Element ?: response
-        val prop = propstat.getElementsByTagNameNS("*", "prop").item(0) as? Element ?: propstat
-        val resourcetype = prop.getElementsByTagNameNS("*", "resourcetype").item(0) as? Element
-        val directory = resourcetype?.getElementsByTagNameNS("*", "collection")?.length ?: 0 > 0 ||
+        val propstats = response.getElementsByTagNameNS("*", "propstat")
+        val successfulProps = if (propstats.length <= 0) {
+            listOf(response)
+        } else {
+            buildList {
+                for (propstatIndex in 0 until propstats.length) {
+                    val propstat = propstats.item(propstatIndex) as? Element ?: continue
+                    if (!propstat.childText("status").isSuccessfulWebDavStatus()) continue
+                    val prop = propstat.getElementsByTagNameNS("*", "prop").item(0) as? Element ?: continue
+                    add(prop)
+                }
+            }
+        }
+        if (successfulProps.isEmpty()) continue
+        val directory = successfulProps.any { prop ->
+            val resourcetype = prop.getElementsByTagNameNS("*", "resourcetype").item(0) as? Element
+            (resourcetype?.getElementsByTagNameNS("*", "collection")?.length ?: 0) > 0
+        } ||
             href.path.endsWith("/")
         entries += WebDavEntry(
             href = href,
             isDirectory = directory,
-            contentType = prop.childText("getcontenttype"),
-            contentLength = prop.childText("getcontentlength")?.toLongOrNull() ?: 0L,
-            lastModifiedSeconds = prop.childText("getlastmodified")?.parseHttpDateSeconds() ?: 0L,
+            contentType = successfulProps.firstNotNullOfOrNull { it.childText("getcontenttype") },
+            contentLength = successfulProps.firstNotNullOfOrNull { it.childText("getcontentlength")?.toLongOrNull() } ?: 0L,
+            lastModifiedSeconds = successfulProps.firstNotNullOfOrNull {
+                it.childText("getlastmodified")?.parseHttpDateSeconds()
+            } ?: 0L,
         )
     }
     return entries
+}
+
+private fun String?.isSuccessfulWebDavStatus(): Boolean {
+    if (this == null) return true
+    val statusCode = trim().split(Regex("\\s+")).getOrNull(1)?.toIntOrNull()
+    return statusCode in 200..299
 }
 
 private fun Element.childText(localName: String): String? {

@@ -17,6 +17,7 @@ import java.io.File
 import java.io.IOException
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 import java.util.concurrent.atomic.AtomicReference
 
 data class EchoWebDavPlaybackCredential(
@@ -45,13 +46,8 @@ object EchoRemotePlaybackAuthRegistry {
     @UnstableApi
     internal fun resolve(dataSpec: DataSpec): DataSpec {
         val uri = dataSpec.uri
-        val uriString = uri.toString()
         val userInfo = uri.userInfoDecoded()
-        val matchedCredential = webDavCredentials.get()
-            .firstOrNull { credential ->
-                uriString == credential.normalizedBaseUrl ||
-                    uriString.startsWith("${credential.normalizedBaseUrl}/")
-            }
+        val matchedCredential = matchingCredential(uri)
         val authorization = when {
             matchedCredential != null -> matchedCredential.authorizationHeader
             !userInfo.isNullOrBlank() -> basicAuthorizationFromUserInfo(userInfo)
@@ -65,6 +61,43 @@ object EchoRemotePlaybackAuthRegistry {
             .setUri(cleanUri)
             .setHttpRequestHeaders(headers)
             .build()
+    }
+
+    internal fun cacheIdentity(uri: Uri, requestHeaders: Map<String, String>): String {
+        val credentialIdentity = matchingCredential(uri)?.let { credential ->
+            "${credential.normalizedBaseUrl}:${credential.username.trim()}"
+        }
+        val userInfoIdentity = if (credentialIdentity == null) {
+            uri.userInfoDecoded()?.takeIf { it.isNotBlank() }?.let { "${uri.host.orEmpty()}:$it" }
+        } else {
+            null
+        }
+        val authorizationHeaders = requestHeaders.entries
+            .filter { it.key.equals("Authorization", ignoreCase = true) }
+            .map { it.value }
+        val sensitiveQueryValues = if (uri.isHierarchical && !uri.encodedQuery.isNullOrBlank()) {
+            uri.queryParameterNames
+                .filter { it.isSensitiveCacheQueryName() }
+                .sorted()
+                .flatMap { name -> uri.getQueryParameters(name).sorted().map { value -> name to value } }
+        } else {
+            emptyList()
+        }
+        return remotePlaybackCacheNamespace(
+            credentialIdentity = credentialIdentity,
+            userInfoIdentity = userInfoIdentity,
+            authorizationHeaders = authorizationHeaders,
+            sensitiveQueryValues = sensitiveQueryValues,
+        )
+    }
+
+    private fun matchingCredential(uri: Uri): EchoWebDavPlaybackCredential? {
+        val cleanUriString = uri.withoutUserInfo().toString()
+        return webDavCredentials.get()
+            .firstOrNull { credential ->
+                cleanUriString == credential.normalizedBaseUrl ||
+                    cleanUriString.startsWith("${credential.normalizedBaseUrl}/")
+            }
     }
 }
 
@@ -160,7 +193,12 @@ private object EchoRemotePlaybackCache {
 @UnstableApi
 private object EchoRemotePlaybackCacheKeyFactory : CacheKeyFactory {
     override fun buildCacheKey(dataSpec: DataSpec): String =
-        dataSpec.uri.toRemotePlaybackCacheKey()
+        buildString {
+            append("echo-remote-v2:")
+            append(EchoRemotePlaybackAuthRegistry.cacheIdentity(dataSpec.uri, dataSpec.httpRequestHeaders))
+            append(':')
+            append(dataSpec.key ?: dataSpec.uri.toRemotePlaybackCacheKey())
+        }
 }
 
 private fun basicAuthorization(username: String, password: String): String {
@@ -218,6 +256,30 @@ private fun Uri.toRemotePlaybackCacheKey(): String {
 
 private fun String.isSensitiveCacheQueryName(): Boolean =
     lowercase() in sensitiveCacheQueryNames
+
+private fun sha256(value: String): String =
+    MessageDigest.getInstance("SHA-256")
+        .digest(value.toByteArray(StandardCharsets.UTF_8))
+        .joinToString(separator = "") { byte ->
+            (byte.toInt() and 0xFF).toString(16).padStart(2, '0')
+        }
+
+internal fun remotePlaybackCacheNamespace(
+    credentialIdentity: String? = null,
+    userInfoIdentity: String? = null,
+    authorizationHeaders: List<String> = emptyList(),
+    sensitiveQueryValues: List<Pair<String, String>> = emptyList(),
+): String {
+    val identityParts = buildList {
+        credentialIdentity?.let { add("webdav:$it") }
+            ?: userInfoIdentity?.let { add("userinfo:$it") }
+        authorizationHeaders.sorted().forEach { add("authorization:$it") }
+        sensitiveQueryValues
+            .sortedWith(compareBy<Pair<String, String>> { it.first.lowercase() }.thenBy { it.second })
+            .forEach { (name, value) -> add("query:${name.lowercase()}:$value") }
+    }
+    return sha256(identityParts.ifEmpty { listOf("public") }.joinToString("\u0000"))
+}
 
 private val sensitiveCacheQueryNames = setOf(
     "access_token",

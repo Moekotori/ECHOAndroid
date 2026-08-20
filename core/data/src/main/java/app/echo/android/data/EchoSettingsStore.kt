@@ -17,8 +17,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.json.JSONArray
 import org.json.JSONObject
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 
 private val Context.echoSettings by preferencesDataStore(name = "echo-settings")
+private val Context.echoPlaybackResumeSettings by preferencesDataStore(name = "echo-playback-resume")
+private val PlaybackResumeKey = stringPreferencesKey("playback_resume")
 private const val DefaultNeteaseAudioQuality = "lossless"
 
 data class EchoAppSettings(
@@ -148,6 +152,10 @@ class EchoSettingsStore(
 ) {
     @Volatile
     private var cachedStartupThemeSnapshot: EchoStartupThemeSnapshot? = null
+    @Volatile
+    private var cachedPlaybackQueueIdentity: String? = null
+    @Volatile
+    private var playbackQueueIdentityLoaded: Boolean = false
 
     fun startupAppSettingsSnapshot(): EchoAppSettings =
         context.readEchoStartupThemeSnapshot().toAppSettings()
@@ -522,19 +530,46 @@ class EchoSettingsStore(
     }
 
     suspend fun savePlaybackSession(session: EchoSavedPlaybackSession?) {
-        context.echoSettings.edit {
-            if (session == null || session.queue.isEmpty() || session.currentIndex !in session.queue.indices) {
-                it.remove(Keys.LastPlaybackSession)
-            } else {
-                it[Keys.LastPlaybackSession] = session.toPreferenceValue()
-            }
+        if (session == null || session.queue.isEmpty() || session.currentIndex !in session.queue.indices) {
+            context.echoSettings.edit { it.remove(Keys.LastPlaybackSession) }
+            context.echoPlaybackResumeSettings.edit { it.remove(PlaybackResumeKey) }
+            cachedPlaybackQueueIdentity = null
+            playbackQueueIdentityLoaded = true
+            return
+        }
+
+        val queueIdentity = session.playbackQueueIdentity()
+        val savedQueueIdentity = if (playbackQueueIdentityLoaded) {
+            cachedPlaybackQueueIdentity
+        } else {
+            context.echoSettings.data.first()[Keys.LastPlaybackSession]
+                ?.let(::parsePlaybackSession)
+                ?.playbackQueueIdentity()
+                .also {
+                    cachedPlaybackQueueIdentity = it
+                    playbackQueueIdentityLoaded = true
+                }
+        }
+        if (savedQueueIdentity != queueIdentity) {
+            context.echoSettings.edit { it[Keys.LastPlaybackSession] = session.toPreferenceValue() }
+            cachedPlaybackQueueIdentity = queueIdentity
+            playbackQueueIdentityLoaded = true
+        }
+        context.echoPlaybackResumeSettings.edit {
+            it[PlaybackResumeKey] = session.toResumePreferenceValue(queueIdentity)
         }
     }
 
-    suspend fun getSavedPlaybackSession(): EchoSavedPlaybackSession? =
-        context.echoSettings.data
-            .map { preferences -> preferences[Keys.LastPlaybackSession]?.let(::parsePlaybackSession) }
-            .first()
+    suspend fun getSavedPlaybackSession(): EchoSavedPlaybackSession? {
+        val savedSession = context.echoSettings.data.first()[Keys.LastPlaybackSession]
+            ?.let(::parsePlaybackSession)
+            ?: return null
+        cachedPlaybackQueueIdentity = savedSession.playbackQueueIdentity()
+        playbackQueueIdentityLoaded = true
+        val savedResume = context.echoPlaybackResumeSettings.data.first()[PlaybackResumeKey]
+            ?.let(::parsePlaybackResume)
+        return savedSession.withPlaybackResume(savedResume)
+    }
 
     suspend fun clearEchoLinkPcEndpoint() {
         context.echoSettings.edit {
@@ -736,6 +771,83 @@ internal fun EchoSavedPlaybackSession.toPreferenceValue(): String =
             },
         )
     }.toString()
+
+internal data class EchoSavedPlaybackResume(
+    val queueIdentity: String,
+    val currentIndex: Int,
+    val positionMs: Long,
+    val playWhenReady: Boolean,
+    val shuffleEnabled: Boolean,
+    val repeatMode: EchoRepeatMode,
+    val playbackSpeed: Float,
+    val playbackPitch: Float,
+)
+
+internal fun EchoSavedPlaybackSession.playbackQueueIdentity(): String {
+    val digest = MessageDigest.getInstance("SHA-256")
+    queue.forEach { track ->
+        listOf(
+            track.id,
+            track.uri,
+            track.title,
+            track.artist,
+            track.album.orEmpty(),
+            track.artworkUri.orEmpty(),
+            track.durationMs.toString(),
+        ).forEach { value ->
+            digest.update(value.toByteArray(StandardCharsets.UTF_8))
+            digest.update(0.toByte())
+        }
+    }
+    return digest.digest().joinToString(separator = "") { byte ->
+        (byte.toInt() and 0xFF).toString(16).padStart(2, '0')
+    }
+}
+
+internal fun EchoSavedPlaybackSession.toResumePreferenceValue(queueIdentity: String): String =
+    JSONObject().apply {
+        put("queueIdentity", queueIdentity)
+        put("currentIndex", currentIndex)
+        put("positionMs", positionMs.coerceAtLeast(0L))
+        put("playWhenReady", playWhenReady)
+        put("shuffleEnabled", shuffleEnabled)
+        put("repeatMode", repeatMode.toPreferenceValue())
+        put("playbackSpeed", playbackSpeed.toDouble())
+        put("playbackPitch", playbackPitch.toDouble())
+    }.toString()
+
+internal fun parsePlaybackResume(raw: String): EchoSavedPlaybackResume? =
+    runCatching {
+        val json = JSONObject(raw)
+        val queueIdentity = json.optString("queueIdentity").takeIf { it.isNotBlank() }
+            ?: return@runCatching null
+        EchoSavedPlaybackResume(
+            queueIdentity = queueIdentity,
+            currentIndex = json.optInt("currentIndex", -1),
+            positionMs = json.optLong("positionMs").coerceAtLeast(0L),
+            playWhenReady = json.optBoolean("playWhenReady", false),
+            shuffleEnabled = json.optBoolean("shuffleEnabled", false),
+            repeatMode = parseSavedRepeatMode(json.optString("repeatMode")),
+            playbackSpeed = json.optDouble("playbackSpeed", 1.0).toFloat().coerceIn(0.5f, 2.0f),
+            playbackPitch = json.optDouble("playbackPitch", 1.0).toFloat().coerceIn(0.5f, 2.0f),
+        )
+    }.getOrNull()
+
+internal fun EchoSavedPlaybackSession.withPlaybackResume(
+    resume: EchoSavedPlaybackResume?,
+): EchoSavedPlaybackSession {
+    if (resume == null || resume.queueIdentity != playbackQueueIdentity()) return this
+    if (resume.currentIndex !in queue.indices) return this
+    return copy(
+        currentIndex = resume.currentIndex,
+        positionMs = resume.positionMs,
+        playWhenReady = resume.playWhenReady,
+        shuffleEnabled = resume.shuffleEnabled,
+        repeatMode = resume.repeatMode,
+        playbackSpeed = resume.playbackSpeed,
+        playbackPitch = resume.playbackPitch,
+    )
+}
 
 internal fun parsePlaybackSession(raw: String): EchoSavedPlaybackSession? =
     runCatching {

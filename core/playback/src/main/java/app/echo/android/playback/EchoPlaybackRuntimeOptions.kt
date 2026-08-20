@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlin.time.Duration.Companion.milliseconds
 
 data class EchoPlaybackRuntimeOptions(
     val skipSilenceEnabled: Boolean = false,
@@ -67,13 +66,13 @@ object EchoPlaybackProcessRuntime {
         ensureSleepTimer()
     }
 
-    fun startProgress(intervalMs: Long, onTick: (Player) -> Unit) {
+    fun startProgress(intervalMs: Long, onTick: suspend (Player) -> Unit) {
         progressJob?.cancel()
         if (intervalMs <= 0L) return
         progressJob = scope.launch {
             while (true) {
-                mediaController?.let(onTick)
-                delay(intervalMs.milliseconds)
+                delay(intervalMs)
+                mediaController?.let { player -> onTick(player) }
             }
         }
     }

@@ -74,6 +74,76 @@ class EchoRemoteClientTest {
     }
 
     @Test
+    fun statusPollingWaitsForThePreviousRequest() = runBlocking {
+        val transport = FakeEchoLinkTransport(statusDelayAfterFirstMs = 30)
+        val client = EchoRemoteClient(
+            scope = this,
+            transport = transport,
+            connectRetryDelayMs = 0,
+            statusPollIntervalMs = 5,
+        )
+
+        client.connect(endpoint, refreshLibraryOnConnect = false)
+        delay(100)
+
+        assertTrue(transport.statusCalls >= 3)
+        assertEquals(1, transport.maxConcurrentStatusCalls)
+        client.disconnect()
+    }
+
+    @Test
+    fun oldPlaylistRequestCannotOverwriteTheSelectedPlaylist() = runBlocking {
+        val oldPlaylistBlocker = CompletableDeferred<Unit>()
+        val transport = FakeEchoLinkTransport(
+            playlistBlockers = mapOf("old" to oldPlaylistBlocker),
+            playlistTracks = mapOf(
+                "old" to listOf(remoteTrack("old-track")),
+                "new" to listOf(remoteTrack("new-track")),
+            ),
+        )
+        val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
+        client.connect(endpoint, refreshLibraryOnConnect = false)
+        delay(20)
+
+        client.refreshPlaylistTracks(EchoRemotePlaylist("old", "Old", null, 1))
+        delay(10)
+        client.refreshPlaylistTracks(EchoRemotePlaylist("new", "New", null, 1))
+        delay(20)
+        oldPlaylistBlocker.complete(Unit)
+        delay(20)
+
+        assertNull(client.library.value.loadingPlaylistId)
+        assertEquals(listOf("new-track"), client.library.value.playlistTracks["new"]?.map { it.id })
+        assertTrue(client.library.value.playlistTracks["old"].isNullOrEmpty())
+        assertNull(client.library.value.error)
+        client.disconnect()
+    }
+
+    @Test
+    fun disconnectedPhoneStreamFailureCannotRestoreAnOldError() = runBlocking {
+        val streamBlocker = CompletableDeferred<Unit>()
+        val transport = FakeEchoLinkTransport(
+            streamBlocker = streamBlocker,
+            failStream = true,
+        )
+        val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
+        client.connect(endpoint, refreshLibraryOnConnect = false)
+        delay(20)
+
+        client.playTrackOnPhone(
+            track = remoteTrack("phone-track"),
+            onTrackReady = { error("failed stream must not become playable") },
+        )
+        delay(10)
+        client.disconnect()
+        streamBlocker.complete(Unit)
+        delay(20)
+
+        assertNull(client.library.value.error)
+        assertEquals(EchoRemoteConnectionState.Disconnected, client.status.value.connectionState)
+    }
+
+    @Test
     fun statusRetryDoesNotConsumePairingSecretTwice() = runBlocking {
         val pairingEndpoint = endpoint.copy(
             token = "one-time-secret",
@@ -169,14 +239,32 @@ class EchoRemoteClientTest {
     }
 }
 
+private fun remoteTrack(id: String): EchoRemoteTrack =
+    EchoRemoteTrack(
+        id = id,
+        title = "Song $id",
+        artist = "Artist",
+        album = "Album",
+        artworkUrl = null,
+        durationMs = 1_000,
+        canPlayOnPhone = true,
+    )
+
 private class FakeEchoLinkTransport(
     private val failStatusTimes: Int = 0,
     private val libraryPageSize: Int = 500,
     private val libraryTotalCount: Int = 0,
     private val pairingBlocker: CompletableDeferred<Unit>? = null,
     private val trackBlockers: Map<String, CompletableDeferred<Unit>> = emptyMap(),
+    private val statusDelayAfterFirstMs: Long = 0L,
+    private val playlistBlockers: Map<String, CompletableDeferred<Unit>> = emptyMap(),
+    private val playlistTracks: Map<String, List<EchoRemoteTrack>> = emptyMap(),
+    private val streamBlocker: CompletableDeferred<Unit>? = null,
+    private val failStream: Boolean = false,
 ) : EchoLinkTransport {
     var statusCalls = 0
+    var maxConcurrentStatusCalls = 0
+    private var activeStatusCalls = 0
     var pairingCalls = 0
     var libraryTrackCalls = 0
     var playlistTrackCalls = 0
@@ -200,13 +288,22 @@ private class FakeEchoLinkTransport(
 
     override suspend fun fetchStatus(endpoint: EchoRemoteEndpoint): EchoLinkStatusResponse {
         statusCalls += 1
-        if (statusCalls <= failStatusTimes) {
-            throw EchoLinkHttpException("PC ECHO request failed (503): starting")
+        activeStatusCalls += 1
+        maxConcurrentStatusCalls = maxOf(maxConcurrentStatusCalls, activeStatusCalls)
+        try {
+            if (statusCalls > 1 && statusDelayAfterFirstMs > 0L) {
+                delay(statusDelayAfterFirstMs)
+            }
+            if (statusCalls <= failStatusTimes) {
+                throw EchoLinkHttpException("PC ECHO request failed (503): starting")
+            }
+            return EchoLinkStatusResponse(
+                deviceName = endpoint.name,
+                playback = EchoRemotePlaybackSnapshot(),
+            )
+        } finally {
+            activeStatusCalls -= 1
         }
-        return EchoLinkStatusResponse(
-            deviceName = endpoint.name,
-            playback = EchoRemotePlaybackSnapshot(),
-        )
     }
 
     override suspend fun sendCommand(
@@ -255,11 +352,19 @@ private class FakeEchoLinkTransport(
         pageSize: Int,
     ): EchoLinkTrackPage {
         playlistTrackCalls += 1
+        playlistBlockers[playlistId]?.await()
+        playlistTracks[playlistId]?.let { tracks ->
+            return EchoLinkTrackPage(tracks = tracks, totalCount = tracks.size)
+        }
         throw EchoLinkHttpException("PC ECHO request failed (404): playlist_not_found")
     }
 
     override suspend fun resolveStream(endpoint: EchoRemoteEndpoint, trackId: String): EchoLinkStreamResponse {
         streamCalls += 1
+        streamBlocker?.await()
+        if (failStream) {
+            throw EchoLinkHttpException("PC ECHO request failed (503): stream_unavailable")
+        }
         return EchoLinkStreamResponse(streamUrl = "http://192.168.1.20:26789/echo-link/media/token", track = null)
     }
 

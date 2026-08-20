@@ -27,6 +27,7 @@ class EchoRemoteClient internal constructor(
     private val scope: CoroutineScope,
     private val transport: EchoLinkTransport = OkHttpEchoLinkTransport(),
     private val connectRetryDelayMs: Long = 500L,
+    private val statusPollIntervalMs: Long = StatusPollIntervalMs,
 ) {
     constructor(scope: CoroutineScope) : this(scope, OkHttpEchoLinkTransport())
 
@@ -40,9 +41,12 @@ class EchoRemoteClient internal constructor(
     private var connectJob: Job? = null
     private var statusPollJob: Job? = null
     private var libraryRefreshJob: Job? = null
+    private var playlistRefreshJob: Job? = null
     private var playOnPhoneGeneration = 0L
     private var connectGeneration = 0L
+    private var statusRefreshGeneration = 0L
     private var libraryRefreshGeneration = 0L
+    private var playlistRefreshGeneration = 0L
 
     fun connectManual(address: String, token: String, refreshLibraryOnConnect: Boolean = true) {
         val parsed = EchoPairingParser.parseManual(address, token)
@@ -67,9 +71,14 @@ class EchoRemoteClient internal constructor(
         connectJob?.cancel()
         endpoint = nextEndpoint
         statusPollJob?.cancel()
+        statusRefreshGeneration += 1
         libraryRefreshGeneration += 1
         libraryRefreshJob?.cancel()
         libraryRefreshJob = null
+        playlistRefreshGeneration += 1
+        playlistRefreshJob?.cancel()
+        playlistRefreshJob = null
+        playOnPhoneGeneration += 1
         _status.update {
             it.copy(
                 connectionState = EchoRemoteConnectionState.Connecting,
@@ -142,9 +151,14 @@ class EchoRemoteClient internal constructor(
         connectJob = null
         statusPollJob?.cancel()
         statusPollJob = null
+        statusRefreshGeneration += 1
         libraryRefreshGeneration += 1
         libraryRefreshJob?.cancel()
         libraryRefreshJob = null
+        playlistRefreshGeneration += 1
+        playlistRefreshJob?.cancel()
+        playlistRefreshJob = null
+        playOnPhoneGeneration += 1
         endpoint = null
         _status.value = EchoRemoteStatus(mobileDiscordPresence = _status.value.mobileDiscordPresence)
         _library.value = EchoRemoteLibraryState()
@@ -196,16 +210,24 @@ class EchoRemoteClient internal constructor(
             }
             return
         }
+        val generation = ++statusRefreshGeneration
         scope.launch {
-            runCatching { transport.sendCommand(target, command) }
+            runSuspendCatching { transport.sendCommand(target, command) }
                 .onSuccess { response ->
+                    if (generation != statusRefreshGeneration) {
+                        return@onSuccess
+                    }
                     if (response != null) {
                         applyStatus(target, response)
                     } else {
                         refreshStatusOnce(target)
                     }
                 }
-                .onFailure { error -> markConnectionError(target, error) }
+                .onFailure { error ->
+                    if (generation == statusRefreshGeneration) {
+                        markConnectionError(target, error)
+                    }
+                }
         }
     }
 
@@ -214,6 +236,9 @@ class EchoRemoteClient internal constructor(
             _library.update { it.copy(isLoading = false, error = "还没有连接 PC ECHO") }
             return
         }
+        playlistRefreshGeneration += 1
+        playlistRefreshJob?.cancel()
+        playlistRefreshJob = null
         _library.update { current ->
             val sameQuery = current.query.trim() == query.trim()
             current.copy(
@@ -267,6 +292,9 @@ class EchoRemoteClient internal constructor(
     }
 
     fun refreshPlaylistTracks(playlist: EchoRemotePlaylist) {
+        val generation = ++playlistRefreshGeneration
+        playlistRefreshJob?.cancel()
+        playlistRefreshJob = null
         val target = endpoint ?: run {
             _library.update { it.copy(error = "还没有连接 PC ECHO") }
             return
@@ -286,10 +314,13 @@ class EchoRemoteClient internal constructor(
             return
         }
         _library.update { it.copy(loadingPlaylistId = playlist.id, error = null) }
-        scope.launch {
-            runCatching { transport.fetchPlaylistTracks(target, playlist.id, PcPlaylistTrackPageSize) }
+        playlistRefreshJob = scope.launch {
+            runSuspendCatching { transport.fetchPlaylistTracks(target, playlist.id, PcPlaylistTrackPageSize) }
                 .onSuccess { page ->
-                    if (endpoint?.id == target.id) {
+                    if (
+                        endpoint?.id == target.id &&
+                        generation == playlistRefreshGeneration
+                    ) {
                         _library.update { current ->
                             current.copy(
                                 playlistTracks = current.playlistTracks + (playlist.id to page.tracks),
@@ -300,7 +331,10 @@ class EchoRemoteClient internal constructor(
                     }
                 }
                 .onFailure { error ->
-                    if (endpoint?.id == target.id) {
+                    if (
+                        endpoint?.id == target.id &&
+                        generation == playlistRefreshGeneration
+                    ) {
                         _library.update {
                             it.copy(loadingPlaylistId = null, error = error.userMessage())
                         }
@@ -345,7 +379,7 @@ class EchoRemoteClient internal constructor(
         _library.update { it.copy(error = null) }
         val generation = ++playOnPhoneGeneration
         scope.launch {
-            runCatching { transport.resolveStream(target, trackId) }
+            runSuspendCatching { transport.resolveStream(target, trackId) }
                 .onSuccess { stream ->
                     if (!EchoLinkRequestPolicy.shouldApplyResolvedPlay(generation, playOnPhoneGeneration)) {
                         return@onSuccess
@@ -359,7 +393,10 @@ class EchoRemoteClient internal constructor(
                     resolveLyricsForPhoneTrack(target, resolvedTrack, phoneTrack.id, onLyricsReady)
                 }
                 .onFailure { error ->
-                    if (EchoLinkRequestPolicy.shouldApplyResolvedPlay(generation, playOnPhoneGeneration)) {
+                    if (
+                        EchoLinkRequestPolicy.shouldApplyResolvedPlay(generation, playOnPhoneGeneration) &&
+                        EchoLinkRequestPolicy.isSameEndpoint(endpoint, target)
+                    ) {
                         _library.update { it.copy(error = error.userMessage()) }
                     }
                 }
@@ -374,7 +411,7 @@ class EchoRemoteClient internal constructor(
     ) {
         val trackId = track.id ?: return
         scope.launch {
-            runCatching { transport.fetchLyrics(target, trackId) }
+            runSuspendCatching { transport.fetchLyrics(target, trackId) }
                 .onSuccess { lyrics ->
                     if (lyrics != null && endpoint?.id == target.id) {
                         onLyricsReady(phoneTrackId, lyrics)
@@ -387,27 +424,33 @@ class EchoRemoteClient internal constructor(
         statusPollJob?.cancel()
         statusPollJob = scope.launch {
             while (isActive) {
-                delay(StatusPollIntervalMs)
+                delay(statusPollIntervalMs)
                 endpoint?.let { refreshStatusOnce(it) }
             }
         }
     }
 
-    private fun refreshStatusOnce(target: EchoRemoteEndpoint) {
-        scope.launch {
-            runCatching { transport.fetchStatus(target) }
-                .onSuccess { applyStatus(target, it) }
-                .onFailure { error ->
-                    if (endpoint?.id == target.id) {
-                        _status.update { current ->
-                            current.copy(
-                                connectionState = EchoRemoteConnectionState.Reconnecting,
-                                error = error.userMessage(),
-                            )
-                        }
+    private suspend fun refreshStatusOnce(target: EchoRemoteEndpoint) {
+        val generation = ++statusRefreshGeneration
+        runSuspendCatching { transport.fetchStatus(target) }
+            .onSuccess { response ->
+                if (generation == statusRefreshGeneration) {
+                    applyStatus(target, response)
+                }
+            }
+            .onFailure { error ->
+                if (
+                    endpoint?.id == target.id &&
+                    generation == statusRefreshGeneration
+                ) {
+                    _status.update { current ->
+                        current.copy(
+                            connectionState = EchoRemoteConnectionState.Reconnecting,
+                            error = error.userMessage(),
+                        )
                     }
                 }
-        }
+            }
     }
 
     private fun applyStatus(target: EchoRemoteEndpoint, response: EchoLinkStatusResponse) {
