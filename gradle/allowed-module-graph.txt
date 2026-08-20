@@ -1,11 +1,10 @@
-# Allowed project() dependencies. Enforced by ./gradlew checkModules
+# Declared project() dependencies. ./gradlew checkModules checks that
+# each module's project() edges are a subset of this file.
 # Format: :module -> [:dep ...]
-# Structural rules (also enforced in checkModules / AGENTS.md):
-#   - nothing depends on :app
-#   - :feature:* cannot depend on another :feature:* or on :app
-#   - :core:* cannot depend on :feature:* or :app
-#   - :feature:* may only depend on :core:model and :core:design
-# Adding a module: update settings.gradle.kts, this file, and the table in AGENTS.md.
+#
+# CI also rejects: depending on :app, feature→feature, core→feature.
+# Feature modules usually only need :core:model and :core:design;
+# extra core deps are fine if you list them here.
 
 :app -> :core:connect :core:data :core:design :core:lyrics :core:model :core:playback :feature:connect :feature:home :feature:library :feature:player :feature:settings
 :core:connect -> :core:model

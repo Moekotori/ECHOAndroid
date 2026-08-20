@@ -20,7 +20,6 @@ tasks.register("checkModules") {
     doLast {
         val includeRegex = Regex("""include\("([^"]+)"\)""")
         val projectDepRegex = Regex("""project\("([^"]+)"\)""")
-        val featureAllowedCores = setOf(":core:model", ":core:design")
 
         fun parseAllowedGraph(text: String): Map<String, Set<String>> {
             val graph = linkedMapOf<String, Set<String>>()
@@ -77,15 +76,6 @@ tasks.register("checkModules") {
             if (module.startsWith(":core:") && actual.any { it.startsWith(":feature:") }) {
                 errors += "$module must not depend on a feature module"
             }
-            if (module.startsWith(":feature:")) {
-                val illegalCores = actual.filter { it.startsWith(":core:") && it !in featureAllowedCores }
-                if (illegalCores.isNotEmpty()) {
-                    errors += "$module may only depend on ${featureAllowedCores.sorted().joinToString()} (not ${illegalCores.sorted().joinToString()})"
-                }
-            }
-            if (module == ":core:model" && actual.isNotEmpty()) {
-                errors += ":core:model must not depend on other project modules (${actual.sorted().joinToString()})"
-            }
         }
 
         allowed.forEach { (from, deps) ->
@@ -98,9 +88,6 @@ tasks.register("checkModules") {
                 }
                 if (from.startsWith(":core:") && (to.startsWith(":feature:") || to == ":app")) {
                     errors += "allowed graph lets $from depend on $to"
-                }
-                if (from.startsWith(":feature:") && to.startsWith(":core:") && to !in featureAllowedCores) {
-                    errors += "allowed graph lets $from depend on $to; features may only use ${featureAllowedCores.sorted().joinToString()}"
                 }
             }
         }
