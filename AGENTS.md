@@ -112,3 +112,21 @@ PR / `main` 会跑：
 不要在默认 CI 里加需要模拟器的 `androidTest`。仪器测试留在 `core/data/src/androidTest`，本机或单独作业再跑。
 
 改模块边界却不更新 `gradle/allowed-module-graph.txt` 会使 CI 失败。这是预期行为。
+
+## 开发工作流
+
+仓库脚本在 `.grok/workflows/`（Grok Build 工作流，不是 GitHub Actions）。
+
+| 命令 | 做什么 | 参数 |
+| --- | --- | --- |
+| `/echo-dev` | 按模块边界实现一项改动：Scope → Implement → Verify（模块图 / 任务完整性 / `checkModules`）→ 必要时 Fix 一轮 | `task`（必填，一句话说明要做的事） |
+| `/echo-review` | 审查相对某 ref 的 diff：并行看模块边界、正确性、CI 契约，再对抗核实 | `base`（可选，默认 `HEAD`，即未提交改动） |
+
+也可以：
+
+```text
+/workflow echo-dev
+/workflow echo-review
+```
+
+`echo-dev` 会改工作区，不提交。一次实现大约 6 个 agent（有确认问题时 7）；`echo-review` 最多约 13 个（3 个审查 + 最多 10 个核实）。在 `/workflows` 看进度。
