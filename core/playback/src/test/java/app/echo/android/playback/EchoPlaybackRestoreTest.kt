@@ -49,4 +49,12 @@ class EchoPlaybackRestoreTest {
             ),
         )
     }
+
+    @Test
+    fun pendingQueueReplaceAfterSessionLoadAbandonsRestore() {
+        assertTrue(shouldAbandonSavedSessionRestoreForPendingQueueReplace(listOf(true)))
+        assertTrue(shouldAbandonSavedSessionRestoreForPendingQueueReplace(listOf(false, true)))
+        assertFalse(shouldAbandonSavedSessionRestoreForPendingQueueReplace(listOf(false)))
+        assertFalse(shouldAbandonSavedSessionRestoreForPendingQueueReplace(emptyList()))
+    }
 }

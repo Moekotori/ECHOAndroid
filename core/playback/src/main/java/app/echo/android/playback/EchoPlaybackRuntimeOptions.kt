@@ -1,5 +1,6 @@
 package app.echo.android.playback
 
+import android.media.audiofx.LoudnessEnhancer
 import androidx.media3.common.Player
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -48,6 +49,8 @@ object EchoPlaybackProcessRuntime {
 
     private var progressJob: Job? = null
     private var sleepJob: Job? = null
+    private var loudnessEnhancer: LoudnessEnhancer? = null
+    private var loudnessAudioSessionId: Int = AUDIO_SESSION_UNSET
 
     fun equalizerController(): EchoEqualizerController =
         synchronized(this) {
@@ -93,6 +96,29 @@ object EchoPlaybackProcessRuntime {
         replayGainPreampDb = preampDb
     }
 
+    fun syncLoudnessEnhancer(audioSessionId: Int, enhancerGainMb: Int) {
+        if (audioSessionId != loudnessAudioSessionId) {
+            runCatching {
+                loudnessEnhancer?.enabled = false
+                loudnessEnhancer?.release()
+            }
+            loudnessEnhancer = null
+            loudnessAudioSessionId = audioSessionId
+            if (audioSessionId != AUDIO_SESSION_UNSET) {
+                runCatching { LoudnessEnhancer(audioSessionId) }.onSuccess { loudnessEnhancer = it }
+            }
+        }
+        val enhancer = loudnessEnhancer ?: return
+        runCatching {
+            if (enhancerGainMb > 0) {
+                enhancer.setTargetGain(enhancerGainMb)
+                enhancer.enabled = true
+            } else {
+                enhancer.enabled = false
+            }
+        }
+    }
+
     fun cancelSleepTimer() {
         sleepTimerEndTimeEpochMs = null
         sleepJob?.cancel()
@@ -120,3 +146,5 @@ object EchoPlaybackProcessRuntime {
         }
     }
 }
+
+private const val AUDIO_SESSION_UNSET = 0

@@ -25,6 +25,7 @@ object PlaybackSessionPolicy {
 
     fun shouldRemapFullQueue(
         timelineChanged: Boolean,
+        mediaItemTransitioned: Boolean = false,
         isPlayingChanged: Boolean = false,
         tracksChanged: Boolean = false,
         playWhenReadyChanged: Boolean = false,
@@ -32,7 +33,7 @@ object PlaybackSessionPolicy {
         isPlayingChanged
         tracksChanged
         playWhenReadyChanged
-        return timelineChanged
+        return timelineChanged || mediaItemTransitioned
     }
 
     fun shouldSkipUnchangedSessionPersist(
@@ -43,6 +44,10 @@ object PlaybackSessionPolicy {
         lastPositionBucket: Long?,
     ): Boolean = !force && signature == lastSignature && positionBucket == lastPositionBucket
 
-    fun shouldReuseCachedQueueSnapshot(cachedItemCount: Int, playerItemCount: Int): Boolean =
-        cachedItemCount > 0 && cachedItemCount == playerItemCount
+    fun shouldReuseCachedQueueSnapshot(
+        cachedMediaIds: List<String>,
+        playerMediaIds: List<String>,
+    ): Boolean = cachedMediaIds.isNotEmpty() && cachedMediaIds == playerMediaIds
+
+    fun shouldPersistNullSavedSession(mediaItemCount: Int): Boolean = mediaItemCount <= 0
 }

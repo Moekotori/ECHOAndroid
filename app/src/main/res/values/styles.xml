@@ -1,10 +1,11 @@
 <resources>
-    <style name="Theme.EchoAndroid" parent="@android:style/Theme.Material.NoActionBar">
+    <style name="EchoAndroidBaseTheme" parent="@android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">@font/outfit</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionBar">false</item>
-        <item name="android:forceDarkAllowed">false</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
+
+    <style name="Theme.EchoAndroid" parent="@style/EchoAndroidBaseTheme" />
 </resources>

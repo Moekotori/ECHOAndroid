@@ -12,6 +12,7 @@ import app.echo.android.model.connect.EchoRemoteStatus
 import app.echo.android.model.connect.EchoRemoteTrack
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.LibrarySource
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -36,10 +37,12 @@ class EchoRemoteClient internal constructor(
     val library: StateFlow<EchoRemoteLibraryState> = _library.asStateFlow()
 
     private var endpoint: EchoRemoteEndpoint? = null
+    private var connectJob: Job? = null
     private var statusPollJob: Job? = null
     private var libraryRefreshJob: Job? = null
     private var playOnPhoneGeneration = 0L
     private var connectGeneration = 0L
+    private var libraryRefreshGeneration = 0L
 
     fun connectManual(address: String, token: String, refreshLibraryOnConnect: Boolean = true) {
         val parsed = EchoPairingParser.parseManual(address, token)
@@ -61,8 +64,10 @@ class EchoRemoteClient internal constructor(
 
     fun connect(nextEndpoint: EchoRemoteEndpoint, refreshLibraryOnConnect: Boolean = true) {
         val generation = ++connectGeneration
+        connectJob?.cancel()
         endpoint = nextEndpoint
         statusPollJob?.cancel()
+        libraryRefreshGeneration += 1
         libraryRefreshJob?.cancel()
         libraryRefreshJob = null
         _status.update {
@@ -72,32 +77,44 @@ class EchoRemoteClient internal constructor(
                 error = null,
             )
         }
-        scope.launch {
-            var attempt = 0
+        connectJob = scope.launch {
+            var pairingAttempt = 0
+            var target: EchoRemoteEndpoint? = null
+            while (isActive && target == null) {
+                if (!EchoLinkRequestPolicy.shouldApplyResolvedPlay(generation, connectGeneration)) {
+                    return@launch
+                }
+                val paired = runSuspendCatching { transport.completePairing(nextEndpoint) }
+                target = paired.getOrNull()
+                if (target == null) {
+                    pairingAttempt += 1
+                    markReconnecting(nextEndpoint, paired.exceptionOrNull())
+                    if (pairingAttempt >= 2) {
+                        return@launch
+                    }
+                    delay(connectRetryDelayMs)
+                }
+            }
+            val resolvedTarget = target ?: return@launch
+            if (!EchoLinkRequestPolicy.shouldApplyResolvedPlay(generation, connectGeneration)) {
+                return@launch
+            }
+            endpoint = resolvedTarget
+            _status.update { current ->
+                current.copy(endpoint = resolvedTarget)
+            }
+
+            var statusAttempt = 0
             while (isActive) {
                 if (!EchoLinkRequestPolicy.shouldApplyResolvedPlay(generation, connectGeneration)) {
                     return@launch
                 }
-                val paired = runCatching { transport.completePairing(nextEndpoint) }
-                val target = paired.getOrNull()
-                if (target == null) {
-                    attempt += 1
-                    if (attempt == 1) {
-                        markReconnecting(nextEndpoint, paired.exceptionOrNull())
-                        delay(connectRetryDelayMs)
-                        continue
-                    }
-                    markReconnecting(nextEndpoint, paired.exceptionOrNull())
-                    startStatusPolling()
-                    return@launch
-                }
-                endpoint = target
-                val status = runCatching { transport.fetchStatus(target) }
+                val status = runSuspendCatching { transport.fetchStatus(resolvedTarget) }
                 status.onSuccess { response ->
                     if (!EchoLinkRequestPolicy.shouldApplyResolvedPlay(generation, connectGeneration)) {
                         return@launch
                     }
-                    applyStatus(target, response)
+                    applyStatus(resolvedTarget, response)
                     if (refreshLibraryOnConnect) {
                         refreshLibrary()
                     } else {
@@ -106,13 +123,13 @@ class EchoRemoteClient internal constructor(
                     startStatusPolling()
                     return@launch
                 }
-                attempt += 1
-                if (attempt == 1) {
-                    markReconnecting(target, status.exceptionOrNull())
+                statusAttempt += 1
+                if (statusAttempt == 1) {
+                    markReconnecting(resolvedTarget, status.exceptionOrNull())
                     delay(connectRetryDelayMs)
                     continue
                 }
-                markReconnecting(target, status.exceptionOrNull())
+                markReconnecting(resolvedTarget, status.exceptionOrNull())
                 startStatusPolling()
                 return@launch
             }
@@ -120,8 +137,12 @@ class EchoRemoteClient internal constructor(
     }
 
     fun disconnect() {
+        connectGeneration += 1
+        connectJob?.cancel()
+        connectJob = null
         statusPollJob?.cancel()
         statusPollJob = null
+        libraryRefreshGeneration += 1
         libraryRefreshJob?.cancel()
         libraryRefreshJob = null
         endpoint = null
@@ -206,15 +227,19 @@ class EchoRemoteClient internal constructor(
                 error = null,
             )
         }
+        val generation = ++libraryRefreshGeneration
         libraryRefreshJob?.cancel()
         libraryRefreshJob = scope.launch {
-            runCatching {
+            runSuspendCatching {
                 val trackPage = fetchAllTrackPages(target, query)
                 val playlistPage = transport.fetchPlaylists(target, query, PcLibraryPageSize)
                 trackPage to playlistPage
             }
                 .onSuccess { (trackPage, playlistPage) ->
-                    if (endpoint?.id == target.id) {
+                    if (
+                        endpoint?.id == target.id &&
+                        generation == libraryRefreshGeneration
+                    ) {
                         _library.value = EchoRemoteLibraryState(
                             isLoading = false,
                             query = query,
@@ -229,7 +254,10 @@ class EchoRemoteClient internal constructor(
                     }
                 }
                 .onFailure { error ->
-                    if (endpoint?.id == target.id) {
+                    if (
+                        endpoint?.id == target.id &&
+                        generation == libraryRefreshGeneration
+                    ) {
                         _library.update {
                             it.copy(isLoading = false, query = query, error = error.userMessage())
                         }
@@ -466,3 +494,12 @@ class EchoRemoteClient internal constructor(
         const val MaxLibraryPages = 40
     }
 }
+
+private suspend inline fun <T> runSuspendCatching(block: () -> T): Result<T> =
+    try {
+        Result.success(block())
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Throwable) {
+        Result.failure(error)
+    }

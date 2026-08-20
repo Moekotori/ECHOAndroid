@@ -561,6 +561,21 @@ interface LibraryTrackDao {
             OR artist LIKE '%' || :query || '%'
             OR pinyinTitle LIKE '%' || lower(:query) || '%'
             OR pinyinArtist LIKE '%' || lower(:query) || '%'
+            OR EXISTS (
+                SELECT 1
+                FROM library_tracks AS matched_track
+                WHERE (matched_track.source = 'mediastore' OR matched_track.source = 'saf')
+                  AND matched_track.albumKey = library_album_summaries.albumKey
+                  AND (
+                    matched_track.normalizedTitle LIKE '%' || lower(:query) || '%'
+                    OR matched_track.normalizedArtist LIKE '%' || lower(:query) || '%'
+                    OR matched_track.normalizedAlbum LIKE '%' || lower(:query) || '%'
+                    OR matched_track.normalizedAlbumArtist LIKE '%' || lower(:query) || '%'
+                    OR matched_track.pinyinTitle LIKE '%' || lower(:query) || '%'
+                    OR matched_track.pinyinArtist LIKE '%' || lower(:query) || '%'
+                    OR matched_track.pinyinAlbum LIKE '%' || lower(:query) || '%'
+                  )
+            )
           )
         ORDER BY
             CASE
@@ -582,6 +597,21 @@ interface LibraryTrackDao {
         FROM library_artist_summaries
         WHERE name LIKE '%' || :query || '%'
            OR pinyinName LIKE '%' || lower(:query) || '%'
+           OR EXISTS (
+                SELECT 1
+                FROM library_tracks AS matched_track
+                WHERE (matched_track.source = 'mediastore' OR matched_track.source = 'saf')
+                  AND matched_track.artistKey = library_artist_summaries.artistKey
+                  AND (
+                    matched_track.normalizedTitle LIKE '%' || lower(:query) || '%'
+                    OR matched_track.normalizedArtist LIKE '%' || lower(:query) || '%'
+                    OR matched_track.normalizedAlbum LIKE '%' || lower(:query) || '%'
+                    OR matched_track.normalizedAlbumArtist LIKE '%' || lower(:query) || '%'
+                    OR matched_track.pinyinTitle LIKE '%' || lower(:query) || '%'
+                    OR matched_track.pinyinArtist LIKE '%' || lower(:query) || '%'
+                    OR matched_track.pinyinAlbum LIKE '%' || lower(:query) || '%'
+                  )
+           )
         ORDER BY
             CASE
                 WHEN name LIKE :query || '%' THEN 0

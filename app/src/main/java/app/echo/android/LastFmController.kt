@@ -169,6 +169,10 @@ internal class LastFmScrobbleController(
         }?.takeIf { it.title.isNotBlank() && it.artist.isNotBlank() }
 
         if (track == null) {
+            if (LastFmScrobbleRules.shouldClearActiveScrobbleForMissingTrack(snapshot.status.state)) {
+                active = null
+                return
+            }
             val current = active ?: return
             val nowEpochMs = System.currentTimeMillis()
             active = current.copy(

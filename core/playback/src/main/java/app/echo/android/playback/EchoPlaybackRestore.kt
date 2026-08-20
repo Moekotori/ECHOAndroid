@@ -12,3 +12,7 @@ fun shouldQueueControllerActionUntilSessionReady(sessionReadyForCommands: Boolea
 fun pendingPlayPauseShouldPlay(currentlyPlaying: Boolean): Boolean = !currentlyPlaying
 
 fun shouldMarkSavedSessionRestoreComplete(sessionLoadFailed: Boolean): Boolean = !sessionLoadFailed
+
+fun shouldAbandonSavedSessionRestoreForPendingQueueReplace(
+    pendingReplacesQueue: Iterable<Boolean>,
+): Boolean = shouldSkipSavedSessionRestore(pendingReplacesQueue)

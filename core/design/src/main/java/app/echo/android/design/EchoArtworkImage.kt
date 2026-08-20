@@ -112,6 +112,12 @@ internal fun EchoArtworkImage(
                 iconSize = placeholderIconSize,
             )
         } else {
+            EchoArtworkPlaceholder(
+                sizeClass = sizeClass,
+                accent = accent,
+                showSignal = showSignal,
+                iconSize = placeholderIconSize,
+            )
             AsyncImage(
                 model = model,
                 contentDescription = contentDescription,

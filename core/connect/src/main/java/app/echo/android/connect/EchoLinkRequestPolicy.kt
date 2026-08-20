@@ -11,4 +11,7 @@ object EchoLinkRequestPolicy {
 
     fun isSameEndpoint(current: EchoRemoteEndpoint?, target: EchoRemoteEndpoint): Boolean =
         current != null && endpointIdentity(current) == endpointIdentity(target)
+
+    fun shouldPersistEndpoint(endpoint: EchoRemoteEndpoint): Boolean =
+        !endpoint.needsV2PairExchange && endpoint.token.isNotBlank()
 }

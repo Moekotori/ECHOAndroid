@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.util.UnstableApi
 
-@UnstableApi
+@androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 fun EchoMobileApp(viewModel: EchoAndroidViewModel = viewModel()) {
     EchoAppRoot(viewModel = viewModel)

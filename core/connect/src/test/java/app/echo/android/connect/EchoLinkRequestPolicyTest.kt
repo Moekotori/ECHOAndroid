@@ -26,4 +26,24 @@ class EchoLinkRequestPolicyTest {
         assertFalse(EchoLinkRequestPolicy.isSameEndpoint(first, rotated))
         assertTrue(EchoLinkRequestPolicy.isSameEndpoint(rotated, rotated.copy(id = "other")))
     }
+
+    @Test
+    fun onlyResolvedBearerEndpointsCanBePersisted() {
+        val pairing = EchoRemoteEndpoint(
+            id = "pc:26789",
+            name = "PC",
+            host = "192.168.1.8",
+            port = 26789,
+            token = "one-time-secret",
+            protocolVersion = app.echo.android.model.connect.EchoProtocolVersion(2, 0),
+            pairingId = "pair-1",
+            pairingSecret = "one-time-secret",
+        )
+        assertFalse(EchoLinkRequestPolicy.shouldPersistEndpoint(pairing))
+        assertTrue(
+            EchoLinkRequestPolicy.shouldPersistEndpoint(
+                pairing.copy(token = "access-token", pairingId = null, pairingSecret = null),
+            ),
+        )
+    }
 }

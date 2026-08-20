@@ -1,7 +1,9 @@
 package app.echo.android
 
+import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
@@ -52,6 +54,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.app.ActivityCompat
 import androidx.core.content.edit
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -61,6 +64,7 @@ import app.echo.android.data.LocalLibrarySearchResults
 import app.echo.android.feature.home.SearchResult
 import app.echo.android.feature.home.SearchResultType
 import app.echo.android.connect.EchoPairingParser
+import app.echo.android.connect.EchoLinkRequestPolicy
 import app.echo.android.connect.EchoRemoteClient
 import app.echo.android.design.EchoArtworkRequestHeadersRegistry
 import app.echo.android.design.EchoMobileTheme
@@ -124,7 +128,12 @@ private enum class FontImportTarget {
 @Composable
 fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     val context = LocalContext.current
+    val permissionActivity = remember(context) { context.findActivity() }
+    val prefs = remember(context) { context.getSharedPreferences("echo_prefs", Context.MODE_PRIVATE) }
     val permission = remember { audioPermissionName() }
+    var audioPermissionRequested by remember {
+        mutableStateOf(prefs.getBoolean(ECHO_AUDIO_PERMISSION_REQUESTED_KEY, false))
+    }
     var hasAudioPermission by remember {
         mutableStateOf(ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED)
     }
@@ -133,6 +142,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         if (granted) viewModel.refreshLibrary()
     }
     val notifPermName = remember { notificationPermissionName() }
+    var notificationPermissionRequested by remember {
+        mutableStateOf(prefs.getBoolean(ECHO_NOTIFICATION_PERMISSION_REQUESTED_KEY, false))
+    }
     var hasNotifPermission by remember {
         mutableStateOf(
             notifPermName == null || ContextCompat.checkSelfPermission(context, notifPermName) == PackageManager.PERMISSION_GRANTED,
@@ -143,7 +155,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             hasNotifPermission = granted
         }
     }
-    val prefs = remember(context) { context.getSharedPreferences("echo_prefs", Context.MODE_PRIVATE) }
     var showPermissionDialog by remember {
         mutableStateOf(!prefs.getBoolean(ECHO_PERMISSION_DIALOG_SHOWN_KEY, false))
     }
@@ -259,13 +270,20 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     var echoLinkScanMessage by remember { mutableStateOf<String?>(null) }
     var echoLinkFallbackScannerVisible by remember { mutableStateOf(false) }
 
+    fun saveEchoLinkEndpointIfReady(endpoint: EchoRemoteEndpoint) {
+        if (!EchoLinkRequestPolicy.shouldPersistEndpoint(endpoint)) return
+        val address = "${endpoint.scheme}://${endpoint.host}:${endpoint.port}"
+        lastEchoLinkAutoConnectKey = "$address|${endpoint.token}"
+        viewModel.saveEchoLinkPcEndpoint(
+            address = address,
+            token = endpoint.token,
+        )
+    }
+
     fun connectEchoLinkEndpoint(endpoint: EchoRemoteEndpoint) {
         echoLinkScanMessage = null
         echoLinkFallbackScannerVisible = false
-        viewModel.saveEchoLinkPcEndpoint(
-            address = "${endpoint.scheme}://${endpoint.host}:${endpoint.port}",
-            token = endpoint.token,
-        )
+        saveEchoLinkEndpointIfReady(endpoint)
         remoteClient.connect(
             nextEndpoint = endpoint,
             refreshLibraryOnConnect = appSettings.echoLinkPreferLinkedLibrary,
@@ -514,11 +532,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
 
     LaunchedEffect(remoteStatus.endpoint, remoteStatus.connectionState) {
         val endpoint = remoteStatus.endpoint
-        if (remoteStatus.connectionState == EchoRemoteConnectionState.Connected && endpoint != null) {
-            viewModel.saveEchoLinkPcEndpoint(
-                address = "${endpoint.scheme}://${endpoint.host}:${endpoint.port}",
-                token = endpoint.token,
-            )
+        if (endpoint != null) {
+            saveEchoLinkEndpointIfReady(endpoint)
         }
         EchoArtworkRequestHeadersRegistry.replaceEchoLinkAuthorization(
             baseUrl = endpoint?.let { "${it.scheme}://${it.host}:${it.port}" },
@@ -1007,7 +1022,13 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                 },
             )
 
-            val permissionEntries = remember(hasAudioPermission, hasNotifPermission) {
+            val permissionEntries = remember(
+                permissionActivity,
+                audioPermissionRequested,
+                hasAudioPermission,
+                hasNotifPermission,
+                notificationPermissionRequested,
+            ) {
                 buildList {
                     add(
                         PermissionEntry(
@@ -1016,7 +1037,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             description = "扫描并播放本地音乐文件",
                             icon = Icons.Rounded.AudioFile,
                             granted = hasAudioPermission,
-                            canRequest = true,
+                            canRequest = !audioPermissionRequested ||
+                                permissionActivity?.let {
+                                    ActivityCompat.shouldShowRequestPermissionRationale(it, audioPermissionName())
+                                } == true,
                         ),
                     )
                     notifPermName?.let { perm ->
@@ -1027,7 +1051,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 description = "显示媒体播放控制通知",
                                 icon = Icons.Rounded.Notifications,
                                 granted = hasNotifPermission,
-                                canRequest = true,
+                                canRequest = !notificationPermissionRequested ||
+                                    permissionActivity?.let {
+                                        ActivityCompat.shouldShowRequestPermissionRationale(it, perm)
+                                    } == true,
                             ),
                         )
                     }
@@ -1039,8 +1066,17 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                 onDismiss = ::dismissPermissionDialog,
                 onRequestPermission = { perm ->
                     when (perm) {
-                        audioPermissionName() -> permissionLauncher.launch(perm)
-                        notifPermName -> notifPermissionLauncher?.launch(perm)
+                        audioPermissionName() -> {
+                            audioPermissionRequested = true
+                            prefs.edit { putBoolean(ECHO_AUDIO_PERMISSION_REQUESTED_KEY, true) }
+                            permissionLauncher.launch(perm)
+                        }
+
+                        notifPermName -> {
+                            notificationPermissionRequested = true
+                            prefs.edit { putBoolean(ECHO_NOTIFICATION_PERMISSION_REQUESTED_KEY, true) }
+                            notifPermissionLauncher?.launch(perm)
+                        }
                     }
                 },
                 onOpenSettings = {
@@ -1133,3 +1169,15 @@ private fun rememberSystemPowerSaveMode(): Boolean {
     }
     return powerSaveMode
 }
+
+private fun Context.findActivity(): Activity? {
+    var current: Context? = this
+    while (current is ContextWrapper) {
+        if (current is Activity) return current
+        current = current.baseContext
+    }
+    return current as? Activity
+}
+
+private const val ECHO_AUDIO_PERMISSION_REQUESTED_KEY = "echo_audio_permission_requested_v1"
+private const val ECHO_NOTIFICATION_PERMISSION_REQUESTED_KEY = "echo_notification_permission_requested_v1"

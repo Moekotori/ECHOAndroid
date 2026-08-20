@@ -83,6 +83,16 @@ class PlaybackSessionPolicyTest {
     }
 
     @Test
+    fun mediaItemTransitionRemapsQueueDuration() {
+        assertTrue(
+            PlaybackSessionPolicy.shouldRemapFullQueue(
+                timelineChanged = false,
+                mediaItemTransitioned = true,
+            ),
+        )
+    }
+
+    @Test
     fun unchangedSignatureSkipsSessionPersist() {
         assertTrue(
             PlaybackSessionPolicy.shouldSkipUnchangedSessionPersist(
@@ -114,10 +124,36 @@ class PlaybackSessionPolicyTest {
     }
 
     @Test
-    fun cachedQueueSnapshotIsReusedWhenCountsMatch() {
-        assertTrue(PlaybackSessionPolicy.shouldReuseCachedQueueSnapshot(12, 12))
-        assertFalse(PlaybackSessionPolicy.shouldReuseCachedQueueSnapshot(0, 12))
-        assertFalse(PlaybackSessionPolicy.shouldReuseCachedQueueSnapshot(11, 12))
+    fun cachedQueueSnapshotIsReusedOnlyWhenMediaIdsMatch() {
+        val ids = listOf("a", "b", "c")
+        assertTrue(PlaybackSessionPolicy.shouldReuseCachedQueueSnapshot(ids, ids))
+        assertFalse(
+            PlaybackSessionPolicy.shouldReuseCachedQueueSnapshot(
+                cachedMediaIds = listOf("a", "b", "c"),
+                playerMediaIds = listOf("x", "y", "z"),
+            ),
+        )
+        assertFalse(PlaybackSessionPolicy.shouldReuseCachedQueueSnapshot(emptyList(), ids))
+    }
+
+    @Test
+    fun nullSessionIsNotWrittenWhilePlayerStillHasItems() {
+        assertFalse(PlaybackSessionPolicy.shouldPersistNullSavedSession(mediaItemCount = 4))
+        assertTrue(PlaybackSessionPolicy.shouldPersistNullSavedSession(mediaItemCount = 0))
+        assertFalse(
+            PlaybackSessionPolicy.shouldPersistSavedSession(
+                restoreCompleted = true,
+                hasPendingPlay = false,
+                queueEmpty = true,
+            ) && PlaybackSessionPolicy.shouldPersistNullSavedSession(mediaItemCount = 3),
+        )
+        assertTrue(
+            PlaybackSessionPolicy.shouldPersistSavedSession(
+                restoreCompleted = true,
+                hasPendingPlay = false,
+                queueEmpty = true,
+            ) && PlaybackSessionPolicy.shouldPersistNullSavedSession(mediaItemCount = 0),
+        )
     }
 
     @Test

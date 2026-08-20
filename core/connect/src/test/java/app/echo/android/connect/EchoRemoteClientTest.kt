@@ -7,9 +7,11 @@ import app.echo.android.model.connect.EchoRemoteLyrics
 import app.echo.android.model.connect.EchoRemotePlaybackSnapshot
 import app.echo.android.model.connect.EchoRemotePlaylist
 import app.echo.android.model.connect.EchoRemoteTrack
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -30,6 +32,63 @@ class EchoRemoteClientTest {
         delay(50)
         assertEquals(EchoRemoteConnectionState.Connected, client.status.value.connectionState)
         assertTrue(transport.statusCalls >= 2)
+        client.disconnect()
+    }
+
+    @Test
+    fun disconnectInvalidatesAnInFlightConnect() = runBlocking {
+        val pairingBlocker = CompletableDeferred<Unit>()
+        val transport = FakeEchoLinkTransport(pairingBlocker = pairingBlocker)
+        val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
+
+        client.connect(endpoint, refreshLibraryOnConnect = false)
+        delay(10)
+        client.disconnect()
+        pairingBlocker.complete(Unit)
+        delay(20)
+
+        assertEquals(EchoRemoteConnectionState.Disconnected, client.status.value.connectionState)
+        assertNull(client.status.value.endpoint)
+    }
+
+    @Test
+    fun cancelledLibraryRefreshCannotOverwriteTheNewQuery() = runBlocking {
+        val oldQueryBlocker = CompletableDeferred<Unit>()
+        val transport = FakeEchoLinkTransport(
+            libraryTotalCount = 1,
+            trackBlockers = mapOf("old" to oldQueryBlocker),
+        )
+        val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
+        client.connect(endpoint, refreshLibraryOnConnect = false)
+        delay(20)
+
+        client.refreshLibrary("old")
+        delay(10)
+        client.refreshLibrary("new")
+        delay(20)
+
+        assertEquals("new", client.library.value.query)
+        assertEquals(false, client.library.value.isLoading)
+        assertNull(client.library.value.error)
+        client.disconnect()
+    }
+
+    @Test
+    fun statusRetryDoesNotConsumePairingSecretTwice() = runBlocking {
+        val pairingEndpoint = endpoint.copy(
+            token = "one-time-secret",
+            protocolVersion = app.echo.android.model.connect.EchoProtocolVersion(2, 0),
+            pairingId = "pair-1",
+            pairingSecret = "one-time-secret",
+        )
+        val transport = FakeEchoLinkTransport(failStatusTimes = 1)
+        val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
+        client.connect(pairingEndpoint, refreshLibraryOnConnect = false)
+        delay(50)
+        assertEquals(EchoRemoteConnectionState.Connected, client.status.value.connectionState)
+        assertEquals("access-token", client.status.value.endpoint?.token)
+        assertEquals(1, transport.pairingCalls)
+        assertEquals(2, transport.statusCalls)
         client.disconnect()
     }
 
@@ -114,18 +173,30 @@ private class FakeEchoLinkTransport(
     private val failStatusTimes: Int = 0,
     private val libraryPageSize: Int = 500,
     private val libraryTotalCount: Int = 0,
+    private val pairingBlocker: CompletableDeferred<Unit>? = null,
+    private val trackBlockers: Map<String, CompletableDeferred<Unit>> = emptyMap(),
 ) : EchoLinkTransport {
     var statusCalls = 0
+    var pairingCalls = 0
     var libraryTrackCalls = 0
     var playlistTrackCalls = 0
     var streamCalls = 0
     val commands = mutableListOf<EchoRemoteCommand>()
 
-    override suspend fun completePairing(endpoint: EchoRemoteEndpoint): EchoRemoteEndpoint = endpoint.copy(
-        token = "access-token",
-        pairingId = null,
-        pairingSecret = null,
-    )
+    override suspend fun completePairing(endpoint: EchoRemoteEndpoint): EchoRemoteEndpoint {
+        pairingBlocker?.await()
+        if (!endpoint.needsV2PairExchange) return endpoint
+        pairingCalls += 1
+        if (pairingCalls > 1) {
+            throw EchoLinkHttpException("PC ECHO request failed (401): invalid_or_expired_pairing")
+        }
+        return endpoint.copy(
+            token = "access-token",
+            pairingId = null,
+            pairingSecret = null,
+            protocolVersion = app.echo.android.model.connect.EchoProtocolVersion.Current,
+        )
+    }
 
     override suspend fun fetchStatus(endpoint: EchoRemoteEndpoint): EchoLinkStatusResponse {
         statusCalls += 1
@@ -152,6 +223,7 @@ private class FakeEchoLinkTransport(
         page: Int,
         pageSize: Int,
     ): EchoLinkTrackPage {
+        trackBlockers[query]?.await()
         libraryTrackCalls += 1
         val start = (page - 1) * libraryPageSize
         if (start >= libraryTotalCount) {

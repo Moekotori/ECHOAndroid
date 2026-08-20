@@ -63,8 +63,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-@OptIn(ExperimentalCoroutinesApi::class)
-@UnstableApi
+@kotlin.OptIn(ExperimentalCoroutinesApi::class)
+@androidx.annotation.OptIn(UnstableApi::class)
 @Suppress("SpellCheckingInspection", "ConstPropertyName", "unused")
 class EchoAndroidViewModel(application: Application) : AndroidViewModel(application) {
     private val database = EchoLibraryDatabase.create(application)

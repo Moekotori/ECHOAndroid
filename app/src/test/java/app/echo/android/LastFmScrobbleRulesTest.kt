@@ -1,5 +1,6 @@
 package app.echo.android
 
+import app.echo.android.model.playback.EchoPlaybackState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -51,5 +52,18 @@ class LastFmScrobbleRulesTest {
     fun missingTrackDoesNotClearActiveScrobbleWhenCredentialsReady() {
         assertFalse(LastFmScrobbleRules.shouldClearActiveScrobble(credentialsReady = true))
         assertTrue(LastFmScrobbleRules.shouldClearActiveScrobble(credentialsReady = false))
+    }
+
+    @Test
+    fun terminalPlaybackStateClearsMissingTrackScrobble() {
+        assertTrue(
+            LastFmScrobbleRules.shouldClearActiveScrobbleForMissingTrack(EchoPlaybackState.Idle),
+        )
+        assertTrue(
+            LastFmScrobbleRules.shouldClearActiveScrobbleForMissingTrack(EchoPlaybackState.Stopped),
+        )
+        assertFalse(
+            LastFmScrobbleRules.shouldClearActiveScrobbleForMissingTrack(EchoPlaybackState.Loading),
+        )
     }
 }

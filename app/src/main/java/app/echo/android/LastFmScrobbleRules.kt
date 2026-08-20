@@ -1,5 +1,7 @@
 package app.echo.android
 
+import app.echo.android.model.playback.EchoPlaybackState
+
 internal object LastFmScrobbleRules {
     const val MIN_TRACK_DURATION_MS = 30_000L
     const val MAX_LISTEN_BEFORE_SCROBBLE_MS = 240_000L
@@ -29,4 +31,10 @@ internal object LastFmScrobbleRules {
     fun keepSubmittedFlag(attemptSucceeded: Boolean): Boolean = attemptSucceeded
 
     fun shouldClearActiveScrobble(credentialsReady: Boolean): Boolean = !credentialsReady
+
+    fun shouldClearActiveScrobbleForMissingTrack(playbackState: EchoPlaybackState): Boolean =
+        playbackState == EchoPlaybackState.Idle ||
+            playbackState == EchoPlaybackState.Stopped ||
+            playbackState == EchoPlaybackState.Ended ||
+            playbackState == EchoPlaybackState.Error
 }
