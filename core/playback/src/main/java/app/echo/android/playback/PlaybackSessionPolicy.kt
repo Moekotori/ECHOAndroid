@@ -22,4 +22,16 @@ object PlaybackSessionPolicy {
         hasPlayerError || playbackStateIdle
 
     fun shouldClaimUsbInterfaceForDriverTest(isPlayingToUsb: Boolean): Boolean = !isPlayingToUsb
+
+    fun shouldRemapFullQueue(
+        timelineChanged: Boolean,
+        isPlayingChanged: Boolean = false,
+        tracksChanged: Boolean = false,
+        playWhenReadyChanged: Boolean = false,
+    ): Boolean {
+        isPlayingChanged
+        tracksChanged
+        playWhenReadyChanged
+        return timelineChanged
+    }
 }

@@ -18,6 +18,9 @@ import androidx.room.PrimaryKey
         Index(value = ["normalizedAlbumArtist"]),
         Index(value = ["normalizedAlbum", "normalizedAlbumArtist"]),
         Index(value = ["source", "relativePath"]),
+        Index(value = ["albumKey"]),
+        Index(value = ["artistKey"]),
+        Index(value = ["source", "albumKey"]),
     ],
 )
 data class LibraryTrackEntity(
@@ -48,4 +51,6 @@ data class LibraryTrackEntity(
     val pinyinTitle: String? = null,
     val pinyinArtist: String? = null,
     val pinyinAlbum: String? = null,
+    val albumKey: String = "",
+    val artistKey: String = "",
 )

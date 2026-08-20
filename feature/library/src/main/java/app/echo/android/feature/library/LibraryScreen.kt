@@ -61,9 +61,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -76,7 +78,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
+import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.collectAsLazyPagingItems
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoAccent
 import app.echo.android.design.EchoAccentDeep
@@ -100,7 +104,11 @@ import app.echo.android.model.library.LibraryScanPhase
 import app.echo.android.model.library.LibraryScanProgress
 import app.echo.android.model.library.LibrarySource
 import app.echo.android.model.library.LibraryTrackSortMode
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.withContext
 
 private val LibraryFolderMotionEasing = CubicBezierEasing(0.16f, 1f, 0.30f, 1f)
 private val LinkedLibraryHeaderTopPadding = 10.dp
@@ -174,15 +182,15 @@ fun LibraryScreen(
     scanState: LibraryScanProgress,
     libraryQuery: String,
     trackSortMode: LibraryTrackSortMode,
-    tracks: LazyPagingItems<EchoTrack>,
-    albums: LazyPagingItems<AlbumSummary>,
-    remoteAlbums: LazyPagingItems<AlbumSummary>,
+    tracks: Flow<PagingData<EchoTrack>>,
+    albums: Flow<PagingData<AlbumSummary>>,
+    remoteAlbums: Flow<PagingData<AlbumSummary>>,
     linkedLibraryActive: Boolean,
     linkedLibraryAvailable: Boolean,
-    linkedLibraryState: EchoRemoteLibraryState,
+    linkedLibraryState: StateFlow<EchoRemoteLibraryState>,
     selectedLibrarySourceId: String,
-    artists: LazyPagingItems<ArtistSummary>,
-    folders: LazyPagingItems<FolderSummary>,
+    artists: Flow<PagingData<ArtistSummary>>,
+    folders: Flow<PagingData<FolderSummary>>,
     playlists: List<EchoPlaylist>,
     showTrackAudioInfoTags: Boolean,
     selectedAlbum: AlbumSummary?,
@@ -229,8 +237,6 @@ fun LibraryScreen(
     var selectedLinkedArtistKey by remember { mutableStateOf<String?>(null) }
     var selectedLinkedPlaylistId by remember { mutableStateOf<String?>(null) }
     val songListState = rememberLazyListState()
-    val showInitialTrackLoading = tracks.itemCount == 0 && tracks.loadState.refresh is LoadState.Loading
-    val showInitialTrackError = tracks.itemCount == 0 && tracks.loadState.refresh is LoadState.Error
     var scanWasActiveForBanner by remember { mutableStateOf(false) }
     var showScanResultBanner by remember { mutableStateOf(false) }
 
@@ -287,8 +293,9 @@ fun LibraryScreen(
     }
 
     if (selectedSource == LibrarySourceMode.PcEcho && linkedLibraryAvailable) {
+        val linkedState by linkedLibraryState.collectAsState()
         LinkedEchoLibraryPage(
-            state = linkedLibraryState,
+            state = linkedState,
             query = libraryQuery,
             selectedMode = linkedMode,
             selectedAlbumKey = selectedLinkedAlbumKey,
@@ -539,46 +546,6 @@ fun LibraryScreen(
                         ) {
                             when {
                                 scanState.isScanning -> LibraryScanStatus(scanState = scanState, onCancelScan = onCancelScan)
-                                showInitialTrackLoading -> {
-                                    LibraryBrowserHeader(
-                                        scanState = scanState,
-                                        showScanResultBanner = showScanResultBanner,
-                                        selectedSource = selectedSource,
-                                        linkedLibraryAvailable = linkedLibraryAvailable,
-                                        onSelectSource = ::selectSource,
-                                        selectedMode = selectedMode,
-                                        selectedSortMode = trackSortMode,
-                                        onSelectMode = { mode ->
-                                            selectedModeIndex = mode.ordinal
-                                            if (selectedSource == LibrarySourceMode.Cloud && mode != LibraryViewMode.Albums) {
-                                                selectedSource = LibrarySourceMode.Local
-                                                onLibrarySourceChange(LibrarySourceMode.Local.id)
-                                            }
-                                        },
-                                        onSortModeChange = onTrackSortModeChange,
-                                    )
-                                    EmptyState("正在加载曲库...")
-                                }
-                                showInitialTrackError -> {
-                                    LibraryBrowserHeader(
-                                        scanState = scanState,
-                                        showScanResultBanner = showScanResultBanner,
-                                        selectedSource = selectedSource,
-                                        linkedLibraryAvailable = linkedLibraryAvailable,
-                                        onSelectSource = ::selectSource,
-                                        selectedMode = selectedMode,
-                                        selectedSortMode = trackSortMode,
-                                        onSelectMode = { mode ->
-                                            selectedModeIndex = mode.ordinal
-                                            if (selectedSource == LibrarySourceMode.Cloud && mode != LibraryViewMode.Albums) {
-                                                selectedSource = LibrarySourceMode.Local
-                                                onLibrarySourceChange(LibrarySourceMode.Local.id)
-                                            }
-                                        },
-                                        onSortModeChange = onTrackSortModeChange,
-                                    )
-                                    EmptyState("曲库查询失败。")
-                                }
                                 else -> {
                                     LibraryBrowserHeader(
                                         scanState = scanState,
@@ -600,13 +567,21 @@ fun LibraryScreen(
                                     Box(modifier = Modifier.weight(1f)) {
                                         when (selectedMode) {
                                             LibraryViewMode.Songs -> {
-                                                if (!hasPermission) {
-                                                    EmptyState("授权后即可索引本地音乐；云端曲库可直接进入“网盘”页。")
-                                                } else if (tracks.itemCount == 0) {
-                                                    LibraryBootstrapState()
-                                                } else {
-                                                    TrackList(
-                                                        tracks = tracks,
+                                                val trackItems = tracks.collectAsLazyPagingItems()
+                                                val showInitialTrackLoading =
+                                                    trackItems.itemCount == 0 &&
+                                                        trackItems.loadState.refresh is LoadState.Loading
+                                                val showInitialTrackError =
+                                                    trackItems.itemCount == 0 &&
+                                                        trackItems.loadState.refresh is LoadState.Error
+                                                when {
+                                                    !hasPermission ->
+                                                        EmptyState("授权后即可索引本地音乐；云端曲库可直接进入“网盘”页。")
+                                                    showInitialTrackLoading -> EmptyState("正在加载曲库...")
+                                                    showInitialTrackError -> EmptyState("曲库查询失败。")
+                                                    trackItems.itemCount == 0 -> LibraryBootstrapState()
+                                                    else -> TrackList(
+                                                        tracks = trackItems,
                                                         onPlayTrack = onPlayTrack,
                                                         onUpdateTrackMetadata = onUpdateTrackMetadata,
                                                         onImportLyrics = onImportLyricsForTrack,
@@ -619,25 +594,32 @@ fun LibraryScreen(
                                             }
 
                                             LibraryViewMode.Folders -> FolderList(
-                                                folders = folders,
+                                                folders = folders.collectAsLazyPagingItems(),
                                                 onOpenFolder = onOpenFolder,
                                                 modifier = Modifier.fillMaxSize(),
                                             )
 
-                                            LibraryViewMode.Albums -> AlbumWall(
-                                                albums = if (selectedSource == LibrarySourceMode.Cloud) remoteAlbums else albums,
-                                                onOpenAlbum = onOpenAlbum,
-                                                modifier = Modifier.fillMaxSize(),
-                                            )
+                                            LibraryViewMode.Albums -> {
+                                                val albumItems = if (selectedSource == LibrarySourceMode.Cloud) {
+                                                    remoteAlbums.collectAsLazyPagingItems()
+                                                } else {
+                                                    albums.collectAsLazyPagingItems()
+                                                }
+                                                AlbumWall(
+                                                    albums = albumItems,
+                                                    onOpenAlbum = onOpenAlbum,
+                                                    modifier = Modifier.fillMaxSize(),
+                                                )
+                                            }
 
                                             LibraryViewMode.Artists -> ArtistWall(
-                                                artists = artists,
+                                                artists = artists.collectAsLazyPagingItems(),
                                                 onOpenArtist = onOpenArtist,
                                                 modifier = Modifier.fillMaxSize(),
                                             )
 
                                             LibraryViewMode.Cloud -> AlbumWall(
-                                                albums = remoteAlbums,
+                                                albums = remoteAlbums.collectAsLazyPagingItems(),
                                                 onOpenAlbum = onOpenAlbum,
                                                 modifier = Modifier.fillMaxSize(),
                                             )
@@ -904,25 +886,28 @@ private fun LinkedEchoLibraryPage(
     val playlists = state.playlists
     val normalizedQuery = remember(query) { query.trim() }
     val remoteQuery = remember(state.query) { state.query.trim() }
-    val filteredTracks = remember(tracks, normalizedQuery, remoteQuery) {
-        if (normalizedQuery.isNotBlank() && normalizedQuery == remoteQuery) {
-            tracks
-        } else {
-            tracks.filterLinkedLibraryQuery(normalizedQuery)
+    val catalog by produceState(
+        initialValue = LinkedLibraryCatalog.Empty,
+        tracks,
+        playlists,
+        normalizedQuery,
+        remoteQuery,
+        selectedSortMode,
+    ) {
+        value = withContext(Dispatchers.Default) {
+            LinkedLibraryCatalog.build(
+                tracks = tracks,
+                playlists = playlists,
+                query = normalizedQuery,
+                remoteQuery = remoteQuery,
+                sortMode = selectedSortMode,
+            )
         }
     }
-    val sortedTracks = remember(filteredTracks, selectedSortMode) {
-        filteredTracks.sortedForLinkedLibrary(selectedSortMode)
-    }
-    val albums = remember(filteredTracks) { filteredTracks.toLinkedAlbums() }
-    val artists = remember(filteredTracks) { filteredTracks.toLinkedArtists() }
-    val filteredPlaylists = remember(playlists, normalizedQuery, remoteQuery) {
-        if (normalizedQuery.isNotBlank() && normalizedQuery == remoteQuery) {
-            playlists
-        } else {
-            playlists.filterLinkedPlaylistQuery(normalizedQuery)
-        }
-    }
+    val sortedTracks = catalog.tracks
+    val albums = catalog.albums
+    val artists = catalog.artists
+    val filteredPlaylists = catalog.playlists
     val selectedAlbum = remember(albums, selectedAlbumKey) {
         albums.firstOrNull { it.albumKey == selectedAlbumKey }
     }
@@ -932,18 +917,18 @@ private fun LinkedEchoLibraryPage(
     val selectedPlaylist = remember(playlists, selectedPlaylistId) {
         playlists.firstOrNull { it.id == selectedPlaylistId }
     }
-    val selectedAlbumTracks = remember(filteredTracks, selectedAlbumKey) {
+    val selectedAlbumTracks = remember(sortedTracks, selectedAlbumKey) {
         if (selectedAlbumKey == null) {
             emptyList()
         } else {
-            filteredTracks.filter { it.linkedAlbumKey() == selectedAlbumKey }
+            sortedTracks.filter { it.linkedAlbumKey() == selectedAlbumKey }
         }
     }
-    val selectedArtistTracks = remember(filteredTracks, selectedArtistKey) {
+    val selectedArtistTracks = remember(sortedTracks, selectedArtistKey) {
         if (selectedArtistKey == null) {
             emptyList()
         } else {
-            filteredTracks.filter { it.linkedArtistKey() == selectedArtistKey }
+            sortedTracks.filter { it.linkedArtistKey() == selectedArtistKey }
         }
     }
 
@@ -1144,35 +1129,6 @@ private fun LinkedLibraryHeader(
         }
     }
 }
-
-private fun List<EchoRemoteTrack>.sortedForLinkedLibrary(
-    sortMode: LibraryTrackSortMode,
-): List<EchoRemoteTrack> =
-    when (sortMode) {
-        LibraryTrackSortMode.Title,
-        LibraryTrackSortMode.FrequentlyPlayed,
-        LibraryTrackSortMode.RecentlyUpdated,
-        -> sortedWith(
-            compareBy<EchoRemoteTrack> { it.title.lowercase() }
-                .thenBy { it.artist.lowercase() }
-                .thenBy { it.album.orEmpty().lowercase() },
-        )
-        LibraryTrackSortMode.Duration -> sortedWith(
-            compareByDescending<EchoRemoteTrack> { it.durationMs }
-                .thenBy { it.title.lowercase() },
-        )
-        LibraryTrackSortMode.Random -> shuffled()
-        LibraryTrackSortMode.Artist -> sortedWith(
-            compareBy<EchoRemoteTrack> { it.artist.lowercase() }
-                .thenBy { it.album.orEmpty().lowercase() }
-                .thenBy { it.title.lowercase() },
-        )
-        LibraryTrackSortMode.Album -> sortedWith(
-            compareBy<EchoRemoteTrack> { it.album.orEmpty().lowercase() }
-                .thenBy { it.artist.lowercase() }
-                .thenBy { it.title.lowercase() },
-        )
-    }
 
 @Composable
 private fun LinkedLibraryChrome(
@@ -1487,46 +1443,6 @@ private fun LinkedArtistTracksPage(
     )
 }
 
-private fun List<EchoRemoteTrack>.toLinkedAlbums(): List<AlbumSummary> =
-    groupBy { it.linkedAlbumKey() }
-        .values
-        .map { albumTracks ->
-            val first = albumTracks.first()
-            AlbumSummary(
-                albumKey = first.linkedAlbumKey(),
-                title = first.album?.takeIf { it.isNotBlank() } ?: "未知专辑",
-                albumArtist = first.artist.takeIf { it.isNotBlank() },
-                artist = first.artist.takeIf { it.isNotBlank() },
-                artworkUri = albumTracks.firstNotNullOfOrNull { it.artworkUrl?.takeIf(String::isNotBlank) },
-                trackCount = albumTracks.size,
-                durationMs = albumTracks.sumOf { it.durationMs.coerceAtLeast(0L) },
-                year = null,
-            )
-        }
-        .sortedWith(compareBy<AlbumSummary> { it.title.lowercase() }.thenBy { it.albumArtist.orEmpty().lowercase() })
-
-private fun List<EchoRemoteTrack>.toLinkedArtists(): List<ArtistSummary> =
-    groupBy { it.linkedArtistKey() }
-        .values
-        .map { artistTracks ->
-            val first = artistTracks.first()
-            ArtistSummary(
-                artistKey = first.linkedArtistKey(),
-                name = first.artist.takeIf { it.isNotBlank() } ?: "未知艺术家",
-                artworkUri = artistTracks.firstNotNullOfOrNull { it.artworkUrl?.takeIf(String::isNotBlank) },
-                albumCount = artistTracks.map { it.linkedAlbumKey() }.distinct().size,
-                trackCount = artistTracks.size,
-                durationMs = artistTracks.sumOf { it.durationMs.coerceAtLeast(0L) },
-            )
-        }
-        .sortedWith(compareBy<ArtistSummary> { it.name.lowercase() }.thenByDescending { it.trackCount })
-
-private fun EchoRemoteTrack.linkedAlbumKey(): String =
-    "echo-link:${album?.trim().orEmpty().lowercase()}|${artist.trim().lowercase()}"
-
-private fun EchoRemoteTrack.linkedArtistKey(): String =
-    "echo-link:${artist.trim().ifBlank { "PC ECHO" }.lowercase()}"
-
 private fun EchoRemoteTrack.toEchoTrack(): EchoTrack =
     EchoTrack(
         id = "echo-link:${id ?: "${title.hashCode()}-${artist.hashCode()}-${album.hashCode()}"}",
@@ -1539,83 +1455,6 @@ private fun EchoRemoteTrack.toEchoTrack(): EchoTrack =
         durationMs = durationMs,
         source = LibrarySource("echo-link"),
     )
-
-private fun List<EchoRemoteTrack>.filterLinkedLibraryQuery(query: String): List<EchoRemoteTrack> {
-    val terms = normalizedSearchTerms(query)
-    if (terms.isEmpty()) return this
-    return filter { track ->
-        val searchableText = searchableLibraryText(
-            track.title,
-            track.artist,
-            track.album.orEmpty(),
-        )
-        terms.all(searchableText::contains)
-    }
-}
-
-private fun List<EchoRemotePlaylist>.filterLinkedPlaylistQuery(query: String): List<EchoRemotePlaylist> {
-    val terms = normalizedSearchTerms(query)
-    if (terms.isEmpty()) return this
-    return filter { playlist ->
-        val searchableText = searchableLibraryText(
-            playlist.name,
-            playlist.sourceLabel.orEmpty(),
-        )
-        terms.all(searchableText::contains)
-    }
-}
-
-private fun normalizedSearchTerms(query: String): List<String> =
-    query.trim()
-        .lowercase()
-        .split(Regex("\\s+"))
-        .filter(String::isNotBlank)
-
-private fun searchableLibraryText(vararg parts: String): String =
-    buildString {
-        parts.filter(String::isNotBlank).forEach { part ->
-            if (isNotEmpty()) append(' ')
-            append(part.lowercase())
-            val pinyin = toLibrarySearchPinyin(part)
-            if (pinyin.isNotBlank()) {
-                append(' ')
-                append(pinyin)
-            }
-        }
-    }
-
-private fun toLibrarySearchPinyin(text: String): String {
-    if (text.isBlank()) return ""
-    val full = StringBuilder(text.length * 6)
-    val initials = StringBuilder(text.length)
-    return try {
-        val outputFormat = net.sourceforge.pinyin4j.format.HanyuPinyinOutputFormat().apply {
-            caseType = net.sourceforge.pinyin4j.format.HanyuPinyinCaseType.LOWERCASE
-            toneType = net.sourceforge.pinyin4j.format.HanyuPinyinToneType.WITHOUT_TONE
-            vCharType = net.sourceforge.pinyin4j.format.HanyuPinyinVCharType.WITH_V
-        }
-        text.forEach { ch ->
-            val pinyinArray = net.sourceforge.pinyin4j.PinyinHelper.toHanyuPinyinStringArray(ch, outputFormat)
-            if (!pinyinArray.isNullOrEmpty()) {
-                val syllable = pinyinArray[0]
-                full.append(syllable)
-                initials.append(syllable.first())
-            } else if (ch.isLetterOrDigit()) {
-                val normalized = ch.lowercaseChar()
-                full.append(normalized)
-                initials.append(normalized)
-            }
-        }
-        buildList {
-            val fullPinyin = full.toString()
-            val initialsPinyin = initials.toString()
-            if (fullPinyin.isNotBlank()) add(fullPinyin)
-            if (initialsPinyin.isNotBlank() && initialsPinyin != fullPinyin) add(initialsPinyin)
-        }.joinToString(" ")
-    } catch (_: Exception) {
-        text.lowercase()
-    }
-}
 
 private fun linkedPlaylistSubtitle(playlist: EchoRemotePlaylist): String {
     val source = playlist.sourceLabel?.takeIf { it.isNotBlank() } ?: "PC ECHO"

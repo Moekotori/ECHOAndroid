@@ -39,7 +39,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
@@ -563,11 +562,6 @@ fun BlurredArtworkBackground(
         effectivePerformanceMode.isHighPerformance -> 1280
         else -> 768
     }
-    val effectiveArtworkBlur = when {
-        effectivePerformanceMode.isLightweight && artworkBlur > 4.dp -> 4.dp
-        effectivePerformanceMode.isBalanced && artworkBlur > 28.dp -> 28.dp
-        else -> artworkBlur
-    }
     val effectiveArtworkAlpha = if (effectivePerformanceMode.isBalanced) {
         artworkAlpha.coerceAtMost(0.52f)
     } else {
@@ -604,7 +598,6 @@ fun BlurredArtworkBackground(
                 modifier = Modifier
                     .fillMaxSize()
                     .scale(artworkScale)
-                    .blur(effectiveArtworkBlur)
                     .alpha(effectiveArtworkAlpha),
             )
         }

@@ -41,6 +41,7 @@ class LibraryTrackDaoAndroidTest {
                 track(id = "3", title = "Song C", artist = "", album = null, albumArtist = null),
             ),
         )
+        dao.rebuildLibrarySummaries()
 
         val stats = dao.observeLibraryStats().first()
         assertEquals(3, stats.trackCount)

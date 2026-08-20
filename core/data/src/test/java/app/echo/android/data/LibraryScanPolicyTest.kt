@@ -1,6 +1,7 @@
 package app.echo.android.data
 
 import app.echo.android.model.library.LibrarySource
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -90,7 +91,40 @@ class LibraryScanPolicyTest {
     }
 
     @Test
-    fun editedMetadataIsPreservedWhenFingerprintDiffers() {
+    fun unchangedScanRowsAreRememberedWithoutRowUpdate() {
+        assertEquals(
+            LibraryScanRowAction.RememberSeen,
+            LibraryScanPolicy.scanRowAction(
+                existingFingerprint = "same",
+                incomingFingerprint = "same",
+            ),
+        )
+        assertFalse(LibraryScanPolicy.shouldStampLastSeenOnUnchangedRow())
+        assertEquals(
+            LibraryScanRowAction.Insert,
+            LibraryScanPolicy.scanRowAction(
+                existingFingerprint = null,
+                incomingFingerprint = "new",
+            ),
+        )
+        assertEquals(
+            LibraryScanRowAction.Update,
+            LibraryScanPolicy.scanRowAction(
+                existingFingerprint = "old",
+                incomingFingerprint = "new",
+            ),
+        )
+        assertEquals(
+            listOf("gone"),
+            LibraryScanPolicy.unseenIds(
+                existingIds = listOf("kept", "gone"),
+                seenIds = setOf("kept", "inserted"),
+            ),
+        )
+    }
+
+    @Test
+    fun editedMetadataIsPreservedOnMismatch() {
         assertTrue(
             LibraryScanPolicy.shouldPreserveUserMetadata(
                 incomingFingerprint = "raw",

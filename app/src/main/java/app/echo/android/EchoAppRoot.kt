@@ -214,9 +214,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     val remoteScope = rememberCoroutineScope()
     val remoteClient = remember(remoteScope) { EchoRemoteClient(remoteScope) }
     val remoteStatus by remoteClient.status.collectAsStateWithLifecycle()
-    val remoteLibraryState by remoteClient.library.collectAsStateWithLifecycle()
     val playbackStatus by viewModel.playbackStatus.collectAsStateWithLifecycle()
-    val playbackQueue by viewModel.playbackQueue.collectAsStateWithLifecycle()
     val appSettings by viewModel.appSettings.collectAsStateWithLifecycle(viewModel.initialAppSettings)
     val systemPowerSaveMode = rememberSystemPowerSaveMode()
     val effectivePerformanceMode = remember(appSettings.performanceMode, systemPowerSaveMode) {
@@ -230,6 +228,12 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_START -> appVisible = true
+                Lifecycle.Event.ON_RESUME -> {
+                    hasAudioPermission =
+                        ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+                    hasNotifPermission = notifPermName == null ||
+                        ContextCompat.checkSelfPermission(context, notifPermName) == PackageManager.PERMISSION_GRANTED
+                }
                 Lifecycle.Event.ON_STOP -> appVisible = false
                 else -> Unit
             }
@@ -328,13 +332,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             )
         }
     }
-    val lastFmState by viewModel.lastFmState.collectAsStateWithLifecycle()
-    val usbExclusiveTestResult by viewModel.usbExclusiveTestResult.collectAsStateWithLifecycle()
     val lastFmApiKey = appSettings.lastFmApiKey?.takeIf { it.isNotBlank() }
         ?: LastFmApiConfig.API_KEY.takeIf { it.isNotBlank() }
     val lastFmSharedSecret = appSettings.lastFmSharedSecret?.takeIf { it.isNotBlank() }
         ?: LastFmApiConfig.SHARED_SECRET.takeIf { it.isNotBlank() }
-    val remoteScanState by viewModel.remoteScanState.collectAsStateWithLifecycle()
     var selectedAlbum by remember { mutableStateOf<AlbumSummary?>(null) }
     var selectedArtist by remember { mutableStateOf<ArtistSummary?>(null) }
     var selectedFolder by remember { mutableStateOf<FolderSummary?>(null) }
@@ -635,6 +636,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
 
                             EchoPagerPage.Settings -> {
                             val libraryStats by viewModel.libraryStats.collectAsStateWithLifecycle(LibraryStats())
+                            val lastFmState by viewModel.lastFmState.collectAsStateWithLifecycle()
+                            val usbExclusiveTestResult by viewModel.usbExclusiveTestResult.collectAsStateWithLifecycle()
                             SettingsScreen(
                                 status = playbackStatus,
                                 trackCount = libraryStats.trackCount,
@@ -733,6 +736,13 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 },
                                 onCompleteLastFmWebAuth = viewModel::completeLastFmWebAuth,
                                 onDisconnectLastFm = viewModel::disconnectLastFm,
+                                notificationPermissionGranted = hasNotifPermission,
+                                onRequestNotificationPermission = {
+                                    val perm = notifPermName ?: return@SettingsScreen
+                                    if (!hasNotifPermission) {
+                                        notifPermissionLauncher?.launch(perm)
+                                    }
+                                },
                                 onOpenLastFmApiAccounts = {
                                     runCatching {
                                         context.startActivity(
@@ -748,7 +758,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             )
                             }
 
-                            EchoPagerPage.Connect -> ConnectScreen(
+                            EchoPagerPage.Connect -> {
+                            val remoteScanState by viewModel.remoteScanState.collectAsStateWithLifecycle()
+                            ConnectScreen(
                                 remoteState = remoteStatus.connectionState,
                                 pcTitle = remoteStatus.endpoint?.name ?: "PC ECHO",
                                 trackTitle = remoteStatus.playback.track?.title ?: "未连接",
@@ -797,6 +809,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onClearWebDavCredentials = viewModel::clearWebDavCredentials,
                                 onCancelRemoteSync = viewModel::cancelRemoteSync,
                             )
+                            }
 
                             EchoPagerPage.Diagnostics -> {
                                 val equalizerState by viewModel.equalizerState.collectAsStateWithLifecycle()
@@ -903,23 +916,26 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     },
                 )
             }
-            PlaybackQueueSheet(
-                visible = queueSheetVisible,
-                status = playbackStatus,
-                queueState = playbackQueue,
-                onDismiss = { queueSheetVisible = false },
-                onPlayItem = viewModel::playQueueItem,
-                onRemoveItem = viewModel::removeQueueItem,
-                onClearQueue = viewModel::clearQueue,
-                onCycleRepeatMode = viewModel::cycleRepeatMode,
-                onToggleShuffle = viewModel::toggleShuffle,
-                onOpenLibrary = {
-                    queueSheetVisible = false
-                    nowPlayingExpanded = false
-                    selectDockTab(EchoTab.Library)
-                },
-                modifier = Modifier.fillMaxSize(),
-            )
+            if (queueSheetVisible) {
+                val playbackQueue by viewModel.playbackQueue.collectAsStateWithLifecycle()
+                PlaybackQueueSheet(
+                    visible = true,
+                    status = playbackStatus,
+                    queueState = playbackQueue,
+                    onDismiss = { queueSheetVisible = false },
+                    onPlayItem = viewModel::playQueueItem,
+                    onRemoveItem = viewModel::removeQueueItem,
+                    onClearQueue = viewModel::clearQueue,
+                    onCycleRepeatMode = viewModel::cycleRepeatMode,
+                    onToggleShuffle = viewModel::toggleShuffle,
+                    onOpenLibrary = {
+                        queueSheetVisible = false
+                        nowPlayingExpanded = false
+                        selectDockTab(EchoTab.Library)
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
             if (searchVisible) {
                 val localSearchResults by produceState(
                     initialValue = LocalHomeSearchResults(),

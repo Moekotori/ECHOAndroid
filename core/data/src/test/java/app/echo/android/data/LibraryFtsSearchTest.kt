@@ -70,6 +70,19 @@ class LibraryFtsSearchTest {
     }
 
     @Test
+    fun nonBlankFtsPagingSqlUsesMatchWithoutLeadingWildcardOr() {
+        val sql = LibraryTrackQueryBuilder.buildTrackPagingSql(
+            query = "Hotel California",
+            useFts = true,
+            sort = app.echo.android.model.library.LibraryTrackSortMode.Title,
+        )
+        assertTrue(sql.contains("MATCH ?", ignoreCase = false))
+        assertTrue(LibraryTrackQueryBuilder.usesFtsMatchWithoutLeadingWildcardOr(sql))
+        assertTrue(!sql.contains("OR library_tracks.title LIKE", ignoreCase = true))
+        assertTrue(!sql.contains("LIKE '%", ignoreCase = true))
+    }
+
+    @Test
     fun pinyinStoresInitialsForChineseMatching() {
         val entity = LibraryTrackEntity(
             id = "track-2",

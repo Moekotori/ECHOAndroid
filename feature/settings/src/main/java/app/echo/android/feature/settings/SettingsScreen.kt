@@ -134,6 +134,8 @@ fun SettingsScreen(
     onOpenLastFmApiAccounts: () -> Unit,
     onOpenLibrary: () -> Unit,
     onOpenConnect: () -> Unit,
+    notificationPermissionGranted: Boolean = true,
+    onRequestNotificationPermission: () -> Unit = {},
 ) {
     val sectionGap = if (compactModeEnabled) 6.dp else 10.dp
     var themeSectionExpanded by rememberSaveable { mutableStateOf(true) }
@@ -378,10 +380,21 @@ fun SettingsScreen(
                     detail = if (usbExclusiveAutoRequestOnStartup) {
                         "上次未关闭独占时，下次启动会自动请求 USB DAC"
                     } else {
-                        "重启后默认关闭独占，需要手动打开"
+                        "下次启动不自动申请 USB 权限，设置会保持开启"
                     },
                     checked = usbExclusiveAutoRequestOnStartup,
                     onCheckedChange = onUsbExclusiveAutoRequestOnStartupChange,
+                )
+                SettingsActionRow(
+                    title = "媒体通知权限",
+                    detail = if (notificationPermissionGranted) {
+                        "已授权，可显示播放控制通知"
+                    } else {
+                        "未授权时锁屏通知和前台服务可能不可用"
+                    },
+                    actionLabel = if (notificationPermissionGranted) "已开启" else "授权",
+                    enabled = !notificationPermissionGranted,
+                    onClick = onRequestNotificationPermission,
                 )
                 SettingsActionRow(
                     title = "测试 USB 独占驱动",

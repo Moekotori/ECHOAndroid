@@ -8,6 +8,7 @@ import app.echo.android.lyrics.EchoLyricsSearchRequest
 import app.echo.android.lyrics.EchoLyricsParser
 import app.echo.android.lyrics.ImportedLyricsStore
 import app.echo.android.lyrics.LocalLyricsResolver
+import app.echo.android.lyrics.LyricsApplyPolicy
 import app.echo.android.lyrics.OnlineLyricsResolver
 import app.echo.android.model.lyrics.EchoLyricLine
 import app.echo.android.model.lyrics.EchoLyricWord
@@ -172,7 +173,7 @@ internal class LyricsController(
                 }
             }
             if (!isActive) return@launch
-            if (!app.echo.android.lyrics.LyricsApplyPolicy.shouldApplyLyricsResult(trackId, lastLyricsTrackId)) {
+            if (!LyricsApplyPolicy.shouldApplyLyricsResult(trackId, lastLyricsTrackId)) {
                 return@launch
             }
             currentLyricsUserOffsetMs = result.userOffsetMs

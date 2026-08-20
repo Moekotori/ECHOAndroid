@@ -43,11 +43,6 @@ internal fun EchoLibraryPage(
     val libraryTrackSortMode by viewModel.libraryTrackSortMode.collectAsStateWithLifecycle()
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
     val localPlaylists by viewModel.localPlaylists.collectAsStateWithLifecycle(emptyList())
-    val tracks = viewModel.tracks.collectAsLazyPagingItems()
-    val albums = viewModel.albums.collectAsLazyPagingItems()
-    val remoteAlbums = viewModel.remoteAlbums.collectAsLazyPagingItems()
-    val artists = viewModel.artists.collectAsLazyPagingItems()
-    val folders = viewModel.folders.collectAsLazyPagingItems()
     val selectedAlbumKey = selectedAlbum?.albumKey
     val selectedArtistKey = selectedArtist?.artistKey
     val selectedFolderKey = selectedFolder?.folderKey
@@ -70,16 +65,16 @@ internal fun EchoLibraryPage(
         scanState = scanState,
         libraryQuery = libraryQuery,
         trackSortMode = libraryTrackSortMode,
-        tracks = tracks,
-        albums = albums,
-        remoteAlbums = remoteAlbums,
+        tracks = viewModel.tracks,
+        albums = viewModel.albums,
+        remoteAlbums = viewModel.remoteAlbums,
         linkedLibraryActive = remoteStatus.connectionState == EchoRemoteConnectionState.Connected &&
             appSettings.echoLinkPreferLinkedLibrary,
         linkedLibraryAvailable = remoteStatus.connectionState == EchoRemoteConnectionState.Connected,
-        linkedLibraryState = remoteClient.library.collectAsStateWithLifecycle().value,
+        linkedLibraryState = remoteClient.library,
         selectedLibrarySourceId = appSettings.librarySelectedSource,
-        artists = artists,
-        folders = folders,
+        artists = viewModel.artists,
+        folders = viewModel.folders,
         playlists = localPlaylists,
         showTrackAudioInfoTags = appSettings.trackAudioInfoTagsVisible,
         selectedAlbum = selectedAlbum,

@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 11,
-    "identityHash": "6ff1fbf8a82f14a69c1ca01548390ed0",
+    "version": 12,
+    "identityHash": "cd057b0e5c2164827bd68982c3a69727",
     "entities": [
       {
         "tableName": "library_tracks",
@@ -530,11 +530,227 @@
             "createSql": "CREATE INDEX IF NOT EXISTS `index_library_playback_stats_lastPlayedAtEpochMs` ON `${TABLE_NAME}` (`lastPlayedAtEpochMs`)"
           }
         ]
+      },
+      {
+        "tableName": "library_album_summaries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`albumKey` TEXT NOT NULL, `isRemote` INTEGER NOT NULL, `title` TEXT NOT NULL, `albumArtist` TEXT, `artist` TEXT, `artworkUri` TEXT, `trackCount` INTEGER NOT NULL, `durationMs` INTEGER NOT NULL, `year` INTEGER, `addedAtSeconds` INTEGER NOT NULL, `pinyinTitle` TEXT, `pinyinArtist` TEXT, PRIMARY KEY(`albumKey`))",
+        "fields": [
+          {
+            "fieldPath": "albumKey",
+            "columnName": "albumKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isRemote",
+            "columnName": "isRemote",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "albumArtist",
+            "columnName": "albumArtist",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "artist",
+            "columnName": "artist",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "artworkUri",
+            "columnName": "artworkUri",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "trackCount",
+            "columnName": "trackCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "durationMs",
+            "columnName": "durationMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "year",
+            "columnName": "year",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "addedAtSeconds",
+            "columnName": "addedAtSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pinyinTitle",
+            "columnName": "pinyinTitle",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "pinyinArtist",
+            "columnName": "pinyinArtist",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "albumKey"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_library_album_summaries_isRemote_title",
+            "unique": false,
+            "columnNames": [
+              "isRemote",
+              "title"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_library_album_summaries_isRemote_title` ON `${TABLE_NAME}` (`isRemote`, `title`)"
+          },
+          {
+            "name": "index_library_album_summaries_isRemote_addedAtSeconds",
+            "unique": false,
+            "columnNames": [
+              "isRemote",
+              "addedAtSeconds"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_library_album_summaries_isRemote_addedAtSeconds` ON `${TABLE_NAME}` (`isRemote`, `addedAtSeconds`)"
+          }
+        ]
+      },
+      {
+        "tableName": "library_artist_summaries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`artistKey` TEXT NOT NULL, `name` TEXT NOT NULL, `artworkUri` TEXT, `albumCount` INTEGER NOT NULL, `trackCount` INTEGER NOT NULL, `durationMs` INTEGER NOT NULL, `pinyinName` TEXT, PRIMARY KEY(`artistKey`))",
+        "fields": [
+          {
+            "fieldPath": "artistKey",
+            "columnName": "artistKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "artworkUri",
+            "columnName": "artworkUri",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "albumCount",
+            "columnName": "albumCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "trackCount",
+            "columnName": "trackCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "durationMs",
+            "columnName": "durationMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pinyinName",
+            "columnName": "pinyinName",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "artistKey"
+          ]
+        }
+      },
+      {
+        "tableName": "library_folder_summaries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`folderKey` TEXT NOT NULL, `path` TEXT, `artworkUri` TEXT, `trackCount` INTEGER NOT NULL, `albumCount` INTEGER NOT NULL, `artistCount` INTEGER NOT NULL, `durationMs` INTEGER NOT NULL, `totalSizeBytes` INTEGER NOT NULL, `latestModifiedSeconds` INTEGER NOT NULL, PRIMARY KEY(`folderKey`))",
+        "fields": [
+          {
+            "fieldPath": "folderKey",
+            "columnName": "folderKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "path",
+            "columnName": "path",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "artworkUri",
+            "columnName": "artworkUri",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "trackCount",
+            "columnName": "trackCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "albumCount",
+            "columnName": "albumCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "artistCount",
+            "columnName": "artistCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "durationMs",
+            "columnName": "durationMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalSizeBytes",
+            "columnName": "totalSizeBytes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "latestModifiedSeconds",
+            "columnName": "latestModifiedSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "folderKey"
+          ]
+        }
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '6ff1fbf8a82f14a69c1ca01548390ed0')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'cd057b0e5c2164827bd68982c3a69727')"
     ]
   }
 }

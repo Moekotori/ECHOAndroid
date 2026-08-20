@@ -94,6 +94,9 @@ class EchoRemoteClient internal constructor(
                 endpoint = target
                 val status = runCatching { transport.fetchStatus(target) }
                 status.onSuccess { response ->
+                    if (!EchoLinkRequestPolicy.shouldApplyResolvedPlay(generation, connectGeneration)) {
+                        return@launch
+                    }
                     applyStatus(target, response)
                     if (refreshLibraryOnConnect) {
                         refreshLibrary()

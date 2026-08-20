@@ -14,8 +14,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LibraryPlaylistEntity::class,
         LibraryPlaylistTrackEntity::class,
         LibraryPlaybackStatsEntity::class,
+        LibraryAlbumSummaryEntity::class,
+        LibraryArtistSummaryEntity::class,
+        LibraryFolderSummaryEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = true,
 )
 abstract class EchoLibraryDatabase : RoomDatabase() {
@@ -36,6 +39,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                     Migration8To9,
                     Migration9To10,
                     Migration10To11,
+                    Migration11To12,
                 )
                 .build()
 
@@ -226,5 +230,158 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                 )
             }
         }
+
+        internal val Migration11To12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE library_tracks ADD COLUMN albumKey TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE library_tracks ADD COLUMN artistKey TEXT NOT NULL DEFAULT ''")
+                db.execSQL(
+                    """
+                    UPDATE library_tracks
+                    SET albumKey = (
+                            COALESCE(NULLIF(normalizedAlbum, ''), '未知专辑') ||
+                            '::' ||
+                            COALESCE(NULLIF(normalizedAlbumArtist, ''), NULLIF(normalizedArtist, ''), '未知艺术家')
+                        ),
+                        artistKey = COALESCE(NULLIF(normalizedArtist, ''), '未知艺术家')
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_library_tracks_albumKey ON library_tracks(albumKey)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_library_tracks_artistKey ON library_tracks(artistKey)")
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_library_tracks_source_albumKey ON library_tracks(source, albumKey)",
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS library_album_summaries (
+                        albumKey TEXT NOT NULL PRIMARY KEY,
+                        isRemote INTEGER NOT NULL,
+                        title TEXT NOT NULL,
+                        albumArtist TEXT,
+                        artist TEXT,
+                        artworkUri TEXT,
+                        trackCount INTEGER NOT NULL,
+                        durationMs INTEGER NOT NULL,
+                        year INTEGER,
+                        addedAtSeconds INTEGER NOT NULL,
+                        pinyinTitle TEXT,
+                        pinyinArtist TEXT
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_library_album_summaries_isRemote_title ON library_album_summaries(isRemote, title)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_library_album_summaries_isRemote_addedAtSeconds ON library_album_summaries(isRemote, addedAtSeconds)",
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS library_artist_summaries (
+                        artistKey TEXT NOT NULL PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        artworkUri TEXT,
+                        albumCount INTEGER NOT NULL,
+                        trackCount INTEGER NOT NULL,
+                        durationMs INTEGER NOT NULL,
+                        pinyinName TEXT
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS library_folder_summaries (
+                        folderKey TEXT NOT NULL PRIMARY KEY,
+                        path TEXT,
+                        artworkUri TEXT,
+                        trackCount INTEGER NOT NULL,
+                        albumCount INTEGER NOT NULL,
+                        artistCount INTEGER NOT NULL,
+                        durationMs INTEGER NOT NULL,
+                        totalSizeBytes INTEGER NOT NULL,
+                        latestModifiedSeconds INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(RebuildAlbumSummariesSql)
+                db.execSQL(RebuildArtistSummariesSql)
+                db.execSQL(RebuildFolderSummariesSql)
+            }
+        }
+
+        internal const val RebuildAlbumSummariesSql =
+            """
+            INSERT INTO library_album_summaries (
+                albumKey, isRemote, title, albumArtist, artist, artworkUri,
+                trackCount, durationMs, year, addedAtSeconds, pinyinTitle, pinyinArtist
+            )
+            SELECT
+                CASE
+                    WHEN source = 'mediastore' OR source = 'saf' THEN albumKey
+                    ELSE 'remote||' || source || '||' || albumKey
+                END,
+                CASE WHEN source = 'mediastore' OR source = 'saf' THEN 0 ELSE 1 END,
+                CASE WHEN album IS NULL OR trim(album) = '' THEN '未知专辑' ELSE album END,
+                CASE
+                    WHEN albumArtist IS NOT NULL AND trim(albumArtist) != '' THEN albumArtist
+                    WHEN artist IS NOT NULL AND trim(artist) != '' THEN artist
+                    ELSE NULL
+                END,
+                CASE WHEN artist IS NULL OR trim(artist) = '' THEN NULL ELSE artist END,
+                MAX(artworkUri),
+                COUNT(*),
+                COALESCE(SUM(durationMs), 0),
+                MIN(CASE WHEN year IS NOT NULL AND year > 0 THEN year ELSE NULL END),
+                MAX(dateModifiedSeconds),
+                MAX(pinyinAlbum),
+                MAX(pinyinArtist)
+            FROM library_tracks
+            WHERE albumKey IS NOT NULL AND trim(albumKey) != ''
+            GROUP BY
+                CASE
+                    WHEN source = 'mediastore' OR source = 'saf' THEN albumKey
+                    ELSE 'remote||' || source || '||' || albumKey
+                END
+            """
+
+        internal const val RebuildArtistSummariesSql =
+            """
+            INSERT INTO library_artist_summaries (
+                artistKey, name, artworkUri, albumCount, trackCount, durationMs, pinyinName
+            )
+            SELECT
+                artistKey,
+                CASE WHEN artist IS NULL OR trim(artist) = '' THEN '未知艺术家' ELSE artist END,
+                MAX(artworkUri),
+                COUNT(DISTINCT albumKey),
+                COUNT(*),
+                COALESCE(SUM(durationMs), 0),
+                MAX(pinyinArtist)
+            FROM library_tracks
+            WHERE (source = 'mediastore' OR source = 'saf')
+              AND artistKey IS NOT NULL AND trim(artistKey) != ''
+            GROUP BY artistKey
+            """
+
+        internal const val RebuildFolderSummariesSql =
+            """
+            INSERT INTO library_folder_summaries (
+                folderKey, path, artworkUri, trackCount, albumCount, artistCount,
+                durationMs, totalSizeBytes, latestModifiedSeconds
+            )
+            SELECT
+                COALESCE(NULLIF(relativePath, ''), ''),
+                CASE WHEN relativePath IS NULL OR trim(relativePath) = '' THEN NULL ELSE relativePath END,
+                MAX(NULLIF(artworkUri, '')),
+                COUNT(*),
+                COUNT(DISTINCT albumKey),
+                COUNT(DISTINCT artistKey),
+                COALESCE(SUM(durationMs), 0),
+                COALESCE(SUM(sizeBytes), 0),
+                MAX(dateModifiedSeconds)
+            FROM library_tracks
+            WHERE (source = 'mediastore' OR source = 'saf')
+            GROUP BY COALESCE(NULLIF(relativePath, ''), '')
+            """
     }
 }

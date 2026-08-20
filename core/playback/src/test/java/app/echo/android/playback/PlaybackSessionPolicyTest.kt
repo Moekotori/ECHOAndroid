@@ -60,6 +60,29 @@ class PlaybackSessionPolicyTest {
     }
 
     @Test
+    fun playPauseAndTracksChangedDoNotRemapQueue() {
+        assertFalse(
+            PlaybackSessionPolicy.shouldRemapFullQueue(
+                timelineChanged = false,
+                isPlayingChanged = true,
+                tracksChanged = true,
+                playWhenReadyChanged = true,
+            ),
+        )
+    }
+
+    @Test
+    fun timelineChangeRemapsQueue() {
+        assertTrue(
+            PlaybackSessionPolicy.shouldRemapFullQueue(
+                timelineChanged = true,
+                isPlayingChanged = false,
+                tracksChanged = false,
+            ),
+        )
+    }
+
+    @Test
     fun driverTestDoesNotClaimWhilePlaying() {
         assertFalse(PlaybackSessionPolicy.shouldClaimUsbInterfaceForDriverTest(isPlayingToUsb = true))
         assertTrue(PlaybackSessionPolicy.shouldClaimUsbInterfaceForDriverTest(isPlayingToUsb = false))

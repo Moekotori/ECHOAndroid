@@ -211,11 +211,17 @@ private fun EchoLinkCameraQrScanner(
     }
 
     DisposableEffect(lifecycleOwner, previewView) {
+        val disposed = java.util.concurrent.atomic.AtomicBoolean(false)
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
         val mainExecutor = ContextCompat.getMainExecutor(context)
         val listener = Runnable {
+            if (disposed.get()) return@Runnable
             runCatching {
                 val cameraProvider = cameraProviderFuture.get()
+                if (disposed.get()) {
+                    cameraProvider.unbindAll()
+                    return@runCatching
+                }
                 val preview = Preview.Builder().build().also {
                     it.surfaceProvider = previewView.surfaceProvider
                 }
@@ -235,6 +241,7 @@ private fun EchoLinkCameraQrScanner(
                     }
 
                 cameraProvider.unbindAll()
+                if (disposed.get()) return@runCatching
                 cameraProvider.bindToLifecycle(
                     lifecycleOwner,
                     CameraSelector.DEFAULT_BACK_CAMERA,
@@ -242,12 +249,17 @@ private fun EchoLinkCameraQrScanner(
                     analysis,
                 )
             }.onFailure { error ->
-                currentOnError("内置扫码启动失败：${error.localizedMessage ?: error.message ?: "未知错误"}")
+                if (!disposed.get()) {
+                    currentOnError("内置扫码启动失败：${error.localizedMessage ?: error.message ?: "未知错误"}")
+                }
             }
         }
         cameraProviderFuture.addListener(listener, mainExecutor)
         onDispose {
-            runCatching { cameraProviderFuture.get().unbindAll() }
+            disposed.set(true)
+            if (cameraProviderFuture.isDone) {
+                runCatching { cameraProviderFuture.get().unbindAll() }
+            }
         }
     }
 

@@ -232,6 +232,7 @@ class EchoLibraryRepository(
         )
         if (current.hasSameUserMetadata(updated)) return true
         dao.upsertBatchWithFts(listOf(updated))
+        dao.rebuildLibrarySummaries()
         return true
     }
 
@@ -244,6 +245,7 @@ class EchoLibraryRepository(
         ).withScanMetadata()
         if (current.hasSameUserMetadata(updated)) return true
         dao.upsertBatchWithFts(listOf(updated))
+        dao.rebuildLibrarySummaries()
         return true
     }
 
@@ -340,6 +342,7 @@ class EchoLibraryRepository(
             } else {
                 dao.getMetadataEditedTracksInRelativePath(source, relativePathLike)
             }.associateBy(LibraryTrackEntity::id)
+            val seenIds = HashSet<String>(existingFingerprints.size)
             val scanOutcome = scanner.scanAudio(
                 batchSize = batchSize,
                 relativePathPrefix = normalizedRelativePath,
@@ -361,30 +364,17 @@ class EchoLibraryRepository(
                 },
                 onBatch = { batch ->
                     coroutineContext.ensureActive()
-                    val inserts = ArrayList<LibraryTrackEntity>(batch.size)
-                    val updates = ArrayList<LibraryTrackEntity>(batch.size)
-                    val unchangedIds = ArrayList<String>(batch.size)
-
-                    batch.forEach { rawTrack ->
-                        val preserved = rawTrack.withPreservedUserMetadata(editedTracks[rawTrack.id])
-                        val track = preserved.withScanMetadata(scanRunId)
-                        val existing = existingFingerprints[track.id]
-                        when {
-                            existing == null -> inserts += track
-                            existing.fingerprint != track.fingerprint -> updates += track
-                            else -> unchangedIds += track.id
-                        }
-                    }
-
+                    val classified = classifyScanBatch(
+                        batch = batch,
+                        existingFingerprints = existingFingerprints,
+                        editedTracks = editedTracks,
+                        scanRunId = scanRunId,
+                    )
+                    seenIds.addAll(classified.seenIds)
                     emitProgress(phase = LibraryScanPhase.WritingDatabase)
-                    (inserts + updates).chunked(DATABASE_BATCH_SIZE).forEach { chunk ->
-                        dao.upsertBatchWithFts(chunk)
-                    }
-                    unchangedIds.chunked(DATABASE_BATCH_SIZE).forEach { ids ->
-                        dao.markSeen(ids, scanRunId)
-                    }
-                    insertedCount += inserts.size
-                    updatedCount += updates.size
+                    writeClassifiedScanBatch(dao, classified)
+                    insertedCount += classified.inserts.size
+                    updatedCount += classified.updates.size
                     lastProgressEmitCount = scannedCount
                     emitProgress(phase = LibraryScanPhase.QueryingMediaStore)
                 },
@@ -402,14 +392,15 @@ class EchoLibraryRepository(
                 dao = dao,
                 completeness = completeness,
                 missingIds = {
-                    if (relativePathLike == null) {
-                        dao.getMissingNativeMediaStoreTrackIds(source, scanRunId)
+                    val existingIds = if (relativePathLike == null) {
+                        dao.getIdsFromSource(source)
                     } else {
-                        dao.getMissingTrackIdsFromRelativePath(source, relativePathLike, scanRunId)
-                            .filter(LibraryScanPolicy::isMediaStoreNativeId)
-                    }
+                        dao.getIdsFromRelativePath(source, relativePathLike)
+                    }.filter(LibraryScanPolicy::isMediaStoreNativeId)
+                    LibraryScanPolicy.unseenIds(existingIds, seenIds)
                 },
             )
+            rebuildSummariesIfNeeded(dao, insertedCount, updatedCount, deletedCount)
             emitProgress(
                 phase = LibraryScanPhase.Completed,
                 currentTitle = null,
@@ -497,6 +488,7 @@ class EchoLibraryRepository(
                         relativePathLike = relativePathLike,
                     )
                 ).associateBy(LibraryTrackEntity::id)
+            val seenIds = HashSet<String>(existingFingerprints.size)
 
             emitProgress(phase = LibraryScanPhase.QueryingMediaStore)
             documentTreeScanner.scanAudioTree(
@@ -517,31 +509,17 @@ class EchoLibraryRepository(
                 },
                 onBatch = { batch ->
                     coroutineContext.ensureActive()
-                    val inserts = ArrayList<LibraryTrackEntity>(batch.size)
-                    val updates = ArrayList<LibraryTrackEntity>(batch.size)
-                    val unchangedIds = ArrayList<String>(batch.size)
-
-                    batch.forEach { rawTrack ->
-                        val preserved = rawTrack.withPreservedUserMetadata(editedTracks[rawTrack.id])
-                        val existing = existingFingerprints[preserved.id]
-                        val incomingFingerprint = preserved.fingerprint ?: buildTrackFingerprint(preserved)
-                        when {
-                            existing == null -> inserts += preserved.withScanMetadata(scanRunId)
-                            existing.fingerprint != incomingFingerprint ->
-                                updates += preserved.withScanMetadata(scanRunId)
-                            else -> unchangedIds += preserved.id
-                        }
-                    }
-
+                    val classified = classifyScanBatch(
+                        batch = batch,
+                        existingFingerprints = existingFingerprints,
+                        editedTracks = editedTracks,
+                        scanRunId = scanRunId,
+                    )
+                    seenIds.addAll(classified.seenIds)
                     emitProgress(phase = LibraryScanPhase.WritingDatabase)
-                    (inserts + updates).chunked(DATABASE_BATCH_SIZE).forEach { chunk ->
-                        dao.upsertBatchWithFts(chunk)
-                    }
-                    unchangedIds.chunked(DATABASE_BATCH_SIZE).forEach { ids ->
-                        dao.markSeen(ids, scanRunId)
-                    }
-                    insertedCount += inserts.size
-                    updatedCount += updates.size
+                    writeClassifiedScanBatch(dao, classified)
+                    insertedCount += classified.inserts.size
+                    updatedCount += classified.updates.size
                     lastProgressEmitCount = scannedCount
                     emitProgress(phase = LibraryScanPhase.QueryingMediaStore)
                 },
@@ -557,13 +535,14 @@ class EchoLibraryRepository(
                     existingCount = existingFingerprints.size,
                 ),
                 missingIds = {
-                    dao.getMissingSafTrackIdsFromRelativePath(
-                        source = source,
-                        relativePathLike = relativePathLike,
-                        scanRunId = scanRunId,
-                    )
+                    val existingIds =
+                        dao.getIdsFromRelativePath(source, relativePathLike).filter(LibraryScanPolicy::isSafTrackId) +
+                            dao.getIdsFromRelativePath(LibrarySource.MediaStore.id, relativePathLike)
+                                .filter(LibraryScanPolicy::isSafTrackId)
+                    LibraryScanPolicy.unseenIds(existingIds, seenIds)
                 },
             )
+            rebuildSummariesIfNeeded(dao, insertedCount, updatedCount, deletedCount)
             emitProgress(
                 phase = LibraryScanPhase.Completed,
                 currentTitle = null,
@@ -628,6 +607,7 @@ class EchoLibraryRepository(
             emitProgress(phase = LibraryScanPhase.Diffing, currentTitle = "读取远程曲库索引")
             val existingFingerprints = dao.getExistingMediaStoreFingerprints(source)
                 .associateBy(TrackFingerprint::id)
+            val seenIds = HashSet<String>(existingFingerprints.size)
 
             emitProgress(phase = LibraryScanPhase.QueryingMediaStore, currentTitle = "连接 Navidrome/Subsonic")
             client.ping()
@@ -644,9 +624,10 @@ class EchoLibraryRepository(
                     scannedCount += 1
                     pending += song.toLibraryTrackEntity(endpoint, client, scanRunId)
                     if (pending.size >= batchSize) {
-                        val counts = writeRemoteBatch(dao, pending, existingFingerprints)
-                        insertedCount += counts.first
-                        updatedCount += counts.second
+                        val written = writeRemoteBatch(dao, pending, existingFingerprints)
+                        insertedCount += written.insertedCount
+                        updatedCount += written.updatedCount
+                        seenIds.addAll(written.seenIds)
                         pending.clear()
                         emitProgress(phase = LibraryScanPhase.WritingDatabase, currentTitle = album.name)
                     }
@@ -654,9 +635,10 @@ class EchoLibraryRepository(
                 emitProgress(phase = LibraryScanPhase.QueryingMediaStore, currentTitle = album.name)
             }
             if (pending.isNotEmpty()) {
-                val counts = writeRemoteBatch(dao, pending, existingFingerprints)
-                insertedCount += counts.first
-                updatedCount += counts.second
+                val written = writeRemoteBatch(dao, pending, existingFingerprints)
+                insertedCount += written.insertedCount
+                updatedCount += written.updatedCount
+                seenIds.addAll(written.seenIds)
                 pending.clear()
             }
 
@@ -669,8 +651,9 @@ class EchoLibraryRepository(
                     existingCount = existingFingerprints.size,
                     hitVisitCap = albums.size >= SubsonicClient.MaxAlbumsPerSync,
                 ),
-                missingIds = { dao.getMissingTrackIdsFromSource(source, scanRunId) },
+                missingIds = { LibraryScanPolicy.unseenIds(existingFingerprints.keys, seenIds) },
             )
+            rebuildSummariesIfNeeded(dao, insertedCount, updatedCount, deletedCount)
             emitProgress(phase = LibraryScanPhase.Completed, currentTitle = null, isCompleted = true)
         } catch (error: CancellationException) {
             emitProgress(phase = LibraryScanPhase.Cancelled, currentTitle = null, isCompleted = true)
@@ -725,6 +708,7 @@ class EchoLibraryRepository(
             emitProgress(phase = LibraryScanPhase.Diffing, currentTitle = "读取 WebDAV 索引")
             val existingFingerprints = dao.getExistingMediaStoreFingerprints(source)
                 .associateBy(TrackFingerprint::id)
+            val seenIds = HashSet<String>(existingFingerprints.size)
 
             emitProgress(phase = LibraryScanPhase.QueryingMediaStore, currentTitle = "扫描 WebDAV 目录")
             val visit = client.scanAudioFiles { file ->
@@ -732,16 +716,18 @@ class EchoLibraryRepository(
                 scannedCount += 1
                 pending += file.toLibraryTrackEntity(endpoint, scanRunId)
                 if (pending.size >= batchSize) {
-                    val counts = writeRemoteBatch(dao, pending, existingFingerprints)
-                    insertedCount += counts.first
-                    updatedCount += counts.second
+                    val written = writeRemoteBatch(dao, pending, existingFingerprints)
+                    insertedCount += written.insertedCount
+                    updatedCount += written.updatedCount
+                    seenIds.addAll(written.seenIds)
                     pending.clear()
                 }
             }
             if (pending.isNotEmpty()) {
-                val counts = writeRemoteBatch(dao, pending, existingFingerprints)
-                insertedCount += counts.first
-                updatedCount += counts.second
+                val written = writeRemoteBatch(dao, pending, existingFingerprints)
+                insertedCount += written.insertedCount
+                updatedCount += written.updatedCount
+                seenIds.addAll(written.seenIds)
                 pending.clear()
             }
 
@@ -754,8 +740,9 @@ class EchoLibraryRepository(
                     existingCount = existingFingerprints.size,
                     hitVisitCap = visit.hitVisitCap,
                 ),
-                missingIds = { dao.getMissingTrackIdsFromSource(source, scanRunId) },
+                missingIds = { LibraryScanPolicy.unseenIds(existingFingerprints.keys, seenIds) },
             )
+            rebuildSummariesIfNeeded(dao, insertedCount, updatedCount, deletedCount)
             emitProgress(phase = LibraryScanPhase.Completed, currentTitle = null, isCompleted = true)
         } catch (error: CancellationException) {
             emitProgress(phase = LibraryScanPhase.Cancelled, currentTitle = null, isCompleted = true)
@@ -807,130 +794,24 @@ class EchoLibraryRepository(
         useFts: Boolean,
         sort: LibraryTrackSortMode,
     ): SimpleSQLiteQuery {
-        val args = mutableListOf<Any>()
-        val sql = StringBuilder(
-            buildString {
-                append("SELECT library_tracks.* FROM library_tracks")
-                if (sort == LibraryTrackSortMode.FrequentlyPlayed) {
-                    appendLine()
-                    append(
-                        """
-                        LEFT JOIN library_playback_stats
-                            ON library_tracks.id = library_playback_stats.trackId
-                        """.trimIndent(),
-                    )
-                }
-            },
+        val trimmed = query.trim()
+        val sql = LibraryTrackQueryBuilder.buildTrackPagingSql(
+            query = trimmed,
+            useFts = useFts && matchQuery != null,
+            sort = sort,
         )
-        var hasWhere = false
-        if (query.isNotBlank()) {
-            hasWhere = true
-            if (useFts && matchQuery != null) {
-                val likeQuery = "%${query.lowercase()}%"
-                val rawLike = "%$query%"
-                sql.appendLine()
-                sql.append("LEFT JOIN library_tracks_fts ON library_tracks.id = library_tracks_fts.trackId")
-                sql.appendLine()
-                sql.append(
-                    """
-                    WHERE (library_tracks_fts MATCH ?
-                       OR library_tracks.title LIKE ?
-                       OR library_tracks.artist LIKE ?
-                       OR library_tracks.album LIKE ?
-                       OR library_tracks.normalizedTitle LIKE ?
-                       OR library_tracks.normalizedArtist LIKE ?
-                       OR library_tracks.normalizedAlbum LIKE ?
-                       OR library_tracks.normalizedAlbumArtist LIKE ?
-                       OR library_tracks.pinyinTitle LIKE ?
-                       OR library_tracks.pinyinArtist LIKE ?
-                       OR library_tracks.pinyinAlbum LIKE ?)
-                    """.trimIndent(),
-                )
-                args += matchQuery
-                repeat(3) { args += rawLike }
-                repeat(7) { args += likeQuery }
-            } else {
-                val likeQuery = "%${query.lowercase()}%"
-                val rawLike = "%$query%"
-                sql.appendLine()
-                sql.append(
-                    """
-                    WHERE (library_tracks.title LIKE ?
-                       OR library_tracks.artist LIKE ?
-                       OR library_tracks.album LIKE ?
-                       OR library_tracks.normalizedTitle LIKE ?
-                       OR library_tracks.normalizedArtist LIKE ?
-                       OR library_tracks.normalizedAlbum LIKE ?
-                       OR library_tracks.normalizedAlbumArtist LIKE ?
-                       OR library_tracks.pinyinTitle LIKE ?
-                       OR library_tracks.pinyinArtist LIKE ?
-                       OR library_tracks.pinyinAlbum LIKE ?)
-                    """.trimIndent(),
-                )
-                repeat(3) { args += rawLike }
-                repeat(7) { args += likeQuery }
+        val args = mutableListOf<Any>()
+        if (trimmed.isNotBlank() && useFts && matchQuery != null) {
+            args += matchQuery
+            if (sort == LibraryTrackSortMode.Title) {
+                repeat(3) { args += rankQuery }
             }
+        } else if (trimmed.isNotBlank()) {
+            val likeQuery = "%${trimmed.lowercase()}%"
+            repeat(6) { args += likeQuery }
         }
-        if (hasWhere) {
-            sql.append(" AND ")
-            sql.append(LibraryScanPolicy.LocalSourceSql)
-        } else {
-            sql.appendLine()
-            sql.append("WHERE ")
-            sql.append(LibraryScanPolicy.LocalSourceSql)
-        }
-        sql.appendLine()
-        sql.append("ORDER BY ")
-        if (query.isNotBlank() && sort == LibraryTrackSortMode.Title) {
-            sql.append(
-                """
-                CASE
-                    WHEN library_tracks.normalizedTitle LIKE ? THEN 0
-                    WHEN library_tracks.normalizedArtist LIKE ? THEN 1
-                    WHEN library_tracks.normalizedAlbum LIKE ? THEN 2
-                    ELSE 3
-                END,
-                """.trimIndent(),
-            )
-            repeat(3) { args += rankQuery }
-            sql.appendLine()
-        }
-        sql.append(trackSortOrder(sort))
-        return SimpleSQLiteQuery(sql.toString(), args.toTypedArray())
+        return SimpleSQLiteQuery(sql, args.toTypedArray())
     }
-
-    private fun trackSortOrder(sort: LibraryTrackSortMode): String =
-        when (sort) {
-            LibraryTrackSortMode.Title -> "library_tracks.title COLLATE NOCASE ASC"
-            LibraryTrackSortMode.Duration -> "library_tracks.durationMs DESC, library_tracks.title COLLATE NOCASE ASC"
-            LibraryTrackSortMode.FrequentlyPlayed -> """
-                COALESCE(library_playback_stats.playCount, 0) DESC,
-                COALESCE(library_playback_stats.lastPlayedAtEpochMs, 0) DESC,
-                library_tracks.title COLLATE NOCASE ASC
-            """.trimIndent()
-            LibraryTrackSortMode.Random ->
-                "(length(library_tracks.id) * 31 + length(library_tracks.title) * 17 + COALESCE(library_tracks.durationMs, 0)) % 997, library_tracks.id"
-            LibraryTrackSortMode.Artist -> """
-                CASE WHEN trim(library_tracks.artist) = '' THEN 1 ELSE 0 END ASC,
-                library_tracks.artist COLLATE NOCASE ASC,
-                CASE WHEN library_tracks.album IS NULL OR trim(library_tracks.album) = '' THEN 1 ELSE 0 END ASC,
-                library_tracks.album COLLATE NOCASE ASC,
-                CASE WHEN library_tracks.discNumber IS NULL THEN 0 ELSE library_tracks.discNumber END ASC,
-                CASE WHEN library_tracks.trackNumber IS NULL THEN 0 ELSE library_tracks.trackNumber END ASC,
-                library_tracks.title COLLATE NOCASE ASC
-            """.trimIndent()
-            LibraryTrackSortMode.Album -> """
-                CASE WHEN library_tracks.album IS NULL OR trim(library_tracks.album) = '' THEN 1 ELSE 0 END ASC,
-                library_tracks.album COLLATE NOCASE ASC,
-                CASE WHEN library_tracks.discNumber IS NULL THEN 0 ELSE library_tracks.discNumber END ASC,
-                CASE WHEN library_tracks.trackNumber IS NULL THEN 0 ELSE library_tracks.trackNumber END ASC,
-                library_tracks.title COLLATE NOCASE ASC
-            """.trimIndent()
-            LibraryTrackSortMode.RecentlyUpdated -> """
-                library_tracks.dateModifiedSeconds DESC,
-                library_tracks.title COLLATE NOCASE ASC
-            """.trimIndent()
-        }
 
     private fun withAnchorTrack(
         anchor: LibraryTrackEntity?,
@@ -954,65 +835,54 @@ class EchoLibraryRepository(
 
     private suspend fun refreshLegacyLibrarySearchIndex() {
         val dao = database.trackDao()
+        var backfilled = false
         while (true) {
             val staleTracks = dao.getTracksNeedingPinyinBackfill(PINYIN_BACKFILL_BATCH_SIZE)
             if (staleTracks.isEmpty()) break
             dao.upsertBatch(staleTracks.map(LibraryTrackEntity::withComputedSearchMetadata))
+            backfilled = true
+        }
+        if (backfilled) {
+            dao.rebuildLibrarySummaries()
         }
     }
 
-    private fun albumPlaybackQuery(albumKey: String, limit: Int): SimpleSQLiteQuery {
-        val fallbackParts = albumKey.split("::", limit = 2)
-        val fallbackAlbum = fallbackParts.getOrElse(0) { albumKey }
-        val fallbackArtist = fallbackParts.getOrElse(1) { albumKey }
-        return SimpleSQLiteQuery(
+    private fun albumPlaybackQuery(albumKey: String, limit: Int): SimpleSQLiteQuery =
+        SimpleSQLiteQuery(
             """
             SELECT * FROM library_tracks
             WHERE (source = 'mediastore' OR source = 'saf')
-              AND (
-                COALESCE(NULLIF(normalizedAlbum, ''), ?) ||
-                '::' ||
-                COALESCE(NULLIF(normalizedAlbumArtist, ''), NULLIF(normalizedArtist, ''), ?)
-            ) = ?
+              AND albumKey = ?
             ORDER BY
                 CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
                 CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
                 title COLLATE NOCASE ASC
             LIMIT ?
             """.trimIndent(),
-            arrayOf<Any>(fallbackAlbum, fallbackArtist, albumKey, limit),
+            arrayOf<Any>(albumKey, limit),
         )
-    }
 
-    private fun remoteAlbumPlaybackQuery(source: String, albumKey: String, limit: Int): SimpleSQLiteQuery {
-        val fallbackParts = albumKey.split("::", limit = 2)
-        val fallbackAlbum = fallbackParts.getOrElse(0) { albumKey }
-        val fallbackArtist = fallbackParts.getOrElse(1) { albumKey }
-        return SimpleSQLiteQuery(
+    private fun remoteAlbumPlaybackQuery(source: String, albumKey: String, limit: Int): SimpleSQLiteQuery =
+        SimpleSQLiteQuery(
             """
             SELECT * FROM library_tracks
             WHERE source = ?
-              AND (
-                COALESCE(NULLIF(normalizedAlbum, ''), ?) ||
-                '::' ||
-                COALESCE(NULLIF(normalizedAlbumArtist, ''), NULLIF(normalizedArtist, ''), ?)
-              ) = ?
+              AND albumKey = ?
             ORDER BY
                 CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
                 CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
                 title COLLATE NOCASE ASC
             LIMIT ?
             """.trimIndent(),
-            arrayOf<Any>(source, fallbackAlbum, fallbackArtist, albumKey, limit),
+            arrayOf<Any>(source, albumKey, limit),
         )
-    }
 
     private fun artistPlaybackQuery(artistKey: String, limit: Int): SimpleSQLiteQuery =
         SimpleSQLiteQuery(
             """
             SELECT * FROM library_tracks
             WHERE (source = 'mediastore' OR source = 'saf')
-              AND COALESCE(NULLIF(normalizedArtist, ''), ?) = ?
+              AND artistKey = ?
             ORDER BY
                 album COLLATE NOCASE ASC,
                 CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
@@ -1020,7 +890,7 @@ class EchoLibraryRepository(
                 title COLLATE NOCASE ASC
             LIMIT ?
             """.trimIndent(),
-            arrayOf<Any>(artistKey, artistKey, limit),
+            arrayOf<Any>(artistKey, limit),
         )
 
     private fun defaultPagingConfig(): PagingConfig =
@@ -1044,6 +914,56 @@ class EchoLibraryRepository(
             dao.deleteFtsByTrackIds(chunk)
         }
         return ids.size
+    }
+
+    private fun classifyScanBatch(
+        batch: List<LibraryTrackEntity>,
+        existingFingerprints: Map<String, TrackFingerprint>,
+        editedTracks: Map<String, LibraryTrackEntity>,
+        scanRunId: Long,
+    ): ClassifiedScanBatch {
+        val inserts = ArrayList<LibraryTrackEntity>(batch.size)
+        val updates = ArrayList<LibraryTrackEntity>(batch.size)
+        val seenIds = ArrayList<String>(batch.size)
+        batch.forEach { rawTrack ->
+            val preserved = rawTrack.withPreservedUserMetadata(editedTracks[rawTrack.id])
+            val incomingFingerprint = preserved.fingerprint ?: buildTrackFingerprint(preserved)
+            seenIds += preserved.id
+            when (
+                LibraryScanPolicy.scanRowAction(
+                    existingFingerprint = existingFingerprints[preserved.id]?.fingerprint,
+                    incomingFingerprint = incomingFingerprint,
+                )
+            ) {
+                LibraryScanRowAction.Insert -> inserts += preserved.withScanMetadata(scanRunId)
+                LibraryScanRowAction.Update -> updates += preserved.withScanMetadata(scanRunId)
+                LibraryScanRowAction.RememberSeen -> Unit
+            }
+        }
+        return ClassifiedScanBatch(inserts = inserts, updates = updates, seenIds = seenIds)
+    }
+
+    private suspend fun writeClassifiedScanBatch(dao: LibraryTrackDao, classified: ClassifiedScanBatch) {
+        (classified.inserts + classified.updates).chunked(DATABASE_BATCH_SIZE).forEach { chunk ->
+            dao.upsertBatchWithFts(chunk)
+        }
+        if (LibraryScanPolicy.shouldStampLastSeenOnUnchangedRow()) {
+            val unchangedIds = classified.seenIds.filter { id ->
+                classified.inserts.none { it.id == id } && classified.updates.none { it.id == id }
+            }
+            val scanRunId = (classified.inserts + classified.updates).firstOrNull()?.lastSeenScanRunId ?: return
+            unchangedIds.chunked(DATABASE_BATCH_SIZE).forEach { ids -> dao.markSeen(ids, scanRunId) }
+        }
+    }
+
+    private suspend fun rebuildSummariesIfNeeded(
+        dao: LibraryTrackDao,
+        insertedCount: Int,
+        updatedCount: Int,
+        deletedCount: Int,
+    ) {
+        if (insertedCount + updatedCount + deletedCount <= 0) return
+        dao.rebuildLibrarySummaries()
     }
 
     private companion object {
@@ -1092,23 +1012,49 @@ private data class RemoteAlbumKey(
     }
 }
 
+private data class ClassifiedScanBatch(
+    val inserts: List<LibraryTrackEntity>,
+    val updates: List<LibraryTrackEntity>,
+    val seenIds: List<String>,
+)
+
+private data class RemoteBatchWriteResult(
+    val insertedCount: Int,
+    val updatedCount: Int,
+    val seenIds: List<String>,
+)
+
 private suspend fun writeRemoteBatch(
     dao: LibraryTrackDao,
     tracks: List<LibraryTrackEntity>,
     existingFingerprints: Map<String, TrackFingerprint>,
-): Pair<Int, Int> {
+): RemoteBatchWriteResult {
     val inserts = ArrayList<LibraryTrackEntity>(tracks.size)
     val updates = ArrayList<LibraryTrackEntity>(tracks.size)
-    val unchangedIds = ArrayList<String>(tracks.size)
+    val seenIds = ArrayList<String>(tracks.size)
     tracks.forEach { track ->
-        val existing = existingFingerprints[track.id]
-        when {
-            existing == null -> inserts += track
-            existing.fingerprint != track.fingerprint -> updates += track
-            else -> unchangedIds += track.id
+        seenIds += track.id
+        when (
+            LibraryScanPolicy.scanRowAction(
+                existingFingerprint = existingFingerprints[track.id]?.fingerprint,
+                incomingFingerprint = track.fingerprint,
+            )
+        ) {
+            LibraryScanRowAction.Insert -> inserts += track
+            LibraryScanRowAction.Update -> updates += track
+            LibraryScanRowAction.RememberSeen -> Unit
         }
     }
     (inserts + updates).chunked(500).forEach { chunk -> dao.upsertBatchWithFts(chunk) }
-    unchangedIds.chunked(500).forEach { ids -> dao.markSeen(ids, tracks.first().lastSeenScanRunId) }
-    return inserts.size to updates.size
+    if (LibraryScanPolicy.shouldStampLastSeenOnUnchangedRow() && tracks.isNotEmpty()) {
+        val unchangedIds = seenIds.filter { id ->
+            inserts.none { it.id == id } && updates.none { it.id == id }
+        }
+        unchangedIds.chunked(500).forEach { ids -> dao.markSeen(ids, tracks.first().lastSeenScanRunId) }
+    }
+    return RemoteBatchWriteResult(
+        insertedCount = inserts.size,
+        updatedCount = updates.size,
+        seenIds = seenIds,
+    )
 }

@@ -17,4 +17,11 @@ class EchoPlaybackRestoreTest {
         assertFalse(shouldSkipSavedSessionRestore(listOf(false)))
         assertFalse(shouldSkipSavedSessionRestore(listOf(false, false)))
     }
+
+    @Test
+    fun playPauseAndSkipRestoreBeforeFlush() {
+        assertTrue(shouldRestoreSavedSessionBeforeFlushingPending(listOf(false)))
+        assertTrue(shouldRestoreSavedSessionBeforeFlushingPending(emptyList()))
+        assertFalse(shouldRestoreSavedSessionBeforeFlushingPending(listOf(true)))
+    }
 }

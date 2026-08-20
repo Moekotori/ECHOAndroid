@@ -10,7 +10,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -77,7 +76,6 @@ fun EchoCustomBackground(
 
                 EchoBackgroundMode.Image -> EchoImageWallpaper(
                     uri = uri,
-                    blur = blur,
                     brightness = brightness,
                     backgroundScale = backgroundScale,
                     maxPixelSize = imageMaxPixelSize,
@@ -96,7 +94,6 @@ fun EchoCustomBackground(
 @Composable
 private fun EchoImageWallpaper(
     uri: String,
-    blur: Dp,
     brightness: Float,
     backgroundScale: Float,
     maxPixelSize: Int,
@@ -119,7 +116,6 @@ private fun EchoImageWallpaper(
             modifier = Modifier
                 .fillMaxSize()
                 .scale(backgroundScale)
-                .blur(blur)
                 .alpha(brightness.coerceIn(0.35f, 1.15f)),
         )
         EchoBrightnessOverlay(brightness)

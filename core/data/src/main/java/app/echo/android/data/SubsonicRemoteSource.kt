@@ -160,7 +160,7 @@ internal fun SubsonicSong.toLibraryTrackEntity(
         mimeType = contentType ?: suffix?.let { "audio/$it" },
         sizeBytes = sizeBytes,
         sampleRateHz = null,
-        dateModifiedSeconds = 0L,
+        dateModifiedSeconds = LibraryFingerprintPolicy.remoteDateModifiedSeconds(scanRunId),
         source = endpoint.sourceId,
         relativePath = path?.substringBeforeLast('/', missingDelimiterValue = ""),
         lastSeenScanRunId = scanRunId,

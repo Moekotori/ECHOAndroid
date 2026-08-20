@@ -41,7 +41,25 @@ object LibraryScanPolicy {
         metadataEditedAtEpochMs: Long?,
     ): Boolean = metadataEditedAtEpochMs != null && incomingFingerprint != existingFingerprint
 
+    fun scanRowAction(existingFingerprint: String?, incomingFingerprint: String?): LibraryScanRowAction =
+        when {
+            existingFingerprint == null -> LibraryScanRowAction.Insert
+            existingFingerprint != incomingFingerprint -> LibraryScanRowAction.Update
+            else -> LibraryScanRowAction.RememberSeen
+        }
+
+    fun shouldStampLastSeenOnUnchangedRow(): Boolean = false
+
+    fun unseenIds(existingIds: Collection<String>, seenIds: Set<String>): List<String> =
+        existingIds.distinct().filterNot(seenIds::contains)
+
     const val SafSourceId = "saf"
+}
+
+enum class LibraryScanRowAction {
+    Insert,
+    Update,
+    RememberSeen,
 }
 
 data class MediaStoreScanOutcome(
