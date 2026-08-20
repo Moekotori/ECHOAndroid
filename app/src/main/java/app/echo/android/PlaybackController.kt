@@ -399,7 +399,6 @@ internal class PlaybackController(
                     } else {
                         restoreCompleted = true
                     }
-                    }
                     applyReplayGain()
                     updatePlaybackCore(mediaController)
                     startProgressUpdates()
