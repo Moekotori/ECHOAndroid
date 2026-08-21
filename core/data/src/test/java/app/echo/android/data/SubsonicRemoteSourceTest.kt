@@ -138,6 +138,76 @@ class SubsonicRemoteSourceTest {
     }
 
     @Test
+    fun albumListContinuesWhenServerReturnsCappedPages() {
+        val offsets = ArrayList<Int>()
+        val client = SubsonicClient(
+            endpoint = SubsonicEndpoint(
+                baseUrl = "https://navidrome.example",
+                username = "user",
+                password = "pass",
+            ),
+            httpGet = { url ->
+                if (!url.contains("getAlbumList2.view")) {
+                    """{"subsonic-response":{"status":"ok","version":"1.16.1"}}"""
+                } else {
+                    val offset = queryParam(url, "offset")?.toIntOrNull() ?: 0
+                    offsets += offset
+                    val albums = when (offset) {
+                        0 -> (1..100).map { """{"id":"a$it","name":"Album $it","songCount":1}""" }
+                        100 -> (101..130).map { """{"id":"a$it","name":"Album $it","songCount":1}""" }
+                        else -> emptyList()
+                    }
+                    """{"subsonic-response":{"status":"ok","version":"1.16.1","albumList2":{"album":[${albums.joinToString(",")}]}}}"""
+                }
+            },
+        )
+        val albums = client.fetchAlbums(pageSize = 500, maxAlbums = 2_000)
+        assertEquals(130, albums.size)
+        assertEquals("a1", albums.first().id)
+        assertEquals("a130", albums.last().id)
+        assertTrue(offsets.contains(0))
+        assertTrue(offsets.contains(100))
+    }
+
+    @Test
+    fun jsonNullTitleDoesNotBecomeLiteralNull() {
+        val client = SubsonicClient(
+            endpoint = SubsonicEndpoint(
+                baseUrl = "https://navidrome.example",
+                username = "user",
+                password = "pass",
+            ),
+            httpGet = {
+                search3Body(listOf("""{"id":"s1","title":null,"artist":"A","album":"B","duration":1,"size":1}"""))
+            },
+        )
+        val songs = client.fetchSongsBySearch3()
+        assertEquals(1, songs.size)
+        assertEquals("s1", songs[0].id)
+        assertEquals("", songs[0].title)
+        assertEquals("A", songs[0].artist)
+    }
+
+    @Test
+    fun blankSongIdsAreDroppedFromAlbumFetch() {
+        val client = SubsonicClient(
+            endpoint = SubsonicEndpoint(
+                baseUrl = "https://navidrome.example",
+                username = "user",
+                password = "pass",
+            ),
+            httpGet = {
+                """{"subsonic-response":{"status":"ok","version":"1.16.1","album":{"id":"a1","song":[{"id":"","title":"Missing"},{"id":"s2","title":"Keep","artist":"A","duration":1,"size":1}]}}}"""
+            },
+        )
+        val songs = client.fetchAlbumSongs(
+            SubsonicAlbum(id = "a1", name = "Album", artist = "A", coverArt = null, year = null, songCount = 2),
+        )
+        assertEquals(1, songs.size)
+        assertEquals("s2", songs[0].id)
+    }
+
+    @Test
     fun mappedTracksWithDifferentClientSaltsShareFingerprint() {
         val endpoint = SubsonicEndpoint(
             baseUrl = "https://navidrome.example",

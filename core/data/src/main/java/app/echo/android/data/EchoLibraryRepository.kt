@@ -805,7 +805,13 @@ class EchoLibraryRepository(
             val (albums, bulkSongs) = coroutineScope {
                 val albumsDeferred = async { client.fetchAlbums() }
                 val bulkDeferred = async {
-                    runCatching { client.fetchSongsBySearch3() }.getOrDefault(emptyList())
+                    try {
+                        client.fetchSongsBySearch3()
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Throwable) {
+                        emptyList()
+                    }
                 }
                 albumsDeferred.await() to bulkDeferred.await()
             }
@@ -834,6 +840,7 @@ class EchoLibraryRepository(
             suspend fun ingestSongs(songs: List<SubsonicSong>, title: String?) {
                 for (song in songs) {
                     coroutineContext.ensureActive()
+                    if (song.id.isBlank()) continue
                     scannedCount += 1
                     pending += song.toLibraryTrackEntity(endpoint, scanRunId)
                     if (pending.size >= batchSize) {

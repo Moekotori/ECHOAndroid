@@ -66,13 +66,16 @@ internal class SubsonicClient(
         maxAlbums: Int = MaxAlbumsPerSync,
     ): List<SubsonicAlbum> {
         val albums = ArrayList<SubsonicAlbum>()
+        val seenIds = HashSet<String>()
         var offset = 0
+        var effectivePageSize = pageSize.coerceAtLeast(1)
         while (albums.size < maxAlbums) {
+            val remaining = (maxAlbums - albums.size).coerceAtMost(effectivePageSize)
             val root = request(
                 path = "getAlbumList2.view",
                 params = listOf(
                     "type" to "alphabeticalByName",
-                    "size" to pageSize.toString(),
+                    "size" to remaining.toString(),
                     "offset" to offset.toString(),
                 ),
             )
@@ -81,20 +84,28 @@ internal class SubsonicClient(
                 ?.map { it.toSubsonicAlbum() }
                 .orEmpty()
             if (batch.isEmpty()) break
-            albums += batch
-            if (batch.size < pageSize) break
+            val unique = batch.filter { album -> album.id.isNotBlank() && seenIds.add(album.id) }
+            if (unique.isEmpty()) break
+            albums += unique
             offset += batch.size
+            if (batch.size < remaining) {
+                effectivePageSize = batch.size.coerceAtLeast(1)
+                continue
+            }
         }
         return albums
     }
 
     fun fetchAlbumSongs(album: SubsonicAlbum): List<SubsonicSong> {
+        if (album.id.isBlank()) return emptyList()
         val root = request(
             path = "getAlbum.view",
             params = listOf("id" to album.id),
         )
         val albumObject = root.optJSONObject("album") ?: return emptyList()
-        return albumObject.jsonObjects("song").map { it.toSubsonicSong(album) }
+        return albumObject.jsonObjects("song")
+            .map { it.toSubsonicSong(album) }
+            .filter { it.id.isNotBlank() }
     }
 
     fun fetchSongsBySearch3(
@@ -264,32 +275,37 @@ private fun JSONObject.subsonicRoot(): JSONObject {
 
 private fun JSONObject.toSubsonicAlbum(): SubsonicAlbum =
     SubsonicAlbum(
-        id = optString("id"),
-        name = optString("name").ifBlank { optString("album") },
-        artist = optString("artist").takeIf { it.isNotBlank() },
-        coverArt = optString("coverArt").takeIf { it.isNotBlank() },
+        id = optJsonString("id"),
+        name = optJsonString("name").ifBlank { optJsonString("album") },
+        artist = optJsonString("artist").takeIf { it.isNotBlank() },
+        coverArt = optJsonString("coverArt").takeIf { it.isNotBlank() },
         year = optInt("year").takeIf { it > 0 },
         songCount = optInt("songCount").coerceAtLeast(0),
     )
 
 private fun JSONObject.toSubsonicSong(album: SubsonicAlbum? = null): SubsonicSong =
     SubsonicSong(
-        id = optString("id"),
-        title = optString("title"),
-        artist = optString("artist").ifBlank { album?.artist.orEmpty() },
-        album = optString("album").ifBlank { album?.name.orEmpty() }.takeIf { it.isNotBlank() },
-        albumArtist = optString("albumArtist").ifBlank { album?.artist.orEmpty() }.takeIf { it.isNotBlank() },
-        coverArt = optString("coverArt").ifBlank { album?.coverArt.orEmpty() }.takeIf { it.isNotBlank() },
+        id = optJsonString("id"),
+        title = optJsonString("title"),
+        artist = optJsonString("artist").ifBlank { album?.artist.orEmpty() },
+        album = optJsonString("album").ifBlank { album?.name.orEmpty() }.takeIf { it.isNotBlank() },
+        albumArtist = optJsonString("albumArtist").ifBlank { album?.artist.orEmpty() }.takeIf { it.isNotBlank() },
+        coverArt = optJsonString("coverArt").ifBlank { album?.coverArt.orEmpty() }.takeIf { it.isNotBlank() },
         durationSeconds = optLong("duration", 0L),
         trackNumber = optInt("track").takeIf { it > 0 },
         discNumber = optInt("discNumber").takeIf { it > 0 },
         year = optInt("year").takeIf { it > 0 } ?: album?.year,
-        contentType = optString("contentType").takeIf { it.isNotBlank() },
-        suffix = optString("suffix").takeIf { it.isNotBlank() },
+        contentType = optJsonString("contentType").takeIf { it.isNotBlank() },
+        suffix = optJsonString("suffix").takeIf { it.isNotBlank() },
         sizeBytes = optLong("size", 0L),
         bitRateKbps = optInt("bitRate").takeIf { it > 0 },
-        path = optString("path").takeIf { it.isNotBlank() },
+        path = optJsonString("path").takeIf { it.isNotBlank() },
     )
+
+private fun JSONObject.optJsonString(name: String): String {
+    if (!has(name) || isNull(name)) return ""
+    return optString(name)
+}
 
 private val SharedSubsonicHttpClient: OkHttpClient =
     OkHttpClient.Builder()
@@ -297,6 +313,11 @@ private val SharedSubsonicHttpClient: OkHttpClient =
         .readTimeout(20, TimeUnit.SECONDS)
         .callTimeout(25, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
+        .dispatcher(
+            okhttp3.Dispatcher().apply {
+                maxRequestsPerHost = 16
+            },
+        )
         .build()
 
 private fun defaultHttpGet(url: String): String? {
