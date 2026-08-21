@@ -182,6 +182,11 @@ object LibraryScanPolicy {
         storageBusy: Boolean,
     ): Boolean = lightweight || storageBusy
 
+    fun shouldBackfillMissingSampleRates(
+        wasLightweight: Boolean,
+        isLightweight: Boolean,
+    ): Boolean = wasLightweight && !isLightweight
+
     fun shouldEmitScanProgress(
         scannedCount: Int,
         lastEmittedCount: Int,

@@ -1,5 +1,7 @@
 package app.echo.android.playback
 
+import app.echo.android.model.playback.EchoLinkPlaybackUri
+
 fun shouldSkipSavedSessionRestore(pendingReplacesQueue: Iterable<Boolean>): Boolean =
     pendingReplacesQueue.any { it }
 
@@ -45,6 +47,26 @@ fun shouldApplyPendingRestorePlay(
 fun shouldRestoreIntoEmptyPlayer(mediaItemCount: Int): Boolean = mediaItemCount <= 0
 
 fun shouldPlayAfterSessionRestore(userRequestedPlay: Boolean): Boolean = userRequestedPlay
+
+fun shouldHoldSavedPlayWhenReadyAfterForcedPause(
+    savedPlayWhenReady: Boolean,
+    restoredPlayWhenReady: Boolean,
+): Boolean = savedPlayWhenReady && !restoredPlayWhenReady
+
+fun persistSnapshotPlayWhenReady(
+    playerPlayWhenReady: Boolean,
+    heldSavedPlayWhenReady: Boolean?,
+): Pair<Boolean, Boolean?> {
+    if (heldSavedPlayWhenReady == true && !playerPlayWhenReady) {
+        return true to null
+    }
+    return playerPlayWhenReady to if (playerPlayWhenReady) null else heldSavedPlayWhenReady
+}
+
+fun shouldPrepareRestoredQueue(unresolvedEchoLinkUris: Boolean): Boolean = !unresolvedEchoLinkUris
+
+fun queueHasUnresolvedEchoLinkUris(uris: Iterable<String>): Boolean =
+    uris.any { uri -> EchoLinkPlaybackUri.trackIdFromPersistUri(uri) != null }
 
 fun shouldReplaceRegisteredRemoteCredentials(
     incomingEmpty: Boolean,

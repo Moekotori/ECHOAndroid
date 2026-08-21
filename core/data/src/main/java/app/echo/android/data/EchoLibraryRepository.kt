@@ -488,6 +488,7 @@ class EchoLibraryRepository(
         anchorTrackId: String,
         selectedLibrarySource: String = EchoLibrarySelectedSource.Local,
         limit: Int = TRACK_QUEUE_LIMIT,
+        sort: LibraryTrackSortMode = LibraryTrackSortMode.Title,
     ): List<LibraryTrackEntity> {
         val dao = database.trackDao()
         val safeLimit = limit.coerceAtLeast(1)
@@ -497,6 +498,7 @@ class EchoLibraryRepository(
             query = query,
             selectedLibrarySource = selectedLibrarySource,
             limit = safeLimit,
+            sort = sort,
         )
         val merged = LibraryPlaybackQueuePolicy.mergeAnchorIntoQueue(
             anchor = anchor?.let { LibraryPlaybackQueueCandidate(it.id, it.source) },
@@ -601,6 +603,27 @@ class EchoLibraryRepository(
         } else {
             database.playlistDao().getPlaylistTracksForPlayback(playlistId, safeLimit)
         }
+    }
+
+    suspend fun backfillMissingSampleRates(
+        limit: Int = SAMPLE_RATE_BACKFILL_LIMIT,
+    ): Int = withContext(LibraryScanDispatchers.Limited) {
+        val dao = database.trackDao()
+        val missing = dao.getTracksMissingSampleRate(limit.coerceAtLeast(1))
+        if (missing.isEmpty()) return@withContext 0
+        val updated = ArrayList<LibraryTrackEntity>(missing.size)
+        for (track in missing) {
+            coroutineContext.ensureActive()
+            val rate = scanner.readSampleRateHz(track.contentUri) ?: continue
+            if (rate == track.sampleRateHz) continue
+            updated += track.copy(sampleRateHz = rate).withFingerprint()
+        }
+        if (updated.isEmpty()) return@withContext 0
+        updated.chunked(DATABASE_BATCH_SIZE).forEach { chunk ->
+            dao.upsertBatchWithFts(chunk)
+            yield()
+        }
+        updated.size
     }
 
     fun refreshMediaStoreSnapshot(
@@ -1251,6 +1274,7 @@ class EchoLibraryRepository(
         query: String?,
         selectedLibrarySource: String,
         limit: Int,
+        sort: LibraryTrackSortMode,
     ): List<LibraryTrackEntity> {
         val trimmedQuery = query?.trim().orEmpty()
         val matchQuery = sanitizeFtsQuery(trimmedQuery)
@@ -1261,6 +1285,7 @@ class EchoLibraryRepository(
             useFts = useFts,
             localSources = LibraryPlaybackQueuePolicy.usesLocalTrackQueue(selectedLibrarySource),
             limit = limit,
+            sort = sort,
         )
         val args = mutableListOf<Any>()
         if (useFts && matchQuery != null) {
@@ -1467,6 +1492,7 @@ class EchoLibraryRepository(
         const val SCAN_BATCH_SIZE = 500
         const val DOCUMENT_TREE_SCAN_BATCH_SIZE = 200
         const val DATABASE_BATCH_SIZE = 500
+        const val SAMPLE_RATE_BACKFILL_LIMIT = 400
         const val PINYIN_BACKFILL_BATCH_SIZE = 200
         const val PINYIN_BACKFILL_START_DELAY_MS = 750L
         const val RECOMMENDED_TRACK_LIMIT = 8

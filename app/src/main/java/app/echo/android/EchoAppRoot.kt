@@ -79,7 +79,6 @@ import app.echo.android.ui.discord.EchoDiscordPresenceBridge
 import app.echo.android.ui.home.EchoHomePage
 import app.echo.android.ui.library.EchoLibraryPage
 import app.echo.android.ui.playback.EchoNowPlayingHost
-import app.echo.android.widget.EchoPlaybackRemote
 import app.echo.android.ui.shell.EchoBottomDockHost
 import app.echo.android.ui.shell.EchoPagerPage
 import app.echo.android.ui.shell.dockTab
@@ -237,8 +236,17 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             val streamUrl = remoteClient.resolvePhoneStreamUrl(trackId) ?: return@setEchoLinkPlaybackResolver ref
             ref.copy(uri = streamUrl)
         }
+        viewModel.setEchoLinkLyricsFetcher { mediaId ->
+            val trackId = EchoLinkPlaybackUri.trackIdFromMediaId(mediaId) ?: return@setEchoLinkLyricsFetcher null
+            remoteClient.fetchLyrics(trackId)
+        }
     }
     val remoteStatus by remoteClient.status.collectAsStateWithLifecycle()
+    LaunchedEffect(remoteStatus.connectionState) {
+        if (remoteStatus.connectionState == EchoRemoteConnectionState.Connected) {
+            viewModel.notifyEchoLinkConnected()
+        }
+    }
     val playbackStatus by viewModel.playbackStatus.collectAsStateWithLifecycle()
     val appSettings by viewModel.appSettings.collectAsStateWithLifecycle(viewModel.initialAppSettings)
     val systemPowerSaveMode = rememberSystemPowerSaveMode()
@@ -409,7 +417,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     val playLastRequest by EchoLaunchActions.playLast.collectAsStateWithLifecycle()
     LaunchedEffect(playLastRequest) {
         if (playLastRequest) {
-            EchoPlaybackRemote.play(context)
+            viewModel.playLastSavedSession()
             EchoLaunchActions.consumePlayLast()
         }
     }

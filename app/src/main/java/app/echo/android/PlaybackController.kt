@@ -3,7 +3,6 @@ package app.echo.android
 import android.app.Application
 import android.content.ComponentName
 import androidx.core.content.ContextCompat
-import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
@@ -50,7 +49,9 @@ import app.echo.android.playback.PlaybackQueueInsertPolicy
 import app.echo.android.playback.PlaybackQueueReplaceIntent
 import app.echo.android.playback.PlaybackSessionPolicy
 import app.echo.android.playback.pendingPlayPauseShouldPlay
+import app.echo.android.playback.queueHasUnresolvedEchoLinkUris
 import app.echo.android.playback.shouldAbandonSavedSessionRestoreForPendingQueueReplace
+import app.echo.android.playback.shouldPrepareRestoredQueue
 import app.echo.android.playback.shouldAutoSkipTrack
 import app.echo.android.playback.shouldMarkSavedSessionRestoreComplete
 import app.echo.android.playback.shouldQueueControllerActionUntilSessionReady
@@ -178,18 +179,41 @@ internal class PlaybackController(
         resolver: suspend (EchoTrackRef) -> EchoTrackRef,
     ) {
         echoLinkPlaybackResolver = resolver
-        scope.launch { reResolveEchoLinkQueueIfNeeded() }
+        EchoPlaybackProcessRuntime.setStreamResolver { mediaId, uri ->
+            resolver(
+                EchoTrackRef(
+                    id = mediaId,
+                    uri = uri,
+                    title = "",
+                    artist = "",
+                ),
+            ).uri.takeIf { it.isNotBlank() }
+        }
+        scope.launch { EchoPlaybackProcessRuntime.reResolveBoundPlayerQueue() }
+    }
+
+    fun notifyEchoLinkEndpointReady() {
+        scope.launch {
+            EchoPlaybackProcessRuntime.reResolveBoundPlayerQueue()
+            notifyRemotePlaybackAuthReady()
+        }
+    }
+
+    fun playWhenReadyAfterRestore() {
+        withController { recoverAndPlay() }
     }
 
     fun isUsbExclusiveEnabled(): Boolean = usbAudioMonitor.status.value.exclusiveEnabled
 
     fun setUsbExclusiveEnabled(enabled: Boolean) {
+        val wasEnabled = EchoPlaybackProcessRuntime.usbExclusiveEnabled
         usbAudioMonitor.setExclusiveEnabled(enabled)
         EchoPlaybackProcessRuntime.setUsbExclusiveEnabled(enabled)
         if (enabled) {
             usbAudioMonitor.prepareForTrack(_playbackDiagnostics.value.diagnostics.sampleRateHz)
         }
-        EchoPlaybackProcessRuntime.reconfigureAudioPipeline()
+        if (wasEnabled == enabled) return
+        EchoPlaybackProcessRuntime.reconfigureAudioPipeline(forceSinkReset = true)
     }
 
     fun setEqualizerConfig(
@@ -265,20 +289,9 @@ internal class PlaybackController(
         val mediaController = controller
         val currentIndex = mediaController?.currentMediaItemIndex
             ?: _playbackQueue.value.currentIndex
-        val shuffledNext = mediaController
-            ?.takeIf { it.shuffleModeEnabled }
-            ?.let { player ->
-                val next = player.currentTimeline.getNextWindowIndex(
-                    player.currentMediaItemIndex,
-                    Player.REPEAT_MODE_OFF,
-                    true,
-                )
-                next.takeIf { it != C.INDEX_UNSET }
-            }
         val insertAt = PlaybackQueueInsertPolicy.playNextIndex(
             currentIndex = currentIndex,
             queueSize = queueIds.size,
-            shuffledNextIndex = shuffledNext,
         )
         if (PlaybackQueueInsertPolicy.shouldSkipInsert(queueIds, insertAt, track.id)) return
         insertTrack(track, insertAt)
@@ -427,6 +440,7 @@ internal class PlaybackController(
     }
 
     fun clearQueue() {
+        resetStickyPlaybackError()
         withController {
             if (mediaItemCount <= 0) return@withController
             removeMediaItems(0, mediaItemCount)
@@ -705,18 +719,22 @@ internal class PlaybackController(
         usbAudioJob?.cancel()
         usbAudioJob = scope.launch {
             var previousPermissionGranted = usbAudioMonitor.status.value.hostPermissionGranted
+            var previousConnected = usbAudioMonitor.status.value.connected
             usbAudioMonitor.status.collect { status ->
                 if (
-                    EchoUsbExclusiveApplyPolicy.shouldReapplyAfterHostPermissionGranted(
+                    EchoUsbExclusiveApplyPolicy.shouldRebuildSinkAfterUsbRouteChange(
                         exclusiveEnabled = status.exclusiveEnabled,
+                        wasConnected = previousConnected,
+                        isConnected = status.connected,
                         previouslyGranted = previousPermissionGranted,
                         currentlyGranted = status.hostPermissionGranted,
                     )
                 ) {
                     usbAudioMonitor.prepareForTrack(_playbackDiagnostics.value.diagnostics.sampleRateHz)
-                    EchoPlaybackProcessRuntime.reconfigureAudioPipeline()
+                    EchoPlaybackProcessRuntime.reconfigureAudioPipeline(forceSinkReset = true)
                 }
                 previousPermissionGranted = status.hostPermissionGranted
+                previousConnected = status.connected
                 updateUsbDiagnostics(status)
             }
         }
@@ -798,7 +816,7 @@ internal class PlaybackController(
             lastTrackId = trackId
             onTrackChanged(trackId)
         }
-        if (trackId != null && trackId != lastActivatedTrackId && (controls.isPlaying || position.positionMs > 0L)) {
+        if (trackId != null && trackId != lastActivatedTrackId && controls.isPlaying) {
             lastActivatedTrackId = trackId
             onTrackActivated(trackId)
         }
@@ -991,13 +1009,17 @@ internal class PlaybackController(
             mediaController.setPlaybackParameters(
                 PlaybackParameters(session.playbackSpeed, session.playbackPitch),
             )
-            mediaController.prepare()
             val queueUris = restoredQueue.map { it.uri }
+            val unresolvedEchoLink = queueHasUnresolvedEchoLinkUris(queueUris)
             val requiresWebDavAuth = queueRequiresWebDavAuth(queueUris)
             val webDavAuthReady = EchoRemotePlaybackAuthRegistry.isWebDavAuthReadyForUris(queueUris)
             val requiresSubsonicAuth = queueRequiresSubsonicAuth(queueUris)
             val subsonicAuthReady = EchoRemotePlaybackAuthRegistry.isSubsonicAuthReadyForUris(queueUris)
+            if (shouldPrepareRestoredQueue(unresolvedEchoLink)) {
+                mediaController.prepare()
+            }
             if (
+                !unresolvedEchoLink &&
                 shouldAllowRestoredPlayWhenReady(
                     playWhenReady = session.playWhenReady,
                     queueRequiresWebDavAuth = requiresWebDavAuth,
@@ -1010,7 +1032,11 @@ internal class PlaybackController(
             } else {
                 mediaController.pause()
                 pendingRestorePlayUntilWebDavAuth = session.playWhenReady &&
-                    ((requiresWebDavAuth && !webDavAuthReady) || (requiresSubsonicAuth && !subsonicAuthReady))
+                    (
+                        unresolvedEchoLink ||
+                            (requiresWebDavAuth && !webDavAuthReady) ||
+                            (requiresSubsonicAuth && !subsonicAuthReady)
+                        )
                 pendingRestoreQueueUris = if (pendingRestorePlayUntilWebDavAuth) queueUris else emptyList()
             }
             restoreCompleted = shouldMarkSavedSessionRestoreComplete(sessionLoadFailed = false)
@@ -1183,34 +1209,6 @@ internal class PlaybackController(
                 runCatching { resolver(track) }.getOrDefault(track)
             }
         }
-    }
-
-    private suspend fun reResolveEchoLinkQueueIfNeeded() {
-        val mediaController = controller ?: return
-        if (mediaController.mediaItemCount <= 0) return
-        val playUris = (0 until mediaController.mediaItemCount).map { index ->
-            mediaController.getMediaItemAt(index).localConfiguration?.uri?.toString().orEmpty()
-        }
-        val current = mediaController.toPlaybackQueueState().items
-        val playerUnavailable =
-            mediaController.playerError != null ||
-                mediaController.playbackState == Player.STATE_IDLE
-        val needsResolve = playUris.any { uri ->
-            EchoLinkPlaybackUri.playUriNeedsResolve(uri, playerUnavailable)
-        }
-        if (!needsResolve) return
-        val resolved = resolveEchoLinkQueue(
-            current.mapIndexed { index, track -> track.copy(uri = playUris[index].ifBlank { track.uri }) },
-        )
-        if (resolved.map { it.uri } == playUris) return
-        val index = mediaController.currentMediaItemIndex.coerceIn(0, resolved.lastIndex)
-        val positionMs = mediaController.currentPosition.coerceAtLeast(0L)
-        val playWhenReady = mediaController.playWhenReady
-        mediaController.setMediaItems(resolved.map { it.toMediaItem() }, index, positionMs)
-        mediaController.prepare()
-        if (playWhenReady) mediaController.play() else mediaController.pause()
-        enginePolicy.mergeReplayGainUris(resolved.associate { it.id to it.uri })
-        updatePlaybackCore(mediaController)
     }
 
     private fun startDetachedSessionPersistence(mediaController: MediaController) {

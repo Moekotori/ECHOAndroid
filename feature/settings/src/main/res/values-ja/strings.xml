@@ -102,7 +102,7 @@
     <string name="settings_perf_detail_auto">%1$s。システムの省電力がオンのときは自動で軽量</string>
     <string name="settings_perf_detail_balanced">見た目と標準のリフレッシュ方針を維持</string>
     <string name="settings_perf_detail_lightweight">背景、ジャケット、アニメ、スキャンの負荷を下げます</string>
-    <string name="settings_perf_detail_high">リフレッシュレートとアニメを優先し、動画背景と高品質ジャケットを維持</string>
+    <string name="settings_perf_detail_high">リフレッシュレートとアニメを優先し、動画背景と高品質ジャケットを維持。システムの省電力時はバランスに戻します</string>
     <string name="settings_font_system">システム</string>
     <string name="settings_font_serif">セリフ</string>
     <string name="settings_font_mono">等幅</string>

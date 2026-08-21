@@ -158,11 +158,11 @@ internal class EchoPlaybackLibrarySessionCallback(
         scope.future {
             val requestedIds = mediaItems.map { it.mediaId }
             val resolved = resolvePlayableMediaItems(mediaItems)
-            val resolvedStart = if (requestedIds.size == 1) {
-                PlaybackSessionPolicy.queueStartIndex(resolved.map { it.mediaId }, requestedIds.first())
-            } else {
-                startIndex.coerceIn(0, (resolved.size - 1).coerceAtLeast(0))
-            }
+            val resolvedStart = PlaybackCatalogPolicy.resolvedStartIndex(
+                requestedIds = requestedIds,
+                resolvedIds = resolved.map { it.mediaId },
+                startIndex = startIndex,
+            )
             MediaSession.MediaItemsWithStartPosition(
                 resolved,
                 resolvedStart,
@@ -172,10 +172,19 @@ internal class EchoPlaybackLibrarySessionCallback(
 
     private suspend fun resolvePlayableMediaItems(mediaItems: List<MediaItem>): List<MediaItem> =
         mediaItems.flatMap { item ->
+            val playUri = item.localConfiguration?.uri?.toString()
+            if (
+                !PlaybackCatalogPolicy.shouldExpandCatalogQueue(
+                    mediaId = item.mediaId,
+                    hasPlayUri = PlaybackCatalogPolicy.hasPlayableUri(playUri),
+                )
+            ) {
+                return@flatMap if (PlaybackCatalogPolicy.hasPlayableUri(playUri)) listOf(item) else emptyList()
+            }
             val queued = catalog().playableQueue(item.mediaId)
             when {
                 queued.isNotEmpty() -> queued.map { it.toMediaItem() }
-                item.localConfiguration?.uri != null -> listOf(item)
+                PlaybackCatalogPolicy.hasPlayableUri(playUri) -> listOf(item)
                 else -> emptyList()
             }
         }
@@ -189,6 +198,9 @@ internal class EchoPlaybackLibrarySessionCallback(
             val snapshot = restorer.restore(userRequestedPlay = playWhenReady)
             withContext(Dispatchers.Main.immediate) {
                 val live = player()
+                if (playWhenReady) {
+                    live?.play()
+                }
                 if (live != null && live.mediaItemCount > 0) {
                     MediaSession.MediaItemsWithStartPosition(
                         (0 until live.mediaItemCount).map { live.getMediaItemAt(it) },

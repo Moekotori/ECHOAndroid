@@ -57,6 +57,7 @@ fun Player.toPlaybackSessionSnapshot(): EchoPlaybackSessionSnapshot? {
 fun Player.applyPlaybackSessionSnapshot(
     snapshot: EchoPlaybackSessionSnapshot,
     play: Boolean,
+    preparePlayer: Boolean = true,
 ) {
     setMediaItems(
         snapshot.queue.map { it.toMediaItem() },
@@ -66,6 +67,10 @@ fun Player.applyPlaybackSessionSnapshot(
     shuffleModeEnabled = snapshot.shuffleEnabled
     repeatMode = snapshot.repeatMode.toPlayerRepeatMode()
     playbackParameters = PlaybackParameters(snapshot.playbackSpeed, snapshot.playbackPitch)
-    prepare()
-    if (play) play() else pause()
+    if (preparePlayer) {
+        prepare()
+        if (play) play() else pause()
+    } else {
+        pause()
+    }
 }

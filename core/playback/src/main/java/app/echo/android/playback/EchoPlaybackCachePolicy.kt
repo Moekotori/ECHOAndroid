@@ -14,12 +14,19 @@ object EchoPlaybackCachePolicy {
         get() = maxBytes.get()
 
     fun setEffectivePerformanceMode(mode: EchoEffectivePerformanceMode) {
-        maxBytes.set(
-            when {
-                mode.isLightweight -> LightweightMaxBytes
-                mode.isHighPerformance -> HighPerformanceMaxBytes
-                else -> BalancedMaxBytes
-            },
-        )
+        val next = when {
+            mode.isLightweight -> LightweightMaxBytes
+            mode.isHighPerformance -> HighPerformanceMaxBytes
+            else -> BalancedMaxBytes
+        }
+        val previous = maxBytes.getAndSet(next)
+        if (next < previous) {
+            EchoPlaybackCacheTrim.action()
+        }
     }
+}
+
+internal object EchoPlaybackCacheTrim {
+    @Volatile
+    var action: () -> Unit = {}
 }

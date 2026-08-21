@@ -287,6 +287,34 @@ class LibraryScanPolicyTest {
     }
 
     @Test
+    fun sampleRateBackfillRunsOnlyWhenLeavingLightweight() {
+        assertTrue(
+            LibraryScanPolicy.shouldBackfillMissingSampleRates(
+                wasLightweight = true,
+                isLightweight = false,
+            ),
+        )
+        assertFalse(
+            LibraryScanPolicy.shouldBackfillMissingSampleRates(
+                wasLightweight = false,
+                isLightweight = false,
+            ),
+        )
+        assertFalse(
+            LibraryScanPolicy.shouldBackfillMissingSampleRates(
+                wasLightweight = true,
+                isLightweight = true,
+            ),
+        )
+        assertFalse(
+            LibraryScanPolicy.shouldBackfillMissingSampleRates(
+                wasLightweight = false,
+                isLightweight = true,
+            ),
+        )
+    }
+
+    @Test
     fun scanProgressEmitsFirstTrackThenStrideOrInterval() {
         assertFalse(
             LibraryScanPolicy.shouldEmitScanProgress(

@@ -36,9 +36,18 @@ class MediaStoreTrackScanner(
             return MediaStoreScanOutcome(scannedCount = 0, querySucceeded = false)
         }
         val (selection, selectionArgs) = audioSelection(normalizedRelativePath)
-        val rows = ArrayList<MediaStoreAudioRow>()
+        val safeBatchSize = batchSize.coerceAtLeast(1)
+        val batch = ArrayList<LibraryTrackEntity>(safeBatchSize)
+        var scannedCount = 0
         var estimatedTotal = 0
         var querySucceeded = false
+
+        suspend fun flushBatch() {
+            if (batch.isEmpty()) return
+            onBatch(batch.toList())
+            batch.clear()
+        }
+
         for (collection in collections) {
             coroutineContext.ensureActive()
             val cursor = contentResolver.query(
@@ -52,69 +61,30 @@ class MediaStoreTrackScanner(
             cursor.use { listing ->
                 estimatedTotal += listing.count.coerceAtLeast(0)
                 onTotalCount(estimatedTotal.takeIf { it > 0 })
-                rows += listing.readAudioRows(collection)
+                val columns = MediaStoreColumns.from(listing)
+                while (listing.moveToNext()) {
+                    coroutineContext.ensureActive()
+                    val track = runCatching {
+                        listing.toAudioRow(collection, columns)
+                            .toTrackEntity(existingTracks, readSampleRate)
+                    }.onFailure { error ->
+                        Log.w(TAG, "Skipping unreadable MediaStore audio row.", error)
+                    }.getOrNull() ?: continue
+                    batch += track
+                    scannedCount += 1
+                    onProgress(scannedCount, track)
+                    if (batch.size >= safeBatchSize) {
+                        flushBatch()
+                    }
+                }
             }
         }
         if (!querySucceeded) {
             return MediaStoreScanOutcome(scannedCount = 0, querySucceeded = false)
         }
-        val scannedCount = rows.scanTrackBatches(
-            batchSize = batchSize,
-            existingTracks = existingTracks,
-            readSampleRate = readSampleRate,
-            onTotalCount = onTotalCount,
-            onBatch = onBatch,
-            onProgress = onProgress,
-        )
-        return MediaStoreScanOutcome(scannedCount = scannedCount, querySucceeded = true)
-    }
-
-    private suspend fun Cursor.readAudioRows(collection: MediaStoreCollection): List<MediaStoreAudioRow> {
-        val columns = MediaStoreColumns.from(this)
-        val estimated = count
-        val rows = ArrayList<MediaStoreAudioRow>(if (estimated > 0) estimated else 256)
-        while (moveToNext()) {
-            coroutineContext.ensureActive()
-            runCatching { toAudioRow(collection, columns) }
-                .onSuccess(rows::add)
-                .onFailure { error ->
-                    Log.w(TAG, "Skipping unreadable MediaStore audio row.", error)
-                }
-        }
-        return rows
-    }
-
-    private suspend fun List<MediaStoreAudioRow>.scanTrackBatches(
-        batchSize: Int,
-        existingTracks: Map<String, TrackFingerprint>,
-        readSampleRate: Boolean,
-        onTotalCount: suspend (Int?) -> Unit,
-        onBatch: suspend (List<LibraryTrackEntity>) -> Unit,
-        onProgress: suspend (scannedCount: Int, currentTrack: LibraryTrackEntity?) -> Unit,
-    ): Int {
-        val safeBatchSize = batchSize.coerceAtLeast(1)
-        val batch = ArrayList<LibraryTrackEntity>(safeBatchSize)
-        var scannedCount = 0
-        onTotalCount(size)
-
-        for (row in this) {
-            coroutineContext.ensureActive()
-            val track = row.toTrackEntity(existingTracks, readSampleRate)
-            batch += track
-            scannedCount += 1
-            onProgress(scannedCount, track)
-            if (batch.size >= safeBatchSize) {
-                onBatch(batch.toList())
-                batch.clear()
-            }
-        }
-
-        if (batch.isNotEmpty()) {
-            onBatch(batch.toList())
-            batch.clear()
-        }
+        flushBatch()
         onProgress(scannedCount, null)
-        return scannedCount
+        return MediaStoreScanOutcome(scannedCount = scannedCount, querySucceeded = true)
     }
 
     private fun Cursor.toAudioRow(
@@ -170,10 +140,10 @@ class MediaStoreTrackScanner(
             dateModifiedSeconds = dateModifiedSeconds,
             relativePath = relativePath,
         ).withFingerprint()
-        return entity.withFastPathSampleRate(existingTrack, readSampleRate, ::sampleRateHz)
+        return entity.withFastPathSampleRate(existingTrack, readSampleRate, ::readSampleRateHz)
     }
 
-    private fun sampleRateHz(contentUri: String): Int? =
+    internal fun readSampleRateHz(contentUri: String): Int? =
         runCatching {
             val uri = Uri.parse(contentUri)
             val retriever = MediaMetadataRetriever()

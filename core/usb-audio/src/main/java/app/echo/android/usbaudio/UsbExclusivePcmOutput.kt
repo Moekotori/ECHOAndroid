@@ -200,7 +200,7 @@ class UsbExclusivePcmSession internal constructor(
         nativeHandle = UsbIsochronousNative.create(
             fileDescriptor = connection?.fileDescriptor ?: error("USB file descriptor is unavailable"),
             endpointAddress = endpoint.address,
-            maxPacketSize = UsbIsoPacketizer.maxIsoPacketBytes(format.maxPacketSize ?: endpoint.maxPacketSize),
+            maxPacketSize = UsbIsoPacketizer.maxPacketPayloadBytes(format.maxPacketSize ?: endpoint.maxPacketSize),
             sampleRateHz = spec.sampleRateHz,
             channelCount = format.channelCount ?: spec.channelCount,
             bytesPerSample = bytesPerSample,

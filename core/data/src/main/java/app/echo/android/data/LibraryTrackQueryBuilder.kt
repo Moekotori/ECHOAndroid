@@ -73,9 +73,22 @@ internal object LibraryTrackQueryBuilder {
         useFts: Boolean,
         localSources: Boolean,
         limit: Int,
+        sort: LibraryTrackSortMode = LibraryTrackSortMode.Title,
     ): String {
         val sql = StringBuilder()
         sql.append("SELECT library_tracks.* FROM library_tracks")
+        if (
+            sort == LibraryTrackSortMode.FrequentlyPlayed ||
+            sort == LibraryTrackSortMode.RecentlyPlayed
+        ) {
+            sql.appendLine()
+            sql.append(
+                """
+                LEFT JOIN library_playback_stats
+                    ON library_tracks.id = library_playback_stats.trackId
+                """.trimIndent(),
+            )
+        }
         val trimmed = query.trim()
         val sourceSql = if (localSources) {
             LibraryScanPolicy.LocalSourceSql
@@ -99,7 +112,7 @@ internal object LibraryTrackQueryBuilder {
                         WHEN library_tracks.normalizedAlbum LIKE ? THEN 2
                         ELSE 3
                     END,
-                    library_tracks.title COLLATE NOCASE ASC
+                    ${trackSortOrder(sort)}
                 """.trimIndent(),
             )
         } else if (trimmed.isNotBlank()) {
@@ -126,7 +139,7 @@ internal object LibraryTrackQueryBuilder {
                         WHEN library_tracks.normalizedAlbum LIKE ? THEN 2
                         ELSE 3
                     END,
-                    library_tracks.title COLLATE NOCASE ASC
+                    ${trackSortOrder(sort)}
                 """.trimIndent(),
             )
         } else {
@@ -134,7 +147,8 @@ internal object LibraryTrackQueryBuilder {
             sql.append("WHERE ")
             sql.append(sourceSql)
             sql.appendLine()
-            sql.append("ORDER BY library_tracks.title COLLATE NOCASE ASC")
+            sql.append("ORDER BY ")
+            sql.append(trackSortOrder(sort))
         }
         sql.appendLine()
         sql.append("LIMIT ")

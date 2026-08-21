@@ -17,6 +17,28 @@ class EchoUsbExclusiveApplyPolicyTest {
     }
 
     @Test
+    fun disconnectWhileExclusiveRebuildsSink() {
+        assertTrue(
+            EchoUsbExclusiveApplyPolicy.shouldRebuildSinkAfterUsbRouteChange(
+                exclusiveEnabled = true,
+                wasConnected = true,
+                isConnected = false,
+                previouslyGranted = true,
+                currentlyGranted = false,
+            ),
+        )
+        assertFalse(
+            EchoUsbExclusiveApplyPolicy.shouldRebuildSinkAfterUsbRouteChange(
+                exclusiveEnabled = false,
+                wasConnected = true,
+                isConnected = false,
+                previouslyGranted = true,
+                currentlyGranted = false,
+            ),
+        )
+    }
+
+    @Test
     fun alreadyGrantedOrDisabledDoesNotReapply() {
         assertFalse(
             EchoUsbExclusiveApplyPolicy.shouldReapplyAfterHostPermissionGranted(

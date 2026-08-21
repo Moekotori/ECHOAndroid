@@ -11,6 +11,7 @@ enum class EchoPerformanceMode(val id: String) {
         when {
             this == Lightweight -> EchoEffectivePerformanceMode.Lightweight
             this == Auto && systemPowerSaveMode -> EchoEffectivePerformanceMode.Lightweight
+            this == HighPerformance && systemPowerSaveMode -> EchoEffectivePerformanceMode.Balanced
             this == HighPerformance -> EchoEffectivePerformanceMode.HighPerformance
             else -> EchoEffectivePerformanceMode.Balanced
         }

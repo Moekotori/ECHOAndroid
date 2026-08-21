@@ -206,6 +206,31 @@ class PlaybackSessionPolicyTest {
     }
 
     @Test
+    fun audioSinkResetOnlyWhenUsbRouteActuallyChanges() {
+        assertTrue(
+            PlaybackSessionPolicy.shouldForceAudioSinkReset(
+                exclusiveEnabledChanged = true,
+                usbRouteLost = false,
+                hostPermissionNewlyGranted = false,
+            ),
+        )
+        assertTrue(
+            PlaybackSessionPolicy.shouldForceAudioSinkReset(
+                exclusiveEnabledChanged = false,
+                usbRouteLost = true,
+                hostPermissionNewlyGranted = false,
+            ),
+        )
+        assertFalse(
+            PlaybackSessionPolicy.shouldForceAudioSinkReset(
+                exclusiveEnabledChanged = false,
+                usbRouteLost = false,
+                hostPermissionNewlyGranted = false,
+            ),
+        )
+    }
+
+    @Test
     fun driverTestDoesNotClaimWhilePlaying() {
         assertFalse(PlaybackSessionPolicy.shouldClaimUsbInterfaceForDriverTest(isPlayingToUsb = true))
         assertTrue(PlaybackSessionPolicy.shouldClaimUsbInterfaceForDriverTest(isPlayingToUsb = false))

@@ -52,6 +52,8 @@ data class UsbAudioStreamingFormat(
     val subslotSize: Int? = null,
     val bitResolution: Int? = null,
     val sampleRates: List<Int> = emptyList(),
+    val sampleRateMinHz: Int? = null,
+    val sampleRateMaxHz: Int? = null,
     val endpointAddress: Int? = null,
     val endpointDirection: UsbEndpointDirection? = null,
     val endpointTransferType: UsbEndpointTransferType? = null,

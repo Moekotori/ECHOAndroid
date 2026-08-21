@@ -67,6 +67,36 @@ class UsbPcmFormatSelectorTest {
     }
 
     @Test
+    fun continuousUac1RangeAcceptsRatesBetweenMinAndMax() {
+        val format = UsbAudioStreamingFormat(
+            interfaceNumber = 1,
+            alternateSetting = 1,
+            audioClassVersion = UsbAudioClassVersion.Uac1,
+            bitResolution = 16,
+            sampleRates = emptyList(),
+            sampleRateMinHz = 8_000,
+            sampleRateMaxHz = 96_000,
+            endpointDirection = UsbEndpointDirection.Out,
+            endpointTransferType = UsbEndpointTransferType.Isochronous,
+        )
+        val descriptor = UsbAudioDescriptorInfo(streamingFormats = listOf(format))
+
+        assertEquals(
+            format,
+            UsbPcmFormatSelector.chooseFormat(
+                descriptor,
+                UsbPcmFormatSpec(sampleRateHz = 48_000, channelCount = 2, bitDepth = 16),
+            ),
+        )
+        assertNull(
+            UsbPcmFormatSelector.chooseFormat(
+                descriptor,
+                UsbPcmFormatSpec(sampleRateHz = 192_000, channelCount = 2, bitDepth = 16),
+            ),
+        )
+    }
+
+    @Test
     fun closestFormatFallsBackToNearestBitDepthWhenExactIsMissing() {
         val twentyFour = UsbAudioStreamingFormat(
             interfaceNumber = 1,

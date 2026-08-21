@@ -135,8 +135,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     )
     init {
         libraryController.setPlaybackOccupiesStorage {
-            playbackController.playbackControls.value.isPlaying ||
-                playbackController.isUsbExclusiveEnabled()
+            playbackController.playbackControls.value.isPlaying
         }
     }
     private val lastFmClient = LastFmClient()
@@ -511,6 +510,18 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun playPause() {
         playbackController.playPause()
+    }
+
+    fun playLastSavedSession() {
+        playbackController.playWhenReadyAfterRestore()
+    }
+
+    fun notifyEchoLinkConnected() {
+        playbackController.notifyEchoLinkEndpointReady()
+    }
+
+    fun setEchoLinkLyricsFetcher(fetcher: suspend (String) -> EchoRemoteLyrics?) {
+        lyricsController.setEchoLinkLyricsFetcher(fetcher)
     }
 
     fun seekTo(positionMs: Long) {

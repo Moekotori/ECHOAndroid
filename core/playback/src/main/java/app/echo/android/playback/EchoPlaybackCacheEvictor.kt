@@ -38,6 +38,10 @@ internal class EchoPlaybackCacheEvictor : CacheEvictor {
         onSpanAdded(cache, newSpan)
     }
 
+    fun trim(cache: Cache) {
+        evictCache(cache, 0L)
+    }
+
     private fun evictCache(cache: Cache, requiredSpace: Long) {
         val maxBytes = EchoPlaybackCachePolicy.maxCacheBytes
         while (currentSize + requiredSpace > maxBytes && leastRecentlyUsed.isNotEmpty()) {

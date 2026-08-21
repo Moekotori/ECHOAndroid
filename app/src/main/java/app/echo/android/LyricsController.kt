@@ -12,8 +12,10 @@ import app.echo.android.lyrics.LyricsApplyPolicy
 import app.echo.android.lyrics.OnlineLyricsResolver
 import app.echo.android.model.lyrics.EchoLyricLine
 import app.echo.android.model.lyrics.EchoLyricWord
+import app.echo.android.model.connect.EchoRemoteLyrics
 import app.echo.android.model.lyrics.EchoLyrics
 import app.echo.android.model.lyrics.EchoLyricsLoadState
+import app.echo.android.model.playback.EchoLinkPlaybackUri
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -51,6 +53,8 @@ internal class LyricsController(
             size > MAX_ECHO_LINK_LYRICS_CACHE_ENTRIES
     }
     private val echoLinkLyricsLock = Any()
+    @Volatile
+    private var echoLinkLyricsFetcher: (suspend (String) -> EchoRemoteLyrics?)? = null
 
     fun importLyrics(uri: Uri, currentTrackId: String?) {
         val trackIdAtImport = currentTrackId ?: lastLyricsTrackId
@@ -75,14 +79,13 @@ internal class LyricsController(
                     LyricsLoadResult(EchoLyricsLoadState.Error(error.lyricsErrorMessage("Lyrics import failed")))
                 }
             }
-            if (trackIdAtImport == null || currentTrackId == null || currentTrackId == trackIdAtImport) {
-                val effectiveTrackId = trackIdAtImport ?: currentTrackId
-                if (effectiveTrackId != null && result.state is EchoLyricsLoadState.Ready) {
-                    scope.launch(Dispatchers.IO) {
-                        runCatching { importedLyricsStore.bindLyrics(effectiveTrackId, uri) }
-                    }
-                    lastLyricsTrackId = effectiveTrackId
+            val bindTrackId = trackIdAtImport ?: currentTrackId
+            if (bindTrackId != null && result.state is EchoLyricsLoadState.Ready) {
+                scope.launch(Dispatchers.IO) {
+                    runCatching { importedLyricsStore.bindLyrics(bindTrackId, uri) }
                 }
+            }
+            if (LyricsApplyPolicy.shouldApplyLyricsResult(bindTrackId, lastLyricsTrackId)) {
                 currentLyricsUserOffsetMs = result.userOffsetMs
                 _lyricsState.value = result.state
             }
@@ -138,7 +141,7 @@ internal class LyricsController(
         lyricsJob = scope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    val echoLinkLyrics = cachedEchoLinkLyrics(trackId)
+                    val echoLinkLyrics = cachedEchoLinkLyrics(trackId) ?: fetchEchoLinkLyrics(trackId)
                     if (echoLinkLyrics != null) {
                         val userOffsetMs = importedLyricsStore.lyricsOffsetForTrack(trackId)
                         LyricsLoadResult(
@@ -187,6 +190,10 @@ internal class LyricsController(
         }
     }
 
+    fun setEchoLinkLyricsFetcher(fetcher: suspend (String) -> EchoRemoteLyrics?) {
+        echoLinkLyricsFetcher = fetcher
+    }
+
     fun setEchoLinkLyrics(trackId: String, rawText: String, sourceLabel: String?) {
         if (trackId.isBlank() || rawText.isBlank()) return
         scope.launch {
@@ -228,6 +235,20 @@ internal class LyricsController(
         synchronized(echoLinkLyricsLock) {
             echoLinkLyricsCache[trackId]
         }
+
+    private suspend fun fetchEchoLinkLyrics(trackId: String): EchoLyrics? {
+        if (EchoLinkPlaybackUri.trackIdFromMediaId(trackId) == null) return null
+        val remote = echoLinkLyricsFetcher?.invoke(trackId) ?: return null
+        if (remote.rawText.isBlank()) return null
+        val parsed = EchoLyricsParser.parse(
+            rawText = remote.rawText,
+            sourceLabel = remote.sourceLabel ?: "PC ECHO",
+        ).takeIf { it.lines.isNotEmpty() } ?: return null
+        synchronized(echoLinkLyricsLock) {
+            echoLinkLyricsCache[trackId] = parsed
+        }
+        return parsed
+    }
 
     private fun directNeteaseLyrics(track: LibraryTrackEntity): EchoLyrics? {
         val songId = parseNeteaseSongId(track.id) ?: return null

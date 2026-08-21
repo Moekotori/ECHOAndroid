@@ -26,9 +26,7 @@ object UsbPcmFormatSelector {
                 !requireBitDepth || format.bitResolution == null || format.bitResolution == spec.bitDepth
             }
             .filter { format -> format.channelCount == null || format.channelCount == spec.channelCount }
-            .filter { format ->
-                format.sampleRates.isEmpty() || spec.sampleRateHz in format.sampleRates
-            }
+            .filter { format -> supportsSampleRate(format, spec.sampleRateHz) }
             .sortedWith(
                 compareByDescending<UsbAudioStreamingFormat> { it.isIsochronousOut }
                     .thenBy {
@@ -39,4 +37,14 @@ object UsbPcmFormatSelector {
                     .thenBy { it.interfaceNumber }
                     .thenBy { it.alternateSetting },
             )
+
+    private fun supportsSampleRate(format: UsbAudioStreamingFormat, sampleRateHz: Int): Boolean {
+        if (format.sampleRates.isNotEmpty()) return sampleRateHz in format.sampleRates
+        val minHz = format.sampleRateMinHz
+        val maxHz = format.sampleRateMaxHz
+        if (minHz != null && maxHz != null && minHz > 0 && maxHz >= minHz) {
+            return sampleRateHz in minHz..maxHz
+        }
+        return true
+    }
 }

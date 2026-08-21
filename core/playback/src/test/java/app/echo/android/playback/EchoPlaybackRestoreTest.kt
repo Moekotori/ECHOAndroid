@@ -57,6 +57,16 @@ class EchoPlaybackRestoreTest {
         assertFalse(shouldRestoreIntoEmptyPlayer(1))
         assertFalse(shouldPlayAfterSessionRestore(userRequestedPlay = false))
         assertTrue(shouldPlayAfterSessionRestore(userRequestedPlay = true))
+        assertTrue(shouldHoldSavedPlayWhenReadyAfterForcedPause(savedPlayWhenReady = true, restoredPlayWhenReady = false))
+        assertFalse(shouldHoldSavedPlayWhenReadyAfterForcedPause(savedPlayWhenReady = true, restoredPlayWhenReady = true))
+        val held = persistSnapshotPlayWhenReady(playerPlayWhenReady = false, heldSavedPlayWhenReady = true)
+        assertTrue(held.first)
+        assertEquals(null, held.second)
+        assertFalse(shouldPrepareRestoredQueue(unresolvedEchoLinkUris = true))
+        assertTrue(queueHasUnresolvedEchoLinkUris(listOf("echo-link://track/pc-1")))
+        assertFalse(
+            queueHasUnresolvedEchoLinkUris(listOf("http://192.168.1.20:26789/echo-link/media/token")),
+        )
     }
 
     @Test

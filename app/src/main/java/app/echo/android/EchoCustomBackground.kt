@@ -10,6 +10,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -21,6 +22,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -51,7 +54,7 @@ fun EchoCustomBackground(
     val hasCustomBackground = mode != EchoBackgroundMode.Default && !uri.isNullOrBlank() && !customVideoDisabled
     val imageMaxPixelSize = when {
         lightweight -> 640
-        highPerformance -> 2048
+        highPerformance -> 1280
         else -> 1024
     }
     val maxBlur = when {
@@ -69,13 +72,13 @@ fun EchoCustomBackground(
             when (mode) {
                 EchoBackgroundMode.Video -> EchoVideoWallpaper(
                     uri = uri,
-                    blur = blur,
                     brightness = brightness,
                     backgroundScale = backgroundScale,
                 )
 
                 EchoBackgroundMode.Image -> EchoImageWallpaper(
                     uri = uri,
+                    blur = blur,
                     brightness = brightness,
                     backgroundScale = backgroundScale,
                     maxPixelSize = imageMaxPixelSize,
@@ -94,6 +97,7 @@ fun EchoCustomBackground(
 @Composable
 private fun EchoImageWallpaper(
     uri: String,
+    blur: Dp,
     brightness: Float,
     backgroundScale: Float,
     maxPixelSize: Int,
@@ -101,10 +105,13 @@ private fun EchoImageWallpaper(
 ) {
     val context = LocalContext.current
     val imageRequest = remember(context, uri, maxPixelSize, highQuality) {
+        val cacheKey = "$uri#px$maxPixelSize#${if (highQuality) "8888" else "565"}"
         ImageRequest.Builder(context)
             .data(uri)
             .size(maxPixelSize, maxPixelSize)
             .bitmapConfig(if (highQuality) Bitmap.Config.ARGB_8888 else Bitmap.Config.RGB_565)
+            .memoryCacheKey(cacheKey)
+            .diskCacheKey(cacheKey)
             .crossfade(false)
             .build()
     }
@@ -116,6 +123,7 @@ private fun EchoImageWallpaper(
             modifier = Modifier
                 .fillMaxSize()
                 .scale(backgroundScale)
+                .then(if (blur > 0.dp) Modifier.blur(blur) else Modifier)
                 .alpha(brightness.coerceIn(0.35f, 1.15f)),
         )
         EchoBrightnessOverlay(brightness)
@@ -126,20 +134,30 @@ private fun EchoImageWallpaper(
 @Composable
 private fun EchoVideoWallpaper(
     uri: String,
-    blur: Dp,
     brightness: Float,
     backgroundScale: Float,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val player = remember(uri) {
-        ExoPlayer.Builder(context).build().apply {
-            repeatMode = Player.REPEAT_MODE_ONE
-            volume = 0f
-            playWhenReady = true
-            setMediaItem(MediaItem.fromUri(uri.toUri()))
-            prepare()
-        }
+        ExoPlayer.Builder(context)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                    .setUsage(C.USAGE_UNKNOWN)
+                    .build(),
+                false,
+            )
+            .setHandleAudioBecomingNoisy(false)
+            .setWakeMode(C.WAKE_MODE_NONE)
+            .build()
+            .apply {
+                repeatMode = Player.REPEAT_MODE_ONE
+                volume = 0f
+                playWhenReady = true
+                setMediaItem(MediaItem.fromUri(uri.toUri()))
+                prepare()
+            }
     }
     DisposableEffect(player, lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->

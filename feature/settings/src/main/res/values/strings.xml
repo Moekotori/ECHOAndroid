@@ -108,7 +108,7 @@
     <string name="settings_perf_detail_auto">%1$s; switches to lightweight when system battery saver is on</string>
     <string name="settings_perf_detail_balanced">Keep full visuals and the default refresh policy</string>
     <string name="settings_perf_detail_lightweight">Reduce background, artwork, animation, and scan work</string>
-    <string name="settings_perf_detail_high">Raise refresh rate and animation completeness; keep video backgrounds and high-quality artwork</string>
+    <string name="settings_perf_detail_high">Raise refresh rate and animation completeness; keep video backgrounds and high-quality artwork. Battery saver falls back to balanced</string>
     <string name="settings_font_system">System</string>
     <string name="settings_font_serif">Serif</string>
     <string name="settings_font_mono">Monospace</string>

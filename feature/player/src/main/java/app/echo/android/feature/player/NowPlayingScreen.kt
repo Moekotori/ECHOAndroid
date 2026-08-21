@@ -1967,7 +1967,8 @@ private fun LyricsLineList(
                             active = active,
                             positionMs = positionMs,
                             activeColor = lyricAccent,
-                            highlightEnabled = lyricsWordHighlightEnabled,
+                            highlightEnabled = lyricsWordHighlightEnabled &&
+                                !LocalEchoEffectivePerformanceMode.current.isLightweight,
                             highlightIntensity = lyricsWordHighlightIntensity,
                         ),
                         modifier = Modifier.fillMaxWidth(),

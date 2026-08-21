@@ -11,6 +11,7 @@ import androidx.media3.datasource.DataSourceInputStream
 import androidx.media3.datasource.DataSpec
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.playback.EchoAudioErrorKind
+import app.echo.android.model.playback.EchoLinkPlaybackUri
 import java.io.FileInputStream
 import java.io.InputStream
 import kotlinx.coroutines.Job
@@ -39,6 +40,7 @@ class EchoPlaybackEnginePolicy(
     private val replayGainUrisByMediaId = mutableMapOf<String, String>()
     private val replayGainTrackGainsByMediaId = mutableMapOf<String, Float?>()
     private val subsonicTranscodeFallbackAttempts = hashSetOf<String>()
+    private val echoLinkRefreshAttempts = hashSetOf<String>()
 
     fun attachTo(player: Player) {
         if (attachedPlayer === player) return
@@ -59,6 +61,7 @@ class EchoPlaybackEnginePolicy(
         attachedPlayer?.removeListener(this)
         attachedPlayer = null
         usbTransitionJob?.cancel()
+        usbMuteInProgress = false
         replayGainJob?.cancel()
     }
 
@@ -67,6 +70,7 @@ class EchoPlaybackEnginePolicy(
         replayGainUrisByMediaId.clear()
         replayGainTrackGainsByMediaId.clear()
         subsonicTranscodeFallbackAttempts.clear()
+        echoLinkRefreshAttempts.clear()
         tracks.forEach(::mergeQueueLookups)
     }
 
@@ -155,7 +159,6 @@ class EchoPlaybackEnginePolicy(
         )
         if (mediaId != lastReplayGainTrackId) {
             lastReplayGainTrackId = mediaId
-            consecutiveErrorSkips = 0
             loadReplayGainForTrack(mediaId)
         }
         applyReplayGain()
@@ -164,6 +167,13 @@ class EchoPlaybackEnginePolicy(
     override fun onEvents(player: Player, events: Player.Events) {
         if (events.contains(Player.EVENT_AUDIO_SESSION_ID)) {
             applyReplayGain()
+        }
+        if (
+            events.contains(Player.EVENT_PLAYBACK_STATE_CHANGED) &&
+            player.playbackState == Player.STATE_READY &&
+            player.playerError == null
+        ) {
+            consecutiveErrorSkips = 0
         }
         if (
             events.containsAny(
@@ -183,6 +193,9 @@ class EchoPlaybackEnginePolicy(
     override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
         val player = attachedPlayer ?: return
         val mapped = error.toEchoPlaybackError()
+        if (tryEchoLinkStreamRefresh(player)) {
+            return
+        }
         if (mapped.kind == EchoAudioErrorKind.UnsupportedFormat &&
             trySubsonicTranscodeFallback(player)
         ) {
@@ -213,6 +226,10 @@ class EchoPlaybackEnginePolicy(
     private fun prepareUsbForMediaItemTransition(mediaItem: MediaItem?) {
         val sampleRateHz = mediaItem?.mediaId?.let(sampleRatesByMediaId::get)
         if (!usbAudioMonitor.status.value.exclusiveEnabled) {
+            if (usbMuteInProgress) {
+                usbMuteInProgress = false
+                applyReplayGain()
+            }
             usbAudioMonitor.prepareForTrack(sampleRateHz)
             return
         }
@@ -221,11 +238,14 @@ class EchoPlaybackEnginePolicy(
         usbMuteInProgress = true
         player.volume = 0f
         usbTransitionJob = EchoPlaybackProcessRuntime.scope.launch {
-            usbAudioMonitor.prepareForTrack(sampleRateHz)
-            delay(USB_MUTE_MS.milliseconds)
-            usbMuteInProgress = false
-            if (attachedPlayer === player) {
-                applyReplayGain()
+            try {
+                usbAudioMonitor.prepareForTrack(sampleRateHz)
+                delay(USB_MUTE_MS.milliseconds)
+            } finally {
+                usbMuteInProgress = false
+                if (attachedPlayer === player) {
+                    applyReplayGain()
+                }
             }
         }
     }
@@ -247,7 +267,13 @@ class EchoPlaybackEnginePolicy(
                     )
                 }
             }
-            if (!shouldCacheReplayGainRead(outcome)) return@launch
+            if (!shouldCacheReplayGainRead(outcome)) {
+                if (outcome is ReplayGainReadOutcome.Failed && activeReplayGainTrackId == trackId) {
+                    activeReplayGainTrackGainDb = null
+                    applyReplayGain()
+                }
+                return@launch
+            }
             val parsed = (outcome as ReplayGainReadOutcome.Parsed).trackGainDb
             replayGainTrackGainsByMediaId[trackId] = parsed
             if (activeReplayGainTrackId == trackId) {
@@ -284,6 +310,41 @@ class EchoPlaybackEnginePolicy(
             runCatching { stream.close() }
             throw it
         }
+    }
+
+    private fun tryEchoLinkStreamRefresh(player: Player): Boolean {
+        val index = player.currentMediaItemIndex
+        if (index < 0 || index >= player.mediaItemCount) return false
+        val item = player.getMediaItemAt(index)
+        val mediaId = item.mediaId
+        val currentUri = item.localConfiguration?.uri?.toString().orEmpty()
+        if (mediaId.isBlank()) return false
+        if (
+            !EchoLinkPlaybackUri.requiresStreamResolve(mediaId, currentUri) &&
+            !EchoLinkPlaybackUri.isOneShotStreamUri(currentUri)
+        ) {
+            return false
+        }
+        if (!echoLinkRefreshAttempts.add(mediaId)) return false
+        EchoPlaybackProcessRuntime.scope.launch {
+            val resolved = EchoPlaybackProcessRuntime.resolvePlayUri(mediaId, currentUri)
+            val stillPersist = EchoLinkPlaybackUri.trackIdFromPersistUri(resolved) != null
+            if (resolved.isBlank() || stillPersist) return@launch
+            withContext(Dispatchers.Main.immediate) {
+                val live = attachedPlayer ?: return@withContext
+                val liveIndex = live.currentMediaItemIndex
+                if (liveIndex < 0 || liveIndex >= live.mediaItemCount) return@withContext
+                val liveItem = live.getMediaItemAt(liveIndex)
+                if (liveItem.mediaId != mediaId) return@withContext
+                live.replaceMediaItem(
+                    liveIndex,
+                    liveItem.buildUpon().setUri(android.net.Uri.parse(resolved)).build(),
+                )
+                live.prepare()
+                live.play()
+            }
+        }
+        return true
     }
 
     private fun skipToNextAfterError(player: Player) {

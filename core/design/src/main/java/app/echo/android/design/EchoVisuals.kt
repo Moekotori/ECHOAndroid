@@ -1,8 +1,9 @@
 package app.echo.android.design
 
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.net.Uri
+import android.graphics.Canvas
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -39,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
@@ -56,6 +58,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -467,6 +472,7 @@ fun rememberArtworkPalette(artworkUri: String?, seedKey: String? = artworkUri): 
     val context = LocalContext.current
     val rewriteRevision = EchoArtworkUrlRewriteRegistry.revision
     val fetchUri = resolvedArtworkFetchUri(artworkUri)
+    val requestHeaders = EchoArtworkRequestHeadersRegistry.headersFor(artworkUri)
     val palette by produceState(
         ArtworkPalette.fromSeed(seedKey),
         artworkUri,
@@ -474,11 +480,17 @@ fun rememberArtworkPalette(artworkUri: String?, seedKey: String? = artworkUri): 
         seedKey,
         sampleSize,
         rewriteRevision,
+        requestHeaders,
     ) {
         value = withContext(Dispatchers.IO) {
-            val bitmap = loadArtworkSwatch(context.contentResolver, fetchUri ?: artworkUri, sampleSize)
+            val bitmap = loadArtworkSwatch(
+                context = context,
+                artworkUri = fetchUri ?: artworkUri,
+                sampleSize = sampleSize,
+                headers = requestHeaders,
+            )
             if (bitmap != null) {
-                extractPalette(bitmap).also { bitmap.recycle() }
+                extractPalette(bitmap)
             } else {
                 ArtworkPalette.fromSeed(seedKey)
             }
@@ -487,39 +499,46 @@ fun rememberArtworkPalette(artworkUri: String?, seedKey: String? = artworkUri): 
     return palette
 }
 
-private fun loadArtworkSwatch(
-    contentResolver: android.content.ContentResolver,
+private suspend fun loadArtworkSwatch(
+    context: android.content.Context,
     artworkUri: String?,
     sampleSize: Int,
+    headers: Map<String, String>,
 ): Bitmap? {
     if (artworkUri.isNullOrBlank()) return null
-    return runCatching {
-        openArtworkInputStream(contentResolver, artworkUri)?.use { stream ->
-            val options = BitmapFactory.Options().apply { inSampleSize = sampleSize.coerceAtLeast(1) }
-            BitmapFactory.decodeStream(stream, null, options)
+    val edge = if (sampleSize <= 8) 128 else 64
+    val request = ImageRequest.Builder(context)
+        .data(artworkUri)
+        .size(edge, edge)
+        .bitmapConfig(Bitmap.Config.ARGB_8888)
+        .allowHardware(false)
+        .memoryCacheKey(echoArtworkCacheKey(artworkUri, edge, highBitDepth = true))
+        .crossfade(false)
+        .apply {
+            headers.forEach { (name, value) -> setHeader(name, value) }
         }
-    }.getOrNull()
+        .build()
+    val result = context.imageLoader.execute(request)
+    val drawable = (result as? SuccessResult)?.drawable ?: return null
+    return drawable.toSoftwareBitmap()
 }
 
-private fun openArtworkInputStream(
-    contentResolver: android.content.ContentResolver,
-    artworkUri: String,
-): java.io.InputStream? {
-    val uri = Uri.parse(artworkUri)
-    val scheme = uri.scheme?.lowercase()
-    if (scheme == "http" || scheme == "https") {
-        val connection = java.net.URI(artworkUri).toURL().openConnection() as java.net.HttpURLConnection
-        connection.connectTimeout = 4_000
-        connection.readTimeout = 8_000
-        connection.instanceFollowRedirects = true
-        return if (connection.responseCode in 200..299) {
-            connection.inputStream
-        } else {
-            connection.disconnect()
-            null
-        }
+private fun Drawable.toSoftwareBitmap(): Bitmap {
+    val existing = (this as? BitmapDrawable)?.bitmap
+    if (
+        existing != null &&
+        !existing.isRecycled &&
+        existing.config != Bitmap.Config.HARDWARE
+    ) {
+        return existing
     }
-    return contentResolver.openInputStream(uri)
+    val width = intrinsicWidth.coerceAtLeast(1)
+    val height = intrinsicHeight.coerceAtLeast(1)
+    val output = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(output)
+    setBounds(0, 0, width, height)
+    draw(canvas)
+    return output
 }
 
 private fun extractPalette(source: Bitmap): ArtworkPalette {
@@ -593,6 +612,11 @@ fun BlurredArtworkBackground(
         effectivePerformanceMode.isHighPerformance -> 1280
         else -> 768
     }
+    val effectiveArtworkBlur = when {
+        effectivePerformanceMode.isLightweight -> 0.dp
+        effectivePerformanceMode.isHighPerformance -> artworkBlur
+        else -> artworkBlur.coerceAtMost(28.dp)
+    }
     val effectiveArtworkAlpha = if (effectivePerformanceMode.isBalanced) {
         artworkAlpha.coerceAtMost(0.52f)
     } else {
@@ -600,13 +624,21 @@ fun BlurredArtworkBackground(
     }
     val rewriteRevision = EchoArtworkUrlRewriteRegistry.revision
     val fetchUri = resolvedArtworkFetchUri(artworkUri)
-    val artworkModel = remember(context, artworkUri, fetchUri, artworkMaxPixelSize, rewriteRevision) {
+    val highBitDepth = effectivePerformanceMode.isHighPerformance
+    val artworkModel = remember(
+        context,
+        artworkUri,
+        fetchUri,
+        artworkMaxPixelSize,
+        highBitDepth,
+        rewriteRevision,
+    ) {
         echoArtworkImageRequest(
             context = context,
             originalUri = artworkUri,
             fetchUri = fetchUri,
             maxPixelSize = artworkMaxPixelSize,
-            highBitDepth = effectivePerformanceMode.isHighPerformance,
+            highBitDepth = highBitDepth,
         )
     }
     Box(modifier = modifier.fillMaxSize()) {
@@ -632,6 +664,13 @@ fun BlurredArtworkBackground(
                 modifier = Modifier
                     .fillMaxSize()
                     .scale(artworkScale)
+                    .then(
+                        if (effectiveArtworkBlur > 0.dp) {
+                            Modifier.blur(effectiveArtworkBlur)
+                        } else {
+                            Modifier
+                        },
+                    )
                     .alpha(effectiveArtworkAlpha),
             )
         }

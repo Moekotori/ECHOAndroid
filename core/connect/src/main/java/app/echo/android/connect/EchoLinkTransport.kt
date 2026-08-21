@@ -362,6 +362,19 @@ private fun JSONObject.optArtworkUrl(): String? =
         ?: optJSONObject("artwork")?.optText("url")
         ?: optJSONObject("cover")?.optText("url")
 
+internal fun echoLinkLyricsRawText(json: JSONObject): String? {
+    val synced = json.optText("syncedLyrics")
+        ?: json.optJSONObject("yrc")?.optText("lyric")
+        ?: json.optJSONObject("lrc")?.optText("lyric")
+    if (!synced.isNullOrBlank()) return synced
+    return json.optText("lyrics")
+        ?: json.optText("lyric")
+        ?: json.optText("rawText")
+        ?: json.optText("text")
+        ?: json.optText("plainLyrics")
+        ?: json.optJSONObject("tlyric")?.optText("lyric")
+}
+
 private fun String.toRemoteLyrics(): EchoRemoteLyrics? {
     val raw = trim().takeIf { it.isNotBlank() } ?: return null
     if (!raw.startsWith("{")) {
@@ -369,15 +382,7 @@ private fun String.toRemoteLyrics(): EchoRemoteLyrics? {
     }
     return runCatching {
         val json = JSONObject(raw)
-        val text = json.optText("lyrics")
-            ?: json.optText("lyric")
-            ?: json.optText("rawText")
-            ?: json.optText("text")
-            ?: json.optText("syncedLyrics")
-            ?: json.optText("plainLyrics")
-            ?: json.optJSONObject("lrc")?.optText("lyric")
-            ?: json.optJSONObject("yrc")?.optText("lyric")
-            ?: json.optJSONObject("tlyric")?.optText("lyric")
+        val text = echoLinkLyricsRawText(json)
         text?.let {
             EchoRemoteLyrics(
                 rawText = it,

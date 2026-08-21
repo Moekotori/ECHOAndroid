@@ -6,12 +6,9 @@ object PlaybackQueueInsertPolicy {
     fun playNextIndex(
         currentIndex: Int,
         queueSize: Int,
-        shuffledNextIndex: Int? = null,
+        @Suppress("UNUSED_PARAMETER") shuffledNextIndex: Int? = null,
     ): Int {
         if (queueSize <= 0) return 0
-        if (shuffledNextIndex != null && shuffledNextIndex in 0..queueSize) {
-            return shuffledNextIndex
-        }
         if (currentIndex < 0) return queueSize
         return (currentIndex + 1).coerceAtMost(queueSize)
     }

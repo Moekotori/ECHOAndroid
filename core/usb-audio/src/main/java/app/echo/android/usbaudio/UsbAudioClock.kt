@@ -45,6 +45,11 @@ object UsbAudioClock {
             format.audioClassVersion != UsbAudioClassVersion.Uac2 &&
             format.audioClassVersion != UsbAudioClassVersion.Uac3
         ) {
+            val minHz = format.sampleRateMinHz
+            val maxHz = format.sampleRateMaxHz
+            if (minHz != null && maxHz != null && minHz > 0 && maxHz >= minHz) {
+                return listOf(UsbAudioClockRange(minHz, maxHz, 1))
+            }
             return format.sampleRates.map { UsbAudioClockRange(it, it, 0) }
         }
         val payload = ByteArray(RANGE_BUFFER_BYTES)

@@ -102,7 +102,7 @@
     <string name="settings_perf_detail_auto">%1$s；系统省电开启时自动轻量</string>
     <string name="settings_perf_detail_balanced">保持完整视觉和默认刷新策略</string>
     <string name="settings_perf_detail_lightweight">降低背景、封面、动画和扫描开销</string>
-    <string name="settings_perf_detail_high">提高刷新率和动画完整度，保留视频背景与高质量封面</string>
+    <string name="settings_perf_detail_high">提高刷新率和动画完整度，保留视频背景与高质量封面；系统省电时回落到平衡策略</string>
     <string name="settings_font_system">系统</string>
     <string name="settings_font_serif">衬线</string>
     <string name="settings_font_mono">等宽</string>

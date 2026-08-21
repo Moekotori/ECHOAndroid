@@ -150,6 +150,7 @@ internal class LibraryController(
 
     private var scanJob: Job? = null
     private var remoteScanJob: Job? = null
+    private var sampleRateBackfillJob: Job? = null
     private var effectivePerformanceMode: EchoEffectivePerformanceMode = EchoEffectivePerformanceMode.Balanced
 
     val currentQuery: String
@@ -180,7 +181,17 @@ internal class LibraryController(
     }
 
     fun setEffectivePerformanceMode(mode: EchoEffectivePerformanceMode) {
+        val previous = effectivePerformanceMode
+        if (previous == mode) return
         effectivePerformanceMode = mode
+        if (
+            LibraryScanPolicy.shouldBackfillMissingSampleRates(
+                wasLightweight = previous.isLightweight,
+                isLightweight = mode.isLightweight,
+            )
+        ) {
+            startMissingSampleRateBackfill()
+        }
     }
 
     fun refreshLibrary() {
@@ -376,6 +387,7 @@ internal class LibraryController(
                 query = currentQuery,
                 anchorTrackId = trackId,
                 selectedLibrarySource = selectedLibrarySource,
+                sort = _trackSortMode.value,
             ).map { it.toEchoTrack() }
         }
 
@@ -471,6 +483,16 @@ internal class LibraryController(
     fun clear() {
         scanJob?.cancel()
         remoteScanJob?.cancel()
+        sampleRateBackfillJob?.cancel()
+    }
+
+    private fun startMissingSampleRateBackfill() {
+        if (scanJob?.isActive == true) return
+        if (sampleRateBackfillJob?.isActive == true) return
+        if (playbackOccupiesStorage()) return
+        sampleRateBackfillJob = scope.launch {
+            runCatching { repository.backfillMissingSampleRates() }
+        }
     }
 
     private fun skipSampleRateRead(): Boolean =

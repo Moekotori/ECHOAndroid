@@ -176,6 +176,17 @@ static void reap(Writer* writer) {
     }
 }
 
+static int inflight_count(const Writer* writer) {
+    int count = 0;
+    for (int i = 0; i < URB_COUNT; ++i) {
+        if (writer->slots[i].in_flight) count += 1;
+    }
+    for (int i = 0; i < FEEDBACK_URB_COUNT; ++i) {
+        if (writer->feedback_slots[i].in_flight) count += 1;
+    }
+    return count;
+}
+
 static void discard_inflight(Writer* writer) {
     for (int i = 0; i < URB_COUNT; ++i) {
         if (writer->slots[i].in_flight && writer->slots[i].urb != nullptr) {
@@ -187,7 +198,11 @@ static void discard_inflight(Writer* writer) {
             ioctl(writer->fd, USBDEVFS_DISCARDURB, writer->feedback_slots[i].urb);
         }
     }
-    reap(writer);
+    for (int attempt = 0; attempt < 64; ++attempt) {
+        reap(writer);
+        if (inflight_count(writer) == 0) break;
+        usleep(2000);
+    }
     for (int i = 0; i < URB_COUNT; ++i) {
         writer->slots[i].in_flight = 0;
         writer->slots[i].frames = 0;
@@ -300,6 +315,19 @@ static void apply_bus_speed(Writer* writer, int requested_pps) {
     writer->packets_per_urb = writer->high_speed ? 8 : 1;
 }
 
+static void ensure_packet_fits(Writer* writer) {
+    const int frame = bytes_per_frame(writer);
+    if (frame <= 0 || writer->pps <= 0 || writer->sample_rate <= 0) return;
+    int samples = writer->sample_rate / writer->pps;
+    if (samples < 1) samples = 1;
+    if (samples * frame <= writer->max_packet) return;
+    if (writer->pps < 8000) {
+        writer->pps = 8000;
+        writer->high_speed = 1;
+        writer->packets_per_urb = 8;
+    }
+}
+
 extern "C" JNIEXPORT jlong JNICALL
 Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeCreate(
         JNIEnv*,
@@ -325,6 +353,7 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeCreate(
     writer->channels = channel_count;
     writer->bytes_per_sample = bytes_per_sample;
     apply_bus_speed(writer, packets_per_second);
+    ensure_packet_fits(writer);
     writer->nominal_q16 = ((int64_t)sample_rate_hz << 16) / writer->pps;
     writer->feedback_q16 = writer->nominal_q16;
     writer->feedback_ep = (uint8_t)feedback_endpoint;

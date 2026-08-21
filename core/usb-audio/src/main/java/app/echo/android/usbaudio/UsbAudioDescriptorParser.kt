@@ -301,10 +301,20 @@ class UsbAudioDescriptorParser {
     ): UsbAudioStreamingFormat? {
         if (length < 8) return null
         val sampleRateType = raw[offset + 7].u8()
-        val sampleRates = if (sampleRateType == 0 && length >= 14) {
-            listOf(raw.le24(offset + 8), raw.le24(offset + 11)).filter { it > 0 }.distinct()
+        val continuous = sampleRateType == 0 && length >= 14
+        val sampleRateMinHz: Int?
+        val sampleRateMaxHz: Int?
+        val sampleRates: List<Int>
+        if (continuous) {
+            val minHz = raw.le24(offset + 8).takeIf { it > 0 }
+            val maxHz = raw.le24(offset + 11).takeIf { it > 0 }
+            sampleRateMinHz = minHz
+            sampleRateMaxHz = maxHz
+            sampleRates = emptyList()
         } else {
-            (0 until sampleRateType)
+            sampleRateMinHz = null
+            sampleRateMaxHz = null
+            sampleRates = (0 until sampleRateType)
                 .mapNotNull { index ->
                     val rateOffset = offset + 8 + index * 3
                     if (rateOffset + 2 < offset + length) raw.le24(rateOffset) else null
@@ -322,6 +332,8 @@ class UsbAudioDescriptorParser {
             subslotSize = raw[offset + 5].u8().takeIf { it > 0 },
             bitResolution = raw[offset + 6].u8().takeIf { it > 0 },
             sampleRates = sampleRates.sorted(),
+            sampleRateMinHz = sampleRateMinHz,
+            sampleRateMaxHz = sampleRateMaxHz,
         )
     }
 

@@ -39,6 +39,9 @@ class EchoPlaybackService : MediaLibraryService() {
                     Player.EVENT_REPEAT_MODE_CHANGED,
                     Player.EVENT_PLAY_WHEN_READY_CHANGED,
                     Player.EVENT_TIMELINE_CHANGED,
+                    Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
+                    Player.EVENT_PLAYBACK_PARAMETERS_CHANGED,
+                    Player.EVENT_POSITION_DISCONTINUITY,
                 )
             ) {
                 return
@@ -61,9 +64,13 @@ class EchoPlaybackService : MediaLibraryService() {
                     Player.EVENT_TIMELINE_CHANGED,
                     Player.EVENT_REPEAT_MODE_CHANGED,
                     Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
+                    Player.EVENT_PLAYBACK_PARAMETERS_CHANGED,
+                    Player.EVENT_POSITION_DISCONTINUITY,
                 )
             ) {
-                sessionRestorer?.persistFromPlayer()
+                sessionRestorer?.persistFromPlayer(
+                    persistBecauseOfSeek = events.contains(Player.EVENT_POSITION_DISCONTINUITY),
+                )
             }
         }
     }

@@ -19,7 +19,7 @@ class PlaybackQueueInsertPolicyTest {
         assertEquals(4, PlaybackQueueInsertPolicy.playNextIndex(currentIndex = 3, queueSize = 4))
         assertEquals(3, PlaybackQueueInsertPolicy.playNextIndex(currentIndex = -1, queueSize = 3))
         assertEquals(
-            0,
+            3,
             PlaybackQueueInsertPolicy.playNextIndex(
                 currentIndex = 2,
                 queueSize = 4,
@@ -27,7 +27,7 @@ class PlaybackQueueInsertPolicyTest {
             ),
         )
         assertEquals(
-            3,
+            2,
             PlaybackQueueInsertPolicy.playNextIndex(
                 currentIndex = 1,
                 queueSize = 4,

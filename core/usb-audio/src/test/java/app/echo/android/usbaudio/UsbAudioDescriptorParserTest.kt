@@ -26,6 +26,21 @@ class UsbAudioDescriptorParserTest {
     }
 
     @Test
+    fun parsesUac1ContinuousSampleRateRange() {
+        val raw = bytes(
+            9, 4, 1, 1, 1, 1, 2, 0, 0,
+            14, 36, 2, 1, 2, 2, 16, 0, 0x40, 0x1f, 0x00, 0x00, 0x77, 0x01,
+            9, 5, 0x01, 0x05, 0x00, 0x02, 1, 0, 0,
+        )
+
+        val format = parser.parse(raw).streamingFormats.single()
+
+        assertTrue(format.sampleRates.isEmpty())
+        assertEquals(8_000, format.sampleRateMinHz)
+        assertEquals(96_000, format.sampleRateMaxHz)
+    }
+
+    @Test
     fun attachesFeedbackFromUac1SynchAddressWithoutClobberingOutEndpoint() {
         val raw = bytes(
             9, 4, 1, 1, 2, 1, 2, 0, 0,

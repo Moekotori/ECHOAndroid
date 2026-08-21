@@ -11,3 +11,5 @@
 192	283	8090035139384921	F:/ECHOAndroid/core/usb-audio/build/intermediates/cxx/Debug/3ipi6b1s/obj/arm64-v8a/libecho_usb_isoc.so	79864dae4a1b0152
 4	519	8090050237740097	CMakeFiles/echo_usb_isoc.dir/echo_usb_isoc.cpp.o	5e72a96e53c042ba
 520	863	8090050240722052	F:/ECHOAndroid/core/usb-audio/build/intermediates/cxx/Debug/3ipi6b1s/obj/arm64-v8a/libecho_usb_isoc.so	79864dae4a1b0152
+4	639	8090083365924008	CMakeFiles/echo_usb_isoc.dir/echo_usb_isoc.cpp.o	5e72a96e53c042ba
+639	1100	8090083369659858	F:/ECHOAndroid/core/usb-audio/build/intermediates/cxx/Debug/3ipi6b1s/obj/arm64-v8a/libecho_usb_isoc.so	79864dae4a1b0152

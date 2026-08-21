@@ -42,7 +42,7 @@ fun replayGainAfterMediaItemChange(
 ): Float? {
     if (mediaId == null) return previousGainDb
     if (cachedGains.containsKey(mediaId)) return cachedGains.getValue(mediaId)
-    return previousGainDb
+    return null
 }
 
 fun replayGainReadOutcome(

@@ -535,6 +535,16 @@ interface LibraryTrackDao {
         relativePathLike: String,
     ): List<TrackFingerprint>
 
+    @Query(
+        """
+        SELECT * FROM library_tracks
+        WHERE (source = 'mediastore' OR source = 'saf')
+          AND (sampleRateHz IS NULL OR sampleRateHz <= 0)
+        LIMIT :limit
+        """,
+    )
+    suspend fun getTracksMissingSampleRate(limit: Int): List<LibraryTrackEntity>
+
     @Upsert
     suspend fun upsertBatch(tracks: List<LibraryTrackEntity>)
 

@@ -34,6 +34,22 @@ object EchoUsbExclusiveApplyPolicy {
         previouslyGranted: Boolean,
         currentlyGranted: Boolean,
     ): Boolean = exclusiveEnabled && currentlyGranted && !previouslyGranted
+
+    fun shouldRebuildSinkAfterUsbRouteChange(
+        exclusiveEnabled: Boolean,
+        wasConnected: Boolean,
+        isConnected: Boolean,
+        previouslyGranted: Boolean,
+        currentlyGranted: Boolean,
+    ): Boolean {
+        if (!exclusiveEnabled) return false
+        if (wasConnected && !isConnected) return true
+        return shouldReapplyAfterHostPermissionGranted(
+            exclusiveEnabled = true,
+            previouslyGranted = previouslyGranted,
+            currentlyGranted = currentlyGranted,
+        )
+    }
 }
 
 data class EchoUsbAudioStatus(

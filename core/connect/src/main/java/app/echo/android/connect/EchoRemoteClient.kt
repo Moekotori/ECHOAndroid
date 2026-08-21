@@ -657,6 +657,12 @@ class EchoRemoteClient internal constructor(
             ?.takeIf { it.isNotBlank() }
     }
 
+    suspend fun fetchLyrics(trackId: String): EchoRemoteLyrics? {
+        val target = endpoint ?: return null
+        if (trackId.isBlank()) return null
+        return runSuspendCatching { transport.fetchLyrics(target, trackId) }.getOrNull()
+    }
+
     private fun Throwable.userMessage(): String =
         message?.takeIf { it.isNotBlank() } ?: echoText(
             en = "PC ECHO connection failed",

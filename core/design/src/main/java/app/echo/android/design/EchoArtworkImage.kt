@@ -305,14 +305,21 @@ internal fun echoArtworkImageRequest(
         .size(maxPixelSize, maxPixelSize)
         .bitmapConfig(if (highBitDepth) Bitmap.Config.ARGB_8888 else Bitmap.Config.RGB_565)
     if (!originalUri.isNullOrBlank()) {
-        builder.memoryCacheKey(originalUri)
-        builder.diskCacheKey(originalUri)
+        val cacheKey = echoArtworkCacheKey(originalUri, maxPixelSize, highBitDepth)
+        builder.memoryCacheKey(cacheKey)
+        builder.diskCacheKey(cacheKey)
     }
     headers.forEach { (name, value) ->
         builder.setHeader(name, value)
     }
     return builder.build()
 }
+
+internal fun echoArtworkCacheKey(
+    originalUri: String,
+    maxPixelSize: Int,
+    highBitDepth: Boolean,
+): String = "$originalUri#px$maxPixelSize#${if (highBitDepth) "8888" else "565"}"
 
 private fun EchoArtworkSize.maxPixelSize(effectivePerformanceMode: EchoEffectivePerformanceMode): Int =
     when {

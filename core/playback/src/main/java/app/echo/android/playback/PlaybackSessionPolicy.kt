@@ -37,6 +37,12 @@ object PlaybackSessionPolicy {
 
     fun shouldClaimUsbInterfaceForDriverTest(isPlayingToUsb: Boolean): Boolean = !isPlayingToUsb
 
+    fun shouldForceAudioSinkReset(
+        exclusiveEnabledChanged: Boolean,
+        usbRouteLost: Boolean,
+        hostPermissionNewlyGranted: Boolean,
+    ): Boolean = exclusiveEnabledChanged || usbRouteLost || hostPermissionNewlyGranted
+
     fun shouldRemapFullQueue(
         timelineChanged: Boolean,
         mediaItemTransitioned: Boolean = false,

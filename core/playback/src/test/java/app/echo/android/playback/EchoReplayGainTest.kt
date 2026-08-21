@@ -57,11 +57,11 @@ class EchoReplayGainTest {
     }
 
     @Test
-    fun mediaItemChangeKeepsPreviousGainUntilTagIsCached() {
+    fun mediaItemChangeDoesNotKeepPreviousGainUntilTagIsCached() {
         val previous = -6.5f
         val cached = mapOf("known" to -3f)
         assertEquals(
-            previous,
+            null,
             replayGainAfterMediaItemChange(
                 mediaId = "next",
                 cachedGains = cached,

@@ -52,6 +52,27 @@ class EchoPlaybackErrorSkipTest {
     }
 
     @Test
+    fun consecutiveSkipsAccumulateAcrossDifferentMediaIds() {
+        assertEquals(
+            1,
+            nextIndexAfterPlaybackError(
+                currentIndex = 0,
+                mediaItemCount = 3,
+                repeatAll = true,
+                consecutiveErrorSkips = 1,
+            ),
+        )
+        assertNull(
+            nextIndexAfterPlaybackError(
+                currentIndex = 1,
+                mediaItemCount = 3,
+                repeatAll = true,
+                consecutiveErrorSkips = 3,
+            ),
+        )
+    }
+
+    @Test
     fun stopsAfterVisitingEveryItem() {
         assertNull(
             nextIndexAfterPlaybackError(

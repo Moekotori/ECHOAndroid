@@ -11,6 +11,12 @@ class EchoRemotePlaybackAuthPolicyTest {
         assertFalse(webDavPlaybackUriRequiresCredential("https://user:pass@dav.example/music/a.flac"))
         assertFalse(webDavPlaybackUriRequiresCredential("https://navidrome.example/rest/stream.view?id=1"))
         assertFalse(webDavPlaybackUriRequiresCredential("content://media/external/audio/media/1"))
+        assertFalse(
+            webDavPlaybackUriRequiresCredential("http://192.168.1.20:26789/echo-link/media/token"),
+        )
+        assertFalse(
+            webDavPlaybackUriRequiresCredential("https://pc.local/echo-link/media/abc"),
+        )
         assertTrue(subsonicPlaybackUriRequiresCredential("https://navidrome.example/rest/stream.view?id=1"))
         assertTrue(subsonicPlaybackUriRequiresCredential("https://navidrome.example/music/rest/getCoverArt.view?id=c1"))
         assertFalse(subsonicPlaybackUriRequiresCredential("https://dav.example/music/a.flac"))

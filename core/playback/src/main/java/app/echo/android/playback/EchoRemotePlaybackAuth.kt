@@ -13,6 +13,7 @@ import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.CacheKeyFactory
 import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.database.StandaloneDatabaseProvider
+import app.echo.android.model.playback.EchoLinkPlaybackUri
 import java.io.File
 import java.io.IOException
 import java.net.URI
@@ -250,14 +251,18 @@ private class EchoSchemeRoutingDataSource(
 private object EchoRemotePlaybackCache {
     @Volatile
     private var cache: SimpleCache? = null
+    private val evictor = EchoPlaybackCacheEvictor()
 
     @Synchronized
     fun get(context: Context): SimpleCache =
         cache ?: SimpleCache(
             File(context.cacheDir, "echo-remote-playback-cache"),
-            EchoPlaybackCacheEvictor(),
+            evictor,
             StandaloneDatabaseProvider(context),
-        ).also { cache = it }
+        ).also { created ->
+            cache = created
+            EchoPlaybackCacheTrim.action = { evictor.trim(created) }
+        }
 }
 
 @UnstableApi
@@ -282,6 +287,7 @@ fun webDavPlaybackUriRequiresCredential(uri: String): Boolean {
     if ('@' in authority) return false
     val path = "/${afterScheme.substringAfter('/', missingDelimiterValue = "")}".lowercase()
     if (path == "/rest" || path.startsWith("/rest/") || path.contains("/rest/")) return false
+    if (EchoLinkPlaybackUri.isOneShotStreamUri(trimmed) || path.contains("/echo-link/")) return false
     return true
 }
 

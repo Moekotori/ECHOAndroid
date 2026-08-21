@@ -2,9 +2,11 @@ package app.echo.android.playback
 
 import android.content.Context
 import android.media.audiofx.LoudnessEnhancer
+import android.net.Uri
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import app.echo.android.model.playback.EchoLinkPlaybackUri
 import app.echo.android.model.playback.EchoSleepTimerMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -15,6 +17,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 data class EchoPlaybackRuntimeOptions(
     val skipSilenceEnabled: Boolean = false,
@@ -29,9 +34,14 @@ object EchoPlaybackRuntimeOptionsStore {
     }
 }
 
+fun interface EchoPlaybackStreamResolver {
+    suspend fun resolvePlayUri(mediaId: String, uri: String): String?
+}
+
 @UnstableApi
 object EchoPlaybackProcessRuntime {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val resolveMutex = Mutex()
 
     @Volatile
     var sleepTimerEndTimeEpochMs: Long? = null
@@ -84,6 +94,9 @@ object EchoPlaybackProcessRuntime {
     private var sessionStore: EchoPlaybackSessionStore = EchoPlaybackSessionStore.Empty
 
     @Volatile
+    private var streamResolver: EchoPlaybackStreamResolver? = null
+
+    @Volatile
     var surfaceSnapshot: EchoPlaybackSurfaceSnapshot = EchoPlaybackSurfaceSnapshot()
         private set
 
@@ -119,10 +132,84 @@ object EchoPlaybackProcessRuntime {
         exclusiveMakeupGain = gain.coerceAtLeast(0f)
     }
 
-    fun reconfigureAudioPipeline() {
-        val player = mediaController ?: return
+    fun reconfigureAudioPipeline(forceSinkReset: Boolean = false) {
+        val player = enginePolicy?.boundPlayer() ?: mediaController ?: return
         if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) return
+        if (forceSinkReset) {
+            val index = player.currentMediaItemIndex.coerceAtLeast(0)
+            val position = player.currentPosition.coerceAtLeast(0L)
+            val playWhenReady = player.playWhenReady
+            player.stop()
+            if (player.mediaItemCount > 0) {
+                player.seekTo(index.coerceAtMost(player.mediaItemCount - 1), position)
+                player.prepare()
+                player.playWhenReady = playWhenReady
+            }
+            return
+        }
         player.seekTo(player.currentPosition)
+    }
+
+    fun setStreamResolver(resolver: EchoPlaybackStreamResolver?) {
+        streamResolver = resolver
+        if (resolver == null) return
+        scope.launch { reResolveBoundPlayerQueue() }
+    }
+
+    suspend fun resolvePlayUri(mediaId: String, uri: String): String {
+        if (
+            EchoLinkPlaybackUri.trackIdFromPersistUri(uri) == null &&
+            !EchoLinkPlaybackUri.isOneShotStreamUri(uri) &&
+            !EchoLinkPlaybackUri.requiresStreamResolve(mediaId, uri)
+        ) {
+            return uri
+        }
+        return streamResolver?.resolvePlayUri(mediaId, uri)?.takeIf { it.isNotBlank() } ?: uri
+    }
+
+    suspend fun reResolveBoundPlayerQueue() {
+        if (streamResolver == null) return
+        resolveMutex.withLock {
+            val snapshot = withContext(Dispatchers.Main.immediate) {
+                val player = enginePolicy?.boundPlayer() ?: mediaController ?: return@withContext null
+                if (player.mediaItemCount <= 0) return@withContext null
+                QueueResolveSnapshot(
+                    items = (0 until player.mediaItemCount).map { player.getMediaItemAt(it) },
+                    index = player.currentMediaItemIndex.coerceAtLeast(0),
+                    positionMs = player.currentPosition.coerceAtLeast(0L),
+                    playWhenReady = player.playWhenReady,
+                    playerUnavailable = player.playerError != null ||
+                        player.playbackState == Player.STATE_IDLE,
+                )
+            } ?: return@withLock
+            val needs = snapshot.items.any { item ->
+                val playUri = item.localConfiguration?.uri?.toString().orEmpty()
+                EchoLinkPlaybackUri.playUriNeedsResolve(playUri, snapshot.playerUnavailable) ||
+                    EchoLinkPlaybackUri.trackIdFromPersistUri(playUri) != null
+            }
+            if (!needs) return@withLock
+            val resolvedUris = snapshot.items.map { item ->
+                val playUri = item.localConfiguration?.uri?.toString().orEmpty()
+                resolvePlayUri(item.mediaId, playUri)
+            }
+            val currentUris = snapshot.items.map { it.localConfiguration?.uri?.toString().orEmpty() }
+            if (resolvedUris == currentUris) return@withLock
+            withContext(Dispatchers.Main.immediate) {
+                val player = enginePolicy?.boundPlayer() ?: mediaController ?: return@withContext
+                val items = snapshot.items.mapIndexed { index, item ->
+                    item.buildUpon().setUri(Uri.parse(resolvedUris[index])).build()
+                }
+                val index = snapshot.index.coerceIn(0, items.lastIndex)
+                player.setMediaItems(items, index, snapshot.positionMs)
+                player.prepare()
+                if (snapshot.playWhenReady) player.play() else player.pause()
+                enginePolicy?.mergeReplayGainUris(
+                    items.associate { item ->
+                        item.mediaId to (item.localConfiguration?.uri?.toString().orEmpty())
+                    },
+                )
+            }
+        }
     }
 
     fun usbAudioMonitor(context: Context): EchoUsbAudioMonitor =
@@ -289,5 +376,14 @@ object EchoPlaybackProcessRuntime {
         }
     }
 }
+
+@UnstableApi
+private data class QueueResolveSnapshot(
+    val items: List<androidx.media3.common.MediaItem>,
+    val index: Int,
+    val positionMs: Long,
+    val playWhenReady: Boolean,
+    val playerUnavailable: Boolean,
+)
 
 private const val AUDIO_SESSION_UNSET = 0
