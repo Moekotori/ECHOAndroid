@@ -76,7 +76,7 @@ private fun List<EchoRemoteTrack>.toLinkedAlbums(): List<AlbumSummary> =
             val first = albumTracks.first()
             AlbumSummary(
                 albumKey = first.linkedAlbumKey(),
-                title = first.album?.takeIf { it.isNotBlank() } ?: "未知专辑",
+                title = first.album?.takeIf { it.isNotBlank() }.orEmpty(),
                 albumArtist = first.artist.takeIf { it.isNotBlank() },
                 artist = first.artist.takeIf { it.isNotBlank() },
                 artworkUri = albumTracks.firstNotNullOfOrNull { it.artworkUrl?.takeIf(String::isNotBlank) },
@@ -94,7 +94,7 @@ private fun List<EchoRemoteTrack>.toLinkedArtists(): List<ArtistSummary> =
             val first = artistTracks.first()
             ArtistSummary(
                 artistKey = first.linkedArtistKey(),
-                name = first.artist.takeIf { it.isNotBlank() } ?: "未知艺术家",
+                name = first.artist.takeIf { it.isNotBlank() }.orEmpty(),
                 artworkUri = artistTracks.firstNotNullOfOrNull { it.artworkUrl?.takeIf(String::isNotBlank) },
                 albumCount = artistTracks.map { it.linkedAlbumKey() }.distinct().size,
                 trackCount = artistTracks.size,

@@ -109,6 +109,11 @@ internal fun LibraryTrackEntity.withPreservedUserMetadata(
     )
 }
 
+internal fun LibraryTrackEntity.prepareRemoteSyncTrack(
+    editedTrack: LibraryTrackEntity?,
+): LibraryTrackEntity =
+    withPreservedUserMetadata(editedTrack).withScanMetadata(lastSeenScanRunId)
+
 internal fun buildTrackFingerprint(track: EchoTrack): String =
     LibraryFingerprintPolicy.fingerprint(
         contentUri = track.uri,

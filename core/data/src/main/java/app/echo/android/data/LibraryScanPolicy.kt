@@ -53,6 +53,22 @@ object LibraryScanPolicy {
     fun unseenIds(existingIds: Collection<String>, seenIds: Set<String>): List<String> =
         existingIds.distinct().filterNot(seenIds::contains)
 
+    fun usesDocumentTreeScan(volume: String): Boolean =
+        !volume.equals("primary", ignoreCase = true)
+
+    fun shouldReuseUnchangedDocumentFingerprint(
+        existingContentUri: String,
+        incomingContentUri: String,
+        existingSizeBytes: Long,
+        incomingSizeBytes: Long,
+        existingDateModifiedSeconds: Long,
+        incomingDateModifiedSeconds: Long,
+    ): Boolean =
+        existingContentUri.isNotBlank() &&
+            existingContentUri == incomingContentUri &&
+            existingSizeBytes == incomingSizeBytes &&
+            existingDateModifiedSeconds == incomingDateModifiedSeconds
+
     const val SafSourceId = "saf"
 }
 

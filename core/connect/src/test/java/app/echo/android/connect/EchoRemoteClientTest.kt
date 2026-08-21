@@ -7,15 +7,32 @@ import app.echo.android.model.connect.EchoRemoteLyrics
 import app.echo.android.model.connect.EchoRemotePlaybackSnapshot
 import app.echo.android.model.connect.EchoRemotePlaylist
 import app.echo.android.model.connect.EchoRemoteTrack
+import java.util.Locale
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 
 class EchoRemoteClientTest {
+    private lateinit var originalLocale: Locale
+
+    @Before
+    fun pinEnglishLocale() {
+        originalLocale = Locale.getDefault()
+        Locale.setDefault(Locale.ENGLISH)
+    }
+
+    @After
+    fun restoreLocale() {
+        Locale.setDefault(originalLocale)
+    }
+
     private val endpoint = EchoRemoteEndpoint(
         id = "192.168.1.20:26789",
         name = "PC ECHO",
@@ -234,8 +251,29 @@ class EchoRemoteClientTest {
         )
         delay(20)
         assertEquals(0, transport.streamCalls)
-        assertTrue(client.library.value.error?.contains("串流") == true)
+        assertTrue(client.library.value.error?.contains("stream", ignoreCase = true) == true)
         client.disconnect()
+    }
+
+    @Test
+    fun phonePlaybackTrackPersistsStableIdNotOneShotStream() {
+        val phoneTrack = remoteTrack("pc-42").toPhonePlaybackTrack(
+            "http://192.168.1.20:26789/echo-link/media/token",
+        )
+        val persistUri = app.echo.android.model.playback.EchoLinkPlaybackUri.persistableUri(
+            phoneTrack.id,
+            phoneTrack.uri,
+        )
+        assertEquals("echo-link:pc-42", phoneTrack.id)
+        assertTrue(app.echo.android.model.playback.EchoLinkPlaybackUri.isOneShotStreamUri(phoneTrack.uri))
+        assertEquals("echo-link://track/pc-42", persistUri)
+        assertTrue(
+            app.echo.android.model.playback.EchoLinkPlaybackUri.requiresStreamResolve(
+                phoneTrack.id,
+                persistUri,
+            ),
+        )
+        assertFalse(app.echo.android.model.playback.EchoLinkPlaybackUri.isOneShotStreamUri(persistUri))
     }
 }
 

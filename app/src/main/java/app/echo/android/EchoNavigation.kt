@@ -48,6 +48,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -61,14 +62,24 @@ private val DockItemShape = RoundedCornerShape(22.dp)
 private val DockSelectedBlue = Color(0xFFD3A9B5)
 
 enum class EchoTab(
-    val label: String,
     val icon: ImageVector,
 ) {
-    Now("我的音乐", Icons.Rounded.Home),
-    Library("曲库", Icons.Rounded.LibraryMusic),
-    Connect("互联", Icons.Rounded.Devices),
-    Diagnostics("信号", Icons.Rounded.GraphicEq),
+    Now(Icons.Rounded.Home),
+    Library(Icons.Rounded.LibraryMusic),
+    Connect(Icons.Rounded.Devices),
+    Diagnostics(Icons.Rounded.GraphicEq),
 }
+
+@Composable
+private fun EchoTab.label(): String =
+    stringResource(
+        when (this) {
+            EchoTab.Now -> R.string.tab_home
+            EchoTab.Library -> R.string.tab_library
+            EchoTab.Connect -> R.string.tab_connect
+            EchoTab.Diagnostics -> R.string.tab_diagnostics
+        },
+    )
 
 @Composable
 fun BottomDock(
@@ -269,7 +280,7 @@ private fun DockItem(
         ) {
             Icon(
                 tab.icon,
-                contentDescription = tab.label,
+                contentDescription = tab.label(),
                 tint = iconColor,
                 modifier = Modifier
                     .size(24.dp)
@@ -279,7 +290,7 @@ private fun DockItem(
                     },
             )
             Text(
-                text = tab.label,
+                text = tab.label(),
                 color = labelColor,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,

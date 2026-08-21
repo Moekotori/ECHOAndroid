@@ -1,5 +1,6 @@
 package app.echo.android
 
+import android.content.Context
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -8,16 +9,25 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.OptIn
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.media3.common.util.UnstableApi
+import app.echo.android.data.applyEchoAppLocale
+import app.echo.android.data.readEchoStartupThemeSnapshot
 import app.echo.android.data.readEchoStartupThemeSnapshotForLaunch
+import app.echo.android.data.wrapEchoAppLocale
 
 class MainActivity : ComponentActivity() {
     private var highRefreshRateRequested = false
 
+    override fun attachBaseContext(newBase: Context) {
+        val language = newBase.readEchoStartupThemeSnapshot().appLanguage
+        super.attachBaseContext(newBase.wrapEchoAppLocale(language))
+    }
+
     @OptIn(UnstableApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
         val startupThemeSnapshot = applicationContext.readEchoStartupThemeSnapshotForLaunch()
+        applicationContext.applyEchoAppLocale(startupThemeSnapshot.appLanguage)
         val startupDarkTheme = resolveEchoDarkTheme(
             systemDarkTheme = applicationContext.isEchoSystemDarkTheme(),
             themeMode = startupThemeSnapshot.themeMode,
@@ -26,6 +36,9 @@ class MainActivity : ComponentActivity() {
             scheduledEndMinute = startupThemeSnapshot.scheduledDarkEndMinute,
             currentMinute = currentMinuteOfDayNow(),
         )
+        setTheme(R.style.Theme_EchoAndroid_Splash)
+        installSplashScreen()
+        super.onCreate(savedInstanceState)
         window.decorView.setBackgroundColor(startupWindowBackground(startupDarkTheme))
         applyEdgeToEdge(startupDarkTheme)
         setContent {

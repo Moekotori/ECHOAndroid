@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoAccent
+import app.echo.android.design.echoString
 
 @Composable
 fun SearchScreen(
@@ -98,7 +99,7 @@ private fun SearchTopBar(
         IconButton(onClick = onBack) {
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = "返回",
+                contentDescription = echoString(en = "Back", zh = "返回", ja = "戻る"),
                 tint = homeBodyColor(),
             )
         }
@@ -110,7 +111,14 @@ private fun SearchTopBar(
                 .weight(1f)
                 .focusRequester(focusRequester),
             placeholder = {
-                Text("搜索音乐、专辑、艺术家", color = homeBodyColor().copy(alpha = 0.4f))
+                Text(
+                    echoString(
+                        en = "Search songs, albums, and artists",
+                        zh = "搜索音乐、专辑、艺术家",
+                        ja = "曲、アルバム、アーティストを検索",
+                    ),
+                    color = homeBodyColor().copy(alpha = 0.4f),
+                )
             },
             leadingIcon = {
                 Icon(
@@ -124,7 +132,7 @@ private fun SearchTopBar(
                     IconButton(onClick = { onSearchQueryChange("") }) {
                         Icon(
                             imageVector = Icons.Rounded.Close,
-                            contentDescription = "清空",
+                            contentDescription = echoString(en = "Clear", zh = "清空", ja = "クリア"),
                             tint = homeBodyColor().copy(alpha = 0.5f),
                         )
                     }
@@ -154,7 +162,11 @@ private fun SearchResultsList(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = "输入关键词开始搜索",
+                text = echoString(
+                    en = "Enter a keyword to start searching",
+                    zh = "输入关键词开始搜索",
+                    ja = "キーワードを入力して検索",
+                ),
                 color = homeBodyColor().copy(alpha = 0.3f),
                 style = MaterialTheme.typography.bodyMedium,
             )
@@ -171,7 +183,7 @@ private fun SearchResultsList(
             if (trackResults.isNotEmpty()) {
                 item {
                     Text(
-                        text = "歌曲",
+                        text = echoString(en = "Songs", zh = "歌曲", ja = "曲"),
                         color = homeBodyColor().copy(alpha = 0.4f),
                         style = MaterialTheme.typography.labelMedium,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
@@ -188,7 +200,7 @@ private fun SearchResultsList(
                         Spacer(Modifier.height(16.dp))
                     }
                     Text(
-                        text = "专辑",
+                        text = echoString(en = "Albums", zh = "专辑", ja = "アルバム"),
                         color = homeBodyColor().copy(alpha = 0.4f),
                         style = MaterialTheme.typography.labelMedium,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
@@ -203,7 +215,7 @@ private fun SearchResultsList(
                 item {
                     Spacer(Modifier.height(16.dp))
                     Text(
-                        text = "艺术家",
+                        text = echoString(en = "Artists", zh = "艺术家", ja = "アーティスト"),
                         color = homeBodyColor().copy(alpha = 0.4f),
                         style = MaterialTheme.typography.labelMedium,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),

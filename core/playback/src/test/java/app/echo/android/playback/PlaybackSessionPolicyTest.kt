@@ -124,6 +124,29 @@ class PlaybackSessionPolicyTest {
     }
 
     @Test
+    fun seekToNewPositionBucketIsNotSkippedAsUnchangedPersist() {
+        assertFalse(
+            PlaybackSessionPolicy.shouldSkipUnchangedSessionPersist(
+                force = false,
+                signature = "1|false|a;b;",
+                lastSignature = "1|false|a;b;",
+                positionBucket = 4L,
+                lastPositionBucket = 3L,
+            ),
+        )
+        assertFalse(
+            PlaybackSessionPolicy.shouldSkipUnchangedSessionPersist(
+                force = false,
+                signature = "1|false|a;b;",
+                lastSignature = "1|false|a;b;",
+                positionBucket = 3L,
+                lastPositionBucket = 3L,
+                persistBecauseOfSeek = true,
+            ),
+        )
+    }
+
+    @Test
     fun cachedQueueSnapshotIsReusedOnlyWhenMediaIdsMatch() {
         val ids = listOf("a", "b", "c")
         assertTrue(PlaybackSessionPolicy.shouldReuseCachedQueueSnapshot(ids, ids))
@@ -160,5 +183,50 @@ class PlaybackSessionPolicyTest {
     fun driverTestDoesNotClaimWhilePlaying() {
         assertFalse(PlaybackSessionPolicy.shouldClaimUsbInterfaceForDriverTest(isPlayingToUsb = true))
         assertTrue(PlaybackSessionPolicy.shouldClaimUsbInterfaceForDriverTest(isPlayingToUsb = false))
+    }
+
+    @Test
+    fun playAllClearsLeftoverRepeatOneAndShuffle() {
+        assertFalse(
+            PlaybackSessionPolicy.shuffleEnabledForQueueReplace(PlaybackQueueReplaceIntent.PlayAll),
+        )
+        assertEquals(
+            app.echo.android.model.playback.EchoRepeatMode.Off,
+            PlaybackSessionPolicy.repeatModeForQueueReplace(PlaybackQueueReplaceIntent.PlayAll),
+        )
+        assertEquals(
+            app.echo.android.model.playback.EchoRepeatMode.Off,
+            PlaybackSessionPolicy.repeatModeForQueueReplace(PlaybackQueueReplaceIntent.Shuffle),
+        )
+        assertTrue(
+            PlaybackSessionPolicy.shuffleEnabledForQueueReplace(PlaybackQueueReplaceIntent.Shuffle),
+        )
+    }
+
+    @Test
+    fun skipDoesNotForcePlayAndPreparesOnlyWhenIdleOrErrored() {
+        assertFalse(PlaybackSessionPolicy.skipShouldCallPlay())
+        assertTrue(PlaybackSessionPolicy.shouldPrepareBeforePlay(hasPlayerError = true, playbackStateIdle = false))
+        assertTrue(PlaybackSessionPolicy.shouldPrepareBeforePlay(hasPlayerError = false, playbackStateIdle = true))
+        assertFalse(PlaybackSessionPolicy.shouldPrepareBeforePlay(hasPlayerError = false, playbackStateIdle = false))
+    }
+
+    @Test
+    fun tickerPositionIsCopiedOntoPlaybackStatus() {
+        val status = app.echo.android.model.playback.EchoPlaybackStatus(positionMs = 0L, durationMs = 10_000L)
+        val live = app.echo.android.model.playback.PlaybackPositionState(
+            positionMs = 12_500L,
+            durationMs = 180_000L,
+        )
+        val merged = PlaybackSessionPolicy.playbackStatusWithLivePosition(status, live)
+        assertEquals(12_500L, merged.positionMs)
+        assertEquals(180_000L, merged.durationMs)
+        assertEquals(
+            12_500L,
+            PlaybackSessionPolicy.playbackStatusWithLivePosition(
+                status.copy(positionMs = 3_000L),
+                live.copy(durationMs = 0L),
+            ).positionMs,
+        )
     }
 }

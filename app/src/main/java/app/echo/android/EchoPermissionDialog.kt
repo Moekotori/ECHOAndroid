@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -101,7 +102,7 @@ fun EchoPermissionDialog(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Text(
-                    text = "权限申请",
+                    text = stringResource(R.string.permission_title),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = scheme.onSurface,
@@ -110,7 +111,7 @@ fun EchoPermissionDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "ECHO 需要以下权限以提供完整的音乐体验",
+                    text = stringResource(R.string.permission_subtitle),
                     style = MaterialTheme.typography.bodyMedium,
                     color = scheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -149,7 +150,7 @@ fun EchoPermissionDialog(
                     ),
                 ) {
                     Text(
-                        text = "继续",
+                        text = stringResource(R.string.permission_continue),
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
                     )
@@ -159,7 +160,7 @@ fun EchoPermissionDialog(
 
                 TextButton(onClick = onDismiss) {
                     Text(
-                        text = "跳过，稍后在设置中配置",
+                        text = stringResource(R.string.permission_skip),
                         style = MaterialTheme.typography.bodySmall,
                         color = scheme.onSurfaceVariant,
                     )
@@ -219,14 +220,14 @@ private fun PermissionRow(
         if (granted) {
             Icon(
                 imageVector = Icons.Rounded.Check,
-                contentDescription = "已授权",
+                contentDescription = stringResource(R.string.permission_granted),
                 tint = checkColor,
                 modifier = Modifier.size(24.dp),
             )
         } else {
             TextButton(onClick = onAction) {
                 Text(
-                    text = "授权",
+                    text = stringResource(R.string.permission_allow),
                     fontWeight = FontWeight.Bold,
                     color = if (dark) scheme.primary else scheme.primary,
                     fontSize = 14.sp,

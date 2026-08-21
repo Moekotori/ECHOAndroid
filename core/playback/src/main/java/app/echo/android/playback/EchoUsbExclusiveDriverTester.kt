@@ -31,9 +31,9 @@ class EchoUsbExclusiveDriverTester(context: Context) {
             when (result.state) {
                 UsbExclusiveOutputState.Ready ->
                     if (format?.endpointTransferType == UsbEndpointTransferType.Isochronous) {
-                        "Claimed: UAC interface ${format.interfaceNumber}:${format.alternateSetting}, endpoint=$endpoint, target=$target; native isochronous writer is still required"
+                        "Ready: exclusive isochronous writer on interface ${format.interfaceNumber}:${format.alternateSetting}, endpoint=$endpoint, target=$target"
                     } else {
-                        "Ready: claimed UAC interface ${format?.interfaceNumber}:${format?.alternateSetting}, endpoint=$endpoint, target=$target"
+                        "Ready: exclusive bulk writer on interface ${format?.interfaceNumber}:${format?.alternateSetting}, endpoint=$endpoint, target=$target"
                     }
                 UsbExclusiveOutputState.PermissionDenied ->
                     "Permission denied: enable USB exclusive and allow ECHO in the system USB dialog"

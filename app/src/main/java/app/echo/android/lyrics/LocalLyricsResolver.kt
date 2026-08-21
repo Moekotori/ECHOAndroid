@@ -6,6 +6,7 @@ import android.os.Build
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import app.echo.android.data.LibraryTrackEntity
+import app.echo.android.model.i18n.echoText
 import app.echo.android.model.lyrics.EchoLyrics
 import java.io.File
 
@@ -28,14 +29,33 @@ class LocalLyricsResolver(
     fun importFromUri(uri: Uri): EchoLyrics {
         val sourceLabel = displayName(uri) ?: uri.lastPathSegment
         val text = readText(uri)
-            ?: throw IllegalArgumentException("无法读取歌词文件，请确认文件权限或编码")
+            ?: throw IllegalArgumentException(
+                echoText(
+                    en = "Could not read the lyrics file. Check permissions or encoding",
+                    zh = "无法读取歌词文件，请确认文件权限或编码",
+                    ja = "歌詞ファイルを読み込めません。権限または文字コードを確認してください",
+                ),
+            )
         val lyrics = runCatching { EchoLyricsParser.parse(text, sourceLabel = sourceLabel) }
             .getOrElse { error ->
-                throw IllegalArgumentException("歌词解析失败：${error.readableMessage()}", error)
+                throw IllegalArgumentException(
+                    echoText(
+                        en = "Lyrics parsing failed: ${error.readableMessage()}",
+                        zh = "歌词解析失败：${error.readableMessage()}",
+                        ja = "歌詞の解析に失敗しました：${error.readableMessage()}",
+                    ),
+                    error,
+                )
             }
         return lyrics
             .takeIf { it.lines.isNotEmpty() }
-            ?: throw IllegalArgumentException("歌词文件为空，或不是支持的文本歌词格式")
+            ?: throw IllegalArgumentException(
+                echoText(
+                    en = "The lyrics file is empty or is not a supported text lyrics format",
+                    zh = "歌词文件为空，或不是支持的文本歌词格式",
+                    ja = "歌詞ファイルが空か、対応していないテキスト歌詞形式です",
+                ),
+            )
     }
 
     private fun loadFromFileUri(contentUri: String, candidates: List<String>): EchoLyrics? {
@@ -133,7 +153,11 @@ class LocalLyricsResolver(
             root.message?.takeIf { it.isNotBlank() }
                 ?: root.javaClass.simpleName.takeIf { it.isNotBlank() }
         }
-            ?: "未知错误"
+            ?: echoText(
+                en = "Unknown error",
+                zh = "未知错误",
+                ja = "不明なエラー",
+            )
 
     private tailrec fun Throwable.rootCause(): Throwable =
         cause?.takeIf { it !== this }?.rootCause() ?: this

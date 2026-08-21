@@ -57,6 +57,8 @@ import app.echo.android.design.EchoContentMaxWidth
 import app.echo.android.design.EchoGlassInk
 import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.LocalEchoDarkTheme
+import app.echo.android.design.displayMetadataOrUnknown
+import app.echo.android.design.echoString
 import app.echo.android.design.formatDuration
 import app.echo.android.design.rememberArtworkPalette
 import app.echo.android.model.library.AlbumSummary
@@ -107,6 +109,9 @@ internal fun AlbumDetailPage(
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
+    onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
+    onPlayNext: ((EchoTrack) -> Unit)? = null,
+    onEnqueue: ((EchoTrack) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val palette = rememberArtworkPalette(album.artworkUri, seedKey = album.albumKey)
@@ -157,13 +162,13 @@ internal fun AlbumDetailPage(
 
             when {
                 tracks.loadState.refresh is LoadState.Loading -> item(key = "loading") {
-                    AlbumDetailNotice("正在加载曲目...")
+                    AlbumDetailNotice(echoString(en = "Loading tracks...", zh = "正在加载曲目...", ja = "曲を読み込み中..."))
                 }
                 tracks.loadState.refresh is LoadState.Error -> item(key = "error") {
-                    AlbumDetailNotice("曲目加载失败。")
+                    AlbumDetailNotice(echoString(en = "Failed to load tracks.", zh = "曲目加载失败。", ja = "曲の読み込みに失敗しました。"))
                 }
                 tracks.itemCount == 0 -> item(key = "empty") {
-                    AlbumDetailNotice("暂无曲目。")
+                    AlbumDetailNotice(echoString(en = "No tracks yet.", zh = "暂无曲目。", ja = "曲はまだありません。"))
                 }
                 else -> items(
                     count = tracks.itemCount,
@@ -185,6 +190,7 @@ internal fun AlbumDetailPage(
                                 onImportLyrics = onImportLyrics,
                                 onPickArtwork = onPickArtwork,
                                 onMatchNeteaseMetadata = onMatchNeteaseMetadata,
+                                onAddToPlaylist = onAddToPlaylist,
                             )
                         }
                     }
@@ -255,7 +261,7 @@ internal fun AlbumDetailListPage(
 
             if (tracks.isEmpty()) {
                 item(key = "empty") {
-                    AlbumDetailNotice("暂无曲目。")
+                    AlbumDetailNotice(echoString(en = "No tracks yet.", zh = "暂无曲目。", ja = "曲はまだありません。"))
                 }
             } else {
                 itemsIndexed(
@@ -297,6 +303,7 @@ internal fun ArtistDetailPage(
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
+    onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val palette = rememberArtworkPalette(artist.artworkUri, seedKey = artist.artistKey)
@@ -351,13 +358,13 @@ internal fun ArtistDetailPage(
 
             when {
                 tracks.loadState.refresh is LoadState.Loading -> item(key = "loading") {
-                    AlbumDetailNotice("正在加载曲目...")
+                    AlbumDetailNotice(echoString(en = "Loading tracks...", zh = "正在加载曲目...", ja = "曲を読み込み中..."))
                 }
                 tracks.loadState.refresh is LoadState.Error -> item(key = "error") {
-                    AlbumDetailNotice("曲目加载失败。")
+                    AlbumDetailNotice(echoString(en = "Failed to load tracks.", zh = "曲目加载失败。", ja = "曲の読み込みに失敗しました。"))
                 }
                 tracks.itemCount == 0 -> item(key = "empty") {
-                    AlbumDetailNotice("暂无曲目。")
+                    AlbumDetailNotice(echoString(en = "No tracks yet.", zh = "暂无曲目。", ja = "曲はまだありません。"))
                 }
                 else -> items(
                     count = tracks.itemCount,
@@ -379,6 +386,7 @@ internal fun ArtistDetailPage(
                                 onImportLyrics = onImportLyrics,
                                 onPickArtwork = onPickArtwork,
                                 onMatchNeteaseMetadata = onMatchNeteaseMetadata,
+                                onAddToPlaylist = onAddToPlaylist,
                             )
                         }
                     }
@@ -453,7 +461,7 @@ internal fun ArtistDetailListPage(
 
             if (tracks.isEmpty()) {
                 item(key = "empty") {
-                    AlbumDetailNotice("暂无曲目。")
+                    AlbumDetailNotice(echoString(en = "No tracks yet.", zh = "暂无曲目。", ja = "曲はまだありません。"))
                 }
             } else {
                 itemsIndexed(
@@ -557,7 +565,7 @@ private fun ArtistHero(artist: ArtistSummary, palette: ArtworkPalette) {
         )
         Spacer(Modifier.height(20.dp))
         Text(
-            artist.name,
+            displayMetadataOrUnknown(artist.name, unknownArtistLabel()),
             color = colors.content,
             style = MaterialTheme.typography.headlineSmall.copy(shadow = AlbumTextShadow),
             fontWeight = FontWeight.Bold,
@@ -595,7 +603,7 @@ private fun AlbumDetailTopBar(onBack: () -> Unit) {
         ) {
             Icon(
                 Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = "返回",
+                contentDescription = echoString(en = "Back", zh = "返回", ja = "戻る"),
                 tint = colors.content,
                 modifier = Modifier.size(22.dp),
             )
@@ -629,7 +637,7 @@ private fun AlbumHero(
         )
         Spacer(Modifier.height(20.dp))
         Text(
-            album.title,
+            displayMetadataOrUnknown(album.title, unknownAlbumLabel()),
             color = titleColor,
             style = MaterialTheme.typography.headlineSmall.copy(
                 shadow = if (onArtworkBackground) AlbumTextShadow else null,
@@ -641,7 +649,7 @@ private fun AlbumHero(
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            album.albumArtist ?: album.artist ?: "未知艺术家",
+            displayMetadataOrUnknown(album.albumArtist ?: album.artist, unknownArtistLabel()),
             color = artistColor,
             style = MaterialTheme.typography.titleMedium.copy(
                 shadow = if (onArtworkBackground) AlbumTextShadow else null,
@@ -679,7 +687,7 @@ private fun AlbumActionBar(
     ) {
         AlbumDetailActionButton(
             icon = Icons.Rounded.PlayArrow,
-            label = "播放全部",
+            label = echoString(en = "Play all", zh = "播放全部", ja = "すべて再生"),
             iconSize = 24.dp,
             contentColor = actionContent,
             containerColor = colors.elevatedSurface,
@@ -689,7 +697,7 @@ private fun AlbumActionBar(
         )
         AlbumDetailActionButton(
             icon = Icons.Rounded.Shuffle,
-            label = "随机播放",
+            label = echoString(en = "Shuffle", zh = "随机播放", ja = "シャッフル"),
             iconSize = 22.dp,
             contentColor = actionContent,
             containerColor = colors.elevatedSurface,
@@ -868,13 +876,13 @@ private fun AlbumTracksHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            "曲目",
+            echoString(en = "Tracks", zh = "曲目", ja = "曲"),
             color = resolvedTitleColor,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
         )
         Text(
-            "$count 首",
+            libraryTrackCountLabel(count),
             color = resolvedMetaColor,
             style = MaterialTheme.typography.labelLarge,
         )
@@ -887,58 +895,74 @@ private data class DetailInsight(
     val secondary: String,
 )
 
+@Composable
 private fun sourceInsight(tracks: List<EchoTrack>): DetailInsight {
-    val sourceLabel = tracks
+    val resolvedSource = tracks
         .map { it.source.id }
         .distinct()
         .singleOrNull()
-        ?.let(::sourceLabel)
-        ?: if (tracks.isEmpty()) "本机媒体库" else "多来源"
-    val secondary = if (tracks.isEmpty()) "等待曲目信息" else "${tracks.size} 首"
-    return DetailInsight("来源", sourceLabel, secondary)
+        ?.let { sourceLabel(it) }
+        ?: if (tracks.isEmpty()) {
+            echoString(en = "Local library", zh = "本机媒体库", ja = "ローカルライブラリ")
+        } else {
+            echoString(en = "Multiple sources", zh = "多来源", ja = "複数のソース")
+        }
+    val secondary = if (tracks.isEmpty()) {
+        echoString(en = "Waiting for track info", zh = "等待曲目信息", ja = "曲情報を待っています")
+    } else {
+        libraryTrackCountLabel(tracks.size)
+    }
+    return DetailInsight(echoString(en = "Source", zh = "来源", ja = "ソース"), resolvedSource, secondary)
 }
 
+@Composable
 private fun albumInfoInsight(album: AlbumSummary, tracks: List<EchoTrack>): DetailInsight {
-    val primary = album.albumArtist ?: album.artist ?: "未知艺术家"
+    val primary = displayMetadataOrUnknown(album.albumArtist ?: album.artist, unknownArtistLabel())
     val year = album.year?.takeIf { it > 0 }?.toString()
     val discs = tracks.mapNotNull { it.discNumber?.takeIf { disc -> disc > 0 } }.distinct().size
     val secondary = buildList {
         year?.let { add(it) }
-        add("${album.trackCount} 首")
-        if (discs > 1) add("$discs 碟")
+        add(libraryTrackCountLabel(album.trackCount))
+        if (discs > 1) {
+            add(echoString(en = "$discs discs", zh = "$discs 碟", ja = "$discs 枚"))
+        }
         if (album.durationMs > 0L) add(readableDuration(album.durationMs))
     }.joinToString(" · ")
-    return DetailInsight("信息", primary, secondary)
+    return DetailInsight(echoString(en = "Info", zh = "信息", ja = "情報"), primary, secondary)
 }
 
+@Composable
 private fun artistInfoInsight(artist: ArtistSummary, tracks: List<EchoTrack>): DetailInsight {
     val formats = tracks.mapNotNull { formatMimeType(it.mimeType) }.distinct().take(2)
-    val primary = "${artist.albumCount.coerceAtLeast(0)} 张专辑"
+    val primary = libraryAlbumCountLabel(artist.albumCount.coerceAtLeast(0))
     val secondary = buildList {
-        add("${artist.trackCount} 首")
+        add(libraryTrackCountLabel(artist.trackCount))
         if (artist.durationMs > 0L) add(readableDuration(artist.durationMs))
         if (formats.isNotEmpty()) add(formats.joinToString(" / "))
     }.joinToString(" · ")
-    return DetailInsight("信息", primary, secondary)
+    return DetailInsight(echoString(en = "Info", zh = "信息", ja = "情報"), primary, secondary)
 }
 
+@Composable
 private fun formatInsight(tracks: List<EchoTrack>): DetailInsight {
     val formats = tracks.mapNotNull { formatMimeType(it.mimeType) }.distinct().take(3)
-    val primary = formats.takeIf { it.isNotEmpty() }?.joinToString(" / ") ?: "格式待解析"
+    val primary = formats.takeIf { it.isNotEmpty() }?.joinToString(" / ")
+        ?: echoString(en = "Format pending", zh = "格式待解析", ja = "フォーマット未解析")
     val size = tracks.sumOf { it.sizeBytes }.takeIf { it > 0L }?.let(::formatFileSize)
     val sampleRate = formatSampleRates(tracks.mapNotNull { it.sampleRateHz?.takeIf { hz -> hz > 0 } }.distinct())
     val secondary = buildList {
         size?.let { add(it) }
-        add(sampleRate ?: "采样率待解析")
+        add(sampleRate ?: echoString(en = "Sample rate pending", zh = "采样率待解析", ja = "サンプリングレート未解析"))
     }.joinToString(" · ")
-    return DetailInsight("格式", primary, secondary)
+    return DetailInsight(echoString(en = "Format", zh = "格式", ja = "フォーマット"), primary, secondary)
 }
 
+@Composable
 private fun sourceLabel(sourceId: String): String = when (sourceId.lowercase()) {
-    "mediastore" -> "本机媒体库"
+    "mediastore" -> echoString(en = "Local library", zh = "本机媒体库", ja = "ローカルライブラリ")
     "subsonic" -> "Subsonic / Navidrome"
     "webdav" -> "WebDAV"
-    "unknown" -> "未知来源"
+    "unknown" -> echoString(en = "Unknown source", zh = "未知来源", ja = "不明なソース")
     else -> when {
         sourceId.startsWith("subsonic:", ignoreCase = true) -> "Subsonic / Navidrome"
         sourceId.startsWith("webdav:", ignoreCase = true) -> "WebDAV"
@@ -996,9 +1020,10 @@ private fun formatFileSize(bytes: Long): String {
     }
 }
 
+@Composable
 private fun readableDuration(durationMs: Long): String {
     val minutes = (durationMs / 60000L).toInt()
-    return if (minutes >= 1) "$minutes 分钟" else formatDuration(durationMs)
+    return if (minutes >= 1) libraryMinutesLabel(minutes) else formatDuration(durationMs)
 }
 
 @Composable
@@ -1012,6 +1037,7 @@ private fun AlbumTrackRow(
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
+    onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
 ) {
     val colors = rememberDetailGlassColors()
     TrackContextMenu(
@@ -1021,6 +1047,7 @@ private fun AlbumTrackRow(
         onImportLyrics = onImportLyrics,
         onPickArtwork = onPickArtwork,
         onMatchNeteaseMetadata = onMatchNeteaseMetadata,
+        onAddToPlaylist = onAddToPlaylist,
         modifier = Modifier.fillMaxWidth(),
     ) { pressModifier ->
         Row(
@@ -1053,22 +1080,20 @@ private fun AlbumTrackRow(
             )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    track.title,
+                    displayMetadataOrUnknown(track.title, unknownTrackLabel()),
                     color = colors.content,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                track.artist.takeIf { it.isNotBlank() }?.let { artist ->
-                    Text(
-                        artist,
-                        color = colors.muted,
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+                Text(
+                    displayMetadataOrUnknown(track.artist, unknownArtistLabel()),
+                    color = colors.muted,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             Text(
                 formatDuration(track.durationMs),
@@ -1092,24 +1117,26 @@ private fun AlbumDetailNotice(message: String) {
     }
 }
 
+@Composable
 private fun albumMetaLine(album: AlbumSummary): String {
     val parts = mutableListOf<String>()
     album.year?.takeIf { it > 0 }?.let { parts.add(it.toString()) }
-    parts.add("${album.trackCount} 首")
+    parts.add(libraryTrackCountLabel(album.trackCount))
     if (album.durationMs > 0L) {
         val minutes = (album.durationMs / 60000L).toInt()
-        parts.add(if (minutes >= 1) "$minutes 分钟" else formatDuration(album.durationMs))
+        parts.add(if (minutes >= 1) libraryMinutesLabel(minutes) else formatDuration(album.durationMs))
     }
     return parts.joinToString(" · ")
 }
 
+@Composable
 private fun artistMetaLine(artist: ArtistSummary): String {
     val parts = mutableListOf<String>()
-    if (artist.albumCount > 0) parts.add("${artist.albumCount} 张专辑")
-    parts.add("${artist.trackCount} 首")
+    if (artist.albumCount > 0) parts.add(libraryAlbumCountLabel(artist.albumCount))
+    parts.add(libraryTrackCountLabel(artist.trackCount))
     if (artist.durationMs > 0L) {
         val minutes = (artist.durationMs / 60000L).toInt()
-        parts.add(if (minutes >= 1) "$minutes 分钟" else formatDuration(artist.durationMs))
+        parts.add(if (minutes >= 1) libraryMinutesLabel(minutes) else formatDuration(artist.durationMs))
     }
     return parts.joinToString(" · ")
 }

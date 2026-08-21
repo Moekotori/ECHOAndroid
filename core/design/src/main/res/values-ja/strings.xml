@@ -1,0 +1,8 @@
+<resources>
+    <string name="chrome_badge_mobile">モバイル</string>
+    <string name="chrome_brand">ECHO モバイル</string>
+    <string name="metadata_unknown_artist">不明なアーティスト</string>
+    <string name="metadata_unknown_album">不明なアルバム</string>
+    <string name="metadata_unknown_track">不明な曲</string>
+    <string name="metadata_not_provided">未設定</string>
+</resources>

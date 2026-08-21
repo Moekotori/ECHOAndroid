@@ -65,6 +65,80 @@ internal object LibraryTrackQueryBuilder {
         return sql.toString()
     }
 
+    fun buildTrackQueueSql(
+        query: String,
+        useFts: Boolean,
+        localSources: Boolean,
+        limit: Int,
+    ): String {
+        val sql = StringBuilder()
+        sql.append("SELECT library_tracks.* FROM library_tracks")
+        val trimmed = query.trim()
+        val sourceSql = if (localSources) {
+            LibraryScanPolicy.LocalSourceSql
+        } else {
+            LibraryScanPolicy.RemoteSourceSql
+        }
+        if (trimmed.isNotBlank() && useFts) {
+            sql.appendLine()
+            sql.append("JOIN library_tracks_fts ON library_tracks.id = library_tracks_fts.trackId")
+            sql.appendLine()
+            sql.append("WHERE library_tracks_fts MATCH ?")
+            sql.append(" AND ")
+            sql.append(sourceSql)
+            sql.appendLine()
+            sql.append(
+                """
+                ORDER BY
+                    CASE
+                        WHEN library_tracks.normalizedTitle LIKE ? THEN 0
+                        WHEN library_tracks.normalizedArtist LIKE ? THEN 1
+                        WHEN library_tracks.normalizedAlbum LIKE ? THEN 2
+                        ELSE 3
+                    END,
+                    library_tracks.title COLLATE NOCASE ASC
+                """.trimIndent(),
+            )
+        } else if (trimmed.isNotBlank()) {
+            sql.appendLine()
+            sql.append(
+                """
+                WHERE (library_tracks.normalizedTitle LIKE ?
+                   OR library_tracks.normalizedArtist LIKE ?
+                   OR library_tracks.normalizedAlbum LIKE ?
+                   OR library_tracks.pinyinTitle LIKE ?
+                   OR library_tracks.pinyinArtist LIKE ?
+                   OR library_tracks.pinyinAlbum LIKE ?)
+                """.trimIndent(),
+            )
+            sql.append(" AND ")
+            sql.append(sourceSql)
+            sql.appendLine()
+            sql.append(
+                """
+                ORDER BY
+                    CASE
+                        WHEN library_tracks.normalizedTitle LIKE ? THEN 0
+                        WHEN library_tracks.normalizedArtist LIKE ? THEN 1
+                        WHEN library_tracks.normalizedAlbum LIKE ? THEN 2
+                        ELSE 3
+                    END,
+                    library_tracks.title COLLATE NOCASE ASC
+                """.trimIndent(),
+            )
+        } else {
+            sql.appendLine()
+            sql.append("WHERE ")
+            sql.append(sourceSql)
+            sql.appendLine()
+            sql.append("ORDER BY library_tracks.title COLLATE NOCASE ASC")
+        }
+        sql.appendLine()
+        sql.append("LIMIT ")
+        sql.append(limit.coerceAtLeast(1))
+        return sql.toString()
+    }
+
     fun usesFtsMatchWithoutLeadingWildcardOr(sql: String): Boolean {
         val compact = sql.replace(Regex("\\s+"), " ")
         if (!compact.contains("MATCH ?", ignoreCase = true)) return false

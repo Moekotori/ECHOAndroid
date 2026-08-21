@@ -1,0 +1,7 @@
+[
+{
+  "directory": "F:/ECHOAndroid/core/usb-audio/.cxx/Debug/5p6f3b51/armeabi-v7a",
+  "command": "F:\\AndroidDev\\sdk\\ndk\\27.2.12479018\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang++.exe --target=armv7-none-linux-androideabi26 --sysroot=F:/AndroidDev/sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/windows-x86_64/sysroot -Decho_usb_isoc_EXPORTS -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -march=armv7-a -mthumb -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC -Wall -Wextra -O2 -fno-exceptions -fno-rtti -o CMakeFiles\\echo_usb_isoc.dir\\echo_usb_isoc.cpp.o -c F:\\ECHOAndroid\\core\\usb-audio\\src\\main\\cpp\\echo_usb_isoc.cpp",
+  "file": "F:\\ECHOAndroid\\core\\usb-audio\\src\\main\\cpp\\echo_usb_isoc.cpp"
+}
+]

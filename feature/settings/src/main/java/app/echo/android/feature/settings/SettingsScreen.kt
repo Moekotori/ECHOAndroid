@@ -39,6 +39,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import android.os.Build
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -49,6 +51,7 @@ import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.PageChrome
 import app.echo.android.model.playback.EchoPlaybackStatus
+import app.echo.android.model.settings.EchoAppLanguage
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
 import app.echo.android.model.settings.EchoPerformanceMode
 import kotlin.math.roundToInt
@@ -62,6 +65,8 @@ fun SettingsScreen(
     appVersionLabel: String,
     dynamicArtworkEnabled: Boolean,
     compactModeEnabled: Boolean,
+    dynamicColorEnabled: Boolean,
+    playbackHapticsEnabled: Boolean,
     performanceMode: String,
     effectivePerformanceMode: String,
     trackAudioInfoTagsVisible: Boolean,
@@ -85,6 +90,7 @@ fun SettingsScreen(
     lyricsFontScale: Float,
     importedFontUri: String?,
     themeMode: String,
+    appLanguage: String,
     scheduledDarkModeEnabled: Boolean,
     scheduledDarkStartMinute: Int,
     scheduledDarkEndMinute: Int,
@@ -99,6 +105,8 @@ fun SettingsScreen(
     lastFmSharedSecretLocked: Boolean,
     onDynamicArtworkEnabledChange: (Boolean) -> Unit,
     onCompactModeEnabledChange: (Boolean) -> Unit,
+    onDynamicColorEnabledChange: (Boolean) -> Unit,
+    onPlaybackHapticsEnabledChange: (Boolean) -> Unit,
     onPerformanceModeChange: (String) -> Unit,
     onTrackAudioInfoTagsVisibleChange: (Boolean) -> Unit,
     onPcHandoffEnabledChange: (Boolean) -> Unit,
@@ -124,6 +132,7 @@ fun SettingsScreen(
     onImportLyricsFont: () -> Unit,
     onClearImportedFont: () -> Unit,
     onThemeModeChange: (String) -> Unit,
+    onAppLanguageChange: (String) -> Unit,
     onScheduledDarkModeEnabledChange: (Boolean) -> Unit,
     onScheduledDarkStartMinuteChange: (Int) -> Unit,
     onScheduledDarkEndMinuteChange: (Int) -> Unit,
@@ -150,9 +159,9 @@ fun SettingsScreen(
     var lastFmSecretInput by rememberSaveable(lastFmSharedSecret) { mutableStateOf(lastFmSharedSecret.orEmpty()) }
 
     PageChrome(
-        title = "设置",
-        subtitle = "移动端偏好与 ECHO 互联",
-        badge = "设置",
+        title = stringResource(R.string.settings_title),
+        subtitle = stringResource(R.string.settings_subtitle),
+        badge = stringResource(R.string.settings_badge),
         scrollable = true,
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(sectionGap)) {
@@ -164,27 +173,42 @@ fun SettingsScreen(
                 dynamicArtwork = dynamicArtworkEnabled,
             )
             SettingsSectionCard(
-                title = "主题",
+                title = stringResource(R.string.settings_section_theme),
                 collapsible = true,
                 expanded = themeSectionExpanded,
                 onExpandedChange = { themeSectionExpanded = it },
             ) {
                 SettingsChoiceGroupRow(
-                    title = "显示模式",
+                    title = stringResource(R.string.settings_display_mode),
                     detail = themeDetail(themeMode),
                     options = themeOptions(),
                     selectedValue = themeMode,
                     onOptionSelected = onThemeModeChange,
                 )
                 SettingsSwitchRow(
-                    title = "定时开启深色模式",
-                    detail = "${formatMinuteOfDay(scheduledDarkStartMinute)} - ${formatMinuteOfDay(scheduledDarkEndMinute)} 自动使用深色",
+                    title = stringResource(R.string.settings_dynamic_color),
+                    detail = if (Build.VERSION.SDK_INT >= 31) {
+                        stringResource(R.string.settings_dynamic_color_detail)
+                    } else {
+                        stringResource(R.string.settings_dynamic_color_unavailable)
+                    },
+                    checked = dynamicColorEnabled && Build.VERSION.SDK_INT >= 31,
+                    onCheckedChange = onDynamicColorEnabledChange,
+                    enabled = Build.VERSION.SDK_INT >= 31,
+                )
+                SettingsSwitchRow(
+                    title = stringResource(R.string.settings_scheduled_dark),
+                    detail = stringResource(
+                        R.string.settings_scheduled_dark_detail,
+                        formatMinuteOfDay(scheduledDarkStartMinute),
+                        formatMinuteOfDay(scheduledDarkEndMinute),
+                    ),
                     checked = scheduledDarkModeEnabled,
                     onCheckedChange = onScheduledDarkModeEnabledChange,
                 )
                 if (scheduledDarkModeEnabled) {
                     SettingsSliderRow(
-                        title = "深色开始时间",
+                        title = stringResource(R.string.settings_dark_start),
                         detail = formatMinuteOfDay(scheduledDarkStartMinute),
                         value = scheduledDarkStartMinute.toFloat(),
                         valueRange = 0f..1439f,
@@ -192,7 +216,7 @@ fun SettingsScreen(
                         onValueChange = { onScheduledDarkStartMinuteChange(it.roundToQuarterHour()) },
                     )
                     SettingsSliderRow(
-                        title = "深色结束时间",
+                        title = stringResource(R.string.settings_dark_end),
                         detail = formatMinuteOfDay(scheduledDarkEndMinute),
                         value = scheduledDarkEndMinute.toFloat(),
                         valueRange = 0f..1439f,
@@ -202,33 +226,40 @@ fun SettingsScreen(
                 }
             }
             SettingsSectionCard(
-                title = "界面",
+                title = stringResource(R.string.settings_section_interface),
                 collapsible = true,
                 expanded = interfaceSectionExpanded,
                 onExpandedChange = { interfaceSectionExpanded = it },
             ) {
                 SettingsChoiceGroupRow(
-                    title = "性能模式",
+                    title = stringResource(R.string.settings_language),
+                    detail = languageDetail(appLanguage),
+                    options = languageOptions(),
+                    selectedValue = appLanguage,
+                    onOptionSelected = onAppLanguageChange,
+                )
+                SettingsChoiceGroupRow(
+                    title = stringResource(R.string.settings_performance_mode),
                     detail = performanceModeDetail(performanceMode, effectivePerformanceMode),
                     options = performanceModeOptions(),
                     selectedValue = performanceMode,
                     onOptionSelected = onPerformanceModeChange,
                 )
                 SettingsSwitchRow(
-                    title = "动态封面氛围",
-                    detail = "播放页和迷你播放器跟随封面微调背景",
+                    title = stringResource(R.string.settings_dynamic_artwork),
+                    detail = stringResource(R.string.settings_dynamic_artwork_detail),
                     checked = dynamicArtworkEnabled,
                     onCheckedChange = onDynamicArtworkEnabledChange,
                 )
                 SettingsSwitchRow(
-                    title = "紧凑显示",
-                    detail = "为小屏幕减少卡片间距",
+                    title = stringResource(R.string.settings_compact_mode),
+                    detail = stringResource(R.string.settings_compact_mode_detail),
                     checked = compactModeEnabled,
                     onCheckedChange = onCompactModeEnabledChange,
                 )
             }
             SettingsSectionCard(
-                title = "自定义背景",
+                title = stringResource(R.string.settings_section_background),
                 collapsible = true,
                 expanded = customBackgroundExpanded,
                 onExpandedChange = { customBackgroundExpanded = it },
@@ -243,14 +274,14 @@ fun SettingsScreen(
                 },
             ) {
                 SettingsDisclosureRow(
-                    title = "高级设置",
-                    detail = "模糊、亮度、覆盖和背景缩放",
+                    title = stringResource(R.string.settings_advanced),
+                    detail = stringResource(R.string.settings_advanced_detail),
                     expanded = customBackgroundAdvancedExpanded,
                     onExpandedChange = { customBackgroundAdvancedExpanded = it },
                 )
                 if (customBackgroundAdvancedExpanded) {
                     SettingsSliderRow(
-                        title = "毛玻璃模糊",
+                        title = stringResource(R.string.settings_blur),
                         detail = "${customBackgroundBlur.roundToInt()} dp",
                         value = customBackgroundBlur,
                         valueRange = 0f..80f,
@@ -258,7 +289,7 @@ fun SettingsScreen(
                         onValueChange = onCustomBackgroundBlurChange,
                     )
                     SettingsSliderRow(
-                        title = "背景亮度",
+                        title = stringResource(R.string.settings_brightness),
                         detail = "${(customBackgroundBrightness * 100f).roundToInt()}%",
                         value = customBackgroundBrightness,
                         valueRange = 0.35f..1.15f,
@@ -266,7 +297,7 @@ fun SettingsScreen(
                         onValueChange = onCustomBackgroundBrightnessChange,
                     )
                     SettingsSliderRow(
-                        title = "玻璃覆盖",
+                        title = stringResource(R.string.settings_glass),
                         detail = "${(customBackgroundGlass * 100f).roundToInt()}%",
                         value = customBackgroundGlass,
                         valueRange = 0.08f..0.90f,
@@ -274,7 +305,7 @@ fun SettingsScreen(
                         onValueChange = onCustomBackgroundGlassChange,
                     )
                     SettingsSliderRow(
-                        title = "背景缩放",
+                        title = stringResource(R.string.settings_scale),
                         detail = "${(customBackgroundScale * 100f).roundToInt()}%",
                         value = customBackgroundScale,
                         valueRange = 1.00f..1.40f,
@@ -284,13 +315,13 @@ fun SettingsScreen(
                 }
             }
             SettingsSectionCard(
-                title = "字体",
+                title = stringResource(R.string.settings_section_fonts),
                 collapsible = true,
                 expanded = fontSectionExpanded,
                 onExpandedChange = { fontSectionExpanded = it },
             ) {
                 SettingsChoiceGroupRow(
-                    title = "界面字体",
+                    title = stringResource(R.string.settings_ui_font),
                     detail = fontDetail(uiFontFamily, importedFontUri),
                     options = fontOptions(importedFontUri),
                     selectedValue = uiFontFamily,
@@ -303,7 +334,7 @@ fun SettingsScreen(
                     },
                 )
                 SettingsSliderRow(
-                    title = "界面字号",
+                    title = stringResource(R.string.settings_ui_font_size),
                     detail = "${(uiFontScale * 100f).roundToInt()}%",
                     value = uiFontScale,
                     valueRange = 0.88f..1.18f,
@@ -311,7 +342,7 @@ fun SettingsScreen(
                     onValueChange = onUiFontScaleChange,
                 )
                 SettingsSliderRow(
-                    title = "界面密度",
+                    title = stringResource(R.string.settings_ui_density),
                     detail = "${(uiDensityScale * 100f).roundToInt()}%",
                     value = uiDensityScale,
                     valueRange = 0.90f..1.12f,
@@ -319,7 +350,7 @@ fun SettingsScreen(
                     onValueChange = onUiDensityScaleChange,
                 )
                 SettingsChoiceGroupRow(
-                    title = "歌词字体",
+                    title = stringResource(R.string.settings_lyrics_font),
                     detail = fontDetail(lyricsFontFamily, importedFontUri),
                     options = fontOptions(importedFontUri),
                     selectedValue = lyricsFontFamily,
@@ -332,7 +363,7 @@ fun SettingsScreen(
                     },
                 )
                 SettingsSliderRow(
-                    title = "歌词字号",
+                    title = stringResource(R.string.settings_lyrics_font_size),
                     detail = "${(lyricsFontScale * 100f).roundToInt()}%",
                     value = lyricsFontScale,
                     valueRange = 0.82f..1.28f,
@@ -340,72 +371,93 @@ fun SettingsScreen(
                     onValueChange = onLyricsFontScaleChange,
                 )
                 SettingsActionRow(
-                    title = "重新选择字体文件",
-                    detail = if (importedFontUri.isNullOrBlank()) "导入 .ttf / .otf 文件" else "当前导入 ${importedFontUri.substringAfterLast('/').takeLast(28)}",
+                    title = stringResource(R.string.settings_reselect_font),
+                    detail = if (importedFontUri.isNullOrBlank()) {
+                        stringResource(R.string.settings_import_font_detail)
+                    } else {
+                        stringResource(
+                            R.string.settings_import_font_current,
+                            importedFontUri.substringAfterLast('/').takeLast(28),
+                        )
+                    },
                     onClick = onImportUiFont,
                 )
                 SettingsActionRow(
-                    title = "清除导入字体",
-                    detail = if (importedFontUri.isNullOrBlank()) "没有导入字体" else "界面和歌词会回退到系统字体",
+                    title = stringResource(R.string.settings_clear_font),
+                    detail = if (importedFontUri.isNullOrBlank()) {
+                        stringResource(R.string.settings_clear_font_empty)
+                    } else {
+                        stringResource(R.string.settings_clear_font_detail)
+                    },
                     enabled = !importedFontUri.isNullOrBlank(),
                     onClick = onClearImportedFont,
                 )
             }
             SettingsSectionCard(
-                title = "播放",
+                title = stringResource(R.string.settings_section_playback),
                 collapsible = true,
                 expanded = playbackSectionExpanded,
                 onExpandedChange = { playbackSectionExpanded = it },
             ) {
                 SettingsSwitchRow(
-                    title = "歌词同步工具",
-                    detail = "在歌词页显示导入、格式和偏移微调面板",
+                    title = stringResource(R.string.settings_lyrics_sync_tools),
+                    detail = stringResource(R.string.settings_lyrics_sync_tools_detail),
                     checked = showLyricsControlDeck,
                     onCheckedChange = onShowLyricsControlDeckChange,
                 )
                 SettingsSwitchRow(
-                    title = "网络歌词",
-                    detail = "无内嵌或本地歌词时自动尝试网易云和 LRCLIB",
+                    title = stringResource(R.string.settings_playback_haptics),
+                    detail = stringResource(R.string.settings_playback_haptics_detail),
+                    checked = playbackHapticsEnabled,
+                    onCheckedChange = onPlaybackHapticsEnabledChange,
+                )
+                SettingsSwitchRow(
+                    title = stringResource(R.string.settings_online_lyrics),
+                    detail = stringResource(R.string.settings_online_lyrics_detail),
                     checked = onlineLyricsEnabled,
                     onCheckedChange = onOnlineLyricsEnabledChange,
                 )
                 SettingsSwitchRow(
-                    title = "USB 独占输出",
+                    title = stringResource(R.string.settings_usb_exclusive),
                     detail = usbExclusiveDetail(status),
                     checked = usbExclusiveEnabled,
                     onCheckedChange = onUsbExclusiveEnabledChange,
                 )
                 SettingsSwitchRow(
-                    title = "启动时自动请求独占",
+                    title = stringResource(R.string.settings_usb_auto_request),
                     detail = if (usbExclusiveAutoRequestOnStartup) {
-                        "上次未关闭独占时，下次启动会自动请求 USB DAC"
+                        stringResource(R.string.settings_usb_auto_request_on)
                     } else {
-                        "下次启动不自动申请 USB 权限，设置会保持开启"
+                        stringResource(R.string.settings_usb_auto_request_off)
                     },
                     checked = usbExclusiveAutoRequestOnStartup,
                     onCheckedChange = onUsbExclusiveAutoRequestOnStartupChange,
                 )
                 SettingsActionRow(
-                    title = "媒体通知权限",
+                    title = stringResource(R.string.settings_notification_permission),
                     detail = if (notificationPermissionGranted) {
-                        "已授权，可显示播放控制通知"
+                        stringResource(R.string.settings_notification_granted)
                     } else {
-                        "未授权时锁屏通知和前台服务可能不可用"
+                        stringResource(R.string.settings_notification_denied)
                     },
-                    actionLabel = if (notificationPermissionGranted) "已开启" else "授权",
+                    actionLabel = if (notificationPermissionGranted) {
+                        stringResource(R.string.settings_on)
+                    } else {
+                        stringResource(R.string.settings_allow)
+                    },
                     enabled = !notificationPermissionGranted,
                     onClick = onRequestNotificationPermission,
                 )
                 SettingsActionRow(
-                    title = "测试 USB 独占驱动",
+                    title = stringResource(R.string.settings_test_usb),
                     detail = usbExclusiveTestDetail(status, usbExclusiveTestResult),
                     enabled = status.diagnostics.usbConnected,
-                    actionLabel = "测试",
+                    actionLabel = stringResource(R.string.settings_test),
                     onClick = onTestUsbExclusiveDriver,
                 )
             }
             SettingsSectionCard(
-                title = "互联",
+                title = stringResource(R.string.settings_section_connect),
                 collapsible = true,
                 expanded = connectSectionExpanded,
                 onExpandedChange = { connectSectionExpanded = it },
@@ -429,49 +481,53 @@ fun SettingsScreen(
                     onOpenApiAccounts = onOpenLastFmApiAccounts,
                 )
                 SettingsSwitchRow(
-                    title = "PC 接力入口",
-                    detail = "保留桌面端连接与远程控制入口",
+                    title = stringResource(R.string.settings_pc_handoff),
+                    detail = stringResource(R.string.settings_pc_handoff_detail),
                     checked = pcHandoffEnabled,
                     onCheckedChange = onPcHandoffEnabledChange,
                 )
                 SettingsSwitchRow(
                     title = "Discord Rich Presence",
                     detail = if (pcHandoffEnabled) {
-                        "通过 PC ECHO 把手机播放状态同步到 Discord"
+                        stringResource(R.string.settings_discord_detail_on)
                     } else {
-                        "需要先开启 PC 接力入口"
+                        stringResource(R.string.settings_discord_detail_off)
                     },
                     checked = discordPresenceViaPcEnabled,
                     onCheckedChange = onDiscordPresenceViaPcEnabledChange,
                 )
                 SettingsActionRow(
-                    title = "连接 PC ECHO",
-                    detail = if (pcHandoffEnabled) "管理配对和远程播放状态" else "PC 接力入口已关闭",
+                    title = stringResource(R.string.settings_connect_pc),
+                    detail = if (pcHandoffEnabled) {
+                        stringResource(R.string.settings_connect_pc_detail)
+                    } else {
+                        stringResource(R.string.settings_connect_pc_disabled)
+                    },
                     enabled = pcHandoffEnabled,
                     onClick = onOpenConnect,
                 )
             }
             SettingsSectionCard(
-                title = "曲库",
+                title = stringResource(R.string.settings_section_library),
                 collapsible = true,
                 expanded = librarySectionExpanded,
                 onExpandedChange = { librarySectionExpanded = it },
             ) {
                 SettingsSwitchRow(
-                    title = "音频格式标签",
-                    detail = "在歌曲列表显示 FLAC、192kHz 等小标签",
+                    title = stringResource(R.string.settings_audio_tags),
+                    detail = stringResource(R.string.settings_audio_tags_detail),
                     checked = trackAudioInfoTagsVisible,
                     onCheckedChange = onTrackAudioInfoTagsVisibleChange,
                 )
                 SettingsActionRow(
-                    title = "本地音乐",
-                    detail = "查看歌曲、专辑、艺术家和扫描入口",
+                    title = stringResource(R.string.settings_local_music),
+                    detail = stringResource(R.string.settings_local_music_detail),
                     onClick = onOpenLibrary,
                 )
             }
-            SettingsSectionCard(title = "关于") {
+            SettingsSectionCard(title = stringResource(R.string.settings_section_about)) {
                 SettingsInfoRow(
-                    title = "版本号",
+                    title = stringResource(R.string.settings_version),
                     detail = appVersionLabel,
                 )
             }
@@ -509,7 +565,7 @@ private fun LastFmSettingsPanel(
         if (apiKeyLocked) {
             SettingsActionRow(
                 title = "API key",
-                detail = "已内置，用户无需填写",
+                detail = stringResource(R.string.settings_lastfm_builtin),
                 enabled = false,
                 onClick = {},
             )
@@ -524,7 +580,7 @@ private fun LastFmSettingsPanel(
         if (sharedSecretLocked) {
             SettingsActionRow(
                 title = "Shared secret",
-                detail = "已内置，用户无需填写",
+                detail = stringResource(R.string.settings_lastfm_builtin),
                 enabled = false,
                 onClick = {},
             )
@@ -538,26 +594,34 @@ private fun LastFmSettingsPanel(
             )
         }
         SettingsActionRow(
-            title = if (connected) "重新授权 Last.fm" else "打开 Last.fm 授权网页",
-            detail = "在 Last.fm 网站登录并允许 ECHOAndroid 访问",
+            title = if (connected) {
+                stringResource(R.string.settings_lastfm_reauth)
+            } else {
+                stringResource(R.string.settings_lastfm_open_auth)
+            },
+            detail = stringResource(R.string.settings_lastfm_auth_detail),
             enabled = (apiKeyLocked || apiKey.isNotBlank()) && (sharedSecretLocked || sharedSecret.isNotBlank()),
             onClick = onStartWebAuth,
         )
         SettingsActionRow(
-            title = "完成网页授权",
-            detail = if (webAuthPending) "授权网页点 Allow 后回到这里完成连接" else "请先打开授权网页",
+            title = stringResource(R.string.settings_lastfm_complete_auth),
+            detail = if (webAuthPending) {
+                stringResource(R.string.settings_lastfm_complete_pending)
+            } else {
+                stringResource(R.string.settings_lastfm_complete_idle)
+            },
             enabled = webAuthPending,
             onClick = onCompleteWebAuth,
         )
         SettingsActionRow(
-            title = "查看 Last.fm API accounts",
-            detail = "在网页里查看已申请的 API key 和 shared secret",
+            title = stringResource(R.string.settings_lastfm_api_accounts),
+            detail = stringResource(R.string.settings_lastfm_api_accounts_detail),
             onClick = onOpenApiAccounts,
         )
         if (connected) {
             SettingsActionRow(
-                title = "断开 Last.fm",
-                detail = "清除本机 session key，保留 API key 方便下次连接",
+                title = stringResource(R.string.settings_lastfm_disconnect),
+                detail = stringResource(R.string.settings_lastfm_disconnect_detail),
                 onClick = onDisconnect,
             )
         }
@@ -638,12 +702,13 @@ private fun SettingsTextInputRow(
     }
 }
 
+@Composable
 private fun backgroundDetail(mode: String, uri: String?): String {
     val fileName = uri?.substringAfterLast('/')?.takeLast(28)
     return when {
-        mode == "image" && !fileName.isNullOrBlank() -> "图片背景：$fileName"
-        mode == "video" && !fileName.isNullOrBlank() -> "视频壁纸：$fileName"
-        else -> "正在使用默认 ECHO 背景"
+        mode == "image" && !fileName.isNullOrBlank() -> stringResource(R.string.settings_bg_image, fileName)
+        mode == "video" && !fileName.isNullOrBlank() -> stringResource(R.string.settings_bg_video, fileName)
+        else -> stringResource(R.string.settings_bg_default)
     }
 }
 
@@ -652,54 +717,88 @@ private data class SettingsChoiceOption(
     val label: String,
 )
 
+@Composable
 private fun themeOptions(): List<SettingsChoiceOption> = listOf(
-    SettingsChoiceOption("system", "同步手机"),
-    SettingsChoiceOption("light", "浅色"),
-    SettingsChoiceOption("dark", "深色"),
+    SettingsChoiceOption("system", stringResource(R.string.settings_theme_system)),
+    SettingsChoiceOption("light", stringResource(R.string.settings_theme_light)),
+    SettingsChoiceOption("dark", stringResource(R.string.settings_theme_dark)),
 )
 
+@Composable
 private fun themeDetail(mode: String): String =
     when (mode) {
-        "light" -> "始终使用浅色模式"
-        "dark" -> "始终使用深色模式"
-        else -> "跟随手机系统外观"
+        "light" -> stringResource(R.string.settings_theme_detail_light)
+        "dark" -> stringResource(R.string.settings_theme_detail_dark)
+        else -> stringResource(R.string.settings_theme_detail_system)
     }
 
-private fun performanceModeOptions(): List<SettingsChoiceOption> = listOf(
-    SettingsChoiceOption(EchoPerformanceMode.Auto.id, "自动"),
-    SettingsChoiceOption(EchoPerformanceMode.Balanced.id, "平衡"),
-    SettingsChoiceOption(EchoPerformanceMode.Lightweight.id, "轻量"),
-    SettingsChoiceOption(EchoPerformanceMode.HighPerformance.id, "性能"),
+@Composable
+private fun languageOptions(): List<SettingsChoiceOption> = listOf(
+    SettingsChoiceOption(EchoAppLanguage.System, stringResource(R.string.settings_language_system)),
+    SettingsChoiceOption(EchoAppLanguage.Chinese, stringResource(R.string.settings_language_zh)),
+    SettingsChoiceOption(EchoAppLanguage.English, stringResource(R.string.settings_language_en)),
+    SettingsChoiceOption(EchoAppLanguage.Japanese, stringResource(R.string.settings_language_ja)),
 )
 
+@Composable
+private fun languageDetail(mode: String): String =
+    when (EchoAppLanguage.fromId(mode)) {
+        EchoAppLanguage.Chinese -> stringResource(R.string.settings_language_detail_zh)
+        EchoAppLanguage.English -> stringResource(R.string.settings_language_detail_en)
+        EchoAppLanguage.Japanese -> stringResource(R.string.settings_language_detail_ja)
+        else -> stringResource(R.string.settings_language_detail_system)
+    }
+
+@Composable
+private fun performanceModeOptions(): List<SettingsChoiceOption> = listOf(
+    SettingsChoiceOption(EchoPerformanceMode.Auto.id, stringResource(R.string.settings_perf_auto)),
+    SettingsChoiceOption(EchoPerformanceMode.Balanced.id, stringResource(R.string.settings_perf_balanced)),
+    SettingsChoiceOption(EchoPerformanceMode.Lightweight.id, stringResource(R.string.settings_perf_lightweight)),
+    SettingsChoiceOption(EchoPerformanceMode.HighPerformance.id, stringResource(R.string.settings_perf_high)),
+)
+
+@Composable
 private fun performanceModeDetail(mode: String, effectiveMode: String): String {
     val effectiveLabel = when (EchoEffectivePerformanceMode.entries.firstOrNull { it.id == effectiveMode }) {
-        EchoEffectivePerformanceMode.Lightweight -> "当前轻量策略"
-        EchoEffectivePerformanceMode.HighPerformance -> "当前性能策略"
-        else -> "当前平衡策略"
+        EchoEffectivePerformanceMode.Lightweight -> stringResource(R.string.settings_perf_effective_light)
+        EchoEffectivePerformanceMode.HighPerformance -> stringResource(R.string.settings_perf_effective_high)
+        else -> stringResource(R.string.settings_perf_effective_balanced)
     }
     return when (EchoPerformanceMode.fromId(mode)) {
-        EchoPerformanceMode.Auto -> "$effectiveLabel；系统省电开启时自动轻量"
-        EchoPerformanceMode.Balanced -> "保持完整视觉和默认刷新策略"
-        EchoPerformanceMode.Lightweight -> "降低背景、封面、动画和扫描开销"
-        EchoPerformanceMode.HighPerformance -> "提高刷新率和动画完整度，保留视频背景与高质量封面"
+        EchoPerformanceMode.Auto -> stringResource(R.string.settings_perf_detail_auto, effectiveLabel)
+        EchoPerformanceMode.Balanced -> stringResource(R.string.settings_perf_detail_balanced)
+        EchoPerformanceMode.Lightweight -> stringResource(R.string.settings_perf_detail_lightweight)
+        EchoPerformanceMode.HighPerformance -> stringResource(R.string.settings_perf_detail_high)
     }
 }
 
+@Composable
 private fun fontOptions(importedFontUri: String?): List<SettingsChoiceOption> = buildList {
-    add(SettingsChoiceOption("system", "系统"))
-    add(SettingsChoiceOption("serif", "衬线"))
-    add(SettingsChoiceOption("monospace", "等宽"))
-    add(SettingsChoiceOption("imported", if (importedFontUri.isNullOrBlank()) "导入" else "导入字体"))
+    add(SettingsChoiceOption("system", stringResource(R.string.settings_font_system)))
+    add(SettingsChoiceOption("serif", stringResource(R.string.settings_font_serif)))
+    add(SettingsChoiceOption("monospace", stringResource(R.string.settings_font_mono)))
+    add(
+        SettingsChoiceOption(
+            "imported",
+            if (importedFontUri.isNullOrBlank()) {
+                stringResource(R.string.settings_font_import)
+            } else {
+                stringResource(R.string.settings_font_imported)
+            },
+        ),
+    )
 }
 
+@Composable
 private fun fontDetail(mode: String, importedFontUri: String?): String =
     when (mode) {
-        "outfit" -> "使用 Android 系统字体"
-        "serif" -> "使用系统衬线字体"
-        "monospace" -> "使用系统等宽字体"
-        "imported" -> importedFontUri?.substringAfterLast('/')?.takeLast(28)?.let { "使用导入字体：$it" } ?: "选择 .ttf / .otf 文件"
-        else -> "使用 Android 系统字体"
+        "outfit" -> stringResource(R.string.settings_font_detail_system)
+        "serif" -> stringResource(R.string.settings_font_detail_serif)
+        "monospace" -> stringResource(R.string.settings_font_detail_mono)
+        "imported" -> importedFontUri?.substringAfterLast('/')?.takeLast(28)?.let {
+            stringResource(R.string.settings_font_detail_imported, it)
+        } ?: stringResource(R.string.settings_font_detail_pick)
+        else -> stringResource(R.string.settings_font_detail_system)
     }
 
 private fun formatMinuteOfDay(value: Int): String {
@@ -743,7 +842,7 @@ private fun SettingsHeroCard(
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        status.track?.title ?: "本机播放就绪",
+                        status.track?.title ?: stringResource(R.string.settings_ready),
                         color = if (dark) Color.White.copy(alpha = 0.74f) else scheme.onSurfaceVariant,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -751,9 +850,9 @@ private fun SettingsHeroCard(
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(18.dp), modifier = Modifier.fillMaxWidth()) {
-                SettingsStatTile("歌曲", trackCount.toString(), Modifier.weight(1f))
-                SettingsStatTile("专辑", albumCount.toString(), Modifier.weight(1f))
-                SettingsStatTile("艺术家", artistCount.toString(), Modifier.weight(1f))
+                SettingsStatTile(stringResource(R.string.settings_tracks), trackCount.toString(), Modifier.weight(1f))
+                SettingsStatTile(stringResource(R.string.settings_albums), albumCount.toString(), Modifier.weight(1f))
+                SettingsStatTile(stringResource(R.string.settings_artists), artistCount.toString(), Modifier.weight(1f))
             }
         }
     }
@@ -856,7 +955,7 @@ private fun SettingsBackgroundSourceRow(
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                "背景来源",
+                stringResource(R.string.settings_bg_source),
                 color = if (dark) Color.White.copy(alpha = 0.94f) else scheme.onSurface,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
@@ -872,21 +971,21 @@ private fun SettingsBackgroundSourceRow(
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 BackgroundSourceAction(
-                    label = "图片",
+                    label = stringResource(R.string.settings_bg_image_label),
                     selected = mode == "image" && !uri.isNullOrBlank(),
                     enabled = true,
                     modifier = Modifier.weight(1f),
                     onClick = onPickImageBackground,
                 )
                 BackgroundSourceAction(
-                    label = "视频",
+                    label = stringResource(R.string.settings_bg_video_label),
                     selected = mode == "video" && !uri.isNullOrBlank(),
                     enabled = true,
                     modifier = Modifier.weight(1f),
                     onClick = onPickVideoBackground,
                 )
                 BackgroundSourceAction(
-                    label = "默认",
+                    label = stringResource(R.string.settings_bg_default_label),
                     selected = uri.isNullOrBlank(),
                     enabled = !uri.isNullOrBlank(),
                     modifier = Modifier.weight(1f),
@@ -935,9 +1034,10 @@ private fun SettingsSwitchRow(
     detail: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true,
 ) {
     SettingsRowShell(title = title, detail = detail) {
-        EchoSettingsSwitch(checked = checked, onCheckedChange = onCheckedChange)
+        EchoSettingsSwitch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
     }
 }
 
@@ -953,6 +1053,7 @@ private fun SettingsInfoRow(
 private fun EchoSettingsSwitch(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true,
 ) {
     val dark = LocalEchoDarkTheme.current
     val scheme = MaterialTheme.colorScheme
@@ -960,9 +1061,11 @@ private fun EchoSettingsSwitch(
         modifier = Modifier
             .size(width = 46.dp, height = 26.dp)
             .clip(RoundedCornerShape(18.dp))
+            .alpha(if (enabled) 1f else 0.42f)
             .background(settingsControlSurfaceColor(checked))
             .toggleable(
                 value = checked,
+                enabled = enabled,
                 role = Role.Switch,
                 onValueChange = onCheckedChange,
             )
@@ -983,18 +1086,19 @@ private fun SettingsActionRow(
     title: String,
     detail: String,
     enabled: Boolean = true,
-    actionLabel: String = "进入",
+    actionLabel: String? = null,
     onClick: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
     val controlColor = settingsControlColor()
+    val resolvedActionLabel = actionLabel ?: stringResource(R.string.settings_enter)
     SettingsRowShell(
         title = title,
         detail = detail,
         modifier = if (enabled) Modifier.clickable(onClick = onClick) else Modifier,
     ) {
         Text(
-            if (enabled) actionLabel else "关闭",
+            if (enabled) resolvedActionLabel else stringResource(R.string.settings_closed),
             color = if (enabled) controlColor else if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.58f) else scheme.onSurfaceVariant,
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
@@ -1194,24 +1298,29 @@ private fun SettingsStatTile(
     }
 }
 
+@Composable
 private fun usbExclusiveDetail(status: EchoPlaybackStatus): String {
     val diagnostics = status.diagnostics
     return when {
-        diagnostics.usbBitPerfectActive -> "USB DAC 已使用 bit-perfect 链路"
-        diagnostics.usbAudioHasIsochronousOut -> "已识别 UAC 独占端点：${diagnostics.usbAudioEndpointSummary ?: "iso OUT"}"
-        diagnostics.usbHostPermissionGranted -> "已获得 USB DAC 访问授权；系统输出仍按设备能力决定"
-        diagnostics.usbHostPermissionPending -> "请在系统弹窗中允许 ECHO 访问 USB DAC"
-        diagnostics.usbBitPerfectSupported -> "插入的 USB DAC 支持 bit-perfect，可按曲目采样率请求"
-        diagnostics.usbConnected -> "已连接 USB DAC，但当前只走 Android mixer"
-        else -> "高级输出模式；无 USB DAC 或不支持时自动回退"
+        diagnostics.usbBitPerfectActive -> stringResource(R.string.settings_usb_bit_perfect)
+        diagnostics.usbAudioHasIsochronousOut -> stringResource(
+            R.string.settings_usb_iso,
+            diagnostics.usbAudioEndpointSummary ?: "iso OUT",
+        )
+        diagnostics.usbHostPermissionGranted -> stringResource(R.string.settings_usb_granted)
+        diagnostics.usbHostPermissionPending -> stringResource(R.string.settings_usb_pending)
+        diagnostics.usbBitPerfectSupported -> stringResource(R.string.settings_usb_supported)
+        diagnostics.usbConnected -> stringResource(R.string.settings_usb_mixer)
+        else -> stringResource(R.string.settings_usb_fallback)
     }
 }
 
+@Composable
 private fun usbExclusiveTestDetail(status: EchoPlaybackStatus, result: String): String {
     val diagnostics = status.diagnostics
     return when {
-        !diagnostics.usbConnected -> "未检测到 USB DAC"
-        !diagnostics.usbHostPermissionGranted -> "先打开 USB 独占输出并允许系统 USB 授权"
+        !diagnostics.usbConnected -> stringResource(R.string.settings_usb_not_detected)
+        !diagnostics.usbHostPermissionGranted -> stringResource(R.string.settings_usb_need_permission)
         else -> result
     }
 }

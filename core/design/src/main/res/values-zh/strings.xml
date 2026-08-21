@@ -1,0 +1,8 @@
+<resources>
+    <string name="chrome_badge_mobile">移动端</string>
+    <string name="chrome_brand">ECHO 移动端</string>
+    <string name="metadata_unknown_artist">未知艺术家</string>
+    <string name="metadata_unknown_album">未知专辑</string>
+    <string name="metadata_unknown_track">未知曲目</string>
+    <string name="metadata_not_provided">未提供</string>
+</resources>

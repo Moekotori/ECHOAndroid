@@ -27,6 +27,29 @@ class UsbExclusiveCapabilityEvaluatorTest {
     }
 
     @Test
+    fun reportsNativeWriterReadyWhenLibraryIsPresent() {
+        val snapshot = snapshot(
+            UsbAudioStreamingFormat(
+                interfaceNumber = 1,
+                alternateSetting = 1,
+                audioClassVersion = UsbAudioClassVersion.Uac2,
+                bitResolution = 24,
+                sampleRates = listOf(96_000),
+                endpointDirection = UsbEndpointDirection.Out,
+                endpointTransferType = UsbEndpointTransferType.Isochronous,
+            ),
+        )
+
+        val capability = UsbExclusiveCapabilityEvaluator.evaluate(
+            snapshot,
+            UsbPcmFormatSpec(sampleRateHz = 96_000, channelCount = 2, bitDepth = 24),
+            nativeWriterAvailable = true,
+        )
+
+        assertEquals(UsbExclusiveCapabilityState.ReadyForNativeIsochronousWrite, capability.state)
+    }
+
+    @Test
     fun reportsBulkReadyForBulkEndpoint() {
         val snapshot = snapshot(
             UsbAudioStreamingFormat(

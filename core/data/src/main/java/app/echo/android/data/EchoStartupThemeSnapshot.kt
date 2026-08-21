@@ -1,6 +1,7 @@
 package app.echo.android.data
 
 import android.content.Context
+import app.echo.android.model.settings.EchoAppLanguage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -8,6 +9,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 data class EchoStartupThemeSnapshot(
     val themeMode: String = EchoThemeMode.System,
+    val appLanguage: String = EchoAppLanguage.System,
     val scheduledDarkModeEnabled: Boolean = false,
     val scheduledDarkStartMinute: Int = DefaultScheduledDarkStartMinute,
     val scheduledDarkEndMinute: Int = DefaultScheduledDarkEndMinute,
@@ -15,6 +17,7 @@ data class EchoStartupThemeSnapshot(
     fun toAppSettings(): EchoAppSettings =
         EchoAppSettings(
             themeMode = normalizeThemeMode(themeMode),
+            appLanguage = EchoAppLanguage.fromId(appLanguage),
             scheduledDarkModeEnabled = scheduledDarkModeEnabled,
             scheduledDarkStartMinute = scheduledDarkStartMinute.coerceMinuteOfDay(),
             scheduledDarkEndMinute = scheduledDarkEndMinute.coerceMinuteOfDay(),
@@ -28,6 +31,7 @@ fun Context.readEchoStartupThemeSnapshot(): EchoStartupThemeSnapshot {
     )
     return EchoStartupThemeSnapshot(
         themeMode = normalizeThemeMode(preferences.getString(KeyThemeMode, null)),
+        appLanguage = EchoAppLanguage.fromId(preferences.getString(KeyAppLanguage, null)),
         scheduledDarkModeEnabled = preferences.getBoolean(KeyScheduledDarkModeEnabled, false),
         scheduledDarkStartMinute = preferences
             .getInt(KeyScheduledDarkStartMinute, DefaultScheduledDarkStartMinute)
@@ -67,6 +71,7 @@ internal fun Context.writeEchoStartupThemeSnapshot(
         .getSharedPreferences(StartupThemePreferencesName, Context.MODE_PRIVATE)
         .edit()
         .putString(KeyThemeMode, safeSnapshot.themeMode)
+        .putString(KeyAppLanguage, safeSnapshot.appLanguage)
         .putBoolean(KeyScheduledDarkModeEnabled, safeSnapshot.scheduledDarkModeEnabled)
         .putInt(KeyScheduledDarkStartMinute, safeSnapshot.scheduledDarkStartMinute)
         .putInt(KeyScheduledDarkEndMinute, safeSnapshot.scheduledDarkEndMinute)
@@ -81,6 +86,7 @@ internal fun Context.writeEchoStartupThemeSnapshot(
 internal fun EchoAppSettings.toStartupThemeSnapshot(): EchoStartupThemeSnapshot =
     EchoStartupThemeSnapshot(
         themeMode = normalizeThemeMode(themeMode),
+        appLanguage = EchoAppLanguage.fromId(appLanguage),
         scheduledDarkModeEnabled = scheduledDarkModeEnabled,
         scheduledDarkStartMinute = scheduledDarkStartMinute.coerceMinuteOfDay(),
         scheduledDarkEndMinute = scheduledDarkEndMinute.coerceMinuteOfDay(),
@@ -99,6 +105,7 @@ internal fun normalizeThemeMode(value: String?): String =
 private fun EchoStartupThemeSnapshot.normalized(): EchoStartupThemeSnapshot =
     copy(
         themeMode = normalizeThemeMode(themeMode),
+        appLanguage = EchoAppLanguage.fromId(appLanguage),
         scheduledDarkStartMinute = scheduledDarkStartMinute.coerceMinuteOfDay(),
         scheduledDarkEndMinute = scheduledDarkEndMinute.coerceMinuteOfDay(),
     )
@@ -118,6 +125,7 @@ private fun Context.hasEchoStartupThemeSnapshot(): Boolean {
 
 private const val StartupThemePreferencesName = "echo-startup-theme"
 private const val KeyThemeMode = "theme_mode"
+private const val KeyAppLanguage = "app_language"
 private const val KeyScheduledDarkModeEnabled = "scheduled_dark_mode_enabled"
 private const val KeyScheduledDarkStartMinute = "scheduled_dark_start_minute"
 private const val KeyScheduledDarkEndMinute = "scheduled_dark_end_minute"

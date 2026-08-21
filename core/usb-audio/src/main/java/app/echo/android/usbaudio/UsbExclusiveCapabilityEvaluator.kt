@@ -4,6 +4,7 @@ object UsbExclusiveCapabilityEvaluator {
     fun evaluate(
         snapshot: UsbAudioDeviceSnapshot,
         spec: UsbPcmFormatSpec,
+        nativeWriterAvailable: Boolean = UsbIsochronousNative.available,
     ): UsbExclusiveCapability {
         if (!snapshot.connected) {
             return UsbExclusiveCapability(
@@ -30,9 +31,17 @@ object UsbExclusiveCapabilityEvaluator {
                 message = "Bulk OUT endpoint can use Android UsbDeviceConnection writes",
             )
             UsbEndpointTransferType.Isochronous -> UsbExclusiveCapability(
-                state = UsbExclusiveCapabilityState.NativeIsochronousWriterRequired,
+                state = if (nativeWriterAvailable) {
+                    UsbExclusiveCapabilityState.ReadyForNativeIsochronousWrite
+                } else {
+                    UsbExclusiveCapabilityState.NativeIsochronousWriterRequired
+                },
                 selectedFormat = format,
-                message = "Isochronous OUT endpoint requires native writer before playback",
+                message = if (nativeWriterAvailable) {
+                    "Isochronous OUT endpoint can use the exclusive USB writer"
+                } else {
+                    "Isochronous OUT endpoint requires native writer before playback"
+                },
             )
             else -> UsbExclusiveCapability(
                 state = UsbExclusiveCapabilityState.FormatUnavailable,

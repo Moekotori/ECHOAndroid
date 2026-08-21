@@ -6,10 +6,13 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.util.UnstableApi
 import androidx.paging.PagingData
+import app.echo.android.connect.EchoLinkLanBrowser
 import app.echo.android.data.EchoLibraryDatabase
 import app.echo.android.data.EchoLibraryRepository
 import app.echo.android.data.EchoAppSettings
+import app.echo.android.data.EchoLibrarySelectedSource
 import app.echo.android.data.EchoSettingsStore
+import app.echo.android.data.LibraryPlaybackQueuePolicy
 import app.echo.android.data.DocumentTreeTrackScanner
 import app.echo.android.data.MediaStoreTrackScanner
 import app.echo.android.data.LocalLibrarySearchResults
@@ -19,11 +22,13 @@ import app.echo.android.data.WebDavEndpoint
 import app.echo.android.lyrics.ImportedLyricsStore
 import app.echo.android.lyrics.LocalLyricsResolver
 import app.echo.android.lyrics.OnlineLyricsResolver
+import app.echo.android.model.i18n.echoText
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackMetadataUpdate
+import app.echo.android.model.library.LibraryPlaybackOrigin
 import app.echo.android.model.library.FolderSummary
 import app.echo.android.model.library.LibraryScanProgress
 import app.echo.android.model.library.LibraryStats
@@ -34,6 +39,7 @@ import app.echo.android.model.connect.EchoRemoteLyrics
 import app.echo.android.model.connect.EchoRemotePlaybackState
 import app.echo.android.model.connect.EchoRemoteTrack
 import app.echo.android.model.playback.EchoPlaybackStatus
+import app.echo.android.model.playback.EchoTrackRef
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoEqualizerState
 import app.echo.android.model.playback.PlaybackControlsState
@@ -43,10 +49,16 @@ import app.echo.android.model.playback.PlaybackHeatmapDay
 import app.echo.android.model.playback.PlaybackMetadataState
 import app.echo.android.model.playback.PlaybackPositionState
 import app.echo.android.model.playback.PlaybackQueueState
+import app.echo.android.data.applyEchoAppLocale
+import app.echo.android.model.settings.EchoAppLanguage
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
+import app.echo.android.design.EchoArtworkUrlRewriteRegistry
 import app.echo.android.playback.EchoRemotePlaybackAuthRegistry
+import app.echo.android.playback.PlaybackQueueReplaceIntent
+import app.echo.android.playback.shouldReplaceRegisteredRemoteCredentials
 import app.echo.android.playback.EchoPlaybackCachePolicy
 import app.echo.android.playback.EchoPlaybackProcessRuntime
+import app.echo.android.playback.EchoSubsonicPlaybackCredential
 import app.echo.android.playback.EchoWebDavPlaybackCredential
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
@@ -74,7 +86,15 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         documentTreeScanner = DocumentTreeTrackScanner(application.contentResolver),
     )
     private val settingsStore = EchoSettingsStore(application)
+    private val echoLinkLanBrowser = EchoLinkLanBrowser(application)
     private val opraRepository = OpraHeadphoneCorrectionRepository(application)
+    val initialAppSettings: EchoAppSettings = settingsStore.startupAppSettingsSnapshot()
+
+    init {
+        settingsStore.remotePlaybackAuthSettingsSnapshot()?.let { authSettings ->
+            applyRemotePlaybackCredentials(authSettings, allowClearIfEmpty = false)
+        }
+    }
 
     private val libraryController = LibraryController(
         repository = repository,
@@ -103,6 +123,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     private var usbStartupPolicyApplied = false
     private var effectivePerformanceMode: EchoEffectivePerformanceMode = EchoEffectivePerformanceMode.Balanced
     private var playbackProgressUiVisibility: PlaybackProgressUiVisibility = PlaybackProgressUiVisibility.MiniPlayer
+    private var selectedLibrarySource: String = initialAppSettings.librarySelectedSource
 
     val libraryQuery: StateFlow<String> = libraryController.libraryQuery
     val libraryTrackSortMode: StateFlow<LibraryTrackSortMode> = libraryController.trackSortMode
@@ -112,11 +133,15 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     val artists: Flow<PagingData<ArtistSummary>> = libraryController.artists
     val folders: Flow<PagingData<FolderSummary>> = libraryController.folders
     val localPlaylists: Flow<List<EchoPlaylist>> = libraryController.localPlaylists
+    val favoriteTrackIds: Flow<Set<String>> = libraryController.favoriteTrackIds
+    val favoriteAlbums: Flow<List<AlbumSummary>> = libraryController.favoriteAlbums
     val libraryStats: Flow<LibraryStats> = libraryController.libraryStats
     val recommendedTracks: Flow<List<EchoTrack>> = libraryController.recommendedTracks
     val recentlyAddedAlbums: Flow<List<AlbumSummary>> = libraryController.recentlyAddedAlbums
+    val recommendedAlbums: Flow<List<AlbumSummary>> = libraryController.recommendedAlbums
     val scanState: StateFlow<LibraryScanProgress> = libraryController.scanState
     val remoteScanState: StateFlow<LibraryScanProgress> = libraryController.remoteScanState
+    val echoLinkLanDevices = echoLinkLanBrowser.devices
 
     val playbackStatus: StateFlow<EchoPlaybackStatus> = playbackController.playbackStatus
     val playbackMetadata: StateFlow<PlaybackMetadataState> = playbackController.playbackMetadata
@@ -126,7 +151,6 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     val playbackDiagnostics: StateFlow<PlaybackDiagnosticsState> = playbackController.playbackDiagnostics
     val equalizerState: StateFlow<EchoEqualizerState> = playbackController.equalizerState
     val lyricsState: StateFlow<EchoLyricsLoadState> = lyricsController.lyricsState
-    val initialAppSettings: EchoAppSettings = settingsStore.startupAppSettingsSnapshot()
     val appSettings: Flow<EchoAppSettings> = settingsStore.appSettings
     val lastFmState: StateFlow<LastFmUiState> = lastFmController.uiState
     val discordPresenceSnapshot: Flow<EchoMobileDiscordPresenceSnapshot?> =
@@ -158,7 +182,9 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     val recentPlaybackArtists: StateFlow<List<ArtistSummary>> = _recentPlaybackArtists.asStateFlow()
     private val _recentPlaybackHeatmap = MutableStateFlow<List<PlaybackHeatmapDay>>(emptyList())
     val recentPlaybackHeatmap: StateFlow<List<PlaybackHeatmapDay>> = _recentPlaybackHeatmap.asStateFlow()
-    private val _usbExclusiveTestResult = MutableStateFlow("尚未测试")
+    private val _usbExclusiveTestResult = MutableStateFlow(
+        application.getString(R.string.usb_test_idle),
+    )
     val usbExclusiveTestResult: StateFlow<String> = _usbExclusiveTestResult.asStateFlow()
     private val _opraState = MutableStateFlow(OpraHeadphoneCorrectionState())
     val opraState: StateFlow<OpraHeadphoneCorrectionState> = _opraState.asStateFlow()
@@ -175,6 +201,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             var lastEqualizerSignature: String? = null
             settingsStore.appSettings.collect { settings ->
+                selectedLibrarySource = settings.librarySelectedSource
                 withContext(Dispatchers.IO) {
                     settingsStore.cacheStartupThemeSnapshot(settings)
                 }
@@ -188,13 +215,19 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                     settings.usbExclusiveEnabled
                 }
                 playbackController.setUsbExclusiveEnabled(shouldEnableUsbExclusive)
-                val equalizerSignature = "${settings.equalizerEnabled}|${settings.equalizerPreset}|${settings.equalizerBandGains}"
+                val equalizerSignature =
+                    "${settings.equalizerEnabled}|${settings.equalizerPreset}|${settings.equalizerBandGains}|" +
+                        "${settings.equalizerPreampDb}|${settings.equalizerParametric}|${settings.equalizerSourceLabel}|" +
+                        settings.equalizerFilters
                 if (equalizerSignature != lastEqualizerSignature) {
                     lastEqualizerSignature = equalizerSignature
                     playbackController.setEqualizerConfig(
                         enabled = settings.equalizerEnabled,
                         presetId = settings.equalizerPreset,
                         gainsDb = settings.equalizerBandGains,
+                        preampDb = settings.equalizerPreampDb,
+                        filters = if (settings.equalizerParametric) settings.equalizerFilters else emptyList(),
+                        sourceLabel = settings.equalizerSourceLabel,
                     )
                 }
                 if (firstSettingsEmission &&
@@ -207,9 +240,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                 if (settings.lastFmEnabled && !settings.lastFmUsername.isNullOrBlank()) {
                     lastFmController.setConnected(settings.lastFmUsername.orEmpty())
                 }
-                EchoRemotePlaybackAuthRegistry.replaceWebDavCredentials(
-                    listOfNotNull(webDavPlaybackCredential(settings)),
-                )
+                applyRemotePlaybackCredentials(settings, allowClearIfEmpty = true)
+                playbackController.notifyRemotePlaybackAuthReady()
             }
         }
     }
@@ -254,6 +286,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         libraryController.updateTrackSortMode(sortMode)
     }
 
+    fun setEchoLinkPlaybackResolver(resolver: suspend (EchoTrackRef) -> EchoTrackRef) {
+        playbackController.setEchoLinkPlaybackResolver(resolver)
+    }
+
     fun play(track: EchoTrack) {
         playbackController.play(track)
     }
@@ -262,10 +298,33 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         playbackController.playQueue(queue, startIndex)
     }
 
+    fun playFromLibrary(track: EchoTrack, origin: LibraryPlaybackOrigin) {
+        viewModelScope.launch {
+            val source = selectedLibrarySource.ifBlank { EchoLibrarySelectedSource.Local }
+            if (LibraryPlaybackQueuePolicy.usesCollectionQueue(origin)) {
+                val collectionKey = LibraryPlaybackQueuePolicy.collectionKey(origin) ?: return@launch
+                val queue = when (origin) {
+                    is LibraryPlaybackOrigin.Album -> libraryController.albumTracksForPlayback(collectionKey)
+                    is LibraryPlaybackOrigin.Artist -> libraryController.artistTracksForPlayback(collectionKey)
+                    is LibraryPlaybackOrigin.Folder -> libraryController.folderTracksForPlayback(collectionKey)
+                    is LibraryPlaybackOrigin.Playlist -> libraryController.playlistTracksForPlayback(collectionKey)
+                    LibraryPlaybackOrigin.Songs -> emptyList()
+                }
+                if (queue.isEmpty()) return@launch
+                playQueue(queue, LibraryPlaybackQueuePolicy.startIndex(queue.map { it.id }, track.id))
+                return@launch
+            }
+            val queue = libraryController.queueAroundTrack(track.id, source)
+            if (queue.isEmpty()) return@launch
+            playQueue(queue, LibraryPlaybackQueuePolicy.startIndex(queue.map { it.id }, track.id))
+        }
+    }
+
     fun playTrackFromLibrary(trackId: String) {
         viewModelScope.launch {
-            val queue = libraryController.queueAroundTrack(trackId)
-            val startIndex = queue.indexOfFirst { it.id == trackId }.takeIf { it >= 0 } ?: 0
+            val source = selectedLibrarySource.ifBlank { EchoLibrarySelectedSource.Local }
+            val queue = libraryController.queueAroundTrack(trackId, source)
+            val startIndex = LibraryPlaybackQueuePolicy.startIndex(queue.map { it.id }, trackId)
             if (queue.isNotEmpty()) playQueue(queue, startIndex)
         }
     }
@@ -302,7 +361,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun playAlbum(albumKey: String) {
         viewModelScope.launch {
             val queue = libraryController.albumTracksForPlayback(albumKey)
-            if (queue.isNotEmpty()) playQueue(queue, 0)
+            if (queue.isNotEmpty()) playbackController.playQueue(queue, 0)
         }
     }
 
@@ -310,8 +369,11 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             val queue = libraryController.albumTracksForPlayback(albumKey)
             if (queue.isNotEmpty()) {
-                playQueue(queue, queue.indices.random())
-                playbackController.enableShuffle()
+                playbackController.playQueue(
+                    queue = queue,
+                    startIndex = queue.indices.random(),
+                    intent = PlaybackQueueReplaceIntent.Shuffle,
+                )
             }
         }
     }
@@ -319,21 +381,66 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun playArtist(artistKey: String) {
         viewModelScope.launch {
             val queue = libraryController.artistTracksForPlayback(artistKey)
-            if (queue.isNotEmpty()) playQueue(queue, 0)
+            if (queue.isNotEmpty()) playbackController.playQueue(queue, 0)
         }
     }
 
     fun playFolder(folderKey: String) {
         viewModelScope.launch {
             val queue = libraryController.folderTracksForPlayback(folderKey)
-            if (queue.isNotEmpty()) playQueue(queue, 0)
+            if (queue.isNotEmpty()) playbackController.playQueue(queue, 0)
         }
     }
 
     fun playPlaylist(playlistId: String) {
         viewModelScope.launch {
             val queue = libraryController.playlistTracksForPlayback(playlistId)
-            if (queue.isNotEmpty()) playQueue(queue, 0)
+            if (queue.isNotEmpty()) playbackController.playQueue(queue, 0)
+        }
+    }
+
+    fun toggleFavorite(trackId: String? = playbackController.currentTrackId) {
+        val id = trackId?.takeIf { it.isNotBlank() } ?: return
+        viewModelScope.launch {
+            libraryController.toggleFavorite(id)
+        }
+    }
+
+    fun createLocalPlaylist(name: String, addTrackId: String? = null) {
+        viewModelScope.launch {
+            val created = libraryController.createLocalPlaylist(name) ?: return@launch
+            val trackId = addTrackId?.takeIf { it.isNotBlank() } ?: return@launch
+            libraryController.addTrackToLocalPlaylist(created.id, trackId)
+        }
+    }
+
+    fun renameLocalPlaylist(playlistId: String, name: String) {
+        viewModelScope.launch {
+            libraryController.renameLocalPlaylist(playlistId, name)
+        }
+    }
+
+    fun deleteLocalPlaylist(playlistId: String) {
+        viewModelScope.launch {
+            libraryController.deleteLocalPlaylist(playlistId)
+        }
+    }
+
+    fun addTrackToLocalPlaylist(playlistId: String, trackId: String) {
+        viewModelScope.launch {
+            libraryController.addTrackToLocalPlaylist(playlistId, trackId)
+        }
+    }
+
+    fun removeTrackFromLocalPlaylist(playlistId: String, trackId: String) {
+        viewModelScope.launch {
+            libraryController.removeTrackFromLocalPlaylist(playlistId, trackId)
+        }
+    }
+
+    fun reorderLocalPlaylistTracks(playlistId: String, fromIndex: Int, toIndex: Int) {
+        viewModelScope.launch {
+            libraryController.reorderLocalPlaylistTracks(playlistId, fromIndex, toIndex)
         }
     }
 
@@ -341,8 +448,11 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             val queue = libraryController.artistTracksForPlayback(artistKey)
             if (queue.isNotEmpty()) {
-                playQueue(queue, queue.indices.random())
-                playbackController.enableShuffle()
+                playbackController.playQueue(
+                    queue = queue,
+                    startIndex = queue.indices.random(),
+                    intent = PlaybackQueueReplaceIntent.Shuffle,
+                )
             }
         }
     }
@@ -391,8 +501,32 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         playbackController.setSleepTimer(minutes)
     }
 
+    fun setSleepTimerEndOfTrack() {
+        playbackController.setSleepTimerEndOfTrack()
+    }
+
     fun cancelSleepTimer() {
         playbackController.cancelSleepTimer()
+    }
+
+    fun playNext(track: EchoTrack) {
+        playbackController.playNext(track)
+    }
+
+    fun enqueue(track: EchoTrack) {
+        playbackController.enqueue(track)
+    }
+
+    fun refreshHomeRecommendations() {
+        libraryController.refreshHomeRecommendations()
+    }
+
+    fun startEchoLinkDiscovery() {
+        echoLinkLanBrowser.start()
+    }
+
+    fun stopEchoLinkDiscovery() {
+        echoLinkLanBrowser.stop()
     }
 
     fun setReplayGain(enabled: Boolean, preampDb: Float) {
@@ -444,6 +578,18 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun setCompactModeEnabled(enabled: Boolean) {
         updateSettings {
             setCompactModeEnabled(enabled)
+        }
+    }
+
+    fun setDynamicColorEnabled(enabled: Boolean) {
+        updateSettings {
+            setDynamicColorEnabled(enabled)
+        }
+    }
+
+    fun setPlaybackHapticsEnabled(enabled: Boolean) {
+        updateSettings {
+            setPlaybackHapticsEnabled(enabled)
         }
     }
 
@@ -541,7 +687,15 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun searchOpraHeadphoneCorrections(refresh: Boolean = false) {
         val query = _opraState.value.query.trim()
         if (query.isBlank()) {
-            _opraState.update { it.copy(message = "输入耳机型号后再搜索") }
+            _opraState.update {
+                it.copy(
+                    message = echoText(
+                        en = "Enter a headphone model first",
+                        zh = "输入耳机型号后再搜索",
+                        ja = "先にヘッドホン機種を入力してください",
+                    ),
+                )
+            }
             return
         }
         _opraState.update { it.copy(loading = true, message = null) }
@@ -555,7 +709,15 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                             results = searchResult.products,
                             status = searchResult.status,
                             selectedEqId = searchResult.products.firstOrNull()?.presets?.firstOrNull()?.eqId,
-                            message = if (searchResult.products.isEmpty()) "OPRA 未找到匹配型号" else null,
+                            message = if (searchResult.products.isEmpty()) {
+                                echoText(
+                                    en = "OPRA found no matching model",
+                                    zh = "OPRA 未找到匹配型号",
+                                    ja = "OPRA に一致する機種がありません",
+                                )
+                            } else {
+                                null
+                            },
                         )
                     }
                 }
@@ -563,7 +725,11 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                     _opraState.update {
                         it.copy(
                             loading = false,
-                            message = error.message ?: "OPRA 搜索失败",
+                            message = error.message ?: echoText(
+                                en = "OPRA search failed",
+                                zh = "OPRA 搜索失败",
+                                ja = "OPRA の検索に失敗しました",
+                            ),
                         )
                     }
                 }
@@ -577,21 +743,40 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun applySelectedOpraPreset() {
         val preset = _opraState.value.selectedPreset
         if (preset == null) {
-            _opraState.update { it.copy(message = "先选择一个 OPRA preset") }
+            _opraState.update {
+                it.copy(
+                    message = echoText(
+                        en = "Select an OPRA preset first",
+                        zh = "先选择一个 OPRA preset",
+                        ja = "先に OPRA プリセットを選んでください",
+                    ),
+                )
+            }
             return
         }
-        val gainsDb = playbackController.applyOpraPreset(preset)
+        playbackController.applyOpraPreset(preset)
+        val equalizer = playbackController.equalizerState.value
         updateSettings {
-            setEqualizerEnabled(true)
-            setEqualizerBandGains(gainsDb)
+            setEqualizerParametricConfig(
+                gainsDb = equalizer.gainsDb,
+                preampDb = equalizer.preampDb,
+                filters = equalizer.filters,
+                sourceLabel = equalizer.sourceLabel,
+            )
         }
         _opraState.update {
-            it.copy(message = "已近似应用 ${preset.vendorName} ${preset.productName}")
+            it.copy(
+                message = echoText(
+                    en = "Applied ${preset.vendorName} ${preset.productName}",
+                    zh = "已应用 ${preset.vendorName} ${preset.productName}",
+                    ja = "${preset.vendorName} ${preset.productName} を適用しました",
+                ),
+            )
         }
     }
 
     fun testUsbExclusiveDriver() {
-        _usbExclusiveTestResult.value = "正在测试 USB 独占驱动..."
+        _usbExclusiveTestResult.value = getApplication<Application>().getString(R.string.usb_test_running)
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
                 playbackController.testUsbExclusiveDriver()
@@ -735,6 +920,15 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun setThemeMode(value: String) {
         updateSettings {
             setThemeMode(value)
+        }
+    }
+
+    fun setAppLanguage(value: String) {
+        val language = EchoAppLanguage.fromId(value)
+        settingsStore.persistAppLanguageSnapshot(language)
+        getApplication<Application>().applyEchoAppLocale(language)
+        updateSettings {
+            setAppLanguage(language)
         }
     }
 
@@ -994,6 +1188,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         lyricsController.clear()
         playbackController.clear()
         lastFmController.clear()
+        echoLinkLanBrowser.stop()
         database.close()
         super.onCleared()
     }
@@ -1081,11 +1276,49 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 }
 
+private fun applyRemotePlaybackCredentials(
+    settings: EchoAppSettings,
+    allowClearIfEmpty: Boolean,
+) {
+    val webDav = listOfNotNull(webDavPlaybackCredential(settings))
+    if (
+        shouldReplaceRegisteredRemoteCredentials(
+            incomingEmpty = webDav.isEmpty(),
+            registryAlreadyReady = EchoRemotePlaybackAuthRegistry.hasWebDavCredentials(),
+            allowClearIfEmpty = allowClearIfEmpty,
+        )
+    ) {
+        EchoRemotePlaybackAuthRegistry.replaceWebDavCredentials(webDav)
+    }
+    val subsonic = listOfNotNull(subsonicPlaybackCredential(settings))
+    if (
+        shouldReplaceRegisteredRemoteCredentials(
+            incomingEmpty = subsonic.isEmpty(),
+            registryAlreadyReady = EchoRemotePlaybackAuthRegistry.hasSubsonicCredentials(),
+            allowClearIfEmpty = allowClearIfEmpty,
+        )
+    ) {
+        EchoRemotePlaybackAuthRegistry.replaceSubsonicCredentials(subsonic)
+        EchoArtworkUrlRewriteRegistry.notifyChanged()
+    }
+}
+
 private fun webDavPlaybackCredential(settings: EchoAppSettings): EchoWebDavPlaybackCredential? {
     val serverUrl = settings.webDavServerUrl?.takeIf { it.isNotBlank() } ?: return null
     val username = settings.webDavUsername?.takeIf { it.isNotBlank() } ?: return null
     val password = settings.webDavPassword?.takeIf { it.isNotBlank() } ?: return null
     return EchoWebDavPlaybackCredential(
+        baseUrl = serverUrl,
+        username = username,
+        password = password,
+    )
+}
+
+private fun subsonicPlaybackCredential(settings: EchoAppSettings): EchoSubsonicPlaybackCredential? {
+    val serverUrl = settings.subsonicServerUrl?.takeIf { it.isNotBlank() } ?: return null
+    val username = settings.subsonicUsername?.takeIf { it.isNotBlank() } ?: return null
+    val password = settings.subsonicPassword?.takeIf { it.isNotBlank() } ?: return null
+    return EchoSubsonicPlaybackCredential(
         baseUrl = serverUrl,
         username = username,
         password = password,

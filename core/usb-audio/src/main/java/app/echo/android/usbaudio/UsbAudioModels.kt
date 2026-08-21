@@ -24,6 +24,8 @@ data class UsbAudioDescriptorInfo(
     val streamingFormats: List<UsbAudioStreamingFormat> = emptyList(),
     val hasIsochronousOut: Boolean = false,
     val hasFeedbackEndpoint: Boolean = false,
+    val acInterfaceNumber: Int? = null,
+    val clockSourceIds: List<Int> = emptyList(),
 ) {
     val sampleRates: List<Int>
         get() = streamingFormats
@@ -55,6 +57,8 @@ data class UsbAudioStreamingFormat(
     val endpointSyncType: UsbEndpointSyncType? = null,
     val endpointUsageType: UsbEndpointUsageType? = null,
     val maxPacketSize: Int? = null,
+    val acInterfaceNumber: Int? = null,
+    val clockSourceIds: List<Int> = emptyList(),
 ) {
     val isIsochronousOut: Boolean
         get() = endpointDirection == UsbEndpointDirection.Out &&
@@ -123,6 +127,7 @@ data class UsbPcmWriteResult(
 
 enum class UsbExclusiveCapabilityState {
     ReadyForFrameworkBulkWrite,
+    ReadyForNativeIsochronousWrite,
     NativeIsochronousWriterRequired,
     PermissionRequired,
     DeviceUnavailable,

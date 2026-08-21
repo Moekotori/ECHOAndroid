@@ -66,8 +66,10 @@ import app.echo.android.feature.home.SearchResultType
 import app.echo.android.connect.EchoPairingParser
 import app.echo.android.connect.EchoLinkRequestPolicy
 import app.echo.android.connect.EchoRemoteClient
+import app.echo.android.model.playback.EchoLinkPlaybackUri
 import app.echo.android.design.EchoArtworkRequestHeadersRegistry
 import app.echo.android.design.EchoMobileTheme
+import app.echo.android.design.LocalEchoWidthSizeClass
 import app.echo.android.feature.connect.ConnectScreen
 import app.echo.android.feature.home.SearchScreen
 import app.echo.android.feature.player.PlaybackQueueSheet
@@ -107,6 +109,7 @@ import androidx.compose.material.icons.rounded.AudioFile
 import androidx.compose.material.icons.rounded.Notifications
 import android.provider.Settings
 import android.net.Uri as AndroidUri
+import app.echo.android.R
 import kotlin.math.absoluteValue
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
@@ -224,6 +227,13 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
 
     val remoteScope = rememberCoroutineScope()
     val remoteClient = remember(remoteScope) { EchoRemoteClient(remoteScope) }
+    LaunchedEffect(remoteClient) {
+        viewModel.setEchoLinkPlaybackResolver { ref ->
+            val trackId = EchoLinkPlaybackUri.trackId(ref.id, ref.uri) ?: return@setEchoLinkPlaybackResolver ref
+            val streamUrl = remoteClient.resolvePhoneStreamUrl(trackId) ?: return@setEchoLinkPlaybackResolver ref
+            ref.copy(uri = streamUrl)
+        }
+    }
     val remoteStatus by remoteClient.status.collectAsStateWithLifecycle()
     val playbackStatus by viewModel.playbackStatus.collectAsStateWithLifecycle()
     val appSettings by viewModel.appSettings.collectAsStateWithLifecycle(viewModel.initialAppSettings)
@@ -268,6 +278,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         GmsBarcodeScanning.getClient(context, options)
     }
     var echoLinkScanMessage by remember { mutableStateOf<String?>(null) }
+    var echoLinkScanIsError by remember { mutableStateOf(false) }
     var echoLinkFallbackScannerVisible by remember { mutableStateOf(false) }
 
     fun saveEchoLinkEndpointIfReady(endpoint: EchoRemoteEndpoint) {
@@ -282,6 +293,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
 
     fun connectEchoLinkEndpoint(endpoint: EchoRemoteEndpoint) {
         echoLinkScanMessage = null
+        echoLinkScanIsError = false
         echoLinkFallbackScannerVisible = false
         saveEchoLinkEndpointIfReady(endpoint)
         remoteClient.connect(
@@ -296,6 +308,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             connectEchoLinkEndpoint(endpoint)
         } else {
             echoLinkScanMessage = null
+            echoLinkScanIsError = false
             remoteClient.connectManual(
                 address = address,
                 token = token,
@@ -306,6 +319,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
 
     fun scanEchoLinkPairingCode() {
         echoLinkScanMessage = null
+        echoLinkScanIsError = false
         echoLinkFallbackScannerVisible = false
         echoLinkQrScanner.startScan()
             .addOnSuccessListener { barcode ->
@@ -314,18 +328,23 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                 if (endpoint != null) {
                     connectEchoLinkEndpoint(endpoint)
                 } else {
-                    echoLinkScanMessage = "没有识别到 ECHO Link 配对码"
+                    echoLinkScanIsError = true
+                    echoLinkScanMessage = context.getString(R.string.echo_link_scan_unrecognized)
                 }
             }
             .addOnCanceledListener {
-                echoLinkScanMessage = "已取消扫码"
+                echoLinkScanIsError = false
+                echoLinkScanMessage = context.getString(R.string.echo_link_scan_cancelled)
             }
             .addOnFailureListener { error ->
                 echoLinkFallbackScannerVisible = true
                 val detail = error.localizedMessage
                     ?.takeIf { it.isNotBlank() }
                     ?: error.message?.takeIf { it.isNotBlank() }
-                echoLinkScanMessage = detail?.let { "扫码不可用：$it" } ?: "扫码不可用，请手动输入配对码"
+                echoLinkScanIsError = true
+                echoLinkScanMessage = detail?.let {
+                    context.getString(R.string.echo_link_scan_unavailable, it)
+                } ?: context.getString(R.string.echo_link_scan_unavailable_manual)
             }
     }
 
@@ -556,6 +575,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
 
     EchoMobileTheme(
         darkTheme = darkTheme,
+        dynamicColor = appSettings.dynamicColorEnabled,
+        playbackHapticsEnabled = appSettings.playbackHapticsEnabled,
         fontFamily = uiFontFamily,
         fontScale = appSettings.uiFontScale,
         densityScale = appSettings.uiDensityScale,
@@ -568,7 +589,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             ) {
                 HorizontalPager(
                     state = tabPagerState,
-                    userScrollEnabled = !libraryDetailOpen,
+                    userScrollEnabled = !libraryDetailOpen ||
+                        LocalEchoWidthSizeClass.current.prefersLibrarySplit,
                     beyondViewportPageCount = 0,
                     modifier = Modifier.fillMaxSize(),
                 ) { page ->
@@ -661,6 +683,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 appVersionLabel = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
                                 dynamicArtworkEnabled = appSettings.dynamicArtworkEnabled,
                                 compactModeEnabled = appSettings.compactModeEnabled,
+                                dynamicColorEnabled = appSettings.dynamicColorEnabled,
+                                playbackHapticsEnabled = appSettings.playbackHapticsEnabled,
                                 performanceMode = appSettings.performanceMode,
                                 effectivePerformanceMode = effectivePerformanceMode.id,
                                 trackAudioInfoTagsVisible = appSettings.trackAudioInfoTagsVisible,
@@ -684,6 +708,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 lyricsFontScale = appSettings.lyricsFontScale,
                                 importedFontUri = appSettings.importedFontUri,
                                 themeMode = appSettings.themeMode,
+                                appLanguage = appSettings.appLanguage,
                                 scheduledDarkModeEnabled = appSettings.scheduledDarkModeEnabled,
                                 scheduledDarkStartMinute = appSettings.scheduledDarkStartMinute,
                                 scheduledDarkEndMinute = appSettings.scheduledDarkEndMinute,
@@ -698,6 +723,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 lastFmSharedSecretLocked = LastFmApiConfig.HAS_SHARED_SECRET,
                                 onDynamicArtworkEnabledChange = viewModel::setDynamicArtworkEnabled,
                                 onCompactModeEnabledChange = viewModel::setCompactModeEnabled,
+                                onDynamicColorEnabledChange = viewModel::setDynamicColorEnabled,
+                                onPlaybackHapticsEnabledChange = viewModel::setPlaybackHapticsEnabled,
                                 onPerformanceModeChange = viewModel::setPerformanceMode,
                                 onTrackAudioInfoTagsVisibleChange = viewModel::setTrackAudioInfoTagsVisible,
                                 onPcHandoffEnabledChange = viewModel::setPcHandoffEnabled,
@@ -733,6 +760,12 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                     viewModel.setImportedFontUri(null)
                                 },
                                 onThemeModeChange = viewModel::setThemeMode,
+                                onAppLanguageChange = { language ->
+                                    viewModel.setAppLanguage(language)
+                                    if (android.os.Build.VERSION.SDK_INT < 33) {
+                                        permissionActivity?.recreate()
+                                    }
+                                },
                                 onScheduledDarkModeEnabledChange = viewModel::setScheduledDarkModeEnabled,
                                 onScheduledDarkStartMinuteChange = viewModel::setScheduledDarkStartMinute,
                                 onScheduledDarkEndMinuteChange = viewModel::setScheduledDarkEndMinute,
@@ -774,16 +807,22 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             }
 
                             EchoPagerPage.Connect -> {
+                            DisposableEffect(Unit) {
+                                viewModel.startEchoLinkDiscovery()
+                                onDispose { viewModel.stopEchoLinkDiscovery() }
+                            }
                             val remoteScanState by viewModel.remoteScanState.collectAsStateWithLifecycle()
+                            val echoLinkLanDevices by viewModel.echoLinkLanDevices.collectAsStateWithLifecycle()
                             ConnectScreen(
                                 remoteState = remoteStatus.connectionState,
                                 pcTitle = remoteStatus.endpoint?.name ?: "PC ECHO",
-                                trackTitle = remoteStatus.playback.track?.title ?: "未连接",
-                                trackArtist = remoteStatus.playback.track?.artist ?: "点按配对",
+                                trackTitle = remoteStatus.playback.track?.title ?: context.getString(R.string.echo_link_not_connected),
+                                trackArtist = remoteStatus.playback.track?.artist ?: context.getString(R.string.echo_link_tap_to_pair),
                                 trackArtworkUrl = remoteStatus.playback.track?.artworkUrl,
                                 isPlaying = remoteStatus.playback.state == EchoRemotePlaybackState.Playing,
                                 remoteError = remoteStatus.error,
                                 scanMessage = echoLinkScanMessage,
+                                scanMessageIsError = echoLinkScanIsError,
                                 savedPcAddress = appSettings.echoLinkPcAddress,
                                 savedPcToken = appSettings.echoLinkPcToken,
                                 autoReconnectEnabled = appSettings.echoLinkAutoReconnectEnabled,
@@ -823,6 +862,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onSaveWebDavCredentials = viewModel::saveWebDavCredentials,
                                 onClearWebDavCredentials = viewModel::clearWebDavCredentials,
                                 onCancelRemoteSync = viewModel::cancelRemoteSync,
+                                discoveredLanDevices = echoLinkLanDevices,
                             )
                             }
 
@@ -964,7 +1004,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                         viewModel.searchLocalLibrary(trimmedQuery).toHomeSearchResults()
                     }
                 }
-                val searchResults = remember(localSearchResults) { localSearchResults.toUiResults() }
+                val searchResults = remember(localSearchResults) { localSearchResults.toUiResults(context) }
                 SearchScreen(
                     searchQuery = searchQuery,
                     searchResults = searchResults,
@@ -1010,14 +1050,17 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                         connectEchoLinkEndpoint(endpoint)
                     } else {
                         echoLinkFallbackScannerVisible = false
-                        echoLinkScanMessage = "没有识别到 ECHO Link 配对码"
+                        echoLinkScanIsError = true
+                        echoLinkScanMessage = context.getString(R.string.echo_link_scan_unrecognized)
                     }
                 },
                 onCancel = {
                     echoLinkFallbackScannerVisible = false
-                    echoLinkScanMessage = "已取消扫码"
+                    echoLinkScanIsError = false
+                    echoLinkScanMessage = context.getString(R.string.echo_link_scan_cancelled)
                 },
                 onError = { message ->
+                    echoLinkScanIsError = true
                     echoLinkScanMessage = message
                 },
             )
@@ -1033,8 +1076,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     add(
                         PermissionEntry(
                             permission = audioPermissionName(),
-                            label = "音乐存储",
-                            description = "扫描并播放本地音乐文件",
+                            label = context.getString(R.string.permission_audio_label),
+                            description = context.getString(R.string.permission_audio_description),
                             icon = Icons.Rounded.AudioFile,
                             granted = hasAudioPermission,
                             canRequest = !audioPermissionRequested ||
@@ -1047,8 +1090,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                         add(
                             PermissionEntry(
                                 permission = perm,
-                                label = "通知",
-                                description = "显示媒体播放控制通知",
+                                label = context.getString(R.string.permission_notification_label),
+                                description = context.getString(R.string.permission_notification_description),
                                 icon = Icons.Rounded.Notifications,
                                 granted = hasNotifPermission,
                                 canRequest = !notificationPermissionRequested ||
@@ -1106,7 +1149,7 @@ private fun LocalLibrarySearchResults.toHomeSearchResults(): LocalHomeSearchResu
         artists = artists,
     )
 
-private fun LocalHomeSearchResults.toUiResults(): List<SearchResult> =
+private fun LocalHomeSearchResults.toUiResults(resources: Context): List<SearchResult> =
     buildList {
         tracks.forEach { track ->
             add(
@@ -1136,7 +1179,7 @@ private fun LocalHomeSearchResults.toUiResults(): List<SearchResult> =
                 SearchResult(
                     type = SearchResultType.Artist,
                     title = artist.name,
-                    subtitle = "${artist.albumCount} 张专辑",
+                    subtitle = resources.getString(R.string.artist_album_count, artist.albumCount),
                     id = artist.artistKey,
                     artworkUri = artist.artworkUri,
                 ),

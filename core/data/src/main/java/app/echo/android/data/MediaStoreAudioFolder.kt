@@ -40,7 +40,7 @@ data class MediaStoreAudioFolder(
             return MediaStoreAudioFolder(
                 displayName = path.substringAfterLast('/'),
                 relativePathPrefix = relativePath,
-                treeUri = uri,
+                treeUri = if (LibraryScanPolicy.usesDocumentTreeScan(volume)) uri else null,
             )
         }
     }

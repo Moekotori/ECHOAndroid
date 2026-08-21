@@ -124,6 +124,64 @@ class LibraryScanPolicyTest {
     }
 
     @Test
+    fun primaryStorageFolderUsesMediaStorePrefixNotSaf() {
+        assertFalse(LibraryScanPolicy.usesDocumentTreeScan("primary"))
+        assertFalse(LibraryScanPolicy.usesDocumentTreeScan("PRIMARY"))
+        assertTrue(LibraryScanPolicy.usesDocumentTreeScan("1234-5678"))
+    }
+
+    @Test
+    fun failedDirectoryListingDoesNotDeleteEvenIfOtherFilesScanned() {
+        assertFalse(
+            LibraryScanPolicy.shouldDeleteMissingLibraryRows(
+                LibraryScanCompleteness(
+                    querySucceeded = false,
+                    scannedCount = 20,
+                    existingCount = 40,
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun sizeAndMtimeMatchWithNewDocumentUriIsUpdateNotRememberSeen() {
+        assertFalse(
+            LibraryScanPolicy.shouldReuseUnchangedDocumentFingerprint(
+                existingContentUri = "content://com.android.externalstorage.documents/tree/OLD/document/1",
+                incomingContentUri = "content://com.android.externalstorage.documents/tree/NEW/document/1",
+                existingSizeBytes = 1_024L,
+                incomingSizeBytes = 1_024L,
+                existingDateModifiedSeconds = 99L,
+                incomingDateModifiedSeconds = 99L,
+            ),
+        )
+        assertTrue(
+            LibraryScanPolicy.shouldReuseUnchangedDocumentFingerprint(
+                existingContentUri = "content://com.android.externalstorage.documents/tree/NEW/document/1",
+                incomingContentUri = "content://com.android.externalstorage.documents/tree/NEW/document/1",
+                existingSizeBytes = 1_024L,
+                incomingSizeBytes = 1_024L,
+                existingDateModifiedSeconds = 99L,
+                incomingDateModifiedSeconds = 99L,
+            ),
+        )
+        assertEquals(
+            LibraryScanRowAction.Update,
+            LibraryScanPolicy.scanRowAction(
+                existingFingerprint = "old-uri|1024|99",
+                incomingFingerprint = "new-uri|1024|99",
+            ),
+        )
+        assertEquals(
+            LibraryScanRowAction.RememberSeen,
+            LibraryScanPolicy.scanRowAction(
+                existingFingerprint = "same-uri|1024|99",
+                incomingFingerprint = "same-uri|1024|99",
+            ),
+        )
+    }
+
+    @Test
     fun editedMetadataIsPreservedOnMismatch() {
         assertTrue(
             LibraryScanPolicy.shouldPreserveUserMetadata(

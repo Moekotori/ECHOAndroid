@@ -88,6 +88,8 @@ import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.RoonInk
 import app.echo.android.design.RoonMuted
 import app.echo.android.design.echoDarkGlassBorder
+import app.echo.android.design.echoString
+import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.design.formatDuration
 import app.echo.android.design.progressFraction
 import app.echo.android.model.library.AlbumSummary
@@ -176,9 +178,9 @@ internal fun LibraryOverview(
             .padding(14.dp),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            LibraryMetric("歌曲", trackCount.toString(), Modifier.weight(1f))
-            LibraryMetric("专辑", albumCount.toString(), Modifier.weight(1f))
-            LibraryMetric("艺人", artistCount.toString(), Modifier.weight(1f))
+            LibraryMetric(echoString(en = "Songs", zh = "歌曲", ja = "曲"), trackCount.toString(), Modifier.weight(1f))
+            LibraryMetric(echoString(en = "Albums", zh = "专辑", ja = "アルバム"), albumCount.toString(), Modifier.weight(1f))
+            LibraryMetric(echoString(en = "Artists", zh = "艺人", ja = "アーティスト"), artistCount.toString(), Modifier.weight(1f))
         }
     }
 }
@@ -231,7 +233,11 @@ internal fun RoonHomeHeader(
                 ) {
                     Icon(Icons.Rounded.Search, contentDescription = null, tint = homeBodyColor(), modifier = Modifier.size(20.dp))
                     Text(
-                        "搜索本机音乐、专辑、歌手",
+                        echoString(
+                            en = "Search local music, albums, and artists",
+                            zh = "搜索本机音乐、专辑、歌手",
+                            ja = "端末の曲、アルバム、アーティストを検索",
+                        ),
                         color = homeBodyColor().copy(alpha = 0.5f),
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
@@ -351,7 +357,7 @@ internal fun RoonRecentActivitySection(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "最近活动",
+                echoString(en = "Recent activity", zh = "最近活动", ja = "最近のアクティビティ"),
                 color = homeTitleColor(),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
@@ -369,8 +375,16 @@ internal fun RoonRecentActivitySection(
             if (displayAlbums.isEmpty()) {
                 item {
                     RecentActivityEmptyAlbumCard(
-                        title = if (selectedMode == RecentActivityMode.Played) "\u6682\u65e0\u5df2\u64ad\u653e" else "\u6682\u65e0\u65b0\u589e\u4e13\u8f91",
-                        subtitle = if (selectedMode == RecentActivityMode.Played) "\u64ad\u653e\u4e13\u8f91\u540e\u663e\u793a" else "\u626b\u63cf\u66f2\u5e93\u540e\u663e\u793a",
+                        title = if (selectedMode == RecentActivityMode.Played) {
+                            echoString(en = "Nothing played yet", zh = "暂无已播放", ja = "再生履歴はまだありません")
+                        } else {
+                            echoString(en = "No new albums yet", zh = "暂无新增专辑", ja = "新しいアルバムはまだありません")
+                        },
+                        subtitle = if (selectedMode == RecentActivityMode.Played) {
+                            echoString(en = "Appears after you play an album", zh = "播放专辑后显示", ja = "アルバムを再生すると表示されます")
+                        } else {
+                            echoString(en = "Appears after you scan your library", zh = "扫描曲库后显示", ja = "ライブラリをスキャンすると表示されます")
+                        },
                         onClick = onOpenLibrary,
                     )
                 }
@@ -412,12 +426,12 @@ internal fun RecentActivityTabs(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             RecentActivityModeTab(
-                label = "\u5df2\u64ad\u653e",
+                label = echoString(en = "Played", zh = "已播放", ja = "再生済み"),
                 selected = selectedMode == RecentActivityMode.Played,
                 onClick = { onSelect(RecentActivityMode.Played) },
             )
             RecentActivityModeTab(
-                label = "\u6dfb\u52a0\u4e8e",
+                label = echoString(en = "Added", zh = "添加于", ja = "追加日"),
                 selected = selectedMode == RecentActivityMode.Added,
                 onClick = { onSelect(RecentActivityMode.Added) },
             )
@@ -466,7 +480,7 @@ internal fun RecentPlayedAlbumsTab() {
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                "已播放",
+                echoString(en = "Played", zh = "已播放", ja = "再生済み"),
                 color = scheme.primary,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
@@ -482,7 +496,7 @@ internal fun RecentAlbumCard(
     mode: RecentActivityMode,
     onClick: () -> Unit,
 ) {
-    val artistLabel = album.albumArtist ?: album.artist ?: "未知艺人"
+    val artistLabel = album.albumArtist ?: album.artist ?: echoString(en = "Unknown artist", zh = "未知艺人", ja = "不明なアーティスト")
     Column(
         modifier = Modifier
             .width(RecentActivityAlbumCardWidth)
@@ -519,12 +533,13 @@ internal fun RecentAlbumCard(
     }
 }
 
+@Composable
 private fun recentAlbumSubtitle(
     album: AlbumSummary,
     mode: RecentActivityMode,
     artistLabel: String,
 ): String {
-    val dateLabel = album.addedAtSeconds.takeIf { it > 0L }?.let(::formatAlbumDate)
+    val dateLabel = album.addedAtSeconds.takeIf { it > 0L }?.let { formatAlbumDate(it) }
     return if (mode == RecentActivityMode.Added && dateLabel != null) {
         "$artistLabel \u00b7 $dateLabel"
     } else {
@@ -532,11 +547,18 @@ private fun recentAlbumSubtitle(
     }
 }
 
+@Composable
 private fun formatAlbumDate(seconds: Long): String {
     val calendar = Calendar.getInstance().apply {
         timeInMillis = seconds * 1000L
     }
-    return "${calendar.get(Calendar.MONTH) + 1}\u6708${calendar.get(Calendar.DAY_OF_MONTH)}\u65e5"
+    val month = calendar.get(Calendar.MONTH) + 1
+    val day = calendar.get(Calendar.DAY_OF_MONTH)
+    return echoString(
+        en = "$month/$day",
+        zh = "${month}月${day}日",
+        ja = "${month}月${day}日",
+    )
 }
 
 @Composable
@@ -586,8 +608,12 @@ private fun RecentActivityEmptyAlbumCard(
 
 @Composable
 internal fun EmptyRecentAlbumsCard(
-    title: String = "\u6682\u65e0\u4e13\u8f91",
-    subtitle: String = "\u626b\u63cf\u66f2\u5e93\u540e\u663e\u793a",
+    title: String = echoString(en = "No albums yet", zh = "暂无专辑", ja = "アルバムはまだありません"),
+    subtitle: String = echoString(
+        en = "Appears after you scan your library",
+        zh = "扫描曲库后显示",
+        ja = "ライブラリをスキャンすると表示されます",
+    ),
     onClick: () -> Unit,
 ) {
     Column(
@@ -612,14 +638,14 @@ internal fun EmptyRecentAlbumsCard(
             )
         }
         Text(
-            "暂无专辑",
+            title,
             color = homeTitleColor(),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
         )
         Text(
-            "扫描曲库后显示",
+            subtitle,
             color = homeBodyColor(),
             style = MaterialTheme.typography.titleSmall,
             maxLines = 1,
@@ -660,7 +686,7 @@ internal fun RoonRecentActivitySection(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "最近活动",
+                    echoString(en = "Recent activity", zh = "最近活动", ja = "最近のアクティビティ"),
                     color = homeTitleColor(),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
@@ -675,22 +701,22 @@ internal fun RoonRecentActivitySection(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             RoonRecentActivityCard(
-                title = status.track?.title ?: "本地音乐",
-                subtitle = status.track?.artist ?: "从曲库选择",
+                title = status.track?.title ?: echoString(en = "Local music", zh = "本地音乐", ja = "ローカルミュージック"),
+                subtitle = status.track?.artist ?: echoString(en = "Pick from your library", zh = "从曲库选择", ja = "ライブラリから選ぶ"),
                 artworkUri = status.track?.artworkUri,
                 accent = EchoAccent,
                 onClick = if (status.track != null) onPlayPause else onOpenLibrary,
             )
             RoonRecentActivityCard(
-                title = "每日推荐",
-                subtitle = "按你的本机曲库",
+                title = echoString(en = "Daily mix", zh = "每日推荐", ja = "今日のおすすめ"),
+                subtitle = echoString(en = "From your local library", zh = "按你的本机曲库", ja = "端末のライブラリから"),
                 artworkUri = null,
                 accent = EchoColors.Brass,
                 onClick = onOpenLibrary,
             )
             RoonRecentActivityCard(
                 title = "PC ECHO",
-                subtitle = "桌面接力播放",
+                subtitle = echoString(en = "Desktop handoff playback", zh = "桌面接力播放", ja = "デスクトップへ引き継いで再生"),
                 artworkUri = null,
                 accent = EchoColors.Coral,
                 onClick = onOpenLibrary,
@@ -730,7 +756,7 @@ internal fun HomeAlbumRecommendationsSection(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "为你推荐",
+                echoString(en = "Recommended for you", zh = "为你推荐", ja = "あなたへのおすすめ"),
                 color = homeTitleColor(),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.ExtraBold,
@@ -749,7 +775,12 @@ internal fun HomeAlbumRecommendationsSection(
                     horizontalArrangement = Arrangement.spacedBy(5.dp),
                 ) {
                     Icon(Icons.Rounded.Refresh, contentDescription = null, tint = homeBodyColor(), modifier = Modifier.size(15.dp))
-                    Text("刷新", color = homeBodyColor(), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        echoString(en = "Refresh", zh = "刷新", ja = "更新"),
+                        color = homeBodyColor(),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
                 }
             }
         }
@@ -778,7 +809,7 @@ internal fun RecommendedAlbumCard(
     album: AlbumSummary,
     onClick: () -> Unit,
 ) {
-    val artistLabel = album.albumArtist ?: album.artist ?: "未知艺人"
+    val artistLabel = album.albumArtist ?: album.artist ?: echoString(en = "Unknown artist", zh = "未知艺人", ja = "不明なアーティスト")
     Column(
         modifier = Modifier
             .width(136.dp)
@@ -832,15 +863,19 @@ internal fun HomeArtistRankingSection(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
-            "\u827a\u4eba\u6392\u884c\u699c",
+            echoString(en = "Artist ranking", zh = "艺人排行榜", ja = "アーティストランキング"),
             color = scheme.onSurface,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.ExtraBold,
         )
         if (artists.isEmpty()) {
             EmptyRankingNotice(
-                title = "\u6682\u65e0\u6392\u884c\u6570\u636e",
-                subtitle = "\u64ad\u653e\u827a\u4eba\u6b4c\u66f2\u540e\u663e\u793a",
+                title = echoString(en = "No ranking data yet", zh = "暂无排行数据", ja = "ランキングデータはまだありません"),
+                subtitle = echoString(
+                    en = "Appears after you play an artist",
+                    zh = "播放艺人歌曲后显示",
+                    ja = "アーティストの曲を再生すると表示されます",
+                ),
                 onClick = onOpenLibrary,
             )
         } else {
@@ -866,6 +901,7 @@ private fun ArtistRankRow(
 ) {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
+    val durationLabel = artistReadableDuration(artist.durationMs)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -908,7 +944,11 @@ private fun ArtistRankRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                "${artist.trackCount} \u9996 \u00b7 ${artistReadableDuration(artist.durationMs)}",
+                echoString(
+                    en = "${artist.trackCount} tracks · $durationLabel",
+                    zh = "${artist.trackCount} 首 · $durationLabel",
+                    ja = "${artist.trackCount} 曲 · $durationLabel",
+                ),
                 color = scheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
@@ -945,7 +985,11 @@ private fun ArtistRankRow(
             border = homePanelBorder(0.76f),
         ) {
             Text(
-                "${artist.albumCount.coerceAtLeast(0)} \u4e13\u8f91",
+                echoString(
+                    en = "${artist.albumCount.coerceAtLeast(0)} albums",
+                    zh = "${artist.albumCount.coerceAtLeast(0)} 专辑",
+                    ja = "${artist.albumCount.coerceAtLeast(0)} 枚",
+                ),
                 color = scheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
@@ -975,7 +1019,7 @@ internal fun HomeFavoriteAlbumsSection(
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Text(
-            "\u4f60\u559c\u6b22\u7684\u4e13\u8f91",
+            echoString(en = "Albums you like", zh = "你喜欢的专辑", ja = "お気に入りのアルバム"),
             color = scheme.onSurface,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.ExtraBold,
@@ -989,8 +1033,12 @@ internal fun HomeFavoriteAlbumsSection(
         ) {
             if (albums.isEmpty()) {
                 RecentActivityEmptyAlbumCard(
-                    title = "\u6682\u65e0\u504f\u597d\u4e13\u8f91",
-                    subtitle = "\u591a\u542c\u51e0\u5f20\u4e13\u8f91\u540e\u663e\u793a",
+                    title = echoString(en = "No favorite albums yet", zh = "暂无偏好专辑", ja = "お気に入りのアルバムはまだありません"),
+                    subtitle = echoString(
+                        en = "Star an album on the player to see it here",
+                        zh = "在播放页点收藏后显示",
+                        ja = "再生画面で保存すると表示されます",
+                    ),
                     onClick = onOpenLibrary,
                 )
             } else {
@@ -1010,7 +1058,8 @@ internal fun HomeFavoriteAlbumsSection(
 private fun FavoriteAlbumHeatmap(days: List<PlaybackHeatmapDay>) {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
-    val heatmap = remember(days) { buildFavoriteHeatmap(days) }
+    val heatmapLocale = Locale.getDefault()
+    val heatmap = remember(days, heatmapLocale) { buildFavoriteHeatmap(days) }
     Column(
         modifier = Modifier
             .padding(horizontal = 18.dp)
@@ -1033,7 +1082,11 @@ private fun FavoriteAlbumHeatmap(days: List<PlaybackHeatmapDay>) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "近 12 周播放热力图",
+                echoString(
+                    en = "Listening heatmap · last 12 weeks",
+                    zh = "近 12 周播放热力图",
+                    ja = "直近12週の再生ヒートマップ",
+                ),
                 color = scheme.onSurface,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.ExtraBold,
@@ -1041,7 +1094,11 @@ private fun FavoriteAlbumHeatmap(days: List<PlaybackHeatmapDay>) {
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                "${heatmap.activeWeeks} 周活跃",
+                echoString(
+                    en = "${heatmap.activeWeeks} weeks active",
+                    zh = "${heatmap.activeWeeks} 周活跃",
+                    ja = "${heatmap.activeWeeks} 週アクティブ",
+                ),
                 color = scheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
@@ -1073,11 +1130,11 @@ private fun FavoriteAlbumHeatmap(days: List<PlaybackHeatmapDay>) {
                         modifier = Modifier.width(labelWidth),
                         verticalArrangement = Arrangement.spacedBy(cellGap),
                     ) {
-                        HeatmapWeekdayLabel("一", cellSize)
+                        HeatmapWeekdayLabel(DayOfWeek.MONDAY.getDisplayName(TextStyle.NARROW, heatmapLocale), cellSize)
                         HeatmapWeekdayLabel("", cellSize)
-                        HeatmapWeekdayLabel("三", cellSize)
+                        HeatmapWeekdayLabel(DayOfWeek.WEDNESDAY.getDisplayName(TextStyle.NARROW, heatmapLocale), cellSize)
                         HeatmapWeekdayLabel("", cellSize)
-                        HeatmapWeekdayLabel("五", cellSize)
+                        HeatmapWeekdayLabel(DayOfWeek.FRIDAY.getDisplayName(TextStyle.NARROW, heatmapLocale), cellSize)
                         HeatmapWeekdayLabel("", cellSize)
                         HeatmapWeekdayLabel("", cellSize)
                     }
@@ -1112,7 +1169,7 @@ private fun FavoriteAlbumHeatmap(days: List<PlaybackHeatmapDay>) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "少",
+                echoString(en = "Less", zh = "少", ja = "少"),
                 color = scheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
@@ -1135,7 +1192,7 @@ private fun FavoriteAlbumHeatmap(days: List<PlaybackHeatmapDay>) {
                 Spacer(Modifier.width(3.dp))
             }
             Text(
-                "多",
+                echoString(en = "More", zh = "多", ja = "多"),
                 color = scheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
@@ -1207,7 +1264,7 @@ private fun buildFavoriteHeatmap(days: List<PlaybackHeatmapDay>): FavoriteHeatma
 private fun monthLabelForWeek(weekStart: LocalDate, weekIndex: Int): String {
     val showLabel = weekIndex == 0 || weekStart.dayOfMonth <= 7
     return if (showLabel) {
-        weekStart.month.getDisplayName(TextStyle.SHORT, Locale.CHINA)
+        weekStart.month.getDisplayName(TextStyle.SHORT, Locale.getDefault())
     } else {
         ""
     }
@@ -1268,9 +1325,14 @@ private fun EmptyRankingNotice(
     }
 }
 
+@Composable
 private fun artistReadableDuration(durationMs: Long): String {
     val minutes = (durationMs / 60000L).toInt()
-    return if (minutes >= 1) "$minutes \u5206\u949f" else formatDuration(durationMs)
+    return if (minutes >= 1) {
+        echoString(en = "$minutes min", zh = "$minutes 分钟", ja = "${minutes}分")
+    } else {
+        formatDuration(durationMs)
+    }
 }
 
 @Composable
@@ -1284,8 +1346,8 @@ internal fun RecentActivityTabs() {
             modifier = Modifier.padding(3.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            RecentActivityTab(label = "已播放", selected = true)
-            RecentActivityTab(label = "添加于", selected = false)
+            RecentActivityTab(label = echoString(en = "Played", zh = "已播放", ja = "再生済み"), selected = true)
+            RecentActivityTab(label = echoString(en = "Added", zh = "添加于", ja = "追加日"), selected = false)
         }
     }
 }
@@ -1400,7 +1462,7 @@ internal fun HomeRecommendationsSection(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "为你推荐",
+                echoString(en = "Recommended for you", zh = "为你推荐", ja = "あなたへのおすすめ"),
                 color = homeTitleColor(),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
@@ -1420,7 +1482,12 @@ internal fun HomeRecommendationsSection(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Icon(Icons.Rounded.Refresh, contentDescription = null, tint = homeBodyColor(), modifier = Modifier.size(16.dp))
-                    Text("刷新", color = homeBodyColor(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        echoString(en = "Refresh", zh = "刷新", ja = "更新"),
+                        color = homeBodyColor(),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 }
             }
         }
@@ -1441,8 +1508,21 @@ internal fun HomeRecommendationsSection(
                 ) {
                     EchoIconBadge(Icons.Rounded.LibraryMusic)
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text("扫描后生成推荐", color = homeTitleColor(), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                        Text("从本机曲库挑几首开始。", color = homeBodyColor(), style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            echoString(en = "Scan to generate recommendations", zh = "扫描后生成推荐", ja = "スキャンするとおすすめが作られます"),
+                            color = homeTitleColor(),
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            echoString(
+                                en = "Pick a few tracks from your local library to start.",
+                                zh = "从本机曲库挑几首开始。",
+                                ja = "端末のライブラリから数曲選んで始めましょう。",
+                            ),
+                            color = homeBodyColor(),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
                     }
                 }
             }
@@ -1517,19 +1597,23 @@ internal fun RoonListenLaterPanel(onOpenConnect: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(
-            "稍后聆听",
+            echoString(en = "Listen later", zh = "稍后聆听", ja = "あとで聴く"),
             color = homeTitleColor(),
             style = MaterialTheme.typography.displaySmall,
             fontWeight = FontWeight.Bold,
         )
         Text(
-            "为本机曲库留一条线索",
+            echoString(en = "Leave a trail through your local library", zh = "为本机曲库留一条线索", ja = "端末のライブラリに手がかりを残す"),
             color = homeTitleColor(),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
         )
         Text(
-            "把想听的专辑、歌手和曲目先放在这里，稍后继续。",
+            echoString(
+                en = "Park the albums, artists, and tracks you want, then pick them up later.",
+                zh = "把想听的专辑、歌手和曲目先放在这里，稍后继续。",
+                ja = "聴きたいアルバム、アーティスト、曲をここに置いて、あとで続けましょう。",
+            ),
             color = homeBodyColor(),
             style = MaterialTheme.typography.bodyLarge,
             maxLines = 2,
@@ -1545,7 +1629,7 @@ internal fun RoonListenLaterPanel(onOpenConnect: () -> Unit) {
             contentColor = Color.White,
         ) {
             Text(
-                "连接 PC ECHO",
+                echoString(en = "Connect PC ECHO", zh = "连接 PC ECHO", ja = "PC ECHO に接続"),
                 modifier = Modifier.padding(horizontal = 28.dp, vertical = 14.dp),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
@@ -1563,7 +1647,7 @@ internal fun HomeTopChrome(onOpenLibrary: () -> Unit) {
     ) {
         GlassIconButton(
             icon = Icons.Rounded.LibraryMusic,
-            description = "打开曲库",
+            description = echoString(en = "Open library", zh = "打开曲库", ja = "ライブラリを開く"),
             onClick = onOpenLibrary,
         )
         GlassSurface(
@@ -1578,7 +1662,12 @@ internal fun HomeTopChrome(onOpenLibrary: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(Icons.Rounded.Search, contentDescription = null, tint = Color.White.copy(alpha = 0.76f), modifier = Modifier.size(20.dp))
-                Text("搜索本机音乐...", color = Color.White.copy(alpha = 0.72f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    echoString(en = "Search local music...", zh = "搜索本机音乐...", ja = "端末の音楽を検索..."),
+                    color = Color.White.copy(alpha = 0.72f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
     }
@@ -1602,7 +1691,11 @@ internal fun HomeGreeting(status: EchoPlaybackStatus) {
             overflow = TextOverflow.Ellipsis,
         )
         Text(
-            if (status.track != null) "不是所有的旅途都有终点" else "让本机音乐醒过来",
+            if (status.track != null) {
+                echoString(en = "Not every journey has an ending", zh = "不是所有的旅途都有终点", ja = "すべての旅に終わりがあるわけではない")
+            } else {
+                echoString(en = "Wake up your local music", zh = "让本机音乐醒过来", ja = "端末の音楽を目覚めさせよう")
+            },
             color = Color.White,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
@@ -1647,13 +1740,17 @@ internal fun DailyRecommendationCard(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
-                if (status.track != null) "继续播放" else "每日推荐",
+                if (status.track != null) {
+                    echoString(en = "Continue playing", zh = "继续播放", ja = "再生を続ける")
+                } else {
+                    echoString(en = "Daily mix", zh = "每日推荐", ja = "今日のおすすめ")
+                },
                 color = Color.White,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                status.track?.title ?: "发现好音乐",
+                status.track?.title ?: echoString(en = "Discover great music", zh = "发现好音乐", ja = "いい音楽を見つけよう"),
                 color = Color.White.copy(alpha = 0.88f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -1682,21 +1779,25 @@ internal fun HomeModeRibbon(
         )
         HomeModeChip(
             icon = Icons.Rounded.Shuffle,
-            label = if (shuffleEnabled) "随机" else "顺序",
+            label = if (shuffleEnabled) {
+                echoString(en = "Shuffle", zh = "随机", ja = "シャッフル")
+            } else {
+                echoString(en = "In order", zh = "顺序", ja = "リスト順")
+            },
             selected = shuffleEnabled,
             onClick = onToggleShuffle,
             modifier = Modifier.weight(1f),
         )
         HomeModeChip(
             icon = Icons.Rounded.LibraryMusic,
-            label = "曲库",
+            label = echoString(en = "Library", zh = "曲库", ja = "ライブラリ"),
             selected = false,
             onClick = onOpenLibrary,
             modifier = Modifier.weight(1f),
         )
         HomeModeChip(
             icon = Icons.Rounded.Devices,
-            label = "接力",
+            label = echoString(en = "Handoff", zh = "接力", ja = "ハンドオフ"),
             selected = false,
             onClick = onOpenConnect,
             modifier = Modifier.weight(1f),
@@ -1748,8 +1849,12 @@ internal fun PlaybackQueuePanel(
             verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 10.dp),
         ) {
             EchoSectionTitle(
-                if (hasTrack) "播放队列" else "准备播放",
-                status.track?.album ?: "队列为空",
+                if (hasTrack) {
+                    echoString(en = "Playback queue", zh = "播放队列", ja = "再生キュー")
+                } else {
+                    echoString(en = "Ready to play", zh = "准备播放", ja = "再生の準備")
+                },
+                status.track?.album ?: echoString(en = "Queue is empty", zh = "队列为空", ja = "キューは空です"),
             )
             QueuePreviewList(status = status, compact = compact)
             PlaybackModeControls(
@@ -1761,22 +1866,48 @@ internal fun PlaybackQueuePanel(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 PlaybackActionCard(
                     icon = Icons.Rounded.LibraryMusic,
-                    title = if (hasTrack) "回到曲库" else "选择曲目",
-                    detail = if (hasTrack) "调整本地队列" else "从本机音乐开始",
+                    title = if (hasTrack) {
+                        echoString(en = "Back to library", zh = "回到曲库", ja = "ライブラリに戻る")
+                    } else {
+                        echoString(en = "Choose a track", zh = "选择曲目", ja = "曲を選ぶ")
+                    },
+                    detail = if (hasTrack) {
+                        echoString(en = "Adjust the local queue", zh = "调整本地队列", ja = "ローカルキューを調整")
+                    } else {
+                        echoString(en = "Start with local music", zh = "从本机音乐开始", ja = "端末の音楽から始める")
+                    },
                     onClick = onOpenLibrary,
                     modifier = Modifier.weight(1f),
                 )
                 PlaybackActionCard(
                     icon = Icons.Rounded.Devices,
-                    title = "PC 接力",
-                    detail = if (hasTrack) "切换到 PC ECHO" else "配对后远程播放",
+                    title = echoString(en = "PC handoff", zh = "PC 接力", ja = "PC ハンドオフ"),
+                    detail = if (hasTrack) {
+                        echoString(en = "Switch to PC ECHO", zh = "切换到 PC ECHO", ja = "PC ECHO に切り替える")
+                    } else {
+                        echoString(en = "Pair to play remotely", zh = "配对后远程播放", ja = "ペアリング後にリモート再生")
+                    },
                     onClick = onOpenConnect,
                     modifier = Modifier.weight(1f),
                 )
             }
             if (!compact) {
                 PlaybackHandoffFlow(active = hasTrack)
-                EchoPlaceholderLine(if (hasTrack) "下一步补歌词、循环与队列重排" else "歌词、循环与队列重排位已预留")
+                EchoPlaceholderLine(
+                    if (hasTrack) {
+                        echoString(
+                            en = "Next: lyrics, repeat, and queue reorder",
+                            zh = "下一步补歌词、循环与队列重排",
+                            ja = "次は歌詞、リピート、キュー並べ替え",
+                        )
+                    } else {
+                        echoString(
+                            en = "Lyrics, repeat, and queue reorder are reserved",
+                            zh = "歌词、循环与队列重排位已预留",
+                            ja = "歌詞、リピート、キュー並べ替えの枠は用意済みです",
+                        )
+                    },
+                )
             }
         }
     }
@@ -1790,24 +1921,36 @@ internal fun QueuePreviewList(
     Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
         QueuePreviewItem(
             icon = Icons.Rounded.MusicNote,
-            label = "当前",
-            title = status.track?.title ?: "暂无播放",
-            detail = status.track?.artist ?: "从曲库选择一首歌",
+            label = echoString(en = "Now", zh = "当前", ja = "再生中"),
+            title = status.track?.title ?: echoString(en = "Nothing playing", zh = "暂无播放", ja = "再生中の曲はありません"),
+            detail = status.track?.artist ?: echoString(en = "Pick a song from your library", zh = "从曲库选择一首歌", ja = "ライブラリから1曲選ぶ"),
             active = status.track != null,
         )
         if (!compact) {
             QueuePreviewItem(
                 icon = Icons.Rounded.LibraryMusic,
-                label = "下一首",
-                title = "智能队列",
-                detail = if (status.track != null) "跟随本机队列继续播放" else "选歌后显示即将播放",
+                label = echoString(en = "Next", zh = "下一首", ja = "次の曲"),
+                title = echoString(en = "Smart queue", zh = "智能队列", ja = "スマートキュー"),
+                detail = if (status.track != null) {
+                    echoString(en = "Continues from the local queue", zh = "跟随本机队列继续播放", ja = "ローカルキューに沿って再生")
+                } else {
+                    echoString(
+                        en = "Upcoming tracks appear after you pick a song",
+                        zh = "选歌后显示即将播放",
+                        ja = "曲を選ぶと次に再生する曲が表示されます",
+                    )
+                },
                 active = false,
             )
             QueuePreviewItem(
                 icon = Icons.Rounded.Devices,
-                label = "接力",
+                label = echoString(en = "Handoff", zh = "接力", ja = "ハンドオフ"),
                 title = "PC ECHO",
-                detail = if (status.track != null) "可切换到桌面输出" else "配对后接管远程播放",
+                detail = if (status.track != null) {
+                    echoString(en = "Switch to desktop output", zh = "可切换到桌面输出", ja = "デスクトップ出力に切り替えられます")
+                } else {
+                    echoString(en = "Pair to take over remote playback", zh = "配对后接管远程播放", ja = "ペアリング後にリモート再生を引き継ぎ")
+                },
                 active = false,
             )
         }
@@ -1825,15 +1968,23 @@ internal fun PlaybackModeControls(
         PlaybackModeButton(
             icon = if (repeatMode == EchoRepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
             title = repeatModeLabel(repeatMode),
-            detail = "点按切换",
+            detail = echoString(en = "Tap to switch", zh = "点按切换", ja = "タップで切り替え"),
             selected = repeatMode != EchoRepeatMode.Off,
             onClick = onCycleRepeatMode,
             modifier = Modifier.weight(1f),
         )
         PlaybackModeButton(
             icon = Icons.Rounded.Shuffle,
-            title = if (shuffleEnabled) "随机开启" else "顺序播放",
-            detail = if (shuffleEnabled) "队列随机" else "按队列顺序",
+            title = if (shuffleEnabled) {
+                echoString(en = "Shuffle on", zh = "随机开启", ja = "シャッフルオン")
+            } else {
+                echoString(en = "In order", zh = "顺序播放", ja = "リスト順")
+            },
+            detail = if (shuffleEnabled) {
+                echoString(en = "Queue is shuffled", zh = "队列随机", ja = "キューをシャッフル")
+            } else {
+                echoString(en = "Follows queue order", zh = "按队列顺序", ja = "キューの順に再生")
+            },
             selected = shuffleEnabled,
             onClick = onToggleShuffle,
             modifier = Modifier.weight(1f),
@@ -1945,18 +2096,22 @@ internal fun PlaybackHandoffFlow(active: Boolean) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("接力路径", fontWeight = FontWeight.SemiBold)
+                Text(echoString(en = "Handoff path", zh = "接力路径", ja = "ハンドオフ経路"), fontWeight = FontWeight.SemiBold)
                 Text(
-                    if (active) "可接力" else "待选择曲目",
+                    if (active) {
+                        echoString(en = "Ready to hand off", zh = "可接力", ja = "ハンドオフ可能")
+                    } else {
+                        echoString(en = "Pick a track first", zh = "待选择曲目", ja = "曲の選択待ち")
+                    },
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                HandoffStep("1", "本机播放", selected = true, modifier = Modifier.weight(1f))
-                HandoffStep("2", "连接 PC", selected = active, modifier = Modifier.weight(1f))
-                HandoffStep("3", "PC 输出", selected = active, modifier = Modifier.weight(1f))
+                HandoffStep("1", echoString(en = "Play on device", zh = "本机播放", ja = "この端末で再生"), selected = true, modifier = Modifier.weight(1f))
+                HandoffStep("2", echoString(en = "Connect PC", zh = "连接 PC", ja = "PC に接続"), selected = active, modifier = Modifier.weight(1f))
+                HandoffStep("3", echoString(en = "PC output", zh = "PC 输出", ja = "PC 出力"), selected = active, modifier = Modifier.weight(1f))
             }
         }
     }
@@ -2060,7 +2215,7 @@ internal fun NowPlayingHero(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "本机会话",
+                    echoString(en = "This device", zh = "本机会话", ja = "この端末"),
                     style = MaterialTheme.typography.labelSmall,
                     color = EchoAccentText,
                     fontWeight = FontWeight.Bold,
@@ -2082,7 +2237,7 @@ internal fun NowPlayingHero(
                 elevation = 18.dp,
             )
             Text(
-                status.track?.title ?: "暂无播放",
+                status.track?.title ?: echoString(en = "Nothing playing", zh = "暂无播放", ja = "再生中の曲はありません"),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = homeTitleColor(),
@@ -2090,7 +2245,7 @@ internal fun NowPlayingHero(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                status.track?.artist ?: "从曲库选择一首歌",
+                status.track?.artist ?: echoString(en = "Pick a song from your library", zh = "从曲库选择一首歌", ja = "ライブラリから1曲選ぶ"),
                 color = homeBodyColor(),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -2147,7 +2302,7 @@ internal fun CompactNowPlayingHero(
                 ) {
                     Column {
                         Text(
-                            "本机会话",
+                            echoString(en = "This device", zh = "本机会话", ja = "この端末"),
                             style = MaterialTheme.typography.labelSmall,
                             color = EchoAccentText,
                             fontWeight = FontWeight.Bold,
@@ -2166,7 +2321,7 @@ internal fun CompactNowPlayingHero(
                     )
                 }
                 Text(
-                    status.track?.title ?: "暂无播放",
+                    status.track?.title ?: echoString(en = "Nothing playing", zh = "暂无播放", ja = "再生中の曲はありません"),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = homeTitleColor(),
@@ -2174,7 +2329,7 @@ internal fun CompactNowPlayingHero(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    status.track?.artist ?: "从曲库选择一首歌",
+                    status.track?.artist ?: echoString(en = "Pick a song from your library", zh = "从曲库选择一首歌", ja = "ライブラリから1曲選ぶ"),
                     color = homeBodyColor(),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -2198,8 +2353,16 @@ internal fun HeroMetaRail(status: EchoPlaybackStatus) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            CompactFact("输出", status.diagnostics.outputRoute, Modifier.weight(1.25f))
-            CompactFact("处理", if (status.diagnostics.offloadActive) "硬件直通" else "清晰", Modifier.weight(1f))
+            CompactFact(echoString(en = "Output", zh = "输出", ja = "出力"), status.diagnostics.outputRoute, Modifier.weight(1.25f))
+            CompactFact(
+                echoString(en = "Processing", zh = "处理", ja = "処理"),
+                if (status.diagnostics.offloadActive) {
+                    echoString(en = "Hardware offload", zh = "硬件直通", ja = "ハードウェア直通")
+                } else {
+                    echoString(en = "Clear", zh = "清晰", ja = "クリア")
+                },
+                Modifier.weight(1f),
+            )
         }
     }
 }
@@ -2219,11 +2382,18 @@ internal fun TransportControls(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
 ) {
+    val haptics = rememberEchoHapticPerformer()
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = onPrevious, modifier = Modifier.size(44.dp)) {
+        IconButton(
+            onClick = {
+                haptics.tick()
+                onPrevious()
+            },
+            modifier = Modifier.size(44.dp),
+        ) {
             Icon(
                 Icons.Rounded.SkipPrevious,
-                contentDescription = "上一首",
+                contentDescription = echoString(en = "Previous", zh = "上一首", ja = "前の曲"),
                 tint = EchoHomeBlue,
                 modifier = Modifier.size(28.dp),
             )
@@ -2238,20 +2408,31 @@ internal fun TransportControls(
                         listOf(EchoHomeBlue, EchoHomeBlueDeep),
                     ),
                 )
-                .clickable(onClick = onPlayPause),
+                .clickable(
+                    onClick = {
+                        haptics.confirm()
+                        onPlayPause()
+                    },
+                ),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                contentDescription = "播放或暂停",
+                contentDescription = echoString(en = "Play or pause", zh = "播放或暂停", ja = "再生または一時停止"),
                 tint = Color.White,
                 modifier = Modifier.size(30.dp),
             )
         }
-        IconButton(onClick = onNext, modifier = Modifier.size(44.dp)) {
+        IconButton(
+            onClick = {
+                haptics.tick()
+                onNext()
+            },
+            modifier = Modifier.size(44.dp),
+        ) {
             Icon(
                 Icons.Rounded.SkipNext,
-                contentDescription = "下一首",
+                contentDescription = echoString(en = "Next", zh = "下一首", ja = "次の曲"),
                 tint = EchoHomeBlue,
                 modifier = Modifier.size(28.dp),
             )
@@ -2288,23 +2469,25 @@ internal fun PlaybackProgress(positionMs: Long, durationMs: Long, light: Boolean
     }
 }
 
+@Composable
 internal fun playbackStateLabel(state: EchoPlaybackState): String =
     when (state) {
-        EchoPlaybackState.Idle -> "空闲"
-        EchoPlaybackState.Loading -> "加载中"
-        EchoPlaybackState.Playing -> "播放中"
-        EchoPlaybackState.Paused -> "已暂停"
-        EchoPlaybackState.Seeking -> "定位中"
-        EchoPlaybackState.Buffering -> "缓冲中"
-        EchoPlaybackState.Ended -> "已结束"
-        EchoPlaybackState.Stopped -> "已停止"
-        EchoPlaybackState.Error -> "错误"
+        EchoPlaybackState.Idle -> echoString(en = "Idle", zh = "空闲", ja = "待機")
+        EchoPlaybackState.Loading -> echoString(en = "Loading", zh = "加载中", ja = "読み込み中")
+        EchoPlaybackState.Playing -> echoString(en = "Playing", zh = "播放中", ja = "再生中")
+        EchoPlaybackState.Paused -> echoString(en = "Paused", zh = "已暂停", ja = "一時停止")
+        EchoPlaybackState.Seeking -> echoString(en = "Seeking", zh = "定位中", ja = "シーク中")
+        EchoPlaybackState.Buffering -> echoString(en = "Buffering", zh = "缓冲中", ja = "バッファ中")
+        EchoPlaybackState.Ended -> echoString(en = "Ended", zh = "已结束", ja = "終了")
+        EchoPlaybackState.Stopped -> echoString(en = "Stopped", zh = "已停止", ja = "停止")
+        EchoPlaybackState.Error -> echoString(en = "Error", zh = "错误", ja = "エラー")
     }
 
+@Composable
 internal fun repeatModeLabel(mode: EchoRepeatMode): String =
     when (mode) {
-        EchoRepeatMode.Off -> "循环关闭"
-        EchoRepeatMode.All -> "列表循环"
-        EchoRepeatMode.One -> "单曲循环"
+        EchoRepeatMode.Off -> echoString(en = "Repeat off", zh = "循环关闭", ja = "リピートオフ")
+        EchoRepeatMode.All -> echoString(en = "Repeat all", zh = "列表循环", ja = "全曲リピート")
+        EchoRepeatMode.One -> echoString(en = "Repeat one", zh = "单曲循环", ja = "1曲リピート")
     }
 

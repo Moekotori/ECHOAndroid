@@ -74,6 +74,7 @@ import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Shuffle
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.TextFields
 import androidx.compose.material.icons.rounded.Translate
@@ -115,9 +116,13 @@ import app.echo.android.design.EchoDarkGlassBorder
 import app.echo.android.design.EchoGlassInk
 import app.echo.android.design.EchoGlassNight
 import app.echo.android.design.EchoGlassPanel
+import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.LocalEchoWidthSizeClass
+import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.design.echoDarkGlassBorder
+import app.echo.android.design.echoString
 import app.echo.android.design.formatDuration
 import app.echo.android.design.progressFraction
 import app.echo.android.design.rememberArtworkPalette
@@ -130,6 +135,7 @@ import app.echo.android.model.playback.EchoPlaybackDiagnostics
 import app.echo.android.model.playback.EchoPlaybackError
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoRepeatMode
+import app.echo.android.model.playback.EchoSleepTimerMode
 import app.echo.android.model.playback.PlaybackPositionState
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -145,33 +151,31 @@ private val LyricsSettingsMotionEasing = CubicBezierEasing(0.16f, 1f, 0.30f, 1f)
 
 private data class LyricsColorOption(
     val value: String,
-    val label: String,
     val color: Color,
 )
 
 private data class LyricsTextOption(
     val value: String,
-    val label: String,
 )
 
 private val LyricsColorOptions = listOf(
-    LyricsColorOption("white", "白", Color.White),
-    LyricsColorOption("warm", "暖", Color(0xFFFFD6A0)),
-    LyricsColorOption("blue", "蓝", Color(0xFF9ED8FF)),
-    LyricsColorOption("violet", "紫", Color(0xFFD9C2FF)),
-    LyricsColorOption("mint", "绿", Color(0xFFA9F3D0)),
+    LyricsColorOption("white", Color.White),
+    LyricsColorOption("warm", Color(0xFFFFD6A0)),
+    LyricsColorOption("blue", Color(0xFF9ED8FF)),
+    LyricsColorOption("violet", Color(0xFFD9C2FF)),
+    LyricsColorOption("mint", Color(0xFFA9F3D0)),
 )
 
 private val LyricsAlignmentOptions = listOf(
-    LyricsTextOption("center", "居中"),
-    LyricsTextOption("start", "左对齐"),
-    LyricsTextOption("dynamic", "舞台"),
+    LyricsTextOption("center"),
+    LyricsTextOption("start"),
+    LyricsTextOption("dynamic"),
 )
 
 private val LyricsMotionOptions = listOf(
-    LyricsTextOption("calm", "安静"),
-    LyricsTextOption("smooth", "顺滑"),
-    LyricsTextOption("stage", "舞台"),
+    LyricsTextOption("calm"),
+    LyricsTextOption("smooth"),
+    LyricsTextOption("stage"),
 )
 
 private val PlaybackSpeedOptions = listOf(0.75f, 1f, 1.25f, 1.5f, 2f)
@@ -197,6 +201,7 @@ fun NowPlayingScreen(
     onToggleShuffle: () -> Unit,
     onSetPlaybackSpeed: (Float, Boolean) -> Unit,
     onSetSleepTimer: (Int) -> Unit,
+    onSetSleepTimerEndOfTrack: () -> Unit = {},
     onCancelSleepTimer: () -> Unit,
     onSetReplayGain: (Boolean, Float) -> Unit,
     onAdjustReplayGainPreamp: (Float) -> Unit,
@@ -240,6 +245,8 @@ fun NowPlayingScreen(
     onLyricsFocusGlowChange: (Boolean) -> Unit = {},
     onShowLyricsControlDeckChange: (Boolean) -> Unit = {},
     onOnlineLyricsEnabledChange: (Boolean) -> Unit = {},
+    isCurrentTrackFavorite: Boolean = false,
+    onToggleFavorite: () -> Unit = {},
 ) {
     val track = status.track
     val effectivePerformanceMode = LocalEchoEffectivePerformanceMode.current
@@ -293,13 +300,14 @@ fun NowPlayingScreen(
                 ),
         )
 
+        val splitNowPlaying = LocalEchoWidthSizeClass.current.prefersNowPlayingSplit
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .widthIn(max = 560.dp)
-                .padding(horizontal = 26.dp),
+                .widthIn(max = if (splitNowPlaying) LocalEchoContentMaxWidth.current else 560.dp)
+                .padding(horizontal = if (splitNowPlaying) 20.dp else 26.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             NowPlayingTopBar(onDismiss = onDismiss)
@@ -313,7 +321,84 @@ fun NowPlayingScreen(
                 )
             }
 
-            HorizontalPager(
+            if (splitNowPlaying) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(18.dp),
+                ) {
+                    NowPlayingCoverPage(
+                        status = status,
+                        positionMs = activePositionMs,
+                        durationMs = activeDurationMs,
+                        onPlayPause = onPlayPause,
+                        onNext = onNext,
+                        onPrevious = onPrevious,
+                        onSeek = onSeek,
+                        onOpenQueue = onOpenQueue,
+                        playbackSettingsExpanded = playbackSettingsVisible,
+                        onOpenPlaybackSettings = { playbackSettingsVisible = true },
+                        isCurrentTrackFavorite = isCurrentTrackFavorite,
+                        onToggleFavorite = onToggleFavorite,
+                        onOpenLyrics = {},
+                        onOpenArtist = onOpenArtist,
+                        onOpenAlbum = onOpenAlbum,
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                    )
+                    NowPlayingLyricsPage(
+                        status = status,
+                        lyricsState = lyricsState,
+                        showLyricsControlDeck = showLyricsControlDeck,
+                        lyricsFontFamily = lyricsFontFamily,
+                        lyricsFontMode = lyricsFontMode,
+                        lyricsFontScale = lyricsFontScale,
+                        lyricsColorMode = lyricsColorMode,
+                        lyricsAlignment = lyricsAlignment,
+                        lyricsLineSpacing = lyricsLineSpacing,
+                        lyricsBackgroundDim = lyricsBackgroundDim,
+                        lyricsWordHighlightEnabled = lyricsWordHighlightEnabled,
+                        lyricsWordHighlightIntensity = lyricsWordHighlightIntensity,
+                        lyricsImmersiveModeEnabled = lyricsImmersiveModeEnabled,
+                        lyricsMotionMode = lyricsMotionMode,
+                        lyricsShowTranslation = lyricsShowTranslation,
+                        lyricsShowRomanization = lyricsShowRomanization,
+                        lyricsFocusGlowEnabled = effectiveLyricsFocusGlowEnabled,
+                        importedFontUri = importedFontUri,
+                        onlineLyricsEnabled = onlineLyricsEnabled,
+                        onPlayPause = onPlayPause,
+                        onNext = onNext,
+                        onPrevious = onPrevious,
+                        onSeek = onSeek,
+                        onOpenQueue = onOpenQueue,
+                        positionMs = activePositionMs,
+                        durationMs = activeDurationMs,
+                        onCloseLyrics = {},
+                        onImportLyrics = onImportLyrics,
+                        onImportLyricsFont = onImportLyricsFont,
+                        onAdjustLyricsOffset = onAdjustLyricsOffset,
+                        onResetLyricsOffset = onResetLyricsOffset,
+                        onLyricsFontFamilyChange = onLyricsFontFamilyChange,
+                        onLyricsFontScaleChange = onLyricsFontScaleChange,
+                        onLyricsColorModeChange = onLyricsColorModeChange,
+                        onLyricsAlignmentChange = onLyricsAlignmentChange,
+                        onLyricsLineSpacingChange = onLyricsLineSpacingChange,
+                        onLyricsBackgroundDimChange = onLyricsBackgroundDimChange,
+                        onLyricsWordHighlightEnabledChange = onLyricsWordHighlightEnabledChange,
+                        onLyricsWordHighlightIntensityChange = onLyricsWordHighlightIntensityChange,
+                        onLyricsImmersiveModeChange = onLyricsImmersiveModeChange,
+                        onLyricsMotionModeChange = onLyricsMotionModeChange,
+                        onLyricsShowTranslationChange = onLyricsShowTranslationChange,
+                        onLyricsShowRomanizationChange = onLyricsShowRomanizationChange,
+                        onLyricsFocusGlowChange = onLyricsFocusGlowChange,
+                        onShowLyricsControlDeckChange = onShowLyricsControlDeckChange,
+                        onOnlineLyricsEnabledChange = onOnlineLyricsEnabledChange,
+                        onOpenLyricsSettings = { lyricsSettingsVisible = true },
+                        showTransportDock = false,
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                    )
+                }
+            } else HorizontalPager(
                 state = pagerState,
                 beyondViewportPageCount = 0,
                 modifier = Modifier
@@ -332,6 +417,8 @@ fun NowPlayingScreen(
                         onOpenQueue = onOpenQueue,
                         playbackSettingsExpanded = playbackSettingsVisible,
                         onOpenPlaybackSettings = { playbackSettingsVisible = true },
+                        isCurrentTrackFavorite = isCurrentTrackFavorite,
+                        onToggleFavorite = onToggleFavorite,
                         onOpenLyrics = {
                             pageScope.launch {
                                 pagerState.animateScrollToPage(NowPlayingPage.Lyrics.ordinal)
@@ -452,6 +539,7 @@ fun NowPlayingScreen(
             onToggleShuffle = onToggleShuffle,
             onSetPlaybackSpeed = onSetPlaybackSpeed,
             onSetSleepTimer = onSetSleepTimer,
+            onSetSleepTimerEndOfTrack = onSetSleepTimerEndOfTrack,
             onCancelSleepTimer = onCancelSleepTimer,
             onSetReplayGain = onSetReplayGain,
             onAdjustReplayGainPreamp = onAdjustReplayGainPreamp,
@@ -478,6 +566,8 @@ private fun NowPlayingCoverPage(
     onOpenQueue: () -> Unit,
     playbackSettingsExpanded: Boolean,
     onOpenPlaybackSettings: () -> Unit,
+    isCurrentTrackFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
     onOpenLyrics: () -> Unit,
     onOpenArtist: () -> Unit,
     onOpenAlbum: () -> Unit,
@@ -492,13 +582,16 @@ private fun NowPlayingCoverPage(
         Spacer(Modifier.weight(1f))
 
         NowPlayingTrackInfo(
-            title = track?.title ?: "未在播放",
-            artist = track?.artist ?: "选择一首歌开始",
+            title = track?.title ?: echoString(en = "Not playing", zh = "未在播放", ja = "未再生"),
+            artist = track?.artist ?: echoString(en = "Pick a song to start", zh = "选择一首歌开始", ja = "曲を選んで開始"),
             album = track?.album,
             onOpenArtist = onOpenArtist,
             onOpenAlbum = onOpenAlbum,
             playbackSettingsExpanded = playbackSettingsExpanded,
             onOpenPlaybackSettings = onOpenPlaybackSettings,
+            isFavorite = isCurrentTrackFavorite,
+            favoriteEnabled = track != null,
+            onToggleFavorite = onToggleFavorite,
         )
 
         Spacer(Modifier.height(8.dp))
@@ -515,7 +608,7 @@ private fun NowPlayingCoverPage(
         NowPlayingControlDock(
             isPlaying = status.isPlaying,
             leadingIcon = Icons.Rounded.Lyrics,
-            leadingDescription = "歌词",
+            leadingDescription = echoString(en = "Lyrics", zh = "歌词", ja = "歌詞"),
             onLeadingAction = onOpenLyrics,
             onPlayPause = onPlayPause,
             onNext = onNext,
@@ -591,6 +684,7 @@ private fun NowPlayingLyricsPage(
     onShowLyricsControlDeckChange: (Boolean) -> Unit,
     onOnlineLyricsEnabledChange: (Boolean) -> Unit,
     onOpenLyricsSettings: () -> Unit,
+    showTransportDock: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val readyLyrics = (lyricsState as? EchoLyricsLoadState.Ready)?.lyrics
@@ -618,9 +712,17 @@ private fun NowPlayingLyricsPage(
                 contentAlignment = Alignment.Center,
             ) {
                 when (lyricsState) {
-                    EchoLyricsLoadState.Idle -> LyricsEmptyState("选择一首歌后显示歌词", onImportLyrics)
-                    EchoLyricsLoadState.Loading -> LyricsEmptyState("正在读取本地歌词…")
-                    EchoLyricsLoadState.Missing -> LyricsEmptyState("未找到同名歌词", onImportLyrics)
+                    EchoLyricsLoadState.Idle -> LyricsEmptyState(
+                        echoString(en = "Lyrics appear after you pick a song", zh = "选择一首歌后显示歌词", ja = "曲を選ぶと歌詞が表示されます"),
+                        onImportLyrics,
+                    )
+                    EchoLyricsLoadState.Loading -> LyricsEmptyState(
+                        echoString(en = "Reading local lyrics…", zh = "正在读取本地歌词…", ja = "ローカル歌詞を読み込み中…"),
+                    )
+                    EchoLyricsLoadState.Missing -> LyricsEmptyState(
+                        echoString(en = "No matching lyrics found", zh = "未找到同名歌词", ja = "同名の歌詞が見つかりません"),
+                        onImportLyrics,
+                    )
                     is EchoLyricsLoadState.Error -> LyricsEmptyState(lyricsState.message, onImportLyrics)
                     is EchoLyricsLoadState.Ready -> LyricsLineList(
                         lyrics = lyricsState.lyrics,
@@ -674,23 +776,36 @@ private fun NowPlayingLyricsPage(
                     }
                 }
             }
-            NowPlayingScrubber(
-                positionMs = positionMs,
-                durationMs = durationMs,
-                onSeek = onSeek,
-            )
-            Spacer(Modifier.height(10.dp))
-            NowPlayingControlDock(
-                isPlaying = status.isPlaying,
-                leadingIcon = Icons.Rounded.Settings,
-                leadingDescription = "歌词设置",
-                onLeadingAction = onOpenLyricsSettings,
-                onPlayPause = onPlayPause,
-                onNext = onNext,
-                onPrevious = onPrevious,
-                onOpenQueue = onOpenQueue,
-            )
-            Spacer(Modifier.height(14.dp))
+            if (showTransportDock) {
+                NowPlayingScrubber(
+                    positionMs = positionMs,
+                    durationMs = durationMs,
+                    onSeek = onSeek,
+                )
+                Spacer(Modifier.height(10.dp))
+                NowPlayingControlDock(
+                    isPlaying = status.isPlaying,
+                    leadingIcon = Icons.Rounded.Settings,
+                    leadingDescription = echoString(en = "Lyrics settings", zh = "歌词设置", ja = "歌詞設定"),
+                    onLeadingAction = onOpenLyricsSettings,
+                    onPlayPause = onPlayPause,
+                    onNext = onNext,
+                    onPrevious = onPrevious,
+                    onOpenQueue = onOpenQueue,
+                )
+                Spacer(Modifier.height(14.dp))
+            } else {
+                GlyphButton(
+                    icon = Icons.Rounded.Settings,
+                    description = echoString(en = "Lyrics settings", zh = "歌词设置", ja = "歌詞設定"),
+                    touchSize = 44.dp,
+                    iconSize = 22.dp,
+                    tint = Color.White.copy(alpha = 0.78f),
+                    background = Color.Transparent,
+                    onClick = onOpenLyricsSettings,
+                )
+                Spacer(Modifier.height(10.dp))
+            }
         }
     }
 }
@@ -942,12 +1057,22 @@ private fun LyricsSettingsPanel(
                 Icon(Icons.Rounded.Lyrics, contentDescription = null, tint = if (dark) lyricAccent else Color(0xFF17202D), modifier = Modifier.size(22.dp))
             }
             Column(Modifier.weight(1f)) {
-                Text("歌词设置", color = titleColor, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
-                Text("字体、颜色和显示方式", color = mutedColor, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                Text(
+                    echoString(en = "Lyrics settings", zh = "歌词设置", ja = "歌詞設定"),
+                    color = titleColor,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black,
+                )
+                Text(
+                    echoString(en = "Font, color, and display", zh = "字体、颜色和显示方式", ja = "フォント、色、表示方法"),
+                    color = mutedColor,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
             }
             GlyphButton(
                 icon = Icons.Rounded.Close,
-                description = "关闭歌词设置",
+                description = echoString(en = "Close lyrics settings", zh = "关闭歌词设置", ja = "歌詞設定を閉じる"),
                 touchSize = 40.dp,
                 iconSize = 22.dp,
                 tint = titleColor,
@@ -956,14 +1081,19 @@ private fun LyricsSettingsPanel(
             )
         }
 
-        LyricsSettingsSection(icon = Icons.Rounded.TextFields, title = "字体", detail = lyricsFontDetail(lyricsFontMode, importedFontUri), enterDelayMillis = 45) {
+        LyricsSettingsSection(
+            icon = Icons.Rounded.TextFields,
+            title = echoString(en = "Font", zh = "字体", ja = "フォント"),
+            detail = lyricsFontDetail(lyricsFontMode, importedFontUri),
+            enterDelayMillis = 45,
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                lyricsFontOptions(importedFontUri).forEach { (value, label) ->
+                lyricsFontOptions().forEach { (value, label) ->
                     LyricsChoiceChip(
                         text = label,
                         selected = lyricsFontMode == value,
@@ -980,14 +1110,19 @@ private fun LyricsSettingsPanel(
             }
         }
 
-        LyricsSettingsSection(icon = Icons.Rounded.TextFields, title = "对齐", detail = lyricsAlignmentLabel(lyricsAlignment), enterDelayMillis = 90) {
+        LyricsSettingsSection(
+            icon = Icons.Rounded.TextFields,
+            title = echoString(en = "Alignment", zh = "对齐", ja = "配置"),
+            detail = lyricsAlignmentLabel(lyricsAlignment),
+            enterDelayMillis = 90,
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 LyricsAlignmentOptions.forEach { option ->
                     LyricsChoiceChip(
-                        text = option.label,
+                        text = lyricsAlignmentLabel(option.value),
                         selected = lyricsAlignment == option.value,
                         accent = lyricAccent,
                         onClick = { onLyricsAlignmentChange(option.value) },
@@ -998,7 +1133,7 @@ private fun LyricsSettingsPanel(
 
         LyricsSettingsSection(
             icon = Icons.Rounded.FormatSize,
-            title = "字号",
+            title = echoString(en = "Type size", zh = "字号", ja = "文字サイズ"),
             detail = "${(scale * 100f).roundToInt()}%",
             enterDelayMillis = 135,
         ) {
@@ -1016,7 +1151,12 @@ private fun LyricsSettingsPanel(
             )
         }
 
-        LyricsSettingsSection(icon = Icons.Rounded.ColorLens, title = "颜色", detail = lyricsColorLabel(lyricsColorMode), enterDelayMillis = 180) {
+        LyricsSettingsSection(
+            icon = Icons.Rounded.ColorLens,
+            title = echoString(en = "Color", zh = "颜色", ja = "色"),
+            detail = lyricsColorLabel(lyricsColorMode),
+            enterDelayMillis = 180,
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(9.dp),
@@ -1032,9 +1172,14 @@ private fun LyricsSettingsPanel(
             }
         }
 
-        LyricsSettingsSection(icon = Icons.Rounded.FormatSize, title = "细节", detail = lyricsMotionLabel(lyricsMotionMode), enterDelayMillis = 225) {
+        LyricsSettingsSection(
+            icon = Icons.Rounded.FormatSize,
+            title = echoString(en = "Details", zh = "细节", ja = "詳細"),
+            detail = lyricsMotionLabel(lyricsMotionMode),
+            enterDelayMillis = 225,
+        ) {
             LyricsMiniSliderRow(
-                label = "行距",
+                label = echoString(en = "Line spacing", zh = "行距", ja = "行間"),
                 valueLabel = "${(spacing * 100f).roundToInt()}%",
                 fraction = spacingFraction,
                 accent = lyricAccent,
@@ -1043,7 +1188,7 @@ private fun LyricsSettingsPanel(
                 },
             )
             LyricsMiniSliderRow(
-                label = "遮罩浓度",
+                label = echoString(en = "Dim", zh = "遮罩浓度", ja = "マスク濃度"),
                 valueLabel = "${(dim * 100f).roundToInt()}%",
                 fraction = dimFraction,
                 accent = lyricAccent,
@@ -1052,8 +1197,16 @@ private fun LyricsSettingsPanel(
                 },
             )
             LyricsMiniSliderRow(
-                label = if (lyricsWordHighlightEnabled) "逐字强度" else "逐字强度 关",
-                valueLabel = if (lyricsWordHighlightEnabled) "${(highlight * 100f).roundToInt()}%" else "关闭",
+                label = if (lyricsWordHighlightEnabled) {
+                    echoString(en = "Word highlight", zh = "逐字强度", ja = "文字ハイライト")
+                } else {
+                    echoString(en = "Word highlight off", zh = "逐字强度 关", ja = "文字ハイライト オフ")
+                },
+                valueLabel = if (lyricsWordHighlightEnabled) {
+                    "${(highlight * 100f).roundToInt()}%"
+                } else {
+                    echoString(en = "Off", zh = "关闭", ja = "オフ")
+                },
                 fraction = highlightFraction,
                 accent = lyricAccent,
                 onValueChange = { fraction ->
@@ -1066,7 +1219,7 @@ private fun LyricsSettingsPanel(
             ) {
                 LyricsMotionOptions.forEach { option ->
                     LyricsChoiceChip(
-                        text = option.label,
+                        text = lyricsMotionLabel(option.value),
                         selected = lyricsMotionMode == option.value,
                         accent = lyricAccent,
                         onClick = { onLyricsMotionModeChange(option.value) },
@@ -1076,33 +1229,82 @@ private fun LyricsSettingsPanel(
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            LyricsToggleTile("翻译", showTranslation, lyricAccent, Modifier.weight(1f), available = hasTranslation) {
+            LyricsToggleTile(
+                echoString(en = "Translation", zh = "翻译", ja = "翻訳"),
+                showTranslation,
+                lyricAccent,
+                Modifier.weight(1f),
+                available = hasTranslation,
+            ) {
                 onLyricsShowTranslationChange(!showTranslation)
             }
-            LyricsToggleTile("罗马音", showRomanization, lyricAccent, Modifier.weight(1f), available = hasRomanization) {
+            LyricsToggleTile(
+                echoString(en = "Romaji", zh = "罗马音", ja = "ローマ字"),
+                showRomanization,
+                lyricAccent,
+                Modifier.weight(1f),
+                available = hasRomanization,
+            ) {
                 onLyricsShowRomanizationChange(!showRomanization)
             }
-            LyricsToggleTile("强调", focusGlowEnabled, lyricAccent, Modifier.weight(1f)) {
+            LyricsToggleTile(
+                echoString(en = "Emphasis", zh = "强调", ja = "強調"),
+                focusGlowEnabled,
+                lyricAccent,
+                Modifier.weight(1f),
+            ) {
                 onLyricsFocusGlowChange(!focusGlowEnabled)
             }
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            LyricsToggleTile("逐字", lyricsWordHighlightEnabled, lyricAccent, Modifier.weight(1f)) {
+            LyricsToggleTile(
+                echoString(en = "Word", zh = "逐字", ja = "文字"),
+                lyricsWordHighlightEnabled,
+                lyricAccent,
+                Modifier.weight(1f),
+            ) {
                 onLyricsWordHighlightEnabledChange(!lyricsWordHighlightEnabled)
             }
-            LyricsToggleTile("沉浸", lyricsImmersiveModeEnabled, lyricAccent, Modifier.weight(1f)) {
+            LyricsToggleTile(
+                echoString(en = "Immersive", zh = "沉浸", ja = "没入"),
+                lyricsImmersiveModeEnabled,
+                lyricAccent,
+                Modifier.weight(1f),
+            ) {
                 onLyricsImmersiveModeChange(!lyricsImmersiveModeEnabled)
             }
-            LyricsToggleTile("舞台", lyricsMotionMode == "stage", lyricAccent, Modifier.weight(1f)) {
+            LyricsToggleTile(
+                echoString(en = "Stage", zh = "舞台", ja = "ステージ"),
+                lyricsMotionMode == "stage",
+                lyricAccent,
+                Modifier.weight(1f),
+            ) {
                 onLyricsMotionModeChange(if (lyricsMotionMode == "stage") "smooth" else "stage")
             }
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            LyricsToolButton(Icons.Rounded.UploadFile, "导入歌词", onImportLyrics, Modifier.weight(1f))
-            LyricsToolButton(Icons.Rounded.Settings, "同步工具", { onShowLyricsControlDeckChange(!showLyricsControlDeck) }, Modifier.weight(1f), showLyricsControlDeck)
-            LyricsToolButton(Icons.Rounded.Translate, "网络歌词", { onOnlineLyricsEnabledChange(!onlineLyricsEnabled) }, Modifier.weight(1f), onlineLyricsEnabled)
+            LyricsToolButton(
+                Icons.Rounded.UploadFile,
+                echoString(en = "Import lyrics", zh = "导入歌词", ja = "歌詞を読み込む"),
+                onImportLyrics,
+                Modifier.weight(1f),
+            )
+            LyricsToolButton(
+                Icons.Rounded.Settings,
+                echoString(en = "Sync tools", zh = "同步工具", ja = "同期ツール"),
+                { onShowLyricsControlDeckChange(!showLyricsControlDeck) },
+                Modifier.weight(1f),
+                showLyricsControlDeck,
+            )
+            LyricsToolButton(
+                Icons.Rounded.Translate,
+                echoString(en = "Online lyrics", zh = "网络歌词", ja = "オンライン歌詞"),
+                { onOnlineLyricsEnabledChange(!onlineLyricsEnabled) },
+                Modifier.weight(1f),
+                onlineLyricsEnabled,
+            )
         }
 
         Row(
@@ -1118,7 +1320,12 @@ private fun LyricsSettingsPanel(
         ) {
             Icon(Icons.Rounded.Album, contentDescription = null, tint = titleColor, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Text("返回封面页", color = titleColor, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            Text(
+                echoString(en = "Back to cover", zh = "返回封面页", ja = "カバーに戻る"),
+                color = titleColor,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+            )
         }
     }
 }
@@ -1240,9 +1447,21 @@ private fun LyricsPreviewCard(
         ) { mode ->
             Text(
                 text = when (mode) {
-                    "stage" -> "每一句都贴着节拍浮起来"
-                    "calm" -> "歌词安静地停在画面中央"
-                    else -> "歌词随着播放自然呼吸"
+                    "stage" -> echoString(
+                        en = "Each line lifts with the beat",
+                        zh = "每一句都贴着节拍浮起来",
+                        ja = "各行がビートに合わせて浮かび上がります",
+                    )
+                    "calm" -> echoString(
+                        en = "Lyrics rest quietly in the center",
+                        zh = "歌词安静地停在画面中央",
+                        ja = "歌詞が画面の中央で静かに止まります",
+                    )
+                    else -> echoString(
+                        en = "Lyrics breathe naturally with playback",
+                        zh = "歌词随着播放自然呼吸",
+                        ja = "歌詞が再生に合わせて自然に呼吸します",
+                    )
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1265,7 +1484,11 @@ private fun LyricsPreviewCard(
             )
         }
         Text(
-            text = "翻译 / 罗马音会在当前歌词包含对应数据时显示",
+            text = echoString(
+                en = "Translation / romaji appear when the current lyrics include that data",
+                zh = "翻译 / 罗马音会在当前歌词包含对应数据时显示",
+                ja = "翻訳 / ローマ字は、現在の歌詞にデータがあるとき表示されます",
+            ),
             modifier = Modifier.fillMaxWidth(),
             color = if (dark) Color.White.copy(alpha = 0.68f) else Color(0xFF4F5C70),
             style = MaterialTheme.typography.bodySmall,
@@ -1428,7 +1651,7 @@ private fun LyricsColorSwatch(
         }
         Spacer(Modifier.height(8.dp))
         Text(
-            option.label,
+            lyricsColorLabel(option.value),
             color = if (selected) option.color else if (dark) Color.White.copy(alpha = 0.74f) else Color(0xFF253142),
             style = MaterialTheme.typography.labelSmall.copy(lineHeight = 14.sp),
             fontWeight = FontWeight.Black,
@@ -1480,9 +1703,9 @@ private fun LyricsToggleTile(
         Text(title, color = if (dark) Color.White else Color(0xFF253142), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
         Text(
             when {
-                !available -> "当前无数据"
-                enabled -> "开启"
-                else -> "关闭"
+                !available -> echoString(en = "No data", zh = "当前无数据", ja = "データなし")
+                enabled -> echoString(en = "On", zh = "开启", ja = "オン")
+                else -> echoString(en = "Off", zh = "关闭", ja = "オフ")
             },
             color = if (dark) Color.White.copy(alpha = 0.78f) else Color(0xFF4F5C70),
             style = MaterialTheme.typography.labelSmall,
@@ -1540,15 +1763,30 @@ private fun LyricsToolButton(
 private fun lyricsColorForMode(mode: String): Color =
     LyricsColorOptions.firstOrNull { it.value == mode }?.color ?: Color.White
 
-private fun lyricsColorLabel(mode: String): String =
-    LyricsColorOptions.firstOrNull { it.value == mode }?.label ?: "白"
+@Composable
+private fun lyricsColorLabel(mode: String): String = when (mode) {
+    "warm" -> echoString(en = "Warm", zh = "暖", ja = "暖")
+    "blue" -> echoString(en = "Blue", zh = "蓝", ja = "青")
+    "violet" -> echoString(en = "Violet", zh = "紫", ja = "紫")
+    "mint" -> echoString(en = "Green", zh = "绿", ja = "緑")
+    else -> echoString(en = "White", zh = "白", ja = "白")
+}
 
-private fun lyricsAlignmentLabel(mode: String): String =
-    LyricsAlignmentOptions.firstOrNull { it.value == mode }?.label ?: "居中"
+@Composable
+private fun lyricsAlignmentLabel(mode: String): String = when (mode) {
+    "start" -> echoString(en = "Left", zh = "左对齐", ja = "左揃え")
+    "dynamic" -> echoString(en = "Stage", zh = "舞台", ja = "ステージ")
+    else -> echoString(en = "Center", zh = "居中", ja = "中央")
+}
 
-private fun lyricsMotionLabel(mode: String): String =
-    LyricsMotionOptions.firstOrNull { it.value == mode }?.label ?: "顺滑"
+@Composable
+private fun lyricsMotionLabel(mode: String): String = when (mode) {
+    "calm" -> echoString(en = "Calm", zh = "安静", ja = "静か")
+    "stage" -> echoString(en = "Stage", zh = "舞台", ja = "ステージ")
+    else -> echoString(en = "Smooth", zh = "顺滑", ja = "スムーズ")
+}
 
+@Composable
 private fun lyricsLayoutDetail(alignment: String, spacing: Float): String =
     "${lyricsAlignmentLabel(alignment)} / ${(spacing.coerceIn(0.82f, 1.38f) * 100f).roundToInt()}%"
 
@@ -1571,21 +1809,23 @@ private fun lyricsMotionIntensity(mode: String): Float =
         else -> 0.68f
     }
 
-private fun lyricsFontOptions(importedFontUri: String?): List<Pair<String, String>> = buildList {
-    add("system" to "系统")
-    add("serif" to "衬线")
-    add("monospace" to "等宽")
-    add("imported" to if (importedFontUri.isNullOrBlank()) "导入" else "导入")
+@Composable
+private fun lyricsFontOptions(): List<Pair<String, String>> = buildList {
+    add("system" to echoString(en = "System", zh = "系统", ja = "システム"))
+    add("serif" to echoString(en = "Serif", zh = "衬线", ja = "明朝"))
+    add("monospace" to echoString(en = "Mono", zh = "等宽", ja = "等幅"))
+    add("imported" to echoString(en = "Import", zh = "导入", ja = "読み込み"))
 }
 
+@Composable
 private fun lyricsFontDetail(mode: String, importedFontUri: String?): String =
     when (mode) {
-        "outfit" -> "系统字体"
-        "system" -> "系统字体"
-        "serif" -> "系统衬线"
-        "monospace" -> "系统等宽"
-        "imported" -> importedFontUri?.substringAfterLast('/')?.takeLast(18)?.let { "导入 $it" } ?: "选择字体文件"
-        else -> "系统字体"
+        "serif" -> echoString(en = "System serif", zh = "系统衬线", ja = "システム明朝")
+        "monospace" -> echoString(en = "System mono", zh = "系统等宽", ja = "システム等幅")
+        "imported" -> importedFontUri?.substringAfterLast('/')?.takeLast(18)?.let { name ->
+            echoString(en = "Import $name", zh = "导入 $name", ja = "読み込み $name")
+        } ?: echoString(en = "Choose a font file", zh = "选择字体文件", ja = "フォントファイルを選択")
+        else -> echoString(en = "System font", zh = "系统字体", ja = "システムフォント")
     }
 
 @Composable
@@ -1858,7 +2098,7 @@ private fun LyricsEmptyState(
                     modifier = Modifier.size(18.dp),
                 )
                 Text(
-                    text = "导入歌词",
+                    text = echoString(en = "Import lyrics", zh = "导入歌词", ja = "歌詞を読み込む"),
                     color = OnArt,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
@@ -1919,7 +2159,7 @@ private fun LyricsControlDeck(
             }
             GlyphButton(
                 icon = Icons.Rounded.UploadFile,
-                description = "更换歌词",
+                description = echoString(en = "Change lyrics", zh = "更换歌词", ja = "歌詞を変更"),
                 touchSize = 34.dp,
                 iconSize = 20.dp,
                 tint = OnArtMuted,
@@ -1950,7 +2190,7 @@ private fun LyricsControlDeck(
             ) {
                 GlyphButton(
                     icon = Icons.Rounded.KeyboardDoubleArrowLeft,
-                    description = "歌词提前 0.25 秒",
+                    description = echoString(en = "Lyrics earlier by 0.25s", zh = "歌词提前 0.25 秒", ja = "歌詞を 0.25 秒早める"),
                     touchSize = 34.dp,
                     iconSize = 21.dp,
                     tint = OnArtMuted,
@@ -1959,7 +2199,7 @@ private fun LyricsControlDeck(
                 )
                 GlyphButton(
                     icon = Icons.Rounded.RestartAlt,
-                    description = "重置歌词偏移",
+                    description = echoString(en = "Reset lyrics offset", zh = "重置歌词偏移", ja = "歌詞オフセットをリセット"),
                     touchSize = 34.dp,
                     iconSize = 20.dp,
                     tint = if (userOffsetMs == 0L) OnArtFaint else OnArtMuted,
@@ -1968,7 +2208,7 @@ private fun LyricsControlDeck(
                 )
                 GlyphButton(
                     icon = Icons.Rounded.KeyboardDoubleArrowRight,
-                    description = "歌词延后 0.25 秒",
+                    description = echoString(en = "Lyrics later by 0.25s", zh = "歌词延后 0.25 秒", ja = "歌詞を 0.25 秒遅らせる"),
                     touchSize = 34.dp,
                     iconSize = 21.dp,
                     tint = OnArtMuted,
@@ -2012,6 +2252,9 @@ private fun NowPlayingTrackInfo(
     onOpenAlbum: () -> Unit,
     playbackSettingsExpanded: Boolean,
     onOpenPlaybackSettings: () -> Unit,
+    isFavorite: Boolean,
+    favoriteEnabled: Boolean,
+    onToggleFavorite: () -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -2060,17 +2303,25 @@ private fun NowPlayingTrackInfo(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 GlyphButton(
-                    icon = Icons.Rounded.StarBorder,
-                    description = "收藏",
+                    icon = if (isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                    description = if (isFavorite) {
+                        echoString(en = "Unfavorite", zh = "取消收藏", ja = "お気に入り解除")
+                    } else {
+                        echoString(en = "Favorite", zh = "收藏", ja = "お気に入り")
+                    },
                     touchSize = 40.dp,
                     iconSize = 21.dp,
-                    tint = Color.White.copy(alpha = 0.88f),
-                    background = Color.White.copy(alpha = 0.11f),
-                    onClick = {},
+                    tint = if (isFavorite) Color(0xFFFFD54F) else Color.White.copy(alpha = 0.88f),
+                    background = if (isFavorite) Color.White.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.11f),
+                    onClick = { if (favoriteEnabled) onToggleFavorite() },
                 )
                 GlyphButton(
                     icon = Icons.Rounded.MoreHoriz,
-                    description = if (playbackSettingsExpanded) "收起播放设置" else "展开播放设置",
+                    description = if (playbackSettingsExpanded) {
+                        echoString(en = "Collapse playback settings", zh = "收起播放设置", ja = "再生設定を閉じる")
+                    } else {
+                        echoString(en = "Expand playback settings", zh = "展开播放设置", ja = "再生設定を開く")
+                    },
                     touchSize = 40.dp,
                     iconSize = 21.dp,
                     tint = if (playbackSettingsExpanded) Color.White else Color.White.copy(alpha = 0.88f),
@@ -2091,6 +2342,7 @@ private fun PlaybackSettingsDrawer(
     onToggleShuffle: () -> Unit,
     onSetPlaybackSpeed: (Float, Boolean) -> Unit,
     onSetSleepTimer: (Int) -> Unit,
+    onSetSleepTimerEndOfTrack: () -> Unit = {},
     onCancelSleepTimer: () -> Unit,
     onSetReplayGain: (Boolean, Float) -> Unit,
     onAdjustReplayGainPreamp: (Float) -> Unit,
@@ -2159,6 +2411,7 @@ private fun PlaybackSettingsDrawer(
                     onToggleShuffle = onToggleShuffle,
                     onSetPlaybackSpeed = onSetPlaybackSpeed,
                     onSetSleepTimer = onSetSleepTimer,
+                    onSetSleepTimerEndOfTrack = onSetSleepTimerEndOfTrack,
                     onCancelSleepTimer = onCancelSleepTimer,
                     onSetReplayGain = onSetReplayGain,
                     onAdjustReplayGainPreamp = onAdjustReplayGainPreamp,
@@ -2181,6 +2434,7 @@ private fun PlaybackSettingsPanel(
     onToggleShuffle: () -> Unit,
     onSetPlaybackSpeed: (Float, Boolean) -> Unit,
     onSetSleepTimer: (Int) -> Unit,
+    onSetSleepTimerEndOfTrack: () -> Unit = {},
     onCancelSleepTimer: () -> Unit,
     onSetReplayGain: (Boolean, Float) -> Unit,
     onAdjustReplayGainPreamp: (Float) -> Unit,
@@ -2258,7 +2512,7 @@ private fun PlaybackSettingsPanel(
             }
             Column(Modifier.weight(1f)) {
                 Text(
-                    "播放设置",
+                    echoString(en = "Playback settings", zh = "播放设置", ja = "再生設定"),
                     color = titleColor,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold,
@@ -2274,7 +2528,7 @@ private fun PlaybackSettingsPanel(
             }
             GlyphButton(
                 icon = Icons.Rounded.Close,
-                description = "关闭播放设置",
+                description = echoString(en = "Close playback settings", zh = "关闭播放设置", ja = "再生設定を閉じる"),
                 touchSize = 42.dp,
                 iconSize = 22.dp,
                 tint = titleColor,
@@ -2283,11 +2537,7 @@ private fun PlaybackSettingsPanel(
             )
         }
         PlaybackSettingsLabel(
-            text = if (status.sleepTimerRemainingMs > 0L) {
-                "睡眠定时 · ${formatSleepTimerRemaining(status.sleepTimerRemainingMs)}"
-            } else {
-                "睡眠定时"
-            },
+            text = sleepTimerLabel(status),
         )
         Row(
             modifier = Modifier
@@ -2296,14 +2546,21 @@ private fun PlaybackSettingsPanel(
             horizontalArrangement = Arrangement.spacedBy(7.dp),
         ) {
             PlaybackSpeedChip(
-                text = "关闭",
-                selected = status.sleepTimerRemainingMs <= 0L,
+                text = echoString(en = "Off", zh = "关闭", ja = "オフ"),
+                selected = status.sleepTimerMode == EchoSleepTimerMode.Off,
                 onClick = onCancelSleepTimer,
+            )
+            PlaybackSpeedChip(
+                text = echoString(en = "This track", zh = "本首结束", ja = "この曲の終わり"),
+                selected = status.sleepTimerMode == EchoSleepTimerMode.EndOfTrack,
+                onClick = onSetSleepTimerEndOfTrack,
             )
             SleepTimerOptions.forEach { minutes ->
                 PlaybackSpeedChip(
                     text = "${minutes}m",
-                    selected = false,
+                    selected = status.sleepTimerMode == EchoSleepTimerMode.Timed &&
+                        status.sleepTimerRemainingMs > (minutes - 1) * 60_000L &&
+                        status.sleepTimerRemainingMs <= minutes * 60_000L + 2_000L,
                     onClick = { onSetSleepTimer(minutes) },
                 )
             }
@@ -2321,27 +2578,31 @@ private fun PlaybackSettingsPanel(
             )
             PlaybackSettingButton(
                 icon = Icons.Rounded.Shuffle,
-                title = if (status.shuffleEnabled) "随机开启" else "顺序播放",
+                title = if (status.shuffleEnabled) {
+                    echoString(en = "Shuffle on", zh = "随机开启", ja = "シャッフルオン")
+                } else {
+                    echoString(en = "In order", zh = "顺序播放", ja = "リスト順")
+                },
                 selected = status.shuffleEnabled,
                 onClick = onToggleShuffle,
                 modifier = Modifier.weight(1f),
             )
             PlaybackSettingButton(
                 icon = Icons.AutoMirrored.Rounded.QueueMusic,
-                title = "队列",
+                title = echoString(en = "Queue", zh = "队列", ja = "キュー"),
                 selected = false,
                 onClick = onOpenQueue,
                 modifier = Modifier.weight(1f),
             )
         }
-        PlaybackSettingsLabel(text = "变速")
+        PlaybackSettingsLabel(text = echoString(en = "Speed", zh = "变速", ja = "速度"))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             PlaybackSettingButton(
                 icon = Icons.Rounded.PlayArrow,
-                title = "普通变速",
+                title = echoString(en = "Normal speed", zh = "普通变速", ja = "通常速度"),
                 selected = !nightcore,
                 onClick = { onSetPlaybackSpeed(status.playbackSpeed, false) },
                 modifier = Modifier.weight(1f),
@@ -2375,7 +2636,11 @@ private fun PlaybackSettingsPanel(
         ) {
             PlaybackSettingButton(
                 icon = Icons.Rounded.GraphicEq,
-                title = if (status.replayGainEnabled) "已启用" else "未启用",
+                title = if (status.replayGainEnabled) {
+                    echoString(en = "Enabled", zh = "已启用", ja = "有効")
+                } else {
+                    echoString(en = "Disabled", zh = "未启用", ja = "無効")
+                },
                 selected = status.replayGainEnabled,
                 onClick = { onSetReplayGain(!status.replayGainEnabled, status.replayGainPreampDb) },
                 modifier = Modifier.weight(1f),
@@ -2396,7 +2661,11 @@ private fun PlaybackSettingsPanel(
             )
         }
         Text(
-            text = "标签 ${status.replayGainTrackGainDb?.let(::formatReplayGainDb) ?: "未读取"} · 预增益 ${formatReplayGainDb(status.replayGainPreampDb)}",
+            text = echoString(
+                en = "Tag ${status.replayGainTrackGainDb?.let(::formatReplayGainDb) ?: "Unread"} · Preamp ${formatReplayGainDb(status.replayGainPreampDb)}",
+                zh = "标签 ${status.replayGainTrackGainDb?.let(::formatReplayGainDb) ?: "未读取"} · 预增益 ${formatReplayGainDb(status.replayGainPreampDb)}",
+                ja = "タグ ${status.replayGainTrackGainDb?.let(::formatReplayGainDb) ?: "未読み取り"} · プリアンプ ${formatReplayGainDb(status.replayGainPreampDb)}",
+            ),
             color = Color.White.copy(alpha = 0.62f),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.SemiBold,
@@ -2407,14 +2676,22 @@ private fun PlaybackSettingsPanel(
         ) {
             PlaybackSettingButton(
                 icon = Icons.Rounded.MoreHoriz,
-                title = if (status.skipSilenceEnabled) "跳过静音开" else "跳过静音关",
+                title = if (status.skipSilenceEnabled) {
+                    echoString(en = "Skip silence on", zh = "跳过静音开", ja = "無音スキップ オン")
+                } else {
+                    echoString(en = "Skip silence off", zh = "跳过静音关", ja = "無音スキップ オフ")
+                },
                 selected = status.skipSilenceEnabled,
                 onClick = { onSetSkipSilenceEnabled(!status.skipSilenceEnabled) },
                 modifier = Modifier.weight(1f),
             )
             PlaybackSettingButton(
                 icon = Icons.Rounded.RestartAlt,
-                title = "歌词 ${formatLyricsOffset(lyricsOffsetMs)}",
+                title = echoString(
+                    en = "Lyrics ${formatLyricsOffset(lyricsOffsetMs)}",
+                    zh = "歌词 ${formatLyricsOffset(lyricsOffsetMs)}",
+                    ja = "歌詞 ${formatLyricsOffset(lyricsOffsetMs)}",
+                ),
                 selected = lyricsOffsetMs != 0L,
                 onClick = onResetLyricsOffset,
                 modifier = Modifier.weight(1f),
@@ -2539,16 +2816,31 @@ private fun PlaybackSpeedChip(
     }
 }
 
+@Composable
 private fun playbackSettingsSummary(status: EchoPlaybackStatus): String {
     val diagnostics = status.diagnostics
     val format = buildList {
         diagnostics.codec?.let { add(it) }
         diagnostics.sampleRateHz?.takeIf { it > 0 }?.let { add(formatSampleRate(it)) }
         diagnostics.bitDepth?.takeIf { it > 0 }?.let { add("${it}bit") }
-    }.joinToString(" · ").ifBlank { "等待音频信息" }
-    val output = if (diagnostics.usbDeviceName != null) "USB 输出" else "系统输出"
-    val mode = if (isNightcorePlayback(status)) "Nightcore 变调" else "普通变速"
-    val silence = if (status.skipSilenceEnabled) "跳过静音" else null
+    }.joinToString(" · ").ifBlank {
+        echoString(en = "Waiting for audio info", zh = "等待音频信息", ja = "音声情報を待っています")
+    }
+    val output = if (diagnostics.usbDeviceName != null) {
+        echoString(en = "USB output", zh = "USB 输出", ja = "USB 出力")
+    } else {
+        echoString(en = "System output", zh = "系统输出", ja = "システム出力")
+    }
+    val mode = if (isNightcorePlayback(status)) {
+        echoString(en = "Nightcore pitch", zh = "Nightcore 变调", ja = "Nightcore ピッチ")
+    } else {
+        echoString(en = "Normal speed", zh = "普通变速", ja = "通常速度")
+    }
+    val silence = if (status.skipSilenceEnabled) {
+        echoString(en = "Skip silence", zh = "跳过静音", ja = "無音スキップ")
+    } else {
+        null
+    }
     return listOfNotNull(format, output, mode, silence).joinToString(" · ")
 }
 
@@ -2561,6 +2853,32 @@ private fun playbackSpeedLabel(speed: Float): String {
         "${rounded.toInt()}x"
     } else {
         "${"%.2f".format(rounded).trimEnd('0').trimEnd('.')}x"
+    }
+}
+
+@Composable
+private fun sleepTimerLabel(status: EchoPlaybackStatus): String {
+    if (status.sleepTimerMode == EchoSleepTimerMode.Off) {
+        return echoString(en = "Sleep timer", zh = "睡眠定时", ja = "スリープタイマー")
+    }
+    if (status.sleepTimerMode == EchoSleepTimerMode.EndOfTrack) {
+        val remaining = status.sleepTimerRemainingMs
+        return if (remaining in 1 until 12 * 60 * 60 * 1000L) {
+            val clock = formatSleepTimerRemaining(remaining)
+            echoString(
+                en = "Sleep timer · this track · $clock",
+                zh = "睡眠定时 · 本首结束 · $clock",
+                ja = "スリープ · この曲の終わり · $clock",
+            )
+        } else {
+            echoString(en = "Sleep timer · this track", zh = "睡眠定时 · 本首结束", ja = "スリープ · この曲の終わり")
+        }
+    }
+    return if (status.sleepTimerRemainingMs > 0L) {
+        val remaining = formatSleepTimerRemaining(status.sleepTimerRemainingMs)
+        echoString(en = "Sleep timer · $remaining", zh = "睡眠定时 · $remaining", ja = "スリープタイマー · $remaining")
+    } else {
+        echoString(en = "Sleep timer", zh = "睡眠定时", ja = "スリープタイマー")
     }
 }
 
@@ -2585,10 +2903,11 @@ private fun formatReplayGainDb(value: Float): String {
     }
 }
 
+@Composable
 private fun repeatModeLabel(mode: EchoRepeatMode): String = when (mode) {
-    EchoRepeatMode.Off -> "循环关闭"
-    EchoRepeatMode.All -> "全部循环"
-    EchoRepeatMode.One -> "单曲循环"
+    EchoRepeatMode.Off -> echoString(en = "Repeat off", zh = "循环关闭", ja = "リピートオフ")
+    EchoRepeatMode.All -> echoString(en = "Repeat all", zh = "全部循环", ja = "全曲リピート")
+    EchoRepeatMode.One -> echoString(en = "Repeat one", zh = "单曲循环", ja = "1曲リピート")
 }
 
 @Composable
@@ -2597,7 +2916,11 @@ private fun NowPlayingErrorBanner(
     autoSkipped: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val title = if (autoSkipped) "已跳过无法播放的曲目" else "无法播放"
+    val title = if (autoSkipped) {
+        echoString(en = "Skipped an unplayable track", zh = "已跳过无法播放的曲目", ja = "再生できない曲をスキップしました")
+    } else {
+        echoString(en = "Unable to play", zh = "无法播放", ja = "再生できません")
+    }
     val detail = playbackErrorLabel(error)
     Row(
         modifier = modifier
@@ -2633,17 +2956,24 @@ private fun NowPlayingErrorBanner(
     }
 }
 
+@Composable
 private fun playbackErrorLabel(error: EchoPlaybackError): String = when (error.kind) {
-    EchoAudioErrorKind.FileMissing -> "音频文件不存在"
-    EchoAudioErrorKind.UnsupportedFormat -> "音频格式不支持"
-    EchoAudioErrorKind.DecodeFailure -> "音频解码失败"
-    EchoAudioErrorKind.NetworkFailure -> "网络播放失败"
-    EchoAudioErrorKind.AuthenticationFailed -> "远程认证失败"
-    EchoAudioErrorKind.PermissionDenied -> "没有播放权限"
-    EchoAudioErrorKind.OutputRouteFailure -> "输出设备失败"
-    EchoAudioErrorKind.AudioFocusLost -> "音频焦点丢失"
-    EchoAudioErrorKind.SystemInterrupted -> "播放被系统中断"
-    EchoAudioErrorKind.Unknown -> error.message.ifBlank { "播放失败" }
+    EchoAudioErrorKind.FileMissing -> echoString(en = "Audio file is missing", zh = "音频文件不存在", ja = "音声ファイルがありません")
+    EchoAudioErrorKind.UnsupportedFormat -> echoString(en = "Audio format is unsupported", zh = "音频格式不支持", ja = "非対応の音声形式です")
+    EchoAudioErrorKind.DecodeFailure -> echoString(en = "Audio decode failed", zh = "音频解码失败", ja = "音声のデコードに失敗しました")
+    EchoAudioErrorKind.NetworkFailure -> echoString(en = "Network playback failed", zh = "网络播放失败", ja = "ネットワーク再生に失敗しました")
+    EchoAudioErrorKind.AuthenticationFailed -> echoString(en = "Remote authentication failed", zh = "远程认证失败", ja = "リモート認証に失敗しました")
+    EchoAudioErrorKind.PermissionDenied -> echoString(en = "Playback permission denied", zh = "没有播放权限", ja = "再生権限がありません")
+    EchoAudioErrorKind.OutputRouteFailure -> echoString(en = "Output device failed", zh = "输出设备失败", ja = "出力デバイスに失敗しました")
+    EchoAudioErrorKind.AudioFocusLost -> echoString(en = "Audio focus lost", zh = "音频焦点丢失", ja = "オーディオフォーカスを失いました")
+    EchoAudioErrorKind.SystemInterrupted -> echoString(
+        en = "Playback was interrupted by the system",
+        zh = "播放被系统中断",
+        ja = "再生がシステムに中断されました",
+    )
+    EchoAudioErrorKind.Unknown -> error.message.ifBlank {
+        echoString(en = "Playback failed", zh = "播放失败", ja = "再生に失敗しました")
+    }
 }
 
 @Composable
@@ -2768,6 +3098,7 @@ private fun NowPlayingControlDock(
     onPrevious: () -> Unit,
     onOpenQueue: () -> Unit,
 ) {
+    val haptics = rememberEchoHapticPerformer()
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -2786,12 +3117,15 @@ private fun NowPlayingControlDock(
         )
         GlyphButton(
             icon = Icons.Rounded.KeyboardDoubleArrowLeft,
-            description = "上一首",
+            description = echoString(en = "Previous", zh = "上一首", ja = "前の曲"),
             touchSize = 54.dp,
             iconSize = 38.dp,
             tint = OnArt,
             background = Color.Transparent,
-            onClick = onPrevious,
+            onClick = {
+                haptics.tick()
+                onPrevious()
+            },
         )
         Box(
             modifier = Modifier
@@ -2800,29 +3134,35 @@ private fun NowPlayingControlDock(
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
-                    onClick = onPlayPause,
+                    onClick = {
+                        haptics.confirm()
+                        onPlayPause()
+                    },
                 ),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                contentDescription = "播放或暂停",
+                contentDescription = echoString(en = "Play or pause", zh = "播放或暂停", ja = "再生または一時停止"),
                 tint = Color.White,
                 modifier = Modifier.size(44.dp),
             )
         }
         GlyphButton(
             icon = Icons.Rounded.KeyboardDoubleArrowRight,
-            description = "下一首",
+            description = echoString(en = "Next", zh = "下一首", ja = "次の曲"),
             touchSize = 54.dp,
             iconSize = 38.dp,
             tint = OnArt,
             background = Color.Transparent,
-            onClick = onNext,
+            onClick = {
+                haptics.tick()
+                onNext()
+            },
         )
         GlyphButton(
             icon = Icons.AutoMirrored.Rounded.QueueMusic,
-            description = "播放队列",
+            description = echoString(en = "Queue", zh = "播放队列", ja = "再生キュー"),
             touchSize = 44.dp,
             iconSize = 24.dp,
             tint = Color.White.copy(alpha = 0.78f),

@@ -1,6 +1,7 @@
 package app.echo.android.data
 
 import android.content.Context
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
@@ -9,12 +10,17 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import app.echo.android.model.playback.EchoEqualizerPreset
 import app.echo.android.model.playback.EchoEqualizerPresets
+import app.echo.android.model.playback.OpraEqBand
 import app.echo.android.model.playback.EchoRepeatMode
 import app.echo.android.model.playback.EchoTrackRef
+import app.echo.android.model.settings.EchoAppLanguage
 import app.echo.android.model.settings.EchoPerformanceMode
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 import java.nio.charset.StandardCharsets
@@ -24,12 +30,15 @@ private val Context.echoSettings by preferencesDataStore(name = "echo-settings")
 private val Context.echoPlaybackResumeSettings by preferencesDataStore(name = "echo-playback-resume")
 private val PlaybackResumeKey = stringPreferencesKey("playback_resume")
 private const val DefaultNeteaseAudioQuality = "lossless"
+private const val RemotePlaybackAuthSnapshotTimeoutMillis = 150L
 
 data class EchoAppSettings(
     val preferOffload: Boolean = true,
     val lastOutputRoute: String = "system",
     val dynamicArtworkEnabled: Boolean = true,
     val compactModeEnabled: Boolean = false,
+    val dynamicColorEnabled: Boolean = false,
+    val playbackHapticsEnabled: Boolean = true,
     val performanceMode: String = EchoPerformanceMode.Auto.id,
     val trackAudioInfoTagsVisible: Boolean = true,
     val pcHandoffEnabled: Boolean = true,
@@ -40,6 +49,10 @@ data class EchoAppSettings(
     val equalizerEnabled: Boolean = false,
     val equalizerPreset: String = EchoEqualizerPreset.Flat,
     val equalizerBandGains: List<Float> = EchoEqualizerPresets.gainsForPreset(EchoEqualizerPreset.Flat),
+    val equalizerPreampDb: Float = 0f,
+    val equalizerParametric: Boolean = false,
+    val equalizerSourceLabel: String? = null,
+    val equalizerFilters: List<OpraEqBand> = emptyList(),
     val customBackgroundMode: String = EchoBackgroundMode.Default,
     val customBackgroundUri: String? = null,
     val customBackgroundBlur: Float = 24f,
@@ -64,6 +77,7 @@ data class EchoAppSettings(
     val lyricsFocusGlowEnabled: Boolean = false,
     val importedFontUri: String? = null,
     val themeMode: String = EchoThemeMode.System,
+    val appLanguage: String = EchoAppLanguage.System,
     val scheduledDarkModeEnabled: Boolean = false,
     val scheduledDarkStartMinute: Int = 22 * 60,
     val scheduledDarkEndMinute: Int = 7 * 60,
@@ -160,6 +174,14 @@ class EchoSettingsStore(
     fun startupAppSettingsSnapshot(): EchoAppSettings =
         context.readEchoStartupThemeSnapshot().toAppSettings()
 
+    fun remotePlaybackAuthSettingsSnapshot(
+        timeoutMillis: Long = RemotePlaybackAuthSnapshotTimeoutMillis,
+    ): EchoAppSettings? = runBlocking(Dispatchers.IO) {
+        withTimeoutOrNull(timeoutMillis) {
+            appSettings.first()
+        }
+    }
+
     fun cacheStartupThemeSnapshot(
         settings: EchoAppSettings,
         synchronous: Boolean = false,
@@ -174,6 +196,8 @@ class EchoSettingsStore(
                 lastOutputRoute = preferences[Keys.LastOutputRoute] ?: "system",
                 dynamicArtworkEnabled = preferences[Keys.DynamicArtworkEnabled] ?: true,
                 compactModeEnabled = preferences[Keys.CompactModeEnabled] ?: false,
+                dynamicColorEnabled = preferences[Keys.DynamicColorEnabled] ?: false,
+                playbackHapticsEnabled = preferences[Keys.PlaybackHapticsEnabled] ?: true,
                 performanceMode = EchoPerformanceMode.fromId(preferences[Keys.PerformanceMode]).id,
                 trackAudioInfoTagsVisible = preferences[Keys.TrackAudioInfoTagsVisible] ?: true,
                 pcHandoffEnabled = preferences[Keys.PcHandoffEnabled] ?: true,
@@ -187,6 +211,10 @@ class EchoSettingsStore(
                     preferences[Keys.EqualizerBandGains],
                     EchoEqualizerPresets.normalizePresetId(preferences[Keys.EqualizerPreset]),
                 ),
+                equalizerPreampDb = (preferences[Keys.EqualizerPreampDb] ?: 0f).coerceIn(-24f, 12f),
+                equalizerParametric = preferences[Keys.EqualizerParametric] ?: false,
+                equalizerSourceLabel = preferences[Keys.EqualizerSourceLabel],
+                equalizerFilters = parseEqualizerFilters(preferences[Keys.EqualizerFilters]),
                 customBackgroundMode = preferences[Keys.CustomBackgroundMode] ?: EchoBackgroundMode.Default,
                 customBackgroundUri = preferences[Keys.CustomBackgroundUri],
                 customBackgroundBlur = (preferences[Keys.CustomBackgroundBlur] ?: 24f).coerceIn(0f, 80f),
@@ -211,6 +239,7 @@ class EchoSettingsStore(
                 lyricsFocusGlowEnabled = preferences[Keys.LyricsFocusGlowEnabled] ?: false,
                 importedFontUri = preferences[Keys.ImportedFontUri],
                 themeMode = normalizeThemeMode(preferences[Keys.ThemeMode]),
+                appLanguage = EchoAppLanguage.fromId(preferences[Keys.AppLanguage]),
                 scheduledDarkModeEnabled = preferences[Keys.ScheduledDarkModeEnabled] ?: false,
                 scheduledDarkStartMinute = (preferences[Keys.ScheduledDarkStartMinute] ?: 22 * 60).coerceIn(0, 23 * 60 + 59),
                 scheduledDarkEndMinute = (preferences[Keys.ScheduledDarkEndMinute] ?: 7 * 60).coerceIn(0, 23 * 60 + 59),
@@ -225,7 +254,9 @@ class EchoSettingsStore(
                 echoLinkAutoReconnectEnabled = preferences[Keys.EchoLinkAutoReconnectEnabled] ?: true,
                 echoLinkPreferLinkedLibrary = preferences[Keys.EchoLinkPreferLinkedLibrary] ?: true,
                 librarySelectedSource = normalizeLibrarySelectedSource(preferences[Keys.LibrarySelectedSource]),
-                subsonicServerUrl = preferences[Keys.SubsonicServerUrl],
+                subsonicServerUrl = preferences[Keys.SubsonicServerUrl]
+                    ?.let(::normalizeSubsonicBaseUrl)
+                    ?.takeIf { it.isNotBlank() },
                 subsonicUsername = preferences[Keys.SubsonicUsername],
                 subsonicPassword = preferences[Keys.SubsonicPassword],
                 webDavServerUrl = preferences[Keys.WebDavServerUrl],
@@ -267,6 +298,14 @@ class EchoSettingsStore(
         context.echoSettings.edit { it[Keys.CompactModeEnabled] = enabled }
     }
 
+    suspend fun setDynamicColorEnabled(enabled: Boolean) {
+        context.echoSettings.edit { it[Keys.DynamicColorEnabled] = enabled }
+    }
+
+    suspend fun setPlaybackHapticsEnabled(enabled: Boolean) {
+        context.echoSettings.edit { it[Keys.PlaybackHapticsEnabled] = enabled }
+    }
+
     suspend fun setPerformanceMode(value: String) {
         context.echoSettings.edit { it[Keys.PerformanceMode] = EchoPerformanceMode.fromId(value).id }
     }
@@ -306,6 +345,7 @@ class EchoSettingsStore(
             it[Keys.EqualizerBandGains] = formatEqualizerBandGains(
                 EchoEqualizerPresets.gainsForPreset(safePresetId),
             )
+            clearEqualizerParametric(it)
         }
     }
 
@@ -313,6 +353,28 @@ class EchoSettingsStore(
         context.echoSettings.edit {
             it[Keys.EqualizerPreset] = EchoEqualizerPreset.Custom
             it[Keys.EqualizerBandGains] = formatEqualizerBandGains(gainsDb)
+            clearEqualizerParametric(it)
+        }
+    }
+
+    suspend fun setEqualizerParametricConfig(
+        gainsDb: List<Float>,
+        preampDb: Float,
+        filters: List<OpraEqBand>,
+        sourceLabel: String?,
+    ) {
+        context.echoSettings.edit {
+            it[Keys.EqualizerEnabled] = true
+            it[Keys.EqualizerPreset] = EchoEqualizerPreset.Custom
+            it[Keys.EqualizerBandGains] = formatEqualizerBandGains(gainsDb)
+            it[Keys.EqualizerPreampDb] = preampDb.coerceIn(-24f, 12f)
+            it[Keys.EqualizerParametric] = filters.isNotEmpty()
+            it[Keys.EqualizerFilters] = formatEqualizerFilters(filters)
+            if (sourceLabel.isNullOrBlank()) {
+                it.remove(Keys.EqualizerSourceLabel)
+            } else {
+                it[Keys.EqualizerSourceLabel] = sourceLabel
+            }
         }
     }
 
@@ -322,7 +384,15 @@ class EchoSettingsStore(
             it[Keys.EqualizerBandGains] = formatEqualizerBandGains(
                 EchoEqualizerPresets.gainsForPreset(EchoEqualizerPreset.Flat),
             )
+            clearEqualizerParametric(it)
         }
+    }
+
+    private fun clearEqualizerParametric(preferences: MutablePreferences) {
+        preferences[Keys.EqualizerPreampDb] = 0f
+        preferences[Keys.EqualizerParametric] = false
+        preferences.remove(Keys.EqualizerSourceLabel)
+        preferences.remove(Keys.EqualizerFilters)
     }
 
     suspend fun setCustomBackground(mode: String, uri: String?) {
@@ -439,6 +509,19 @@ class EchoSettingsStore(
             currentStartupThemeSnapshot().copy(themeMode = safeValue),
             synchronous = true,
         )
+    }
+
+    fun persistAppLanguageSnapshot(value: String) {
+        cacheStartupThemeSnapshot(
+            currentStartupThemeSnapshot().copy(appLanguage = EchoAppLanguage.fromId(value)),
+            synchronous = true,
+        )
+    }
+
+    suspend fun setAppLanguage(value: String) {
+        val safeValue = EchoAppLanguage.fromId(value)
+        context.echoSettings.edit { it[Keys.AppLanguage] = safeValue }
+        persistAppLanguageSnapshot(safeValue)
     }
 
     suspend fun setScheduledDarkModeEnabled(enabled: Boolean) {
@@ -584,7 +667,7 @@ class EchoSettingsStore(
         password: String,
     ) {
         context.echoSettings.edit {
-            val normalizedUrl = serverUrl.trim().trimEnd('/')
+            val normalizedUrl = normalizeSubsonicBaseUrl(serverUrl)
             if (normalizedUrl.isBlank() || username.isBlank() || password.isBlank()) {
                 it.remove(Keys.SubsonicServerUrl)
                 it.remove(Keys.SubsonicUsername)
@@ -637,6 +720,8 @@ class EchoSettingsStore(
         val LastOutputRoute = stringPreferencesKey("last_output_route")
         val DynamicArtworkEnabled = booleanPreferencesKey("dynamic_artwork_enabled")
         val CompactModeEnabled = booleanPreferencesKey("compact_mode_enabled")
+        val DynamicColorEnabled = booleanPreferencesKey("dynamic_color_enabled")
+        val PlaybackHapticsEnabled = booleanPreferencesKey("playback_haptics_enabled")
         val PerformanceMode = stringPreferencesKey("performance_mode")
         val TrackAudioInfoTagsVisible = booleanPreferencesKey("track_audio_info_tags_visible")
         val PcHandoffEnabled = booleanPreferencesKey("pc_handoff_enabled")
@@ -647,6 +732,10 @@ class EchoSettingsStore(
         val EqualizerEnabled = booleanPreferencesKey("equalizer_enabled")
         val EqualizerPreset = stringPreferencesKey("equalizer_preset")
         val EqualizerBandGains = stringPreferencesKey("equalizer_band_gains")
+        val EqualizerPreampDb = floatPreferencesKey("equalizer_preamp_db")
+        val EqualizerParametric = booleanPreferencesKey("equalizer_parametric")
+        val EqualizerSourceLabel = stringPreferencesKey("equalizer_source_label")
+        val EqualizerFilters = stringPreferencesKey("equalizer_filters")
         val CustomBackgroundMode = stringPreferencesKey("custom_background_mode")
         val CustomBackgroundUri = stringPreferencesKey("custom_background_uri")
         val CustomBackgroundBlur = floatPreferencesKey("custom_background_blur")
@@ -671,6 +760,7 @@ class EchoSettingsStore(
         val LyricsFocusGlowEnabled = booleanPreferencesKey("lyrics_focus_glow_enabled")
         val ImportedFontUri = stringPreferencesKey("imported_font_uri")
         val ThemeMode = stringPreferencesKey("theme_mode")
+        val AppLanguage = stringPreferencesKey("app_language")
         val ScheduledDarkModeEnabled = booleanPreferencesKey("scheduled_dark_mode_enabled")
         val ScheduledDarkStartMinute = intPreferencesKey("scheduled_dark_start_minute")
         val ScheduledDarkEndMinute = intPreferencesKey("scheduled_dark_end_minute")
@@ -742,6 +832,42 @@ private fun formatEqualizerBandGains(gainsDb: List<Float>): String =
     gainsDb.joinToString(",") { value ->
         ((value.coerceIn(-18f, 18f) * 10f).toInt() / 10f).toString()
     }
+
+internal fun parseEqualizerFilters(value: String?): List<OpraEqBand> {
+    if (value.isNullOrBlank()) return emptyList()
+    return runCatching {
+        val array = JSONArray(value)
+        List(array.length()) { index -> array.optJSONObject(index) }
+            .mapNotNull { band ->
+                val type = band?.optString("type")?.trim()?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                val frequency = band.optDouble("frequencyHz", Double.NaN).toFloat()
+                if (!frequency.isFinite() || frequency <= 0f) return@mapNotNull null
+                OpraEqBand(
+                    type = type,
+                    frequencyHz = frequency,
+                    gainDb = band.optDouble("gainDb", 0.0).toFloat().takeIf { it.isFinite() } ?: 0f,
+                    q = band.optDouble("q", Double.NaN).toFloat().takeIf { it.isFinite() },
+                    slope = band.optDouble("slope", Double.NaN).toFloat().takeIf { it.isFinite() },
+                )
+            }
+    }.getOrDefault(emptyList())
+}
+
+internal fun formatEqualizerFilters(filters: List<OpraEqBand>): String {
+    val array = JSONArray()
+    filters.forEach { band ->
+        array.put(
+            JSONObject().apply {
+                put("type", band.type)
+                put("frequencyHz", band.frequencyHz.toDouble())
+                put("gainDb", band.gainDb.toDouble())
+                band.q?.let { put("q", it.toDouble()) }
+                band.slope?.let { put("slope", it.toDouble()) }
+            },
+        )
+    }
+    return array.toString()
+}
 
 internal fun EchoSavedPlaybackSession.toPreferenceValue(): String =
     JSONObject().apply {

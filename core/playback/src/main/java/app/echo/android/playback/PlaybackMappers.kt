@@ -11,6 +11,7 @@ import app.echo.android.model.playback.EchoPlaybackDiagnostics
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoRepeatMode
+import app.echo.android.model.playback.EchoLinkPlaybackUri
 import app.echo.android.model.playback.EchoTrackRef
 import app.echo.android.model.playback.PlaybackControlsState
 import app.echo.android.model.playback.PlaybackDiagnosticsState
@@ -21,9 +22,12 @@ import app.echo.android.model.playback.PlaybackQueueState
 fun MediaItem.toEchoTrackRef(durationMs: Long = 0L): EchoTrackRef {
     val metadata = mediaMetadata
     val metadataDurationMs = metadata.durationMs?.takeIf { it > 0L } ?: 0L
+    val playUri = localConfiguration?.uri?.toString().orEmpty()
+    val persistUri = metadata.extras?.getString(EchoPlaybackPersistUriExtra)
+        ?: EchoLinkPlaybackUri.persistableUri(mediaId, playUri)
     return EchoTrackRef(
         id = mediaId,
-        uri = localConfiguration?.uri?.toString().orEmpty(),
+        uri = persistUri,
         title = metadata.title?.toString().orEmpty().ifBlank { "Unknown Track" },
         artist = metadata.artist?.toString().orEmpty().ifBlank { "Unknown Artist" },
         album = metadata.albumTitle?.toString(),
@@ -45,7 +49,13 @@ fun EchoTrackRef.toMediaItem(): MediaItem =
                 .also { builder ->
                     if (durationMs > 0L) builder.setDurationMs(durationMs)
                 }
-                .setExtras(embeddedArtworkExtras())
+                .setExtras(
+                    playbackItemExtras(
+                        playUri = uri,
+                        persistUri = EchoLinkPlaybackUri.persistableUri(id, uri),
+                        artworkUri = artworkUri,
+                    ),
+                )
                 .build(),
         )
         .build()
@@ -61,8 +71,31 @@ fun EchoTrack.toEchoTrackRef(): EchoTrackRef =
         durationMs = durationMs,
     )
 
-fun EchoTrack.toMediaItem(): MediaItem =
-    toEchoTrackRef().toMediaItem()
+fun EchoTrack.toMediaItem(): MediaItem {
+    val persistUri = EchoLinkPlaybackUri.persistableUri(id, uri)
+    return MediaItem.Builder()
+        .setMediaId(id)
+        .setUri(Uri.parse(uri))
+        .setMediaMetadata(
+            androidx.media3.common.MediaMetadata.Builder()
+                .setTitle(title)
+                .setArtist(artist)
+                .setAlbumTitle(album)
+                .setArtworkUri(artworkUri?.let(Uri::parse))
+                .also { builder ->
+                    if (durationMs > 0L) builder.setDurationMs(durationMs)
+                }
+                .setExtras(
+                    playbackItemExtras(
+                        playUri = uri,
+                        persistUri = persistUri,
+                        artworkUri = artworkUri,
+                    ),
+                )
+                .build(),
+        )
+        .build()
+}
 
 fun Player.toEchoPlaybackStatus(
     diagnostics: EchoPlaybackDiagnostics = toPlaybackDiagnosticsState().diagnostics,
@@ -278,9 +311,19 @@ fun Int.toEchoRepeatMode(): EchoRepeatMode = when (this) {
     else -> EchoRepeatMode.Off
 }
 
-private fun EchoTrackRef.embeddedArtworkExtras(): Bundle? {
-    if (!artworkUri.isNullOrBlank() || uri.isBlank()) return null
-    return Bundle().apply {
-        putString(EchoEmbeddedArtworkSourceUriExtra, uri)
+private fun playbackItemExtras(
+    playUri: String,
+    persistUri: String,
+    artworkUri: String?,
+): Bundle? {
+    val extras = Bundle()
+    if (persistUri.isNotBlank() && persistUri != playUri) {
+        extras.putString(EchoPlaybackPersistUriExtra, persistUri)
     }
+    if (artworkUri.isNullOrBlank() && playUri.isNotBlank()) {
+        extras.putString(EchoEmbeddedArtworkSourceUriExtra, playUri)
+    }
+    return extras.takeIf { !it.isEmpty }
 }
+
+internal const val EchoPlaybackPersistUriExtra = "app.echo.android.playback.PERSIST_URI"

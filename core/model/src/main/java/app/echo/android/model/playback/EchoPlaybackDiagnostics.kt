@@ -23,6 +23,8 @@ data class EchoPlaybackDiagnostics(
     val usbAudioDescriptorError: String? = null,
     val usbBitPerfectSupported: Boolean = false,
     val usbBitPerfectActive: Boolean = false,
+    val usbExclusiveStreaming: Boolean = false,
+    val usbExclusiveTransport: String? = null,
     val usbSupportedSampleRates: List<Int> = emptyList(),
     val usbLastRequestedSampleRateHz: Int? = null,
     val usbLastRequestError: EchoPlaybackError? = null,

@@ -24,27 +24,39 @@ class DocumentTreeTrackScanner(
         readSampleRate: Boolean = true,
         onBatch: suspend (List<LibraryTrackEntity>) -> Unit,
         onProgress: suspend (scannedCount: Int, currentTrack: LibraryTrackEntity?) -> Unit,
-    ): Int {
+    ): MediaStoreScanOutcome {
         val rootDocumentId = DocumentsContract.getTreeDocumentId(treeUri)
         val safeBatchSize = batchSize.coerceAtLeast(1)
         val batch = ArrayList<LibraryTrackEntity>(safeBatchSize)
         val pendingDirectories = ArrayDeque<DocumentTreeDirectory>()
         var scannedCount = 0
+        var querySucceeded = true
 
         pendingDirectories.add(DocumentTreeDirectory(rootDocumentId, relativePath = ""))
         while (!pendingDirectories.isEmpty()) {
             coroutineContext.ensureActive()
             val directory = pendingDirectories.removeFirst()
             val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, directory.documentId)
-            contentResolver.query(childrenUri, Projection, null, null, null)?.use { cursor ->
-                val columns = DocumentColumns.from(cursor)
-                while (cursor.moveToNext()) {
+            val cursor = try {
+                contentResolver.query(childrenUri, Projection, null, null, null)
+            } catch (error: RuntimeException) {
+                Log.w(TAG, "Document tree directory listing failed.", error)
+                querySucceeded = false
+                continue
+            }
+            if (cursor == null) {
+                querySucceeded = false
+                continue
+            }
+            cursor.use { listing ->
+                val columns = DocumentColumns.from(listing)
+                while (listing.moveToNext()) {
                     coroutineContext.ensureActive()
-                    val documentId = cursor.getStringOrNull(columns.documentIdIndex) ?: continue
-                    val name = cursor.getStringOrNull(columns.nameIndex)
+                    val documentId = listing.getStringOrNull(columns.documentIdIndex) ?: continue
+                    val name = listing.getStringOrNull(columns.nameIndex)
                         ?.takeIf { it.isNotBlank() }
                         ?: documentId.substringAfterLast('/')
-                    val mimeType = cursor.getStringOrNull(columns.mimeTypeIndex)
+                    val mimeType = listing.getStringOrNull(columns.mimeTypeIndex)
 
                     if (mimeType == DocumentsContract.Document.MIME_TYPE_DIR) {
                         pendingDirectories.add(
@@ -58,8 +70,8 @@ class DocumentTreeTrackScanner(
 
                     if (!isSupportedAudio(name, mimeType)) continue
                     val documentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId)
-                    val sizeBytes = cursor.getOptionalLong(columns.sizeIndex) ?: 0L
-                    val lastModifiedMs = cursor.getOptionalLong(columns.lastModifiedIndex) ?: 0L
+                    val sizeBytes = listing.getOptionalLong(columns.sizeIndex) ?: 0L
+                    val lastModifiedMs = listing.getOptionalLong(columns.lastModifiedIndex) ?: 0L
                     runCatching {
                         documentUri.toTrackEntity(
                             documentId = documentId,
@@ -91,7 +103,7 @@ class DocumentTreeTrackScanner(
             batch.clear()
         }
         onProgress(scannedCount, null)
-        return scannedCount
+        return MediaStoreScanOutcome(scannedCount = scannedCount, querySucceeded = querySucceeded)
     }
 
     private fun Uri.toTrackEntity(
@@ -107,8 +119,14 @@ class DocumentTreeTrackScanner(
         val dateModifiedSeconds = lastModifiedMs.toEpochSeconds()
         if (
             existingTrack != null &&
-            existingTrack.sizeBytes == sizeBytes &&
-            existingTrack.dateModifiedSeconds == dateModifiedSeconds
+            LibraryScanPolicy.shouldReuseUnchangedDocumentFingerprint(
+                existingContentUri = existingTrack.contentUri,
+                incomingContentUri = toString(),
+                existingSizeBytes = existingTrack.sizeBytes,
+                incomingSizeBytes = sizeBytes,
+                existingDateModifiedSeconds = existingTrack.dateModifiedSeconds,
+                incomingDateModifiedSeconds = dateModifiedSeconds,
+            )
         ) {
             return LibraryTrackEntity(
                 id = "saf:${Uri.encode(documentId)}",

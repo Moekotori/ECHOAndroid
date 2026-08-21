@@ -13,12 +13,13 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LibraryTrackFtsEntity::class,
         LibraryPlaylistEntity::class,
         LibraryPlaylistTrackEntity::class,
+        LibraryFavoriteEntity::class,
         LibraryPlaybackStatsEntity::class,
         LibraryAlbumSummaryEntity::class,
         LibraryArtistSummaryEntity::class,
         LibraryFolderSummaryEntity::class,
     ],
-    version = 12,
+    version = 13,
     exportSchema = true,
 )
 abstract class EchoLibraryDatabase : RoomDatabase() {
@@ -40,6 +41,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                     Migration9To10,
                     Migration10To11,
                     Migration11To12,
+                    Migration12To13,
                 )
                 .build()
 
@@ -306,6 +308,25 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                 db.execSQL(RebuildAlbumSummariesSql)
                 db.execSQL(RebuildArtistSummariesSql)
                 db.execSQL(RebuildFolderSummariesSql)
+            }
+        }
+
+        internal val Migration12To13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS library_favorites (
+                        trackId TEXT NOT NULL PRIMARY KEY,
+                        favoritedAtEpochMs INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS index_library_favorites_favoritedAtEpochMs
+                    ON library_favorites(favoritedAtEpochMs)
+                    """.trimIndent(),
+                )
             }
         }
 

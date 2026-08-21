@@ -76,19 +76,26 @@ internal fun EchoArtworkImage(
     val context = LocalContext.current
     val effectivePerformanceMode = LocalEchoEffectivePerformanceMode.current
     val requestHeaders = EchoArtworkRequestHeadersRegistry.headersFor(artworkUri)
-    val model = remember(context, artworkUri, sizeClass, requestHeaders, effectivePerformanceMode) {
+    val rewriteRevision = EchoArtworkUrlRewriteRegistry.revision
+    val fetchUri = resolvedArtworkFetchUri(artworkUri)
+    val model = remember(
+        context,
+        artworkUri,
+        fetchUri,
+        sizeClass,
+        requestHeaders,
+        effectivePerformanceMode,
+        rewriteRevision,
+    ) {
         val maxPixelSize = sizeClass.maxPixelSize(effectivePerformanceMode)
-        ImageRequest.Builder(context)
-            .data(artworkUri)
-            .apply {
-                requestHeaders.forEach { (name, value) ->
-                    setHeader(name, value)
-                }
-            }
-            .crossfade(false)
-            .size(maxPixelSize, maxPixelSize)
-            .bitmapConfig(if (effectivePerformanceMode.isHighPerformance) Bitmap.Config.ARGB_8888 else Bitmap.Config.RGB_565)
-            .build()
+        echoArtworkImageRequest(
+            context = context,
+            originalUri = artworkUri,
+            fetchUri = fetchUri,
+            maxPixelSize = maxPixelSize,
+            headers = requestHeaders,
+            highBitDepth = effectivePerformanceMode.isHighPerformance,
+        )
     }
     Box(
         modifier = modifier
@@ -118,12 +125,14 @@ internal fun EchoArtworkImage(
                 showSignal = showSignal,
                 iconSize = placeholderIconSize,
             )
-            AsyncImage(
-                model = model,
-                contentDescription = contentDescription,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-            )
+            if (fetchUri != null) {
+                AsyncImage(
+                    model = model,
+                    contentDescription = contentDescription,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            }
         }
     }
 }
@@ -281,6 +290,29 @@ private fun EchoArtworkSize.signalBottomPadding(): Dp =
         EchoArtworkSize.Card -> 14.dp
         EchoArtworkSize.Hero -> 18.dp
     }
+
+internal fun echoArtworkImageRequest(
+    context: android.content.Context,
+    originalUri: String?,
+    fetchUri: String?,
+    maxPixelSize: Int,
+    headers: Map<String, String> = emptyMap(),
+    highBitDepth: Boolean,
+): ImageRequest {
+    val builder = ImageRequest.Builder(context)
+        .data(fetchUri ?: originalUri)
+        .crossfade(false)
+        .size(maxPixelSize, maxPixelSize)
+        .bitmapConfig(if (highBitDepth) Bitmap.Config.ARGB_8888 else Bitmap.Config.RGB_565)
+    if (!originalUri.isNullOrBlank()) {
+        builder.memoryCacheKey(originalUri)
+        builder.diskCacheKey(originalUri)
+    }
+    headers.forEach { (name, value) ->
+        builder.setHeader(name, value)
+    }
+    return builder.build()
+}
 
 private fun EchoArtworkSize.maxPixelSize(effectivePerformanceMode: EchoEffectivePerformanceMode): Int =
     when {

@@ -29,7 +29,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.echo.android.BottomDock
 import app.echo.android.EchoAndroidViewModel
 import app.echo.android.EchoTab
-import app.echo.android.design.EchoContentMaxWidth
+import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.design.EchoGlassInk
 import app.echo.android.design.EchoGlassNight
 import app.echo.android.design.EchoGlassPanel
@@ -128,7 +128,7 @@ internal fun EchoBottomDockHost(
                     onNext = onNext,
                     onPrevious = onPrevious,
                     modifier = Modifier
-                        .widthIn(max = EchoContentMaxWidth)
+                        .widthIn(max = LocalEchoContentMaxWidth.current)
                         .fillMaxWidth(),
                 )
             }

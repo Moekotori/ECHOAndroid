@@ -72,16 +72,21 @@ class UsbExclusivePcmOutput(context: Context) {
                 error("Unable to claim USB audio streaming interface")
             }
             runCatching { connection.setInterface(audioInterface) }
-            UsbExclusivePcmSession(
+            UsbAudioClock.setSampleRate(connection, selectedFormat, spec.sampleRateHz)
+            val session = UsbExclusivePcmSession(
                 connection = connection,
                 audioInterface = audioInterface,
                 endpoint = endpoint,
+                spec = spec,
+                selectedFormat = selectedFormat,
                 openResult = UsbExclusiveOpenResult(
                     state = UsbExclusiveOutputState.Ready,
                     selectedFormat = selectedFormat,
                     message = "USB PCM output interface is claimed",
                 ),
             )
+            session.startWriter()
+            session
         }
 
         return opened.getOrElse { error ->
@@ -119,24 +124,77 @@ class UsbExclusivePcmSession internal constructor(
     private val connection: UsbDeviceConnection?,
     private val audioInterface: UsbInterface?,
     private val endpoint: UsbEndpoint?,
+    private val spec: UsbPcmFormatSpec? = null,
+    private val selectedFormat: UsbAudioStreamingFormat? = null,
     val openResult: UsbExclusiveOpenResult,
 ) : AutoCloseable {
+    private var nativeHandle: Long = 0L
+    private var closed = false
+
     val state: UsbExclusiveOutputState
         get() = openResult.state
+
+    val transport: UsbEndpointTransferType?
+        get() = selectedFormat?.endpointTransferType ?: when (endpoint?.type) {
+            UsbConstants.USB_ENDPOINT_XFER_ISOC -> UsbEndpointTransferType.Isochronous
+            UsbConstants.USB_ENDPOINT_XFER_BULK -> UsbEndpointTransferType.Bulk
+            else -> null
+        }
+
+    val bytesPerSample: Int
+        get() = UsbPcmPacker.bytesPerSample(
+            bitDepth = spec?.bitDepth ?: selectedFormat?.bitResolution ?: 16,
+            subslotSize = selectedFormat?.subslotSize,
+        )
+
+    internal fun startWriter() {
+        val endpoint = endpoint ?: return
+        val spec = spec ?: return
+        val format = selectedFormat ?: return
+        if (endpoint.type != UsbConstants.USB_ENDPOINT_XFER_ISOC) return
+        if (!UsbIsochronousNative.available) {
+            error("Native isochronous writer is unavailable")
+        }
+        val packetsPerSecond = UsbIsoPacketizer.packetsPerSecond(
+            sampleRateHz = spec.sampleRateHz,
+            channelCount = spec.channelCount,
+            bytesPerSample = bytesPerSample,
+            maxPacketSize = format.maxPacketSize ?: endpoint.maxPacketSize,
+        )
+        nativeHandle = UsbIsochronousNative.create(
+            fileDescriptor = connection?.fileDescriptor ?: error("USB file descriptor is unavailable"),
+            endpointAddress = endpoint.address,
+            maxPacketSize = UsbIsoPacketizer.maxPacketPayloadBytes(format.maxPacketSize ?: endpoint.maxPacketSize),
+            sampleRateHz = spec.sampleRateHz,
+            channelCount = spec.channelCount,
+            bytesPerSample = bytesPerSample,
+            packetsPerSecond = packetsPerSecond,
+        )
+        if (nativeHandle == 0L) {
+            error("Unable to start native isochronous writer")
+        }
+    }
 
     fun writePcm(buffer: ByteArray, offset: Int = 0, length: Int = buffer.size): UsbPcmWriteResult {
         val connection = connection
             ?: return UsbPcmWriteResult(openResult.state, message = openResult.message)
         val endpoint = endpoint
             ?: return UsbPcmWriteResult(UsbExclusiveOutputState.OpenFailed, message = "USB endpoint is unavailable")
+        val safeOffset = offset.coerceIn(0, buffer.size)
+        val safeLength = length.coerceIn(0, buffer.size - safeOffset)
+        if (endpoint.type == UsbConstants.USB_ENDPOINT_XFER_ISOC) {
+            val written = UsbIsochronousNative.write(nativeHandle, buffer, safeOffset, safeLength)
+            return when {
+                written < 0 -> UsbPcmWriteResult(UsbExclusiveOutputState.OpenFailed, message = "USB isochronous write failed")
+                else -> UsbPcmWriteResult(UsbExclusiveOutputState.Streaming, bytesWritten = written)
+            }
+        }
         if (endpoint.type != UsbConstants.USB_ENDPOINT_XFER_BULK) {
             return UsbPcmWriteResult(
                 state = UsbExclusiveOutputState.UnsupportedTransport,
-                message = "Android framework path opened the interface, but ${endpoint.type.toTransferLabel()} USB audio streaming needs a native isochronous writer",
+                message = "USB audio streaming endpoint ${endpoint.type.toTransferLabel()} is not supported",
             )
         }
-        val safeOffset = offset.coerceIn(0, buffer.size)
-        val safeLength = length.coerceIn(0, buffer.size - safeOffset)
         val written = connection.bulkTransfer(endpoint, buffer, safeOffset, safeLength, USB_WRITE_TIMEOUT_MS)
         return if (written >= 0) {
             UsbPcmWriteResult(UsbExclusiveOutputState.Streaming, bytesWritten = written)
@@ -145,7 +203,15 @@ class UsbExclusivePcmSession internal constructor(
         }
     }
 
+    fun queuedFrames(): Long = UsbIsochronousNative.queuedFrames(nativeHandle)
+
+    fun completedFrames(): Long = UsbIsochronousNative.completedFrames(nativeHandle)
+
     override fun close() {
+        if (closed) return
+        closed = true
+        UsbIsochronousNative.close(nativeHandle)
+        nativeHandle = 0L
         val connection = connection ?: return
         val audioInterface = audioInterface
         if (audioInterface != null) {
@@ -171,6 +237,8 @@ class UsbExclusivePcmSession internal constructor(
                 connection = null,
                 audioInterface = null,
                 endpoint = null,
+                spec = null,
+                selectedFormat = openResult.selectedFormat,
                 openResult = openResult,
             )
     }

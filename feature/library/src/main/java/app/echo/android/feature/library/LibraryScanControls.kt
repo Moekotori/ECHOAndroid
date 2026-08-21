@@ -47,6 +47,7 @@ import app.echo.android.design.EchoHomeBlue
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.RoonInk
 import app.echo.android.design.RoonMuted
+import app.echo.android.design.echoString
 import app.echo.android.model.library.LibraryScanProgress
 
 private data class ScanGlassColors(
@@ -84,14 +85,14 @@ internal fun LibraryScanAction(
     var showScanOptions by remember { mutableStateOf(false) }
     val colors = rememberScanGlassColors()
     val description = when {
-        !hasPermission -> "授权音乐权限"
-        scanState.isScanning -> "取消扫描曲库"
-        else -> "扫描曲库"
+        !hasPermission -> echoString(en = "Allow music access", zh = "授权音乐权限", ja = "音楽へのアクセスを許可")
+        scanState.isScanning -> echoString(en = "Cancel library scan", zh = "取消扫描曲库", ja = "ライブラリのスキャンをキャンセル")
+        else -> echoString(en = "Scan library", zh = "扫描曲库", ja = "ライブラリをスキャン")
     }
     val label = when {
-        !hasPermission -> "授权"
-        scanState.isScanning -> "停止"
-        else -> "扫描"
+        !hasPermission -> echoString(en = "Allow", zh = "授权", ja = "許可")
+        scanState.isScanning -> echoString(en = "Stop", zh = "停止", ja = "停止")
+        else -> echoString(en = "Scan", zh = "扫描", ja = "スキャン")
     }
     val accent = when {
         scanState.error != null -> Color(0xFFE0796E)
@@ -170,33 +171,49 @@ internal fun LibraryScanOptionsDialog(
                 ) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
-                            text = "扫描曲库",
+                            text = echoString(en = "Scan library", zh = "扫描曲库", ja = "ライブラリをスキャン"),
                             color = colors.content,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
-                            text = "选择本次索引范围",
+                            text = echoString(
+                                en = "Choose the indexing range for this scan",
+                                zh = "选择本次索引范围",
+                                ja = "今回の索引範囲を選択",
+                            ),
                             color = colors.muted,
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Rounded.Close, contentDescription = "关闭", tint = colors.muted)
+                        Icon(
+                            Icons.Rounded.Close,
+                            contentDescription = echoString(en = "Close", zh = "关闭", ja = "閉じる"),
+                            tint = colors.muted,
+                        )
                     }
                 }
 
                 LibraryScanOption(
                     icon = Icons.Rounded.FolderOpen,
-                    title = "扫描单个文件夹",
-                    subtitle = "适合刚拷入音乐，只更新选中的目录",
+                    title = echoString(en = "Scan a single folder", zh = "扫描单个文件夹", ja = "フォルダーをスキャン"),
+                    subtitle = echoString(
+                        en = "Best after copying in new music; updates only the selected folder",
+                        zh = "适合刚拷入音乐，只更新选中的目录",
+                        ja = "新しくコピーした音楽向け。選択したフォルダーだけ更新します",
+                    ),
                     onClick = onScanFolder,
                     accent = EchoHomeBlue,
                 )
                 LibraryScanOption(
                     icon = Icons.Rounded.LibraryMusic,
-                    title = "全盘扫描",
-                    subtitle = "重新同步本机所有音乐，并清理已删除项目",
+                    title = echoString(en = "Full scan", zh = "全盘扫描", ja = "全体スキャン"),
+                    subtitle = echoString(
+                        en = "Resync all local music and clean up deleted items",
+                        zh = "重新同步本机所有音乐，并清理已删除项目",
+                        ja = "端末内の音楽を再同期し、削除済み項目を整理します",
+                    ),
                     onClick = onScanAll,
                     accent = EchoAccentDeep,
                 )

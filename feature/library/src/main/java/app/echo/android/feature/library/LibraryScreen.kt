@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -90,7 +91,9 @@ import app.echo.android.design.EchoGlassBorder
 import app.echo.android.design.EchoHomeMist
 import app.echo.android.design.EchoPanel
 import app.echo.android.design.EmptyState
+import app.echo.android.design.LocalEchoWidthSizeClass
 import app.echo.android.design.PageChrome
+import app.echo.android.design.echoString
 import app.echo.android.model.connect.EchoRemoteLibraryState
 import app.echo.android.model.connect.EchoRemotePlaylist
 import app.echo.android.model.connect.EchoRemoteTrack
@@ -100,6 +103,7 @@ import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackMetadataUpdate
 import app.echo.android.model.library.FolderSummary
+import app.echo.android.model.library.LibraryPlaybackOrigin
 import app.echo.android.model.library.LibraryScanPhase
 import app.echo.android.model.library.LibraryScanProgress
 import app.echo.android.model.library.LibrarySource
@@ -116,36 +120,93 @@ private val LinkedLibraryHeaderRowHeight = 56.dp
 private val LinkedLibraryHeaderBottomSpacing = 8.dp
 
 internal enum class LibraryViewMode(
-    val label: String,
     val icon: ImageVector,
 ) {
-    Songs("歌曲", Icons.AutoMirrored.Rounded.QueueMusic),
-    Folders("文件夹", Icons.Rounded.LibraryMusic),
-    Albums("专辑", Icons.Rounded.LibraryMusic),
-    Artists("艺术家", Icons.Rounded.Person),
-    Cloud("网盘", Icons.Rounded.CloudQueue),
-    Playlists("歌单", Icons.Rounded.LibraryMusic),
+    Songs(Icons.AutoMirrored.Rounded.QueueMusic),
+    Folders(Icons.Rounded.LibraryMusic),
+    Albums(Icons.Rounded.LibraryMusic),
+    Artists(Icons.Rounded.Person),
+    Cloud(Icons.Rounded.CloudQueue),
+    Playlists(Icons.Rounded.LibraryMusic),
+}
+
+@Composable
+internal fun LibraryViewMode.label(): String = when (this) {
+    LibraryViewMode.Songs -> echoString(en = "Songs", zh = "歌曲", ja = "曲")
+    LibraryViewMode.Folders -> echoString(en = "Folders", zh = "文件夹", ja = "フォルダー")
+    LibraryViewMode.Albums -> echoString(en = "Albums", zh = "专辑", ja = "アルバム")
+    LibraryViewMode.Artists -> echoString(en = "Artists", zh = "艺术家", ja = "アーティスト")
+    LibraryViewMode.Cloud -> echoString(en = "Cloud", zh = "网盘", ja = "クラウド")
+    LibraryViewMode.Playlists -> echoString(en = "Playlists", zh = "歌单", ja = "プレイリスト")
 }
 
 private enum class LinkedLibraryMode(
-    val label: String,
     val icon: ImageVector,
 ) {
-    Songs("歌曲", Icons.AutoMirrored.Rounded.QueueMusic),
-    Albums("专辑", Icons.Rounded.LibraryMusic),
-    Artists("艺术家", Icons.Rounded.Person),
-    Playlists("歌单", Icons.Rounded.LibraryMusic),
+    Songs(Icons.AutoMirrored.Rounded.QueueMusic),
+    Albums(Icons.Rounded.LibraryMusic),
+    Artists(Icons.Rounded.Person),
+    Playlists(Icons.Rounded.LibraryMusic),
+}
+
+@Composable
+private fun LinkedLibraryMode.label(): String = when (this) {
+    LinkedLibraryMode.Songs -> echoString(en = "Songs", zh = "歌曲", ja = "曲")
+    LinkedLibraryMode.Albums -> echoString(en = "Albums", zh = "专辑", ja = "アルバム")
+    LinkedLibraryMode.Artists -> echoString(en = "Artists", zh = "艺术家", ja = "アーティスト")
+    LinkedLibraryMode.Playlists -> echoString(en = "Playlists", zh = "歌单", ja = "プレイリスト")
 }
 
 private enum class LibrarySourceMode(
     val id: String,
-    val label: String,
     val icon: ImageVector,
 ) {
-    Local(LibrarySourceIds.Local, "本地", Icons.Rounded.LibraryMusic),
-    PcEcho(LibrarySourceIds.PcEcho, "PC ECHO", Icons.Rounded.Devices),
-    Cloud(LibrarySourceIds.Cloud, "网盘", Icons.Rounded.CloudQueue),
+    Local(LibrarySourceIds.Local, Icons.Rounded.LibraryMusic),
+    PcEcho(LibrarySourceIds.PcEcho, Icons.Rounded.Devices),
+    Cloud(LibrarySourceIds.Cloud, Icons.Rounded.CloudQueue),
 }
+
+@Composable
+private fun LibrarySourceMode.label(): String = when (this) {
+    LibrarySourceMode.Local -> echoString(en = "Local", zh = "本地", ja = "ローカル")
+    LibrarySourceMode.PcEcho -> echoString(en = "PC ECHO", zh = "PC ECHO", ja = "PC ECHO")
+    LibrarySourceMode.Cloud -> echoString(en = "Cloud", zh = "网盘", ja = "クラウド")
+}
+
+@Composable
+internal fun LibraryTrackSortMode.label(): String = when (this) {
+    LibraryTrackSortMode.Title -> echoString(en = "song title", zh = "歌曲标题", ja = "曲名")
+    LibraryTrackSortMode.Duration -> echoString(en = "duration", zh = "音乐时间", ja = "再生時間")
+    LibraryTrackSortMode.FrequentlyPlayed -> echoString(en = "frequently played", zh = "常听歌曲", ja = "よく聴く曲")
+    LibraryTrackSortMode.Random -> echoString(en = "shuffle", zh = "随机排序", ja = "ランダム")
+    LibraryTrackSortMode.Artist -> echoString(en = "artist", zh = "艺术家", ja = "アーティスト")
+    LibraryTrackSortMode.Album -> echoString(en = "album", zh = "专辑", ja = "アルバム")
+    LibraryTrackSortMode.RecentlyUpdated -> echoString(en = "recently updated", zh = "最近更新", ja = "最近の更新")
+}
+
+@Composable
+internal fun unknownArtistLabel(): String =
+    echoString(en = "Unknown artist", zh = "未知艺术家", ja = "不明なアーティスト")
+
+@Composable
+internal fun unknownAlbumLabel(): String =
+    echoString(en = "Unknown album", zh = "未知专辑", ja = "不明なアルバム")
+
+@Composable
+internal fun unknownTrackLabel(): String =
+    echoString(en = "Unknown track", zh = "未知曲目", ja = "不明な曲")
+
+@Composable
+internal fun libraryTrackCountLabel(count: Int): String =
+    echoString(en = "$count tracks", zh = "$count 首", ja = "$count 曲")
+
+@Composable
+internal fun libraryAlbumCountLabel(count: Int): String =
+    echoString(en = "$count albums", zh = "$count 张专辑", ja = "アルバム $count 枚")
+
+@Composable
+internal fun libraryMinutesLabel(minutes: Int): String =
+    echoString(en = "$minutes min", zh = "$minutes 分钟", ja = "$minutes 分")
 
 private object LibrarySourceIds {
     const val Local = "local"
@@ -211,7 +272,9 @@ fun LibraryScreen(
     onRefreshLinkedLibrary: (String) -> Unit,
     onOpenLinkedPlaylist: (EchoRemotePlaylist) -> Unit,
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
-    onPlayTrack: (EchoTrack) -> Unit,
+    onPlayTrack: (EchoTrack, LibraryPlaybackOrigin) -> Unit,
+    onPlayNext: (EchoTrack) -> Unit = {},
+    onEnqueueTrack: (EchoTrack) -> Unit = {},
     onUpdateTrackMetadata: (EchoTrackMetadataUpdate) -> Unit,
     onImportLyricsForTrack: (EchoTrack) -> Unit,
     onPickTrackArtwork: (EchoTrack) -> Unit,
@@ -221,12 +284,21 @@ fun LibraryScreen(
     onShuffleArtist: (ArtistSummary) -> Unit,
     onPlayFolder: (FolderSummary) -> Unit,
     onPlayPlaylist: (EchoPlaylist) -> Unit,
+    onCreatePlaylist: (String) -> Unit,
+    onRenamePlaylist: (EchoPlaylist, String) -> Unit,
+    onDeletePlaylist: (EchoPlaylist) -> Unit,
+    onAddTrackToPlaylist: (EchoPlaylist, EchoTrack) -> Unit,
+    onCreatePlaylistAndAddTrack: (String, EchoTrack) -> Unit,
+    onRemoveTrackFromPlaylist: (EchoPlaylist, EchoTrack) -> Unit,
+    onReorderPlaylistTracks: (EchoPlaylist, Int, Int) -> Unit,
     onOpenAlbum: (AlbumSummary) -> Unit,
     onOpenArtist: (ArtistSummary) -> Unit,
     onOpenFolder: (FolderSummary) -> Unit,
     onOpenPlaylist: (EchoPlaylist) -> Unit,
     onCloseDetail: () -> Unit,
 ) {
+    val playNext = onPlayNext
+    val enqueueTrack = onEnqueueTrack
     var selectedModeIndex by remember { mutableIntStateOf(LibraryViewMode.Songs.ordinal) }
     val selectedMode = LibraryViewMode.entries[selectedModeIndex]
     var selectedSource by remember(selectedLibrarySourceId, linkedLibraryActive) {
@@ -237,6 +309,7 @@ fun LibraryScreen(
     var selectedLinkedArtistKey by remember { mutableStateOf<String?>(null) }
     var selectedLinkedPlaylistId by remember { mutableStateOf<String?>(null) }
     val songListState = rememberLazyListState()
+    var addToPlaylistTrack by remember { mutableStateOf<EchoTrack?>(null) }
     var scanWasActiveForBanner by remember { mutableStateOf(false) }
     var showScanResultBanner by remember { mutableStateOf(false) }
 
@@ -331,9 +404,9 @@ fun LibraryScreen(
 
     if (selectedSource == LibrarySourceMode.PcEcho) {
         PageChrome(
-            title = "曲库",
+            title = echoString(en = "Library", zh = "曲库", ja = "ライブラリ"),
             subtitle = "PC ECHO",
-            badge = selectedSource.label,
+            badge = selectedSource.label(),
             showBrand = false,
             compactHeader = true,
             badgeContent = {},
@@ -341,7 +414,11 @@ fun LibraryScreen(
                 IconButton(onClick = { onRefreshLinkedLibrary(libraryQuery) }) {
                     Icon(
                         Icons.Rounded.Refresh,
-                        contentDescription = "刷新 PC ECHO 曲库",
+                        contentDescription = echoString(
+                            en = "Refresh PC ECHO library",
+                            zh = "刷新 PC ECHO 曲库",
+                            ja = "PC ECHO ライブラリを更新",
+                        ),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -357,10 +434,261 @@ fun LibraryScreen(
                 linkedLibraryAvailable = linkedLibraryAvailable,
                 onSelectSource = ::selectSource,
             )
-            EmptyState("先到“互联”连接 PC ECHO，然后这里就能浏览 PC 曲库。")
+            EmptyState(
+                echoString(
+                    en = "Connect PC ECHO in Link first, then you can browse the PC library here.",
+                    zh = "先到“互联”连接 PC ECHO，然后这里就能浏览 PC 曲库。",
+                    ja = "先に「連携」で PC ECHO を接続すると、ここで PC ライブラリを閲覧できます。",
+                ),
+            )
         }
         return
     }
+
+    val prefersSplit = LocalEchoWidthSizeClass.current.prefersLibrarySplit
+
+    @Composable
+    fun LocalBrowserPane() {
+        PageChrome(
+            title = echoString(en = "Library", zh = "曲库", ja = "ライブラリ"),
+            subtitle = null,
+            badge = selectedSource.label(),
+            showBrand = false,
+            compactHeader = true,
+            badgeContent = {},
+            titleContent = {},
+            actions = {
+                if (selectedSource == LibrarySourceMode.Local && selectedMode == LibraryViewMode.Songs) {
+                    LibraryTrackSortMenu(
+                        selectedSortMode = trackSortMode,
+                        onSortModeChange = onTrackSortModeChange,
+                    )
+                }
+                LibrarySourceScanButton(
+                    selectedSource = selectedSource,
+                    linkedLibraryAvailable = linkedLibraryAvailable,
+                    onSelectSource = ::selectSource,
+                    hasPermission = hasPermission,
+                    scanState = scanState,
+                    onRequestPermission = onRequestPermission,
+                    onScanFolder = onScanFolder,
+                    onScanAll = onScanAll,
+                    onCancelScan = onCancelScan,
+                )
+                LibrarySearchBar(
+                    query = libraryQuery,
+                    onQueryChange = onLibraryQueryChange,
+                    expandedWidth = 240.dp,
+                )
+            },
+        ) {
+            when {
+                scanState.isScanning -> LibraryScanStatus(scanState = scanState, onCancelScan = onCancelScan)
+                else -> {
+                    LibraryBrowserHeader(
+                        scanState = scanState,
+                        showScanResultBanner = showScanResultBanner,
+                        selectedSource = selectedSource,
+                        linkedLibraryAvailable = linkedLibraryAvailable,
+                        onSelectSource = ::selectSource,
+                        selectedMode = selectedMode,
+                        selectedSortMode = trackSortMode,
+                        onSelectMode = { mode ->
+                            selectedModeIndex = mode.ordinal
+                            if (selectedSource == LibrarySourceMode.Cloud && mode != LibraryViewMode.Albums) {
+                                selectedSource = LibrarySourceMode.Local
+                                onLibrarySourceChange(LibrarySourceMode.Local.id)
+                            }
+                        },
+                        onSortModeChange = onTrackSortModeChange,
+                    )
+                    Box(modifier = Modifier.weight(1f)) {
+                        when (selectedMode) {
+                            LibraryViewMode.Songs -> {
+                                val trackItems = tracks.collectAsLazyPagingItems()
+                                val showInitialTrackLoading =
+                                    trackItems.itemCount == 0 &&
+                                        trackItems.loadState.refresh is LoadState.Loading
+                                val showInitialTrackError =
+                                    trackItems.itemCount == 0 &&
+                                        trackItems.loadState.refresh is LoadState.Error
+                                when {
+                                    !hasPermission ->
+                                        EmptyState(
+                                            echoString(
+                                                en = "Grant access to index local music. Cloud libraries can open the Cloud tab directly.",
+                                                zh = "授权后即可索引本地音乐；云端曲库可直接进入“网盘”页。",
+                                                ja = "許可するとローカル音楽を索引できます。クラウドライブラリは「クラウド」から直接開けます。",
+                                            ),
+                                        )
+                                    showInitialTrackLoading -> EmptyState(
+                                        echoString(
+                                            en = "Loading library...",
+                                            zh = "正在加载曲库...",
+                                            ja = "ライブラリを読み込み中...",
+                                        ),
+                                    )
+                                    showInitialTrackError -> EmptyState(
+                                        echoString(
+                                            en = "Library query failed.",
+                                            zh = "曲库查询失败。",
+                                            ja = "ライブラリの照会に失敗しました。",
+                                        ),
+                                    )
+                                    trackItems.itemCount == 0 -> LibraryBootstrapState()
+                                    else -> TrackList(
+                                        tracks = trackItems,
+                                        onPlayTrack = { track ->
+                                            onPlayTrack(track, LibraryPlaybackOrigin.Songs)
+                                        },
+                                        onUpdateTrackMetadata = onUpdateTrackMetadata,
+                                        onImportLyrics = onImportLyricsForTrack,
+                                        onPickArtwork = onPickTrackArtwork,
+                                        onAddToPlaylist = { track -> addToPlaylistTrack = track },
+                                        onPlayNext = playNext,
+                                        onEnqueue = enqueueTrack,
+                                        showAudioInfoTags = showTrackAudioInfoTags,
+                                        listState = songListState,
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
+                                }
+                            }
+
+                            LibraryViewMode.Folders -> FolderList(
+                                folders = folders.collectAsLazyPagingItems(),
+                                onOpenFolder = onOpenFolder,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+
+                            LibraryViewMode.Albums -> {
+                                val albumItems = if (selectedSource == LibrarySourceMode.Cloud) {
+                                    remoteAlbums.collectAsLazyPagingItems()
+                                } else {
+                                    albums.collectAsLazyPagingItems()
+                                }
+                                AlbumWall(
+                                    albums = albumItems,
+                                    onOpenAlbum = onOpenAlbum,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
+
+                            LibraryViewMode.Artists -> ArtistWall(
+                                artists = artists.collectAsLazyPagingItems(),
+                                onOpenArtist = onOpenArtist,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+
+                            LibraryViewMode.Cloud -> AlbumWall(
+                                albums = remoteAlbums.collectAsLazyPagingItems(),
+                                onOpenAlbum = onOpenAlbum,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+
+                            LibraryViewMode.Playlists -> LocalPlaylistPanel(
+                                playlists = playlists,
+                                onOpenPlaylist = onOpenPlaylist,
+                                onPlayPlaylist = onPlayPlaylist,
+                                onCreatePlaylist = onCreatePlaylist,
+                                onRenamePlaylist = onRenamePlaylist,
+                                onDeletePlaylist = onDeletePlaylist,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (prefersSplit) {
+        val livePlaylist = selectedPlaylist?.let { selected ->
+            playlists.firstOrNull { it.id == selected.id } ?: selected
+        }
+        Row(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(0.42f).fillMaxHeight()) {
+                LocalBrowserPane()
+            }
+            Box(
+                Modifier
+                    .width(1.dp)
+                    .fillMaxHeight()
+                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f)),
+            )
+            Box(Modifier.weight(0.58f).fillMaxHeight()) {
+                when {
+                    selectedAlbum != null && albumDetailTracks != null -> AlbumDetailPage(
+                        album = selectedAlbum,
+                        tracks = albumDetailTracks,
+                        onBack = onCloseDetail,
+                        onPlayAll = { onPlayAlbum(selectedAlbum) },
+                        onShuffle = { onShuffleAlbum(selectedAlbum) },
+                        onPlayTrack = { track ->
+                            onPlayTrack(track, LibraryPlaybackOrigin.Album(selectedAlbum.albumKey))
+                        },
+                        onUpdateTrackMetadata = onUpdateTrackMetadata,
+                        onImportLyrics = onImportLyricsForTrack,
+                        onPickArtwork = onPickTrackArtwork,
+                        onAddToPlaylist = { track -> addToPlaylistTrack = track },
+                        onPlayNext = playNext,
+                        onEnqueue = enqueueTrack,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    selectedArtist != null && artistDetailTracks != null -> ArtistDetailPage(
+                        artist = selectedArtist,
+                        tracks = artistDetailTracks,
+                        onBack = onCloseDetail,
+                        onPlayAll = { onPlayArtist(selectedArtist) },
+                        onShuffle = { onShuffleArtist(selectedArtist) },
+                        onPlayTrack = { track ->
+                            onPlayTrack(track, LibraryPlaybackOrigin.Artist(selectedArtist.artistKey))
+                        },
+                        onUpdateTrackMetadata = onUpdateTrackMetadata,
+                        onImportLyrics = onImportLyricsForTrack,
+                        onPickArtwork = onPickTrackArtwork,
+                        onAddToPlaylist = { track -> addToPlaylistTrack = track },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    selectedFolder != null && folderDetailTracks != null -> FolderDetailPage(
+                        folder = selectedFolder,
+                        tracks = folderDetailTracks,
+                        onBack = onCloseDetail,
+                        onPlayAll = { onPlayFolder(selectedFolder) },
+                        onPlayTrack = { track ->
+                            onPlayTrack(track, LibraryPlaybackOrigin.Folder(selectedFolder.folderKey))
+                        },
+                        onUpdateTrackMetadata = onUpdateTrackMetadata,
+                        onImportLyrics = onImportLyricsForTrack,
+                        onPickArtwork = onPickTrackArtwork,
+                        onAddToPlaylist = { track -> addToPlaylistTrack = track },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    livePlaylist != null && playlistDetailTracks != null -> PlaylistDetailPage(
+                        playlist = livePlaylist,
+                        tracks = playlistDetailTracks,
+                        onBack = onCloseDetail,
+                        onPlayAll = { onPlayPlaylist(livePlaylist) },
+                        onPlayTrack = { track ->
+                            onPlayTrack(track, LibraryPlaybackOrigin.Playlist(livePlaylist.id))
+                        },
+                        onRenamePlaylist = { name -> onRenamePlaylist(livePlaylist, name) },
+                        onDeletePlaylist = {
+                            onDeletePlaylist(livePlaylist)
+                            onCloseDetail()
+                        },
+                        onRemoveTrack = { track -> onRemoveTrackFromPlaylist(livePlaylist, track) },
+                        onMoveTrack = { from, to -> onReorderPlaylistTracks(livePlaylist, from, to) },
+                        onUpdateTrackMetadata = onUpdateTrackMetadata,
+                        onImportLyrics = onImportLyricsForTrack,
+                        onPickArtwork = onPickTrackArtwork,
+                        showAudioInfoTags = showTrackAudioInfoTags,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    else -> LibrarySplitPlaceholder()
+                }
+            }
+        }
+    } else {
 
     // 详情页走全屏沉浸式页面，不套用曲库的 PageChrome
     val activeAlbumDetail = selectedAlbum
@@ -416,10 +744,15 @@ fun LibraryScreen(
                 onBack = onCloseDetail,
                 onPlayAll = { onPlayAlbum(target.album) },
                 onShuffle = { onShuffleAlbum(target.album) },
-                onPlayTrack = onPlayTrack,
+                onPlayTrack = { track ->
+                    onPlayTrack(track, LibraryPlaybackOrigin.Album(target.album.albumKey))
+                },
                 onUpdateTrackMetadata = onUpdateTrackMetadata,
                 onImportLyrics = onImportLyricsForTrack,
                 onPickArtwork = onPickTrackArtwork,
+                onAddToPlaylist = { track -> addToPlaylistTrack = track },
+                onPlayNext = playNext,
+                onEnqueue = enqueueTrack,
                 modifier = Modifier.fillMaxSize(),
             )
             is LibraryDetailTransitionTarget.ArtistDetail -> ArtistDetailPage(
@@ -428,10 +761,13 @@ fun LibraryScreen(
                 onBack = onCloseDetail,
                 onPlayAll = { onPlayArtist(target.artist) },
                 onShuffle = { onShuffleArtist(target.artist) },
-                onPlayTrack = onPlayTrack,
+                onPlayTrack = { track ->
+                    onPlayTrack(track, LibraryPlaybackOrigin.Artist(target.artist.artistKey))
+                },
                 onUpdateTrackMetadata = onUpdateTrackMetadata,
                 onImportLyrics = onImportLyricsForTrack,
                 onPickArtwork = onPickTrackArtwork,
+                onAddToPlaylist = { track -> addToPlaylistTrack = track },
                 modifier = Modifier.fillMaxSize(),
             )
             LibraryDetailTransitionTarget.Browser -> {
@@ -445,13 +781,23 @@ fun LibraryScreen(
                         LibraryFolderTransitionTarget.Browser
                     }
                 if (activePlaylistDetail != null && playlistDetailTracks != null) {
-                    LibraryDetailPage(
-                        title = activePlaylistDetail.name,
-                        subtitle = "${activePlaylistDetail.trackCount} 首 · 本地歌单",
+                    val livePlaylist = playlists.firstOrNull { it.id == activePlaylistDetail.id }
+                        ?: activePlaylistDetail
+                    PlaylistDetailPage(
+                        playlist = livePlaylist,
                         tracks = playlistDetailTracks,
                         onBack = onCloseDetail,
-                        onPlayAll = { onPlayPlaylist(activePlaylistDetail) },
-                        onPlayTrack = onPlayTrack,
+                        onPlayAll = { onPlayPlaylist(livePlaylist) },
+                        onPlayTrack = { track ->
+                            onPlayTrack(track, LibraryPlaybackOrigin.Playlist(livePlaylist.id))
+                        },
+                        onRenamePlaylist = { name -> onRenamePlaylist(livePlaylist, name) },
+                        onDeletePlaylist = {
+                            onDeletePlaylist(livePlaylist)
+                            onCloseDetail()
+                        },
+                        onRemoveTrack = { track -> onRemoveTrackFromPlaylist(livePlaylist, track) },
+                        onMoveTrack = { from, to -> onReorderPlaylistTracks(livePlaylist, from, to) },
                         onUpdateTrackMetadata = onUpdateTrackMetadata,
                         onImportLyrics = onImportLyricsForTrack,
                         onPickArtwork = onPickTrackArtwork,
@@ -505,140 +851,52 @@ fun LibraryScreen(
                             tracks = target.tracks,
                             onBack = onCloseDetail,
                             onPlayAll = { onPlayFolder(target.folder) },
-                            onPlayTrack = onPlayTrack,
+                            onPlayTrack = { track ->
+                                onPlayTrack(track, LibraryPlaybackOrigin.Folder(target.folder.folderKey))
+                            },
                             onUpdateTrackMetadata = onUpdateTrackMetadata,
                             onImportLyrics = onImportLyricsForTrack,
                             onPickArtwork = onPickTrackArtwork,
+                            onAddToPlaylist = { track -> addToPlaylistTrack = track },
                             modifier = Modifier.fillMaxSize(),
                         )
-                        LibraryFolderTransitionTarget.Browser -> PageChrome(
-                            title = "曲库",
-                            subtitle = null,
-                            badge = selectedSource.label,
-                            showBrand = false,
-                            compactHeader = true,
-                            badgeContent = {},
-                            titleContent = {},
-                            actions = {
-                                if (selectedSource == LibrarySourceMode.Local && selectedMode == LibraryViewMode.Songs) {
-                                    LibraryTrackSortMenu(
-                                        selectedSortMode = trackSortMode,
-                                        onSortModeChange = onTrackSortModeChange,
-                                    )
-                                }
-                                LibrarySourceScanButton(
-                                    selectedSource = selectedSource,
-                                    linkedLibraryAvailable = linkedLibraryAvailable,
-                                    onSelectSource = ::selectSource,
-                                    hasPermission = hasPermission,
-                                    scanState = scanState,
-                                    onRequestPermission = onRequestPermission,
-                                    onScanFolder = onScanFolder,
-                                    onScanAll = onScanAll,
-                                    onCancelScan = onCancelScan,
-                                )
-                                LibrarySearchBar(
-                                    query = libraryQuery,
-                                    onQueryChange = onLibraryQueryChange,
-                                    expandedWidth = 240.dp,
-                                )
-                            },
-                        ) {
-                            when {
-                                scanState.isScanning -> LibraryScanStatus(scanState = scanState, onCancelScan = onCancelScan)
-                                else -> {
-                                    LibraryBrowserHeader(
-                                        scanState = scanState,
-                                        showScanResultBanner = showScanResultBanner,
-                                        selectedSource = selectedSource,
-                                        linkedLibraryAvailable = linkedLibraryAvailable,
-                                        onSelectSource = ::selectSource,
-                                        selectedMode = selectedMode,
-                                        selectedSortMode = trackSortMode,
-                                        onSelectMode = { mode ->
-                                            selectedModeIndex = mode.ordinal
-                                            if (selectedSource == LibrarySourceMode.Cloud && mode != LibraryViewMode.Albums) {
-                                                selectedSource = LibrarySourceMode.Local
-                                                onLibrarySourceChange(LibrarySourceMode.Local.id)
-                                            }
-                                        },
-                                        onSortModeChange = onTrackSortModeChange,
-                                    )
-                                    Box(modifier = Modifier.weight(1f)) {
-                                        when (selectedMode) {
-                                            LibraryViewMode.Songs -> {
-                                                val trackItems = tracks.collectAsLazyPagingItems()
-                                                val showInitialTrackLoading =
-                                                    trackItems.itemCount == 0 &&
-                                                        trackItems.loadState.refresh is LoadState.Loading
-                                                val showInitialTrackError =
-                                                    trackItems.itemCount == 0 &&
-                                                        trackItems.loadState.refresh is LoadState.Error
-                                                when {
-                                                    !hasPermission ->
-                                                        EmptyState("授权后即可索引本地音乐；云端曲库可直接进入“网盘”页。")
-                                                    showInitialTrackLoading -> EmptyState("正在加载曲库...")
-                                                    showInitialTrackError -> EmptyState("曲库查询失败。")
-                                                    trackItems.itemCount == 0 -> LibraryBootstrapState()
-                                                    else -> TrackList(
-                                                        tracks = trackItems,
-                                                        onPlayTrack = onPlayTrack,
-                                                        onUpdateTrackMetadata = onUpdateTrackMetadata,
-                                                        onImportLyrics = onImportLyricsForTrack,
-                                                        onPickArtwork = onPickTrackArtwork,
-                                                        showAudioInfoTags = showTrackAudioInfoTags,
-                                                        listState = songListState,
-                                                        modifier = Modifier.fillMaxSize(),
-                                                    )
-                                                }
-                                            }
-
-                                            LibraryViewMode.Folders -> FolderList(
-                                                folders = folders.collectAsLazyPagingItems(),
-                                                onOpenFolder = onOpenFolder,
-                                                modifier = Modifier.fillMaxSize(),
-                                            )
-
-                                            LibraryViewMode.Albums -> {
-                                                val albumItems = if (selectedSource == LibrarySourceMode.Cloud) {
-                                                    remoteAlbums.collectAsLazyPagingItems()
-                                                } else {
-                                                    albums.collectAsLazyPagingItems()
-                                                }
-                                                AlbumWall(
-                                                    albums = albumItems,
-                                                    onOpenAlbum = onOpenAlbum,
-                                                    modifier = Modifier.fillMaxSize(),
-                                                )
-                                            }
-
-                                            LibraryViewMode.Artists -> ArtistWall(
-                                                artists = artists.collectAsLazyPagingItems(),
-                                                onOpenArtist = onOpenArtist,
-                                                modifier = Modifier.fillMaxSize(),
-                                            )
-
-                                            LibraryViewMode.Cloud -> AlbumWall(
-                                                albums = remoteAlbums.collectAsLazyPagingItems(),
-                                                onOpenAlbum = onOpenAlbum,
-                                                modifier = Modifier.fillMaxSize(),
-                                            )
-
-                                            LibraryViewMode.Playlists -> LocalPlaylistPanel(
-                                                playlists = playlists,
-                                                onOpenPlaylist = onOpenPlaylist,
-                                                onPlayPlaylist = onPlayPlaylist,
-                                                modifier = Modifier.fillMaxSize(),
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        LibraryFolderTransitionTarget.Browser -> LocalBrowserPane()
                     }
                 }
             }
         }
+    }
+    }
+
+    addToPlaylistTrack?.let { track ->
+        AddToPlaylistDialog(
+            playlists = playlists,
+            onDismiss = { addToPlaylistTrack = null },
+            onSelectPlaylist = { playlist ->
+                onAddTrackToPlaylist(playlist, track)
+                addToPlaylistTrack = null
+            },
+            onCreatePlaylist = { name ->
+                onCreatePlaylistAndAddTrack(name, track)
+                addToPlaylistTrack = null
+            },
+        )
+    }
+}
+
+@Composable
+private fun LibrarySplitPlaceholder() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        EmptyState(
+            echoString(
+                en = "Pick an album, artist, folder, or playlist.",
+                zh = "选择一张专辑、一位艺术家、一个文件夹或歌单。",
+                ja = "アルバム、アーティスト、フォルダー、またはプレイリストを選んでください。",
+            ),
+        )
     }
 }
 
@@ -670,7 +928,7 @@ private fun LibrarySourceMenu(
                     modifier = Modifier.size(15.dp),
                 )
                 Text(
-                    selectedSource.label,
+                    selectedSource.label(),
                     style = MaterialTheme.typography.labelSmall,
                     color = scheme.onSurface,
                     maxLines = 1,
@@ -686,7 +944,7 @@ private fun LibrarySourceMenu(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            source.label,
+                            source.label(),
                             fontWeight = if (source == selectedSource) FontWeight.Bold else FontWeight.SemiBold,
                             color = if (source == selectedSource) EchoAccentText else scheme.onSurface,
                         )
@@ -701,7 +959,7 @@ private fun LibrarySourceMenu(
                     trailingIcon = if (source == LibrarySourceMode.PcEcho && !linkedLibraryAvailable) {
                         {
                             Text(
-                                "未连接",
+                                echoString(en = "Not connected", zh = "未连接", ja = "未接続"),
                                 color = scheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.labelSmall,
                             )
@@ -737,9 +995,9 @@ private fun LibrarySourceScanButton(
     var showScanOptions by remember { mutableStateOf(false) }
     val scheme = MaterialTheme.colorScheme
     val scanDescription = when {
-        !hasPermission -> "授权音乐权限"
-        scanState.isScanning -> "取消扫描曲库"
-        else -> "扫描曲库"
+        !hasPermission -> echoString(en = "Allow music access", zh = "授权音乐权限", ja = "音楽へのアクセスを許可")
+        scanState.isScanning -> echoString(en = "Cancel library scan", zh = "取消扫描曲库", ja = "ライブラリのスキャンをキャンセル")
+        else -> echoString(en = "Scan library", zh = "扫描曲库", ja = "ライブラリをスキャン")
     }
     val scanAction = when {
         !hasPermission -> onRequestPermission
@@ -762,7 +1020,11 @@ private fun LibrarySourceScanButton(
         ) {
             Icon(
                 imageVector = if (scanState.isScanning) Icons.Rounded.Close else selectedSource.icon,
-                contentDescription = "切换曲库来源；长按扫描歌曲",
+                contentDescription = echoString(
+                    en = "Switch library source; long-press to scan tracks",
+                    zh = "切换曲库来源；长按扫描歌曲",
+                    ja = "ライブラリのソースを切り替え。長押しで曲をスキャン",
+                ),
                 tint = if (scanState.error != null) Color(0xFFE0796E) else scheme.onSurface,
                 modifier = Modifier
                     .padding(horizontal = 10.dp, vertical = 7.dp)
@@ -778,7 +1040,7 @@ private fun LibrarySourceScanButton(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            source.label,
+                            source.label(),
                             fontWeight = if (source == selectedSource) FontWeight.Bold else FontWeight.SemiBold,
                             color = if (source == selectedSource) EchoAccentText else scheme.onSurface,
                         )
@@ -793,7 +1055,7 @@ private fun LibrarySourceScanButton(
                     trailingIcon = if (source == LibrarySourceMode.PcEcho && !linkedLibraryAvailable) {
                         {
                             Text(
-                                "未连接",
+                                echoString(en = "Not connected", zh = "未连接", ja = "未接続"),
                                 color = scheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.labelSmall,
                             )
@@ -1010,7 +1272,11 @@ private fun LinkedEchoLibraryPage(
             IconButton(onClick = { onRefresh(normalizedQuery) }, enabled = !state.isLoading) {
                 Icon(
                     Icons.Rounded.Refresh,
-                    contentDescription = "刷新 PC ECHO 曲库",
+                    contentDescription = echoString(
+                        en = "Refresh PC ECHO library",
+                        zh = "刷新 PC ECHO 曲库",
+                        ja = "PC ECHO ライブラリを更新",
+                    ),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -1033,19 +1299,81 @@ private fun LinkedEchoLibraryPage(
             onSortModeChange = onSortModeChange,
         )
         when {
-            state.isLoading -> EmptyState("正在读取 PC ECHO 曲库...")
+            state.isLoading -> EmptyState(
+                echoString(
+                    en = "Reading PC ECHO library...",
+                    zh = "正在读取 PC ECHO 曲库...",
+                    ja = "PC ECHO ライブラリを読み込み中...",
+                ),
+            )
             !errorMessage.isNullOrBlank() -> EmptyState(errorMessage)
             selectedMode == LinkedLibraryMode.Songs && sortedTracks.isEmpty() -> {
-                EmptyState(if (query.isBlank()) "PC ECHO 暂无可显示歌曲。" else "PC ECHO 没有匹配的歌曲。")
+                EmptyState(
+                    if (query.isBlank()) {
+                        echoString(
+                            en = "PC ECHO has no songs to show.",
+                            zh = "PC ECHO 暂无可显示歌曲。",
+                            ja = "PC ECHO に表示できる曲はありません。",
+                        )
+                    } else {
+                        echoString(
+                            en = "PC ECHO has no matching songs.",
+                            zh = "PC ECHO 没有匹配的歌曲。",
+                            ja = "PC ECHO に一致する曲はありません。",
+                        )
+                    },
+                )
             }
             selectedMode == LinkedLibraryMode.Albums && albums.isEmpty() -> {
-                EmptyState(if (query.isBlank()) "PC ECHO 暂无可显示专辑。" else "PC ECHO 没有匹配的专辑。")
+                EmptyState(
+                    if (query.isBlank()) {
+                        echoString(
+                            en = "PC ECHO has no albums to show.",
+                            zh = "PC ECHO 暂无可显示专辑。",
+                            ja = "PC ECHO に表示できるアルバムはありません。",
+                        )
+                    } else {
+                        echoString(
+                            en = "PC ECHO has no matching albums.",
+                            zh = "PC ECHO 没有匹配的专辑。",
+                            ja = "PC ECHO に一致するアルバムはありません。",
+                        )
+                    },
+                )
             }
             selectedMode == LinkedLibraryMode.Artists && artists.isEmpty() -> {
-                EmptyState(if (query.isBlank()) "PC ECHO 暂无可显示艺术家。" else "PC ECHO 没有匹配的艺术家。")
+                EmptyState(
+                    if (query.isBlank()) {
+                        echoString(
+                            en = "PC ECHO has no artists to show.",
+                            zh = "PC ECHO 暂无可显示艺术家。",
+                            ja = "PC ECHO に表示できるアーティストはありません。",
+                        )
+                    } else {
+                        echoString(
+                            en = "PC ECHO has no matching artists.",
+                            zh = "PC ECHO 没有匹配的艺术家。",
+                            ja = "PC ECHO に一致するアーティストはありません。",
+                        )
+                    },
+                )
             }
             selectedMode == LinkedLibraryMode.Playlists && filteredPlaylists.isEmpty() -> {
-                EmptyState(if (query.isBlank()) "PC ECHO 暂无可显示歌单。" else "PC ECHO 没有匹配的歌单。")
+                EmptyState(
+                    if (query.isBlank()) {
+                        echoString(
+                            en = "PC ECHO has no playlists to show.",
+                            zh = "PC ECHO 暂无可显示歌单。",
+                            ja = "PC ECHO に表示できるプレイリストはありません。",
+                        )
+                    } else {
+                        echoString(
+                            en = "PC ECHO has no matching playlists.",
+                            zh = "PC ECHO 没有匹配的歌单。",
+                            ja = "PC ECHO に一致するプレイリストはありません。",
+                        )
+                    },
+                )
             }
             selectedMode == LinkedLibraryMode.Songs -> LinkedTrackList(
                 tracks = sortedTracks,
@@ -1121,7 +1449,7 @@ private fun LinkedLibraryHeader(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
-                    mode.label,
+                    mode.label(),
                     color = if (selected) EchoAccentText else scheme.onSurfaceVariant,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
@@ -1309,7 +1637,11 @@ private fun LinkedPlaylistTracksPage(
             IconButton(onClick = onBack) {
                 Icon(
                     Icons.Rounded.Close,
-                    contentDescription = "返回 PC ECHO 歌单",
+                    contentDescription = echoString(
+                        en = "Back to PC ECHO playlists",
+                        zh = "返回 PC ECHO 歌单",
+                        ja = "PC ECHO のプレイリストに戻る",
+                    ),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -1352,9 +1684,21 @@ private fun LinkedPlaylistTracksPage(
         }
         Spacer(Modifier.height(10.dp))
         when {
-            isLoading -> EmptyState("正在读取 PC ECHO 歌单...")
+            isLoading -> EmptyState(
+                echoString(
+                    en = "Reading PC ECHO playlist...",
+                    zh = "正在读取 PC ECHO 歌单...",
+                    ja = "PC ECHO のプレイリストを読み込み中...",
+                ),
+            )
             tracks.isEmpty() && !error.isNullOrBlank() -> EmptyState(error)
-            tracks.isEmpty() -> EmptyState("这个 PC ECHO 歌单暂时没有可播放曲目。")
+            tracks.isEmpty() -> EmptyState(
+                echoString(
+                    en = "This PC ECHO playlist has no playable tracks yet.",
+                    zh = "这个 PC ECHO 歌单暂时没有可播放曲目。",
+                    ja = "この PC ECHO のプレイリストには再生できる曲がありません。",
+                ),
+            )
             else -> LinkedTrackList(
                 tracks = tracks,
                 onPlayLinkedTrack = onPlayLinkedTrack,
@@ -1468,9 +1812,14 @@ private fun EchoRemoteTrack.toEchoTrack(): EchoTrack =
         source = LibrarySource("echo-link"),
     )
 
+@Composable
 private fun linkedPlaylistSubtitle(playlist: EchoRemotePlaylist): String {
     val source = playlist.sourceLabel?.takeIf { it.isNotBlank() } ?: "PC ECHO"
-    return "${playlist.trackCount} 首 · $source"
+    return echoString(
+        en = "${playlist.trackCount} tracks · $source",
+        zh = "${playlist.trackCount} 首 · $source",
+        ja = "${playlist.trackCount} 曲 · $source",
+    )
 }
 
 @Composable
@@ -1483,7 +1832,11 @@ private fun LibraryTrackSortMenu(
         IconButton(onClick = { expanded = true }) {
             Icon(
                 Icons.AutoMirrored.Rounded.Sort,
-                contentDescription = "设置歌曲排序",
+                contentDescription = echoString(
+                    en = "Set track sort order",
+                    zh = "设置歌曲排序",
+                    ja = "曲の並び順を設定",
+                ),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -1493,7 +1846,7 @@ private fun LibraryTrackSortMenu(
         ) {
             LibraryTrackSortMode.entries.forEach { mode ->
                 DropdownMenuItem(
-                    text = { Text(mode.label) },
+                    text = { Text(mode.label()) },
                     onClick = {
                         expanded = false
                         onSortModeChange(mode)

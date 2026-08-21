@@ -2,9 +2,6 @@ package app.echo.android.ui.home
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.echo.android.EchoAndroidViewModel
 import app.echo.android.feature.home.HomeScreen
@@ -28,14 +25,8 @@ internal fun EchoHomePage(
     val recentPlaybackArtists by viewModel.recentPlaybackArtists.collectAsStateWithLifecycle()
     val recentPlaybackHeatmap by viewModel.recentPlaybackHeatmap.collectAsStateWithLifecycle()
     val recentlyAddedAlbums by viewModel.recentlyAddedAlbums.collectAsStateWithLifecycle(emptyList())
-    var homeRecommendationSeed by remember { mutableIntStateOf(0) }
-    val homeRecommendedAlbums = remember(homeRecommendationSeed, recentlyAddedAlbums) {
-        if (recentlyAddedAlbums.isEmpty()) {
-            emptyList()
-        } else {
-            recentlyAddedAlbums.shuffled().take(8)
-        }
-    }
+    val favoriteAlbums by viewModel.favoriteAlbums.collectAsStateWithLifecycle(emptyList())
+    val homeRecommendedAlbums by viewModel.recommendedAlbums.collectAsStateWithLifecycle(emptyList())
     HomeScreen(
         status = playbackStatus,
         trackCount = libraryStats.trackCount,
@@ -45,14 +36,14 @@ internal fun EchoHomePage(
         recentlyAddedAlbums = recentlyAddedAlbums,
         recommendedAlbums = homeRecommendedAlbums,
         topArtists = recentPlaybackArtists,
-        favoriteAlbums = recentPlaybackAlbums.take(4),
+        favoriteAlbums = favoriteAlbums,
         heatmapDays = recentPlaybackHeatmap,
         onPlayPause = viewModel::playPause,
         onNext = viewModel::skipNext,
         onPrevious = viewModel::skipPrevious,
         onCycleRepeatMode = viewModel::cycleRepeatMode,
         onToggleShuffle = viewModel::toggleShuffle,
-        onRefreshRecommendations = { homeRecommendationSeed += 1 },
+        onRefreshRecommendations = viewModel::refreshHomeRecommendations,
         onOpenAlbum = onOpenAlbum,
         onOpenArtist = onOpenArtist,
         onOpenLibrary = onOpenLibrary,

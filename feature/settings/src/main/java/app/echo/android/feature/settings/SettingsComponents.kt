@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -57,6 +58,7 @@ import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoRepeatMode
 import app.echo.android.model.playback.OpraHeadphoneCorrectionProduct
 import app.echo.android.model.playback.OpraHeadphoneCorrectionState
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private val SignalBarHeights = listOf(18.dp, 30.dp, 24.dp, 42.dp, 28.dp, 48.dp, 34.dp, 22.dp, 38.dp, 26.dp, 44.dp, 20.dp)
@@ -142,14 +144,14 @@ internal fun SignalHeroCard(
             ) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(
-                        if (track != null) "实时信号" else "信号待命",
+                        if (track != null) stringResource(R.string.diag_live_signal) else stringResource(R.string.diag_signal_standby),
                         color = scheme.onSurface,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
                         track?.let { "${it.title} · ${it.artist}" }
-                            ?: if (status.isPlaying) "正在输出音频流" else "选择曲目后显示完整链路",
+                            ?: if (status.isPlaying) stringResource(R.string.diag_streaming) else stringResource(R.string.diag_pick_track),
                         color = scheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall,
                         maxLines = 2,
@@ -160,16 +162,16 @@ internal fun SignalHeroCard(
             }
             SignalBars(active = status.isPlaying)
             Row(horizontalArrangement = Arrangement.spacedBy(9.dp), modifier = Modifier.fillMaxWidth()) {
-                SignalStatTile("文件", diagnostics.fileFormatLabel(), accent, Modifier.weight(1f))
-                SignalStatTile("解码", codec, accent, Modifier.weight(1f))
+                SignalStatTile(stringResource(R.string.diag_file), diagnostics.fileFormatLabel(), accent, Modifier.weight(1f))
+                SignalStatTile(stringResource(R.string.diag_decode), codec, accent, Modifier.weight(1f))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(9.dp), modifier = Modifier.fillMaxWidth()) {
-                SignalStatTile("缓冲", buffer, accent, Modifier.weight(1f))
-                SignalStatTile("输出", output, accent, Modifier.weight(1f))
+                SignalStatTile(stringResource(R.string.diag_buffer), buffer, accent, Modifier.weight(1f))
+                SignalStatTile(stringResource(R.string.diag_output), output, accent, Modifier.weight(1f))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(9.dp), modifier = Modifier.fillMaxWidth()) {
-                SignalStatTile("处理", diagnostics.processingLabel(), accent, Modifier.weight(1f))
-                SignalStatTile("命令", lastCommand, accent, Modifier.weight(1f))
+                SignalStatTile(stringResource(R.string.diag_processing), diagnostics.processingLabel(), accent, Modifier.weight(1f))
+                SignalStatTile(stringResource(R.string.diag_command), lastCommand, accent, Modifier.weight(1f))
             }
         }
     }
@@ -247,40 +249,44 @@ internal fun SignalFlowPanel(
             .padding(16.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            EchoSectionTitle("链路路径", "源文件 -> 解码 -> DSP -> 输出")
+            EchoSectionTitle(stringResource(R.string.diag_path_title), stringResource(R.string.diag_path_subtitle))
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SignalFlowStep(
                     index = "01",
-                    title = "源文件",
+                    title = stringResource(R.string.diag_source_file),
                     detail = diagnostics.fileFormatLabel(),
-                    note = "本机曲库",
+                    note = stringResource(R.string.diag_local_library),
                     active = true,
                 )
                 SignalFlowStep(
                     index = "02",
-                    title = "解码器",
+                    title = stringResource(R.string.diag_decoder),
                     detail = codec,
                     note = diagnostics.decodedFormatLabel(),
                     active = true,
                 )
                 SignalFlowStep(
                     index = "03",
-                    title = "处理层",
+                    title = stringResource(R.string.diag_processing_layer),
                     detail = diagnostics.processingLabel(),
-                    note = if (dspActive) "会改变原始采样" else "保持轻处理链路",
+                    note = if (dspActive) stringResource(R.string.diag_dsp_changes) else stringResource(R.string.diag_dsp_light),
                     active = dspActive,
                 )
                 SignalFlowStep(
                     index = "04",
-                    title = "输出端",
+                    title = stringResource(R.string.diag_output_end),
                     detail = outputDetail,
                     note = diagnostics.usbOutputSupportLabel(),
                     active = usbExclusiveActive || outputDetail != output,
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                FlowChip("本机优先", selected = true, Modifier.weight(1f))
-                FlowChip("DSP ${if (dspActive) "开启" else "关闭"}", selected = dspActive, Modifier.weight(1f))
+                FlowChip(stringResource(R.string.diag_local_first), selected = true, Modifier.weight(1f))
+                FlowChip(
+                    if (dspActive) stringResource(R.string.diag_dsp_on) else stringResource(R.string.diag_dsp_off),
+                    selected = dspActive,
+                    Modifier.weight(1f),
+                )
                 FlowChip(diagnostics.usbExclusiveFlowChipLabel(), selected = usbExclusiveActive, Modifier.weight(1f))
             }
         }
@@ -338,25 +344,27 @@ private fun SignalFlowStep(
     }
 }
 
+@Composable
 private fun EchoPlaybackDiagnostics.signalOutputStageDetail(fallback: String): String =
     when {
-        usbBitPerfectActive -> "USB 独占 · bit-perfect"
-        usbExclusiveEnabled && usbHostPermissionPending -> "等待 USB 授权"
-        usbExclusiveEnabled && usbHostPermissionGranted && usbAudioHasIsochronousOut -> "USB 已授权 · ISO 待驱动"
-        usbExclusiveEnabled && usbHostPermissionGranted -> "USB 已授权 · 待接管"
-        usbExclusiveEnabled && usbConnected -> "USB 未授权 · 未独占"
+        usbBitPerfectActive -> stringResource(R.string.diag_usb_bit_perfect)
+        usbExclusiveEnabled && usbHostPermissionPending -> stringResource(R.string.diag_usb_wait_auth)
+        usbExclusiveEnabled && usbHostPermissionGranted && usbAudioHasIsochronousOut -> stringResource(R.string.diag_usb_iso_pending)
+        usbExclusiveEnabled && usbHostPermissionGranted -> stringResource(R.string.diag_usb_takeover_pending)
+        usbExclusiveEnabled && usbConnected -> stringResource(R.string.diag_usb_unauthorized)
         usbConnected -> "USB mixer"
         else -> fallback
     }
 
+@Composable
 private fun EchoPlaybackDiagnostics.usbExclusiveFlowChipLabel(): String =
     when {
-        usbBitPerfectActive -> "独占已接管"
-        usbExclusiveEnabled && usbHostPermissionPending -> "等待授权"
-        usbExclusiveEnabled && usbHostPermissionGranted -> "已授权未接管"
-        usbExclusiveEnabled -> "未授权"
-        usbConnected -> "独占关闭"
-        else -> "USB 未连接"
+        usbBitPerfectActive -> stringResource(R.string.diag_usb_takeover_done)
+        usbExclusiveEnabled && usbHostPermissionPending -> stringResource(R.string.diag_usb_wait_permission)
+        usbExclusiveEnabled && usbHostPermissionGranted -> stringResource(R.string.diag_usb_granted_idle)
+        usbExclusiveEnabled -> stringResource(R.string.diag_unauthorized)
+        usbConnected -> stringResource(R.string.diag_usb_exclusive_off)
+        else -> stringResource(R.string.diag_usb_not_connected)
     }
 
 @Composable
@@ -375,18 +383,18 @@ internal fun AudioFormatPanel(
             .padding(16.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            EchoSectionTitle("格式矩阵", diagnostics.signalIntegrityLabel(equalizerState))
+            EchoSectionTitle(stringResource(R.string.diag_format_matrix), diagnostics.signalIntegrityLabel(equalizerState))
             Row(horizontalArrangement = Arrangement.spacedBy(9.dp), modifier = Modifier.fillMaxWidth()) {
-                SignalStatTile("采样率", diagnostics.sampleRateLabel(), accent, Modifier.weight(1f))
-                SignalStatTile("解码输出", diagnostics.decodedSampleRateLabel(), accent, Modifier.weight(1f))
+                SignalStatTile(stringResource(R.string.diag_sample_rate), diagnostics.sampleRateLabel(), accent, Modifier.weight(1f))
+                SignalStatTile(stringResource(R.string.diag_decoded_output), diagnostics.decodedSampleRateLabel(), accent, Modifier.weight(1f))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(9.dp), modifier = Modifier.fillMaxWidth()) {
-                SignalStatTile("位深", diagnostics.bitDepthLabel(), accent, Modifier.weight(1f))
-                SignalStatTile("声道", diagnostics.channelLabel(), accent, Modifier.weight(1f))
+                SignalStatTile(stringResource(R.string.diag_bit_depth), diagnostics.bitDepthLabel(), accent, Modifier.weight(1f))
+                SignalStatTile(stringResource(R.string.diag_channels), diagnostics.channelLabel(), accent, Modifier.weight(1f))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(9.dp), modifier = Modifier.fillMaxWidth()) {
-                SignalStatTile("码率", diagnostics.bitrateLabel(), accent, Modifier.weight(1f))
-                SignalStatTile("直通", diagnostics.bitPerfectReadout(equalizerState), accent, Modifier.weight(1f))
+                SignalStatTile(stringResource(R.string.diag_bitrate), diagnostics.bitrateLabel(), accent, Modifier.weight(1f))
+                SignalStatTile(stringResource(R.string.diag_passthrough), diagnostics.bitPerfectReadout(equalizerState), accent, Modifier.weight(1f))
             }
         }
     }
@@ -449,7 +457,7 @@ internal fun EqualizerPanel(
                 ) {
                     Icon(
                         imageVector = if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
-                        contentDescription = if (expanded) "折叠 EQ" else "展开 EQ",
+                        contentDescription = if (expanded) stringResource(R.string.diag_collapse_eq) else stringResource(R.string.diag_expand_eq),
                         tint = scheme.onSurfaceVariant,
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
@@ -497,13 +505,30 @@ internal fun EqualizerPanel(
                         )
                     }
                 }
-                EchoPlaceholderLine(
-                    if (state.active) {
-                        "EQ 正在处理当前音频；bit-perfect 不再成立"
-                    } else {
-                        "关闭或 Flat 时保持原始输出路径"
-                    },
-                )
+                if (state.parametric && state.enabled) {
+                    EchoPlaceholderLine(
+                        stringResource(
+                            R.string.diag_eq_opra_active,
+                            state.sourceLabel ?: stringResource(R.string.diag_eq_parametric),
+                        ),
+                    )
+                    if (abs(state.preampDb) >= 0.05f) {
+                        Text(
+                            stringResource(R.string.diag_eq_preamp, formatEqGain(state.preampDb)),
+                            color = scheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    EchoPlaceholderLine(stringResource(R.string.diag_eq_opra_override))
+                } else {
+                    EchoPlaceholderLine(
+                        if (state.active) {
+                            stringResource(R.string.diag_eq_active)
+                        } else {
+                            stringResource(R.string.diag_eq_flat)
+                        },
+                    )
+                }
                 OpraCorrectionPanel(
                     state = opraState,
                     onQueryChange = onOpraQueryChange,
@@ -549,24 +574,24 @@ private fun OpraCorrectionPanel(
 ) {
     val scheme = MaterialTheme.colorScheme
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        EchoSectionTitle("OPRA", "耳机校正 · 近似映射到系统 EQ")
+        EchoSectionTitle("OPRA", stringResource(R.string.diag_opra_subtitle))
         OutlinedTextField(
             value = state.query,
             onValueChange = onQueryChange,
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            label = { Text("耳机型号") },
+            label = { Text(stringResource(R.string.diag_headphone_model)) },
             placeholder = { Text("HD 650 / IER-M9 / AirPods Max") },
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             EqualizerPresetChip(
-                label = if (state.loading) "搜索中" else "搜索",
+                label = if (state.loading) stringResource(R.string.diag_searching) else stringResource(R.string.diag_search),
                 selected = false,
                 enabled = !state.loading,
                 onClick = onSearch,
             )
             EqualizerPresetChip(
-                label = "刷新库",
+                label = stringResource(R.string.diag_refresh_library),
                 selected = false,
                 enabled = !state.loading,
                 onClick = onRefresh,
@@ -576,7 +601,7 @@ private fun OpraCorrectionPanel(
                 enabled = state.selectedPreset != null && !state.loading,
                 modifier = Modifier.weight(1f),
             ) {
-                Text("近似应用")
+                Text(stringResource(R.string.diag_apply_approx))
             }
         }
         if (state.loading) {
@@ -585,7 +610,7 @@ private fun OpraCorrectionPanel(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                Text("正在读取 OPRA 数据库", color = scheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.diag_reading_opra), color = scheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
         }
         state.message?.let { message ->
@@ -599,7 +624,13 @@ private fun OpraCorrectionPanel(
         }
         if (state.status.eqCount > 0) {
             Text(
-                "${state.status.vendorCount} 品牌 · ${state.status.productCount} 型号 · ${state.status.eqCount} 曲线 · ${state.status.source}",
+                stringResource(
+                    R.string.diag_opra_stats,
+                    state.status.vendorCount,
+                    state.status.productCount,
+                    state.status.eqCount,
+                    state.status.source,
+                ),
                 color = scheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelMedium,
                 maxLines = 1,
@@ -817,13 +848,16 @@ internal fun CurrentStreamPanel(
             .padding(16.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            EchoSectionTitle("当前流", status.track?.album ?: "暂无曲目")
-            DiagnosticLine("曲目", status.track?.title ?: "无")
-            DiagnosticLine("艺人", status.track?.artist ?: "无")
-            DiagnosticLine("进度", "${formatDuration(status.positionMs)} / ${formatDuration(status.durationMs)}")
-            DiagnosticLine("模式", "${repeatModeLabel(status.repeatMode)} · ${if (status.shuffleEnabled) "随机开启" else "顺序播放"}")
-            DiagnosticLine("命令", lastCommand)
-            DiagnosticLine("令牌", requestToken.toString())
+            EchoSectionTitle(stringResource(R.string.diag_current_stream), status.track?.album ?: stringResource(R.string.diag_no_track))
+            DiagnosticLine(stringResource(R.string.diag_track), status.track?.title ?: stringResource(R.string.diag_none))
+            DiagnosticLine(stringResource(R.string.diag_artist), status.track?.artist ?: stringResource(R.string.diag_none))
+            DiagnosticLine(stringResource(R.string.diag_progress), "${formatDuration(status.positionMs)} / ${formatDuration(status.durationMs)}")
+            DiagnosticLine(
+                stringResource(R.string.diag_mode),
+                "${repeatModeLabel(status.repeatMode)} · ${if (status.shuffleEnabled) stringResource(R.string.diag_shuffle_on) else stringResource(R.string.diag_order_play)}",
+            )
+            DiagnosticLine(stringResource(R.string.diag_command), lastCommand)
+            DiagnosticLine(stringResource(R.string.diag_token), requestToken.toString())
         }
     }
 }
@@ -840,16 +874,24 @@ internal fun HealthPanel(status: EchoPlaybackStatus) {
             .padding(16.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            EchoSectionTitle("健康", diagnostics.lastError?.message ?: "播放链路没有记录错误")
+            EchoSectionTitle(stringResource(R.string.diag_health), diagnostics.lastError?.message ?: stringResource(R.string.diag_no_error))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                FlowChip("稳定", selected = diagnostics.lastError == null, Modifier.weight(1f))
-                FlowChip(if (diagnostics.bufferedMs > 0L) "有缓冲" else "无缓冲", selected = diagnostics.bufferedMs > 0L, Modifier.weight(1f))
-                FlowChip(if (diagnostics.lastCommand == null) "无命令" else commandLabel(diagnostics.lastCommand), selected = diagnostics.lastCommand != null, Modifier.weight(1f))
+                FlowChip(stringResource(R.string.diag_stable), selected = diagnostics.lastError == null, Modifier.weight(1f))
+                FlowChip(
+                    if (diagnostics.bufferedMs > 0L) stringResource(R.string.diag_has_buffer) else stringResource(R.string.diag_no_buffer),
+                    selected = diagnostics.bufferedMs > 0L,
+                    Modifier.weight(1f),
+                )
+                FlowChip(
+                    if (diagnostics.lastCommand == null) stringResource(R.string.diag_no_command) else commandLabel(diagnostics.lastCommand),
+                    selected = diagnostics.lastCommand != null,
+                    Modifier.weight(1f),
+                )
             }
-            DiagnosticLine("输出路由", diagnostics.outputRoute)
-            DiagnosticLine("缓冲余量", "${diagnostics.bufferedMs / 1000}s")
-            DiagnosticLine("解码错误", diagnostics.lastError?.message ?: "无")
-            DiagnosticLine("USB 回退", diagnostics.usbLastRequestError?.message ?: "无")
+            DiagnosticLine(stringResource(R.string.diag_output_route), diagnostics.outputRoute)
+            DiagnosticLine(stringResource(R.string.diag_buffer_remaining), "${diagnostics.bufferedMs / 1000}s")
+            DiagnosticLine(stringResource(R.string.diag_decode_error), diagnostics.lastError?.message ?: stringResource(R.string.diag_none))
+            DiagnosticLine(stringResource(R.string.diag_usb_fallback), diagnostics.usbLastRequestError?.message ?: stringResource(R.string.diag_none))
         }
     }
 }
@@ -905,114 +947,129 @@ internal fun DiagnosticLine(label: String, value: String) {
     }
 }
 
+@Composable
 internal fun playbackStateLabel(state: EchoPlaybackState): String =
     when (state) {
-        EchoPlaybackState.Idle -> "空闲"
-        EchoPlaybackState.Loading -> "加载中"
-        EchoPlaybackState.Playing -> "播放中"
-        EchoPlaybackState.Paused -> "已暂停"
-        EchoPlaybackState.Seeking -> "定位中"
-        EchoPlaybackState.Buffering -> "缓冲中"
-        EchoPlaybackState.Ended -> "已结束"
-        EchoPlaybackState.Stopped -> "已停止"
-        EchoPlaybackState.Error -> "错误"
+        EchoPlaybackState.Idle -> stringResource(R.string.state_idle)
+        EchoPlaybackState.Loading -> stringResource(R.string.state_loading)
+        EchoPlaybackState.Playing -> stringResource(R.string.state_playing)
+        EchoPlaybackState.Paused -> stringResource(R.string.state_paused)
+        EchoPlaybackState.Seeking -> stringResource(R.string.state_seeking)
+        EchoPlaybackState.Buffering -> stringResource(R.string.state_buffering)
+        EchoPlaybackState.Ended -> stringResource(R.string.state_ended)
+        EchoPlaybackState.Stopped -> stringResource(R.string.state_stopped)
+        EchoPlaybackState.Error -> stringResource(R.string.state_error)
     }
 
+@Composable
 internal fun repeatModeLabel(mode: EchoRepeatMode): String =
     when (mode) {
-        EchoRepeatMode.Off -> "循环关闭"
-        EchoRepeatMode.All -> "列表循环"
-        EchoRepeatMode.One -> "单曲循环"
+        EchoRepeatMode.Off -> stringResource(R.string.repeat_off)
+        EchoRepeatMode.All -> stringResource(R.string.repeat_all)
+        EchoRepeatMode.One -> stringResource(R.string.repeat_one)
     }
 
+@Composable
 internal fun commandLabel(command: String?): String =
     when (command?.lowercase()) {
-        null, "idle" -> "空闲"
-        "play", "playpause" -> "播放"
-        "pause" -> "暂停"
-        "next" -> "下一首"
-        "previous" -> "上一首"
-        "seek" -> "跳转"
-        "stop" -> "停止"
+        null, "idle" -> stringResource(R.string.state_idle)
+        "play", "playpause" -> stringResource(R.string.command_play)
+        "pause" -> stringResource(R.string.command_pause)
+        "next" -> stringResource(R.string.command_next)
+        "previous" -> stringResource(R.string.command_previous)
+        "seek" -> stringResource(R.string.command_seek)
+        "stop" -> stringResource(R.string.command_stop)
         else -> command
     }
 
+@Composable
 private fun signalReadinessLabel(status: EchoPlaybackStatus): String =
     when {
-        status.isPlaying -> "实时"
+        status.isPlaying -> stringResource(R.string.diag_live)
         status.track != null -> playbackStateLabel(status.state)
-        else -> "待命"
+        else -> stringResource(R.string.diag_standby)
     }
 
+@Composable
 private fun EchoPlaybackDiagnostics.fileFormatLabel(): String {
     val parts = listOfNotNull(
-        codec ?: "未知编码",
+        codec ?: stringResource(R.string.diag_unknown_codec),
         sampleRateHz?.let(::formatSampleRate),
         bitDepth?.let { "${it}bit" },
     )
-    return parts.takeIf { it.isNotEmpty() }?.joinToString(" / ") ?: "等待播放"
+    return parts.takeIf { it.isNotEmpty() }?.joinToString(" / ") ?: stringResource(R.string.diag_waiting_playback)
 }
 
+@Composable
 private fun EchoPlaybackDiagnostics.decodedFormatLabel(): String {
     val parts = listOfNotNull(
         decodedSampleRateHz?.let(::formatSampleRate) ?: sampleRateHz?.let(::formatSampleRate),
         channelCount?.let(::formatChannels),
         bitDepth?.let { "${it}bit PCM" },
     )
-    return parts.takeIf { it.isNotEmpty() }?.joinToString(" / ") ?: "等待解码"
+    return parts.takeIf { it.isNotEmpty() }?.joinToString(" / ") ?: stringResource(R.string.diag_waiting_decode)
 }
 
+@Composable
 private fun EchoPlaybackDiagnostics.processingLabel(): String =
     when {
-        offloadActive -> "硬件 offload"
+        offloadActive -> stringResource(R.string.diag_hw_offload)
         usbBitPerfectActive -> "USB bit-perfect"
-        else -> "系统链路"
+        else -> stringResource(R.string.diag_system_path)
     }
 
+@Composable
 private fun EchoPlaybackDiagnostics.signalIntegrityLabel(equalizerState: EchoEqualizerState): String =
     when {
-        equalizerState.active -> "EQ 正在改变频响，bit-perfect 不成立"
-        usbBitPerfectActive -> "USB 独占已接管，链路保持 bit-perfect"
-        offloadActive -> "硬件 offload 生效，Android mixer 介入更少"
-        usbExclusiveEnabled && usbConnected -> "USB 独占已开启，等待授权或接管"
-        else -> "系统输出链路，适合常规播放"
+        equalizerState.active -> stringResource(R.string.diag_integrity_eq)
+        usbBitPerfectActive -> stringResource(R.string.diag_integrity_usb)
+        offloadActive -> stringResource(R.string.diag_integrity_offload)
+        usbExclusiveEnabled && usbConnected -> stringResource(R.string.diag_integrity_usb_wait)
+        else -> stringResource(R.string.diag_integrity_system)
     }
 
+@Composable
 private fun EchoPlaybackDiagnostics.bitPerfectReadout(equalizerState: EchoEqualizerState): String =
     when {
-        equalizerState.active -> "否 · EQ"
-        usbBitPerfectActive -> "是 · USB"
-        offloadActive -> "接近 · offload"
-        usbExclusiveEnabled -> "等待 USB"
-        else -> "否 · mixer"
+        equalizerState.active -> stringResource(R.string.diag_bitperfect_no_eq)
+        usbBitPerfectActive -> stringResource(R.string.diag_bitperfect_yes_usb)
+        offloadActive -> stringResource(R.string.diag_bitperfect_near)
+        usbExclusiveEnabled -> stringResource(R.string.diag_bitperfect_wait_usb)
+        else -> stringResource(R.string.diag_bitperfect_no_mixer)
     }
 
+@Composable
 private fun EchoPlaybackDiagnostics.usbOutputSupportLabel(): String =
     when {
         usbBitPerfectActive -> "bit-perfect active"
-        usbBitPerfectSupported -> "支持 bit-perfect"
+        usbBitPerfectSupported -> stringResource(R.string.diag_usb_bit_perfect_supported)
         usbAudioHasIsochronousOut && usbAudioHasFeedbackEndpoint -> "iso OUT + feedback"
         usbAudioHasIsochronousOut -> "iso OUT"
-        usbConnected -> "USB 已识别"
-        else -> "系统输出"
+        usbConnected -> stringResource(R.string.diag_usb_recognized)
+        else -> stringResource(R.string.diag_system_output)
     }
 
+@Composable
 private fun EchoPlaybackDiagnostics.sampleRateLabel(): String =
-    sampleRateHz?.let(::formatSampleRate) ?: "未知"
+    sampleRateHz?.let(::formatSampleRate) ?: stringResource(R.string.diag_unknown)
 
+@Composable
 private fun EchoPlaybackDiagnostics.decodedSampleRateLabel(): String =
     decodedSampleRateHz?.let(::formatSampleRate)
-        ?: sampleRateHz?.let { "同源 ${formatSampleRate(it)}" }
-        ?: "未知"
+        ?: sampleRateHz?.let { stringResource(R.string.diag_same_rate, formatSampleRate(it)) }
+        ?: stringResource(R.string.diag_unknown)
 
+@Composable
 private fun EchoPlaybackDiagnostics.bitDepthLabel(): String =
-    bitDepth?.let { "${it}bit" } ?: "未知"
+    bitDepth?.let { "${it}bit" } ?: stringResource(R.string.diag_unknown)
 
+@Composable
 private fun EchoPlaybackDiagnostics.channelLabel(): String =
-    channelCount?.let(::formatChannels) ?: "未知"
+    channelCount?.let(::formatChannels) ?: stringResource(R.string.diag_unknown)
 
+@Composable
 private fun EchoPlaybackDiagnostics.bitrateLabel(): String =
-    bitrate?.let(::formatBitrate) ?: "未知"
+    bitrate?.let(::formatBitrate) ?: stringResource(R.string.diag_unknown)
 
 private fun formatSampleRate(sampleRateHz: Int): String =
     if (sampleRateHz >= 1000) {
@@ -1037,12 +1094,16 @@ private fun formatBitrate(bitrate: Int): String =
         "${bitrate / 1000} kbps"
     }
 
+@Composable
 private fun equalizerDetail(state: EchoEqualizerState): String =
     when {
+        state.enabled && state.parametric ->
+            state.sourceLabel?.let { "$it · PEQ" }
+                ?: stringResource(R.string.diag_eq_parametric)
         state.enabled && state.supported -> "${state.presetName} · ${state.bands.size} bands"
-        state.enabled && !state.available -> "${state.presetName} · 等待播放"
-        state.enabled -> "${state.presetName} · 等待系统 EQ"
-        else -> "关闭 · ${state.bands.size} bands"
+        state.enabled && !state.available -> stringResource(R.string.diag_eq_wait_playback, state.presetName)
+        state.enabled -> stringResource(R.string.diag_eq_wait_system, state.presetName)
+        else -> stringResource(R.string.diag_eq_off, state.bands.size)
     }
 
 private fun formatEqFrequency(frequencyHz: Int): String =

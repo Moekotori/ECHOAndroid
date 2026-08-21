@@ -4,11 +4,14 @@ import android.net.Uri
 import androidx.paging.PagingData
 import androidx.paging.map
 import app.echo.android.data.EchoLibraryRepository
+import app.echo.android.data.LibraryHomeRecommendationPolicy
 import app.echo.android.data.LocalLibrarySearchResults
 import app.echo.android.data.MediaStoreAudioFolder
 import app.echo.android.data.SubsonicEndpoint
 import app.echo.android.data.WebDavEndpoint
+import app.echo.android.data.toAlbumSummary
 import app.echo.android.data.toEchoTrack
+import app.echo.android.data.toListenSeed
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.library.EchoTrack
@@ -18,6 +21,7 @@ import app.echo.android.model.library.FolderSummary
 import app.echo.android.model.library.LibraryScanPhase
 import app.echo.android.model.library.LibraryScanProgress
 import app.echo.android.model.library.LibraryStats
+import app.echo.android.model.i18n.echoText
 import app.echo.android.model.library.LibraryTrackSortMode
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
 import kotlinx.coroutines.CoroutineScope
@@ -80,6 +84,12 @@ internal class LibraryController(
     val localPlaylists: Flow<List<EchoPlaylist>> =
         repository.observeLocalPlaylists()
 
+    val favoriteTrackIds: Flow<Set<String>> =
+        repository.observeFavoriteTrackIds()
+
+    val favoriteAlbums: Flow<List<AlbumSummary>> =
+        repository.observeFavoriteAlbums()
+
     val libraryStats: Flow<LibraryStats> =
         repository.observeLibraryStats()
             .debounce(400.milliseconds)
@@ -91,6 +101,22 @@ internal class LibraryController(
 
     val recentlyAddedAlbums: Flow<List<AlbumSummary>> =
         repository.observeRecentlyAddedAlbums()
+
+    private val recommendationSalt = MutableStateFlow(0)
+    val recommendedAlbums: Flow<List<AlbumSummary>> =
+        combine(repository.observeAlbumListenStats(), recommendationSalt) { rows, salt ->
+            val keys = LibraryHomeRecommendationPolicy.rankAlbumKeys(
+                seeds = rows.map { it.toListenSeed() },
+                nowEpochMs = System.currentTimeMillis(),
+                refreshSalt = salt,
+            )
+            val byKey = rows.associateBy { it.albumKey }
+            keys.mapNotNull { key -> byKey[key]?.toAlbumSummary() }
+        }
+
+    fun refreshHomeRecommendations() {
+        recommendationSalt.value += 1
+    }
 
     private val _scanState = MutableStateFlow(LibraryScanProgress())
     val scanState: StateFlow<LibraryScanProgress> = _scanState.asStateFlow()
@@ -235,7 +261,11 @@ internal class LibraryController(
 
     fun refreshSubsonic(endpoint: SubsonicEndpoint) {
         startRemoteSync(
-            fallbackError = "Subsonic / Navidrome 同步失败",
+            fallbackError = echoText(
+                en = "Subsonic / Navidrome sync failed",
+                zh = "Subsonic / Navidrome 同步失败",
+                ja = "Subsonic / Navidrome の同期に失敗しました",
+            ),
         ) {
             repository.refreshSubsonicSnapshot(endpoint)
         }
@@ -243,7 +273,11 @@ internal class LibraryController(
 
     fun refreshWebDav(endpoint: WebDavEndpoint) {
         startRemoteSync(
-            fallbackError = "WebDAV 同步失败",
+            fallbackError = echoText(
+                en = "WebDAV sync failed",
+                zh = "WebDAV 同步失败",
+                ja = "WebDAV の同期に失敗しました",
+            ),
         ) {
             repository.refreshWebDavSnapshot(endpoint)
         }
@@ -255,8 +289,16 @@ internal class LibraryController(
     ) {
         if (remoteScanJob?.isActive == true) {
             _remoteScanState.value = _remoteScanState.value.copy(
-                currentTitle = "已有远程曲库同步正在进行，请先取消或等待完成",
-                error = "已有远程曲库同步正在进行，请先取消或等待完成",
+                currentTitle = echoText(
+                    en = "A remote library sync is already running. Cancel it or wait for it to finish",
+                    zh = "已有远程曲库同步正在进行，请先取消或等待完成",
+                    ja = "リモートライブラリの同期が実行中です。キャンセルするか完了を待ってください",
+                ),
+                error = echoText(
+                    en = "A remote library sync is already running. Cancel it or wait for it to finish",
+                    zh = "已有远程曲库同步正在进行，请先取消或等待完成",
+                    ja = "リモートライブラリの同期が実行中です。キャンセルするか完了を待ってください",
+                ),
             )
             return
         }
@@ -296,11 +338,15 @@ internal class LibraryController(
         }
     }
 
-    suspend fun queueAroundTrack(trackId: String): List<EchoTrack> =
+    suspend fun queueAroundTrack(
+        trackId: String,
+        selectedLibrarySource: String,
+    ): List<EchoTrack> =
         withContext(Dispatchers.IO) {
             repository.queueAroundTrack(
                 query = currentQuery,
                 anchorTrackId = trackId,
+                selectedLibrarySource = selectedLibrarySource,
             ).map { it.toEchoTrack() }
         }
 
@@ -332,6 +378,45 @@ internal class LibraryController(
     suspend fun playlistTracksForPlayback(playlistId: String): List<EchoTrack> =
         withContext(Dispatchers.IO) {
             repository.playlistTracksForPlayback(playlistId).map { it.toEchoTrack() }
+        }
+
+    suspend fun toggleFavorite(trackId: String): Boolean =
+        withContext(Dispatchers.IO) {
+            repository.toggleFavorite(trackId)
+        }
+
+    suspend fun createLocalPlaylist(name: String): EchoPlaylist? =
+        withContext(Dispatchers.IO) {
+            repository.createLocalPlaylist(name)
+        }
+
+    suspend fun renameLocalPlaylist(playlistId: String, name: String): Boolean =
+        withContext(Dispatchers.IO) {
+            repository.renameLocalPlaylist(playlistId, name)
+        }
+
+    suspend fun deleteLocalPlaylist(playlistId: String): Boolean =
+        withContext(Dispatchers.IO) {
+            repository.deleteLocalPlaylist(playlistId)
+        }
+
+    suspend fun addTrackToLocalPlaylist(playlistId: String, trackId: String): Boolean =
+        withContext(Dispatchers.IO) {
+            repository.addTrackToLocalPlaylist(playlistId, trackId)
+        }
+
+    suspend fun removeTrackFromLocalPlaylist(playlistId: String, trackId: String): Boolean =
+        withContext(Dispatchers.IO) {
+            repository.removeTrackFromLocalPlaylist(playlistId, trackId)
+        }
+
+    suspend fun reorderLocalPlaylistTracks(
+        playlistId: String,
+        fromIndex: Int,
+        toIndex: Int,
+    ): Boolean =
+        withContext(Dispatchers.IO) {
+            repository.reorderLocalPlaylistTracks(playlistId, fromIndex, toIndex)
         }
 
     suspend fun searchLocalLibrary(query: String): LocalLibrarySearchResults =

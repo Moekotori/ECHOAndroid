@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -76,7 +77,7 @@ fun EchoLinkQrScannerFallback(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
         hasCameraPermission = granted
-        if (!granted) onError("相机权限未开启，已保留手动输入配对方式")
+        if (!granted) onError(context.getString(R.string.qr_need_camera))
     }
 
     LaunchedEffect(Unit) {
@@ -113,13 +114,13 @@ fun EchoLinkQrScannerFallback(
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(
-                        "扫描 PC ECHO 配对码",
+                        stringResource(R.string.qr_title),
                         color = Color.White,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        "将二维码放进取景框，识别后会自动配对",
+                        stringResource(R.string.qr_subtitle),
                         color = Color.White.copy(alpha = 0.72f),
                         style = MaterialTheme.typography.bodySmall,
                     )
@@ -127,7 +128,7 @@ fun EchoLinkQrScannerFallback(
                 IconButton(onClick = onCancel) {
                     Icon(
                         Icons.Rounded.Close,
-                        contentDescription = "关闭扫码",
+                        contentDescription = stringResource(R.string.qr_close),
                         tint = Color.White,
                     )
                 }
@@ -156,23 +157,23 @@ private fun CameraPermissionMessage(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            "需要相机权限才能扫码",
+            stringResource(R.string.qr_permission_title),
             color = Color.White,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
         )
         Text(
-            "也可以关闭扫码后继续手动输入地址和 Token",
+            stringResource(R.string.qr_permission_detail),
             color = Color.White.copy(alpha = 0.72f),
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(top = 8.dp, bottom = 18.dp),
         )
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Button(onClick = onRequestPermission) {
-                Text("开启权限")
+                Text(stringResource(R.string.qr_enable_permission))
             }
             Button(onClick = onCancel) {
-                Text("手动输入")
+                Text(stringResource(R.string.qr_manual_input))
             }
         }
     }
@@ -250,7 +251,12 @@ private fun EchoLinkCameraQrScanner(
                 )
             }.onFailure { error ->
                 if (!disposed.get()) {
-                    currentOnError("内置扫码启动失败：${error.localizedMessage ?: error.message ?: "未知错误"}")
+                    currentOnError(
+                        context.getString(
+                            R.string.qr_start_failed,
+                            error.localizedMessage ?: error.message ?: context.getString(R.string.qr_unknown_error),
+                        ),
+                    )
                 }
             }
         }

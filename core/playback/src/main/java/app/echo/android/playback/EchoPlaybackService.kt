@@ -6,7 +6,6 @@ import android.content.Intent
 import android.os.Process
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
-import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSourceBitmapLoader
 import androidx.media3.exoplayer.ExoPlayer
@@ -31,6 +30,12 @@ class EchoPlaybackService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
         val exoPlayer = ExoPlayer.Builder(this)
+            .setRenderersFactory(
+                EchoRenderersFactory(
+                    this,
+                    EchoPlaybackProcessRuntime.equalizerController().processor,
+                ),
+            )
             .setMediaSourceFactory(DefaultMediaSourceFactory(echoPlaybackDataSourceFactory(this)))
             .setAudioAttributes(
                 AudioAttributes.Builder()
@@ -46,7 +51,7 @@ class EchoPlaybackService : MediaSessionService() {
             .setMaxSeekToPreviousPositionMs(PREVIOUS_RESTART_THRESHOLD_MS)
             .build()
             .also {
-                it.addListener(EchoPlayerListener())
+                EchoPlaybackProcessRuntime.enginePolicy(this).attachTo(it)
                 it.setSkipSilenceEnabled(EchoPlaybackRuntimeOptionsStore.options.value.skipSilenceEnabled)
             }
 
@@ -64,7 +69,9 @@ class EchoPlaybackService : MediaSessionService() {
             .setBitmapLoader(
                 EchoNotificationBitmapLoader(
                     context = this,
-                    delegate = DataSourceBitmapLoader.Builder(this).build(),
+                    delegate = DataSourceBitmapLoader.Builder(this)
+                        .setDataSourceFactory(echoPlaybackDataSourceFactory(this))
+                        .build(),
                 ),
             )
             .also { builder ->
@@ -86,6 +93,7 @@ class EchoPlaybackService : MediaSessionService() {
         }
 
     override fun onDestroy() {
+        EchoPlaybackProcessRuntime.enginePolicyOrNull()?.detach()
         mediaSession?.run {
             player.release()
             release()
@@ -94,16 +102,6 @@ class EchoPlaybackService : MediaSessionService() {
         player = null
         serviceScope.cancel()
         super.onDestroy()
-    }
-
-    private class EchoPlayerListener : Player.Listener {
-        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-            super.onPlayerError(error)
-        }
-
-        override fun onEvents(player: Player, events: Player.Events) {
-            super.onEvents(player, events)
-        }
     }
 }
 

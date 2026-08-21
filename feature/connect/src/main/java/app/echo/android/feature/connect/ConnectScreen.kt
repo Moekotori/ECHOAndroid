@@ -59,6 +59,8 @@ import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.PageChrome
 import app.echo.android.design.echoDarkGlassBorder
 import app.echo.android.design.echoGlassRowBrush
+import app.echo.android.design.echoString
+import app.echo.android.model.connect.EchoLinkLanDevice
 import app.echo.android.model.connect.EchoRemoteConnectionState
 import app.echo.android.model.library.LibraryScanPhase
 import app.echo.android.model.library.LibraryScanProgress
@@ -73,6 +75,7 @@ fun ConnectScreen(
     isPlaying: Boolean,
     remoteError: String?,
     scanMessage: String?,
+    scanMessageIsError: Boolean = false,
     savedPcAddress: String?,
     savedPcToken: String?,
     autoReconnectEnabled: Boolean,
@@ -103,6 +106,8 @@ fun ConnectScreen(
     onSaveWebDavCredentials: (String, String, String) -> Unit,
     onClearWebDavCredentials: () -> Unit,
     onCancelRemoteSync: () -> Unit,
+    discoveredLanDevices: List<EchoLinkLanDevice> = emptyList(),
+    onSelectLanDevice: (EchoLinkLanDevice) -> Unit = {},
 ) {
     val connected = remoteState == EchoRemoteConnectionState.Connected
     val scheme = MaterialTheme.colorScheme
@@ -142,13 +147,16 @@ fun ConnectScreen(
     val canConnectPc = pcAddressInput.isNotBlank() &&
         (pcTokenInput.isNotBlank() || pcAddressInput.trim().lowercase().startsWith("echo://pair"))
     PageChrome(
-        title = "连接",
-        subtitle = "串流服务 · PC 联动",
-        badge = "互联",
+        title = echoString(en = "Connect", zh = "连接", ja = "接続"),
+        subtitle = echoString(en = "Library sources · PC link", zh = "曲库来源 · PC 联动", ja = "ライブラリ接続 · PC 連携"),
+        badge = echoString(en = "Link", zh = "互联", ja = "連携"),
         scrollable = true,
         scrollBottomPadding = 188.dp,
     ) {
-        EchoSectionTitle("音乐服务", "连接你的曲库来源")
+        EchoSectionTitle(
+            echoString(en = "Music services", zh = "音乐服务", ja = "音楽サービス"),
+            echoString(en = "Connect your library sources", zh = "连接你的曲库来源", ja = "ライブラリの接続先"),
+        )
         Spacer(Modifier.height(12.dp))
         RemoteSourcesPanel(
             subsonicServerUrl = subsonicServerInput,
@@ -202,22 +210,15 @@ fun ConnectScreen(
         )
         Spacer(Modifier.height(10.dp))
         ServiceCard(
-            name = "网易云音乐",
-            subtitle = "歌单 · 每日推荐 · 私人 FM",
-            icon = Icons.Rounded.CloudQueue,
-            brandColor = Color(0xFFE0243A),
-            statusLabel = "即将上线",
-            active = false,
-            locked = true,
-            onClick = {},
-        )
-        Spacer(Modifier.height(10.dp))
-        ServiceCard(
-            name = "本地曲库",
-            subtitle = "已扫描本机音频文件",
+            name = echoString(en = "Local library", zh = "本地曲库", ja = "ローカルライブラリ"),
+            subtitle = echoString(
+                en = "Local audio files already scanned",
+                zh = "已扫描本机音频文件",
+                ja = "端末内の音声ファイルをスキャン済み",
+            ),
             icon = Icons.Rounded.LibraryMusic,
             brandColor = Color(0xFF35C28E),
-            statusLabel = "已连接",
+            statusLabel = echoString(en = "Connected", zh = "已连接", ja = "接続済み"),
             active = true,
             locked = false,
             onClick = {},
@@ -225,20 +226,37 @@ fun ConnectScreen(
         Spacer(Modifier.height(10.dp))
         ServiceCard(
             name = "Discord Rich Presence",
-            subtitle = discordPresenceTrackTitle?.let { "手机播放：$it" } ?: "通过 PC ECHO 转发手机播放状态",
+            subtitle = discordPresenceTrackTitle?.let {
+                echoString(en = "Playing on phone: $it", zh = "手机播放：$it", ja = "スマホで再生中：$it")
+            } ?: echoString(
+                en = "Forward phone playback through PC ECHO",
+                zh = "通过 PC ECHO 转发手机播放状态",
+                ja = "PC ECHO 経由でスマホの再生状態を転送",
+            ),
             icon = Icons.Rounded.GraphicEq,
             brandColor = Color(0xFF5865F2),
             statusLabel = when {
-                !discordPresenceEnabled -> "未开启"
-                discordPresenceReady -> "待转发"
-                else -> "等待 PC"
+                !discordPresenceEnabled -> echoString(en = "Off", zh = "未开启", ja = "オフ")
+                discordPresenceReady -> echoString(en = "Ready to send", zh = "待转发", ja = "転送待ち")
+                else -> echoString(en = "Waiting for PC", zh = "等待 PC", ja = "PC 待ち")
             },
             active = discordPresenceEnabled && discordPresenceReady,
             locked = !discordPresenceEnabled,
             onClick = {},
         )
         Spacer(Modifier.height(20.dp))
-        EchoSectionTitle("设备联动", if (connected) "手机控制，PC 输出" else "配对后接管 PC ECHO 播放")
+        EchoSectionTitle(
+            echoString(en = "Device link", zh = "设备联动", ja = "デバイス連携"),
+            if (connected) {
+                echoString(en = "Control on phone, output on PC", zh = "手机控制，PC 输出", ja = "スマホで操作、PC で出力")
+            } else {
+                echoString(
+                    en = "Take over PC ECHO playback after pairing",
+                    zh = "配对后接管 PC ECHO 播放",
+                    ja = "ペアリング後に PC ECHO の再生を操作",
+                )
+            },
+        )
         Spacer(Modifier.height(12.dp))
         Box(
             modifier = Modifier
@@ -294,7 +312,11 @@ fun ConnectScreen(
                         )
                     }
                     ServiceStatusPill(
-                        label = if (connected) "已配对" else "未配对",
+                        label = if (connected) {
+                            echoString(en = "Paired", zh = "已配对", ja = "ペアリング済み")
+                        } else {
+                            echoString(en = "Unpaired", zh = "未配对", ja = "未ペアリング")
+                        },
                         active = connected,
                         locked = false,
                     )
@@ -317,6 +339,12 @@ fun ConnectScreen(
                         hasSavedPc = hasSavedPc,
                         autoReconnectEnabled = autoReconnectEnabled,
                         scanMessage = scanMessage,
+                        scanMessageIsError = scanMessageIsError,
+                        discoveredLanDevices = discoveredLanDevices,
+                        onSelectLanDevice = { device ->
+                            pcAddressInput = "${device.host}:${device.port}"
+                            onSelectLanDevice(device)
+                        },
                         onAddressChange = { pcAddressInput = it },
                         onTokenChange = { pcTokenInput = it },
                         onAutoReconnectChange = onAutoReconnectChange,
@@ -342,13 +370,17 @@ fun ConnectScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     EchoTextButton(
-                        text = if (connected) "已连接" else "连接 PC",
+                        text = if (connected) {
+                            echoString(en = "Connected", zh = "已连接", ja = "接続済み")
+                        } else {
+                            echoString(en = "Connect PC", zh = "连接 PC", ja = "PC に接続")
+                        },
                         onClick = { onConnectPc(pcAddressInput, pcTokenInput) },
                         enabled = !connected && canConnectPc,
                     )
                     if (connected) {
                         TextButton(onClick = onDisconnect) {
-                            Text("断开", color = EchoHomeBlue)
+                            Text(echoString(en = "Disconnect", zh = "断开", ja = "切断"), color = EchoHomeBlue)
                         }
                     } else if (hasSavedPc) {
                         TextButton(
@@ -358,7 +390,7 @@ fun ConnectScreen(
                                 onForgetPc()
                             },
                         ) {
-                            Text("忘记", color = EchoHomeBlue)
+                            Text(echoString(en = "Forget", zh = "忘记", ja = "解除"), color = EchoHomeBlue)
                         }
                     }
                 }
@@ -374,6 +406,9 @@ private fun PcPairingInputs(
     hasSavedPc: Boolean,
     autoReconnectEnabled: Boolean,
     scanMessage: String?,
+    scanMessageIsError: Boolean,
+    discoveredLanDevices: List<EchoLinkLanDevice>,
+    onSelectLanDevice: (EchoLinkLanDevice) -> Unit,
     onAddressChange: (String) -> Unit,
     onTokenChange: (String) -> Unit,
     onAutoReconnectChange: (Boolean) -> Unit,
@@ -394,15 +429,76 @@ private fun PcPairingInputs(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Text(
-            "输入 PC ECHO 地址和配对 Token",
+            echoString(
+                en = "Nearby PCs, then address and pairing token",
+                zh = "附近 PC，然后填地址和配对 Token",
+                ja = "近くの PC、続けてアドレスとトークン",
+            ),
             color = scheme.onSurface,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+        if (discoveredLanDevices.isEmpty()) {
+            Text(
+                echoString(
+                    en = "No LAN PCs yet. Scan a QR code or type the address.",
+                    zh = "还没发现局域网 PC，可扫码或手动输入。",
+                    ja = "LAN 上の PC は未検出。QR または手動入力。",
+                ),
+                color = scheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                discoveredLanDevices.forEach { device ->
+                    val selected = address == "${device.host}:${device.port}"
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                if (selected) EchoHomeBlue.copy(alpha = 0.18f)
+                                else scheme.surface.copy(alpha = 0.35f),
+                            )
+                            .clickable { onSelectLanDevice(device) }
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Icon(
+                            Icons.Rounded.Devices,
+                            contentDescription = null,
+                            tint = EchoHomeBlue,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                device.name,
+                                color = scheme.onSurface,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                "${device.host}:${device.port}",
+                                color = scheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1,
+                            )
+                        }
+                    }
+                }
+            }
+        }
         Text(
-            "支持 192.168.1.12:26789 或完整 http / https 地址",
+            echoString(
+                en = "Supports 192.168.1.12:26789 or a full http / https URL",
+                zh = "支持 192.168.1.12:26789 或完整 http / https 地址",
+                ja = "192.168.1.12:26789 または http / https の完全なアドレスに対応",
+            ),
             color = scheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodySmall,
             maxLines = 2,
@@ -414,7 +510,11 @@ private fun PcPairingInputs(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "PC 端显示二维码后可直接扫码配对",
+                echoString(
+                    en = "Scan the QR code shown on PC to pair",
+                    zh = "PC 端显示二维码后可直接扫码配对",
+                    ja = "PC に表示された QR コードをスキャンしてペアリング",
+                ),
                 color = scheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.weight(1f),
@@ -422,7 +522,7 @@ private fun PcPairingInputs(
                 overflow = TextOverflow.Ellipsis,
             )
             RemoteCompactAction(
-                text = "扫码配对",
+                text = echoString(en = "Scan QR", zh = "扫码配对", ja = "スキャン"),
                 enabled = true,
                 modifier = Modifier.width(92.dp),
                 onClick = onScanPairingCode,
@@ -431,22 +531,26 @@ private fun PcPairingInputs(
         scanMessage?.takeIf { it.isNotBlank() }?.let { message ->
             Text(
                 message,
-                color = if (message.contains("不可用") || message.contains("没有识别")) scheme.error else scheme.onSurfaceVariant,
+                color = if (scanMessageIsError) scheme.error else scheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
         }
         RemoteTextInput(
-            label = "PC 地址",
+            label = echoString(en = "PC address", zh = "PC 地址", ja = "PC アドレス"),
             value = address,
             placeholder = "192.168.1.12:26789",
             onValueChange = onAddressChange,
         )
         RemoteTextInput(
-            label = "配对 Token",
+            label = echoString(en = "Pairing token", zh = "配对 Token", ja = "ペアリングトークン"),
             value = token,
-            placeholder = "从 PC ECHO 联动页复制",
+            placeholder = echoString(
+                en = "Copy from the PC ECHO link page",
+                zh = "从 PC ECHO 联动页复制",
+                ja = "PC ECHO の連携ページからコピー",
+            ),
             secret = token.isNotBlank(),
             onValueChange = onTokenChange,
         )
@@ -457,13 +561,25 @@ private fun PcPairingInputs(
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    "自动重连",
+                    echoString(en = "Auto reconnect", zh = "自动重连", ja = "自動再接続"),
                     color = if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.94f) else scheme.onSurface,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    if (hasSavedPc) "下次打开 Connect 时尝试连接上次的 PC" else "连接成功并保存后可用",
+                    if (hasSavedPc) {
+                        echoString(
+                            en = "Reconnect to the last PC when Connect opens",
+                            zh = "下次打开 Connect 时尝试连接上次的 PC",
+                            ja = "次回 Connect を開くと、前回の PC に接続します",
+                        )
+                    } else {
+                        echoString(
+                            en = "Available after a successful saved connection",
+                            zh = "连接成功并保存后可用",
+                            ja = "接続して保存すると利用できます",
+                        )
+                    },
                     color = if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.70f) else scheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
@@ -505,7 +621,7 @@ private fun LinkedLibraryDefaultRow(
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
-                "默认读取联动曲库",
+                echoString(en = "Use linked library by default", zh = "默认读取联动曲库", ja = "連携ライブラリを既定にする"),
                 color = if (dark) Color.White.copy(alpha = 0.94f) else scheme.onSurface,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
@@ -514,9 +630,21 @@ private fun LinkedLibraryDefaultRow(
             )
             Text(
                 when {
-                    checked && connected -> "联动 ECHO 曲库独立显示，已按 PC ECHO 作为当前联动源"
-                    checked -> "连接后自动读取 PC ECHO，不并入本地扫描库"
-                    else -> "本地曲库保持默认，可手动刷新联动曲库"
+                    checked && connected -> echoString(
+                        en = "The linked ECHO library is shown separately, with PC ECHO as the current source",
+                        zh = "联动 ECHO 曲库独立显示，已按 PC ECHO 作为当前联动源",
+                        ja = "連携 ECHO ライブラリは独立表示され、現在の連携元は PC ECHO です",
+                    )
+                    checked -> echoString(
+                        en = "After connecting, read PC ECHO automatically without merging into the local scan library",
+                        zh = "连接后自动读取 PC ECHO，不并入本地扫描库",
+                        ja = "接続後に PC ECHO を自動読み込みし、ローカルスキャンのライブラリには混ぜません",
+                    )
+                    else -> echoString(
+                        en = "The local library stays default; refresh the linked library manually",
+                        zh = "本地曲库保持默认，可手动刷新联动曲库",
+                        ja = "ローカルライブラリを既定のままにし、連携ライブラリは手動で更新できます",
+                    )
                 },
                 color = if (dark) Color.White.copy(alpha = 0.70f) else scheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
@@ -630,7 +758,7 @@ private fun RemoteSourcesPanel(
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        "远程曲库",
+                        echoString(en = "Remote libraries", zh = "远程曲库", ja = "リモートライブラリ"),
                         color = scheme.onSurface,
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleMedium,
@@ -646,13 +774,27 @@ private fun RemoteSourcesPanel(
                     )
                 }
                 ServiceStatusPill(
-                    label = if (scanState.isScanning) "同步中" else if (readyCount > 0) "${readyCount} 个可用" else "待配置",
+                    label = if (scanState.isScanning) {
+                        echoString(en = "Syncing", zh = "同步中", ja = "同期中")
+                    } else if (readyCount > 0) {
+                        echoString(
+                            en = "$readyCount ready",
+                            zh = "${readyCount} 个可用",
+                            ja = "${readyCount} 件利用可",
+                        )
+                    } else {
+                        echoString(en = "Not set up", zh = "待配置", ja = "未設定")
+                    },
                     active = readyCount > 0 && scanState.phase != LibraryScanPhase.Error,
                     locked = readyCount == 0 && !scanState.isScanning,
                 )
                 Icon(
                     imageVector = if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
-                    contentDescription = if (expanded) "折叠远程曲库" else "展开远程曲库",
+                    contentDescription = if (expanded) {
+                        echoString(en = "Collapse remote libraries", zh = "折叠远程曲库", ja = "リモートライブラリを折りたたむ")
+                    } else {
+                        echoString(en = "Expand remote libraries", zh = "展开远程曲库", ja = "リモートライブラリを展開")
+                    },
                     tint = scheme.onSurfaceVariant,
                     modifier = Modifier.size(24.dp),
                 )
@@ -660,11 +802,15 @@ private fun RemoteSourcesPanel(
             if (expanded) {
                 RemoteSourceProviderSection(
                     title = "Subsonic / Navidrome",
-                    subtitle = "同步服务器曲库、封面和播放地址",
-                    serverLabel = "服务器地址",
+                    subtitle = echoString(
+                        en = "Sync the server library, artwork, and playback URLs",
+                        zh = "同步服务器曲库、封面和播放地址",
+                        ja = "サーバーのライブラリ、ジャケット、再生 URL を同期",
+                    ),
+                    serverLabel = echoString(en = "Server address", zh = "服务器地址", ja = "サーバーアドレス"),
                     serverPlaceholder = "https://music.example.com",
-                    usernameLabel = "用户名",
-                    passwordLabel = "密码",
+                    usernameLabel = echoString(en = "Username", zh = "用户名", ja = "ユーザー名"),
+                    passwordLabel = echoString(en = "Password", zh = "密码", ja = "パスワード"),
                     serverUrl = subsonicServerUrl,
                     username = subsonicUsername,
                     password = subsonicPassword,
@@ -681,12 +827,16 @@ private fun RemoteSourcesPanel(
                     onClear = onClearSubsonic,
                 )
                 RemoteSourceProviderSection(
-                    title = "WebDAV / 网盘",
-                    subtitle = "按文件夹同步 NAS 或网盘音乐目录",
-                    serverLabel = "WebDAV 地址",
+                    title = echoString(en = "WebDAV / cloud drive", zh = "WebDAV / 网盘", ja = "WebDAV / クラウド"),
+                    subtitle = echoString(
+                        en = "Sync a NAS or cloud music folder",
+                        zh = "按文件夹同步 NAS 或网盘音乐目录",
+                        ja = "NAS やクラウドの音楽フォルダーを同期",
+                    ),
+                    serverLabel = echoString(en = "WebDAV address", zh = "WebDAV 地址", ja = "WebDAV アドレス"),
                     serverPlaceholder = "https://dav.example.com/music",
-                    usernameLabel = "WebDAV 用户名",
-                    passwordLabel = "WebDAV 密码",
+                    usernameLabel = echoString(en = "WebDAV username", zh = "WebDAV 用户名", ja = "WebDAV ユーザー名"),
+                    passwordLabel = echoString(en = "WebDAV password", zh = "WebDAV 密码", ja = "WebDAV パスワード"),
                     serverUrl = webDavServerUrl,
                     username = webDavUsername,
                     password = webDavPassword,
@@ -735,10 +885,10 @@ private fun RemoteSourceProviderSection(
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
     val statusLabel = when {
-        scanState.isScanning && expanded -> "同步中"
-        ready -> "可同步"
-        hasInput -> "待补全"
-        else -> "待配置"
+        scanState.isScanning && expanded -> echoString(en = "Syncing", zh = "同步中", ja = "同期中")
+        ready -> echoString(en = "Ready to sync", zh = "可同步", ja = "同期できます")
+        hasInput -> echoString(en = "Incomplete", zh = "待补全", ja = "未入力あり")
+        else -> echoString(en = "Not set up", zh = "待配置", ja = "未設定")
     }
     Column(
         modifier = Modifier
@@ -814,7 +964,11 @@ private fun RemoteSourceProviderSection(
             if (expandable) {
                 Icon(
                     imageVector = if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
-                    contentDescription = if (expanded) "折叠" else "展开",
+                    contentDescription = if (expanded) {
+                        echoString(en = "Collapse", zh = "折叠", ja = "折りたたむ")
+                    } else {
+                        echoString(en = "Expand", zh = "展开", ja = "展開")
+                    },
                     tint = scheme.onSurfaceVariant,
                     modifier = Modifier.size(22.dp),
                 )
@@ -830,31 +984,39 @@ private fun RemoteSourceProviderSection(
             RemoteTextInput(
                 label = usernameLabel,
                 value = username,
-                placeholder = "用户名",
+                placeholder = echoString(en = "Username", zh = "用户名", ja = "ユーザー名"),
                 onValueChange = onUsernameChange,
             )
             RemoteTextInput(
                 label = passwordLabel,
                 value = password,
-                placeholder = "密码或应用专用密码",
+                placeholder = echoString(
+                    en = "Password or app password",
+                    zh = "密码或应用专用密码",
+                    ja = "パスワードまたはアプリパスワード",
+                ),
                 secret = true,
                 onValueChange = onPasswordChange,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 RemoteCompactAction(
-                    text = "保存",
+                    text = echoString(en = "Save", zh = "保存", ja = "保存"),
                     enabled = ready,
                     modifier = Modifier.weight(1f),
                     onClick = onSave,
                 )
                 RemoteCompactAction(
-                    text = if (scanState.isScanning) "取消" else "同步",
+                    text = if (scanState.isScanning) {
+                        echoString(en = "Cancel", zh = "取消", ja = "キャンセル")
+                    } else {
+                        echoString(en = "Sync", zh = "同步", ja = "同期")
+                    },
                     enabled = ready || scanState.isScanning,
                     modifier = Modifier.weight(1f),
                     onClick = { if (scanState.isScanning) onCancel() else onSync() },
                 )
                 RemoteCompactAction(
-                    text = "清除",
+                    text = echoString(en = "Clear", zh = "清除", ja = "クリア"),
                     enabled = hasInput,
                     modifier = Modifier.weight(1f),
                     onClick = onClear,
@@ -936,41 +1098,69 @@ private fun RemoteCompactAction(
     }
 }
 
+@Composable
 private fun remoteLibraryDetail(scanState: LibraryScanProgress, ready: Boolean): String =
     when {
-        scanState.isScanning -> buildString {
-            append(remoteScanPhaseLabel(scanState.phase))
-            append(" · ")
-            append(scanState.totalCount?.let { "${scanState.scannedCount}/$it" } ?: scanState.scannedCount.toString())
-            scanState.currentTitle?.takeIf { it.isNotBlank() }?.let { append(" · ").append(it) }
+        scanState.isScanning -> {
+            val phaseLabel = remoteScanPhaseLabel(scanState.phase)
+            buildString {
+                append(phaseLabel)
+                append(" · ")
+                append(scanState.totalCount?.let { "${scanState.scannedCount}/$it" } ?: scanState.scannedCount.toString())
+                scanState.currentTitle?.takeIf { it.isNotBlank() }?.let { append(" · ").append(it) }
+            }
         }
-        scanState.phase == LibraryScanPhase.Completed -> {
-            "同步完成：${scanState.scannedCount} 首，新增 ${scanState.insertedCount}，更新 ${scanState.updatedCount}，删除 ${scanState.deletedCount}"
-        }
-        scanState.phase == LibraryScanPhase.Error -> scanState.error ?: "远程曲库同步失败"
-        ready -> "可同步到云端专辑墙"
-        else -> "填写服务器、用户名和密码"
+        scanState.phase == LibraryScanPhase.Completed -> echoString(
+            en = "Sync complete: ${scanState.scannedCount} tracks, ${scanState.insertedCount} added, ${scanState.updatedCount} updated, ${scanState.deletedCount} removed",
+            zh = "同步完成：${scanState.scannedCount} 首，新增 ${scanState.insertedCount}，更新 ${scanState.updatedCount}，删除 ${scanState.deletedCount}",
+            ja = "同期完了：${scanState.scannedCount} 曲、追加 ${scanState.insertedCount}、更新 ${scanState.updatedCount}、削除 ${scanState.deletedCount}",
+        )
+        scanState.phase == LibraryScanPhase.Error -> scanState.error ?: echoString(
+            en = "Remote library sync failed",
+            zh = "远程曲库同步失败",
+            ja = "リモートライブラリの同期に失敗しました",
+        )
+        ready -> echoString(
+            en = "Ready to sync to the cloud album wall",
+            zh = "可同步到云端专辑墙",
+            ja = "クラウドのアルバムウォールに同期できます",
+        )
+        else -> echoString(
+            en = "Enter the server, username, and password",
+            zh = "填写服务器、用户名和密码",
+            ja = "サーバー、ユーザー名、パスワードを入力",
+        )
     }
 
+@Composable
 private fun remoteSourcesSummary(scanState: LibraryScanProgress, readyCount: Int): String =
     when {
         scanState.isScanning -> remoteLibraryDetail(scanState, ready = true)
         scanState.phase == LibraryScanPhase.Completed -> remoteLibraryDetail(scanState, ready = true)
         scanState.phase == LibraryScanPhase.Error -> remoteLibraryDetail(scanState, ready = false)
-        readyCount > 0 -> "点按展开 · Subsonic / WebDAV 可独立折叠"
-        else -> "点按配置 Subsonic · WebDAV / 网盘"
+        readyCount > 0 -> echoString(
+            en = "Tap to expand · Subsonic / WebDAV fold separately",
+            zh = "点按展开 · Subsonic / WebDAV 可独立折叠",
+            ja = "タップして展開 · Subsonic / WebDAV は個別に折りたためます",
+        )
+        else -> echoString(
+            en = "Tap to set up Subsonic · WebDAV / cloud drive",
+            zh = "点按配置 Subsonic · WebDAV / 网盘",
+            ja = "タップして Subsonic · WebDAV / クラウドを設定",
+        )
     }
 
+@Composable
 private fun remoteScanPhaseLabel(phase: LibraryScanPhase): String =
     when (phase) {
-        LibraryScanPhase.Preparing -> "准备同步"
-        LibraryScanPhase.QueryingMediaStore -> "读取远程曲库"
-        LibraryScanPhase.Diffing -> "对比索引"
-        LibraryScanPhase.WritingDatabase -> "写入曲库"
-        LibraryScanPhase.CleaningRemoved -> "清理旧索引"
-        LibraryScanPhase.Completed -> "同步完成"
-        LibraryScanPhase.Cancelled -> "已取消"
-        LibraryScanPhase.Error -> "同步失败"
-        LibraryScanPhase.Idle -> "等待同步"
+        LibraryScanPhase.Preparing -> echoString(en = "Preparing sync", zh = "准备同步", ja = "同期を準備中")
+        LibraryScanPhase.QueryingMediaStore -> echoString(en = "Reading remote library", zh = "读取远程曲库", ja = "リモートライブラリを読み込み中")
+        LibraryScanPhase.Diffing -> echoString(en = "Comparing index", zh = "对比索引", ja = "索引を照合中")
+        LibraryScanPhase.WritingDatabase -> echoString(en = "Writing library", zh = "写入曲库", ja = "ライブラリに書き込み中")
+        LibraryScanPhase.CleaningRemoved -> echoString(en = "Cleaning old index", zh = "清理旧索引", ja = "古い索引を整理中")
+        LibraryScanPhase.Completed -> echoString(en = "Sync complete", zh = "同步完成", ja = "同期完了")
+        LibraryScanPhase.Cancelled -> echoString(en = "Cancelled", zh = "已取消", ja = "キャンセル済み")
+        LibraryScanPhase.Error -> echoString(en = "Sync failed", zh = "同步失败", ja = "同期失敗")
+        LibraryScanPhase.Idle -> echoString(en = "Waiting to sync", zh = "等待同步", ja = "同期待ち")
     }
 

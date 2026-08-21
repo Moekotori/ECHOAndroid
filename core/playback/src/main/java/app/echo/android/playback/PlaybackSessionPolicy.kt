@@ -1,5 +1,14 @@
 package app.echo.android.playback
 
+import app.echo.android.model.playback.EchoPlaybackStatus
+import app.echo.android.model.playback.EchoRepeatMode
+import app.echo.android.model.playback.PlaybackPositionState
+
+enum class PlaybackQueueReplaceIntent {
+    PlayAll,
+    Shuffle,
+}
+
 object PlaybackSessionPolicy {
     fun shouldPersistSavedSession(
         restoreCompleted: Boolean,
@@ -42,7 +51,11 @@ object PlaybackSessionPolicy {
         lastSignature: String?,
         positionBucket: Long,
         lastPositionBucket: Long?,
-    ): Boolean = !force && signature == lastSignature && positionBucket == lastPositionBucket
+        persistBecauseOfSeek: Boolean = false,
+    ): Boolean = !force &&
+        !persistBecauseOfSeek &&
+        signature == lastSignature &&
+        positionBucket == lastPositionBucket
 
     fun shouldReuseCachedQueueSnapshot(
         cachedMediaIds: List<String>,
@@ -50,4 +63,21 @@ object PlaybackSessionPolicy {
     ): Boolean = cachedMediaIds.isNotEmpty() && cachedMediaIds == playerMediaIds
 
     fun shouldPersistNullSavedSession(mediaItemCount: Int): Boolean = mediaItemCount <= 0
+
+    fun shuffleEnabledForQueueReplace(intent: PlaybackQueueReplaceIntent): Boolean =
+        intent == PlaybackQueueReplaceIntent.Shuffle
+
+    fun repeatModeForQueueReplace(intent: PlaybackQueueReplaceIntent): EchoRepeatMode =
+        EchoRepeatMode.Off
+
+    fun skipShouldCallPlay(): Boolean = false
+
+    fun playbackStatusWithLivePosition(
+        status: EchoPlaybackStatus,
+        position: PlaybackPositionState,
+    ): EchoPlaybackStatus =
+        status.copy(
+            positionMs = position.positionMs,
+            durationMs = if (position.durationMs > 0L) position.durationMs else status.durationMs,
+        )
 }

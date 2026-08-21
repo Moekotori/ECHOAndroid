@@ -25,9 +25,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Queue
+import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -60,6 +66,8 @@ import androidx.paging.compose.LazyPagingItems
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoAccent
 import app.echo.android.design.LocalEchoDarkTheme
+import app.echo.android.design.displayMetadataOrUnknown
+import app.echo.android.design.echoString
 import app.echo.android.design.formatDuration
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackMetadataUpdate
@@ -73,6 +81,11 @@ internal fun TrackList(
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
+    onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
+    onPlayNext: ((EchoTrack) -> Unit)? = null,
+    onEnqueue: ((EchoTrack) -> Unit)? = null,
+    onRemoveFromPlaylist: ((EchoTrack) -> Unit)? = null,
+    onMoveTrack: ((fromIndex: Int, toIndex: Int) -> Unit)? = null,
     showAudioInfoTags: Boolean = true,
     listState: LazyListState = rememberLazyListState(),
     modifier: Modifier = Modifier,
@@ -95,6 +108,16 @@ internal fun TrackList(
                     onImportLyrics = onImportLyrics,
                     onPickArtwork = onPickArtwork,
                     onMatchNeteaseMetadata = onMatchNeteaseMetadata,
+                    onAddToPlaylist = onAddToPlaylist,
+                    onPlayNext = onPlayNext,
+                    onEnqueue = onEnqueue,
+                    onRemoveFromPlaylist = onRemoveFromPlaylist,
+                    onMoveUp = onMoveTrack?.takeIf { index > 0 }?.let { move ->
+                        { move(index, index - 1) }
+                    },
+                    onMoveDown = onMoveTrack?.takeIf { index < tracks.itemCount - 1 }?.let { move ->
+                        { move(index, index + 1) }
+                    },
                     showAudioInfoTags = showAudioInfoTags,
                 )
             }
@@ -110,6 +133,11 @@ internal fun TrackList(
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
+    onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
+    onPlayNext: ((EchoTrack) -> Unit)? = null,
+    onEnqueue: ((EchoTrack) -> Unit)? = null,
+    onRemoveFromPlaylist: ((EchoTrack) -> Unit)? = null,
+    onMoveTrack: ((fromIndex: Int, toIndex: Int) -> Unit)? = null,
     showAudioInfoTags: Boolean = true,
     listState: LazyListState = rememberLazyListState(),
     modifier: Modifier = Modifier,
@@ -132,6 +160,16 @@ internal fun TrackList(
                 onImportLyrics = onImportLyrics,
                 onPickArtwork = onPickArtwork,
                 onMatchNeteaseMetadata = onMatchNeteaseMetadata,
+                onAddToPlaylist = onAddToPlaylist,
+                onPlayNext = onPlayNext,
+                onEnqueue = onEnqueue,
+                onRemoveFromPlaylist = onRemoveFromPlaylist,
+                onMoveUp = onMoveTrack?.takeIf { index > 0 }?.let { move ->
+                    { move(index, index - 1) }
+                },
+                onMoveDown = onMoveTrack?.takeIf { index < tracks.lastIndex }?.let { move ->
+                    { move(index, index + 1) }
+                },
                 showAudioInfoTags = showAudioInfoTags,
             )
         }
@@ -146,11 +184,17 @@ internal fun TrackRow(
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
+    onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
+    onPlayNext: ((EchoTrack) -> Unit)? = null,
+    onEnqueue: ((EchoTrack) -> Unit)? = null,
+    onRemoveFromPlaylist: ((EchoTrack) -> Unit)? = null,
+    onMoveUp: (() -> Unit)? = null,
+    onMoveDown: (() -> Unit)? = null,
     showAudioInfoTags: Boolean = true,
 ) {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
-    val subtitle = remember(track.artist, track.album) { trackSubtitle(track) }
+    val subtitle = trackSubtitle(track)
     val duration = remember(track.durationMs) { formatDuration(track.durationMs) }
     val sampleRate = remember(showAudioInfoTags, track.sampleRateHz) {
         if (showAudioInfoTags) track.sampleRateHz?.let(::formatTrackSampleRate) else null
@@ -167,6 +211,12 @@ internal fun TrackRow(
         onImportLyrics = onImportLyrics,
         onPickArtwork = onPickArtwork,
         onMatchNeteaseMetadata = onMatchNeteaseMetadata,
+        onAddToPlaylist = onAddToPlaylist,
+        onPlayNext = onPlayNext,
+        onEnqueue = onEnqueue,
+        onRemoveFromPlaylist = onRemoveFromPlaylist,
+        onMoveUp = onMoveUp,
+        onMoveDown = onMoveDown,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 4.dp),
@@ -195,7 +245,7 @@ internal fun TrackRow(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(
-                        track.title,
+                        displayMetadataOrUnknown(track.title, unknownTrackLabel()),
                         color = if (dark) Color.White.copy(alpha = 0.98f) else scheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -272,6 +322,12 @@ internal fun TrackContextMenu(
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
+    onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
+    onPlayNext: ((EchoTrack) -> Unit)? = null,
+    onEnqueue: ((EchoTrack) -> Unit)? = null,
+    onRemoveFromPlaylist: ((EchoTrack) -> Unit)? = null,
+    onMoveUp: (() -> Unit)? = null,
+    onMoveDown: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     content: @Composable (Modifier) -> Unit,
 ) {
@@ -295,7 +351,7 @@ internal fun TrackContextMenu(
             containerColor = MaterialTheme.colorScheme.surface,
         ) {
             DropdownMenuItem(
-                text = { Text("播放") },
+                text = { Text(echoString(en = "Play", zh = "播放", ja = "再生")) },
                 leadingIcon = {
                     Icon(Icons.Rounded.PlayArrow, contentDescription = null)
                 },
@@ -305,7 +361,7 @@ internal fun TrackContextMenu(
                 },
             )
             DropdownMenuItem(
-                text = { Text("编辑标签") },
+                text = { Text(echoString(en = "Edit tags", zh = "编辑标签", ja = "タグを編集")) },
                 leadingIcon = {
                     Icon(Icons.Rounded.Edit, contentDescription = null)
                 },
@@ -317,7 +373,7 @@ internal fun TrackContextMenu(
             )
             if (onImportLyrics != null) {
                 DropdownMenuItem(
-                    text = { Text("导入歌词") },
+                    text = { Text(echoString(en = "Import lyrics", zh = "导入歌词", ja = "歌詞をインポート")) },
                     onClick = {
                         expanded = false
                         onImportLyrics(track)
@@ -326,7 +382,7 @@ internal fun TrackContextMenu(
             }
             if (onPickArtwork != null) {
                 DropdownMenuItem(
-                    text = { Text("更换封面") },
+                    text = { Text(echoString(en = "Change artwork", zh = "更换封面", ja = "カバーを変更")) },
                     onClick = {
                         expanded = false
                         onPickArtwork(track)
@@ -334,7 +390,7 @@ internal fun TrackContextMenu(
                 )
             }
             DropdownMenuItem(
-                text = { Text("歌曲信息") },
+                text = { Text(echoString(en = "Track info", zh = "歌曲信息", ja = "曲情報")) },
                 leadingIcon = {
                     Icon(Icons.Rounded.Info, contentDescription = null)
                 },
@@ -360,6 +416,12 @@ internal fun TrackContextMenu(
                     canEditMetadata = canEditMetadata,
                     canImportLyrics = onImportLyrics != null,
                     canPickArtwork = onPickArtwork != null,
+                    canAddToPlaylist = onAddToPlaylist != null,
+                    canPlayNext = onPlayNext != null,
+                    canEnqueue = onEnqueue != null,
+                    canRemoveFromPlaylist = onRemoveFromPlaylist != null,
+                    canMoveUp = onMoveUp != null,
+                    canMoveDown = onMoveDown != null,
                     onPlay = {
                         sheetMode = null
                         onPlay()
@@ -372,6 +434,30 @@ internal fun TrackContextMenu(
                     onPickArtwork = {
                         sheetMode = null
                         onPickArtwork?.invoke(track)
+                    },
+                    onAddToPlaylist = {
+                        sheetMode = null
+                        onAddToPlaylist?.invoke(track)
+                    },
+                    onPlayNext = {
+                        sheetMode = null
+                        onPlayNext?.invoke(track)
+                    },
+                    onEnqueue = {
+                        sheetMode = null
+                        onEnqueue?.invoke(track)
+                    },
+                    onRemoveFromPlaylist = {
+                        sheetMode = null
+                        onRemoveFromPlaylist?.invoke(track)
+                    },
+                    onMoveUp = {
+                        sheetMode = null
+                        onMoveUp?.invoke()
+                    },
+                    onMoveDown = {
+                        sheetMode = null
+                        onMoveDown?.invoke()
                     },
                     onInfo = {
                         sheetMode = null
@@ -417,10 +503,22 @@ private fun TrackActionSheet(
     canEditMetadata: Boolean,
     canImportLyrics: Boolean,
     canPickArtwork: Boolean,
+    canAddToPlaylist: Boolean,
+    canPlayNext: Boolean,
+    canEnqueue: Boolean,
+    canRemoveFromPlaylist: Boolean,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
     onPlay: () -> Unit,
     onEdit: () -> Unit,
     onImportLyrics: () -> Unit,
     onPickArtwork: () -> Unit,
+    onAddToPlaylist: () -> Unit,
+    onPlayNext: () -> Unit,
+    onEnqueue: () -> Unit,
+    onRemoveFromPlaylist: () -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
     onInfo: () -> Unit,
 ) {
     Column(
@@ -431,17 +529,65 @@ private fun TrackActionSheet(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         TrackSheetHeader(track)
-        TrackActionRow("播放", Icons.Rounded.PlayArrow, enabled = true, onClick = onPlay)
-        TrackActionRow("编辑标签", Icons.Rounded.Edit, enabled = canEditMetadata, onClick = onEdit)
-        TrackActionRow("导入 LRC 歌词", Icons.Rounded.UploadFile, enabled = canImportLyrics, onClick = onImportLyrics)
-        TrackActionRow("自定义封面", Icons.Rounded.Album, enabled = canPickArtwork, onClick = onPickArtwork)
-        TrackActionRow("歌曲信息", Icons.Rounded.Info, enabled = true, onClick = onInfo)
+        TrackActionRow(echoString(en = "Play", zh = "播放", ja = "再生"), Icons.Rounded.PlayArrow, enabled = true, onClick = onPlay)
+        if (canPlayNext) {
+            TrackActionRow(
+                echoString(en = "Play next", zh = "下一首播放", ja = "次に再生"),
+                Icons.Rounded.SkipNext,
+                enabled = true,
+                onClick = onPlayNext,
+            )
+        }
+        if (canEnqueue) {
+            TrackActionRow(
+                echoString(en = "Add to queue", zh = "加入队列", ja = "キューに追加"),
+                Icons.Rounded.Queue,
+                enabled = true,
+                onClick = onEnqueue,
+            )
+        }
+        if (canAddToPlaylist) {
+            TrackActionRow(
+                echoString(en = "Add to playlist", zh = "加入歌单", ja = "プレイリストに追加"),
+                Icons.AutoMirrored.Rounded.PlaylistAdd,
+                enabled = true,
+                onClick = onAddToPlaylist,
+            )
+        }
+        if (canMoveUp) {
+            TrackActionRow(echoString(en = "Move up", zh = "上移", ja = "上へ"), Icons.Rounded.KeyboardArrowUp, enabled = true, onClick = onMoveUp)
+        }
+        if (canMoveDown) {
+            TrackActionRow(echoString(en = "Move down", zh = "下移", ja = "下へ"), Icons.Rounded.KeyboardArrowDown, enabled = true, onClick = onMoveDown)
+        }
+        if (canRemoveFromPlaylist) {
+            TrackActionRow(
+                echoString(en = "Remove from playlist", zh = "移出歌单", ja = "プレイリストから削除"),
+                Icons.Rounded.DeleteOutline,
+                enabled = true,
+                onClick = onRemoveFromPlaylist,
+            )
+        }
+        TrackActionRow(echoString(en = "Edit tags", zh = "编辑标签", ja = "タグを編集"), Icons.Rounded.Edit, enabled = canEditMetadata, onClick = onEdit)
+        TrackActionRow(
+            echoString(en = "Import LRC lyrics", zh = "导入 LRC 歌词", ja = "LRC 歌詞をインポート"),
+            Icons.Rounded.UploadFile,
+            enabled = canImportLyrics,
+            onClick = onImportLyrics,
+        )
+        TrackActionRow(
+            echoString(en = "Custom artwork", zh = "自定义封面", ja = "カスタムカバー"),
+            Icons.Rounded.Album,
+            enabled = canPickArtwork,
+            onClick = onPickArtwork,
+        )
+        TrackActionRow(echoString(en = "Track info", zh = "歌曲信息", ja = "曲情報"), Icons.Rounded.Info, enabled = true, onClick = onInfo)
     }
 }
 
 @Composable
 private fun TrackSheetHeader(track: EchoTrack) {
-    val subtitle = remember(track.artist, track.album) { trackSubtitle(track) }
+    val subtitle = trackSubtitle(track)
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -456,7 +602,7 @@ private fun TrackSheetHeader(track: EchoTrack) {
         )
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
-                track.title,
+                displayMetadataOrUnknown(track.title, unknownTrackLabel()),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 fontWeight = FontWeight.ExtraBold,
@@ -548,7 +694,7 @@ private fun TrackMetadataEditorSheet(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                "编辑标签",
+                echoString(en = "Edit tags", zh = "编辑标签", ja = "タグを編集"),
                 modifier = Modifier.weight(1f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -556,34 +702,34 @@ private fun TrackMetadataEditorSheet(
                 style = MaterialTheme.typography.titleLarge,
             )
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(echoString(en = "Cancel", zh = "取消", ja = "キャンセル"))
             }
         }
         TextField(
             value = title,
             onValueChange = { title = it },
-            label = { Text("标题") },
+            label = { Text(echoString(en = "Title", zh = "标题", ja = "タイトル")) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
         TextField(
             value = artist,
             onValueChange = { artist = it },
-            label = { Text("艺人") },
+            label = { Text(echoString(en = "Artist", zh = "艺人", ja = "アーティスト")) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
         TextField(
             value = album,
             onValueChange = { album = it },
-            label = { Text("专辑") },
+            label = { Text(echoString(en = "Album", zh = "专辑", ja = "アルバム")) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
         TextField(
             value = albumArtist,
             onValueChange = { albumArtist = it },
-            label = { Text("专辑艺人") },
+            label = { Text(echoString(en = "Album artist", zh = "专辑艺人", ja = "アルバムアーティスト")) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -591,24 +737,28 @@ private fun TrackMetadataEditorSheet(
             NumericMetadataField(
                 value = trackNumber,
                 onValueChange = { trackNumber = it },
-                label = "音轨",
+                label = echoString(en = "Track", zh = "音轨", ja = "トラック"),
                 modifier = Modifier.weight(1f),
             )
             NumericMetadataField(
                 value = discNumber,
                 onValueChange = { discNumber = it },
-                label = "碟号",
+                label = echoString(en = "Disc", zh = "碟号", ja = "ディスク"),
                 modifier = Modifier.weight(1f),
             )
             NumericMetadataField(
                 value = year,
                 onValueChange = { year = it },
-                label = "年份",
+                label = echoString(en = "Year", zh = "年份", ja = "年"),
                 modifier = Modifier.weight(1f),
             )
         }
         Text(
-            "当前保存到 ECHOAndroid 曲库索引；导入歌词和封面也会绑定到这首歌。",
+            echoString(
+                en = "Currently saved to the ECHOAndroid library index; imported lyrics and artwork are also bound to this track.",
+                zh = "当前保存到 ECHOAndroid 曲库索引；导入歌词和封面也会绑定到这首歌。",
+                ja = "ECHOAndroid のライブラリ索引に保存されます。インポートした歌詞とカバーもこの曲に紐づきます。",
+            ),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodySmall,
         )
@@ -631,7 +781,7 @@ private fun TrackMetadataEditorSheet(
             },
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("保存")
+            Text(echoString(en = "Save", zh = "保存", ja = "保存"))
         }
     }
 }
@@ -655,7 +805,7 @@ private fun TrackMetadataEditorDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                "编辑标签",
+                echoString(en = "Edit tags", zh = "编辑标签", ja = "タグを編集"),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -665,28 +815,28 @@ private fun TrackMetadataEditorDialog(
                 TextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("标题") },
+                    label = { Text(echoString(en = "Title", zh = "标题", ja = "タイトル")) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 TextField(
                     value = artist,
                     onValueChange = { artist = it },
-                    label = { Text("艺术家") },
+                    label = { Text(echoString(en = "Artist", zh = "艺术家", ja = "アーティスト")) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 TextField(
                     value = album,
                     onValueChange = { album = it },
-                    label = { Text("专辑") },
+                    label = { Text(echoString(en = "Album", zh = "专辑", ja = "アルバム")) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 TextField(
                     value = albumArtist,
                     onValueChange = { albumArtist = it },
-                    label = { Text("专辑艺术家") },
+                    label = { Text(echoString(en = "Album artist", zh = "专辑艺术家", ja = "アルバムアーティスト")) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -694,24 +844,28 @@ private fun TrackMetadataEditorDialog(
                     NumericMetadataField(
                         value = trackNumber,
                         onValueChange = { trackNumber = it },
-                        label = "音轨",
+                        label = echoString(en = "Track", zh = "音轨", ja = "トラック"),
                         modifier = Modifier.weight(1f),
                     )
                     NumericMetadataField(
                         value = discNumber,
                         onValueChange = { discNumber = it },
-                        label = "碟号",
+                        label = echoString(en = "Disc", zh = "碟号", ja = "ディスク"),
                         modifier = Modifier.weight(1f),
                     )
                     NumericMetadataField(
                         value = year,
                         onValueChange = { year = it },
-                        label = "年份",
+                        label = echoString(en = "Year", zh = "年份", ja = "年"),
                         modifier = Modifier.weight(1f),
                     )
                 }
                 Text(
-                    "当前只保存到 ECHOAndroid 曲库索引，不直接写入音频文件。",
+                    echoString(
+                        en = "Currently saved only to the ECHOAndroid library index, not written into the audio file.",
+                        zh = "当前只保存到 ECHOAndroid 曲库索引，不直接写入音频文件。",
+                        ja = "音声ファイルには書き込まず、ECHOAndroid のライブラリ索引にのみ保存します。",
+                    ),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -735,12 +889,12 @@ private fun TrackMetadataEditorDialog(
                     )
                 },
             ) {
-                Text("保存")
+                Text(echoString(en = "Save", zh = "保存", ja = "保存"))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(echoString(en = "Cancel", zh = "取消", ja = "キャンセル"))
             }
         },
     )
@@ -772,34 +926,62 @@ private fun TrackInfoDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                track.title,
+                displayMetadataOrUnknown(track.title, unknownTrackLabel()),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                TrackInfoLine("艺术家", track.artist.ifBlank { "未知艺术家" })
-                TrackInfoLine("专辑", track.album?.takeIf { it.isNotBlank() } ?: "未知专辑")
-                TrackInfoLine("专辑艺术家", track.albumArtist?.takeIf { it.isNotBlank() } ?: "未提供")
-                TrackInfoLine("音轨", track.trackNumber?.toString() ?: "未提供")
-                TrackInfoLine("碟号", track.discNumber?.toString() ?: "未提供")
-                TrackInfoLine("年份", track.year?.toString() ?: "未提供")
+                val notProvided = echoString(en = "Not available", zh = "未提供", ja = "未提供")
                 TrackInfoLine(
-                    "格式",
+                    echoString(en = "Artist", zh = "艺术家", ja = "アーティスト"),
+                    displayMetadataOrUnknown(track.artist, unknownArtistLabel()),
+                )
+                TrackInfoLine(
+                    echoString(en = "Album", zh = "专辑", ja = "アルバム"),
+                    displayMetadataOrUnknown(track.album, unknownAlbumLabel()),
+                )
+                TrackInfoLine(
+                    echoString(en = "Album artist", zh = "专辑艺术家", ja = "アルバムアーティスト"),
+                    track.albumArtist?.takeIf { it.isNotBlank() } ?: notProvided,
+                )
+                TrackInfoLine(
+                    echoString(en = "Track", zh = "音轨", ja = "トラック"),
+                    track.trackNumber?.toString() ?: notProvided,
+                )
+                TrackInfoLine(
+                    echoString(en = "Disc", zh = "碟号", ja = "ディスク"),
+                    track.discNumber?.toString() ?: notProvided,
+                )
+                TrackInfoLine(
+                    echoString(en = "Year", zh = "年份", ja = "年"),
+                    track.year?.toString() ?: notProvided,
+                )
+                TrackInfoLine(
+                    echoString(en = "Format", zh = "格式", ja = "フォーマット"),
                     formatTrackMimeType(track.mimeType)
                         ?: track.mimeType?.takeIf { it.isNotBlank() }
-                        ?: "未提供",
+                        ?: notProvided,
                 )
-                TrackInfoLine("采样率", track.sampleRateHz?.let(::formatTrackSampleRate) ?: "未提供")
-                TrackInfoLine("时长", formatDuration(track.durationMs))
-                TrackInfoLine("大小", formatTrackFileSize(track.sizeBytes))
-                TrackInfoLine("来源", track.source.id)
+                TrackInfoLine(
+                    echoString(en = "Sample rate", zh = "采样率", ja = "サンプリングレート"),
+                    track.sampleRateHz?.let(::formatTrackSampleRate) ?: notProvided,
+                )
+                TrackInfoLine(
+                    echoString(en = "Duration", zh = "时长", ja = "再生時間"),
+                    formatDuration(track.durationMs),
+                )
+                TrackInfoLine(
+                    echoString(en = "Size", zh = "大小", ja = "サイズ"),
+                    formatTrackFileSize(track.sizeBytes),
+                )
+                TrackInfoLine(echoString(en = "Source", zh = "来源", ja = "ソース"), track.source.id)
             }
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("完成")
+                Text(echoString(en = "Done", zh = "完成", ja = "完了"))
             }
         },
     )
@@ -858,11 +1040,20 @@ private fun TrackInfoTag(
     }
 }
 
-internal fun trackSubtitle(track: EchoTrack): String =
-    listOf(track.artist, track.album)
-        .mapNotNull { value -> value?.takeIf { it.isNotBlank() } }
-        .ifEmpty { listOf("本机音频") }
-        .joinToString(" / ")
+@Composable
+internal fun trackSubtitle(track: EchoTrack): String {
+    val parts = buildList {
+        track.artist.takeIf { it.isNotBlank() }?.let { artist ->
+            add(displayMetadataOrUnknown(artist, unknownArtistLabel()))
+        }
+        track.album?.takeIf { it.isNotBlank() }?.let { album ->
+            add(displayMetadataOrUnknown(album, unknownAlbumLabel()))
+        }
+    }
+    return parts.ifEmpty {
+        listOf(echoString(en = "Local audio", zh = "本机音频", ja = "ローカル音源"))
+    }.joinToString(" / ")
+}
 
 private fun formatTrackSampleRate(hz: Int): String =
     if (hz % 1000 == 0) {
@@ -874,9 +1065,10 @@ private fun formatTrackSampleRate(hz: Int): String =
 private fun String.toPositiveIntOrNull(): Int? =
     trim().toIntOrNull()?.takeIf { it > 0 }
 
+@Composable
 private fun formatTrackFileSize(bytes: Long): String =
     when {
-        bytes <= 0L -> "未提供"
+        bytes <= 0L -> echoString(en = "Not available", zh = "未提供", ja = "未提供")
         bytes >= 1024L * 1024L * 1024L -> "%.1f GB".format(bytes / (1024f * 1024f * 1024f))
         bytes >= 1024L * 1024L -> "%.1f MB".format(bytes / (1024f * 1024f))
         bytes >= 1024L -> "%.1f KB".format(bytes / 1024f)

@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.EchoPlaylist
 import kotlinx.coroutines.flow.Flow
 
@@ -42,6 +43,18 @@ interface LibraryPlaylistDao {
     )
     suspend fun getPlaylistTracksForPlayback(playlistId: String, limit: Int): List<LibraryTrackEntity>
 
+    @Query("SELECT * FROM library_playlists WHERE id = :playlistId LIMIT 1")
+    suspend fun getPlaylist(playlistId: String): LibraryPlaylistEntity?
+
+    @Query(
+        """
+        SELECT trackId FROM library_playlist_tracks
+        WHERE playlistId = :playlistId
+        ORDER BY position ASC
+        """,
+    )
+    suspend fun getPlaylistTrackIds(playlistId: String): List<String>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertPlaylist(playlist: LibraryPlaylistEntity)
 
@@ -50,6 +63,9 @@ interface LibraryPlaylistDao {
 
     @Query("DELETE FROM library_playlist_tracks WHERE playlistId = :playlistId")
     suspend fun deletePlaylistTracks(playlistId: String)
+
+    @Query("DELETE FROM library_playlists WHERE id = :playlistId")
+    suspend fun deletePlaylistRow(playlistId: String)
 
     @Transaction
     suspend fun replacePlaylist(
@@ -62,6 +78,39 @@ interface LibraryPlaylistDao {
             tracks.chunked(500).forEach { insertPlaylistTracks(it) }
         }
     }
+
+    @Transaction
+    suspend fun deletePlaylist(playlistId: String) {
+        deletePlaylistTracks(playlistId)
+        deletePlaylistRow(playlistId)
+    }
+
+    @Query("SELECT trackId FROM library_favorites ORDER BY favoritedAtEpochMs DESC")
+    fun observeFavoriteTrackIds(): Flow<List<String>>
+
+    @Query("SELECT trackId FROM library_favorites")
+    suspend fun getFavoriteTrackIds(): List<String>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertFavorite(favorite: LibraryFavoriteEntity)
+
+    @Query("DELETE FROM library_favorites WHERE trackId = :trackId")
+    suspend fun deleteFavorite(trackId: String)
+
+    @Query(
+        """
+        SELECT s.albumKey, s.title, s.albumArtist, s.artist, s.artworkUri,
+               s.trackCount, s.durationMs, s.year, s.addedAtSeconds
+        FROM library_album_summaries s
+        INNER JOIN library_tracks t ON t.albumKey = s.albumKey
+        INNER JOIN library_favorites f ON f.trackId = t.id
+        WHERE s.isRemote = 0
+        GROUP BY s.albumKey
+        ORDER BY MAX(f.favoritedAtEpochMs) DESC
+        LIMIT :limit
+        """,
+    )
+    fun observeFavoriteAlbums(limit: Int): Flow<List<AlbumSummary>>
 }
 
 data class PlaylistSummaryRow(

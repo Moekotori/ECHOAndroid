@@ -16,6 +16,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import androidx.core.content.ContextCompat
+import androidx.media3.common.util.UnstableApi
 import app.echo.android.model.playback.EchoAudioErrorKind
 import app.echo.android.model.playback.EchoPlaybackDiagnostics
 import app.echo.android.model.playback.EchoPlaybackError
@@ -425,9 +426,15 @@ private inline fun <reified T> Intent.getParcelableExtraCompat(name: String): T?
         getParcelableExtra(name) as? T
     }
 
-fun EchoPlaybackDiagnostics.withUsbAudioStatus(status: EchoUsbAudioStatus): EchoPlaybackDiagnostics =
-    copy(
-        outputRoute = status.outputRoute,
+@UnstableApi
+fun EchoPlaybackDiagnostics.withUsbAudioStatus(status: EchoUsbAudioStatus): EchoPlaybackDiagnostics {
+    val exclusive = EchoPlaybackProcessRuntime.usbExclusiveSinkStatus
+    val exclusiveStreaming = exclusive?.streaming == true
+    val exclusiveRoute = exclusive
+        ?.takeIf { it.streaming && status.deviceName != null }
+        ?.let { "USB DAC: ${status.deviceName} / exclusive ${it.transport ?: "pcm"}" }
+    return copy(
+        outputRoute = exclusiveRoute ?: status.outputRoute,
         offloadActive = status.bitPerfectActive,
         usbExclusiveEnabled = status.exclusiveEnabled,
         usbConnected = status.connected,
@@ -442,8 +449,12 @@ fun EchoPlaybackDiagnostics.withUsbAudioStatus(status: EchoUsbAudioStatus): Echo
         usbAudioEndpointSummary = status.endpointSummary,
         usbAudioDescriptorError = status.descriptorError,
         usbBitPerfectSupported = status.bitPerfectSupported,
-        usbBitPerfectActive = status.bitPerfectActive,
+        usbBitPerfectActive = status.bitPerfectActive ||
+            EchoPlaybackProcessRuntime.usbExclusiveSinkStatus?.streaming == true,
+        usbExclusiveStreaming = exclusiveStreaming,
+        usbExclusiveTransport = exclusive?.transport,
         usbSupportedSampleRates = status.supportedSampleRates,
         usbLastRequestedSampleRateHz = status.lastRequestedSampleRateHz,
         usbLastRequestError = status.lastRequestError,
     )
+}

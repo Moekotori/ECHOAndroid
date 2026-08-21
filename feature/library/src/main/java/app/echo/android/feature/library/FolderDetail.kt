@@ -58,6 +58,8 @@ import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.RoonInk
 import app.echo.android.design.RoonMuted
+import app.echo.android.design.displayMetadataOrUnknown
+import app.echo.android.design.echoString
 import app.echo.android.design.formatDuration
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackMetadataUpdate
@@ -103,6 +105,7 @@ internal fun FolderDetailPage(
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
+    onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val colors = rememberFolderDetailColors()
@@ -145,13 +148,13 @@ internal fun FolderDetailPage(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            "文件夹曲目",
+                            echoString(en = "Folder tracks", zh = "文件夹曲目", ja = "フォルダーの曲"),
                             color = colors.content,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Black,
                         )
                         Text(
-                            "${folder.trackCount} 首",
+                            libraryTrackCountLabel(folder.trackCount),
                             color = colors.muted,
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.SemiBold,
@@ -163,13 +166,31 @@ internal fun FolderDetailPage(
 
             when {
                 tracks.loadState.refresh is LoadState.Loading -> item(key = "folder-loading") {
-                    FolderDetailNotice("正在加载文件夹曲目...")
+                    FolderDetailNotice(
+                        echoString(
+                            en = "Loading folder tracks...",
+                            zh = "正在加载文件夹曲目...",
+                            ja = "フォルダーの曲を読み込み中...",
+                        ),
+                    )
                 }
                 tracks.loadState.refresh is LoadState.Error -> item(key = "folder-error") {
-                    FolderDetailNotice("文件夹曲目加载失败。")
+                    FolderDetailNotice(
+                        echoString(
+                            en = "Failed to load folder tracks.",
+                            zh = "文件夹曲目加载失败。",
+                            ja = "フォルダーの曲の読み込みに失敗しました。",
+                        ),
+                    )
                 }
                 tracks.itemCount == 0 -> item(key = "folder-empty") {
-                    FolderDetailNotice("这个文件夹暂无曲目。")
+                    FolderDetailNotice(
+                        echoString(
+                            en = "This folder has no tracks yet.",
+                            zh = "这个文件夹暂无曲目。",
+                            ja = "このフォルダーには曲がありません。",
+                        ),
+                    )
                 }
                 else -> items(
                     count = tracks.itemCount,
@@ -190,6 +211,7 @@ internal fun FolderDetailPage(
                                 onImportLyrics = onImportLyrics,
                                 onPickArtwork = onPickArtwork,
                                 onMatchNeteaseMetadata = onMatchNeteaseMetadata,
+                                onAddToPlaylist = onAddToPlaylist,
                             )
                         }
                     }
@@ -259,7 +281,7 @@ private fun FolderDetailTopBar(onBack: () -> Unit) {
         ) {
             Icon(
                 Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = "返回",
+                contentDescription = echoString(en = "Back", zh = "返回", ja = "戻る"),
                 tint = colors.content,
                 modifier = Modifier.size(22.dp),
             )
@@ -335,7 +357,12 @@ private fun FolderHero(
         ) {
             Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
             Spacer(Modifier.width(8.dp))
-            Text("播放这个文件夹", color = Color.White, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text(
+                echoString(en = "Play this folder", zh = "播放这个文件夹", ja = "このフォルダーを再生"),
+                color = Color.White,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+            )
         }
     }
 }
@@ -344,12 +371,32 @@ private fun FolderHero(
 private fun FolderInsightGrid(folder: FolderSummary) {
     Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(9.dp), modifier = Modifier.fillMaxWidth()) {
-            FolderInsightCard(Icons.Rounded.MusicNote, "歌曲", "${folder.trackCount} 首", Modifier.weight(1f))
-            FolderInsightCard(Icons.Rounded.LibraryMusic, "专辑", "${folder.albumCount} 张", Modifier.weight(1f))
+            FolderInsightCard(
+                Icons.Rounded.MusicNote,
+                echoString(en = "Songs", zh = "歌曲", ja = "曲"),
+                libraryTrackCountLabel(folder.trackCount),
+                Modifier.weight(1f),
+            )
+            FolderInsightCard(
+                Icons.Rounded.LibraryMusic,
+                echoString(en = "Albums", zh = "专辑", ja = "アルバム"),
+                echoString(en = "${folder.albumCount} albums", zh = "${folder.albumCount} 张", ja = "${folder.albumCount} 枚"),
+                Modifier.weight(1f),
+            )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(9.dp), modifier = Modifier.fillMaxWidth()) {
-            FolderInsightCard(Icons.Rounded.GraphicEq, "时长", readableFolderDuration(folder.durationMs), Modifier.weight(1f))
-            FolderInsightCard(Icons.Rounded.FolderOpen, "容量", formatFolderByteSize(folder.totalSizeBytes), Modifier.weight(1f))
+            FolderInsightCard(
+                Icons.Rounded.GraphicEq,
+                echoString(en = "Duration", zh = "时长", ja = "再生時間"),
+                readableFolderDuration(folder.durationMs),
+                Modifier.weight(1f),
+            )
+            FolderInsightCard(
+                Icons.Rounded.FolderOpen,
+                echoString(en = "Size", zh = "容量", ja = "容量"),
+                formatFolderByteSize(folder.totalSizeBytes),
+                Modifier.weight(1f),
+            )
         }
     }
 }
@@ -396,6 +443,7 @@ private fun FolderTrackRow(
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
+    onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
 ) {
     val colors = rememberFolderDetailColors()
     TrackContextMenu(
@@ -405,6 +453,7 @@ private fun FolderTrackRow(
         onImportLyrics = onImportLyrics,
         onPickArtwork = onPickArtwork,
         onMatchNeteaseMetadata = onMatchNeteaseMetadata,
+        onAddToPlaylist = onAddToPlaylist,
         modifier = Modifier.fillMaxWidth(),
     ) { pressModifier ->
         Row(
@@ -449,7 +498,7 @@ private fun FolderTrackRow(
             )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    track.title,
+                    displayMetadataOrUnknown(track.title, unknownTrackLabel()),
                     color = colors.content,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Black,
@@ -487,12 +536,19 @@ private fun FolderDetailNotice(message: String) {
     }
 }
 
+@Composable
 private fun folderPathLabel(folder: FolderSummary): String =
-    folder.path?.takeIf { it.isNotBlank() } ?: "MediaStore 未提供路径"
+    folder.path?.takeIf { it.isNotBlank() }
+        ?: echoString(
+            en = "MediaStore did not provide a path",
+            zh = "MediaStore 未提供路径",
+            ja = "MediaStore はパスを提供していません",
+        )
 
+@Composable
 private fun readableFolderDuration(durationMs: Long): String {
     val minutes = (durationMs / 60000L).toInt()
-    return if (minutes >= 1) "$minutes 分钟" else formatDuration(durationMs)
+    return if (minutes >= 1) libraryMinutesLabel(minutes) else formatDuration(durationMs)
 }
 
 private fun formatFolderByteSize(bytes: Long): String =

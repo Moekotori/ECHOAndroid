@@ -60,10 +60,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoAccent
-
 import app.echo.android.design.EchoDarkGlassBorder
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.echoString
+import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.design.progressFraction
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
@@ -88,6 +89,7 @@ fun MiniPlayer(
     onPrevious: (() -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
+    val haptics = rememberEchoHapticPerformer()
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
@@ -207,7 +209,7 @@ fun MiniPlayer(
             if (onShowDock != null) {
                 MiniPlayerActionButton(
                     icon = Icons.Rounded.KeyboardArrowUp,
-                    description = "显示底栏",
+                    description = echoString(en = "Show bottom bar", zh = "显示底栏", ja = "ドックを表示"),
                     onClick = onShowDock,
                     compact = true,
                 )
@@ -238,12 +240,14 @@ fun MiniPlayer(
                                             when {
                                                 settled <= -threshold -> {
                                                     offsetX.animateTo(-widthPx, tween(160))
+                                                    haptics.tick()
                                                     onNext()
                                                     offsetX.snapTo(widthPx)
                                                     offsetX.animateTo(0f, tween(300))
                                                 }
                                                 settled >= threshold -> {
                                                     offsetX.animateTo(widthPx, tween(160))
+                                                    haptics.tick()
                                                     onPrevious()
                                                     offsetX.snapTo(-widthPx)
                                                     offsetX.animateTo(0f, tween(300))
@@ -291,7 +295,7 @@ fun MiniPlayer(
                         style = MaterialTheme.typography.titleSmall,
                     )
                     Text(
-                        status.track?.artist ?: "就绪",
+                        status.track?.artist ?: echoString(en = "Ready", zh = "就绪", ja = "準備完了"),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         color = if (dark) Color.White.copy(alpha = 0.92f) else scheme.onSurfaceVariant,
@@ -317,7 +321,10 @@ fun MiniPlayer(
                     .clip(RoundedCornerShape(12.dp))
                     .clickable(
                         enabled = status.state != EchoPlaybackState.Idle || status.track != null,
-                        onClick = onPlayPause,
+                        onClick = {
+                            haptics.confirm()
+                            onPlayPause()
+                        },
                     ),
                 contentAlignment = Alignment.Center,
             ) {
@@ -327,7 +334,7 @@ fun MiniPlayer(
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.PlayArrow,
-                        contentDescription = "播放或暂停",
+                        contentDescription = echoString(en = "Play or pause", zh = "播放或暂停", ja = "再生または一時停止"),
                         tint = if (dark) MiniPlayerGlassBlue else scheme.primary,
                         modifier = Modifier
                             .size(24.dp)
@@ -347,7 +354,7 @@ fun MiniPlayer(
                 onHideDock != null -> {
                     MiniPlayerActionButton(
                         icon = Icons.Rounded.KeyboardArrowDown,
-                        description = "隐藏底栏",
+                        description = echoString(en = "Hide bottom bar", zh = "隐藏底栏", ja = "ドックを隠す"),
                         onClick = onHideDock,
                         compact = false,
                     )
@@ -355,7 +362,7 @@ fun MiniPlayer(
                 onOpenQueue != null -> {
                     MiniPlayerActionButton(
                         icon = Icons.AutoMirrored.Rounded.QueueMusic,
-                        description = "播放队列",
+                        description = echoString(en = "Queue", zh = "播放队列", ja = "再生キュー"),
                         onClick = onOpenQueue,
                         compact = true,
                     )

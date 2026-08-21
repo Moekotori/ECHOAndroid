@@ -98,6 +98,9 @@ interface LibraryTrackDao {
     )
     fun pageTracksSorted(query: SupportSQLiteQuery): PagingSource<Int, LibraryTrackEntity>
 
+    @RawQuery
+    suspend fun queryTracks(query: SupportSQLiteQuery): List<LibraryTrackEntity>
+
     @Query(
         """
         SELECT * FROM library_tracks
@@ -226,6 +229,32 @@ interface LibraryTrackDao {
         """,
     )
     fun observeRecentlyAddedAlbums(limit: Int): Flow<List<AlbumSummary>>
+
+    @Query(
+        """
+        SELECT
+            s.albumKey AS albumKey,
+            s.title AS title,
+            s.albumArtist AS albumArtist,
+            s.artist AS artist,
+            s.artworkUri AS artworkUri,
+            s.trackCount AS trackCount,
+            s.durationMs AS durationMs,
+            s.year AS year,
+            s.addedAtSeconds AS addedAtSeconds,
+            COALESCE(SUM(stats.playCount), 0) AS playCount,
+            COALESCE(MAX(stats.lastPlayedAtEpochMs), 0) AS lastPlayedAtEpochMs,
+            COALESCE(MAX(f.favoritedAtEpochMs), 0) AS favoritedAtEpochMs
+        FROM library_album_summaries s
+        INNER JOIN library_tracks t ON t.albumKey = s.albumKey
+        LEFT JOIN library_playback_stats stats ON stats.trackId = t.id
+        LEFT JOIN library_favorites f ON f.trackId = t.id
+        WHERE s.isRemote = 0
+          AND (t.source = 'mediastore' OR t.source = 'saf')
+        GROUP BY s.albumKey
+        """,
+    )
+    fun observeAlbumListenStats(): Flow<List<LibraryAlbumListenStatsRow>>
 
     @Query(
         """

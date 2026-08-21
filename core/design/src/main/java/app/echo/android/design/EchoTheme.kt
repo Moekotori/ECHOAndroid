@@ -1,15 +1,19 @@
 package app.echo.android.design
 
+import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -119,22 +123,38 @@ private fun TextUnit.scale(scale: Float): TextUnit =
 @Composable
 fun EchoMobileTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    dynamicColor: Boolean = false,
+    playbackHapticsEnabled: Boolean = true,
     fontFamily: FontFamily = FontFamily.SansSerif,
     fontScale: Float = 1f,
     densityScale: Float = 1f,
     effectivePerformanceMode: EchoEffectivePerformanceMode = EchoEffectivePerformanceMode.Balanced,
     content: @Composable () -> Unit,
 ) {
+    val context = LocalContext.current
+    val widthClass = rememberEchoWidthSizeClass()
+    val colorScheme = remember(darkTheme, dynamicColor, context) {
+        val useDynamic = dynamicColor && Build.VERSION.SDK_INT >= 31
+        when {
+            useDynamic && darkTheme -> dynamicDarkColorScheme(context)
+            useDynamic -> dynamicLightColorScheme(context)
+            darkTheme -> EchoDarkScheme
+            else -> EchoLightScheme
+        }
+    }
     CompositionLocalProvider(
         LocalEchoDensityScale provides densityScale.coerceIn(0.90f, 1.12f),
         LocalEchoDarkTheme provides darkTheme,
         LocalEchoEffectivePerformanceMode provides effectivePerformanceMode,
+        LocalEchoWidthSizeClass provides widthClass,
+        LocalEchoContentMaxWidth provides widthClass.contentMaxWidth(),
+        LocalEchoHapticsEnabled provides playbackHapticsEnabled,
     ) {
         val typography = remember(fontFamily, fontScale) {
             echoTypography(fontFamily, fontScale.coerceIn(0.88f, 1.18f))
         }
         MaterialTheme(
-            colorScheme = if (darkTheme) EchoDarkScheme else EchoLightScheme,
+            colorScheme = colorScheme,
             typography = typography,
             content = content,
         )

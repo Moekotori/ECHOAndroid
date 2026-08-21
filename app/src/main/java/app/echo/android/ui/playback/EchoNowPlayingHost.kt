@@ -27,6 +27,8 @@ internal fun EchoNowPlayingHost(
 ) {
     val playbackPosition by viewModel.playbackPosition.collectAsStateWithLifecycle()
     val lyricsState by viewModel.lyricsState.collectAsStateWithLifecycle()
+    val favoriteTrackIds by viewModel.favoriteTrackIds.collectAsStateWithLifecycle(emptySet())
+    val isCurrentTrackFavorite = playbackStatus.track?.id?.let { it in favoriteTrackIds } == true
     NowPlayingScreen(
         status = playbackStatus,
         positionState = playbackPosition,
@@ -58,6 +60,7 @@ internal fun EchoNowPlayingHost(
         onToggleShuffle = viewModel::toggleShuffle,
         onSetPlaybackSpeed = viewModel::setPlaybackSpeed,
         onSetSleepTimer = viewModel::setSleepTimer,
+        onSetSleepTimerEndOfTrack = viewModel::setSleepTimerEndOfTrack,
         onCancelSleepTimer = viewModel::cancelSleepTimer,
         onSetReplayGain = viewModel::setReplayGain,
         onAdjustReplayGainPreamp = viewModel::adjustReplayGainPreamp,
@@ -83,6 +86,8 @@ internal fun EchoNowPlayingHost(
         onLyricsFocusGlowChange = viewModel::setLyricsFocusGlowEnabled,
         onShowLyricsControlDeckChange = viewModel::setShowLyricsControlDeck,
         onOnlineLyricsEnabledChange = viewModel::setOnlineLyricsEnabled,
+        isCurrentTrackFavorite = isCurrentTrackFavorite,
+        onToggleFavorite = { viewModel.toggleFavorite() },
         modifier = modifier.fillMaxSize(),
     )
 }

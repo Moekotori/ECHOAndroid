@@ -16,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -46,8 +47,8 @@ fun DiagnosticsScreen(
     val lastCommand = commandLabel(diagnostics.lastCommand)
     val dspActive = diagnostics.offloadActive || equalizerState.active
     PageChrome(
-        title = "信号",
-        subtitle = "从曲目规格到输出设备的实时链路",
+        title = stringResource(R.string.diag_title),
+        subtitle = stringResource(R.string.diag_subtitle),
         badge = playbackStateLabel(status.state),
         scrollable = true,
         scrollBottomPadding = 188.dp,
@@ -107,55 +108,59 @@ private fun UsbOutputPanel(status: EchoPlaybackStatus) {
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             EchoSectionTitle(
-                "USB 独占输出",
-                if (diagnostics.usbConnected) "已连接" else "未连接",
+                stringResource(R.string.diag_usb_exclusive),
+                if (diagnostics.usbConnected) stringResource(R.string.diag_connected) else stringResource(R.string.diag_disconnected),
             )
-            UsbOutputLine("设备", diagnostics.usbDeviceName ?: "无 USB DAC")
+            UsbOutputLine(stringResource(R.string.diag_device), diagnostics.usbDeviceName ?: stringResource(R.string.diag_no_usb))
             UsbOutputLine(
-                "链路",
+                stringResource(R.string.diag_path),
                 when {
-                    diagnostics.usbBitPerfectActive -> "USB 独占 · bit-perfect"
-                    diagnostics.usbExclusiveEnabled && diagnostics.usbHostPermissionPending -> "等待 USB 授权"
-                    diagnostics.usbExclusiveEnabled && diagnostics.usbHostPermissionGranted && diagnostics.usbAudioHasIsochronousOut -> "USB 已授权 · ISO 待驱动"
-                    diagnostics.usbExclusiveEnabled && diagnostics.usbHostPermissionGranted -> "USB 已授权 · 待接管"
-                    diagnostics.usbExclusiveEnabled && diagnostics.usbConnected -> "USB 未授权 · 未独占"
-                    diagnostics.usbHostPermissionGranted -> "USB host 已授权"
-                    diagnostics.usbHostPermissionPending -> "等待 USB 授权"
-                    diagnostics.usbBitPerfectSupported -> "支持 bit-perfect"
+                    diagnostics.usbExclusiveStreaming -> stringResource(
+                        R.string.diag_usb_exclusive_stream,
+                        diagnostics.usbExclusiveTransport ?: "pcm",
+                    )
+                    diagnostics.usbBitPerfectActive -> stringResource(R.string.diag_usb_bit_perfect)
+                    diagnostics.usbExclusiveEnabled && diagnostics.usbHostPermissionPending -> stringResource(R.string.diag_usb_wait_auth)
+                    diagnostics.usbExclusiveEnabled && diagnostics.usbHostPermissionGranted && diagnostics.usbAudioHasIsochronousOut -> stringResource(R.string.diag_usb_iso_pending)
+                    diagnostics.usbExclusiveEnabled && diagnostics.usbHostPermissionGranted -> stringResource(R.string.diag_usb_takeover_pending)
+                    diagnostics.usbExclusiveEnabled && diagnostics.usbConnected -> stringResource(R.string.diag_usb_unauthorized)
+                    diagnostics.usbHostPermissionGranted -> stringResource(R.string.diag_usb_host_granted)
+                    diagnostics.usbHostPermissionPending -> stringResource(R.string.diag_usb_wait_auth)
+                    diagnostics.usbBitPerfectSupported -> stringResource(R.string.diag_usb_bit_perfect_supported)
                     diagnostics.usbConnected -> "Android mixer"
                     else -> "Media3 / AudioTrack"
                 },
             )
             UsbOutputLine(
-                "采样率",
+                stringResource(R.string.diag_sample_rate),
                 formatUsbSampleRates(diagnostics.usbSupportedSampleRates),
             )
             UsbOutputLine(
-                "请求",
-                diagnostics.usbLastRequestedSampleRateHz?.let(::formatUsbSampleRate) ?: "未请求",
+                stringResource(R.string.diag_request),
+                diagnostics.usbLastRequestedSampleRateHz?.let(::formatUsbSampleRate) ?: stringResource(R.string.diag_not_requested),
             )
             if (diagnostics.usbConnected) {
                 UsbOutputLine(
-                    "USB 权限",
+                    stringResource(R.string.diag_usb_permission),
                     when {
-                        diagnostics.usbHostPermissionGranted -> "已授权"
-                        diagnostics.usbHostPermissionPending -> "等待确认"
-                        diagnostics.usbExclusiveEnabled -> "未授权"
-                        else -> "未请求"
+                        diagnostics.usbHostPermissionGranted -> stringResource(R.string.diag_authorized)
+                        diagnostics.usbHostPermissionPending -> stringResource(R.string.diag_waiting_confirm)
+                        diagnostics.usbExclusiveEnabled -> stringResource(R.string.diag_unauthorized)
+                        else -> stringResource(R.string.diag_not_requested_short)
                     },
                 )
             }
             diagnostics.usbAudioClass?.let { UsbOutputLine("UAC", it) }
             if (diagnostics.usbAudioInterfaceCount > 0) {
                 UsbOutputLine(
-                    "接口",
+                    stringResource(R.string.diag_interface),
                     "${diagnostics.usbAudioInterfaceCount} audio / ${diagnostics.usbAudioStreamingInterfaceCount} stream",
                 )
             }
-            diagnostics.usbAudioEndpointSummary?.let { UsbOutputLine("端点", it) }
+            diagnostics.usbAudioEndpointSummary?.let { UsbOutputLine(stringResource(R.string.diag_endpoint), it) }
             if (diagnostics.usbAudioHasIsochronousOut || diagnostics.usbAudioHasFeedbackEndpoint) {
                 UsbOutputLine(
-                    "传输",
+                    stringResource(R.string.diag_transport),
                     when {
                         diagnostics.usbAudioHasIsochronousOut && diagnostics.usbAudioHasFeedbackEndpoint -> "iso OUT + feedback"
                         diagnostics.usbAudioHasIsochronousOut -> "iso OUT"
@@ -167,7 +172,7 @@ private fun UsbOutputPanel(status: EchoPlaybackStatus) {
                 UsbOutputLine("Descriptor", error)
             }
             diagnostics.usbLastRequestError?.let { error ->
-                UsbOutputLine("回退", error.message)
+                UsbOutputLine(stringResource(R.string.diag_fallback), error.message)
             }
         }
     }
@@ -189,9 +194,10 @@ private fun UsbOutputLine(label: String, value: String) {
     }
 }
 
+@Composable
 private fun formatUsbSampleRates(sampleRates: List<Int>): String =
     if (sampleRates.isEmpty()) {
-        "未上报"
+        stringResource(R.string.diag_unreported)
     } else {
         sampleRates.take(6).joinToString(" / ") { formatUsbSampleRate(it) } +
             if (sampleRates.size > 6) " ..." else ""

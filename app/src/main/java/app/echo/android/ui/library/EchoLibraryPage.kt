@@ -114,7 +114,9 @@ internal fun EchoLibraryPage(
                 remoteClient.playTrackOnPc(track)
             }
         },
-        onPlayTrack = { track -> viewModel.playTrackFromLibrary(track.id) },
+        onPlayTrack = { track, origin -> viewModel.playFromLibrary(track, origin) },
+        onPlayNext = viewModel::playNext,
+        onEnqueueTrack = viewModel::enqueue,
         onUpdateTrackMetadata = viewModel::updateTrackMetadata,
         onImportLyricsForTrack = onImportLyricsForTrack,
         onPickTrackArtwork = onPickTrackArtwork,
@@ -124,6 +126,26 @@ internal fun EchoLibraryPage(
         onShuffleArtist = { artist -> viewModel.shuffleArtist(artist.artistKey) },
         onPlayFolder = { folder -> viewModel.playFolder(folder.folderKey) },
         onPlayPlaylist = { playlist -> viewModel.playPlaylist(playlist.id) },
+        onCreatePlaylist = { name -> viewModel.createLocalPlaylist(name) },
+        onRenamePlaylist = { playlist, name -> viewModel.renameLocalPlaylist(playlist.id, name) },
+        onDeletePlaylist = { playlist ->
+            viewModel.deleteLocalPlaylist(playlist.id)
+            if (selectedPlaylist?.id == playlist.id) {
+                onCloseDetail()
+            }
+        },
+        onAddTrackToPlaylist = { playlist, track ->
+            viewModel.addTrackToLocalPlaylist(playlist.id, track.id)
+        },
+        onCreatePlaylistAndAddTrack = { name, track ->
+            viewModel.createLocalPlaylist(name, addTrackId = track.id)
+        },
+        onRemoveTrackFromPlaylist = { playlist, track ->
+            viewModel.removeTrackFromLocalPlaylist(playlist.id, track.id)
+        },
+        onReorderPlaylistTracks = { playlist, fromIndex, toIndex ->
+            viewModel.reorderLocalPlaylistTracks(playlist.id, fromIndex, toIndex)
+        },
         onOpenAlbum = onOpenAlbum,
         onOpenArtist = onOpenArtist,
         onOpenFolder = onOpenFolder,

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -93,6 +94,8 @@ import app.echo.android.design.EmptyState
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.RoonInk
 import app.echo.android.design.RoonMuted
+import app.echo.android.design.displayMetadataOrUnknown
+import app.echo.android.design.echoString
 import app.echo.android.design.formatDuration
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
@@ -160,7 +163,7 @@ internal fun LibraryPagerTabs(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
-                    text = mode.label,
+                    text = mode.label(),
                     color = if (selected) EchoAccentText else colors.muted,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
@@ -251,7 +254,7 @@ internal fun LibrarySearchBar(
             ) {
                 Icon(
                     Icons.Rounded.Search,
-                    contentDescription = "搜索曲库",
+                    contentDescription = echoString(en = "Search library", zh = "搜索曲库", ja = "ライブラリを検索"),
                     tint = if (dark) colors.content else EchoAccentText,
                     modifier = Modifier.size(22.dp),
                 )
@@ -295,14 +298,18 @@ internal fun LibrarySearchBar(
                     ) {
                         Icon(
                             Icons.Rounded.Close,
-                            contentDescription = "关闭搜索",
+                            contentDescription = echoString(en = "Close search", zh = "关闭搜索", ja = "検索を閉じる"),
                             tint = colors.muted,
                         )
                     }
                 },
                 placeholder = {
                     Text(
-                        "搜索歌曲、艺术家、专辑",
+                        echoString(
+                            en = "Search songs, artists, albums",
+                            zh = "搜索歌曲、艺术家、专辑",
+                            ja = "曲、アーティスト、アルバムを検索",
+                        ),
                         color = colors.muted,
                         maxLines = 1,
                     )
@@ -330,17 +337,21 @@ internal fun FolderList(
     modifier: Modifier = Modifier,
 ) {
     if (folders.loadState.refresh is LoadState.Loading) {
-        EmptyState("正在加载文件夹...")
+        EmptyState(echoString(en = "Loading folders...", zh = "正在加载文件夹...", ja = "フォルダーを読み込み中..."))
         return
     }
     if (folders.loadState.refresh is LoadState.Error) {
-        EmptyState("文件夹加载失败。")
+        EmptyState(echoString(en = "Failed to load folders.", zh = "文件夹加载失败。", ja = "フォルダーの読み込みに失敗しました。"))
         return
     }
     if (folders.itemCount == 0) {
         LibraryPlaceholderPage(
-            title = "文件夹视图",
-            subtitle = "当前曲库还没有可浏览的存储路径。",
+            title = echoString(en = "Folder view", zh = "文件夹视图", ja = "フォルダー表示"),
+            subtitle = echoString(
+                en = "This library has no browsable storage paths yet.",
+                zh = "当前曲库还没有可浏览的存储路径。",
+                ja = "このライブラリには閲覧できる保存先がまだありません。",
+            ),
         )
         return
     }
@@ -424,19 +435,19 @@ private fun FolderRow(
                 Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
                     FolderMetaChip(
                         icon = Icons.Rounded.MusicNote,
-                        text = "${folder.trackCount} 首",
+                        text = libraryTrackCountLabel(folder.trackCount),
                     )
                     folder.albumCount.takeIf { it > 0 }?.let {
                         FolderMetaChip(
                             icon = Icons.Rounded.LibraryMusic,
-                            text = "$it 张",
+                            text = echoString(en = "$it albums", zh = "$it 张", ja = "$it 枚"),
                         )
                     }
                 }
             }
             Icon(
                 Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                contentDescription = "打开文件夹",
+                contentDescription = echoString(en = "Open folder", zh = "打开文件夹", ja = "フォルダーを開く"),
                 tint = if (dark) Color.White.copy(alpha = 0.68f) else EchoAccentText,
                 modifier = Modifier.size(26.dp),
             )
@@ -474,24 +485,36 @@ private fun FolderMetaChip(
     }
 }
 
+@Composable
 internal fun folderDisplayName(folder: FolderSummary): String =
     folder.path
         ?.trim('/')
         ?.substringAfterLast('/')
         ?.takeIf { it.isNotBlank() }
-        ?: "未知路径"
+        ?: echoString(en = "Unknown path", zh = "未知路径", ja = "不明なパス")
 
+@Composable
 internal fun folderSubtitle(folder: FolderSummary): String =
     listOf(
-        "${folder.trackCount} 首",
-        "${folder.albumCount} 张专辑",
-        "${folder.artistCount} 位艺术家",
+        libraryTrackCountLabel(folder.trackCount),
+        libraryAlbumCountLabel(folder.albumCount),
+        echoString(
+            en = "${folder.artistCount} artists",
+            zh = "${folder.artistCount} 位艺术家",
+            ja = "アーティスト ${folder.artistCount} 人",
+        ),
         formatDuration(folder.durationMs),
         formatByteSize(folder.totalSizeBytes),
     ).joinToString(" · ")
 
+@Composable
 private fun folderPathLabel(folder: FolderSummary): String =
-    folder.path?.takeIf { it.isNotBlank() } ?: "MediaStore 未提供路径"
+    folder.path?.takeIf { it.isNotBlank() }
+        ?: echoString(
+            en = "MediaStore did not provide a path",
+            zh = "MediaStore 未提供路径",
+            ja = "MediaStore はパスを提供していません",
+        )
 
 private fun formatByteSize(bytes: Long): String =
     when {
@@ -525,9 +548,9 @@ internal fun LibraryOverview(
             .padding(14.dp),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            LibraryMetric("歌曲", trackCount.toString(), Modifier.weight(1f))
-            LibraryMetric("专辑", albumCount.toString(), Modifier.weight(1f))
-            LibraryMetric("艺人", artistCount.toString(), Modifier.weight(1f))
+            LibraryMetric(echoString(en = "Songs", zh = "歌曲", ja = "曲"), trackCount.toString(), Modifier.weight(1f))
+            LibraryMetric(echoString(en = "Albums", zh = "专辑", ja = "アルバム"), albumCount.toString(), Modifier.weight(1f))
+            LibraryMetric(echoString(en = "Artists", zh = "艺人", ja = "アーティスト"), artistCount.toString(), Modifier.weight(1f))
         }
     }
 }
@@ -574,13 +597,13 @@ internal fun LibraryViewSwitcher(
             ) {
                 Icon(
                     mode.icon,
-                    contentDescription = mode.label,
+                    contentDescription = mode.label(),
                     tint = if (selected) EchoAccentText else colors.muted,
                     modifier = Modifier.size(18.dp),
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    mode.label,
+                    mode.label(),
                     color = if (selected) colors.content else colors.muted,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
@@ -611,7 +634,11 @@ internal fun LibraryViewModeMenu(
         ) {
             Icon(
                 selectedMode.icon,
-                contentDescription = "切换曲库显示方式",
+                contentDescription = echoString(
+                    en = "Switch library view",
+                    zh = "切换曲库显示方式",
+                    ja = "ライブラリの表示方法を切り替え",
+                ),
                 tint = EchoHomeBlue,
                 modifier = Modifier.size(20.dp),
             )
@@ -625,7 +652,7 @@ internal fun LibraryViewModeMenu(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            mode.label,
+                            mode.label(),
                             color = if (mode == selectedMode) EchoHomeBlue else colors.content,
                             fontWeight = if (mode == selectedMode) FontWeight.Bold else FontWeight.SemiBold,
                         )
@@ -654,15 +681,21 @@ internal fun AlbumWall(
     modifier: Modifier = Modifier,
 ) {
     if (albums.loadState.refresh is LoadState.Loading) {
-        EmptyState("正在加载专辑...")
+        EmptyState(echoString(en = "Loading albums...", zh = "正在加载专辑...", ja = "アルバムを読み込み中..."))
         return
     }
     if (albums.loadState.refresh is LoadState.Error) {
-        EmptyState("专辑加载失败。")
+        EmptyState(echoString(en = "Failed to load albums.", zh = "专辑加载失败。", ja = "アルバムの読み込みに失敗しました。"))
         return
     }
     if (albums.itemCount == 0) {
-        EmptyState("当前曲库还没有可展示的专辑。")
+        EmptyState(
+            echoString(
+                en = "This library has no albums to show yet.",
+                zh = "当前曲库还没有可展示的专辑。",
+                ja = "このライブラリには表示できるアルバムがまだありません。",
+            ),
+        )
         return
     }
     LazyVerticalGrid(
@@ -688,7 +721,7 @@ internal fun AlbumWallCard(
     album: AlbumSummary,
     onClick: () -> Unit,
 ) {
-    val artistLabel = album.albumArtist ?: album.artist ?: "未知艺术家"
+    val artistLabel = displayMetadataOrUnknown(album.albumArtist ?: album.artist, unknownArtistLabel())
     val colors = rememberLibraryGlassColors()
     Column(
         modifier = Modifier
@@ -706,8 +739,21 @@ internal fun AlbumWallCard(
             cornerRadius = 14.dp,
             elevation = 8.dp,
         )
-        Text(album.title, color = colors.content, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Text("$artistLabel / ${album.trackCount} 首", color = colors.muted, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(
+            displayMetadataOrUnknown(album.title, unknownAlbumLabel()),
+            color = colors.content,
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            "$artistLabel / ${libraryTrackCountLabel(album.trackCount)}",
+            color = colors.muted,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -718,15 +764,21 @@ internal fun ArtistWall(
     modifier: Modifier = Modifier,
 ) {
     if (artists.loadState.refresh is LoadState.Loading) {
-        EmptyState("正在加载艺人...")
+        EmptyState(echoString(en = "Loading artists...", zh = "正在加载艺人...", ja = "アーティストを読み込み中..."))
         return
     }
     if (artists.loadState.refresh is LoadState.Error) {
-        EmptyState("艺人加载失败。")
+        EmptyState(echoString(en = "Failed to load artists.", zh = "艺人加载失败。", ja = "アーティストの読み込みに失敗しました。"))
         return
     }
     if (artists.itemCount == 0) {
-        EmptyState("当前曲库还没有可展示的艺人。")
+        EmptyState(
+            echoString(
+                en = "This library has no artists to show yet.",
+                zh = "当前曲库还没有可展示的艺人。",
+                ja = "このライブラリには表示できるアーティストがまだありません。",
+            ),
+        )
         return
     }
     LazyVerticalGrid(
@@ -768,7 +820,7 @@ internal fun ArtistWallCard(
             palette = palette,
         )
         Text(
-            artist.name,
+            displayMetadataOrUnknown(artist.name, unknownArtistLabel()),
             color = colors.content,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
@@ -777,7 +829,7 @@ internal fun ArtistWallCard(
             textAlign = TextAlign.Center,
         )
         Text(
-            "${artist.albumCount} 张专辑 · ${artist.trackCount} 首",
+            "${libraryAlbumCountLabel(artist.albumCount)} · ${libraryTrackCountLabel(artist.trackCount)}",
             color = colors.muted,
             style = MaterialTheme.typography.labelMedium,
             textAlign = TextAlign.Center,
@@ -862,7 +914,11 @@ internal fun LibraryScanStatus(
                     Text(
                         text = scanState.currentTitle
                             ?.takeIf { it.isNotBlank() }
-                            ?: "正在增量索引本机音乐",
+                            ?: echoString(
+                                en = "Incrementally indexing local music",
+                                zh = "正在增量索引本机音乐",
+                                ja = "ローカル音楽を増分インデックス中",
+                            ),
                         color = colors.muted,
                         style = MaterialTheme.typography.bodySmall,
                         maxLines = 1,
@@ -870,7 +926,7 @@ internal fun LibraryScanStatus(
                     )
                 }
                 EchoTextButton(
-                    text = "取消扫描",
+                    text = echoString(en = "Cancel scan", zh = "取消扫描", ja = "スキャンをキャンセル"),
                     onClick = onCancelScan,
                 )
             }
@@ -878,10 +934,10 @@ internal fun LibraryScanStatus(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                LibraryMetric("已扫描", scanProgressValue(scanState), Modifier.weight(1f))
-                LibraryMetric("新增", scanState.insertedCount.toString(), Modifier.weight(1f))
-                LibraryMetric("更新", scanState.updatedCount.toString(), Modifier.weight(1f))
-                LibraryMetric("删除", scanState.deletedCount.toString(), Modifier.weight(1f))
+                LibraryMetric(echoString(en = "Scanned", zh = "已扫描", ja = "スキャン済み"), scanProgressValue(scanState), Modifier.weight(1f))
+                LibraryMetric(echoString(en = "Added", zh = "新增", ja = "追加"), scanState.insertedCount.toString(), Modifier.weight(1f))
+                LibraryMetric(echoString(en = "Updated", zh = "更新", ja = "更新"), scanState.updatedCount.toString(), Modifier.weight(1f))
+                LibraryMetric(echoString(en = "Removed", zh = "删除", ja = "削除"), scanState.deletedCount.toString(), Modifier.weight(1f))
             }
             scanState.error?.takeIf { it.isNotBlank() }?.let { error ->
                 Text(error, color = Color(0xFFE0796E), style = MaterialTheme.typography.bodySmall)
@@ -894,26 +950,47 @@ private fun scanProgressValue(scanState: LibraryScanProgress): String =
     scanState.totalCount?.let { total -> "${scanState.scannedCount}/$total" }
         ?: scanState.scannedCount.toString()
 
+@Composable
 private fun scanPhaseLabel(phase: LibraryScanPhase): String =
     when (phase) {
-        LibraryScanPhase.Idle -> "等待扫描"
-        LibraryScanPhase.Preparing -> "准备扫描"
-        LibraryScanPhase.QueryingMediaStore -> "正在读取 MediaStore"
-        LibraryScanPhase.Diffing -> "正在对比曲库"
-        LibraryScanPhase.WritingDatabase -> "正在写入曲库"
-        LibraryScanPhase.CleaningRemoved -> "正在清理已移除音乐"
-        LibraryScanPhase.Completed -> "扫描完成"
-        LibraryScanPhase.Cancelled -> "扫描已取消"
-        LibraryScanPhase.Error -> "扫描失败"
+        LibraryScanPhase.Idle -> echoString(en = "Waiting to scan", zh = "等待扫描", ja = "スキャン待ち")
+        LibraryScanPhase.Preparing -> echoString(en = "Preparing scan", zh = "准备扫描", ja = "スキャンを準備中")
+        LibraryScanPhase.QueryingMediaStore -> echoString(
+            en = "Reading MediaStore",
+            zh = "正在读取 MediaStore",
+            ja = "MediaStore を読み込み中",
+        )
+        LibraryScanPhase.Diffing -> echoString(en = "Comparing library", zh = "正在对比曲库", ja = "ライブラリを照合中")
+        LibraryScanPhase.WritingDatabase -> echoString(en = "Writing library", zh = "正在写入曲库", ja = "ライブラリに書き込み中")
+        LibraryScanPhase.CleaningRemoved -> echoString(
+            en = "Cleaning removed music",
+            zh = "正在清理已移除音乐",
+            ja = "削除された音楽を整理中",
+        )
+        LibraryScanPhase.Completed -> echoString(en = "Scan complete", zh = "扫描完成", ja = "スキャン完了")
+        LibraryScanPhase.Cancelled -> echoString(en = "Scan cancelled", zh = "扫描已取消", ja = "スキャンをキャンセルしました")
+        LibraryScanPhase.Error -> echoString(en = "Scan failed", zh = "扫描失败", ja = "スキャンに失敗しました")
     }
 
 @Composable
 internal fun LibraryScanResultBanner(scanState: LibraryScanProgress) {
     val colors = rememberLibraryGlassColors()
     val message = when (scanState.phase) {
-        LibraryScanPhase.Completed -> "扫描完成：${scanState.scannedCount} 首，新增 ${scanState.insertedCount}，更新 ${scanState.updatedCount}，删除 ${scanState.deletedCount}"
-        LibraryScanPhase.Cancelled -> "扫描已取消，已保留现有曲库。"
-        LibraryScanPhase.Error -> scanState.error ?: "曲库扫描失败。"
+        LibraryScanPhase.Completed -> echoString(
+            en = "Scan complete: ${scanState.scannedCount} tracks, added ${scanState.insertedCount}, updated ${scanState.updatedCount}, removed ${scanState.deletedCount}",
+            zh = "扫描完成：${scanState.scannedCount} 首，新增 ${scanState.insertedCount}，更新 ${scanState.updatedCount}，删除 ${scanState.deletedCount}",
+            ja = "スキャン完了：${scanState.scannedCount} 曲、追加 ${scanState.insertedCount}、更新 ${scanState.updatedCount}、削除 ${scanState.deletedCount}",
+        )
+        LibraryScanPhase.Cancelled -> echoString(
+            en = "Scan cancelled. The existing library was kept.",
+            zh = "扫描已取消，已保留现有曲库。",
+            ja = "スキャンをキャンセルしました。既存のライブラリは保持されています。",
+        )
+        LibraryScanPhase.Error -> scanState.error ?: echoString(
+            en = "Library scan failed.",
+            zh = "曲库扫描失败。",
+            ja = "ライブラリのスキャンに失敗しました。",
+        )
         else -> null
     } ?: return
     var visible by remember(message) { mutableStateOf(true) }
@@ -952,9 +1029,18 @@ internal fun LibraryBootstrapState() {
         ) {
             EchoIconBadge(Icons.Rounded.LibraryMusic)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("暂无本机歌曲", color = colors.content, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(
-                    "点右上角扫描本机音乐。",
+                    echoString(en = "No local songs yet", zh = "暂无本机歌曲", ja = "ローカルの曲はまだありません"),
+                    color = colors.content,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    echoString(
+                        en = "Scan local music from the top-right corner.",
+                        zh = "点右上角扫描本机音乐。",
+                        ja = "右上からローカル音楽をスキャンしてください。",
+                    ),
                     color = colors.muted,
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -975,6 +1061,10 @@ internal fun LibraryDetailPage(
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
+    onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
+    onRemoveFromPlaylist: ((EchoTrack) -> Unit)? = null,
+    onMoveTrack: ((fromIndex: Int, toIndex: Int) -> Unit)? = null,
+    headerActions: @Composable RowScope.() -> Unit = {},
     showAudioInfoTags: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
@@ -1013,16 +1103,29 @@ internal fun LibraryDetailPage(
                             )
                         }
                     }
-                    EchoTextButton(text = "返回", onClick = onBack)
-                    EchoTextButton(text = "播放全部", onClick = onPlayAll)
+                    EchoTextButton(
+                        text = echoString(en = "Back", zh = "返回", ja = "戻る"),
+                        onClick = onBack,
+                    )
+                    EchoTextButton(
+                        text = echoString(en = "Play all", zh = "播放全部", ja = "すべて再生"),
+                        onClick = onPlayAll,
+                    )
+                    headerActions()
                 }
             }
         }
 
         when {
-            tracks.loadState.refresh is LoadState.Loading -> EmptyState("正在加载曲目...")
-            tracks.loadState.refresh is LoadState.Error -> EmptyState("曲目加载失败。")
-            tracks.itemCount == 0 -> EmptyState("暂无曲目。")
+            tracks.loadState.refresh is LoadState.Loading -> EmptyState(
+                echoString(en = "Loading tracks...", zh = "正在加载曲目...", ja = "曲を読み込み中..."),
+            )
+            tracks.loadState.refresh is LoadState.Error -> EmptyState(
+                echoString(en = "Failed to load tracks.", zh = "曲目加载失败。", ja = "曲の読み込みに失敗しました。"),
+            )
+            tracks.itemCount == 0 -> EmptyState(
+                echoString(en = "No tracks yet.", zh = "暂无曲目。", ja = "曲はまだありません。"),
+            )
             else -> TrackList(
                 tracks = tracks,
                 onPlayTrack = onPlayTrack,
@@ -1030,6 +1133,9 @@ internal fun LibraryDetailPage(
                 onImportLyrics = onImportLyrics,
                 onPickArtwork = onPickArtwork,
                 onMatchNeteaseMetadata = onMatchNeteaseMetadata,
+                onAddToPlaylist = onAddToPlaylist,
+                onRemoveFromPlaylist = onRemoveFromPlaylist,
+                onMoveTrack = onMoveTrack,
                 showAudioInfoTags = showAudioInfoTags,
                 listState = trackListState,
                 modifier = Modifier.weight(1f),

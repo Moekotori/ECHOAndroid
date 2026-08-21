@@ -18,15 +18,25 @@ data class EchoEqualizerPresetDefinition(
 
 data class EchoEqualizerState(
     val enabled: Boolean = false,
-    val supported: Boolean = false,
-    val available: Boolean = false,
+    val supported: Boolean = true,
+    val available: Boolean = true,
     val presetId: String = EchoEqualizerPreset.Flat,
     val presetName: String = EchoEqualizerPresets.nameFor(EchoEqualizerPreset.Flat),
     val bands: List<EchoEqualizerBand> = EchoEqualizerPresets.defaultBands(),
+    val preampDb: Float = 0f,
+    val parametric: Boolean = false,
+    val sourceLabel: String? = null,
+    val filters: List<OpraEqBand> = emptyList(),
     val warning: String? = null,
 ) {
     val active: Boolean
-        get() = enabled && supported && bands.any { abs(it.gainDb) >= 0.1f }
+        get() = enabled &&
+            supported &&
+            (
+                abs(preampDb) >= 0.05f ||
+                    filters.any { it.affectsFrequencyResponse() } ||
+                    bands.any { abs(it.gainDb) >= 0.1f }
+                )
 
     val gainsDb: List<Float>
         get() = bands.map { it.gainDb }
@@ -40,6 +50,37 @@ object EchoEqualizerPreset {
     const val Bright = "bright"
     const val Custom = "custom"
 }
+
+object EchoEqFilterType {
+    const val PeakDip = "peak_dip"
+    const val LowShelf = "low_shelf"
+    const val HighShelf = "high_shelf"
+    const val BandStop = "band_stop"
+    const val LowPass = "low_pass"
+    const val HighPass = "high_pass"
+
+    fun normalize(type: String): String =
+        when (type.lowercase().replace('-', '_').replace(' ', '_')) {
+            "peak", "peaking", "peak_dip", "peakdip" -> PeakDip
+            "low_shelf", "lowshelf", "low_shelve" -> LowShelf
+            "high_shelf", "highshelf", "high_shelve" -> HighShelf
+            "band_stop", "bandstop", "notch" -> BandStop
+            "low_pass", "lowpass" -> LowPass
+            "high_pass", "highpass" -> HighPass
+            else -> type
+        }
+}
+
+fun OpraEqBand.normalizedType(): String = EchoEqFilterType.normalize(type)
+
+fun OpraEqBand.affectsFrequencyResponse(): Boolean =
+    when (normalizedType()) {
+        EchoEqFilterType.BandStop,
+        EchoEqFilterType.LowPass,
+        EchoEqFilterType.HighPass,
+        -> true
+        else -> abs(gainDb) >= 0.05f
+    }
 
 object EchoEqualizerPresets {
     val defaultFrequenciesHz: List<Int> = listOf(60, 230, 910, 3600, 14000)

@@ -50,12 +50,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -243,7 +243,7 @@ fun AmbientPlanet(modifier: Modifier = Modifier) {
 fun PageChrome(
     title: String,
     subtitle: String?,
-    badge: String = "移动端",
+    badge: String? = null,
     scrollable: Boolean = false,
     scrollBottomPadding: Dp = 12.dp,
     showBrand: Boolean = false,
@@ -262,6 +262,7 @@ fun PageChrome(
         val heightDp = (windowInfo.containerSize.height / density.density).dp
         val widthDp = (windowInfo.containerSize.width / density.density).dp
         val compactChrome = heightDp < 620.dp || widthDp > heightDp
+        val resolvedBadge = badge ?: stringResource(R.string.chrome_badge_mobile)
         val contentScroll = if (scrollable) Modifier.verticalScroll(rememberScrollState()) else Modifier
         val chromeGradient = if (dark) {
             Brush.verticalGradient(
@@ -310,7 +311,7 @@ fun PageChrome(
             }
             Column(
                 modifier = Modifier
-                    .widthIn(max = EchoContentMaxWidth)
+                    .widthIn(max = LocalEchoContentMaxWidth.current)
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
                     .then(contentScroll)
@@ -325,7 +326,7 @@ fun PageChrome(
                         if (titleContent != null) {
                             titleContent()
                         } else if (showBrand) {
-                            Text("ECHO 移动端", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                            Text(stringResource(R.string.chrome_brand), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                         } else {
                             Text(
                                 title,
@@ -351,7 +352,7 @@ fun PageChrome(
                                 ),
                             ) {
                                 Text(
-                                    badge,
+                                    resolvedBadge,
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = if (dark) Color.White.copy(alpha = 0.82f) else scheme.onSurface,
@@ -464,9 +465,18 @@ fun rememberArtworkPalette(artworkUri: String?, seedKey: String? = artworkUri): 
     }
     val sampleSize = if (effectivePerformanceMode.isHighPerformance) 8 else 16
     val context = LocalContext.current
-    val palette by produceState(ArtworkPalette.fromSeed(seedKey), artworkUri, seedKey, sampleSize) {
+    val rewriteRevision = EchoArtworkUrlRewriteRegistry.revision
+    val fetchUri = resolvedArtworkFetchUri(artworkUri)
+    val palette by produceState(
+        ArtworkPalette.fromSeed(seedKey),
+        artworkUri,
+        fetchUri,
+        seedKey,
+        sampleSize,
+        rewriteRevision,
+    ) {
         value = withContext(Dispatchers.IO) {
-            val bitmap = loadArtworkSwatch(context.contentResolver, artworkUri, sampleSize)
+            val bitmap = loadArtworkSwatch(context.contentResolver, fetchUri ?: artworkUri, sampleSize)
             if (bitmap != null) {
                 extractPalette(bitmap).also { bitmap.recycle() }
             } else {
@@ -484,11 +494,32 @@ private fun loadArtworkSwatch(
 ): Bitmap? {
     if (artworkUri.isNullOrBlank()) return null
     return runCatching {
-        contentResolver.openInputStream(Uri.parse(artworkUri))?.use { stream ->
+        openArtworkInputStream(contentResolver, artworkUri)?.use { stream ->
             val options = BitmapFactory.Options().apply { inSampleSize = sampleSize.coerceAtLeast(1) }
             BitmapFactory.decodeStream(stream, null, options)
         }
     }.getOrNull()
+}
+
+private fun openArtworkInputStream(
+    contentResolver: android.content.ContentResolver,
+    artworkUri: String,
+): java.io.InputStream? {
+    val uri = Uri.parse(artworkUri)
+    val scheme = uri.scheme?.lowercase()
+    if (scheme == "http" || scheme == "https") {
+        val connection = java.net.URI(artworkUri).toURL().openConnection() as java.net.HttpURLConnection
+        connection.connectTimeout = 4_000
+        connection.readTimeout = 8_000
+        connection.instanceFollowRedirects = true
+        return if (connection.responseCode in 200..299) {
+            connection.inputStream
+        } else {
+            connection.disconnect()
+            null
+        }
+    }
+    return contentResolver.openInputStream(uri)
 }
 
 private fun extractPalette(source: Bitmap): ArtworkPalette {
@@ -567,13 +598,16 @@ fun BlurredArtworkBackground(
     } else {
         artworkAlpha
     }
-    val artworkModel = remember(context, artworkUri, artworkMaxPixelSize) {
-        ImageRequest.Builder(context)
-            .data(artworkUri)
-            .size(artworkMaxPixelSize, artworkMaxPixelSize)
-            .bitmapConfig(if (effectivePerformanceMode.isHighPerformance) Bitmap.Config.ARGB_8888 else Bitmap.Config.RGB_565)
-            .crossfade(false)
-            .build()
+    val rewriteRevision = EchoArtworkUrlRewriteRegistry.revision
+    val fetchUri = resolvedArtworkFetchUri(artworkUri)
+    val artworkModel = remember(context, artworkUri, fetchUri, artworkMaxPixelSize, rewriteRevision) {
+        echoArtworkImageRequest(
+            context = context,
+            originalUri = artworkUri,
+            fetchUri = fetchUri,
+            maxPixelSize = artworkMaxPixelSize,
+            highBitDepth = effectivePerformanceMode.isHighPerformance,
+        )
     }
     Box(modifier = modifier.fillMaxSize()) {
         // 鍙栬壊搴曪紝淇濊瘉鏃犲皝闈?浣庝簬 API 31 鏃朵篃鏈夋矇娴歌壊
@@ -590,7 +624,7 @@ fun BlurredArtworkBackground(
                     ),
                 ),
         )
-        if (!effectivePerformanceMode.isLightweight && !artworkUri.isNullOrBlank()) {
+        if (!effectivePerformanceMode.isLightweight && !fetchUri.isNullOrBlank()) {
             AsyncImage(
                 model = artworkModel,
                 contentDescription = null,
