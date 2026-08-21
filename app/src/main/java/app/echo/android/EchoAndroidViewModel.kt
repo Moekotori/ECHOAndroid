@@ -18,6 +18,10 @@ import app.echo.android.data.MediaStoreTrackScanner
 import app.echo.android.data.LocalLibrarySearchResults
 import app.echo.android.data.OpraHeadphoneCorrectionRepository
 import app.echo.android.data.SubsonicEndpoint
+import app.echo.android.data.fetchSubsonicLyricsText
+import app.echo.android.data.subsonicSongIdFromTrack
+import app.echo.android.lyrics.EchoLyricsParser
+import java.util.concurrent.atomic.AtomicReference
 import app.echo.android.data.WebDavEndpoint
 import app.echo.android.lyrics.ImportedLyricsStore
 import app.echo.android.lyrics.LocalLyricsResolver
@@ -74,6 +78,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.cancellation.CancellationException
 
 @kotlin.OptIn(ExperimentalCoroutinesApi::class)
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -82,17 +87,19 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     private val database = EchoLibraryDatabase.create(application)
     private val repository = EchoLibraryRepository(
         database = database,
-        scanner = MediaStoreTrackScanner(application.contentResolver),
+        scanner = MediaStoreTrackScanner(application),
         documentTreeScanner = DocumentTreeTrackScanner(application.contentResolver),
     )
     private val settingsStore = EchoSettingsStore(application)
     private val echoLinkLanBrowser = EchoLinkLanBrowser(application)
     private val opraRepository = OpraHeadphoneCorrectionRepository(application)
+    private val subsonicEndpointRef = AtomicReference<SubsonicEndpoint?>(null)
     val initialAppSettings: EchoAppSettings = settingsStore.startupAppSettingsSnapshot()
 
     init {
         settingsStore.remotePlaybackAuthSettingsSnapshot()?.let { authSettings ->
             applyRemotePlaybackCredentials(authSettings, allowClearIfEmpty = false)
+            subsonicEndpointRef.set(subsonicEndpointFrom(authSettings))
         }
     }
 
@@ -106,6 +113,18 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         onlineLyricsResolver = OnlineLyricsResolver(),
         importedLyricsStore = ImportedLyricsStore(application),
         scope = viewModelScope,
+        subsonicLyricsLoader = { track ->
+            val endpoint = subsonicEndpointRef.get() ?: return@LyricsController null
+            val songId = subsonicSongIdFromTrack(track.id, track.source) ?: return@LyricsController null
+            val text = try {
+                fetchSubsonicLyricsText(endpoint, songId, track.artist, track.title)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Throwable) {
+                null
+            }?.takeIf { it.isNotBlank() } ?: return@LyricsController null
+            EchoLyricsParser.parse(text, sourceLabel = "Navidrome").takeIf { it.lines.isNotEmpty() }
+        },
     )
     private val playbackController = PlaybackController(
         application = application,
@@ -114,10 +133,20 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         onTrackChanged = lyricsController::updateLyricsForTrack,
         onTrackActivated = ::recordRecentPlayback,
     )
+    init {
+        libraryController.setPlaybackOccupiesStorage {
+            playbackController.playbackControls.value.isPlaying ||
+                playbackController.isUsbExclusiveEnabled()
+        }
+    }
     private val lastFmClient = LastFmClient()
     private val lastFmController = LastFmScrobbleController(
         scope = EchoPlaybackProcessRuntime.scope,
         client = lastFmClient,
+    )
+    private val subsonicListenController = SubsonicListenController(
+        scope = EchoPlaybackProcessRuntime.scope,
+        endpointRef = subsonicEndpointRef,
     )
     private var pendingLastFmAuthToken: String? = null
     private var usbStartupPolicyApplied = false
@@ -198,6 +227,11 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             playbackStatus = playbackController.playbackStatus,
             playbackPosition = playbackController.playbackPosition,
         )
+        subsonicListenController.start(
+            playbackStatus = playbackController.playbackStatus,
+            playbackPosition = playbackController.playbackPosition,
+            settingsReady = settingsStore.appSettings,
+        )
         viewModelScope.launch {
             var lastEqualizerSignature: String? = null
             settingsStore.appSettings.collect { settings ->
@@ -241,6 +275,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                     lastFmController.setConnected(settings.lastFmUsername.orEmpty())
                 }
                 applyRemotePlaybackCredentials(settings, allowClearIfEmpty = true)
+                subsonicEndpointRef.set(subsonicEndpointFrom(settings))
                 playbackController.notifyRemotePlaybackAuthReady()
             }
         }
@@ -292,6 +327,23 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun play(track: EchoTrack) {
         playbackController.play(track)
+    }
+
+    fun playIncomingAudio(uris: List<String>) {
+        val parsed = uris.mapNotNull { raw -> raw.trim().takeIf { it.isNotBlank() }?.let(Uri::parse) }
+        if (parsed.isEmpty()) return
+        viewModelScope.launch {
+            val tracks = withContext(Dispatchers.IO) {
+                parsed.mapNotNull { uri ->
+                    tryTakePersistableReadPermission(getApplication(), uri)
+                    resolveIncomingAudioTrack(getApplication(), repository, uri)
+                }
+            }
+            when {
+                tracks.size == 1 -> playbackController.play(tracks.single())
+                tracks.isNotEmpty() -> playbackController.playQueue(tracks, 0)
+            }
+        }
     }
 
     fun playQueue(queue: List<EchoTrack>, startIndex: Int) {
@@ -481,6 +533,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         playbackController.removeQueueItem(index)
     }
 
+    fun moveQueueItem(fromIndex: Int, toIndex: Int) {
+        playbackController.moveQueueItem(fromIndex, toIndex)
+    }
+
     fun clearQueue() {
         playbackController.clearQueue()
     }
@@ -517,12 +573,30 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         playbackController.enqueue(track)
     }
 
+    fun playNextByTrackId(trackId: String) {
+        viewModelScope.launch {
+            val track = libraryController.trackById(trackId) ?: return@launch
+            playbackController.playNext(track)
+        }
+    }
+
+    fun enqueueByTrackId(trackId: String) {
+        viewModelScope.launch {
+            val track = libraryController.trackById(trackId) ?: return@launch
+            playbackController.enqueue(track)
+        }
+    }
+
     fun refreshHomeRecommendations() {
         libraryController.refreshHomeRecommendations()
     }
 
     fun startEchoLinkDiscovery() {
         echoLinkLanBrowser.start()
+    }
+
+    fun refreshEchoLinkDiscovery() {
+        echoLinkLanBrowser.restart()
     }
 
     fun stopEchoLinkDiscovery() {
@@ -1189,7 +1263,6 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         playbackController.clear()
         lastFmController.clear()
         echoLinkLanBrowser.stop()
-        database.close()
         super.onCleared()
     }
 
@@ -1311,6 +1384,15 @@ private fun webDavPlaybackCredential(settings: EchoAppSettings): EchoWebDavPlayb
         baseUrl = serverUrl,
         username = username,
         password = password,
+    )
+}
+
+private fun subsonicEndpointFrom(settings: EchoAppSettings): SubsonicEndpoint? {
+    val credential = subsonicPlaybackCredential(settings) ?: return null
+    return SubsonicEndpoint(
+        baseUrl = credential.baseUrl,
+        username = credential.username,
+        password = credential.password,
     )
 }
 

@@ -23,6 +23,14 @@ class EchoReplayGainTest {
     }
 
     @Test
+    fun enhancerMillibelsConvertToExclusiveMakeupGain() {
+        assertEquals(1f, echoReplayGainMakeupLinear(0), 0.001f)
+        assertEquals(1f, echoReplayGainMakeupLinear(-100), 0.001f)
+        assertEquals(10.0.pow(6.0 / 20.0).toFloat(), echoReplayGainMakeupLinear(600), 0.001f)
+        assertEquals(10.0.pow(12.0 / 20.0).toFloat(), echoReplayGainMakeupLinear(1_200), 0.001f)
+    }
+
+    @Test
     fun disabledGainLeavesUnityVolumeWithoutEnhancer() {
         val output = echoReplayGainOutput(
             enabled = false,
@@ -95,6 +103,81 @@ class EchoReplayGainTest {
         assertTrue(shouldCacheReplayGainRead(parsedGain))
         assertEquals(ReplayGainReadOutcome.Parsed(-7f), parsedGain)
         assertEquals(ReplayGainReadOutcome.Failed, missingStream)
+    }
+
+    @Test
+    fun remoteHttpReplayGainWaitsForMatchingCredentials() {
+        assertEquals(
+            ReplayGainStreamKind.RemoteHttp,
+            replayGainStreamKind("https://dav.example/music/a.flac"),
+        )
+        assertEquals(
+            ReplayGainStreamKind.LocalContent,
+            replayGainStreamKind("content://media/external/audio/media/1"),
+        )
+        assertEquals(
+            ReplayGainStreamKind.LocalFile,
+            replayGainStreamKind("file:///storage/emulated/0/Music/a.flac"),
+        )
+        assertTrue(
+            canOpenReplayGainStream(
+                uri = "content://media/external/audio/media/1",
+                webDavAuthReadyForUri = false,
+                subsonicAuthReadyForUri = false,
+            ),
+        )
+        assertFalse(
+            canOpenReplayGainStream(
+                uri = "https://dav.example/music/a.flac",
+                webDavAuthReadyForUri = false,
+                subsonicAuthReadyForUri = true,
+            ),
+        )
+        assertTrue(
+            canOpenReplayGainStream(
+                uri = "https://dav.example/music/a.flac",
+                webDavAuthReadyForUri = true,
+                subsonicAuthReadyForUri = false,
+            ),
+        )
+        assertFalse(
+            canOpenReplayGainStream(
+                uri = "https://navidrome.example/rest/stream.view?id=s1",
+                webDavAuthReadyForUri = true,
+                subsonicAuthReadyForUri = false,
+            ),
+        )
+        assertTrue(
+            canOpenReplayGainStream(
+                uri = "https://navidrome.example/rest/stream.view?id=s1",
+                webDavAuthReadyForUri = false,
+                subsonicAuthReadyForUri = true,
+            ),
+        )
+        val missingRemote = replayGainReadOutcome(streamOpened = false, parseResult = Result.success(null))
+        assertFalse(shouldCacheReplayGainRead(missingRemote))
+    }
+
+    @Test
+    fun remoteReplayGainReadIsCapped() {
+        val source = ByteArray(64) { 1 }
+        LimitedInputStream(source.inputStream(), maxBytes = 8).use { limited ->
+            val buffer = ByteArray(32)
+            val read = limited.read(buffer)
+            assertEquals(8, read)
+            assertEquals(-1, limited.read())
+        }
+    }
+
+    @Test
+    fun exclusiveMakeupConvertsEnhancerMillibelsToLinearGain() {
+        val boosted = echoReplayGainOutput(enabled = true, preampDb = 6f, trackGainDb = 0f)
+        assertEquals(1f, boosted.playerVolume, 0.001f)
+        assertTrue(boosted.enhancerGainMb > 0)
+        val makeup = echoReplayGainMakeupLinear(boosted.enhancerGainMb)
+        assertTrue(makeup > 1f)
+        assertEquals(1f, echoReplayGainMakeupLinear(0), 0.001f)
+        assertEquals(1f, echoReplayGainMakeupLinear(-100), 0.001f)
     }
 
     @Test

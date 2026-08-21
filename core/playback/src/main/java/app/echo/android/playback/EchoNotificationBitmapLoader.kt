@@ -2,8 +2,6 @@ package app.echo.android.playback
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.BitmapLoader
@@ -34,46 +32,18 @@ internal class EchoNotificationBitmapLoader(
         val sourceUri = metadata.extras
             ?.getString(EchoEmbeddedArtworkSourceUriExtra)
             ?.takeIf { it.isNotBlank() }
-            ?.let(Uri::parse)
-            ?.takeIf { it.scheme == "content" || it.scheme == "file" }
             ?: return null
         return DataSourceBitmapLoader.DEFAULT_EXECUTOR_SERVICE.get().submit(
             Callable {
-                readEmbeddedArtwork(sourceUri)
-                    ?: throw IOException("No embedded artwork in $sourceUri")
+                EchoPlaybackArtwork.load(
+                    context = context,
+                    artworkUri = null,
+                    embeddedSourceUri = sourceUri,
+                    maxEdgePx = EchoPlaybackArtwork.NotificationMaxEdgePx,
+                ) ?: throw IOException("No embedded artwork in $sourceUri")
             },
         )
-    }
-
-    private fun readEmbeddedArtwork(sourceUri: Uri): Bitmap? {
-        val retriever = MediaMetadataRetriever()
-        return try {
-            retriever.setDataSource(context, sourceUri)
-            val data = retriever.embeddedPicture ?: return null
-            if (data.size > NotificationArtworkMaxBytes) return null
-            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            BitmapFactory.decodeByteArray(data, 0, data.size, bounds)
-            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
-            val longest = maxOf(bounds.outWidth, bounds.outHeight).coerceAtLeast(1)
-            var sampleSize = 1
-            while (longest / sampleSize > NotificationArtworkMaxEdgePx) {
-                sampleSize *= 2
-            }
-            val decode = BitmapFactory.Options().apply {
-                inSampleSize = sampleSize
-                inPreferredConfig = Bitmap.Config.RGB_565
-            }
-            BitmapFactory.decodeByteArray(data, 0, data.size, decode)
-        } catch (_: RuntimeException) {
-            null
-        } catch (_: OutOfMemoryError) {
-            null
-        } finally {
-            retriever.release()
-        }
     }
 }
 
 internal const val EchoEmbeddedArtworkSourceUriExtra = "app.echo.android.playback.EMBEDDED_ARTWORK_SOURCE_URI"
-private const val NotificationArtworkMaxEdgePx = 512
-private const val NotificationArtworkMaxBytes = 8 * 1024 * 1024

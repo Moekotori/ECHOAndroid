@@ -28,6 +28,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+object EchoUsbExclusiveApplyPolicy {
+    fun shouldReapplyAfterHostPermissionGranted(
+        exclusiveEnabled: Boolean,
+        previouslyGranted: Boolean,
+        currentlyGranted: Boolean,
+    ): Boolean = exclusiveEnabled && currentlyGranted && !previouslyGranted
+}
+
 data class EchoUsbAudioStatus(
     val exclusiveEnabled: Boolean = false,
     val deviceName: String? = null,
@@ -135,63 +143,14 @@ class EchoUsbAudioMonitor(context: Context) {
     }
 
     fun prepareForTrack(sampleRateHz: Int?) {
-        val safeSampleRate = sampleRateHz?.takeIf { it > 0 }
-        if (!exclusiveEnabled) {
-            return
-        }
+        if (!exclusiveEnabled) return
         requestUsbHostPermissionIfNeeded()
-        if (safeSampleRate == null) {
-            _status.value = scan().copy(
-                lastRequestError = EchoPlaybackError(
-                    kind = EchoAudioErrorKind.OutputRouteFailure,
-                    message = "Track sample rate is unknown; USB exclusive request skipped",
-                    recoverable = true,
-                ),
-            )
-            return
-        }
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            _status.value = scan().copy(
-                lastRequestedSampleRateHz = safeSampleRate,
-                lastRequestError = preAndroid14ExclusiveError(),
-            )
-            return
-        }
-
-        val device = findUsbOutputDevice()
-        if (device == null) {
-            refresh()
-            return
-        }
-
-        val requestedAttributes = findBitPerfectAttributes(device, safeSampleRate)
-        if (requestedAttributes == null) {
-            _status.value = scan().copy(
-                lastRequestedSampleRateHz = safeSampleRate,
-                lastRequestError = EchoPlaybackError(
-                    kind = EchoAudioErrorKind.OutputRouteFailure,
-                    message = "USB DAC does not advertise bit-perfect ${safeSampleRate}Hz playback",
-                    recoverable = true,
-                ),
-            )
-            return
-        }
-
-        val applied = runCatching {
-            audioManager.setPreferredMixerAttributes(androidMusicAttributes(), device, requestedAttributes)
-        }.getOrDefault(false)
-
+        // Exclusive playback claims the USB streaming interface itself.
+        // Mixer bit-perfect attributes fight that claim and can make the
+        // AudioTrack fallback lose the device, so they are not requested here.
         _status.value = scan().copy(
-            lastRequestedSampleRateHz = safeSampleRate,
-            lastRequestError = if (applied) {
-                null
-            } else {
-                EchoPlaybackError(
-                    kind = EchoAudioErrorKind.OutputRouteFailure,
-                    message = "Android refused USB bit-perfect mixer attributes",
-                    recoverable = true,
-                )
-            },
+            lastRequestedSampleRateHz = sampleRateHz?.takeIf { it > 0 },
+            lastRequestError = null,
         )
     }
 
@@ -316,13 +275,6 @@ class EchoUsbAudioMonitor(context: Context) {
             permissionRequestPendingDeviceName = null
         }
     }
-
-    private fun preAndroid14ExclusiveError(): EchoPlaybackError =
-        EchoPlaybackError(
-            kind = EchoAudioErrorKind.OutputRouteFailure,
-            message = "Android 14+ is required for system USB bit-perfect; using Android mixer",
-            recoverable = true,
-        )
 
     private fun findUsbOutputDevice(): AudioDeviceInfo? =
         audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)

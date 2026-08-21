@@ -100,6 +100,16 @@ class EchoRemotePlaybackAuthTest {
     }
 
     @Test
+    fun unsupportedFormatFallbackAddsMp3Once() {
+        val original = "https://navidrome.example/rest/stream.view?id=s1"
+        val fallback = subsonicUnsupportedFormatFallbackUrl(original)
+        assertTrue(fallback!!.contains("format=mp3"))
+        assertTrue(fallback.contains("maxBitRate=320"))
+        assertEquals("s1", queryMap(fallback)["id"])
+        assertEquals(null, subsonicUnsupportedFormatFallbackUrl(fallback))
+    }
+
+    @Test
     fun cacheIdentityIgnoresRotatingSubsonicTokensForSameUser() {
         EchoRemotePlaybackAuthRegistry.replaceSubsonicCredentials(
             listOf(

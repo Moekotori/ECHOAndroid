@@ -12,35 +12,13 @@ data class MediaStoreAudioFolder(
         fun fromTreeUri(uri: Uri): MediaStoreAudioFolder? {
             val documentId = runCatching { DocumentsContract.getTreeDocumentId(uri) }.getOrNull()
                 ?: return null
-            val parts = documentId.split(":", limit = 2)
-            val rawVolume = parts.firstOrNull().orEmpty()
-            val volume = rawVolume.lowercase()
-
-            val path = parts.getOrNull(1)
-                ?.replace('\\', '/')
-                ?.trim('/')
-                .orEmpty()
-
-            if (volume != "primary") {
-                val displayName = path.substringAfterLast('/').takeIf { it.isNotBlank() } ?: rawVolume
-                val safeVolume = rawVolume.replace(':', '_').ifBlank { "removable" }
-                val relativePath = normalizeRelativePathPrefix(
-                    listOf("Removable", safeVolume, path)
-                        .filter { it.isNotBlank() }
-                        .joinToString("/"),
-                ) ?: return null
-                return MediaStoreAudioFolder(
-                    displayName = displayName,
-                    relativePathPrefix = relativePath,
-                    treeUri = uri,
-                )
-            }
-
-            val relativePath = normalizeRelativePathPrefix(path) ?: return null
+            val (rawVolume, path) = LibraryScanPolicy.splitDocumentTreeId(documentId) ?: return null
+            val relativePath = LibraryScanPolicy.documentTreeRelativePath(rawVolume, path) ?: return null
+            val displayName = path.substringAfterLast('/').takeIf { it.isNotBlank() } ?: rawVolume
             return MediaStoreAudioFolder(
-                displayName = path.substringAfterLast('/'),
+                displayName = displayName,
                 relativePathPrefix = relativePath,
-                treeUri = if (LibraryScanPolicy.usesDocumentTreeScan(volume)) uri else null,
+                treeUri = if (LibraryScanPolicy.usesDocumentTreeScan(rawVolume)) uri else null,
             )
         }
     }

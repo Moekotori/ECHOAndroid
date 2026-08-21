@@ -23,7 +23,7 @@ class MediaStoreSampleRateFastPathTest {
     }
 
     @Test
-    fun changedTrackReadsSampleRateAndRebuildsFingerprint() {
+    fun knownSampleRateDoesNotOpenFileEvenWhenFingerprintChanged() {
         val existingTrack = testTrack(sampleRateHz = 48_000)
         val existingFingerprint = existingTrack.toTrackFingerprint()
         var sampleRateReads = 0
@@ -34,10 +34,9 @@ class MediaStoreSampleRateFastPathTest {
                 96_000
             }
 
-        assertEquals(1, sampleRateReads)
-        assertEquals(96_000, scannedTrack.sampleRateHz)
+        assertEquals(0, sampleRateReads)
+        assertEquals(48_000, scannedTrack.sampleRateHz)
         assertNotEquals(existingTrack.fingerprint, scannedTrack.fingerprint)
-        assertEquals(buildTrackFingerprint(scannedTrack), scannedTrack.fingerprint)
     }
 
     @Test
@@ -54,6 +53,8 @@ class MediaStoreSampleRateFastPathTest {
 
         assertEquals(1, sampleRateReads)
         assertEquals(96_000, scannedTrack.sampleRateHz)
+        assertEquals(buildTrackFingerprint(scannedTrack), scannedTrack.fingerprint)
+        assertEquals(existingTrack.pinyinTitle, scannedTrack.pinyinTitle)
     }
 
     @Test

@@ -23,7 +23,9 @@ import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Queue
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -52,6 +54,8 @@ fun SearchScreen(
     searchResults: List<SearchResult>,
     onSearchQueryChange: (String) -> Unit,
     onSearchResultClick: (SearchResult) -> Unit,
+    onPlayNext: (SearchResult) -> Unit = {},
+    onEnqueue: (SearchResult) -> Unit = {},
     onBack: () -> Unit,
 ) {
     val focusRequester = remember { FocusRequester() }
@@ -78,6 +82,8 @@ fun SearchScreen(
         SearchResultsList(
             searchResults = searchResults,
             onResultClick = onSearchResultClick,
+            onPlayNext = onPlayNext,
+            onEnqueue = onEnqueue,
         )
     }
 }
@@ -155,6 +161,8 @@ private fun SearchTopBar(
 private fun SearchResultsList(
     searchResults: List<SearchResult>,
     onResultClick: (SearchResult) -> Unit,
+    onPlayNext: (SearchResult) -> Unit,
+    onEnqueue: (SearchResult) -> Unit,
 ) {
     if (searchResults.isEmpty()) {
         Box(
@@ -190,7 +198,12 @@ private fun SearchResultsList(
                     )
                 }
                 items(trackResults) { result ->
-                    SearchResultItemFull(result, onResultClick)
+                    SearchResultItemFull(
+                        result = result,
+                        onClick = onResultClick,
+                        onPlayNext = onPlayNext,
+                        onEnqueue = onEnqueue,
+                    )
                 }
             }
 
@@ -207,7 +220,7 @@ private fun SearchResultsList(
                     )
                 }
                 items(albumResults) { result ->
-                    SearchResultItemFull(result, onResultClick)
+                    SearchResultItemFull(result = result, onClick = onResultClick)
                 }
             }
 
@@ -222,7 +235,7 @@ private fun SearchResultsList(
                     )
                 }
                 items(artistResults) { result ->
-                    SearchResultItemFull(result, onResultClick)
+                    SearchResultItemFull(result = result, onClick = onResultClick)
                 }
             }
         }
@@ -230,7 +243,12 @@ private fun SearchResultsList(
 }
 
 @Composable
-private fun SearchResultItemFull(result: SearchResult, onClick: (SearchResult) -> Unit) {
+private fun SearchResultItemFull(
+    result: SearchResult,
+    onClick: (SearchResult) -> Unit,
+    onPlayNext: ((SearchResult) -> Unit)? = null,
+    onEnqueue: ((SearchResult) -> Unit)? = null,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -287,6 +305,26 @@ private fun SearchResultItemFull(result: SearchResult, onClick: (SearchResult) -
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        if (result.type == SearchResultType.Track) {
+            IconButton(
+                onClick = { onPlayNext?.invoke(result) },
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.SkipNext,
+                    contentDescription = echoString(en = "Play next", zh = "下一首播放", ja = "次に再生"),
+                    tint = homeBodyColor().copy(alpha = 0.62f),
+                )
+            }
+            IconButton(
+                onClick = { onEnqueue?.invoke(result) },
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Queue,
+                    contentDescription = echoString(en = "Add to queue", zh = "加入队列", ja = "キューに追加"),
+                    tint = homeBodyColor().copy(alpha = 0.62f),
                 )
             }
         }

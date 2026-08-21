@@ -9,7 +9,7 @@ fun shouldRestoreSavedSessionBeforeFlushingPending(pendingReplacesQueue: Iterabl
 fun shouldQueueControllerActionUntilSessionReady(sessionReadyForCommands: Boolean): Boolean =
     !sessionReadyForCommands
 
-fun pendingPlayPauseShouldPlay(currentlyPlaying: Boolean): Boolean = !currentlyPlaying
+fun pendingPlayPauseShouldPlay(playWhenReady: Boolean): Boolean = !playWhenReady
 
 fun shouldMarkSavedSessionRestoreComplete(sessionLoadFailed: Boolean): Boolean = !sessionLoadFailed
 
@@ -41,6 +41,10 @@ fun shouldApplyPendingRestorePlay(
         queueRequiresSubsonicAuth = queueRequiresSubsonicAuth,
         subsonicAuthReady = subsonicAuthReady,
     )
+
+fun shouldRestoreIntoEmptyPlayer(mediaItemCount: Int): Boolean = mediaItemCount <= 0
+
+fun shouldPlayAfterSessionRestore(userRequestedPlay: Boolean): Boolean = userRequestedPlay
 
 fun shouldReplaceRegisteredRemoteCredentials(
     incomingEmpty: Boolean,

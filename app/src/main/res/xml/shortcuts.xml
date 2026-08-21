@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/echo_ic_play"
+        android:shortcutId="play_last"
+        android:shortcutLongLabel="@string/shortcut_play_long"
+        android:shortcutShortLabel="@string/shortcut_play">
+        <intent
+            android:action="app.echo.android.action.PLAY_LAST"
+            android:targetClass="app.echo.android.MainActivity"
+            android:targetPackage="app.echo.android" />
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="library"
+        android:shortcutLongLabel="@string/shortcut_library_long"
+        android:shortcutShortLabel="@string/shortcut_library">
+        <intent
+            android:action="app.echo.android.action.OPEN_LIBRARY"
+            android:targetClass="app.echo.android.MainActivity"
+            android:targetPackage="app.echo.android" />
+    </shortcut>
+</shortcuts>

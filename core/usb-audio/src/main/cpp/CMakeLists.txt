@@ -7,3 +7,4 @@ find_library(log-lib log)
 
 target_link_libraries(echo_usb_isoc ${log-lib})
 target_compile_options(echo_usb_isoc PRIVATE -Wall -Wextra -O2 -fno-exceptions -fno-rtti)
+target_link_options(echo_usb_isoc PRIVATE "-Wl,-z,max-page-size=16384")

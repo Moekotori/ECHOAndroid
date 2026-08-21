@@ -2,7 +2,8 @@ package app.echo.android
 
 import android.Manifest
 import android.content.pm.PackageManager
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
+import kotlinx.coroutines.flow.collect
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
@@ -86,7 +87,13 @@ fun EchoLinkQrScannerFallback(
         }
     }
 
-    BackHandler(onBack = onCancel)
+    PredictiveBackHandler { progress ->
+        try {
+            progress.collect { }
+            onCancel()
+        } catch (_: kotlin.coroutines.cancellation.CancellationException) {
+        }
+    }
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = Color.Black,

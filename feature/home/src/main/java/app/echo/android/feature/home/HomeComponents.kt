@@ -95,6 +95,7 @@ import app.echo.android.design.progressFraction
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.library.EchoTrack
+import app.echo.android.model.library.LibraryScanProgress
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoRepeatMode
@@ -168,6 +169,8 @@ internal fun LibraryOverview(
     trackCount: Int,
     albumCount: Int,
     artistCount: Int,
+    scanState: LibraryScanProgress = LibraryScanProgress(),
+    onOpenLibrary: () -> Unit = {},
 ) {
     Box(
         modifier = Modifier
@@ -177,10 +180,56 @@ internal fun LibraryOverview(
             .border(homePanelBorder(), RoundedCornerShape(22.dp))
             .padding(14.dp),
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            LibraryMetric(echoString(en = "Songs", zh = "歌曲", ja = "曲"), trackCount.toString(), Modifier.weight(1f))
-            LibraryMetric(echoString(en = "Albums", zh = "专辑", ja = "アルバム"), albumCount.toString(), Modifier.weight(1f))
-            LibraryMetric(echoString(en = "Artists", zh = "艺人", ja = "アーティスト"), artistCount.toString(), Modifier.weight(1f))
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                LibraryMetric(echoString(en = "Songs", zh = "歌曲", ja = "曲"), trackCount.toString(), Modifier.weight(1f))
+                LibraryMetric(echoString(en = "Albums", zh = "专辑", ja = "アルバム"), albumCount.toString(), Modifier.weight(1f))
+                LibraryMetric(echoString(en = "Artists", zh = "艺人", ja = "アーティスト"), artistCount.toString(), Modifier.weight(1f))
+            }
+            if (scanState.isScanning) {
+                HomeLibraryScanHint(scanState = scanState, onOpenLibrary = onOpenLibrary)
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeLibraryScanHint(
+    scanState: LibraryScanProgress,
+    onOpenLibrary: () -> Unit,
+) {
+    val progress = scanState.totalCount?.let { total -> "${scanState.scannedCount}/$total" }
+        ?: scanState.scannedCount.toString()
+    val detail = scanState.currentTitle?.takeIf { it.isNotBlank() } ?: progress
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onOpenLibrary)
+            .padding(horizontal = 2.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.LibraryMusic,
+            contentDescription = null,
+            tint = EchoAccent,
+            modifier = Modifier.size(18.dp),
+        )
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Text(
+                text = echoString(en = "Scanning library", zh = "正在扫描曲库", ja = "ライブラリをスキャン中"),
+                color = homeTitleColor(),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = if (detail == progress) progress else "$progress · $detail",
+                color = homeBodyColor(),
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -764,7 +813,8 @@ internal fun HomeAlbumRecommendationsSection(
             Surface(
                 modifier = Modifier
                     .clip(RoundedCornerShape(16.dp))
-                    .clickable(onClick = onRefresh),
+                    .clickable(enabled = albums.isNotEmpty(), onClick = onRefresh)
+                    .alpha(if (albums.isEmpty()) 0.42f else 1f),
                 shape = RoundedCornerShape(16.dp),
                 color = homePanelColor(0.94f),
                 border = homePanelBorder(0.84f),
@@ -790,7 +840,15 @@ internal fun HomeAlbumRecommendationsSection(
         ) {
             if (albums.isEmpty()) {
                 item {
-                    EmptyRecentAlbumsCard(onClick = onOpenLibrary)
+                    EmptyRecentAlbumsCard(
+                        title = echoString(en = "No recommendations yet", zh = "暂无推荐", ja = "おすすめはまだありません"),
+                        subtitle = echoString(
+                            en = "Play or favorite albums to fill this row",
+                            zh = "播放或收藏专辑后会出现在这里",
+                            ja = "再生またはお気に入り登録すると表示されます",
+                        ),
+                        onClick = onOpenLibrary,
+                    )
                 }
             } else {
                 items(albums, key = { it.albumKey }) { album ->

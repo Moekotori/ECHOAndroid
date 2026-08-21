@@ -7,7 +7,10 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DataSourceInputStream
+import androidx.media3.datasource.DataSpec
 import app.echo.android.model.library.EchoTrack
+import app.echo.android.model.playback.EchoAudioErrorKind
 import java.io.FileInputStream
 import java.io.InputStream
 import kotlinx.coroutines.Job
@@ -35,6 +38,7 @@ class EchoPlaybackEnginePolicy(
     private val sampleRatesByMediaId = mutableMapOf<String, Int?>()
     private val replayGainUrisByMediaId = mutableMapOf<String, String>()
     private val replayGainTrackGainsByMediaId = mutableMapOf<String, Float?>()
+    private val subsonicTranscodeFallbackAttempts = hashSetOf<String>()
 
     fun attachTo(player: Player) {
         if (attachedPlayer === player) return
@@ -44,6 +48,8 @@ class EchoPlaybackEnginePolicy(
         (player as? ExoPlayer)?.pauseAtEndOfMediaItems =
             EchoSleepTimerPolicy.shouldPauseAtEndOfMediaItem(EchoPlaybackProcessRuntime.sleepTimerMode)
     }
+
+    fun boundPlayer(): Player? = attachedPlayer
 
     fun setPauseAtEndOfMediaItems(enabled: Boolean) {
         (attachedPlayer as? ExoPlayer)?.pauseAtEndOfMediaItems = enabled
@@ -60,12 +66,21 @@ class EchoPlaybackEnginePolicy(
         sampleRatesByMediaId.clear()
         replayGainUrisByMediaId.clear()
         replayGainTrackGainsByMediaId.clear()
+        subsonicTranscodeFallbackAttempts.clear()
         tracks.forEach(::mergeQueueLookups)
     }
 
     fun mergeQueueLookups(track: EchoTrack) {
         sampleRatesByMediaId[track.id] = track.sampleRateHz
         replayGainUrisByMediaId[track.id] = track.uri
+    }
+
+    fun mergeSampleRates(ratesByMediaId: Map<String, Int?>) {
+        ratesByMediaId.forEach { (mediaId, sampleRateHz) ->
+            if (mediaId.isNotBlank() && sampleRateHz != null && sampleRateHz > 0) {
+                sampleRatesByMediaId[mediaId] = sampleRateHz
+            }
+        }
     }
 
     fun mergeReplayGainUris(urisByMediaId: Map<String, String>) {
@@ -81,6 +96,10 @@ class EchoPlaybackEnginePolicy(
         applyReplayGain()
     }
 
+    fun retryUncachedReplayGain() {
+        loadReplayGainForTrack(activeReplayGainTrackId)
+    }
+
     fun applyReplayGain() {
         val player = attachedPlayer ?: return
         if (!shouldApplyReplayGainPlayerVolume(usbMuteInProgress)) return
@@ -94,11 +113,29 @@ class EchoPlaybackEnginePolicy(
             trackRemainingMs = (durationMs - player.currentPosition).coerceAtLeast(0L),
             trackDurationKnown = durationMs > 0L,
         )
-        player.volume = (output.playerVolume * EchoSleepTimerPolicy.fadeMultiplier(remainingMs)).coerceIn(0f, 1f)
-        EchoPlaybackProcessRuntime.syncLoudnessEnhancer(
-            audioSessionId = player.audioSessionId,
-            enhancerGainMb = output.enhancerGainMb,
-        )
+        val exclusiveLive = EchoPlaybackProcessRuntime.usbExclusiveSinkStatus?.streaming == true
+        player.volume = (
+            output.playerVolume *
+                EchoSleepTimerPolicy.fadeMultiplier(
+                    remainingMs,
+                    mode = EchoPlaybackProcessRuntime.sleepTimerMode,
+                )
+            ).coerceIn(0f, 1f)
+        if (exclusiveLive) {
+            EchoPlaybackProcessRuntime.setExclusiveMakeupGain(
+                echoReplayGainMakeupLinear(output.enhancerGainMb),
+            )
+            EchoPlaybackProcessRuntime.syncLoudnessEnhancer(
+                audioSessionId = C.AUDIO_SESSION_ID_UNSET,
+                enhancerGainMb = 0,
+            )
+        } else {
+            EchoPlaybackProcessRuntime.setExclusiveMakeupGain(1f)
+            EchoPlaybackProcessRuntime.syncLoudnessEnhancer(
+                audioSessionId = player.audioSessionId,
+                enhancerGainMb = output.enhancerGainMb,
+            )
+        }
     }
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -128,14 +165,49 @@ class EchoPlaybackEnginePolicy(
         if (events.contains(Player.EVENT_AUDIO_SESSION_ID)) {
             applyReplayGain()
         }
+        if (
+            events.containsAny(
+                Player.EVENT_MEDIA_ITEM_TRANSITION,
+                Player.EVENT_POSITION_DISCONTINUITY,
+            ) &&
+            PlaybackSessionPolicy.shouldPrepareAfterExternalSkip(
+                hasPlayerError = player.playerError != null,
+                playbackStateIdle = player.playbackState == Player.STATE_IDLE,
+                mediaItemCount = player.mediaItemCount,
+            )
+        ) {
+            player.prepare()
+        }
     }
 
     override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
         val player = attachedPlayer ?: return
         val mapped = error.toEchoPlaybackError()
+        if (mapped.kind == EchoAudioErrorKind.UnsupportedFormat &&
+            trySubsonicTranscodeFallback(player)
+        ) {
+            return
+        }
         if (mapped.shouldAutoSkipTrack()) {
             skipToNextAfterError(player)
         }
+    }
+
+    private fun trySubsonicTranscodeFallback(player: Player): Boolean {
+        val index = player.currentMediaItemIndex
+        if (index < 0 || index >= player.mediaItemCount) return false
+        val item = player.getMediaItemAt(index)
+        val mediaId = item.mediaId
+        if (mediaId.isBlank() || !subsonicTranscodeFallbackAttempts.add(mediaId)) return false
+        val currentUri = item.localConfiguration?.uri?.toString() ?: return false
+        val fallbackUri = subsonicUnsupportedFormatFallbackUrl(currentUri) ?: return false
+        player.replaceMediaItem(
+            index,
+            item.buildUpon().setUri(android.net.Uri.parse(fallbackUri)).build(),
+        )
+        player.prepare()
+        player.play()
+        return true
     }
 
     private fun prepareUsbForMediaItemTransition(mediaItem: MediaItem?) {
@@ -187,10 +259,30 @@ class EchoPlaybackEnginePolicy(
 
     private fun openReplayGainStream(uri: String): InputStream? {
         val parsed = runCatching { uri.toUri() }.getOrNull() ?: return null
-        return when (parsed.scheme?.lowercase()) {
-            "content", "android.resource" -> appContext.contentResolver.openInputStream(parsed)
-            "file" -> parsed.path?.takeIf { it.isNotBlank() }?.let(::FileInputStream)
-            else -> null
+        val webDavReady = EchoRemotePlaybackAuthRegistry.isWebDavAuthReadyForUris(listOf(uri))
+        val subsonicReady = EchoRemotePlaybackAuthRegistry.isSubsonicAuthReadyForUris(listOf(uri))
+        if (!canOpenReplayGainStream(uri, webDavReady, subsonicReady)) return null
+        return when (replayGainStreamKind(uri)) {
+            ReplayGainStreamKind.LocalContent -> appContext.contentResolver.openInputStream(parsed)
+            ReplayGainStreamKind.LocalFile -> parsed.path?.takeIf { it.isNotBlank() }?.let(::FileInputStream)
+            ReplayGainStreamKind.RemoteHttp -> openRemoteReplayGainStream(parsed)
+            null -> null
+        }
+    }
+
+    private fun openRemoteReplayGainStream(uri: android.net.Uri): InputStream? {
+        val dataSource = echoRemoteAuthDataSourceFactory(appContext).createDataSource()
+        val dataSpec = DataSpec.Builder()
+            .setUri(uri)
+            .setLength(ReplayGainRemoteReadMaxBytes.toLong())
+            .build()
+        val stream = DataSourceInputStream(dataSource, dataSpec)
+        return runCatching {
+            stream.open()
+            LimitedInputStream(stream, ReplayGainRemoteReadMaxBytes)
+        }.getOrElse {
+            runCatching { stream.close() }
+            throw it
         }
     }
 

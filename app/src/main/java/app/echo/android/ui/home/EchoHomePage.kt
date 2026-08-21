@@ -27,6 +27,7 @@ internal fun EchoHomePage(
     val recentlyAddedAlbums by viewModel.recentlyAddedAlbums.collectAsStateWithLifecycle(emptyList())
     val favoriteAlbums by viewModel.favoriteAlbums.collectAsStateWithLifecycle(emptyList())
     val homeRecommendedAlbums by viewModel.recommendedAlbums.collectAsStateWithLifecycle(emptyList())
+    val scanState by viewModel.scanState.collectAsStateWithLifecycle()
     HomeScreen(
         status = playbackStatus,
         trackCount = libraryStats.trackCount,
@@ -38,6 +39,7 @@ internal fun EchoHomePage(
         topArtists = recentPlaybackArtists,
         favoriteAlbums = favoriteAlbums,
         heatmapDays = recentPlaybackHeatmap,
+        scanState = scanState,
         onPlayPause = viewModel::playPause,
         onNext = viewModel::skipNext,
         onPrevious = viewModel::skipPrevious,

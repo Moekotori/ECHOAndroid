@@ -30,7 +30,7 @@ private val Context.echoSettings by preferencesDataStore(name = "echo-settings")
 private val Context.echoPlaybackResumeSettings by preferencesDataStore(name = "echo-playback-resume")
 private val PlaybackResumeKey = stringPreferencesKey("playback_resume")
 private const val DefaultNeteaseAudioQuality = "lossless"
-private const val RemotePlaybackAuthSnapshotTimeoutMillis = 150L
+private const val RemotePlaybackAuthSnapshotTimeoutMillis = 1_000L
 
 data class EchoAppSettings(
     val preferOffload: Boolean = true,
@@ -891,6 +891,7 @@ internal fun EchoSavedPlaybackSession.toPreferenceValue(): String =
                             put("album", track.album)
                             put("artworkUri", track.artworkUri)
                             put("durationMs", track.durationMs.coerceAtLeast(0L))
+                            track.sampleRateHz?.takeIf { it > 0 }?.let { put("sampleRateHz", it) }
                         },
                     )
                 }
@@ -920,6 +921,7 @@ internal fun EchoSavedPlaybackSession.playbackQueueIdentity(): String {
             track.album.orEmpty(),
             track.artworkUri.orEmpty(),
             track.durationMs.toString(),
+            (track.sampleRateHz?.takeIf { it > 0 } ?: 0).toString(),
         ).forEach { value ->
             digest.update(value.toByteArray(StandardCharsets.UTF_8))
             digest.update(0.toByte())
@@ -993,6 +995,7 @@ internal fun parsePlaybackSession(raw: String): EchoSavedPlaybackSession? =
                         album = item.optString("album").takeIf { it.isNotBlank() },
                         artworkUri = item.optString("artworkUri").takeIf { it.isNotBlank() },
                         durationMs = item.optLong("durationMs").coerceAtLeast(0L),
+                        sampleRateHz = item.optInt("sampleRateHz").takeIf { it > 0 },
                     ),
                 )
             }

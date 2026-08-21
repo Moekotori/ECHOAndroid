@@ -27,4 +27,20 @@ class EchoLinkPlaybackUriTest {
             ),
         )
     }
+
+    @Test
+    fun liveOneShotStreamIsNotResolvedWhilePlayerIsAvailable() {
+        val oneShot = "http://192.168.1.20:26789/echo-link/media/token"
+        val persist = "echo-link://track/pc-track-42"
+        assertFalse(EchoLinkPlaybackUri.playUriNeedsResolve(oneShot, playerUnavailable = false))
+        assertTrue(EchoLinkPlaybackUri.playUriNeedsResolve(oneShot, playerUnavailable = true))
+        assertTrue(EchoLinkPlaybackUri.playUriNeedsResolve(persist, playerUnavailable = false))
+        assertTrue(EchoLinkPlaybackUri.playUriNeedsResolve(persist, playerUnavailable = true))
+        assertFalse(
+            EchoLinkPlaybackUri.playUriNeedsResolve(
+                "content://media/external/audio/media/1",
+                playerUnavailable = true,
+            ),
+        )
+    }
 }

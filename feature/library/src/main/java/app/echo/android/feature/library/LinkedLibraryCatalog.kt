@@ -32,20 +32,16 @@ internal data class LinkedLibraryCatalog(
             includePlaylists: Boolean = true,
         ): LinkedLibraryCatalog {
             val normalizedQuery = query.trim()
-            val normalizedRemoteQuery = remoteQuery.trim()
+            remoteQuery
             val filteredTracks = if (
                 !includeSortedTracks && !includeAlbums && !includeArtists
             ) {
                 emptyList()
-            } else if (normalizedQuery.isNotBlank() && normalizedQuery == normalizedRemoteQuery) {
-                tracks
             } else {
                 tracks.filterLinkedLibraryQuery(normalizedQuery)
             }
             val filteredPlaylists = if (!includePlaylists) {
                 emptyList()
-            } else if (normalizedQuery.isNotBlank() && normalizedQuery == normalizedRemoteQuery) {
-                playlists
             } else {
                 playlists.filterLinkedPlaylistQuery(normalizedQuery)
             }
@@ -134,6 +130,7 @@ private fun List<EchoRemoteTrack>.sortedForLinkedLibrary(
     when (sortMode) {
         LibraryTrackSortMode.Title,
         LibraryTrackSortMode.FrequentlyPlayed,
+        LibraryTrackSortMode.RecentlyPlayed,
         LibraryTrackSortMode.RecentlyUpdated,
         -> sortedWith(
             compareBy<EchoRemoteTrack> { it.title.lowercase() }

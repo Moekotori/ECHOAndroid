@@ -48,6 +48,7 @@ class DocumentTreeTrackScanner(
                 querySucceeded = false
                 continue
             }
+            val audioRows = ArrayList<DocumentAudioRow>()
             cursor.use { listing ->
                 val columns = DocumentColumns.from(listing)
                 while (listing.moveToNext()) {
@@ -69,31 +70,40 @@ class DocumentTreeTrackScanner(
                     }
 
                     if (!isSupportedAudio(name, mimeType)) continue
-                    val documentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId)
-                    val sizeBytes = listing.getOptionalLong(columns.sizeIndex) ?: 0L
-                    val lastModifiedMs = listing.getOptionalLong(columns.lastModifiedIndex) ?: 0L
-                    runCatching {
-                        documentUri.toTrackEntity(
-                            documentId = documentId,
-                            displayName = name,
-                            mimeType = resolvedAudioMimeType(name, mimeType),
-                            sizeBytes = sizeBytes,
-                            lastModifiedMs = lastModifiedMs,
-                            relativePath = combineRelativePath(relativePathPrefix, directory.relativePath),
-                            existingTrack = existingTracks["saf:${Uri.encode(documentId)}"],
-                            readSampleRate = readSampleRate,
-                        )
-                    }.onSuccess { track ->
-                        batch += track
-                        scannedCount += 1
-                        onProgress(scannedCount, track)
-                        if (batch.size >= safeBatchSize) {
-                            onBatch(batch.toList())
-                            batch.clear()
-                        }
-                    }.onFailure { error ->
-                        Log.w(TAG, "Skipping unreadable document tree audio file.", error)
+                    audioRows += DocumentAudioRow(
+                        documentId = documentId,
+                        documentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId),
+                        displayName = name,
+                        mimeType = resolvedAudioMimeType(name, mimeType),
+                        sizeBytes = listing.getOptionalLong(columns.sizeIndex) ?: 0L,
+                        lastModifiedMs = listing.getOptionalLong(columns.lastModifiedIndex) ?: 0L,
+                        relativePath = combineRelativePath(relativePathPrefix, directory.relativePath),
+                    )
+                }
+            }
+            for (row in audioRows) {
+                coroutineContext.ensureActive()
+                runCatching {
+                    row.documentUri.toTrackEntity(
+                        documentId = row.documentId,
+                        displayName = row.displayName,
+                        mimeType = row.mimeType,
+                        sizeBytes = row.sizeBytes,
+                        lastModifiedMs = row.lastModifiedMs,
+                        relativePath = row.relativePath,
+                        existingTrack = existingTracks["saf:${Uri.encode(row.documentId)}"],
+                        readSampleRate = readSampleRate,
+                    )
+                }.onSuccess { track ->
+                    batch += track
+                    scannedCount += 1
+                    onProgress(scannedCount, track)
+                    if (batch.size >= safeBatchSize) {
+                        onBatch(batch.toList())
+                        batch.clear()
                     }
+                }.onFailure { error ->
+                    Log.w(TAG, "Skipping unreadable document tree audio file.", error)
                 }
             }
         }
@@ -170,7 +180,7 @@ class DocumentTreeTrackScanner(
             dateModifiedSeconds = lastModifiedMs.toEpochSeconds(),
             relativePath = relativePath,
             source = LibraryScanPolicy.SafSourceId,
-        ).withScanMetadata()
+        ).withFingerprint()
     }
 
     private fun readMetadata(uri: Uri, readSampleRate: Boolean): DocumentAudioMetadata {
@@ -214,6 +224,16 @@ class DocumentTreeTrackScanner(
 
     private data class DocumentTreeDirectory(
         val documentId: String,
+        val relativePath: String,
+    )
+
+    private data class DocumentAudioRow(
+        val documentId: String,
+        val documentUri: Uri,
+        val displayName: String,
+        val mimeType: String?,
+        val sizeBytes: Long,
+        val lastModifiedMs: Long,
         val relativePath: String,
     )
 

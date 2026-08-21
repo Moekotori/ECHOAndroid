@@ -44,6 +44,11 @@ object EchoLinkPlaybackUri {
         return isOneShotStreamUri(uri) || trackIdFromPersistUri(uri) != null || trackIdFromMediaId(mediaId) != null
     }
 
+    fun playUriNeedsResolve(playUri: String, playerUnavailable: Boolean): Boolean {
+        if (trackIdFromPersistUri(playUri) != null) return true
+        return isOneShotStreamUri(playUri) && playerUnavailable
+    }
+
     private fun encodeSegment(value: String): String =
         URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20")
 

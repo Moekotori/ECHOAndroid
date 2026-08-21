@@ -81,4 +81,63 @@ class LibraryHomeRecommendationPolicyTest {
         assertEquals(setOf("alpha", "bravo"), first.toSet())
         assertEquals(first, second)
     }
+
+    @Test
+    fun refreshDownranksAlbumsJustShown() {
+        val now = 1_700_000_000_000L
+        val seeds = listOf(
+            LibraryAlbumListenSeed("shown", playCount = 80, lastPlayedAtEpochMs = now, favoritedAtEpochMs = 0L, addedAtSeconds = 1L),
+            LibraryAlbumListenSeed("next", playCount = 3, lastPlayedAtEpochMs = now, favoritedAtEpochMs = 0L, addedAtSeconds = 1L),
+        )
+        val first = LibraryHomeRecommendationPolicy.rankAlbumKeys(seeds, now, refreshSalt = 0, limit = 1)
+        assertEquals(listOf("shown"), first)
+        val refreshed = LibraryHomeRecommendationPolicy.rankAlbumKeys(
+            seeds = seeds,
+            nowEpochMs = now,
+            refreshSalt = 1,
+            limit = 1,
+            downrankKeys = first,
+        )
+        assertEquals(listOf("next"), refreshed)
+    }
+
+    @Test
+    fun sameSaltKeepsPreviousOrderUntilRefresh() {
+        val now = 1_700_000_000_000L
+        val seeds = listOf(
+            LibraryAlbumListenSeed("shown", playCount = 80, lastPlayedAtEpochMs = now, favoritedAtEpochMs = 0L, addedAtSeconds = 1L),
+            LibraryAlbumListenSeed("next", playCount = 3, lastPlayedAtEpochMs = now, favoritedAtEpochMs = 0L, addedAtSeconds = 1L),
+        )
+        val first = LibraryHomeRecommendationPolicy.resolveAlbumKeys(
+            seeds = seeds,
+            nowEpochMs = now,
+            refreshSalt = 0,
+            previousSalt = 0,
+            previousKeys = emptyList(),
+            limit = 1,
+        )
+        assertEquals(listOf("shown"), first)
+        val louderNext = listOf(
+            LibraryAlbumListenSeed("shown", playCount = 1, lastPlayedAtEpochMs = now, favoritedAtEpochMs = 0L, addedAtSeconds = 1L),
+            LibraryAlbumListenSeed("next", playCount = 90, lastPlayedAtEpochMs = now, favoritedAtEpochMs = now, addedAtSeconds = 1L),
+        )
+        val pinned = LibraryHomeRecommendationPolicy.resolveAlbumKeys(
+            seeds = louderNext,
+            nowEpochMs = now,
+            refreshSalt = 0,
+            previousSalt = 0,
+            previousKeys = first,
+            limit = 1,
+        )
+        assertEquals(listOf("shown"), pinned)
+        val refreshed = LibraryHomeRecommendationPolicy.resolveAlbumKeys(
+            seeds = louderNext,
+            nowEpochMs = now,
+            refreshSalt = 1,
+            previousSalt = 0,
+            previousKeys = first,
+            limit = 1,
+        )
+        assertEquals(listOf("next"), refreshed)
+    }
 }

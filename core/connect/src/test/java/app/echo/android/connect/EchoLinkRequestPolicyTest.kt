@@ -46,4 +46,22 @@ class EchoLinkRequestPolicyTest {
             ),
         )
     }
+
+    @Test
+    fun pairingStopsAfterTwoAttemptsAndClearsOneTimeSecret() {
+        assertFalse(EchoLinkRequestPolicy.shouldFailPairingAfterAttempts(1))
+        assertTrue(EchoLinkRequestPolicy.shouldFailPairingAfterAttempts(2))
+        assertTrue(
+            EchoLinkRequestPolicy.shouldClearPersistedPairingSecret(
+                connectionFailed = true,
+                needsV2PairExchange = true,
+            ),
+        )
+        assertFalse(
+            EchoLinkRequestPolicy.shouldClearPersistedPairingSecret(
+                connectionFailed = true,
+                needsV2PairExchange = false,
+            ),
+        )
+    }
 }

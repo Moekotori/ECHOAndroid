@@ -35,6 +35,25 @@ class EchoSavedPlaybackSessionTest {
     }
 
     @Test
+    fun sampleRateRoundTripsInSavedQueue() {
+        val session = savedSession(currentIndex = 0, positionMs = 1_000L).copy(
+            queue = listOf(
+                EchoTrackRef(
+                    id = "hires",
+                    uri = "content://echo/hires",
+                    title = "HiRes",
+                    artist = "Artist",
+                    durationMs = 180_000L,
+                    sampleRateHz = 96_000,
+                ),
+            ),
+        )
+        val parsed = parsePlaybackSession(session.toPreferenceValue())
+        assertNotNull(parsed)
+        assertEquals(96_000, parsed?.queue?.single()?.sampleRateHz)
+    }
+
+    @Test
     fun matchingResumeUpdatesOnlyDynamicPlaybackState() {
         val stored = savedSession(currentIndex = 0, positionMs = 1_000L)
         val resumed = savedSession(

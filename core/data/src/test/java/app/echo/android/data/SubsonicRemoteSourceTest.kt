@@ -78,7 +78,7 @@ class SubsonicRemoteSourceTest {
         )
         client.fetchAlbums()
         val albumUrl = requested.first { it.contains("getAlbumList2.view") }
-        assertEquals("500", queryParam(albumUrl, "size"))
+        assertEquals("1000", queryParam(albumUrl, "size"))
     }
 
     @Test
@@ -186,6 +186,138 @@ class SubsonicRemoteSourceTest {
         assertEquals("s1", songs[0].id)
         assertEquals("", songs[0].title)
         assertEquals("A", songs[0].artist)
+    }
+
+    @Test
+    fun extractsSubsonicSongIdFromLibraryTrackId() {
+        assertEquals("abc", subsonicSongIdFromTrack("subsonic:hash:song:abc", "subsonic:hash"))
+        assertEquals(null, subsonicSongIdFromTrack("mediastore:1", "mediastore"))
+    }
+
+    @Test
+    fun readsStructuredLyricsBySongId() {
+        val client = SubsonicClient(
+            endpoint = SubsonicEndpoint(
+                baseUrl = "https://navidrome.example",
+                username = "user",
+                password = "pass",
+            ),
+            httpGet = { url ->
+                if (url.contains("getLyricsBySongId.view")) {
+                    """{"subsonic-response":{"status":"ok","lyricsList":{"structuredLyrics":[{"line":[{"value":"Hello","start":0},{"value":"World","start":1500}]}]}}}"""
+                } else {
+                    """{"subsonic-response":{"status":"ok"}}"""
+                }
+            },
+        )
+        val text = client.fetchLyricsText("s1", "A", "Hello")
+        assertNotNull(text)
+        assertTrue(text!!.contains("Hello"))
+        assertTrue(text.contains("World"))
+    }
+
+    @Test
+    fun fallsBackToArtistTitleLyrics() {
+        val client = SubsonicClient(
+            endpoint = SubsonicEndpoint(
+                baseUrl = "https://navidrome.example",
+                username = "user",
+                password = "pass",
+            ),
+            httpGet = { url ->
+                when {
+                    url.contains("getLyricsBySongId.view") ->
+                        """{"subsonic-response":{"status":"failed","error":{"code":70,"message":"not found"}}}"""
+                    url.contains("getLyrics.view") ->
+                        """{"subsonic-response":{"status":"ok","lyrics":{"value":"Line one\nLine two"}}}"""
+                    else -> """{"subsonic-response":{"status":"ok"}}"""
+                }
+            },
+        )
+        assertEquals("Line one\nLine two", client.fetchLyricsText("s1", "A", "Hello"))
+    }
+
+    @Test
+    fun scrobbleSubmissionUsesListenTime() {
+        var requested = ""
+        val client = SubsonicClient(
+            endpoint = SubsonicEndpoint(
+                baseUrl = "https://navidrome.example",
+                username = "user",
+                password = "pass",
+            ),
+            httpGet = { url ->
+                requested = url
+                """{"subsonic-response":{"status":"ok"}}"""
+            },
+        )
+        client.submitListen(songId = "s1", submission = true, timeSeconds = 1_700_000_000L)
+        assertTrue(requested.contains("scrobble.view"))
+        assertTrue(requested.contains("id=s1"))
+        assertTrue(requested.contains("submission=true"))
+        assertTrue(requested.contains("time=1700000000"))
+    }
+
+    @Test
+    fun sameHostHttpsUpgradeIsFollowedButCrossHostIsNot() {
+        assertTrue(
+            shouldFollowSameHostRedirect(
+                "http://navidrome.example/rest/ping.view",
+                "https://navidrome.example/rest/ping.view",
+            ),
+        )
+        assertFalse(
+            shouldFollowSameHostRedirect(
+                "https://navidrome.example/rest/ping.view",
+                "http://navidrome.example/rest/ping.view",
+            ),
+        )
+        assertFalse(
+            shouldFollowSameHostRedirect(
+                "https://navidrome.example/rest/stream.view?id=s1&t=secret",
+                "https://evil.example/steal",
+            ),
+        )
+    }
+
+    @Test
+    fun readsPlaylistEntries() {
+        val client = SubsonicClient(
+            endpoint = SubsonicEndpoint(
+                baseUrl = "https://navidrome.example",
+                username = "user",
+                password = "pass",
+            ),
+            httpGet = { url ->
+                when {
+                    url.contains("getPlaylists.view") ->
+                        """{"subsonic-response":{"status":"ok","playlists":{"playlist":[{"id":"p1","name":"Favs","songCount":1}]}}}"""
+                    url.contains("getPlaylist.view") ->
+                        """{"subsonic-response":{"status":"ok","playlist":{"id":"p1","entry":[{"id":"s1","title":"Song","artist":"A","duration":1,"size":1}]}}}"""
+                    else -> """{"subsonic-response":{"status":"ok"}}"""
+                }
+            },
+        )
+        val playlists = client.fetchPlaylists()
+        assertEquals(1, playlists.size)
+        assertEquals("Favs", playlists[0].name)
+        val songs = client.fetchPlaylistSongs("p1")
+        assertEquals(listOf("s1"), songs.map { it.id })
+    }
+
+    @Test
+    fun readsPlaylistSongsWhenEntryKeyIsMissing() {
+        val client = SubsonicClient(
+            endpoint = SubsonicEndpoint(
+                baseUrl = "https://navidrome.example",
+                username = "user",
+                password = "pass",
+            ),
+            httpGet = {
+                """{"subsonic-response":{"status":"ok","playlist":{"id":"p1","song":[{"id":"s9","title":"Song","artist":"A","duration":1,"size":1}]}}}"""
+            },
+        )
+        assertEquals(listOf("s9"), client.fetchPlaylistSongs("p1").map { it.id })
     }
 
     @Test

@@ -42,6 +42,10 @@ object EchoPlaybackProcessRuntime {
         private set
 
     @Volatile
+    var sleepTimerRequestedMinutes: Int? = null
+        private set
+
+    @Volatile
     var replayGainEnabled: Boolean = false
         private set
 
@@ -58,6 +62,10 @@ object EchoPlaybackProcessRuntime {
         private set
 
     @Volatile
+    var exclusiveMakeupGain: Float = 1f
+        private set
+
+    @Volatile
     private var equalizer: EchoEqualizerController? = null
 
     @Volatile
@@ -68,6 +76,19 @@ object EchoPlaybackProcessRuntime {
 
     @Volatile
     private var enginePolicy: EchoPlaybackEnginePolicy? = null
+
+    @Volatile
+    private var catalog: EchoPlaybackCatalog = EchoPlaybackCatalog.Empty
+
+    @Volatile
+    private var sessionStore: EchoPlaybackSessionStore = EchoPlaybackSessionStore.Empty
+
+    @Volatile
+    var surfaceSnapshot: EchoPlaybackSurfaceSnapshot = EchoPlaybackSurfaceSnapshot()
+        private set
+
+    @Volatile
+    private var surfaceListener: ((EchoPlaybackSurfaceSnapshot) -> Unit)? = null
 
     private var progressJob: Job? = null
     private var sleepJob: Job? = null
@@ -83,11 +104,19 @@ object EchoPlaybackProcessRuntime {
         usbExclusiveEnabled = enabled
         if (!enabled) {
             usbExclusiveSinkStatus = null
+            exclusiveMakeupGain = 1f
         }
     }
 
     fun setUsbExclusiveSinkStatus(status: EchoUsbExclusiveSinkStatus?) {
         usbExclusiveSinkStatus = status
+        if (status?.streaming != true) {
+            exclusiveMakeupGain = 1f
+        }
+    }
+
+    fun setExclusiveMakeupGain(gain: Float) {
+        exclusiveMakeupGain = gain.coerceAtLeast(0f)
     }
 
     fun reconfigureAudioPipeline() {
@@ -113,6 +142,27 @@ object EchoPlaybackProcessRuntime {
         }
 
     fun enginePolicyOrNull(): EchoPlaybackEnginePolicy? = enginePolicy
+
+    fun setCatalog(catalog: EchoPlaybackCatalog) {
+        this.catalog = catalog
+    }
+
+    fun catalog(): EchoPlaybackCatalog = catalog
+
+    fun setSessionStore(store: EchoPlaybackSessionStore) {
+        sessionStore = store
+    }
+
+    fun sessionStore(): EchoPlaybackSessionStore = sessionStore
+
+    fun setSurfaceListener(listener: ((EchoPlaybackSurfaceSnapshot) -> Unit)?) {
+        surfaceListener = listener
+    }
+
+    fun publishSurface(snapshot: EchoPlaybackSurfaceSnapshot) {
+        surfaceSnapshot = snapshot
+        surfaceListener?.invoke(snapshot)
+    }
 
     fun bindPlayer(player: Player) {
         progressJob?.cancel()
@@ -147,6 +197,7 @@ object EchoPlaybackProcessRuntime {
             return
         }
         sleepTimerMode = EchoSleepTimerMode.Timed
+        sleepTimerRequestedMinutes = minutes.coerceAtMost(maxMinutes)
         sleepTimerEndTimeEpochMs =
             System.currentTimeMillis() + minutes.coerceAtMost(maxMinutes) * 60_000L
         (mediaController as? ExoPlayer)?.pauseAtEndOfMediaItems = false
@@ -156,11 +207,11 @@ object EchoPlaybackProcessRuntime {
 
     fun setSleepTimerEndOfTrack() {
         sleepTimerMode = EchoSleepTimerMode.EndOfTrack
+        sleepTimerRequestedMinutes = null
         sleepTimerEndTimeEpochMs = null
         (mediaController as? ExoPlayer)?.pauseAtEndOfMediaItems = true
         enginePolicy?.setPauseAtEndOfMediaItems(true)
-        sleepJob?.cancel()
-        sleepJob = null
+        ensureSleepTimer()
     }
 
     fun setReplayGain(enabled: Boolean, preampDb: Float) {
@@ -193,6 +244,7 @@ object EchoPlaybackProcessRuntime {
 
     fun cancelSleepTimer() {
         sleepTimerMode = EchoSleepTimerMode.Off
+        sleepTimerRequestedMinutes = null
         sleepTimerEndTimeEpochMs = null
         (mediaController as? ExoPlayer)?.pauseAtEndOfMediaItems = false
         enginePolicy?.setPauseAtEndOfMediaItems(false)
@@ -215,16 +267,24 @@ object EchoPlaybackProcessRuntime {
 
     private fun ensureSleepTimer() {
         sleepJob?.cancel()
-        val endTime = sleepTimerEndTimeEpochMs ?: return
+        if (sleepTimerMode == EchoSleepTimerMode.Off) return
         sleepJob = scope.launch {
-            while (true) {
-                val remainingMs = (endTime - System.currentTimeMillis()).coerceAtLeast(0L)
-                if (remainingMs <= 0L) {
-                    sleepTimerEndTimeEpochMs = null
+            while (sleepTimerMode != EchoSleepTimerMode.Off) {
+                val player = enginePolicyOrNull()?.boundPlayer() ?: mediaController
+                val durationMs = player?.duration?.takeIf { it > 0L } ?: 0L
+                val remainingMs = sleepTimerRemainingMs(
+                    trackRemainingMs = (durationMs - (player?.currentPosition ?: 0L)).coerceAtLeast(0L),
+                    trackDurationKnown = durationMs > 0L,
+                )
+                enginePolicyOrNull()?.applyReplayGain()
+                if (EchoSleepTimerPolicy.shouldPause(sleepTimerMode, remainingMs)) {
+                    player?.pause()
                     mediaController?.pause()
+                    cancelSleepTimer()
+                    enginePolicyOrNull()?.applyReplayGain()
                     return@launch
                 }
-                delay(1_000)
+                delay(EchoSleepTimerPolicy.tickMs(remainingMs))
             }
         }
     }

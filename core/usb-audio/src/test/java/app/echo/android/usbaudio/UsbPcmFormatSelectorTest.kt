@@ -65,4 +65,29 @@ class UsbPcmFormatSelectorTest {
 
         assertEquals(format, selected)
     }
+
+    @Test
+    fun closestFormatFallsBackToNearestBitDepthWhenExactIsMissing() {
+        val twentyFour = UsbAudioStreamingFormat(
+            interfaceNumber = 1,
+            alternateSetting = 1,
+            audioClassVersion = UsbAudioClassVersion.Uac2,
+            bitResolution = 24,
+            sampleRates = listOf(48_000),
+            endpointDirection = UsbEndpointDirection.Out,
+            endpointTransferType = UsbEndpointTransferType.Isochronous,
+        )
+
+        val exact = UsbPcmFormatSelector.chooseFormat(
+            UsbAudioDescriptorInfo(streamingFormats = listOf(twentyFour)),
+            UsbPcmFormatSpec(sampleRateHz = 48_000, channelCount = 2, bitDepth = 16),
+        )
+        val closest = UsbPcmFormatSelector.chooseClosestFormat(
+            UsbAudioDescriptorInfo(streamingFormats = listOf(twentyFour)),
+            UsbPcmFormatSpec(sampleRateHz = 48_000, channelCount = 2, bitDepth = 16),
+        )
+
+        assertNull(exact)
+        assertEquals(24, closest?.bitResolution)
+    }
 }

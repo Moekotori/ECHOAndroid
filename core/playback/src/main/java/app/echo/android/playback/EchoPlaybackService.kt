@@ -3,16 +3,16 @@ package app.echo.android.playback
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Process
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSourceBitmapLoader
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.DefaultMediaNotificationProvider
+import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaSessionService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -22,10 +22,51 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 @UnstableApi
-class EchoPlaybackService : MediaSessionService() {
-    private var mediaSession: MediaSession? = null
+class EchoPlaybackService : MediaLibraryService() {
+    private var mediaSession: MediaLibrarySession? = null
     private var player: ExoPlayer? = null
+    private var sessionCallback: EchoPlaybackLibrarySessionCallback? = null
+    private var sessionRestorer: EchoPlaybackSessionRestorer? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    private val playerListener = object : Player.Listener {
+        override fun onEvents(player: Player, events: Player.Events) {
+            if (!events.containsAny(
+                    Player.EVENT_IS_PLAYING_CHANGED,
+                    Player.EVENT_MEDIA_ITEM_TRANSITION,
+                    Player.EVENT_PLAYBACK_STATE_CHANGED,
+                    Player.EVENT_MEDIA_METADATA_CHANGED,
+                    Player.EVENT_REPEAT_MODE_CHANGED,
+                    Player.EVENT_PLAY_WHEN_READY_CHANGED,
+                    Player.EVENT_TIMELINE_CHANGED,
+                )
+            ) {
+                return
+            }
+            EchoPlaybackProcessRuntime.publishSurface(player.toPlaybackSurfaceSnapshot())
+            if (events.containsAny(
+                    Player.EVENT_MEDIA_ITEM_TRANSITION,
+                    Player.EVENT_MEDIA_METADATA_CHANGED,
+                    Player.EVENT_REPEAT_MODE_CHANGED,
+                    Player.EVENT_PLAYBACK_STATE_CHANGED,
+                )
+            ) {
+                sessionCallback?.onPlayerSurfaceChanged(player)
+            }
+            if (events.containsAny(
+                    Player.EVENT_MEDIA_ITEM_TRANSITION,
+                    Player.EVENT_PLAY_WHEN_READY_CHANGED,
+                    Player.EVENT_IS_PLAYING_CHANGED,
+                    Player.EVENT_PLAYBACK_STATE_CHANGED,
+                    Player.EVENT_TIMELINE_CHANGED,
+                    Player.EVENT_REPEAT_MODE_CHANGED,
+                    Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
+                )
+            ) {
+                sessionRestorer?.persistFromPlayer()
+            }
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -53,6 +94,7 @@ class EchoPlaybackService : MediaSessionService() {
             .also {
                 EchoPlaybackProcessRuntime.enginePolicy(this).attachTo(it)
                 it.setSkipSilenceEnabled(EchoPlaybackRuntimeOptionsStore.options.value.skipSilenceEnabled)
+                it.addListener(playerListener)
             }
 
         player = exoPlayer
@@ -64,7 +106,24 @@ class EchoPlaybackService : MediaSessionService() {
                     player?.setSkipSilenceEnabled(enabled)
                 }
         }
-        mediaSession = MediaSession.Builder(this, exoPlayer)
+        val restorer = EchoPlaybackSessionRestorer(
+            scope = serviceScope,
+            store = EchoPlaybackProcessRuntime::sessionStore,
+            player = { player },
+            enginePolicy = { EchoPlaybackProcessRuntime.enginePolicyOrNull() },
+        )
+        sessionRestorer = restorer
+        val callback = EchoPlaybackLibrarySessionCallback(
+            context = this,
+            scope = serviceScope,
+            catalog = EchoPlaybackProcessRuntime::catalog,
+            player = { player },
+            session = { mediaSession },
+            restorer = restorer,
+        )
+        sessionCallback = callback
+        val buttons = callback.currentButtons(exoPlayer)
+        mediaSession = MediaLibrarySession.Builder(this, exoPlayer, callback)
             .setId("echo-mobile-main-session")
             .setBitmapLoader(
                 EchoNotificationBitmapLoader(
@@ -74,31 +133,45 @@ class EchoPlaybackService : MediaSessionService() {
                         .build(),
                 ),
             )
+            .setCustomLayout(buttons)
+            .setMediaButtonPreferences(buttons)
             .also { builder ->
                 createLaunchPendingIntent()?.let(builder::setSessionActivity)
             }
             .build()
+        EchoPlaybackProcessRuntime.publishSurface(exoPlayer.toPlaybackSurfaceSnapshot())
         setMediaNotificationProvider(
-            DefaultMediaNotificationProvider.Builder(this)
-                .build(),
+            DefaultMediaNotificationProvider.Builder(this).build(),
         )
+        serviceScope.launch {
+            restorer.restore(userRequestedPlay = false)
+            player?.let { live ->
+                EchoPlaybackProcessRuntime.publishSurface(live.toPlaybackSurfaceSnapshot())
+                callback.onPlayerSurfaceChanged(live)
+            }
+        }
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? =
         mediaSession.takeIf {
             EchoMediaSessionControllerGate.isAllowed(
                 context = this,
                 controllerInfo = controllerInfo,
+                session = it,
             )
         }
 
     override fun onDestroy() {
+        sessionRestorer?.persistFromPlayer(force = true)
+        player?.removeListener(playerListener)
         EchoPlaybackProcessRuntime.enginePolicyOrNull()?.detach()
         mediaSession?.run {
             player.release()
             release()
         }
         mediaSession = null
+        sessionCallback = null
+        sessionRestorer = null
         player = null
         serviceScope.cancel()
         super.onDestroy()
@@ -126,12 +199,3 @@ private fun Context.createLaunchPendingIntent(): PendingIntent? {
 private const val EchoPlaybackLaunchRequestCode = 2101
 private const val PREVIOUS_RESTART_THRESHOLD_MS = 3_000L
 private const val SEEK_FORWARD_INCREMENT_MS = 10_000L
-
-internal object EchoMediaSessionControllerGate {
-    @UnstableApi
-    fun isAllowed(context: Context, controllerInfo: MediaSession.ControllerInfo): Boolean {
-        if (controllerInfo.isTrusted) return true
-        if (controllerInfo.uid == Process.myUid() || controllerInfo.uid == Process.SYSTEM_UID) return true
-        return controllerInfo.packageName == context.applicationContext.packageName
-    }
-}

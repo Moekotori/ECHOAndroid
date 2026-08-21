@@ -30,6 +30,16 @@ internal object LastFmScrobbleRules {
 
     fun keepSubmittedFlag(attemptSucceeded: Boolean): Boolean = attemptSucceeded
 
+    fun shouldAttemptSubmit(
+        alreadySubmitted: Boolean,
+        lastAttemptEpochMs: Long,
+        nowEpochMs: Long,
+    ): Boolean {
+        if (alreadySubmitted) return false
+        if (lastAttemptEpochMs <= 0L) return true
+        return nowEpochMs - lastAttemptEpochMs >= SUBMIT_RETRY_BACKOFF_MS
+    }
+
     fun shouldClearActiveScrobble(credentialsReady: Boolean): Boolean = !credentialsReady
 
     fun shouldClearActiveScrobbleForMissingTrack(playbackState: EchoPlaybackState): Boolean =
@@ -37,4 +47,24 @@ internal object LastFmScrobbleRules {
             playbackState == EchoPlaybackState.Stopped ||
             playbackState == EchoPlaybackState.Ended ||
             playbackState == EchoPlaybackState.Error
+
+    fun shouldFlushScrobbleBeforeReplacing(
+        alreadyScrobbled: Boolean,
+        durationMs: Long,
+        listenedMs: Long,
+    ): Boolean = !alreadyScrobbled && shouldScrobble(durationMs, listenedMs)
+
+    fun shouldStartNewListenAfterRepeat(
+        alreadyScrobbled: Boolean,
+        previousPositionMs: Long,
+        currentPositionMs: Long,
+    ): Boolean = alreadyScrobbled &&
+        previousPositionMs >= REPEAT_PREVIOUS_POSITION_MS &&
+        currentPositionMs <= REPEAT_RESTART_POSITION_MS &&
+        previousPositionMs - currentPositionMs >= REPEAT_POSITION_DROP_MS
 }
+
+private const val REPEAT_PREVIOUS_POSITION_MS = 8_000L
+private const val REPEAT_RESTART_POSITION_MS = 3_000L
+private const val REPEAT_POSITION_DROP_MS = 5_000L
+private const val SUBMIT_RETRY_BACKOFF_MS = 30_000L

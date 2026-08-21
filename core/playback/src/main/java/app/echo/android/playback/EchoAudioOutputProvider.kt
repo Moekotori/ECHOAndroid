@@ -54,13 +54,9 @@ internal class EchoAudioOutputProvider(
         if (!snapshot.connected || !snapshot.permissionGranted) return null
         val sampleRate = formatConfig.format.sampleRate.takeIf { it > 0 } ?: return null
         val channelCount = formatConfig.format.channelCount.takeIf { it > 0 } ?: 2
+        if (channelCount > 2) return null
         val sourceEncoding = sourceEncoding(formatConfig.format.pcmEncoding) ?: return null
-        val requestedBitDepth = when (sourceEncoding) {
-            UsbPcmSourceEncoding.Pcm16 -> 16
-            UsbPcmSourceEncoding.Pcm24In32 -> 24
-            UsbPcmSourceEncoding.Pcm32 -> 32
-            UsbPcmSourceEncoding.PcmFloat -> 24
-        }
+        val requestedBitDepth = bitDepthOf(sourceEncoding)
         val spec = UsbPcmFormatSpec(
             sampleRateHz = sampleRate,
             channelCount = channelCount,
@@ -68,12 +64,7 @@ internal class EchoAudioOutputProvider(
         )
         val usbFormat = UsbPcmFormatSelector.chooseClosestFormat(snapshot.descriptor, spec) ?: return null
         val destBytes = UsbPcmPacker.bytesPerSample(usbFormat.bitResolution ?: requestedBitDepth, usbFormat.subslotSize)
-        val encoding = when (sourceEncoding) {
-            UsbPcmSourceEncoding.Pcm16 -> C.ENCODING_PCM_16BIT
-            UsbPcmSourceEncoding.Pcm24In32 -> C.ENCODING_PCM_24BIT
-            UsbPcmSourceEncoding.Pcm32 -> C.ENCODING_PCM_32BIT
-            UsbPcmSourceEncoding.PcmFloat -> C.ENCODING_PCM_FLOAT
-        }
+        val encoding = outputEncoding(sourceEncoding)
         val channelMask = if (channelCount <= 1) AudioFormat.CHANNEL_OUT_MONO else AudioFormat.CHANNEL_OUT_STEREO
         val outputConfig = AudioOutputProvider.OutputConfig.Builder()
             .setEncoding(encoding)
@@ -83,7 +74,7 @@ internal class EchoAudioOutputProvider(
             .setIsOffload(false)
             .setBufferSize((sampleRate * channelCount * destBytes / 10).coerceAtLeast(4096))
             .setAudioAttributes(formatConfig.audioAttributes)
-            .setUsePlaybackParameters(false)
+            .setUsePlaybackParameters(true)
             .setUseOffloadGapless(false)
             .build()
         return ExclusivePlan(spec = spec.copy(bitDepth = usbFormat.bitResolution ?: requestedBitDepth), outputConfig = outputConfig)
@@ -92,12 +83,7 @@ internal class EchoAudioOutputProvider(
     private fun exclusiveOutputOrNull(outputConfig: AudioOutputProvider.OutputConfig): AudioOutput? {
         val sourceEncoding = sourceEncoding(outputConfig.encoding) ?: return null
         val channelCount = Integer.bitCount(outputConfig.channelMask).coerceAtLeast(1)
-        val bitDepth = when (sourceEncoding) {
-            UsbPcmSourceEncoding.Pcm16 -> 16
-            UsbPcmSourceEncoding.Pcm24In32 -> 24
-            UsbPcmSourceEncoding.Pcm32 -> 32
-            UsbPcmSourceEncoding.PcmFloat -> 24
-        }
+        val bitDepth = bitDepthOf(sourceEncoding)
         val spec = UsbPcmFormatSpec(
             sampleRateHz = outputConfig.sampleRate,
             channelCount = channelCount,
@@ -123,12 +109,32 @@ internal class EchoAudioOutputProvider(
             -> UsbPcmSourceEncoding.Pcm16
             C.ENCODING_PCM_24BIT,
             C.ENCODING_PCM_24BIT_BIG_ENDIAN,
-            -> UsbPcmSourceEncoding.Pcm24In32
+            -> UsbPcmSourceEncoding.Pcm24Packed
             C.ENCODING_PCM_32BIT,
             C.ENCODING_PCM_32BIT_BIG_ENDIAN,
             -> UsbPcmSourceEncoding.Pcm32
             C.ENCODING_PCM_FLOAT -> UsbPcmSourceEncoding.PcmFloat
             else -> null
+        }
+
+    private fun outputEncoding(sourceEncoding: UsbPcmSourceEncoding): Int =
+        when (sourceEncoding) {
+            UsbPcmSourceEncoding.Pcm16 -> C.ENCODING_PCM_16BIT
+            UsbPcmSourceEncoding.Pcm24Packed -> C.ENCODING_PCM_24BIT
+            UsbPcmSourceEncoding.Pcm24In32,
+            UsbPcmSourceEncoding.Pcm32,
+            -> C.ENCODING_PCM_32BIT
+            UsbPcmSourceEncoding.PcmFloat -> C.ENCODING_PCM_FLOAT
+        }
+
+    private fun bitDepthOf(sourceEncoding: UsbPcmSourceEncoding): Int =
+        when (sourceEncoding) {
+            UsbPcmSourceEncoding.Pcm16 -> 16
+            UsbPcmSourceEncoding.Pcm24Packed,
+            UsbPcmSourceEncoding.Pcm24In32,
+            UsbPcmSourceEncoding.PcmFloat,
+            -> 24
+            UsbPcmSourceEncoding.Pcm32 -> 32
         }
 
     private data class ExclusivePlan(

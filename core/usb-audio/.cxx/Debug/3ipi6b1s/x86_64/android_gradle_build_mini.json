@@ -1,0 +1,27 @@
+{
+  "buildFiles": [
+    "F:\\ECHOAndroid\\core\\usb-audio\\src\\main\\cpp\\CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "F:\\AndroidDev\\sdk\\cmake\\3.22.1\\bin\\ninja.exe",
+      "-C",
+      "F:\\ECHOAndroid\\core\\usb-audio\\.cxx\\Debug\\3ipi6b1s\\x86_64",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "F:\\AndroidDev\\sdk\\cmake\\3.22.1\\bin\\ninja.exe",
+    "-C",
+    "F:\\ECHOAndroid\\core\\usb-audio\\.cxx\\Debug\\3ipi6b1s\\x86_64",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "echo_usb_isoc::@6890427a1f51a3e7e1df": {
+      "artifactName": "echo_usb_isoc",
+      "abi": "x86_64",
+      "output": "F:\\ECHOAndroid\\core\\usb-audio\\build\\intermediates\\cxx\\Debug\\3ipi6b1s\\obj\\x86_64\\libecho_usb_isoc.so",
+      "runtimeFiles": []
+    }
+  }
+}

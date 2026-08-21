@@ -1,3 +1,5 @@
 # ninja log v5
 0	259	8089988921985176	CMakeFiles/echo_usb_isoc.dir/echo_usb_isoc.cpp.o	84bd30eb0439f2e7
 261	365	8089988922895291	F:/ECHOAndroid/core/usb-audio/build/intermediates/cxx/Debug/5p6f3b51/obj/arm64-v8a/libecho_usb_isoc.so	dc9f5319d3dafcdb
+36	858	8090011283449370	CMakeFiles/echo_usb_isoc.dir/echo_usb_isoc.cpp.o	84bd30eb0439f2e7
+858	1121	8090011285993436	F:/ECHOAndroid/core/usb-audio/build/intermediates/cxx/Debug/5p6f3b51/obj/arm64-v8a/libecho_usb_isoc.so	dc9f5319d3dafcdb

@@ -45,6 +45,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.echo.android.connect.EchoLinkDiscoveryPolicy
 import app.echo.android.design.EchoDarkGlassBorder
 import app.echo.android.design.EchoGlassBorder
 import app.echo.android.design.EchoGlassCyan
@@ -108,6 +109,7 @@ fun ConnectScreen(
     onCancelRemoteSync: () -> Unit,
     discoveredLanDevices: List<EchoLinkLanDevice> = emptyList(),
     onSelectLanDevice: (EchoLinkLanDevice) -> Unit = {},
+    onRefreshLanDevices: () -> Unit = {},
 ) {
     val connected = remoteState == EchoRemoteConnectionState.Connected
     val scheme = MaterialTheme.colorScheme
@@ -342,9 +344,15 @@ fun ConnectScreen(
                         scanMessageIsError = scanMessageIsError,
                         discoveredLanDevices = discoveredLanDevices,
                         onSelectLanDevice = { device ->
-                            pcAddressInput = "${device.host}:${device.port}"
+                            pcAddressInput = EchoLinkDiscoveryPolicy.addressLabel(device)
+                            pcTokenInput = EchoLinkDiscoveryPolicy.tokenAfterSelecting(
+                                device = device,
+                                savedAddress = savedPcAddress,
+                                savedToken = savedPcToken,
+                            )
                             onSelectLanDevice(device)
                         },
+                        onRefreshLanDevices = onRefreshLanDevices,
                         onAddressChange = { pcAddressInput = it },
                         onTokenChange = { pcTokenInput = it },
                         onAutoReconnectChange = onAutoReconnectChange,
@@ -409,6 +417,7 @@ private fun PcPairingInputs(
     scanMessageIsError: Boolean,
     discoveredLanDevices: List<EchoLinkLanDevice>,
     onSelectLanDevice: (EchoLinkLanDevice) -> Unit,
+    onRefreshLanDevices: () -> Unit,
     onAddressChange: (String) -> Unit,
     onTokenChange: (String) -> Unit,
     onAutoReconnectChange: (Boolean) -> Unit,
@@ -428,18 +437,31 @@ private fun PcPairingInputs(
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text(
-            echoString(
-                en = "Nearby PCs, then address and pairing token",
-                zh = "附近 PC，然后填地址和配对 Token",
-                ja = "近くの PC、続けてアドレスとトークン",
-            ),
-            color = scheme.onSurface,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                echoString(
+                    en = "Nearby PCs, then address and pairing token",
+                    zh = "附近 PC，然后填地址和配对 Token",
+                    ja = "近くの PC、続けてアドレスとトークン",
+                ),
+                color = scheme.onSurface,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            RemoteCompactAction(
+                text = echoString(en = "Refresh", zh = "刷新", ja = "更新"),
+                enabled = true,
+                modifier = Modifier.width(72.dp),
+                onClick = onRefreshLanDevices,
+            )
+        }
         if (discoveredLanDevices.isEmpty()) {
             Text(
                 echoString(
@@ -453,7 +475,7 @@ private fun PcPairingInputs(
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 discoveredLanDevices.forEach { device ->
-                    val selected = address == "${device.host}:${device.port}"
+                    val selected = EchoLinkDiscoveryPolicy.addressMatchesDevice(address, device)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -483,7 +505,7 @@ private fun PcPairingInputs(
                                 overflow = TextOverflow.Ellipsis,
                             )
                             Text(
-                                "${device.host}:${device.port}",
+                                EchoLinkDiscoveryPolicy.addressLabel(device),
                                 color = scheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodySmall,
                                 maxLines = 1,

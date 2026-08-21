@@ -26,6 +26,47 @@ class UsbAudioDescriptorParserTest {
     }
 
     @Test
+    fun attachesFeedbackFromUac1SynchAddressWithoutClobberingOutEndpoint() {
+        val raw = bytes(
+            9, 4, 1, 1, 2, 1, 2, 0, 0,
+            11, 36, 2, 1, 2, 2, 16, 1, 0x44, 0xac, 0x00,
+            9, 5, 0x01, 0x05, 0xc0, 0x00, 1, 0, 0x81,
+            9, 5, 0x81, 0x01, 0x04, 0x00, 1, 0, 0,
+        )
+
+        val info = parser.parse(raw)
+        val format = info.streamingFormats.single()
+
+        assertTrue(info.hasIsochronousOut)
+        assertTrue(info.hasFeedbackEndpoint)
+        assertEquals(0x01, format.endpointAddress)
+        assertEquals(UsbEndpointDirection.Out, format.endpointDirection)
+        assertEquals(0x81, format.feedbackEndpointAddress)
+        assertEquals(0x81, format.synchAddress)
+    }
+
+    @Test
+    fun bindsUac2ClockFromAsGeneralTerminalLink() {
+        val raw = bytes(
+            9, 4, 0, 0, 0, 1, 1, 0x20, 0,
+            8, 36, 0x0A, 5, 1, 0, 0, 0,
+            12, 36, 2, 1, 0x01, 0x01, 0, 5, 0, 0, 0, 0,
+            9, 4, 2, 1, 2, 1, 2, 0x20, 0,
+            16, 36, 1, 1, 0, 1, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0,
+            6, 36, 2, 1, 4, 32,
+            9, 5, 0x02, 0x05, 0x00, 0x04, 1, 0, 0,
+            9, 5, 0x83, 0x15, 0x03, 0x00, 1, 0, 0,
+        )
+
+        val format = parser.parse(raw).streamingFormats.single()
+
+        assertEquals(1, format.terminalLink)
+        assertEquals(listOf(5), format.clockSourceIds)
+        assertEquals(32, format.bitResolution)
+        assertEquals(2, format.channelCount)
+    }
+
+    @Test
     fun parsesUac2FormatAndFeedbackEndpoint() {
         val raw = bytes(
             9, 4, 2, 1, 2, 1, 2, 0x20, 0,
@@ -40,6 +81,7 @@ class UsbAudioDescriptorParserTest {
         assertTrue(info.hasIsochronousOut)
         assertTrue(info.hasFeedbackEndpoint)
         assertEquals(32, info.streamingFormats.first().bitResolution)
+        assertEquals(0x83, info.streamingFormats.first().feedbackEndpointAddress)
     }
 
     private fun bytes(vararg values: Int): ByteArray =

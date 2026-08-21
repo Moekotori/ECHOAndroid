@@ -25,6 +25,7 @@ fun MediaItem.toEchoTrackRef(durationMs: Long = 0L): EchoTrackRef {
     val playUri = localConfiguration?.uri?.toString().orEmpty()
     val persistUri = metadata.extras?.getString(EchoPlaybackPersistUriExtra)
         ?: EchoLinkPlaybackUri.persistableUri(mediaId, playUri)
+    val extrasSampleRate = metadata.extras?.getInt(EchoPlaybackSampleRateExtra, 0)?.takeIf { it > 0 }
     return EchoTrackRef(
         id = mediaId,
         uri = persistUri,
@@ -33,6 +34,7 @@ fun MediaItem.toEchoTrackRef(durationMs: Long = 0L): EchoTrackRef {
         album = metadata.albumTitle?.toString(),
         artworkUri = metadata.artworkUri?.toString(),
         durationMs = durationMs.takeIf { it > 0L } ?: metadataDurationMs,
+        sampleRateHz = extrasSampleRate,
     )
 }
 
@@ -54,6 +56,7 @@ fun EchoTrackRef.toMediaItem(): MediaItem =
                         playUri = uri,
                         persistUri = EchoLinkPlaybackUri.persistableUri(id, uri),
                         artworkUri = artworkUri,
+                        sampleRateHz = sampleRateHz,
                     ),
                 )
                 .build(),
@@ -69,6 +72,7 @@ fun EchoTrack.toEchoTrackRef(): EchoTrackRef =
         album = album,
         artworkUri = artworkUri,
         durationMs = durationMs,
+        sampleRateHz = sampleRateHz,
     )
 
 fun EchoTrack.toMediaItem(): MediaItem {
@@ -90,6 +94,7 @@ fun EchoTrack.toMediaItem(): MediaItem {
                         playUri = uri,
                         persistUri = persistUri,
                         artworkUri = artworkUri,
+                        sampleRateHz = sampleRateHz,
                     ),
                 )
                 .build(),
@@ -311,10 +316,17 @@ fun Int.toEchoRepeatMode(): EchoRepeatMode = when (this) {
     else -> EchoRepeatMode.Off
 }
 
-private fun playbackItemExtras(
+fun EchoRepeatMode.toPlayerRepeatMode(): Int = when (this) {
+    EchoRepeatMode.All -> Player.REPEAT_MODE_ALL
+    EchoRepeatMode.One -> Player.REPEAT_MODE_ONE
+    EchoRepeatMode.Off -> Player.REPEAT_MODE_OFF
+}
+
+internal fun playbackItemExtras(
     playUri: String,
     persistUri: String,
     artworkUri: String?,
+    sampleRateHz: Int? = null,
 ): Bundle? {
     val extras = Bundle()
     if (persistUri.isNotBlank() && persistUri != playUri) {
@@ -323,7 +335,9 @@ private fun playbackItemExtras(
     if (artworkUri.isNullOrBlank() && playUri.isNotBlank()) {
         extras.putString(EchoEmbeddedArtworkSourceUriExtra, playUri)
     }
+    sampleRateHz?.takeIf { it > 0 }?.let { extras.putInt(EchoPlaybackSampleRateExtra, it) }
     return extras.takeIf { !it.isEmpty }
 }
 
 internal const val EchoPlaybackPersistUriExtra = "app.echo.android.playback.PERSIST_URI"
+internal const val EchoPlaybackSampleRateExtra = "app.echo.android.playback.SAMPLE_RATE_HZ"

@@ -1,6 +1,7 @@
 package app.echo.android
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -15,6 +16,7 @@ import app.echo.android.data.applyEchoAppLocale
 import app.echo.android.data.readEchoStartupThemeSnapshot
 import app.echo.android.data.readEchoStartupThemeSnapshotForLaunch
 import app.echo.android.data.wrapEchoAppLocale
+import app.echo.android.playback.EchoPlaybackIntents
 
 class MainActivity : ComponentActivity() {
     private var highRefreshRateRequested = false
@@ -44,6 +46,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             EchoMobileApp()
         }
+        consumeLaunchIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        consumeLaunchIntent(intent)
     }
 
     override fun onResume() {
@@ -120,6 +129,36 @@ class MainActivity : ComponentActivity() {
             modeId = preferredMode.modeId,
             refreshRate = preferredMode.refreshRate,
         )
+    }
+
+    private fun consumeLaunchIntent(intent: Intent?) {
+        if (intent == null) return
+        val openLyrics = intent.action == EchoPlaybackIntents.ACTION_OPEN_LYRICS ||
+            intent.getBooleanExtra(EchoPlaybackIntents.EXTRA_OPEN_LYRICS, false)
+        if (openLyrics) {
+            intent.action = null
+            intent.removeExtra(EchoPlaybackIntents.EXTRA_OPEN_LYRICS)
+            EchoLaunchActions.requestOpenLyrics()
+        }
+        val incoming = EchoIncomingAudio.urisFromIntent(intent)
+        if (incoming.isNotEmpty()) {
+            EchoLaunchActions.requestPlayIncoming(incoming.map { it.toString() })
+            intent.action = Intent.ACTION_MAIN
+            intent.data = null
+            intent.clipData = null
+            intent.removeExtra(Intent.EXTRA_STREAM)
+            return
+        }
+        when {
+            EchoPlaybackIntents.isPlayLast(intent.action) -> {
+                EchoLaunchActions.requestPlayLast()
+                intent.action = Intent.ACTION_MAIN
+            }
+            EchoPlaybackIntents.isOpenLibrary(intent.action) -> {
+                EchoLaunchActions.requestOpenLibrary()
+                intent.action = Intent.ACTION_MAIN
+            }
+        }
     }
 
     private data class DisplayModePreference(

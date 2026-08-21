@@ -342,6 +342,20 @@ private fun stripHttpUserInfo(uri: String): String {
     return uri.substring(0, schemeEnd + 3) + afterScheme.substring(at + 1)
 }
 
+internal fun subsonicUnsupportedFormatFallbackUrl(url: String): String? {
+    if (!isSubsonicRestUrl(url)) return null
+    val path = runCatching { URI(url).path }.getOrNull()?.lowercase() ?: return null
+    if (!path.contains("/stream")) return null
+    val params = parseQueryParameters(url)
+    val format = params.firstOrNull { it.first.equals("format", ignoreCase = true) }?.second
+    if (!format.isNullOrBlank() && !format.equals("raw", ignoreCase = true)) return null
+    val kept = params.filterNot { it.first.lowercase() in setOf("format", "maxbitrate") }
+    return replaceQuery(
+        url,
+        kept + listOf("format" to "mp3", "maxBitRate" to "320"),
+    )
+}
+
 internal fun applySubsonicTokenAuth(
     url: String,
     credential: EchoSubsonicPlaybackCredential,

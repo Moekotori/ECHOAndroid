@@ -4,6 +4,7 @@ import app.echo.android.model.connect.EchoMobileDiscordPresenceSnapshot
 import app.echo.android.model.connect.EchoRemoteCommand
 import app.echo.android.model.connect.EchoRemoteConnectionState
 import app.echo.android.model.connect.EchoRemoteEndpoint
+import app.echo.android.model.connect.EchoLinkLibraryQueryPolicy
 import app.echo.android.model.connect.EchoRemoteLibraryState
 import app.echo.android.model.connect.EchoRemoteLyrics
 import app.echo.android.model.connect.EchoRemoteMessage
@@ -17,7 +18,12 @@ import app.echo.android.model.playback.EchoLinkPlaybackUri
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -103,10 +109,13 @@ class EchoRemoteClient internal constructor(
                 target = paired.getOrNull()
                 if (target == null) {
                     pairingAttempt += 1
-                    markReconnecting(nextEndpoint, paired.exceptionOrNull())
-                    if (pairingAttempt >= 2) {
+                    val pairingError = paired.exceptionOrNull()
+                        ?: EchoLinkHttpException("PC ECHO pairing failed")
+                    if (EchoLinkRequestPolicy.shouldFailPairingAfterAttempts(pairingAttempt)) {
+                        markConnectionError(nextEndpoint, pairingError)
                         return@launch
                     }
+                    markReconnecting(nextEndpoint, pairingError)
                     delay(connectRetryDelayMs)
                 }
             }
@@ -342,10 +351,16 @@ class EchoRemoteClient internal constructor(
             }
             return
         }
-        if (playlist.tracks.isNotEmpty() || _library.value.playlistTracks.containsKey(playlist.id)) {
+        val knownTracks = _library.value.playlistTracks[playlist.id] ?: playlist.tracks
+        if (
+            !EchoLinkLibraryQueryPolicy.shouldFetchPlaylistTracks(
+                knownTrackCount = knownTracks.size,
+                declaredTrackCount = playlist.trackCount,
+            )
+        ) {
             _library.update { current ->
                 current.copy(
-                    playlistTracks = current.playlistTracks + (playlist.id to (current.playlistTracks[playlist.id] ?: playlist.tracks)),
+                    playlistTracks = current.playlistTracks + (playlist.id to knownTracks),
                     loadingPlaylistId = null,
                     error = null,
                 )
@@ -419,6 +434,22 @@ class EchoRemoteClient internal constructor(
         onTrackReady: (EchoTrack) -> Unit,
         onLyricsReady: (String, EchoRemoteLyrics) -> Unit = { _, _ -> },
     ) {
+        playTracksOnPhone(
+            tracks = listOf(track),
+            startIndex = 0,
+            onQueueReady = { queue, _ ->
+                queue.firstOrNull()?.let(onTrackReady)
+            },
+            onLyricsReady = onLyricsReady,
+        )
+    }
+
+    fun playTracksOnPhone(
+        tracks: List<EchoRemoteTrack>,
+        startIndex: Int,
+        onQueueReady: (List<EchoTrack>, Int) -> Unit,
+        onLyricsReady: (String, EchoRemoteLyrics) -> Unit = { _, _ -> },
+    ) {
         val target = endpoint ?: run {
             _library.update {
                 it.copy(
@@ -431,19 +462,8 @@ class EchoRemoteClient internal constructor(
             }
             return
         }
-        val trackId = track.id ?: run {
-            _library.update {
-                it.copy(
-                    error = echoText(
-                        en = "This PC track is missing a trackId and cannot play on the phone",
-                        zh = "PC 曲目缺少 trackId，不能在手机播放",
-                        ja = "この PC トラックには trackId がないためスマホでは再生できません",
-                    ),
-                )
-            }
-            return
-        }
-        if (!track.canPlayOnPhone) {
+        val playable = EchoLinkLibraryQueryPolicy.playableLinkedPhoneTracks(tracks)
+        if (playable.isEmpty()) {
             _library.update {
                 it.copy(
                     error = echoText(
@@ -456,21 +476,39 @@ class EchoRemoteClient internal constructor(
             return
         }
         _library.update { it.copy(error = null) }
+        val requestedId = tracks.getOrNull(startIndex.coerceAtLeast(0))?.id
         val generation = ++playOnPhoneGeneration
         scope.launch {
-            runSuspendCatching { transport.resolveStream(target, trackId) }
-                .onSuccess { stream ->
-                    if (!EchoLinkRequestPolicy.shouldApplyResolvedPlay(generation, playOnPhoneGeneration)) {
-                        return@onSuccess
+            val resolved = runSuspendCatching { resolvePhoneQueue(target, playable) }
+            if (!EchoLinkRequestPolicy.shouldApplyResolvedPlay(generation, playOnPhoneGeneration)) {
+                return@launch
+            }
+            if (!EchoLinkRequestPolicy.isSameEndpoint(endpoint, target)) {
+                return@launch
+            }
+            resolved.onSuccess { queue ->
+                if (queue.isEmpty()) {
+                    _library.update {
+                        it.copy(
+                            error = echoText(
+                                en = "This track cannot be streamed to the phone right now",
+                                zh = "这首歌暂时不能串流到手机",
+                                ja = "この曲は今スマホへストリーミングできません",
+                            ),
+                        )
                     }
-                    if (!EchoLinkRequestPolicy.isSameEndpoint(endpoint, target)) {
-                        return@onSuccess
-                    }
-                    val resolvedTrack = stream.track ?: track
-                    val phoneTrack = resolvedTrack.toPhonePlaybackTrack(stream.streamUrl)
-                    onTrackReady(phoneTrack)
-                    resolveLyricsForPhoneTrack(target, resolvedTrack, phoneTrack.id, onLyricsReady)
+                    return@onSuccess
                 }
+                val start = requestedId
+                    ?.let { id -> queue.indexOfFirst { EchoLinkPlaybackUri.trackIdFromMediaId(it.id) == id } }
+                    ?.takeIf { it >= 0 }
+                    ?: 0
+                onQueueReady(queue, start)
+                val startTrack = playable.firstOrNull { it.id == requestedId } ?: playable.first()
+                queue.getOrNull(start)?.let { phoneTrack ->
+                    resolveLyricsForPhoneTrack(target, startTrack, phoneTrack.id, onLyricsReady)
+                }
+            }
                 .onFailure { error ->
                     if (
                         EchoLinkRequestPolicy.shouldApplyResolvedPlay(generation, playOnPhoneGeneration) &&
@@ -480,6 +518,23 @@ class EchoRemoteClient internal constructor(
                     }
                 }
         }
+    }
+
+    private suspend fun resolvePhoneQueue(
+        target: EchoRemoteEndpoint,
+        tracks: List<EchoRemoteTrack>,
+    ): List<EchoTrack> = coroutineScope {
+        val gate = Semaphore(PhoneStreamConcurrency)
+        tracks.map { track ->
+            async {
+                val trackId = track.id ?: return@async null
+                gate.withPermit {
+                    runSuspendCatching { transport.resolveStream(target, trackId) }.getOrNull()
+                }?.let { stream ->
+                    (stream.track ?: track).toPhonePlaybackTrack(stream.streamUrl)
+                }
+            }
+        }.awaitAll().filterNotNull()
     }
 
     private fun resolveLyricsForPhoneTrack(
@@ -614,6 +669,7 @@ class EchoRemoteClient internal constructor(
         const val PcLibraryPageSize = 500
         const val PcPlaylistTrackPageSize = 500
         const val MaxLibraryPages = 40
+        const val PhoneStreamConcurrency = 4
     }
 }
 

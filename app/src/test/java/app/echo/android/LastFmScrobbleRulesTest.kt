@@ -49,9 +49,91 @@ class LastFmScrobbleRulesTest {
     }
 
     @Test
+    fun failedSubmitRetriesAfterBackoffNotEveryTick() {
+        assertTrue(
+            LastFmScrobbleRules.shouldAttemptSubmit(
+                alreadySubmitted = false,
+                lastAttemptEpochMs = 0L,
+                nowEpochMs = 1_000L,
+            ),
+        )
+        assertFalse(
+            LastFmScrobbleRules.shouldAttemptSubmit(
+                alreadySubmitted = false,
+                lastAttemptEpochMs = 1_000L,
+                nowEpochMs = 2_000L,
+            ),
+        )
+        assertTrue(
+            LastFmScrobbleRules.shouldAttemptSubmit(
+                alreadySubmitted = false,
+                lastAttemptEpochMs = 1_000L,
+                nowEpochMs = 31_000L,
+            ),
+        )
+        assertFalse(
+            LastFmScrobbleRules.shouldAttemptSubmit(
+                alreadySubmitted = true,
+                lastAttemptEpochMs = 1_000L,
+                nowEpochMs = 31_000L,
+            ),
+        )
+    }
+
+    @Test
     fun missingTrackDoesNotClearActiveScrobbleWhenCredentialsReady() {
         assertFalse(LastFmScrobbleRules.shouldClearActiveScrobble(credentialsReady = true))
         assertTrue(LastFmScrobbleRules.shouldClearActiveScrobble(credentialsReady = false))
+    }
+
+    @Test
+    fun flushOnTrackChangeUsesListeningThreshold() {
+        assertTrue(
+            LastFmScrobbleRules.shouldFlushScrobbleBeforeReplacing(
+                alreadyScrobbled = false,
+                durationMs = 180_000L,
+                listenedMs = 90_000L,
+            ),
+        )
+        assertFalse(
+            LastFmScrobbleRules.shouldFlushScrobbleBeforeReplacing(
+                alreadyScrobbled = true,
+                durationMs = 180_000L,
+                listenedMs = 90_000L,
+            ),
+        )
+        assertFalse(
+            LastFmScrobbleRules.shouldFlushScrobbleBeforeReplacing(
+                alreadyScrobbled = false,
+                durationMs = 180_000L,
+                listenedMs = 10_000L,
+            ),
+        )
+    }
+
+    @Test
+    fun repeatOneRestartsListenAfterPositionWrap() {
+        assertTrue(
+            LastFmScrobbleRules.shouldStartNewListenAfterRepeat(
+                alreadyScrobbled = true,
+                previousPositionMs = 95_000L,
+                currentPositionMs = 400L,
+            ),
+        )
+        assertFalse(
+            LastFmScrobbleRules.shouldStartNewListenAfterRepeat(
+                alreadyScrobbled = false,
+                previousPositionMs = 95_000L,
+                currentPositionMs = 400L,
+            ),
+        )
+        assertFalse(
+            LastFmScrobbleRules.shouldStartNewListenAfterRepeat(
+                alreadyScrobbled = true,
+                previousPositionMs = 1_000L,
+                currentPositionMs = 2_000L,
+            ),
+        )
     }
 
     @Test

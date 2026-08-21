@@ -8,9 +8,11 @@ class UsbAudioDescriptorParser {
         val audioControlInterfaces = mutableSetOf<Int>()
         val audioStreamingInterfaces = mutableSetOf<Int>()
         val clockSourceIds = linkedSetOf<Int>()
+        val terminalClocks = mutableMapOf<Int, Int>()
         var acInterfaceNumber: Int? = null
         var currentInterface: InterfaceContext? = null
         var feedbackEndpointFound = false
+        var usbVersion: Int? = null
 
         var offset = 0
         while (offset + 1 < rawDescriptors.size) {
@@ -19,6 +21,12 @@ class UsbAudioDescriptorParser {
             if (length < 2 || offset + length > rawDescriptors.size) break
 
             when (descriptorType) {
+                DESCRIPTOR_TYPE_DEVICE -> {
+                    if (length >= 4) {
+                        usbVersion = rawDescriptors.le16(offset + 2)
+                    }
+                }
+
                 DESCRIPTOR_TYPE_INTERFACE -> {
                     currentInterface = parseInterface(rawDescriptors, offset, length)
                     currentInterface?.takeIf { it.isAudio }?.let { context ->
@@ -38,16 +46,30 @@ class UsbAudioDescriptorParser {
                     val context = currentInterface
                     if (context?.subclass == AUDIO_SUBCLASS_STREAMING) {
                         val endpoint = parseEndpoint(rawDescriptors, offset, length)
-                        if (endpoint.direction == UsbEndpointDirection.In &&
-                            endpoint.transferType == UsbEndpointTransferType.Isochronous &&
-                            endpoint.usageType == UsbEndpointUsageType.Feedback
+                        val lastIndex = streamingFormats.indexOfLast {
+                            it.interfaceNumber == context.number &&
+                                it.alternateSetting == context.alternateSetting
+                        }
+                        if (
+                            endpoint.direction == UsbEndpointDirection.In &&
+                            endpoint.transferType == UsbEndpointTransferType.Isochronous
                         ) {
-                            feedbackEndpointFound = true
+                            val matchesSynch = lastIndex >= 0 &&
+                                streamingFormats[lastIndex].synchAddress == endpoint.address
+                            val explicitFeedback = endpoint.usageType == UsbEndpointUsageType.Feedback
+                            if ((explicitFeedback || matchesSynch) && lastIndex >= 0) {
+                                feedbackEndpointFound = true
+                                streamingFormats[lastIndex] = streamingFormats[lastIndex].copy(
+                                    feedbackEndpointAddress = endpoint.address,
+                                    feedbackMaxPacketSize = endpoint.maxPacketSize,
+                                )
+                            }
                             offset += length
                             continue
                         }
-                        val lastIndex = streamingFormats.indexOfLast {
-                            it.interfaceNumber == context.number && it.alternateSetting == context.alternateSetting
+                        if (endpoint.direction != UsbEndpointDirection.Out) {
+                            offset += length
+                            continue
                         }
                         if (lastIndex >= 0) {
                             streamingFormats[lastIndex] = streamingFormats[lastIndex].copy(
@@ -57,8 +79,11 @@ class UsbAudioDescriptorParser {
                                 endpointSyncType = endpoint.syncType,
                                 endpointUsageType = endpoint.usageType,
                                 maxPacketSize = endpoint.maxPacketSize,
+                                endpointInterval = endpoint.interval,
+                                synchAddress = endpoint.synchAddress
+                                    ?: streamingFormats[lastIndex].synchAddress,
                             )
-                        } else if (endpoint.direction == UsbEndpointDirection.Out) {
+                        } else {
                             streamingFormats += UsbAudioStreamingFormat(
                                 interfaceNumber = context.number,
                                 alternateSetting = context.alternateSetting,
@@ -69,6 +94,8 @@ class UsbAudioDescriptorParser {
                                 endpointSyncType = endpoint.syncType,
                                 endpointUsageType = endpoint.usageType,
                                 maxPacketSize = endpoint.maxPacketSize,
+                                endpointInterval = endpoint.interval,
+                                synchAddress = endpoint.synchAddress,
                             )
                         }
                     }
@@ -78,7 +105,14 @@ class UsbAudioDescriptorParser {
                     val context = currentInterface
                     when (context?.subclass) {
                         AUDIO_SUBCLASS_CONTROL -> {
-                            parseClockSourceId(rawDescriptors, offset, length)?.let(clockSourceIds::add)
+                            parseAcClockEntities(
+                                rawDescriptors,
+                                offset,
+                                length,
+                                context,
+                                clockSourceIds,
+                                terminalClocks,
+                            )
                         }
                         AUDIO_SUBCLASS_STREAMING -> {
                             parseAsGeneral(rawDescriptors, offset, length, context)?.let { parsed ->
@@ -103,9 +137,14 @@ class UsbAudioDescriptorParser {
             streamingFormats = streamingFormats
                 .filter { it.alternateSetting > 0 || it.endpointDirection == UsbEndpointDirection.Out }
                 .map { format ->
+                    val linkedClock = format.terminalLink?.let(terminalClocks::get)
                     format.copy(
                         acInterfaceNumber = format.acInterfaceNumber ?: acInterfaceNumber,
-                        clockSourceIds = format.clockSourceIds.ifEmpty { clockSourceIds.toList() },
+                        clockSourceIds = when {
+                            format.clockSourceIds.isNotEmpty() -> format.clockSourceIds
+                            linkedClock != null -> listOf(linkedClock)
+                            else -> clockSourceIds.toList()
+                        },
                     )
                 }
                 .distinctBy { "${it.interfaceNumber}:${it.alternateSetting}:${it.endpointAddress}" },
@@ -113,6 +152,7 @@ class UsbAudioDescriptorParser {
             hasFeedbackEndpoint = feedbackEndpointFound,
             acInterfaceNumber = acInterfaceNumber,
             clockSourceIds = clockSourceIds.toList(),
+            usbVersion = usbVersion,
         )
     }
 
@@ -153,7 +193,12 @@ class UsbAudioDescriptorParser {
                 endpointSyncType = parsed.endpointSyncType ?: existing.endpointSyncType,
                 endpointUsageType = parsed.endpointUsageType ?: existing.endpointUsageType,
                 maxPacketSize = parsed.maxPacketSize ?: existing.maxPacketSize,
+                endpointInterval = parsed.endpointInterval ?: existing.endpointInterval,
+                synchAddress = parsed.synchAddress ?: existing.synchAddress,
+                feedbackEndpointAddress = parsed.feedbackEndpointAddress ?: existing.feedbackEndpointAddress,
+                feedbackMaxPacketSize = parsed.feedbackMaxPacketSize ?: existing.feedbackMaxPacketSize,
                 acInterfaceNumber = parsed.acInterfaceNumber ?: existing.acInterfaceNumber,
+                terminalLink = parsed.terminalLink ?: existing.terminalLink,
                 clockSourceIds = parsed.clockSourceIds.ifEmpty { existing.clockSourceIds },
             )
         } else {
@@ -161,11 +206,50 @@ class UsbAudioDescriptorParser {
         }
     }
 
-    private fun parseClockSourceId(raw: ByteArray, offset: Int, length: Int): Int? {
-        if (length < 4) return null
-        if (raw[offset + 2].u8() != AC_CLOCK_SOURCE) return null
-        val clockId = raw[offset + 3].u8()
-        return clockId.takeIf { it > 0 }
+    private fun parseAcClockEntities(
+        raw: ByteArray,
+        offset: Int,
+        length: Int,
+        context: InterfaceContext,
+        clockSourceIds: MutableSet<Int>,
+        terminalClocks: MutableMap<Int, Int>,
+    ) {
+        if (length < 4) return
+        val subtype = raw[offset + 2].u8()
+        val uac2 = context.version == UsbAudioClassVersion.Uac2 ||
+            context.version == UsbAudioClassVersion.Uac3
+        when (subtype) {
+            AC_CLOCK_SOURCE,
+            AC_CLOCK_SELECTOR,
+            -> raw[offset + 3].u8().takeIf { it > 0 }?.let(clockSourceIds::add)
+            AC_INPUT_TERMINAL -> if (uac2 && length > 7) {
+                recordTerminalClock(
+                    terminalId = raw[offset + 3].u8(),
+                    clockId = raw[offset + 7].u8(),
+                    clockSourceIds = clockSourceIds,
+                    terminalClocks = terminalClocks,
+                )
+            }
+            AC_OUTPUT_TERMINAL -> if (uac2 && length > 8) {
+                recordTerminalClock(
+                    terminalId = raw[offset + 3].u8(),
+                    clockId = raw[offset + 8].u8(),
+                    clockSourceIds = clockSourceIds,
+                    terminalClocks = terminalClocks,
+                )
+            }
+        }
+    }
+
+    private fun recordTerminalClock(
+        terminalId: Int,
+        clockId: Int,
+        clockSourceIds: MutableSet<Int>,
+        terminalClocks: MutableMap<Int, Int>,
+    ) {
+        if (terminalId <= 0 || clockId <= 0) return
+        terminalClocks[terminalId] = clockId
+        clockSourceIds += clockId
     }
 
     private fun parseAsGeneral(
@@ -181,11 +265,13 @@ class UsbAudioDescriptorParser {
                 if (length > 10) raw[offset + 10].u8().takeIf { it > 0 } else null
             else -> null
         }
+        val terminalLink = raw[offset + 3].u8().takeIf { it > 0 }
         return UsbAudioStreamingFormat(
             interfaceNumber = context.number,
             alternateSetting = context.alternateSetting,
             audioClassVersion = context.version,
             channelCount = channelCount,
+            terminalLink = terminalLink,
         )
     }
 
@@ -285,6 +371,8 @@ class UsbAudioDescriptorParser {
                 else -> UsbEndpointUsageType.Data
             },
             maxPacketSize = if (length > 5) raw.le16(offset + 4) else null,
+            interval = if (length > 6) raw[offset + 6].u8() else null,
+            synchAddress = if (length > 8) raw[offset + 8].u8().takeIf { it != 0 } else null,
         )
     }
 
@@ -307,6 +395,8 @@ class UsbAudioDescriptorParser {
         val syncType: UsbEndpointSyncType,
         val usageType: UsbEndpointUsageType,
         val maxPacketSize: Int?,
+        val interval: Int?,
+        val synchAddress: Int?,
     )
 
     private fun Int.toAudioClassVersion(): UsbAudioClassVersion =
@@ -329,12 +419,16 @@ class UsbAudioDescriptorParser {
         const val USB_CLASS_AUDIO = 0x01
         const val AUDIO_SUBCLASS_CONTROL = 0x01
         const val AUDIO_SUBCLASS_STREAMING = 0x02
+        const val DESCRIPTOR_TYPE_DEVICE = 0x01
         const val DESCRIPTOR_TYPE_INTERFACE = 0x04
         const val DESCRIPTOR_TYPE_ENDPOINT = 0x05
         const val DESCRIPTOR_TYPE_CLASS_SPECIFIC_INTERFACE = 0x24
         const val AS_GENERAL = 0x01
         const val AS_FORMAT_TYPE = 0x02
+        const val AC_INPUT_TERMINAL = 0x02
+        const val AC_OUTPUT_TERMINAL = 0x03
         const val AC_CLOCK_SOURCE = 0x0A
+        const val AC_CLOCK_SELECTOR = 0x0B
         const val ENDPOINT_DIRECTION_IN = 0x80
         const val ENDPOINT_TRANSFER_MASK = 0x03
     }

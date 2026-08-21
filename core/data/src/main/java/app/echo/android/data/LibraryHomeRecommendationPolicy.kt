@@ -15,17 +15,45 @@ object LibraryHomeRecommendationPolicy {
     const val DefaultLimit = 8
     private const val DayMs = 86_400_000.0
 
+    fun resolveAlbumKeys(
+        seeds: List<LibraryAlbumListenSeed>,
+        nowEpochMs: Long,
+        refreshSalt: Int,
+        previousSalt: Int,
+        previousKeys: List<String>,
+        limit: Int = DefaultLimit,
+    ): List<String> {
+        if (limit <= 0) return emptyList()
+        val saltChanged = refreshSalt != previousSalt
+        if (!saltChanged && previousKeys.isNotEmpty()) {
+            val available = seeds.mapNotNullTo(mutableSetOf()) { seed ->
+                seed.albumKey.takeIf(String::isNotBlank)
+            }
+            val kept = previousKeys.filter { it in available }.take(limit)
+            if (kept.isNotEmpty()) return kept
+        }
+        return rankAlbumKeys(
+            seeds = seeds,
+            nowEpochMs = nowEpochMs,
+            refreshSalt = refreshSalt,
+            limit = limit,
+            downrankKeys = if (saltChanged) previousKeys else emptyList(),
+        )
+    }
+
     fun rankAlbumKeys(
         seeds: List<LibraryAlbumListenSeed>,
         nowEpochMs: Long,
         refreshSalt: Int = 0,
         limit: Int = DefaultLimit,
+        downrankKeys: Collection<String> = emptySet(),
     ): List<String> {
         if (limit <= 0) return emptyList()
+        val downranked = downrankKeys.toSet()
         return seeds
             .asSequence()
             .filter { it.albumKey.isNotBlank() }
-            .map { seed -> seed.albumKey to score(seed, nowEpochMs, refreshSalt) }
+            .map { seed -> seed.albumKey to score(seed, nowEpochMs, refreshSalt, downranked) }
             .sortedWith(compareByDescending<Pair<String, Double>> { it.second }.thenBy { it.first })
             .map { it.first }
             .distinct()
@@ -33,7 +61,12 @@ object LibraryHomeRecommendationPolicy {
             .toList()
     }
 
-    private fun score(seed: LibraryAlbumListenSeed, nowEpochMs: Long, refreshSalt: Int): Double {
+    private fun score(
+        seed: LibraryAlbumListenSeed,
+        nowEpochMs: Long,
+        refreshSalt: Int,
+        downrankKeys: Set<String>,
+    ): Double {
         val playCount = seed.playCount.coerceAtLeast(0)
         val favoriteBoost = if (seed.favoritedAtEpochMs > 0L) 100.0 else 0.0
         val playBoost = ln(1.0 + playCount) * 12.0
@@ -59,7 +92,8 @@ object LibraryHomeRecommendationPolicy {
             0.0
         }
         val noise = ((hash(seed.albumKey, refreshSalt) % 1_000) / 1_000.0) * 25.0
-        return favoriteBoost + playBoost + recencyBoost + neglectedBoost + addedBoost + noise
+        val downrank = if (seed.albumKey in downrankKeys) 48.0 else 0.0
+        return favoriteBoost + playBoost + recencyBoost + neglectedBoost + addedBoost + noise - downrank
     }
 
     private fun hash(albumKey: String, salt: Int): Int {

@@ -8,4 +8,5 @@ data class EchoTrackRef(
     val album: String? = null,
     val artworkUri: String? = null,
     val durationMs: Long = 0L,
+    val sampleRateHz: Int? = null,
 )

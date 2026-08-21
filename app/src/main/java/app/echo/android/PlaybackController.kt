@@ -3,6 +3,7 @@ package app.echo.android
 import android.app.Application
 import android.content.ComponentName
 import androidx.core.content.ContextCompat
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
@@ -41,8 +42,10 @@ import app.echo.android.playback.shouldAllowRestoredPlayWhenReady
 import app.echo.android.playback.shouldApplyPendingRestorePlay
 import app.echo.android.playback.EchoUsbAudioMonitor
 import app.echo.android.playback.EchoUsbAudioStatus
+import app.echo.android.playback.EchoUsbExclusiveApplyPolicy
 import app.echo.android.playback.EchoUsbExclusiveDriverTester
 import app.echo.android.playback.EchoSleepTimerPolicy
+import app.echo.android.playback.nextPlayerRepeatMode
 import app.echo.android.playback.PlaybackQueueInsertPolicy
 import app.echo.android.playback.PlaybackQueueReplaceIntent
 import app.echo.android.playback.PlaybackSessionPolicy
@@ -55,6 +58,7 @@ import app.echo.android.playback.shouldRestoreSavedSessionBeforeFlushingPending
 import app.echo.android.playback.toEchoPlaybackError
 import app.echo.android.playback.toEchoPlaybackStatus
 import app.echo.android.playback.toEchoRepeatMode
+import app.echo.android.playback.toPlayerRepeatMode
 import app.echo.android.playback.toEchoTrackRef
 import app.echo.android.playback.toMediaItem
 import app.echo.android.playback.toPlaybackControlsState
@@ -253,23 +257,51 @@ internal class PlaybackController(
     }
 
     fun playNext(track: EchoTrack) {
-        val queueSize = controller?.mediaItemCount ?: _playbackQueue.value.items.size
-        if (PlaybackQueueInsertPolicy.shouldReplaceQueue(queueSize)) {
+        val queueIds = currentQueueIds()
+        if (PlaybackQueueInsertPolicy.shouldReplaceQueue(queueIds.size)) {
             play(track)
             return
         }
-        val currentIndex = controller?.currentMediaItemIndex
+        val mediaController = controller
+        val currentIndex = mediaController?.currentMediaItemIndex
             ?: _playbackQueue.value.currentIndex
-        insertTrack(track, PlaybackQueueInsertPolicy.playNextIndex(currentIndex, queueSize))
+        val shuffledNext = mediaController
+            ?.takeIf { it.shuffleModeEnabled }
+            ?.let { player ->
+                val next = player.currentTimeline.getNextWindowIndex(
+                    player.currentMediaItemIndex,
+                    Player.REPEAT_MODE_OFF,
+                    true,
+                )
+                next.takeIf { it != C.INDEX_UNSET }
+            }
+        val insertAt = PlaybackQueueInsertPolicy.playNextIndex(
+            currentIndex = currentIndex,
+            queueSize = queueIds.size,
+            shuffledNextIndex = shuffledNext,
+        )
+        if (PlaybackQueueInsertPolicy.shouldSkipInsert(queueIds, insertAt, track.id)) return
+        insertTrack(track, insertAt)
     }
 
     fun enqueue(track: EchoTrack) {
-        val queueSize = controller?.mediaItemCount ?: _playbackQueue.value.items.size
-        if (PlaybackQueueInsertPolicy.shouldReplaceQueue(queueSize)) {
+        val queueIds = currentQueueIds()
+        if (PlaybackQueueInsertPolicy.shouldReplaceQueue(queueIds.size)) {
             play(track)
             return
         }
-        insertTrack(track, queueSize)
+        if (PlaybackQueueInsertPolicy.shouldSkipEnqueue(queueIds, track.id)) return
+        insertTrack(track, queueIds.size)
+    }
+
+    private fun currentQueueIds(): List<String> {
+        val mediaController = controller
+        if (mediaController != null) {
+            return (0 until mediaController.mediaItemCount).map { index ->
+                mediaController.getMediaItemAt(index).mediaId
+            }
+        }
+        return _playbackQueue.value.items.map { it.id }
     }
 
     private fun insertTrack(track: EchoTrack, index: Int) {
@@ -307,11 +339,12 @@ internal class PlaybackController(
     }
 
     fun playPause() {
-        val currentlyPlaying = controller
+        val playWhenReady = controller
             ?.takeIf { !shouldQueueControllerActionUntilSessionReady(sessionReadyForCommands) }
-            ?.isPlaying
-            ?: _playbackControls.value.isPlaying
-        val shouldPlay = pendingPlayPauseShouldPlay(currentlyPlaying)
+            ?.playWhenReady
+            ?: (_playbackControls.value.isPlaying ||
+                _playbackControls.value.state == EchoPlaybackState.Buffering)
+        val shouldPlay = pendingPlayPauseShouldPlay(playWhenReady)
         withController {
             if (shouldPlay) {
                 recoverAndPlay()
@@ -384,6 +417,15 @@ internal class PlaybackController(
         }
     }
 
+    fun moveQueueItem(fromIndex: Int, toIndex: Int) {
+        withController {
+            val moved = PlaybackQueueInsertPolicy.moveIndex(fromIndex, toIndex, mediaItemCount)
+                ?: return@withController
+            moveMediaItem(moved.first, moved.second)
+            updatePlaybackCore(this)
+        }
+    }
+
     fun clearQueue() {
         withController {
             if (mediaItemCount <= 0) return@withController
@@ -394,11 +436,7 @@ internal class PlaybackController(
 
     fun cycleRepeatMode() {
         withController {
-            repeatMode = when (repeatMode) {
-                Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
-                Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
-                else -> Player.REPEAT_MODE_OFF
-            }
+            repeatMode = nextPlayerRepeatMode(repeatMode)
             updatePlaybackCore(this, remapQueue = false)
         }
     }
@@ -459,6 +497,7 @@ internal class PlaybackController(
     }
 
     fun notifyRemotePlaybackAuthReady() {
+        enginePolicy.retryUncachedReplayGain()
         if (!pendingRestorePlayUntilWebDavAuth) return
         val uris = pendingRestoreQueueUris.ifEmpty { currentQueueUris() }
         val requiresWebDavAuth = queueRequiresWebDavAuth(uris)
@@ -665,7 +704,19 @@ internal class PlaybackController(
     private fun startUsbAudioUpdates() {
         usbAudioJob?.cancel()
         usbAudioJob = scope.launch {
+            var previousPermissionGranted = usbAudioMonitor.status.value.hostPermissionGranted
             usbAudioMonitor.status.collect { status ->
+                if (
+                    EchoUsbExclusiveApplyPolicy.shouldReapplyAfterHostPermissionGranted(
+                        exclusiveEnabled = status.exclusiveEnabled,
+                        previouslyGranted = previousPermissionGranted,
+                        currentlyGranted = status.hostPermissionGranted,
+                    )
+                ) {
+                    usbAudioMonitor.prepareForTrack(_playbackDiagnostics.value.diagnostics.sampleRateHz)
+                    EchoPlaybackProcessRuntime.reconfigureAudioPipeline()
+                }
+                previousPermissionGranted = status.hostPermissionGranted
                 updateUsbDiagnostics(status)
             }
         }
@@ -823,6 +874,7 @@ internal class PlaybackController(
         copy(
             sleepTimerRemainingMs = sleepTimerRemainingMs(),
             sleepTimerMode = EchoPlaybackProcessRuntime.sleepTimerMode,
+            sleepTimerMinutes = EchoPlaybackProcessRuntime.sleepTimerRequestedMinutes,
             replayGainEnabled = replayGainEnabled,
             replayGainPreampDb = replayGainPreampDb,
             replayGainTrackGainDb = enginePolicy.activeReplayGainTrackGainDb
@@ -921,8 +973,13 @@ internal class PlaybackController(
             replayGainTrackGainsByMediaId.clear()
             session.queue.forEach { track ->
                 replayGainUrisByMediaId[track.id] = track.uri
+                track.sampleRateHz?.takeIf { it > 0 }?.let { sampleRatesByMediaId[track.id] = it }
             }
             val restoredQueue = resolveEchoLinkQueue(session.queue)
+            restoredQueue.forEach { track ->
+                track.sampleRateHz?.takeIf { it > 0 }?.let { sampleRatesByMediaId[track.id] = it }
+            }
+            enginePolicy.mergeSampleRates(restoredQueue.associate { it.id to it.sampleRateHz })
             enginePolicy.mergeReplayGainUris(restoredQueue.associate { it.id to it.uri })
             mediaController.setMediaItems(
                 restoredQueue.map { it.toMediaItem() },
@@ -1043,7 +1100,10 @@ internal class PlaybackController(
         if (
             !PlaybackSessionPolicy.shouldPersistSavedSession(
                 restoreCompleted = restoreCompleted,
-                hasPendingPlay = pendingControllerActions.any { it.replacesQueue },
+                hasPendingPlay = PlaybackSessionPolicy.hasBlockingPendingPlay(
+                    pendingQueueReplace = pendingControllerActions.any { it.replacesQueue },
+                    pendingAuthRestorePlay = pendingRestorePlayUntilWebDavAuth,
+                ),
                 queueEmpty = session == null,
             )
         ) {
@@ -1132,9 +1192,11 @@ internal class PlaybackController(
             mediaController.getMediaItemAt(index).localConfiguration?.uri?.toString().orEmpty()
         }
         val current = mediaController.toPlaybackQueueState().items
-        val needsResolve = current.indices.any { index ->
-            EchoLinkPlaybackUri.trackIdFromPersistUri(playUris[index]) != null ||
-                EchoLinkPlaybackUri.isOneShotStreamUri(playUris[index])
+        val playerUnavailable =
+            mediaController.playerError != null ||
+                mediaController.playbackState == Player.STATE_IDLE
+        val needsResolve = playUris.any { uri ->
+            EchoLinkPlaybackUri.playUriNeedsResolve(uri, playerUnavailable)
         }
         if (!needsResolve) return
         val resolved = resolveEchoLinkQueue(
@@ -1187,12 +1249,6 @@ internal class PlaybackController(
             lastSignature = signature
             lastPositionBucket = positionBucket
         }
-    }
-
-    private fun EchoRepeatMode.toPlayerRepeatMode(): Int = when (this) {
-        EchoRepeatMode.All -> Player.REPEAT_MODE_ALL
-        EchoRepeatMode.One -> Player.REPEAT_MODE_ONE
-        EchoRepeatMode.Off -> Player.REPEAT_MODE_OFF
     }
 
     private fun resetStickyPlaybackError() {

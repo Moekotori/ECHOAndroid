@@ -10,6 +10,11 @@ enum class PlaybackQueueReplaceIntent {
 }
 
 object PlaybackSessionPolicy {
+    fun hasBlockingPendingPlay(
+        pendingQueueReplace: Boolean,
+        pendingAuthRestorePlay: Boolean,
+    ): Boolean = pendingQueueReplace || pendingAuthRestorePlay
+
     fun shouldPersistSavedSession(
         restoreCompleted: Boolean,
         hasPendingPlay: Boolean,
@@ -71,6 +76,15 @@ object PlaybackSessionPolicy {
         EchoRepeatMode.Off
 
     fun skipShouldCallPlay(): Boolean = false
+
+    fun queueStartIndex(queueIds: List<String>, tappedId: String): Int =
+        queueIds.indexOfFirst { it == tappedId }.takeIf { it >= 0 } ?: 0
+
+    fun shouldPrepareAfterExternalSkip(
+        hasPlayerError: Boolean,
+        playbackStateIdle: Boolean,
+        mediaItemCount: Int,
+    ): Boolean = mediaItemCount > 0 && shouldPrepareBeforePlay(hasPlayerError, playbackStateIdle)
 
     fun playbackStatusWithLivePosition(
         status: EchoPlaybackStatus,

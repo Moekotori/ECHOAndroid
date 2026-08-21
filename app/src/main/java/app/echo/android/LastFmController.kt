@@ -69,9 +69,12 @@ private data class ActiveScrobble(
     val startedAtEpochSeconds: Long,
     val accumulatedPlayMs: Long = 0L,
     val lastTickEpochMs: Long = 0L,
+    val lastPositionMs: Long = 0L,
     val wasPlaying: Boolean = false,
     val nowPlayingSent: Boolean = false,
     val scrobbled: Boolean = false,
+    val lastScrobbleAttemptEpochMs: Long = 0L,
+    val lastNowPlayingAttemptEpochMs: Long = 0L,
 )
 
 internal class LastFmScrobbleController(
@@ -206,32 +209,66 @@ internal class LastFmScrobbleController(
         }?.takeIf { it.title.isNotBlank() && it.artist.isNotBlank() }
 
         if (track == null) {
-            if (LastFmScrobbleRules.shouldClearActiveScrobbleForMissingTrack(snapshot.status.state)) {
-                active = null
-                return
-            }
-            val current = active ?: return
-            val nowEpochMs = System.currentTimeMillis()
-            active = current.copy(
-                accumulatedPlayMs = LastFmScrobbleRules.accumulatedPlayMs(
+            val current = active
+            if (current != null) {
+                val nowEpochMs = System.currentTimeMillis()
+                val accumulated = LastFmScrobbleRules.accumulatedPlayMs(
                     previouslyAccumulatedMs = current.accumulatedPlayMs,
                     wasPlaying = current.wasPlaying,
                     lastTickEpochMs = current.lastTickEpochMs,
                     nowEpochMs = nowEpochMs,
-                ),
-                lastTickEpochMs = 0L,
-                wasPlaying = false,
-            )
+                )
+                val updated = current.copy(
+                    accumulatedPlayMs = accumulated,
+                    lastTickEpochMs = 0L,
+                    wasPlaying = false,
+                )
+                val flushed = submitScrobbleIfDue(credentials, updated)
+                if (LastFmScrobbleRules.shouldClearActiveScrobbleForMissingTrack(snapshot.status.state)) {
+                    active = null
+                    return
+                }
+                active = updated.copy(scrobbled = updated.scrobbled || flushed)
+                return
+            }
+            if (LastFmScrobbleRules.shouldClearActiveScrobbleForMissingTrack(snapshot.status.state)) {
+                active = null
+            }
             return
         }
 
         val nowEpochMs = System.currentTimeMillis()
         val current = active
+        val currentPositionMs = snapshot.position.positionMs.coerceAtLeast(0L)
         active = if (current?.track?.id != track.id) {
+            if (current != null) {
+                val accumulated = LastFmScrobbleRules.accumulatedPlayMs(
+                    previouslyAccumulatedMs = current.accumulatedPlayMs,
+                    wasPlaying = current.wasPlaying,
+                    lastTickEpochMs = current.lastTickEpochMs,
+                    nowEpochMs = nowEpochMs,
+                )
+                submitScrobbleIfDue(credentials, current.copy(accumulatedPlayMs = accumulated))
+            }
             ActiveScrobble(
                 track = track,
                 startedAtEpochSeconds = nowEpochMs / 1000L,
                 lastTickEpochMs = if (snapshot.status.isPlaying) nowEpochMs else 0L,
+                lastPositionMs = currentPositionMs,
+                wasPlaying = snapshot.status.isPlaying,
+            )
+        } else if (
+            LastFmScrobbleRules.shouldStartNewListenAfterRepeat(
+                alreadyScrobbled = current.scrobbled,
+                previousPositionMs = current.lastPositionMs,
+                currentPositionMs = currentPositionMs,
+            )
+        ) {
+            ActiveScrobble(
+                track = track,
+                startedAtEpochSeconds = nowEpochMs / 1000L,
+                lastTickEpochMs = if (snapshot.status.isPlaying) nowEpochMs else 0L,
+                lastPositionMs = currentPositionMs,
                 wasPlaying = snapshot.status.isPlaying,
             )
         } else {
@@ -244,17 +281,26 @@ internal class LastFmScrobbleController(
                     nowEpochMs = nowEpochMs,
                 ),
                 lastTickEpochMs = if (snapshot.status.isPlaying) nowEpochMs else 0L,
+                lastPositionMs = currentPositionMs,
                 wasPlaying = snapshot.status.isPlaying,
             )
         }
 
         var activeScrobble = active ?: return
         if (!activeScrobble.scrobbled &&
-            LastFmScrobbleRules.shouldScrobble(activeScrobble.track.durationMs, activeScrobble.accumulatedPlayMs)
+            LastFmScrobbleRules.shouldScrobble(activeScrobble.track.durationMs, activeScrobble.accumulatedPlayMs) &&
+            LastFmScrobbleRules.shouldAttemptSubmit(
+                alreadySubmitted = activeScrobble.scrobbled,
+                lastAttemptEpochMs = activeScrobble.lastScrobbleAttemptEpochMs,
+                nowEpochMs = nowEpochMs,
+            )
         ) {
             val scrobbleTrack = activeScrobble.track
             val startedAt = activeScrobble.startedAtEpochSeconds
-            activeScrobble = activeScrobble.copy(scrobbled = true)
+            activeScrobble = activeScrobble.copy(
+                scrobbled = true,
+                lastScrobbleAttemptEpochMs = nowEpochMs,
+            )
             active = activeScrobble
             scope.launch(Dispatchers.IO) {
                 client.scrobble(credentials, scrobbleTrack, startedAt)
@@ -287,9 +333,18 @@ internal class LastFmScrobbleController(
         }
         if (!snapshot.status.isPlaying) return
 
-        if (!activeScrobble.nowPlayingSent) {
+        if (!activeScrobble.nowPlayingSent &&
+            LastFmScrobbleRules.shouldAttemptSubmit(
+                alreadySubmitted = activeScrobble.nowPlayingSent,
+                lastAttemptEpochMs = activeScrobble.lastNowPlayingAttemptEpochMs,
+                nowEpochMs = nowEpochMs,
+            )
+        ) {
             val nowPlayingTrack = activeScrobble.track
-            active = activeScrobble.copy(nowPlayingSent = true)
+            active = activeScrobble.copy(
+                nowPlayingSent = true,
+                lastNowPlayingAttemptEpochMs = nowEpochMs,
+            )
             scope.launch(Dispatchers.IO) {
                 client.updateNowPlaying(credentials, nowPlayingTrack)
                     .onSuccess {
@@ -318,6 +373,47 @@ internal class LastFmScrobbleController(
                     }
             }
         }
+    }
+
+    private fun submitScrobbleIfDue(
+        credentials: LastFmCredentials,
+        scrobble: ActiveScrobble,
+    ): Boolean {
+        if (
+            !LastFmScrobbleRules.shouldFlushScrobbleBeforeReplacing(
+                alreadyScrobbled = scrobble.scrobbled,
+                durationMs = scrobble.track.durationMs,
+                listenedMs = scrobble.accumulatedPlayMs,
+            )
+        ) {
+            return false
+        }
+        val scrobbleTrack = scrobble.track
+        val startedAt = scrobble.startedAtEpochSeconds
+        scope.launch(Dispatchers.IO) {
+            client.scrobble(credentials, scrobbleTrack, startedAt)
+                .onSuccess {
+                    _uiState.value = LastFmUiState(
+                        lastMessage = echoText(
+                            en = "Last.fm scrobbled: ${scrobbleTrack.title}",
+                            zh = "Last.fm 已记录：${scrobbleTrack.title}",
+                            ja = "Last.fm に記録：${scrobbleTrack.title}",
+                        ),
+                        lastSubmittedTrackId = scrobbleTrack.id,
+                    )
+                }
+                .onFailure { error ->
+                    _uiState.value = LastFmUiState(
+                        lastMessage = echoText(
+                            en = "Last.fm scrobble failed",
+                            zh = "Last.fm scrobble 失败",
+                            ja = "Last.fm の scrobble に失敗しました",
+                        ),
+                        lastError = error.message ?: "Scrobble failed",
+                    )
+                }
+        }
+        return true
     }
 
     private fun EchoAppSettings.lastFmCredentialsOrNull(): LastFmCredentials? {

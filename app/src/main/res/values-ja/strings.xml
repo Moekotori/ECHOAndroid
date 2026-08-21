@@ -44,4 +44,16 @@
     <string name="qr_start_failed">内蔵スキャナーを起動できませんでした：%1$s</string>
     <string name="qr_unknown_error">不明なエラー</string>
     <string name="artist_album_count">アルバム %1$d 枚</string>
+    <string name="playback_widget_name">ECHO 再生</string>
+    <string name="playback_widget_description">ホーム画面から再生、一時停止、曲送りができます</string>
+    <string name="playback_widget_preview_title">ECHO モバイル</string>
+    <string name="qs_tile_play_pause">ECHO 再生/一時停止</string>
+    <string name="qs_tile_playing">再生中</string>
+    <string name="qs_tile_paused">一時停止</string>
+    <string name="qs_tile_idle">待機</string>
+    <string name="playback_widget_idle">再生していません</string>
+    <string name="shortcut_play">再生</string>
+    <string name="shortcut_play_long">前回の再生を続ける</string>
+    <string name="shortcut_library">ライブラリ</string>
+    <string name="shortcut_library_long">ライブラリを開く</string>
 </resources>

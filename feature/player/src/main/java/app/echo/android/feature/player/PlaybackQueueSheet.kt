@@ -41,6 +41,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -101,6 +103,7 @@ fun PlaybackQueueSheet(
     onDismiss: () -> Unit,
     onPlayItem: (Int) -> Unit,
     onRemoveItem: (Int) -> Unit,
+    onMoveItem: (Int, Int) -> Unit = { _, _ -> },
     onClearQueue: () -> Unit,
     onCycleRepeatMode: () -> Unit,
     onToggleShuffle: () -> Unit,
@@ -186,6 +189,7 @@ fun PlaybackQueueSheet(
                 onDismiss = onDismiss,
                 onPlayItem = onPlayItem,
                 onRemoveItem = onRemoveItem,
+                onMoveItem = onMoveItem,
                 onClearQueue = onClearQueue,
                 onCycleRepeatMode = onCycleRepeatMode,
                 onToggleShuffle = onToggleShuffle,
@@ -224,6 +228,7 @@ private fun QueueSheetSurface(
     onDismiss: () -> Unit,
     onPlayItem: (Int) -> Unit,
     onRemoveItem: (Int) -> Unit,
+    onMoveItem: (Int, Int) -> Unit,
     onClearQueue: () -> Unit,
     onCycleRepeatMode: () -> Unit,
     onToggleShuffle: () -> Unit,
@@ -337,9 +342,12 @@ private fun QueueSheetSurface(
                         QueueTrackRow(
                             track = item,
                             index = index,
+                            lastIndex = queueState.items.lastIndex,
                             active = index == queueState.currentIndex,
                             onPlay = { onPlayItem(index) },
                             onRemove = { onRemoveItem(index) },
+                            onMoveUp = { onMoveItem(index, index - 1) },
+                            onMoveDown = { onMoveItem(index, index + 1) },
                         )
                     }
                 }
@@ -426,9 +434,12 @@ private fun QueueModeControls(
 private fun QueueTrackRow(
     track: EchoTrackRef,
     index: Int,
+    lastIndex: Int,
     active: Boolean,
     onPlay: () -> Unit,
     onRemove: () -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
     val containerColor by animateColorAsState(
@@ -500,6 +511,22 @@ private fun QueueTrackRow(
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (index > 0) {
+            QueueIconButton(
+                icon = Icons.Rounded.KeyboardArrowUp,
+                description = echoString(en = "Move up", zh = "上移", ja = "上へ"),
+                onClick = onMoveUp,
+                compact = true,
+            )
+        }
+        if (index < lastIndex) {
+            QueueIconButton(
+                icon = Icons.Rounded.KeyboardArrowDown,
+                description = echoString(en = "Move down", zh = "下移", ja = "下へ"),
+                onClick = onMoveDown,
+                compact = true,
             )
         }
         QueueIconButton(

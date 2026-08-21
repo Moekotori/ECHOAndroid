@@ -11,6 +11,7 @@ import app.echo.android.data.EchoAppSettings
 import app.echo.android.feature.library.LibraryScreen
 import app.echo.android.model.connect.EchoRemoteConnectionState
 import app.echo.android.model.connect.EchoRemoteStatus
+import app.echo.android.model.connect.EchoRemoteTrack
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.library.EchoPlaylist
@@ -95,24 +96,22 @@ internal fun EchoLibraryPage(
         onRefreshLinkedLibrary = { query -> remoteClient.refreshLibrary(query) },
         onOpenLinkedPlaylist = { playlist -> remoteClient.refreshPlaylistTracks(playlist) },
         onPlayLinkedTrack = { track ->
-            if (appSettings.pcHandoffEnabled) {
-                val current = viewModel.playbackStatus.value
-                val currentLinkedId = current.track?.id
-                val positionMs = if (track.id != null && currentLinkedId == "echo-link:${track.id}") {
-                    current.positionMs
-                } else {
-                    0L
-                }
-                remoteClient.handoffToPc(track, positionMs)
-            } else if (track.canPlayOnPhone) {
-                remoteClient.playTrackOnPhone(
-                    track = track,
-                    onTrackReady = viewModel::play,
-                    onLyricsReady = viewModel::setEchoLinkLyrics,
-                )
-            } else {
-                remoteClient.playTrackOnPc(track)
-            }
+            playLinkedEchoTracks(
+                tracks = listOf(track),
+                startIndex = 0,
+                viewModel = viewModel,
+                remoteClient = remoteClient,
+                pcHandoffEnabled = appSettings.pcHandoffEnabled,
+            )
+        },
+        onPlayLinkedQueue = { tracks, startIndex ->
+            playLinkedEchoTracks(
+                tracks = tracks,
+                startIndex = startIndex,
+                viewModel = viewModel,
+                remoteClient = remoteClient,
+                pcHandoffEnabled = appSettings.pcHandoffEnabled,
+            )
         },
         onPlayTrack = { track, origin -> viewModel.playFromLibrary(track, origin) },
         onPlayNext = viewModel::playNext,
@@ -151,5 +150,37 @@ internal fun EchoLibraryPage(
         onOpenFolder = onOpenFolder,
         onOpenPlaylist = onOpenPlaylist,
         onCloseDetail = onCloseDetail,
+    )
+}
+
+private fun playLinkedEchoTracks(
+    tracks: List<EchoRemoteTrack>,
+    startIndex: Int,
+    viewModel: EchoAndroidViewModel,
+    remoteClient: EchoRemoteClient,
+    pcHandoffEnabled: Boolean,
+) {
+    val startTrack = tracks.getOrNull(startIndex.coerceAtLeast(0)) ?: return
+    if (pcHandoffEnabled) {
+        val current = viewModel.playbackStatus.value
+        val currentLinkedId = current.track?.id
+        val positionMs = if (startTrack.id != null && currentLinkedId == "echo-link:${startTrack.id}") {
+            current.positionMs
+        } else {
+            0L
+        }
+        remoteClient.handoffToPc(startTrack, positionMs)
+        return
+    }
+    val playable = tracks.filter { it.canPlayOnPhone && !it.id.isNullOrBlank() }
+    if (playable.isEmpty()) {
+        remoteClient.playTrackOnPc(startTrack)
+        return
+    }
+    remoteClient.playTracksOnPhone(
+        tracks = tracks,
+        startIndex = startIndex,
+        onQueueReady = viewModel::playQueue,
+        onLyricsReady = viewModel::setEchoLinkLyrics,
     )
 }

@@ -1,5 +1,6 @@
 package app.echo.android.playback
 
+import java.io.InputStream
 import kotlin.math.pow
 
 data class EchoReplayGainOutput(
@@ -56,7 +57,69 @@ fun replayGainReadOutcome(
 fun shouldCacheReplayGainRead(outcome: ReplayGainReadOutcome): Boolean =
     outcome is ReplayGainReadOutcome.Parsed
 
+fun echoReplayGainMakeupLinear(enhancerGainMb: Int): Float {
+    if (enhancerGainMb <= 0) return 1f
+    return 10.0.pow(enhancerGainMb / 2_000.0).toFloat().coerceAtLeast(1f)
+}
+
 fun shouldApplyReplayGainPlayerVolume(usbMuteInProgress: Boolean): Boolean = !usbMuteInProgress
+
+enum class ReplayGainStreamKind {
+    LocalContent,
+    LocalFile,
+    RemoteHttp,
+}
+
+fun replayGainStreamKind(uri: String): ReplayGainStreamKind? {
+    val scheme = uri.substringBefore(':', missingDelimiterValue = "").lowercase()
+    return when (scheme) {
+        "content", "android.resource" -> ReplayGainStreamKind.LocalContent
+        "file" -> ReplayGainStreamKind.LocalFile
+        "http", "https" -> ReplayGainStreamKind.RemoteHttp
+        else -> null
+    }
+}
+
+fun canOpenReplayGainStream(
+    uri: String,
+    webDavAuthReadyForUri: Boolean,
+    subsonicAuthReadyForUri: Boolean,
+): Boolean {
+    val kind = replayGainStreamKind(uri) ?: return false
+    if (kind != ReplayGainStreamKind.RemoteHttp) return true
+    if (webDavPlaybackUriRequiresCredential(uri) && !webDavAuthReadyForUri) return false
+    if (subsonicPlaybackUriRequiresCredential(uri) && !subsonicAuthReadyForUri) return false
+    return true
+}
+
+internal class LimitedInputStream(
+    private val input: InputStream,
+    maxBytes: Int,
+) : InputStream() {
+    private var remaining = maxBytes.coerceAtLeast(0)
+
+    override fun read(): Int {
+        if (remaining <= 0) return -1
+        val value = input.read()
+        if (value >= 0) remaining -= 1
+        return value
+    }
+
+    override fun read(b: ByteArray, off: Int, len: Int): Int {
+        if (remaining <= 0) return -1
+        val toRead = minOf(len, remaining)
+        if (toRead <= 0) return -1
+        val read = input.read(b, off, toRead)
+        if (read > 0) remaining -= read
+        return read
+    }
+
+    override fun close() {
+        input.close()
+    }
+}
+
+internal const val ReplayGainRemoteReadMaxBytes = 2 * 1024 * 1024
 
 private const val MIN_ATTENUATION_VOLUME = 0.01f
 private const val MAX_ENHANCER_GAIN_MB = 3_000

@@ -191,6 +191,8 @@ internal fun AlbumDetailPage(
                                 onPickArtwork = onPickArtwork,
                                 onMatchNeteaseMetadata = onMatchNeteaseMetadata,
                                 onAddToPlaylist = onAddToPlaylist,
+                                onPlayNext = onPlayNext,
+                                onEnqueue = onEnqueue,
                             )
                         }
                     }
@@ -304,6 +306,8 @@ internal fun ArtistDetailPage(
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
     onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
+    onPlayNext: ((EchoTrack) -> Unit)? = null,
+    onEnqueue: ((EchoTrack) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val palette = rememberArtworkPalette(artist.artworkUri, seedKey = artist.artistKey)
@@ -387,6 +391,8 @@ internal fun ArtistDetailPage(
                                 onPickArtwork = onPickArtwork,
                                 onMatchNeteaseMetadata = onMatchNeteaseMetadata,
                                 onAddToPlaylist = onAddToPlaylist,
+                                onPlayNext = onPlayNext,
+                                onEnqueue = onEnqueue,
                             )
                         }
                     }
@@ -1038,6 +1044,8 @@ private fun AlbumTrackRow(
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
     onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
+    onPlayNext: ((EchoTrack) -> Unit)? = null,
+    onEnqueue: ((EchoTrack) -> Unit)? = null,
 ) {
     val colors = rememberDetailGlassColors()
     TrackContextMenu(
@@ -1048,6 +1056,8 @@ private fun AlbumTrackRow(
         onPickArtwork = onPickArtwork,
         onMatchNeteaseMetadata = onMatchNeteaseMetadata,
         onAddToPlaylist = onAddToPlaylist,
+        onPlayNext = onPlayNext,
+        onEnqueue = onEnqueue,
         modifier = Modifier.fillMaxWidth(),
     ) { pressModifier ->
         Row(

@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
+import app.echo.android.model.library.LibraryScanProgress
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.PlaybackHeatmapDay
 
@@ -28,6 +29,7 @@ fun HomeScreen(
     topArtists: List<ArtistSummary>,
     favoriteAlbums: List<AlbumSummary>,
     heatmapDays: List<PlaybackHeatmapDay>,
+    scanState: LibraryScanProgress = LibraryScanProgress(),
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
@@ -64,6 +66,8 @@ fun HomeScreen(
                     trackCount = trackCount,
                     albumCount = albumCount,
                     artistCount = artistCount,
+                    scanState = scanState,
+                    onOpenLibrary = onOpenLibrary,
                 )
             }
         }

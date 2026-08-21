@@ -11,7 +11,7 @@ import android.graphics.Color as AndroidColor
 import android.os.PowerManager
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
@@ -79,6 +79,7 @@ import app.echo.android.ui.discord.EchoDiscordPresenceBridge
 import app.echo.android.ui.home.EchoHomePage
 import app.echo.android.ui.library.EchoLibraryPage
 import app.echo.android.ui.playback.EchoNowPlayingHost
+import app.echo.android.widget.EchoPlaybackRemote
 import app.echo.android.ui.shell.EchoBottomDockHost
 import app.echo.android.ui.shell.EchoPagerPage
 import app.echo.android.ui.shell.dockTab
@@ -115,7 +116,9 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 
 private val DockMotionEasing = CubicBezierEasing(0.16f, 1f, 0.30f, 1f)
 private val LyricsDocumentMimeTypes = arrayOf("text/*", "application/xml", "application/octet-stream", "*/*")
@@ -128,6 +131,7 @@ private enum class FontImportTarget {
 }
 
 @Suppress("SpellCheckingInspection")
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
 fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     val context = LocalContext.current
@@ -383,7 +387,33 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     var selectedTab by remember { mutableIntStateOf(EchoTab.Now.ordinal) }
     var bottomDockExpanded by remember { mutableStateOf(true) }
     var nowPlayingExpanded by remember { mutableStateOf(false) }
+    var lyricsLaunchToken by remember { mutableIntStateOf(0) }
     var queueSheetVisible by remember { mutableStateOf(false) }
+    val openLyricsRequest by EchoLaunchActions.openLyrics.collectAsStateWithLifecycle()
+    LaunchedEffect(openLyricsRequest) {
+        if (openLyricsRequest) {
+            nowPlayingExpanded = true
+            lyricsLaunchToken += 1
+            viewModel.setShowLyricsControlDeck(true)
+            EchoLaunchActions.consumeOpenLyrics()
+        }
+    }
+    val incomingAudioUris by EchoLaunchActions.incomingAudioUris.collectAsStateWithLifecycle()
+    LaunchedEffect(incomingAudioUris) {
+        if (incomingAudioUris.isNotEmpty()) {
+            viewModel.playIncomingAudio(incomingAudioUris)
+            nowPlayingExpanded = true
+            EchoLaunchActions.consumeIncomingAudio()
+        }
+    }
+    val playLastRequest by EchoLaunchActions.playLast.collectAsStateWithLifecycle()
+    LaunchedEffect(playLastRequest) {
+        if (playLastRequest) {
+            EchoPlaybackRemote.play(context)
+            EchoLaunchActions.consumePlayLast()
+        }
+    }
+    val openLibraryRequest by EchoLaunchActions.openLibrary.collectAsStateWithLifecycle()
     val libraryDetailOpen = selectedAlbum != null || selectedArtist != null || selectedFolder != null || selectedPlaylist != null
     LaunchedEffect(effectivePerformanceMode, appVisible, nowPlayingExpanded) {
         val visibility = when {
@@ -472,6 +502,15 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         }
     }
     fun selectDockTab(tab: EchoTab) = navigateToPage(tab.pagerPage)
+    LaunchedEffect(openLibraryRequest) {
+        if (openLibraryRequest) {
+            nowPlayingExpanded = false
+            queueSheetVisible = false
+            searchVisible = false
+            selectDockTab(EchoTab.Library)
+            EchoLaunchActions.consumeOpenLibrary()
+        }
+    }
     fun clearLibraryDetail() {
         selectedAlbum = null
         selectedArtist = null
@@ -551,7 +590,17 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
 
     LaunchedEffect(remoteStatus.endpoint, remoteStatus.connectionState) {
         val endpoint = remoteStatus.endpoint
-        if (endpoint != null) {
+        if (
+            EchoLinkRequestPolicy.shouldClearPersistedPairingSecret(
+                connectionFailed = remoteStatus.connectionState == EchoRemoteConnectionState.Error,
+                needsV2PairExchange = endpoint?.needsV2PairExchange == true,
+            )
+        ) {
+            viewModel.saveEchoLinkPcEndpoint(
+                address = endpoint?.let { "${it.scheme}://${it.host}:${it.port}" }.orEmpty(),
+                token = "",
+            )
+        } else if (endpoint != null) {
             saveEchoLinkEndpointIfReady(endpoint)
         }
         EchoArtworkRequestHeadersRegistry.replaceEchoLinkAuthorization(
@@ -560,16 +609,20 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         )
     }
 
-    BackHandler(enabled = searchVisible) {
+    EchoOverlayBackHandler(enabled = searchVisible) {
         searchVisible = false
         searchQuery = ""
     }
-    BackHandler(enabled = nowPlayingExpanded) { nowPlayingExpanded = false }
-    BackHandler(enabled = queueSheetVisible) { queueSheetVisible = false }
-    BackHandler(enabled = !nowPlayingExpanded && libraryDetailOpen) {
+    EchoOverlayBackHandler(enabled = queueSheetVisible) { queueSheetVisible = false }
+    EchoOverlayBackHandler(enabled = nowPlayingExpanded && !queueSheetVisible) {
+        nowPlayingExpanded = false
+    }
+    EchoOverlayBackHandler(enabled = !nowPlayingExpanded && libraryDetailOpen) {
         closeLibraryDetail()
     }
-    BackHandler(enabled = !nowPlayingExpanded && tabPagerState.currentPage == EchoPagerPage.Settings.ordinal) {
+    EchoOverlayBackHandler(
+        enabled = !nowPlayingExpanded && tabPagerState.currentPage == EchoPagerPage.Settings.ordinal,
+    ) {
         selectDockTab(EchoTab.Now)
     }
 
@@ -863,6 +916,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onClearWebDavCredentials = viewModel::clearWebDavCredentials,
                                 onCancelRemoteSync = viewModel::cancelRemoteSync,
                                 discoveredLanDevices = echoLinkLanDevices,
+                                onRefreshLanDevices = viewModel::refreshEchoLinkDiscovery,
                             )
                             }
 
@@ -969,6 +1023,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                         fontImportTarget = FontImportTarget.Lyrics
                         fontImportLauncher.launch(FontDocumentMimeTypes)
                     },
+                    openLyricsRequestId = lyricsLaunchToken,
                 )
             }
             if (queueSheetVisible) {
@@ -980,6 +1035,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     onDismiss = { queueSheetVisible = false },
                     onPlayItem = viewModel::playQueueItem,
                     onRemoveItem = viewModel::removeQueueItem,
+                    onMoveItem = viewModel::moveQueueItem,
                     onClearQueue = viewModel::clearQueue,
                     onCycleRepeatMode = viewModel::cycleRepeatMode,
                     onToggleShuffle = viewModel::toggleShuffle,
@@ -1034,6 +1090,16 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 searchQuery = ""
                                 viewModel.playTrackFromLibrary(result.id)
                             }
+                        }
+                    },
+                    onPlayNext = { result ->
+                        if (result.type == SearchResultType.Track) {
+                            viewModel.playNextByTrackId(result.id)
+                        }
+                    },
+                    onEnqueue = { result ->
+                        if (result.type == SearchResultType.Track) {
+                            viewModel.enqueueByTrackId(result.id)
                         }
                     },
                     onBack = {
@@ -1211,6 +1277,20 @@ private fun rememberSystemPowerSaveMode(): Boolean {
         }
     }
     return powerSaveMode
+}
+
+@Composable
+private fun EchoOverlayBackHandler(
+    enabled: Boolean,
+    onDismiss: () -> Unit,
+) {
+    PredictiveBackHandler(enabled = enabled) { progress ->
+        try {
+            progress.collect { }
+            onDismiss()
+        } catch (_: CancellationException) {
+        }
+    }
 }
 
 private fun Context.findActivity(): Activity? {

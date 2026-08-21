@@ -76,4 +76,80 @@ class SubsonicSyncPolicyTest {
             ),
         )
     }
+
+    @Test
+    fun failedPlaylistFetchDoesNotReplaceLocalCopy() {
+        assertFalse(
+            SubsonicSyncPolicy.shouldReplaceSyncedPlaylist(
+                fetchSucceeded = false,
+                remoteSongCount = 0,
+                matchedTrackCount = 0,
+            ),
+        )
+    }
+
+    @Test
+    fun unmatchedRemoteSongsDoNotWipePlaylist() {
+        assertFalse(
+            SubsonicSyncPolicy.shouldReplaceSyncedPlaylist(
+                fetchSucceeded = true,
+                remoteSongCount = 8,
+                matchedTrackCount = 0,
+            ),
+        )
+    }
+
+    @Test
+    fun emptyOrPartialRemotePlaylistMayReplace() {
+        assertTrue(
+            SubsonicSyncPolicy.shouldReplaceSyncedPlaylist(
+                fetchSucceeded = true,
+                remoteSongCount = 0,
+                matchedTrackCount = 0,
+            ),
+        )
+        assertTrue(
+            SubsonicSyncPolicy.shouldReplaceSyncedPlaylist(
+                fetchSucceeded = true,
+                remoteSongCount = 8,
+                matchedTrackCount = 3,
+            ),
+        )
+    }
+
+    @Test
+    fun unchangedRemotePlaylistDoesNotRewriteLocalRows() {
+        assertFalse(
+            SubsonicSyncPolicy.shouldRewriteSyncedPlaylist(
+                existingName = "Favs",
+                existingTrackIds = listOf("s1", "s2"),
+                incomingName = "Favs",
+                incomingTrackIds = listOf("s1", "s2"),
+            ),
+        )
+        assertTrue(
+            SubsonicSyncPolicy.shouldRewriteSyncedPlaylist(
+                existingName = "Favs",
+                existingTrackIds = listOf("s1", "s2"),
+                incomingName = "Favorites",
+                incomingTrackIds = listOf("s1", "s2"),
+            ),
+        )
+        assertTrue(
+            SubsonicSyncPolicy.shouldRewriteSyncedPlaylist(
+                existingName = "Favs",
+                existingTrackIds = listOf("s1"),
+                incomingName = "Favs",
+                incomingTrackIds = listOf("s1", "s2"),
+            ),
+        )
+        assertTrue(
+            SubsonicSyncPolicy.shouldRewriteSyncedPlaylist(
+                existingName = null,
+                existingTrackIds = null,
+                incomingName = "Favs",
+                incomingTrackIds = listOf("s1"),
+            ),
+        )
+    }
 }

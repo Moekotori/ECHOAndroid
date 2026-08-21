@@ -247,6 +247,7 @@ fun NowPlayingScreen(
     onOnlineLyricsEnabledChange: (Boolean) -> Unit = {},
     isCurrentTrackFavorite: Boolean = false,
     onToggleFavorite: () -> Unit = {},
+    openLyricsRequestId: Int = 0,
 ) {
     val track = status.track
     val effectivePerformanceMode = LocalEchoEffectivePerformanceMode.current
@@ -257,6 +258,11 @@ fun NowPlayingScreen(
         pageCount = { NowPlayingPage.entries.size },
     )
     val pageScope = rememberCoroutineScope()
+    LaunchedEffect(openLyricsRequestId) {
+        if (openLyricsRequestId > 0) {
+            pagerState.scrollToPage(NowPlayingPage.Lyrics.ordinal)
+        }
+    }
     val activePositionMs = positionState?.positionMs ?: status.positionMs
     val activeDurationMs = positionState?.durationMs?.takeIf { it > 0L } ?: status.durationMs
     val lyricsPageOffset = (pagerState.currentPage - NowPlayingPage.Lyrics.ordinal) +
@@ -2559,8 +2565,7 @@ private fun PlaybackSettingsPanel(
                 PlaybackSpeedChip(
                     text = "${minutes}m",
                     selected = status.sleepTimerMode == EchoSleepTimerMode.Timed &&
-                        status.sleepTimerRemainingMs > (minutes - 1) * 60_000L &&
-                        status.sleepTimerRemainingMs <= minutes * 60_000L + 2_000L,
+                        status.sleepTimerMinutes == minutes,
                     onClick = { onSetSleepTimer(minutes) },
                 )
             }

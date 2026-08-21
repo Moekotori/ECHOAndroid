@@ -22,6 +22,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:connect"))
     implementation(project(":core:design"))
     implementation(project(":core:model"))
 

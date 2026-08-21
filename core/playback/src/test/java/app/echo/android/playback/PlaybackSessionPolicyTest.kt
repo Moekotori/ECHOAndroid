@@ -29,6 +29,32 @@ class PlaybackSessionPolicyTest {
     }
 
     @Test
+    fun pendingAuthRestorePlayBlocksSessionPersist() {
+        assertTrue(
+            PlaybackSessionPolicy.hasBlockingPendingPlay(
+                pendingQueueReplace = false,
+                pendingAuthRestorePlay = true,
+            ),
+        )
+        assertFalse(
+            PlaybackSessionPolicy.hasBlockingPendingPlay(
+                pendingQueueReplace = false,
+                pendingAuthRestorePlay = false,
+            ),
+        )
+        assertFalse(
+            PlaybackSessionPolicy.shouldPersistSavedSession(
+                restoreCompleted = true,
+                hasPendingPlay = PlaybackSessionPolicy.hasBlockingPendingPlay(
+                    pendingQueueReplace = false,
+                    pendingAuthRestorePlay = true,
+                ),
+                queueEmpty = false,
+            ),
+        )
+    }
+
+    @Test
     fun restoreCompleteMayPersistEmptyQueue() {
         assertTrue(
             PlaybackSessionPolicy.shouldPersistSavedSession(
@@ -209,6 +235,22 @@ class PlaybackSessionPolicyTest {
         assertTrue(PlaybackSessionPolicy.shouldPrepareBeforePlay(hasPlayerError = true, playbackStateIdle = false))
         assertTrue(PlaybackSessionPolicy.shouldPrepareBeforePlay(hasPlayerError = false, playbackStateIdle = true))
         assertFalse(PlaybackSessionPolicy.shouldPrepareBeforePlay(hasPlayerError = false, playbackStateIdle = false))
+        assertTrue(
+            PlaybackSessionPolicy.shouldPrepareAfterExternalSkip(
+                hasPlayerError = true,
+                playbackStateIdle = false,
+                mediaItemCount = 3,
+            ),
+        )
+        assertFalse(
+            PlaybackSessionPolicy.shouldPrepareAfterExternalSkip(
+                hasPlayerError = true,
+                playbackStateIdle = false,
+                mediaItemCount = 0,
+            ),
+        )
+        assertEquals(2, PlaybackSessionPolicy.queueStartIndex(listOf("a", "b", "c"), "c"))
+        assertEquals(0, PlaybackSessionPolicy.queueStartIndex(listOf("a", "b"), "missing"))
     }
 
     @Test

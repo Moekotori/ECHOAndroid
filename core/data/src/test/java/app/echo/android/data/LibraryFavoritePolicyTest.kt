@@ -60,4 +60,19 @@ class LibraryFavoritePolicyTest {
         assertEquals(listOf("album-b", "album-a"), albumKeys)
         assertFalse(albumKeys.contains("album-recent"))
     }
+
+    @Test
+    fun likedSongsPlaylistIsPinnedAndNotEditable() {
+        val playlist = LibraryFavoritePolicy.likedSongsPlaylist(
+            trackCount = 3,
+            artworkUri = "content://art",
+        )
+        assertTrue(LibraryFavoritePolicy.isLikedSongsId(playlist.id))
+        assertTrue(playlist.isLikedSongs)
+        assertFalse(playlist.canEdit)
+        assertTrue(playlist.canRemoveTracks)
+        assertEquals(3, playlist.trackCount)
+        assertEquals("content://art", playlist.artworkUri)
+        assertFalse(LibraryFavoritePolicy.isLikedSongsId("local:other"))
+    }
 }

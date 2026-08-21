@@ -44,4 +44,16 @@
     <string name="qr_start_failed">Built-in scanner failed to start: %1$s</string>
     <string name="qr_unknown_error">Unknown error</string>
     <string name="artist_album_count">%1$d albums</string>
+    <string name="playback_widget_name">ECHO playback</string>
+    <string name="playback_widget_description">Play, pause, and skip the current track from the home screen</string>
+    <string name="playback_widget_preview_title">ECHO Mobile</string>
+    <string name="qs_tile_play_pause">ECHO play/pause</string>
+    <string name="qs_tile_playing">Playing</string>
+    <string name="qs_tile_paused">Paused</string>
+    <string name="qs_tile_idle">Idle</string>
+    <string name="playback_widget_idle">Not playing</string>
+    <string name="shortcut_play">Play</string>
+    <string name="shortcut_play_long">Play last queue</string>
+    <string name="shortcut_library">Library</string>
+    <string name="shortcut_library_long">Open library</string>
 </resources>

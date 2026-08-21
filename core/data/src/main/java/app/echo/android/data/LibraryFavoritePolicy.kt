@@ -1,5 +1,7 @@
 package app.echo.android.data
 
+import app.echo.android.model.library.EchoPlaylist
+import app.echo.android.model.library.LibrarySource
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -67,6 +69,18 @@ object LibraryFavoritePolicy {
     }
 
     const val FavoriteAlbumLimit = 4
+
+    fun isLikedSongsId(playlistId: String): Boolean =
+        playlistId.trim() == EchoPlaylist.LikedSongsId
+
+    fun likedSongsPlaylist(trackCount: Int, artworkUri: String?): EchoPlaylist =
+        EchoPlaylist(
+            id = EchoPlaylist.LikedSongsId,
+            name = "Liked songs",
+            trackCount = trackCount.coerceAtLeast(0),
+            artworkUri = artworkUri,
+            source = LibrarySource.MediaStore.id,
+        )
 
     private fun normalizeTrackId(trackId: String?): String? =
         trackId?.trim()?.takeIf { it.isNotEmpty() }

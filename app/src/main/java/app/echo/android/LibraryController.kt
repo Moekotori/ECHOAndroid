@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.paging.PagingData
 import androidx.paging.map
 import app.echo.android.data.EchoLibraryRepository
+import app.echo.android.data.LibraryScanPolicy
 import app.echo.android.data.LibraryHomeRecommendationPolicy
 import app.echo.android.data.LocalLibrarySearchResults
 import app.echo.android.data.MediaStoreAudioFolder
@@ -13,6 +14,7 @@ import app.echo.android.data.toAlbumSummary
 import app.echo.android.data.toEchoTrack
 import app.echo.android.data.toListenSeed
 import app.echo.android.model.library.AlbumSummary
+import app.echo.android.model.library.LibrarySource
 import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoPlaylist
@@ -36,7 +38,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -53,6 +57,17 @@ internal class LibraryController(
     val libraryQuery: StateFlow<String> = _libraryQuery.asStateFlow()
     private val _trackSortMode = MutableStateFlow(LibraryTrackSortMode.Title)
     val trackSortMode: StateFlow<LibraryTrackSortMode> = _trackSortMode.asStateFlow()
+    private val _scanState = MutableStateFlow(LibraryScanProgress())
+    val scanState: StateFlow<LibraryScanProgress> = _scanState.asStateFlow()
+    private val _remoteScanState = MutableStateFlow(LibraryScanProgress())
+    val remoteScanState: StateFlow<LibraryScanProgress> = _remoteScanState.asStateFlow()
+
+    private var playbackOccupiesStorage: () -> Boolean = { false }
+
+    private val libraryMutationInProgress: Flow<Boolean> =
+        combine(_scanState, _remoteScanState) { local, remote ->
+            local.isScanning || remote.isScanning
+        }.distinctUntilChanged()
 
     private val debouncedLibraryQuery: Flow<String> =
         _libraryQuery
@@ -89,6 +104,7 @@ internal class LibraryController(
 
     val favoriteAlbums: Flow<List<AlbumSummary>> =
         repository.observeFavoriteAlbums()
+            .holdDuringLibraryMutation()
 
     val libraryStats: Flow<LibraryStats> =
         repository.observeLibraryStats()
@@ -97,19 +113,29 @@ internal class LibraryController(
 
     val recommendedTracks: Flow<List<EchoTrack>> =
         repository.observeRecommendedTracks()
+            .holdDuringLibraryMutation()
             .map { tracks -> tracks.map { it.toEchoTrack() } }
 
     val recentlyAddedAlbums: Flow<List<AlbumSummary>> =
         repository.observeRecentlyAddedAlbums()
 
     private val recommendationSalt = MutableStateFlow(0)
+    private var lastRecommendationSalt = 0
+    private var lastRecommendedKeys: List<String> = emptyList()
     val recommendedAlbums: Flow<List<AlbumSummary>> =
-        combine(repository.observeAlbumListenStats(), recommendationSalt) { rows, salt ->
-            val keys = LibraryHomeRecommendationPolicy.rankAlbumKeys(
+        combine(
+            repository.observeAlbumListenStats().holdDuringLibraryMutation(),
+            recommendationSalt,
+        ) { rows, salt ->
+            val keys = LibraryHomeRecommendationPolicy.resolveAlbumKeys(
                 seeds = rows.map { it.toListenSeed() },
                 nowEpochMs = System.currentTimeMillis(),
                 refreshSalt = salt,
+                previousSalt = lastRecommendationSalt,
+                previousKeys = lastRecommendedKeys,
             )
+            lastRecommendationSalt = salt
+            lastRecommendedKeys = keys
             val byKey = rows.associateBy { it.albumKey }
             keys.mapNotNull { key -> byKey[key]?.toAlbumSummary() }
         }
@@ -118,10 +144,9 @@ internal class LibraryController(
         recommendationSalt.value += 1
     }
 
-    private val _scanState = MutableStateFlow(LibraryScanProgress())
-    val scanState: StateFlow<LibraryScanProgress> = _scanState.asStateFlow()
-    private val _remoteScanState = MutableStateFlow(LibraryScanProgress())
-    val remoteScanState: StateFlow<LibraryScanProgress> = _remoteScanState.asStateFlow()
+    fun setPlaybackOccupiesStorage(check: () -> Boolean) {
+        playbackOccupiesStorage = check
+    }
 
     private var scanJob: Job? = null
     private var remoteScanJob: Job? = null
@@ -165,8 +190,12 @@ internal class LibraryController(
     fun refreshLibraryIfEmpty() {
         if (scanJob?.isActive == true) return
         scope.launch {
-            val trackCount = withContext(Dispatchers.IO) { repository.countTracks() }
-            if (trackCount > 0) return@launch
+            val localMediaStoreCount = withContext(Dispatchers.IO) {
+                repository.countTracksFromSource(LibrarySource.MediaStore.id)
+            }
+            if (!LibraryScanPolicy.shouldRefreshLocalLibraryAfterPermissionGrant(localMediaStoreCount)) {
+                return@launch
+            }
             refreshLibrary()
         }
     }
@@ -194,7 +223,7 @@ internal class LibraryController(
             try {
                 repository.refreshMediaStoreSnapshot(
                     relativePathPrefix = relativePathPrefix,
-                    skipSampleRateRead = effectivePerformanceMode.isLightweight,
+                    skipSampleRateRead = skipSampleRateRead(),
                 )
                     .collect { progress -> _scanState.value = progress }
             } catch (error: CancellationException) {
@@ -224,7 +253,7 @@ internal class LibraryController(
                 repository.refreshDocumentTreeSnapshot(
                     treeUri = treeUri,
                     relativePathPrefix = folder.relativePathPrefix,
-                    skipSampleRateRead = effectivePerformanceMode.isLightweight,
+                    skipSampleRateRead = skipSampleRateRead(),
                 )
                     .collect { progress -> _scanState.value = progress }
             } catch (error: CancellationException) {
@@ -380,6 +409,11 @@ internal class LibraryController(
             repository.playlistTracksForPlayback(playlistId).map { it.toEchoTrack() }
         }
 
+    suspend fun trackById(trackId: String): EchoTrack? =
+        withContext(Dispatchers.IO) {
+            repository.trackById(trackId)?.toEchoTrack()
+        }
+
     suspend fun toggleFavorite(trackId: String): Boolean =
         withContext(Dispatchers.IO) {
             repository.toggleFavorite(trackId)
@@ -438,4 +472,19 @@ internal class LibraryController(
         scanJob?.cancel()
         remoteScanJob?.cancel()
     }
+
+    private fun skipSampleRateRead(): Boolean =
+        LibraryScanPolicy.shouldSkipSampleRateRead(
+            lightweight = effectivePerformanceMode.isLightweight,
+            storageBusy = playbackOccupiesStorage(),
+        )
+
+    private fun <T> Flow<T>.holdDuringLibraryMutation(): Flow<T> =
+        libraryMutationInProgress.flatMapLatest { mutating ->
+            if (mutating) {
+                flow { awaitCancellation() }
+            } else {
+                this@holdDuringLibraryMutation
+            }
+        }
 }

@@ -9,6 +9,7 @@ import java.security.SecureRandom
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.math.absoluteValue
+import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
@@ -31,6 +32,13 @@ internal data class SubsonicAlbum(
     val artist: String?,
     val coverArt: String?,
     val year: Int?,
+    val songCount: Int,
+)
+
+internal data class SubsonicPlaylist(
+    val id: String,
+    val name: String,
+    val coverArt: String?,
     val songCount: Int,
 )
 
@@ -61,7 +69,7 @@ internal class SubsonicClient(
         request("ping.view")
     }
 
-    fun fetchAlbums(
+    internal fun fetchAlbums(
         pageSize: Int = AlbumPageSize,
         maxAlbums: Int = MaxAlbumsPerSync,
     ): List<SubsonicAlbum> {
@@ -96,7 +104,7 @@ internal class SubsonicClient(
         return albums
     }
 
-    fun fetchAlbumSongs(album: SubsonicAlbum): List<SubsonicSong> {
+    internal fun fetchAlbumSongs(album: SubsonicAlbum): List<SubsonicSong> {
         if (album.id.isBlank()) return emptyList()
         val root = request(
             path = "getAlbum.view",
@@ -108,7 +116,7 @@ internal class SubsonicClient(
             .filter { it.id.isNotBlank() }
     }
 
-    fun fetchSongsBySearch3(
+    internal fun fetchSongsBySearch3(
         pageSize: Int = SongPageSize,
         maxSongs: Int = MaxSongsPerSync,
     ): List<SubsonicSong> {
@@ -175,6 +183,83 @@ internal class SubsonicClient(
                 )
             }
 
+    internal fun fetchPlaylists(): List<SubsonicPlaylist> {
+        val root = request("getPlaylists.view")
+        return root.optJSONObject("playlists")
+            ?.jsonObjects("playlist")
+            ?.map { playlist ->
+                SubsonicPlaylist(
+                    id = playlist.optJsonString("id"),
+                    name = playlist.optJsonString("name").ifBlank { playlist.optJsonString("title") },
+                    coverArt = playlist.optJsonString("coverArt").takeIf { it.isNotBlank() },
+                    songCount = playlist.optInt("songCount").coerceAtLeast(0),
+                )
+            }
+            ?.filter { it.id.isNotBlank() }
+            .orEmpty()
+    }
+
+    internal fun fetchPlaylistSongs(playlistId: String): List<SubsonicSong> {
+        if (playlistId.isBlank()) return emptyList()
+        val root = request("getPlaylist.view", listOf("id" to playlistId))
+        return root.optJSONObject("playlist")
+            ?.jsonObjects("entry")
+            .orEmpty()
+            .ifEmpty { root.optJSONObject("playlist")?.jsonObjects("song").orEmpty() }
+            .map { it.toSubsonicSong() }
+            .filter { it.id.isNotBlank() }
+    }
+
+    fun fetchLyricsText(songId: String, artist: String, title: String): String? {
+        if (songId.isNotBlank()) {
+            val byId = runCatching { lyricsBySongId(songId) }.getOrNull()
+            if (!byId.isNullOrBlank()) return byId
+        }
+        if (artist.isBlank() && title.isBlank()) return null
+        return runCatching { lyricsByArtistTitle(artist, title) }.getOrNull()
+    }
+
+    fun submitListen(songId: String, submission: Boolean, timeSeconds: Long? = null) {
+        if (songId.isBlank()) return
+        val params = buildList {
+            add("id" to songId)
+            add("submission" to if (submission) "true" else "false")
+            if (submission && timeSeconds != null && timeSeconds > 0L) {
+                add("time" to timeSeconds.toString())
+            }
+        }
+        request("scrobble.view", params)
+    }
+
+    private fun lyricsBySongId(songId: String): String? {
+        val root = request("getLyricsBySongId.view", listOf("id" to songId))
+        val structured = root.optJSONObject("lyricsList")
+            ?.jsonObjects("structuredLyrics")
+            .orEmpty()
+        val rendered = structured.joinToString("\n\n") { block ->
+            block.jsonObjects("line").mapNotNull { line ->
+                val value = line.optJsonString("value")
+                if (value.isBlank()) return@mapNotNull null
+                val startMs = line.optLong("start", -1L)
+                if (startMs >= 0L) "${formatLrcTimestamp(startMs)}$value" else value
+            }.joinToString("\n")
+        }
+        return rendered.takeIf { it.isNotBlank() }
+    }
+
+    private fun lyricsByArtistTitle(artist: String, title: String): String? {
+        val root = request(
+            "getLyrics.view",
+            listOf(
+                "artist" to artist,
+                "title" to title,
+            ),
+        )
+        return root.optJSONObject("lyrics")
+            ?.optJsonString("value")
+            ?.takeIf { it.isNotBlank() }
+    }
+
     private fun request(path: String, params: List<Pair<String, String>> = emptyList()): JSONObject {
         val url = buildUrl(path, params)
         val body = httpGet(url) ?: error("远程服务器无响应")
@@ -204,8 +289,8 @@ internal class SubsonicClient(
     internal companion object {
         const val ApiVersion = "1.16.1"
         const val ClientId = "ECHOAndroid"
-        const val AlbumPageSize = 500
-        const val SongPageSize = 500
+        const val AlbumPageSize = 1_000
+        const val SongPageSize = 1_000
         const val CoverArtSizePx = 600
         const val MaxAlbumsPerSync = 2_000
         const val MaxSongsPerSync = 20_000
@@ -311,8 +396,12 @@ private val SharedSubsonicHttpClient: OkHttpClient =
     OkHttpClient.Builder()
         .connectTimeout(8, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
-        .callTimeout(25, TimeUnit.SECONDS)
+        .callTimeout(30, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
+        .followRedirects(false)
+        .followSslRedirects(false)
+        .addInterceptor(sameHostRedirectInterceptor())
+        .connectionPool(okhttp3.ConnectionPool(16, 5, TimeUnit.MINUTES))
         .dispatcher(
             okhttp3.Dispatcher().apply {
                 maxRequestsPerHost = 16
@@ -411,6 +500,37 @@ private fun hasHttpScheme(value: String): Boolean {
 private fun String.urlEncode(): String =
     URLEncoder.encode(this, StandardCharsets.UTF_8.name())
 
+internal fun shouldFollowSameHostRedirect(fromUrl: String, toUrl: String): Boolean {
+    val from = runCatching { URI(fromUrl) }.getOrNull() ?: return false
+    val to = runCatching { URI(toUrl) }.getOrNull() ?: return false
+    val fromHost = from.host?.lowercase(Locale.ROOT) ?: return false
+    val toHost = to.host?.lowercase(Locale.ROOT) ?: return false
+    if (fromHost != toHost) return false
+    val fromHttps = from.scheme.equals("https", ignoreCase = true)
+    val toHttps = to.scheme.equals("https", ignoreCase = true)
+    if (fromHttps && !toHttps) return false
+    return to.scheme.equals("http", ignoreCase = true) || toHttps
+}
+
+internal fun sameHostRedirectInterceptor(): Interceptor =
+    Interceptor { chain ->
+        var request = chain.request()
+        var response = chain.proceed(request)
+        var hops = 0
+        while (response.isRedirect && hops < 5) {
+            val location = response.header("Location") ?: break
+            val nextUrl = response.request.url.resolve(location) ?: break
+            if (!shouldFollowSameHostRedirect(request.url.toString(), nextUrl.toString())) {
+                break
+            }
+            response.close()
+            request = request.newBuilder().url(nextUrl).build()
+            response = chain.proceed(request)
+            hops += 1
+        }
+        response
+    }
+
 private val TokenSaltRandom = SecureRandom()
 
 private fun randomTokenSalt(): String =
@@ -424,4 +544,43 @@ private fun stableSourceHash(value: String): String =
 private fun md5(value: String): String {
     val digest = MessageDigest.getInstance("MD5").digest(value.toByteArray(StandardCharsets.UTF_8))
     return digest.joinToString("") { "%02x".format(it.toInt() and 0xff) }
+}
+
+fun fetchSubsonicLyricsText(
+    endpoint: SubsonicEndpoint,
+    songId: String,
+    artist: String,
+    title: String,
+): String? = SubsonicClient(endpoint).fetchLyricsText(songId, artist, title)
+
+fun submitSubsonicListen(
+    endpoint: SubsonicEndpoint,
+    songId: String,
+    submission: Boolean,
+    timeSeconds: Long? = null,
+) {
+    SubsonicClient(endpoint).submitListen(
+        songId = songId,
+        submission = submission,
+        timeSeconds = timeSeconds,
+    )
+}
+
+fun subsonicSongIdFromTrack(trackId: String, source: String = ""): String? {
+    val isSubsonic = source.startsWith("${LibrarySource.Subsonic.id}:") ||
+        source == LibrarySource.Subsonic.id ||
+        trackId.startsWith("${LibrarySource.Subsonic.id}:")
+    if (!isSubsonic) return null
+    val marker = ":song:"
+    val index = trackId.indexOf(marker)
+    if (index < 0) return null
+    return trackId.substring(index + marker.length).takeIf { it.isNotBlank() }
+}
+
+private fun formatLrcTimestamp(startMs: Long): String {
+    val total = startMs.coerceAtLeast(0L)
+    val minutes = total / 60_000L
+    val seconds = (total % 60_000L) / 1_000L
+    val hundredths = (total % 1_000L) / 10L
+    return "[%02d:%02d.%02d]".format(minutes, seconds, hundredths)
 }

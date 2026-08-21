@@ -106,6 +106,8 @@ internal fun FolderDetailPage(
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
     onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
+    onPlayNext: ((EchoTrack) -> Unit)? = null,
+    onEnqueue: ((EchoTrack) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val colors = rememberFolderDetailColors()
@@ -212,6 +214,8 @@ internal fun FolderDetailPage(
                                 onPickArtwork = onPickArtwork,
                                 onMatchNeteaseMetadata = onMatchNeteaseMetadata,
                                 onAddToPlaylist = onAddToPlaylist,
+                                onPlayNext = onPlayNext,
+                                onEnqueue = onEnqueue,
                             )
                         }
                     }
@@ -444,6 +448,8 @@ private fun FolderTrackRow(
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
     onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
+    onPlayNext: ((EchoTrack) -> Unit)? = null,
+    onEnqueue: ((EchoTrack) -> Unit)? = null,
 ) {
     val colors = rememberFolderDetailColors()
     TrackContextMenu(
@@ -454,6 +460,8 @@ private fun FolderTrackRow(
         onPickArtwork = onPickArtwork,
         onMatchNeteaseMetadata = onMatchNeteaseMetadata,
         onAddToPlaylist = onAddToPlaylist,
+        onPlayNext = onPlayNext,
+        onEnqueue = onEnqueue,
         modifier = Modifier.fillMaxWidth(),
     ) { pressModifier ->
         Row(

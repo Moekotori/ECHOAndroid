@@ -10,7 +10,10 @@ internal object LibraryTrackQueryBuilder {
     ): String {
         val sql = StringBuilder()
         sql.append("SELECT library_tracks.* FROM library_tracks")
-        if (sort == LibraryTrackSortMode.FrequentlyPlayed) {
+        if (
+            sort == LibraryTrackSortMode.FrequentlyPlayed ||
+            sort == LibraryTrackSortMode.RecentlyPlayed
+        ) {
             sql.appendLine()
             sql.append(
                 """
@@ -155,6 +158,10 @@ internal object LibraryTrackQueryBuilder {
             LibraryTrackSortMode.Duration -> "library_tracks.durationMs DESC, library_tracks.title COLLATE NOCASE ASC"
             LibraryTrackSortMode.FrequentlyPlayed -> """
                 COALESCE(library_playback_stats.playCount, 0) DESC,
+                COALESCE(library_playback_stats.lastPlayedAtEpochMs, 0) DESC,
+                library_tracks.title COLLATE NOCASE ASC
+            """.trimIndent()
+            LibraryTrackSortMode.RecentlyPlayed -> """
                 COALESCE(library_playback_stats.lastPlayedAtEpochMs, 0) DESC,
                 library_tracks.title COLLATE NOCASE ASC
             """.trimIndent()

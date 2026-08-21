@@ -1,0 +1,3 @@
+F:/ECHOAndroid/core/usb-audio/.cxx/Debug/3ipi6b1s/arm64-v8a/CMakeFiles/echo_usb_isoc.dir
+F:/ECHOAndroid/core/usb-audio/.cxx/Debug/3ipi6b1s/arm64-v8a/CMakeFiles/edit_cache.dir
+F:/ECHOAndroid/core/usb-audio/.cxx/Debug/3ipi6b1s/arm64-v8a/CMakeFiles/rebuild_cache.dir

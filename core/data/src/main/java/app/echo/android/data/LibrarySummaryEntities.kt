@@ -75,6 +75,36 @@ fun LibraryAlbumListenStatsRow.toListenSeed(): LibraryAlbumListenSeed =
         addedAtSeconds = addedAtSeconds,
     )
 
+data class TrackSummaryKeyRow(
+    val albumKey: String,
+    val artistKey: String,
+    val relativePath: String?,
+    val source: String,
+)
+
+fun TrackSummaryKeyRow.toSummaryKeySet(): LibrarySummaryKeySet {
+    val albumSummaryKey = albumKey.takeIf { it.isNotBlank() }?.let { key ->
+        if (LibraryScanPolicy.isLocalLibrarySource(source)) {
+            key
+        } else {
+            "remote||$source||$key"
+        }
+    }
+    val artistSummaryKey = artistKey.takeIf {
+        it.isNotBlank() && LibraryScanPolicy.isLocalLibrarySource(source)
+    }
+    val folderSummaryKey = if (LibraryScanPolicy.isLocalLibrarySource(source)) {
+        relativePath?.takeIf { it.isNotBlank() }.orEmpty()
+    } else {
+        null
+    }
+    return LibrarySummaryKeySet(
+        albumKeys = setOfNotNull(albumSummaryKey),
+        artistKeys = setOfNotNull(artistSummaryKey),
+        folderKeys = setOfNotNull(folderSummaryKey),
+    )
+}
+
 @Entity(tableName = "library_folder_summaries")
 data class LibraryFolderSummaryEntity(
     @PrimaryKey val folderKey: String,

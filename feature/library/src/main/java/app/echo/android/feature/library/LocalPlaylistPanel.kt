@@ -98,8 +98,8 @@ internal fun LocalPlaylistPanel(
                     playlist = playlist,
                     onOpen = { onOpenPlaylist(playlist) },
                     onPlay = { onPlayPlaylist(playlist) },
-                    onRename = { renaming = playlist },
-                    onDelete = { deleting = playlist },
+                    onRename = { if (playlist.canEdit) renaming = playlist },
+                    onDelete = { if (playlist.canEdit) deleting = playlist },
                 )
             }
         }
@@ -175,6 +175,9 @@ internal fun PlaylistDetailPage(
     onUpdateTrackMetadata: ((EchoTrackMetadataUpdate) -> Unit)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
+    onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
+    onPlayNext: ((EchoTrack) -> Unit)? = null,
+    onEnqueue: ((EchoTrack) -> Unit)? = null,
     showAudioInfoTags: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
@@ -182,12 +185,8 @@ internal fun PlaylistDetailPage(
     var deleting by remember { mutableStateOf(false) }
     Column(modifier = modifier.fillMaxSize()) {
         LibraryDetailPage(
-            title = playlist.name,
-            subtitle = echoString(
-                en = "${playlist.trackCount} tracks · Local playlist",
-                zh = "${playlist.trackCount} 首 · 本地歌单",
-                ja = "${playlist.trackCount} 曲 · ローカルプレイリスト",
-            ),
+            title = playlistDisplayName(playlist),
+            subtitle = playlistCaption(playlist),
             tracks = tracks,
             onBack = onBack,
             onPlayAll = onPlayAll,
@@ -195,18 +194,23 @@ internal fun PlaylistDetailPage(
             onUpdateTrackMetadata = onUpdateTrackMetadata,
             onImportLyrics = onImportLyrics,
             onPickArtwork = onPickArtwork,
-            onRemoveFromPlaylist = onRemoveTrack,
-            onMoveTrack = onMoveTrack,
+            onAddToPlaylist = onAddToPlaylist,
+            onPlayNext = onPlayNext,
+            onEnqueue = onEnqueue,
+            onRemoveFromPlaylist = onRemoveTrack.takeIf { playlist.canRemoveTracks },
+            onMoveTrack = onMoveTrack.takeIf { playlist.canEdit },
             showAudioInfoTags = showAudioInfoTags,
             headerActions = {
-                EchoTextButton(
-                    text = echoString(en = "Rename", zh = "重命名", ja = "名前を変更"),
-                    onClick = { renaming = true },
-                )
-                EchoTextButton(
-                    text = echoString(en = "Delete", zh = "删除", ja = "削除"),
-                    onClick = { deleting = true },
-                )
+                if (playlist.canEdit) {
+                    EchoTextButton(
+                        text = echoString(en = "Rename", zh = "重命名", ja = "名前を変更"),
+                        onClick = { renaming = true },
+                    )
+                    EchoTextButton(
+                        text = echoString(en = "Delete", zh = "删除", ja = "削除"),
+                        onClick = { deleting = true },
+                    )
+                }
             },
             modifier = Modifier.fillMaxSize(),
         )
@@ -293,12 +297,12 @@ internal fun AddToPlaylistDialog(
                         ),
                     )
                 } else {
-                    playlists.forEach { playlist ->
+                    playlists.filter { it.canEdit || it.isLikedSongs }.forEach { playlist ->
                         Text(
                             echoString(
-                                en = "${playlist.name} · ${playlist.trackCount} tracks",
-                                zh = "${playlist.name} · ${playlist.trackCount} 首",
-                                ja = "${playlist.name} · ${playlist.trackCount} 曲",
+                                en = "${playlistDisplayName(playlist)} · ${playlist.trackCount} tracks",
+                                zh = "${playlistDisplayName(playlist)} · ${playlist.trackCount} 首",
+                                ja = "${playlistDisplayName(playlist)} · ${playlist.trackCount} 曲",
                             ),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -356,6 +360,36 @@ private fun PlaylistNameDialog(
             }
         },
     )
+}
+
+@Composable
+private fun playlistDisplayName(playlist: EchoPlaylist): String =
+    if (playlist.isLikedSongs) {
+        echoString(en = "Liked songs", zh = "喜欢的歌曲", ja = "お気に入り")
+    } else {
+        playlist.name
+    }
+
+@Composable
+private fun playlistCaption(playlist: EchoPlaylist): String {
+    val count = playlist.trackCount
+    return when {
+        playlist.isLikedSongs -> echoString(
+            en = "$count tracks · Liked songs",
+            zh = "$count 首 · 喜欢的歌曲",
+            ja = "$count 曲 · お気に入り",
+        )
+        playlist.canEdit -> echoString(
+            en = "$count tracks · Local playlist",
+            zh = "$count 首 · 本地歌单",
+            ja = "$count 曲 · ローカルプレイリスト",
+        )
+        else -> echoString(
+            en = "$count tracks · Navidrome",
+            zh = "$count 首 · Navidrome",
+            ja = "$count 曲 · Navidrome",
+        )
+    }
 }
 
 @Composable
@@ -426,7 +460,7 @@ private fun LocalPlaylistRow(
         )
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                playlist.name,
+                playlistDisplayName(playlist),
                 color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
@@ -434,19 +468,17 @@ private fun LocalPlaylistRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                echoString(
-                    en = "${playlist.trackCount} tracks · Local library",
-                    zh = "${playlist.trackCount} 首 · 本地曲库",
-                    ja = "${playlist.trackCount} 曲 · ローカルライブラリ",
-                ),
+                playlistCaption(playlist),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        IconButtonLite(icon = Icons.Rounded.Edit, onClick = onRename)
-        IconButtonLite(icon = Icons.Rounded.DeleteOutline, onClick = onDelete)
+        if (playlist.canEdit) {
+            IconButtonLite(icon = Icons.Rounded.Edit, onClick = onRename)
+            IconButtonLite(icon = Icons.Rounded.DeleteOutline, onClick = onDelete)
+        }
         IconButtonLite(icon = Icons.Rounded.PlayArrow, onClick = onPlay)
         Icon(
             Icons.AutoMirrored.Rounded.KeyboardArrowRight,

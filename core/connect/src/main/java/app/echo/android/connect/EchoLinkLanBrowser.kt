@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.net.wifi.WifiManager
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import app.echo.android.model.connect.EchoLinkLanDevice
@@ -27,8 +28,16 @@ class EchoLinkLanBrowser(
 
     private var discoveryListener: NsdManager.DiscoveryListener? = null
     private val pendingResolves = ArrayDeque<NsdServiceInfo>()
+    private val resolveAttempts = mutableMapOf<String, Int>()
     private var resolving = false
     private var started = false
+
+    fun restart() {
+        val snapshot = _devices.value
+        stop(clearDevices = false)
+        _devices.value = snapshot
+        start()
+    }
 
     fun start() {
         if (started) return
@@ -63,14 +72,17 @@ class EchoLinkLanBrowser(
         }
     }
 
-    fun stop() {
+    fun stop(clearDevices: Boolean = true) {
         val manager = nsdManager
         val listener = discoveryListener
         discoveryListener = null
         pendingResolves.clear()
+        resolveAttempts.clear()
         resolving = false
         started = false
-        _devices.value = emptyList()
+        if (clearDevices) {
+            _devices.value = emptyList()
+        }
         if (manager != null && listener != null) {
             runCatching { manager.stopServiceDiscovery(listener) }
         }
@@ -96,15 +108,22 @@ class EchoLinkLanBrowser(
                 object : NsdManager.ResolveListener {
                     override fun onResolveFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
                         mainHandler.post {
+                            val name = serviceInfo.serviceName.orEmpty()
+                            val attempts = (resolveAttempts[name] ?: 0) + 1
+                            resolveAttempts[name] = attempts
+                            if (started && attempts < MaxResolveAttempts) {
+                                pendingResolves.addLast(serviceInfo)
+                            }
                             resolving = false
                             drainResolves()
                         }
                     }
 
                     override fun onServiceResolved(serviceInfo: NsdServiceInfo) {
+                        resolveAttempts.remove(serviceInfo.serviceName.orEmpty())
                         val device = EchoLinkDiscoveryPolicy.deviceFromResolved(
                             serviceName = serviceInfo.serviceName.orEmpty(),
-                            host = resolvedHost(serviceInfo),
+                            host = EchoLinkDiscoveryPolicy.pickHost(resolvedHosts(serviceInfo)),
                             port = serviceInfo.port,
                             txt = EchoLinkDiscoveryPolicy.decodeTxt(serviceInfo.attributes.orEmpty()),
                         )
@@ -127,6 +146,16 @@ class EchoLinkLanBrowser(
     }
 
     @Suppress("DEPRECATION")
-    private fun resolvedHost(serviceInfo: NsdServiceInfo): String? =
-        serviceInfo.host?.hostAddress
+    private fun resolvedHosts(serviceInfo: NsdServiceInfo): List<String> {
+        val hosts = mutableListOf<String>()
+        if (Build.VERSION.SDK_INT >= 34) {
+            serviceInfo.hostAddresses.orEmpty().mapNotNullTo(hosts) { it.hostAddress }
+        }
+        serviceInfo.host?.hostAddress?.let(hosts::add)
+        return hosts
+    }
+
+    private companion object {
+        const val MaxResolveAttempts = 3
+    }
 }

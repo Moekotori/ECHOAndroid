@@ -180,6 +180,46 @@ class EchoRemoteClientTest {
     }
 
     @Test
+    fun exhaustedPairingStopsInError() = runBlocking {
+        val pairingEndpoint = endpoint.copy(
+            token = "one-time-secret",
+            protocolVersion = app.echo.android.model.connect.EchoProtocolVersion(2, 0),
+            pairingId = "pair-1",
+            pairingSecret = "one-time-secret",
+        )
+        val transport = FakeEchoLinkTransport(failPairing = true)
+        val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
+        client.connect(pairingEndpoint, refreshLibraryOnConnect = false)
+        delay(50)
+        assertEquals(EchoRemoteConnectionState.Error, client.status.value.connectionState)
+        assertEquals(2, transport.pairingCalls)
+        client.disconnect()
+    }
+
+    @Test
+    fun playTracksOnPhoneResolvesTheFullQueue() = runBlocking {
+        val transport = FakeEchoLinkTransport()
+        val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
+        client.connect(endpoint, refreshLibraryOnConnect = false)
+        delay(20)
+        var received: List<String> = emptyList()
+        var start = -1
+        client.playTracksOnPhone(
+            tracks = listOf(remoteTrack("a"), remoteTrack("b"), remoteTrack("c")),
+            startIndex = 1,
+            onQueueReady = { queue, index ->
+                received = queue.map { it.id }
+                start = index
+            },
+        )
+        delay(50)
+        assertEquals(3, transport.streamCalls)
+        assertEquals(listOf("echo-link:a", "echo-link:b", "echo-link:c"), received)
+        assertEquals(1, start)
+        client.disconnect()
+    }
+
+    @Test
     fun playlistTracks404DoesNotLoadTheGeneralLibrary() = runBlocking {
         val transport = FakeEchoLinkTransport()
         val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
@@ -289,6 +329,7 @@ private fun remoteTrack(id: String): EchoRemoteTrack =
     )
 
 private class FakeEchoLinkTransport(
+    private val failPairing: Boolean = false,
     private val failStatusTimes: Int = 0,
     private val libraryPageSize: Int = 500,
     private val libraryTotalCount: Int = 0,
@@ -313,7 +354,7 @@ private class FakeEchoLinkTransport(
         pairingBlocker?.await()
         if (!endpoint.needsV2PairExchange) return endpoint
         pairingCalls += 1
-        if (pairingCalls > 1) {
+        if (failPairing || pairingCalls > 1) {
             throw EchoLinkHttpException("PC ECHO request failed (401): invalid_or_expired_pairing")
         }
         return endpoint.copy(

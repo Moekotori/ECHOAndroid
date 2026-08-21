@@ -37,4 +37,35 @@ class UsbIsoPacketizerTest {
         )
         assertEquals(UsbIsoPacketizer.HighSpeedPacketsPerSecond, pps)
     }
+
+    @Test
+    fun usb2IsochronousWithFullSpeedSizedMaxPacketIsStillHighSpeed() {
+        val pps = UsbIsoPacketizer.packetsPerSecond(
+            sampleRateHz = 48_000,
+            channelCount = 2,
+            bytesPerSample = 2,
+            maxPacketSize = 192,
+            usbVersion = 0x0200,
+        )
+        assertEquals(UsbIsoPacketizer.HighSpeedPacketsPerSecond, pps)
+    }
+
+    @Test
+    fun isoPacketBytesIgnoreHighBandwidthMultiplier() {
+        val highBandwidth = 192 or (1 shl 11)
+        assertEquals(192, UsbIsoPacketizer.maxIsoPacketBytes(highBandwidth))
+        assertEquals(384, UsbIsoPacketizer.maxPacketPayloadBytes(highBandwidth))
+    }
+
+    @Test
+    fun usb1FullSpeedKeepsOneMillisecondPackets() {
+        val pps = UsbIsoPacketizer.packetsPerSecond(
+            sampleRateHz = 48_000,
+            channelCount = 2,
+            bytesPerSample = 2,
+            maxPacketSize = 192,
+            usbVersion = 0x0110,
+        )
+        assertEquals(UsbIsoPacketizer.FullSpeedPacketsPerSecond, pps)
+    }
 }

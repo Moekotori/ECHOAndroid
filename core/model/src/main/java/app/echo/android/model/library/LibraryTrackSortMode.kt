@@ -4,6 +4,7 @@ enum class LibraryTrackSortMode {
     Title,
     Duration,
     FrequentlyPlayed,
+    RecentlyPlayed,
     Random,
     Artist,
     Album,

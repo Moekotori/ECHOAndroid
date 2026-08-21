@@ -83,6 +83,17 @@ class LibraryFtsSearchTest {
     }
 
     @Test
+    fun recentlyPlayedPagingSqlJoinsPlaybackStats() {
+        val sql = LibraryTrackQueryBuilder.buildTrackPagingSql(
+            query = "",
+            useFts = false,
+            sort = app.echo.android.model.library.LibraryTrackSortMode.RecentlyPlayed,
+        )
+        assertTrue(sql.contains("library_playback_stats"))
+        assertTrue(sql.contains("lastPlayedAtEpochMs"))
+    }
+
+    @Test
     fun pinyinStoresInitialsForChineseMatching() {
         val entity = LibraryTrackEntity(
             id = "track-2",

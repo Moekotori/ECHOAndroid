@@ -32,6 +32,7 @@ internal class LyricsController(
     private val onlineLyricsResolver: OnlineLyricsResolver,
     private val importedLyricsStore: ImportedLyricsStore,
     private val scope: CoroutineScope,
+    private val subsonicLyricsLoader: (LibraryTrackEntity) -> EchoLyrics? = { null },
 ) {
     private val _lyricsState = MutableStateFlow<EchoLyricsLoadState>(EchoLyricsLoadState.Idle)
     val lyricsState: StateFlow<EchoLyricsLoadState> = _lyricsState.asStateFlow()
@@ -153,13 +154,18 @@ internal class LyricsController(
                             val importedLyrics = importedLyricsStore.lyricsUriForTrack(trackId)
                                 ?.let(lyricsResolver::loadFromUri)
                             val localLyrics = importedLyrics ?: lyricsResolver.loadForTrack(track)
-                            val onlineLyrics = if (localLyrics == null) {
+                            val serverLyrics = if (localLyrics == null) {
+                                runCatching { subsonicLyricsLoader(track) }.getOrNull()
+                            } else {
+                                null
+                            }
+                            val onlineLyrics = if (localLyrics == null && serverLyrics == null) {
                                 directNeteaseLyrics(track)
                                     ?: if (onlineLyricsEnabled) cachedOnlineLyrics(track) else null
                             } else {
                                 null
                             }
-                            (localLyrics ?: onlineLyrics)
+                            (localLyrics ?: serverLyrics ?: onlineLyrics)
                                 ?.takeIf { it.lines.isNotEmpty() }
                                 ?.withUserOffset(userOffsetMs)
                                 ?.let(EchoLyricsLoadState::Ready)

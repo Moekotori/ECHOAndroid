@@ -34,8 +34,8 @@ class EchoPlaybackRestoreTest {
 
     @Test
     fun playPauseIntentIsCapturedAtTapNotToggledAtFlush() {
-        assertTrue(pendingPlayPauseShouldPlay(currentlyPlaying = false))
-        assertFalse(pendingPlayPauseShouldPlay(currentlyPlaying = true))
+        assertTrue(pendingPlayPauseShouldPlay(playWhenReady = false))
+        assertFalse(pendingPlayPauseShouldPlay(playWhenReady = true))
     }
 
     @Test
@@ -49,6 +49,14 @@ class EchoPlaybackRestoreTest {
                 queueEmpty = true,
             ),
         )
+    }
+
+    @Test
+    fun emptyPlayerIsEligibleForSessionRestore() {
+        assertTrue(shouldRestoreIntoEmptyPlayer(0))
+        assertFalse(shouldRestoreIntoEmptyPlayer(1))
+        assertFalse(shouldPlayAfterSessionRestore(userRequestedPlay = false))
+        assertTrue(shouldPlayAfterSessionRestore(userRequestedPlay = true))
     }
 
     @Test

@@ -95,6 +95,7 @@ import app.echo.android.design.LocalEchoWidthSizeClass
 import app.echo.android.design.PageChrome
 import app.echo.android.design.echoString
 import app.echo.android.model.connect.EchoRemoteLibraryState
+import app.echo.android.model.connect.EchoLinkLibraryQueryPolicy
 import app.echo.android.model.connect.EchoRemotePlaylist
 import app.echo.android.model.connect.EchoRemoteTrack
 import app.echo.android.model.library.AlbumSummary
@@ -178,6 +179,7 @@ internal fun LibraryTrackSortMode.label(): String = when (this) {
     LibraryTrackSortMode.Title -> echoString(en = "song title", zh = "歌曲标题", ja = "曲名")
     LibraryTrackSortMode.Duration -> echoString(en = "duration", zh = "音乐时间", ja = "再生時間")
     LibraryTrackSortMode.FrequentlyPlayed -> echoString(en = "frequently played", zh = "常听歌曲", ja = "よく聴く曲")
+    LibraryTrackSortMode.RecentlyPlayed -> echoString(en = "recently played", zh = "最近播放", ja = "最近再生した曲")
     LibraryTrackSortMode.Random -> echoString(en = "shuffle", zh = "随机排序", ja = "ランダム")
     LibraryTrackSortMode.Artist -> echoString(en = "artist", zh = "艺术家", ja = "アーティスト")
     LibraryTrackSortMode.Album -> echoString(en = "album", zh = "专辑", ja = "アルバム")
@@ -272,6 +274,7 @@ fun LibraryScreen(
     onRefreshLinkedLibrary: (String) -> Unit,
     onOpenLinkedPlaylist: (EchoRemotePlaylist) -> Unit,
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
+    onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
     onPlayTrack: (EchoTrack, LibraryPlaybackOrigin) -> Unit,
     onPlayNext: (EchoTrack) -> Unit = {},
     onEnqueueTrack: (EchoTrack) -> Unit = {},
@@ -397,6 +400,7 @@ fun LibraryScreen(
             onClosePlaylist = { selectedLinkedPlaylistId = null },
             onRefresh = onRefreshLinkedLibrary,
             onPlayLinkedTrack = onPlayLinkedTrack,
+            onPlayLinkedQueue = onPlayLinkedQueue,
             modifier = Modifier.fillMaxSize(),
         )
         return
@@ -647,6 +651,8 @@ fun LibraryScreen(
                         onImportLyrics = onImportLyricsForTrack,
                         onPickArtwork = onPickTrackArtwork,
                         onAddToPlaylist = { track -> addToPlaylistTrack = track },
+                        onPlayNext = playNext,
+                        onEnqueue = enqueueTrack,
                         modifier = Modifier.fillMaxSize(),
                     )
                     selectedFolder != null && folderDetailTracks != null -> FolderDetailPage(
@@ -661,6 +667,8 @@ fun LibraryScreen(
                         onImportLyrics = onImportLyricsForTrack,
                         onPickArtwork = onPickTrackArtwork,
                         onAddToPlaylist = { track -> addToPlaylistTrack = track },
+                        onPlayNext = playNext,
+                        onEnqueue = enqueueTrack,
                         modifier = Modifier.fillMaxSize(),
                     )
                     livePlaylist != null && playlistDetailTracks != null -> PlaylistDetailPage(
@@ -681,6 +689,9 @@ fun LibraryScreen(
                         onUpdateTrackMetadata = onUpdateTrackMetadata,
                         onImportLyrics = onImportLyricsForTrack,
                         onPickArtwork = onPickTrackArtwork,
+                        onAddToPlaylist = { track -> addToPlaylistTrack = track },
+                        onPlayNext = playNext,
+                        onEnqueue = enqueueTrack,
                         showAudioInfoTags = showTrackAudioInfoTags,
                         modifier = Modifier.fillMaxSize(),
                     )
@@ -768,6 +779,8 @@ fun LibraryScreen(
                 onImportLyrics = onImportLyricsForTrack,
                 onPickArtwork = onPickTrackArtwork,
                 onAddToPlaylist = { track -> addToPlaylistTrack = track },
+                onPlayNext = playNext,
+                onEnqueue = enqueueTrack,
                 modifier = Modifier.fillMaxSize(),
             )
             LibraryDetailTransitionTarget.Browser -> {
@@ -801,6 +814,9 @@ fun LibraryScreen(
                         onUpdateTrackMetadata = onUpdateTrackMetadata,
                         onImportLyrics = onImportLyricsForTrack,
                         onPickArtwork = onPickTrackArtwork,
+                        onAddToPlaylist = { track -> addToPlaylistTrack = track },
+                        onPlayNext = playNext,
+                        onEnqueue = enqueueTrack,
                         showAudioInfoTags = showTrackAudioInfoTags,
                         modifier = Modifier.fillMaxSize(),
                     )
@@ -858,6 +874,8 @@ fun LibraryScreen(
                             onImportLyrics = onImportLyricsForTrack,
                             onPickArtwork = onPickTrackArtwork,
                             onAddToPlaylist = { track -> addToPlaylistTrack = track },
+                            onPlayNext = playNext,
+                            onEnqueue = enqueueTrack,
                             modifier = Modifier.fillMaxSize(),
                         )
                         LibraryFolderTransitionTarget.Browser -> LocalBrowserPane()
@@ -1142,6 +1160,7 @@ private fun LinkedEchoLibraryPage(
     onClosePlaylist: () -> Unit,
     onRefresh: (String) -> Unit,
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
+    onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val tracks = state.tracks
@@ -1207,9 +1226,10 @@ private fun LinkedEchoLibraryPage(
     }
 
     LaunchedEffect(normalizedQuery, remoteQuery) {
-        if (normalizedQuery != remoteQuery) {
+        val queryToSend = EchoLinkLibraryQueryPolicy.remoteSearchQuery(normalizedQuery)
+        if (queryToSend != remoteQuery) {
             delay(300L)
-            onRefresh(normalizedQuery)
+            onRefresh(queryToSend)
         }
     }
     var lastEmptyAutoRefreshQuery by remember { mutableStateOf<String?>(null) }
@@ -1240,6 +1260,7 @@ private fun LinkedEchoLibraryPage(
             tracks = selectedAlbumTracks,
             onBack = onCloseAlbum,
             onPlayLinkedTrack = onPlayLinkedTrack,
+            onPlayLinkedQueue = onPlayLinkedQueue,
             modifier = modifier,
         )
         return
@@ -1250,6 +1271,7 @@ private fun LinkedEchoLibraryPage(
             tracks = selectedArtistTracks,
             onBack = onCloseArtist,
             onPlayLinkedTrack = onPlayLinkedTrack,
+            onPlayLinkedQueue = onPlayLinkedQueue,
             modifier = modifier,
         )
         return
@@ -1262,6 +1284,7 @@ private fun LinkedEchoLibraryPage(
             error = state.error,
             onBack = onClosePlaylist,
             onPlayLinkedTrack = onPlayLinkedTrack,
+            onPlayLinkedQueue = onPlayLinkedQueue,
             modifier = modifier,
         )
         return
@@ -1630,6 +1653,7 @@ private fun LinkedPlaylistTracksPage(
     error: String?,
     onBack: () -> Unit,
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
+    onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LinkedLibraryChrome(
@@ -1701,7 +1725,10 @@ private fun LinkedPlaylistTracksPage(
             )
             else -> LinkedTrackList(
                 tracks = tracks,
-                onPlayLinkedTrack = onPlayLinkedTrack,
+                onPlayLinkedTrack = { track ->
+                    val index = tracks.indexOfFirst { it.id == track.id }.coerceAtLeast(0)
+                    onPlayLinkedQueue(tracks, index)
+                },
                 showAudioInfoTags = false,
                 modifier = Modifier.weight(1f),
             )
@@ -1759,6 +1786,7 @@ private fun LinkedAlbumTracksPage(
     tracks: List<EchoRemoteTrack>,
     onBack: () -> Unit,
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
+    onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val albumTracks = remember(tracks) { tracks.map { it.toEchoTrack() } }
@@ -1769,9 +1797,15 @@ private fun LinkedAlbumTracksPage(
         album = album,
         tracks = albumTracks,
         onBack = onBack,
-        onPlayAll = { tracks.firstOrNull()?.let(onPlayLinkedTrack) },
-        onShuffle = { tracks.shuffled().firstOrNull()?.let(onPlayLinkedTrack) },
-        onPlayTrack = { track -> remoteTracksByUiId[track.id]?.let(onPlayLinkedTrack) },
+        onPlayAll = { if (tracks.isNotEmpty()) onPlayLinkedQueue(tracks, 0) },
+        onShuffle = {
+            if (tracks.isNotEmpty()) onPlayLinkedQueue(tracks.shuffled(), 0)
+        },
+        onPlayTrack = { track ->
+            val remote = remoteTracksByUiId[track.id] ?: return@AlbumDetailListPage
+            val index = tracks.indexOfFirst { it.id == remote.id }.coerceAtLeast(0)
+            onPlayLinkedQueue(tracks, index)
+        },
         modifier = modifier,
     )
 }
@@ -1782,6 +1816,7 @@ private fun LinkedArtistTracksPage(
     tracks: List<EchoRemoteTrack>,
     onBack: () -> Unit,
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
+    onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val artistTracks = remember(tracks) { tracks.map { it.toEchoTrack() } }
@@ -1792,9 +1827,15 @@ private fun LinkedArtistTracksPage(
         artist = artist,
         tracks = artistTracks,
         onBack = onBack,
-        onPlayAll = { tracks.firstOrNull()?.let(onPlayLinkedTrack) },
-        onShuffle = { tracks.shuffled().firstOrNull()?.let(onPlayLinkedTrack) },
-        onPlayTrack = { track -> remoteTracksByUiId[track.id]?.let(onPlayLinkedTrack) },
+        onPlayAll = { if (tracks.isNotEmpty()) onPlayLinkedQueue(tracks, 0) },
+        onShuffle = {
+            if (tracks.isNotEmpty()) onPlayLinkedQueue(tracks.shuffled(), 0)
+        },
+        onPlayTrack = { track ->
+            val remote = remoteTracksByUiId[track.id] ?: return@ArtistDetailListPage
+            val index = tracks.indexOfFirst { it.id == remote.id }.coerceAtLeast(0)
+            onPlayLinkedQueue(tracks, index)
+        },
         modifier = modifier,
     )
 }

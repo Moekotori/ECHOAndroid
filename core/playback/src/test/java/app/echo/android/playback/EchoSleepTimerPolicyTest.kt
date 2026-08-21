@@ -22,6 +22,14 @@ class EchoSleepTimerPolicyTest {
         assertEquals(1f, EchoSleepTimerPolicy.fadeMultiplier(remaining), 0.001f)
         assertEquals(0.5f, EchoSleepTimerPolicy.fadeMultiplier(4_000L), 0.001f)
         assertEquals(0f, EchoSleepTimerPolicy.fadeMultiplier(0L), 0.001f)
+        assertEquals(1f, EchoSleepTimerPolicy.fadeMultiplier(4_000L, allowFade = false), 0.001f)
+        assertEquals(
+            1f,
+            EchoSleepTimerPolicy.fadeMultiplier(0L, mode = EchoSleepTimerMode.Off),
+            0.001f,
+        )
+        assertTrue(EchoSleepTimerPolicy.isTimedMinutesSelected(15, 15))
+        assertFalse(EchoSleepTimerPolicy.isTimedMinutesSelected(30, 15))
     }
 
     @Test
@@ -38,6 +46,9 @@ class EchoSleepTimerPolicyTest {
         assertTrue(EchoSleepTimerPolicy.shouldPauseAtEndOfMediaItem(EchoSleepTimerMode.EndOfTrack))
         assertTrue(EchoSleepTimerPolicy.shouldCancelEndOfTrackOnSeek(EchoSleepTimerMode.EndOfTrack))
         assertFalse(EchoSleepTimerPolicy.shouldPauseAtEndOfMediaItem(EchoSleepTimerMode.Timed))
+        assertEquals(250L, EchoSleepTimerPolicy.tickMs(4_000L))
+        assertEquals(1_000L, EchoSleepTimerPolicy.tickMs(20_000L))
+        assertEquals(1_000L, EchoSleepTimerPolicy.tickMs(0L))
     }
 
     @Test

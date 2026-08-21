@@ -73,6 +73,9 @@ interface LibraryTrackDao {
     @Query("SELECT * FROM library_tracks WHERE id = :trackId LIMIT 1")
     suspend fun getTrackById(trackId: String): LibraryTrackEntity?
 
+    @Query("SELECT * FROM library_tracks WHERE contentUri = :contentUri LIMIT 1")
+    suspend fun getTrackByContentUri(contentUri: String): LibraryTrackEntity?
+
     @Query("SELECT * FROM library_tracks WHERE source = :source AND metadataEditedAtEpochMs IS NOT NULL")
     suspend fun getMetadataEditedTracks(source: String): List<LibraryTrackEntity>
 
@@ -386,6 +389,74 @@ interface LibraryTrackDao {
         """,
     )
     suspend fun getTracksByAlbum(albumKey: String): List<LibraryTrackEntity>
+
+    @Query(
+        """
+        SELECT albumKey, title, albumArtist, artist, artworkUri, trackCount, durationMs, year, addedAtSeconds
+        FROM library_album_summaries
+        WHERE isRemote = 0
+        ORDER BY title COLLATE NOCASE ASC
+        LIMIT :limit OFFSET :offset
+        """,
+    )
+    suspend fun listAlbumsForBrowse(limit: Int, offset: Int): List<AlbumSummary>
+
+    @Query(
+        """
+        SELECT artistKey, name, artworkUri, albumCount, trackCount, durationMs
+        FROM library_artist_summaries
+        ORDER BY name COLLATE NOCASE ASC
+        LIMIT :limit OFFSET :offset
+        """,
+    )
+    suspend fun listArtistsForBrowse(limit: Int, offset: Int): List<ArtistSummary>
+
+    @Query(
+        """
+        SELECT * FROM library_tracks
+        WHERE (source = 'mediastore' OR source = 'saf')
+        ORDER BY dateModifiedSeconds DESC, title COLLATE NOCASE ASC
+        LIMIT :limit OFFSET :offset
+        """,
+    )
+    suspend fun listRecentTracksForBrowse(limit: Int, offset: Int): List<LibraryTrackEntity>
+
+    @Query(
+        """
+        SELECT * FROM library_tracks
+        WHERE (source = 'mediastore' OR source = 'saf')
+          AND albumKey = :albumKey
+        ORDER BY
+            CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
+            CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
+            title COLLATE NOCASE ASC
+        LIMIT :limit OFFSET :offset
+        """,
+    )
+    suspend fun listTracksByAlbumForBrowse(
+        albumKey: String,
+        limit: Int,
+        offset: Int,
+    ): List<LibraryTrackEntity>
+
+    @Query(
+        """
+        SELECT * FROM library_tracks
+        WHERE (source = 'mediastore' OR source = 'saf')
+          AND artistKey = :artistKey
+        ORDER BY
+            album COLLATE NOCASE ASC,
+            CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
+            CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
+            title COLLATE NOCASE ASC
+        LIMIT :limit OFFSET :offset
+        """,
+    )
+    suspend fun listTracksByArtistForBrowse(
+        artistKey: String,
+        limit: Int,
+        offset: Int,
+    ): List<LibraryTrackEntity>
 
     @Query(
         """
@@ -712,6 +783,36 @@ interface LibraryTrackDao {
     @Query(EchoLibraryDatabase.RebuildFolderSummariesSql)
     suspend fun insertFolderSummariesFromTracks()
 
+    @Query("SELECT COUNT(*) FROM library_album_summaries")
+    suspend fun countAlbumSummaries(): Int
+
+    @Query(
+        """
+        SELECT albumKey, artistKey, relativePath, source
+        FROM library_tracks
+        WHERE id IN (:ids)
+        """,
+    )
+    suspend fun getSummaryKeyRows(ids: List<String>): List<TrackSummaryKeyRow>
+
+    @Query("DELETE FROM library_album_summaries WHERE albumKey IN (:keys)")
+    suspend fun deleteAlbumSummariesByKeys(keys: List<String>): Int
+
+    @Query("DELETE FROM library_artist_summaries WHERE artistKey IN (:keys)")
+    suspend fun deleteArtistSummariesByKeys(keys: List<String>): Int
+
+    @Query("DELETE FROM library_folder_summaries WHERE folderKey IN (:keys)")
+    suspend fun deleteFolderSummariesByKeys(keys: List<String>): Int
+
+    @Query(EchoLibraryDatabase.RebuildAlbumSummariesForKeysSql)
+    suspend fun insertAlbumSummariesForKeys(keys: List<String>)
+
+    @Query(EchoLibraryDatabase.RebuildArtistSummariesForKeysSql)
+    suspend fun insertArtistSummariesForKeys(keys: List<String>)
+
+    @Query(EchoLibraryDatabase.RebuildFolderSummariesForKeysSql)
+    suspend fun insertFolderSummariesForKeys(keys: List<String>)
+
     @Transaction
     suspend fun rebuildLibrarySummaries() {
         clearAlbumSummaries()
@@ -720,6 +821,26 @@ interface LibraryTrackDao {
         insertAlbumSummariesFromTracks()
         insertArtistSummariesFromTracks()
         insertFolderSummariesFromTracks()
+    }
+
+    @Transaction
+    suspend fun rebuildLibrarySummariesForKeys(
+        albumKeys: Collection<String>,
+        artistKeys: Collection<String>,
+        folderKeys: Collection<String>,
+    ) {
+        albumKeys.distinct().chunked(SUMMARY_KEY_BATCH_SIZE).forEach { chunk ->
+            deleteAlbumSummariesByKeys(chunk)
+            insertAlbumSummariesForKeys(chunk)
+        }
+        artistKeys.distinct().chunked(SUMMARY_KEY_BATCH_SIZE).forEach { chunk ->
+            deleteArtistSummariesByKeys(chunk)
+            insertArtistSummariesForKeys(chunk)
+        }
+        folderKeys.distinct().chunked(SUMMARY_KEY_BATCH_SIZE).forEach { chunk ->
+            deleteFolderSummariesByKeys(chunk)
+            insertFolderSummariesForKeys(chunk)
+        }
     }
 
     @Query("SELECT id FROM library_tracks WHERE source = :source AND lastSeenScanRunId != :scanRunId")
@@ -809,3 +930,5 @@ interface LibraryTrackDao {
         scanRunId: Long,
     ): Int
 }
+
+private const val SUMMARY_KEY_BATCH_SIZE = 400

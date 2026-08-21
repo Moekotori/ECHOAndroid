@@ -24,6 +24,7 @@ internal fun EchoNowPlayingHost(
     onOpenAlbum: () -> Unit,
     onImportLyricsFont: () -> Unit,
     modifier: Modifier = Modifier,
+    openLyricsRequestId: Int = 0,
 ) {
     val playbackPosition by viewModel.playbackPosition.collectAsStateWithLifecycle()
     val lyricsState by viewModel.lyricsState.collectAsStateWithLifecycle()
@@ -88,6 +89,7 @@ internal fun EchoNowPlayingHost(
         onOnlineLyricsEnabledChange = viewModel::setOnlineLyricsEnabled,
         isCurrentTrackFavorite = isCurrentTrackFavorite,
         onToggleFavorite = { viewModel.toggleFavorite() },
+        openLyricsRequestId = openLyricsRequestId,
         modifier = modifier.fillMaxSize(),
     )
 }

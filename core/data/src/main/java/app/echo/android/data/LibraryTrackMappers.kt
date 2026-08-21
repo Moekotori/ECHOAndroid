@@ -48,6 +48,9 @@ fun EchoTrack.toLibraryTrackEntity(): LibraryTrackEntity =
         fingerprint = buildTrackFingerprint(this),
     ).withComputedSearchMetadata()
 
+internal fun LibraryTrackEntity.withFingerprint(): LibraryTrackEntity =
+    copy(fingerprint = buildTrackFingerprint(this))
+
 internal fun LibraryTrackEntity.withScanMetadata(scanRunId: Long = lastSeenScanRunId): LibraryTrackEntity =
     copy(
         lastSeenScanRunId = scanRunId,
@@ -156,6 +159,32 @@ internal fun buildTrackFingerprint(track: LibraryTrackEntity): String =
 
 internal fun String.normalizedForSearch(): String =
     trim().lowercase()
+
+internal fun LibraryTrackEntity.toSummaryKeySet(): LibrarySummaryKeySet {
+    val albumSummaryKey = albumKey.takeIf { it.isNotBlank() }?.let { key ->
+        if (LibraryScanPolicy.isLocalLibrarySource(source)) {
+            key
+        } else {
+            "remote||$source||$key"
+        }
+    }
+    val artistSummaryKey = artistKey.takeIf {
+        it.isNotBlank() && LibraryScanPolicy.isLocalLibrarySource(source)
+    }
+    val folderSummaryKey = if (LibraryScanPolicy.isLocalLibrarySource(source)) {
+        relativePath?.takeIf { it.isNotBlank() }.orEmpty()
+    } else {
+        null
+    }
+    return LibrarySummaryKeySet(
+        albumKeys = setOfNotNull(albumSummaryKey),
+        artistKeys = setOfNotNull(artistSummaryKey),
+        folderKeys = setOfNotNull(folderSummaryKey),
+    )
+}
+
+internal fun Iterable<LibraryTrackEntity>.toSummaryKeySet(): LibrarySummaryKeySet =
+    fold(LibrarySummaryKeySet()) { acc, track -> acc + track.toSummaryKeySet() }
 
 private fun String?.normalizedNullableMetadata(): String? =
     this?.trim()?.takeIf { it.isNotBlank() }

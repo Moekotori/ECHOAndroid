@@ -55,6 +55,7 @@ internal class WebDavClient(
         var folderCount = 0
         var trackCount = 0
         var hitVisitCap = false
+        var hrefParseFailed = false
 
         while (queue.isNotEmpty()) {
             if (folderCount >= maxFolders || trackCount >= maxTracks) {
@@ -66,7 +67,11 @@ internal class WebDavClient(
             if (!visited.add(folderKey)) continue
             folderCount += 1
 
-            for (entry in propfind(folder)) {
+            val listing = propfind(folder)
+            if (listing.hrefParseFailed) {
+                hrefParseFailed = true
+            }
+            for (entry in listing.entries) {
                 if (entry.href.normalize().toString() == folderKey) continue
                 if (entry.isDirectory) {
                     if (folderCount + queue.size >= maxFolders) {
@@ -83,10 +88,14 @@ internal class WebDavClient(
                 }
             }
         }
-        return RemoteSyncVisit(visitedCount = trackCount, hitVisitCap = hitVisitCap)
+        return RemoteSyncVisit(
+            visitedCount = trackCount,
+            hitVisitCap = hitVisitCap,
+            hrefParseFailed = hrefParseFailed,
+        )
     }
 
-    private fun propfind(uri: URI): List<WebDavEntry> {
+    private fun propfind(uri: URI): WebDavListingParse {
         val request = Request.Builder()
             .url(uri.toString())
             .header("Depth", "1")
@@ -95,8 +104,8 @@ internal class WebDavClient(
             .build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) error("WebDAV 读取失败：HTTP ${response.code}")
-            val body = response.body?.string() ?: return emptyList()
-            return parseWebDavEntries(base = uri, xml = body)
+            val body = response.body?.string() ?: return WebDavListingParse()
+            return parseWebDavListing(base = uri, xml = body)
         }
     }
 
@@ -167,6 +176,9 @@ private val SharedWebDavHttpClient: OkHttpClient =
         .readTimeout(12, TimeUnit.SECONDS)
         .callTimeout(18, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
+        .followRedirects(false)
+        .followSslRedirects(false)
+        .addInterceptor(sameHostRedirectInterceptor())
         .build()
 
 private val PropfindBody =
@@ -182,7 +194,15 @@ private val PropfindBody =
     </D:propfind>
     """.trimIndent().toRequestBody("application/xml; charset=utf-8".toMediaType())
 
-internal fun parseWebDavEntries(base: URI, xml: String): List<WebDavEntry> {
+internal data class WebDavListingParse(
+    val entries: List<WebDavEntry> = emptyList(),
+    val hrefParseFailed: Boolean = false,
+)
+
+internal fun parseWebDavEntries(base: URI, xml: String): List<WebDavEntry> =
+    parseWebDavListing(base, xml).entries
+
+internal fun parseWebDavListing(base: URI, xml: String): WebDavListingParse {
     val document = DocumentBuilderFactory.newInstance()
         .apply {
             isNamespaceAware = true
@@ -192,10 +212,15 @@ internal fun parseWebDavEntries(base: URI, xml: String): List<WebDavEntry> {
         .parse(InputSource(StringReader(xml)))
     val responses = document.getElementsByTagNameNS("*", "response")
     val entries = ArrayList<WebDavEntry>(responses.length)
+    var hrefParseFailed = false
     for (index in 0 until responses.length) {
         val response = responses.item(index) as? Element ?: continue
         val hrefText = response.childText("href") ?: continue
-        val href = runCatching { base.resolve(hrefText) }.getOrNull() ?: continue
+        val href = resolveWebDavHref(base, hrefText)
+        if (href == null) {
+            hrefParseFailed = true
+            continue
+        }
         val propstats = response.getElementsByTagNameNS("*", "propstat")
         val successfulProps = if (propstats.length <= 0) {
             listOf(response)
@@ -225,7 +250,43 @@ internal fun parseWebDavEntries(base: URI, xml: String): List<WebDavEntry> {
             } ?: 0L,
         )
     }
-    return entries
+    return WebDavListingParse(entries = entries, hrefParseFailed = hrefParseFailed)
+}
+
+internal fun resolveWebDavHref(base: URI, hrefText: String): URI? {
+    val trimmed = hrefText.trim()
+    if (trimmed.isBlank()) return null
+    runCatching { base.resolve(trimmed) }.getOrNull()?.let { return it }
+    val encoded = encodeIllegalWebDavHref(trimmed)
+    return runCatching { base.resolve(encoded) }.getOrNull()
+}
+
+internal fun encodeIllegalWebDavHref(href: String): String {
+    val builder = StringBuilder(href.length * 3)
+    href.forEach { ch ->
+        when {
+            ch == ' ' -> builder.append("%20")
+            ch.code in 0x21..0x7E &&
+                ch != '"' &&
+                ch != '<' &&
+                ch != '>' &&
+                ch != '\\' &&
+                ch != '^' &&
+                ch != '`' &&
+                ch != '{' &&
+                ch != '|' &&
+                ch != '}' -> builder.append(ch)
+            else -> builder.append(percentEncodeUtf8Char(ch))
+        }
+    }
+    return builder.toString()
+}
+
+private fun percentEncodeUtf8Char(ch: Char): String {
+    val bytes = ch.toString().toByteArray(Charsets.UTF_8)
+    return bytes.joinToString(separator = "") { byte ->
+        "%${(byte.toInt() and 0xFF).toString(16).uppercase().padStart(2, '0')}"
+    }
 }
 
 private fun String?.isSuccessfulWebDavStatus(): Boolean {

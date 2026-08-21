@@ -14,7 +14,7 @@
 :core:model ->
 :core:playback -> :core:model :core:usb-audio
 :core:usb-audio ->
-:feature:connect -> :core:design :core:model
+:feature:connect -> :core:connect :core:design :core:model
 :feature:home -> :core:design :core:model
 :feature:library -> :core:design :core:model
 :feature:player -> :core:design :core:model

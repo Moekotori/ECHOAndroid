@@ -6,6 +6,7 @@ import androidx.media3.common.audio.BaseAudioProcessor
 import androidx.media3.common.util.UnstableApi
 import app.echo.android.model.playback.OpraEqBand
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 @UnstableApi
 class EchoEqualizerAudioProcessor : BaseAudioProcessor() {
@@ -27,9 +28,7 @@ class EchoEqualizerAudioProcessor : BaseAudioProcessor() {
         if (!runtime.shouldProcess) {
             return AudioProcessor.AudioFormat.NOT_SET
         }
-        if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT &&
-            inputAudioFormat.encoding != C.ENCODING_PCM_FLOAT
-        ) {
+        if (!isSupportedEncoding(inputAudioFormat.encoding)) {
             throw AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
         }
         configuredSampleRateHz = 0
@@ -50,7 +49,15 @@ class EchoEqualizerAudioProcessor : BaseAudioProcessor() {
         }
         ensureCoeffs(current.filters, format.sampleRate)
         when (format.encoding) {
-            C.ENCODING_PCM_16BIT -> processPcm16(inputBuffer, output, format.channelCount, current.preampLinear)
+            C.ENCODING_PCM_16BIT,
+            C.ENCODING_PCM_16BIT_BIG_ENDIAN,
+            -> processPcm16(inputBuffer, output, format.channelCount, current.preampLinear)
+            C.ENCODING_PCM_24BIT,
+            C.ENCODING_PCM_24BIT_BIG_ENDIAN,
+            -> processPcm24(inputBuffer, output, format.channelCount, current.preampLinear)
+            C.ENCODING_PCM_32BIT,
+            C.ENCODING_PCM_32BIT_BIG_ENDIAN,
+            -> processPcm32(inputBuffer, output, format.channelCount, current.preampLinear)
             C.ENCODING_PCM_FLOAT -> processPcmFloat(inputBuffer, output, format.channelCount, current.preampLinear)
             else -> output.put(inputBuffer)
         }
@@ -104,6 +111,51 @@ class EchoEqualizerAudioProcessor : BaseAudioProcessor() {
         output.position(output.position() + frameCount * channelCount * 2)
     }
 
+    private fun processPcm24(
+        inputBuffer: ByteBuffer,
+        output: ByteBuffer,
+        channelCount: Int,
+        preampLinear: Float,
+    ) {
+        val frameCount = inputBuffer.remaining() / (channelCount * 3)
+        ensureDelayLine(channelCount)
+        val filters = coeffs
+        val order = inputBuffer.order()
+        output.order(order)
+        repeat(frameCount) {
+            for (channel in 0 until channelCount) {
+                var sample = inputBuffer.getPcm24(order) / 8_388_608f * preampLinear
+                sample = filterSample(channel, sample, filters)
+                output.putPcm24(
+                    (sample.coerceIn(-1f, 1f) * 8_388_607f).toInt().coerceIn(-8_388_608, 8_388_607),
+                    order,
+                )
+            }
+        }
+    }
+
+    private fun processPcm32(
+        inputBuffer: ByteBuffer,
+        output: ByteBuffer,
+        channelCount: Int,
+        preampLinear: Float,
+    ) {
+        val intIn = inputBuffer.asIntBuffer()
+        val intOut = output.asIntBuffer()
+        val frameCount = intIn.remaining() / channelCount
+        ensureDelayLine(channelCount)
+        val filters = coeffs
+        repeat(frameCount) {
+            for (channel in 0 until channelCount) {
+                var sample = intIn.get() * (1.0f / 2_147_483_648f) * preampLinear
+                sample = filterSample(channel, sample, filters)
+                intOut.put((sample.coerceIn(-1f, 1f) * 2_147_483_647f).toInt())
+            }
+        }
+        inputBuffer.position(inputBuffer.limit())
+        output.position(output.position() + frameCount * channelCount * 4)
+    }
+
     private fun processPcmFloat(
         inputBuffer: ByteBuffer,
         output: ByteBuffer,
@@ -152,6 +204,39 @@ class EchoEqualizerAudioProcessor : BaseAudioProcessor() {
         val required = channelCount.coerceAtLeast(1) * coeffs.size * 2
         if (delayLine.size != required) {
             delayLine = FloatArray(required)
+        }
+    }
+
+    private fun isSupportedEncoding(encoding: Int): Boolean =
+        encoding == C.ENCODING_PCM_16BIT ||
+            encoding == C.ENCODING_PCM_16BIT_BIG_ENDIAN ||
+            encoding == C.ENCODING_PCM_24BIT ||
+            encoding == C.ENCODING_PCM_24BIT_BIG_ENDIAN ||
+            encoding == C.ENCODING_PCM_32BIT ||
+            encoding == C.ENCODING_PCM_32BIT_BIG_ENDIAN ||
+            encoding == C.ENCODING_PCM_FLOAT
+
+    private fun ByteBuffer.getPcm24(order: ByteOrder): Int {
+        val b0 = get().toInt() and 0xff
+        val b1 = get().toInt() and 0xff
+        val b2 = get().toInt() and 0xff
+        val packed = if (order == ByteOrder.LITTLE_ENDIAN) {
+            b0 or (b1 shl 8) or (b2 shl 16)
+        } else {
+            (b0 shl 16) or (b1 shl 8) or b2
+        }
+        return (packed shl 8) shr 8
+    }
+
+    private fun ByteBuffer.putPcm24(sample: Int, order: ByteOrder) {
+        if (order == ByteOrder.LITTLE_ENDIAN) {
+            put(sample.toByte())
+            put((sample shr 8).toByte())
+            put((sample shr 16).toByte())
+        } else {
+            put((sample shr 16).toByte())
+            put((sample shr 8).toByte())
+            put(sample.toByte())
         }
     }
 }

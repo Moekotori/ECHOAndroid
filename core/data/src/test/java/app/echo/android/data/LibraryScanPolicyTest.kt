@@ -3,6 +3,7 @@ package app.echo.android.data
 import app.echo.android.model.library.LibrarySource
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -74,6 +75,12 @@ class LibraryScanPolicyTest {
     }
 
     @Test
+    fun permissionGrantScansWhenLocalMediaStoreIsEmpty() {
+        assertTrue(LibraryScanPolicy.shouldRefreshLocalLibraryAfterPermissionGrant(localMediaStoreCount = 0))
+        assertFalse(LibraryScanPolicy.shouldRefreshLocalLibraryAfterPermissionGrant(localMediaStoreCount = 12))
+    }
+
+    @Test
     fun safIdsAreExcludedFromFullMediaStoreCleanup() {
         assertTrue(LibraryScanPolicy.shouldDeleteOnFullMediaStoreCleanup("mediastore:42"))
         assertFalse(LibraryScanPolicy.shouldDeleteOnFullMediaStoreCleanup("saf:primary%3AMusic"))
@@ -131,6 +138,74 @@ class LibraryScanPolicyTest {
     }
 
     @Test
+    fun sdCardDocumentTreeKeepsRemovablePrefixAndRootScan() {
+        assertEquals("primary" to "Music/Album", LibraryScanPolicy.splitDocumentTreeId("primary:Music/Album"))
+        assertEquals("1D0C-1A0E" to "Music", LibraryScanPolicy.splitDocumentTreeId("1D0C-1A0E:Music"))
+        assertEquals("1D0C-1A0E" to "", LibraryScanPolicy.splitDocumentTreeId("1D0C-1A0E:"))
+        assertEquals("Music/", LibraryScanPolicy.documentTreeRelativePath("primary", "Music"))
+        assertEquals(
+            "Removable/1D0C-1A0E/Music/",
+            LibraryScanPolicy.documentTreeRelativePath("1D0C-1A0E", "Music"),
+        )
+        assertEquals(
+            "Removable/1D0C-1A0E/",
+            LibraryScanPolicy.documentTreeRelativePath("1D0C-1A0E", ""),
+        )
+        assertNull(LibraryScanPolicy.documentTreeRelativePath("primary", ""))
+    }
+
+    @Test
+    fun mediaStoreRelativePathDoesNotCollapseSdCardIntoPrimaryMusic() {
+        assertEquals(
+            "Music/",
+            LibraryScanPolicy.mediaStoreRelativePathForVolume("external_primary", "Music/"),
+        )
+        assertEquals(
+            "Removable/1D0C-1A0E/Music/",
+            LibraryScanPolicy.mediaStoreRelativePathForVolume("1D0C-1A0E", "Music/"),
+        )
+        assertEquals(
+            "Removable/1D0C-1A0E/",
+            LibraryScanPolicy.mediaStoreRelativePathForVolume("1D0C-1A0E", null),
+        )
+        assertEquals(
+            "1D0C-1A0E",
+            LibraryScanPolicy.resolvedMediaStoreVolumeName(
+                collectionVolumeName = "external",
+                rowVolumeName = "1D0C-1A0E",
+            ),
+        )
+        assertEquals(
+            "1D0C-1A0E",
+            LibraryScanPolicy.resolvedMediaStoreVolumeName(
+                collectionVolumeName = "1D0C-1A0E",
+                rowVolumeName = "external_primary",
+            ),
+        )
+        assertTrue(LibraryScanPolicy.shouldScanAllMediaStoreVolumes(29, relativePathPrefix = null))
+        assertFalse(LibraryScanPolicy.shouldScanAllMediaStoreVolumes(29, relativePathPrefix = "Music/"))
+        assertFalse(LibraryScanPolicy.shouldScanAllMediaStoreVolumes(28, relativePathPrefix = null))
+    }
+
+    @Test
+    fun legacySdCardDataPathIsNotStrippedAsInternalStorage() {
+        assertEquals(
+            "Music/",
+            LibraryScanPolicy.legacyDataRelativePath(
+                dataPath = "/storage/emulated/0/Music/song.flac",
+                primaryStorageRoot = "/storage/emulated/0",
+            ),
+        )
+        assertEquals(
+            "Removable/1D0C-1A0E/Music/",
+            LibraryScanPolicy.legacyDataRelativePath(
+                dataPath = "/storage/1D0C-1A0E/Music/song.flac",
+                primaryStorageRoot = "/storage/emulated/0",
+            ),
+        )
+    }
+
+    @Test
     fun failedDirectoryListingDoesNotDeleteEvenIfOtherFilesScanned() {
         assertFalse(
             LibraryScanPolicy.shouldDeleteMissingLibraryRows(
@@ -177,6 +252,110 @@ class LibraryScanPolicyTest {
             LibraryScanPolicy.scanRowAction(
                 existingFingerprint = "same-uri|1024|99",
                 incomingFingerprint = "same-uri|1024|99",
+            ),
+        )
+    }
+
+    @Test
+    fun sampleRateColumnIsAvailableFromAndroid12() {
+        assertFalse(LibraryScanPolicy.mediaStoreSampleRateColumnAvailable(30))
+        assertTrue(LibraryScanPolicy.mediaStoreSampleRateColumnAvailable(31))
+        assertTrue(LibraryScanPolicy.mediaStoreSampleRateColumnAvailable(36))
+    }
+
+    @Test
+    fun mediaStoreSampleRateWinsOverStoredRate() {
+        assertEquals(96_000, LibraryScanPolicy.preferredSampleRateHz(96_000, 48_000))
+        assertEquals(48_000, LibraryScanPolicy.preferredSampleRateHz(null, 48_000))
+        assertEquals(48_000, LibraryScanPolicy.preferredSampleRateHz(0, 48_000))
+        assertEquals(null, LibraryScanPolicy.preferredSampleRateHz(null, 0))
+    }
+
+    @Test
+    fun sampleRateFileReadIsSkippedWhenRateIsAlreadyKnown() {
+        assertFalse(LibraryScanPolicy.shouldReadSampleRateFromFile(readSampleRateEnabled = true, knownSampleRateHz = 48_000))
+        assertTrue(LibraryScanPolicy.shouldReadSampleRateFromFile(readSampleRateEnabled = true, knownSampleRateHz = null))
+        assertTrue(LibraryScanPolicy.shouldReadSampleRateFromFile(readSampleRateEnabled = true, knownSampleRateHz = 0))
+        assertFalse(LibraryScanPolicy.shouldReadSampleRateFromFile(readSampleRateEnabled = false, knownSampleRateHz = null))
+    }
+
+    @Test
+    fun sampleRateReadIsSkippedWhenLightweightOrStorageIsBusy() {
+        assertTrue(LibraryScanPolicy.shouldSkipSampleRateRead(lightweight = true, storageBusy = false))
+        assertTrue(LibraryScanPolicy.shouldSkipSampleRateRead(lightweight = false, storageBusy = true))
+        assertFalse(LibraryScanPolicy.shouldSkipSampleRateRead(lightweight = false, storageBusy = false))
+    }
+
+    @Test
+    fun scanProgressEmitsFirstTrackThenStrideOrInterval() {
+        assertFalse(
+            LibraryScanPolicy.shouldEmitScanProgress(
+                scannedCount = 0,
+                lastEmittedCount = 0,
+                elapsedSinceEmitMs = 1_000L,
+            ),
+        )
+        assertTrue(
+            LibraryScanPolicy.shouldEmitScanProgress(
+                scannedCount = 1,
+                lastEmittedCount = 0,
+                elapsedSinceEmitMs = 0L,
+            ),
+        )
+        assertFalse(
+            LibraryScanPolicy.shouldEmitScanProgress(
+                scannedCount = 40,
+                lastEmittedCount = 1,
+                elapsedSinceEmitMs = 100L,
+            ),
+        )
+        assertTrue(
+            LibraryScanPolicy.shouldEmitScanProgress(
+                scannedCount = 40,
+                lastEmittedCount = 1,
+                elapsedSinceEmitMs = 400L,
+            ),
+        )
+        assertTrue(
+            LibraryScanPolicy.shouldEmitScanProgress(
+                scannedCount = 101,
+                lastEmittedCount = 1,
+                elapsedSinceEmitMs = 0L,
+            ),
+        )
+        assertFalse(
+            LibraryScanPolicy.shouldEmitScanProgress(
+                scannedCount = 101,
+                lastEmittedCount = 101,
+                elapsedSinceEmitMs = 1_000L,
+            ),
+        )
+    }
+
+    @Test
+    fun summaryRebuildStaysIncrementalForSmallRescans() {
+        assertFalse(
+            LibraryScanPolicy.shouldRebuildLibrarySummariesIncrementally(
+                changedKeyCount = 12,
+                existingAlbumSummaryCount = 0,
+            ),
+        )
+        assertTrue(
+            LibraryScanPolicy.shouldRebuildLibrarySummariesIncrementally(
+                changedKeyCount = 12,
+                existingAlbumSummaryCount = 800,
+            ),
+        )
+        assertFalse(
+            LibraryScanPolicy.shouldRebuildLibrarySummariesIncrementally(
+                changedKeyCount = 500,
+                existingAlbumSummaryCount = 2_000,
+            ),
+        )
+        assertFalse(
+            LibraryScanPolicy.shouldRebuildLibrarySummariesIncrementally(
+                changedKeyCount = 300,
+                existingAlbumSummaryCount = 400,
             ),
         )
     }

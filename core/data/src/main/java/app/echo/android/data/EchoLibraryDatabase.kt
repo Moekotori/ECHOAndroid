@@ -27,23 +27,35 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
     abstract fun playlistDao(): LibraryPlaylistDao
 
     companion object {
-        fun create(context: Context): EchoLibraryDatabase =
-            Room.databaseBuilder(context, EchoLibraryDatabase::class.java, "echo-library.db")
-                .addMigrations(
-                    Migration1To2,
-                    Migration2To3,
-                    Migration3To4,
-                    Migration4To5,
-                    Migration5To6,
-                    Migration6To7,
-                    Migration7To8,
-                    Migration8To9,
-                    Migration9To10,
-                    Migration10To11,
-                    Migration11To12,
-                    Migration12To13,
+        @Volatile
+        private var instance: EchoLibraryDatabase? = null
+
+        fun create(context: Context): EchoLibraryDatabase {
+            instance?.let { return it }
+            return synchronized(this) {
+                instance ?: Room.databaseBuilder(
+                    context.applicationContext,
+                    EchoLibraryDatabase::class.java,
+                    "echo-library.db",
                 )
-                .build()
+                    .addMigrations(
+                        Migration1To2,
+                        Migration2To3,
+                        Migration3To4,
+                        Migration4To5,
+                        Migration5To6,
+                        Migration6To7,
+                        Migration7To8,
+                        Migration8To9,
+                        Migration9To10,
+                        Migration10To11,
+                        Migration11To12,
+                        Migration12To13,
+                    )
+                    .build()
+                    .also { instance = it }
+            }
+        }
 
         internal val Migration1To2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -402,6 +414,89 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                 MAX(dateModifiedSeconds)
             FROM library_tracks
             WHERE (source = 'mediastore' OR source = 'saf')
+            GROUP BY COALESCE(NULLIF(relativePath, ''), '')
+            """
+
+        internal const val RebuildAlbumSummariesForKeysSql =
+            """
+            INSERT INTO library_album_summaries (
+                albumKey, isRemote, title, albumArtist, artist, artworkUri,
+                trackCount, durationMs, year, addedAtSeconds, pinyinTitle, pinyinArtist
+            )
+            SELECT
+                CASE
+                    WHEN source = 'mediastore' OR source = 'saf' THEN albumKey
+                    ELSE 'remote||' || source || '||' || albumKey
+                END,
+                CASE WHEN source = 'mediastore' OR source = 'saf' THEN 0 ELSE 1 END,
+                CASE WHEN album IS NULL OR trim(album) = '' THEN '未知专辑' ELSE album END,
+                CASE
+                    WHEN albumArtist IS NOT NULL AND trim(albumArtist) != '' THEN albumArtist
+                    WHEN artist IS NOT NULL AND trim(artist) != '' THEN artist
+                    ELSE NULL
+                END,
+                CASE WHEN artist IS NULL OR trim(artist) = '' THEN NULL ELSE artist END,
+                MAX(artworkUri),
+                COUNT(*),
+                COALESCE(SUM(durationMs), 0),
+                MIN(CASE WHEN year IS NOT NULL AND year > 0 THEN year ELSE NULL END),
+                MAX(dateModifiedSeconds),
+                MAX(pinyinAlbum),
+                MAX(pinyinArtist)
+            FROM library_tracks
+            WHERE albumKey IS NOT NULL AND trim(albumKey) != ''
+              AND (
+                CASE
+                    WHEN source = 'mediastore' OR source = 'saf' THEN albumKey
+                    ELSE 'remote||' || source || '||' || albumKey
+                END
+              ) IN (:keys)
+            GROUP BY
+                CASE
+                    WHEN source = 'mediastore' OR source = 'saf' THEN albumKey
+                    ELSE 'remote||' || source || '||' || albumKey
+                END
+            """
+
+        internal const val RebuildArtistSummariesForKeysSql =
+            """
+            INSERT INTO library_artist_summaries (
+                artistKey, name, artworkUri, albumCount, trackCount, durationMs, pinyinName
+            )
+            SELECT
+                artistKey,
+                CASE WHEN artist IS NULL OR trim(artist) = '' THEN '未知艺术家' ELSE artist END,
+                MAX(artworkUri),
+                COUNT(DISTINCT albumKey),
+                COUNT(*),
+                COALESCE(SUM(durationMs), 0),
+                MAX(pinyinArtist)
+            FROM library_tracks
+            WHERE (source = 'mediastore' OR source = 'saf')
+              AND artistKey IS NOT NULL AND trim(artistKey) != ''
+              AND artistKey IN (:keys)
+            GROUP BY artistKey
+            """
+
+        internal const val RebuildFolderSummariesForKeysSql =
+            """
+            INSERT INTO library_folder_summaries (
+                folderKey, path, artworkUri, trackCount, albumCount, artistCount,
+                durationMs, totalSizeBytes, latestModifiedSeconds
+            )
+            SELECT
+                COALESCE(NULLIF(relativePath, ''), ''),
+                CASE WHEN relativePath IS NULL OR trim(relativePath) = '' THEN NULL ELSE relativePath END,
+                MAX(NULLIF(artworkUri, '')),
+                COUNT(*),
+                COUNT(DISTINCT albumKey),
+                COUNT(DISTINCT artistKey),
+                COALESCE(SUM(durationMs), 0),
+                COALESCE(SUM(sizeBytes), 0),
+                MAX(dateModifiedSeconds)
+            FROM library_tracks
+            WHERE (source = 'mediastore' OR source = 'saf')
+              AND COALESCE(NULLIF(relativePath, ''), '') IN (:keys)
             GROUP BY COALESCE(NULLIF(relativePath, ''), '')
             """
     }

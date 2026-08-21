@@ -44,4 +44,16 @@
     <string name="qr_start_failed">内置扫码启动失败：%1$s</string>
     <string name="qr_unknown_error">未知错误</string>
     <string name="artist_album_count">%1$d 张专辑</string>
+    <string name="playback_widget_name">ECHO 播放</string>
+    <string name="playback_widget_description">在主屏幕播放、暂停和切歌</string>
+    <string name="playback_widget_preview_title">ECHO 移动端</string>
+    <string name="qs_tile_play_pause">ECHO 播放/暂停</string>
+    <string name="qs_tile_playing">播放中</string>
+    <string name="qs_tile_paused">已暂停</string>
+    <string name="qs_tile_idle">空闲</string>
+    <string name="playback_widget_idle">未在播放</string>
+    <string name="shortcut_play">播放</string>
+    <string name="shortcut_play_long">继续上次播放</string>
+    <string name="shortcut_library">曲库</string>
+    <string name="shortcut_library_long">打开曲库</string>
 </resources>
