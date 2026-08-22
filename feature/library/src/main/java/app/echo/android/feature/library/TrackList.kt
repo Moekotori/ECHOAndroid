@@ -64,7 +64,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.paging.compose.LazyPagingItems
 import app.echo.android.design.ArtworkTile
-import app.echo.android.design.EchoAccent
+import app.echo.android.design.EchoColors
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.displayMetadataOrUnknown
 import app.echo.android.design.echoString
@@ -236,7 +236,7 @@ internal fun TrackRow(
                 ArtworkTile(
                     track.artworkUri,
                     Modifier.size(68.dp),
-                    accent = EchoAccent,
+                    accent = rememberLibraryArtworkAccent(),
                     cornerRadius = 12.dp,
                     elevation = 3.dp,
                 )
@@ -596,7 +596,7 @@ private fun TrackSheetHeader(track: EchoTrack) {
         ArtworkTile(
             track.artworkUri,
             Modifier.size(64.dp),
-            accent = EchoAccent,
+            accent = rememberLibraryArtworkAccent(),
             cornerRadius = 16.dp,
             elevation = 4.dp,
         )
@@ -1021,15 +1021,17 @@ private fun TrackInfoTag(
     text: String,
     tone: TrackInfoTagTone,
 ) {
+    val dark = LocalEchoDarkTheme.current
+    val colors = remember(dark, tone) { trackInfoTagColors(tone, dark) }
     Surface(
         shape = RoundedCornerShape(7.dp),
-        color = tone.background,
-        border = BorderStroke(1.dp, tone.border),
+        color = colors.background,
+        border = BorderStroke(1.dp, colors.border),
     ) {
         Text(
             text = text,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-            color = tone.content,
+            color = colors.content,
             style = MaterialTheme.typography.labelSmall.copy(
                 fontSize = 10.sp,
                 lineHeight = 12.sp,
@@ -1095,26 +1097,48 @@ private fun formatTrackMimeType(mimeType: String?): String? {
 private fun isHiResSampleRate(sampleRateHz: Int?): Boolean =
     sampleRateHz != null && sampleRateHz > 48_000
 
-private enum class TrackInfoTagTone(
+private enum class TrackInfoTagTone {
+    Format,
+    Neutral,
+    Gold,
+}
+
+private data class TrackInfoTagColors(
     val background: Color,
     val border: Color,
     val content: Color,
-) {
-    Format(
-        background = Color(0xFFEFF7FF),
-        border = Color(0xFFCFE7FF),
-        content = Color(0xFF1375B8),
-    ),
-    Neutral(
-        background = Color(0xFFF4F4F5),
-        border = Color(0xFFDDDEE2),
-        content = Color(0xFF646870),
-    ),
-    Gold(
-        background = Color(0xFFFFF5DF),
-        border = Color(0xFFEAD09A),
-        content = Color(0xFF765516),
-    ),
-}
+)
+
+private fun trackInfoTagColors(tone: TrackInfoTagTone, dark: Boolean): TrackInfoTagColors =
+    when (tone) {
+        TrackInfoTagTone.Format,
+        TrackInfoTagTone.Neutral,
+        -> if (dark) {
+            TrackInfoTagColors(
+                background = Color.White.copy(alpha = 0.08f),
+                border = Color.White.copy(alpha = 0.12f),
+                content = Color.White.copy(alpha = 0.78f),
+            )
+        } else {
+            TrackInfoTagColors(
+                background = Color(0xFFF4F4F5),
+                border = Color(0xFFDDDEE2),
+                content = Color(0xFF646870),
+            )
+        }
+        TrackInfoTagTone.Gold -> if (dark) {
+            TrackInfoTagColors(
+                background = EchoColors.Brass.copy(alpha = 0.16f),
+                border = EchoColors.Brass.copy(alpha = 0.32f),
+                content = Color(0xFFE3C07A),
+            )
+        } else {
+            TrackInfoTagColors(
+                background = Color(0xFFFFF5DF),
+                border = Color(0xFFEAD09A),
+                content = Color(0xFF765516),
+            )
+        }
+    }
 
 internal val LibraryBottomControlsPadding = 150.dp

@@ -48,7 +48,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import app.echo.android.design.ArtworkPalette
 import app.echo.android.design.ArtworkTile
@@ -161,10 +160,10 @@ internal fun AlbumDetailPage(
             }
 
             when {
-                tracks.loadState.refresh is LoadState.Loading -> item(key = "loading") {
+                tracks.isInitialPagingLoad() -> item(key = "loading") {
                     AlbumDetailNotice(echoString(en = "Loading tracks...", zh = "正在加载曲目...", ja = "曲を読み込み中..."))
                 }
-                tracks.loadState.refresh is LoadState.Error -> item(key = "error") {
+                tracks.isInitialPagingError() -> item(key = "error") {
                     AlbumDetailNotice(echoString(en = "Failed to load tracks.", zh = "曲目加载失败。", ja = "曲の読み込みに失敗しました。"))
                 }
                 tracks.itemCount == 0 -> item(key = "empty") {
@@ -361,10 +360,10 @@ internal fun ArtistDetailPage(
             }
 
             when {
-                tracks.loadState.refresh is LoadState.Loading -> item(key = "loading") {
+                tracks.isInitialPagingLoad() -> item(key = "loading") {
                     AlbumDetailNotice(echoString(en = "Loading tracks...", zh = "正在加载曲目...", ja = "曲を読み込み中..."))
                 }
-                tracks.loadState.refresh is LoadState.Error -> item(key = "error") {
+                tracks.isInitialPagingError() -> item(key = "error") {
                     AlbumDetailNotice(echoString(en = "Failed to load tracks.", zh = "曲目加载失败。", ja = "曲の読み込みに失敗しました。"))
                 }
                 tracks.itemCount == 0 -> item(key = "empty") {

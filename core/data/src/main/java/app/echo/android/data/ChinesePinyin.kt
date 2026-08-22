@@ -9,7 +9,7 @@ internal object ChinesePinyin {
 
     fun toPinyin(text: String): String {
         if (text.isEmpty()) return ""
-        if (text.none(Char::needsPinyin)) return text.lowercase()
+        if (text.none(LibraryPinyinBackfillPolicy::charNeedsPinyin)) return text.lowercase()
         val full = StringBuilder(text.length * 6)
         val initials = StringBuilder(text.length)
         try {
@@ -39,8 +39,3 @@ internal object ChinesePinyin {
         }.joinToString(" ")
     }
 }
-
-private fun Char.needsPinyin(): Boolean =
-    this in '\u3400'..'\u4DBF' ||
-        this in '\u4E00'..'\u9FFF' ||
-        this in '\uF900'..'\uFAFF'

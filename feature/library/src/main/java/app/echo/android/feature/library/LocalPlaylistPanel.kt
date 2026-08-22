@@ -41,8 +41,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import app.echo.android.design.ArtworkTile
-import app.echo.android.design.EchoAccent
-import app.echo.android.design.EchoAccentDeep
 import app.echo.android.design.EchoGlassBorder
 import app.echo.android.design.EchoHomeMist
 import app.echo.android.design.EchoIconBadge
@@ -454,7 +452,7 @@ private fun LocalPlaylistRow(
         ArtworkTile(
             artworkUri = playlist.artworkUri,
             modifier = Modifier.size(58.dp),
-            accent = EchoAccent,
+            accent = rememberLibraryArtworkAccent(),
             cornerRadius = 12.dp,
             elevation = 3.dp,
         )
@@ -483,7 +481,7 @@ private fun LocalPlaylistRow(
         Icon(
             Icons.AutoMirrored.Rounded.KeyboardArrowRight,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
+            tint = rememberLibraryControlColor(),
             modifier = Modifier.size(22.dp),
         )
     }
@@ -494,17 +492,18 @@ private fun IconButtonLite(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit,
 ) {
+    val accent = rememberLibraryControlColor()
     Surface(
         modifier = Modifier
             .size(38.dp)
             .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick),
-        color = EchoAccentDeep.copy(alpha = 0.10f),
+        color = accent.copy(alpha = 0.10f),
         border = BorderStroke(1.dp, EchoGlassBorder),
         shape = RoundedCornerShape(12.dp),
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
         }
     }
 }

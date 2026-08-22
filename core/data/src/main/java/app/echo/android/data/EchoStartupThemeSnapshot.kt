@@ -8,7 +8,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 
 data class EchoStartupThemeSnapshot(
-    val themeMode: String = EchoThemeMode.System,
+    val themeMode: String = EchoThemeMode.Dark,
     val appLanguage: String = EchoAppLanguage.System,
     val scheduledDarkModeEnabled: Boolean = false,
     val scheduledDarkStartMinute: Int = DefaultScheduledDarkStartMinute,
@@ -59,7 +59,7 @@ fun Context.readEchoStartupThemeSnapshotForLaunch(
                     appContext.writeEchoStartupThemeSnapshot(snapshot, synchronous = true)
                 }
         }
-    } ?: cachedSnapshot
+    } ?: cachedSnapshot.withCurrentThemeDefault()
 }
 
 internal fun Context.writeEchoStartupThemeSnapshot(
@@ -75,6 +75,7 @@ internal fun Context.writeEchoStartupThemeSnapshot(
         .putBoolean(KeyScheduledDarkModeEnabled, safeSnapshot.scheduledDarkModeEnabled)
         .putInt(KeyScheduledDarkStartMinute, safeSnapshot.scheduledDarkStartMinute)
         .putInt(KeyScheduledDarkEndMinute, safeSnapshot.scheduledDarkEndMinute)
+        .putInt(KeyThemeDefaultVersion, CurrentThemeDefaultVersion)
 
     if (synchronous) {
         editor.commit()
@@ -99,8 +100,11 @@ internal fun normalizeThemeMode(value: String?): String =
         EchoThemeMode.System,
         -> value
 
-        else -> EchoThemeMode.System
+        else -> EchoThemeMode.Dark
     }
+
+private fun EchoStartupThemeSnapshot.withCurrentThemeDefault(): EchoStartupThemeSnapshot =
+    if (themeMode == EchoThemeMode.System) copy(themeMode = EchoThemeMode.Dark) else this
 
 private fun EchoStartupThemeSnapshot.normalized(): EchoStartupThemeSnapshot =
     copy(
@@ -117,10 +121,13 @@ private fun Context.hasEchoStartupThemeSnapshot(): Boolean {
         StartupThemePreferencesName,
         Context.MODE_PRIVATE,
     )
-    return preferences.contains(KeyThemeMode) ||
-        preferences.contains(KeyScheduledDarkModeEnabled) ||
-        preferences.contains(KeyScheduledDarkStartMinute) ||
-        preferences.contains(KeyScheduledDarkEndMinute)
+    return preferences.getInt(KeyThemeDefaultVersion, 0) >= CurrentThemeDefaultVersion &&
+        (
+            preferences.contains(KeyThemeMode) ||
+                preferences.contains(KeyScheduledDarkModeEnabled) ||
+                preferences.contains(KeyScheduledDarkStartMinute) ||
+                preferences.contains(KeyScheduledDarkEndMinute)
+            )
 }
 
 private const val StartupThemePreferencesName = "echo-startup-theme"
@@ -129,6 +136,8 @@ private const val KeyAppLanguage = "app_language"
 private const val KeyScheduledDarkModeEnabled = "scheduled_dark_mode_enabled"
 private const val KeyScheduledDarkStartMinute = "scheduled_dark_start_minute"
 private const val KeyScheduledDarkEndMinute = "scheduled_dark_end_minute"
+private const val KeyThemeDefaultVersion = "theme_default_version"
+private const val CurrentThemeDefaultVersion = 2
 private const val DefaultScheduledDarkStartMinute = 22 * 60
 private const val DefaultScheduledDarkEndMinute = 7 * 60
 private const val StartupThemeDataStoreReadTimeoutMillis = 120L

@@ -26,8 +26,8 @@ internal fun resolveEchoDarkTheme(
     }
     return when (themeMode) {
         EchoThemeMode.Light -> false
-        EchoThemeMode.Dark -> true
-        else -> systemDarkTheme
+        EchoThemeMode.System -> systemDarkTheme
+        else -> true
     }
 }
 

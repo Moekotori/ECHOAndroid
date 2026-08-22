@@ -76,7 +76,7 @@ data class EchoAppSettings(
     val lyricsShowRomanization: Boolean = true,
     val lyricsFocusGlowEnabled: Boolean = false,
     val importedFontUri: String? = null,
-    val themeMode: String = EchoThemeMode.System,
+    val themeMode: String = EchoThemeMode.Dark,
     val appLanguage: String = EchoAppLanguage.System,
     val scheduledDarkModeEnabled: Boolean = false,
     val scheduledDarkStartMinute: Int = 22 * 60,

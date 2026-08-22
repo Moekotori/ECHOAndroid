@@ -46,7 +46,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoAccent
@@ -167,7 +166,7 @@ internal fun FolderDetailPage(
             }
 
             when {
-                tracks.loadState.refresh is LoadState.Loading -> item(key = "folder-loading") {
+                tracks.isInitialPagingLoad() -> item(key = "folder-loading") {
                     FolderDetailNotice(
                         echoString(
                             en = "Loading folder tracks...",
@@ -176,7 +175,7 @@ internal fun FolderDetailPage(
                         ),
                     )
                 }
-                tracks.loadState.refresh is LoadState.Error -> item(key = "folder-error") {
+                tracks.isInitialPagingError() -> item(key = "folder-error") {
                     FolderDetailNotice(
                         echoString(
                             en = "Failed to load folder tracks.",

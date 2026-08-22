@@ -1,8 +1,10 @@
 package app.echo.android.feature.settings
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
@@ -40,6 +42,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import android.os.Build
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -47,9 +50,12 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.echo.android.design.EchoHapticKind
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.LocalEchoHapticsEnabled
 import app.echo.android.design.PageChrome
+import app.echo.android.design.performEchoHaptic
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.settings.EchoAppLanguage
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
@@ -147,6 +153,12 @@ fun SettingsScreen(
     onRequestNotificationPermission: () -> Unit = {},
 ) {
     val sectionGap = if (compactModeEnabled) 6.dp else 10.dp
+    val context = LocalContext.current
+    val hapticsEnabled = LocalEchoHapticsEnabled.current
+    var hiddenAppearanceUnlocked by rememberSaveable { mutableStateOf(false) }
+    val showHiddenAppearanceOptions = hiddenAppearanceUnlocked
+    val showThemeModeRow = showHiddenAppearanceOptions || themeMode != "dark"
+    val showScheduledDarkMode = showHiddenAppearanceOptions || scheduledDarkModeEnabled
     var themeSectionExpanded by rememberSaveable { mutableStateOf(true) }
     var interfaceSectionExpanded by rememberSaveable { mutableStateOf(true) }
     var customBackgroundExpanded by rememberSaveable { mutableStateOf(true) }
@@ -178,13 +190,15 @@ fun SettingsScreen(
                 expanded = themeSectionExpanded,
                 onExpandedChange = { themeSectionExpanded = it },
             ) {
-                SettingsChoiceGroupRow(
-                    title = stringResource(R.string.settings_display_mode),
-                    detail = themeDetail(themeMode),
-                    options = themeOptions(),
-                    selectedValue = themeMode,
-                    onOptionSelected = onThemeModeChange,
-                )
+                if (showThemeModeRow) {
+                    SettingsChoiceGroupRow(
+                        title = stringResource(R.string.settings_display_mode),
+                        detail = themeDetail(themeMode),
+                        options = themeOptions(includeHidden = showHiddenAppearanceOptions),
+                        selectedValue = themeMode,
+                        onOptionSelected = onThemeModeChange,
+                    )
+                }
                 SettingsSwitchRow(
                     title = stringResource(R.string.settings_dynamic_color),
                     detail = if (Build.VERSION.SDK_INT >= 31) {
@@ -196,33 +210,35 @@ fun SettingsScreen(
                     onCheckedChange = onDynamicColorEnabledChange,
                     enabled = Build.VERSION.SDK_INT >= 31,
                 )
-                SettingsSwitchRow(
-                    title = stringResource(R.string.settings_scheduled_dark),
-                    detail = stringResource(
-                        R.string.settings_scheduled_dark_detail,
-                        formatMinuteOfDay(scheduledDarkStartMinute),
-                        formatMinuteOfDay(scheduledDarkEndMinute),
-                    ),
-                    checked = scheduledDarkModeEnabled,
-                    onCheckedChange = onScheduledDarkModeEnabledChange,
-                )
-                if (scheduledDarkModeEnabled) {
-                    SettingsSliderRow(
-                        title = stringResource(R.string.settings_dark_start),
-                        detail = formatMinuteOfDay(scheduledDarkStartMinute),
-                        value = scheduledDarkStartMinute.toFloat(),
-                        valueRange = 0f..1439f,
-                        steps = 95,
-                        onValueChange = { onScheduledDarkStartMinuteChange(it.roundToQuarterHour()) },
+                if (showScheduledDarkMode) {
+                    SettingsSwitchRow(
+                        title = stringResource(R.string.settings_scheduled_dark),
+                        detail = stringResource(
+                            R.string.settings_scheduled_dark_detail,
+                            formatMinuteOfDay(scheduledDarkStartMinute),
+                            formatMinuteOfDay(scheduledDarkEndMinute),
+                        ),
+                        checked = scheduledDarkModeEnabled,
+                        onCheckedChange = onScheduledDarkModeEnabledChange,
                     )
-                    SettingsSliderRow(
-                        title = stringResource(R.string.settings_dark_end),
-                        detail = formatMinuteOfDay(scheduledDarkEndMinute),
-                        value = scheduledDarkEndMinute.toFloat(),
-                        valueRange = 0f..1439f,
-                        steps = 95,
-                        onValueChange = { onScheduledDarkEndMinuteChange(it.roundToQuarterHour()) },
-                    )
+                    if (scheduledDarkModeEnabled) {
+                        SettingsSliderRow(
+                            title = stringResource(R.string.settings_dark_start),
+                            detail = formatMinuteOfDay(scheduledDarkStartMinute),
+                            value = scheduledDarkStartMinute.toFloat(),
+                            valueRange = 0f..1439f,
+                            steps = 95,
+                            onValueChange = { onScheduledDarkStartMinuteChange(it.roundToQuarterHour()) },
+                        )
+                        SettingsSliderRow(
+                            title = stringResource(R.string.settings_dark_end),
+                            detail = formatMinuteOfDay(scheduledDarkEndMinute),
+                            value = scheduledDarkEndMinute.toFloat(),
+                            valueRange = 0f..1439f,
+                            steps = 95,
+                            onValueChange = { onScheduledDarkEndMinuteChange(it.roundToQuarterHour()) },
+                        )
+                    }
                 }
             }
             SettingsSectionCard(
@@ -529,6 +545,14 @@ fun SettingsScreen(
                 SettingsInfoRow(
                     title = stringResource(R.string.settings_version),
                     detail = appVersionLabel,
+                    onLongClick = {
+                        if (!hiddenAppearanceUnlocked) {
+                            hiddenAppearanceUnlocked = true
+                            if (hapticsEnabled) {
+                                context.performEchoHaptic(EchoHapticKind.Confirm)
+                            }
+                        }
+                    },
                 )
             }
             Spacer(Modifier.height(156.dp))
@@ -718,11 +742,15 @@ private data class SettingsChoiceOption(
 )
 
 @Composable
-private fun themeOptions(): List<SettingsChoiceOption> = listOf(
-    SettingsChoiceOption("system", stringResource(R.string.settings_theme_system)),
-    SettingsChoiceOption("light", stringResource(R.string.settings_theme_light)),
-    SettingsChoiceOption("dark", stringResource(R.string.settings_theme_dark)),
-)
+private fun themeOptions(includeHidden: Boolean): List<SettingsChoiceOption> {
+    val dark = SettingsChoiceOption("dark", stringResource(R.string.settings_theme_dark))
+    if (!includeHidden) return listOf(dark)
+    return listOf(
+        SettingsChoiceOption("system", stringResource(R.string.settings_theme_system)),
+        SettingsChoiceOption("light", stringResource(R.string.settings_theme_light)),
+        dark,
+    )
+}
 
 @Composable
 private fun themeDetail(mode: String): String =
@@ -1041,12 +1069,23 @@ private fun SettingsSwitchRow(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SettingsInfoRow(
     title: String,
     detail: String,
+    onLongClick: (() -> Unit)? = null,
 ) {
-    SettingsRowShell(title = title, detail = detail, trailing = {})
+    SettingsRowShell(
+        title = title,
+        detail = detail,
+        modifier = if (onLongClick != null) {
+            Modifier.combinedClickable(onClick = {}, onLongClick = onLongClick)
+        } else {
+            Modifier
+        },
+        trailing = {},
+    )
 }
 
 @Composable

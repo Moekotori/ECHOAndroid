@@ -1,7 +1,7 @@
 [
 {
-  "directory": "F:/ECHOAndroid/core/usb-audio/.cxx/Debug/3ipi6b1s/arm64-v8a",
-  "command": "F:\\AndroidDev\\sdk\\ndk\\27.2.12479018\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang++.exe --target=aarch64-none-linux-android26 --sysroot=F:/AndroidDev/sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/windows-x86_64/sysroot -Decho_usb_isoc_EXPORTS -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D__BIONIC_NO_PAGE_SIZE_MACRO -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC -Wall -Wextra -O2 -fno-exceptions -fno-rtti -o CMakeFiles\\echo_usb_isoc.dir\\echo_usb_isoc.cpp.o -c F:\\ECHOAndroid\\core\\usb-audio\\src\\main\\cpp\\echo_usb_isoc.cpp",
-  "file": "F:\\ECHOAndroid\\core\\usb-audio\\src\\main\\cpp\\echo_usb_isoc.cpp"
+  "directory": "D:/ECHOand/core/usb-audio/.cxx/Debug/3ipi6b1s/arm64-v8a",
+  "command": "C:\\Users\\Moe\\AppData\\Local\\Android\\Sdk\\ndk\\27.2.12479018\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang++.exe --target=aarch64-none-linux-android26 --sysroot=C:/Users/Moe/AppData/Local/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/windows-x86_64/sysroot -Decho_usb_isoc_EXPORTS -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D__BIONIC_NO_PAGE_SIZE_MACRO -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC -Wall -Wextra -O2 -fno-exceptions -fno-rtti -o CMakeFiles\\echo_usb_isoc.dir\\echo_usb_isoc.cpp.o -c D:\\ECHOand\\core\\usb-audio\\src\\main\\cpp\\echo_usb_isoc.cpp",
+  "file": "D:\\ECHOand\\core\\usb-audio\\src\\main\\cpp\\echo_usb_isoc.cpp"
 }
 ]

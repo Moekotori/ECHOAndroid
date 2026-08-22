@@ -1,7 +1,6 @@
 package app.echo.android.design
 
 import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
@@ -70,7 +69,7 @@ private val EchoLightScheme = lightColorScheme(
 )
 
 val LocalEchoDensityScale = staticCompositionLocalOf { 1f }
-val LocalEchoDarkTheme = staticCompositionLocalOf { false }
+val LocalEchoDarkTheme = staticCompositionLocalOf { true }
 val LocalEchoEffectivePerformanceMode = staticCompositionLocalOf { EchoEffectivePerformanceMode.Balanced }
 
 fun echoFontFamilyForMode(
@@ -122,7 +121,7 @@ private fun TextUnit.scale(scale: Float): TextUnit =
 
 @Composable
 fun EchoMobileTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = true,
     dynamicColor: Boolean = false,
     playbackHapticsEnabled: Boolean = true,
     fontFamily: FontFamily = FontFamily.SansSerif,

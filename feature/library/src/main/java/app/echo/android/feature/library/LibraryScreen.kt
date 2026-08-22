@@ -83,9 +83,6 @@ import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import app.echo.android.design.ArtworkTile
-import app.echo.android.design.EchoAccent
-import app.echo.android.design.EchoAccentDeep
-import app.echo.android.design.EchoAccentText
 import app.echo.android.design.EchoContentMaxWidth
 import app.echo.android.design.EchoGlassBorder
 import app.echo.android.design.EchoHomeMist
@@ -714,6 +711,13 @@ fun LibraryScreen(
 
     AnimatedContent(
         targetState = detailTransitionTarget,
+        contentKey = { target ->
+            when (target) {
+                LibraryDetailTransitionTarget.Browser -> "library-browser"
+                is LibraryDetailTransitionTarget.AlbumDetail -> "album:${target.album.albumKey}"
+                is LibraryDetailTransitionTarget.ArtistDetail -> "artist:${target.artist.artistKey}"
+            }
+        },
         transitionSpec = {
             if (targetState != LibraryDetailTransitionTarget.Browser) {
                 val enter = slideInHorizontally(tween(durationMillis = 380, easing = LibraryFolderMotionEasing)) { it / 4 } +
@@ -927,6 +931,7 @@ private fun LibrarySourceMenu(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val scheme = MaterialTheme.colorScheme
+    val accent = rememberLibraryControlColor()
     Box(modifier = modifier) {
         Surface(
             modifier = Modifier.clickable { expanded = true },
@@ -964,14 +969,14 @@ private fun LibrarySourceMenu(
                         Text(
                             source.label(),
                             fontWeight = if (source == selectedSource) FontWeight.Bold else FontWeight.SemiBold,
-                            color = if (source == selectedSource) EchoAccentText else scheme.onSurface,
+                            color = if (source == selectedSource) accent else scheme.onSurface,
                         )
                     },
                     leadingIcon = {
                         Icon(
                             source.icon,
                             contentDescription = null,
-                            tint = if (source == selectedSource) EchoAccentText else scheme.onSurfaceVariant,
+                            tint = if (source == selectedSource) accent else scheme.onSurfaceVariant,
                         )
                     },
                     trailingIcon = if (source == LibrarySourceMode.PcEcho && !linkedLibraryAvailable) {
@@ -1012,6 +1017,7 @@ private fun LibrarySourceScanButton(
     var sourceExpanded by remember { mutableStateOf(false) }
     var showScanOptions by remember { mutableStateOf(false) }
     val scheme = MaterialTheme.colorScheme
+    val accent = rememberLibraryControlColor()
     val scanDescription = when {
         !hasPermission -> echoString(en = "Allow music access", zh = "授权音乐权限", ja = "音楽へのアクセスを許可")
         scanState.isScanning -> echoString(en = "Cancel library scan", zh = "取消扫描曲库", ja = "ライブラリのスキャンをキャンセル")
@@ -1060,14 +1066,14 @@ private fun LibrarySourceScanButton(
                         Text(
                             source.label(),
                             fontWeight = if (source == selectedSource) FontWeight.Bold else FontWeight.SemiBold,
-                            color = if (source == selectedSource) EchoAccentText else scheme.onSurface,
+                            color = if (source == selectedSource) accent else scheme.onSurface,
                         )
                     },
                     leadingIcon = {
                         Icon(
                             source.icon,
                             contentDescription = null,
-                            tint = if (source == selectedSource) EchoAccentText else scheme.onSurfaceVariant,
+                            tint = if (source == selectedSource) accent else scheme.onSurfaceVariant,
                         )
                     },
                     trailingIcon = if (source == LibrarySourceMode.PcEcho && !linkedLibraryAvailable) {
@@ -1434,6 +1440,7 @@ private fun LinkedLibraryHeader(
     onSortModeChange: (LibraryTrackSortMode) -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val accent = rememberLibraryControlColor()
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1473,7 +1480,7 @@ private fun LinkedLibraryHeader(
             ) {
                 Text(
                     mode.label(),
-                    color = if (selected) EchoAccentText else scheme.onSurfaceVariant,
+                    color = if (selected) accent else scheme.onSurfaceVariant,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
                     maxLines = 1,
@@ -1483,10 +1490,7 @@ private fun LinkedLibraryHeader(
                         .width(20.dp)
                         .height(3.dp)
                         .clip(RoundedCornerShape(99.dp))
-                        .background(
-                            if (selected) Brush.horizontalGradient(listOf(EchoAccent, EchoAccentDeep))
-                            else Brush.horizontalGradient(listOf(Color.Transparent, Color.Transparent)),
-                        ),
+                        .background(if (selected) accent else Color.Transparent),
                 )
             }
         }
@@ -1593,6 +1597,7 @@ private fun LinkedPlaylistRow(
     playlist: EchoRemotePlaylist,
     onOpen: () -> Unit,
 ) {
+    val accent = rememberLibraryControlColor()
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1606,7 +1611,7 @@ private fun LinkedPlaylistRow(
         ArtworkTile(
             artworkUri = playlist.artworkUrl,
             modifier = Modifier.size(58.dp),
-            accent = EchoAccent,
+            accent = rememberLibraryArtworkAccent(),
             cornerRadius = 12.dp,
             elevation = 3.dp,
         )
@@ -1629,7 +1634,7 @@ private fun LinkedPlaylistRow(
         }
         Surface(
             modifier = Modifier.size(38.dp),
-            color = EchoAccentDeep.copy(alpha = 0.10f),
+            color = accent.copy(alpha = 0.10f),
             border = BorderStroke(1.dp, EchoGlassBorder),
             shape = RoundedCornerShape(12.dp),
         ) {
@@ -1637,7 +1642,7 @@ private fun LinkedPlaylistRow(
                 Icon(
                     Icons.Rounded.PlayArrow,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = accent,
                     modifier = Modifier.size(20.dp),
                 )
             }
@@ -1683,7 +1688,7 @@ private fun LinkedPlaylistTracksPage(
                 ArtworkTile(
                     artworkUri = playlist.artworkUrl,
                     modifier = Modifier.size(62.dp),
-                    accent = EchoAccent,
+                    accent = rememberLibraryArtworkAccent(),
                     cornerRadius = 14.dp,
                     elevation = 4.dp,
                 )

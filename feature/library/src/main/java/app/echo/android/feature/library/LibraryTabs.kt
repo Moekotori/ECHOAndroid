@@ -79,13 +79,10 @@ import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import app.echo.android.design.ArtworkPalette
 import app.echo.android.design.ArtworkTile
-import app.echo.android.design.EchoAccent
-import app.echo.android.design.EchoAccentDeep
-import app.echo.android.design.EchoAccentText
+import app.echo.android.design.EchoColors
 import app.echo.android.design.EchoGlassBorder
 import app.echo.android.design.EchoGlassInk
 import app.echo.android.design.EchoGlassPanel
-import app.echo.android.design.EchoHomeBlue
 import app.echo.android.design.EchoArtworkImage
 import app.echo.android.design.EchoIconBadge
 import app.echo.android.design.EchoPanel
@@ -130,11 +127,30 @@ private fun rememberLibraryGlassColors(): LibraryGlassColors {
 }
 
 @Composable
+internal fun rememberLibraryControlColor(): Color {
+    val dark = LocalEchoDarkTheme.current
+    val scheme = MaterialTheme.colorScheme
+    return remember(dark, scheme) {
+        if (dark) EchoColors.Sky else scheme.onSurface
+    }
+}
+
+@Composable
+internal fun rememberLibraryArtworkAccent(): Color {
+    val dark = LocalEchoDarkTheme.current
+    val scheme = MaterialTheme.colorScheme
+    return remember(dark, scheme) {
+        if (dark) EchoColors.Sky else scheme.surfaceVariant
+    }
+}
+
+@Composable
 internal fun LibraryPagerTabs(
     selectedMode: LibraryViewMode,
     onSelectMode: (LibraryViewMode) -> Unit,
 ) {
     val colors = rememberLibraryGlassColors()
+    val accent = rememberLibraryControlColor()
     val visibleModes = remember {
         listOf(
             LibraryViewMode.Songs,
@@ -164,7 +180,7 @@ internal fun LibraryPagerTabs(
             ) {
                 Text(
                     text = mode.label(),
-                    color = if (selected) EchoAccentText else colors.muted,
+                    color = if (selected) accent else colors.muted,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
                     maxLines = 1,
@@ -174,13 +190,7 @@ internal fun LibraryPagerTabs(
                         .width(20.dp)
                         .height(3.dp)
                         .clip(RoundedCornerShape(99.dp))
-                        .background(
-                            if (selected) {
-                                Brush.horizontalGradient(listOf(EchoAccent, EchoAccentDeep))
-                            } else {
-                                Brush.horizontalGradient(listOf(Color.Transparent, Color.Transparent))
-                            },
-                        ),
+                        .background(if (selected) accent else Color.Transparent),
                 )
             }
         }
@@ -214,6 +224,7 @@ internal fun LibrarySearchBar(
 ) {
     val colors = rememberLibraryGlassColors()
     val dark = LocalEchoDarkTheme.current
+    val accent = rememberLibraryControlColor()
     val shape = RoundedCornerShape(18.dp)
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -255,7 +266,7 @@ internal fun LibrarySearchBar(
                 Icon(
                     Icons.Rounded.Search,
                     contentDescription = echoString(en = "Search library", zh = "搜索曲库", ja = "ライブラリを検索"),
-                    tint = if (dark) colors.content else EchoAccentText,
+                    tint = colors.content,
                     modifier = Modifier.size(22.dp),
                 )
             }
@@ -323,7 +334,7 @@ internal fun LibrarySearchBar(
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
                     disabledIndicatorColor = Color.Transparent,
-                    cursorColor = EchoAccentText,
+                    cursorColor = accent,
                 ),
             )
         }
@@ -410,7 +421,7 @@ private fun FolderRow(
             ArtworkTile(
                 artworkUri = folder.artworkUri,
                 modifier = Modifier.size(64.dp),
-                accent = if (dark) Color.White.copy(alpha = 0.28f) else EchoAccent,
+                accent = rememberLibraryArtworkAccent(),
                 showSignal = folder.artworkUri.isNullOrBlank(),
                 cornerRadius = 13.dp,
                 elevation = if (dark) 0.dp else 3.dp,
@@ -448,7 +459,7 @@ private fun FolderRow(
             Icon(
                 Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                 contentDescription = echoString(en = "Open folder", zh = "打开文件夹", ja = "フォルダーを開く"),
-                tint = if (dark) Color.White.copy(alpha = 0.68f) else EchoAccentText,
+                tint = if (dark) Color.White.copy(alpha = 0.68f) else colors.muted,
                 modifier = Modifier.size(26.dp),
             )
         }
@@ -464,7 +475,7 @@ private fun FolderMetaChip(
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(99.dp))
-            .background(if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.08f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.08f))
+            .background(if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.82f))
             .padding(horizontal = 8.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -472,7 +483,7 @@ private fun FolderMetaChip(
         Icon(
             icon,
             contentDescription = null,
-            tint = if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.72f) else EchoAccentText,
+            tint = if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.72f) else colors.muted,
             modifier = Modifier.size(14.dp),
         )
         Text(
@@ -531,6 +542,7 @@ internal fun LibraryOverview(
     artistCount: Int,
 ) {
     val colors = rememberLibraryGlassColors()
+    val accent = rememberLibraryControlColor()
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -540,7 +552,7 @@ internal fun LibraryOverview(
                     listOf(
                         colors.surface,
                         colors.elevatedSurface,
-                        EchoAccentDeep.copy(alpha = if (LocalEchoDarkTheme.current) 0.18f else 0.08f),
+                        accent.copy(alpha = if (LocalEchoDarkTheme.current) 0.18f else 0.08f),
                     ),
                 ),
             )
@@ -574,6 +586,7 @@ internal fun LibraryViewSwitcher(
     onSelectMode: (LibraryViewMode) -> Unit,
 ) {
     val colors = rememberLibraryGlassColors()
+    val accent = rememberLibraryControlColor()
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -589,7 +602,7 @@ internal fun LibraryViewSwitcher(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(if (selected) EchoHomeBlue.copy(alpha = 0.18f) else Color.Transparent)
+                    .background(if (selected) accent.copy(alpha = 0.18f) else Color.Transparent)
                     .clickable { onSelectMode(mode) }
                     .padding(horizontal = 8.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.Center,
@@ -598,7 +611,7 @@ internal fun LibraryViewSwitcher(
                 Icon(
                     mode.icon,
                     contentDescription = mode.label(),
-                    tint = if (selected) EchoAccentText else colors.muted,
+                    tint = if (selected) accent else colors.muted,
                     modifier = Modifier.size(18.dp),
                 )
                 Spacer(Modifier.width(6.dp))
@@ -622,6 +635,7 @@ internal fun LibraryViewModeMenu(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val colors = rememberLibraryGlassColors()
+    val accent = rememberLibraryControlColor()
     Box {
         Box(
             modifier = Modifier
@@ -639,7 +653,7 @@ internal fun LibraryViewModeMenu(
                     zh = "切换曲库显示方式",
                     ja = "ライブラリの表示方法を切り替え",
                 ),
-                tint = EchoHomeBlue,
+                tint = accent,
                 modifier = Modifier.size(20.dp),
             )
         }
@@ -653,7 +667,7 @@ internal fun LibraryViewModeMenu(
                     text = {
                         Text(
                             mode.label(),
-                            color = if (mode == selectedMode) EchoHomeBlue else colors.content,
+                            color = if (mode == selectedMode) accent else colors.content,
                             fontWeight = if (mode == selectedMode) FontWeight.Bold else FontWeight.SemiBold,
                         )
                     },
@@ -661,7 +675,7 @@ internal fun LibraryViewModeMenu(
                         Icon(
                             mode.icon,
                             contentDescription = null,
-                            tint = if (mode == selectedMode) EchoHomeBlue else colors.muted,
+                            tint = if (mode == selectedMode) accent else colors.muted,
                         )
                     },
                     onClick = {
@@ -734,7 +748,7 @@ internal fun AlbumWallCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f),
-            accent = EchoAccent,
+            accent = rememberLibraryArtworkAccent(),
             showSignal = album.artworkUri == null,
             cornerRadius = 14.dp,
             elevation = 8.dp,

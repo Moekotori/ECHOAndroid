@@ -1341,7 +1341,10 @@ class EchoLibraryRepository(
         while (true) {
             val staleTracks = dao.getTracksNeedingPinyinBackfill(PINYIN_BACKFILL_BATCH_SIZE)
             if (staleTracks.isEmpty()) break
-            dao.upsertBatchWithFts(staleTracks.map(LibraryTrackEntity::withComputedSearchMetadata))
+            val updated = staleTracks.map(LibraryPinyinBackfillPolicy::apply)
+            val changed = updated.filterIndexed { index, next -> next != staleTracks[index] }
+            if (changed.isEmpty()) break
+            dao.upsertBatchWithFts(changed)
             backfilled = true
             yield()
         }
