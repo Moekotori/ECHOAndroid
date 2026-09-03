@@ -25,9 +25,6 @@ data class LibraryScanProgress(
             LibraryScanPhase.Error
             -> false
         }
-
-    val lastScanCount: Int?
-        get() = if (isCompleted) scannedCount else null
 }
 
 enum class LibraryScanPhase {

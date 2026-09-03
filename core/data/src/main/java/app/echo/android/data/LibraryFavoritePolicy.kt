@@ -28,7 +28,7 @@ object LibraryFavoritePolicy {
         val json = JSONObject()
         val ids = JSONArray()
         snapshot.likedTrackIds.sorted().forEach(ids::put)
-        json.put(LikedTrackIdsKey, ids)
+        json.put(LIKED_TRACK_IDS_KEY, ids)
         return json.toString()
     }
 
@@ -36,7 +36,7 @@ object LibraryFavoritePolicy {
         if (raw.isNullOrBlank()) return LibraryFavoriteSnapshot()
         val ids = runCatching {
             val root = JSONObject(raw)
-            val array = root.optJSONArray(LikedTrackIdsKey) ?: JSONArray()
+            val array = root.optJSONArray(LIKED_TRACK_IDS_KEY) ?: JSONArray()
             buildSet {
                 for (index in 0 until array.length()) {
                     normalizeTrackId(array.optString(index))?.let(::add)
@@ -50,7 +50,7 @@ object LibraryFavoritePolicy {
         likedTrackIds: Collection<String>,
         albumKeyByTrackId: Map<String, String>,
         favoritedAtByTrackId: Map<String, Long> = emptyMap(),
-        limit: Int = FavoriteAlbumLimit,
+        limit: Int = FAVORITE_ALBUM_LIMIT,
     ): List<String> {
         if (limit <= 0) return emptyList()
         val ranked = linkedMapOf<String, Long>()
@@ -68,14 +68,14 @@ object LibraryFavoritePolicy {
             .take(limit)
     }
 
-    const val FavoriteAlbumLimit = 4
+    const val FAVORITE_ALBUM_LIMIT = 4
 
     fun isLikedSongsId(playlistId: String): Boolean =
-        playlistId.trim() == EchoPlaylist.LikedSongsId
+        playlistId.trim() == EchoPlaylist.LIKED_SONGS_ID
 
     fun likedSongsPlaylist(trackCount: Int, artworkUri: String?): EchoPlaylist =
         EchoPlaylist(
-            id = EchoPlaylist.LikedSongsId,
+            id = EchoPlaylist.LIKED_SONGS_ID,
             name = "Liked songs",
             trackCount = trackCount.coerceAtLeast(0),
             artworkUri = artworkUri,
@@ -85,5 +85,5 @@ object LibraryFavoritePolicy {
     private fun normalizeTrackId(trackId: String?): String? =
         trackId?.trim()?.takeIf { it.isNotEmpty() }
 
-    private const val LikedTrackIdsKey = "likedTrackIds"
+    private const val LIKED_TRACK_IDS_KEY = "likedTrackIds"
 }

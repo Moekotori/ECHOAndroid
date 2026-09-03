@@ -3,6 +3,7 @@ package app.echo.android.ui.shell
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import app.echo.android.EchoTab
 import app.echo.android.design.EchoMotion
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
@@ -52,6 +53,21 @@ internal fun routeMotionSpec(
         dampingRatio = Spring.DampingRatioNoBouncy,
         stiffness = EchoMotion.silkStiffness(duration),
         visibilityThreshold = 0.5f,
+    )
+}
+
+// 点按起步用的滑动:用 silk ease-out(缓慢启动→流畅滑行→柔和着陆)整段插值,
+// 既不慢热到"没动",也不会急刹产生生硬感。
+internal fun tapMotionSpec(
+    distance: Int,
+    effectivePerformanceMode: EchoEffectivePerformanceMode,
+): AnimationSpec<Float> {
+    val routeMs = (ROUTE_MOTION_BASE_DURATION_MS + (distance - 1) * ROUTE_MOTION_DISTANCE_DURATION_MS)
+        .coerceAtMost(ROUTE_MOTION_MAX_DURATION_MS)
+        .let { motionDuration(it, effectivePerformanceMode) }
+    return tween(
+        durationMillis = routeMs,
+        easing = EchoMotion.Silk,
     )
 }
 

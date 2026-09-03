@@ -80,9 +80,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.cancellation.CancellationException
 
-@kotlin.OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class)
 @androidx.annotation.OptIn(UnstableApi::class)
-@Suppress("SpellCheckingInspection", "ConstPropertyName", "unused")
+@Suppress("SpellCheckingInspection", "unused")
 class EchoAndroidViewModel(application: Application) : AndroidViewModel(application) {
     private val database = EchoLibraryDatabase.create(application)
     private val repository = EchoLibraryRepository(
@@ -269,7 +269,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                 if (settings.lastFmEnabled && !settings.lastFmUsername.isNullOrBlank()) {
                     lastFmController.setConnected(settings.lastFmUsername.orEmpty())
                 }
-                applyRemotePlaybackCredentials(settings, allowClearIfEmpty = true)
+                applyRemotePlaybackCredentials(settings)
                 subsonicEndpointRef.set(subsonicEndpointFrom(settings))
                 playbackController.notifyRemotePlaybackAuthReady()
             }
@@ -1371,14 +1371,13 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
 private fun applyRemotePlaybackCredentials(
     settings: EchoAppSettings,
-    allowClearIfEmpty: Boolean,
 ) {
     val webDav = listOfNotNull(webDavPlaybackCredential(settings))
     if (
         shouldReplaceRegisteredRemoteCredentials(
             incomingEmpty = webDav.isEmpty(),
             registryAlreadyReady = EchoRemotePlaybackAuthRegistry.hasWebDavCredentials(),
-            allowClearIfEmpty = allowClearIfEmpty,
+            allowClearIfEmpty = true,
         )
     ) {
         EchoRemotePlaybackAuthRegistry.replaceWebDavCredentials(webDav)
@@ -1388,7 +1387,7 @@ private fun applyRemotePlaybackCredentials(
         shouldReplaceRegisteredRemoteCredentials(
             incomingEmpty = subsonic.isEmpty(),
             registryAlreadyReady = EchoRemotePlaybackAuthRegistry.hasSubsonicCredentials(),
-            allowClearIfEmpty = allowClearIfEmpty,
+            allowClearIfEmpty = true,
         )
     ) {
         EchoRemotePlaybackAuthRegistry.replaceSubsonicCredentials(subsonic)

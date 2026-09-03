@@ -32,7 +32,6 @@ object EchoColors {
     val Sky = Color(0xFFD3A9B5)
     val Paper = Color(0xFFF3F1F2)
     val Mist = Color(0xFFF1EEEF)
-    val Smoke = Color(0xFFA8A8AE)
 }
 
 private val EchoDarkScheme = darkColorScheme(

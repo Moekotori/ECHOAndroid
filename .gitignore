@@ -1,6 +1,7 @@
-# Gradle
+# Gradle / CMake
 .gradle/
 build/
+.cxx/
 
 # Local machine / secrets
 local.properties

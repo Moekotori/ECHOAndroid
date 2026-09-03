@@ -8,6 +8,7 @@ import android.provider.OpenableColumns
 import app.echo.android.data.LibraryTrackEntity
 import app.echo.android.model.i18n.echoText
 import app.echo.android.model.lyrics.EchoLyrics
+import androidx.core.net.toUri
 import java.io.File
 
 class LocalLyricsResolver(
@@ -59,7 +60,7 @@ class LocalLyricsResolver(
     }
 
     private fun loadFromFileUri(contentUri: String, candidates: List<String>): EchoLyrics? {
-        val uri = runCatching { Uri.parse(contentUri) }.getOrNull() ?: return null
+        val uri = runCatching { contentUri.toUri() }.getOrNull() ?: return null
         if (uri.scheme != ContentResolver.SCHEME_FILE) return null
         val audioFile = uri.path?.let(::File) ?: return null
         val parent = audioFile.parentFile ?: return null
@@ -73,7 +74,7 @@ class LocalLyricsResolver(
     }
 
     private fun loadEmbeddedLyrics(contentUri: String): EchoLyrics? {
-        val uri = runCatching { Uri.parse(contentUri) }.getOrNull() ?: return null
+        val uri = runCatching { contentUri.toUri() }.getOrNull() ?: return null
         val embeddedText = runCatching {
             openLyricsInputStream(uri)?.use(EmbeddedLyricsReader::read)
         }.getOrNull() ?: return null
@@ -173,7 +174,7 @@ class LocalLyricsResolver(
     }
 
     private fun displayNameBase(contentUri: String): String? {
-        val uri = runCatching { Uri.parse(contentUri) }.getOrNull() ?: return null
+        val uri = runCatching { contentUri.toUri() }.getOrNull() ?: return null
         if (uri.scheme == ContentResolver.SCHEME_FILE) {
             return uri.path?.let(::File)?.nameWithoutExtension
         }

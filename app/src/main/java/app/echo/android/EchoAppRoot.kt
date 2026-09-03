@@ -18,26 +18,27 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.PagerDefaults
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -48,8 +49,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
 import androidx.core.app.ActivityCompat
 import androidx.core.content.edit
@@ -82,7 +87,7 @@ import app.echo.android.ui.shell.EchoPagerPage
 import app.echo.android.ui.shell.dockTab
 import app.echo.android.ui.shell.motionDuration
 import app.echo.android.ui.shell.pagerPage
-import app.echo.android.ui.shell.routeMotionSpec
+import app.echo.android.ui.shell.tapMotionSpec
 import app.echo.android.data.EchoBackgroundMode
 import app.echo.android.data.EchoFontFamilyMode
 import app.echo.android.data.toEchoTrack
@@ -389,7 +394,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     var detailReturnPage by remember { mutableStateOf<EchoPagerPage?>(null) }
     var searchVisible by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
-    var selectedTab by remember { mutableIntStateOf(EchoTab.Now.ordinal) }
+    val selectedTab = remember { mutableIntStateOf(EchoTab.Now.ordinal) }
     var bottomDockExpanded by remember { mutableStateOf(true) }
     var nowPlayingExpanded by remember { mutableStateOf(false) }
     var nowPlayingBackProgress by remember { mutableFloatStateOf(0f) }
@@ -486,32 +491,28 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         )
     }
 
-    // 四个主页面横向滑动切换，与底部 dock 双向联动
-    val tabPagerState = rememberPagerState(
-        initialPage = EchoPagerPage.Now.ordinal,
-        pageCount = { EchoPagerPage.entries.size },
-    )
+    // 相邻滑入:四页始终保持组合(可组式),切换只改逻辑页并整体滑动一整屏,
+    // 目标页当作紧邻页直接滑入,不回收、不扫过中间页。
+    val currentPage = remember { mutableIntStateOf(EchoPagerPage.Now.ordinal) }
     val appScope = rememberCoroutineScope()
-    val routeNavigationJob = remember { arrayOfNulls<Job>(1) }
-    fun needsPagerSettle(targetPage: Int): Boolean =
-        tabPagerState.settledPage != targetPage ||
-            tabPagerState.currentPage != targetPage ||
-            tabPagerState.currentPageOffsetFraction.absoluteValue > 0.001f
+    val pageSlideAnimJob = remember { arrayOfNulls<Job>(1) }
+    val pageSlide = remember { Animatable(1f) }
+    var pageSlideFrom by remember { mutableIntStateOf(EchoPagerPage.Now.ordinal) }
+    var pageSlideTo by remember { mutableIntStateOf(EchoPagerPage.Now.ordinal) }
+    var pageSlideDir by remember { mutableIntStateOf(1) }
     fun navigateToPage(page: EchoPagerPage) {
-        val targetPage = page.ordinal
-        page.dockTab?.let { selectedTab = it.ordinal }
-        routeNavigationJob[0]?.cancel()
-        routeNavigationJob[0] = appScope.launch {
-            if (needsPagerSettle(targetPage)) {
-                if (effectivePerformanceMode.isLightweight) {
-                    tabPagerState.scrollToPage(targetPage)
-                } else {
-                    tabPagerState.animateScrollToPage(
-                        page = targetPage,
-                        animationSpec = routeMotionSpec(tabPagerState.currentPage, targetPage, effectivePerformanceMode),
-                    )
-                }
-            }
+        page.dockTab?.let { selectedTab.intValue = it.ordinal }
+        val from = currentPage.intValue
+        val to = page.ordinal
+        if (from == to) return
+        pageSlideFrom = from
+        pageSlideTo = to
+        pageSlideDir = if (to > from) 1 else -1
+        currentPage.intValue = to
+        pageSlideAnimJob[0]?.cancel()
+        pageSlideAnimJob[0] = appScope.launch {
+            pageSlide.snapTo(0f)
+            pageSlide.animateTo(1f, tapMotionSpec(1, effectivePerformanceMode))
         }
     }
     fun selectDockTab(tab: EchoTab) = navigateToPage(tab.pagerPage)
@@ -537,53 +538,15 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             clearLibraryDetail()
             return
         }
-        returnPage.dockTab?.let { selectedTab = it.ordinal }
-        routeNavigationJob[0]?.cancel()
-        appScope.launch {
-            try {
-                val targetPage = returnPage.ordinal
-                if (needsPagerSettle(targetPage)) {
-                    if (effectivePerformanceMode.isLightweight) {
-                        tabPagerState.scrollToPage(targetPage)
-                    } else {
-                        tabPagerState.animateScrollToPage(
-                            page = targetPage,
-                            animationSpec = routeMotionSpec(tabPagerState.currentPage, targetPage, effectivePerformanceMode),
-                        )
-                    }
-                }
-            } finally {
-                clearLibraryDetail()
-            }
-        }
-    }
-    LaunchedEffect(tabPagerState.settledPage) {
-        EchoPagerPage.entries[tabPagerState.settledPage].dockTab?.let { settledTab ->
-            if (settledTab.ordinal != selectedTab) selectedTab = settledTab.ordinal
-        }
-    }
-    LaunchedEffect(tabPagerState.isScrollInProgress, tabPagerState.currentPage) {
-        if (!tabPagerState.isScrollInProgress && tabPagerState.currentPageOffsetFraction.absoluteValue > 0.001f) {
-            if (effectivePerformanceMode.isLightweight) {
-                tabPagerState.scrollToPage(tabPagerState.currentPage)
-            } else {
-                tabPagerState.animateScrollToPage(
-                    page = tabPagerState.currentPage,
-                    animationSpec = routeMotionSpec(
-                        tabPagerState.settledPage,
-                        tabPagerState.currentPage,
-                        effectivePerformanceMode,
-                    ),
-                )
-            }
-        }
+        navigateToPage(returnPage)
+        clearLibraryDetail()
     }
 
     LaunchedEffect(remoteStatus.connectionState, appSettings.echoLinkPreferLinkedLibrary) {
         if (
             remoteStatus.connectionState == EchoRemoteConnectionState.Connected &&
             appSettings.echoLinkPreferLinkedLibrary &&
-            tabPagerState.currentPage == EchoPagerPage.Connect.ordinal
+            currentPage.intValue == EchoPagerPage.Connect.ordinal
         ) {
             selectDockTab(EchoTab.Library)
         }
@@ -653,7 +616,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         closeLibraryDetail()
     }
     EchoOverlayBackHandler(
-        enabled = !nowPlayingExpanded && tabPagerState.currentPage == EchoPagerPage.Settings.ordinal,
+        enabled = !nowPlayingExpanded && currentPage.intValue == EchoPagerPage.Settings.ordinal,
     ) {
         selectDockTab(EchoTab.Now)
     }
@@ -669,26 +632,71 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     ) {
         Box(Modifier.fillMaxSize()) {
             EchoCustomBackground(settings = appSettings, modifier = Modifier.fillMaxSize())
-            Box(
-                modifier = Modifier.fillMaxSize(),
+            val contentSwipeEnabled = !libraryDetailOpen || LocalEchoWidthSizeClass.current.prefersLibrarySplit
+            var contentDragOffsetX by remember { mutableFloatStateOf(0f) }
+            val pageDensity = LocalDensity.current
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(contentSwipeEnabled, currentPage.intValue) {
+                        val thresholdPx = with(pageDensity) { 46.dp.toPx() }
+                        detectHorizontalDragGestures(
+                            onDragStart = { contentDragOffsetX = 0f },
+                            onHorizontalDrag = { change, dragAmount ->
+                                change.consume()
+                                contentDragOffsetX += dragAmount
+                            },
+                            onDragCancel = { contentDragOffsetX = 0f },
+                            onDragEnd = {
+                                if (contentSwipeEnabled && contentDragOffsetX.absoluteValue >= thresholdPx) {
+                                    val direction = if (contentDragOffsetX < 0f) 1 else -1
+                                    val target = (currentPage.intValue + direction)
+                                        .coerceIn(0, EchoPagerPage.entries.lastIndex)
+                                    if (target != currentPage.intValue) {
+                                        navigateToPage(EchoPagerPage.entries[target])
+                                    }
+                                }
+                                contentDragOffsetX = 0f
+                            },
+                        )
+                    },
             ) {
-                HorizontalPager(
-                    state = tabPagerState,
-                    userScrollEnabled = !libraryDetailOpen ||
-                        LocalEchoWidthSizeClass.current.prefersLibrarySplit,
-                    beyondViewportPageCount = if (effectivePerformanceMode.isLightweight) 0 else 1,
-                    flingBehavior = PagerDefaults.flingBehavior(
-                        state = tabPagerState,
-                        snapAnimationSpec = routeMotionSpec(
-                            fromPage = tabPagerState.currentPage,
-                            toPage = tabPagerState.currentPage,
-                            effectivePerformanceMode = effectivePerformanceMode,
-                        ),
-                    ),
-                    modifier = Modifier.fillMaxSize(),
-                ) { page ->
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        when (EchoPagerPage.entries[page]) {
+                val pageWidthPx = with(pageDensity) { maxWidth.toPx() }
+                EchoPagerPage.entries.forEach { page ->
+                    key(page) {
+                        val index = page.ordinal
+                        val isFrom = pageSlideFrom == index
+                        val isTo = pageSlideTo == index
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .zIndex(if (isTo) 2f else if (isFrom) 1f else 0f)
+                                .graphicsLayer {
+                                    val progress = pageSlide.value
+                                    when {
+                                        isFrom && isTo -> {
+                                            translationX = 0f
+                                            alpha = 1f
+                                        }
+
+                                        isFrom -> {
+                                            translationX = -pageSlideDir * progress * pageWidthPx
+                                            alpha = 1f
+                                        }
+
+                                        isTo -> {
+                                            translationX = pageSlideDir * (1f - progress) * pageWidthPx
+                                            alpha = 1f
+                                        }
+
+                                        else -> {
+                                            translationX = 0f
+                                            alpha = 0f
+                                        }
+                                    }
+                                },
+                        ) {
+                            when (page) {
                             EchoPagerPage.Library -> EchoLibraryPage(
                                 viewModel = viewModel,
                                 remoteClient = remoteClient,
@@ -903,7 +911,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             // 只有真正停留在 Connect 页才启动 LAN 发现;
                             // 邻页预组合(beyondViewportPageCount=1)不应常驻 NSD 扫描
                             val connectPageSettled =
-                                tabPagerState.settledPage == EchoPagerPage.Connect.ordinal
+                                currentPage.intValue == EchoPagerPage.Connect.ordinal
                             DisposableEffect(connectPageSettled) {
                                 if (!connectPageSettled) {
                                     return@DisposableEffect onDispose {}
@@ -989,9 +997,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                         }
                     }
                 }
+                }
                 EchoBottomDockHost(
                     viewModel = viewModel,
-                    pagerState = tabPagerState,
                     playbackStatus = playbackStatus,
                     darkTheme = darkTheme,
                     selectedTab = selectedTab,
@@ -1005,7 +1013,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     onOpenQueue = { queueSheetVisible = true },
                     onNext = viewModel::skipNext,
                     onPrevious = viewModel::skipPrevious,
-                    modifier = Modifier.align(Alignment.BottomCenter),
+                    modifier = Modifier.align(Alignment.BottomCenter).zIndex(10f),
                 )
             }
 
@@ -1039,7 +1047,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     onImportLyrics = { lyricsImportLauncher.launch(LyricsDocumentMimeTypes) },
                     onOpenArtist = {
                         viewModel.openCurrentPlaybackArtist { artist ->
-                            detailReturnPage = EchoTab.entries[selectedTab].pagerPage
+                            detailReturnPage = EchoTab.entries[selectedTab.intValue].pagerPage
                             selectedAlbum = null
                             selectedFolder = null
                             selectedPlaylist = null
@@ -1050,7 +1058,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     },
                     onOpenAlbum = {
                         viewModel.openCurrentPlaybackAlbum { album ->
-                            detailReturnPage = EchoTab.entries[selectedTab].pagerPage
+                            detailReturnPage = EchoTab.entries[selectedTab.intValue].pagerPage
                             selectedArtist = null
                             selectedFolder = null
                             selectedPlaylist = null

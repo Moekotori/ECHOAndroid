@@ -16,10 +16,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -28,7 +26,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.echo.android.BottomDock
 import app.echo.android.EchoAndroidViewModel
-import app.echo.android.EchoTab
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.design.EchoGlassInk
@@ -45,10 +42,8 @@ private val DockMotionEasing = EchoMotion.Silk
 @Composable
 internal fun EchoBottomDockHost(
     viewModel: EchoAndroidViewModel,
-    pagerState: PagerState,
     playbackStatus: EchoPlaybackStatus,
     darkTheme: Boolean,
-    selectedTab: Int,
     bottomDockExpanded: Boolean,
     effectivePerformanceMode: EchoEffectivePerformanceMode,
     onPlayPause: () -> Unit,
@@ -60,19 +55,12 @@ internal fun EchoBottomDockHost(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     modifier: Modifier = Modifier,
+    selectedTab: State<Int>,
 ) {
     // 传 State 引用而非值:进度 tick 不重组整个底栏,由 MiniPlayer 进度条绘制期读取
     val playbackPosition = viewModel.playbackPosition.collectAsStateWithLifecycle()
-    // 以 lambda 延迟读取 pager 偏移,滑动时只更新指示条自身,不重组整个底栏
-    val dockTabProgress = remember(pagerState) {
-        {
-            (
-                pagerState.currentPage +
-                    pagerState.currentPageOffsetFraction -
-                    EchoPagerPage.Now.ordinal
-                ).coerceIn(0f, EchoTab.entries.lastIndex.toFloat())
-        }
-    }
+    // selectedTab 只在 dock 作用域内读取:改动时仅底栏重组,不触碰整页内容
+    val selectedTabValue = selectedTab.value
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -114,9 +102,9 @@ internal fun EchoBottomDockHost(
                     status = playbackStatus,
                     positionState = playbackPosition,
                     darkTheme = darkTheme,
-                    selectedTab = selectedTab,
-                    selectedTabProgress = dockTabProgress,
-                    selectedTabProgressLive = pagerState.isScrollInProgress,
+                    selectedTab = selectedTabValue,
+                    selectedTabProgress = { selectedTabValue.toFloat() },
+                    selectedTabProgressLive = false,
                     onPlayPause = onPlayPause,
                     onHideDock = onHideDock,
                     onSelectTab = onSelectTab,

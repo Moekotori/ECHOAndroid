@@ -10,7 +10,7 @@ data class EchoPlaylist(
     val source: String = LibrarySource.MediaStore.id,
 ) {
     val isLikedSongs: Boolean
-        get() = id == LikedSongsId
+        get() = id == LIKED_SONGS_ID
 
     val canEdit: Boolean
         get() = source == LibrarySource.MediaStore.id && !isLikedSongs
@@ -19,6 +19,6 @@ data class EchoPlaylist(
         get() = canEdit || isLikedSongs
 
     companion object {
-        const val LikedSongsId = "local:liked"
+        const val LIKED_SONGS_ID = "local:liked"
     }
 }

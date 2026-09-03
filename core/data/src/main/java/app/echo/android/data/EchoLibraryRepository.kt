@@ -205,7 +205,7 @@ class EchoLibraryRepository(
             .map { ids -> ids.toSet() }
             .flowOn(Dispatchers.IO)
 
-    fun observeFavoriteAlbums(limit: Int = LibraryFavoritePolicy.FavoriteAlbumLimit): Flow<List<AlbumSummary>> =
+    fun observeFavoriteAlbums(limit: Int = LibraryFavoritePolicy.FAVORITE_ALBUM_LIMIT): Flow<List<AlbumSummary>> =
         database.playlistDao().observeFavoriteAlbums(limit.coerceAtLeast(1))
             .flowOn(Dispatchers.IO)
 

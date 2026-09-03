@@ -5,12 +5,14 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -36,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -48,7 +51,13 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -68,6 +77,7 @@ import kotlinx.coroutines.flow.collectLatest
 private val DockItemMotionEasing = EchoMotion.Silk
 private val DockGlassShape = RoundedCornerShape(28.dp)
 private val DockItemShape = RoundedCornerShape(22.dp)
+private val DockCapShape = RoundedCornerShape(18.dp)
 private val DockSelectedRose = EchoAccent
 
 enum class EchoTab(
@@ -182,34 +192,6 @@ fun BottomDock(
                         ),
                 )
             }
-            val tabWidth = maxWidth / tabCount
-            val tabWidthPx = with(density) { tabWidth.toPx() }.coerceAtLeast(1f)
-            val maxIndicatorIndex = EchoTab.entries.lastIndex.toFloat()
-            val progressLiveState = rememberUpdatedState(progressLive)
-            val selectedTabProgressState = rememberUpdatedState(selectedTabProgress)
-            val indicatorAnim = remember { Animatable(selectedTabProgress().coerceIn(0f, maxIndicatorIndex)) }
-            // 手指驱动(pager 滑动 / dock 拖拽)时指示条 1:1 直跟,离散跳转(点按)才走弹簧,
-            // 避免弹簧追赶连续目标带来的滞后感。
-            LaunchedEffect(tabWidthPx) {
-                snapshotFlow {
-                    val dragProgress = (-dragOffsetX / tabWidthPx).coerceIn(-1f, 1f)
-                    val target = (selectedTabProgressState.value() + dragProgress)
-                        .coerceIn(0f, maxIndicatorIndex)
-                    target to (progressLiveState.value || dragOffsetX != 0f)
-                }.collectLatest { (target, live) ->
-                    if (live) {
-                        indicatorAnim.snapTo(target)
-                    } else if (target != indicatorAnim.targetValue || target != indicatorAnim.value) {
-                        indicatorAnim.animateTo(
-                            targetValue = target,
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioNoBouncy,
-                                stiffness = 420f,
-                            ),
-                        )
-                    }
-                }
-            }
             val indicatorBrush = when {
                 onLightSurface -> Brush.horizontalGradient(
                     listOf(
@@ -224,29 +206,52 @@ fun BottomDock(
                     ),
                 )
             }
+            // 用图标容器盒的真实测量位置/尺寸定位胶囊,避免手算坐标导致的位置大小错位
+            val dockOrigin = remember { mutableStateOf(Offset.Zero) }
+            val iconRects = remember { mutableStateMapOf<Int, Rect>() }
             Box(
                 modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .offset { IntOffset(x = (tabWidthPx * indicatorAnim.value).roundToInt(), y = 0) }
-                    .width(tabWidth)
-                    .height(50.dp)
-                    .padding(horizontal = 3.dp, vertical = 2.dp)
-                    .clip(DockItemShape)
-                    .background(indicatorBrush),
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                    .fillMaxWidth()
+                    .onGloballyPositioned { dockOrigin.value = it.positionInWindow() },
             ) {
-                EchoTab.entries.forEach { tab ->
-                    DockItem(
-                        tab = tab,
-                        selected = selectedTab == tab.ordinal,
-                        onLightSurface = onLightSurface,
-                        onClick = { onSelectTab(tab.ordinal) },
-                        modifier = Modifier.weight(1f),
+                val iconRect = iconRects[selectedTab]
+                val targetOffset = iconRect?.let { it.topLeft - dockOrigin.value } ?: Offset.Zero
+                val capsuleOffset by animateOffsetAsState(
+                    targetValue = targetOffset,
+                    animationSpec = spring(Spring.DampingRatioNoBouncy, 520f),
+                    label = "dock-cap-offset",
+                )
+                if (iconRect != null) {
+                    val capWidth = with(density) { iconRect.size.width.toDp() }
+                    val capHeight = with(density) { iconRect.size.height.toDp() }
+                    Box(
+                        modifier = Modifier
+                            .offset {
+                                IntOffset(
+                                    capsuleOffset.x.roundToInt(),
+                                    capsuleOffset.y.roundToInt(),
+                                )
+                            }
+                            .size(capWidth, capHeight)
+                            .clip(DockCapShape)
+                            .background(indicatorBrush),
                     )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    EchoTab.entries.forEach { tab ->
+                        DockItem(
+                            tab = tab,
+                            selected = selectedTab == tab.ordinal,
+                            onLightSurface = onLightSurface,
+                            onClick = { onSelectTab(tab.ordinal) },
+                            onIconBounds = { i, r -> iconRects[i] = r },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
             }
         }
@@ -259,6 +264,7 @@ private fun DockItem(
     selected: Boolean,
     onLightSurface: Boolean,
     onClick: () -> Unit,
+    onIconBounds: (Int, Rect) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -294,29 +300,51 @@ private fun DockItem(
     )
     Box(
         modifier = modifier
-            .clickable(onClick = onClick)
+            // 选中态已由粉色椭圆底表达,点按时不再叠加默认 ripple 灰层
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            )
             .padding(vertical = 2.dp),
         contentAlignment = Alignment.Center,
     ) {
         Column(
             modifier = Modifier
                 .defaultMinSize(minWidth = 56.dp, minHeight = 48.dp)
-                .clip(DockItemShape)
                 .padding(horizontal = 2.dp, vertical = 1.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
         ) {
-            Icon(
-                tab.icon,
-                contentDescription = tab.label(),
-                tint = iconColor,
+            Box(
+                // 测量图标容器盒在窗口中的真实位置与尺寸,供外层滑动胶囊定位
                 modifier = Modifier
-                    .size(24.dp)
-                    .graphicsLayer {
-                        scaleX = iconScale
-                        scaleY = iconScale
-                    },
-            )
+                    .onGloballyPositioned {
+                        onIconBounds(
+                            tab.ordinal,
+                            Rect(
+                                it.positionInWindow(),
+                                Size(it.size.width.toFloat(), it.size.height.toFloat()),
+                            ),
+                        )
+                    }
+                    .clip(DockCapShape)
+                    .background(SolidColor(Color.Transparent))
+                    .padding(horizontal = 18.dp, vertical = 11.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    tab.icon,
+                    contentDescription = tab.label(),
+                    tint = iconColor,
+                    modifier = Modifier
+                        .size(24.dp)
+                        .graphicsLayer {
+                            scaleX = iconScale
+                            scaleY = iconScale
+                        },
+                )
+            }
             Text(
                 text = tab.label(),
                 color = labelColor,

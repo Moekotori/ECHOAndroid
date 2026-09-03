@@ -2,6 +2,7 @@ package app.echo.android
 
 import android.net.Uri
 import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import androidx.paging.map
 import app.echo.android.data.EchoLibraryRepository
 import app.echo.android.data.LibraryScanPolicy
@@ -33,6 +34,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
@@ -42,6 +44,7 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.cancellation.CancellationException
@@ -53,6 +56,7 @@ internal class LibraryController(
     private val repository: EchoLibraryRepository,
     private val scope: CoroutineScope,
 ) {
+    private val listSharingStarted = SharingStarted.WhileSubscribed(5_000L)
     private val _libraryQuery = MutableStateFlow("")
     val libraryQuery: StateFlow<String> = _libraryQuery.asStateFlow()
     private val _trackSortMode = MutableStateFlow(LibraryTrackSortMode.Title)
@@ -79,50 +83,61 @@ internal class LibraryController(
         combine(debouncedLibraryQuery, _trackSortMode) { query, sort -> query to sort }
             .flatMapLatest { (query, sort) -> repository.pagedTracks(query, sort) }
             .map { pagingData -> pagingData.map { it.toEchoTrack() } }
+            .cachedIn(scope)
 
     val albums: Flow<PagingData<AlbumSummary>> =
         debouncedLibraryQuery
             .flatMapLatest { query -> repository.pagedAlbums(query) }
+            .cachedIn(scope)
 
     val remoteAlbums: Flow<PagingData<AlbumSummary>> =
         debouncedLibraryQuery
             .flatMapLatest { query -> repository.pagedRemoteAlbums(query) }
+            .cachedIn(scope)
 
     val artists: Flow<PagingData<ArtistSummary>> =
         debouncedLibraryQuery
             .flatMapLatest { query -> repository.pagedArtists(query) }
+            .cachedIn(scope)
 
     val folders: Flow<PagingData<FolderSummary>> =
         debouncedLibraryQuery
             .flatMapLatest { query -> repository.pagedFolders(query) }
+            .cachedIn(scope)
 
-    val localPlaylists: Flow<List<EchoPlaylist>> =
+    val localPlaylists: StateFlow<List<EchoPlaylist>> =
         repository.observeLocalPlaylists()
+            .stateIn(scope, listSharingStarted, emptyList())
 
-    val favoriteTrackIds: Flow<Set<String>> =
+    val favoriteTrackIds: StateFlow<Set<String>> =
         repository.observeFavoriteTrackIds()
+            .stateIn(scope, listSharingStarted, emptySet())
 
-    val favoriteAlbums: Flow<List<AlbumSummary>> =
+    val favoriteAlbums: StateFlow<List<AlbumSummary>> =
         repository.observeFavoriteAlbums()
             .holdDuringLibraryMutation()
+            .stateIn(scope, listSharingStarted, emptyList())
 
-    val libraryStats: Flow<LibraryStats> =
+    val libraryStats: StateFlow<LibraryStats> =
         repository.observeLibraryStats()
             .debounce(400.milliseconds)
             .distinctUntilChanged()
+            .stateIn(scope, listSharingStarted, LibraryStats())
 
-    val recommendedTracks: Flow<List<EchoTrack>> =
+    val recommendedTracks: StateFlow<List<EchoTrack>> =
         repository.observeRecommendedTracks()
             .holdDuringLibraryMutation()
             .map { tracks -> tracks.map { it.toEchoTrack() } }
+            .stateIn(scope, listSharingStarted, emptyList())
 
-    val recentlyAddedAlbums: Flow<List<AlbumSummary>> =
+    val recentlyAddedAlbums: StateFlow<List<AlbumSummary>> =
         repository.observeRecentlyAddedAlbums()
+            .stateIn(scope, listSharingStarted, emptyList())
 
     private val recommendationSalt = MutableStateFlow(0)
     private var lastRecommendationSalt = 0
     private var lastRecommendedKeys: List<String> = emptyList()
-    val recommendedAlbums: Flow<List<AlbumSummary>> =
+    val recommendedAlbums: StateFlow<List<AlbumSummary>> =
         combine(
             repository.observeAlbumListenStats()
                 .debounce(400.milliseconds)
@@ -141,6 +156,7 @@ internal class LibraryController(
             val byKey = rows.associateBy { it.albumKey }
             keys.mapNotNull { key -> byKey[key]?.toAlbumSummary() }
         }
+            .stateIn(scope, listSharingStarted, emptyList())
 
     fun refreshHomeRecommendations() {
         recommendationSalt.value += 1

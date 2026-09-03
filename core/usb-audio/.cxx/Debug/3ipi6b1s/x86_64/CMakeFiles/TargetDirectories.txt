@@ -1,3 +1,0 @@
-D:/ECHOand/core/usb-audio/.cxx/Debug/3ipi6b1s/x86_64/CMakeFiles/echo_usb_isoc.dir
-D:/ECHOand/core/usb-audio/.cxx/Debug/3ipi6b1s/x86_64/CMakeFiles/edit_cache.dir
-D:/ECHOand/core/usb-audio/.cxx/Debug/3ipi6b1s/x86_64/CMakeFiles/rebuild_cache.dir
