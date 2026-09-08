@@ -1,3 +1,0 @@
-/Users/moekotori/echoandroid/core/usb-audio/.cxx/Debug/3ipi6b1s/x86_64/CMakeFiles/echo_usb_isoc.dir
-/Users/moekotori/echoandroid/core/usb-audio/.cxx/Debug/3ipi6b1s/x86_64/CMakeFiles/edit_cache.dir
-/Users/moekotori/echoandroid/core/usb-audio/.cxx/Debug/3ipi6b1s/x86_64/CMakeFiles/rebuild_cache.dir

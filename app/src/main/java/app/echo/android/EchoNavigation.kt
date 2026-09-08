@@ -6,6 +6,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
@@ -20,10 +21,8 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Devices
@@ -36,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -45,6 +45,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.lerp
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -54,7 +61,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoAccent
 import app.echo.android.design.EchoHomeMist
@@ -62,7 +68,6 @@ import app.echo.android.design.EchoMotion
 import app.echo.android.design.echoDarkGlassBorder
 import app.echo.android.design.LocalEchoDarkTheme
 import kotlin.math.abs
-import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.collectLatest
 
 private val DockItemMotionEasing = EchoMotion.Silk
@@ -224,29 +229,42 @@ fun BottomDock(
                     ),
                 )
             }
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .offset { IntOffset(x = (tabWidthPx * indicatorAnim.value).roundToInt(), y = 0) }
-                    .width(tabWidth)
-                    .height(50.dp)
-                    .padding(horizontal = 3.dp, vertical = 2.dp)
-                    .clip(DockItemShape)
-                    .background(indicatorBrush),
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                EchoTab.entries.forEach { tab ->
-                    DockItem(
-                        tab = tab,
-                        selected = selectedTab == tab.ordinal,
-                        onLightSurface = onLightSurface,
-                        onClick = { onSelectTab(tab.ordinal) },
-                        modifier = Modifier.weight(1f),
+            // Measure the actual item content, including font scale and RTL placement.
+            // Read animation progress during drawing so every tick does not recompose the dock.
+            var rowOrigin by remember { mutableStateOf(Offset.Zero) }
+            val itemBounds = remember { mutableStateMapOf<Int, Rect>() }
+            Box(Modifier.fillMaxWidth()) {
+                Canvas(Modifier.matchParentSize()) {
+                    val progress = indicatorAnim.value.coerceIn(0f, maxIndicatorIndex)
+                    val from = progress.toInt()
+                    val to = (from + 1).coerceAtMost(EchoTab.entries.lastIndex)
+                    val fromBounds = itemBounds[from] ?: return@Canvas
+                    val toBounds = itemBounds[to] ?: fromBounds
+                    val bounds = lerp(fromBounds, toBounds, progress - from)
+                    drawRoundRect(
+                        brush = indicatorBrush,
+                        topLeft = bounds.topLeft - rowOrigin,
+                        size = bounds.size,
+                        cornerRadius = CornerRadius(22.dp.toPx()),
                     )
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onGloballyPositioned { rowOrigin = it.positionInRoot() },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    EchoTab.entries.forEach { tab ->
+                        DockItem(
+                            tab = tab,
+                            selected = selectedTab == tab.ordinal,
+                            onLightSurface = onLightSurface,
+                            onClick = { onSelectTab(tab.ordinal) },
+                            onContentBounds = { itemBounds[tab.ordinal] = it },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
             }
         }
@@ -259,6 +277,7 @@ private fun DockItem(
     selected: Boolean,
     onLightSurface: Boolean,
     onClick: () -> Unit,
+    onContentBounds: (Rect) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -300,6 +319,11 @@ private fun DockItem(
     ) {
         Column(
             modifier = Modifier
+                .onGloballyPositioned {
+                    onContentBounds(
+                        Rect(it.positionInRoot(), Size(it.size.width.toFloat(), it.size.height.toFloat())),
+                    )
+                }
                 .defaultMinSize(minWidth = 56.dp, minHeight = 48.dp)
                 .clip(DockItemShape)
                 .padding(horizontal = 2.dp, vertical = 1.dp),

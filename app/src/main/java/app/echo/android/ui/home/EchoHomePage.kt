@@ -8,7 +8,6 @@ import app.echo.android.EchoAndroidViewModel
 import app.echo.android.feature.home.HomeScreen
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
-import app.echo.android.model.library.LibraryStats
 import app.echo.android.model.playback.EchoPlaybackStatus
 
 @Composable
@@ -22,13 +21,13 @@ internal fun EchoHomePage(
     onOpenSearch: () -> Unit,
     bottomInset: Dp,
 ) {
-    val libraryStats by viewModel.libraryStats.collectAsStateWithLifecycle(LibraryStats())
+    val libraryStats by viewModel.libraryStats.collectAsStateWithLifecycle()
     val recentPlaybackAlbums by viewModel.recentPlaybackAlbums.collectAsStateWithLifecycle()
     val recentPlaybackArtists by viewModel.recentPlaybackArtists.collectAsStateWithLifecycle()
     val recentPlaybackHeatmap by viewModel.recentPlaybackHeatmap.collectAsStateWithLifecycle()
-    val recentlyAddedAlbums by viewModel.recentlyAddedAlbums.collectAsStateWithLifecycle(emptyList())
-    val favoriteAlbums by viewModel.favoriteAlbums.collectAsStateWithLifecycle(emptyList())
-    val homeRecommendedAlbums by viewModel.recommendedAlbums.collectAsStateWithLifecycle(emptyList())
+    val recentlyAddedAlbums by viewModel.recentlyAddedAlbums.collectAsStateWithLifecycle()
+    val favoriteAlbums by viewModel.favoriteAlbums.collectAsStateWithLifecycle()
+    val homeRecommendedAlbums by viewModel.recommendedAlbums.collectAsStateWithLifecycle()
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
     HomeScreen(
         status = playbackStatus,

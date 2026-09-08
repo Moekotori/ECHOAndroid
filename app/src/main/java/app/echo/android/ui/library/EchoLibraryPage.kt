@@ -45,7 +45,7 @@ internal fun EchoLibraryPage(
     val libraryQuery by viewModel.libraryQuery.collectAsStateWithLifecycle()
     val libraryTrackSortMode by viewModel.libraryTrackSortMode.collectAsStateWithLifecycle()
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
-    val localPlaylists by viewModel.localPlaylists.collectAsStateWithLifecycle(emptyList())
+    val localPlaylists by viewModel.localPlaylists.collectAsStateWithLifecycle()
     val selectedAlbumKey = selectedAlbum?.albumKey
     val selectedArtistKey = selectedArtist?.artistKey
     val selectedFolderKey = selectedFolder?.folderKey

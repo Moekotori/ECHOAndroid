@@ -1,6 +1,0 @@
-# ninja log v5
-0	135	1788856028020818282	CMakeFiles/echo_usb_isoc.dir/echo_usb_isoc.cpp.o	baff502f81d1dad7
-136	173	1788856028058048578	/tmp/echo-online-verification/_core_usb-audio/intermediates/cxx/Debug/38a10161/obj/armeabi-v7a/libecho_usb_isoc.so	884f9d3c7d3287d8
-0	117	1788856760240534761	/tmp/echo-online-verification/_core_usb-audio/intermediates/cxx/Debug/38a10161/obj/armeabi-v7a/libecho_usb_isoc.so	884f9d3c7d3287d8
-1	107	1788856864652181309	/tmp/echo-online-verification/_core_usb-audio/intermediates/cxx/Debug/38a10161/obj/armeabi-v7a/libecho_usb_isoc.so	884f9d3c7d3287d8
-1	60	1788857989224067953	/tmp/echo-online-verification/_core_usb-audio/intermediates/cxx/Debug/38a10161/obj/armeabi-v7a/libecho_usb_isoc.so	884f9d3c7d3287d8

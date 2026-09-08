@@ -1,4 +1,5 @@
-# Gradle
+# Gradle / CMake
+.cxx/
 .gradle/
 build/
 

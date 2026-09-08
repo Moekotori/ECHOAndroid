@@ -31,7 +31,7 @@ internal fun EchoNowPlayingHost(
     // 传 State 引用而非值:进度 tick 不在宿主层触发重组,由页内叶子订阅
     val playbackPosition = viewModel.playbackPosition.collectAsStateWithLifecycle()
     val lyricsState by viewModel.lyricsState.collectAsStateWithLifecycle()
-    val favoriteTrackIds by viewModel.favoriteTrackIds.collectAsStateWithLifecycle(emptySet())
+    val favoriteTrackIds by viewModel.favoriteTrackIds.collectAsStateWithLifecycle()
     val isCurrentTrackFavorite = playbackStatus.track?.id?.let { it in favoriteTrackIds } == true
     var showLyricsManager by remember(playbackStatus.track?.id) { mutableStateOf(false) }
     if (showLyricsManager) {

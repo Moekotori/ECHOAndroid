@@ -1,1 +1,0 @@
-/Users/moekotori/echoandroid/core/usb-audio/build/intermediates/cxx/RelWithDebInfo/135q655g/obj/arm64-v8a

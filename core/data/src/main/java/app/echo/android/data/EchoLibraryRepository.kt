@@ -1500,6 +1500,8 @@ class EchoLibraryRepository(
     private fun defaultPagingConfig(): PagingConfig =
         PagingConfig(
             pageSize = 60,
+            // Keep retained pages bounded when the UI leaves and re-enters the library.
+            maxSize = 600,
             prefetchDistance = 20,
             enablePlaceholders = false,
         )
