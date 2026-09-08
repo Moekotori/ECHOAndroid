@@ -88,6 +88,32 @@ class DocumentTreeTrackScannerAndroidTest {
         assertEquals(0, provider.opens)
     }
 
+    @Test
+    fun repeatedFilteredScanDoesNotReopenUnchangedAudio() = runBlocking {
+        val provider = ListingProvider(listOf("short.wav"))
+        val scanner = DocumentTreeTrackScanner(ContentResolver.wrap(provider))
+        val cache = LocalScanFilterCache()
+        val tracks = mutableListOf<LibraryTrackEntity>()
+        var skipped = 0
+        suspend fun scan(options: LibraryScanOptions) = scanner.scanAudioTree(tree, "Music/",
+            options = options, rejectedFiles = cache, onSkipped = { skipped++ },
+            onBatch = { tracks += it }, onProgress = { _, _ -> })
+        val filters = LibraryScanOptions(minSizeBytes = 0)
+        assertTrue(scan(filters).querySucceeded)
+        assertEquals(1, provider.opens)
+        assertEquals(1, skipped)
+        assertTrue(tracks.isEmpty())
+        assertTrue(scan(filters).querySucceeded)
+        assertEquals(1, provider.opens) // Second scan lists the directory but opens no audio files.
+        assertEquals(2, skipped)
+        provider.modified += 1000L
+        scan(filters)
+        assertEquals(2, provider.opens)
+        scan(filters.copy(minDurationMs = 0))
+        assertEquals(3, provider.opens)
+        assertEquals(1, tracks.size)
+    }
+
     private fun indexedTrack() = LibraryTrackEntity(
         id = "mediastore:1", contentUri = "content://media/external/audio/media/1",
         title = "first", artist = "Artist", album = null, albumArtist = null, artworkUri = null,
@@ -99,6 +125,7 @@ class DocumentTreeTrackScannerAndroidTest {
     private class ListingProvider(private val names: List<String>, private val fail: Boolean = false) : ContentProvider() {
         var failReads = false
         var opens = 0
+        var modified = 1700000000000L
         var queries = 0
         private val wav by lazy {
             File.createTempFile("scan-fixture", ".wav", InstrumentationRegistry.getInstrumentation().targetContext.cacheDir).apply {
@@ -126,7 +153,7 @@ class DocumentTreeTrackScannerAndroidTest {
                             DocumentsContract.Document.COLUMN_DISPLAY_NAME -> name
                             DocumentsContract.Document.COLUMN_MIME_TYPE -> if (name == "Recordings") DocumentsContract.Document.MIME_TYPE_DIR else "audio/wav"
                             DocumentsContract.Document.COLUMN_SIZE -> 1024L
-                            DocumentsContract.Document.COLUMN_LAST_MODIFIED -> 1700000000000L
+                            DocumentsContract.Document.COLUMN_LAST_MODIFIED -> modified
                             else -> null
                         }
                     })

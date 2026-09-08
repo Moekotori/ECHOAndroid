@@ -1,0 +1,4 @@
+<resources>
+    <string name="background_permission_error">Unable to keep access to this file. Please choose another file.</string>
+    <string name="background_load_error">Unable to load this background. The default background has been restored.</string>
+</resources>

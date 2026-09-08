@@ -528,6 +528,9 @@ interface LibraryTrackDao {
     @Query("SELECT COUNT(*) FROM library_tracks WHERE source = :source")
     suspend fun countTracksFromSource(source: String): Int
 
+    @Query("SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs FROM library_tracks WHERE id LIKE 'saf:%' AND source IN ('saf', 'mediastore')")
+    suspend fun getDocumentFingerprints(): List<TrackFingerprint>
+
     @Query(
         """
         SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs

@@ -49,7 +49,8 @@ class AlbumOnlineInfoRepository(private val cacheDirectory: File, appVersion: St
                 val now = System.currentTimeMillis()
                 val age = now - (cachedJson?.optLong("storedAt") ?: 0L)
                 val ttl = when { cached?.partial == true -> 15 * 60_000L; cached == null -> 6 * 3600_000L; else -> 7 * 86400_000L }
-                if (!refresh && cachedJson != null && age in 0 until ttl) return@withLock cached?.copy(cached = true)
+                if (!refresh && cachedJson != null && cachedJson.has("info") &&
+                    (cachedJson.isNull("info") || cached != null) && age in 0 until ttl) return@withLock cached?.copy(cached = true)
                 try {
                     val result = fetch(album.copy(albumArtist = artist), lang)
                     // Cache failures must not discard successfully fetched information.

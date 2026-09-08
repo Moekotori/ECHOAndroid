@@ -333,4 +333,5 @@
     <string name="settings_track_fade_bypass">Saved, but bypassed in strict bit-perfect mode.</string>
     <string name="settings_track_fade_duration">Fade duration</string>
     <string name="settings_track_fade_seconds">%.1f s</string>
+    <string name="settings_bg_video_disabled">Video backgrounds are paused in Lightweight mode. The default background is shown; your selection is retained.</string>
 </resources>

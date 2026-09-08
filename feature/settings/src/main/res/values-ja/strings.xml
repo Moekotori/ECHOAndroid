@@ -327,4 +327,5 @@
     <string name="settings_track_fade_bypass">設定は保存されますが、厳密な bit-perfect モードでは適用しません。</string>
     <string name="settings_track_fade_duration">フェード時間</string>
     <string name="settings_track_fade_seconds">%.1f 秒</string>
+    <string name="settings_bg_video_disabled">軽量モードでは動画背景を停止し、デフォルトの背景を表示します。選択した動画は保持されます。</string>
 </resources>

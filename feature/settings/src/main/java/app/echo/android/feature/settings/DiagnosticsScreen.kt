@@ -2,6 +2,7 @@ package app.echo.android.feature.settings
 
 import app.echo.android.feature.settings.R as L10nR
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,9 +12,11 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.model.playback.*
 import kotlinx.coroutines.flow.StateFlow
@@ -63,53 +66,68 @@ fun DiagnosticsScreen(
                     }
                 }
             }
-            Column(
-                Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxWidth().weight(1f)
-                    .verticalScroll(scrollStates[selectedTab]).padding(horizontal = 24.dp)
-                    .padding(top = 24.dp, bottom = 188.dp),
-                verticalArrangement = Arrangement.spacedBy(28.dp),
-            ) {
-                val error = status.diagnostics.lastError?.message ?: status.diagnostics.usbLastRequestError?.message
-                if (error != null && selectedTab != 2) {
-                    Column(Modifier.fillMaxWidth().background(scheme.errorContainer).padding(12.dp)) {
-                        Text(error, color = scheme.onErrorContainer, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal)
-                        TextButton(onClick = { selectedTab = 2 }) { Text(labels[2], color = scheme.onErrorContainer) }
+            AnimatedContent(
+                targetState = selectedTab,
+                modifier = Modifier.widthIn(max = LocalEchoContentMaxWidth.current)
+                    .fillMaxWidth().weight(1f).clipToBounds(),
+                transitionSpec = { EchoMotion.tabSwitch(targetState > initialState) },
+                label = "SignalTabs",
+            ) { tab ->
+                Column(
+                    Modifier.fillMaxSize()
+                        .verticalScroll(scrollStates[tab]).padding(horizontal = 24.dp)
+                        .padding(top = 24.dp, bottom = 188.dp),
+                    verticalArrangement = Arrangement.spacedBy(28.dp),
+                ) {
+                    val error = status.diagnostics.lastError?.message ?: status.diagnostics.usbLastRequestError?.message
+                    if (error != null && tab != 2) {
+                        Column(Modifier.fillMaxWidth().background(scheme.errorContainer).padding(12.dp)) {
+                            Text(error, color = scheme.onErrorContainer, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal)
+                            TextButton(onClick = { selectedTab = 2 }) { Text(labels[2], color = scheme.onErrorContainer) }
+                        }
                     }
-                }
-                when (selectedTab) {
-                    0 -> SignalOverview(status, equalizerState, onAdjust = { selectedTab = 1 }, onDiagnostics = { selectedTab = 2 })
-                    1 -> {
-                        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                            listOf(L10nR.string.feature_settings_equalizer_7ccb03, L10nR.string.feature_settings_headphone_correction_491ce5).forEachIndexed { index, label ->
-                                SegmentedButton(selected = soundPanel == index, onClick = { soundPanel = index },
-                                    shape = SegmentedButtonDefaults.itemShape(index, 2)) { Text(stringResource(label)) }
+                    when (tab) {
+                        0 -> SignalOverview(status, equalizerState, onAdjust = { selectedTab = 1 }, onDiagnostics = { selectedTab = 2 })
+                        1 -> {
+                            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                                listOf(L10nR.string.feature_settings_equalizer_7ccb03, L10nR.string.feature_settings_headphone_correction_491ce5).forEachIndexed { index, label ->
+                                    SegmentedButton(selected = soundPanel == index, onClick = { soundPanel = index },
+                                        shape = SegmentedButtonDefaults.itemShape(index, 2)) { Text(stringResource(label)) }
+                                }
+                            }
+                            AnimatedContent(
+                                targetState = soundPanel,
+                                modifier = Modifier.fillMaxWidth(),
+                                transitionSpec = { EchoMotion.tabSwitch(targetState > initialState) },
+                                label = "SignalSoundPanel",
+                            ) { panel ->
+                                if (panel == 0) SignalEqualizer(
+                                    state = equalizerState,
+                                    bypassed = status.diagnostics.usbBitPerfectEnabled,
+                                    playing = status.isPlaying,
+                                    onPreampChange = onEqualizerPreampChange,
+                                    onEnabledChange = onEqualizerEnabledChange,
+                                    onPresetSelected = onEqualizerPresetSelected,
+                                    onBandGainChange = onEqualizerBandGainChange,
+                                    onReset = onEqualizerReset,
+                                )
+                                else SignalHeadphoneCorrection(
+                                    state = opraState,
+                                    equalizer = equalizerState,
+                                    bypassed = status.diagnostics.usbBitPerfectEnabled,
+                                    onQueryChange = onOpraQueryChange,
+                                    onSearch = onOpraSearch,
+                                    onRefresh = onOpraRefresh,
+                                    onPresetSelected = onOpraPresetSelected,
+                                    onApplySelected = onOpraApplySelected,
+                                )
                             }
                         }
-                        if (soundPanel == 0) SignalEqualizer(
-                            state = equalizerState,
-                            bypassed = status.diagnostics.usbBitPerfectEnabled,
-                            playing = status.isPlaying,
-                            onPreampChange = onEqualizerPreampChange,
-                            onEnabledChange = onEqualizerEnabledChange,
-                            onPresetSelected = onEqualizerPresetSelected,
-                            onBandGainChange = onEqualizerBandGainChange,
-                            onReset = onEqualizerReset,
-                        )
-                        else SignalHeadphoneCorrection(
-                            state = opraState,
-                            equalizer = equalizerState,
-                            bypassed = status.diagnostics.usbBitPerfectEnabled,
-                            onQueryChange = onOpraQueryChange,
-                            onSearch = onOpraSearch,
-                            onRefresh = onOpraRefresh,
-                            onPresetSelected = onOpraPresetSelected,
-                            onApplySelected = onOpraApplySelected,
-                        )
-                    }
-                    else -> {
-                        HealthPanel(status)
-                        UsbOutputPanel(status)
-                        CurrentStreamPanel(status, positionFlow)
+                        else -> {
+                            HealthPanel(status)
+                            UsbOutputPanel(status)
+                            CurrentStreamPanel(status, positionFlow)
+                        }
                     }
                 }
             }

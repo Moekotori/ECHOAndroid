@@ -1,5 +1,7 @@
 package app.echo.android
 
+import app.echo.android.i18n.refreshEchoAppLocale
+
 import app.echo.android.model.library.LibraryScanOptions
 import androidx.compose.runtime.saveable.rememberSaveable
 import android.app.Activity
@@ -176,14 +178,13 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         showPermissionDialog = false
         prefs.edit { putBoolean(ECHO_PERMISSION_DIALOG_SHOWN_KEY, true) }
     }
-    fun persistReadPermission(uri: AndroidUri) {
+    fun persistReadPermission(uri: AndroidUri): Boolean =
         runCatching {
             context.contentResolver.takePersistableUriPermission(
                 uri,
                 Intent.FLAG_GRANT_READ_URI_PERMISSION,
             )
-        }
-    }
+        }.isSuccess
     val folderScanLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.let { treeUri ->
             persistReadPermission(treeUri)
@@ -192,14 +193,20 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     }
     val backgroundImageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { selectedUri ->
-            persistReadPermission(selectedUri)
-            viewModel.setCustomBackground(EchoBackgroundMode.Image, selectedUri)
+            if (persistReadPermission(selectedUri)) {
+                viewModel.setCustomBackground(EchoBackgroundMode.Image, selectedUri)
+            } else {
+                android.widget.Toast.makeText(context, R.string.background_permission_error, android.widget.Toast.LENGTH_LONG).show()
+            }
         }
     }
     val backgroundVideoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { selectedUri ->
-            persistReadPermission(selectedUri)
-            viewModel.setCustomBackground(EchoBackgroundMode.Video, selectedUri)
+            if (persistReadPermission(selectedUri)) {
+                viewModel.setCustomBackground(EchoBackgroundMode.Video, selectedUri)
+            } else {
+                android.widget.Toast.makeText(context, R.string.background_permission_error, android.widget.Toast.LENGTH_LONG).show()
+            }
         }
     }
     var fontImportTarget by remember { mutableStateOf<FontImportTarget?>(null) }
@@ -481,14 +488,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         routeNavigationJob[0]?.cancel()
         routeNavigationJob[0] = appScope.launch {
             if (needsPagerSettle(targetPage)) {
-                if (effectivePerformanceMode.isLightweight) {
-                    tabPagerState.scrollToPage(targetPage)
-                } else {
-                    tabPagerState.animateScrollToPage(
-                        page = targetPage,
-                        animationSpec = routeMotionSpec(tabPagerState.currentPage, targetPage, effectivePerformanceMode),
-                    )
-                }
+                tabPagerState.animateScrollToPage(
+                    page = targetPage,
+                    animationSpec = routeMotionSpec(tabPagerState.currentPage, targetPage, effectivePerformanceMode),
+                )
             }
         }
     }
@@ -521,14 +524,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             try {
                 val targetPage = returnPage.ordinal
                 if (needsPagerSettle(targetPage)) {
-                    if (effectivePerformanceMode.isLightweight) {
-                        tabPagerState.scrollToPage(targetPage)
-                    } else {
-                        tabPagerState.animateScrollToPage(
-                            page = targetPage,
-                            animationSpec = routeMotionSpec(tabPagerState.currentPage, targetPage, effectivePerformanceMode),
-                        )
-                    }
+                    tabPagerState.animateScrollToPage(
+                        page = targetPage,
+                        animationSpec = routeMotionSpec(tabPagerState.currentPage, targetPage, effectivePerformanceMode),
+                    )
                 }
             } finally {
                 clearLibraryDetail()
@@ -542,18 +541,14 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     }
     LaunchedEffect(tabPagerState.isScrollInProgress, tabPagerState.currentPage) {
         if (!tabPagerState.isScrollInProgress && tabPagerState.currentPageOffsetFraction.absoluteValue > 0.001f) {
-            if (effectivePerformanceMode.isLightweight) {
-                tabPagerState.scrollToPage(tabPagerState.currentPage)
-            } else {
-                tabPagerState.animateScrollToPage(
-                    page = tabPagerState.currentPage,
-                    animationSpec = routeMotionSpec(
-                        tabPagerState.settledPage,
-                        tabPagerState.currentPage,
-                        effectivePerformanceMode,
-                    ),
-                )
-            }
+            tabPagerState.animateScrollToPage(
+                page = tabPagerState.currentPage,
+                animationSpec = routeMotionSpec(
+                    tabPagerState.settledPage,
+                    tabPagerState.currentPage,
+                    effectivePerformanceMode,
+                ),
+            )
         }
     }
 
@@ -628,7 +623,16 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         effectivePerformanceMode = effectivePerformanceMode,
     ) {
         Box(Modifier.fillMaxSize()) {
-            EchoCustomBackground(settings = appSettings, modifier = Modifier.fillMaxSize())
+            EchoCustomBackground(
+                settings = appSettings,
+                modifier = Modifier.fillMaxSize(),
+                onLoadError = { failedUri ->
+                    if (appSettings.customBackgroundUri == failedUri) {
+                        android.widget.Toast.makeText(context, R.string.background_load_error, android.widget.Toast.LENGTH_LONG).show()
+                        viewModel.setCustomBackground(EchoBackgroundMode.Default, null)
+                    }
+                },
+            )
             Box(
                 modifier = Modifier.fillMaxSize(),
             ) {
@@ -832,9 +836,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onThemeModeChange = viewModel::setThemeMode,
                                 onAppLanguageChange = { language ->
                                     viewModel.setAppLanguage(language)
-                                    if (android.os.Build.VERSION.SDK_INT < 33) {
-                                        permissionActivity?.recreate()
-                                    }
+                                    permissionActivity?.refreshEchoAppLocale(language)
                                 },
                                 onScheduledDarkModeEnabledChange = viewModel::setScheduledDarkModeEnabled,
                                 onScheduledDarkStartMinuteChange = viewModel::setScheduledDarkStartMinute,

@@ -1,6 +1,15 @@
 package app.echo.android
 
 import android.graphics.Bitmap
+import android.os.Build
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.media3.common.PlaybackException
+import app.echo.android.design.EchoLegacyBackgroundBlur
+import app.echo.android.design.backgroundMaxBlur
 import androidx.core.net.toUri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -44,6 +53,7 @@ import coil.request.ImageRequest
 fun EchoCustomBackground(
     settings: EchoAppSettings,
     modifier: Modifier = Modifier,
+    onLoadError: (String) -> Unit = {},
 ) {
     val mode = settings.customBackgroundMode
     val uri = settings.customBackgroundUri
@@ -57,23 +67,25 @@ fun EchoCustomBackground(
         highPerformance -> 1280
         else -> 1024
     }
-    val maxBlur = when {
-        lightweight -> 4f
-        highPerformance -> 28f
-        else -> 16f
-    }
+    val maxBlur = effectivePerformanceMode.backgroundMaxBlur
     val blur = settings.customBackgroundBlur.coerceIn(0f, maxBlur).dp
     val brightness = settings.customBackgroundBrightness
     val glass = settings.customBackgroundGlass
     val backgroundScale = settings.customBackgroundScale.coerceIn(1.00f, 1.40f)
 
+    var failed by remember(mode, uri) { mutableStateOf(false) }
+    LaunchedEffect(failed, uri) {
+        if (failed && uri != null) onLoadError(uri)
+    }
     Box(modifier = modifier.fillMaxSize()) {
-        if (hasCustomBackground) {
+        EchoGlassBackground(Modifier.fillMaxSize())
+        if (hasCustomBackground && !failed) {
             when (mode) {
                 EchoBackgroundMode.Video -> EchoVideoWallpaper(
                     uri = uri,
                     brightness = brightness,
                     backgroundScale = backgroundScale,
+                    onError = { failed = true },
                 )
 
                 EchoBackgroundMode.Image -> EchoImageWallpaper(
@@ -83,13 +95,12 @@ fun EchoCustomBackground(
                     backgroundScale = backgroundScale,
                     maxPixelSize = imageMaxPixelSize,
                     highQuality = highPerformance,
+                    onError = { failed = true },
                 )
 
-                else -> EchoGlassBackground(Modifier.fillMaxSize())
+                else -> Unit
             }
             EchoBackgroundGlassOverlay(glass = glass)
-        } else {
-            EchoGlassBackground(Modifier.fillMaxSize())
         }
     }
 }
@@ -102,28 +113,40 @@ private fun EchoImageWallpaper(
     backgroundScale: Float,
     maxPixelSize: Int,
     highQuality: Boolean,
+    onError: () -> Unit,
 ) {
     val context = LocalContext.current
-    val imageRequest = remember(context, uri, maxPixelSize, highQuality) {
+    val configuration = LocalConfiguration.current
+    val legacyBlur = if (Build.VERSION.SDK_INT < 31) blur.value else 0f
+    val widthDp = configuration.screenWidthDp.coerceAtLeast(1)
+    val heightDp = configuration.screenHeightDp.coerceAtLeast(1)
+    val imageRequest = remember(context, uri, maxPixelSize, highQuality, legacyBlur, widthDp, heightDp) {
         val cacheKey = "$uri#px$maxPixelSize#${if (highQuality) "8888" else "565"}"
         ImageRequest.Builder(context)
             .data(uri)
             .size(maxPixelSize, maxPixelSize)
             .bitmapConfig(if (highQuality) Bitmap.Config.ARGB_8888 else Bitmap.Config.RGB_565)
-            .memoryCacheKey(cacheKey)
+            .memoryCacheKey("$cacheKey#blur$legacyBlur#${widthDp}x$heightDp")
             .diskCacheKey(cacheKey)
             .crossfade(false)
+            .apply {
+                if (legacyBlur > 0f) {
+                    allowHardware(false)
+                    transformations(EchoLegacyBackgroundBlur(legacyBlur, widthDp, heightDp))
+                }
+            }
             .build()
     }
     Box(Modifier.fillMaxSize()) {
         AsyncImage(
             model = imageRequest,
             contentDescription = null,
+            onError = { onError() },
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxSize()
                 .scale(backgroundScale)
-                .then(if (blur > 0.dp) Modifier.blur(blur) else Modifier)
+                .then(if (Build.VERSION.SDK_INT >= 31 && blur > 0.dp) Modifier.blur(blur) else Modifier)
                 .alpha(brightness.coerceIn(0.35f, 1.15f)),
         )
         EchoBrightnessOverlay(brightness)
@@ -136,10 +159,11 @@ private fun EchoVideoWallpaper(
     uri: String,
     brightness: Float,
     backgroundScale: Float,
+    onError: () -> Unit,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val player = remember(uri) {
+    val player = remember(context, uri, lifecycleOwner) {
         ExoPlayer.Builder(context)
             .setAudioAttributes(
                 AudioAttributes.Builder()
@@ -159,7 +183,15 @@ private fun EchoVideoWallpaper(
                 prepare()
             }
     }
+    val currentOnError by androidx.compose.runtime.rememberUpdatedState(onError)
     DisposableEffect(player, lifecycleOwner) {
+        val listener = object : Player.Listener {
+            override fun onPlayerError(error: PlaybackException) {
+                currentOnError()
+            }
+        }
+        player.addListener(listener)
+        if (player.playerError != null) currentOnError()
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_START -> player.play()
@@ -170,6 +202,7 @@ private fun EchoVideoWallpaper(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+            player.removeListener(listener)
             player.release()
         }
     }
@@ -216,12 +249,12 @@ private fun EchoBrightnessOverlay(brightness: Float) {
 @Composable
 private fun EchoBackgroundGlassOverlay(glass: Float) {
     val dark = LocalEchoDarkTheme.current
-    val readableGlass = if (dark) glass.coerceAtLeast(0.88f) else glass
+    val readableGlass = glass.coerceIn(0.08f, 0.90f)
     val colors = if (dark) {
         listOf(
-            EchoGlassNight.copy(alpha = (readableGlass * 0.90f).coerceIn(0.72f, 0.94f)),
-            EchoGlassInk.copy(alpha = (readableGlass * 0.82f).coerceIn(0.66f, 0.88f)),
-            EchoGlassNight.copy(alpha = (readableGlass * 0.94f).coerceIn(0.76f, 0.96f)),
+            EchoGlassNight.copy(alpha = (readableGlass * 0.90f)),
+            EchoGlassInk.copy(alpha = (readableGlass * 0.82f)),
+            EchoGlassNight.copy(alpha = (readableGlass * 0.94f)),
         )
     } else {
         listOf(

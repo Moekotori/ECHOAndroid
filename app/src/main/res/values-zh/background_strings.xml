@@ -1,0 +1,4 @@
+<resources>
+    <string name="background_permission_error">无法保留此文件的访问权限，请重新选择文件。</string>
+    <string name="background_load_error">无法加载此背景，已恢复默认背景。</string>
+</resources>

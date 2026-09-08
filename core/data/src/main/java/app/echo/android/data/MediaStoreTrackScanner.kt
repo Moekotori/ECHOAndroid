@@ -21,6 +21,7 @@ class MediaStoreTrackScanner(
 ) {
     private val appContext = context.applicationContext
     private val contentResolver: ContentResolver = appContext.contentResolver
+    internal val rejectedFileCache by lazy { LocalScanFilterCache(java.io.File(appContext.cacheDir, "scan-rejected-v1.json")) }
     private var includeSampleRateColumn =
         LibraryScanPolicy.mediaStoreSampleRateColumnAvailable(Build.VERSION.SDK_INT)
 
@@ -30,6 +31,8 @@ class MediaStoreTrackScanner(
         existingTracks: Map<String, TrackFingerprint> = emptyMap(),
         readSampleRate: Boolean = true,
         options: LibraryScanOptions = LibraryScanOptions(0L, 0L, false, false),
+        rejectedFiles: LocalScanFilterCache? = null,
+        onSkipped: suspend () -> Unit = {},
         onTotalCount: suspend (Int?) -> Unit = {},
         onUnchangedIds: suspend (List<String>) -> Unit = {},
         onBatch: suspend (List<LibraryTrackEntity>) -> Unit,
@@ -65,6 +68,12 @@ class MediaStoreTrackScanner(
                         scannedCount++
                         onProgress(scannedCount, null)
                         null
+                    } else if (existingTracks["mediastore:${row.mediaId}"] == null && !options.accepts(row.durationMs, row.sizeBytes, null)) {
+                        rejectedFiles?.remember(row.contentUri, row.sizeBytes, row.dateModifiedSeconds, row.durationMs)
+                        scannedCount++
+                        onSkipped()
+                        onProgress(scannedCount, null)
+                        null
                     } else row.toTrackEntity(existingTracks, readSampleRate)
                 }.onFailure { error ->
                     complete = false
@@ -86,7 +95,7 @@ class MediaStoreTrackScanner(
         for (collection in collections) {
             coroutineContext.ensureActive()
             val volumeScope = LibraryScanPolicy.mediaStoreVolumeScope(collection.volumeName)
-            if (existingTracks.isEmpty()) {
+            if (existingTracks.isEmpty() && rejectedFiles?.hasEntries() != true) {
                 // 首扫:直接全列拉取
                 val cursor = queryAudioListing(collection, selection, selectionArgs) ?: continue
                 querySucceeded = true
@@ -114,6 +123,14 @@ class MediaStoreTrackScanner(
                     coroutineContext.ensureActive()
                     val mediaId = listing.getLong(idIndex)
                     val trackId = "${LibraryScanPolicy.MediaStoreNativeIdPrefix}$mediaId"
+                    if (existingTracks[trackId] == null && rejectedFiles?.shouldSkip(
+                            Uri.withAppendedPath(collection.uri, mediaId.toString()).toString(),
+                            listing.getLongOrNull(sizeIndex) ?: 0L, listing.getLongOrNull(modifiedIndex) ?: 0L, options,
+                        ) == true) {
+                        scannedCount++
+                        onSkipped()
+                        continue
+                    }
                     val unchanged = LibraryScanPolicy.isMediaStoreRowUnchanged(
                         existing = existingTracks[trackId],
                         dateModifiedSeconds = listing.getLongOrNull(modifiedIndex) ?: 0L,

@@ -22,13 +22,46 @@ data class EchoLyricsSearchRequest(
 class OnlineLyricsResolver(
     private val httpGet: (String, Map<String, String>) -> String? = ::defaultHttpGet,
 ) {
-    fun loadForTrack(request: EchoLyricsSearchRequest, checkCancelled: () -> Unit = {}): EchoLyrics? =
-        neteaseCandidates(request, limit = 1, checkCancelled).firstOrNull()?.lyrics
-            ?: lrclibCandidates(request, limit = 1, checkCancelled).firstOrNull()?.lyrics
+    fun loadForTrack(request: EchoLyricsSearchRequest, checkCancelled: () -> Unit = {}): EchoLyrics? {
+        if (request.title.isBlank() || request.artist.isBlank()) return null
+        val matcher = LyricsCandidateMatcher(request)
+        val netease = neteaseRecords(request, matcher, checkCancelled).filter { it.match.automatic }
+        val attempted = mutableSetOf<String>()
+        var fastResult: EchoLyricsCandidate? = null
+        // A strong identity match needs only one search and one lyric download.
+        netease.firstOrNull()?.takeIf { it.match.fast }?.let { record ->
+            attempted += record.id
+            fastResult = record.load(checkCancelled)
+            if (fastResult?.lyrics?.isSynced == true) return fastResult?.lyrics
+        }
+        val ranked = (netease + lrclibRecords(request, matcher, checkCancelled))
+            .filter { it.match.automatic }.sortedByDescending { it.match.score }
+        var plainFallback: EchoLyrics? = null
+        var downloads = attempted.size
+        for (record in ranked) {
+            checkCancelled()
+            val candidate = if (record.id in attempted) fastResult else {
+                if (record.songId != null && downloads >= MaxAutomaticDownloads) continue
+                if (record.songId != null) downloads++
+                record.load(checkCancelled)
+            } ?: continue
+            if (candidate.lyrics.isSynced) return candidate.lyrics
+            if (plainFallback == null) plainFallback = candidate.lyrics
+        }
+        return plainFallback
+    }
 
     fun search(request: EchoLyricsSearchRequest, checkCancelled: () -> Unit = {}): List<EchoLyricsCandidate> {
         if (request.title.isBlank() || request.artist.isBlank()) return emptyList()
-        return neteaseCandidates(request, 5, checkCancelled) + lrclibCandidates(request, 5, checkCancelled)
+        val matcher = LyricsCandidateMatcher(request)
+        val records = (neteaseRecords(request, matcher, checkCancelled) + lrclibRecords(request, matcher, checkCancelled))
+            .sortedByDescending { it.match.score }
+        var downloads = 0
+        return records.asSequence().mapNotNull { record ->
+            checkCancelled()
+            if (record.songId != null && downloads++ >= MaxManualDownloads) return@mapNotNull null
+            record.load(checkCancelled)
+        }.take(10).toList()
     }
 
     fun loadFromNeteaseSongId(songId: Long, checkCancelled: () -> Unit = {}): EchoLyrics? {
@@ -53,44 +86,71 @@ class OnlineLyricsResolver(
         })
     }
 
-    private fun neteaseCandidates(request: EchoLyricsSearchRequest, limit: Int, checkCancelled: () -> Unit): List<EchoLyricsCandidate> {
-        if (request.title.isBlank() || request.artist.isBlank()) return emptyList()
+    private fun neteaseRecords(
+        request: EchoLyricsSearchRequest, matcher: LyricsCandidateMatcher, checkCancelled: () -> Unit,
+    ): List<CandidateRecord> {
         val url = buildUrl("https://music.163.com/api/search/get/web", listOf(
-            "s" to "${request.title} ${request.artist}", "type" to "1", "limit" to "5", "offset" to "0",
+            "s" to "${request.title} ${request.artist}", "type" to "1", "limit" to "15", "offset" to "0",
         ))
         checkCancelled()
         val response = httpGet(url, NeteaseHeaders) ?: return emptyList()
+        checkCancelled()
         val songs = runCatching { JSONObject(response).optJSONObject("result")?.optJSONArray("songs") }
             .getOrNull() ?: return emptyList()
-        return songs.objects().map { it to scoreNeteaseSong(request, it) }
-            .filter { it.second >= MinimumNeteaseScore }.sortedByDescending { it.second }
-            .mapNotNull { (song, _) ->
-                val id = song.optLong("id")
-                val lyrics = loadFromNeteaseSongId(id, checkCancelled) ?: return@mapNotNull null
-                EchoLyricsCandidate("netease:$id", song.optString("name"),
-                    song.optJSONArray("artists")?.objects()?.joinToString(" / ") { it.optString("name") }.orEmpty(),
-                    song.optJSONObject("album")?.optString("name"), song.optLong("duration"), lyrics)
-            }.take(limit).toList()
+        return songs.objects().take(15).mapNotNull { song ->
+            val id = song.optLong("id").takeIf { it > 0 } ?: return@mapNotNull null
+            val title = song.optString("name")
+            val artist = song.optJSONArray("artists")?.objects()?.joinToString(" / ") { it.optString("name") }.orEmpty()
+            val album = song.optJSONObject("album")?.optString("name")
+            val duration = song.optLong("duration")
+            val match = matcher.match(title, artist, album, duration) ?: return@mapNotNull null
+            CandidateRecord("netease:$id", title, artist, album, duration, match, songId = id)
+        }.distinctBy { it.id }.sortedByDescending { it.match.score }.toList()
     }
 
-    private fun lrclibCandidates(request: EchoLyricsSearchRequest, limit: Int, checkCancelled: () -> Unit): List<EchoLyricsCandidate> {
-        val url = buildUrl("https://lrclib.net/api/search", buildList {
-            add("track_name" to request.title); add("artist_name" to request.artist)
-            request.album?.takeIf(String::isNotBlank)?.let { add("album_name" to it) }
-        })
+    private fun lrclibRecords(
+        request: EchoLyricsSearchRequest, matcher: LyricsCandidateMatcher, checkCancelled: () -> Unit,
+    ): List<CandidateRecord> {
+        // Album is ranking evidence, not a search constraint: compilation tags must not hide the song.
+        val url = buildUrl("https://lrclib.net/api/search", listOf(
+            "track_name" to request.title, "artist_name" to request.artist,
+        ))
         checkCancelled()
         val response = httpGet(url, LrclibHeaders) ?: return emptyList()
+        checkCancelled()
         val records = runCatching { JSONArray(response) }.getOrNull() ?: return emptyList()
-        return records.objects().map { it to scoreLrclibRecord(request, it) }
-            .filter { it.second >= MinimumLrclibScore }.sortedByDescending { it.second }
-            .mapNotNull { (record, _) ->
-                val raw = record.optLyricsText("syncedLyrics") ?: record.optLyricsText("plainLyrics")
-                    ?: return@mapNotNull null
-                val lyrics = parseOnlineLyrics(raw, "LRCLIB") ?: return@mapNotNull null
-                EchoLyricsCandidate("lrclib:${record.optLong("id")}", record.optString("trackName"),
-                    record.optString("artistName"), record.optString("albumName"),
-                    (record.optDouble("duration", 0.0) * 1000).toLong(), lyrics)
-            }.take(limit).toList()
+        return records.objects().take(100).mapNotNull { record ->
+            val id = record.optLong("id").takeIf { it > 0 } ?: return@mapNotNull null
+            val title = record.optString("trackName", record.optString("name"))
+            val artist = record.optString("artistName")
+            val album = record.optString("albumName")
+            val duration = (record.optDouble("duration", 0.0) * 1000).toLong()
+            val match = matcher.match(title, artist, album, duration) ?: return@mapNotNull null
+            CandidateRecord("lrclib:$id", title, artist, album, duration, match,
+                synced = record.optLyricsText("syncedLyrics"), plain = record.optLyricsText("plainLyrics"))
+        }.distinctBy { it.id }.toList()
+    }
+
+    private inner class CandidateRecord(
+        val id: String,
+        val title: String,
+        val artist: String,
+        val album: String?,
+        val duration: Long,
+        val match: LyricsCandidateMatcher.Match,
+        val songId: Long? = null,
+        val synced: String? = null,
+        val plain: String? = null,
+    ) {
+        fun load(checkCancelled: () -> Unit): EchoLyricsCandidate? {
+            checkCancelled()
+            val lyrics = if (songId != null) loadFromNeteaseSongId(songId, checkCancelled) else {
+                synced?.let { parseOnlineLyrics(it, "LRCLIB") }
+                    ?: plain?.let { parseOnlineLyrics(it, "LRCLIB") }
+            }
+            checkCancelled()
+            return lyrics?.let { EchoLyricsCandidate(id, title, artist, album, duration, it) }
+        }
     }
 
     private fun parseOnlineLyrics(rawLyrics: String, sourceLabel: String): EchoLyrics? =
@@ -101,92 +161,9 @@ class OnlineLyricsResolver(
                 lyrics.copy(metadata = lyrics.metadata + ("provider" to sourceLabel))
             }
 
-    private fun scoreNeteaseSong(request: EchoLyricsSearchRequest, song: JSONObject): Int {
-        val title = song.optString("name")
-        val album = song.optJSONObject("album")?.optString("name").orEmpty()
-        val artists = song.optJSONArray("artists")
-            ?.objects()
-            ?.joinToString(" ") { it.optString("name") }
-            .orEmpty()
-        val durationMs = song.optLong("duration", 0L)
-        return scoreCandidate(
-            request = request,
-            candidateTitle = title,
-            candidateArtist = artists,
-            candidateAlbum = album,
-            candidateDurationMs = durationMs,
-        )
-    }
-
-    private fun scoreLrclibRecord(request: EchoLyricsSearchRequest, record: JSONObject): Int {
-        val durationMs = (record.optDouble("duration", 0.0) * 1000.0).toLong()
-        return scoreCandidate(
-            request = request,
-            candidateTitle = record.optString("trackName", record.optString("name")),
-            candidateArtist = record.optString("artistName"),
-            candidateAlbum = record.optString("albumName"),
-            candidateDurationMs = durationMs,
-        )
-    }
-
-    private fun scoreCandidate(
-        request: EchoLyricsSearchRequest,
-        candidateTitle: String,
-        candidateArtist: String,
-        candidateAlbum: String,
-        candidateDurationMs: Long,
-    ): Int {
-        val targetTitle = request.title.normalizedKey()
-        val targetArtist = request.artist.normalizedKey()
-        val targetAlbum = request.album.orEmpty().normalizedKey()
-        val title = candidateTitle.normalizedKey()
-        val artist = candidateArtist.normalizedKey()
-        val album = candidateAlbum.normalizedKey()
-        if (targetTitle.isBlank() || targetArtist.isBlank() || title.isBlank() || artist.isBlank()) return 0
-        if (!(artist == targetArtist || artist.contains(targetArtist) || targetArtist.contains(artist))) return 0
-        if (!(title == targetTitle || title.contains(targetTitle) || targetTitle.contains(title))) return 0
-        if (request.durationMs > 0L && candidateDurationMs > 0L &&
-            abs(request.durationMs - candidateDurationMs) > 15_000L) return 0
-        val versions = listOf("live", "remix", "instrumental", "karaoke", "现场", "伴奏")
-        if (versions.any { targetTitle.contains(it) != title.contains(it) }) return 0
-        var score = 0
-
-        score += when {
-            title == targetTitle -> 60
-            title.contains(targetTitle) || targetTitle.contains(title) -> 28
-            else -> 0
-        }
-        score += when {
-            artist == targetArtist -> 28
-            artist.contains(targetArtist) || targetArtist.contains(artist) -> 18
-            else -> 0
-        }
-        if (targetAlbum.isNotBlank()) {
-            score += when {
-                album == targetAlbum -> 12
-                album.contains(targetAlbum) || targetAlbum.contains(album) -> 6
-                else -> 0
-            }
-        }
-        if (request.durationMs > 0L && candidateDurationMs > 0L) {
-            val delta = abs(request.durationMs - candidateDurationMs)
-            score += when {
-                delta <= 3_000L -> 24
-                delta <= 8_000L -> 12
-                else -> -14
-            }
-        }
-        return score
-    }
-
-    private data class ScoredNeteaseSong(
-        val id: Long,
-        val score: Int,
-    )
-
     private companion object {
-        const val MinimumNeteaseScore = 58
-        const val MinimumLrclibScore = 58
+        const val MaxAutomaticDownloads = 3
+        const val MaxManualDownloads = 5
 
         val NeteaseHeaders = mapOf(
             "User-Agent" to "Mozilla/5.0",
@@ -236,11 +213,6 @@ private fun buildUrl(base: String, params: List<Pair<String, String>>): String =
 
 private fun String.urlEncode(): String =
     URLEncoder.encode(this, StandardCharsets.UTF_8)
-
-private fun String.normalizedKey(): String =
-    lowercase()
-        .replace(Regex("""[^\p{L}\p{N}]+"""), "")
-        .trim()
 
 private fun JSONArray.objects(): Sequence<JSONObject> =
     sequence {

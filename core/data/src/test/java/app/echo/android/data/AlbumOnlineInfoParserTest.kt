@@ -17,6 +17,12 @@ class AlbumOnlineInfoParserTest {
     @Test fun rejectsSameTitleByAnotherArtist() {
         assertNull(AlbumOnlineInfoParser.selectRelease(search(candidate(artist = "Artist B")), album))
     }
+    @Test fun doesNotTreatOneMemberOfJointCreditAsExactArtist() {
+        val duet = candidate().put("artist-credit", JSONArray()
+            .put(JSONObject().put("name", "Artist A").put("joinphrase", " & "))
+            .put(JSONObject().put("name", "Artist B")))
+        assertNull(AlbumOnlineInfoParser.selectRelease(search(duet), album))
+    }
     @Test fun refusesAmbiguousReleaseGroups() {
         assertNull(AlbumOnlineInfoParser.selectRelease(search(candidate(), candidate(group = "another")), album))
     }

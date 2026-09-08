@@ -1,5 +1,6 @@
 package app.echo.android.feature.settings
 
+import app.echo.android.design.backgroundMaxBlur
 import app.echo.android.design.echoAnimateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -300,15 +301,24 @@ fun SettingsScreen(
                     expanded = customBackgroundAdvancedExpanded,
                     onExpandedChange = { customBackgroundAdvancedExpanded = it },
                 )
-                if (customBackgroundAdvancedExpanded) {
-                    SettingsSliderRow(
-                        title = stringResource(R.string.settings_blur),
-                        detail = "${customBackgroundBlur.roundToInt()} dp",
-                        value = customBackgroundBlur,
-                        valueRange = 0f..80f,
-                        steps = 15,
-                        onValueChange = onCustomBackgroundBlurChange,
-                    )
+                val backgroundDisabled = customBackgroundMode == "video" &&
+                    LocalEchoEffectivePerformanceMode.current.isLightweight
+                if (backgroundDisabled) {
+                    Text(stringResource(R.string.settings_bg_video_disabled), style = MaterialTheme.typography.bodySmall)
+                }
+                if (customBackgroundAdvancedExpanded && customBackgroundMode != "default" &&
+                    !customBackgroundUri.isNullOrBlank() && !backgroundDisabled) {
+                    val maxBlur = LocalEchoEffectivePerformanceMode.current.backgroundMaxBlur
+                    if (customBackgroundMode == "image") {
+                        SettingsSliderRow(
+                            title = stringResource(R.string.settings_blur),
+                            detail = "${customBackgroundBlur.coerceIn(0f, maxBlur).roundToInt()} dp",
+                            value = customBackgroundBlur.coerceIn(0f, maxBlur),
+                            valueRange = 0f..maxBlur,
+                            steps = maxBlur.toInt() - 1,
+                            onValueChange = onCustomBackgroundBlurChange,
+                        )
+                    }
                     SettingsSliderRow(
                         title = stringResource(R.string.settings_brightness),
                         detail = "${(customBackgroundBrightness * 100f).roundToInt()}%",

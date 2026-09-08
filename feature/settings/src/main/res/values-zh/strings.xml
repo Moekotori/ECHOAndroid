@@ -327,4 +327,5 @@
     <string name="settings_track_fade_bypass">设置会保存，严格 bit-perfect 模式下不进行淡化。</string>
     <string name="settings_track_fade_duration">淡化时长</string>
     <string name="settings_track_fade_seconds">%.1f 秒</string>
+    <string name="settings_bg_video_disabled">轻量模式暂停视频背景，当前显示默认背景；已保留你的视频选择。</string>
 </resources>

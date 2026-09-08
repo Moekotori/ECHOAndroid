@@ -31,7 +31,7 @@ internal object AlbumOnlineInfoParser {
             val names = credits.flatMap { listOfNotNull(it.text("name"), it.optJSONObject("artist")?.text("name")) }
             val combined = credits.joinToString("") { (it.text("name") ?: it.optJSONObject("artist")?.text("name").orEmpty()) + it.optString("joinphrase") }
             normalized(release.optString("title")) == title &&
-                (names.any { normalized(it) == artist } || normalized(combined) == artist) &&
+                ((credits.size == 1 && names.any { normalized(it) == artist }) || normalized(combined) == artist) &&
                 release.text("id")?.matches(Regex("[a-fA-F0-9-]{36}")) == true
         }
         // Different release groups with the same title are ambiguous. Never pick by search score alone.

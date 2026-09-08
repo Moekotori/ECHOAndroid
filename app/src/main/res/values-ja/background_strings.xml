@@ -1,0 +1,4 @@
+<resources>
+    <string name="background_permission_error">このファイルへのアクセス権を保持できません。別のファイルを選択してください。</string>
+    <string name="background_load_error">背景を読み込めないため、デフォルトの背景に戻しました。</string>
+</resources>

@@ -11,6 +11,7 @@ import app.echo.android.lyrics.LocalLyricsResolver
 import app.echo.android.lyrics.withUserOffset
 import app.echo.android.model.lyrics.EchoLyricsCandidate
 import app.echo.android.lyrics.LyricsApplyPolicy
+import app.echo.android.lyrics.OnlineLyricsCachePolicy
 import app.echo.android.lyrics.OnlineLyricsResolver
 import app.echo.android.model.connect.EchoRemoteLyrics
 import app.echo.android.model.lyrics.EchoLyrics
@@ -232,13 +233,20 @@ internal class LyricsController(
                             } else {
                                 null
                             }
+                            val searchRequest = track.toLyricsSearchRequest()
+                            val savedOnlineLyrics = if (localLyrics == null && serverLyrics == null) {
+                                importedLyricsStore.readSaved(trackId, selected = false)
+                                    ?.takeIf { OnlineLyricsCachePolicy.matches(it, searchRequest) }
+                            } else null
                             val onlineLyrics = if (localLyrics == null && serverLyrics == null) {
-                                importedLyricsStore.readSaved(trackId, selected = false) ?: directNeteaseLyrics(track)
+                                savedOnlineLyrics ?: directNeteaseLyrics(track)
                                     ?: if (onlineLyricsEnabled) cachedOnlineLyrics(track) else null
                             } else {
                                 null
                             }
-                            if (onlineLyrics != null) runCatching { importedLyricsStore.save(trackId, onlineLyrics, selected = false) }
+                            if (onlineLyrics != null && savedOnlineLyrics == null) runCatching {
+                                importedLyricsStore.save(trackId, OnlineLyricsCachePolicy.stamp(onlineLyrics, searchRequest), selected = false)
+                            }
                             (localLyrics ?: serverLyrics ?: onlineLyrics)
                                 ?.takeIf { it.lines.isNotEmpty() }
                                 ?.let(EchoLyricsLoadState::Ready)

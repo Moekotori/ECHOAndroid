@@ -1,5 +1,6 @@
 package app.echo.android.i18n
 
+import android.app.Activity
 import android.app.LocaleManager
 import android.content.Context
 import android.content.res.Configuration
@@ -32,6 +33,18 @@ fun Context.wrapEchoAppLocale(languageId: String): Context {
     config.setLocales(locales)
     config.setLayoutDirection(locales[0])
     return createConfigurationContext(config)
+}
+
+/** Refresh the existing window on Android 8–12; Android 13+ dispatches this itself. */
+@Suppress("DEPRECATION")
+fun Activity.refreshEchoAppLocale(languageId: String) {
+    if (Build.VERSION.SDK_INT >= 33) return
+    val config = wrapEchoAppLocale(languageId).resources.configuration
+    // This Activity owns a configuration Context on these versions. Updating its resources
+    // keeps Activity lookup, dialogs and stringResource on the same localized Context.
+    resources.updateConfiguration(config, resources.displayMetrics)
+    onConfigurationChanged(config)
+    window.decorView.dispatchConfigurationChanged(config)
 }
 
 /** Called only for an explicit user selection (or the one-time legacy preference migration). */

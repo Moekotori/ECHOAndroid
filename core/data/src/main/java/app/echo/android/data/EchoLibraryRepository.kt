@@ -638,6 +638,7 @@ class EchoLibraryRepository(
         options: LibraryScanOptions = LibraryScanOptions(),
     ): Flow<LibraryScanProgress> = flow {
         val dao = database.trackDao()
+        val rejectedFiles = scanner.rejectedFileCache
         val source = LibrarySource.MediaStore.id
         val normalizedRelativePath = normalizeRelativePathPrefix(relativePathPrefix)
         val relativePathLike = normalizedRelativePath?.let { "${escapeSqlLikeArgument(it)}%" }
@@ -691,6 +692,8 @@ class EchoLibraryRepository(
             } else {
                 dao.getMetadataEditedTracksInRelativePath(source, relativePathLike)
             }.associateBy(LibraryTrackEntity::id)
+            val documentFingerprints = dao.getDocumentFingerprints()
+            val changedFingerprints = mutableMapOf<String, TrackFingerprint>()
             val seenIds = HashSet<String>(existingFingerprints.size)
             val scanOutcome = scanner.scanAudio(
                 batchSize = batchSize,
@@ -698,6 +701,8 @@ class EchoLibraryRepository(
                 existingTracks = existingFingerprints,
                 readSampleRate = !skipSampleRateRead,
                 options = options,
+                rejectedFiles = rejectedFiles,
+                onSkipped = { skippedCount++ },
                 onTotalCount = { count ->
                     totalCount = count
                     emitProgress(phase = LibraryScanPhase.QueryingMediaStore)
@@ -736,6 +741,10 @@ class EchoLibraryRepository(
                     seenIds.addAll(classified.seenIds)
                     emitProgress(phase = LibraryScanPhase.WritingDatabase)
                     writeClassifiedScanBatch(dao, classified)
+                    if (documentFingerprints.isNotEmpty()) (classified.inserts + classified.updates).forEach { track ->
+                        changedFingerprints[track.id] = TrackFingerprint(track.id, track.contentUri, track.sampleRateHz,
+                            track.fingerprint, track.sizeBytes, track.dateModifiedSeconds, track.relativePath, track.durationMs)
+                    }
                     insertedCount += classified.inserts.size
                     updatedCount += classified.updates.size
                     lastProgressEmitCount = scannedCount
@@ -778,7 +787,10 @@ class EchoLibraryRepository(
                     LibraryScanPolicy.unseenIds(candidateIds, seenIds)
                 },
             )
-            if (scanOutcome.querySucceeded) reconcileLocalDuplicates(dao)
+            if (scanOutcome.querySucceeded) reconcileLocalDuplicates(dao, documentFingerprints,
+                existingFingerprints.values.asSequence().filter { it.id in seenIds && it.id !in changedFingerprints } +
+                    changedFingerprints.values.asSequence(),
+            )
             emitProgress(
                 phase = if (scanOutcome.querySucceeded) LibraryScanPhase.Completed else LibraryScanPhase.Error,
                 error = if (scanOutcome.querySucceeded) null else echoText(
@@ -808,6 +820,8 @@ class EchoLibraryRepository(
                 ),
                 isCompleted = true,
             )
+        } finally {
+            rejectedFiles.flush()
         }
     }.flowOn(LibraryScanDispatchers.Limited)
 
@@ -819,6 +833,7 @@ class EchoLibraryRepository(
         options: LibraryScanOptions = LibraryScanOptions(),
     ): Flow<LibraryScanProgress> = flow {
         val dao = database.trackDao()
+        val rejectedFiles = scanner.rejectedFileCache
         val source = LibraryScanPolicy.SafSourceId
         val normalizedRelativePath = normalizeRelativePathPrefix(relativePathPrefix)
             ?: error("Document tree scan requires a relative path")
@@ -895,6 +910,8 @@ class EchoLibraryRepository(
                 mediaStoreDuplicateKeys = mediaStoreDuplicateKeys,
                 readSampleRate = !skipSampleRateRead,
                 options = options,
+                rejectedFiles = rejectedFiles,
+                onSkipped = { skippedCount++ },
                 onDuplicate = { oldId, targetId ->
                     if (oldId in existingFingerprints) duplicateAliases[oldId] = targetId
                 },
@@ -993,6 +1010,8 @@ class EchoLibraryRepository(
                 error = error.message ?: "Document tree scan failed",
                 isCompleted = true,
             )
+        } finally {
+            rejectedFiles.flush()
         }
     }.flowOn(LibraryScanDispatchers.Limited)
 
@@ -1495,11 +1514,16 @@ class EchoLibraryRepository(
             ) ?: incoming
         }
 
-    private suspend fun reconcileLocalDuplicates(dao: LibraryTrackDao) {
-        val native = scanner.documentTreeDuplicateKeys(dao.getExistingMediaStoreFingerprints(LibrarySource.MediaStore.id))
+    private suspend fun reconcileLocalDuplicates(
+        dao: LibraryTrackDao,
+        documents: List<TrackFingerprint>,
+        snapshots: Sequence<TrackFingerprint>,
+    ) {
+        if (documents.isEmpty()) return
+        val candidates = documentDuplicateCandidates(snapshots, documents)
+        if (candidates.isEmpty()) return
+        val native = scanner.documentTreeDuplicateKeys(candidates)
         if (native.isEmpty()) return
-        val documents = dao.getExistingMediaStoreFingerprints(LibraryScanPolicy.SafSourceId) +
-            dao.getExistingMediaStoreFingerprints(LibrarySource.MediaStore.id).filter { LibraryScanPolicy.isSafTrackId(it.id) }
         for (document in documents) {
             coroutineContext.ensureActive()
             val name = runCatching {

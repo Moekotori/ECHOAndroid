@@ -3,6 +3,7 @@ package app.echo.android.feature.connect
 import app.echo.android.feature.connect.R as L10nR
 import androidx.compose.ui.res.stringResource
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -12,9 +13,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.model.connect.EchoLinkLanDevice
 import app.echo.android.model.connect.EchoRemoteConnectionState
@@ -90,61 +93,69 @@ fun ConnectScreen(
                     }
                 }
             }
-            savedTabs.SaveableStateProvider(selectedTab) {
-                Column(
-                    Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxWidth().weight(1f)
-                        .verticalScroll(scrollStates[selectedTab]).padding(horizontal = 24.dp)
-                        .padding(top = 24.dp, bottom = 188.dp),
-                    verticalArrangement = Arrangement.spacedBy(24.dp),
-                ) {
-                    if (selectedTab == 0) {
-                        RemoteSourcesPanel(
-                            subsonicServerUrl = subsonicServerUrl,
-                            subsonicUsername = subsonicUsername,
-                            subsonicPassword = subsonicPassword,
-                            webDavServerUrl = webDavServerUrl,
-                            webDavUsername = webDavUsername,
-                            webDavPassword = webDavPassword,
-                            scanState = remoteScanState,
-                            onSyncSubsonic = onSyncSubsonicLibrary,
-                            onSaveSubsonic = onSaveSubsonicCredentials,
-                            onClearSubsonic = onClearSubsonicCredentials,
-                            onSyncWebDav = onSyncWebDavLibrary,
-                            onSaveWebDav = onSaveWebDavCredentials,
-                            onClearWebDav = onClearWebDavCredentials,
-                            onCancel = onCancelRemoteSync,
-                        )
-                    } else {
-                        PcLinkPanel(
-                            remoteState = remoteState,
-                            pcTitle = pcTitle,
-                            trackTitle = trackTitle,
-                            trackArtist = trackArtist,
-                            trackArtworkUrl = trackArtworkUrl,
-                            isPlaying = isPlaying,
-                            remoteError = remoteError,
-                            scanMessage = scanMessage,
-                            scanMessageIsError = scanMessageIsError,
-                            savedPcAddress = savedPcAddress,
-                            savedPcToken = savedPcToken,
-                            autoReconnectEnabled = autoReconnectEnabled,
-                            linkedLibraryDefault = linkedLibraryDefault,
-                            discordPresenceEnabled = discordPresenceEnabled,
-                            discordPresenceReady = discordPresenceReady,
-                            discordPresenceTrackTitle = discordPresenceTrackTitle,
-                            onConnectPc = onConnectPc,
-                            onScanPairingCode = onScanPairingCode,
-                            onPlayPause = onPlayPause,
-                            onPrevious = onPrevious,
-                            onNext = onNext,
-                            onDisconnect = onDisconnect,
-                            onForgetPc = onForgetPc,
-                            onAutoReconnectChange = onAutoReconnectChange,
-                            onLinkedLibraryDefaultChange = onLinkedLibraryDefaultChange,
-                            discoveredLanDevices = discoveredLanDevices,
-                            onSelectLanDevice = onSelectLanDevice,
-                            onRefreshLanDevices = onRefreshLanDevices,
-                        )
+            AnimatedContent(
+                targetState = selectedTab,
+                modifier = Modifier.widthIn(max = LocalEchoContentMaxWidth.current)
+                    .fillMaxWidth().weight(1f).clipToBounds(),
+                transitionSpec = { EchoMotion.tabSwitch(targetState > initialState) },
+                label = "ConnectTabs",
+            ) { tab ->
+                savedTabs.SaveableStateProvider(tab) {
+                    Column(
+                        Modifier.fillMaxSize()
+                            .verticalScroll(scrollStates[tab]).padding(horizontal = 24.dp)
+                            .padding(top = 24.dp, bottom = 188.dp),
+                        verticalArrangement = Arrangement.spacedBy(24.dp),
+                    ) {
+                        if (tab == 0) {
+                            RemoteSourcesPanel(
+                                subsonicServerUrl = subsonicServerUrl,
+                                subsonicUsername = subsonicUsername,
+                                subsonicPassword = subsonicPassword,
+                                webDavServerUrl = webDavServerUrl,
+                                webDavUsername = webDavUsername,
+                                webDavPassword = webDavPassword,
+                                scanState = remoteScanState,
+                                onSyncSubsonic = onSyncSubsonicLibrary,
+                                onSaveSubsonic = onSaveSubsonicCredentials,
+                                onClearSubsonic = onClearSubsonicCredentials,
+                                onSyncWebDav = onSyncWebDavLibrary,
+                                onSaveWebDav = onSaveWebDavCredentials,
+                                onClearWebDav = onClearWebDavCredentials,
+                                onCancel = onCancelRemoteSync,
+                            )
+                        } else {
+                            PcLinkPanel(
+                                remoteState = remoteState,
+                                pcTitle = pcTitle,
+                                trackTitle = trackTitle,
+                                trackArtist = trackArtist,
+                                trackArtworkUrl = trackArtworkUrl,
+                                isPlaying = isPlaying,
+                                remoteError = remoteError,
+                                scanMessage = scanMessage,
+                                scanMessageIsError = scanMessageIsError,
+                                savedPcAddress = savedPcAddress,
+                                savedPcToken = savedPcToken,
+                                autoReconnectEnabled = autoReconnectEnabled,
+                                linkedLibraryDefault = linkedLibraryDefault,
+                                discordPresenceEnabled = discordPresenceEnabled,
+                                discordPresenceReady = discordPresenceReady,
+                                discordPresenceTrackTitle = discordPresenceTrackTitle,
+                                onConnectPc = onConnectPc,
+                                onScanPairingCode = onScanPairingCode,
+                                onPlayPause = onPlayPause,
+                                onPrevious = onPrevious,
+                                onNext = onNext,
+                                onDisconnect = onDisconnect,
+                                onForgetPc = onForgetPc,
+                                onAutoReconnectChange = onAutoReconnectChange,
+                                onLinkedLibraryDefaultChange = onLinkedLibraryDefaultChange,
+                                discoveredLanDevices = discoveredLanDevices,
+                                onSelectLanDevice = onSelectLanDevice,
+                                onRefreshLanDevices = onRefreshLanDevices,
+                            )
+                        }
                     }
                 }
             }

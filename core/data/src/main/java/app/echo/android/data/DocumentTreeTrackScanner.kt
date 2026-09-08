@@ -27,6 +27,8 @@ class DocumentTreeTrackScanner(
         readSampleRate: Boolean = true,
         options: LibraryScanOptions = LibraryScanOptions(0L, 0L, false, false),
         onDuplicate: suspend (oldId: String, targetId: String) -> Unit = { _, _ -> },
+        rejectedFiles: LocalScanFilterCache? = null,
+        onSkipped: suspend () -> Unit = {},
         onBatch: suspend (List<LibraryTrackEntity>) -> Unit,
         onProgress: suspend (scannedCount: Int, currentTrack: LibraryTrackEntity?) -> Unit,
     ): MediaStoreScanOutcome {
@@ -117,6 +119,16 @@ class DocumentTreeTrackScanner(
                     }
                     continue
                 }
+                val trackId = "saf:${Uri.encode(row.documentId)}"
+                if (trackId !in existingTracks && (
+                        (row.sizeBytes > 0L && row.sizeBytes < options.minSizeBytes) ||
+                            rejectedFiles?.shouldSkip(row.documentUri.toString(), row.sizeBytes, row.lastModifiedMs.toEpochSeconds(), options) == true
+                    )) {
+                    scannedCount++
+                    onSkipped()
+                    onProgress(scannedCount, null)
+                    continue
+                }
                 runCatching {
                     row.documentUri.toTrackEntity(
                         documentId = row.documentId,
@@ -132,6 +144,15 @@ class DocumentTreeTrackScanner(
                     if (track.fingerprint == LibraryScanPolicy.PendingDocumentMetadataFingerprint) {
                         querySucceeded = false
                         failedReads++
+                    }
+                    if (track.id !in existingTracks &&
+                        track.fingerprint != LibraryScanPolicy.PendingDocumentMetadataFingerprint &&
+                        !options.accepts(track.durationMs, track.sizeBytes, null)) {
+                        rejectedFiles?.remember(track.contentUri, track.sizeBytes, track.dateModifiedSeconds, track.durationMs)
+                        scannedCount++
+                        onSkipped()
+                        onProgress(scannedCount, null)
+                        return@onSuccess
                     }
                     batch += track
                     scannedCount += 1
