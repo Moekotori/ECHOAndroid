@@ -2,6 +2,7 @@ package app.echo.android.playback
 
 import app.echo.android.model.playback.EchoEqFilterType
 import app.echo.android.model.playback.EchoEqualizerBand
+import app.echo.android.model.playback.EchoEqResponsePoint
 import app.echo.android.model.playback.EchoEqualizerPresets
 import app.echo.android.model.playback.OpraEqBand
 import app.echo.android.model.playback.affectsFrequencyResponse
@@ -21,6 +22,14 @@ data class EchoEqualizerRuntime(
 }
 
 object EchoEqualizerEngine {
+    fun responseCurve(filters: List<OpraEqBand>, preampDb: Float = 0f, sampleRateHz: Float = DefaultEqSampleRateHz): List<EchoEqResponsePoint> {
+        val stages = filters.flatMap { EchoBiquadMath.stages(it, sampleRateHz) }
+        return List(160) { index ->
+            val frequency = (20.0 * 1000.0.pow(index / 159.0)).toFloat()
+            EchoEqResponsePoint(frequency, preampDb + stages.sumOf { it.responseDb(frequency, sampleRateHz).toDouble() }.toFloat())
+        }
+    }
+
     const val GraphicBandQ = 1f
     const val GainEpsilonDb = 0.05f
 

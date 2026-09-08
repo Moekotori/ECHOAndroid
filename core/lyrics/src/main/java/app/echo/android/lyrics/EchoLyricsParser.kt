@@ -21,62 +21,8 @@ object EchoLyricsParser {
         }
     }
 
-    private fun parseTtml(text: String, sourceLabel: String?): EchoLyrics {
-        val metadata = linkedMapOf<String, String>()
-        TtmlMetadataRegex.findAll(text).forEach { match ->
-            metadata[decodeEntities(stripTags(match.groupValues[1])).lowercase()] =
-                decodeEntities(stripTags(match.groupValues[2])).trim()
-        }
-
-        val lines = TtmlParagraphRegex.findAll(text)
-            .mapNotNull { paragraph ->
-                val attributes = paragraph.groupValues[1]
-                val body = paragraph.groupValues[2]
-                val startMs = ttmlAttribute(attributes, "begin")?.let(::parseClockMs)
-                    ?: return@mapNotNull null
-                val endMs = ttmlAttribute(attributes, "end")?.let(::parseClockMs)
-                    ?: ttmlAttribute(attributes, "dur")?.let { startMs + parseClockMs(it) }
-                val words = parseTtmlWords(body)
-                val textValue = if (words.isNotEmpty()) {
-                    words.joinToString(separator = " ") { it.text }.compactWhitespace()
-                } else {
-                    decodeEntities(stripTags(body)).compactWhitespace()
-                }
-                if (textValue.isBlank() && words.isEmpty()) return@mapNotNull null
-                EchoLyricLine(
-                    startMs = startMs,
-                    endMs = endMs,
-                    text = textValue,
-                    words = words,
-                )
-            }
-            .toList()
-            .withLineEnds()
-
-        return EchoLyrics(
-            lines = lines,
-            metadata = metadata,
-            sourceLabel = sourceLabel,
-            format = EchoLyricsFormat.Ttml,
-        )
-    }
-
-    private fun parseTtmlWords(body: String): List<EchoLyricWord> =
-        TtmlSpanRegex.findAll(body)
-            .mapNotNull { span ->
-                val attributes = span.groupValues[1]
-                val text = decodeEntities(stripTags(span.groupValues[2])).compactWhitespace()
-                if (text.isBlank()) return@mapNotNull null
-                val startMs = ttmlAttribute(attributes, "begin")?.let(::parseClockMs)
-                    ?: return@mapNotNull null
-                val endMs = ttmlAttribute(attributes, "end")?.let(::parseClockMs)
-                EchoLyricWord(
-                    startMs = startMs,
-                    endMs = endMs,
-                    text = text,
-                )
-            }
-            .toList()
+    private fun parseTtml(text: String, sourceLabel: String?): EchoLyrics =
+        EchoTtmlParser.parse(text, sourceLabel)
 
     private fun parseSrt(text: String, sourceLabel: String?): EchoLyrics {
         val normalized = text.replace("\r\n", "\n")
@@ -203,7 +149,7 @@ object EchoLyricsParser {
                 val startMs = lineMatch.groupValues[1].toLongOrNull() ?: return@mapNotNull null
                 val durationMs = lineMatch.groupValues[2].toLongOrNull() ?: 0L
                 val body = lineMatch.groupValues[3]
-                val words = parseDurationWords(body, lineStartMs = startMs)
+                val words = parseDurationWords(body, lineStartMs = startMs, relative = sourceLabel?.endsWith(".krc", true) == true || body.contains(KrcWordRegex))
                 val textValue = if (words.isNotEmpty()) {
                     words.joinToString(separator = "") { it.text }.compactWhitespace()
                 } else {
@@ -233,7 +179,7 @@ object EchoLyricsParser {
         )
     }
 
-    private fun parseDurationWords(body: String, lineStartMs: Long): List<EchoLyricWord> =
+    private fun parseDurationWords(body: String, lineStartMs: Long, relative: Boolean): List<EchoLyricWord> =
         DurationWordRegex.findAll(body)
             .mapNotNull { match ->
                 val startMs = (match.groupValues[1].ifBlank { match.groupValues[3] })
@@ -244,7 +190,7 @@ object EchoLyricsParser {
                     ?: 0L
                 val text = decodeEntities(stripTags(match.groupValues[5])).takeIf { it.isNotBlank() }
                     ?: return@mapNotNull null
-                val absoluteStartMs = if (startMs < lineStartMs) lineStartMs + startMs else startMs
+                val absoluteStartMs = if (relative) lineStartMs + startMs else startMs
                 EchoLyricWord(
                     startMs = absoluteStartMs.coerceAtLeast(0L),
                     endMs = (absoluteStartMs + durationMs).takeIf { durationMs > 0L },
@@ -295,13 +241,15 @@ object EchoLyricsParser {
     }
 
     private fun List<EchoLyricLine>.withLineEnds(): List<EchoLyricLine> =
-        sortedBy { it.startMs }.mapIndexed { index, line ->
+        sortedBy { it.startMs }.let { sorted -> sorted.mapIndexed { index, line ->
             if (line.endMs != null) {
                 line
             } else {
-                line.copy(endMs = getOrNull(index + 1)?.startMs?.takeIf { it >= 0L })
+                line.copy(endMs = sorted.drop(index + 1).firstOrNull { it.startMs > line.startMs }?.startMs?.takeIf { it >= 0L })
             }
         }
+
+    }
 
     private fun ttmlAttribute(attributes: String, name: String): String? =
         Regex("""(?:^|\s)$name\s*=\s*["']([^"']+)["']""", RegexOption.IGNORE_CASE)
@@ -361,6 +309,7 @@ object EchoLyricsParser {
     private val LrcTimeRegex = Regex("""\[\d{1,3}:\d{1,2}(?:[\.:]\d{1,3})?\]""")
     private val LrcMetadataRegex = Regex("""^\[([A-Za-z][\w-]*):(.*)\]$""")
     private val LineDurationRegex = Regex("""^\[(\d{1,8}),(\d{1,8})\](.*)$""")
+    private val KrcWordRegex = Regex("""<\d+,\d+(?:,\d+)?>""")
     private val DurationWordRegex = Regex("""(?:\((\d{1,8}),(\d{1,8})(?:,\d+)?\)|<(\d{1,8}),(\d{1,8})(?:,\d+)?>)([^()<]*)""")
     private val ClockRegex = Regex("""(?:(\d{1,2}):)?(\d{1,2}):(\d{1,2})(?:\.(\d{1,3}))?""")
     private val CompactWhitespaceRegex = Regex("[ \\t\\u000B\\f\\r]+")

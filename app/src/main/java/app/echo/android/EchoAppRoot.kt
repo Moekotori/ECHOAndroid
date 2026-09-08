@@ -953,6 +953,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                     onEqualizerPresetSelected = viewModel::setEqualizerPreset,
                                     onEqualizerBandGainChange = viewModel::setEqualizerBandGain,
                                     onEqualizerReset = viewModel::resetEqualizer,
+                                    onEqualizerPreampChange = viewModel::setEqualizerPreamp,
                                     onOpraQueryChange = viewModel::updateOpraQuery,
                                     onOpraSearch = { viewModel.searchOpraHeadphoneCorrections(refresh = false) },
                                     onOpraRefresh = { viewModel.searchOpraHeadphoneCorrections(refresh = true) },
@@ -1010,7 +1011,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     onDismiss = { nowPlayingExpanded = false },
                     predictiveBackProgress = { nowPlayingBackProgress },
                     onOpenQueue = { queueSheetVisible = true },
-                    onImportLyrics = { lyricsImportLauncher.launch(LyricsDocumentMimeTypes) },
+                    onImportLyrics = {
+                        lyricsImportTrackId = playbackStatus.track?.id
+                        lyricsImportLauncher.launch(LyricsDocumentMimeTypes)
+                    },
                     onOpenArtist = {
                         viewModel.openCurrentPlaybackArtist { artist ->
                             detailReturnPage = EchoTab.entries[selectedTab].pagerPage

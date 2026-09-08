@@ -6,6 +6,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import app.echo.android.design.echoClickable
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +19,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.DeleteOutline
@@ -249,34 +253,13 @@ private fun LocalPlaylistHeader(
     playlistCount: Int,
     onCreatePlaylist: () -> Unit,
 ) {
-    EchoPanel(Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            EchoIconBadge(Icons.Rounded.LibraryMusic)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    stringResource(L10nR.string.feature_library_local_playlists_cea002),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    stringResource(L10nR.string.feature_library_playlistcount_playlists_220ceb, (playlistCount).toString()),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            EchoTextButton(
-                text = stringResource(L10nR.string.feature_library_new_cc6582),
-                onClick = onCreatePlaylist,
-            )
+    Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(stringResource(L10nR.string.feature_library_playlistcount_playlists_220ceb, playlistCount.toString()),
+            Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        TextButton(onClick = onCreatePlaylist) {
+            Icon(Icons.Rounded.Add, contentDescription = null, Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(stringResource(L10nR.string.feature_library_new_playlist_22cdbd))
         }
     }
 }
@@ -289,51 +272,30 @@ private fun LocalPlaylistRow(
     onRename: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(EchoHomeMist.copy(alpha = 0.46f))
-            .echoClickable(onClick = onOpen)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        ArtworkTile(
-            artworkUri = playlist.artworkUri,
-            modifier = Modifier.size(58.dp),
-            accent = rememberLibraryArtworkAccent(),
-            cornerRadius = 12.dp,
-            elevation = 3.dp,
-        )
+    var menuOpen by remember { mutableStateOf(false) }
+    Row(Modifier.fillMaxWidth().echoClickable(onClick = onOpen).padding(vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        ArtworkTile(playlist.artworkUri, Modifier.size(56.dp), accent = rememberLibraryArtworkAccent(), cornerRadius = 4.dp)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                playlistDisplayName(playlist),
-                color = MaterialTheme.colorScheme.onSurface,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                playlistCaption(playlist),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Text(playlistDisplayName(playlist), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(playlistCaption(playlist), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        if (playlist.canEdit) {
-            IconButtonLite(icon = Icons.Rounded.Edit, onClick = onRename)
-            IconButtonLite(icon = Icons.Rounded.DeleteOutline, onClick = onDelete)
+        androidx.compose.material3.IconButton(onClick = onPlay) {
+            Icon(Icons.Rounded.PlayArrow, contentDescription = stringResource(L10nR.string.feature_library_play_38419a))
         }
-        IconButtonLite(icon = Icons.Rounded.PlayArrow, onClick = onPlay)
-        Icon(
-            Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-            contentDescription = null,
-            tint = rememberLibraryControlColor(),
-            modifier = Modifier.size(22.dp),
-        )
+        if (playlist.canEdit) Box {
+            androidx.compose.material3.IconButton(onClick = { menuOpen = true }) {
+                Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(L10nR.string.library_playlist_actions))
+            }
+            androidx.compose.material3.DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                androidx.compose.material3.DropdownMenuItem(text = { Text(stringResource(L10nR.string.feature_library_rename_playlist_757bb7)) },
+                    onClick = { menuOpen = false; onRename() })
+                androidx.compose.material3.DropdownMenuItem(text = { Text(stringResource(L10nR.string.feature_library_delete_playlist_4d9753)) },
+                    onClick = { menuOpen = false; onDelete() })
+            }
+        }
     }
 }
 

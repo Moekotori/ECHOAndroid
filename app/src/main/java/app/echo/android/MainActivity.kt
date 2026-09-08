@@ -39,8 +39,9 @@ class MainActivity : ComponentActivity() {
             currentMinute = currentMinuteOfDayNow(),
         )
         setTheme(R.style.Theme_EchoAndroid_Splash)
-        installSplashScreen()
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+        splashScreen.installEchoExitTransition(this, restored = savedInstanceState != null)
         window.decorView.setBackgroundColor(startupWindowBackground(startupDarkTheme))
         applyEdgeToEdge(startupDarkTheme)
         setContent {

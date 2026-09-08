@@ -1,10 +1,9 @@
 package app.echo.android.ui.shell
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -86,27 +85,17 @@ internal fun EchoBottomDockHost(
                     fadeIn(tween(durationMillis = motionDuration(90, effectivePerformanceMode))) togetherWith
                         fadeOut(tween(durationMillis = motionDuration(90, effectivePerformanceMode)))
                 } else {
-                    val enter = fadeIn(
-                        tween(
-                            durationMillis = motionDuration(220, effectivePerformanceMode),
-                            delayMillis = 70,
-                            easing = DockMotionEasing,
-                        ),
-                    ) +
-                        slideInVertically(EchoMotion.silkOffset(motionDuration(460, effectivePerformanceMode))) { height -> height / 3 } +
-                        scaleIn(
-                            initialScale = 0.96f,
-                            animationSpec = EchoMotion.silkFloat(motionDuration(460, effectivePerformanceMode)),
-                        )
-                    val exit = fadeOut(tween(durationMillis = motionDuration(150, effectivePerformanceMode), easing = DockMotionEasing)) +
-                        slideOutVertically(EchoMotion.silkOffset(motionDuration(260, effectivePerformanceMode))) { height -> height / 5 } +
-                        scaleOut(
-                            targetScale = 0.985f,
-                            animationSpec = EchoMotion.silkFloat(motionDuration(260, effectivePerformanceMode)),
-                        )
-                    enter togetherWith exit
+                    val duration = motionDuration(300, effectivePerformanceMode)
+                    val enter = fadeIn(tween(180, delayMillis = 60, easing = DockMotionEasing)) +
+                        slideInVertically(tween(duration, easing = DockMotionEasing)) { it / 8 }
+                    val exit = fadeOut(tween(120, easing = DockMotionEasing)) +
+                        slideOutVertically(tween(180, easing = DockMotionEasing)) { it / 10 }
+                    (enter togetherWith exit).using(
+                        SizeTransform { _, _ -> tween(duration, easing = DockMotionEasing) },
+                    )
                 }
             },
+            contentAlignment = Alignment.BottomCenter,
             label = "bottom-controls-transition",
         ) { expanded ->
             if (expanded) {

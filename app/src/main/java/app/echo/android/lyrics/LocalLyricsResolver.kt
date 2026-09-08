@@ -24,6 +24,7 @@ class LocalLyricsResolver(
         val sourceLabel = displayName(uri) ?: uri.lastPathSegment
         return readText(uri)
             ?.let { EchoLyricsParser.parse(it, sourceLabel = sourceLabel) }
+            ?.takeIf { it.lines.any { line -> line.text.isNotBlank() } }
     }
 
     fun importFromUri(uri: Uri): EchoLyrics {
@@ -69,6 +70,7 @@ class LocalLyricsResolver(
             .firstOrNull { it.isFile && it.canRead() }
             ?.let { file ->
                 readText(file)?.let { text -> EchoLyricsParser.parse(text, sourceLabel = file.name) }
+                    ?.takeIf { it.lines.any { line -> line.text.isNotBlank() } }
             }
     }
 
@@ -125,7 +127,7 @@ class LocalLyricsResolver(
                     val lyricsUri = Uri.withAppendedPath(collection, id.toString())
                     val parsed = readText(lyricsUri)
                         ?.let { EchoLyricsParser.parse(it, sourceLabel = displayName) }
-                    if (parsed != null) return@use parsed
+                    if (parsed != null && parsed.lines.any { it.text.isNotBlank() }) return@use parsed
                 }
                 null
             }
@@ -134,7 +136,7 @@ class LocalLyricsResolver(
     private fun readText(uri: Uri): String? =
         runCatching {
             openLyricsInputStream(uri)?.use { input ->
-                EchoLyricsTextDecoder.decode(input.readBytes())
+                EchoLyricsTextDecoder.decode(input.readLimitedLyricsBytes())
             }
         }.getOrNull()
 
@@ -146,7 +148,7 @@ class LocalLyricsResolver(
                 .getOrNull()
 
     private fun readText(file: File): String? =
-        runCatching { EchoLyricsTextDecoder.decode(file.readBytes()) }.getOrNull()
+        runCatching { file.inputStream().use { EchoLyricsTextDecoder.decode(it.readLimitedLyricsBytes()) } }.getOrNull()
 
     private fun Throwable.readableMessage(): String =
         rootCause().let { root ->
@@ -232,4 +234,16 @@ class LocalLyricsResolver(
             ".txt",
         )
     }
+}
+
+private fun java.io.InputStream.readLimitedLyricsBytes(): ByteArray {
+    val output = java.io.ByteArrayOutputStream()
+    val buffer = ByteArray(8192)
+    while (true) {
+        val count = read(buffer)
+        if (count < 0) break
+        require(output.size() + count <= 2 * 1024 * 1024) { "Lyrics file exceeds 2 MB" }
+        output.write(buffer, 0, count)
+    }
+    return output.toByteArray()
 }

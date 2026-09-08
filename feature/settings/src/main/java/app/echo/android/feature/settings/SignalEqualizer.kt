@@ -24,6 +24,9 @@ import kotlin.math.roundToInt
 @Composable
 internal fun SignalEqualizer(
     state: EchoEqualizerState,
+    bypassed: Boolean,
+    playing: Boolean,
+    onPreampChange: (Float) -> Unit,
     onEnabledChange: (Boolean) -> Unit,
     onPresetSelected: (String) -> Unit,
     onBandGainChange: (Int, Float) -> Unit,
@@ -38,21 +41,38 @@ internal fun SignalEqualizer(
             }
             Switch(checked = state.enabled, onCheckedChange = onEnabledChange, modifier = Modifier.semantics { contentDescription = title })
         }
+        SignalNote(stringResource(when {
+            bypassed -> R.string.eq_bypassed
+            !state.enabled -> R.string.eq_disabled
+            !playing -> R.string.eq_waiting_audio
+            state.processingSampleRateHz == null -> R.string.eq_waiting_pipeline
+            else -> R.string.eq_processing
+        }))
+        SignalEqCurve(state.responseCurve)
         state.warning?.let { SignalNote(it, error = true) }
         if (!state.enabled) SignalNote(stringResource(L10nR.string.feature_settings_choose_a_preset_then_enable_eq_to_hear_76c79b))
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             EchoEqualizerPresets.presets.forEach { preset ->
                 FilterChip(selected = state.presetId == preset.id && !state.parametric,
-                    onClick = { onPresetSelected(preset.id) }, label = { Text(preset.name) },
+                    onClick = { onPresetSelected(preset.id) }, label = { Text(eqPresetLabel(preset.id)) },
                     shape = RoundedCornerShape(4.dp), border = null)
             }
         }
         // Warn before the sliders: moving a band replaces the parametric correction.
         if (state.parametric) {
-            SignalNote(stringResource(L10nR.string.diag_eq_opra_active, state.sourceLabel ?: stringResource(L10nR.string.diag_eq_parametric)))
-            SignalNote(stringResource(L10nR.string.diag_eq_opra_override))
+            Text(state.sourceLabel ?: stringResource(L10nR.string.diag_eq_parametric), style = MaterialTheme.typography.titleSmall)
+            SignalNote(stringResource(R.string.eq_parametric_kept, state.filters.size))
+            state.filters.forEach { band ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("${formatEqFrequency(band.frequencyHz.toInt())} · ${band.type}", style = MaterialTheme.typography.bodySmall)
+                    Text("${formatEqGain(band.gainDb)} · ${band.q?.let { "Q $it" } ?: "${band.slope ?: 12f} dB/oct"}", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            TextButton(onClick = { onPresetSelected(EchoEqualizerPreset.Flat) }) {
+                Text(stringResource(R.string.eq_use_graphic))
+            }
         }
-        state.bands.forEach { band ->
+        if (!state.parametric) state.bands.forEach { band ->
             val frequency = formatEqFrequency(band.frequencyHz)
             val enabled = state.enabled && state.supported
             val controlColor = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
@@ -75,12 +95,33 @@ internal fun SignalEqualizer(
             }
         }
 
+        HorizontalDivider()
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.eq_preamp), style = MaterialTheme.typography.titleSmall)
+            Text(formatEqGain(state.preampDb), style = MaterialTheme.typography.labelLarge)
+        }
+        val preampLabel = stringResource(R.string.eq_preamp)
+        Slider(value = state.preampDb.coerceIn(-24f, 12f), onValueChange = { onPreampChange((it * 10).roundToInt() / 10f) },
+            valueRange = -24f..12f, modifier = Modifier.fillMaxWidth().semantics { contentDescription = preampLabel })
+        if (state.preampDb > state.suggestedPreampDb + 0.1f) {
+            SignalNote(stringResource(R.string.eq_headroom_warning, formatEqGain(state.suggestedPreampDb)), error = true)
+            TextButton(onClick = { onPreampChange(state.suggestedPreampDb) }) { Text(stringResource(R.string.eq_apply_headroom)) }
+        }
+
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) {
-                SignalNote(if (state.active) stringResource(L10nR.string.diag_eq_active) else stringResource(L10nR.string.feature_settings_eq_is_not_changing_the_signal_da1f47))
+                SignalNote(stringResource(if (state.parametric) R.string.eq_parametric_mode else R.string.eq_graphic_mode))
             }
             TextButton(onClick = onReset) { Text(stringResource(L10nR.string.feature_settings_reset_1106f5)) }
         }
-        if (abs(state.preampDb) >= 0.05f) SignalNote(stringResource(L10nR.string.diag_eq_preamp, formatEqGain(state.preampDb)))
     }
 }
+
+@Composable
+private fun eqPresetLabel(id: String): String = stringResource(when (id) {
+    EchoEqualizerPreset.Warm -> R.string.eq_preset_warm
+    EchoEqualizerPreset.Bass -> R.string.eq_preset_bass
+    EchoEqualizerPreset.Vocal -> R.string.eq_preset_vocal
+    EchoEqualizerPreset.Bright -> R.string.eq_preset_bright
+    else -> R.string.eq_preset_flat
+})

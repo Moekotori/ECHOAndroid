@@ -31,6 +31,8 @@ data class EchoLyricLine(
     val translation: String? = null,
     val romanization: String? = null,
     val words: List<EchoLyricWord> = emptyList(),
+    val speaker: String? = null,
+    val isBackground: Boolean = false,
 )
 
 data class EchoLyricWord(
@@ -46,3 +48,13 @@ sealed interface EchoLyricsLoadState {
     data class Ready(val lyrics: EchoLyrics) : EchoLyricsLoadState
     data class Error(val message: String) : EchoLyricsLoadState
 }
+
+/** A user-selectable provider result; contains the complete preview for offline selection. */
+data class EchoLyricsCandidate(
+    val id: String,
+    val title: String,
+    val artist: String,
+    val album: String? = null,
+    val durationMs: Long = 0L,
+    val lyrics: EchoLyrics,
+)

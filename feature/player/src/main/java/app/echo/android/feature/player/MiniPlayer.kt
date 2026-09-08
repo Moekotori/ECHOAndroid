@@ -10,10 +10,8 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.basicMarquee
 import app.echo.android.design.echoClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -27,7 +25,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
@@ -68,8 +65,6 @@ import androidx.compose.ui.unit.dp
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoAccent
 import app.echo.android.design.echoAccentColor
-import app.echo.android.design.EchoDarkGlassBorder
-import app.echo.android.design.EchoGlassBorder
 import app.echo.android.design.EchoStateContent
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoDarkTheme
@@ -129,19 +124,9 @@ fun MiniPlayer(
         label = "mini-player-corner",
     )
     val surfaceElevation by animateDpAsState(
-        targetValue = if (compactDock) 8.dp else 6.dp,
+        targetValue = if (compactDock) 3.dp else 2.dp,
         animationSpec = tween(durationMillis = miniPlayerMotionDuration(420, lightweight), easing = MiniPlayerMotionEasing),
         label = "mini-player-elevation",
-    )
-    val borderColor by animateColorAsState(
-        targetValue = when {
-            dark && status.isPlaying -> MiniPlayerGlassRose.copy(alpha = 0.18f)
-            dark -> Color.White.copy(alpha = 0.08f)
-            status.isPlaying -> scheme.primary.copy(alpha = 0.22f)
-            else -> EchoGlassBorder
-        },
-        animationSpec = tween(durationMillis = miniPlayerMotionDuration(320, lightweight), easing = MiniPlayerMotionEasing),
-        label = "mini-player-border",
     )
     val progressAlpha by animateFloatAsState(
         targetValue = if (activeDurationMs > 0L) 1f else 0.42f,
@@ -150,15 +135,15 @@ fun MiniPlayer(
     )
     val playbackDescription = stringResource(L10nR.string.feature_player_play_or_pause_37a70f)
     val shape = RoundedCornerShape(cornerRadius)
-    LaunchedEffect(status.track?.id) {
+    LaunchedEffect(status.track?.id, lightweight) {
         if (lightweight) {
             trackEntrance.snapTo(1f)
             return@LaunchedEffect
         }
-        trackEntrance.snapTo(0.985f)
+        trackEntrance.snapTo(0f)
         trackEntrance.animateTo(
             targetValue = 1f,
-            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+            animationSpec = tween(durationMillis = 220, easing = MiniPlayerMotionEasing),
         )
     }
     Box(
@@ -200,42 +185,23 @@ fun MiniPlayer(
                     )
                 },
             )
-            .border(BorderStroke(1.dp, borderColor), shape)
             .padding(
-                start = if (compactDock) 10.dp else 14.dp,
+                start = if (compactDock) 4.dp else 12.dp,
                 top = if (compactDock) 7.dp else 5.dp,
-                end = if (compactDock) 10.dp else 8.dp,
+                end = 4.dp,
                 bottom = if (compactDock) 7.dp else 5.dp,
             ),
     ) {
-        if (dark) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(
-                                Color.Transparent,
-                                Color.White.copy(alpha = 0.08f),
-                                Color.Transparent,
-                            ),
-                        ),
-                    ),
-            )
-        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(if (compactDock) 7.dp else 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             if (onShowDock != null) {
                 MiniPlayerActionButton(
                     icon = Icons.Rounded.KeyboardArrowUp,
                     description = stringResource(L10nR.string.feature_player_show_bottom_bar_bf2549),
                     onClick = onShowDock,
-                    compact = true,
                 )
             }
             Row(
@@ -244,8 +210,8 @@ fun MiniPlayer(
                     .onSizeChanged { widthPx = it.width.toFloat().coerceAtLeast(1f) }
                     .graphicsLayer {
                         translationX = offsetX.value
-                        scaleX = trackEntrance.value
-                        scaleY = trackEntrance.value
+                        alpha = 0.65f + 0.35f * trackEntrance.value
+                        translationY = (1f - trackEntrance.value) * 4.dp.toPx()
                     }
                     .clip(RoundedCornerShape(12.dp))
                     .echoClickable(enabled = onExpand != null) { onExpand?.invoke() }
@@ -308,15 +274,15 @@ fun MiniPlayer(
                         },
                     ),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 ArtworkTile(
                     artworkUri = status.track?.artworkUri,
                     modifier = Modifier.size(if (compactDock) 42.dp else 40.dp),
                     accent = echoAccentColor(),
                     showSignal = false,
-                    cornerRadius = if (compactDock) 13.dp else 11.dp,
-                    elevation = 2.dp,
+                    cornerRadius = 10.dp,
+                    elevation = 0.dp,
                     placeholderIconSize = 22.dp,
                 )
                 Column(
@@ -332,7 +298,7 @@ fun MiniPlayer(
                         ),
                         maxLines = 1,
                         overflow = TextOverflow.Clip,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         color = if (dark) Color.White.copy(alpha = 0.96f) else scheme.onSurface,
                         style = MaterialTheme.typography.titleSmall,
                     )
@@ -340,9 +306,9 @@ fun MiniPlayer(
                         status.track?.artist ?: stringResource(L10nR.string.feature_player_ready_97b946),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        color = if (dark) Color.White.copy(alpha = 0.92f) else scheme.onSurfaceVariant,
+                        color = if (dark) Color.White.copy(alpha = 0.60f) else scheme.onSurfaceVariant,
                         style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Normal,
                     )
                     LinearProgressIndicator(
                         // 在绘制期读进度 State:tick 只重绘进度条,不触发任何重组
@@ -364,7 +330,7 @@ fun MiniPlayer(
             }
             Box(
                 modifier = Modifier
-                    .size(38.dp)
+                    .size(48.dp)
                     .semantics { contentDescription = playbackDescription }
                     .clip(RoundedCornerShape(12.dp))
                     .echoClickable(
@@ -403,7 +369,6 @@ fun MiniPlayer(
                         icon = Icons.Rounded.KeyboardArrowDown,
                         description = stringResource(L10nR.string.feature_player_hide_bottom_bar_e918c8),
                         onClick = onHideDock,
-                        compact = false,
                     )
                 }
                 onOpenQueue != null -> {
@@ -411,7 +376,6 @@ fun MiniPlayer(
                         icon = Icons.AutoMirrored.Rounded.QueueMusic,
                         description = stringResource(L10nR.string.feature_player_queue_37fa6a),
                         onClick = onOpenQueue,
-                        compact = true,
                     )
                 }
             }
@@ -450,44 +414,18 @@ private fun MiniPlayerActionButton(
     icon: ImageVector,
     description: String,
     onClick: () -> Unit,
-    compact: Boolean,
 ) {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
-    val containerColor by animateColorAsState(
-        targetValue = when {
-            !compact -> Color.Transparent
-            dark -> Color.White.copy(alpha = 0.10f)
-            else -> scheme.primary.copy(alpha = 0.10f)
-        },
-        animationSpec = tween(durationMillis = 220, easing = MiniPlayerMotionEasing),
-        label = "mini-player-action-container",
-    )
     val tint by animateColorAsState(
-        targetValue = if (compact) {
-            if (dark) Color.White.copy(alpha = 0.92f) else scheme.primary
-        } else {
-            if (dark) Color.White.copy(alpha = 0.84f) else scheme.onSurfaceVariant.copy(alpha = 0.84f)
-        },
-        animationSpec = tween(durationMillis = 220, easing = MiniPlayerMotionEasing),
+        targetValue = if (dark) Color.White.copy(alpha = 0.76f) else scheme.onSurfaceVariant,
+        animationSpec = tween(durationMillis = 180, easing = MiniPlayerMotionEasing),
         label = "mini-player-action-tint",
     )
     Box(
         modifier = Modifier
-            .size(if (compact) 40.dp else 34.dp)
-            .clip(CircleShape)
-            .background(containerColor)
-            .border(
-                BorderStroke(
-                    1.dp,
-                    if (compact) {
-                        if (dark) EchoDarkGlassBorder else Color.White.copy(alpha = 0.72f)
-                    } else {
-                        Color.Transparent
-                    },
-                ),
-                CircleShape,
-            )
+            .size(48.dp)
+            .clip(RoundedCornerShape(12.dp))
             .echoClickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -495,7 +433,7 @@ private fun MiniPlayerActionButton(
             imageVector = icon,
             contentDescription = description,
             tint = tint,
-            modifier = Modifier.size(if (compact) 22.dp else 26.dp),
+            modifier = Modifier.size(22.dp),
         )
     }
 }

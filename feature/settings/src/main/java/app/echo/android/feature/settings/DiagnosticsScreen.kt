@@ -29,6 +29,7 @@ fun DiagnosticsScreen(
     onEqualizerPresetSelected: (String) -> Unit,
     onEqualizerBandGainChange: (Int, Float) -> Unit,
     onEqualizerReset: () -> Unit,
+    onEqualizerPreampChange: (Float) -> Unit,
     onOpraQueryChange: (String) -> Unit,
     onOpraSearch: () -> Unit,
     onOpraRefresh: () -> Unit,
@@ -79,6 +80,9 @@ fun DiagnosticsScreen(
                     1 -> {
                         SignalEqualizer(
                             state = equalizerState,
+                            bypassed = status.diagnostics.usbBitPerfectEnabled,
+                            playing = status.isPlaying,
+                            onPreampChange = onEqualizerPreampChange,
                             onEnabledChange = onEqualizerEnabledChange,
                             onPresetSelected = onEqualizerPresetSelected,
                             onBandGainChange = onEqualizerBandGainChange,
@@ -86,6 +90,8 @@ fun DiagnosticsScreen(
                         )
                         SignalHeadphoneCorrection(
                             state = opraState,
+                            equalizer = equalizerState,
+                            bypassed = status.diagnostics.usbBitPerfectEnabled,
                             onQueryChange = onOpraQueryChange,
                             onSearch = onOpraSearch,
                             onRefresh = onOpraRefresh,

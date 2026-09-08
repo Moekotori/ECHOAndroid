@@ -47,6 +47,7 @@ data class OpraHeadphoneCorrectionState(
     val status: OpraDatabaseStatus = OpraDatabaseStatus(),
     val selectedEqId: String? = null,
     val message: String? = null,
+    val previewCurve: List<EchoEqResponsePoint> = emptyList(),
 ) {
     val selectedPreset: OpraHeadphoneCorrectionPreset?
         get() = results

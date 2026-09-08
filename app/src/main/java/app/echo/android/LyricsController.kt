@@ -8,6 +8,8 @@ import app.echo.android.lyrics.EchoLyricsSearchRequest
 import app.echo.android.lyrics.EchoLyricsParser
 import app.echo.android.lyrics.ImportedLyricsStore
 import app.echo.android.lyrics.LocalLyricsResolver
+import app.echo.android.lyrics.withUserOffset
+import app.echo.android.model.lyrics.EchoLyricsCandidate
 import app.echo.android.lyrics.LyricsApplyPolicy
 import app.echo.android.lyrics.OnlineLyricsResolver
 import app.echo.android.model.lyrics.EchoLyricLine
@@ -40,6 +42,17 @@ internal class LyricsController(
     val lyricsState: StateFlow<EchoLyricsLoadState> = _lyricsState.asStateFlow()
 
     private var lyricsJob: Job? = null
+    private var importJob: Job? = null
+    private var searchJob: Job? = null
+    private var originalLyrics: EchoLyrics? = null
+    private var searchTrackId: String? = null
+    private val _candidates = MutableStateFlow<List<EchoLyricsCandidate>>(emptyList())
+    val candidates = _candidates.asStateFlow()
+    private val _searching = MutableStateFlow(false)
+    val searching = _searching.asStateFlow()
+    private val _managementError = MutableStateFlow<String?>(null)
+    val managementError = _managementError.asStateFlow()
+    private val onlineCacheLock = Any()
     private var lastLyricsTrackId: String? = null
     private var currentLyricsUserOffsetMs: Long = 0L
     @Volatile
@@ -57,66 +70,98 @@ internal class LyricsController(
     private var echoLinkLyricsFetcher: (suspend (String) -> EchoRemoteLyrics?)? = null
 
     fun importLyrics(uri: Uri, currentTrackId: String?) {
-        val trackIdAtImport = currentTrackId ?: lastLyricsTrackId
-        lastLyricsTrackId = trackIdAtImport
-        lyricsJob?.cancel()
-        _lyricsState.value = EchoLyricsLoadState.Loading
-        lyricsJob = scope.launch {
-            val result = withContext(Dispatchers.IO) {
-                runCatching {
-                    val userOffsetMs = trackIdAtImport?.let { importedLyricsStore.lyricsOffsetForTrack(it) } ?: 0L
-                    lyricsResolver.importFromUri(uri)
-                        .also {
-                            trackIdAtImport?.let { trackId ->
-                                runCatching { importedLyricsStore.bindLyrics(trackId, uri) }
-                            }
-                        }
-                        .withUserOffset(userOffsetMs)
-                        .let(EchoLyricsLoadState::Ready)
-                        .let { LyricsLoadResult(state = it, userOffsetMs = userOffsetMs) }
-                }.getOrElse { error ->
-                    if (error is CancellationException) throw error
-                    LyricsLoadResult(EchoLyricsLoadState.Error(error.lyricsErrorMessage("Lyrics import failed")))
+        val target = currentTrackId ?: return
+        importJob?.cancel()
+        if (target == lastLyricsTrackId) lyricsJob?.cancel()
+        importJob = scope.launch {
+            try {
+                val lyrics = withContext(Dispatchers.IO) {
+                    val parsed = lyricsResolver.importFromUri(uri)
+                    importedLyricsStore.save(target, parsed, selected = true)
+                    importedLyricsStore.bindLyrics(target, uri)
+                    parsed
                 }
-            }
-            val bindTrackId = trackIdAtImport ?: currentTrackId
-            if (bindTrackId != null && result.state is EchoLyricsLoadState.Ready) {
-                scope.launch(Dispatchers.IO) {
-                    runCatching { importedLyricsStore.bindLyrics(bindTrackId, uri) }
+                if (target == lastLyricsTrackId) updateLyricsForTrack(target, force = true)
+                _managementError.value = null
+            } catch (error: Exception) {
+                if (error is CancellationException) throw error
+                _managementError.value = error.lyricsErrorMessage("Lyrics import failed")
+                if (target == lastLyricsTrackId && originalLyrics == null) {
+                    _lyricsState.value = EchoLyricsLoadState.Error(_managementError.value!!)
                 }
-            }
-            if (LyricsApplyPolicy.shouldApplyLyricsResult(bindTrackId, lastLyricsTrackId)) {
-                currentLyricsUserOffsetMs = result.userOffsetMs
-                _lyricsState.value = result.state
             }
         }
     }
 
     fun adjustLyricsOffset(deltaMs: Long, currentTrackId: String?) {
         val trackId = currentTrackId ?: return
-        val ready = _lyricsState.value as? EchoLyricsLoadState.Ready ?: return
-        val targetOffset = (currentLyricsUserOffsetMs + deltaMs).coerceIn(-30_000L, 30_000L)
-        val actualDelta = targetOffset - currentLyricsUserOffsetMs
-        if (actualDelta == 0L) return
+        val original = originalLyrics ?: return
+        if (trackId != lastLyricsTrackId) return
+        val target = (currentLyricsUserOffsetMs + deltaMs).coerceIn(-30_000L, 30_000L)
+        currentLyricsUserOffsetMs = target
+        _lyricsState.value = EchoLyricsLoadState.Ready(original.withUserOffset(target))
+        // Launch in the owner scope, preserving edit order before switching to I/O in DataStore.
+        scope.launch { importedLyricsStore.setLyricsOffset(trackId, target) }
+    }
 
-        currentLyricsUserOffsetMs = targetOffset
-        _lyricsState.value = EchoLyricsLoadState.Ready(ready.lyrics.shiftedBy(actualDelta, userOffsetMs = targetOffset))
-        scope.launch(Dispatchers.IO) {
-            runCatching { importedLyricsStore.setLyricsOffset(trackId, targetOffset) }
+    fun resetLyricsOffset(currentTrackId: String?) = adjustLyricsOffset(-currentLyricsUserOffsetMs, currentTrackId)
+
+    fun searchLyrics(trackId: String?) {
+        searchJob?.cancel()
+        searchTrackId = trackId
+        _candidates.value = emptyList()
+        _managementError.value = null
+        if (trackId == null) { _searching.value = false; return }
+        _searching.value = true
+        searchJob = scope.launch {
+            try {
+                val results = withContext(Dispatchers.IO) {
+                    val track = repository.trackForLyrics(trackId) ?: return@withContext emptyList()
+                    onlineLyricsResolver.search(track.toLyricsSearchRequest())
+                }
+                if (trackId == lastLyricsTrackId && searchTrackId == trackId) _candidates.value = results
+            } catch (error: Exception) {
+                if (error is CancellationException) throw error
+                _managementError.value = error.lyricsErrorMessage("Lyrics search failed")
+            } finally { if (searchTrackId == trackId) _searching.value = false }
         }
     }
 
-    fun resetLyricsOffset(currentTrackId: String?) {
-        val trackId = currentTrackId ?: return
-        val ready = _lyricsState.value as? EchoLyricsLoadState.Ready ?: return
-        val actualDelta = -currentLyricsUserOffsetMs
-        if (actualDelta == 0L) return
+    fun cancelSearch() {
+        searchTrackId = null
+        searchJob?.cancel()
+        _searching.value = false
+        _candidates.value = emptyList()
+    }
 
-        currentLyricsUserOffsetMs = 0L
-        _lyricsState.value = EchoLyricsLoadState.Ready(ready.lyrics.shiftedBy(actualDelta, userOffsetMs = 0L))
-        scope.launch(Dispatchers.IO) {
-            runCatching { importedLyricsStore.setLyricsOffset(trackId, 0L) }
+    fun selectCandidate(id: String, trackId: String?) {
+        if (trackId == null || trackId != lastLyricsTrackId || trackId != searchTrackId) return
+        val candidate = _candidates.value.firstOrNull { it.id == id } ?: return
+        lyricsJob?.cancel()
+        lyricsJob = scope.launch {
+            try {
+                withContext(Dispatchers.IO) { importedLyricsStore.save(trackId, candidate.lyrics, selected = true) }
+                if (trackId == lastLyricsTrackId) updateLyricsForTrack(trackId, force = true)
+            } catch (error: Exception) {
+                if (error is CancellationException) throw error
+                _managementError.value = error.lyricsErrorMessage("Could not save lyrics")
+            }
         }
+    }
+
+    fun removeSelection(trackId: String?) {
+        if (trackId == null) return
+        scope.launch {
+            withContext(Dispatchers.IO) { importedLyricsStore.unbindLyrics(trackId) }
+            if (trackId == lastLyricsTrackId) updateLyricsForTrack(trackId, force = true)
+        }
+    }
+
+    fun refreshLyrics(trackId: String?) {
+        if (trackId == null) return
+        // Search is an explicit online request. Existing lyrics stay visible until a selection succeeds.
+        scope.launch(Dispatchers.IO) { importedLyricsStore.clearCached(trackId) }
+        searchLyrics(trackId)
     }
 
     fun setOnlineLyricsEnabled(enabled: Boolean, currentTrackId: String?) {
@@ -129,7 +174,12 @@ internal class LyricsController(
 
     fun updateLyricsForTrack(trackId: String?, force: Boolean = false) {
         if (!force && trackId == lastLyricsTrackId) return
+        if (lastLyricsTrackId != trackId) {
+            cancelSearch()
+            _managementError.value = null
+        }
         lastLyricsTrackId = trackId
+        originalLyrics = null
         lyricsJob?.cancel()
         if (trackId == null) {
             currentLyricsUserOffsetMs = 0L
@@ -141,11 +191,12 @@ internal class LyricsController(
         lyricsJob = scope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    val echoLinkLyrics = cachedEchoLinkLyrics(trackId) ?: fetchEchoLinkLyrics(trackId)
+                    val selected = importedLyricsStore.readSaved(trackId, selected = true)
+                    val echoLinkLyrics = selected ?: cachedEchoLinkLyrics(trackId) ?: fetchEchoLinkLyrics(trackId)
                     if (echoLinkLyrics != null) {
                         val userOffsetMs = importedLyricsStore.lyricsOffsetForTrack(trackId)
                         LyricsLoadResult(
-                            state = EchoLyricsLoadState.Ready(echoLinkLyrics.withUserOffset(userOffsetMs)),
+                            state = EchoLyricsLoadState.Ready(echoLinkLyrics),
                             userOffsetMs = userOffsetMs,
                         )
                     } else {
@@ -155,7 +206,7 @@ internal class LyricsController(
                         } else {
                             val userOffsetMs = importedLyricsStore.lyricsOffsetForTrack(trackId)
                             val importedLyrics = importedLyricsStore.lyricsUriForTrack(trackId)
-                                ?.let(lyricsResolver::loadFromUri)
+                                ?.let { runCatching { lyricsResolver.loadFromUri(it) }.getOrNull() }
                             val localLyrics = importedLyrics ?: lyricsResolver.loadForTrack(track)
                             val serverLyrics = if (localLyrics == null) {
                                 runCatching { subsonicLyricsLoader(track) }.getOrNull()
@@ -163,14 +214,14 @@ internal class LyricsController(
                                 null
                             }
                             val onlineLyrics = if (localLyrics == null && serverLyrics == null) {
-                                directNeteaseLyrics(track)
+                                importedLyricsStore.readSaved(trackId, selected = false) ?: directNeteaseLyrics(track)
                                     ?: if (onlineLyricsEnabled) cachedOnlineLyrics(track) else null
                             } else {
                                 null
                             }
+                            if (onlineLyrics != null) runCatching { importedLyricsStore.save(trackId, onlineLyrics, selected = false) }
                             (localLyrics ?: serverLyrics ?: onlineLyrics)
                                 ?.takeIf { it.lines.isNotEmpty() }
-                                ?.withUserOffset(userOffsetMs)
                                 ?.let(EchoLyricsLoadState::Ready)
                                 ?.let { LyricsLoadResult(state = it, userOffsetMs = userOffsetMs) }
                                 ?: LyricsLoadResult(EchoLyricsLoadState.Missing)
@@ -186,7 +237,9 @@ internal class LyricsController(
                 return@launch
             }
             currentLyricsUserOffsetMs = result.userOffsetMs
-            _lyricsState.value = result.state
+            originalLyrics = (result.state as? EchoLyricsLoadState.Ready)?.lyrics
+            _lyricsState.value = originalLyrics?.withUserOffset(result.userOffsetMs)
+                ?.let(EchoLyricsLoadState::Ready) ?: result.state
         }
     }
 
@@ -217,6 +270,8 @@ internal class LyricsController(
 
     fun clear() {
         lyricsJob?.cancel()
+        importJob?.cancel()
+        cancelSearch()
     }
 
     private data class LyricsLoadResult(
@@ -226,9 +281,9 @@ internal class LyricsController(
 
     private fun cachedOnlineLyrics(track: LibraryTrackEntity): EchoLyrics? {
         val cacheKey = onlineLyricsCacheKey(track)
-        onlineLyricsCache[cacheKey]?.let { return it }
+        synchronized(onlineCacheLock) { onlineLyricsCache[cacheKey] }?.let { return it }
         return onlineLyricsResolver.loadForTrack(track.toLyricsSearchRequest())
-            ?.also { onlineLyricsCache[cacheKey] = it }
+            ?.also { synchronized(onlineCacheLock) { onlineLyricsCache[cacheKey] = it } }
     }
 
     private fun cachedEchoLinkLyrics(trackId: String): EchoLyrics? =
@@ -253,9 +308,9 @@ internal class LyricsController(
     private fun directNeteaseLyrics(track: LibraryTrackEntity): EchoLyrics? {
         val songId = parseNeteaseSongId(track.id) ?: return null
         val cacheKey = "netease:$songId"
-        onlineLyricsCache[cacheKey]?.let { return it }
+        synchronized(onlineCacheLock) { onlineLyricsCache[cacheKey] }?.let { return it }
         return onlineLyricsResolver.loadFromNeteaseSongId(songId)
-            ?.also { onlineLyricsCache[cacheKey] = it }
+            ?.also { synchronized(onlineCacheLock) { onlineLyricsCache[cacheKey] = it } }
     }
 
     private fun onlineLyricsCacheKey(track: LibraryTrackEntity): String =
@@ -268,36 +323,6 @@ internal class LyricsController(
             album = album,
             durationMs = durationMs,
         )
-
-    private fun EchoLyrics.withUserOffset(userOffsetMs: Long): EchoLyrics =
-        if (userOffsetMs == 0L) {
-            this
-        } else {
-            shiftedBy(userOffsetMs, userOffsetMs = userOffsetMs)
-        }
-
-    private fun EchoLyrics.shiftedBy(deltaMs: Long, userOffsetMs: Long): EchoLyrics =
-        copy(
-            lines = lines.map { it.shiftedBy(deltaMs) },
-            offsetMs = offsetMs + deltaMs,
-            metadata = metadata + ("user_offset_ms" to userOffsetMs.toString()),
-        )
-
-    private fun EchoLyricLine.shiftedBy(deltaMs: Long): EchoLyricLine =
-        copy(
-            startMs = shiftTimestamp(startMs, deltaMs),
-            endMs = endMs?.let { shiftTimestamp(it, deltaMs) },
-            words = words.map { it.shiftedBy(deltaMs) },
-        )
-
-    private fun EchoLyricWord.shiftedBy(deltaMs: Long): EchoLyricWord =
-        copy(
-            startMs = shiftTimestamp(startMs, deltaMs),
-            endMs = endMs?.let { shiftTimestamp(it, deltaMs) },
-        )
-
-    private fun shiftTimestamp(valueMs: Long, deltaMs: Long): Long =
-        if (valueMs < 0L) valueMs else (valueMs + deltaMs).coerceAtLeast(0L)
 
     private fun Throwable.lyricsErrorMessage(fallback: String): String =
         message?.takeIf { it.isNotBlank() }

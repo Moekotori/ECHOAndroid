@@ -356,8 +356,15 @@ class EchoSettingsStore(
         context.echoSettings.edit {
             it[Keys.EqualizerPreset] = EchoEqualizerPreset.Custom
             it[Keys.EqualizerBandGains] = formatEqualizerBandGains(gainsDb)
+            val preamp = it[Keys.EqualizerPreampDb]
             clearEqualizerParametric(it)
+            if (preamp != null) it[Keys.EqualizerPreampDb] = preamp
         }
+    }
+
+    suspend fun setEqualizerPreamp(gainDb: Float) {
+        if (!gainDb.isFinite()) return
+        context.echoSettings.edit { it[Keys.EqualizerPreampDb] = gainDb.coerceIn(-24f, 12f) }
     }
 
     suspend fun setEqualizerParametricConfig(

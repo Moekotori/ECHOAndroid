@@ -1,0 +1,20 @@
+                        -H/Users/moekotori/echoandroid/core/usb-audio/src/main/cpp
+-DCMAKE_SYSTEM_NAME=Android
+-DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+-DCMAKE_SYSTEM_VERSION=26
+-DANDROID_PLATFORM=android-26
+-DANDROID_ABI=arm64-v8a
+-DCMAKE_ANDROID_ARCH_ABI=arm64-v8a
+-DANDROID_NDK=/Users/moekotori/Library/Android/sdk/ndk/27.2.12479018
+-DCMAKE_ANDROID_NDK=/Users/moekotori/Library/Android/sdk/ndk/27.2.12479018
+-DCMAKE_TOOLCHAIN_FILE=/Users/moekotori/Library/Android/sdk/ndk/27.2.12479018/build/cmake/android.toolchain.cmake
+-DCMAKE_MAKE_PROGRAM=/Users/moekotori/Library/Android/sdk/cmake/3.22.1/bin/ninja
+-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=/Users/moekotori/echoandroid/core/usb-audio/build/intermediates/cxx/RelWithDebInfo/135q655g/obj/arm64-v8a
+-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=/Users/moekotori/echoandroid/core/usb-audio/build/intermediates/cxx/RelWithDebInfo/135q655g/obj/arm64-v8a
+-DCMAKE_BUILD_TYPE=RelWithDebInfo
+-B/Users/moekotori/echoandroid/core/usb-audio/.cxx/RelWithDebInfo/135q655g/arm64-v8a
+-GNinja
+-DANDROID_STL=c++_static
+-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON
+                        Build command args: []
+                        Version: 2

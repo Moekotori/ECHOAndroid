@@ -11,7 +11,7 @@
 
     <style name="Theme.EchoAndroid.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/echo_splash_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/echo_splash_icon</item>
         <item name="windowSplashScreenIconBackgroundColor">@color/ic_launcher_background</item>
         <item name="postSplashScreenTheme">@style/Theme.EchoAndroid</item>
     </style>

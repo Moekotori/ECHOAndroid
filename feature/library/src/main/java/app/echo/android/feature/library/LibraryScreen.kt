@@ -36,6 +36,8 @@ import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.automirrored.rounded.Sort
@@ -325,12 +327,12 @@ fun LibraryScreen(
 ) {
     val playNext = onPlayNext
     val enqueueTrack = onEnqueueTrack
-    var selectedModeIndex by remember { mutableIntStateOf(LibraryViewMode.Songs.ordinal) }
+    var selectedModeIndex by rememberSaveable { mutableIntStateOf(LibraryViewMode.Songs.ordinal) }
     val selectedMode = LibraryViewMode.entries[selectedModeIndex]
     var selectedSource by remember(selectedLibrarySourceId, linkedLibraryActive) {
         mutableStateOf(librarySourceModeFromId(selectedLibrarySourceId, linkedLibraryActive))
     }
-    var linkedMode by remember { mutableStateOf(LinkedLibraryMode.Songs) }
+    var linkedMode by rememberSaveable { mutableStateOf(LinkedLibraryMode.Songs) }
     var selectedLinkedAlbumKey by remember { mutableStateOf<String?>(null) }
     var selectedLinkedArtistKey by remember { mutableStateOf<String?>(null) }
     var selectedLinkedPlaylistId by remember { mutableStateOf<String?>(null) }
@@ -430,35 +432,13 @@ fun LibraryScreen(
     }
 
     if (selectedSource == LibrarySourceMode.PcEcho) {
-        PageChrome(
-            title = stringResource(L10nR.string.feature_library_library_848e9b),
-            subtitle = "PC ECHO",
-            badge = selectedSource.label(),
-            showBrand = false,
-            compactHeader = true,
-            badgeContent = {},
-            actions = {
-                IconButton(onClick = { onRefreshLinkedLibrary(libraryQuery) }) {
-                    Icon(
-                        Icons.Rounded.Refresh,
-                        contentDescription = stringResource(L10nR.string.feature_library_refresh_pc_echo_library_5b6275),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                LibrarySearchBar(
-                    query = libraryQuery,
-                    onQueryChange = onLibraryQueryChange,
-                    expandedWidth = 240.dp,
-                )
-            },
+        LibraryBrowserFrame(
+            query = libraryQuery, onQueryChange = onLibraryQueryChange,
+            sources = { LibrarySourceStrip(selectedSource, linkedLibraryAvailable, ::selectSource) },
         ) {
-            LibrarySourceStrip(
-                selectedSource = selectedSource,
-                linkedLibraryAvailable = linkedLibraryAvailable,
-                onSelectSource = ::selectSource,
-            )
-            EmptyState(
-                stringResource(L10nR.string.feature_library_connect_pc_echo_in_link_first_then_you_31fc3e),
+            LibraryCollectionEmpty(
+                title = stringResource(L10nR.string.feature_library_not_connected_c4d337),
+                detail = stringResource(L10nR.string.feature_library_connect_pc_echo_in_link_first_then_you_31fc3e),
             )
         }
         return
@@ -468,42 +448,20 @@ fun LibraryScreen(
 
     @Composable
     fun LocalBrowserPane() {
-        PageChrome(
-            title = stringResource(L10nR.string.feature_library_library_848e9b),
-            subtitle = null,
-            badge = selectedSource.label(),
-            showBrand = false,
-            compactHeader = true,
-            badgeContent = {},
-            titleContent = {},
+        LibraryBrowserFrame(
+            query = libraryQuery,
+            onQueryChange = onLibraryQueryChange,
+            sources = { LibrarySourceStrip(selectedSource, linkedLibraryAvailable, ::selectSource) },
             actions = {
-                if (selectedSource == LibrarySourceMode.Local && selectedMode == LibraryViewMode.Songs) {
-                    LibraryTrackSortMenu(
-                        selectedSortMode = trackSortMode,
-                        onSortModeChange = onTrackSortModeChange,
-                    )
-                }
-                LibrarySourceScanButton(
-                    selectedSource = selectedSource,
-                    linkedLibraryAvailable = linkedLibraryAvailable,
-                    onSelectSource = ::selectSource,
-                    hasPermission = hasPermission,
-                    scanState = scanState,
-                    onRequestPermission = onRequestPermission,
-                    onScanFolder = onScanFolder,
-                    onScanAll = onScanAll,
-                    onCancelScan = onCancelScan,
-                )
-                LibrarySearchBar(
-                    query = libraryQuery,
-                    onQueryChange = onLibraryQueryChange,
-                    expandedWidth = 240.dp,
+                if (selectedSource == LibrarySourceMode.Local) LibrarySourceScanButton(
+                    selectedSource, linkedLibraryAvailable, ::selectSource,
+                    hasPermission, scanState, onRequestPermission, onScanFolder, onScanAll, onCancelScan,
                 )
             },
         ) {
             when {
-                scanState.isScanning -> LibraryScanStatus(scanState = scanState, onCancelScan = onCancelScan)
                 else -> {
+                    if (scanState.isScanning) LibraryScanStatus(scanState, onCancelScan)
                     LibraryBrowserHeader(
                         scanState = scanState,
                         showScanResultBanner = showScanResultBanner,
@@ -541,17 +499,25 @@ fun LibraryScreen(
                                     trackItems.itemCount == 0 &&
                                         trackItems.loadState.refresh is LoadState.Error
                                 when {
-                                    !hasPermission ->
-                                        EmptyState(
-                                            stringResource(L10nR.string.feature_library_grant_access_to_index_local_music_cloud_libraries_568ef2),
-                                        )
-                                    showInitialTrackLoading -> EmptyState(
+                                    !hasPermission -> LibraryCollectionEmpty(
+                                        title = stringResource(L10nR.string.library_access_title),
+                                        detail = stringResource(L10nR.string.library_access_detail),
+                                        actionLabel = stringResource(L10nR.string.feature_library_allow_music_access_a30185),
+                                        onAction = onRequestPermission,
+                                    )
+                                    showInitialTrackLoading -> LibraryCollectionEmpty(
                                         stringResource(L10nR.string.feature_library_loading_library_a77123),
                                     )
-                                    showInitialTrackError -> EmptyState(
-                                        stringResource(L10nR.string.feature_library_library_query_failed_f9c538),
+                                    showInitialTrackError -> LibraryCollectionEmpty(
+                                        title = stringResource(L10nR.string.feature_library_library_query_failed_f9c538),
+                                        actionLabel = stringResource(L10nR.string.library_retry), onAction = { trackItems.retry() },
                                     )
-                                    trackItems.itemCount == 0 -> LibraryBootstrapState()
+                                    trackItems.itemCount == 0 -> LibraryCollectionEmpty(
+                                        title = stringResource(if (libraryQuery.isNotBlank()) L10nR.string.library_no_matches else L10nR.string.library_start_collection),
+                                        detail = stringResource(if (libraryQuery.isNotBlank()) L10nR.string.library_search_hint else L10nR.string.library_import_hint),
+                                        actionLabel = stringResource(if (libraryQuery.isNotBlank()) L10nR.string.library_clear_search else L10nR.string.library_add_music),
+                                        onAction = if (libraryQuery.isNotBlank()) ({ onLibraryQueryChange("") }) else onScanAll,
+                                    )
                                     else -> TrackList(
                                         tracks = trackItems,
                                         onPlayTrack = { track ->
@@ -859,92 +825,13 @@ private fun LibrarySplitPlaceholder() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
-        EmptyState(
+        LibraryCollectionEmpty(
             stringResource(L10nR.string.feature_library_pick_an_album_artist_folder_or_playlist_e517b7),
         )
     }
 }
 
-@Composable
-private fun LibrarySourceMenu(
-    selectedSource: LibrarySourceMode,
-    linkedLibraryAvailable: Boolean,
-    onSelectSource: (LibrarySourceMode) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val scheme = MaterialTheme.colorScheme
-    val accent = rememberLibraryControlColor()
-    val dark = LocalEchoDarkTheme.current
-    Box(modifier = modifier) {
-        Surface(
-            modifier = Modifier.echoClickable { expanded = true },
-            shape = RoundedCornerShape(8.dp),
-            color = if (dark) EchoGlassPanel.copy(alpha = 0.74f) else scheme.surface.copy(alpha = 0.50f),
-            border = BorderStroke(1.dp, if (dark) EchoDarkGlassBorder else EchoGlassBorder),
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    selectedSource.icon,
-                    contentDescription = null,
-                    tint = scheme.onSurface,
-                    modifier = Modifier.size(15.dp),
-                )
-                Text(
-                    selectedSource.label(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = scheme.onSurface,
-                    maxLines = 1,
-                )
-            }
-        }
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            containerColor = scheme.surface,
-        ) {
-            LibrarySourceMode.entries.forEach { source ->
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            source.label(),
-                            fontWeight = if (source == selectedSource) FontWeight.Bold else FontWeight.SemiBold,
-                            color = if (source == selectedSource) accent else scheme.onSurface,
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            source.icon,
-                            contentDescription = null,
-                            tint = if (source == selectedSource) accent else scheme.onSurfaceVariant,
-                        )
-                    },
-                    trailingIcon = if (source == LibrarySourceMode.PcEcho && !linkedLibraryAvailable) {
-                        {
-                            Text(
-                                stringResource(L10nR.string.feature_library_not_connected_c4d337),
-                                color = scheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.labelSmall,
-                            )
-                        }
-                    } else {
-                        null
-                    },
-                    onClick = {
-                        onSelectSource(source)
-                        expanded = false
-                    },
-                )
-            }
-        }
-    }
-}
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun LibrarySourceScanButton(
     selectedSource: LibrarySourceMode,
@@ -958,97 +845,20 @@ private fun LibrarySourceScanButton(
     onCancelScan: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var sourceExpanded by remember { mutableStateOf(false) }
     var showScanOptions by remember { mutableStateOf(false) }
-    val scheme = MaterialTheme.colorScheme
-    val accent = rememberLibraryControlColor()
-    val scanDescription = when {
-        !hasPermission -> stringResource(L10nR.string.feature_library_allow_music_access_a30185)
-        scanState.isScanning -> stringResource(L10nR.string.feature_library_cancel_library_scan_4033b9)
-        else -> stringResource(L10nR.string.feature_library_scan_library_3d1814)
+    androidx.compose.material3.TextButton(
+        onClick = { if (!hasPermission) onRequestPermission() else showScanOptions = true },
+        enabled = !scanState.isScanning, modifier = modifier,
+    ) {
+        Icon(Icons.Rounded.Add, contentDescription = null, Modifier.size(20.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(stringResource(L10nR.string.library_add_music))
     }
-    val scanAction = when {
-        !hasPermission -> onRequestPermission
-        scanState.isScanning -> onCancelScan
-        else -> {
-            { showScanOptions = true }
-        }
-    }
-
-    Box(modifier = modifier) {
-        Surface(
-            modifier = Modifier.echoCombinedClickable(
-                onClick = { sourceExpanded = true },
-                onLongClick = scanAction,
-                onLongClickLabel = scanDescription,
-            ),
-            shape = RoundedCornerShape(8.dp),
-            color = scheme.surface.copy(alpha = 0.50f),
-            border = BorderStroke(1.dp, EchoGlassBorder),
-        ) {
-            Icon(
-                imageVector = if (scanState.isScanning) Icons.Rounded.Close else selectedSource.icon,
-                contentDescription = stringResource(L10nR.string.feature_library_switch_library_source_long_press_to_scan_tracks_2d8c87),
-                tint = if (scanState.error != null) EchoColors.Coral else scheme.onSurface,
-                modifier = Modifier
-                    .padding(horizontal = 10.dp, vertical = 7.dp)
-                    .size(20.dp),
-            )
-        }
-        DropdownMenu(
-            expanded = sourceExpanded,
-            onDismissRequest = { sourceExpanded = false },
-            containerColor = scheme.surface,
-        ) {
-            LibrarySourceMode.entries.forEach { source ->
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            source.label(),
-                            fontWeight = if (source == selectedSource) FontWeight.Bold else FontWeight.SemiBold,
-                            color = if (source == selectedSource) accent else scheme.onSurface,
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            source.icon,
-                            contentDescription = null,
-                            tint = if (source == selectedSource) accent else scheme.onSurfaceVariant,
-                        )
-                    },
-                    trailingIcon = if (source == LibrarySourceMode.PcEcho && !linkedLibraryAvailable) {
-                        {
-                            Text(
-                                stringResource(L10nR.string.feature_library_not_connected_c4d337),
-                                color = scheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.labelSmall,
-                            )
-                        }
-                    } else {
-                        null
-                    },
-                    onClick = {
-                        onSelectSource(source)
-                        sourceExpanded = false
-                    },
-                )
-            }
-        }
-    }
-
-    if (showScanOptions) {
-        LibraryScanOptionsDialog(
-            onDismiss = { showScanOptions = false },
-            onScanFolder = {
-                showScanOptions = false
-                onScanFolder()
-            },
-            onScanAll = {
-                showScanOptions = false
-                onScanAll()
-            },
-        )
-    }
+    if (showScanOptions) LibraryScanOptionsDialog(
+        onDismiss = { showScanOptions = false },
+        onScanFolder = { showScanOptions = false; onScanFolder() },
+        onScanAll = { showScanOptions = false; onScanAll() },
+    )
 }
 
 private fun librarySourceModeFromId(
@@ -1068,19 +878,12 @@ private fun LibrarySourceStrip(
     linkedLibraryAvailable: Boolean,
     onSelectSource: (LibrarySourceMode) -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 2.dp),
-        horizontalArrangement = Arrangement.End,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        LibrarySourceMenu(
-            selectedSource = selectedSource,
-            linkedLibraryAvailable = linkedLibraryAvailable,
-            onSelectSource = onSelectSource,
-        )
-    }
+    LibraryTextTabs(
+        labels = LibrarySourceMode.entries.map { it.label() },
+        selectedIndex = selectedSource.ordinal,
+        onSelect = { onSelectSource(LibrarySourceMode.entries[it]) },
+        compact = true,
+    )
 }
 
 @Composable
@@ -1266,22 +1069,14 @@ private fun LinkedEchoLibraryPage(
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
-    LinkedLibraryChrome(
+    LibraryBrowserFrame(
+        query = query, onQueryChange = onQueryChange,
+        sources = { LibrarySourceStrip(selectedSource, true, onSelectSource) },
         actions = {
             IconButton(onClick = { onRefresh(normalizedQuery) }, enabled = !state.isLoading) {
-                Icon(
-                    Icons.Rounded.Refresh,
-                    contentDescription = stringResource(L10nR.string.feature_library_refresh_pc_echo_library_5b6275),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Icon(Icons.Rounded.Refresh, contentDescription = stringResource(L10nR.string.feature_library_refresh_pc_echo_library_5b6275))
             }
-            LibrarySearchBar(
-                query = query,
-                onQueryChange = onQueryChange,
-                expandedWidth = 240.dp,
-            )
         },
-        modifier = Modifier.fillMaxSize(),
     ) {
         val errorMessage = state.error
         LinkedLibraryHeader(
@@ -1311,12 +1106,12 @@ private fun LinkedEchoLibraryPage(
             modifier = Modifier.weight(1f),
         ) { mode ->
         when {
-            state.isLoading -> EmptyState(
+            state.isLoading -> LibraryCollectionEmpty(
                 stringResource(L10nR.string.feature_library_reading_pc_echo_library_fccbe4),
             )
-            !errorMessage.isNullOrBlank() -> EmptyState(errorMessage)
+            !errorMessage.isNullOrBlank() -> LibraryCollectionEmpty(errorMessage)
             mode == LinkedLibraryMode.Songs && sortedTracks.isEmpty() -> {
-                EmptyState(
+                LibraryCollectionEmpty(
                     if (query.isBlank()) {
                         stringResource(L10nR.string.feature_library_pc_echo_has_no_songs_to_show_a46ba6)
                     } else {
@@ -1325,7 +1120,7 @@ private fun LinkedEchoLibraryPage(
                 )
             }
             mode == LinkedLibraryMode.Albums && albums.isEmpty() -> {
-                EmptyState(
+                LibraryCollectionEmpty(
                     if (query.isBlank()) {
                         stringResource(L10nR.string.feature_library_pc_echo_has_no_albums_to_show_2784be)
                     } else {
@@ -1334,7 +1129,7 @@ private fun LinkedEchoLibraryPage(
                 )
             }
             mode == LinkedLibraryMode.Artists && artists.isEmpty() -> {
-                EmptyState(
+                LibraryCollectionEmpty(
                     if (query.isBlank()) {
                         stringResource(L10nR.string.feature_library_pc_echo_has_no_artists_to_show_b6975c)
                     } else {
@@ -1343,7 +1138,7 @@ private fun LinkedEchoLibraryPage(
                 )
             }
             mode == LinkedLibraryMode.Playlists && filteredPlaylists.isEmpty() -> {
-                EmptyState(
+                LibraryCollectionEmpty(
                     if (query.isBlank()) {
                         stringResource(L10nR.string.feature_library_pc_echo_has_no_playlists_to_show_8e8438)
                     } else {
@@ -1389,119 +1184,15 @@ private fun LinkedLibraryHeader(
     onSelectMode: (LinkedLibraryMode) -> Unit,
     onSortModeChange: (LibraryTrackSortMode) -> Unit,
 ) {
-    val scheme = MaterialTheme.colorScheme
-    val accent = rememberLibraryControlColor()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        LibrarySourceMenu(
-            selectedSource = selectedSource,
-            linkedLibraryAvailable = linkedLibraryAvailable,
-            onSelectSource = onSelectSource,
-        )
-        if (selectedMode == LinkedLibraryMode.Songs) {
-            LibraryTrackSortMenu(
-                selectedSortMode = selectedSortMode,
-                onSortModeChange = onSortModeChange,
-            )
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.weight(1f)) {
+            LibraryTextTabs(LinkedLibraryMode.entries.map { it.label() }, selectedMode.ordinal,
+                { onSelectMode(LinkedLibraryMode.entries[it]) })
         }
-    }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(bottom = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(24.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        LinkedLibraryMode.entries.forEach { mode ->
-            val selected = mode == selectedMode
-            Column(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .echoClickable { onSelectMode(mode) }
-                    .padding(horizontal = 4.dp, vertical = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    mode.label(),
-                    color = if (selected) accent else scheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
-                    maxLines = 1,
-                )
-                Box(
-                    modifier = Modifier
-                        .width(20.dp)
-                        .height(3.dp)
-                        .clip(RoundedCornerShape(99.dp))
-                        .background(if (selected) accent else Color.Transparent),
-                )
-            }
-        }
+        if (selectedMode == LinkedLibraryMode.Songs) LibraryTrackSortMenu(selectedSortMode, onSortModeChange)
     }
 }
 
-@Composable
-private fun LinkedLibraryChrome(
-    actions: @Composable RowScope.() -> Unit,
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    val dark = LocalEchoDarkTheme.current
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    if (dark) {
-                        listOf(
-                            EchoGlassNight.copy(alpha = 0.62f),
-                            EchoGlassInk.copy(alpha = 0.44f),
-                            Color.Transparent,
-                        )
-                    } else {
-                        listOf(
-                            Color.White.copy(alpha = 0.30f),
-                            EchoHomeMist.copy(alpha = 0.22f),
-                            Color.Transparent,
-                        )
-                    },
-                ),
-            )
-            .statusBarsPadding()
-            .padding(start = 16.dp, end = 16.dp, top = LinkedLibraryHeaderTopPadding),
-    ) {
-        Column(
-            modifier = Modifier
-                .widthIn(max = EchoContentMaxWidth)
-                .fillMaxSize()
-                .align(Alignment.TopCenter),
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(LinkedLibraryHeaderRowHeight),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Spacer(Modifier.weight(1f))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    actions()
-                }
-            }
-            Spacer(Modifier.height(LinkedLibraryHeaderBottomSpacing))
-            content()
-        }
-    }
-}
 
 @Composable
 private fun LinkedTrackList(
@@ -1621,7 +1312,7 @@ private fun LinkedPlaylistTracksPage(
     onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LinkedLibraryChrome(
+    LibraryDetailFrame(
         actions = {
             IconButton(onClick = onBack) {
                 Icon(
@@ -1633,7 +1324,7 @@ private fun LinkedPlaylistTracksPage(
         },
         modifier = modifier,
     ) {
-        EchoPanel(Modifier.fillMaxWidth()) {
+        Box(Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1669,11 +1360,11 @@ private fun LinkedPlaylistTracksPage(
         }
         Spacer(Modifier.height(10.dp))
         when {
-            isLoading -> EmptyState(
+            isLoading -> LibraryCollectionEmpty(
                 stringResource(L10nR.string.feature_library_reading_pc_echo_playlist_1ba678),
             )
-            tracks.isEmpty() && !error.isNullOrBlank() -> EmptyState(error)
-            tracks.isEmpty() -> EmptyState(
+            tracks.isEmpty() && !error.isNullOrBlank() -> LibraryCollectionEmpty(error)
+            tracks.isEmpty() -> LibraryCollectionEmpty(
                 stringResource(L10nR.string.feature_library_this_pc_echo_playlist_has_no_playable_tracks_b480ec),
             )
             else -> LinkedTrackList(
@@ -1696,7 +1387,7 @@ private fun LinkedAlbumWall(
     modifier: Modifier = Modifier,
 ) {
     LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
+        columns = GridCells.Adaptive(148.dp),
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
@@ -1718,7 +1409,7 @@ private fun LinkedArtistWall(
     modifier: Modifier = Modifier,
 ) {
     LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
+        columns = GridCells.Adaptive(148.dp),
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
@@ -1867,10 +1558,14 @@ private fun LibraryBrowserHeader(
     if (showScanResultBanner) {
         LibraryScanResultBanner(scanState)
     }
-    LibraryPagerTabs(
-        selectedMode = selectedMode,
-        onSelectMode = onSelectMode,
-    )
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.weight(1f)) {
+            LibraryPagerTabs(selectedMode, onSelectMode, cloudOnly = selectedSource == LibrarySourceMode.Cloud)
+        }
+        if (selectedMode == LibraryViewMode.Songs && selectedSource == LibrarySourceMode.Local) {
+            LibraryTrackSortMenu(selectedSortMode, onSortModeChange)
+        }
+    }
 }
 
 private fun LibraryScanProgress.hasResultBannerMessage(): Boolean =

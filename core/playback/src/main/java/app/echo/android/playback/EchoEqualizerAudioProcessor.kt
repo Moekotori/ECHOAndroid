@@ -9,14 +9,22 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 @UnstableApi
-class EchoEqualizerAudioProcessor : BaseAudioProcessor() {
+class EchoEqualizerAudioProcessor(
+    private val onProcessingFormatChanged: (Int?) -> Unit = {},
+) : BaseAudioProcessor() {
+    private var reportedSampleRate: Int? = null
+    private fun reportProcessing(rate: Int?) {
+        if (reportedSampleRate == rate) return
+        reportedSampleRate = rate
+        onProcessingFormatChanged(rate)
+    }
     @Volatile
     private var runtime: EchoEqualizerRuntime = EchoEqualizerRuntime()
 
     private var coeffs: Array<EchoBiquadNormalized> = emptyArray()
     private var delayLine: FloatArray = FloatArray(0)
     private var configuredSampleRateHz: Int = 0
-    private var configuredFilterSignature: String = ""
+    private var configuredFilters: List<OpraEqBand>? = null
 
     fun setRuntime(runtime: EchoEqualizerRuntime) {
         this.runtime = runtime
@@ -32,7 +40,7 @@ class EchoEqualizerAudioProcessor : BaseAudioProcessor() {
             throw AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
         }
         configuredSampleRateHz = 0
-        configuredFilterSignature = ""
+        configuredFilters = null
         return inputAudioFormat
     }
 
@@ -43,11 +51,13 @@ class EchoEqualizerAudioProcessor : BaseAudioProcessor() {
         val format = inputAudioFormat
         val current = runtime
         if (!current.shouldProcess) {
+            reportProcessing(null)
             output.put(inputBuffer)
             output.flip()
             return
         }
         ensureCoeffs(current.filters, format.sampleRate)
+        reportProcessing(format.sampleRate)
         when (format.encoding) {
             C.ENCODING_PCM_16BIT,
             C.ENCODING_PCM_16BIT_BIG_ENDIAN,
@@ -65,27 +75,25 @@ class EchoEqualizerAudioProcessor : BaseAudioProcessor() {
     }
 
     override fun onFlush(streamMetadata: AudioProcessor.StreamMetadata) {
+        reportProcessing(null)
         delayLine.fill(0f)
     }
 
     override fun onReset() {
+        reportProcessing(null)
         delayLine = FloatArray(0)
         coeffs = emptyArray()
         configuredSampleRateHz = 0
-        configuredFilterSignature = ""
+        configuredFilters = null
     }
 
     private fun ensureCoeffs(filters: List<OpraEqBand>, sampleRateHz: Int) {
-        val signature = filters.joinToString(";") { band ->
-            "${band.type}:${band.frequencyHz}:${band.gainDb}:${band.q}:${band.slope}"
-        }
-        if (configuredSampleRateHz == sampleRateHz && configuredFilterSignature == signature) return
-        val nextCoeffs = filters.mapNotNull { band ->
-            EchoBiquadMath.coefficients(band, sampleRateHz.toFloat())?.normalizedOrNull()
-        }
+        if (configuredSampleRateHz == sampleRateHz && configuredFilters == filters) return
+        val nextCoeffs = filters.flatMap { band -> EchoBiquadMath.stages(band, sampleRateHz.toFloat()) }
+            .mapNotNull { it.normalizedOrNull() }
         coeffs = nextCoeffs.toTypedArray()
         configuredSampleRateHz = sampleRateHz
-        configuredFilterSignature = signature
+        configuredFilters = filters
         delayLine = FloatArray((inputAudioFormat.channelCount.coerceAtLeast(1) * coeffs.size * 2).coerceAtLeast(0))
     }
 

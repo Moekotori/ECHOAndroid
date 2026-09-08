@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.DeleteOutline
@@ -45,6 +46,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
@@ -223,6 +225,7 @@ internal fun TrackRow(
         onRemoveFromPlaylist = onRemoveFromPlaylist,
         onMoveUp = onMoveUp,
         onMoveDown = onMoveDown,
+        showMoreAction = true,
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 4.dp),
@@ -241,10 +244,10 @@ internal fun TrackRow(
             ) {
                 ArtworkTile(
                     track.artworkUri,
-                    Modifier.size(68.dp),
+                    Modifier.size(52.dp),
                     accent = rememberLibraryArtworkAccent(),
-                    cornerRadius = 12.dp,
-                    elevation = 3.dp,
+                    cornerRadius = 4.dp,
+                    elevation = 0.dp,
                 )
                 Column(
                     modifier = Modifier.weight(1f),
@@ -255,16 +258,16 @@ internal fun TrackRow(
                         color = if (dark) Color.White.copy(alpha = 0.98f) else scheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        fontWeight = FontWeight.ExtraBold,
-                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium,
+                        style = MaterialTheme.typography.bodyLarge,
                     )
                     Text(
                         subtitle,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         color = if (dark) Color.White.copy(alpha = 0.80f) else scheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Normal,
                     )
                     if (hasTags) {
                         Row(
@@ -291,14 +294,14 @@ internal fun TrackRow(
                     }
                 }
                 Column(
-                    modifier = Modifier.widthIn(min = 50.dp, max = 74.dp),
+                    modifier = Modifier.widthIn(min = 36.dp, max = 46.dp),
                     horizontalAlignment = Alignment.End,
                 ) {
                     Text(
                         duration,
                         color = if (dark) Color.White.copy(alpha = 0.82f) else scheme.onSurfaceVariant,
                         style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Normal,
                         maxLines = 1,
                     )
                 }
@@ -307,8 +310,8 @@ internal fun TrackRow(
                 Modifier
                     .fillMaxWidth()
                     .height(1.dp)
-                    .padding(start = 82.dp)
-                    .background(if (dark) Color.White.copy(alpha = 0.16f) else scheme.outlineVariant.copy(alpha = 0.36f)),
+                    .padding(start = 66.dp)
+                    .background(if (dark) Color.White.copy(alpha = 0.06f) else scheme.outlineVariant.copy(alpha = 0.36f)),
             )
         }
     }
@@ -334,6 +337,7 @@ internal fun TrackContextMenu(
     onRemoveFromPlaylist: ((EchoTrack) -> Unit)? = null,
     onMoveUp: (() -> Unit)? = null,
     onMoveDown: (() -> Unit)? = null,
+    showMoreAction: Boolean = false,
     modifier: Modifier = Modifier,
     content: @Composable (Modifier) -> Unit,
 ) {
@@ -345,12 +349,15 @@ internal fun TrackContextMenu(
     val canEditMetadata = onUpdateTrackMetadata != null && track.source == LibrarySource.MediaStore
 
     Box(modifier = modifier) {
-        content(
-            Modifier.echoCombinedClickable(
-                onClick = onPlay,
-                onLongClick = { sheetMode = TrackSheetMode.Actions },
-            ),
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) {
+                content(Modifier.echoCombinedClickable(onClick = onPlay, onLongClick = { sheetMode = TrackSheetMode.Actions }))
+            }
+            if (showMoreAction) IconButton(onClick = { sheetMode = TrackSheetMode.Actions }) {
+                Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(L10nR.string.library_track_actions),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
@@ -532,7 +539,7 @@ private fun TrackActionSheet(
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
             .padding(bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         TrackSheetHeader(track)
         TrackActionRow(stringResource(L10nR.string.feature_library_play_38419a), Icons.Rounded.PlayArrow, enabled = true, onClick = onPlay)
@@ -603,15 +610,15 @@ private fun TrackSheetHeader(track: EchoTrack) {
             track.artworkUri,
             Modifier.size(64.dp),
             accent = rememberLibraryArtworkAccent(),
-            cornerRadius = 16.dp,
-            elevation = 4.dp,
+            cornerRadius = 4.dp,
+            elevation = 0.dp,
         )
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
                 displayMetadataOrUnknown(track.title, unknownTrackLabel()),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                fontWeight = FontWeight.ExtraBold,
+                fontWeight = FontWeight.Medium,
                 style = MaterialTheme.typography.titleMedium,
             )
             Text(
@@ -620,7 +627,7 @@ private fun TrackSheetHeader(track: EchoTrack) {
                 overflow = TextOverflow.Ellipsis,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Normal,
             )
         }
     }
@@ -639,9 +646,9 @@ private fun TrackActionRow(
             .fillMaxWidth()
             .height(52.dp)
             .echoClickable(enabled = enabled, onClick = onClick),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (enabled) 0.58f else 0.28f),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)),
+        color = Color.Transparent,
+        shape = RoundedCornerShape(0.dp),
+        border = null,
     ) {
         Row(
             modifier = Modifier
@@ -660,7 +667,7 @@ private fun TrackActionRow(
                 label,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
                 style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -1021,23 +1028,14 @@ private fun TrackInfoTag(
 ) {
     val dark = LocalEchoDarkTheme.current
     val colors = remember(dark, tone) { trackInfoTagColors(tone, dark) }
-    Surface(
-        shape = RoundedCornerShape(7.dp),
-        color = colors.background,
-        border = BorderStroke(1.dp, colors.border),
-    ) {
-        Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-            color = colors.content,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = 10.sp,
-                lineHeight = 12.sp,
-            ),
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-        )
-    }
+    Text(
+        text = text,
+        modifier = Modifier.padding(end = 6.dp),
+        color = colors.content,
+        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, lineHeight = 12.sp),
+        fontWeight = FontWeight.Normal,
+        maxLines = 1,
+    )
 }
 
 @Composable

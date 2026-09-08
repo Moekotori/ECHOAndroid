@@ -142,197 +142,18 @@ internal fun rememberLibraryArtworkAccent(): Color {
 }
 
 @Composable
-internal fun LibraryPagerTabs(
-    selectedMode: LibraryViewMode,
-    onSelectMode: (LibraryViewMode) -> Unit,
-) {
-    val colors = rememberLibraryGlassColors()
-    val accent = rememberLibraryControlColor()
-    val visibleModes = remember {
-        listOf(
-            LibraryViewMode.Songs,
-            LibraryViewMode.Folders,
-            LibraryViewMode.Albums,
-            LibraryViewMode.Artists,
-            LibraryViewMode.Playlists,
-        )
-    }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(top = 0.dp, bottom = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(24.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        visibleModes.forEach { mode ->
-            val selected = selectedMode == mode
-            Column(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .echoClickable { onSelectMode(mode) }
-                    .padding(horizontal = 4.dp, vertical = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = mode.label(),
-                    color = if (selected) accent else colors.muted,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
-                    maxLines = 1,
-                )
-                Box(
-                    modifier = Modifier
-                        .width(20.dp)
-                        .height(3.dp)
-                        .clip(RoundedCornerShape(99.dp))
-                        .background(if (selected) accent else Color.Transparent),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-internal fun LibraryPlaceholderPage(
-    title: String,
-    subtitle: String,
-) {
-    val colors = rememberLibraryGlassColors()
-    EchoPanel(Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            EchoIconBadge(Icons.Rounded.LibraryMusic)
-            Text(title, color = colors.content, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(subtitle, color = colors.muted, style = MaterialTheme.typography.bodyMedium)
-        }
-    }
-}
-
-@Composable
-internal fun LibrarySearchBar(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    expandedWidth: Dp = 220.dp,
-) {
-    val colors = rememberLibraryGlassColors()
-    val dark = LocalEchoDarkTheme.current
-    val accent = rememberLibraryControlColor()
-    val shape = RoundedCornerShape(18.dp)
-    val focusRequester = remember { FocusRequester() }
-    val keyboard = LocalSoftwareKeyboardController.current
-    var expanded by remember { mutableStateOf(query.isNotBlank()) }
-    val width by animateDpAsState(
-        targetValue = if (expanded) expandedWidth else 46.dp,
-        animationSpec = EchoMotion.silkDp(320),
-        label = "library-search-width",
+internal fun LibraryPagerTabs(selectedMode: LibraryViewMode, onSelectMode: (LibraryViewMode) -> Unit, cloudOnly: Boolean = false) {
+    val modes = if (cloudOnly) listOf(LibraryViewMode.Albums) else listOf(
+        LibraryViewMode.Songs, LibraryViewMode.Albums, LibraryViewMode.Artists, LibraryViewMode.Folders, LibraryViewMode.Playlists,
     )
-
-    LaunchedEffect(query) {
-        if (query.isNotBlank()) expanded = true
-    }
-    LaunchedEffect(expanded) {
-        if (expanded) {
-            focusRequester.requestFocus()
-            keyboard?.show()
-        }
-    }
-
-    Box(
-        modifier = modifier
-            .width(width)
-            .height(56.dp),
-        contentAlignment = Alignment.CenterEnd,
-    ) {
-        AnimatedVisibility(
-            visible = !expanded,
-            enter = fadeIn(animationSpec = tween(durationMillis = 180, easing = EchoMotion.Silk)),
-            exit = fadeOut(animationSpec = tween(durationMillis = 120, easing = EchoMotion.SilkExit)),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(46.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .echoClickable { expanded = true },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Rounded.Search,
-                    contentDescription = stringResource(L10nR.string.feature_library_search_library_80ef90),
-                    tint = colors.content,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-        }
-        AnimatedVisibility(
-            visible = expanded,
-            enter = expandHorizontally(
-                expandFrom = Alignment.End,
-                animationSpec = EchoMotion.silkSize(320),
-            ) + fadeIn(animationSpec = tween(durationMillis = 220, easing = EchoMotion.Silk)),
-            exit = shrinkHorizontally(
-                shrinkTowards = Alignment.End,
-                animationSpec = EchoMotion.silkSize(240),
-            ) + fadeOut(animationSpec = tween(durationMillis = 140, easing = EchoMotion.SilkExit)),
-        ) {
-            TextField(
-                value = query,
-                onValueChange = onQueryChange,
-                modifier = Modifier
-                    .width(expandedWidth)
-                    .height(54.dp)
-                    .clip(shape)
-                    .border(BorderStroke(1.dp, colors.border), shape)
-                    .focusRequester(focusRequester),
-                singleLine = true,
-                leadingIcon = {
-                    Icon(
-                        Icons.Rounded.Search,
-                        contentDescription = null,
-                        tint = colors.muted,
-                        modifier = Modifier.size(20.dp),
-                    )
-                },
-                trailingIcon = {
-                    IconButton(
-                        onClick = {
-                            onQueryChange("")
-                            expanded = false
-                        },
-                    ) {
-                        Icon(
-                            Icons.Rounded.Close,
-                            contentDescription = stringResource(L10nR.string.feature_library_close_search_50a720),
-                            tint = colors.muted,
-                        )
-                    }
-                },
-                placeholder = {
-                    Text(
-                        stringResource(L10nR.string.feature_library_search_songs_artists_albums_14dc2c),
-                        color = colors.muted,
-                        maxLines = 1,
-                    )
-                },
-                textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.content),
-                shape = shape,
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = if (dark) EchoGlassPanel.copy(alpha = 0.48f) else Color.White.copy(alpha = 0.58f),
-                    unfocusedContainerColor = if (dark) EchoGlassPanel.copy(alpha = 0.38f) else Color.White.copy(alpha = 0.52f),
-                    disabledContainerColor = if (dark) EchoGlassPanel.copy(alpha = 0.28f) else Color.White.copy(alpha = 0.42f),
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    disabledIndicatorColor = Color.Transparent,
-                    cursorColor = accent,
-                ),
-            )
-        }
-    }
+    LibraryTextTabs(modes.map { it.label() }, modes.indexOf(selectedMode), { onSelectMode(modes[it]) })
 }
+
+@Composable
+internal fun LibraryPlaceholderPage(title: String, subtitle: String) {
+    LibraryCollectionEmpty(title, subtitle)
+}
+
 
 @Composable
 internal fun FolderList(
@@ -341,11 +162,11 @@ internal fun FolderList(
     modifier: Modifier = Modifier,
 ) {
     if (folders.loadState.refresh is LoadState.Loading) {
-        EmptyState(stringResource(L10nR.string.feature_library_loading_folders_54c760))
+        LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_loading_folders_54c760))
         return
     }
     if (folders.loadState.refresh is LoadState.Error) {
-        EmptyState(stringResource(L10nR.string.feature_library_failed_to_load_folders_d4887b))
+        LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_failed_to_load_folders_d4887b))
         return
     }
     if (folders.itemCount == 0) {
@@ -375,83 +196,19 @@ internal fun FolderList(
     }
 }
 @Composable
-private fun FolderRow(
-    folder: FolderSummary,
-    onClick: () -> Unit,
-) {
-    val colors = rememberLibraryGlassColors()
-    val dark = LocalEchoDarkTheme.current
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(
-                elevation = if (dark) 0.dp else 6.dp,
-                shape = RoundedCornerShape(20.dp),
-                ambientColor = Color.Black.copy(alpha = 0.03f),
-                spotColor = Color.Black.copy(alpha = 0.05f),
-            )
-            .clip(RoundedCornerShape(20.dp))
-            .background(
-                if (dark) {
-                    EchoGlassPanel.copy(alpha = 0.42f)
-                } else {
-                    Color.White.copy(alpha = 0.72f)
-                },
-            )
-            .border(BorderStroke(1.dp, colors.border), RoundedCornerShape(20.dp))
-            .echoClickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            ArtworkTile(
-                artworkUri = folder.artworkUri,
-                modifier = Modifier.size(64.dp),
-                accent = rememberLibraryArtworkAccent(),
-                showSignal = folder.artworkUri.isNullOrBlank(),
-                cornerRadius = 13.dp,
-                elevation = if (dark) 0.dp else 3.dp,
-                placeholderIconSize = 28.dp,
-            )
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text(
-                    folderDisplayName(folder),
-                    color = colors.content,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Black,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    folderPathLabel(folder),
-                    color = colors.muted,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
-                    FolderMetaChip(
-                        icon = Icons.Rounded.MusicNote,
-                        text = libraryTrackCountLabel(folder.trackCount),
-                    )
-                    folder.albumCount.takeIf { it > 0 }?.let {
-                        FolderMetaChip(
-                            icon = Icons.Rounded.LibraryMusic,
-                            text = stringResource(L10nR.string.feature_library_it_albums_3c43c1, (it).toString()),
-                        )
-                    }
-                }
-            }
-            Icon(
-                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                contentDescription = stringResource(L10nR.string.feature_library_open_folder_ab1708),
-                tint = if (dark) Color.White.copy(alpha = 0.68f) else colors.muted,
-                modifier = Modifier.size(26.dp),
-            )
+private fun FolderRow(folder: FolderSummary, onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().echoClickable(onClick = onClick).padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        ArtworkTile(folder.artworkUri, Modifier.size(56.dp), accent = rememberLibraryArtworkAccent(), cornerRadius = 4.dp)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(folderDisplayName(folder), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurface)
+            Text(folderPathLabel(folder), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(libraryTrackCountLabel(folder.trackCount), style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -672,21 +429,21 @@ internal fun AlbumWall(
     modifier: Modifier = Modifier,
 ) {
     if (albums.loadState.refresh is LoadState.Loading) {
-        EmptyState(stringResource(L10nR.string.feature_library_loading_albums_75c4f3))
+        LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_loading_albums_75c4f3))
         return
     }
     if (albums.loadState.refresh is LoadState.Error) {
-        EmptyState(stringResource(L10nR.string.feature_library_failed_to_load_albums_8a8685))
+        LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_failed_to_load_albums_8a8685))
         return
     }
     if (albums.itemCount == 0) {
-        EmptyState(
+        LibraryCollectionEmpty(
             stringResource(L10nR.string.feature_library_this_library_has_no_albums_to_show_yet_925b12),
         )
         return
     }
     LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
+        columns = GridCells.Adaptive(148.dp),
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
@@ -722,20 +479,20 @@ internal fun AlbumWallCard(
                 .fillMaxWidth()
                 .aspectRatio(1f),
             accent = rememberLibraryArtworkAccent(),
-            showSignal = album.artworkUri == null,
-            cornerRadius = 14.dp,
-            elevation = 8.dp,
+            showSignal = false,
+            cornerRadius = 4.dp,
+            elevation = 0.dp,
         )
         Text(
             displayMetadataOrUnknown(album.title, unknownAlbumLabel()),
             color = colors.content,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Medium,
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
         Text(
-            "$artistLabel / ${libraryTrackCountLabel(album.trackCount)}",
+            "$artistLabel · ${libraryTrackCountLabel(album.trackCount)}",
             color = colors.muted,
             style = MaterialTheme.typography.labelMedium,
             maxLines = 1,
@@ -751,21 +508,21 @@ internal fun ArtistWall(
     modifier: Modifier = Modifier,
 ) {
     if (artists.loadState.refresh is LoadState.Loading) {
-        EmptyState(stringResource(L10nR.string.feature_library_loading_artists_e9b16d))
+        LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_loading_artists_e9b16d))
         return
     }
     if (artists.loadState.refresh is LoadState.Error) {
-        EmptyState(stringResource(L10nR.string.feature_library_failed_to_load_artists_da82a6))
+        LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_failed_to_load_artists_da82a6))
         return
     }
     if (artists.itemCount == 0) {
-        EmptyState(
+        LibraryCollectionEmpty(
             stringResource(L10nR.string.feature_library_this_library_has_no_artists_to_show_yet_d95101),
         )
         return
     }
     LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
+        columns = GridCells.Adaptive(148.dp),
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
@@ -806,7 +563,7 @@ internal fun ArtistWallCard(
             displayMetadataOrUnknown(artist.name, unknownArtistLabel()),
             color = colors.content,
             style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Medium,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
@@ -823,105 +580,24 @@ internal fun ArtistWallCard(
 }
 
 @Composable
-private fun ArtistWallAvatar(
-    artworkUri: String?,
-    palette: ArtworkPalette,
-) {
-    val shape = CircleShape
-    Box(
-        modifier = Modifier
-            .size(76.dp)
-            .shadow(
-                elevation = 6.dp,
-                shape = shape,
-                clip = false,
-                ambientColor = Color.Black.copy(alpha = 0.06f),
-                spotColor = Color.Black.copy(alpha = 0.12f),
-            )
-            .clip(shape)
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        palette.vibrant.copy(alpha = if (LocalEchoDarkTheme.current) 0.48f else 0.55f),
-                        Color.White.copy(alpha = if (LocalEchoDarkTheme.current) 0.16f else 0.70f),
-                        palette.soft.copy(alpha = if (LocalEchoDarkTheme.current) 0.24f else 0.42f),
-                    ),
-                ),
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (artworkUri.isNullOrBlank()) {
-            Icon(
-                Icons.Rounded.Person,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.88f),
-                modifier = Modifier.size(38.dp),
-            )
-        } else {
-            EchoArtworkImage(
-                artworkUri = artworkUri,
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .scale(1.34f),
-                shape = CircleShape,
-            )
-        }
-    }
+private fun ArtistWallAvatar(artworkUri: String?, palette: ArtworkPalette) {
+    EchoArtworkImage(
+        artworkUri = artworkUri, contentDescription = null,
+        modifier = Modifier.size(96.dp), shape = CircleShape,
+    )
 }
 
 @Composable
-internal fun LibraryScanStatus(
-    scanState: LibraryScanProgress,
-    onCancelScan: () -> Unit,
-) {
-    val colors = rememberLibraryGlassColors()
-    EchoPanel(Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                EchoIconBadge(Icons.Rounded.Scanner)
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        text = scanPhaseLabel(scanState.phase),
-                        color = colors.content,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        text = scanState.currentTitle
-                            ?.takeIf { it.isNotBlank() }
-                            ?: stringResource(L10nR.string.feature_library_incrementally_indexing_local_music_3fc64d),
-                        color = colors.muted,
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                EchoTextButton(
-                    text = stringResource(L10nR.string.feature_library_cancel_scan_dcb52d),
-                    onClick = onCancelScan,
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                LibraryMetric(stringResource(L10nR.string.feature_library_scanned_862bfd), scanProgressValue(scanState), Modifier.weight(1f))
-                LibraryMetric(stringResource(L10nR.string.feature_library_added_155093), scanState.insertedCount.toString(), Modifier.weight(1f))
-                LibraryMetric(stringResource(L10nR.string.feature_library_updated_c440c1), scanState.updatedCount.toString(), Modifier.weight(1f))
-                LibraryMetric(stringResource(L10nR.string.feature_library_removed_7be2fd), scanState.deletedCount.toString(), Modifier.weight(1f))
-            }
-            scanState.error?.takeIf { it.isNotBlank() }?.let { error ->
-                Text(error, color = EchoColors.Coral, style = MaterialTheme.typography.bodySmall)
+internal fun LibraryScanStatus(scanState: LibraryScanProgress, onCancelScan: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("${scanPhaseLabel(scanState.phase)} · ${scanProgressValue(scanState)}", Modifier.weight(1f),
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            androidx.compose.material3.TextButton(onClick = onCancelScan) {
+                Text(stringResource(L10nR.string.feature_library_cancel_4c5fa5))
             }
         }
+        androidx.compose.material3.LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
     }
 }
 
@@ -1074,13 +750,13 @@ internal fun LibraryDetailPage(
         }
 
         when {
-            tracks.loadState.refresh is LoadState.Loading -> EmptyState(
+            tracks.loadState.refresh is LoadState.Loading -> LibraryCollectionEmpty(
                 stringResource(L10nR.string.feature_library_loading_tracks_8e2147),
             )
-            tracks.loadState.refresh is LoadState.Error -> EmptyState(
+            tracks.loadState.refresh is LoadState.Error -> LibraryCollectionEmpty(
                 stringResource(L10nR.string.feature_library_failed_to_load_tracks_f65c9b),
             )
-            tracks.itemCount == 0 -> EmptyState(
+            tracks.itemCount == 0 -> LibraryCollectionEmpty(
                 stringResource(L10nR.string.feature_library_no_tracks_yet_c4614a),
             )
             else -> TrackList(

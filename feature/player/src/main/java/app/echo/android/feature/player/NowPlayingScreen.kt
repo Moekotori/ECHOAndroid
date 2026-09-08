@@ -37,6 +37,10 @@ import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material3.TextButton
+import app.echo.android.model.i18n.echoText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -944,6 +948,7 @@ private fun NowPlayingLyricsPage(
                     is EchoLyricsLoadState.Error -> LyricsEmptyState(lyricsState.message, onImportLyrics)
                     is EchoLyricsLoadState.Ready -> LyricsLineList(
                         lyrics = lyricsState.lyrics,
+                        onAdjustOffset = onAdjustLyricsOffset,
                         positionMsState = positionMsState,
                         onSeek = onSeek,
                         lyricsFontFamily = lyricsFontFamily,
@@ -2038,6 +2043,7 @@ private fun lyricsFontDetail(mode: String, importedFontUri: String?): String =
 @Composable
 private fun LyricsLineList(
     lyrics: EchoLyrics,
+    onAdjustOffset: (Long) -> Unit,
     positionMsState: State<Long>,
     onSeek: (Long) -> Unit,
     lyricsFontFamily: FontFamily?,
@@ -2058,20 +2064,18 @@ private fun LyricsLineList(
         val synced = lyrics.isSynced
         // 进度经 State 引用传入 item,让行 lambda 捕获保持稳定:
         // 进度 tick 只重组"当前行"(逐词高亮),行切换才重组可见行。
-        val activeIndex by remember(lyrics, synced) {
-            derivedStateOf {
-                if (synced) {
-                    syncedLyricIndexAt(lyrics.lines, positionMsState.value).coerceAtLeast(0)
-                } else {
-                    -1
-                }
-            }
-        }
+        val timeline = remember(lyrics) { LyricsTimeline(lyrics.lines) }
+        val activeIndices by remember(timeline) { derivedStateOf {
+            if (synced) timeline.activeAt(positionMsState.value) else emptySet()
+        } }
+        val activeIndex = activeIndices.minOrNull() ?: -1
         val listState = rememberLazyListState()
-        LaunchedEffect(activeIndex, lyrics.lines.size, synced) {
-            if (synced && lyrics.lines.isNotEmpty()) {
-                listState.animateScrollToItem(activeIndex.coerceIn(0, lyrics.lines.lastIndex))
-            }
+        val dragging by listState.interactionSource.collectIsDraggedAsState()
+        var following by remember(lyrics.sourceLabel) { mutableStateOf(true) }
+        var calibrationIndex by remember(lyrics) { mutableStateOf<Int?>(null) }
+        LaunchedEffect(dragging) { if (dragging) following = false }
+        LaunchedEffect(activeIndex, lyrics, following) {
+            if (synced && activeIndex >= 0 && following) listState.animateScrollToItem(activeIndex)
         }
         val scale = lyricsFontScale.coerceIn(0.82f, 1.28f)
         val spacing = lyricsLineSpacing.coerceIn(0.82f, 1.38f)
@@ -2092,7 +2096,7 @@ private fun LyricsLineList(
                 items = lyrics.lines,
                 key = { index, line -> "${line.startMs}-$index-${line.text}" },
             ) { index, line ->
-                val active = synced && index == activeIndex
+                val active = synced && index in activeIndices
                 val focusDistance = if (activeIndex >= 0) abs(index - activeIndex).coerceAtMost(4) else 1
                 val seekable = synced && line.startMs >= 0L
                 val primaryAlpha = when (focusDistance) {
@@ -2146,7 +2150,7 @@ private fun LyricsLineList(
                         )
                         .then(
                             if (seekable) {
-                                Modifier.clickable { onSeek(line.startMs) }
+                                Modifier.combinedClickable(onClick = { onSeek(line.startMs) }, onLongClick = { following = false; calibrationIndex = index })
                             } else {
                                 Modifier
                             },
@@ -2168,17 +2172,18 @@ private fun LyricsLineList(
                     }
                     val wordHighlightEnabled = lyricsWordHighlightEnabled &&
                         !LocalEchoEffectivePerformanceMode.current.isLightweight
-                    Text(
-                        text = line.displayText(
-                            active = active,
-                            // 只有当前行读进度 State,其余行不订阅进度 tick
-                            positionMs = if (active && wordHighlightEnabled) positionMsState.value else 0L,
-                            activeColor = lyricAccent,
-                            highlightEnabled = wordHighlightEnabled,
-                            highlightIntensity = lyricsWordHighlightIntensity,
-                        ),
-                        modifier = Modifier.fillMaxWidth(),
+                    if (line.speaker != null || line.isBackground) {
+                        Text(text = if (line.isBackground) echoText("Backing vocals", "和声", "コーラス") else line.speaker.orEmpty(),
+                            color = lyricAccent.copy(alpha = 0.6f), style = MaterialTheme.typography.labelSmall)
+                    }
+                    KaraokeLyricText(
+                        line = line,
+                        active = active,
+                        enabled = wordHighlightEnabled,
+                        position = positionMsState,
                         color = lyricAccent.copy(alpha = animatedPrimaryAlpha),
+                        intensity = lyricsWordHighlightIntensity,
+                        modifier = Modifier.fillMaxWidth(),
                         style = if (active) {
                             MaterialTheme.typography.headlineLarge.copy(
                                 fontFamily = lyricsFontFamily,
@@ -2193,10 +2198,8 @@ private fun LyricsLineList(
                                 lineHeight = (30f * scale * spacing).sp,
                             )
                         },
-                        fontWeight = if (active) FontWeight.ExtraBold else FontWeight.Bold,
-                        textAlign = textAlign,
-                        maxLines = if (active) 3 else 2,
-                        overflow = TextOverflow.Ellipsis,
+                        weight = if (active) FontWeight.ExtraBold else FontWeight.Bold,
+                        align = textAlign,
                     )
                     line.translation?.takeIf { showTranslation && it.isNotBlank() }?.let { translation ->
                         Text(
@@ -2241,37 +2244,27 @@ private fun LyricsLineList(
                 }
             }
         }
-    }
-}
-
-private fun EchoLyricLine.displayText(
-    active: Boolean,
-    positionMs: Long,
-    activeColor: Color,
-    highlightEnabled: Boolean,
-    highlightIntensity: Float,
-) =
-    if (!active || !highlightEnabled || words.isEmpty()) {
-        buildAnnotatedString { append(text) }
-    } else {
-        buildAnnotatedString {
-            words.forEachIndexed { index, word ->
-                val nextStartMs = words.getOrNull(index + 1)?.startMs
-                val endMs = word.endMs ?: nextStartMs ?: this@displayText.endMs ?: Long.MAX_VALUE
-                val isCurrentWord = positionMs in word.startMs until endMs
-                val mutedAlpha = (0.56f + 0.18f * highlightIntensity.coerceIn(0.45f, 1.35f)).coerceIn(0.62f, 0.82f)
-                val color = if (isCurrentWord) activeColor else activeColor.copy(alpha = mutedAlpha)
-                pushStyle(
-                    SpanStyle(
-                        color = color,
-                        fontWeight = if (isCurrentWord) FontWeight.ExtraBold else FontWeight.Bold,
-                    ),
-                )
-                append(word.text)
-                pop()
+        Column(Modifier.align(Alignment.TopCenter).padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            if (synced && activeIndex < 0) {
+                val seconds by remember(timeline) { derivedStateOf {
+                    timeline.nextStart(positionMsState.value)?.let { ((it - positionMsState.value + 999) / 1000).coerceAtLeast(0) }
+                } }
+                seconds?.let { Text(echoText("Vocals in ${it}s", "距下一句 ${it} 秒", "次の歌詞まで ${it} 秒"), color = lyricAccent) }
+            }
+            if (!following && synced) {
+                TextButton(onClick = { following = true; calibrationIndex = null }) {
+                    Text(echoText("Back to current line", "回到当前句", "現在の歌詞に戻る"), color = lyricAccent)
+                }
+            }
+            calibrationIndex?.let { index ->
+                TextButton(onClick = {
+                    onAdjustOffset(positionMsState.value - lyrics.lines[index].startMs)
+                    calibrationIndex = null; following = true
+                }) { Text(echoText("This line starts now", "这句现在开始", "この行を今に合わせる"), color = lyricAccent) }
             }
         }
     }
+}
 
 @Composable
 private fun LyricsEmptyState(
@@ -3653,7 +3646,7 @@ private fun ArtworkPalette.asNowPlayingWash(): ArtworkPalette {
 
 /** 歌词行按 startMs 升序(解析器已排序),二分找最后一个 startMs <= positionMs+80 的行;无则 -1。 */
 private fun syncedLyricIndexAt(lines: List<EchoLyricLine>, positionMs: Long): Int {
-    val target = positionMs + 80L
+    val target = positionMs
     var low = 0
     var high = lines.lastIndex
     var result = -1
@@ -3673,11 +3666,9 @@ private fun currentSyncedLyricText(lyrics: EchoLyrics?, positionMs: Long): Strin
     if (lyrics == null || !lyrics.isSynced || lyrics.lines.isEmpty()) return null
     val index = syncedLyricIndexAt(lyrics.lines, positionMs)
     if (index < 0) return null
-    for (i in index downTo 0) {
-        val text = lyrics.lines[i].text.trim()
-        if (text.isNotEmpty()) return text
-    }
-    return null
+    val line = lyrics.lines[index]
+    if (line.endMs?.let { positionMs >= it } == true) return null
+    return line.text.takeIf { it.isNotBlank() }
 }
 
 private suspend fun settleNowPlayingDismiss(

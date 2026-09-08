@@ -210,8 +210,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         application.getString(R.string.usb_test_idle),
     )
     val usbExclusiveTestResult: StateFlow<String> = _usbExclusiveTestResult.asStateFlow()
-    private val _opraState = MutableStateFlow(OpraHeadphoneCorrectionState())
-    val opraState: StateFlow<OpraHeadphoneCorrectionState> = _opraState.asStateFlow()
+    private val opraSearch = OpraSearchController(viewModelScope, opraRepository) { en, zh, ja -> echoText(en = en, zh = zh, ja = ja) }
+    val opraState: StateFlow<OpraHeadphoneCorrectionState> = opraSearch.state
 
     private val albumPlaybackCounts = mutableMapOf<String, Int>()
     private val artistPlaybackCounts = mutableMapOf<String, Int>()
@@ -753,6 +753,11 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun setEqualizerPreamp(gainDb: Float) {
+        playbackController.setEqualizerPreamp(gainDb)
+        updateSettings { setEqualizerPreamp(gainDb) }
+    }
+
     fun setEqualizerEnabled(enabled: Boolean) {
         playbackController.setEqualizerEnabled(enabled)
         updateSettings {
@@ -782,99 +787,25 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    fun updateOpraQuery(query: String) {
-        _opraState.update { it.copy(query = query) }
-    }
+    fun updateOpraQuery(query: String) = opraSearch.setQuery(query)
 
-    fun searchOpraHeadphoneCorrections(refresh: Boolean = false) {
-        val query = _opraState.value.query.trim()
-        if (query.isBlank()) {
-            _opraState.update {
-                it.copy(
-                    message = echoText(
-                        en = "Enter a headphone model first",
-                        zh = "输入耳机型号后再搜索",
-                        ja = "先にヘッドホン機種を入力してください",
-                    ),
-                )
-            }
-            return
-        }
-        _opraState.update { it.copy(loading = true, message = null) }
-        viewModelScope.launch {
-            val result = opraRepository.search(query = query, refresh = refresh)
-            result
-                .onSuccess { searchResult ->
-                    _opraState.update {
-                        it.copy(
-                            loading = false,
-                            results = searchResult.products,
-                            status = searchResult.status,
-                            selectedEqId = searchResult.products.firstOrNull()?.presets?.firstOrNull()?.eqId,
-                            message = if (searchResult.products.isEmpty()) {
-                                echoText(
-                                    en = "OPRA found no matching model",
-                                    zh = "OPRA 未找到匹配型号",
-                                    ja = "OPRA に一致する機種がありません",
-                                )
-                            } else {
-                                null
-                            },
-                        )
-                    }
-                }
-                .onFailure { error ->
-                    _opraState.update {
-                        it.copy(
-                            loading = false,
-                            message = error.message ?: echoText(
-                                en = "OPRA search failed",
-                                zh = "OPRA 搜索失败",
-                                ja = "OPRA の検索に失敗しました",
-                            ),
-                        )
-                    }
-                }
-        }
-    }
+    fun searchOpraHeadphoneCorrections(refresh: Boolean = false) = opraSearch.search(refresh)
 
-    fun selectOpraPreset(eqId: String) {
-        _opraState.update { it.copy(selectedEqId = eqId) }
-    }
+    fun selectOpraPreset(eqId: String) = opraSearch.select(eqId)
 
     fun applySelectedOpraPreset() {
-        val preset = _opraState.value.selectedPreset
-        if (preset == null) {
-            _opraState.update {
-                it.copy(
-                    message = echoText(
-                        en = "Select an OPRA preset first",
-                        zh = "先选择一个 OPRA preset",
-                        ja = "先に OPRA プリセットを選んでください",
-                    ),
-                )
-            }
-            return
-        }
+        val preset = opraState.value.selectedPreset ?: return
+        if (opraState.value.loading) return
         playbackController.applyOpraPreset(preset)
         val equalizer = playbackController.equalizerState.value
         updateSettings {
-            setEqualizerParametricConfig(
-                gainsDb = equalizer.gainsDb,
-                preampDb = equalizer.preampDb,
-                filters = equalizer.filters,
-                sourceLabel = equalizer.sourceLabel,
-            )
+            setEqualizerParametricConfig(equalizer.gainsDb, equalizer.preampDb, equalizer.filters, equalizer.sourceLabel)
         }
-        _opraState.update {
-            it.copy(
-                message = echoText(
-                    en = "Applied ${preset.vendorName} ${preset.productName}",
-                    zh = "已应用 ${preset.vendorName} ${preset.productName}",
-                    ja = "${preset.vendorName} ${preset.productName} を適用しました",
-                ),
-            )
-        }
+        opraSearch.message(if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled) echoText(
+            en = "Saved. Bit-perfect mode currently bypasses EQ.",
+            zh = "已保存；bit-perfect 模式当前旁路 EQ。", ja = "保存しました。bit-perfect モードでは EQ はバイパスされます。",
+        ) else echoText(en = "Saved ${preset.displayName}. EQ enabled.",
+            zh = "已保存 ${preset.displayName}，均衡器已启用。", ja = "${preset.displayName} を保存し、EQ を有効にしました。"))
     }
 
     fun testUsbExclusiveDriver() {

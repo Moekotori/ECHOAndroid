@@ -28,6 +28,9 @@ data class EchoEqualizerState(
     val sourceLabel: String? = null,
     val filters: List<OpraEqBand> = emptyList(),
     val warning: String? = null,
+    val responseCurve: List<EchoEqResponsePoint> = emptyList(),
+    val suggestedPreampDb: Float = 0f,
+    val processingSampleRateHz: Int? = null,
 ) {
     val active: Boolean
         get() = enabled &&
@@ -56,6 +59,7 @@ object EchoEqFilterType {
     const val LowShelf = "low_shelf"
     const val HighShelf = "high_shelf"
     const val BandStop = "band_stop"
+    const val BandPass = "band_pass"
     const val LowPass = "low_pass"
     const val HighPass = "high_pass"
 
@@ -65,6 +69,7 @@ object EchoEqFilterType {
             "low_shelf", "lowshelf", "low_shelve" -> LowShelf
             "high_shelf", "highshelf", "high_shelve" -> HighShelf
             "band_stop", "bandstop", "notch" -> BandStop
+            "band_pass", "bandpass" -> BandPass
             "low_pass", "lowpass" -> LowPass
             "high_pass", "highpass" -> HighPass
             else -> type
@@ -76,6 +81,7 @@ fun OpraEqBand.normalizedType(): String = EchoEqFilterType.normalize(type)
 fun OpraEqBand.affectsFrequencyResponse(): Boolean =
     when (normalizedType()) {
         EchoEqFilterType.BandStop,
+        EchoEqFilterType.BandPass,
         EchoEqFilterType.LowPass,
         EchoEqFilterType.HighPass,
         -> true
@@ -147,3 +153,5 @@ object EchoEqualizerPresets {
     private fun resizedGains(gainsDb: List<Float>, size: Int): List<Float> =
         List(size) { index -> gainsDb.getOrElse(index) { 0f } }
 }
+
+data class EchoEqResponsePoint(val frequencyHz: Float, val gainDb: Float)

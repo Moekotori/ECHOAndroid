@@ -1,5 +1,6 @@
 package app.echo.android.lyrics
 
+import app.echo.android.model.lyrics.EchoLyricsCandidate
 import app.echo.android.model.lyrics.EchoLyrics
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
@@ -21,104 +22,72 @@ data class EchoLyricsSearchRequest(
 class OnlineLyricsResolver(
     private val httpGet: (String, Map<String, String>) -> String? = ::defaultHttpGet,
 ) {
-    fun loadForTrack(request: EchoLyricsSearchRequest): EchoLyrics? {
-        if (request.title.isBlank() || request.artist.isBlank()) return null
-        return loadFromNetease(request)
-            ?: loadFromLrclib(request)
+    fun loadForTrack(request: EchoLyricsSearchRequest): EchoLyrics? =
+        neteaseCandidates(request, limit = 1).firstOrNull()?.lyrics
+            ?: lrclibCandidates(request, limit = 1).firstOrNull()?.lyrics
+
+    fun search(request: EchoLyricsSearchRequest): List<EchoLyricsCandidate> {
+        if (request.title.isBlank() || request.artist.isBlank()) return emptyList()
+        return neteaseCandidates(request, 5) + lrclibCandidates(request, 5)
     }
 
     fun loadFromNeteaseSongId(songId: Long): EchoLyrics? {
         if (songId <= 0L) return null
-        val lyricsUrl = buildUrl(
-            base = "https://music.163.com/api/song/lyric",
-            params = listOf(
-                "id" to songId.toString(),
-                "lv" to "-1",
-                "kv" to "-1",
-                "tv" to "-1",
-            ),
-        )
-        val lyricsJson = httpGet(lyricsUrl, NeteaseHeaders) ?: return null
-        val rawLyrics = runCatching {
-            val root = JSONObject(lyricsJson)
-            root.optJSONObject("lrc")?.optLyricsText("lyric")
-                ?: root.optJSONObject("yrc")?.optLyricsText("lyric")
-                ?: root.optJSONObject("tlyric")?.optLyricsText("lyric")
-        }.getOrNull() ?: return null
-
-        return parseOnlineLyrics(rawLyrics, sourceLabel = "NetEase Cloud Music")
+        val url = buildUrl("https://music.163.com/api/song/lyric", listOf(
+            "id" to songId.toString(), "lv" to "-1", "kv" to "-1", "tv" to "-1",
+            "yv" to "-1", "rv" to "-1", "yrv" to "-1", "ytv" to "-1",
+        ))
+        val response = httpGet(url, NeteaseHeaders) ?: return null
+        val root = runCatching { JSONObject(response) }.getOrNull() ?: return null
+        fun lyrics(key: String): EchoLyrics? = root.optJSONObject(key)?.optLyricsText("lyric")
+            ?.let { parseOnlineLyrics(it, "NetEase Cloud Music") }
+        val primary = lyrics("yrc") ?: lyrics("lrc") ?: return null
+        val translated = lyrics("ytlrc") ?: lyrics("tlyric")
+        val romanized = lyrics("yromalrc") ?: lyrics("romalrc")
+        return primary.copy(lines = primary.lines.map { line ->
+            fun matching(aux: EchoLyrics?): String? = aux?.lines
+                ?.minByOrNull { abs(it.startMs - line.startMs) }
+                ?.takeIf { abs(it.startMs - line.startMs) <= 500L }?.text?.takeIf(String::isNotBlank)
+            line.copy(translation = matching(translated), romanization = matching(romanized))
+        })
     }
 
-    private fun loadFromNetease(request: EchoLyricsSearchRequest): EchoLyrics? {
-        val query = "${request.title} ${request.artist}".trim()
-        val searchUrl = buildUrl(
-            base = "https://music.163.com/api/search/get/web",
-            params = listOf(
-                "s" to query,
-                "type" to "1",
-                "limit" to "5",
-                "offset" to "0",
-            ),
-        )
-        val searchJson = httpGet(searchUrl, NeteaseHeaders) ?: return null
-        val songs = runCatching {
-            JSONObject(searchJson)
-                .optJSONObject("result")
-                ?.optJSONArray("songs")
-        }.getOrNull() ?: return null
-
-        val song = songs.objects()
-            .mapNotNull { candidate ->
-                val id = candidate.optLong("id").takeIf { it > 0L } ?: return@mapNotNull null
-                ScoredNeteaseSong(id, scoreNeteaseSong(request, candidate))
-            }
-            .filter { it.score >= MinimumNeteaseScore }
-            .maxByOrNull { it.score }
-            ?: return null
-
-        val lyricsUrl = buildUrl(
-            base = "https://music.163.com/api/song/lyric",
-            params = listOf(
-                "id" to song.id.toString(),
-                "lv" to "-1",
-                "kv" to "-1",
-                "tv" to "-1",
-            ),
-        )
-        val lyricsJson = httpGet(lyricsUrl, NeteaseHeaders) ?: return null
-        val rawLyrics = runCatching {
-            val root = JSONObject(lyricsJson)
-            root.optJSONObject("lrc")?.optLyricsText("lyric")
-                ?: root.optJSONObject("yrc")?.optLyricsText("lyric")
-                ?: root.optJSONObject("tlyric")?.optLyricsText("lyric")
-        }.getOrNull() ?: return null
-
-        return parseOnlineLyrics(rawLyrics, sourceLabel = "NetEase Cloud Music")
+    private fun neteaseCandidates(request: EchoLyricsSearchRequest, limit: Int): List<EchoLyricsCandidate> {
+        if (request.title.isBlank() || request.artist.isBlank()) return emptyList()
+        val url = buildUrl("https://music.163.com/api/search/get/web", listOf(
+            "s" to "${request.title} ${request.artist}", "type" to "1", "limit" to "5", "offset" to "0",
+        ))
+        val response = httpGet(url, NeteaseHeaders) ?: return emptyList()
+        val songs = runCatching { JSONObject(response).optJSONObject("result")?.optJSONArray("songs") }
+            .getOrNull() ?: return emptyList()
+        return songs.objects().map { it to scoreNeteaseSong(request, it) }
+            .filter { it.second >= MinimumNeteaseScore }.sortedByDescending { it.second }
+            .mapNotNull { (song, _) ->
+                val id = song.optLong("id")
+                val lyrics = loadFromNeteaseSongId(id) ?: return@mapNotNull null
+                EchoLyricsCandidate("netease:$id", song.optString("name"),
+                    song.optJSONArray("artists")?.objects()?.joinToString(" / ") { it.optString("name") }.orEmpty(),
+                    song.optJSONObject("album")?.optString("name"), song.optLong("duration"), lyrics)
+            }.take(limit).toList()
     }
 
-    private fun loadFromLrclib(request: EchoLyricsSearchRequest): EchoLyrics? {
-        val params = buildList {
-            add("track_name" to request.title)
-            add("artist_name" to request.artist)
-            request.album?.takeIf { it.isNotBlank() }?.let { add("album_name" to it) }
-            request.durationMs.takeIf { it > 0L }?.let { add("duration" to (it / 1000L).toString()) }
-        }
-        val searchUrl = buildUrl(base = "https://lrclib.net/api/search", params = params)
-        val searchJson = httpGet(searchUrl, LrclibHeaders) ?: return null
-        val records = runCatching { JSONArray(searchJson) }.getOrNull() ?: return null
-
-        val record = records.objects()
-            .map { candidate -> candidate to scoreLrclibRecord(request, candidate) }
-            .filter { (_, score) -> score >= MinimumLrclibScore }
-            .maxByOrNull { (_, score) -> score }
-            ?.first
-            ?: return null
-
-        val rawLyrics = record.optLyricsText("syncedLyrics")
-            ?: record.optLyricsText("plainLyrics")
-            ?: return null
-
-        return parseOnlineLyrics(rawLyrics, sourceLabel = "LRCLIB")
+    private fun lrclibCandidates(request: EchoLyricsSearchRequest, limit: Int): List<EchoLyricsCandidate> {
+        val url = buildUrl("https://lrclib.net/api/search", buildList {
+            add("track_name" to request.title); add("artist_name" to request.artist)
+            request.album?.takeIf(String::isNotBlank)?.let { add("album_name" to it) }
+        })
+        val response = httpGet(url, LrclibHeaders) ?: return emptyList()
+        val records = runCatching { JSONArray(response) }.getOrNull() ?: return emptyList()
+        return records.objects().map { it to scoreLrclibRecord(request, it) }
+            .filter { it.second >= MinimumLrclibScore }.sortedByDescending { it.second }
+            .mapNotNull { (record, _) ->
+                val raw = record.optLyricsText("syncedLyrics") ?: record.optLyricsText("plainLyrics")
+                    ?: return@mapNotNull null
+                val lyrics = parseOnlineLyrics(raw, "LRCLIB") ?: return@mapNotNull null
+                EchoLyricsCandidate("lrclib:${record.optLong("id")}", record.optString("trackName"),
+                    record.optString("artistName"), record.optString("albumName"),
+                    (record.optDouble("duration", 0.0) * 1000).toLong(), lyrics)
+            }.take(limit).toList()
     }
 
     private fun parseOnlineLyrics(rawLyrics: String, sourceLabel: String): EchoLyrics? =
@@ -170,6 +139,13 @@ class OnlineLyricsResolver(
         val title = candidateTitle.normalizedKey()
         val artist = candidateArtist.normalizedKey()
         val album = candidateAlbum.normalizedKey()
+        if (targetTitle.isBlank() || targetArtist.isBlank() || title.isBlank() || artist.isBlank()) return 0
+        if (!(artist == targetArtist || artist.contains(targetArtist) || targetArtist.contains(artist))) return 0
+        if (!(title == targetTitle || title.contains(targetTitle) || targetTitle.contains(title))) return 0
+        if (request.durationMs > 0L && candidateDurationMs > 0L &&
+            abs(request.durationMs - candidateDurationMs) > 15_000L) return 0
+        val versions = listOf("live", "remix", "instrumental", "karaoke", "现场", "伴奏")
+        if (versions.any { targetTitle.contains(it) != title.contains(it) }) return 0
         var score = 0
 
         score += when {

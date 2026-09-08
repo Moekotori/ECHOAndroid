@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_add_music">音楽を追加</string>
+    <string name="library_access_title">あなたの音楽をここから</string>
+    <string name="library_access_detail">音声へのアクセスを許可すると、スマホ内の音楽を閲覧できます。</string>
+    <string name="library_retry">再試行</string>
+    <string name="library_no_matches">一致する音楽がありません</string>
+    <string name="library_search_hint">別の曲名、アーティスト、アルバムを試してください。</string>
+    <string name="library_start_collection">お気に入りの音楽を集めよう</string>
+    <string name="library_import_hint">スマホをスキャンするか、右上から音楽フォルダーを追加できます。</string>
+    <string name="library_clear_search">検索をクリア</string>
+    <string name="library_track_actions">曲の操作</string>
+    <string name="library_playlist_actions">プレイリストの操作</string>
+</resources>

@@ -9,10 +9,14 @@ import app.echo.android.model.playback.OpraHeadphoneCorrectionPreset
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlin.math.ceil
 
 @UnstableApi
 class EchoEqualizerController {
-    val processor = EchoEqualizerAudioProcessor()
+    val processor = EchoEqualizerAudioProcessor { rate ->
+        _state.update { it.copy(processingSampleRateHz = rate) }
+    }
 
     private val _state = MutableStateFlow(
         EchoEqualizerState(supported = true, available = true),
@@ -27,6 +31,8 @@ class EchoEqualizerController {
     private var desiredFilters: List<OpraEqBand> = emptyList()
     private var desiredSourceLabel: String? = null
     private var lastShouldProcess: Boolean = false
+    private var curveFilters: List<OpraEqBand>? = null
+    private var filterCurve = emptyList<app.echo.android.model.playback.EchoEqResponsePoint>()
 
     fun setConfig(
         enabled: Boolean,
@@ -55,6 +61,13 @@ class EchoEqualizerController {
                 EchoEqualizerPresets.gainsForPreset(EchoEqualizerPreset.Custom)
             }
         }
+        desiredPreampDb = preampDb.coerceIn(-24f, 12f)
+        publish()
+    }
+
+    fun setPreamp(gainDb: Float) {
+        if (!gainDb.isFinite()) return
+        desiredPreampDb = gainDb.coerceIn(-24f, 12f)
         publish()
     }
 
@@ -71,6 +84,7 @@ class EchoEqualizerController {
     }
 
     fun setBandGain(index: Int, gainDb: Float) {
+        if (desiredParametric || !gainDb.isFinite()) return
         val bands = currentBands()
         val safeIndex = index.coerceIn(0, (bands.size - 1).coerceAtLeast(0))
         val band = bands.getOrNull(safeIndex)
@@ -82,7 +96,7 @@ class EchoEqualizerController {
             }
         }.ifEmpty { listOf(gainDb) }
         desiredPresetId = EchoEqualizerPreset.Custom
-        clearParametric()
+        clearParametric(resetPreamp = false)
         if (band == null && desiredGainsDb.isNotEmpty()) {
             publish()
             return
@@ -121,7 +135,13 @@ class EchoEqualizerController {
             filters = desiredFilters,
             gainsDb = desiredGainsDb,
         )
-        val processingPreampDb = if (desiredParametric) desiredPreampDb else 0f
+        val processingPreampDb = desiredPreampDb
+        if (curveFilters != processingFilters) {
+            curveFilters = processingFilters
+            filterCurve = EchoEqualizerEngine.responseCurve(processingFilters)
+        }
+        val maxBoost = filterCurve.maxOfOrNull { it.gainDb }?.coerceAtLeast(0f) ?: 0f
+        val suggestedPreamp = if (maxBoost < 0.05f) 0f else -(ceil(maxBoost * 10) / 10 + 0.5f).coerceAtMost(24f)
         val runtime = EchoEqualizerRuntime(
             enabled = desiredEnabled,
             preampDb = processingPreampDb,
@@ -144,18 +164,18 @@ class EchoEqualizerController {
             sourceLabel = desiredSourceLabel,
             filters = if (desiredParametric) desiredFilters else emptyList(),
             warning = null,
+            responseCurve = filterCurve.map { it.copy(gainDb = it.gainDb + processingPreampDb) },
+            suggestedPreampDb = suggestedPreamp,
         )
-        if (_state.value != nextState) {
-            _state.value = nextState
-        }
+        _state.update { nextState.copy(processingSampleRateHz = it.processingSampleRateHz) }
     }
 
     private fun currentBands() = _state.value.bands.ifEmpty { EchoEqualizerPresets.defaultBands(desiredGainsDb) }
 
-    private fun clearParametric() {
+    private fun clearParametric(resetPreamp: Boolean = true) {
         desiredParametric = false
         desiredFilters = emptyList()
-        desiredPreampDb = 0f
+        if (resetPreamp) desiredPreampDb = 0f
         desiredSourceLabel = null
     }
 }

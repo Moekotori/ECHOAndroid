@@ -38,16 +38,18 @@ internal data class OpraDatabase(
 )
 
 internal object OpraDatabaseParser {
-    fun parse(rawText: String, source: String): OpraDatabase {
+    fun parse(rawText: String, source: String): OpraDatabase = parseLines(rawText.lineSequence(), source)
+
+    fun parseLines(lines: Sequence<String>, source: String): OpraDatabase {
         val vendors = mutableMapOf<String, OpraVendor>()
         val products = mutableMapOf<String, OpraProduct>()
         val eqsByProductId = mutableMapOf<String, MutableList<OpraEq>>()
         var eqCount = 0
 
-        rawText.lineSequence().forEach { line ->
+        lines.forEach { line ->
             if (line.isBlank()) return@forEach
+            val record = JSONObject(line) // Reject truncated/HTML cache files instead of reporting an empty database.
             runCatching {
-                val record = JSONObject(line)
                 val id = record.optTrimmedString("id") ?: return@runCatching
                 val data = record.optJSONObject("data") ?: return@runCatching
                 when (record.optTrimmedString("type")) {
@@ -71,8 +73,7 @@ internal object OpraDatabaseParser {
                         if (data.optTrimmedString("type") != "parametric_eq") return@runCatching
                         val productId = data.optTrimmedString("product_id") ?: return@runCatching
                         val parameters = data.optJSONObject("parameters") ?: return@runCatching
-                        val bands = parseBands(parameters)
-                        if (bands.isEmpty()) return@runCatching
+                        val bands = parseBands(parameters) ?: return@runCatching
                         val eq = OpraEq(
                             id = id,
                             productId = productId,
@@ -89,6 +90,7 @@ internal object OpraDatabaseParser {
             }
         }
 
+        require(vendors.isNotEmpty() && products.isNotEmpty() && eqCount > 0) { "opra_invalid_database" }
         return OpraDatabase(
             vendors = vendors,
             products = products,
@@ -132,22 +134,29 @@ internal object OpraDatabaseParser {
             .take(limit)
     }
 
-    private fun parseBands(parameters: JSONObject): List<OpraEqBand> {
-        val array = parameters.optJSONArray("bands") ?: return emptyList()
-        return List(array.length()) { index -> array.optJSONObject(index) }
-            .mapNotNull { raw ->
-                val band = raw ?: return@mapNotNull null
-                val type = EchoEqFilterType.normalize(band.optTrimmedString("type") ?: return@mapNotNull null)
-                val frequency = band.optFloat("frequency") ?: return@mapNotNull null
-                if (frequency <= 0f) return@mapNotNull null
-                OpraEqBand(
-                    type = type,
-                    frequencyHz = frequency,
-                    gainDb = band.optFloat("gain_db") ?: 0f,
-                    q = band.optFloat("q"),
-                    slope = band.optFloat("slope"),
-                )
+    private fun parseBands(parameters: JSONObject): List<OpraEqBand>? {
+        val array = parameters.optJSONArray("bands") ?: return null
+        if (array.length() !in 1..32) return null
+        val output = ArrayList<OpraEqBand>(array.length())
+        for (index in 0 until array.length()) {
+            val band = array.optJSONObject(index) ?: return null
+            val type = EchoEqFilterType.normalize(band.optTrimmedString("type") ?: return null)
+            val frequency = band.optFloat("frequency") ?: return null
+            val gain = band.optFloat("gain_db") ?: 0f
+            val q = band.optFloat("q")
+            val slope = band.optFloat("slope")
+            if (!frequency.isFinite() || frequency <= 0f || !gain.isFinite() || gain !in -60f..36f) return null
+            when (type) {
+                EchoEqFilterType.LowPass, EchoEqFilterType.HighPass ->
+                    if ((slope ?: 12f) !in listOf(6f, 12f, 18f, 24f, 30f, 36f)) return null
+                EchoEqFilterType.PeakDip, EchoEqFilterType.LowShelf, EchoEqFilterType.HighShelf,
+                EchoEqFilterType.BandPass, EchoEqFilterType.BandStop ->
+                    if (q == null || !q.isFinite() || q !in 0.1f..100f) return null
+                else -> return null // Never apply only the recognized part of a correction.
             }
+            output.add(OpraEqBand(type, frequency, gain, q, slope))
+        }
+        return output
     }
 
     private fun createProductResult(
@@ -183,7 +192,8 @@ internal object OpraDatabaseParser {
         val haystack = normalizeSearchText(
             "${vendor.name} ${product.name} ${product.id.replace('_', ' ').replace("::", " ")}",
         )
-        if (!tokens.all(haystack::contains)) return -1
+        val compact = haystack.replace(" ", "")
+        if (!tokens.all { haystack.contains(it) || compact.contains(it) }) return -1
         val productName = normalizeSearchText(product.name)
         val vendorName = normalizeSearchText(vendor.name)
         return tokens.sumOf { token ->
@@ -209,5 +219,5 @@ internal fun JSONObject.optTrimmedString(name: String): String? =
 internal fun JSONObject.optFloat(name: String): Float? {
     if (!has(name) || isNull(name)) return null
     val value = optDouble(name, Double.NaN)
-    return value.takeIf { it.isFinite() }?.toFloat()
+    return value.takeIf { it.isFinite() }?.toFloat()?.takeIf { it.isFinite() }
 }

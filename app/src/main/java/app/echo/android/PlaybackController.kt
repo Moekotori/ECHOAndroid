@@ -238,6 +238,8 @@ internal class PlaybackController(
         )
     }
 
+    fun setEqualizerPreamp(gainDb: Float) = equalizerController.setPreamp(gainDb)
+
     fun setEqualizerEnabled(enabled: Boolean) {
         equalizerController.setEnabled(enabled)
     }

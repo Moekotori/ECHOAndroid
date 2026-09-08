@@ -9,7 +9,10 @@ object EchoLrcParser {
     fun parse(rawText: String, sourceLabel: String? = null): EchoLyrics {
         val metadata = linkedMapOf<String, String>()
         val parsedLines = mutableListOf<ParsedLine>()
-        var offsetMs = 0L
+        val offsetMs = rawText.lineSequence().map(String::trim)
+            .mapNotNull { MetadataRegex.matchEntire(it) }
+            .filter { it.groupValues[1].equals("offset", ignoreCase = true) }
+            .mapNotNull { it.groupValues[2].trim().toLongOrNull() }.lastOrNull() ?: 0L
 
         rawText
             .replace("\uFEFF", "")
@@ -22,7 +25,6 @@ object EchoLrcParser {
                     val key = metadataMatch.groupValues[1].trim().lowercase()
                     val value = metadataMatch.groupValues[2].trim()
                     metadata[key] = value
-                    if (key == "offset") offsetMs = value.toLongOrNull() ?: offsetMs
                     return@forEach
                 }
 
@@ -34,13 +36,13 @@ object EchoLrcParser {
                 val content = rawLine.replace(TimeTagRegex, "").trim()
                 val words = parseEnhancedWords(content)
                 val cleanText = cleanLyricText(content, words)
-                if (cleanText.isBlank() && words.isEmpty()) return@forEach
+                // Empty timed lines deliberately end the preceding lyric (instrumental gap).
 
                 timestamps.forEach { timestamp ->
                     parsedLines += ParsedLine(
                         startMs = (timestamp + offsetMs).coerceAtLeast(0L),
                         text = cleanText,
-                        words = words.offsetBy(offsetMs),
+                        words = words.offsetBy(offsetMs + timestamp - timestamps.first()),
                     )
                 }
             }
