@@ -175,6 +175,15 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     val playbackDiagnostics: StateFlow<PlaybackDiagnosticsState> = playbackController.playbackDiagnostics
     val equalizerState: StateFlow<EchoEqualizerState> = playbackController.equalizerState
     val lyricsState: StateFlow<EchoLyricsLoadState> = lyricsController.lyricsState
+    val lyricsCandidates = lyricsController.candidates
+    val lyricsSearching = lyricsController.searching
+    val lyricsManagementError = lyricsController.managementError
+
+    fun searchLyrics() = lyricsController.refreshLyrics(playbackController.currentTrackId)
+    fun cancelLyricsSearch() = lyricsController.cancelSearch()
+    fun selectLyricsCandidate(id: String) = lyricsController.selectCandidate(id, playbackController.currentTrackId)
+    fun removeLyricsSelection() = lyricsController.removeSelection(playbackController.currentTrackId)
+
     val appSettings: Flow<EchoAppSettings> = settingsStore.appSettings
     val lastFmState: StateFlow<LastFmUiState> = lastFmController.uiState
     val discordPresenceSnapshot: Flow<EchoMobileDiscordPresenceSnapshot?> =
@@ -773,6 +782,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun setEqualizerBandGain(index: Int, gainDb: Float) {
+        if (playbackController.equalizerState.value.parametric) return
         playbackController.setEqualizerBandGain(index, gainDb)
         val gainsDb = playbackController.equalizerState.value.gainsDb
         updateSettings {

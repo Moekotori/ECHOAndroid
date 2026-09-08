@@ -58,7 +58,7 @@ class EchoLrcParserTest {
               <body>
                 <div>
                   <p begin="00:00:01.000" end="00:00:03.000">
-                    <span begin="00:00:01.000" end="00:00:01.500">LiFE</span>
+                    <span begin="00:00:01.000" end="00:00:01.500">LiFE </span>
                     <span begin="00:00:01.500" end="00:00:02.000">Garden</span>
                   </p>
                 </div>
@@ -136,7 +136,7 @@ class EchoLrcParserTest {
         val lyrics = EchoLyricsParser.parse(
             """
             [ar:Yooh]
-            [1500,2200](0,500,0)LiFE (500,700,0)Garden
+            [1500,2200](1500,500,0)LiFE (2000,700,0)Garden
             """.trimIndent(),
             sourceLabel = "track.yrc",
         )

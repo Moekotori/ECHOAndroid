@@ -202,9 +202,9 @@ class LibraryScanPolicyTest {
     }
 
     @Test
-    fun primaryStorageFolderUsesMediaStorePrefixNotSaf() {
-        assertFalse(LibraryScanPolicy.usesDocumentTreeScan("primary"))
-        assertFalse(LibraryScanPolicy.usesDocumentTreeScan("PRIMARY"))
+    fun allExplicitStorageFoldersUseDocumentTrees() {
+        assertTrue(LibraryScanPolicy.usesDocumentTreeScan("primary"))
+        assertTrue(LibraryScanPolicy.usesDocumentTreeScan("PRIMARY"))
         assertTrue(LibraryScanPolicy.usesDocumentTreeScan("1234-5678"))
     }
 
@@ -368,15 +368,23 @@ class LibraryScanPolicyTest {
     }
 
     @Test
-    fun duplicateKeyMatchesAcrossSourcesIgnoringVolumeCase() {
-        assertEquals(
-            LibraryScanPolicy.localFileDuplicateKey("Removable/1D0C-1A0E/Music/", 1_024L, 99L),
-            LibraryScanPolicy.localFileDuplicateKey("Removable/1d0c-1a0e/Music", 1_024L, 99L),
-        )
-        assertNull(LibraryScanPolicy.localFileDuplicateKey(null, 1_024L, 99L))
-        assertNull(LibraryScanPolicy.localFileDuplicateKey("  ", 1_024L, 99L))
-        assertNull(LibraryScanPolicy.localFileDuplicateKey("Music/", 0L, 99L))
-        assertNull(LibraryScanPolicy.localFileDuplicateKey("Music/", 1_024L, 0L))
+    fun duplicateIdentityRequiresFilenameAndPreservesCase() {
+        val first = LibraryScanPolicy.localFileDuplicateKey("Music/", 1024L, 99L, "first.wav")
+        assertTrue(first != LibraryScanPolicy.localFileDuplicateKey("Music/", 1024L, 99L, "second.wav"))
+        assertTrue(first != LibraryScanPolicy.localFileDuplicateKey("Music/", 1024L, 99L, "FIRST.wav"))
+        assertTrue(first != LibraryScanPolicy.localFileDuplicateKey("music/", 1024L, 99L, "first.wav"))
+        assertEquals(first, LibraryScanPolicy.localFileDuplicateKey("Music", 1024L, 99L, "first.wav"))
+        assertNull(LibraryScanPolicy.localFileDuplicateKey("Music/", 1024L, 99L))
+        assertNull(LibraryScanPolicy.localFileDuplicateKey("Music/", 0L, 99L, "first.wav"))
+        assertNull(LibraryScanPolicy.localFileDuplicateKey(null, 1024L, 99L, "first.wav"))
+    }
+
+    @Test
+    fun confirmedEmptyFolderDeletesButFailedTraversalNeverDoes() {
+        val empty = LibraryScanCompleteness(true, 0, 12, confirmedEmpty = true)
+        assertTrue(LibraryScanPolicy.shouldDeleteMissingLibraryRows(empty))
+        assertFalse(LibraryScanPolicy.shouldDeleteMissingLibraryRows(empty.copy(querySucceeded = false)))
+        assertFalse(LibraryScanPolicy.shouldDeleteMissingLibraryRows(empty.copy(hitVisitCap = true)))
     }
 
     @Test

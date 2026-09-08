@@ -546,6 +546,7 @@ fun NowPlayingScreen(
                         modifier = Modifier.fillMaxSize(),
                     )
                     NowPlayingPage.Lyrics -> NowPlayingLyricsPage(
+                        animationsVisible = pagerState.currentPage == NowPlayingPage.Lyrics.ordinal,
                         status = status,
                         lyricsState = lyricsState,
                         showLyricsControlDeck = showLyricsControlDeck,
@@ -908,8 +909,13 @@ private fun NowPlayingLyricsPage(
     onOpenLyricsSettings: () -> Unit,
     showTransportDock: Boolean = true,
     modifier: Modifier = Modifier,
+    animationsVisible: Boolean = true,
 ) {
     val readyLyrics = (lyricsState as? EchoLyricsLoadState.Ready)?.lyrics
+    val displayPosition = rememberLyricsDisplayPosition(
+        positionMsState, status.track?.id, status.isPlaying, status.playbackSpeed,
+        animationsVisible && !LocalEchoEffectivePerformanceMode.current.isLightweight,
+    )
     val lyricAccent = lyricsColorForMode(lyricsColorMode)
     val lyricsDimAlpha by animateFloatAsState(
         targetValue = lyricsBackgroundDim.coerceIn(0f, 0.78f),
@@ -949,7 +955,7 @@ private fun NowPlayingLyricsPage(
                     is EchoLyricsLoadState.Ready -> LyricsLineList(
                         lyrics = lyricsState.lyrics,
                         onAdjustOffset = onAdjustLyricsOffset,
-                        positionMsState = positionMsState,
+                        positionMsState = displayPosition,
                         onSeek = onSeek,
                         lyricsFontFamily = lyricsFontFamily,
                         lyricsFontScale = lyricsFontScale,
@@ -2071,7 +2077,7 @@ private fun LyricsLineList(
         val activeIndex = activeIndices.minOrNull() ?: -1
         val listState = rememberLazyListState()
         val dragging by listState.interactionSource.collectIsDraggedAsState()
-        var following by remember(lyrics.sourceLabel) { mutableStateOf(true) }
+        var following by remember(lyrics) { mutableStateOf(true) }
         var calibrationIndex by remember(lyrics) { mutableStateOf<Int?>(null) }
         LaunchedEffect(dragging) { if (dragging) following = false }
         LaunchedEffect(activeIndex, lyrics, following) {

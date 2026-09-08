@@ -22,21 +22,22 @@ data class EchoLyricsSearchRequest(
 class OnlineLyricsResolver(
     private val httpGet: (String, Map<String, String>) -> String? = ::defaultHttpGet,
 ) {
-    fun loadForTrack(request: EchoLyricsSearchRequest): EchoLyrics? =
-        neteaseCandidates(request, limit = 1).firstOrNull()?.lyrics
-            ?: lrclibCandidates(request, limit = 1).firstOrNull()?.lyrics
+    fun loadForTrack(request: EchoLyricsSearchRequest, checkCancelled: () -> Unit = {}): EchoLyrics? =
+        neteaseCandidates(request, limit = 1, checkCancelled).firstOrNull()?.lyrics
+            ?: lrclibCandidates(request, limit = 1, checkCancelled).firstOrNull()?.lyrics
 
-    fun search(request: EchoLyricsSearchRequest): List<EchoLyricsCandidate> {
+    fun search(request: EchoLyricsSearchRequest, checkCancelled: () -> Unit = {}): List<EchoLyricsCandidate> {
         if (request.title.isBlank() || request.artist.isBlank()) return emptyList()
-        return neteaseCandidates(request, 5) + lrclibCandidates(request, 5)
+        return neteaseCandidates(request, 5, checkCancelled) + lrclibCandidates(request, 5, checkCancelled)
     }
 
-    fun loadFromNeteaseSongId(songId: Long): EchoLyrics? {
+    fun loadFromNeteaseSongId(songId: Long, checkCancelled: () -> Unit = {}): EchoLyrics? {
         if (songId <= 0L) return null
         val url = buildUrl("https://music.163.com/api/song/lyric", listOf(
             "id" to songId.toString(), "lv" to "-1", "kv" to "-1", "tv" to "-1",
             "yv" to "-1", "rv" to "-1", "yrv" to "-1", "ytv" to "-1",
         ))
+        checkCancelled()
         val response = httpGet(url, NeteaseHeaders) ?: return null
         val root = runCatching { JSONObject(response) }.getOrNull() ?: return null
         fun lyrics(key: String): EchoLyrics? = root.optJSONObject(key)?.optLyricsText("lyric")
@@ -52,11 +53,12 @@ class OnlineLyricsResolver(
         })
     }
 
-    private fun neteaseCandidates(request: EchoLyricsSearchRequest, limit: Int): List<EchoLyricsCandidate> {
+    private fun neteaseCandidates(request: EchoLyricsSearchRequest, limit: Int, checkCancelled: () -> Unit): List<EchoLyricsCandidate> {
         if (request.title.isBlank() || request.artist.isBlank()) return emptyList()
         val url = buildUrl("https://music.163.com/api/search/get/web", listOf(
             "s" to "${request.title} ${request.artist}", "type" to "1", "limit" to "5", "offset" to "0",
         ))
+        checkCancelled()
         val response = httpGet(url, NeteaseHeaders) ?: return emptyList()
         val songs = runCatching { JSONObject(response).optJSONObject("result")?.optJSONArray("songs") }
             .getOrNull() ?: return emptyList()
@@ -64,18 +66,19 @@ class OnlineLyricsResolver(
             .filter { it.second >= MinimumNeteaseScore }.sortedByDescending { it.second }
             .mapNotNull { (song, _) ->
                 val id = song.optLong("id")
-                val lyrics = loadFromNeteaseSongId(id) ?: return@mapNotNull null
+                val lyrics = loadFromNeteaseSongId(id, checkCancelled) ?: return@mapNotNull null
                 EchoLyricsCandidate("netease:$id", song.optString("name"),
                     song.optJSONArray("artists")?.objects()?.joinToString(" / ") { it.optString("name") }.orEmpty(),
                     song.optJSONObject("album")?.optString("name"), song.optLong("duration"), lyrics)
             }.take(limit).toList()
     }
 
-    private fun lrclibCandidates(request: EchoLyricsSearchRequest, limit: Int): List<EchoLyricsCandidate> {
+    private fun lrclibCandidates(request: EchoLyricsSearchRequest, limit: Int, checkCancelled: () -> Unit): List<EchoLyricsCandidate> {
         val url = buildUrl("https://lrclib.net/api/search", buildList {
             add("track_name" to request.title); add("artist_name" to request.artist)
             request.album?.takeIf(String::isNotBlank)?.let { add("album_name" to it) }
         })
+        checkCancelled()
         val response = httpGet(url, LrclibHeaders) ?: return emptyList()
         val records = runCatching { JSONArray(response) }.getOrNull() ?: return emptyList()
         return records.objects().map { it to scoreLrclibRecord(request, it) }
@@ -93,7 +96,7 @@ class OnlineLyricsResolver(
     private fun parseOnlineLyrics(rawLyrics: String, sourceLabel: String): EchoLyrics? =
         runCatching { EchoLyricsParser.parse(rawLyrics, sourceLabel = sourceLabel) }
             .getOrNull()
-            ?.takeIf { it.lines.isNotEmpty() }
+            ?.takeIf { it.lines.any { line -> line.text.isNotBlank() } }
             ?.let { lyrics ->
                 lyrics.copy(metadata = lyrics.metadata + ("provider" to sourceLabel))
             }

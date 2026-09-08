@@ -6,6 +6,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class OpraDatabaseParserTest {
+    @Test(expected = IllegalArgumentException::class)
+    fun refusesEmptyDatabase() { OpraDatabaseParser.parse("", "fixture") }
+
+    @Test(expected = org.json.JSONException::class)
+    fun refusesTruncatedCacheInsteadOfReturningPartialResults() {
+        OpraDatabaseParser.parse(SampleDatabase + "\n{", "fixture")
+    }
+
     @Test
     fun parsesParametricEqAndSkipsProductsWithoutCurves() {
         val database = OpraDatabaseParser.parse(SampleDatabase, "fixture")

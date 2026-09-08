@@ -42,11 +42,11 @@ internal fun SignalEqualizer(
             Switch(checked = state.enabled, onCheckedChange = onEnabledChange, modifier = Modifier.semantics { contentDescription = title })
         }
         SignalNote(stringResource(when {
-            bypassed -> R.string.eq_bypassed
-            !state.enabled -> R.string.eq_disabled
-            !playing -> R.string.eq_waiting_audio
-            state.processingSampleRateHz == null -> R.string.eq_waiting_pipeline
-            else -> R.string.eq_processing
+            bypassed -> L10nR.string.eq_bypassed
+            !state.enabled -> L10nR.string.eq_disabled
+            !playing -> L10nR.string.eq_waiting_audio
+            state.processingSampleRateHz == null -> L10nR.string.eq_waiting_pipeline
+            else -> L10nR.string.eq_processing
         }))
         SignalEqCurve(state.responseCurve)
         state.warning?.let { SignalNote(it, error = true) }
@@ -61,7 +61,7 @@ internal fun SignalEqualizer(
         // Warn before the sliders: moving a band replaces the parametric correction.
         if (state.parametric) {
             Text(state.sourceLabel ?: stringResource(L10nR.string.diag_eq_parametric), style = MaterialTheme.typography.titleSmall)
-            SignalNote(stringResource(R.string.eq_parametric_kept, state.filters.size))
+            SignalNote(stringResource(L10nR.string.eq_parametric_kept, state.filters.size))
             state.filters.forEach { band ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("${formatEqFrequency(band.frequencyHz.toInt())} · ${band.type}", style = MaterialTheme.typography.bodySmall)
@@ -69,7 +69,7 @@ internal fun SignalEqualizer(
                 }
             }
             TextButton(onClick = { onPresetSelected(EchoEqualizerPreset.Flat) }) {
-                Text(stringResource(R.string.eq_use_graphic))
+                Text(stringResource(L10nR.string.eq_use_graphic))
             }
         }
         if (!state.parametric) state.bands.forEach { band ->
@@ -97,20 +97,20 @@ internal fun SignalEqualizer(
 
         HorizontalDivider()
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.eq_preamp), style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(L10nR.string.eq_preamp), style = MaterialTheme.typography.titleSmall)
             Text(formatEqGain(state.preampDb), style = MaterialTheme.typography.labelLarge)
         }
-        val preampLabel = stringResource(R.string.eq_preamp)
+        val preampLabel = stringResource(L10nR.string.eq_preamp)
         Slider(value = state.preampDb.coerceIn(-24f, 12f), onValueChange = { onPreampChange((it * 10).roundToInt() / 10f) },
             valueRange = -24f..12f, modifier = Modifier.fillMaxWidth().semantics { contentDescription = preampLabel })
         if (state.preampDb > state.suggestedPreampDb + 0.1f) {
-            SignalNote(stringResource(R.string.eq_headroom_warning, formatEqGain(state.suggestedPreampDb)), error = true)
-            TextButton(onClick = { onPreampChange(state.suggestedPreampDb) }) { Text(stringResource(R.string.eq_apply_headroom)) }
+            SignalNote(stringResource(L10nR.string.eq_headroom_warning, formatEqGain(state.suggestedPreampDb)), error = true)
+            TextButton(onClick = { onPreampChange(state.suggestedPreampDb) }) { Text(stringResource(L10nR.string.eq_apply_headroom)) }
         }
 
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) {
-                SignalNote(stringResource(if (state.parametric) R.string.eq_parametric_mode else R.string.eq_graphic_mode))
+                SignalNote(stringResource(if (state.parametric) L10nR.string.eq_parametric_mode else L10nR.string.eq_graphic_mode))
             }
             TextButton(onClick = onReset) { Text(stringResource(L10nR.string.feature_settings_reset_1106f5)) }
         }
@@ -119,9 +119,9 @@ internal fun SignalEqualizer(
 
 @Composable
 private fun eqPresetLabel(id: String): String = stringResource(when (id) {
-    EchoEqualizerPreset.Warm -> R.string.eq_preset_warm
-    EchoEqualizerPreset.Bass -> R.string.eq_preset_bass
-    EchoEqualizerPreset.Vocal -> R.string.eq_preset_vocal
-    EchoEqualizerPreset.Bright -> R.string.eq_preset_bright
-    else -> R.string.eq_preset_flat
+    EchoEqualizerPreset.Warm -> L10nR.string.eq_preset_warm
+    EchoEqualizerPreset.Bass -> L10nR.string.eq_preset_bass
+    EchoEqualizerPreset.Vocal -> L10nR.string.eq_preset_vocal
+    EchoEqualizerPreset.Bright -> L10nR.string.eq_preset_bright
+    else -> L10nR.string.eq_preset_flat
 })

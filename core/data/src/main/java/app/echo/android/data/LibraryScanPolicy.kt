@@ -7,6 +7,7 @@ data class LibraryScanCompleteness(
     val scannedCount: Int,
     val existingCount: Int,
     val hitVisitCap: Boolean = false,
+    val confirmedEmpty: Boolean = false,
 )
 
 object LibraryScanPolicy {
@@ -18,7 +19,7 @@ object LibraryScanPolicy {
     fun shouldDeleteMissingLibraryRows(completeness: LibraryScanCompleteness): Boolean {
         if (!completeness.querySucceeded) return false
         if (completeness.hitVisitCap) return false
-        if (completeness.scannedCount <= 0 && completeness.existingCount > 0) return false
+        if (completeness.scannedCount <= 0 && completeness.existingCount > 0 && !completeness.confirmedEmpty) return false
         return true
     }
 
@@ -73,7 +74,7 @@ object LibraryScanPolicy {
         localMediaStoreCount <= 0
 
     fun usesDocumentTreeScan(volume: String): Boolean =
-        !volume.equals("primary", ignoreCase = true)
+        volume.isNotBlank()
 
     fun splitDocumentTreeId(documentId: String): Pair<String, String>? {
         val trimmed = documentId.trim()
@@ -197,17 +198,20 @@ object LibraryScanPolicy {
     }
 
     /**
-     * 本地文件跨来源(mediastore/saf)的同一性钥匙:目录 + 大小 + mtime。
+     * 本地文件跨来源(mediastore/saf)的同一性钥匙:目录 + 文件名 + 大小 + mtime。
      * 任一字段不可信(空/0)时返回 null,表示放弃去重判定。
      */
     fun localFileDuplicateKey(
         relativePath: String?,
         sizeBytes: Long,
         dateModifiedSeconds: Long,
+        displayName: String? = null,
     ): String? {
         val dir = relativePath?.replace('\\', '/')?.trim('/')?.takeIf { it.isNotBlank() } ?: return null
         if (sizeBytes <= 0L || dateModifiedSeconds <= 0L) return null
-        return "${dir.lowercase()}|$sizeBytes|$dateModifiedSeconds"
+        val name = displayName?.takeIf { it.isNotBlank() } ?: return null
+        // 保留路径和文件名大小写，避免在区分大小写的 provider 上误合并。
+        return "${dir.length}:$dir${name.length}:$name|$sizeBytes|$dateModifiedSeconds"
     }
 
     fun shouldReuseUnchangedDocumentFingerprint(

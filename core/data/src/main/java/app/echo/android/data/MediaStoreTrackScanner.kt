@@ -51,7 +51,8 @@ class MediaStoreTrackScanner(
             batch.clear()
         }
 
-        suspend fun consumeFullListing(listing: Cursor, collection: MediaStoreCollection) {
+        suspend fun consumeFullListing(listing: Cursor, collection: MediaStoreCollection): Boolean {
+            var complete = true
             val columns = MediaStoreColumns.from(listing)
             while (listing.moveToNext()) {
                 coroutineContext.ensureActive()
@@ -59,6 +60,7 @@ class MediaStoreTrackScanner(
                     listing.toAudioRow(collection, columns)
                         .toTrackEntity(existingTracks, readSampleRate)
                 }.onFailure { error ->
+                    complete = false
                     Log.w(TAG, "Skipping unreadable MediaStore audio row.", error)
                 }.getOrNull() ?: continue
                 batch += track
@@ -68,6 +70,7 @@ class MediaStoreTrackScanner(
                     flushBatch()
                 }
             }
+            return complete
         }
 
         // 只有全部查询成功的卷才算"完整扫过":null 游标(卷 provider 短暂不可用等)
@@ -80,12 +83,12 @@ class MediaStoreTrackScanner(
                 // 首扫:直接全列拉取
                 val cursor = queryAudioListing(collection, selection, selectionArgs) ?: continue
                 querySucceeded = true
-                cursor.use { listing ->
+                val complete = cursor.use { listing ->
                     estimatedTotal += listing.count.coerceAtLeast(0)
                     onTotalCount(estimatedTotal.takeIf { it > 0 })
                     consumeFullListing(listing, collection)
                 }
-                completeVolumeScopes += volumeScope
+                if (complete) completeVolumeScopes += volumeScope
                 continue
             }
             // 增量:先用 _ID/DATE_MODIFIED/SIZE 三列轻量游标与库内快照比对,
@@ -134,7 +137,9 @@ class MediaStoreTrackScanner(
                     volumeComplete = false
                     continue
                 }
-                cursor.use { listing -> consumeFullListing(listing, collection) }
+                if (!cursor.use { listing -> consumeFullListing(listing, collection) }) {
+                    volumeComplete = false
+                }
             }
             if (volumeComplete) {
                 completeVolumeScopes += volumeScope
@@ -150,6 +155,58 @@ class MediaStoreTrackScanner(
             querySucceeded = true,
             completeVolumeScopes = completeVolumeScopes,
         )
+    }
+
+    /** Resolve actual filenames and paths from MediaStore; titles are editable tags, not filenames. */
+    suspend fun documentTreeDuplicateKeys(
+        existing: Collection<TrackFingerprint>,
+        onUnresolvedIds: (List<String>) -> Unit = {},
+    ): Map<String, LibraryTrackEntity> {
+        val keys = mutableMapOf<String, LibraryTrackEntity>()
+        val fingerprints = existing.associateBy { it.id }
+        for ((collectionUri, tracks) in existing.filter { LibraryScanPolicy.isMediaStoreNativeId(it.id) }
+            .groupBy { it.contentUri.substringBeforeLast('/') }) {
+            val collection = MediaStoreCollection(Uri.parse(collectionUri), null)
+            for (chunk in tracks.chunked(IdChunkSize)) {
+                coroutineContext.ensureActive()
+                try {
+                    val args = chunk.map { it.contentUri.substringAfterLast('/') }.toTypedArray()
+                    val cursor = contentResolver.query(
+                        collection.uri, projection().filterNot { it == SampleRateColumn }.toTypedArray() + MediaStore.Audio.Media.DISPLAY_NAME,
+                        "${MediaStore.Audio.Media._ID} IN (${args.joinToString(",") { "?" }})",
+                        args, null,
+                    )
+                    if (cursor == null) {
+                        onUnresolvedIds(chunk.map { it.id })
+                        continue
+                    }
+                    cursor.use {
+                        val columns = MediaStoreColumns.from(cursor)
+                        val nameIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
+                        while (cursor.moveToNext()) {
+                            coroutineContext.ensureActive()
+                            val row = cursor.toAudioRow(collection, columns)
+                            val key = LibraryScanPolicy.localFileDuplicateKey(
+                                row.relativePath, row.sizeBytes, row.dateModifiedSeconds,
+                                cursor.getStringOrNull(nameIndex),
+                            )
+                            if (key == null) {
+                                onUnresolvedIds(listOf("mediastore:${row.mediaId}"))
+                                continue
+                            }
+                            keys[key] = row.toTrackEntity(fingerprints, readSampleRate = false)
+                        }
+                    }
+                } catch (error: kotlinx.coroutines.CancellationException) {
+                    throw error
+                } catch (error: RuntimeException) {
+                    // SAF access is sufficient for a folder scan; uncertain identity never authorizes deduplication.
+                    onUnresolvedIds(chunk.map { it.id })
+                    Log.w(TAG, "Cannot resolve MediaStore file identities; retaining SAF files.", error)
+                }
+            }
+        }
+        return keys
     }
 
     private fun Cursor.toAudioRow(

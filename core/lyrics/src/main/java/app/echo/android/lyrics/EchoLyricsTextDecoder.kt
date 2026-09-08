@@ -9,6 +9,9 @@ import java.nio.charset.StandardCharsets
 object EchoLyricsTextDecoder {
     fun decode(bytes: ByteArray): String? {
         if (bytes.isEmpty()) return ""
+        if (bytes.size >= 4 && bytes.copyOfRange(0, 4).contentEquals("krc1".toByteArray())) {
+            return decodeKrc(bytes)
+        }
 
         decodeBom(bytes)?.let { return it }
 
@@ -28,6 +31,22 @@ object EchoLyricsTextDecoder {
         return decodeLenient(bytes, Gb18030)?.takeIf { it.isReadableText() }
             ?: decodeLenient(bytes, StandardCharsets.UTF_8)?.takeIf { it.isReadableText() }
     }
+
+    private fun decodeKrc(bytes: ByteArray): String? = runCatching {
+        val key = intArrayOf(64, 71, 97, 119, 94, 50, 116, 71, 81, 54, 49, 45, 206, 210, 110, 105)
+        val payload = ByteArray(bytes.size - 4) { i -> (bytes[i + 4].toInt() xor key[i % key.size]).toByte() }
+        java.util.zip.InflaterInputStream(payload.inputStream()).use { input ->
+            val output = java.io.ByteArrayOutputStream()
+            val buffer = ByteArray(8192)
+            while (true) {
+                val count = input.read(buffer)
+                if (count < 0) break
+                require(output.size() + count <= 2 * 1024 * 1024) { "Decompressed lyrics exceed 2 MB" }
+                output.write(buffer, 0, count)
+            }
+            decodeStrict(output.toByteArray(), StandardCharsets.UTF_8)
+        }
+    }.getOrNull()
 
     private fun decodeBom(bytes: ByteArray): String? =
         when {

@@ -1,7 +1,8 @@
 package app.echo.android.ui.playback
 
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import app.echo.android.feature.player.LyricsManagerDialog
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
@@ -32,6 +33,24 @@ internal fun EchoNowPlayingHost(
     val lyricsState by viewModel.lyricsState.collectAsStateWithLifecycle()
     val favoriteTrackIds by viewModel.favoriteTrackIds.collectAsStateWithLifecycle(emptySet())
     val isCurrentTrackFavorite = playbackStatus.track?.id?.let { it in favoriteTrackIds } == true
+    var showLyricsManager by remember(playbackStatus.track?.id) { mutableStateOf(false) }
+    if (showLyricsManager) {
+        val candidates by viewModel.lyricsCandidates.collectAsStateWithLifecycle()
+        val searching by viewModel.lyricsSearching.collectAsStateWithLifecycle()
+        val error by viewModel.lyricsManagementError.collectAsStateWithLifecycle()
+        DisposableEffect(Unit) { onDispose { viewModel.cancelLyricsSearch() } }
+        LyricsManagerDialog(
+            trackTitle = playbackStatus.track?.title.orEmpty(), candidates = candidates,
+            searching = searching, error = error,
+            selectedId = (lyricsState as? app.echo.android.model.lyrics.EchoLyricsLoadState.Ready)?.lyrics?.metadata?.get("selection_id"),
+            onSearch = viewModel::searchLyrics,
+            onChoose = viewModel::selectLyricsCandidate,
+            onImport = { showLyricsManager = false; onImportLyrics() },
+            onRemove = viewModel::removeLyricsSelection,
+            onAdjustOffset = viewModel::adjustLyricsOffset,
+            onDismiss = { showLyricsManager = false },
+        )
+    }
     NowPlayingScreen(
         status = playbackStatus,
         positionState = playbackPosition,
@@ -68,7 +87,7 @@ internal fun EchoNowPlayingHost(
         onSetReplayGain = viewModel::setReplayGain,
         onAdjustReplayGainPreamp = viewModel::adjustReplayGainPreamp,
         onSetSkipSilenceEnabled = viewModel::setSkipSilenceEnabled,
-        onImportLyrics = onImportLyrics,
+        onImportLyrics = { showLyricsManager = true },
         onAdjustLyricsOffset = viewModel::adjustLyricsOffset,
         onResetLyricsOffset = viewModel::resetLyricsOffset,
         onOpenArtist = onOpenArtist,

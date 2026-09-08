@@ -91,4 +91,27 @@ class OnlineLyricsResolverTest {
         assertEquals("Plain first", lyrics.lines.first().text)
         assertEquals(false, lyrics.isSynced)
     }
+    @Test fun prefersWordsAndMergesAuxiliaryTracks() {
+        val resolver = OnlineLyricsResolver { _, _ -> """{
+            "lrc":{"lyric":"[00:01.00]Hello"},
+            "yrc":{"lyric":"[1000,2000](1000,1000,0)Hello\n[4000,1000](4000,1000,0)Again"},
+            "tlyric":{"lyric":"[00:01.00]你好"},
+            "romalrc":{"lyric":"[00:01.00]ni hao"}
+        }""" }
+        val line = requireNotNull(resolver.loadFromNeteaseSongId(42)).lines.first()
+        assertEquals(1, line.words.size)
+        assertEquals("你好", line.translation)
+        assertEquals("ni hao", line.romanization)
+    }
+
+    @Test fun rejectsSameTitleByDifferentArtistEvenWithoutDuration() {
+        var fetchedLyrics = false
+        val resolver = OnlineLyricsResolver { url, _ -> when {
+            url.contains("api/search") -> """{"result":{"songs":[{"id":42,"name":"Hello","artists":[{"name":"Wrong artist"}]}]}}"""
+            url.contains("song/lyric") -> { fetchedLyrics = true; null }
+            else -> "[]"
+        } }
+        assertEquals(null, resolver.loadForTrack(EchoLyricsSearchRequest("Hello", "Correct artist")))
+        assertEquals(false, fetchedLyrics)
+    }
 }

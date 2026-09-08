@@ -2,6 +2,8 @@ package app.echo.android.data
 
 import androidx.paging.PagingSource
 import androidx.room.Room
+import androidx.room.withTransaction
+import kotlinx.coroutines.launch
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import kotlinx.coroutines.flow.first
@@ -71,6 +73,46 @@ class LibraryTrackDaoAndroidTest {
 
         dao.deleteFtsByTrackIds(listOf("1"))
         assertTrue(dao.getTrackQueueByFts("renamed*", "%renamed%", 10).isEmpty())
+    }
+
+    @Test
+    fun scanBatchRefreshesOldAndNewCategoriesWithoutFinalization() = runBlocking {
+        val old = track("scan", "Song", artist = "Old artist", album = "Old album", albumArtist = null)
+            .copy(relativePath = "Music/Old/")
+        dao.upsertScanBatch(listOf(old))
+        val moved = old.copy(artist = "New artist", album = "New album", relativePath = "Music/New/")
+            .withScanMetadata(2L)
+        dao.upsertScanBatch(listOf(moved))
+        val albums = dao.pageAlbums(null, "Title").load(
+            PagingSource.LoadParams.Refresh(null, 10, false),
+        ) as PagingSource.LoadResult.Page
+        assertEquals(listOf("New album"), albums.data.map { it.title })
+        assertEquals(1, dao.observeLibraryStats().first().artistCount)
+        val folders = database.openHelper.readableDatabase.query("SELECT folderKey FROM library_folder_summaries")
+        folders.use {
+            assertTrue(it.moveToFirst())
+            assertEquals("Music/New/", it.getString(0))
+            assertTrue(!it.moveToNext())
+        }
+        dao.deleteScanBatch(listOf("scan"))
+        assertEquals(0, dao.countTracks())
+        assertEquals(0, dao.countAlbumSummaries())
+        assertTrue(dao.getTrackQueueByFts("song*", "%song%", 10).isEmpty())
+    }
+
+    @Test
+    fun cancelledScanTransactionRollsBackTracksAndSummaries() = runBlocking {
+        dao.upsertScanBatch(listOf(track("committed", "Committed")))
+        val job = launch {
+            database.withTransaction {
+                dao.upsertScanBatch(listOf(track("cancelled", "Cancelled")))
+                throw kotlinx.coroutines.CancellationException("stop scan")
+            }
+        }
+        job.join()
+        assertEquals(1, dao.countTracks())
+        assertEquals(1, dao.countAlbumSummaries())
+        assertTrue(dao.getTrackQueueByFts("cancelled*", "%cancelled%", 10).isEmpty())
     }
 
     private fun track(

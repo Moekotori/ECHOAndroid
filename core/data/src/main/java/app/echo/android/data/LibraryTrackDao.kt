@@ -758,6 +758,26 @@ interface LibraryTrackDao {
         upsertFtsBatch(tracks)
     }
 
+    /** Each committed scan batch includes search and both old/new category summaries. */
+    @Transaction
+    suspend fun upsertScanBatch(tracks: List<LibraryTrackEntity>) {
+        if (tracks.isEmpty()) return
+        var keys = tracks.toSummaryKeySet()
+        getSummaryKeyRows(tracks.map { it.id }).forEach { keys += it.toSummaryKeySet() }
+        upsertBatchWithFts(tracks)
+        rebuildLibrarySummariesForKeys(keys.albumKeys, keys.artistKeys, keys.folderKeys)
+    }
+
+    @Transaction
+    suspend fun deleteScanBatch(ids: List<String>) {
+        if (ids.isEmpty()) return
+        var keys = LibrarySummaryKeySet()
+        getSummaryKeyRows(ids).forEach { keys += it.toSummaryKeySet() }
+        deleteTracksByIds(ids)
+        deleteFtsByTrackIds(ids)
+        rebuildLibrarySummariesForKeys(keys.albumKeys, keys.artistKeys, keys.folderKeys)
+    }
+
     @Transaction
     suspend fun upsertFtsBatch(tracks: List<LibraryTrackEntity>) {
         if (tracks.isEmpty()) return

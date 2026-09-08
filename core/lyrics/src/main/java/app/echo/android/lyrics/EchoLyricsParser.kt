@@ -7,7 +7,9 @@ import app.echo.android.model.lyrics.EchoLyricsFormat
 
 object EchoLyricsParser {
     fun parse(rawText: String, sourceLabel: String? = null): EchoLyrics {
-        val text = rawText.replace("\uFEFF", "").trim()
+        val normalized = rawText.replace("\uFEFF", "").trim()
+        val text = Regex("""LyricContent\s*=\s*"([^"]*)""", RegexOption.IGNORE_CASE)
+            .find(normalized)?.groupValues?.get(1)?.let(::decodeEntities) ?: normalized
         if (text.isBlank()) return EchoLyrics(sourceLabel = sourceLabel, format = EchoLyricsFormat.PlainText)
 
         return when {
@@ -149,9 +151,12 @@ object EchoLyricsParser {
                 val startMs = lineMatch.groupValues[1].toLongOrNull() ?: return@mapNotNull null
                 val durationMs = lineMatch.groupValues[2].toLongOrNull() ?: 0L
                 val body = lineMatch.groupValues[3]
-                val words = parseDurationWords(body, lineStartMs = startMs, relative = sourceLabel?.endsWith(".krc", true) == true || body.contains(KrcWordRegex))
+                val words = if (sourceLabel?.endsWith(".qrc", true) == true && !body.startsWith("(")) {
+                    parseQrcWords(body)
+                } else parseDurationWords(body, lineStartMs = startMs,
+                    relative = sourceLabel?.endsWith(".krc", true) == true || body.contains(KrcWordRegex))
                 val textValue = if (words.isNotEmpty()) {
-                    words.joinToString(separator = "") { it.text }.compactWhitespace()
+                    words.joinToString(separator = "") { it.text }
                 } else {
                     body.replace(DurationWordRegex, "").compactWhitespace()
                 }
@@ -179,25 +184,31 @@ object EchoLyricsParser {
         )
     }
 
-    private fun parseDurationWords(body: String, lineStartMs: Long, relative: Boolean): List<EchoLyricWord> =
-        DurationWordRegex.findAll(body)
-            .mapNotNull { match ->
-                val startMs = (match.groupValues[1].ifBlank { match.groupValues[3] })
-                    .toLongOrNull()
-                    ?: return@mapNotNull null
-                val durationMs = (match.groupValues[2].ifBlank { match.groupValues[4] })
-                    .toLongOrNull()
-                    ?: 0L
-                val text = decodeEntities(stripTags(match.groupValues[5])).takeIf { it.isNotBlank() }
-                    ?: return@mapNotNull null
-                val absoluteStartMs = if (relative) lineStartMs + startMs else startMs
-                EchoLyricWord(
-                    startMs = absoluteStartMs.coerceAtLeast(0L),
-                    endMs = (absoluteStartMs + durationMs).takeIf { durationMs > 0L },
-                    text = text,
-                )
-            }
-            .toList()
+    private fun parseQrcWords(body: String): List<EchoLyricWord> {
+        var cursor = 0
+        val words = QrcTimeRegex.findAll(body).map { match ->
+            val word = body.substring(cursor, match.range.first)
+            cursor = match.range.last + 1
+            val start = match.groupValues[1].toLong()
+            EchoLyricWord(start, start + match.groupValues[2].toLong(), word)
+        }.toMutableList()
+        if (cursor < body.length && words.isNotEmpty()) {
+            val last = words.last(); words[words.lastIndex] = last.copy(text = last.text + body.substring(cursor))
+        }
+        return words
+    }
+
+    private fun parseDurationWords(body: String, lineStartMs: Long, relative: Boolean): List<EchoLyricWord> {
+        val tags = DurationWordRegex.findAll(body).toList()
+        return tags.mapIndexed { index, match ->
+            val start = (match.groupValues[1].ifBlank { match.groupValues[3] }).toLong()
+            val duration = (match.groupValues[2].ifBlank { match.groupValues[4] }).toLong()
+            val absolute = if (relative) lineStartMs + start else start
+            val prefix = if (index == 0) body.substring(0, match.range.first) else ""
+            EchoLyricWord(absolute, absolute + duration,
+                prefix + body.substring(match.range.last + 1, tags.getOrNull(index + 1)?.range?.first ?: body.length))
+        }
+    }
 
     private fun parsePlainText(text: String, sourceLabel: String?): EchoLyrics {
         val lines = text.lineSequence()
@@ -240,22 +251,17 @@ object EchoLyricsParser {
         return hours * 3_600_000L + minutes * 60_000L + seconds * 1_000L + millis
     }
 
-    private fun List<EchoLyricLine>.withLineEnds(): List<EchoLyricLine> =
-        sortedBy { it.startMs }.let { sorted -> sorted.mapIndexed { index, line ->
-            if (line.endMs != null) {
-                line
-            } else {
-                line.copy(endMs = sorted.drop(index + 1).firstOrNull { it.startMs > line.startMs }?.startMs?.takeIf { it >= 0L })
+    private fun List<EchoLyricLine>.withLineEnds(): List<EchoLyricLine> {
+        val sorted = sortedBy { it.startMs }
+        var nextDistinctStart: Long? = null
+        return sorted.indices.reversed().map { index ->
+            val line = sorted[index]
+            if (index < sorted.lastIndex && sorted[index + 1].startMs > line.startMs) {
+                nextDistinctStart = sorted[index + 1].startMs
             }
-        }
-
+            line.copy(endMs = line.endMs ?: nextDistinctStart)
+        }.reversed()
     }
-
-    private fun ttmlAttribute(attributes: String, name: String): String? =
-        Regex("""(?:^|\s)$name\s*=\s*["']([^"']+)["']""", RegexOption.IGNORE_CASE)
-            .find(attributes)
-            ?.groupValues
-            ?.getOrNull(1)
 
     private fun stripTags(value: String): String =
         value.replace(Regex("""<br\s*/?>""", RegexOption.IGNORE_CASE), "\n")
@@ -298,7 +304,7 @@ object EchoLyricsParser {
             sourceLabel?.endsWith(".yrc", ignoreCase = true) == true ||
             sourceLabel?.endsWith(".qrc", ignoreCase = true) == true ||
             sourceLabel?.endsWith(".krc", ignoreCase = true) == true ||
-            LineDurationRegex.containsMatchIn(text)
+            text.lineSequence().any { LineDurationRegex.matches(it.trim()) }
 
     private fun looksLikeLrc(text: String, sourceLabel: String?): Boolean =
         sourceLabel?.endsWith(".lrc", ignoreCase = true) == true ||
@@ -310,7 +316,8 @@ object EchoLyricsParser {
     private val LrcMetadataRegex = Regex("""^\[([A-Za-z][\w-]*):(.*)\]$""")
     private val LineDurationRegex = Regex("""^\[(\d{1,8}),(\d{1,8})\](.*)$""")
     private val KrcWordRegex = Regex("""<\d+,\d+(?:,\d+)?>""")
-    private val DurationWordRegex = Regex("""(?:\((\d{1,8}),(\d{1,8})(?:,\d+)?\)|<(\d{1,8}),(\d{1,8})(?:,\d+)?>)([^()<]*)""")
+    private val QrcTimeRegex = Regex("""\((\d{1,8}),(\d{1,8})\)""")
+    private val DurationWordRegex = Regex("""(?:\((\d{1,8}),(\d{1,8})(?:,\d+)?\)|<(\d{1,8}),(\d{1,8})(?:,\d+)?>)""")
     private val ClockRegex = Regex("""(?:(\d{1,2}):)?(\d{1,2}):(\d{1,2})(?:\.(\d{1,3}))?""")
     private val CompactWhitespaceRegex = Regex("[ \\t\\u000B\\f\\r]+")
     private val SrtBlockRegex = Regex(
@@ -319,9 +326,6 @@ object EchoLyricsParser {
     private val VttCueRegex = Regex(
         """(?ms)(?:^|\n)(?:[^\n]*\n)?\s*((?:\d{1,2}:)?\d{2}:\d{2}[,.]\d{1,3})\s*-->\s*((?:\d{1,2}:)?\d{2}:\d{2}[,.]\d{1,3})(?:[^\n]*)\n(.*?)(?=\n\s*\n|\z)""",
     )
-    private val TtmlParagraphRegex = Regex("""(?is)<p\b([^>]*)>(.*?)</p>""")
-    private val TtmlSpanRegex = Regex("""(?is)<span\b([^>]*)>(.*?)</span>""")
-    private val TtmlMetadataRegex = Regex("""(?is)<metadata\b[^>]*>.*?<([^/>:\s]+)[^>]*>(.*?)</\1>.*?</metadata>""")
     private val TagRegex = Regex("""<[^>]+>""")
     private val AssOverrideTagRegex = Regex("""\{[^}]*\}""")
 }

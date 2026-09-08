@@ -21,7 +21,7 @@ class DocumentTreeTrackScanner(
         relativePathPrefix: String,
         batchSize: Int = DefaultBatchSize,
         existingTracks: Map<String, TrackFingerprint> = emptyMap(),
-        mediaStoreDuplicateKeys: Set<String> = emptySet(),
+        mediaStoreDuplicateKeys: Map<String, LibraryTrackEntity> = emptyMap(),
         readSampleRate: Boolean = true,
         onBatch: suspend (List<LibraryTrackEntity>) -> Unit,
         onProgress: suspend (scannedCount: Int, currentTrack: LibraryTrackEntity?) -> Unit,
@@ -88,12 +88,18 @@ class DocumentTreeTrackScanner(
                     relativePath = row.relativePath,
                     sizeBytes = row.sizeBytes,
                     dateModifiedSeconds = row.lastModifiedMs.toEpochSeconds(),
+                    displayName = row.displayName,
                 )
-                if (duplicateKey != null && duplicateKey in mediaStoreDuplicateKeys) {
-                    // MediaStore 已收录同一文件,不再建 saf 行;计入 scanned,
-                    // 让历史遗留的 saf 重复行在清理阶段被当作缺失删除
+                val duplicate = duplicateKey?.let(mediaStoreDuplicateKeys::get)
+                if (duplicate != null) {
+                    // Keep the stable MediaStore ID, but refresh changed tags and folder summaries too.
+                    batch += duplicate
                     scannedCount += 1
-                    onProgress(scannedCount, null)
+                    onProgress(scannedCount, duplicate)
+                    if (batch.size >= safeBatchSize) {
+                        onBatch(batch.toList())
+                        batch.clear()
+                    }
                     continue
                 }
                 runCatching {
@@ -116,6 +122,7 @@ class DocumentTreeTrackScanner(
                         batch.clear()
                     }
                 }.onFailure { error ->
+                    querySucceeded = false
                     Log.w(TAG, "Skipping unreadable document tree audio file.", error)
                 }
             }

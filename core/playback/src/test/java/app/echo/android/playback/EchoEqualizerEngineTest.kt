@@ -11,6 +11,22 @@ import org.junit.Test
 import kotlin.math.abs
 
 class EchoEqualizerEngineTest {
+    @Test fun shelfUsesOpraQRatherThanShelfSlopeS() {
+        // Independent RBJ cookbook reference at Fs=48k, f0=100, gain=6, Q=.7, probe=50 Hz.
+        val band = OpraEqBand(EchoEqFilterType.LowShelf, 100f, 6f, 0.7f, null)
+        assertEquals(5.598596f, EchoBiquadMath.sampleCurveDb(listOf(band), 50f), 0.002f)
+        assertEquals(6.812789f, EchoBiquadMath.sampleCurveDb(listOf(band.copy(q = 1.2f)), 50f), 0.002f)
+    }
+
+    @Test fun passSlopeBuildsCorrectButterworthOrder() {
+        for (slope in listOf(6f, 12f, 18f, 24f, 30f, 36f)) {
+            val band = OpraEqBand(EchoEqFilterType.LowPass, 1000f, 0f, null, slope)
+            assertEquals(-3.0103f, EchoBiquadMath.sampleCurveDb(listOf(band), 1000f), 0.02f)
+        }
+        val band = OpraEqBand(EchoEqFilterType.LowPass, 1000f, 0f, null, 24f)
+        assertTrue(EchoBiquadMath.sampleCurveDb(listOf(band), 2000f) < -24f)
+    }
+
     @Test
     fun peakingFilterMatchesGainAtCenterFrequency() {
         val band = OpraEqBand(

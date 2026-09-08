@@ -46,7 +46,9 @@ class OpraHeadphoneCorrectionRepository(
 
     private suspend fun loadDatabase(refresh: Boolean): OpraDatabase {
         val now = System.currentTimeMillis()
-        cachedDatabase?.takeIf { !refresh && now - cachedAt < CacheLifetimeMs }?.let { return it }
+        cachedDatabase?.takeIf { !refresh && now - cachedAt < CacheLifetimeMs }?.let {
+            return it.copy(status = it.status.copy(source = if (it.status.source == "cache-fallback") "cache-fallback" else "cache"))
+        }
         val cached = cachedDatabase ?: cacheFile.takeIf { it.isFile && it.length() <= MaxDatabaseBytes }
             ?.let { runCatching { parse(it, "cache") }.getOrNull() }
         if (!refresh && cached != null && now - cacheFile.lastModified() < CacheLifetimeMs) {
@@ -71,7 +73,12 @@ class OpraHeadphoneCorrectionRepository(
                 temporary?.delete()
             }
         }
-        if (cached != null) return cached.copy(status = cached.status.copy(source = "cache-fallback"))
+        if (cached != null) {
+            val fallback = cached.copy(status = cached.status.copy(source = "cache-fallback"))
+            cachedDatabase = fallback
+            cachedAt = now - CacheLifetimeMs + TimeUnit.MINUTES.toMillis(5)
+            return fallback
+        }
         throw lastError ?: IOException("opra_fetch_failed")
     }
 

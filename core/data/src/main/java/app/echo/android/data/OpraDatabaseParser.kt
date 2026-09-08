@@ -74,13 +74,15 @@ internal object OpraDatabaseParser {
                         val productId = data.optTrimmedString("product_id") ?: return@runCatching
                         val parameters = data.optJSONObject("parameters") ?: return@runCatching
                         val bands = parseBands(parameters) ?: return@runCatching
+                        val preamp = parameters.optFloat("gain_db") ?: return@runCatching
+                        if (preamp !in -24f..12f) return@runCatching
                         val eq = OpraEq(
                             id = id,
                             productId = productId,
                             author = data.optTrimmedString("author") ?: "OPRA",
                             details = data.optTrimmedString("details"),
                             link = data.optTrimmedString("link"),
-                            preampDb = parameters.optFloat("gain_db") ?: 0f,
+                            preampDb = preamp,
                             bands = bands,
                         )
                         eqsByProductId.getOrPut(productId) { mutableListOf() }.add(eq)

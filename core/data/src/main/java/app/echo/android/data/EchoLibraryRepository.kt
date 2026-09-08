@@ -646,7 +646,6 @@ class EchoLibraryRepository(
         var totalCount: Int? = null
         var lastProgressEmitCount = 0
         var lastProgressEmitAtMs = 0L
-        var changedSummaries = LibrarySummaryKeySet()
 
         suspend fun emitProgress(
             phase: LibraryScanPhase = progress.phase,
@@ -726,7 +725,6 @@ class EchoLibraryRepository(
                         scanRunId = scanRunId,
                     )
                     seenIds.addAll(classified.seenIds)
-                    changedSummaries += classified.summaryKeys()
                     emitProgress(phase = LibraryScanPhase.WritingDatabase)
                     writeClassifiedScanBatch(dao, classified)
                     insertedCount += classified.inserts.size
@@ -745,6 +743,7 @@ class EchoLibraryRepository(
                 querySucceeded = scanOutcome.querySucceeded,
                 scannedCount = scannedCount,
                 existingCount = existingFingerprints.size,
+                confirmedEmpty = scanOutcome.querySucceeded,
             )
             val deletion = deleteMissingIfComplete(
                 dao = dao,
@@ -769,7 +768,6 @@ class EchoLibraryRepository(
                     LibraryScanPolicy.unseenIds(candidateIds, seenIds)
                 },
             )
-            rebuildSummariesIfNeeded(dao, changedSummaries + deletion.summaryKeys)
             emitProgress(
                 phase = LibraryScanPhase.Completed,
                 currentTitle = null,
@@ -816,7 +814,6 @@ class EchoLibraryRepository(
         var deletedCount = 0
         var lastProgressEmitCount = 0
         var lastProgressEmitAtMs = 0L
-        var changedSummaries = LibrarySummaryKeySet()
 
         suspend fun emitProgress(
             phase: LibraryScanPhase = progress.phase,
@@ -847,7 +844,7 @@ class EchoLibraryRepository(
                 dao.getExistingMediaStoreFingerprintsInRelativePath(
                     source = LibrarySource.MediaStore.id,
                     relativePathLike = relativePathLike,
-                ).filter { LibraryScanPolicy.isSafTrackId(it.id) } +
+                ) +
                     dao.getExistingMediaStoreFingerprintsInRelativePath(
                         source = source,
                         relativePathLike = relativePathLike,
@@ -857,27 +854,17 @@ class EchoLibraryRepository(
                 dao.getMetadataEditedTracksInRelativePath(
                     source = LibrarySource.MediaStore.id,
                     relativePathLike = relativePathLike,
-                ).filter { LibraryScanPolicy.isSafTrackId(it.id) } +
+                ) +
                     dao.getMetadataEditedTracksInRelativePath(
                         source = source,
                         relativePathLike = relativePathLike,
                     )
                 ).associateBy(LibraryTrackEntity::id)
             val seenIds = HashSet<String>(existingFingerprints.size)
-            // 同一文件可能已被全库 MediaStore 扫描收录:按 目录+大小+mtime 识别重复,
-            // MediaStore 行优先(id 稳定、带专辑封面),重复的 SAF 行随本次清理删除
-            val mediaStoreDuplicateKeys = dao.getExistingMediaStoreFingerprintsInRelativePath(
-                source = LibrarySource.MediaStore.id,
-                relativePathLike = relativePathLike,
-            )
-                .filter { LibraryScanPolicy.isMediaStoreNativeId(it.id) }
-                .mapNotNullTo(HashSet()) {
-                    LibraryScanPolicy.localFileDuplicateKey(
-                        relativePath = it.relativePath,
-                        sizeBytes = it.sizeBytes,
-                        dateModifiedSeconds = it.dateModifiedSeconds,
-                    )
-                }
+            val unresolvedMediaStoreIds = HashSet<String>()
+            val mediaStoreDuplicateKeys = scanner.documentTreeDuplicateKeys(existingFingerprints.values) {
+                unresolvedMediaStoreIds.addAll(it)
+            }
 
             emitProgress(phase = LibraryScanPhase.QueryingMediaStore)
             val scanOutcome = documentTreeScanner.scanAudioTree(
@@ -914,7 +901,6 @@ class EchoLibraryRepository(
                         scanRunId = scanRunId,
                     )
                     seenIds.addAll(classified.seenIds)
-                    changedSummaries += classified.summaryKeys()
                     emitProgress(phase = LibraryScanPhase.WritingDatabase)
                     writeClassifiedScanBatch(dao, classified)
                     insertedCount += classified.inserts.size
@@ -935,17 +921,20 @@ class EchoLibraryRepository(
                     querySucceeded = scanOutcome.querySucceeded,
                     scannedCount = scannedCount,
                     existingCount = existingFingerprints.size,
+                    confirmedEmpty = scanOutcome.querySucceeded,
                 ),
                 missingIds = {
-                    val existingIds =
-                        dao.getIdsFromRelativePath(source, relativePathLike).filter(LibraryScanPolicy::isSafTrackId) +
-                            dao.getIdsFromRelativePath(LibrarySource.MediaStore.id, relativePathLike)
-                                .filter(LibraryScanPolicy::isSafTrackId)
-                    LibraryScanPolicy.unseenIds(existingIds, seenIds)
+                    LibraryScanPolicy.unseenIds(
+                        existingFingerprints.keys.filter {
+                            (LibraryScanPolicy.isSafTrackId(it) || LibraryScanPolicy.isMediaStoreNativeId(it)) &&
+                                // A fully listed empty tree proves absence; otherwise unknown identities stay safe.
+                                (scannedCount == 0 || it !in unresolvedMediaStoreIds)
+                        },
+                        seenIds,
+                    )
                 },
             )
             deletedCount = deletion.deletedCount
-            rebuildSummariesIfNeeded(dao, changedSummaries + deletion.summaryKeys)
             emitProgress(
                 phase = LibraryScanPhase.Completed,
                 currentTitle = null,
@@ -1472,8 +1461,7 @@ class EchoLibraryRepository(
             dao.getSummaryKeyRows(chunk).forEach { row ->
                 summaryKeys += row.toSummaryKeySet()
             }
-            dao.deleteTracksByIds(chunk)
-            dao.deleteFtsByTrackIds(chunk)
+            dao.deleteScanBatch(chunk)
             yield()
         }
         return LibraryScanDeletion(deletedCount = ids.size, summaryKeys = summaryKeys)
@@ -1508,7 +1496,7 @@ class EchoLibraryRepository(
 
     private suspend fun writeClassifiedScanBatch(dao: LibraryTrackDao, classified: ClassifiedScanBatch) {
         (classified.inserts + classified.updates).chunked(DATABASE_BATCH_SIZE).forEach { chunk ->
-            dao.upsertBatchWithFts(chunk)
+            dao.upsertScanBatch(chunk)
             yield()
         }
         if (LibraryScanPolicy.shouldStampLastSeenOnUnchangedRow()) {

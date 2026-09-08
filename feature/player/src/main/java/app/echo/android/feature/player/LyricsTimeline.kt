@@ -4,9 +4,12 @@ import app.echo.android.model.lyrics.EchoLyricLine
 
 /** Built once per document; prefix ends bound overlap lookup for duet/backing-vocal lines. */
 internal class LyricsTimeline(private val lines: List<EchoLyricLine>) {
-    private val ends = LongArray(lines.size) { i ->
-        lines[i].endMs ?: lines.asSequence().drop(i + 1).firstOrNull { it.startMs > lines[i].startMs }?.startMs
-            ?: Long.MAX_VALUE
+    private val ends = LongArray(lines.size).also { values ->
+        var nextStart = Long.MAX_VALUE
+        for (i in lines.indices.reversed()) {
+            if (i < lines.lastIndex && lines[i + 1].startMs > lines[i].startMs) nextStart = lines[i + 1].startMs
+            values[i] = lines[i].endMs ?: nextStart
+        }
     }
     private val prefixEnds = LongArray(lines.size).also { values ->
         var maximum = Long.MIN_VALUE

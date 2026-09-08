@@ -1,8 +1,3 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:width="288dp" android:height="288dp">
-        <inset android:insetLeft="72dp" android:insetTop="72dp"
-            android:insetRight="72dp" android:insetBottom="72dp">
-            <bitmap android:src="@drawable/echo_startup_still" android:gravity="fill" />
-        </inset>
-    </item>
+    <item android:drawable="@mipmap/echo_startup_still" />
 </layer-list>
