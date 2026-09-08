@@ -22,6 +22,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:i18n"))
     implementation(project(":core:model"))
 
     implementation(platform(libs.androidx.compose.bom))

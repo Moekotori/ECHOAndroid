@@ -1,9 +1,12 @@
 package app.echo.android.feature.connect
 
+import app.echo.android.feature.connect.R as L10nR
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import app.echo.android.design.echoClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,7 +54,6 @@ import app.echo.android.design.EchoSectionTitle
 import app.echo.android.design.EchoSegmentChip
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.echoDarkGlassBorder
-import app.echo.android.design.echoString
 import app.echo.android.model.connect.EchoRemoteConnectionState
 
 @Composable
@@ -85,7 +87,7 @@ internal fun ServiceCard(
                 if (dark) echoDarkGlassBorder(active) else BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.86f)),
                 RoundedCornerShape(20.dp),
             )
-            .clickable(enabled = !locked, onClick = onClick)
+            .echoClickable(enabled = !locked, onClick = onClick)
             .padding(15.dp),
     ) {
         Row(
@@ -190,9 +192,9 @@ internal fun PcLinkStatusStrip(connected: Boolean) {
             Column(Modifier.weight(1f)) {
                 Text(
                     if (connected) {
-                        echoString(en = "Control on phone, output on PC", zh = "手机控制，PC 输出", ja = "スマホで操作、PC で出力")
+                        stringResource(L10nR.string.feature_connect_control_on_phone_output_on_pc_fe2fbb)
                     } else {
-                        echoString(en = "Waiting for PC ECHO pairing", zh = "等待 PC ECHO 配对", ja = "PC ECHO のペアリング待ち")
+                        stringResource(L10nR.string.feature_connect_waiting_for_pc_echo_pairing_e5e462)
                     },
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
@@ -200,17 +202,9 @@ internal fun PcLinkStatusStrip(connected: Boolean) {
                 )
                 Text(
                     if (connected) {
-                        echoString(
-                            en = "Queue, volume, and next track will use the link channel",
-                            zh = "队列、音量、下一首将进入联动通道",
-                            ja = "キュー、音量、次の曲は連携経路で扱います",
-                        )
+                        stringResource(L10nR.string.feature_connect_queue_volume_and_next_track_will_use_the_0aa197)
                     } else {
-                        echoString(
-                            en = "Latency, output device, and queue appear after pairing",
-                            zh = "配对后显示延迟、输出设备和队列状态",
-                            ja = "ペアリング後に遅延、出力デバイス、キューの状態を表示",
-                        )
+                        stringResource(L10nR.string.feature_connect_latency_output_device_and_queue_appear_after_pairing_b8e65f)
                     },
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -226,70 +220,58 @@ internal fun PcHandoffPanel(connected: Boolean) {
     EchoPanel(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             EchoSectionTitle(
-                echoString(en = "Handoff console", zh = "接力控制台", ja = "引き継ぎコンソール"),
+                stringResource(L10nR.string.feature_connect_handoff_console_d5905c),
                 if (connected) {
-                    echoString(en = "Phone and PC queues stay in sync", zh = "本机和 PC 队列保持同步", ja = "端末と PC のキューを同期します")
+                    stringResource(L10nR.string.feature_connect_phone_and_pc_queues_stay_in_sync_64e284)
                 } else {
-                    echoString(en = "Become a remote after pairing", zh = "完成配对后进入遥控器", ja = "ペアリング後にリモコンとして使えます")
+                    stringResource(L10nR.string.feature_connect_become_a_remote_after_pairing_77ae56)
                 },
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                EchoSegmentChip(echoString(en = "Phone control", zh = "手机控制", ja = "スマホ操作"), selected = true, Modifier.weight(1f))
-                EchoSegmentChip(echoString(en = "PC output", zh = "PC 输出", ja = "PC 出力"), selected = connected, Modifier.weight(1f))
-                EchoSegmentChip(echoString(en = "Queue sync", zh = "队列同步", ja = "キュー同期"), selected = connected, Modifier.weight(1f))
+                EchoSegmentChip(stringResource(L10nR.string.feature_connect_phone_control_91825f), selected = true, Modifier.weight(1f))
+                EchoSegmentChip(stringResource(L10nR.string.feature_connect_pc_output_e48933), selected = connected, Modifier.weight(1f))
+                EchoSegmentChip(stringResource(L10nR.string.feature_connect_queue_sync_ac9c36), selected = connected, Modifier.weight(1f))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 EchoMetricTile(
-                    echoString(en = "Latency", zh = "延迟", ja = "遅延"),
+                    stringResource(L10nR.string.feature_connect_latency_fa1715),
                     if (connected) "24ms" else "--",
                     Modifier.weight(1f),
-                    detail = echoString(en = "Estimate", zh = "估算", ja = "推定"),
+                    detail = stringResource(L10nR.string.feature_connect_estimate_40b38b),
                 )
                 EchoMetricTile(
-                    echoString(en = "Volume", zh = "音量", ja = "音量"),
+                    stringResource(L10nR.string.feature_connect_volume_6d5238),
                     if (connected) {
-                        echoString(en = "Synced", zh = "同步", ja = "同期")
+                        stringResource(L10nR.string.feature_connect_synced_0e5a04)
                     } else {
-                        echoString(en = "Standby", zh = "待机", ja = "スタンバイ")
+                        stringResource(L10nR.string.feature_connect_standby_751331)
                     },
                     Modifier.weight(1f),
-                    detail = echoString(en = "Mapping", zh = "映射", ja = "マッピング"),
+                    detail = stringResource(L10nR.string.feature_connect_mapping_65a632),
                 )
                 EchoMetricTile(
-                    echoString(en = "Device", zh = "设备", ja = "デバイス"),
+                    stringResource(L10nR.string.feature_connect_device_d46471),
                     if (connected) {
-                        echoString(en = "Desktop", zh = "桌面", ja = "デスクトップ")
+                        stringResource(L10nR.string.feature_connect_desktop_5966da)
                     } else {
-                        echoString(en = "None", zh = "未选", ja = "未選択")
+                        stringResource(L10nR.string.feature_connect_none_836573)
                     },
                     Modifier.weight(1f),
-                    detail = echoString(en = "Output", zh = "输出", ja = "出力"),
+                    detail = stringResource(L10nR.string.feature_connect_output_bb8fcf),
                 )
             }
             EchoPlaceholderLine(
                 if (connected) {
-                    echoString(en = "The next track will sync to PC ECHO", zh = "下一首会同步到 PC ECHO", ja = "次の曲は PC ECHO に同期されます")
+                    stringResource(L10nR.string.feature_connect_the_next_track_will_sync_to_pc_echo_970d49)
                 } else {
-                    echoString(
-                        en = "PC queue and output device appear after pairing",
-                        zh = "配对后显示 PC 队列和输出设备",
-                        ja = "ペアリング後に PC のキューと出力デバイスを表示",
-                    )
+                    stringResource(L10nR.string.feature_connect_pc_queue_and_output_device_appear_after_pairing_7fd247)
                 },
             )
             EchoPlaceholderLine(
                 if (connected) {
-                    echoString(
-                        en = "Latency monitoring and volume mapping are ready",
-                        zh = "延迟监测和音量映射就绪",
-                        ja = "遅延監視と音量マッピングの準備完了",
-                    )
+                    stringResource(L10nR.string.feature_connect_latency_monitoring_and_volume_mapping_are_ready_2f0b1f)
                 } else {
-                    echoString(
-                        en = "Volume, latency, and output device linking are reserved",
-                        zh = "预留音量、延迟、输出设备联动",
-                        ja = "音量、遅延、出力デバイスの連携枠を用意しています",
-                    )
+                    stringResource(L10nR.string.feature_connect_volume_latency_and_output_device_linking_are_reserved_04bcb1)
                 },
             )
         }
@@ -336,19 +318,19 @@ internal fun RemoteNowPlaying(
             IconButton(onClick = onPrevious, enabled = controlsEnabled) {
                 Icon(
                     Icons.Rounded.SkipPrevious,
-                    contentDescription = echoString(en = "Previous on PC", zh = "PC 上一首", ja = "PC の前の曲"),
+                    contentDescription = stringResource(L10nR.string.feature_connect_previous_on_pc_a0f0a7),
                 )
             }
             IconButton(onClick = onPlayPause, enabled = controlsEnabled) {
                 Icon(
                     if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                    contentDescription = echoString(en = "Play or pause PC", zh = "播放或暂停 PC", ja = "PC の再生 / 一時停止"),
+                    contentDescription = stringResource(L10nR.string.feature_connect_play_or_pause_pc_35a4a9),
                 )
             }
             IconButton(onClick = onNext, enabled = controlsEnabled) {
                 Icon(
                     Icons.Rounded.SkipNext,
-                    contentDescription = echoString(en = "Next on PC", zh = "PC 下一首", ja = "PC の次の曲"),
+                    contentDescription = stringResource(L10nR.string.feature_connect_next_on_pc_303358),
                 )
             }
         }
@@ -395,11 +377,11 @@ internal fun PairingPill(
 @Composable
 internal fun remoteConnectionLabel(state: EchoRemoteConnectionState): String =
     when (state) {
-        EchoRemoteConnectionState.Disconnected -> echoString(en = "Not connected", zh = "未连接", ja = "未接続")
-        EchoRemoteConnectionState.Pairing -> echoString(en = "Pairing", zh = "配对中", ja = "ペアリング中")
-        EchoRemoteConnectionState.Connecting -> echoString(en = "Connecting", zh = "连接中", ja = "接続中")
-        EchoRemoteConnectionState.Connected -> echoString(en = "Connected", zh = "已连接", ja = "接続済み")
-        EchoRemoteConnectionState.Reconnecting -> echoString(en = "Reconnecting", zh = "重连中", ja = "再接続中")
-        EchoRemoteConnectionState.Error -> echoString(en = "Error", zh = "错误", ja = "エラー")
+        EchoRemoteConnectionState.Disconnected -> stringResource(L10nR.string.feature_connect_not_connected_c4d337)
+        EchoRemoteConnectionState.Pairing -> stringResource(L10nR.string.feature_connect_pairing_1a1d00)
+        EchoRemoteConnectionState.Connecting -> stringResource(L10nR.string.feature_connect_connecting_5a83dc)
+        EchoRemoteConnectionState.Connected -> stringResource(L10nR.string.feature_connect_connected_6b85ee)
+        EchoRemoteConnectionState.Reconnecting -> stringResource(L10nR.string.feature_connect_reconnecting_6c545f)
+        EchoRemoteConnectionState.Error -> stringResource(L10nR.string.feature_connect_error_ad4bd6)
     }
 

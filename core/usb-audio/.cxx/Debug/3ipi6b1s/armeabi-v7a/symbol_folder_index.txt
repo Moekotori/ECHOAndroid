@@ -1,1 +1,1 @@
-D:\ECHOand\core\usb-audio\build\intermediates\cxx\Debug\3ipi6b1s\obj\armeabi-v7a
+/Users/moekotori/echoandroid/core/usb-audio/build/intermediates/cxx/Debug/3ipi6b1s/obj/armeabi-v7a

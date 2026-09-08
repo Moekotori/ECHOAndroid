@@ -1,9 +1,12 @@
 package app.echo.android.feature.library
 
+import app.echo.android.feature.library.R as L10nR
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import app.echo.android.design.echoClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,7 +50,6 @@ import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.echoAccentColor
 import app.echo.android.design.RoonInk
 import app.echo.android.design.RoonMuted
-import app.echo.android.design.echoString
 import app.echo.android.model.library.LibraryScanProgress
 
 private data class ScanGlassColors(
@@ -85,14 +87,14 @@ internal fun LibraryScanAction(
     var showScanOptions by remember { mutableStateOf(false) }
     val colors = rememberScanGlassColors()
     val description = when {
-        !hasPermission -> echoString(en = "Allow music access", zh = "授权音乐权限", ja = "音楽へのアクセスを許可")
-        scanState.isScanning -> echoString(en = "Cancel library scan", zh = "取消扫描曲库", ja = "ライブラリのスキャンをキャンセル")
-        else -> echoString(en = "Scan library", zh = "扫描曲库", ja = "ライブラリをスキャン")
+        !hasPermission -> stringResource(L10nR.string.feature_library_allow_music_access_a30185)
+        scanState.isScanning -> stringResource(L10nR.string.feature_library_cancel_library_scan_4033b9)
+        else -> stringResource(L10nR.string.feature_library_scan_library_3d1814)
     }
     val label = when {
-        !hasPermission -> echoString(en = "Allow", zh = "授权", ja = "許可")
-        scanState.isScanning -> echoString(en = "Stop", zh = "停止", ja = "停止")
-        else -> echoString(en = "Scan", zh = "扫描", ja = "スキャン")
+        !hasPermission -> stringResource(L10nR.string.feature_library_allow_30c6b5)
+        scanState.isScanning -> stringResource(L10nR.string.feature_library_stop_739d16)
+        else -> stringResource(L10nR.string.feature_library_scan_fe69d2)
     }
     val accent = when {
         scanState.error != null -> EchoColors.Coral
@@ -102,7 +104,7 @@ internal fun LibraryScanAction(
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
-            .clickable(
+            .echoClickable(
                 onClick = when {
                     !hasPermission -> onRequestPermission
                     scanState.isScanning -> onCancelScan
@@ -171,17 +173,13 @@ internal fun LibraryScanOptionsDialog(
                 ) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
-                            text = echoString(en = "Scan library", zh = "扫描曲库", ja = "ライブラリをスキャン"),
+                            text = stringResource(L10nR.string.feature_library_scan_library_3d1814),
                             color = colors.content,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
-                            text = echoString(
-                                en = "Choose the indexing range for this scan",
-                                zh = "选择本次索引范围",
-                                ja = "今回の索引範囲を選択",
-                            ),
+                            text = stringResource(L10nR.string.feature_library_choose_the_indexing_range_for_this_scan_58c0af),
                             color = colors.muted,
                             style = MaterialTheme.typography.bodySmall,
                         )
@@ -189,7 +187,7 @@ internal fun LibraryScanOptionsDialog(
                     IconButton(onClick = onDismiss) {
                         Icon(
                             Icons.Rounded.Close,
-                            contentDescription = echoString(en = "Close", zh = "关闭", ja = "閉じる"),
+                            contentDescription = stringResource(L10nR.string.feature_library_close_473a69),
                             tint = colors.muted,
                         )
                     }
@@ -197,23 +195,15 @@ internal fun LibraryScanOptionsDialog(
 
                 LibraryScanOption(
                     icon = Icons.Rounded.FolderOpen,
-                    title = echoString(en = "Scan a single folder", zh = "扫描单个文件夹", ja = "フォルダーをスキャン"),
-                    subtitle = echoString(
-                        en = "Best after copying in new music; updates only the selected folder",
-                        zh = "适合刚拷入音乐，只更新选中的目录",
-                        ja = "新しくコピーした音楽向け。選択したフォルダーだけ更新します",
-                    ),
+                    title = stringResource(L10nR.string.feature_library_scan_a_single_folder_17bf3e),
+                    subtitle = stringResource(L10nR.string.feature_library_best_after_copying_in_new_music_updates_only_a75783),
                     onClick = onScanFolder,
                     accent = echoAccentColor(),
                 )
                 LibraryScanOption(
                     icon = Icons.Rounded.LibraryMusic,
-                    title = echoString(en = "Full scan", zh = "全盘扫描", ja = "全体スキャン"),
-                    subtitle = echoString(
-                        en = "Resync all local music and clean up deleted items",
-                        zh = "重新同步本机所有音乐，并清理已删除项目",
-                        ja = "端末内の音楽を再同期し、削除済み項目を整理します",
-                    ),
+                    title = stringResource(L10nR.string.feature_library_full_scan_8f63a2),
+                    subtitle = stringResource(L10nR.string.feature_library_resync_all_local_music_and_clean_up_deleted_f1b337),
                     onClick = onScanAll,
                     accent = EchoAccentDeep,
                 )
@@ -237,7 +227,7 @@ private fun LibraryScanOption(
             .clip(RoundedCornerShape(18.dp))
             .background(accent.copy(alpha = 0.10f))
             .border(BorderStroke(1.dp, accent.copy(alpha = 0.16f)), RoundedCornerShape(18.dp))
-            .clickable(onClick = onClick)
+            .echoClickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),

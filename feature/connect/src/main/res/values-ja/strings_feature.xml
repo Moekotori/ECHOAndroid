@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module-owned translations. English values are the fallback for missing translations. -->
+<resources>
+    <string name="feature_connect_after_connecting_read_pc_echo_automatically_without_merging_d0f676" formatted="false">"接続後に PC ECHO を自動読み込みし、ローカルスキャンのライブラリには混ぜません"</string>
+    <string name="feature_connect_auto_reconnect_5259cc" formatted="false">"自動再接続"</string>
+    <string name="feature_connect_available_after_a_successful_saved_connection_f08f11" formatted="false">"接続して保存すると利用できます"</string>
+    <string name="feature_connect_become_a_remote_after_pairing_77ae56" formatted="false">"ペアリング後にリモコンとして使えます"</string>
+    <string name="feature_connect_cancel_4c5fa5" formatted="false">"キャンセル"</string>
+    <string name="feature_connect_cancelled_4ab41f" formatted="false">"キャンセル済み"</string>
+    <string name="feature_connect_cleaning_old_index_2c0185" formatted="false">"古い索引を整理中"</string>
+    <string name="feature_connect_clear_ec6a55" formatted="false">"クリア"</string>
+    <string name="feature_connect_collapse_970e1a" formatted="false">"折りたたむ"</string>
+    <string name="feature_connect_collapse_remote_libraries_61a9c7" formatted="false">"リモートライブラリを折りたたむ"</string>
+    <string name="feature_connect_comparing_index_7c03bf" formatted="false">"索引を照合中"</string>
+    <string name="feature_connect_connect_c7c091" formatted="false">"接続"</string>
+    <string name="feature_connect_connect_pc_724ba0" formatted="false">"PC に接続"</string>
+    <string name="feature_connect_connect_your_library_sources_2ae5a5" formatted="false">"ライブラリの接続先"</string>
+    <string name="feature_connect_connected_6b85ee" formatted="false">"接続済み"</string>
+    <string name="feature_connect_connecting_5a83dc" formatted="false">"接続中"</string>
+    <string name="feature_connect_control_on_phone_output_on_pc_fe2fbb" formatted="false">"スマホで操作、PC で出力"</string>
+    <string name="feature_connect_copy_from_the_pc_echo_link_page_ce2ca6" formatted="false">"PC ECHO の連携ページからコピー"</string>
+    <string name="feature_connect_desktop_5966da" formatted="false">"デスクトップ"</string>
+    <string name="feature_connect_device_d46471" formatted="false">"デバイス"</string>
+    <string name="feature_connect_device_link_e4f412" formatted="false">"デバイス連携"</string>
+    <string name="feature_connect_disconnect_b0144f" formatted="false">"切断"</string>
+    <string name="feature_connect_enter_the_server_username_and_password_b90327" formatted="false">"サーバー、ユーザー名、パスワードを入力"</string>
+    <string name="feature_connect_error_ad4bd6" formatted="false">"エラー"</string>
+    <string name="feature_connect_estimate_40b38b" formatted="false">"推定"</string>
+    <string name="feature_connect_expand_6a79dd" formatted="false">"展開"</string>
+    <string name="feature_connect_expand_remote_libraries_a8df3f" formatted="false">"リモートライブラリを展開"</string>
+    <string name="feature_connect_forget_30df50" formatted="false">"解除"</string>
+    <string name="feature_connect_forward_phone_playback_through_pc_echo_ca17b2" formatted="false">"PC ECHO 経由でスマホの再生状態を転送"</string>
+    <string name="feature_connect_handoff_console_d5905c" formatted="false">"引き継ぎコンソール"</string>
+    <string name="feature_connect_incomplete_4522f2" formatted="false">"未入力あり"</string>
+    <string name="feature_connect_latency_fa1715" formatted="false">"遅延"</string>
+    <string name="feature_connect_latency_monitoring_and_volume_mapping_are_ready_2f0b1f" formatted="false">"遅延監視と音量マッピングの準備完了"</string>
+    <string name="feature_connect_latency_output_device_and_queue_appear_after_pairing_b8e65f" formatted="false">"ペアリング後に遅延、出力デバイス、キューの状態を表示"</string>
+    <string name="feature_connect_library_sources_pc_link_b81eae" formatted="false">"ライブラリ接続 · PC 連携"</string>
+    <string name="feature_connect_link_f7ada1" formatted="false">"連携"</string>
+    <string name="feature_connect_local_audio_files_already_scanned_619627" formatted="false">"端末内の音声ファイルをスキャン済み"</string>
+    <string name="feature_connect_local_library_579638" formatted="false">"ローカルライブラリ"</string>
+    <string name="feature_connect_mapping_65a632" formatted="false">"マッピング"</string>
+    <string name="feature_connect_music_services_c8d7d1" formatted="false">"音楽サービス"</string>
+    <string name="feature_connect_nearby_pcs_then_address_and_pairing_token_d5b4e2" formatted="false">"近くの PC、続けてアドレスとトークン"</string>
+    <string name="feature_connect_next_on_pc_303358" formatted="false">"PC の次の曲"</string>
+    <string name="feature_connect_no_lan_pcs_yet_scan_a_qr_code_0b3f56" formatted="false">"LAN 上の PC は未検出。QR または手動入力。"</string>
+    <string name="feature_connect_none_836573" formatted="false">"未選択"</string>
+    <string name="feature_connect_not_connected_c4d337" formatted="false">"未接続"</string>
+    <string name="feature_connect_not_set_up_287510" formatted="false">"未設定"</string>
+    <string name="feature_connect_off_d48859" formatted="false">"オフ"</string>
+    <string name="feature_connect_output_bb8fcf" formatted="false">"出力"</string>
+    <string name="feature_connect_paired_8c3083" formatted="false">"ペアリング済み"</string>
+    <string name="feature_connect_pairing_1a1d00" formatted="false">"ペアリング中"</string>
+    <string name="feature_connect_pairing_token_2e95dd" formatted="false">"ペアリングトークン"</string>
+    <string name="feature_connect_password_2eaf7d" formatted="false">"パスワード"</string>
+    <string name="feature_connect_password_or_app_password_cf402d" formatted="false">"パスワードまたはアプリパスワード"</string>
+    <string name="feature_connect_pc_address_4be94c" formatted="false">"PC アドレス"</string>
+    <string name="feature_connect_pc_output_e48933" formatted="false">"PC 出力"</string>
+    <string name="feature_connect_pc_queue_and_output_device_appear_after_pairing_7fd247" formatted="false">"ペアリング後に PC のキューと出力デバイスを表示"</string>
+    <string name="feature_connect_phone_and_pc_queues_stay_in_sync_64e284" formatted="false">"端末と PC のキューを同期します"</string>
+    <string name="feature_connect_phone_control_91825f" formatted="false">"スマホ操作"</string>
+    <string name="feature_connect_play_or_pause_pc_35a4a9" formatted="false">"PC の再生 / 一時停止"</string>
+    <string name="feature_connect_playing_on_phone_it_a1815e">"スマホで再生中：%1$s"</string>
+    <string name="feature_connect_preparing_sync_f64e14" formatted="false">"同期を準備中"</string>
+    <string name="feature_connect_previous_on_pc_a0f0a7" formatted="false">"PC の前の曲"</string>
+    <string name="feature_connect_queue_sync_ac9c36" formatted="false">"キュー同期"</string>
+    <string name="feature_connect_queue_volume_and_next_track_will_use_the_0aa197" formatted="false">"キュー、音量、次の曲は連携経路で扱います"</string>
+    <string name="feature_connect_reading_remote_library_06fcd1" formatted="false">"リモートライブラリを読み込み中"</string>
+    <string name="feature_connect_ready_to_send_832298" formatted="false">"転送待ち"</string>
+    <string name="feature_connect_ready_to_sync_47b40c" formatted="false">"同期できます"</string>
+    <string name="feature_connect_ready_to_sync_to_the_cloud_album_wall_20a1e5" formatted="false">"クラウドのアルバムウォールに同期できます"</string>
+    <string name="feature_connect_readycount_ready_ad163c">"%1$s 件利用可"</string>
+    <string name="feature_connect_reconnect_to_the_last_pc_when_connect_opens_e13dd4" formatted="false">"次回 Connect を開くと、前回の PC に接続します"</string>
+    <string name="feature_connect_reconnecting_6c545f" formatted="false">"再接続中"</string>
+    <string name="feature_connect_refresh_828c69" formatted="false">"更新"</string>
+    <string name="feature_connect_remote_libraries_520815" formatted="false">"リモートライブラリ"</string>
+    <string name="feature_connect_remote_library_sync_failed_e55eb1" formatted="false">"リモートライブラリの同期に失敗しました"</string>
+    <string name="feature_connect_save_68ae20" formatted="false">"保存"</string>
+    <string name="feature_connect_scan_qr_b42f5b" formatted="false">"スキャン"</string>
+    <string name="feature_connect_scan_the_qr_code_shown_on_pc_to_e7ce7b" formatted="false">"PC に表示された QR コードをスキャンしてペアリング"</string>
+    <string name="feature_connect_server_address_ec245e" formatted="false">"サーバーアドレス"</string>
+    <string name="feature_connect_standby_751331" formatted="false">"スタンバイ"</string>
+    <string name="feature_connect_supports_192_168_1_12_26789_or_a_7d7e27" formatted="false">"192.168.1.12:26789 または http / https の完全なアドレスに対応"</string>
+    <string name="feature_connect_sync_a_nas_or_cloud_music_folder_9fa330" formatted="false">"NAS やクラウドの音楽フォルダーを同期"</string>
+    <string name="feature_connect_sync_b57352" formatted="false">"同期"</string>
+    <string name="feature_connect_sync_complete_9ac5cf" formatted="false">"同期完了"</string>
+    <string name="feature_connect_sync_complete_scanstate_scannedcount_tracks_scanstate_insertedco_41ae3e">"同期完了：%1$s 曲、追加 %2$s、更新 %3$s、削除 %4$s"</string>
+    <string name="feature_connect_sync_failed_8cc151" formatted="false">"同期失敗"</string>
+    <string name="feature_connect_sync_the_server_library_artwork_and_playback_urls_cad58c" formatted="false">"サーバーのライブラリ、ジャケット、再生 URL を同期"</string>
+    <string name="feature_connect_synced_0e5a04" formatted="false">"同期"</string>
+    <string name="feature_connect_syncing_ac4e35" formatted="false">"同期中"</string>
+    <string name="feature_connect_take_over_pc_echo_playback_after_pairing_b11731" formatted="false">"ペアリング後に PC ECHO の再生を操作"</string>
+    <string name="feature_connect_tap_to_expand_subsonic_webdav_fold_separately_a293a2" formatted="false">"タップして展開 · Subsonic / WebDAV は個別に折りたためます"</string>
+    <string name="feature_connect_tap_to_set_up_subsonic_webdav_cloud_drive_6f2e97" formatted="false">"タップして Subsonic · WebDAV / クラウドを設定"</string>
+    <string name="feature_connect_the_linked_echo_library_is_shown_separately_with_89ff2b" formatted="false">"連携 ECHO ライブラリは独立表示され、現在の連携元は PC ECHO です"</string>
+    <string name="feature_connect_the_local_library_stays_default_refresh_the_linked_6c5cd0" formatted="false">"ローカルライブラリを既定のままにし、連携ライブラリは手動で更新できます"</string>
+    <string name="feature_connect_the_next_track_will_sync_to_pc_echo_970d49" formatted="false">"次の曲は PC ECHO に同期されます"</string>
+    <string name="feature_connect_unpaired_89e494" formatted="false">"未ペアリング"</string>
+    <string name="feature_connect_use_linked_library_by_default_a9eb0f" formatted="false">"連携ライブラリを既定にする"</string>
+    <string name="feature_connect_username_dfb030" formatted="false">"ユーザー名"</string>
+    <string name="feature_connect_volume_6d5238" formatted="false">"音量"</string>
+    <string name="feature_connect_volume_latency_and_output_device_linking_are_reserved_04bcb1" formatted="false">"音量、遅延、出力デバイスの連携枠を用意しています"</string>
+    <string name="feature_connect_waiting_for_pc_66972e" formatted="false">"PC 待ち"</string>
+    <string name="feature_connect_waiting_for_pc_echo_pairing_e5e462" formatted="false">"PC ECHO のペアリング待ち"</string>
+    <string name="feature_connect_waiting_to_sync_21ad43" formatted="false">"同期待ち"</string>
+    <string name="feature_connect_webdav_address_a59b28" formatted="false">"WebDAV アドレス"</string>
+    <string name="feature_connect_webdav_cloud_drive_3aa8bf" formatted="false">"WebDAV / クラウド"</string>
+    <string name="feature_connect_webdav_password_4443d4" formatted="false">"WebDAV パスワード"</string>
+    <string name="feature_connect_webdav_username_946873" formatted="false">"WebDAV ユーザー名"</string>
+    <string name="feature_connect_writing_library_a8f4bd" formatted="false">"ライブラリに書き込み中"</string>
+</resources>

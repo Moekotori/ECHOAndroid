@@ -1,8 +1,11 @@
 package app.echo.android.feature.library
 
+import app.echo.android.feature.library.R as L10nR
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import app.echo.android.design.echoClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,7 +48,6 @@ import app.echo.android.design.EchoIconBadge
 import app.echo.android.design.EchoPanel
 import app.echo.android.design.EchoTextButton
 import app.echo.android.design.EmptyState
-import app.echo.android.design.echoString
 import app.echo.android.model.library.EchoPlaylist
 
 @Composable
@@ -76,11 +78,7 @@ internal fun LocalPlaylistPanel(
         if (playlists.isEmpty()) {
             item {
                 EmptyState(
-                    echoString(
-                        en = "No local playlists yet. Create one from the top-right, or add from a song menu.",
-                        zh = "还没有本地歌单。点右上角创建，或从歌曲菜单加入。",
-                        ja = "ローカルのプレイリストはまだありません。右上から作成するか、曲メニューから追加してください。",
-                    ),
+                    stringResource(L10nR.string.feature_library_no_local_playlists_yet_create_one_from_the_e13a98),
                 )
             }
         } else {
@@ -101,8 +99,8 @@ internal fun LocalPlaylistPanel(
 
     if (createVisible) {
         PlaylistNameDialog(
-            title = echoString(en = "New playlist", zh = "新建歌单", ja = "プレイリストを作成"),
-            confirmLabel = echoString(en = "Create", zh = "创建", ja = "作成"),
+            title = stringResource(L10nR.string.feature_library_new_playlist_22cdbd),
+            confirmLabel = stringResource(L10nR.string.feature_library_create_7b4bc9),
             initialName = "",
             onDismiss = { createVisible = false },
             onConfirm = { name ->
@@ -113,8 +111,8 @@ internal fun LocalPlaylistPanel(
     }
     renaming?.let { playlist ->
         PlaylistNameDialog(
-            title = echoString(en = "Rename playlist", zh = "重命名歌单", ja = "プレイリスト名を変更"),
-            confirmLabel = echoString(en = "Save", zh = "保存", ja = "保存"),
+            title = stringResource(L10nR.string.feature_library_rename_playlist_757bb7),
+            confirmLabel = stringResource(L10nR.string.feature_library_save_68ae20),
             initialName = playlist.name,
             onDismiss = { renaming = null },
             onConfirm = { name ->
@@ -126,14 +124,10 @@ internal fun LocalPlaylistPanel(
     deleting?.let { playlist ->
         AlertDialog(
             onDismissRequest = { deleting = null },
-            title = { Text(echoString(en = "Delete playlist", zh = "删除歌单", ja = "プレイリストを削除")) },
+            title = { Text(stringResource(L10nR.string.feature_library_delete_playlist_4d9753)) },
             text = {
                 Text(
-                    echoString(
-                        en = "Delete “${playlist.name}”? Songs in the library will not be deleted.",
-                        zh = "删除「${playlist.name}」？曲库里的歌曲不会被删。",
-                        ja = "「${playlist.name}」を削除しますか？ライブラリの曲は削除されません。",
-                    ),
+                    stringResource(L10nR.string.feature_library_delete_playlist_name_songs_in_the_library_will_3541db, (playlist.name).toString()),
                 )
             },
             confirmButton = {
@@ -143,12 +137,12 @@ internal fun LocalPlaylistPanel(
                         deleting = null
                     },
                 ) {
-                    Text(echoString(en = "Delete", zh = "删除", ja = "削除"))
+                    Text(stringResource(L10nR.string.feature_library_delete_138ccf))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { deleting = null }) {
-                    Text(echoString(en = "Cancel", zh = "取消", ja = "キャンセル"))
+                    Text(stringResource(L10nR.string.feature_library_cancel_4c5fa5))
                 }
             },
         )
@@ -165,8 +159,8 @@ internal fun AddToPlaylistDialog(
     var creating by remember { mutableStateOf(false) }
     if (creating) {
         PlaylistNameDialog(
-            title = echoString(en = "New playlist and add", zh = "新建歌单并加入", ja = "プレイリストを作成して追加"),
-            confirmLabel = echoString(en = "Create", zh = "创建", ja = "作成"),
+            title = stringResource(L10nR.string.feature_library_new_playlist_and_add_314ff2),
+            confirmLabel = stringResource(L10nR.string.feature_library_create_7b4bc9),
             initialName = "",
             onDismiss = { creating = false },
             onConfirm = { name ->
@@ -178,32 +172,24 @@ internal fun AddToPlaylistDialog(
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(echoString(en = "Add to playlist", zh = "加入歌单", ja = "プレイリストに追加")) },
+        title = { Text(stringResource(L10nR.string.feature_library_add_to_playlist_0f8338)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = { creating = true }) {
-                    Text(echoString(en = "New playlist", zh = "新建歌单", ja = "プレイリストを作成"))
+                    Text(stringResource(L10nR.string.feature_library_new_playlist_22cdbd))
                 }
                 if (playlists.isEmpty()) {
                     Text(
-                        echoString(
-                            en = "No playlists yet. Create one first.",
-                            zh = "还没有歌单。先创建一个。",
-                            ja = "プレイリストはまだありません。先に作成してください。",
-                        ),
+                        stringResource(L10nR.string.feature_library_no_playlists_yet_create_one_first_6af586),
                     )
                 } else {
                     playlists.filter { it.canEdit || it.isLikedSongs }.forEach { playlist ->
                         Text(
-                            echoString(
-                                en = "${playlistDisplayName(playlist)} · ${playlist.trackCount} tracks",
-                                zh = "${playlistDisplayName(playlist)} · ${playlist.trackCount} 首",
-                                ja = "${playlistDisplayName(playlist)} · ${playlist.trackCount} 曲",
-                            ),
+                            stringResource(L10nR.string.feature_library_playlistdisplayname_playlist_playlist_trackcount_tracks_2afcb8, (playlistDisplayName(playlist)).toString(), (playlist.trackCount).toString()),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(12.dp))
-                                .clickable { onSelectPlaylist(playlist) }
+                                .echoClickable { onSelectPlaylist(playlist) }
                                 .padding(vertical = 10.dp, horizontal = 4.dp),
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
@@ -215,7 +201,7 @@ internal fun AddToPlaylistDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text(echoString(en = "Cancel", zh = "取消", ja = "キャンセル"))
+                Text(stringResource(L10nR.string.feature_library_cancel_4c5fa5))
             }
         },
     )
@@ -239,7 +225,7 @@ internal fun PlaylistNameDialog(
                 value = name,
                 onValueChange = { name = it.take(80) },
                 singleLine = true,
-                label = { Text(echoString(en = "Name", zh = "名称", ja = "名前")) },
+                label = { Text(stringResource(L10nR.string.feature_library_name_57335e)) },
             )
         },
         confirmButton = {
@@ -252,7 +238,7 @@ internal fun PlaylistNameDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(echoString(en = "Cancel", zh = "取消", ja = "キャンセル"))
+                Text(stringResource(L10nR.string.feature_library_cancel_4c5fa5))
             }
         },
     )
@@ -274,17 +260,13 @@ private fun LocalPlaylistHeader(
             EchoIconBadge(Icons.Rounded.LibraryMusic)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    echoString(en = "Local playlists", zh = "本地歌单", ja = "ローカルプレイリスト"),
+                    stringResource(L10nR.string.feature_library_local_playlists_cea002),
                     color = MaterialTheme.colorScheme.onSurface,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    echoString(
-                        en = "$playlistCount playlists",
-                        zh = "$playlistCount 个歌单",
-                        ja = "プレイリスト $playlistCount 件",
-                    ),
+                    stringResource(L10nR.string.feature_library_playlistcount_playlists_220ceb, (playlistCount).toString()),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
@@ -292,7 +274,7 @@ private fun LocalPlaylistHeader(
                 )
             }
             EchoTextButton(
-                text = echoString(en = "New", zh = "新建", ja = "新規"),
+                text = stringResource(L10nR.string.feature_library_new_cc6582),
                 onClick = onCreatePlaylist,
             )
         }
@@ -312,7 +294,7 @@ private fun LocalPlaylistRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
             .background(EchoHomeMist.copy(alpha = 0.46f))
-            .clickable(onClick = onOpen)
+            .echoClickable(onClick = onOpen)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -365,7 +347,7 @@ private fun IconButtonLite(
         modifier = Modifier
             .size(38.dp)
             .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick),
+            .echoClickable(onClick = onClick),
         color = accent.copy(alpha = 0.10f),
         border = BorderStroke(1.dp, EchoGlassBorder),
         shape = RoundedCornerShape(12.dp),

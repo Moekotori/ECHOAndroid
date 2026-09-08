@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module-owned translations. English values are the fallback for missing translations. -->
+<resources>
+    <string name="feature_home_add_to_queue_1775d3" formatted="false">"キューに追加"</string>
+    <string name="feature_home_added_930006" formatted="false">"追加日"</string>
+    <string name="feature_home_adjust_the_local_queue_f4499e" formatted="false">"ローカルキューを調整"</string>
+    <string name="feature_home_albums_e68c2b" formatted="false">"アルバム"</string>
+    <string name="feature_home_albums_you_like_95a2b9" formatted="false">"お気に入りのアルバム"</string>
+    <string name="feature_home_appears_after_you_play_an_album_26effb" formatted="false">"アルバムを再生すると表示されます"</string>
+    <string name="feature_home_appears_after_you_play_an_artist_8a9384" formatted="false">"アーティストの曲を再生すると表示されます"</string>
+    <string name="feature_home_appears_after_you_scan_your_library_5ae1b0" formatted="false">"ライブラリをスキャンすると表示されます"</string>
+    <string name="feature_home_artist_albumcount_coerceatleast_0_albums_3a30a7">"%1$s 枚"</string>
+    <string name="feature_home_artist_ranking_80100b" formatted="false">"アーティストランキング"</string>
+    <string name="feature_home_artist_trackcount_tracks_durationlabel_3431c6">"%1$s 曲 · %2$s"</string>
+    <string name="feature_home_artists_1e19fb" formatted="false">"アーティスト"</string>
+    <string name="feature_home_artists_e168aa" formatted="false">"アーティスト"</string>
+    <string name="feature_home_back_49093c" formatted="false">"戻る"</string>
+    <string name="feature_home_back_to_library_f16b77" formatted="false">"ライブラリに戻る"</string>
+    <string name="feature_home_buffering_24542e" formatted="false">"バッファ中"</string>
+    <string name="feature_home_choose_a_track_abb9c5" formatted="false">"曲を選ぶ"</string>
+    <string name="feature_home_clear_819f71" formatted="false">"クリア"</string>
+    <string name="feature_home_clear_e6e947" formatted="false">"クリア"</string>
+    <string name="feature_home_connect_pc_724ba0" formatted="false">"PC に接続"</string>
+    <string name="feature_home_connect_pc_echo_bcfead" formatted="false">"PC ECHO に接続"</string>
+    <string name="feature_home_continue_playing_6faf22" formatted="false">"再生を続ける"</string>
+    <string name="feature_home_continues_from_the_local_queue_2f45cb" formatted="false">"ローカルキューに沿って再生"</string>
+    <string name="feature_home_daily_mix_cb64bd" formatted="false">"今日のおすすめ"</string>
+    <string name="feature_home_desktop_handoff_playback_399554" formatted="false">"デスクトップへ引き継いで再生"</string>
+    <string name="feature_home_discover_great_music_c63445" formatted="false">"いい音楽を見つけよう"</string>
+    <string name="feature_home_ended_6503ae" formatted="false">"終了"</string>
+    <string name="feature_home_enter_a_keyword_to_start_searching_147a79" formatted="false">"キーワードを入力して検索"</string>
+    <string name="feature_home_error_ad4bd6" formatted="false">"エラー"</string>
+    <string name="feature_home_follows_queue_order_0926fb" formatted="false">"キューの順に再生"</string>
+    <string name="feature_home_from_your_local_library_266631" formatted="false">"端末のライブラリから"</string>
+    <string name="feature_home_handoff_2f82d3" formatted="false">"ハンドオフ"</string>
+    <string name="feature_home_handoff_path_d70cad" formatted="false">"ハンドオフ経路"</string>
+    <string name="feature_home_hardware_offload_205b4d" formatted="false">"ハードウェア直通"</string>
+    <string name="feature_home_heatmap_activeweeks_weeks_active_79d6b5">"%1$s 週アクティブ"</string>
+    <string name="feature_home_idle_3e0cc6" formatted="false">"待機"</string>
+    <string name="feature_home_in_order_47b60a" formatted="false">"リスト順"</string>
+    <string name="feature_home_in_order_951ca0" formatted="false">"リスト順"</string>
+    <string name="feature_home_leave_a_trail_through_your_local_library_298736" formatted="false">"端末のライブラリに手がかりを残す"</string>
+    <string name="feature_home_less_37b004" formatted="false">"少"</string>
+    <string name="feature_home_library_848e9b" formatted="false">"ライブラリ"</string>
+    <string name="feature_home_listen_later_d52083" formatted="false">"あとで聴く"</string>
+    <string name="feature_home_listening_heatmap_last_12_weeks_943587" formatted="false">"直近12週の再生ヒートマップ"</string>
+    <string name="feature_home_loading_a4ce8b" formatted="false">"読み込み中"</string>
+    <string name="feature_home_local_music_a88e59" formatted="false">"ローカルミュージック"</string>
+    <string name="feature_home_lyrics_repeat_and_queue_reorder_are_reserved_6d2c34" formatted="false">"歌詞、リピート、キュー並べ替えの枠は用意済みです"</string>
+    <string name="feature_home_minutes_min_c3e281">"%1$s分"</string>
+    <string name="feature_home_month_day_000137">"%1$s月%2$s日"</string>
+    <string name="feature_home_more_8d2e9a" formatted="false">"多"</string>
+    <string name="feature_home_next_d67904" formatted="false">"次の曲"</string>
+    <string name="feature_home_next_lyrics_repeat_and_queue_reorder_f8bcaf" formatted="false">"次は歌詞、リピート、キュー並べ替え"</string>
+    <string name="feature_home_no_albums_yet_93b5cb" formatted="false">"アルバムはまだありません"</string>
+    <string name="feature_home_no_favorite_albums_yet_7c8d3b" formatted="false">"お気に入りのアルバムはまだありません"</string>
+    <string name="feature_home_no_new_albums_yet_ac7085" formatted="false">"新しいアルバムはまだありません"</string>
+    <string name="feature_home_no_ranking_data_yet_810ddb" formatted="false">"ランキングデータはまだありません"</string>
+    <string name="feature_home_no_recommendations_yet_040329" formatted="false">"おすすめはまだありません"</string>
+    <string name="feature_home_not_every_journey_has_an_ending_53606e" formatted="false">"すべての旅に終わりがあるわけではない"</string>
+    <string name="feature_home_nothing_played_yet_988bfc" formatted="false">"再生履歴はまだありません"</string>
+    <string name="feature_home_nothing_playing_b290fe" formatted="false">"再生中の曲はありません"</string>
+    <string name="feature_home_now_124d95" formatted="false">"再生中"</string>
+    <string name="feature_home_open_library_eba8cb" formatted="false">"ライブラリを開く"</string>
+    <string name="feature_home_output_bb8fcf" formatted="false">"出力"</string>
+    <string name="feature_home_pair_to_play_remotely_14a7b9" formatted="false">"ペアリング後にリモート再生"</string>
+    <string name="feature_home_pair_to_take_over_remote_playback_5e3e4c" formatted="false">"ペアリング後にリモート再生を引き継ぎ"</string>
+    <string name="feature_home_park_the_albums_artists_and_tracks_you_want_b2f171" formatted="false">"聴きたいアルバム、アーティスト、曲をここに置いて、あとで続けましょう。"</string>
+    <string name="feature_home_paused_3d8ed2" formatted="false">"一時停止"</string>
+    <string name="feature_home_pc_handoff_c867f1" formatted="false">"PC ハンドオフ"</string>
+    <string name="feature_home_pc_output_e48933" formatted="false">"PC 出力"</string>
+    <string name="feature_home_pick_a_few_tracks_from_your_local_library_21141c" formatted="false">"端末のライブラリから数曲選んで始めましょう。"</string>
+    <string name="feature_home_pick_a_song_from_your_library_320636" formatted="false">"ライブラリから1曲選ぶ"</string>
+    <string name="feature_home_pick_a_track_first_bcdca7" formatted="false">"曲の選択待ち"</string>
+    <string name="feature_home_pick_from_your_library_24e9be" formatted="false">"ライブラリから選ぶ"</string>
+    <string name="feature_home_play_next_a1f73e" formatted="false">"次に再生"</string>
+    <string name="feature_home_play_on_device_4765ae" formatted="false">"この端末で再生"</string>
+    <string name="feature_home_play_or_favorite_albums_to_fill_this_row_cf6bca" formatted="false">"再生またはお気に入り登録すると表示されます"</string>
+    <string name="feature_home_play_or_pause_37a70f" formatted="false">"再生または一時停止"</string>
+    <string name="feature_home_playback_queue_d2e6c0" formatted="false">"再生キュー"</string>
+    <string name="feature_home_played_ef0258" formatted="false">"再生済み"</string>
+    <string name="feature_home_playing_d86b54" formatted="false">"再生中"</string>
+    <string name="feature_home_previous_af0264" formatted="false">"前の曲"</string>
+    <string name="feature_home_processing_4f0a68" formatted="false">"処理"</string>
+    <string name="feature_home_queue_is_empty_1b4178" formatted="false">"キューは空です"</string>
+    <string name="feature_home_queue_is_shuffled_45cabc" formatted="false">"キューをシャッフル"</string>
+    <string name="feature_home_ready_to_hand_off_2e2884" formatted="false">"ハンドオフ可能"</string>
+    <string name="feature_home_ready_to_play_c4764f" formatted="false">"再生の準備"</string>
+    <string name="feature_home_recent_activity_581ef8" formatted="false">"最近のアクティビティ"</string>
+    <string name="feature_home_recommended_for_you_8335d9" formatted="false">"あなたへのおすすめ"</string>
+    <string name="feature_home_refresh_828c69" formatted="false">"更新"</string>
+    <string name="feature_home_repeat_all_b8cce1" formatted="false">"全曲リピート"</string>
+    <string name="feature_home_repeat_off_e1d801" formatted="false">"リピートオフ"</string>
+    <string name="feature_home_repeat_one_3df94f" formatted="false">"1曲リピート"</string>
+    <string name="feature_home_scan_to_generate_recommendations_16383a" formatted="false">"スキャンするとおすすめが作られます"</string>
+    <string name="feature_home_scanning_library_d0b14c" formatted="false">"ライブラリをスキャン中"</string>
+    <string name="feature_home_search_local_music_albums_and_artists_443a4f" formatted="false">"端末の曲、アルバム、アーティストを検索"</string>
+    <string name="feature_home_search_local_music_b9c195" formatted="false">"端末の音楽を検索..."</string>
+    <string name="feature_home_search_songs_albums_and_artists_c46634" formatted="false">"曲、アルバム、アーティストを検索"</string>
+    <string name="feature_home_seeking_ea77e5" formatted="false">"シーク中"</string>
+    <string name="feature_home_shuffle_957ce0" formatted="false">"シャッフル"</string>
+    <string name="feature_home_shuffle_on_c7c5c4" formatted="false">"シャッフルオン"</string>
+    <string name="feature_home_smart_queue_814a45" formatted="false">"スマートキュー"</string>
+    <string name="feature_home_songs_107b60" formatted="false">"曲"</string>
+    <string name="feature_home_star_an_album_on_the_player_to_see_edd836" formatted="false">"再生画面で保存すると表示されます"</string>
+    <string name="feature_home_start_with_local_music_9875f9" formatted="false">"端末の音楽から始める"</string>
+    <string name="feature_home_stopped_6b0d06" formatted="false">"停止"</string>
+    <string name="feature_home_switch_to_desktop_output_c19745" formatted="false">"デスクトップ出力に切り替えられます"</string>
+    <string name="feature_home_switch_to_pc_echo_5ab6a6" formatted="false">"PC ECHO に切り替える"</string>
+    <string name="feature_home_tap_to_switch_47d6a3" formatted="false">"タップで切り替え"</string>
+    <string name="feature_home_this_device_8463b7" formatted="false">"この端末"</string>
+    <string name="feature_home_unknown_artist_85ee30" formatted="false">"不明なアーティスト"</string>
+    <string name="feature_home_upcoming_tracks_appear_after_you_pick_a_song_7e7129" formatted="false">"曲を選ぶと次に再生する曲が表示されます"</string>
+    <string name="feature_home_wake_up_your_local_music_a2c609" formatted="false">"端末の音楽を目覚めさせよう"</string>
+</resources>

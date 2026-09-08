@@ -1,9 +1,12 @@
 package app.echo.android.feature.library
 
+import app.echo.android.feature.library.R as L10nR
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import app.echo.android.design.echoClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -58,7 +61,6 @@ import app.echo.android.design.EchoGlassInk
 import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.displayMetadataOrUnknown
-import app.echo.android.design.echoString
 import app.echo.android.design.formatDuration
 import app.echo.android.design.rememberArtworkPalette
 import app.echo.android.model.library.AlbumSummary
@@ -165,13 +167,13 @@ internal fun AlbumDetailPage(
 
             when {
                 tracks.isInitialPagingLoad() -> item(key = "loading") {
-                    AlbumDetailNotice(echoString(en = "Loading tracks...", zh = "正在加载曲目...", ja = "曲を読み込み中..."))
+                    AlbumDetailNotice(stringResource(L10nR.string.feature_library_loading_tracks_8e2147))
                 }
                 tracks.isInitialPagingError() -> item(key = "error") {
-                    AlbumDetailNotice(echoString(en = "Failed to load tracks.", zh = "曲目加载失败。", ja = "曲の読み込みに失敗しました。"))
+                    AlbumDetailNotice(stringResource(L10nR.string.feature_library_failed_to_load_tracks_f65c9b))
                 }
                 tracks.itemCount == 0 -> item(key = "empty") {
-                    AlbumDetailNotice(echoString(en = "No tracks yet.", zh = "暂无曲目。", ja = "曲はまだありません。"))
+                    AlbumDetailNotice(stringResource(L10nR.string.feature_library_no_tracks_yet_c4614a))
                 }
                 else -> items(
                     count = tracks.itemCount,
@@ -266,7 +268,7 @@ internal fun AlbumDetailListPage(
 
             if (tracks.isEmpty()) {
                 item(key = "empty") {
-                    AlbumDetailNotice(echoString(en = "No tracks yet.", zh = "暂无曲目。", ja = "曲はまだありません。"))
+                    AlbumDetailNotice(stringResource(L10nR.string.feature_library_no_tracks_yet_c4614a))
                 }
             } else {
                 itemsIndexed(
@@ -365,13 +367,13 @@ internal fun ArtistDetailPage(
 
             when {
                 tracks.isInitialPagingLoad() -> item(key = "loading") {
-                    AlbumDetailNotice(echoString(en = "Loading tracks...", zh = "正在加载曲目...", ja = "曲を読み込み中..."))
+                    AlbumDetailNotice(stringResource(L10nR.string.feature_library_loading_tracks_8e2147))
                 }
                 tracks.isInitialPagingError() -> item(key = "error") {
-                    AlbumDetailNotice(echoString(en = "Failed to load tracks.", zh = "曲目加载失败。", ja = "曲の読み込みに失敗しました。"))
+                    AlbumDetailNotice(stringResource(L10nR.string.feature_library_failed_to_load_tracks_f65c9b))
                 }
                 tracks.itemCount == 0 -> item(key = "empty") {
-                    AlbumDetailNotice(echoString(en = "No tracks yet.", zh = "暂无曲目。", ja = "曲はまだありません。"))
+                    AlbumDetailNotice(stringResource(L10nR.string.feature_library_no_tracks_yet_c4614a))
                 }
                 else -> items(
                     count = tracks.itemCount,
@@ -470,7 +472,7 @@ internal fun ArtistDetailListPage(
 
             if (tracks.isEmpty()) {
                 item(key = "empty") {
-                    AlbumDetailNotice(echoString(en = "No tracks yet.", zh = "暂无曲目。", ja = "曲はまだありません。"))
+                    AlbumDetailNotice(stringResource(L10nR.string.feature_library_no_tracks_yet_c4614a))
                 }
             } else {
                 itemsIndexed(
@@ -607,12 +609,12 @@ private fun AlbumDetailTopBar(onBack: () -> Unit) {
                 .clip(CircleShape)
                 .background(colors.elevatedSurface)
                 .border(BorderStroke(1.dp, colors.border), CircleShape)
-                .clickable(onClick = onBack),
+                .echoClickable(onClick = onBack),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = echoString(en = "Back", zh = "返回", ja = "戻る"),
+                contentDescription = stringResource(L10nR.string.feature_library_back_49093c),
                 tint = colors.content,
                 modifier = Modifier.size(22.dp),
             )
@@ -696,7 +698,7 @@ private fun AlbumActionBar(
     ) {
         AlbumDetailActionButton(
             icon = Icons.Rounded.PlayArrow,
-            label = echoString(en = "Play all", zh = "播放全部", ja = "すべて再生"),
+            label = stringResource(L10nR.string.feature_library_play_all_55c80e),
             iconSize = 24.dp,
             contentColor = actionContent,
             containerColor = colors.elevatedSurface,
@@ -706,7 +708,7 @@ private fun AlbumActionBar(
         )
         AlbumDetailActionButton(
             icon = Icons.Rounded.Shuffle,
-            label = echoString(en = "Shuffle", zh = "随机播放", ja = "シャッフル"),
+            label = stringResource(L10nR.string.feature_library_shuffle_34e7ce),
             iconSize = 22.dp,
             contentColor = actionContent,
             containerColor = colors.elevatedSurface,
@@ -735,7 +737,7 @@ private fun AlbumDetailActionButton(
             .clip(shape)
             .background(containerColor)
             .border(BorderStroke(1.dp, borderColor), shape)
-            .clickable(onClick = onClick),
+            .echoClickable(onClick = onClick),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -885,7 +887,7 @@ private fun AlbumTracksHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            echoString(en = "Tracks", zh = "曲目", ja = "曲"),
+            stringResource(L10nR.string.feature_library_tracks_2d80e8),
             color = resolvedTitleColor,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
@@ -912,16 +914,16 @@ private fun sourceInsight(tracks: List<EchoTrack>): DetailInsight {
         .singleOrNull()
         ?.let { sourceLabel(it) }
         ?: if (tracks.isEmpty()) {
-            echoString(en = "Local library", zh = "本机媒体库", ja = "ローカルライブラリ")
+            stringResource(L10nR.string.feature_library_local_library_ddf4b1)
         } else {
-            echoString(en = "Multiple sources", zh = "多来源", ja = "複数のソース")
+            stringResource(L10nR.string.feature_library_multiple_sources_0f53d5)
         }
     val secondary = if (tracks.isEmpty()) {
-        echoString(en = "Waiting for track info", zh = "等待曲目信息", ja = "曲情報を待っています")
+        stringResource(L10nR.string.feature_library_waiting_for_track_info_f2add7)
     } else {
         libraryTrackCountLabel(tracks.size)
     }
-    return DetailInsight(echoString(en = "Source", zh = "来源", ja = "ソース"), resolvedSource, secondary)
+    return DetailInsight(stringResource(L10nR.string.feature_library_source_4aff16), resolvedSource, secondary)
 }
 
 @Composable
@@ -933,11 +935,11 @@ private fun albumInfoInsight(album: AlbumSummary, tracks: List<EchoTrack>): Deta
         year?.let { add(it) }
         add(libraryTrackCountLabel(album.trackCount))
         if (discs > 1) {
-            add(echoString(en = "$discs discs", zh = "$discs 碟", ja = "$discs 枚"))
+            add(stringResource(L10nR.string.feature_library_discs_discs_902194, (discs).toString()))
         }
         if (album.durationMs > 0L) add(readableDuration(album.durationMs))
     }.joinToString(" · ")
-    return DetailInsight(echoString(en = "Info", zh = "信息", ja = "情報"), primary, secondary)
+    return DetailInsight(stringResource(L10nR.string.feature_library_info_41ae25), primary, secondary)
 }
 
 @Composable
@@ -949,29 +951,29 @@ private fun artistInfoInsight(artist: ArtistSummary, tracks: List<EchoTrack>): D
         if (artist.durationMs > 0L) add(readableDuration(artist.durationMs))
         if (formats.isNotEmpty()) add(formats.joinToString(" / "))
     }.joinToString(" · ")
-    return DetailInsight(echoString(en = "Info", zh = "信息", ja = "情報"), primary, secondary)
+    return DetailInsight(stringResource(L10nR.string.feature_library_info_41ae25), primary, secondary)
 }
 
 @Composable
 private fun formatInsight(tracks: List<EchoTrack>): DetailInsight {
     val formats = tracks.mapNotNull { formatMimeType(it.mimeType) }.distinct().take(3)
     val primary = formats.takeIf { it.isNotEmpty() }?.joinToString(" / ")
-        ?: echoString(en = "Format pending", zh = "格式待解析", ja = "フォーマット未解析")
+        ?: stringResource(L10nR.string.feature_library_format_pending_ce16a1)
     val size = tracks.sumOf { it.sizeBytes }.takeIf { it > 0L }?.let(::formatFileSize)
     val sampleRate = formatSampleRates(tracks.mapNotNull { it.sampleRateHz?.takeIf { hz -> hz > 0 } }.distinct())
     val secondary = buildList {
         size?.let { add(it) }
-        add(sampleRate ?: echoString(en = "Sample rate pending", zh = "采样率待解析", ja = "サンプリングレート未解析"))
+        add(sampleRate ?: stringResource(L10nR.string.feature_library_sample_rate_pending_bd6e6d))
     }.joinToString(" · ")
-    return DetailInsight(echoString(en = "Format", zh = "格式", ja = "フォーマット"), primary, secondary)
+    return DetailInsight(stringResource(L10nR.string.feature_library_format_a7775b), primary, secondary)
 }
 
 @Composable
 private fun sourceLabel(sourceId: String): String = when (sourceId.lowercase()) {
-    "mediastore" -> echoString(en = "Local library", zh = "本机媒体库", ja = "ローカルライブラリ")
+    "mediastore" -> stringResource(L10nR.string.feature_library_local_library_ddf4b1)
     "subsonic" -> "Subsonic / Navidrome"
     "webdav" -> "WebDAV"
-    "unknown" -> echoString(en = "Unknown source", zh = "未知来源", ja = "不明なソース")
+    "unknown" -> stringResource(L10nR.string.feature_library_unknown_source_d8c291)
     else -> when {
         sourceId.startsWith("subsonic:", ignoreCase = true) -> "Subsonic / Navidrome"
         sourceId.startsWith("webdav:", ignoreCase = true) -> "WebDAV"

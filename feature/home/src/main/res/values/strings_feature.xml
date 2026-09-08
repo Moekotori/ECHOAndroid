@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module-owned translations. English values are the fallback for missing translations. -->
+<resources>
+    <string name="feature_home_add_to_queue_1775d3" formatted="false">"Add to queue"</string>
+    <string name="feature_home_added_930006" formatted="false">"Added"</string>
+    <string name="feature_home_adjust_the_local_queue_f4499e" formatted="false">"Adjust the local queue"</string>
+    <string name="feature_home_albums_e68c2b" formatted="false">"Albums"</string>
+    <string name="feature_home_albums_you_like_95a2b9" formatted="false">"Albums you like"</string>
+    <string name="feature_home_appears_after_you_play_an_album_26effb" formatted="false">"Appears after you play an album"</string>
+    <string name="feature_home_appears_after_you_play_an_artist_8a9384" formatted="false">"Appears after you play an artist"</string>
+    <string name="feature_home_appears_after_you_scan_your_library_5ae1b0" formatted="false">"Appears after you scan your library"</string>
+    <string name="feature_home_artist_albumcount_coerceatleast_0_albums_3a30a7">"%1$s albums"</string>
+    <string name="feature_home_artist_ranking_80100b" formatted="false">"Artist ranking"</string>
+    <string name="feature_home_artist_trackcount_tracks_durationlabel_3431c6">"%1$s tracks · %2$s"</string>
+    <string name="feature_home_artists_1e19fb" formatted="false">"Artists"</string>
+    <string name="feature_home_artists_e168aa" formatted="false">"Artists"</string>
+    <string name="feature_home_back_49093c" formatted="false">"Back"</string>
+    <string name="feature_home_back_to_library_f16b77" formatted="false">"Back to library"</string>
+    <string name="feature_home_buffering_24542e" formatted="false">"Buffering"</string>
+    <string name="feature_home_choose_a_track_abb9c5" formatted="false">"Choose a track"</string>
+    <string name="feature_home_clear_819f71" formatted="false">"Clear"</string>
+    <string name="feature_home_clear_e6e947" formatted="false">"Clear"</string>
+    <string name="feature_home_connect_pc_724ba0" formatted="false">"Connect PC"</string>
+    <string name="feature_home_connect_pc_echo_bcfead" formatted="false">"Connect PC ECHO"</string>
+    <string name="feature_home_continue_playing_6faf22" formatted="false">"Continue playing"</string>
+    <string name="feature_home_continues_from_the_local_queue_2f45cb" formatted="false">"Continues from the local queue"</string>
+    <string name="feature_home_daily_mix_cb64bd" formatted="false">"Daily mix"</string>
+    <string name="feature_home_desktop_handoff_playback_399554" formatted="false">"Desktop handoff playback"</string>
+    <string name="feature_home_discover_great_music_c63445" formatted="false">"Discover great music"</string>
+    <string name="feature_home_ended_6503ae" formatted="false">"Ended"</string>
+    <string name="feature_home_enter_a_keyword_to_start_searching_147a79" formatted="false">"Enter a keyword to start searching"</string>
+    <string name="feature_home_error_ad4bd6" formatted="false">"Error"</string>
+    <string name="feature_home_follows_queue_order_0926fb" formatted="false">"Follows queue order"</string>
+    <string name="feature_home_from_your_local_library_266631" formatted="false">"From your local library"</string>
+    <string name="feature_home_handoff_2f82d3" formatted="false">"Handoff"</string>
+    <string name="feature_home_handoff_path_d70cad" formatted="false">"Handoff path"</string>
+    <string name="feature_home_hardware_offload_205b4d" formatted="false">"Hardware offload"</string>
+    <string name="feature_home_heatmap_activeweeks_weeks_active_79d6b5">"%1$s weeks active"</string>
+    <string name="feature_home_idle_3e0cc6" formatted="false">"Idle"</string>
+    <string name="feature_home_in_order_47b60a" formatted="false">"In order"</string>
+    <string name="feature_home_in_order_951ca0" formatted="false">"In order"</string>
+    <string name="feature_home_leave_a_trail_through_your_local_library_298736" formatted="false">"Leave a trail through your local library"</string>
+    <string name="feature_home_less_37b004" formatted="false">"Less"</string>
+    <string name="feature_home_library_848e9b" formatted="false">"Library"</string>
+    <string name="feature_home_listen_later_d52083" formatted="false">"Listen later"</string>
+    <string name="feature_home_listening_heatmap_last_12_weeks_943587" formatted="false">"Listening heatmap · last 12 weeks"</string>
+    <string name="feature_home_loading_a4ce8b" formatted="false">"Loading"</string>
+    <string name="feature_home_local_music_a88e59" formatted="false">"Local music"</string>
+    <string name="feature_home_lyrics_repeat_and_queue_reorder_are_reserved_6d2c34" formatted="false">"Lyrics, repeat, and queue reorder are reserved"</string>
+    <string name="feature_home_minutes_min_c3e281">"%1$s min"</string>
+    <string name="feature_home_month_day_000137">"%1$s/%2$s"</string>
+    <string name="feature_home_more_8d2e9a" formatted="false">"More"</string>
+    <string name="feature_home_next_d67904" formatted="false">"Next"</string>
+    <string name="feature_home_next_lyrics_repeat_and_queue_reorder_f8bcaf" formatted="false">"Next: lyrics, repeat, and queue reorder"</string>
+    <string name="feature_home_no_albums_yet_93b5cb" formatted="false">"No albums yet"</string>
+    <string name="feature_home_no_favorite_albums_yet_7c8d3b" formatted="false">"No favorite albums yet"</string>
+    <string name="feature_home_no_new_albums_yet_ac7085" formatted="false">"No new albums yet"</string>
+    <string name="feature_home_no_ranking_data_yet_810ddb" formatted="false">"No ranking data yet"</string>
+    <string name="feature_home_no_recommendations_yet_040329" formatted="false">"No recommendations yet"</string>
+    <string name="feature_home_not_every_journey_has_an_ending_53606e" formatted="false">"Not every journey has an ending"</string>
+    <string name="feature_home_nothing_played_yet_988bfc" formatted="false">"Nothing played yet"</string>
+    <string name="feature_home_nothing_playing_b290fe" formatted="false">"Nothing playing"</string>
+    <string name="feature_home_now_124d95" formatted="false">"Now"</string>
+    <string name="feature_home_open_library_eba8cb" formatted="false">"Open library"</string>
+    <string name="feature_home_output_bb8fcf" formatted="false">"Output"</string>
+    <string name="feature_home_pair_to_play_remotely_14a7b9" formatted="false">"Pair to play remotely"</string>
+    <string name="feature_home_pair_to_take_over_remote_playback_5e3e4c" formatted="false">"Pair to take over remote playback"</string>
+    <string name="feature_home_park_the_albums_artists_and_tracks_you_want_b2f171" formatted="false">"Park the albums, artists, and tracks you want, then pick them up later."</string>
+    <string name="feature_home_paused_3d8ed2" formatted="false">"Paused"</string>
+    <string name="feature_home_pc_handoff_c867f1" formatted="false">"PC handoff"</string>
+    <string name="feature_home_pc_output_e48933" formatted="false">"PC output"</string>
+    <string name="feature_home_pick_a_few_tracks_from_your_local_library_21141c" formatted="false">"Pick a few tracks from your local library to start."</string>
+    <string name="feature_home_pick_a_song_from_your_library_320636" formatted="false">"Pick a song from your library"</string>
+    <string name="feature_home_pick_a_track_first_bcdca7" formatted="false">"Pick a track first"</string>
+    <string name="feature_home_pick_from_your_library_24e9be" formatted="false">"Pick from your library"</string>
+    <string name="feature_home_play_next_a1f73e" formatted="false">"Play next"</string>
+    <string name="feature_home_play_on_device_4765ae" formatted="false">"Play on device"</string>
+    <string name="feature_home_play_or_favorite_albums_to_fill_this_row_cf6bca" formatted="false">"Play or favorite albums to fill this row"</string>
+    <string name="feature_home_play_or_pause_37a70f" formatted="false">"Play or pause"</string>
+    <string name="feature_home_playback_queue_d2e6c0" formatted="false">"Playback queue"</string>
+    <string name="feature_home_played_ef0258" formatted="false">"Played"</string>
+    <string name="feature_home_playing_d86b54" formatted="false">"Playing"</string>
+    <string name="feature_home_previous_af0264" formatted="false">"Previous"</string>
+    <string name="feature_home_processing_4f0a68" formatted="false">"Processing"</string>
+    <string name="feature_home_queue_is_empty_1b4178" formatted="false">"Queue is empty"</string>
+    <string name="feature_home_queue_is_shuffled_45cabc" formatted="false">"Queue is shuffled"</string>
+    <string name="feature_home_ready_to_hand_off_2e2884" formatted="false">"Ready to hand off"</string>
+    <string name="feature_home_ready_to_play_c4764f" formatted="false">"Ready to play"</string>
+    <string name="feature_home_recent_activity_581ef8" formatted="false">"Recent activity"</string>
+    <string name="feature_home_recommended_for_you_8335d9" formatted="false">"Recommended for you"</string>
+    <string name="feature_home_refresh_828c69" formatted="false">"Refresh"</string>
+    <string name="feature_home_repeat_all_b8cce1" formatted="false">"Repeat all"</string>
+    <string name="feature_home_repeat_off_e1d801" formatted="false">"Repeat off"</string>
+    <string name="feature_home_repeat_one_3df94f" formatted="false">"Repeat one"</string>
+    <string name="feature_home_scan_to_generate_recommendations_16383a" formatted="false">"Scan to generate recommendations"</string>
+    <string name="feature_home_scanning_library_d0b14c" formatted="false">"Scanning library"</string>
+    <string name="feature_home_search_local_music_albums_and_artists_443a4f" formatted="false">"Search local music, albums, and artists"</string>
+    <string name="feature_home_search_local_music_b9c195" formatted="false">"Search local music..."</string>
+    <string name="feature_home_search_songs_albums_and_artists_c46634" formatted="false">"Search songs, albums, and artists"</string>
+    <string name="feature_home_seeking_ea77e5" formatted="false">"Seeking"</string>
+    <string name="feature_home_shuffle_957ce0" formatted="false">"Shuffle"</string>
+    <string name="feature_home_shuffle_on_c7c5c4" formatted="false">"Shuffle on"</string>
+    <string name="feature_home_smart_queue_814a45" formatted="false">"Smart queue"</string>
+    <string name="feature_home_songs_107b60" formatted="false">"Songs"</string>
+    <string name="feature_home_star_an_album_on_the_player_to_see_edd836" formatted="false">"Star an album on the player to see it here"</string>
+    <string name="feature_home_start_with_local_music_9875f9" formatted="false">"Start with local music"</string>
+    <string name="feature_home_stopped_6b0d06" formatted="false">"Stopped"</string>
+    <string name="feature_home_switch_to_desktop_output_c19745" formatted="false">"Switch to desktop output"</string>
+    <string name="feature_home_switch_to_pc_echo_5ab6a6" formatted="false">"Switch to PC ECHO"</string>
+    <string name="feature_home_tap_to_switch_47d6a3" formatted="false">"Tap to switch"</string>
+    <string name="feature_home_this_device_8463b7" formatted="false">"This device"</string>
+    <string name="feature_home_unknown_artist_85ee30" formatted="false">"Unknown artist"</string>
+    <string name="feature_home_upcoming_tracks_appear_after_you_pick_a_song_7e7129" formatted="false">"Upcoming tracks appear after you pick a song"</string>
+    <string name="feature_home_wake_up_your_local_music_a2c609" formatted="false">"Wake up your local music"</string>
+</resources>

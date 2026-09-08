@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module-owned translations. English values are the fallback for missing translations. -->
+<resources>
+    <string name="feature_home_add_to_queue_1775d3" formatted="false">"加入队列"</string>
+    <string name="feature_home_added_930006" formatted="false">"添加于"</string>
+    <string name="feature_home_adjust_the_local_queue_f4499e" formatted="false">"调整本地队列"</string>
+    <string name="feature_home_albums_e68c2b" formatted="false">"专辑"</string>
+    <string name="feature_home_albums_you_like_95a2b9" formatted="false">"你喜欢的专辑"</string>
+    <string name="feature_home_appears_after_you_play_an_album_26effb" formatted="false">"播放专辑后显示"</string>
+    <string name="feature_home_appears_after_you_play_an_artist_8a9384" formatted="false">"播放艺人歌曲后显示"</string>
+    <string name="feature_home_appears_after_you_scan_your_library_5ae1b0" formatted="false">"扫描曲库后显示"</string>
+    <string name="feature_home_artist_albumcount_coerceatleast_0_albums_3a30a7">"%1$s 专辑"</string>
+    <string name="feature_home_artist_ranking_80100b" formatted="false">"艺人排行榜"</string>
+    <string name="feature_home_artist_trackcount_tracks_durationlabel_3431c6">"%1$s 首 · %2$s"</string>
+    <string name="feature_home_artists_1e19fb" formatted="false">"艺术家"</string>
+    <string name="feature_home_artists_e168aa" formatted="false">"艺人"</string>
+    <string name="feature_home_back_49093c" formatted="false">"返回"</string>
+    <string name="feature_home_back_to_library_f16b77" formatted="false">"回到曲库"</string>
+    <string name="feature_home_buffering_24542e" formatted="false">"缓冲中"</string>
+    <string name="feature_home_choose_a_track_abb9c5" formatted="false">"选择曲目"</string>
+    <string name="feature_home_clear_819f71" formatted="false">"清空"</string>
+    <string name="feature_home_clear_e6e947" formatted="false">"清晰"</string>
+    <string name="feature_home_connect_pc_724ba0" formatted="false">"连接 PC"</string>
+    <string name="feature_home_connect_pc_echo_bcfead" formatted="false">"连接 PC ECHO"</string>
+    <string name="feature_home_continue_playing_6faf22" formatted="false">"继续播放"</string>
+    <string name="feature_home_continues_from_the_local_queue_2f45cb" formatted="false">"跟随本机队列继续播放"</string>
+    <string name="feature_home_daily_mix_cb64bd" formatted="false">"每日推荐"</string>
+    <string name="feature_home_desktop_handoff_playback_399554" formatted="false">"桌面接力播放"</string>
+    <string name="feature_home_discover_great_music_c63445" formatted="false">"发现好音乐"</string>
+    <string name="feature_home_ended_6503ae" formatted="false">"已结束"</string>
+    <string name="feature_home_enter_a_keyword_to_start_searching_147a79" formatted="false">"输入关键词开始搜索"</string>
+    <string name="feature_home_error_ad4bd6" formatted="false">"错误"</string>
+    <string name="feature_home_follows_queue_order_0926fb" formatted="false">"按队列顺序"</string>
+    <string name="feature_home_from_your_local_library_266631" formatted="false">"按你的本机曲库"</string>
+    <string name="feature_home_handoff_2f82d3" formatted="false">"接力"</string>
+    <string name="feature_home_handoff_path_d70cad" formatted="false">"接力路径"</string>
+    <string name="feature_home_hardware_offload_205b4d" formatted="false">"硬件直通"</string>
+    <string name="feature_home_heatmap_activeweeks_weeks_active_79d6b5">"%1$s 周活跃"</string>
+    <string name="feature_home_idle_3e0cc6" formatted="false">"空闲"</string>
+    <string name="feature_home_in_order_47b60a" formatted="false">"顺序播放"</string>
+    <string name="feature_home_in_order_951ca0" formatted="false">"顺序"</string>
+    <string name="feature_home_leave_a_trail_through_your_local_library_298736" formatted="false">"为本机曲库留一条线索"</string>
+    <string name="feature_home_less_37b004" formatted="false">"少"</string>
+    <string name="feature_home_library_848e9b" formatted="false">"曲库"</string>
+    <string name="feature_home_listen_later_d52083" formatted="false">"稍后聆听"</string>
+    <string name="feature_home_listening_heatmap_last_12_weeks_943587" formatted="false">"近 12 周播放热力图"</string>
+    <string name="feature_home_loading_a4ce8b" formatted="false">"加载中"</string>
+    <string name="feature_home_local_music_a88e59" formatted="false">"本地音乐"</string>
+    <string name="feature_home_lyrics_repeat_and_queue_reorder_are_reserved_6d2c34" formatted="false">"歌词、循环与队列重排位已预留"</string>
+    <string name="feature_home_minutes_min_c3e281">"%1$s 分钟"</string>
+    <string name="feature_home_month_day_000137">"%1$s月%2$s日"</string>
+    <string name="feature_home_more_8d2e9a" formatted="false">"多"</string>
+    <string name="feature_home_next_d67904" formatted="false">"下一首"</string>
+    <string name="feature_home_next_lyrics_repeat_and_queue_reorder_f8bcaf" formatted="false">"下一步补歌词、循环与队列重排"</string>
+    <string name="feature_home_no_albums_yet_93b5cb" formatted="false">"暂无专辑"</string>
+    <string name="feature_home_no_favorite_albums_yet_7c8d3b" formatted="false">"暂无偏好专辑"</string>
+    <string name="feature_home_no_new_albums_yet_ac7085" formatted="false">"暂无新增专辑"</string>
+    <string name="feature_home_no_ranking_data_yet_810ddb" formatted="false">"暂无排行数据"</string>
+    <string name="feature_home_no_recommendations_yet_040329" formatted="false">"暂无推荐"</string>
+    <string name="feature_home_not_every_journey_has_an_ending_53606e" formatted="false">"不是所有的旅途都有终点"</string>
+    <string name="feature_home_nothing_played_yet_988bfc" formatted="false">"暂无已播放"</string>
+    <string name="feature_home_nothing_playing_b290fe" formatted="false">"暂无播放"</string>
+    <string name="feature_home_now_124d95" formatted="false">"当前"</string>
+    <string name="feature_home_open_library_eba8cb" formatted="false">"打开曲库"</string>
+    <string name="feature_home_output_bb8fcf" formatted="false">"输出"</string>
+    <string name="feature_home_pair_to_play_remotely_14a7b9" formatted="false">"配对后远程播放"</string>
+    <string name="feature_home_pair_to_take_over_remote_playback_5e3e4c" formatted="false">"配对后接管远程播放"</string>
+    <string name="feature_home_park_the_albums_artists_and_tracks_you_want_b2f171" formatted="false">"把想听的专辑、歌手和曲目先放在这里，稍后继续。"</string>
+    <string name="feature_home_paused_3d8ed2" formatted="false">"已暂停"</string>
+    <string name="feature_home_pc_handoff_c867f1" formatted="false">"PC 接力"</string>
+    <string name="feature_home_pc_output_e48933" formatted="false">"PC 输出"</string>
+    <string name="feature_home_pick_a_few_tracks_from_your_local_library_21141c" formatted="false">"从本机曲库挑几首开始。"</string>
+    <string name="feature_home_pick_a_song_from_your_library_320636" formatted="false">"从曲库选择一首歌"</string>
+    <string name="feature_home_pick_a_track_first_bcdca7" formatted="false">"待选择曲目"</string>
+    <string name="feature_home_pick_from_your_library_24e9be" formatted="false">"从曲库选择"</string>
+    <string name="feature_home_play_next_a1f73e" formatted="false">"下一首播放"</string>
+    <string name="feature_home_play_on_device_4765ae" formatted="false">"本机播放"</string>
+    <string name="feature_home_play_or_favorite_albums_to_fill_this_row_cf6bca" formatted="false">"播放或收藏专辑后会出现在这里"</string>
+    <string name="feature_home_play_or_pause_37a70f" formatted="false">"播放或暂停"</string>
+    <string name="feature_home_playback_queue_d2e6c0" formatted="false">"播放队列"</string>
+    <string name="feature_home_played_ef0258" formatted="false">"已播放"</string>
+    <string name="feature_home_playing_d86b54" formatted="false">"播放中"</string>
+    <string name="feature_home_previous_af0264" formatted="false">"上一首"</string>
+    <string name="feature_home_processing_4f0a68" formatted="false">"处理"</string>
+    <string name="feature_home_queue_is_empty_1b4178" formatted="false">"队列为空"</string>
+    <string name="feature_home_queue_is_shuffled_45cabc" formatted="false">"队列随机"</string>
+    <string name="feature_home_ready_to_hand_off_2e2884" formatted="false">"可接力"</string>
+    <string name="feature_home_ready_to_play_c4764f" formatted="false">"准备播放"</string>
+    <string name="feature_home_recent_activity_581ef8" formatted="false">"最近活动"</string>
+    <string name="feature_home_recommended_for_you_8335d9" formatted="false">"为你推荐"</string>
+    <string name="feature_home_refresh_828c69" formatted="false">"刷新"</string>
+    <string name="feature_home_repeat_all_b8cce1" formatted="false">"列表循环"</string>
+    <string name="feature_home_repeat_off_e1d801" formatted="false">"循环关闭"</string>
+    <string name="feature_home_repeat_one_3df94f" formatted="false">"单曲循环"</string>
+    <string name="feature_home_scan_to_generate_recommendations_16383a" formatted="false">"扫描后生成推荐"</string>
+    <string name="feature_home_scanning_library_d0b14c" formatted="false">"正在扫描曲库"</string>
+    <string name="feature_home_search_local_music_albums_and_artists_443a4f" formatted="false">"搜索本机音乐、专辑、歌手"</string>
+    <string name="feature_home_search_local_music_b9c195" formatted="false">"搜索本机音乐..."</string>
+    <string name="feature_home_search_songs_albums_and_artists_c46634" formatted="false">"搜索音乐、专辑、艺术家"</string>
+    <string name="feature_home_seeking_ea77e5" formatted="false">"定位中"</string>
+    <string name="feature_home_shuffle_957ce0" formatted="false">"随机"</string>
+    <string name="feature_home_shuffle_on_c7c5c4" formatted="false">"随机开启"</string>
+    <string name="feature_home_smart_queue_814a45" formatted="false">"智能队列"</string>
+    <string name="feature_home_songs_107b60" formatted="false">"歌曲"</string>
+    <string name="feature_home_star_an_album_on_the_player_to_see_edd836" formatted="false">"在播放页点收藏后显示"</string>
+    <string name="feature_home_start_with_local_music_9875f9" formatted="false">"从本机音乐开始"</string>
+    <string name="feature_home_stopped_6b0d06" formatted="false">"已停止"</string>
+    <string name="feature_home_switch_to_desktop_output_c19745" formatted="false">"可切换到桌面输出"</string>
+    <string name="feature_home_switch_to_pc_echo_5ab6a6" formatted="false">"切换到 PC ECHO"</string>
+    <string name="feature_home_tap_to_switch_47d6a3" formatted="false">"点按切换"</string>
+    <string name="feature_home_this_device_8463b7" formatted="false">"本机会话"</string>
+    <string name="feature_home_unknown_artist_85ee30" formatted="false">"未知艺人"</string>
+    <string name="feature_home_upcoming_tracks_appear_after_you_pick_a_song_7e7129" formatted="false">"选歌后显示即将播放"</string>
+    <string name="feature_home_wake_up_your_local_music_a2c609" formatted="false">"让本机音乐醒过来"</string>
+</resources>

@@ -33,6 +33,18 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache FFmpeg audio libraries
+        uses: actions/cache@v4
+        with:
+          path: |
+            core/playback/build/ffmpeg/downloads
+            core/playback/build/ffmpeg/native
+          key: ffmpeg-${{ runner.os }}-ndk27-${{ hashFiles('scripts/build-ffmpeg.py') }}
+
       - name: Make gradlew executable
         run: chmod +x gradlew
 

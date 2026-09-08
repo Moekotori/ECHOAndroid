@@ -1,10 +1,14 @@
 package app.echo.android.feature.library
 
+import app.echo.android.feature.library.R as L10nR
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import app.echo.android.design.echoItemMotion
+import app.echo.android.design.echoClickable
+import app.echo.android.design.echoCombinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -67,7 +71,6 @@ import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoColors
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.displayMetadataOrUnknown
-import app.echo.android.design.echoString
 import app.echo.android.design.formatDuration
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackMetadataUpdate
@@ -102,6 +105,7 @@ internal fun TrackList(
         ) { index: Int ->
             tracks[index]?.let { track ->
                 TrackRow(
+                    modifier = echoItemMotion(),
                     track = track,
                     onClick = { onPlayTrack(track) },
                     onUpdateTrackMetadata = onUpdateTrackMetadata,
@@ -154,6 +158,7 @@ internal fun TrackList(
         ) { index ->
             val track = tracks[index]
             TrackRow(
+                modifier = echoItemMotion(),
                 track = track,
                 onClick = { onPlayTrack(track) },
                 onUpdateTrackMetadata = onUpdateTrackMetadata,
@@ -191,6 +196,7 @@ internal fun TrackRow(
     onMoveUp: (() -> Unit)? = null,
     onMoveDown: (() -> Unit)? = null,
     showAudioInfoTags: Boolean = true,
+    modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
@@ -217,7 +223,7 @@ internal fun TrackRow(
         onRemoveFromPlaylist = onRemoveFromPlaylist,
         onMoveUp = onMoveUp,
         onMoveDown = onMoveDown,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 4.dp),
     ) { pressModifier ->
@@ -340,7 +346,7 @@ internal fun TrackContextMenu(
 
     Box(modifier = modifier) {
         content(
-            Modifier.combinedClickable(
+            Modifier.echoCombinedClickable(
                 onClick = onPlay,
                 onLongClick = { sheetMode = TrackSheetMode.Actions },
             ),
@@ -351,7 +357,7 @@ internal fun TrackContextMenu(
             containerColor = MaterialTheme.colorScheme.surface,
         ) {
             DropdownMenuItem(
-                text = { Text(echoString(en = "Play", zh = "播放", ja = "再生")) },
+                text = { Text(stringResource(L10nR.string.feature_library_play_38419a)) },
                 leadingIcon = {
                     Icon(Icons.Rounded.PlayArrow, contentDescription = null)
                 },
@@ -361,7 +367,7 @@ internal fun TrackContextMenu(
                 },
             )
             DropdownMenuItem(
-                text = { Text(echoString(en = "Edit tags", zh = "编辑标签", ja = "タグを編集")) },
+                text = { Text(stringResource(L10nR.string.feature_library_edit_tags_c8ec75)) },
                 leadingIcon = {
                     Icon(Icons.Rounded.Edit, contentDescription = null)
                 },
@@ -373,7 +379,7 @@ internal fun TrackContextMenu(
             )
             if (onImportLyrics != null) {
                 DropdownMenuItem(
-                    text = { Text(echoString(en = "Import lyrics", zh = "导入歌词", ja = "歌詞をインポート")) },
+                    text = { Text(stringResource(L10nR.string.feature_library_import_lyrics_744b75)) },
                     onClick = {
                         expanded = false
                         onImportLyrics(track)
@@ -382,7 +388,7 @@ internal fun TrackContextMenu(
             }
             if (onPickArtwork != null) {
                 DropdownMenuItem(
-                    text = { Text(echoString(en = "Change artwork", zh = "更换封面", ja = "カバーを変更")) },
+                    text = { Text(stringResource(L10nR.string.feature_library_change_artwork_d37180)) },
                     onClick = {
                         expanded = false
                         onPickArtwork(track)
@@ -390,7 +396,7 @@ internal fun TrackContextMenu(
                 )
             }
             DropdownMenuItem(
-                text = { Text(echoString(en = "Track info", zh = "歌曲信息", ja = "曲情報")) },
+                text = { Text(stringResource(L10nR.string.feature_library_track_info_36a07b)) },
                 leadingIcon = {
                     Icon(Icons.Rounded.Info, contentDescription = null)
                 },
@@ -529,10 +535,10 @@ private fun TrackActionSheet(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         TrackSheetHeader(track)
-        TrackActionRow(echoString(en = "Play", zh = "播放", ja = "再生"), Icons.Rounded.PlayArrow, enabled = true, onClick = onPlay)
+        TrackActionRow(stringResource(L10nR.string.feature_library_play_38419a), Icons.Rounded.PlayArrow, enabled = true, onClick = onPlay)
         if (canPlayNext) {
             TrackActionRow(
-                echoString(en = "Play next", zh = "下一首播放", ja = "次に再生"),
+                stringResource(L10nR.string.feature_library_play_next_a1f73e),
                 Icons.Rounded.SkipNext,
                 enabled = true,
                 onClick = onPlayNext,
@@ -540,7 +546,7 @@ private fun TrackActionSheet(
         }
         if (canEnqueue) {
             TrackActionRow(
-                echoString(en = "Add to queue", zh = "加入队列", ja = "キューに追加"),
+                stringResource(L10nR.string.feature_library_add_to_queue_1775d3),
                 Icons.Rounded.Queue,
                 enabled = true,
                 onClick = onEnqueue,
@@ -548,40 +554,40 @@ private fun TrackActionSheet(
         }
         if (canAddToPlaylist) {
             TrackActionRow(
-                echoString(en = "Add to playlist", zh = "加入歌单", ja = "プレイリストに追加"),
+                stringResource(L10nR.string.feature_library_add_to_playlist_0f8338),
                 Icons.AutoMirrored.Rounded.PlaylistAdd,
                 enabled = true,
                 onClick = onAddToPlaylist,
             )
         }
         if (canMoveUp) {
-            TrackActionRow(echoString(en = "Move up", zh = "上移", ja = "上へ"), Icons.Rounded.KeyboardArrowUp, enabled = true, onClick = onMoveUp)
+            TrackActionRow(stringResource(L10nR.string.feature_library_move_up_e6d961), Icons.Rounded.KeyboardArrowUp, enabled = true, onClick = onMoveUp)
         }
         if (canMoveDown) {
-            TrackActionRow(echoString(en = "Move down", zh = "下移", ja = "下へ"), Icons.Rounded.KeyboardArrowDown, enabled = true, onClick = onMoveDown)
+            TrackActionRow(stringResource(L10nR.string.feature_library_move_down_cf81ae), Icons.Rounded.KeyboardArrowDown, enabled = true, onClick = onMoveDown)
         }
         if (canRemoveFromPlaylist) {
             TrackActionRow(
-                echoString(en = "Remove from playlist", zh = "移出歌单", ja = "プレイリストから削除"),
+                stringResource(L10nR.string.feature_library_remove_from_playlist_f07718),
                 Icons.Rounded.DeleteOutline,
                 enabled = true,
                 onClick = onRemoveFromPlaylist,
             )
         }
-        TrackActionRow(echoString(en = "Edit tags", zh = "编辑标签", ja = "タグを編集"), Icons.Rounded.Edit, enabled = canEditMetadata, onClick = onEdit)
+        TrackActionRow(stringResource(L10nR.string.feature_library_edit_tags_c8ec75), Icons.Rounded.Edit, enabled = canEditMetadata, onClick = onEdit)
         TrackActionRow(
-            echoString(en = "Import LRC lyrics", zh = "导入 LRC 歌词", ja = "LRC 歌詞をインポート"),
+            stringResource(L10nR.string.feature_library_import_lrc_lyrics_8e2810),
             Icons.Rounded.UploadFile,
             enabled = canImportLyrics,
             onClick = onImportLyrics,
         )
         TrackActionRow(
-            echoString(en = "Custom artwork", zh = "自定义封面", ja = "カスタムカバー"),
+            stringResource(L10nR.string.feature_library_custom_artwork_c8c999),
             Icons.Rounded.Album,
             enabled = canPickArtwork,
             onClick = onPickArtwork,
         )
-        TrackActionRow(echoString(en = "Track info", zh = "歌曲信息", ja = "曲情報"), Icons.Rounded.Info, enabled = true, onClick = onInfo)
+        TrackActionRow(stringResource(L10nR.string.feature_library_track_info_36a07b), Icons.Rounded.Info, enabled = true, onClick = onInfo)
     }
 }
 
@@ -632,7 +638,7 @@ private fun TrackActionRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(52.dp)
-            .clickable(enabled = enabled, onClick = onClick),
+            .echoClickable(enabled = enabled, onClick = onClick),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (enabled) 0.58f else 0.28f),
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)),
@@ -694,7 +700,7 @@ private fun TrackMetadataEditorSheet(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                echoString(en = "Edit tags", zh = "编辑标签", ja = "タグを編集"),
+                stringResource(L10nR.string.feature_library_edit_tags_c8ec75),
                 modifier = Modifier.weight(1f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -702,34 +708,34 @@ private fun TrackMetadataEditorSheet(
                 style = MaterialTheme.typography.titleLarge,
             )
             TextButton(onClick = onDismiss) {
-                Text(echoString(en = "Cancel", zh = "取消", ja = "キャンセル"))
+                Text(stringResource(L10nR.string.feature_library_cancel_4c5fa5))
             }
         }
         TextField(
             value = title,
             onValueChange = { title = it },
-            label = { Text(echoString(en = "Title", zh = "标题", ja = "タイトル")) },
+            label = { Text(stringResource(L10nR.string.feature_library_title_af1111)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
         TextField(
             value = artist,
             onValueChange = { artist = it },
-            label = { Text(echoString(en = "Artist", zh = "艺人", ja = "アーティスト")) },
+            label = { Text(stringResource(L10nR.string.feature_library_artist_37d883)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
         TextField(
             value = album,
             onValueChange = { album = it },
-            label = { Text(echoString(en = "Album", zh = "专辑", ja = "アルバム")) },
+            label = { Text(stringResource(L10nR.string.feature_library_album_eb13be)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
         TextField(
             value = albumArtist,
             onValueChange = { albumArtist = it },
-            label = { Text(echoString(en = "Album artist", zh = "专辑艺人", ja = "アルバムアーティスト")) },
+            label = { Text(stringResource(L10nR.string.feature_library_album_artist_6defa0)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -737,28 +743,24 @@ private fun TrackMetadataEditorSheet(
             NumericMetadataField(
                 value = trackNumber,
                 onValueChange = { trackNumber = it },
-                label = echoString(en = "Track", zh = "音轨", ja = "トラック"),
+                label = stringResource(L10nR.string.feature_library_track_000e4d),
                 modifier = Modifier.weight(1f),
             )
             NumericMetadataField(
                 value = discNumber,
                 onValueChange = { discNumber = it },
-                label = echoString(en = "Disc", zh = "碟号", ja = "ディスク"),
+                label = stringResource(L10nR.string.feature_library_disc_3128c0),
                 modifier = Modifier.weight(1f),
             )
             NumericMetadataField(
                 value = year,
                 onValueChange = { year = it },
-                label = echoString(en = "Year", zh = "年份", ja = "年"),
+                label = stringResource(L10nR.string.feature_library_year_fe373f),
                 modifier = Modifier.weight(1f),
             )
         }
         Text(
-            echoString(
-                en = "Currently saved to the ECHOAndroid library index; imported lyrics and artwork are also bound to this track.",
-                zh = "当前保存到 ECHOAndroid 曲库索引；导入歌词和封面也会绑定到这首歌。",
-                ja = "ECHOAndroid のライブラリ索引に保存されます。インポートした歌詞とカバーもこの曲に紐づきます。",
-            ),
+            stringResource(L10nR.string.feature_library_currently_saved_to_the_echoandroid_library_index_imported_e15a70),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodySmall,
         )
@@ -781,7 +783,7 @@ private fun TrackMetadataEditorSheet(
             },
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(echoString(en = "Save", zh = "保存", ja = "保存"))
+            Text(stringResource(L10nR.string.feature_library_save_68ae20))
         }
     }
 }
@@ -805,7 +807,7 @@ private fun TrackMetadataEditorDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                echoString(en = "Edit tags", zh = "编辑标签", ja = "タグを編集"),
+                stringResource(L10nR.string.feature_library_edit_tags_c8ec75),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -815,28 +817,28 @@ private fun TrackMetadataEditorDialog(
                 TextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text(echoString(en = "Title", zh = "标题", ja = "タイトル")) },
+                    label = { Text(stringResource(L10nR.string.feature_library_title_af1111)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 TextField(
                     value = artist,
                     onValueChange = { artist = it },
-                    label = { Text(echoString(en = "Artist", zh = "艺术家", ja = "アーティスト")) },
+                    label = { Text(stringResource(L10nR.string.feature_library_artist_b6e7ad)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 TextField(
                     value = album,
                     onValueChange = { album = it },
-                    label = { Text(echoString(en = "Album", zh = "专辑", ja = "アルバム")) },
+                    label = { Text(stringResource(L10nR.string.feature_library_album_eb13be)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 TextField(
                     value = albumArtist,
                     onValueChange = { albumArtist = it },
-                    label = { Text(echoString(en = "Album artist", zh = "专辑艺术家", ja = "アルバムアーティスト")) },
+                    label = { Text(stringResource(L10nR.string.feature_library_album_artist_8a1c9e)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -844,28 +846,24 @@ private fun TrackMetadataEditorDialog(
                     NumericMetadataField(
                         value = trackNumber,
                         onValueChange = { trackNumber = it },
-                        label = echoString(en = "Track", zh = "音轨", ja = "トラック"),
+                        label = stringResource(L10nR.string.feature_library_track_000e4d),
                         modifier = Modifier.weight(1f),
                     )
                     NumericMetadataField(
                         value = discNumber,
                         onValueChange = { discNumber = it },
-                        label = echoString(en = "Disc", zh = "碟号", ja = "ディスク"),
+                        label = stringResource(L10nR.string.feature_library_disc_3128c0),
                         modifier = Modifier.weight(1f),
                     )
                     NumericMetadataField(
                         value = year,
                         onValueChange = { year = it },
-                        label = echoString(en = "Year", zh = "年份", ja = "年"),
+                        label = stringResource(L10nR.string.feature_library_year_fe373f),
                         modifier = Modifier.weight(1f),
                     )
                 }
                 Text(
-                    echoString(
-                        en = "Currently saved only to the ECHOAndroid library index, not written into the audio file.",
-                        zh = "当前只保存到 ECHOAndroid 曲库索引，不直接写入音频文件。",
-                        ja = "音声ファイルには書き込まず、ECHOAndroid のライブラリ索引にのみ保存します。",
-                    ),
+                    stringResource(L10nR.string.feature_library_currently_saved_only_to_the_echoandroid_library_index_6c327c),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -889,12 +887,12 @@ private fun TrackMetadataEditorDialog(
                     )
                 },
             ) {
-                Text(echoString(en = "Save", zh = "保存", ja = "保存"))
+                Text(stringResource(L10nR.string.feature_library_save_68ae20))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(echoString(en = "Cancel", zh = "取消", ja = "キャンセル"))
+                Text(stringResource(L10nR.string.feature_library_cancel_4c5fa5))
             }
         },
     )
@@ -933,55 +931,55 @@ private fun TrackInfoDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                val notProvided = echoString(en = "Not available", zh = "未提供", ja = "未提供")
+                val notProvided = stringResource(L10nR.string.feature_library_not_available_7d3220)
                 TrackInfoLine(
-                    echoString(en = "Artist", zh = "艺术家", ja = "アーティスト"),
+                    stringResource(L10nR.string.feature_library_artist_b6e7ad),
                     displayMetadataOrUnknown(track.artist, unknownArtistLabel()),
                 )
                 TrackInfoLine(
-                    echoString(en = "Album", zh = "专辑", ja = "アルバム"),
+                    stringResource(L10nR.string.feature_library_album_eb13be),
                     displayMetadataOrUnknown(track.album, unknownAlbumLabel()),
                 )
                 TrackInfoLine(
-                    echoString(en = "Album artist", zh = "专辑艺术家", ja = "アルバムアーティスト"),
+                    stringResource(L10nR.string.feature_library_album_artist_8a1c9e),
                     track.albumArtist?.takeIf { it.isNotBlank() } ?: notProvided,
                 )
                 TrackInfoLine(
-                    echoString(en = "Track", zh = "音轨", ja = "トラック"),
+                    stringResource(L10nR.string.feature_library_track_000e4d),
                     track.trackNumber?.toString() ?: notProvided,
                 )
                 TrackInfoLine(
-                    echoString(en = "Disc", zh = "碟号", ja = "ディスク"),
+                    stringResource(L10nR.string.feature_library_disc_3128c0),
                     track.discNumber?.toString() ?: notProvided,
                 )
                 TrackInfoLine(
-                    echoString(en = "Year", zh = "年份", ja = "年"),
+                    stringResource(L10nR.string.feature_library_year_fe373f),
                     track.year?.toString() ?: notProvided,
                 )
                 TrackInfoLine(
-                    echoString(en = "Format", zh = "格式", ja = "フォーマット"),
+                    stringResource(L10nR.string.feature_library_format_a7775b),
                     formatTrackMimeType(track.mimeType)
                         ?: track.mimeType?.takeIf { it.isNotBlank() }
                         ?: notProvided,
                 )
                 TrackInfoLine(
-                    echoString(en = "Sample rate", zh = "采样率", ja = "サンプリングレート"),
+                    stringResource(L10nR.string.feature_library_sample_rate_f6382c),
                     track.sampleRateHz?.let(::formatTrackSampleRate) ?: notProvided,
                 )
                 TrackInfoLine(
-                    echoString(en = "Duration", zh = "时长", ja = "再生時間"),
+                    stringResource(L10nR.string.feature_library_duration_573e08),
                     formatDuration(track.durationMs),
                 )
                 TrackInfoLine(
-                    echoString(en = "Size", zh = "大小", ja = "サイズ"),
+                    stringResource(L10nR.string.feature_library_size_f63a75),
                     formatTrackFileSize(track.sizeBytes),
                 )
-                TrackInfoLine(echoString(en = "Source", zh = "来源", ja = "ソース"), track.source.id)
+                TrackInfoLine(stringResource(L10nR.string.feature_library_source_4aff16), track.source.id)
             }
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text(echoString(en = "Done", zh = "完成", ja = "完了"))
+                Text(stringResource(L10nR.string.feature_library_done_a5e659))
             }
         },
     )
@@ -1053,7 +1051,7 @@ internal fun trackSubtitle(track: EchoTrack): String {
         }
     }
     return parts.ifEmpty {
-        listOf(echoString(en = "Local audio", zh = "本机音频", ja = "ローカル音源"))
+        listOf(stringResource(L10nR.string.feature_library_local_audio_7fc2a6))
     }.joinToString(" / ")
 }
 
@@ -1070,7 +1068,7 @@ private fun String.toPositiveIntOrNull(): Int? =
 @Composable
 private fun formatTrackFileSize(bytes: Long): String =
     when {
-        bytes <= 0L -> echoString(en = "Not available", zh = "未提供", ja = "未提供")
+        bytes <= 0L -> stringResource(L10nR.string.feature_library_not_available_7d3220)
         bytes >= 1024L * 1024L * 1024L -> "%.1f GB".format(bytes / (1024f * 1024f * 1024f))
         bytes >= 1024L * 1024L -> "%.1f MB".format(bytes / (1024f * 1024f))
         bytes >= 1024L -> "%.1f KB".format(bytes / 1024f)

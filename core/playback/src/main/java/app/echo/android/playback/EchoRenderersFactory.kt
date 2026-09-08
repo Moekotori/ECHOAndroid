@@ -12,6 +12,13 @@ internal class EchoRenderersFactory(
     context: Context,
     private val equalizerProcessor: AudioProcessor,
 ) : DefaultRenderersFactory(context) {
+    init {
+        // Keep platform decoding first; use the bundled software renderer for unsupported formats.
+        // This is format selection, not automatic recovery from a mid-track decoder failure.
+        setExtensionRendererMode(EXTENSION_RENDERER_MODE_ON)
+        setEnableDecoderFallback(true)
+    }
+
     override fun buildAudioSink(
         context: Context,
         enableFloatOutput: Boolean,

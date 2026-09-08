@@ -1,1 +1,1 @@
-D:\ECHOand\core\usb-audio\src\main\cpp\CMakeLists.txt
+/Users/moekotori/echoandroid/core/usb-audio/src/main/cpp/CMakeLists.txt

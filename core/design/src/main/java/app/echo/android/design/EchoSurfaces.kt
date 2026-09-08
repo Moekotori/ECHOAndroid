@@ -17,6 +17,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,9 +68,11 @@ fun EchoTextButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     OutlinedButton(
+        interactionSource = interactionSource,
         onClick = onClick,
-        modifier = modifier.defaultMinSize(minHeight = 44.dp),
+        modifier = modifier.defaultMinSize(minHeight = 44.dp).echoPressFeedback(interactionSource, enabled),
         enabled = enabled,
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
@@ -136,14 +143,19 @@ fun EchoSegmentChip(
 ) {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
-        color = if (selected) {
+    val containerColor by animateColorAsState(
+        targetValue = if (selected) {
             scheme.primary.copy(alpha = if (dark) 0.18f else 0.18f)
         } else {
             if (dark) scheme.surfaceVariant.copy(alpha = 0.42f) else scheme.surface.copy(alpha = 0.92f)
         },
+        animationSpec = tween(EchoMotion.FadeMs, easing = EchoMotion.Silk),
+        label = "segment-color",
+    )
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = containerColor,
         border = BorderStroke(
             1.dp,
             if (selected) {

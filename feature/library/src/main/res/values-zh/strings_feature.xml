@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module-owned translations. English values are the fallback for missing translations. -->
+<resources>
+    <string name="feature_library_add_to_playlist_0f8338" formatted="false">"加入歌单"</string>
+    <string name="feature_library_add_to_queue_1775d3" formatted="false">"加入队列"</string>
+    <string name="feature_library_added_155093" formatted="false">"新增"</string>
+    <string name="feature_library_album_724bef" formatted="false">"专辑"</string>
+    <string name="feature_library_album_artist_6defa0" formatted="false">"专辑艺人"</string>
+    <string name="feature_library_album_artist_8a1c9e" formatted="false">"专辑艺术家"</string>
+    <string name="feature_library_album_eb13be" formatted="false">"专辑"</string>
+    <string name="feature_library_albums_e68c2b" formatted="false">"专辑"</string>
+    <string name="feature_library_allow_30c6b5" formatted="false">"授权"</string>
+    <string name="feature_library_allow_music_access_a30185" formatted="false">"授权音乐权限"</string>
+    <string name="feature_library_artist_37d883" formatted="false">"艺人"</string>
+    <string name="feature_library_artist_b6e7ad" formatted="false">"艺术家"</string>
+    <string name="feature_library_artist_c15fae" formatted="false">"艺术家"</string>
+    <string name="feature_library_artists_1e19fb" formatted="false">"艺术家"</string>
+    <string name="feature_library_artists_e168aa" formatted="false">"艺人"</string>
+    <string name="feature_library_back_49093c" formatted="false">"返回"</string>
+    <string name="feature_library_back_to_pc_echo_playlists_499312" formatted="false">"返回 PC ECHO 歌单"</string>
+    <string name="feature_library_best_after_copying_in_new_music_updates_only_a75783" formatted="false">"适合刚拷入音乐，只更新选中的目录"</string>
+    <string name="feature_library_cancel_4c5fa5" formatted="false">"取消"</string>
+    <string name="feature_library_cancel_library_scan_4033b9" formatted="false">"取消扫描曲库"</string>
+    <string name="feature_library_cancel_scan_dcb52d" formatted="false">"取消扫描"</string>
+    <string name="feature_library_change_artwork_d37180" formatted="false">"更换封面"</string>
+    <string name="feature_library_choose_the_indexing_range_for_this_scan_58c0af" formatted="false">"选择本次索引范围"</string>
+    <string name="feature_library_cleaning_removed_music_40b12d" formatted="false">"正在清理已移除音乐"</string>
+    <string name="feature_library_close_473a69" formatted="false">"关闭"</string>
+    <string name="feature_library_close_search_50a720" formatted="false">"关闭搜索"</string>
+    <string name="feature_library_cloud_466e60" formatted="false">"网盘"</string>
+    <string name="feature_library_comparing_library_90f3c1" formatted="false">"正在对比曲库"</string>
+    <string name="feature_library_connect_pc_echo_in_link_first_then_you_31fc3e" formatted="false">"先到“互联”连接 PC ECHO，然后这里就能浏览 PC 曲库。"</string>
+    <string name="feature_library_count_albums_554048">"%1$s 张专辑"</string>
+    <string name="feature_library_count_tracks_73b21a">"%1$s 首"</string>
+    <string name="feature_library_count_tracks_liked_songs_e36fb7">"%1$s 首 · 喜欢的歌曲"</string>
+    <string name="feature_library_count_tracks_local_playlist_352a0d">"%1$s 首 · 本地歌单"</string>
+    <string name="feature_library_count_tracks_navidrome_294a65">"%1$s 首 · Navidrome"</string>
+    <string name="feature_library_create_7b4bc9" formatted="false">"创建"</string>
+    <string name="feature_library_currently_saved_only_to_the_echoandroid_library_index_6c327c" formatted="false">"当前只保存到 ECHOAndroid 曲库索引，不直接写入音频文件。"</string>
+    <string name="feature_library_currently_saved_to_the_echoandroid_library_index_imported_e15a70" formatted="false">"当前保存到 ECHOAndroid 曲库索引；导入歌词和封面也会绑定到这首歌。"</string>
+    <string name="feature_library_custom_artwork_c8c999" formatted="false">"自定义封面"</string>
+    <string name="feature_library_delete_138ccf" formatted="false">"删除"</string>
+    <string name="feature_library_delete_playlist_4d9753" formatted="false">"删除歌单"</string>
+    <string name="feature_library_delete_playlist_name_songs_in_the_library_will_3541db">"删除「%1$s」？曲库里的歌曲不会被删。"</string>
+    <string name="feature_library_disc_3128c0" formatted="false">"碟号"</string>
+    <string name="feature_library_discs_discs_902194">"%1$s 碟"</string>
+    <string name="feature_library_done_a5e659" formatted="false">"完成"</string>
+    <string name="feature_library_duration_573e08" formatted="false">"时长"</string>
+    <string name="feature_library_duration_e1c56c" formatted="false">"音乐时间"</string>
+    <string name="feature_library_edit_tags_c8ec75" formatted="false">"编辑标签"</string>
+    <string name="feature_library_failed_to_load_albums_8a8685" formatted="false">"专辑加载失败。"</string>
+    <string name="feature_library_failed_to_load_artists_da82a6" formatted="false">"艺人加载失败。"</string>
+    <string name="feature_library_failed_to_load_folder_tracks_0966ba" formatted="false">"文件夹曲目加载失败。"</string>
+    <string name="feature_library_failed_to_load_folders_d4887b" formatted="false">"文件夹加载失败。"</string>
+    <string name="feature_library_failed_to_load_playlist_tracks_9130da" formatted="false">"歌单曲目加载失败。"</string>
+    <string name="feature_library_failed_to_load_tracks_f65c9b" formatted="false">"曲目加载失败。"</string>
+    <string name="feature_library_folder_albumcount_albums_3c43c1">"%1$s 张"</string>
+    <string name="feature_library_folder_artistcount_artists_6d0d7e">"%1$s 位艺术家"</string>
+    <string name="feature_library_folder_tracks_859f02" formatted="false">"文件夹曲目"</string>
+    <string name="feature_library_folder_view_2b3c84" formatted="false">"文件夹视图"</string>
+    <string name="feature_library_folders_cc514a" formatted="false">"文件夹"</string>
+    <string name="feature_library_format_a7775b" formatted="false">"格式"</string>
+    <string name="feature_library_format_pending_ce16a1" formatted="false">"格式待解析"</string>
+    <string name="feature_library_frequently_played_9d6932" formatted="false">"常听歌曲"</string>
+    <string name="feature_library_full_scan_8f63a2" formatted="false">"全盘扫描"</string>
+    <string name="feature_library_grant_access_to_index_local_music_cloud_libraries_568ef2" formatted="false">"授权后即可索引本地音乐；云端曲库可直接进入“网盘”页。"</string>
+    <string name="feature_library_import_lrc_lyrics_8e2810" formatted="false">"导入 LRC 歌词"</string>
+    <string name="feature_library_import_lyrics_744b75" formatted="false">"导入歌词"</string>
+    <string name="feature_library_incrementally_indexing_local_music_3fc64d" formatted="false">"正在增量索引本机音乐"</string>
+    <string name="feature_library_info_41ae25" formatted="false">"信息"</string>
+    <string name="feature_library_it_albums_3c43c1">"%1$s 张"</string>
+    <string name="feature_library_kind_2dcbb1" formatted="false">"类型"</string>
+    <string name="feature_library_library_848e9b" formatted="false">"曲库"</string>
+    <string name="feature_library_library_query_failed_f9c538" formatted="false">"曲库查询失败。"</string>
+    <string name="feature_library_library_scan_failed_94b709" formatted="false">"曲库扫描失败。"</string>
+    <string name="feature_library_liked_c8ac9d" formatted="false">"喜欢"</string>
+    <string name="feature_library_liked_songs_8d6245" formatted="false">"喜欢的歌曲"</string>
+    <string name="feature_library_linked_5d42a7" formatted="false">"互联"</string>
+    <string name="feature_library_loading_albums_75c4f3" formatted="false">"正在加载专辑..."</string>
+    <string name="feature_library_loading_artists_e9b16d" formatted="false">"正在加载艺人..."</string>
+    <string name="feature_library_loading_folder_tracks_83d4ec" formatted="false">"正在加载文件夹曲目..."</string>
+    <string name="feature_library_loading_folders_54c760" formatted="false">"正在加载文件夹..."</string>
+    <string name="feature_library_loading_library_a77123" formatted="false">"正在加载曲库..."</string>
+    <string name="feature_library_loading_more_from_pc_echo_tracks_size_state_e85d63">"正在继续读取 PC ECHO 曲库(%1$s/%2$s)..."</string>
+    <string name="feature_library_loading_playlist_eb6248" formatted="false">"正在加载歌单..."</string>
+    <string name="feature_library_loading_tracks_8e2147" formatted="false">"正在加载曲目..."</string>
+    <string name="feature_library_local_9b5178" formatted="false">"本地"</string>
+    <string name="feature_library_local_audio_7fc2a6" formatted="false">"本机音频"</string>
+    <string name="feature_library_local_library_ddf4b1" formatted="false">"本机媒体库"</string>
+    <string name="feature_library_local_playlists_cea002" formatted="false">"本地歌单"</string>
+    <string name="feature_library_mediastore_did_not_provide_a_path_53b27e" formatted="false">"MediaStore 未提供路径"</string>
+    <string name="feature_library_minutes_min_777a53">"%1$s 分钟"</string>
+    <string name="feature_library_move_down_cf81ae" formatted="false">"下移"</string>
+    <string name="feature_library_move_up_e6d961" formatted="false">"上移"</string>
+    <string name="feature_library_multiple_sources_0f53d5" formatted="false">"多来源"</string>
+    <string name="feature_library_name_57335e" formatted="false">"名称"</string>
+    <string name="feature_library_new_cc6582" formatted="false">"新建"</string>
+    <string name="feature_library_new_playlist_22cdbd" formatted="false">"新建歌单"</string>
+    <string name="feature_library_new_playlist_and_add_314ff2" formatted="false">"新建歌单并加入"</string>
+    <string name="feature_library_no_liked_songs_yet_heart_a_track_from_ba96cc" formatted="false">"还没有喜欢的歌曲。在播放页或歌曲菜单里点红心。"</string>
+    <string name="feature_library_no_local_playlists_yet_create_one_from_the_e13a98" formatted="false">"还没有本地歌单。点右上角创建，或从歌曲菜单加入。"</string>
+    <string name="feature_library_no_local_songs_yet_fa3b6a" formatted="false">"暂无本机歌曲"</string>
+    <string name="feature_library_no_playlists_yet_create_one_first_6af586" formatted="false">"还没有歌单。先创建一个。"</string>
+    <string name="feature_library_no_tracks_yet_c4614a" formatted="false">"暂无曲目。"</string>
+    <string name="feature_library_not_available_7d3220" formatted="false">"未提供"</string>
+    <string name="feature_library_not_connected_c4d337" formatted="false">"未连接"</string>
+    <string name="feature_library_open_folder_ab1708" formatted="false">"打开文件夹"</string>
+    <string name="feature_library_pc_echo_e0a2d4" formatted="false">"PC ECHO"</string>
+    <string name="feature_library_pc_echo_has_no_albums_to_show_2784be" formatted="false">"PC ECHO 暂无可显示专辑。"</string>
+    <string name="feature_library_pc_echo_has_no_artists_to_show_b6975c" formatted="false">"PC ECHO 暂无可显示艺术家。"</string>
+    <string name="feature_library_pc_echo_has_no_matching_albums_c433fb" formatted="false">"PC ECHO 没有匹配的专辑。"</string>
+    <string name="feature_library_pc_echo_has_no_matching_artists_2dbc79" formatted="false">"PC ECHO 没有匹配的艺术家。"</string>
+    <string name="feature_library_pc_echo_has_no_matching_playlists_846ad7" formatted="false">"PC ECHO 没有匹配的歌单。"</string>
+    <string name="feature_library_pc_echo_has_no_matching_songs_40afe3" formatted="false">"PC ECHO 没有匹配的歌曲。"</string>
+    <string name="feature_library_pc_echo_has_no_playlists_to_show_8e8438" formatted="false">"PC ECHO 暂无可显示歌单。"</string>
+    <string name="feature_library_pc_echo_has_no_songs_to_show_a46ba6" formatted="false">"PC ECHO 暂无可显示歌曲。"</string>
+    <string name="feature_library_pick_an_album_artist_folder_or_playlist_e517b7" formatted="false">"选择一张专辑、一位艺术家、一个文件夹或歌单。"</string>
+    <string name="feature_library_play_38419a" formatted="false">"播放"</string>
+    <string name="feature_library_play_all_55c80e" formatted="false">"播放全部"</string>
+    <string name="feature_library_play_next_a1f73e" formatted="false">"下一首播放"</string>
+    <string name="feature_library_play_this_folder_77afdc" formatted="false">"播放这个文件夹"</string>
+    <string name="feature_library_playlist_actions_044945" formatted="false">"歌单操作"</string>
+    <string name="feature_library_playlist_trackcount_tracks_source_3431c6">"%1$s 首 · %2$s"</string>
+    <string name="feature_library_playlistcount_playlists_220ceb">"%1$s 个歌单"</string>
+    <string name="feature_library_playlistdisplayname_playlist_playlist_trackcount_tracks_2afcb8">"%1$s · %2$s 首"</string>
+    <string name="feature_library_playlists_56bf76" formatted="false">"歌单"</string>
+    <string name="feature_library_preparing_scan_7e7bcf" formatted="false">"准备扫描"</string>
+    <string name="feature_library_reading_mediastore_87cd18" formatted="false">"正在读取 MediaStore"</string>
+    <string name="feature_library_reading_pc_echo_library_fccbe4" formatted="false">"正在读取 PC ECHO 曲库..."</string>
+    <string name="feature_library_reading_pc_echo_playlist_1ba678" formatted="false">"正在读取 PC ECHO 歌单..."</string>
+    <string name="feature_library_recently_played_ce4d5f" formatted="false">"最近播放"</string>
+    <string name="feature_library_recently_updated_781ab0" formatted="false">"最近更新"</string>
+    <string name="feature_library_refresh_pc_echo_library_5b6275" formatted="false">"刷新 PC ECHO 曲库"</string>
+    <string name="feature_library_remove_from_playlist_f07718" formatted="false">"移出歌单"</string>
+    <string name="feature_library_removed_7be2fd" formatted="false">"删除"</string>
+    <string name="feature_library_rename_d1a28e" formatted="false">"重命名"</string>
+    <string name="feature_library_rename_playlist_757bb7" formatted="false">"重命名歌单"</string>
+    <string name="feature_library_resync_all_local_music_and_clean_up_deleted_f1b337" formatted="false">"重新同步本机所有音乐，并清理已删除项目"</string>
+    <string name="feature_library_sample_rate_f6382c" formatted="false">"采样率"</string>
+    <string name="feature_library_sample_rate_pending_bd6e6d" formatted="false">"采样率待解析"</string>
+    <string name="feature_library_save_68ae20" formatted="false">"保存"</string>
+    <string name="feature_library_scan_a_single_folder_17bf3e" formatted="false">"扫描单个文件夹"</string>
+    <string name="feature_library_scan_cancelled_1eefcb" formatted="false">"扫描已取消"</string>
+    <string name="feature_library_scan_cancelled_the_existing_library_was_kept_266734" formatted="false">"扫描已取消，已保留现有曲库。"</string>
+    <string name="feature_library_scan_complete_fbdf16" formatted="false">"扫描完成"</string>
+    <string name="feature_library_scan_complete_scanstate_scannedcount_tracks_added_scanstate_inse_bf2d9e">"扫描完成：%1$s 首，新增 %2$s，更新 %3$s，删除 %4$s"</string>
+    <string name="feature_library_scan_failed_f4c0ae" formatted="false">"扫描失败"</string>
+    <string name="feature_library_scan_fe69d2" formatted="false">"扫描"</string>
+    <string name="feature_library_scan_library_3d1814" formatted="false">"扫描曲库"</string>
+    <string name="feature_library_scan_local_music_from_the_top_right_corner_584da2" formatted="false">"点右上角扫描本机音乐。"</string>
+    <string name="feature_library_scanned_862bfd" formatted="false">"已扫描"</string>
+    <string name="feature_library_search_library_80ef90" formatted="false">"搜索曲库"</string>
+    <string name="feature_library_search_songs_artists_albums_14dc2c" formatted="false">"搜索歌曲、艺术家、专辑"</string>
+    <string name="feature_library_set_track_sort_order_4053c0" formatted="false">"设置歌曲排序"</string>
+    <string name="feature_library_shuffle_34e7ce" formatted="false">"随机播放"</string>
+    <string name="feature_library_shuffle_f8e15b" formatted="false">"随机排序"</string>
+    <string name="feature_library_size_49c9f8" formatted="false">"容量"</string>
+    <string name="feature_library_size_f63a75" formatted="false">"大小"</string>
+    <string name="feature_library_song_title_fedd5e" formatted="false">"歌曲标题"</string>
+    <string name="feature_library_songs_107b60" formatted="false">"歌曲"</string>
+    <string name="feature_library_source_4aff16" formatted="false">"来源"</string>
+    <string name="feature_library_stop_739d16" formatted="false">"停止"</string>
+    <string name="feature_library_switch_library_source_long_press_to_scan_tracks_2d8c87" formatted="false">"切换曲库来源；长按扫描歌曲"</string>
+    <string name="feature_library_switch_library_view_f99a55" formatted="false">"切换曲库显示方式"</string>
+    <string name="feature_library_text_e9396c" formatted="false">"—"</string>
+    <string name="feature_library_this_folder_has_no_tracks_yet_f1a6e0" formatted="false">"这个文件夹暂无曲目。"</string>
+    <string name="feature_library_this_library_has_no_albums_to_show_yet_925b12" formatted="false">"当前曲库还没有可展示的专辑。"</string>
+    <string name="feature_library_this_library_has_no_artists_to_show_yet_d95101" formatted="false">"当前曲库还没有可展示的艺人。"</string>
+    <string name="feature_library_this_library_has_no_browsable_storage_paths_yet_fb0395" formatted="false">"当前曲库还没有可浏览的存储路径。"</string>
+    <string name="feature_library_this_pc_echo_playlist_has_no_playable_tracks_b480ec" formatted="false">"这个 PC ECHO 歌单暂时没有可播放曲目。"</string>
+    <string name="feature_library_this_playlist_is_empty_add_songs_from_a_bebd89" formatted="false">"这个歌单还是空的。从歌曲菜单加入曲目。"</string>
+    <string name="feature_library_title_af1111" formatted="false">"标题"</string>
+    <string name="feature_library_track_000e4d" formatted="false">"音轨"</string>
+    <string name="feature_library_track_info_36a07b" formatted="false">"歌曲信息"</string>
+    <string name="feature_library_tracks_2d80e8" formatted="false">"曲目"</string>
+    <string name="feature_library_unknown_album_8831c3" formatted="false">"未知专辑"</string>
+    <string name="feature_library_unknown_artist_9acb98" formatted="false">"未知艺术家"</string>
+    <string name="feature_library_unknown_path_e282e8" formatted="false">"未知路径"</string>
+    <string name="feature_library_unknown_source_d8c291" formatted="false">"未知来源"</string>
+    <string name="feature_library_unknown_track_6cae0d" formatted="false">"未知曲目"</string>
+    <string name="feature_library_updated_c440c1" formatted="false">"更新"</string>
+    <string name="feature_library_waiting_for_track_info_f2add7" formatted="false">"等待曲目信息"</string>
+    <string name="feature_library_waiting_to_scan_a5c343" formatted="false">"等待扫描"</string>
+    <string name="feature_library_writing_library_f9ac03" formatted="false">"正在写入曲库"</string>
+    <string name="feature_library_year_fe373f" formatted="false">"年份"</string>
+</resources>

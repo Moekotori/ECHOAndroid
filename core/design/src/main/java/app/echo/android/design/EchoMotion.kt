@@ -24,6 +24,18 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 
 object EchoMotion {
+    const val FeedbackMs = 180
+    const val FadeMs = 180
+    const val FadeExitMs = 120
+    const val CollapseMs = 260
+    const val PressedScale = 0.97f
+
+    fun stateChange(): ContentTransform = ContentTransform(
+        targetContentEnter = fadeIn(tween(FadeMs, easing = Silk)),
+        initialContentExit = fadeOut(tween(FadeExitMs, easing = SilkExit)),
+        sizeTransform = null,
+    )
+
     val Silk: Easing = CubicBezierEasing(0.22f, 1.00f, 0.36f, 1.00f)
     val SilkExit: Easing = CubicBezierEasing(0.32f, 0.00f, 0.18f, 1.00f)
 

@@ -53,7 +53,7 @@ import app.echo.android.model.playback.PlaybackHeatmapDay
 import app.echo.android.model.playback.PlaybackMetadataState
 import app.echo.android.model.playback.PlaybackPositionState
 import app.echo.android.model.playback.PlaybackQueueState
-import app.echo.android.data.applyEchoAppLocale
+import app.echo.android.i18n.applyEchoAppLocale
 import app.echo.android.model.settings.EchoAppLanguage
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
 import app.echo.android.design.EchoArtworkUrlRewriteRegistry

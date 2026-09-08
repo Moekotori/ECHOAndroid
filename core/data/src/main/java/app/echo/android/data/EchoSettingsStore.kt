@@ -1,5 +1,6 @@
 package app.echo.android.data
 
+import app.echo.android.i18n.echoAppLanguage
 import android.content.Context
 import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -227,7 +228,7 @@ class EchoSettingsStore(
                 lyricsFocusGlowEnabled = preferences[Keys.LyricsFocusGlowEnabled] ?: false,
                 importedFontUri = preferences[Keys.ImportedFontUri],
                 themeMode = normalizeThemeMode(preferences[Keys.ThemeMode]),
-                appLanguage = EchoAppLanguage.fromId(preferences[Keys.AppLanguage]),
+                appLanguage = context.echoAppLanguage(EchoAppLanguage.fromId(preferences[Keys.AppLanguage])),
                 scheduledDarkModeEnabled = preferences[Keys.ScheduledDarkModeEnabled] ?: false,
                 scheduledDarkStartMinute = (preferences[Keys.ScheduledDarkStartMinute] ?: 22 * 60).coerceIn(0, 23 * 60 + 59),
                 scheduledDarkEndMinute = (preferences[Keys.ScheduledDarkEndMinute] ?: 7 * 60).coerceIn(0, 23 * 60 + 59),

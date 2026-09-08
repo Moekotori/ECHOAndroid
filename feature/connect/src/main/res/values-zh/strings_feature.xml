@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module-owned translations. English values are the fallback for missing translations. -->
+<resources>
+    <string name="feature_connect_after_connecting_read_pc_echo_automatically_without_merging_d0f676" formatted="false">"连接后自动读取 PC ECHO，不并入本地扫描库"</string>
+    <string name="feature_connect_auto_reconnect_5259cc" formatted="false">"自动重连"</string>
+    <string name="feature_connect_available_after_a_successful_saved_connection_f08f11" formatted="false">"连接成功并保存后可用"</string>
+    <string name="feature_connect_become_a_remote_after_pairing_77ae56" formatted="false">"完成配对后进入遥控器"</string>
+    <string name="feature_connect_cancel_4c5fa5" formatted="false">"取消"</string>
+    <string name="feature_connect_cancelled_4ab41f" formatted="false">"已取消"</string>
+    <string name="feature_connect_cleaning_old_index_2c0185" formatted="false">"清理旧索引"</string>
+    <string name="feature_connect_clear_ec6a55" formatted="false">"清除"</string>
+    <string name="feature_connect_collapse_970e1a" formatted="false">"折叠"</string>
+    <string name="feature_connect_collapse_remote_libraries_61a9c7" formatted="false">"折叠远程曲库"</string>
+    <string name="feature_connect_comparing_index_7c03bf" formatted="false">"对比索引"</string>
+    <string name="feature_connect_connect_c7c091" formatted="false">"连接"</string>
+    <string name="feature_connect_connect_pc_724ba0" formatted="false">"连接 PC"</string>
+    <string name="feature_connect_connect_your_library_sources_2ae5a5" formatted="false">"连接你的曲库来源"</string>
+    <string name="feature_connect_connected_6b85ee" formatted="false">"已连接"</string>
+    <string name="feature_connect_connecting_5a83dc" formatted="false">"连接中"</string>
+    <string name="feature_connect_control_on_phone_output_on_pc_fe2fbb" formatted="false">"手机控制，PC 输出"</string>
+    <string name="feature_connect_copy_from_the_pc_echo_link_page_ce2ca6" formatted="false">"从 PC ECHO 联动页复制"</string>
+    <string name="feature_connect_desktop_5966da" formatted="false">"桌面"</string>
+    <string name="feature_connect_device_d46471" formatted="false">"设备"</string>
+    <string name="feature_connect_device_link_e4f412" formatted="false">"设备联动"</string>
+    <string name="feature_connect_disconnect_b0144f" formatted="false">"断开"</string>
+    <string name="feature_connect_enter_the_server_username_and_password_b90327" formatted="false">"填写服务器、用户名和密码"</string>
+    <string name="feature_connect_error_ad4bd6" formatted="false">"错误"</string>
+    <string name="feature_connect_estimate_40b38b" formatted="false">"估算"</string>
+    <string name="feature_connect_expand_6a79dd" formatted="false">"展开"</string>
+    <string name="feature_connect_expand_remote_libraries_a8df3f" formatted="false">"展开远程曲库"</string>
+    <string name="feature_connect_forget_30df50" formatted="false">"忘记"</string>
+    <string name="feature_connect_forward_phone_playback_through_pc_echo_ca17b2" formatted="false">"通过 PC ECHO 转发手机播放状态"</string>
+    <string name="feature_connect_handoff_console_d5905c" formatted="false">"接力控制台"</string>
+    <string name="feature_connect_incomplete_4522f2" formatted="false">"待补全"</string>
+    <string name="feature_connect_latency_fa1715" formatted="false">"延迟"</string>
+    <string name="feature_connect_latency_monitoring_and_volume_mapping_are_ready_2f0b1f" formatted="false">"延迟监测和音量映射就绪"</string>
+    <string name="feature_connect_latency_output_device_and_queue_appear_after_pairing_b8e65f" formatted="false">"配对后显示延迟、输出设备和队列状态"</string>
+    <string name="feature_connect_library_sources_pc_link_b81eae" formatted="false">"曲库来源 · PC 联动"</string>
+    <string name="feature_connect_link_f7ada1" formatted="false">"互联"</string>
+    <string name="feature_connect_local_audio_files_already_scanned_619627" formatted="false">"已扫描本机音频文件"</string>
+    <string name="feature_connect_local_library_579638" formatted="false">"本地曲库"</string>
+    <string name="feature_connect_mapping_65a632" formatted="false">"映射"</string>
+    <string name="feature_connect_music_services_c8d7d1" formatted="false">"音乐服务"</string>
+    <string name="feature_connect_nearby_pcs_then_address_and_pairing_token_d5b4e2" formatted="false">"附近 PC，然后填地址和配对 Token"</string>
+    <string name="feature_connect_next_on_pc_303358" formatted="false">"PC 下一首"</string>
+    <string name="feature_connect_no_lan_pcs_yet_scan_a_qr_code_0b3f56" formatted="false">"还没发现局域网 PC，可扫码或手动输入。"</string>
+    <string name="feature_connect_none_836573" formatted="false">"未选"</string>
+    <string name="feature_connect_not_connected_c4d337" formatted="false">"未连接"</string>
+    <string name="feature_connect_not_set_up_287510" formatted="false">"待配置"</string>
+    <string name="feature_connect_off_d48859" formatted="false">"未开启"</string>
+    <string name="feature_connect_output_bb8fcf" formatted="false">"输出"</string>
+    <string name="feature_connect_paired_8c3083" formatted="false">"已配对"</string>
+    <string name="feature_connect_pairing_1a1d00" formatted="false">"配对中"</string>
+    <string name="feature_connect_pairing_token_2e95dd" formatted="false">"配对 Token"</string>
+    <string name="feature_connect_password_2eaf7d" formatted="false">"密码"</string>
+    <string name="feature_connect_password_or_app_password_cf402d" formatted="false">"密码或应用专用密码"</string>
+    <string name="feature_connect_pc_address_4be94c" formatted="false">"PC 地址"</string>
+    <string name="feature_connect_pc_output_e48933" formatted="false">"PC 输出"</string>
+    <string name="feature_connect_pc_queue_and_output_device_appear_after_pairing_7fd247" formatted="false">"配对后显示 PC 队列和输出设备"</string>
+    <string name="feature_connect_phone_and_pc_queues_stay_in_sync_64e284" formatted="false">"本机和 PC 队列保持同步"</string>
+    <string name="feature_connect_phone_control_91825f" formatted="false">"手机控制"</string>
+    <string name="feature_connect_play_or_pause_pc_35a4a9" formatted="false">"播放或暂停 PC"</string>
+    <string name="feature_connect_playing_on_phone_it_a1815e">"手机播放：%1$s"</string>
+    <string name="feature_connect_preparing_sync_f64e14" formatted="false">"准备同步"</string>
+    <string name="feature_connect_previous_on_pc_a0f0a7" formatted="false">"PC 上一首"</string>
+    <string name="feature_connect_queue_sync_ac9c36" formatted="false">"队列同步"</string>
+    <string name="feature_connect_queue_volume_and_next_track_will_use_the_0aa197" formatted="false">"队列、音量、下一首将进入联动通道"</string>
+    <string name="feature_connect_reading_remote_library_06fcd1" formatted="false">"读取远程曲库"</string>
+    <string name="feature_connect_ready_to_send_832298" formatted="false">"待转发"</string>
+    <string name="feature_connect_ready_to_sync_47b40c" formatted="false">"可同步"</string>
+    <string name="feature_connect_ready_to_sync_to_the_cloud_album_wall_20a1e5" formatted="false">"可同步到云端专辑墙"</string>
+    <string name="feature_connect_readycount_ready_ad163c">"%1$s 个可用"</string>
+    <string name="feature_connect_reconnect_to_the_last_pc_when_connect_opens_e13dd4" formatted="false">"下次打开 Connect 时尝试连接上次的 PC"</string>
+    <string name="feature_connect_reconnecting_6c545f" formatted="false">"重连中"</string>
+    <string name="feature_connect_refresh_828c69" formatted="false">"刷新"</string>
+    <string name="feature_connect_remote_libraries_520815" formatted="false">"远程曲库"</string>
+    <string name="feature_connect_remote_library_sync_failed_e55eb1" formatted="false">"远程曲库同步失败"</string>
+    <string name="feature_connect_save_68ae20" formatted="false">"保存"</string>
+    <string name="feature_connect_scan_qr_b42f5b" formatted="false">"扫码配对"</string>
+    <string name="feature_connect_scan_the_qr_code_shown_on_pc_to_e7ce7b" formatted="false">"PC 端显示二维码后可直接扫码配对"</string>
+    <string name="feature_connect_server_address_ec245e" formatted="false">"服务器地址"</string>
+    <string name="feature_connect_standby_751331" formatted="false">"待机"</string>
+    <string name="feature_connect_supports_192_168_1_12_26789_or_a_7d7e27" formatted="false">"支持 192.168.1.12:26789 或完整 http / https 地址"</string>
+    <string name="feature_connect_sync_a_nas_or_cloud_music_folder_9fa330" formatted="false">"按文件夹同步 NAS 或网盘音乐目录"</string>
+    <string name="feature_connect_sync_b57352" formatted="false">"同步"</string>
+    <string name="feature_connect_sync_complete_9ac5cf" formatted="false">"同步完成"</string>
+    <string name="feature_connect_sync_complete_scanstate_scannedcount_tracks_scanstate_insertedco_41ae3e">"同步完成：%1$s 首，新增 %2$s，更新 %3$s，删除 %4$s"</string>
+    <string name="feature_connect_sync_failed_8cc151" formatted="false">"同步失败"</string>
+    <string name="feature_connect_sync_the_server_library_artwork_and_playback_urls_cad58c" formatted="false">"同步服务器曲库、封面和播放地址"</string>
+    <string name="feature_connect_synced_0e5a04" formatted="false">"同步"</string>
+    <string name="feature_connect_syncing_ac4e35" formatted="false">"同步中"</string>
+    <string name="feature_connect_take_over_pc_echo_playback_after_pairing_b11731" formatted="false">"配对后接管 PC ECHO 播放"</string>
+    <string name="feature_connect_tap_to_expand_subsonic_webdav_fold_separately_a293a2" formatted="false">"点按展开 · Subsonic / WebDAV 可独立折叠"</string>
+    <string name="feature_connect_tap_to_set_up_subsonic_webdav_cloud_drive_6f2e97" formatted="false">"点按配置 Subsonic · WebDAV / 网盘"</string>
+    <string name="feature_connect_the_linked_echo_library_is_shown_separately_with_89ff2b" formatted="false">"联动 ECHO 曲库独立显示，已按 PC ECHO 作为当前联动源"</string>
+    <string name="feature_connect_the_local_library_stays_default_refresh_the_linked_6c5cd0" formatted="false">"本地曲库保持默认，可手动刷新联动曲库"</string>
+    <string name="feature_connect_the_next_track_will_sync_to_pc_echo_970d49" formatted="false">"下一首会同步到 PC ECHO"</string>
+    <string name="feature_connect_unpaired_89e494" formatted="false">"未配对"</string>
+    <string name="feature_connect_use_linked_library_by_default_a9eb0f" formatted="false">"默认读取联动曲库"</string>
+    <string name="feature_connect_username_dfb030" formatted="false">"用户名"</string>
+    <string name="feature_connect_volume_6d5238" formatted="false">"音量"</string>
+    <string name="feature_connect_volume_latency_and_output_device_linking_are_reserved_04bcb1" formatted="false">"预留音量、延迟、输出设备联动"</string>
+    <string name="feature_connect_waiting_for_pc_66972e" formatted="false">"等待 PC"</string>
+    <string name="feature_connect_waiting_for_pc_echo_pairing_e5e462" formatted="false">"等待 PC ECHO 配对"</string>
+    <string name="feature_connect_waiting_to_sync_21ad43" formatted="false">"等待同步"</string>
+    <string name="feature_connect_webdav_address_a59b28" formatted="false">"WebDAV 地址"</string>
+    <string name="feature_connect_webdav_cloud_drive_3aa8bf" formatted="false">"WebDAV / 网盘"</string>
+    <string name="feature_connect_webdav_password_4443d4" formatted="false">"WebDAV 密码"</string>
+    <string name="feature_connect_webdav_username_946873" formatted="false">"WebDAV 用户名"</string>
+    <string name="feature_connect_writing_library_a8f4bd" formatted="false">"写入曲库"</string>
+</resources>

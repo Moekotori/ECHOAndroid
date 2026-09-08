@@ -1,9 +1,12 @@
 package app.echo.android.feature.library
 
+import app.echo.android.feature.library.R as L10nR
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import app.echo.android.design.echoClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -61,7 +64,6 @@ import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.RoonInk
 import app.echo.android.design.RoonMuted
 import app.echo.android.design.displayMetadataOrUnknown
-import app.echo.android.design.echoString
 import app.echo.android.design.formatDuration
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackMetadataUpdate
@@ -155,7 +157,7 @@ internal fun FolderDetailPage(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            echoString(en = "Folder tracks", zh = "文件夹曲目", ja = "フォルダーの曲"),
+                            stringResource(L10nR.string.feature_library_folder_tracks_859f02),
                             color = colors.content,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Black,
@@ -174,29 +176,17 @@ internal fun FolderDetailPage(
             when {
                 tracks.isInitialPagingLoad() -> item(key = "folder-loading") {
                     FolderDetailNotice(
-                        echoString(
-                            en = "Loading folder tracks...",
-                            zh = "正在加载文件夹曲目...",
-                            ja = "フォルダーの曲を読み込み中...",
-                        ),
+                        stringResource(L10nR.string.feature_library_loading_folder_tracks_83d4ec),
                     )
                 }
                 tracks.isInitialPagingError() -> item(key = "folder-error") {
                     FolderDetailNotice(
-                        echoString(
-                            en = "Failed to load folder tracks.",
-                            zh = "文件夹曲目加载失败。",
-                            ja = "フォルダーの曲の読み込みに失敗しました。",
-                        ),
+                        stringResource(L10nR.string.feature_library_failed_to_load_folder_tracks_0966ba),
                     )
                 }
                 tracks.itemCount == 0 -> item(key = "folder-empty") {
                     FolderDetailNotice(
-                        echoString(
-                            en = "This folder has no tracks yet.",
-                            zh = "这个文件夹暂无曲目。",
-                            ja = "このフォルダーには曲がありません。",
-                        ),
+                        stringResource(L10nR.string.feature_library_this_folder_has_no_tracks_yet_f1a6e0),
                     )
                 }
                 else -> items(
@@ -285,12 +275,12 @@ private fun FolderDetailTopBar(onBack: () -> Unit) {
                 .clip(CircleShape)
                 .background(colors.elevatedSurface)
                 .border(BorderStroke(1.dp, colors.border), CircleShape)
-                .clickable(onClick = onBack),
+                .echoClickable(onClick = onBack),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = echoString(en = "Back", zh = "返回", ja = "戻る"),
+                contentDescription = stringResource(L10nR.string.feature_library_back_49093c),
                 tint = colors.content,
                 modifier = Modifier.size(22.dp),
             )
@@ -360,14 +350,14 @@ private fun FolderHero(
                 .height(52.dp)
                 .clip(RoundedCornerShape(26.dp))
                 .background(echoAccentColor())
-                .clickable(onClick = onPlayAll),
+                .echoClickable(onClick = onPlayAll),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = echoOnAccentColor(), modifier = Modifier.size(24.dp))
             Spacer(Modifier.width(8.dp))
             Text(
-                echoString(en = "Play this folder", zh = "播放这个文件夹", ja = "このフォルダーを再生"),
+                stringResource(L10nR.string.feature_library_play_this_folder_77afdc),
                 color = echoOnAccentColor(),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
@@ -382,27 +372,27 @@ private fun FolderInsightGrid(folder: FolderSummary) {
         Row(horizontalArrangement = Arrangement.spacedBy(9.dp), modifier = Modifier.fillMaxWidth()) {
             FolderInsightCard(
                 Icons.Rounded.MusicNote,
-                echoString(en = "Songs", zh = "歌曲", ja = "曲"),
+                stringResource(L10nR.string.feature_library_songs_107b60),
                 libraryTrackCountLabel(folder.trackCount),
                 Modifier.weight(1f),
             )
             FolderInsightCard(
                 Icons.Rounded.LibraryMusic,
-                echoString(en = "Albums", zh = "专辑", ja = "アルバム"),
-                echoString(en = "${folder.albumCount} albums", zh = "${folder.albumCount} 张", ja = "${folder.albumCount} 枚"),
+                stringResource(L10nR.string.feature_library_albums_e68c2b),
+                stringResource(L10nR.string.feature_library_folder_albumcount_albums_3c43c1, (folder.albumCount).toString()),
                 Modifier.weight(1f),
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(9.dp), modifier = Modifier.fillMaxWidth()) {
             FolderInsightCard(
                 Icons.Rounded.GraphicEq,
-                echoString(en = "Duration", zh = "时长", ja = "再生時間"),
+                stringResource(L10nR.string.feature_library_duration_573e08),
                 readableFolderDuration(folder.durationMs),
                 Modifier.weight(1f),
             )
             FolderInsightCard(
                 Icons.Rounded.FolderOpen,
-                echoString(en = "Size", zh = "容量", ja = "容量"),
+                stringResource(L10nR.string.feature_library_size_49c9f8),
                 formatFolderByteSize(folder.totalSizeBytes),
                 Modifier.weight(1f),
             )
@@ -552,11 +542,7 @@ private fun FolderDetailNotice(message: String) {
 @Composable
 private fun folderPathLabel(folder: FolderSummary): String =
     folder.path?.takeIf { it.isNotBlank() }
-        ?: echoString(
-            en = "MediaStore did not provide a path",
-            zh = "MediaStore 未提供路径",
-            ja = "MediaStore はパスを提供していません",
-        )
+        ?: stringResource(L10nR.string.feature_library_mediastore_did_not_provide_a_path_53b27e)
 
 @Composable
 private fun readableFolderDuration(durationMs: Long): String {

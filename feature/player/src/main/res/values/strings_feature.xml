@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module-owned translations. English values are the fallback for missing translations. -->
+<resources>
+    <string name="feature_player_after_you_pick_songs_from_the_library_the_1b16d7" formatted="false">"After you pick songs from the library, the actual play order appears here"</string>
+    <string name="feature_player_alignment_66dbdb" formatted="false">"Alignment"</string>
+    <string name="feature_player_audio_decode_failed_8fe0c7" formatted="false">"Audio decode failed"</string>
+    <string name="feature_player_audio_file_is_missing_31d228" formatted="false">"Audio file is missing"</string>
+    <string name="feature_player_audio_focus_lost_328a0b" formatted="false">"Audio focus lost"</string>
+    <string name="feature_player_audio_format_is_unsupported_53c7bb" formatted="false">"Audio format is unsupported"</string>
+    <string name="feature_player_back_to_cover_815543" formatted="false">"Back to cover"</string>
+    <string name="feature_player_blue_4a9e32" formatted="false">"Blue"</string>
+    <string name="feature_player_calm_207bcb" formatted="false">"Calm"</string>
+    <string name="feature_player_center_3e4c92" formatted="false">"Center"</string>
+    <string name="feature_player_change_lyrics_170696" formatted="false">"Change lyrics"</string>
+    <string name="feature_player_choose_a_font_file_a60802" formatted="false">"Choose a font file"</string>
+    <string name="feature_player_clear_queue_eae952" formatted="false">"Clear queue"</string>
+    <string name="feature_player_close_lyrics_settings_752454" formatted="false">"Close lyrics settings"</string>
+    <string name="feature_player_close_playback_settings_289e1a" formatted="false">"Close playback settings"</string>
+    <string name="feature_player_close_player_d23966" formatted="false">"Close player"</string>
+    <string name="feature_player_close_queue_a65caf" formatted="false">"Close queue"</string>
+    <string name="feature_player_collapse_playback_settings_79e2cd" formatted="false">"Collapse playback settings"</string>
+    <string name="feature_player_color_b67caf" formatted="false">"Color"</string>
+    <string name="feature_player_details_aec98d" formatted="false">"Details"</string>
+    <string name="feature_player_dim_be8c03" formatted="false">"Dim"</string>
+    <string name="feature_player_disabled_3bd0d0" formatted="false">"Disabled"</string>
+    <string name="feature_player_each_line_lifts_with_the_beat_ddb972" formatted="false">"Each line lifts with the beat"</string>
+    <string name="feature_player_emphasis_6517be" formatted="false">"Emphasis"</string>
+    <string name="feature_player_enabled_889420" formatted="false">"Enabled"</string>
+    <string name="feature_player_expand_playback_settings_cf64a0" formatted="false">"Expand playback settings"</string>
+    <string name="feature_player_favorite_b5d1f5" formatted="false">"Favorite"</string>
+    <string name="feature_player_font_c0bdeb" formatted="false">"Font"</string>
+    <string name="feature_player_font_color_and_display_b51a7b" formatted="false">"Font, color, and display"</string>
+    <string name="feature_player_go_to_library_32fd32" formatted="false">"Go to library"</string>
+    <string name="feature_player_green_d7b519" formatted="false">"Green"</string>
+    <string name="feature_player_hide_bottom_bar_e918c8" formatted="false">"Hide bottom bar"</string>
+    <string name="feature_player_immersive_d86793" formatted="false">"Immersive"</string>
+    <string name="feature_player_import_688061" formatted="false">"Import"</string>
+    <string name="feature_player_import_lyrics_e7494e" formatted="false">"Import lyrics"</string>
+    <string name="feature_player_import_name_a3094e">"Import %1$s"</string>
+    <string name="feature_player_in_order_47b60a" formatted="false">"In order"</string>
+    <string name="feature_player_left_f9d864" formatted="false">"Left"</string>
+    <string name="feature_player_line_spacing_ecbb6f" formatted="false">"Line spacing"</string>
+    <string name="feature_player_local_queue_c7d54b" formatted="false">"Local queue"</string>
+    <string name="feature_player_lyrics_appear_after_you_pick_a_song_1622d2" formatted="false">"Lyrics appear after you pick a song"</string>
+    <string name="feature_player_lyrics_b90c97" formatted="false">"Lyrics"</string>
+    <string name="feature_player_lyrics_breathe_naturally_with_playback_c6b1df" formatted="false">"Lyrics breathe naturally with playback"</string>
+    <string name="feature_player_lyrics_earlier_by_0_25s_0605b3" formatted="false">"Lyrics earlier by 0.25s"</string>
+    <string name="feature_player_lyrics_formatlyricsoffset_lyricsoffsetms_6c3953">"Lyrics %1$s"</string>
+    <string name="feature_player_lyrics_later_by_0_25s_f31341" formatted="false">"Lyrics later by 0.25s"</string>
+    <string name="feature_player_lyrics_rest_quietly_in_the_center_810bd7" formatted="false">"Lyrics rest quietly in the center"</string>
+    <string name="feature_player_lyrics_settings_843bc9" formatted="false">"Lyrics settings"</string>
+    <string name="feature_player_mono_ee96ee" formatted="false">"Mono"</string>
+    <string name="feature_player_move_down_cf81ae" formatted="false">"Move down"</string>
+    <string name="feature_player_move_up_e6d961" formatted="false">"Move up"</string>
+    <string name="feature_player_network_playback_failed_3b492e" formatted="false">"Network playback failed"</string>
+    <string name="feature_player_next_d67904" formatted="false">"Next"</string>
+    <string name="feature_player_nightcore_pitch_65449f" formatted="false">"Nightcore pitch"</string>
+    <string name="feature_player_no_data_5a8239" formatted="false">"No data"</string>
+    <string name="feature_player_no_matching_lyrics_found_7ffc7e" formatted="false">"No matching lyrics found"</string>
+    <string name="feature_player_normal_speed_a8fc98" formatted="false">"Normal speed"</string>
+    <string name="feature_player_not_playing_d72324" formatted="false">"Not playing"</string>
+    <string name="feature_player_nothing_playing_3beac0" formatted="false">"Nothing playing"</string>
+    <string name="feature_player_now_playing_214a7c" formatted="false">"Now playing"</string>
+    <string name="feature_player_off_12ac24" formatted="false">"Off"</string>
+    <string name="feature_player_on_3062f9" formatted="false">"On"</string>
+    <string name="feature_player_online_lyrics_21c928" formatted="false">"Online lyrics"</string>
+    <string name="feature_player_output_device_failed_5abf21" formatted="false">"Output device failed"</string>
+    <string name="feature_player_pick_a_song_to_start_68b6af" formatted="false">"Pick a song to start"</string>
+    <string name="feature_player_play_or_pause_37a70f" formatted="false">"Play or pause"</string>
+    <string name="feature_player_playback_failed_059f1f" formatted="false">"Playback failed"</string>
+    <string name="feature_player_playback_permission_denied_2a3371" formatted="false">"Playback permission denied"</string>
+    <string name="feature_player_playback_settings_651436" formatted="false">"Playback settings"</string>
+    <string name="feature_player_playback_was_interrupted_by_the_system_70c8d1" formatted="false">"Playback was interrupted by the system"</string>
+    <string name="feature_player_previous_af0264" formatted="false">"Previous"</string>
+    <string name="feature_player_queue_37fa6a" formatted="false">"Queue"</string>
+    <string name="feature_player_queue_84794b" formatted="false">"Queue"</string>
+    <string name="feature_player_queue_is_empty_1b4178" formatted="false">"Queue is empty"</string>
+    <string name="feature_player_reading_local_lyrics_807f08" formatted="false">"Reading local lyrics…"</string>
+    <string name="feature_player_ready_97b946" formatted="false">"Ready"</string>
+    <string name="feature_player_remote_authentication_failed_426253" formatted="false">"Remote authentication failed"</string>
+    <string name="feature_player_remove_track_60c516" formatted="false">"Remove track"</string>
+    <string name="feature_player_repeat_all_751078" formatted="false">"Repeat all"</string>
+    <string name="feature_player_repeat_all_b8cce1" formatted="false">"Repeat all"</string>
+    <string name="feature_player_repeat_off_254ca2" formatted="false">"Repeat off"</string>
+    <string name="feature_player_repeat_off_e1d801" formatted="false">"Repeat off"</string>
+    <string name="feature_player_repeat_one_3df94f" formatted="false">"Repeat one"</string>
+    <string name="feature_player_reset_lyrics_offset_df9dcc" formatted="false">"Reset lyrics offset"</string>
+    <string name="feature_player_romaji_6ad0ab" formatted="false">"Romaji"</string>
+    <string name="feature_player_serif_fb7b05" formatted="false">"Serif"</string>
+    <string name="feature_player_show_bottom_bar_bf2549" formatted="false">"Show bottom bar"</string>
+    <string name="feature_player_shuffle_on_c7c5c4" formatted="false">"Shuffle on"</string>
+    <string name="feature_player_size_tracks_now_playing_current_7d4647">"%1$s tracks · now playing %2$s"</string>
+    <string name="feature_player_skip_silence_d27e03" formatted="false">"Skip silence"</string>
+    <string name="feature_player_skip_silence_off_8f8ae6" formatted="false">"Skip silence off"</string>
+    <string name="feature_player_skip_silence_on_159990" formatted="false">"Skip silence on"</string>
+    <string name="feature_player_skipped_an_unplayable_track_dcd77d" formatted="false">"Skipped an unplayable track"</string>
+    <string name="feature_player_sleep_timer_108738" formatted="false">"Sleep timer"</string>
+    <string name="feature_player_sleep_timer_remaining_4b8c3f">"Sleep timer · %1$s"</string>
+    <string name="feature_player_sleep_timer_this_track_1ae161" formatted="false">"Sleep timer · this track"</string>
+    <string name="feature_player_sleep_timer_this_track_clock_e76a6a">"Sleep timer · this track · %1$s"</string>
+    <string name="feature_player_smooth_4989bb" formatted="false">"Smooth"</string>
+    <string name="feature_player_speed_1d93fc" formatted="false">"Speed"</string>
+    <string name="feature_player_stage_fffe7d" formatted="false">"Stage"</string>
+    <string name="feature_player_sync_tools_ef1217" formatted="false">"Sync tools"</string>
+    <string name="feature_player_system_90f402" formatted="false">"System"</string>
+    <string name="feature_player_system_font_8ddbe6" formatted="false">"System font"</string>
+    <string name="feature_player_system_mono_6ca8fa" formatted="false">"System mono"</string>
+    <string name="feature_player_system_output_856789" formatted="false">"System output"</string>
+    <string name="feature_player_system_serif_ee6148" formatted="false">"System serif"</string>
+    <string name="feature_player_tag_status_replaygaintrackgaindb_let_formatreplaygaindb_unread_p_9c7a19">"Tag %1$s · Preamp %2$s"</string>
+    <string name="feature_player_this_track_210ea7" formatted="false">"This track"</string>
+    <string name="feature_player_translation_53c7ce" formatted="false">"Translation"</string>
+    <string name="feature_player_translation_romaji_appear_when_the_current_lyrics_include_3b41d9" formatted="false">"Translation / romaji appear when the current lyrics include that data"</string>
+    <string name="feature_player_type_size_8ff7ee" formatted="false">"Type size"</string>
+    <string name="feature_player_unable_to_play_bee8f9" formatted="false">"Unable to play"</string>
+    <string name="feature_player_unfavorite_3a27e4" formatted="false">"Unfavorite"</string>
+    <string name="feature_player_usb_output_c6800e" formatted="false">"USB output"</string>
+    <string name="feature_player_violet_a03e22" formatted="false">"Violet"</string>
+    <string name="feature_player_waiting_for_audio_info_a869fd" formatted="false">"Waiting for audio info"</string>
+    <string name="feature_player_warm_060f63" formatted="false">"Warm"</string>
+    <string name="feature_player_white_cc6c04" formatted="false">"White"</string>
+    <string name="feature_player_word_d653ce" formatted="false">"Word"</string>
+    <string name="feature_player_word_highlight_f4dec8" formatted="false">"Word highlight"</string>
+    <string name="feature_player_word_highlight_off_b0e40a" formatted="false">"Word highlight off"</string>
+</resources>

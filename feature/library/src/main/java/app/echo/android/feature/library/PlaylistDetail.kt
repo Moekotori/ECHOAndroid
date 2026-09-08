@@ -1,9 +1,12 @@
 package app.echo.android.feature.library
 
+import app.echo.android.feature.library.R as L10nR
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import app.echo.android.design.echoClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -70,7 +73,6 @@ import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.displayMetadataOrUnknown
 import app.echo.android.design.echoAccentColor
 import app.echo.android.design.echoOnAccentColor
-import app.echo.android.design.echoString
 import app.echo.android.design.formatDuration
 import app.echo.android.design.rememberArtworkPalette
 import app.echo.android.model.library.EchoPlaylist
@@ -196,7 +198,7 @@ internal fun PlaylistDetailPage(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            echoString(en = "Tracks", zh = "曲目", ja = "曲"),
+                            stringResource(L10nR.string.feature_library_tracks_2d80e8),
                             color = colors.content,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
@@ -215,12 +217,12 @@ internal fun PlaylistDetailPage(
             when {
                 tracks.isInitialPagingLoad() -> item(key = "playlist-loading") {
                     PlaylistDetailNotice(
-                        echoString(en = "Loading playlist...", zh = "正在加载歌单...", ja = "プレイリストを読み込み中..."),
+                        stringResource(L10nR.string.feature_library_loading_playlist_eb6248),
                     )
                 }
                 tracks.isInitialPagingError() -> item(key = "playlist-error") {
                     PlaylistDetailNotice(
-                        echoString(en = "Failed to load playlist tracks.", zh = "歌单曲目加载失败。", ja = "プレイリストの曲の読み込みに失敗しました。"),
+                        stringResource(L10nR.string.feature_library_failed_to_load_playlist_tracks_9130da),
                     )
                 }
                 tracks.itemCount == 0 -> item(key = "playlist-empty") {
@@ -266,8 +268,8 @@ internal fun PlaylistDetailPage(
 
     if (renaming) {
         PlaylistNameDialog(
-            title = echoString(en = "Rename playlist", zh = "重命名歌单", ja = "プレイリスト名を変更"),
-            confirmLabel = echoString(en = "Save", zh = "保存", ja = "保存"),
+            title = stringResource(L10nR.string.feature_library_rename_playlist_757bb7),
+            confirmLabel = stringResource(L10nR.string.feature_library_save_68ae20),
             initialName = playlist.name,
             onDismiss = { renaming = false },
             onConfirm = { name ->
@@ -279,14 +281,10 @@ internal fun PlaylistDetailPage(
     if (deleting) {
         AlertDialog(
             onDismissRequest = { deleting = false },
-            title = { Text(echoString(en = "Delete playlist", zh = "删除歌单", ja = "プレイリストを削除")) },
+            title = { Text(stringResource(L10nR.string.feature_library_delete_playlist_4d9753)) },
             text = {
                 Text(
-                    echoString(
-                        en = "Delete “${playlist.name}”? Songs in the library will not be deleted.",
-                        zh = "删除「${playlist.name}」？曲库里的歌曲不会被删。",
-                        ja = "「${playlist.name}」を削除しますか？ライブラリの曲は削除されません。",
-                    ),
+                    stringResource(L10nR.string.feature_library_delete_playlist_name_songs_in_the_library_will_3541db, (playlist.name).toString()),
                 )
             },
             confirmButton = {
@@ -296,12 +294,12 @@ internal fun PlaylistDetailPage(
                         deleting = false
                     },
                 ) {
-                    Text(echoString(en = "Delete", zh = "删除", ja = "削除"))
+                    Text(stringResource(L10nR.string.feature_library_delete_138ccf))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { deleting = false }) {
-                    Text(echoString(en = "Cancel", zh = "取消", ja = "キャンセル"))
+                    Text(stringResource(L10nR.string.feature_library_cancel_4c5fa5))
                 }
             },
         )
@@ -378,14 +376,14 @@ private fun PlaylistDetailTopBar(
     ) {
         PlaylistRoundButton(
             icon = Icons.AutoMirrored.Rounded.ArrowBack,
-            description = echoString(en = "Back", zh = "返回", ja = "戻る"),
+            description = stringResource(L10nR.string.feature_library_back_49093c),
             onClick = onBack,
         )
         if (canEdit) {
             Box {
                 PlaylistRoundButton(
                     icon = Icons.Rounded.MoreVert,
-                    description = echoString(en = "Playlist actions", zh = "歌单操作", ja = "プレイリスト操作"),
+                    description = stringResource(L10nR.string.feature_library_playlist_actions_044945),
                     onClick = { menuOpen = true },
                 )
                 DropdownMenu(
@@ -394,7 +392,7 @@ private fun PlaylistDetailTopBar(
                     containerColor = MaterialTheme.colorScheme.surface,
                 ) {
                     DropdownMenuItem(
-                        text = { Text(echoString(en = "Rename", zh = "重命名", ja = "名前を変更")) },
+                        text = { Text(stringResource(L10nR.string.feature_library_rename_d1a28e)) },
                         leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
                         onClick = {
                             menuOpen = false
@@ -402,7 +400,7 @@ private fun PlaylistDetailTopBar(
                         },
                     )
                     DropdownMenuItem(
-                        text = { Text(echoString(en = "Delete", zh = "删除", ja = "削除")) },
+                        text = { Text(stringResource(L10nR.string.feature_library_delete_138ccf)) },
                         leadingIcon = { Icon(Icons.Rounded.DeleteOutline, contentDescription = null) },
                         onClick = {
                             menuOpen = false
@@ -428,7 +426,7 @@ private fun PlaylistRoundButton(
             .clip(CircleShape)
             .background(colors.elevatedSurface)
             .border(BorderStroke(1.dp, colors.border), CircleShape)
-            .clickable(onClick = onClick),
+            .echoClickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, contentDescription = description, tint = colors.content, modifier = Modifier.size(22.dp))
@@ -482,14 +480,14 @@ private fun PlaylistHero(
         ) {
             PlaylistActionButton(
                 icon = Icons.Rounded.PlayArrow,
-                label = echoString(en = "Play all", zh = "播放全部", ja = "すべて再生"),
+                label = stringResource(L10nR.string.feature_library_play_all_55c80e),
                 filled = true,
                 onClick = onPlayAll,
                 modifier = Modifier.weight(1f),
             )
             PlaylistActionButton(
                 icon = Icons.Rounded.Shuffle,
-                label = echoString(en = "Shuffle", zh = "随机播放", ja = "シャッフル"),
+                label = stringResource(L10nR.string.feature_library_shuffle_34e7ce),
                 filled = false,
                 onClick = onShuffle,
                 modifier = Modifier.weight(1f),
@@ -628,7 +626,7 @@ private fun PlaylistActionButton(
             .clip(shape)
             .background(container)
             .border(BorderStroke(1.dp, border), shape)
-            .clickable(onClick = onClick),
+            .echoClickable(onClick = onClick),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -681,7 +679,7 @@ private fun PlaylistInsightRow(
     ) {
         PlaylistInsightCell(
             icon = Icons.Rounded.MusicNote,
-            label = echoString(en = "Songs", zh = "歌曲", ja = "曲"),
+            label = stringResource(L10nR.string.feature_library_songs_107b60),
             value = libraryTrackCountLabel(trackCount),
             modifier = Modifier.weight(1f),
         )
@@ -693,8 +691,8 @@ private fun PlaylistInsightRow(
         )
         PlaylistInsightCell(
             icon = Icons.Rounded.GraphicEq,
-            label = echoString(en = "Duration", zh = "时长", ja = "再生時間"),
-            value = if (durationMs > 0L) readablePlaylistDuration(durationMs) else echoString(en = "—", zh = "—", ja = "—"),
+            label = stringResource(L10nR.string.feature_library_duration_573e08),
+            value = if (durationMs > 0L) readablePlaylistDuration(durationMs) else stringResource(L10nR.string.feature_library_text_e9396c),
             modifier = Modifier.weight(1f),
         )
         Box(
@@ -705,7 +703,7 @@ private fun PlaylistInsightRow(
         )
         PlaylistInsightCell(
             icon = Icons.AutoMirrored.Rounded.QueueMusic,
-            label = echoString(en = "Kind", zh = "类型", ja = "種類"),
+            label = stringResource(L10nR.string.feature_library_kind_2dcbb1),
             value = playlistKindLabel(playlist),
             modifier = Modifier.weight(1f),
         )
@@ -860,7 +858,7 @@ private fun playlistHeroCaption(playlist: EchoPlaylist, durationMs: Long): Strin
 @Composable
 internal fun playlistDisplayName(playlist: EchoPlaylist): String =
     if (playlist.isLikedSongs) {
-        echoString(en = "Liked songs", zh = "喜欢的歌曲", ja = "お気に入り")
+        stringResource(L10nR.string.feature_library_liked_songs_8d6245)
     } else {
         playlist.name
     }
@@ -869,45 +867,25 @@ internal fun playlistDisplayName(playlist: EchoPlaylist): String =
 internal fun playlistCaption(playlist: EchoPlaylist): String {
     val count = playlist.trackCount
     return when {
-        playlist.isLikedSongs -> echoString(
-            en = "$count tracks · Liked songs",
-            zh = "$count 首 · 喜欢的歌曲",
-            ja = "$count 曲 · お気に入り",
-        )
-        playlist.canEdit -> echoString(
-            en = "$count tracks · Local playlist",
-            zh = "$count 首 · 本地歌单",
-            ja = "$count 曲 · ローカルプレイリスト",
-        )
-        else -> echoString(
-            en = "$count tracks · Navidrome",
-            zh = "$count 首 · Navidrome",
-            ja = "$count 曲 · Navidrome",
-        )
+        playlist.isLikedSongs -> stringResource(L10nR.string.feature_library_count_tracks_liked_songs_e36fb7, (count).toString())
+        playlist.canEdit -> stringResource(L10nR.string.feature_library_count_tracks_local_playlist_352a0d, (count).toString())
+        else -> stringResource(L10nR.string.feature_library_count_tracks_navidrome_294a65, (count).toString())
     }
 }
 
 @Composable
 private fun playlistKindLabel(playlist: EchoPlaylist): String = when {
-    playlist.isLikedSongs -> echoString(en = "Liked", zh = "喜欢", ja = "お気に入り")
-    playlist.source == LibrarySource.MediaStore.id -> echoString(en = "Local", zh = "本地", ja = "ローカル")
-    else -> echoString(en = "Linked", zh = "互联", ja = "リンク")
+    playlist.isLikedSongs -> stringResource(L10nR.string.feature_library_liked_c8ac9d)
+    playlist.source == LibrarySource.MediaStore.id -> stringResource(L10nR.string.feature_library_local_9b5178)
+    else -> stringResource(L10nR.string.feature_library_linked_5d42a7)
 }
 
 @Composable
 private fun playlistEmptyMessage(playlist: EchoPlaylist): String =
     if (playlist.isLikedSongs) {
-        echoString(
-            en = "No liked songs yet. Heart a track from the player or a song menu.",
-            zh = "还没有喜欢的歌曲。在播放页或歌曲菜单里点红心。",
-            ja = "お気に入りはまだありません。再生画面か曲メニューから追加してください。",
-        )
+        stringResource(L10nR.string.feature_library_no_liked_songs_yet_heart_a_track_from_ba96cc)
     } else {
-        echoString(
-            en = "This playlist is empty. Add songs from a track menu.",
-            zh = "这个歌单还是空的。从歌曲菜单加入曲目。",
-            ja = "このプレイリストは空です。曲メニューから追加してください。",
-        )
+        stringResource(L10nR.string.feature_library_this_playlist_is_empty_add_songs_from_a_bebd89)
     }
 
 @Composable

@@ -1,9 +1,12 @@
 package app.echo.android.feature.home
 
+import app.echo.android.feature.home.R as L10nR
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import app.echo.android.design.echoClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -85,7 +88,6 @@ import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.RoonInk
 import app.echo.android.design.RoonMuted
 import app.echo.android.design.echoDarkGlassBorder
-import app.echo.android.design.echoString
 import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.design.formatDuration
 import app.echo.android.design.progressFraction
@@ -179,9 +181,9 @@ internal fun LibraryOverview(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                LibraryMetric(echoString(en = "Songs", zh = "歌曲", ja = "曲"), trackCount.toString(), Modifier.weight(1f))
-                LibraryMetric(echoString(en = "Albums", zh = "专辑", ja = "アルバム"), albumCount.toString(), Modifier.weight(1f))
-                LibraryMetric(echoString(en = "Artists", zh = "艺人", ja = "アーティスト"), artistCount.toString(), Modifier.weight(1f))
+                LibraryMetric(stringResource(L10nR.string.feature_home_songs_107b60), trackCount.toString(), Modifier.weight(1f))
+                LibraryMetric(stringResource(L10nR.string.feature_home_albums_e68c2b), albumCount.toString(), Modifier.weight(1f))
+                LibraryMetric(stringResource(L10nR.string.feature_home_artists_e168aa), artistCount.toString(), Modifier.weight(1f))
             }
             if (scanState.isScanning) {
                 HomeLibraryScanHint(scanState = scanState, onOpenLibrary = onOpenLibrary)
@@ -202,7 +204,7 @@ private fun HomeLibraryScanHint(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .clickable(onClick = onOpenLibrary)
+            .echoClickable(onClick = onOpenLibrary)
             .padding(horizontal = 2.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -215,7 +217,7 @@ private fun HomeLibraryScanHint(
         )
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(
-                text = echoString(en = "Scanning library", zh = "正在扫描曲库", ja = "ライブラリをスキャン中"),
+                text = stringResource(L10nR.string.feature_home_scanning_library_d0b14c),
                 color = homeTitleColor(),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
@@ -265,7 +267,7 @@ internal fun RoonHomeHeader(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onOpenSearch() },
+                    .echoClickable { onOpenSearch() },
                 shape = shape,
                 color = homePanelColor(0.94f),
                 border = homePanelBorder(0.88f),
@@ -279,11 +281,7 @@ internal fun RoonHomeHeader(
                 ) {
                     Icon(Icons.Rounded.Search, contentDescription = null, tint = homeBodyColor(), modifier = Modifier.size(20.dp))
                     Text(
-                        echoString(
-                            en = "Search local music, albums, and artists",
-                            zh = "搜索本机音乐、专辑、歌手",
-                            ja = "端末の曲、アルバム、アーティストを検索",
-                        ),
+                        stringResource(L10nR.string.feature_home_search_local_music_albums_and_artists_443a4f),
                         color = homeBodyColor().copy(alpha = 0.5f),
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
@@ -300,7 +298,7 @@ private fun SearchResultItem(result: SearchResult, onClick: (SearchResult) -> Un
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick(result) }
+            .echoClickable { onClick(result) }
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -403,7 +401,7 @@ internal fun RoonRecentActivitySection(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                echoString(en = "Recent activity", zh = "最近活动", ja = "最近のアクティビティ"),
+                stringResource(L10nR.string.feature_home_recent_activity_581ef8),
                 color = homeTitleColor(),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
@@ -422,14 +420,14 @@ internal fun RoonRecentActivitySection(
                 item {
                     RecentActivityEmptyAlbumCard(
                         title = if (selectedMode == RecentActivityMode.Played) {
-                            echoString(en = "Nothing played yet", zh = "暂无已播放", ja = "再生履歴はまだありません")
+                            stringResource(L10nR.string.feature_home_nothing_played_yet_988bfc)
                         } else {
-                            echoString(en = "No new albums yet", zh = "暂无新增专辑", ja = "新しいアルバムはまだありません")
+                            stringResource(L10nR.string.feature_home_no_new_albums_yet_ac7085)
                         },
                         subtitle = if (selectedMode == RecentActivityMode.Played) {
-                            echoString(en = "Appears after you play an album", zh = "播放专辑后显示", ja = "アルバムを再生すると表示されます")
+                            stringResource(L10nR.string.feature_home_appears_after_you_play_an_album_26effb)
                         } else {
-                            echoString(en = "Appears after you scan your library", zh = "扫描曲库后显示", ja = "ライブラリをスキャンすると表示されます")
+                            stringResource(L10nR.string.feature_home_appears_after_you_scan_your_library_5ae1b0)
                         },
                         onClick = onOpenLibrary,
                     )
@@ -472,12 +470,12 @@ internal fun RecentActivityTabs(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             RecentActivityModeTab(
-                label = echoString(en = "Played", zh = "已播放", ja = "再生済み"),
+                label = stringResource(L10nR.string.feature_home_played_ef0258),
                 selected = selectedMode == RecentActivityMode.Played,
                 onClick = { onSelect(RecentActivityMode.Played) },
             )
             RecentActivityModeTab(
-                label = echoString(en = "Added", zh = "添加于", ja = "追加日"),
+                label = stringResource(L10nR.string.feature_home_added_930006),
                 selected = selectedMode == RecentActivityMode.Added,
                 onClick = { onSelect(RecentActivityMode.Added) },
             )
@@ -496,7 +494,7 @@ private fun RecentActivityModeTab(
         modifier = Modifier
             .clip(RoundedCornerShape(9.dp))
             .background(if (selected) scheme.primary.copy(alpha = 0.24f) else Color.Transparent)
-            .clickable(onClick = onClick)
+            .echoClickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -526,7 +524,7 @@ internal fun RecentPlayedAlbumsTab() {
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                echoString(en = "Played", zh = "已播放", ja = "再生済み"),
+                stringResource(L10nR.string.feature_home_played_ef0258),
                 color = scheme.primary,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
@@ -542,12 +540,12 @@ internal fun RecentAlbumCard(
     mode: RecentActivityMode,
     onClick: () -> Unit,
 ) {
-    val artistLabel = album.albumArtist ?: album.artist ?: echoString(en = "Unknown artist", zh = "未知艺人", ja = "不明なアーティスト")
+    val artistLabel = album.albumArtist ?: album.artist ?: stringResource(L10nR.string.feature_home_unknown_artist_85ee30)
     Column(
         modifier = Modifier
             .width(RecentActivityAlbumCardWidth)
             .height(RecentActivityAlbumCardHeight)
-            .clickable(onClick = onClick),
+            .echoClickable(onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         ArtworkTile(
@@ -600,11 +598,7 @@ private fun formatAlbumDate(seconds: Long): String {
     }
     val month = calendar.get(Calendar.MONTH) + 1
     val day = calendar.get(Calendar.DAY_OF_MONTH)
-    return echoString(
-        en = "$month/$day",
-        zh = "${month}月${day}日",
-        ja = "${month}月${day}日",
-    )
+    return stringResource(L10nR.string.feature_home_month_day_000137, (month).toString(), (day).toString())
 }
 
 @Composable
@@ -616,7 +610,7 @@ private fun RecentActivityEmptyAlbumCard(
     Column(
         modifier = Modifier
             .width(RecentActivityEmptyCardWidth)
-            .clickable(onClick = onClick),
+            .echoClickable(onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Box(
@@ -654,18 +648,14 @@ private fun RecentActivityEmptyAlbumCard(
 
 @Composable
 internal fun EmptyRecentAlbumsCard(
-    title: String = echoString(en = "No albums yet", zh = "暂无专辑", ja = "アルバムはまだありません"),
-    subtitle: String = echoString(
-        en = "Appears after you scan your library",
-        zh = "扫描曲库后显示",
-        ja = "ライブラリをスキャンすると表示されます",
-    ),
+    title: String = stringResource(L10nR.string.feature_home_no_albums_yet_93b5cb),
+    subtitle: String = stringResource(L10nR.string.feature_home_appears_after_you_scan_your_library_5ae1b0),
     onClick: () -> Unit,
 ) {
     Column(
         modifier = Modifier
             .width(160.dp)
-            .clickable(onClick = onClick),
+            .echoClickable(onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Box(
@@ -732,7 +722,7 @@ internal fun RoonRecentActivitySection(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    echoString(en = "Recent activity", zh = "最近活动", ja = "最近のアクティビティ"),
+                    stringResource(L10nR.string.feature_home_recent_activity_581ef8),
                     color = homeTitleColor(),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
@@ -747,22 +737,22 @@ internal fun RoonRecentActivitySection(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             RoonRecentActivityCard(
-                title = status.track?.title ?: echoString(en = "Local music", zh = "本地音乐", ja = "ローカルミュージック"),
-                subtitle = status.track?.artist ?: echoString(en = "Pick from your library", zh = "从曲库选择", ja = "ライブラリから選ぶ"),
+                title = status.track?.title ?: stringResource(L10nR.string.feature_home_local_music_a88e59),
+                subtitle = status.track?.artist ?: stringResource(L10nR.string.feature_home_pick_from_your_library_24e9be),
                 artworkUri = status.track?.artworkUri,
                 accent = echoAccentColor(),
                 onClick = if (status.track != null) onPlayPause else onOpenLibrary,
             )
             RoonRecentActivityCard(
-                title = echoString(en = "Daily mix", zh = "每日推荐", ja = "今日のおすすめ"),
-                subtitle = echoString(en = "From your local library", zh = "按你的本机曲库", ja = "端末のライブラリから"),
+                title = stringResource(L10nR.string.feature_home_daily_mix_cb64bd),
+                subtitle = stringResource(L10nR.string.feature_home_from_your_local_library_266631),
                 artworkUri = null,
                 accent = EchoColors.Brass,
                 onClick = onOpenLibrary,
             )
             RoonRecentActivityCard(
                 title = "PC ECHO",
-                subtitle = echoString(en = "Desktop handoff playback", zh = "桌面接力播放", ja = "デスクトップへ引き継いで再生"),
+                subtitle = stringResource(L10nR.string.feature_home_desktop_handoff_playback_399554),
                 artworkUri = null,
                 accent = EchoColors.Coral,
                 onClick = onOpenLibrary,
@@ -802,7 +792,7 @@ internal fun HomeAlbumRecommendationsSection(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                echoString(en = "Recommended for you", zh = "为你推荐", ja = "あなたへのおすすめ"),
+                stringResource(L10nR.string.feature_home_recommended_for_you_8335d9),
                 color = homeTitleColor(),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.ExtraBold,
@@ -810,7 +800,7 @@ internal fun HomeAlbumRecommendationsSection(
             Surface(
                 modifier = Modifier
                     .clip(RoundedCornerShape(16.dp))
-                    .clickable(enabled = albums.isNotEmpty(), onClick = onRefresh)
+                    .echoClickable(enabled = albums.isNotEmpty(), onClick = onRefresh)
                     .alpha(if (albums.isEmpty()) 0.42f else 1f),
                 shape = RoundedCornerShape(16.dp),
                 color = homePanelColor(0.94f),
@@ -823,7 +813,7 @@ internal fun HomeAlbumRecommendationsSection(
                 ) {
                     Icon(Icons.Rounded.Refresh, contentDescription = null, tint = homeBodyColor(), modifier = Modifier.size(15.dp))
                     Text(
-                        echoString(en = "Refresh", zh = "刷新", ja = "更新"),
+                        stringResource(L10nR.string.feature_home_refresh_828c69),
                         color = homeBodyColor(),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
@@ -838,12 +828,8 @@ internal fun HomeAlbumRecommendationsSection(
             if (albums.isEmpty()) {
                 item {
                     EmptyRecentAlbumsCard(
-                        title = echoString(en = "No recommendations yet", zh = "暂无推荐", ja = "おすすめはまだありません"),
-                        subtitle = echoString(
-                            en = "Play or favorite albums to fill this row",
-                            zh = "播放或收藏专辑后会出现在这里",
-                            ja = "再生またはお気に入り登録すると表示されます",
-                        ),
+                        title = stringResource(L10nR.string.feature_home_no_recommendations_yet_040329),
+                        subtitle = stringResource(L10nR.string.feature_home_play_or_favorite_albums_to_fill_this_row_cf6bca),
                         onClick = onOpenLibrary,
                     )
                 }
@@ -864,11 +850,11 @@ internal fun RecommendedAlbumCard(
     album: AlbumSummary,
     onClick: () -> Unit,
 ) {
-    val artistLabel = album.albumArtist ?: album.artist ?: echoString(en = "Unknown artist", zh = "未知艺人", ja = "不明なアーティスト")
+    val artistLabel = album.albumArtist ?: album.artist ?: stringResource(L10nR.string.feature_home_unknown_artist_85ee30)
     Column(
         modifier = Modifier
             .width(136.dp)
-            .clickable(onClick = onClick),
+            .echoClickable(onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         ArtworkTile(
@@ -918,19 +904,15 @@ internal fun HomeArtistRankingSection(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
-            echoString(en = "Artist ranking", zh = "艺人排行榜", ja = "アーティストランキング"),
+            stringResource(L10nR.string.feature_home_artist_ranking_80100b),
             color = scheme.onSurface,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.ExtraBold,
         )
         if (artists.isEmpty()) {
             EmptyRankingNotice(
-                title = echoString(en = "No ranking data yet", zh = "暂无排行数据", ja = "ランキングデータはまだありません"),
-                subtitle = echoString(
-                    en = "Appears after you play an artist",
-                    zh = "播放艺人歌曲后显示",
-                    ja = "アーティストの曲を再生すると表示されます",
-                ),
+                title = stringResource(L10nR.string.feature_home_no_ranking_data_yet_810ddb),
+                subtitle = stringResource(L10nR.string.feature_home_appears_after_you_play_an_artist_8a9384),
                 onClick = onOpenLibrary,
             )
         } else {
@@ -961,7 +943,7 @@ private fun ArtistRankRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
+            .echoClickable(onClick = onClick)
             .background(
                 if (rank == 1) {
                     Brush.horizontalGradient(
@@ -999,11 +981,7 @@ private fun ArtistRankRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                echoString(
-                    en = "${artist.trackCount} tracks · $durationLabel",
-                    zh = "${artist.trackCount} 首 · $durationLabel",
-                    ja = "${artist.trackCount} 曲 · $durationLabel",
-                ),
+                stringResource(L10nR.string.feature_home_artist_trackcount_tracks_durationlabel_3431c6, (artist.trackCount).toString(), (durationLabel).toString()),
                 color = scheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
@@ -1036,11 +1014,7 @@ private fun ArtistRankRow(
             border = homePanelBorder(0.76f),
         ) {
             Text(
-                echoString(
-                    en = "${artist.albumCount.coerceAtLeast(0)} albums",
-                    zh = "${artist.albumCount.coerceAtLeast(0)} 专辑",
-                    ja = "${artist.albumCount.coerceAtLeast(0)} 枚",
-                ),
+                stringResource(L10nR.string.feature_home_artist_albumcount_coerceatleast_0_albums_3a30a7, (artist.albumCount.coerceAtLeast(0)).toString()),
                 color = scheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
@@ -1070,7 +1044,7 @@ internal fun HomeFavoriteAlbumsSection(
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Text(
-            echoString(en = "Albums you like", zh = "你喜欢的专辑", ja = "お気に入りのアルバム"),
+            stringResource(L10nR.string.feature_home_albums_you_like_95a2b9),
             color = scheme.onSurface,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.ExtraBold,
@@ -1084,12 +1058,8 @@ internal fun HomeFavoriteAlbumsSection(
         ) {
             if (albums.isEmpty()) {
                 RecentActivityEmptyAlbumCard(
-                    title = echoString(en = "No favorite albums yet", zh = "暂无偏好专辑", ja = "お気に入りのアルバムはまだありません"),
-                    subtitle = echoString(
-                        en = "Star an album on the player to see it here",
-                        zh = "在播放页点收藏后显示",
-                        ja = "再生画面で保存すると表示されます",
-                    ),
+                    title = stringResource(L10nR.string.feature_home_no_favorite_albums_yet_7c8d3b),
+                    subtitle = stringResource(L10nR.string.feature_home_star_an_album_on_the_player_to_see_edd836),
                     onClick = onOpenLibrary,
                 )
             } else {
@@ -1133,11 +1103,7 @@ private fun FavoriteAlbumHeatmap(days: List<PlaybackHeatmapDay>) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                echoString(
-                    en = "Listening heatmap · last 12 weeks",
-                    zh = "近 12 周播放热力图",
-                    ja = "直近12週の再生ヒートマップ",
-                ),
+                stringResource(L10nR.string.feature_home_listening_heatmap_last_12_weeks_943587),
                 color = scheme.onSurface,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.ExtraBold,
@@ -1145,11 +1111,7 @@ private fun FavoriteAlbumHeatmap(days: List<PlaybackHeatmapDay>) {
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                echoString(
-                    en = "${heatmap.activeWeeks} weeks active",
-                    zh = "${heatmap.activeWeeks} 周活跃",
-                    ja = "${heatmap.activeWeeks} 週アクティブ",
-                ),
+                stringResource(L10nR.string.feature_home_heatmap_activeweeks_weeks_active_79d6b5, (heatmap.activeWeeks).toString()),
                 color = scheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
@@ -1220,7 +1182,7 @@ private fun FavoriteAlbumHeatmap(days: List<PlaybackHeatmapDay>) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                echoString(en = "Less", zh = "少", ja = "少"),
+                stringResource(L10nR.string.feature_home_less_37b004),
                 color = scheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
@@ -1243,7 +1205,7 @@ private fun FavoriteAlbumHeatmap(days: List<PlaybackHeatmapDay>) {
                 Spacer(Modifier.width(3.dp))
             }
             Text(
-                echoString(en = "More", zh = "多", ja = "多"),
+                stringResource(L10nR.string.feature_home_more_8d2e9a),
                 color = scheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
@@ -1359,7 +1321,7 @@ private fun EmptyRankingNotice(
             .clip(RoundedCornerShape(18.dp))
             .background(if (dark) EchoGlassPanel.copy(alpha = 0.28f) else EchoHomeMist.copy(alpha = 0.42f))
             .border(if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, Color.Transparent), RoundedCornerShape(18.dp))
-            .clickable(onClick = onClick)
+            .echoClickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 14.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
@@ -1372,7 +1334,7 @@ private fun EmptyRankingNotice(
 private fun artistReadableDuration(durationMs: Long): String {
     val minutes = (durationMs / 60000L).toInt()
     return if (minutes >= 1) {
-        echoString(en = "$minutes min", zh = "$minutes 分钟", ja = "${minutes}分")
+        stringResource(L10nR.string.feature_home_minutes_min_c3e281, (minutes).toString())
     } else {
         formatDuration(durationMs)
     }
@@ -1389,8 +1351,8 @@ internal fun RecentActivityTabs() {
             modifier = Modifier.padding(3.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            RecentActivityTab(label = echoString(en = "Played", zh = "已播放", ja = "再生済み"), selected = true)
-            RecentActivityTab(label = echoString(en = "Added", zh = "添加于", ja = "追加日"), selected = false)
+            RecentActivityTab(label = stringResource(L10nR.string.feature_home_played_ef0258), selected = true)
+            RecentActivityTab(label = stringResource(L10nR.string.feature_home_added_930006), selected = false)
         }
     }
 }
@@ -1430,7 +1392,7 @@ internal fun RoonRecentActivityCard(
     Column(
         modifier = Modifier
             .width(126.dp)
-            .clickable(onClick = onClick),
+            .echoClickable(onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Box {
@@ -1505,7 +1467,7 @@ internal fun HomeRecommendationsSection(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                echoString(en = "Recommended for you", zh = "为你推荐", ja = "あなたへのおすすめ"),
+                stringResource(L10nR.string.feature_home_recommended_for_you_8335d9),
                 color = homeTitleColor(),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
@@ -1514,7 +1476,7 @@ internal fun HomeRecommendationsSection(
             Surface(
                 modifier = Modifier
                     .clip(RoundedCornerShape(14.dp))
-                    .clickable(onClick = onRefresh),
+                    .echoClickable(onClick = onRefresh),
                 shape = RoundedCornerShape(14.dp),
                 color = homePanelColor(0.82f),
                 border = homePanelBorder(0.80f),
@@ -1526,7 +1488,7 @@ internal fun HomeRecommendationsSection(
                 ) {
                     Icon(Icons.Rounded.Refresh, contentDescription = null, tint = homeBodyColor(), modifier = Modifier.size(16.dp))
                     Text(
-                        echoString(en = "Refresh", zh = "刷新", ja = "更新"),
+                        stringResource(L10nR.string.feature_home_refresh_828c69),
                         color = homeBodyColor(),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
@@ -1542,7 +1504,7 @@ internal fun HomeRecommendationsSection(
                     .clip(RoundedCornerShape(18.dp))
                     .background(homePanelColor(0.94f))
                     .border(homePanelBorder(0.96f), RoundedCornerShape(18.dp))
-                    .clickable(onClick = onOpenLibrary)
+                    .echoClickable(onClick = onOpenLibrary)
                     .padding(16.dp),
             ) {
                 Row(
@@ -1552,17 +1514,13 @@ internal fun HomeRecommendationsSection(
                     EchoIconBadge(Icons.Rounded.LibraryMusic)
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
-                            echoString(en = "Scan to generate recommendations", zh = "扫描后生成推荐", ja = "スキャンするとおすすめが作られます"),
+                            stringResource(L10nR.string.feature_home_scan_to_generate_recommendations_16383a),
                             color = homeTitleColor(),
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleMedium,
                         )
                         Text(
-                            echoString(
-                                en = "Pick a few tracks from your local library to start.",
-                                zh = "从本机曲库挑几首开始。",
-                                ja = "端末のライブラリから数曲選んで始めましょう。",
-                            ),
+                            stringResource(L10nR.string.feature_home_pick_a_few_tracks_from_your_local_library_21141c),
                             color = homeBodyColor(),
                             style = MaterialTheme.typography.bodySmall,
                         )
@@ -1595,7 +1553,7 @@ internal fun RecommendationCard(
     Column(
         modifier = Modifier
             .width(118.dp)
-            .clickable(onClick = onClick),
+            .echoClickable(onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         ArtworkTile(
@@ -1640,23 +1598,19 @@ internal fun RoonListenLaterPanel(onOpenConnect: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(
-            echoString(en = "Listen later", zh = "稍后聆听", ja = "あとで聴く"),
+            stringResource(L10nR.string.feature_home_listen_later_d52083),
             color = homeTitleColor(),
             style = MaterialTheme.typography.displaySmall,
             fontWeight = FontWeight.Bold,
         )
         Text(
-            echoString(en = "Leave a trail through your local library", zh = "为本机曲库留一条线索", ja = "端末のライブラリに手がかりを残す"),
+            stringResource(L10nR.string.feature_home_leave_a_trail_through_your_local_library_298736),
             color = homeTitleColor(),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
         )
         Text(
-            echoString(
-                en = "Park the albums, artists, and tracks you want, then pick them up later.",
-                zh = "把想听的专辑、歌手和曲目先放在这里，稍后继续。",
-                ja = "聴きたいアルバム、アーティスト、曲をここに置いて、あとで続けましょう。",
-            ),
+            stringResource(L10nR.string.feature_home_park_the_albums_artists_and_tracks_you_want_b2f171),
             color = homeBodyColor(),
             style = MaterialTheme.typography.bodyLarge,
             maxLines = 2,
@@ -1666,13 +1620,13 @@ internal fun RoonListenLaterPanel(onOpenConnect: () -> Unit) {
             modifier = Modifier
                 .padding(top = 8.dp)
                 .widthIn(min = 230.dp)
-                .clickable(onClick = onOpenConnect),
+                .echoClickable(onClick = onOpenConnect),
             shape = RoundedCornerShape(28.dp),
             color = echoAccentColor(),
             contentColor = echoOnAccentColor(),
         ) {
             Text(
-                echoString(en = "Connect PC ECHO", zh = "连接 PC ECHO", ja = "PC ECHO に接続"),
+                stringResource(L10nR.string.feature_home_connect_pc_echo_bcfead),
                 modifier = Modifier.padding(horizontal = 28.dp, vertical = 14.dp),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
@@ -1690,7 +1644,7 @@ internal fun HomeTopChrome(onOpenLibrary: () -> Unit) {
     ) {
         GlassIconButton(
             icon = Icons.Rounded.LibraryMusic,
-            description = echoString(en = "Open library", zh = "打开曲库", ja = "ライブラリを開く"),
+            description = stringResource(L10nR.string.feature_home_open_library_eba8cb),
             onClick = onOpenLibrary,
         )
         GlassSurface(
@@ -1706,7 +1660,7 @@ internal fun HomeTopChrome(onOpenLibrary: () -> Unit) {
             ) {
                 Icon(Icons.Rounded.Search, contentDescription = null, tint = homeBodyColor(), modifier = Modifier.size(20.dp))
                 Text(
-                    echoString(en = "Search local music...", zh = "搜索本机音乐...", ja = "端末の音楽を検索..."),
+                    stringResource(L10nR.string.feature_home_search_local_music_b9c195),
                     color = homeBodyColor(),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -1735,9 +1689,9 @@ internal fun HomeGreeting(status: EchoPlaybackStatus) {
         )
         Text(
             if (status.track != null) {
-                echoString(en = "Not every journey has an ending", zh = "不是所有的旅途都有终点", ja = "すべての旅に終わりがあるわけではない")
+                stringResource(L10nR.string.feature_home_not_every_journey_has_an_ending_53606e)
             } else {
-                echoString(en = "Wake up your local music", zh = "让本机音乐醒过来", ja = "端末の音楽を目覚めさせよう")
+                stringResource(L10nR.string.feature_home_wake_up_your_local_music_a2c609)
             },
             color = Color.White,
             style = MaterialTheme.typography.titleMedium,
@@ -1759,7 +1713,7 @@ internal fun DailyRecommendationCard(
             .heightIn(min = 158.dp)
             .shadow(elevation = 14.dp, shape = RoundedCornerShape(24.dp), clip = false)
             .clip(RoundedCornerShape(24.dp))
-            .clickable(onClick = onClick)
+            .echoClickable(onClick = onClick)
             .background(
                 Brush.linearGradient(
                     listOf(
@@ -1784,16 +1738,16 @@ internal fun DailyRecommendationCard(
         ) {
             Text(
                 if (status.track != null) {
-                    echoString(en = "Continue playing", zh = "继续播放", ja = "再生を続ける")
+                    stringResource(L10nR.string.feature_home_continue_playing_6faf22)
                 } else {
-                    echoString(en = "Daily mix", zh = "每日推荐", ja = "今日のおすすめ")
+                    stringResource(L10nR.string.feature_home_daily_mix_cb64bd)
                 },
                 color = Color.White,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                status.track?.title ?: echoString(en = "Discover great music", zh = "发现好音乐", ja = "いい音楽を見つけよう"),
+                status.track?.title ?: stringResource(L10nR.string.feature_home_discover_great_music_c63445),
                 color = Color.White.copy(alpha = 0.88f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -1823,9 +1777,9 @@ internal fun HomeModeRibbon(
         HomeModeChip(
             icon = Icons.Rounded.Shuffle,
             label = if (shuffleEnabled) {
-                echoString(en = "Shuffle", zh = "随机", ja = "シャッフル")
+                stringResource(L10nR.string.feature_home_shuffle_957ce0)
             } else {
-                echoString(en = "In order", zh = "顺序", ja = "リスト順")
+                stringResource(L10nR.string.feature_home_in_order_951ca0)
             },
             selected = shuffleEnabled,
             onClick = onToggleShuffle,
@@ -1833,14 +1787,14 @@ internal fun HomeModeRibbon(
         )
         HomeModeChip(
             icon = Icons.Rounded.LibraryMusic,
-            label = echoString(en = "Library", zh = "曲库", ja = "ライブラリ"),
+            label = stringResource(L10nR.string.feature_home_library_848e9b),
             selected = false,
             onClick = onOpenLibrary,
             modifier = Modifier.weight(1f),
         )
         HomeModeChip(
             icon = Icons.Rounded.Devices,
-            label = echoString(en = "Handoff", zh = "接力", ja = "ハンドオフ"),
+            label = stringResource(L10nR.string.feature_home_handoff_2f82d3),
             selected = false,
             onClick = onOpenConnect,
             modifier = Modifier.weight(1f),
@@ -1860,7 +1814,7 @@ internal fun HomeModeChip(
         modifier = modifier
             .heightIn(min = 58.dp)
             .clip(RoundedCornerShape(24.dp))
-            .clickable(onClick = onClick),
+            .echoClickable(onClick = onClick),
         shape = RoundedCornerShape(24.dp),
         color = Color.White.copy(alpha = if (selected) 0.24f else 0.14f),
         border = BorderStroke(1.dp, Color.White.copy(alpha = if (selected) 0.42f else 0.24f)),
@@ -1893,11 +1847,11 @@ internal fun PlaybackQueuePanel(
         ) {
             EchoSectionTitle(
                 if (hasTrack) {
-                    echoString(en = "Playback queue", zh = "播放队列", ja = "再生キュー")
+                    stringResource(L10nR.string.feature_home_playback_queue_d2e6c0)
                 } else {
-                    echoString(en = "Ready to play", zh = "准备播放", ja = "再生の準備")
+                    stringResource(L10nR.string.feature_home_ready_to_play_c4764f)
                 },
-                status.track?.album ?: echoString(en = "Queue is empty", zh = "队列为空", ja = "キューは空です"),
+                status.track?.album ?: stringResource(L10nR.string.feature_home_queue_is_empty_1b4178),
             )
             QueuePreviewList(status = status, compact = compact)
             PlaybackModeControls(
@@ -1910,25 +1864,25 @@ internal fun PlaybackQueuePanel(
                 PlaybackActionCard(
                     icon = Icons.Rounded.LibraryMusic,
                     title = if (hasTrack) {
-                        echoString(en = "Back to library", zh = "回到曲库", ja = "ライブラリに戻る")
+                        stringResource(L10nR.string.feature_home_back_to_library_f16b77)
                     } else {
-                        echoString(en = "Choose a track", zh = "选择曲目", ja = "曲を選ぶ")
+                        stringResource(L10nR.string.feature_home_choose_a_track_abb9c5)
                     },
                     detail = if (hasTrack) {
-                        echoString(en = "Adjust the local queue", zh = "调整本地队列", ja = "ローカルキューを調整")
+                        stringResource(L10nR.string.feature_home_adjust_the_local_queue_f4499e)
                     } else {
-                        echoString(en = "Start with local music", zh = "从本机音乐开始", ja = "端末の音楽から始める")
+                        stringResource(L10nR.string.feature_home_start_with_local_music_9875f9)
                     },
                     onClick = onOpenLibrary,
                     modifier = Modifier.weight(1f),
                 )
                 PlaybackActionCard(
                     icon = Icons.Rounded.Devices,
-                    title = echoString(en = "PC handoff", zh = "PC 接力", ja = "PC ハンドオフ"),
+                    title = stringResource(L10nR.string.feature_home_pc_handoff_c867f1),
                     detail = if (hasTrack) {
-                        echoString(en = "Switch to PC ECHO", zh = "切换到 PC ECHO", ja = "PC ECHO に切り替える")
+                        stringResource(L10nR.string.feature_home_switch_to_pc_echo_5ab6a6)
                     } else {
-                        echoString(en = "Pair to play remotely", zh = "配对后远程播放", ja = "ペアリング後にリモート再生")
+                        stringResource(L10nR.string.feature_home_pair_to_play_remotely_14a7b9)
                     },
                     onClick = onOpenConnect,
                     modifier = Modifier.weight(1f),
@@ -1938,17 +1892,9 @@ internal fun PlaybackQueuePanel(
                 PlaybackHandoffFlow(active = hasTrack)
                 EchoPlaceholderLine(
                     if (hasTrack) {
-                        echoString(
-                            en = "Next: lyrics, repeat, and queue reorder",
-                            zh = "下一步补歌词、循环与队列重排",
-                            ja = "次は歌詞、リピート、キュー並べ替え",
-                        )
+                        stringResource(L10nR.string.feature_home_next_lyrics_repeat_and_queue_reorder_f8bcaf)
                     } else {
-                        echoString(
-                            en = "Lyrics, repeat, and queue reorder are reserved",
-                            zh = "歌词、循环与队列重排位已预留",
-                            ja = "歌詞、リピート、キュー並べ替えの枠は用意済みです",
-                        )
+                        stringResource(L10nR.string.feature_home_lyrics_repeat_and_queue_reorder_are_reserved_6d2c34)
                     },
                 )
             }
@@ -1964,35 +1910,31 @@ internal fun QueuePreviewList(
     Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
         QueuePreviewItem(
             icon = Icons.Rounded.MusicNote,
-            label = echoString(en = "Now", zh = "当前", ja = "再生中"),
-            title = status.track?.title ?: echoString(en = "Nothing playing", zh = "暂无播放", ja = "再生中の曲はありません"),
-            detail = status.track?.artist ?: echoString(en = "Pick a song from your library", zh = "从曲库选择一首歌", ja = "ライブラリから1曲選ぶ"),
+            label = stringResource(L10nR.string.feature_home_now_124d95),
+            title = status.track?.title ?: stringResource(L10nR.string.feature_home_nothing_playing_b290fe),
+            detail = status.track?.artist ?: stringResource(L10nR.string.feature_home_pick_a_song_from_your_library_320636),
             active = status.track != null,
         )
         if (!compact) {
             QueuePreviewItem(
                 icon = Icons.Rounded.LibraryMusic,
-                label = echoString(en = "Next", zh = "下一首", ja = "次の曲"),
-                title = echoString(en = "Smart queue", zh = "智能队列", ja = "スマートキュー"),
+                label = stringResource(L10nR.string.feature_home_next_d67904),
+                title = stringResource(L10nR.string.feature_home_smart_queue_814a45),
                 detail = if (status.track != null) {
-                    echoString(en = "Continues from the local queue", zh = "跟随本机队列继续播放", ja = "ローカルキューに沿って再生")
+                    stringResource(L10nR.string.feature_home_continues_from_the_local_queue_2f45cb)
                 } else {
-                    echoString(
-                        en = "Upcoming tracks appear after you pick a song",
-                        zh = "选歌后显示即将播放",
-                        ja = "曲を選ぶと次に再生する曲が表示されます",
-                    )
+                    stringResource(L10nR.string.feature_home_upcoming_tracks_appear_after_you_pick_a_song_7e7129)
                 },
                 active = false,
             )
             QueuePreviewItem(
                 icon = Icons.Rounded.Devices,
-                label = echoString(en = "Handoff", zh = "接力", ja = "ハンドオフ"),
+                label = stringResource(L10nR.string.feature_home_handoff_2f82d3),
                 title = "PC ECHO",
                 detail = if (status.track != null) {
-                    echoString(en = "Switch to desktop output", zh = "可切换到桌面输出", ja = "デスクトップ出力に切り替えられます")
+                    stringResource(L10nR.string.feature_home_switch_to_desktop_output_c19745)
                 } else {
-                    echoString(en = "Pair to take over remote playback", zh = "配对后接管远程播放", ja = "ペアリング後にリモート再生を引き継ぎ")
+                    stringResource(L10nR.string.feature_home_pair_to_take_over_remote_playback_5e3e4c)
                 },
                 active = false,
             )
@@ -2011,7 +1953,7 @@ internal fun PlaybackModeControls(
         PlaybackModeButton(
             icon = if (repeatMode == EchoRepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
             title = repeatModeLabel(repeatMode),
-            detail = echoString(en = "Tap to switch", zh = "点按切换", ja = "タップで切り替え"),
+            detail = stringResource(L10nR.string.feature_home_tap_to_switch_47d6a3),
             selected = repeatMode != EchoRepeatMode.Off,
             onClick = onCycleRepeatMode,
             modifier = Modifier.weight(1f),
@@ -2019,14 +1961,14 @@ internal fun PlaybackModeControls(
         PlaybackModeButton(
             icon = Icons.Rounded.Shuffle,
             title = if (shuffleEnabled) {
-                echoString(en = "Shuffle on", zh = "随机开启", ja = "シャッフルオン")
+                stringResource(L10nR.string.feature_home_shuffle_on_c7c5c4)
             } else {
-                echoString(en = "In order", zh = "顺序播放", ja = "リスト順")
+                stringResource(L10nR.string.feature_home_in_order_47b60a)
             },
             detail = if (shuffleEnabled) {
-                echoString(en = "Queue is shuffled", zh = "队列随机", ja = "キューをシャッフル")
+                stringResource(L10nR.string.feature_home_queue_is_shuffled_45cabc)
             } else {
-                echoString(en = "Follows queue order", zh = "按队列顺序", ja = "キューの順に再生")
+                stringResource(L10nR.string.feature_home_follows_queue_order_0926fb)
             },
             selected = shuffleEnabled,
             onClick = onToggleShuffle,
@@ -2046,7 +1988,7 @@ internal fun PlaybackModeButton(
 ) {
     val scheme = MaterialTheme.colorScheme
     Surface(
-        modifier = modifier.clickable(onClick = onClick),
+        modifier = modifier.echoClickable(onClick = onClick),
         shape = RoundedCornerShape(8.dp),
         color = if (selected) scheme.primary.copy(alpha = 0.14f) else homePanelColor(0.60f),
         border = if (selected) BorderStroke(1.dp, scheme.primary.copy(alpha = 0.28f)) else homePanelBorder(0.66f),
@@ -2139,12 +2081,12 @@ internal fun PlaybackHandoffFlow(active: Boolean) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(echoString(en = "Handoff path", zh = "接力路径", ja = "ハンドオフ経路"), fontWeight = FontWeight.SemiBold)
+                Text(stringResource(L10nR.string.feature_home_handoff_path_d70cad), fontWeight = FontWeight.SemiBold)
                 Text(
                     if (active) {
-                        echoString(en = "Ready to hand off", zh = "可接力", ja = "ハンドオフ可能")
+                        stringResource(L10nR.string.feature_home_ready_to_hand_off_2e2884)
                     } else {
-                        echoString(en = "Pick a track first", zh = "待选择曲目", ja = "曲の選択待ち")
+                        stringResource(L10nR.string.feature_home_pick_a_track_first_bcdca7)
                     },
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.labelMedium,
@@ -2152,9 +2094,9 @@ internal fun PlaybackHandoffFlow(active: Boolean) {
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                HandoffStep("1", echoString(en = "Play on device", zh = "本机播放", ja = "この端末で再生"), selected = true, modifier = Modifier.weight(1f))
-                HandoffStep("2", echoString(en = "Connect PC", zh = "连接 PC", ja = "PC に接続"), selected = active, modifier = Modifier.weight(1f))
-                HandoffStep("3", echoString(en = "PC output", zh = "PC 输出", ja = "PC 出力"), selected = active, modifier = Modifier.weight(1f))
+                HandoffStep("1", stringResource(L10nR.string.feature_home_play_on_device_4765ae), selected = true, modifier = Modifier.weight(1f))
+                HandoffStep("2", stringResource(L10nR.string.feature_home_connect_pc_724ba0), selected = active, modifier = Modifier.weight(1f))
+                HandoffStep("3", stringResource(L10nR.string.feature_home_pc_output_e48933), selected = active, modifier = Modifier.weight(1f))
             }
         }
     }
@@ -2195,7 +2137,7 @@ internal fun PlaybackActionCard(
     Surface(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick),
+            .echoClickable(onClick = onClick),
         shape = RoundedCornerShape(8.dp),
         color = homePanelColor(0.58f),
         border = homePanelBorder(0.64f),
@@ -2269,7 +2211,7 @@ internal fun NowPlayingHero(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    echoString(en = "This device", zh = "本机会话", ja = "この端末"),
+                    stringResource(L10nR.string.feature_home_this_device_8463b7),
                     style = MaterialTheme.typography.labelSmall,
                     color = echoAccentColor(),
                     fontWeight = FontWeight.Bold,
@@ -2291,7 +2233,7 @@ internal fun NowPlayingHero(
                 elevation = 18.dp,
             )
             Text(
-                status.track?.title ?: echoString(en = "Nothing playing", zh = "暂无播放", ja = "再生中の曲はありません"),
+                status.track?.title ?: stringResource(L10nR.string.feature_home_nothing_playing_b290fe),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = homeTitleColor(),
@@ -2299,7 +2241,7 @@ internal fun NowPlayingHero(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                status.track?.artist ?: echoString(en = "Pick a song from your library", zh = "从曲库选择一首歌", ja = "ライブラリから1曲選ぶ"),
+                status.track?.artist ?: stringResource(L10nR.string.feature_home_pick_a_song_from_your_library_320636),
                 color = homeBodyColor(),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -2356,7 +2298,7 @@ internal fun CompactNowPlayingHero(
                 ) {
                     Column {
                         Text(
-                            echoString(en = "This device", zh = "本机会话", ja = "この端末"),
+                            stringResource(L10nR.string.feature_home_this_device_8463b7),
                             style = MaterialTheme.typography.labelSmall,
                             color = echoAccentColor(),
                             fontWeight = FontWeight.Bold,
@@ -2375,7 +2317,7 @@ internal fun CompactNowPlayingHero(
                     )
                 }
                 Text(
-                    status.track?.title ?: echoString(en = "Nothing playing", zh = "暂无播放", ja = "再生中の曲はありません"),
+                    status.track?.title ?: stringResource(L10nR.string.feature_home_nothing_playing_b290fe),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = homeTitleColor(),
@@ -2383,7 +2325,7 @@ internal fun CompactNowPlayingHero(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    status.track?.artist ?: echoString(en = "Pick a song from your library", zh = "从曲库选择一首歌", ja = "ライブラリから1曲選ぶ"),
+                    status.track?.artist ?: stringResource(L10nR.string.feature_home_pick_a_song_from_your_library_320636),
                     color = homeBodyColor(),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -2407,13 +2349,13 @@ internal fun HeroMetaRail(status: EchoPlaybackStatus) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            CompactFact(echoString(en = "Output", zh = "输出", ja = "出力"), status.diagnostics.outputRoute, Modifier.weight(1.25f))
+            CompactFact(stringResource(L10nR.string.feature_home_output_bb8fcf), status.diagnostics.outputRoute, Modifier.weight(1.25f))
             CompactFact(
-                echoString(en = "Processing", zh = "处理", ja = "処理"),
+                stringResource(L10nR.string.feature_home_processing_4f0a68),
                 if (status.diagnostics.offloadActive) {
-                    echoString(en = "Hardware offload", zh = "硬件直通", ja = "ハードウェア直通")
+                    stringResource(L10nR.string.feature_home_hardware_offload_205b4d)
                 } else {
-                    echoString(en = "Clear", zh = "清晰", ja = "クリア")
+                    stringResource(L10nR.string.feature_home_clear_e6e947)
                 },
                 Modifier.weight(1f),
             )
@@ -2447,7 +2389,7 @@ internal fun TransportControls(
         ) {
             Icon(
                 Icons.Rounded.SkipPrevious,
-                contentDescription = echoString(en = "Previous", zh = "上一首", ja = "前の曲"),
+                contentDescription = stringResource(L10nR.string.feature_home_previous_af0264),
                 tint = echoAccentColor(),
                 modifier = Modifier.size(28.dp),
             )
@@ -2458,7 +2400,7 @@ internal fun TransportControls(
                 .shadow(elevation = 10.dp, shape = CircleShape, clip = false)
                 .clip(CircleShape)
                 .background(echoAccentColor())
-                .clickable(
+                .echoClickable(
                     onClick = {
                         haptics.confirm()
                         onPlayPause()
@@ -2468,7 +2410,7 @@ internal fun TransportControls(
         ) {
             Icon(
                 if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                contentDescription = echoString(en = "Play or pause", zh = "播放或暂停", ja = "再生または一時停止"),
+                contentDescription = stringResource(L10nR.string.feature_home_play_or_pause_37a70f),
                 tint = echoOnAccentColor(),
                 modifier = Modifier.size(30.dp),
             )
@@ -2482,7 +2424,7 @@ internal fun TransportControls(
         ) {
             Icon(
                 Icons.Rounded.SkipNext,
-                contentDescription = echoString(en = "Next", zh = "下一首", ja = "次の曲"),
+                contentDescription = stringResource(L10nR.string.feature_home_next_d67904),
                 tint = echoAccentColor(),
                 modifier = Modifier.size(28.dp),
             )
@@ -2532,22 +2474,22 @@ internal fun PlaybackProgress(positionMs: Long, durationMs: Long, light: Boolean
 @Composable
 internal fun playbackStateLabel(state: EchoPlaybackState): String =
     when (state) {
-        EchoPlaybackState.Idle -> echoString(en = "Idle", zh = "空闲", ja = "待機")
-        EchoPlaybackState.Loading -> echoString(en = "Loading", zh = "加载中", ja = "読み込み中")
-        EchoPlaybackState.Playing -> echoString(en = "Playing", zh = "播放中", ja = "再生中")
-        EchoPlaybackState.Paused -> echoString(en = "Paused", zh = "已暂停", ja = "一時停止")
-        EchoPlaybackState.Seeking -> echoString(en = "Seeking", zh = "定位中", ja = "シーク中")
-        EchoPlaybackState.Buffering -> echoString(en = "Buffering", zh = "缓冲中", ja = "バッファ中")
-        EchoPlaybackState.Ended -> echoString(en = "Ended", zh = "已结束", ja = "終了")
-        EchoPlaybackState.Stopped -> echoString(en = "Stopped", zh = "已停止", ja = "停止")
-        EchoPlaybackState.Error -> echoString(en = "Error", zh = "错误", ja = "エラー")
+        EchoPlaybackState.Idle -> stringResource(L10nR.string.feature_home_idle_3e0cc6)
+        EchoPlaybackState.Loading -> stringResource(L10nR.string.feature_home_loading_a4ce8b)
+        EchoPlaybackState.Playing -> stringResource(L10nR.string.feature_home_playing_d86b54)
+        EchoPlaybackState.Paused -> stringResource(L10nR.string.feature_home_paused_3d8ed2)
+        EchoPlaybackState.Seeking -> stringResource(L10nR.string.feature_home_seeking_ea77e5)
+        EchoPlaybackState.Buffering -> stringResource(L10nR.string.feature_home_buffering_24542e)
+        EchoPlaybackState.Ended -> stringResource(L10nR.string.feature_home_ended_6503ae)
+        EchoPlaybackState.Stopped -> stringResource(L10nR.string.feature_home_stopped_6b0d06)
+        EchoPlaybackState.Error -> stringResource(L10nR.string.feature_home_error_ad4bd6)
     }
 
 @Composable
 internal fun repeatModeLabel(mode: EchoRepeatMode): String =
     when (mode) {
-        EchoRepeatMode.Off -> echoString(en = "Repeat off", zh = "循环关闭", ja = "リピートオフ")
-        EchoRepeatMode.All -> echoString(en = "Repeat all", zh = "列表循环", ja = "全曲リピート")
-        EchoRepeatMode.One -> echoString(en = "Repeat one", zh = "单曲循环", ja = "1曲リピート")
+        EchoRepeatMode.Off -> stringResource(L10nR.string.feature_home_repeat_off_e1d801)
+        EchoRepeatMode.All -> stringResource(L10nR.string.feature_home_repeat_all_b8cce1)
+        EchoRepeatMode.One -> stringResource(L10nR.string.feature_home_repeat_one_3df94f)
     }
 

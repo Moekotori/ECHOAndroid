@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module-owned translations. English values are the fallback for missing translations. -->
+<resources>
+    <string name="feature_settings_adjust_sound_f8940e" formatted="false">"Adjust sound"</string>
+    <string name="feature_settings_choose_a_preset_then_enable_eq_to_hear_76c79b" formatted="false">"Choose a preset, then enable EQ to hear your changes."</string>
+    <string name="feature_settings_diagnostics_b6e487" formatted="false">"Diagnostics"</string>
+    <string name="feature_settings_eq_is_not_changing_the_signal_da1f47" formatted="false">"EQ is not changing the signal"</string>
+    <string name="feature_settings_equalizer_7ccb03" formatted="false">"Equalizer"</string>
+    <string name="feature_settings_equalizer_is_not_changing_the_signal_7cf73b" formatted="false">"Equalizer is not changing the signal"</string>
+    <string name="feature_settings_find_your_model_choose_a_curve_then_apply_0d8456" formatted="false">"Find your model, choose a curve, then apply it to playback."</string>
+    <string name="feature_settings_headphone_correction_491ce5" formatted="false">"Headphone correction"</string>
+    <string name="feature_settings_output_details_f242d2" formatted="false">"Output details"</string>
+    <string name="feature_settings_reset_1106f5" formatted="false">"Reset"</string>
+    <string name="feature_settings_signal_path_2fed34" formatted="false">"Signal path"</string>
+    <string name="feature_settings_sound_3f2864" formatted="false">"Sound"</string>
+    <string name="feature_settings_view_diagnostics_31fcec" formatted="false">"View diagnostics"</string>
+</resources>

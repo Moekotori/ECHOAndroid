@@ -1,10 +1,10 @@
 package app.echo.android.feature.settings
 
-import androidx.compose.animation.animateContentSize
+import app.echo.android.design.echoAnimateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import app.echo.android.design.echoClickable
+import app.echo.android.design.echoCombinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
@@ -762,21 +762,14 @@ private fun themeDetail(mode: String): String =
     }
 
 @Composable
-private fun languageOptions(): List<SettingsChoiceOption> = listOf(
-    SettingsChoiceOption(EchoAppLanguage.System, stringResource(R.string.settings_language_system)),
-    SettingsChoiceOption(EchoAppLanguage.Chinese, stringResource(R.string.settings_language_zh)),
-    SettingsChoiceOption(EchoAppLanguage.English, stringResource(R.string.settings_language_en)),
-    SettingsChoiceOption(EchoAppLanguage.Japanese, stringResource(R.string.settings_language_ja)),
-)
+private fun languageOptions(): List<SettingsChoiceOption> =
+    listOf(SettingsChoiceOption(EchoAppLanguage.System, stringResource(R.string.settings_language_system))) +
+        EchoAppLanguage.supported.map { SettingsChoiceOption(it.id, it.nativeName) }
 
 @Composable
 private fun languageDetail(mode: String): String =
-    when (EchoAppLanguage.fromId(mode)) {
-        EchoAppLanguage.Chinese -> stringResource(R.string.settings_language_detail_zh)
-        EchoAppLanguage.English -> stringResource(R.string.settings_language_detail_en)
-        EchoAppLanguage.Japanese -> stringResource(R.string.settings_language_detail_ja)
-        else -> stringResource(R.string.settings_language_detail_system)
-    }
+    EchoAppLanguage.languageOrNull(mode)?.nativeName
+        ?: stringResource(R.string.settings_language_detail_system)
 
 @Composable
 private fun performanceModeOptions(): List<SettingsChoiceOption> = listOf(
@@ -904,7 +897,7 @@ private fun SettingsSectionCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(28.dp))
             .background(settingsPanelColor())
-            .then(if (animateSize) Modifier.animateContentSize() else Modifier)
+            .then(if (animateSize) Modifier.echoAnimateContentSize() else Modifier)
             .padding(horizontal = 20.dp, vertical = 18.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -912,7 +905,7 @@ private fun SettingsSectionCard(
             modifier = if (collapsible) {
                 Modifier
                     .fillMaxWidth()
-                    .clickable { onExpandedChange(!expanded) }
+                    .echoClickable { onExpandedChange(!expanded) }
                     .padding(vertical = 2.dp)
             } else {
                 Modifier.fillMaxWidth()
@@ -954,7 +947,7 @@ private fun SettingsDisclosureRow(
     SettingsRowShell(
         title = title,
         detail = detail,
-        modifier = Modifier.clickable { onExpandedChange(!expanded) },
+        modifier = Modifier.echoClickable { onExpandedChange(!expanded) },
     ) {
         Icon(
             imageVector = if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
@@ -1040,7 +1033,7 @@ private fun BackgroundSourceAction(
             .height(28.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(settingsRowColor(selected))
-            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(if (enabled) Modifier.echoClickable(onClick = onClick) else Modifier)
             .alpha(if (enabled || selected) 1f else 0.48f)
             .padding(horizontal = 10.dp),
         horizontalArrangement = Arrangement.Center,
@@ -1081,7 +1074,7 @@ private fun SettingsInfoRow(
         title = title,
         detail = detail,
         modifier = if (onLongClick != null) {
-            Modifier.combinedClickable(onClick = {}, onLongClick = onLongClick)
+            Modifier.echoCombinedClickable(onClick = {}, onLongClick = onLongClick)
         } else {
             Modifier
         },
@@ -1135,7 +1128,7 @@ private fun SettingsActionRow(
     SettingsRowShell(
         title = title,
         detail = detail,
-        modifier = if (enabled) Modifier.clickable(onClick = onClick) else Modifier,
+        modifier = if (enabled) Modifier.echoClickable(onClick = onClick) else Modifier,
     ) {
         Text(
             if (enabled) resolvedActionLabel else stringResource(R.string.settings_closed),
@@ -1185,7 +1178,7 @@ private fun SettingsOptionChip(
             .height(28.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(settingsRowColor(selected))
-            .clickable(onClick = onClick)
+            .echoClickable(onClick = onClick)
             .padding(horizontal = 10.dp),
         contentAlignment = Alignment.Center,
     ) {

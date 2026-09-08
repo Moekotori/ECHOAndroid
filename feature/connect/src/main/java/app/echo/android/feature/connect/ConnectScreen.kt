@@ -1,15 +1,12 @@
 package app.echo.android.feature.connect
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
+import app.echo.android.feature.connect.R as L10nR
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import app.echo.android.design.echoClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,7 +23,6 @@ import androidx.compose.material.icons.rounded.CloudQueue
 import androidx.compose.material.icons.rounded.Devices
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -53,7 +49,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.connect.EchoLinkDiscoveryPolicy
 import app.echo.android.design.EchoDarkGlassBorder
-import app.echo.android.design.EchoMotion
+import app.echo.android.design.echoExpandIndicator
+import app.echo.android.design.EchoExpand
 import app.echo.android.design.EchoGlassBorder
 import app.echo.android.design.EchoGlassCyan
 import app.echo.android.design.EchoGlassInk
@@ -68,7 +65,6 @@ import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.PageChrome
 import app.echo.android.design.echoDarkGlassBorder
 import app.echo.android.design.echoGlassRowBrush
-import app.echo.android.design.echoString
 import app.echo.android.model.connect.EchoLinkLanDevice
 import app.echo.android.model.connect.EchoRemoteConnectionState
 import app.echo.android.model.library.LibraryScanPhase
@@ -157,15 +153,15 @@ fun ConnectScreen(
     val canConnectPc = pcAddressInput.isNotBlank() &&
         (pcTokenInput.isNotBlank() || pcAddressInput.trim().lowercase().startsWith("echo://pair"))
     PageChrome(
-        title = echoString(en = "Connect", zh = "连接", ja = "接続"),
-        subtitle = echoString(en = "Library sources · PC link", zh = "曲库来源 · PC 联动", ja = "ライブラリ接続 · PC 連携"),
-        badge = echoString(en = "Link", zh = "互联", ja = "連携"),
+        title = stringResource(L10nR.string.feature_connect_connect_c7c091),
+        subtitle = stringResource(L10nR.string.feature_connect_library_sources_pc_link_b81eae),
+        badge = stringResource(L10nR.string.feature_connect_link_f7ada1),
         scrollable = true,
         scrollBottomPadding = 188.dp,
     ) {
         EchoSectionTitle(
-            echoString(en = "Music services", zh = "音乐服务", ja = "音楽サービス"),
-            echoString(en = "Connect your library sources", zh = "连接你的曲库来源", ja = "ライブラリの接続先"),
+            stringResource(L10nR.string.feature_connect_music_services_c8d7d1),
+            stringResource(L10nR.string.feature_connect_connect_your_library_sources_2ae5a5),
         )
         Spacer(Modifier.height(12.dp))
         RemoteSourcesPanel(
@@ -220,15 +216,11 @@ fun ConnectScreen(
         )
         Spacer(Modifier.height(10.dp))
         ServiceCard(
-            name = echoString(en = "Local library", zh = "本地曲库", ja = "ローカルライブラリ"),
-            subtitle = echoString(
-                en = "Local audio files already scanned",
-                zh = "已扫描本机音频文件",
-                ja = "端末内の音声ファイルをスキャン済み",
-            ),
+            name = stringResource(L10nR.string.feature_connect_local_library_579638),
+            subtitle = stringResource(L10nR.string.feature_connect_local_audio_files_already_scanned_619627),
             icon = Icons.Rounded.LibraryMusic,
             brandColor = Color(0xFF35C28E),
-            statusLabel = echoString(en = "Connected", zh = "已连接", ja = "接続済み"),
+            statusLabel = stringResource(L10nR.string.feature_connect_connected_6b85ee),
             active = true,
             locked = false,
             onClick = {},
@@ -237,18 +229,14 @@ fun ConnectScreen(
         ServiceCard(
             name = "Discord Rich Presence",
             subtitle = discordPresenceTrackTitle?.let {
-                echoString(en = "Playing on phone: $it", zh = "手机播放：$it", ja = "スマホで再生中：$it")
-            } ?: echoString(
-                en = "Forward phone playback through PC ECHO",
-                zh = "通过 PC ECHO 转发手机播放状态",
-                ja = "PC ECHO 経由でスマホの再生状態を転送",
-            ),
+                stringResource(L10nR.string.feature_connect_playing_on_phone_it_a1815e, (it).toString())
+            } ?: stringResource(L10nR.string.feature_connect_forward_phone_playback_through_pc_echo_ca17b2),
             icon = Icons.Rounded.GraphicEq,
             brandColor = Color(0xFF5865F2),
             statusLabel = when {
-                !discordPresenceEnabled -> echoString(en = "Off", zh = "未开启", ja = "オフ")
-                discordPresenceReady -> echoString(en = "Ready to send", zh = "待转发", ja = "転送待ち")
-                else -> echoString(en = "Waiting for PC", zh = "等待 PC", ja = "PC 待ち")
+                !discordPresenceEnabled -> stringResource(L10nR.string.feature_connect_off_d48859)
+                discordPresenceReady -> stringResource(L10nR.string.feature_connect_ready_to_send_832298)
+                else -> stringResource(L10nR.string.feature_connect_waiting_for_pc_66972e)
             },
             active = discordPresenceEnabled && discordPresenceReady,
             locked = !discordPresenceEnabled,
@@ -256,15 +244,11 @@ fun ConnectScreen(
         )
         Spacer(Modifier.height(20.dp))
         EchoSectionTitle(
-            echoString(en = "Device link", zh = "设备联动", ja = "デバイス連携"),
+            stringResource(L10nR.string.feature_connect_device_link_e4f412),
             if (connected) {
-                echoString(en = "Control on phone, output on PC", zh = "手机控制，PC 输出", ja = "スマホで操作、PC で出力")
+                stringResource(L10nR.string.feature_connect_control_on_phone_output_on_pc_fe2fbb)
             } else {
-                echoString(
-                    en = "Take over PC ECHO playback after pairing",
-                    zh = "配对后接管 PC ECHO 播放",
-                    ja = "ペアリング後に PC ECHO の再生を操作",
-                )
+                stringResource(L10nR.string.feature_connect_take_over_pc_echo_playback_after_pairing_b11731)
             },
         )
         Spacer(Modifier.height(12.dp))
@@ -323,9 +307,9 @@ fun ConnectScreen(
                     }
                     ServiceStatusPill(
                         label = if (connected) {
-                            echoString(en = "Paired", zh = "已配对", ja = "ペアリング済み")
+                            stringResource(L10nR.string.feature_connect_paired_8c3083)
                         } else {
-                            echoString(en = "Unpaired", zh = "未配对", ja = "未ペアリング")
+                            stringResource(L10nR.string.feature_connect_unpaired_89e494)
                         },
                         active = connected,
                         locked = false,
@@ -387,16 +371,16 @@ fun ConnectScreen(
                 ) {
                     EchoTextButton(
                         text = if (connected) {
-                            echoString(en = "Connected", zh = "已连接", ja = "接続済み")
+                            stringResource(L10nR.string.feature_connect_connected_6b85ee)
                         } else {
-                            echoString(en = "Connect PC", zh = "连接 PC", ja = "PC に接続")
+                            stringResource(L10nR.string.feature_connect_connect_pc_724ba0)
                         },
                         onClick = { onConnectPc(pcAddressInput, pcTokenInput) },
                         enabled = !connected && canConnectPc,
                     )
                     if (connected) {
                         TextButton(onClick = onDisconnect) {
-                            Text(echoString(en = "Disconnect", zh = "断开", ja = "切断"), color = echoAccentColor())
+                            Text(stringResource(L10nR.string.feature_connect_disconnect_b0144f), color = echoAccentColor())
                         }
                     } else if (hasSavedPc) {
                         TextButton(
@@ -406,7 +390,7 @@ fun ConnectScreen(
                                 onForgetPc()
                             },
                         ) {
-                            Text(echoString(en = "Forget", zh = "忘记", ja = "解除"), color = echoAccentColor())
+                            Text(stringResource(L10nR.string.feature_connect_forget_30df50), color = echoAccentColor())
                         }
                     }
                 }
@@ -451,11 +435,7 @@ private fun PcPairingInputs(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                echoString(
-                    en = "Nearby PCs, then address and pairing token",
-                    zh = "附近 PC，然后填地址和配对 Token",
-                    ja = "近くの PC、続けてアドレスとトークン",
-                ),
+                stringResource(L10nR.string.feature_connect_nearby_pcs_then_address_and_pairing_token_d5b4e2),
                 color = scheme.onSurface,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
@@ -464,7 +444,7 @@ private fun PcPairingInputs(
                 modifier = Modifier.weight(1f),
             )
             RemoteCompactAction(
-                text = echoString(en = "Refresh", zh = "刷新", ja = "更新"),
+                text = stringResource(L10nR.string.feature_connect_refresh_828c69),
                 enabled = true,
                 modifier = Modifier.width(72.dp),
                 onClick = onRefreshLanDevices,
@@ -472,11 +452,7 @@ private fun PcPairingInputs(
         }
         if (discoveredLanDevices.isEmpty()) {
             Text(
-                echoString(
-                    en = "No LAN PCs yet. Scan a QR code or type the address.",
-                    zh = "还没发现局域网 PC，可扫码或手动输入。",
-                    ja = "LAN 上の PC は未検出。QR または手動入力。",
-                ),
+                stringResource(L10nR.string.feature_connect_no_lan_pcs_yet_scan_a_qr_code_0b3f56),
                 color = scheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -492,7 +468,7 @@ private fun PcPairingInputs(
                                 if (selected) echoAccentColor().copy(alpha = 0.18f)
                                 else scheme.surface.copy(alpha = 0.35f),
                             )
-                            .clickable { onSelectLanDevice(device) }
+                            .echoClickable { onSelectLanDevice(device) }
                             .padding(horizontal = 10.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -524,11 +500,7 @@ private fun PcPairingInputs(
             }
         }
         Text(
-            echoString(
-                en = "Supports 192.168.1.12:26789 or a full http / https URL",
-                zh = "支持 192.168.1.12:26789 或完整 http / https 地址",
-                ja = "192.168.1.12:26789 または http / https の完全なアドレスに対応",
-            ),
+            stringResource(L10nR.string.feature_connect_supports_192_168_1_12_26789_or_a_7d7e27),
             color = scheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodySmall,
             maxLines = 2,
@@ -540,11 +512,7 @@ private fun PcPairingInputs(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                echoString(
-                    en = "Scan the QR code shown on PC to pair",
-                    zh = "PC 端显示二维码后可直接扫码配对",
-                    ja = "PC に表示された QR コードをスキャンしてペアリング",
-                ),
+                stringResource(L10nR.string.feature_connect_scan_the_qr_code_shown_on_pc_to_e7ce7b),
                 color = scheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.weight(1f),
@@ -552,7 +520,7 @@ private fun PcPairingInputs(
                 overflow = TextOverflow.Ellipsis,
             )
             RemoteCompactAction(
-                text = echoString(en = "Scan QR", zh = "扫码配对", ja = "スキャン"),
+                text = stringResource(L10nR.string.feature_connect_scan_qr_b42f5b),
                 enabled = true,
                 modifier = Modifier.width(92.dp),
                 onClick = onScanPairingCode,
@@ -568,19 +536,15 @@ private fun PcPairingInputs(
             )
         }
         RemoteTextInput(
-            label = echoString(en = "PC address", zh = "PC 地址", ja = "PC アドレス"),
+            label = stringResource(L10nR.string.feature_connect_pc_address_4be94c),
             value = address,
             placeholder = "192.168.1.12:26789",
             onValueChange = onAddressChange,
         )
         RemoteTextInput(
-            label = echoString(en = "Pairing token", zh = "配对 Token", ja = "ペアリングトークン"),
+            label = stringResource(L10nR.string.feature_connect_pairing_token_2e95dd),
             value = token,
-            placeholder = echoString(
-                en = "Copy from the PC ECHO link page",
-                zh = "从 PC ECHO 联动页复制",
-                ja = "PC ECHO の連携ページからコピー",
-            ),
+            placeholder = stringResource(L10nR.string.feature_connect_copy_from_the_pc_echo_link_page_ce2ca6),
             secret = token.isNotBlank(),
             onValueChange = onTokenChange,
         )
@@ -591,24 +555,16 @@ private fun PcPairingInputs(
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    echoString(en = "Auto reconnect", zh = "自动重连", ja = "自動再接続"),
+                    stringResource(L10nR.string.feature_connect_auto_reconnect_5259cc),
                     color = if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.94f) else scheme.onSurface,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
                     if (hasSavedPc) {
-                        echoString(
-                            en = "Reconnect to the last PC when Connect opens",
-                            zh = "下次打开 Connect 时尝试连接上次的 PC",
-                            ja = "次回 Connect を開くと、前回の PC に接続します",
-                        )
+                        stringResource(L10nR.string.feature_connect_reconnect_to_the_last_pc_when_connect_opens_e13dd4)
                     } else {
-                        echoString(
-                            en = "Available after a successful saved connection",
-                            zh = "连接成功并保存后可用",
-                            ja = "接続して保存すると利用できます",
-                        )
+                        stringResource(L10nR.string.feature_connect_available_after_a_successful_saved_connection_f08f11)
                     },
                     color = if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.70f) else scheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
@@ -651,7 +607,7 @@ private fun LinkedLibraryDefaultRow(
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
-                echoString(en = "Use linked library by default", zh = "默认读取联动曲库", ja = "連携ライブラリを既定にする"),
+                stringResource(L10nR.string.feature_connect_use_linked_library_by_default_a9eb0f),
                 color = if (dark) Color.White.copy(alpha = 0.94f) else scheme.onSurface,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
@@ -660,21 +616,9 @@ private fun LinkedLibraryDefaultRow(
             )
             Text(
                 when {
-                    checked && connected -> echoString(
-                        en = "The linked ECHO library is shown separately, with PC ECHO as the current source",
-                        zh = "联动 ECHO 曲库独立显示，已按 PC ECHO 作为当前联动源",
-                        ja = "連携 ECHO ライブラリは独立表示され、現在の連携元は PC ECHO です",
-                    )
-                    checked -> echoString(
-                        en = "After connecting, read PC ECHO automatically without merging into the local scan library",
-                        zh = "连接后自动读取 PC ECHO，不并入本地扫描库",
-                        ja = "接続後に PC ECHO を自動読み込みし、ローカルスキャンのライブラリには混ぜません",
-                    )
-                    else -> echoString(
-                        en = "The local library stays default; refresh the linked library manually",
-                        zh = "本地曲库保持默认，可手动刷新联动曲库",
-                        ja = "ローカルライブラリを既定のままにし、連携ライブラリは手動で更新できます",
-                    )
+                    checked && connected -> stringResource(L10nR.string.feature_connect_the_linked_echo_library_is_shown_separately_with_89ff2b)
+                    checked -> stringResource(L10nR.string.feature_connect_after_connecting_read_pc_echo_automatically_without_merging_d0f676)
+                    else -> stringResource(L10nR.string.feature_connect_the_local_library_stays_default_refresh_the_linked_6c5cd0)
                 },
                 color = if (dark) Color.White.copy(alpha = 0.70f) else scheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
@@ -773,7 +717,7 @@ private fun RemoteSourcesPanel(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onExpandedChange(!expanded) },
+                    .echoClickable { onExpandedChange(!expanded) },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(13.dp),
             ) {
@@ -788,7 +732,7 @@ private fun RemoteSourcesPanel(
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        echoString(en = "Remote libraries", zh = "远程曲库", ja = "リモートライブラリ"),
+                        stringResource(L10nR.string.feature_connect_remote_libraries_520815),
                         color = scheme.onSurface,
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleMedium,
@@ -805,49 +749,35 @@ private fun RemoteSourcesPanel(
                 }
                 ServiceStatusPill(
                     label = if (scanState.isScanning) {
-                        echoString(en = "Syncing", zh = "同步中", ja = "同期中")
+                        stringResource(L10nR.string.feature_connect_syncing_ac4e35)
                     } else if (readyCount > 0) {
-                        echoString(
-                            en = "$readyCount ready",
-                            zh = "${readyCount} 个可用",
-                            ja = "${readyCount} 件利用可",
-                        )
+                        stringResource(L10nR.string.feature_connect_readycount_ready_ad163c, (readyCount).toString())
                     } else {
-                        echoString(en = "Not set up", zh = "待配置", ja = "未設定")
+                        stringResource(L10nR.string.feature_connect_not_set_up_287510)
                     },
                     active = readyCount > 0 && scanState.phase != LibraryScanPhase.Error,
                     locked = readyCount == 0 && !scanState.isScanning,
                 )
                 Icon(
-                    imageVector = if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+                    imageVector = Icons.Rounded.KeyboardArrowDown,
                     contentDescription = if (expanded) {
-                        echoString(en = "Collapse remote libraries", zh = "折叠远程曲库", ja = "リモートライブラリを折りたたむ")
+                        stringResource(L10nR.string.feature_connect_collapse_remote_libraries_61a9c7)
                     } else {
-                        echoString(en = "Expand remote libraries", zh = "展开远程曲库", ja = "リモートライブラリを展開")
+                        stringResource(L10nR.string.feature_connect_expand_remote_libraries_a8df3f)
                     },
                     tint = scheme.onSurfaceVariant,
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(24.dp).echoExpandIndicator(expanded),
                 )
             }
-            AnimatedVisibility(
-                visible = expanded,
-                enter = expandVertically(tween(durationMillis = EchoMotion.ExpandMs, easing = EchoMotion.Silk)) +
-                    fadeIn(tween(durationMillis = 240, easing = EchoMotion.Silk)),
-                exit = shrinkVertically(tween(durationMillis = 240, easing = EchoMotion.SilkExit)) +
-                    fadeOut(tween(durationMillis = 140, easing = EchoMotion.SilkExit)),
-            ) {
+            EchoExpand(expanded = expanded) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 RemoteSourceProviderSection(
                     title = "Subsonic / Navidrome",
-                    subtitle = echoString(
-                        en = "Sync the server library, artwork, and playback URLs",
-                        zh = "同步服务器曲库、封面和播放地址",
-                        ja = "サーバーのライブラリ、ジャケット、再生 URL を同期",
-                    ),
-                    serverLabel = echoString(en = "Server address", zh = "服务器地址", ja = "サーバーアドレス"),
+                    subtitle = stringResource(L10nR.string.feature_connect_sync_the_server_library_artwork_and_playback_urls_cad58c),
+                    serverLabel = stringResource(L10nR.string.feature_connect_server_address_ec245e),
                     serverPlaceholder = "https://music.example.com",
-                    usernameLabel = echoString(en = "Username", zh = "用户名", ja = "ユーザー名"),
-                    passwordLabel = echoString(en = "Password", zh = "密码", ja = "パスワード"),
+                    usernameLabel = stringResource(L10nR.string.feature_connect_username_dfb030),
+                    passwordLabel = stringResource(L10nR.string.feature_connect_password_2eaf7d),
                     serverUrl = subsonicServerUrl,
                     username = subsonicUsername,
                     password = subsonicPassword,
@@ -864,16 +794,12 @@ private fun RemoteSourcesPanel(
                     onClear = onClearSubsonic,
                 )
                 RemoteSourceProviderSection(
-                    title = echoString(en = "WebDAV / cloud drive", zh = "WebDAV / 网盘", ja = "WebDAV / クラウド"),
-                    subtitle = echoString(
-                        en = "Sync a NAS or cloud music folder",
-                        zh = "按文件夹同步 NAS 或网盘音乐目录",
-                        ja = "NAS やクラウドの音楽フォルダーを同期",
-                    ),
-                    serverLabel = echoString(en = "WebDAV address", zh = "WebDAV 地址", ja = "WebDAV アドレス"),
+                    title = stringResource(L10nR.string.feature_connect_webdav_cloud_drive_3aa8bf),
+                    subtitle = stringResource(L10nR.string.feature_connect_sync_a_nas_or_cloud_music_folder_9fa330),
+                    serverLabel = stringResource(L10nR.string.feature_connect_webdav_address_a59b28),
                     serverPlaceholder = "https://dav.example.com/music",
-                    usernameLabel = echoString(en = "WebDAV username", zh = "WebDAV 用户名", ja = "WebDAV ユーザー名"),
-                    passwordLabel = echoString(en = "WebDAV password", zh = "WebDAV 密码", ja = "WebDAV パスワード"),
+                    usernameLabel = stringResource(L10nR.string.feature_connect_webdav_username_946873),
+                    passwordLabel = stringResource(L10nR.string.feature_connect_webdav_password_4443d4),
                     serverUrl = webDavServerUrl,
                     username = webDavUsername,
                     password = webDavPassword,
@@ -923,10 +849,10 @@ private fun RemoteSourceProviderSection(
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
     val statusLabel = when {
-        scanState.isScanning && expanded -> echoString(en = "Syncing", zh = "同步中", ja = "同期中")
-        ready -> echoString(en = "Ready to sync", zh = "可同步", ja = "同期できます")
-        hasInput -> echoString(en = "Incomplete", zh = "待补全", ja = "未入力あり")
-        else -> echoString(en = "Not set up", zh = "待配置", ja = "未設定")
+        scanState.isScanning && expanded -> stringResource(L10nR.string.feature_connect_syncing_ac4e35)
+        ready -> stringResource(L10nR.string.feature_connect_ready_to_sync_47b40c)
+        hasInput -> stringResource(L10nR.string.feature_connect_incomplete_4522f2)
+        else -> stringResource(L10nR.string.feature_connect_not_set_up_287510)
     }
     Column(
         modifier = Modifier
@@ -966,7 +892,7 @@ private fun RemoteSourceProviderSection(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .then(if (expandable) Modifier.clickable { onExpandedChange(!expanded) } else Modifier),
+                .then(if (expandable) Modifier.echoClickable { onExpandedChange(!expanded) } else Modifier),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -1001,24 +927,18 @@ private fun RemoteSourceProviderSection(
             )
             if (expandable) {
                 Icon(
-                    imageVector = if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+                    imageVector = Icons.Rounded.KeyboardArrowDown,
                     contentDescription = if (expanded) {
-                        echoString(en = "Collapse", zh = "折叠", ja = "折りたたむ")
+                        stringResource(L10nR.string.feature_connect_collapse_970e1a)
                     } else {
-                        echoString(en = "Expand", zh = "展开", ja = "展開")
+                        stringResource(L10nR.string.feature_connect_expand_6a79dd)
                     },
                     tint = scheme.onSurfaceVariant,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(22.dp).echoExpandIndicator(expanded),
                 )
             }
         }
-        AnimatedVisibility(
-            visible = expanded,
-            enter = expandVertically(tween(durationMillis = EchoMotion.ExpandMs, easing = EchoMotion.Silk)) +
-                fadeIn(tween(durationMillis = 240, easing = EchoMotion.Silk)),
-            exit = shrinkVertically(tween(durationMillis = 240, easing = EchoMotion.SilkExit)) +
-                fadeOut(tween(durationMillis = 140, easing = EchoMotion.SilkExit)),
-        ) {
+        EchoExpand(expanded = expanded) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             RemoteTextInput(
                 label = serverLabel,
@@ -1029,39 +949,35 @@ private fun RemoteSourceProviderSection(
             RemoteTextInput(
                 label = usernameLabel,
                 value = username,
-                placeholder = echoString(en = "Username", zh = "用户名", ja = "ユーザー名"),
+                placeholder = stringResource(L10nR.string.feature_connect_username_dfb030),
                 onValueChange = onUsernameChange,
             )
             RemoteTextInput(
                 label = passwordLabel,
                 value = password,
-                placeholder = echoString(
-                    en = "Password or app password",
-                    zh = "密码或应用专用密码",
-                    ja = "パスワードまたはアプリパスワード",
-                ),
+                placeholder = stringResource(L10nR.string.feature_connect_password_or_app_password_cf402d),
                 secret = true,
                 onValueChange = onPasswordChange,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 RemoteCompactAction(
-                    text = echoString(en = "Save", zh = "保存", ja = "保存"),
+                    text = stringResource(L10nR.string.feature_connect_save_68ae20),
                     enabled = ready,
                     modifier = Modifier.weight(1f),
                     onClick = onSave,
                 )
                 RemoteCompactAction(
                     text = if (scanState.isScanning) {
-                        echoString(en = "Cancel", zh = "取消", ja = "キャンセル")
+                        stringResource(L10nR.string.feature_connect_cancel_4c5fa5)
                     } else {
-                        echoString(en = "Sync", zh = "同步", ja = "同期")
+                        stringResource(L10nR.string.feature_connect_sync_b57352)
                     },
                     enabled = ready || scanState.isScanning,
                     modifier = Modifier.weight(1f),
                     onClick = { if (scanState.isScanning) onCancel() else onSync() },
                 )
                 RemoteCompactAction(
-                    text = echoString(en = "Clear", zh = "清除", ja = "クリア"),
+                    text = stringResource(L10nR.string.feature_connect_clear_ec6a55),
                     enabled = hasInput,
                     modifier = Modifier.weight(1f),
                     onClick = onClear,
@@ -1131,7 +1047,7 @@ private fun RemoteCompactAction(
                 ),
                 RoundedCornerShape(13.dp),
             )
-            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
+            .then(if (enabled) Modifier.echoClickable(onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -1156,26 +1072,10 @@ private fun remoteLibraryDetail(scanState: LibraryScanProgress, ready: Boolean):
                 scanState.currentTitle?.takeIf { it.isNotBlank() }?.let { append(" · ").append(it) }
             }
         }
-        scanState.phase == LibraryScanPhase.Completed -> echoString(
-            en = "Sync complete: ${scanState.scannedCount} tracks, ${scanState.insertedCount} added, ${scanState.updatedCount} updated, ${scanState.deletedCount} removed",
-            zh = "同步完成：${scanState.scannedCount} 首，新增 ${scanState.insertedCount}，更新 ${scanState.updatedCount}，删除 ${scanState.deletedCount}",
-            ja = "同期完了：${scanState.scannedCount} 曲、追加 ${scanState.insertedCount}、更新 ${scanState.updatedCount}、削除 ${scanState.deletedCount}",
-        )
-        scanState.phase == LibraryScanPhase.Error -> scanState.error ?: echoString(
-            en = "Remote library sync failed",
-            zh = "远程曲库同步失败",
-            ja = "リモートライブラリの同期に失敗しました",
-        )
-        ready -> echoString(
-            en = "Ready to sync to the cloud album wall",
-            zh = "可同步到云端专辑墙",
-            ja = "クラウドのアルバムウォールに同期できます",
-        )
-        else -> echoString(
-            en = "Enter the server, username, and password",
-            zh = "填写服务器、用户名和密码",
-            ja = "サーバー、ユーザー名、パスワードを入力",
-        )
+        scanState.phase == LibraryScanPhase.Completed -> stringResource(L10nR.string.feature_connect_sync_complete_scanstate_scannedcount_tracks_scanstate_insertedco_41ae3e, (scanState.scannedCount).toString(), (scanState.insertedCount).toString(), (scanState.updatedCount).toString(), (scanState.deletedCount).toString())
+        scanState.phase == LibraryScanPhase.Error -> scanState.error ?: stringResource(L10nR.string.feature_connect_remote_library_sync_failed_e55eb1)
+        ready -> stringResource(L10nR.string.feature_connect_ready_to_sync_to_the_cloud_album_wall_20a1e5)
+        else -> stringResource(L10nR.string.feature_connect_enter_the_server_username_and_password_b90327)
     }
 
 @Composable
@@ -1184,29 +1084,21 @@ private fun remoteSourcesSummary(scanState: LibraryScanProgress, readyCount: Int
         scanState.isScanning -> remoteLibraryDetail(scanState, ready = true)
         scanState.phase == LibraryScanPhase.Completed -> remoteLibraryDetail(scanState, ready = true)
         scanState.phase == LibraryScanPhase.Error -> remoteLibraryDetail(scanState, ready = false)
-        readyCount > 0 -> echoString(
-            en = "Tap to expand · Subsonic / WebDAV fold separately",
-            zh = "点按展开 · Subsonic / WebDAV 可独立折叠",
-            ja = "タップして展開 · Subsonic / WebDAV は個別に折りたためます",
-        )
-        else -> echoString(
-            en = "Tap to set up Subsonic · WebDAV / cloud drive",
-            zh = "点按配置 Subsonic · WebDAV / 网盘",
-            ja = "タップして Subsonic · WebDAV / クラウドを設定",
-        )
+        readyCount > 0 -> stringResource(L10nR.string.feature_connect_tap_to_expand_subsonic_webdav_fold_separately_a293a2)
+        else -> stringResource(L10nR.string.feature_connect_tap_to_set_up_subsonic_webdav_cloud_drive_6f2e97)
     }
 
 @Composable
 private fun remoteScanPhaseLabel(phase: LibraryScanPhase): String =
     when (phase) {
-        LibraryScanPhase.Preparing -> echoString(en = "Preparing sync", zh = "准备同步", ja = "同期を準備中")
-        LibraryScanPhase.QueryingMediaStore -> echoString(en = "Reading remote library", zh = "读取远程曲库", ja = "リモートライブラリを読み込み中")
-        LibraryScanPhase.Diffing -> echoString(en = "Comparing index", zh = "对比索引", ja = "索引を照合中")
-        LibraryScanPhase.WritingDatabase -> echoString(en = "Writing library", zh = "写入曲库", ja = "ライブラリに書き込み中")
-        LibraryScanPhase.CleaningRemoved -> echoString(en = "Cleaning old index", zh = "清理旧索引", ja = "古い索引を整理中")
-        LibraryScanPhase.Completed -> echoString(en = "Sync complete", zh = "同步完成", ja = "同期完了")
-        LibraryScanPhase.Cancelled -> echoString(en = "Cancelled", zh = "已取消", ja = "キャンセル済み")
-        LibraryScanPhase.Error -> echoString(en = "Sync failed", zh = "同步失败", ja = "同期失敗")
-        LibraryScanPhase.Idle -> echoString(en = "Waiting to sync", zh = "等待同步", ja = "同期待ち")
+        LibraryScanPhase.Preparing -> stringResource(L10nR.string.feature_connect_preparing_sync_f64e14)
+        LibraryScanPhase.QueryingMediaStore -> stringResource(L10nR.string.feature_connect_reading_remote_library_06fcd1)
+        LibraryScanPhase.Diffing -> stringResource(L10nR.string.feature_connect_comparing_index_7c03bf)
+        LibraryScanPhase.WritingDatabase -> stringResource(L10nR.string.feature_connect_writing_library_a8f4bd)
+        LibraryScanPhase.CleaningRemoved -> stringResource(L10nR.string.feature_connect_cleaning_old_index_2c0185)
+        LibraryScanPhase.Completed -> stringResource(L10nR.string.feature_connect_sync_complete_9ac5cf)
+        LibraryScanPhase.Cancelled -> stringResource(L10nR.string.feature_connect_cancelled_4ab41f)
+        LibraryScanPhase.Error -> stringResource(L10nR.string.feature_connect_sync_failed_8cc151)
+        LibraryScanPhase.Idle -> stringResource(L10nR.string.feature_connect_waiting_to_sync_21ad43)
     }
 

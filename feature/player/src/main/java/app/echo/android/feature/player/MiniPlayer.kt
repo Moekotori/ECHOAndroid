@@ -1,5 +1,8 @@
 package app.echo.android.feature.player
 
+import app.echo.android.feature.player.R as L10nR
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -12,7 +15,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.clickable
+import app.echo.android.design.echoClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,7 +50,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -59,6 +61,8 @@ import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.ArtworkTile
@@ -66,10 +70,10 @@ import app.echo.android.design.EchoAccent
 import app.echo.android.design.echoAccentColor
 import app.echo.android.design.EchoDarkGlassBorder
 import app.echo.android.design.EchoGlassBorder
+import app.echo.android.design.EchoStateContent
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
-import app.echo.android.design.echoString
 import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.design.progressFraction
 import app.echo.android.model.playback.EchoPlaybackState
@@ -144,6 +148,7 @@ fun MiniPlayer(
         animationSpec = tween(durationMillis = miniPlayerMotionDuration(220, lightweight), easing = MiniPlayerMotionEasing),
         label = "mini-player-progress-alpha",
     )
+    val playbackDescription = stringResource(L10nR.string.feature_player_play_or_pause_37a70f)
     val shape = RoundedCornerShape(cornerRadius)
     LaunchedEffect(status.track?.id) {
         if (lightweight) {
@@ -228,7 +233,7 @@ fun MiniPlayer(
             if (onShowDock != null) {
                 MiniPlayerActionButton(
                     icon = Icons.Rounded.KeyboardArrowUp,
-                    description = echoString(en = "Show bottom bar", zh = "显示底栏", ja = "ドックを表示"),
+                    description = stringResource(L10nR.string.feature_player_show_bottom_bar_bf2549),
                     onClick = onShowDock,
                     compact = true,
                 )
@@ -243,7 +248,7 @@ fun MiniPlayer(
                         scaleY = trackEntrance.value
                     }
                     .clip(RoundedCornerShape(12.dp))
-                    .clickable(enabled = onExpand != null) { onExpand?.invoke() }
+                    .echoClickable(enabled = onExpand != null) { onExpand?.invoke() }
                     .then(
                         if (canSwitch) {
                             Modifier.pointerInput(status.track?.id) {
@@ -332,7 +337,7 @@ fun MiniPlayer(
                         style = MaterialTheme.typography.titleSmall,
                     )
                     Text(
-                        status.track?.artist ?: echoString(en = "Ready", zh = "就绪", ja = "準備完了"),
+                        status.track?.artist ?: stringResource(L10nR.string.feature_player_ready_97b946),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         color = if (dark) Color.White.copy(alpha = 0.92f) else scheme.onSurfaceVariant,
@@ -360,9 +365,11 @@ fun MiniPlayer(
             Box(
                 modifier = Modifier
                     .size(38.dp)
+                    .semantics { contentDescription = playbackDescription }
                     .clip(RoundedCornerShape(12.dp))
-                    .clickable(
+                    .echoClickable(
                         enabled = status.state != EchoPlaybackState.Idle || status.track != null,
+                        onClickLabel = playbackDescription,
                         onClick = {
                             haptics.confirm()
                             onPlayPause()
@@ -370,25 +377,23 @@ fun MiniPlayer(
                     ),
                 contentAlignment = Alignment.Center,
             ) {
-                Box(
-                    modifier = Modifier.size(24.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.PlayArrow,
-                        contentDescription = echoString(en = "Play or pause", zh = "播放或暂停", ja = "再生または一時停止"),
-                        tint = if (dark) MiniPlayerGlassRose else scheme.primary,
-                        modifier = Modifier
-                            .size(24.dp)
-                            .alpha(if (status.isPlaying) 0f else 1f),
-                    )
-                    if (status.isPlaying) {
-                        PauseBarsIcon(
-                            tint = if (dark) MiniPlayerGlassRose else scheme.primary,
-                            height = 20.dp,
-                            barWidth = 5.dp,
-                            gap = 5.dp,
-                        )
+                EchoStateContent(state = status.isPlaying, modifier = Modifier.size(24.dp)) { playing ->
+                    Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                        if (playing) {
+                            PauseBarsIcon(
+                                tint = if (dark) MiniPlayerGlassRose else scheme.primary,
+                                height = 20.dp,
+                                barWidth = 5.dp,
+                                gap = 5.dp,
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Rounded.PlayArrow,
+                                contentDescription = null,
+                                tint = if (dark) MiniPlayerGlassRose else scheme.primary,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -396,7 +401,7 @@ fun MiniPlayer(
                 onHideDock != null -> {
                     MiniPlayerActionButton(
                         icon = Icons.Rounded.KeyboardArrowDown,
-                        description = echoString(en = "Hide bottom bar", zh = "隐藏底栏", ja = "ドックを隠す"),
+                        description = stringResource(L10nR.string.feature_player_hide_bottom_bar_e918c8),
                         onClick = onHideDock,
                         compact = false,
                     )
@@ -404,7 +409,7 @@ fun MiniPlayer(
                 onOpenQueue != null -> {
                     MiniPlayerActionButton(
                         icon = Icons.AutoMirrored.Rounded.QueueMusic,
-                        description = echoString(en = "Queue", zh = "播放队列", ja = "再生キュー"),
+                        description = stringResource(L10nR.string.feature_player_queue_37fa6a),
                         onClick = onOpenQueue,
                         compact = true,
                     )
@@ -483,7 +488,7 @@ private fun MiniPlayerActionButton(
                 ),
                 CircleShape,
             )
-            .clickable(onClick = onClick),
+            .echoClickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(

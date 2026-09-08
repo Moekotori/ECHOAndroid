@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module-owned translations. English values are the fallback for missing translations. -->
+<resources>
+    <string name="feature_player_after_you_pick_songs_from_the_library_the_1b16d7" formatted="false">"从曲库选择歌曲后，这里会显示真实播放顺序"</string>
+    <string name="feature_player_alignment_66dbdb" formatted="false">"对齐"</string>
+    <string name="feature_player_audio_decode_failed_8fe0c7" formatted="false">"音频解码失败"</string>
+    <string name="feature_player_audio_file_is_missing_31d228" formatted="false">"音频文件不存在"</string>
+    <string name="feature_player_audio_focus_lost_328a0b" formatted="false">"音频焦点丢失"</string>
+    <string name="feature_player_audio_format_is_unsupported_53c7bb" formatted="false">"音频格式不支持"</string>
+    <string name="feature_player_back_to_cover_815543" formatted="false">"返回封面页"</string>
+    <string name="feature_player_blue_4a9e32" formatted="false">"蓝"</string>
+    <string name="feature_player_calm_207bcb" formatted="false">"安静"</string>
+    <string name="feature_player_center_3e4c92" formatted="false">"居中"</string>
+    <string name="feature_player_change_lyrics_170696" formatted="false">"更换歌词"</string>
+    <string name="feature_player_choose_a_font_file_a60802" formatted="false">"选择字体文件"</string>
+    <string name="feature_player_clear_queue_eae952" formatted="false">"清空队列"</string>
+    <string name="feature_player_close_lyrics_settings_752454" formatted="false">"关闭歌词设置"</string>
+    <string name="feature_player_close_playback_settings_289e1a" formatted="false">"关闭播放设置"</string>
+    <string name="feature_player_close_player_d23966" formatted="false">"关闭播放页"</string>
+    <string name="feature_player_close_queue_a65caf" formatted="false">"关闭队列"</string>
+    <string name="feature_player_collapse_playback_settings_79e2cd" formatted="false">"收起播放设置"</string>
+    <string name="feature_player_color_b67caf" formatted="false">"颜色"</string>
+    <string name="feature_player_details_aec98d" formatted="false">"细节"</string>
+    <string name="feature_player_dim_be8c03" formatted="false">"遮罩浓度"</string>
+    <string name="feature_player_disabled_3bd0d0" formatted="false">"未启用"</string>
+    <string name="feature_player_each_line_lifts_with_the_beat_ddb972" formatted="false">"每一句都贴着节拍浮起来"</string>
+    <string name="feature_player_emphasis_6517be" formatted="false">"强调"</string>
+    <string name="feature_player_enabled_889420" formatted="false">"已启用"</string>
+    <string name="feature_player_expand_playback_settings_cf64a0" formatted="false">"展开播放设置"</string>
+    <string name="feature_player_favorite_b5d1f5" formatted="false">"收藏"</string>
+    <string name="feature_player_font_c0bdeb" formatted="false">"字体"</string>
+    <string name="feature_player_font_color_and_display_b51a7b" formatted="false">"字体、颜色和显示方式"</string>
+    <string name="feature_player_go_to_library_32fd32" formatted="false">"去曲库"</string>
+    <string name="feature_player_green_d7b519" formatted="false">"绿"</string>
+    <string name="feature_player_hide_bottom_bar_e918c8" formatted="false">"隐藏底栏"</string>
+    <string name="feature_player_immersive_d86793" formatted="false">"沉浸"</string>
+    <string name="feature_player_import_688061" formatted="false">"导入"</string>
+    <string name="feature_player_import_lyrics_e7494e" formatted="false">"导入歌词"</string>
+    <string name="feature_player_import_name_a3094e">"导入 %1$s"</string>
+    <string name="feature_player_in_order_47b60a" formatted="false">"顺序播放"</string>
+    <string name="feature_player_left_f9d864" formatted="false">"左对齐"</string>
+    <string name="feature_player_line_spacing_ecbb6f" formatted="false">"行距"</string>
+    <string name="feature_player_local_queue_c7d54b" formatted="false">"本地队列"</string>
+    <string name="feature_player_lyrics_appear_after_you_pick_a_song_1622d2" formatted="false">"选择一首歌后显示歌词"</string>
+    <string name="feature_player_lyrics_b90c97" formatted="false">"歌词"</string>
+    <string name="feature_player_lyrics_breathe_naturally_with_playback_c6b1df" formatted="false">"歌词随着播放自然呼吸"</string>
+    <string name="feature_player_lyrics_earlier_by_0_25s_0605b3" formatted="false">"歌词提前 0.25 秒"</string>
+    <string name="feature_player_lyrics_formatlyricsoffset_lyricsoffsetms_6c3953">"歌词 %1$s"</string>
+    <string name="feature_player_lyrics_later_by_0_25s_f31341" formatted="false">"歌词延后 0.25 秒"</string>
+    <string name="feature_player_lyrics_rest_quietly_in_the_center_810bd7" formatted="false">"歌词安静地停在画面中央"</string>
+    <string name="feature_player_lyrics_settings_843bc9" formatted="false">"歌词设置"</string>
+    <string name="feature_player_mono_ee96ee" formatted="false">"等宽"</string>
+    <string name="feature_player_move_down_cf81ae" formatted="false">"下移"</string>
+    <string name="feature_player_move_up_e6d961" formatted="false">"上移"</string>
+    <string name="feature_player_network_playback_failed_3b492e" formatted="false">"网络播放失败"</string>
+    <string name="feature_player_next_d67904" formatted="false">"下一首"</string>
+    <string name="feature_player_nightcore_pitch_65449f" formatted="false">"Nightcore 变调"</string>
+    <string name="feature_player_no_data_5a8239" formatted="false">"当前无数据"</string>
+    <string name="feature_player_no_matching_lyrics_found_7ffc7e" formatted="false">"未找到同名歌词"</string>
+    <string name="feature_player_normal_speed_a8fc98" formatted="false">"普通变速"</string>
+    <string name="feature_player_not_playing_d72324" formatted="false">"未在播放"</string>
+    <string name="feature_player_nothing_playing_3beac0" formatted="false">"暂无播放"</string>
+    <string name="feature_player_now_playing_214a7c" formatted="false">"当前播放"</string>
+    <string name="feature_player_off_12ac24" formatted="false">"关闭"</string>
+    <string name="feature_player_on_3062f9" formatted="false">"开启"</string>
+    <string name="feature_player_online_lyrics_21c928" formatted="false">"网络歌词"</string>
+    <string name="feature_player_output_device_failed_5abf21" formatted="false">"输出设备失败"</string>
+    <string name="feature_player_pick_a_song_to_start_68b6af" formatted="false">"选择一首歌开始"</string>
+    <string name="feature_player_play_or_pause_37a70f" formatted="false">"播放或暂停"</string>
+    <string name="feature_player_playback_failed_059f1f" formatted="false">"播放失败"</string>
+    <string name="feature_player_playback_permission_denied_2a3371" formatted="false">"没有播放权限"</string>
+    <string name="feature_player_playback_settings_651436" formatted="false">"播放设置"</string>
+    <string name="feature_player_playback_was_interrupted_by_the_system_70c8d1" formatted="false">"播放被系统中断"</string>
+    <string name="feature_player_previous_af0264" formatted="false">"上一首"</string>
+    <string name="feature_player_queue_37fa6a" formatted="false">"播放队列"</string>
+    <string name="feature_player_queue_84794b" formatted="false">"队列"</string>
+    <string name="feature_player_queue_is_empty_1b4178" formatted="false">"队列为空"</string>
+    <string name="feature_player_reading_local_lyrics_807f08" formatted="false">"正在读取本地歌词…"</string>
+    <string name="feature_player_ready_97b946" formatted="false">"就绪"</string>
+    <string name="feature_player_remote_authentication_failed_426253" formatted="false">"远程认证失败"</string>
+    <string name="feature_player_remove_track_60c516" formatted="false">"移除曲目"</string>
+    <string name="feature_player_repeat_all_751078" formatted="false">"全部循环"</string>
+    <string name="feature_player_repeat_all_b8cce1" formatted="false">"列表循环"</string>
+    <string name="feature_player_repeat_off_254ca2" formatted="false">"不循环"</string>
+    <string name="feature_player_repeat_off_e1d801" formatted="false">"循环关闭"</string>
+    <string name="feature_player_repeat_one_3df94f" formatted="false">"单曲循环"</string>
+    <string name="feature_player_reset_lyrics_offset_df9dcc" formatted="false">"重置歌词偏移"</string>
+    <string name="feature_player_romaji_6ad0ab" formatted="false">"罗马音"</string>
+    <string name="feature_player_serif_fb7b05" formatted="false">"衬线"</string>
+    <string name="feature_player_show_bottom_bar_bf2549" formatted="false">"显示底栏"</string>
+    <string name="feature_player_shuffle_on_c7c5c4" formatted="false">"随机开启"</string>
+    <string name="feature_player_size_tracks_now_playing_current_7d4647">"%1$s 首 · 当前第 %2$s 首"</string>
+    <string name="feature_player_skip_silence_d27e03" formatted="false">"跳过静音"</string>
+    <string name="feature_player_skip_silence_off_8f8ae6" formatted="false">"跳过静音关"</string>
+    <string name="feature_player_skip_silence_on_159990" formatted="false">"跳过静音开"</string>
+    <string name="feature_player_skipped_an_unplayable_track_dcd77d" formatted="false">"已跳过无法播放的曲目"</string>
+    <string name="feature_player_sleep_timer_108738" formatted="false">"睡眠定时"</string>
+    <string name="feature_player_sleep_timer_remaining_4b8c3f">"睡眠定时 · %1$s"</string>
+    <string name="feature_player_sleep_timer_this_track_1ae161" formatted="false">"睡眠定时 · 本首结束"</string>
+    <string name="feature_player_sleep_timer_this_track_clock_e76a6a">"睡眠定时 · 本首结束 · %1$s"</string>
+    <string name="feature_player_smooth_4989bb" formatted="false">"顺滑"</string>
+    <string name="feature_player_speed_1d93fc" formatted="false">"变速"</string>
+    <string name="feature_player_stage_fffe7d" formatted="false">"舞台"</string>
+    <string name="feature_player_sync_tools_ef1217" formatted="false">"同步工具"</string>
+    <string name="feature_player_system_90f402" formatted="false">"系统"</string>
+    <string name="feature_player_system_font_8ddbe6" formatted="false">"系统字体"</string>
+    <string name="feature_player_system_mono_6ca8fa" formatted="false">"系统等宽"</string>
+    <string name="feature_player_system_output_856789" formatted="false">"系统输出"</string>
+    <string name="feature_player_system_serif_ee6148" formatted="false">"系统衬线"</string>
+    <string name="feature_player_tag_status_replaygaintrackgaindb_let_formatreplaygaindb_unread_p_9c7a19">"标签 %3$s · 预增益 %2$s"</string>
+    <string name="feature_player_this_track_210ea7" formatted="false">"本首结束"</string>
+    <string name="feature_player_translation_53c7ce" formatted="false">"翻译"</string>
+    <string name="feature_player_translation_romaji_appear_when_the_current_lyrics_include_3b41d9" formatted="false">"翻译 / 罗马音会在当前歌词包含对应数据时显示"</string>
+    <string name="feature_player_type_size_8ff7ee" formatted="false">"字号"</string>
+    <string name="feature_player_unable_to_play_bee8f9" formatted="false">"无法播放"</string>
+    <string name="feature_player_unfavorite_3a27e4" formatted="false">"取消收藏"</string>
+    <string name="feature_player_usb_output_c6800e" formatted="false">"USB 输出"</string>
+    <string name="feature_player_violet_a03e22" formatted="false">"紫"</string>
+    <string name="feature_player_waiting_for_audio_info_a869fd" formatted="false">"等待音频信息"</string>
+    <string name="feature_player_warm_060f63" formatted="false">"暖"</string>
+    <string name="feature_player_white_cc6c04" formatted="false">"白"</string>
+    <string name="feature_player_word_d653ce" formatted="false">"逐字"</string>
+    <string name="feature_player_word_highlight_f4dec8" formatted="false">"逐字强度"</string>
+    <string name="feature_player_word_highlight_off_b0e40a" formatted="false">"逐字强度 关"</string>
+</resources>

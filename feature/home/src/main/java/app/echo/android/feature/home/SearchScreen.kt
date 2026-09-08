@@ -1,7 +1,10 @@
 package app.echo.android.feature.home
 
+import app.echo.android.feature.home.R as L10nR
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import app.echo.android.design.echoClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,7 +49,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.echoAccentColor
-import app.echo.android.design.echoString
 
 @Composable
 fun SearchScreen(
@@ -105,7 +107,7 @@ private fun SearchTopBar(
         IconButton(onClick = onBack) {
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = echoString(en = "Back", zh = "返回", ja = "戻る"),
+                contentDescription = stringResource(L10nR.string.feature_home_back_49093c),
                 tint = homeBodyColor(),
             )
         }
@@ -118,11 +120,7 @@ private fun SearchTopBar(
                 .focusRequester(focusRequester),
             placeholder = {
                 Text(
-                    echoString(
-                        en = "Search songs, albums, and artists",
-                        zh = "搜索音乐、专辑、艺术家",
-                        ja = "曲、アルバム、アーティストを検索",
-                    ),
+                    stringResource(L10nR.string.feature_home_search_songs_albums_and_artists_c46634),
                     color = homeBodyColor().copy(alpha = 0.4f),
                 )
             },
@@ -138,7 +136,7 @@ private fun SearchTopBar(
                     IconButton(onClick = { onSearchQueryChange("") }) {
                         Icon(
                             imageVector = Icons.Rounded.Close,
-                            contentDescription = echoString(en = "Clear", zh = "清空", ja = "クリア"),
+                            contentDescription = stringResource(L10nR.string.feature_home_clear_819f71),
                             tint = homeBodyColor().copy(alpha = 0.5f),
                         )
                     }
@@ -170,11 +168,7 @@ private fun SearchResultsList(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = echoString(
-                    en = "Enter a keyword to start searching",
-                    zh = "输入关键词开始搜索",
-                    ja = "キーワードを入力して検索",
-                ),
+                text = stringResource(L10nR.string.feature_home_enter_a_keyword_to_start_searching_147a79),
                 color = homeBodyColor().copy(alpha = 0.3f),
                 style = MaterialTheme.typography.bodyMedium,
             )
@@ -193,7 +187,7 @@ private fun SearchResultsList(
             if (trackResults.isNotEmpty()) {
                 item(key = "header-tracks") {
                     Text(
-                        text = echoString(en = "Songs", zh = "歌曲", ja = "曲"),
+                        text = stringResource(L10nR.string.feature_home_songs_107b60),
                         color = homeBodyColor().copy(alpha = 0.4f),
                         style = MaterialTheme.typography.labelMedium,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
@@ -215,7 +209,7 @@ private fun SearchResultsList(
                         Spacer(Modifier.height(16.dp))
                     }
                     Text(
-                        text = echoString(en = "Albums", zh = "专辑", ja = "アルバム"),
+                        text = stringResource(L10nR.string.feature_home_albums_e68c2b),
                         color = homeBodyColor().copy(alpha = 0.4f),
                         style = MaterialTheme.typography.labelMedium,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
@@ -230,7 +224,7 @@ private fun SearchResultsList(
                 item(key = "header-artists") {
                     Spacer(Modifier.height(16.dp))
                     Text(
-                        text = echoString(en = "Artists", zh = "艺术家", ja = "アーティスト"),
+                        text = stringResource(L10nR.string.feature_home_artists_1e19fb),
                         color = homeBodyColor().copy(alpha = 0.4f),
                         style = MaterialTheme.typography.labelMedium,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
@@ -255,7 +249,7 @@ private fun SearchResultItemFull(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .clickable { onClick(result) }
+            .echoClickable { onClick(result) }
             .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -316,7 +310,7 @@ private fun SearchResultItemFull(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.SkipNext,
-                    contentDescription = echoString(en = "Play next", zh = "下一首播放", ja = "次に再生"),
+                    contentDescription = stringResource(L10nR.string.feature_home_play_next_a1f73e),
                     tint = homeBodyColor().copy(alpha = 0.62f),
                 )
             }
@@ -325,7 +319,7 @@ private fun SearchResultItemFull(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Queue,
-                    contentDescription = echoString(en = "Add to queue", zh = "加入队列", ja = "キューに追加"),
+                    contentDescription = stringResource(L10nR.string.feature_home_add_to_queue_1775d3),
                     tint = homeBodyColor().copy(alpha = 0.62f),
                 )
             }

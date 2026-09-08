@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module-owned translations. English values are the fallback for missing translations. -->
+<resources>
+    <string name="feature_player_after_you_pick_songs_from_the_library_the_1b16d7" formatted="false">"ライブラリから曲を選ぶと、実際の再生順がここに表示されます"</string>
+    <string name="feature_player_alignment_66dbdb" formatted="false">"配置"</string>
+    <string name="feature_player_audio_decode_failed_8fe0c7" formatted="false">"音声のデコードに失敗しました"</string>
+    <string name="feature_player_audio_file_is_missing_31d228" formatted="false">"音声ファイルがありません"</string>
+    <string name="feature_player_audio_focus_lost_328a0b" formatted="false">"オーディオフォーカスを失いました"</string>
+    <string name="feature_player_audio_format_is_unsupported_53c7bb" formatted="false">"非対応の音声形式です"</string>
+    <string name="feature_player_back_to_cover_815543" formatted="false">"カバーに戻る"</string>
+    <string name="feature_player_blue_4a9e32" formatted="false">"青"</string>
+    <string name="feature_player_calm_207bcb" formatted="false">"静か"</string>
+    <string name="feature_player_center_3e4c92" formatted="false">"中央"</string>
+    <string name="feature_player_change_lyrics_170696" formatted="false">"歌詞を変更"</string>
+    <string name="feature_player_choose_a_font_file_a60802" formatted="false">"フォントファイルを選択"</string>
+    <string name="feature_player_clear_queue_eae952" formatted="false">"キューをクリア"</string>
+    <string name="feature_player_close_lyrics_settings_752454" formatted="false">"歌詞設定を閉じる"</string>
+    <string name="feature_player_close_playback_settings_289e1a" formatted="false">"再生設定を閉じる"</string>
+    <string name="feature_player_close_player_d23966" formatted="false">"プレーヤーを閉じる"</string>
+    <string name="feature_player_close_queue_a65caf" formatted="false">"キューを閉じる"</string>
+    <string name="feature_player_collapse_playback_settings_79e2cd" formatted="false">"再生設定を閉じる"</string>
+    <string name="feature_player_color_b67caf" formatted="false">"色"</string>
+    <string name="feature_player_details_aec98d" formatted="false">"詳細"</string>
+    <string name="feature_player_dim_be8c03" formatted="false">"マスク濃度"</string>
+    <string name="feature_player_disabled_3bd0d0" formatted="false">"無効"</string>
+    <string name="feature_player_each_line_lifts_with_the_beat_ddb972" formatted="false">"各行がビートに合わせて浮かび上がります"</string>
+    <string name="feature_player_emphasis_6517be" formatted="false">"強調"</string>
+    <string name="feature_player_enabled_889420" formatted="false">"有効"</string>
+    <string name="feature_player_expand_playback_settings_cf64a0" formatted="false">"再生設定を開く"</string>
+    <string name="feature_player_favorite_b5d1f5" formatted="false">"お気に入り"</string>
+    <string name="feature_player_font_c0bdeb" formatted="false">"フォント"</string>
+    <string name="feature_player_font_color_and_display_b51a7b" formatted="false">"フォント、色、表示方法"</string>
+    <string name="feature_player_go_to_library_32fd32" formatted="false">"ライブラリへ"</string>
+    <string name="feature_player_green_d7b519" formatted="false">"緑"</string>
+    <string name="feature_player_hide_bottom_bar_e918c8" formatted="false">"ドックを隠す"</string>
+    <string name="feature_player_immersive_d86793" formatted="false">"没入"</string>
+    <string name="feature_player_import_688061" formatted="false">"読み込み"</string>
+    <string name="feature_player_import_lyrics_e7494e" formatted="false">"歌詞を読み込む"</string>
+    <string name="feature_player_import_name_a3094e">"読み込み %1$s"</string>
+    <string name="feature_player_in_order_47b60a" formatted="false">"リスト順"</string>
+    <string name="feature_player_left_f9d864" formatted="false">"左揃え"</string>
+    <string name="feature_player_line_spacing_ecbb6f" formatted="false">"行間"</string>
+    <string name="feature_player_local_queue_c7d54b" formatted="false">"ローカルキュー"</string>
+    <string name="feature_player_lyrics_appear_after_you_pick_a_song_1622d2" formatted="false">"曲を選ぶと歌詞が表示されます"</string>
+    <string name="feature_player_lyrics_b90c97" formatted="false">"歌詞"</string>
+    <string name="feature_player_lyrics_breathe_naturally_with_playback_c6b1df" formatted="false">"歌詞が再生に合わせて自然に呼吸します"</string>
+    <string name="feature_player_lyrics_earlier_by_0_25s_0605b3" formatted="false">"歌詞を 0.25 秒早める"</string>
+    <string name="feature_player_lyrics_formatlyricsoffset_lyricsoffsetms_6c3953">"歌詞 %1$s"</string>
+    <string name="feature_player_lyrics_later_by_0_25s_f31341" formatted="false">"歌詞を 0.25 秒遅らせる"</string>
+    <string name="feature_player_lyrics_rest_quietly_in_the_center_810bd7" formatted="false">"歌詞が画面の中央で静かに止まります"</string>
+    <string name="feature_player_lyrics_settings_843bc9" formatted="false">"歌詞設定"</string>
+    <string name="feature_player_mono_ee96ee" formatted="false">"等幅"</string>
+    <string name="feature_player_move_down_cf81ae" formatted="false">"下へ"</string>
+    <string name="feature_player_move_up_e6d961" formatted="false">"上へ"</string>
+    <string name="feature_player_network_playback_failed_3b492e" formatted="false">"ネットワーク再生に失敗しました"</string>
+    <string name="feature_player_next_d67904" formatted="false">"次の曲"</string>
+    <string name="feature_player_nightcore_pitch_65449f" formatted="false">"Nightcore ピッチ"</string>
+    <string name="feature_player_no_data_5a8239" formatted="false">"データなし"</string>
+    <string name="feature_player_no_matching_lyrics_found_7ffc7e" formatted="false">"同名の歌詞が見つかりません"</string>
+    <string name="feature_player_normal_speed_a8fc98" formatted="false">"通常速度"</string>
+    <string name="feature_player_not_playing_d72324" formatted="false">"未再生"</string>
+    <string name="feature_player_nothing_playing_3beac0" formatted="false">"再生なし"</string>
+    <string name="feature_player_now_playing_214a7c" formatted="false">"再生中"</string>
+    <string name="feature_player_off_12ac24" formatted="false">"オフ"</string>
+    <string name="feature_player_on_3062f9" formatted="false">"オン"</string>
+    <string name="feature_player_online_lyrics_21c928" formatted="false">"オンライン歌詞"</string>
+    <string name="feature_player_output_device_failed_5abf21" formatted="false">"出力デバイスに失敗しました"</string>
+    <string name="feature_player_pick_a_song_to_start_68b6af" formatted="false">"曲を選んで開始"</string>
+    <string name="feature_player_play_or_pause_37a70f" formatted="false">"再生または一時停止"</string>
+    <string name="feature_player_playback_failed_059f1f" formatted="false">"再生に失敗しました"</string>
+    <string name="feature_player_playback_permission_denied_2a3371" formatted="false">"再生権限がありません"</string>
+    <string name="feature_player_playback_settings_651436" formatted="false">"再生設定"</string>
+    <string name="feature_player_playback_was_interrupted_by_the_system_70c8d1" formatted="false">"再生がシステムに中断されました"</string>
+    <string name="feature_player_previous_af0264" formatted="false">"前の曲"</string>
+    <string name="feature_player_queue_37fa6a" formatted="false">"再生キュー"</string>
+    <string name="feature_player_queue_84794b" formatted="false">"キュー"</string>
+    <string name="feature_player_queue_is_empty_1b4178" formatted="false">"キューは空です"</string>
+    <string name="feature_player_reading_local_lyrics_807f08" formatted="false">"ローカル歌詞を読み込み中…"</string>
+    <string name="feature_player_ready_97b946" formatted="false">"準備完了"</string>
+    <string name="feature_player_remote_authentication_failed_426253" formatted="false">"リモート認証に失敗しました"</string>
+    <string name="feature_player_remove_track_60c516" formatted="false">"曲を削除"</string>
+    <string name="feature_player_repeat_all_751078" formatted="false">"全曲リピート"</string>
+    <string name="feature_player_repeat_all_b8cce1" formatted="false">"全曲リピート"</string>
+    <string name="feature_player_repeat_off_254ca2" formatted="false">"リピートしない"</string>
+    <string name="feature_player_repeat_off_e1d801" formatted="false">"リピートオフ"</string>
+    <string name="feature_player_repeat_one_3df94f" formatted="false">"1曲リピート"</string>
+    <string name="feature_player_reset_lyrics_offset_df9dcc" formatted="false">"歌詞オフセットをリセット"</string>
+    <string name="feature_player_romaji_6ad0ab" formatted="false">"ローマ字"</string>
+    <string name="feature_player_serif_fb7b05" formatted="false">"明朝"</string>
+    <string name="feature_player_show_bottom_bar_bf2549" formatted="false">"ドックを表示"</string>
+    <string name="feature_player_shuffle_on_c7c5c4" formatted="false">"シャッフルオン"</string>
+    <string name="feature_player_size_tracks_now_playing_current_7d4647">"%1$s 曲 · 現在 %2$s 曲目"</string>
+    <string name="feature_player_skip_silence_d27e03" formatted="false">"無音スキップ"</string>
+    <string name="feature_player_skip_silence_off_8f8ae6" formatted="false">"無音スキップ オフ"</string>
+    <string name="feature_player_skip_silence_on_159990" formatted="false">"無音スキップ オン"</string>
+    <string name="feature_player_skipped_an_unplayable_track_dcd77d" formatted="false">"再生できない曲をスキップしました"</string>
+    <string name="feature_player_sleep_timer_108738" formatted="false">"スリープタイマー"</string>
+    <string name="feature_player_sleep_timer_remaining_4b8c3f">"スリープタイマー · %1$s"</string>
+    <string name="feature_player_sleep_timer_this_track_1ae161" formatted="false">"スリープ · この曲の終わり"</string>
+    <string name="feature_player_sleep_timer_this_track_clock_e76a6a">"スリープ · この曲の終わり · %1$s"</string>
+    <string name="feature_player_smooth_4989bb" formatted="false">"スムーズ"</string>
+    <string name="feature_player_speed_1d93fc" formatted="false">"速度"</string>
+    <string name="feature_player_stage_fffe7d" formatted="false">"ステージ"</string>
+    <string name="feature_player_sync_tools_ef1217" formatted="false">"同期ツール"</string>
+    <string name="feature_player_system_90f402" formatted="false">"システム"</string>
+    <string name="feature_player_system_font_8ddbe6" formatted="false">"システムフォント"</string>
+    <string name="feature_player_system_mono_6ca8fa" formatted="false">"システム等幅"</string>
+    <string name="feature_player_system_output_856789" formatted="false">"システム出力"</string>
+    <string name="feature_player_system_serif_ee6148" formatted="false">"システム明朝"</string>
+    <string name="feature_player_tag_status_replaygaintrackgaindb_let_formatreplaygaindb_unread_p_9c7a19">"タグ %4$s · プリアンプ %2$s"</string>
+    <string name="feature_player_this_track_210ea7" formatted="false">"この曲の終わり"</string>
+    <string name="feature_player_translation_53c7ce" formatted="false">"翻訳"</string>
+    <string name="feature_player_translation_romaji_appear_when_the_current_lyrics_include_3b41d9" formatted="false">"翻訳 / ローマ字は、現在の歌詞にデータがあるとき表示されます"</string>
+    <string name="feature_player_type_size_8ff7ee" formatted="false">"文字サイズ"</string>
+    <string name="feature_player_unable_to_play_bee8f9" formatted="false">"再生できません"</string>
+    <string name="feature_player_unfavorite_3a27e4" formatted="false">"お気に入り解除"</string>
+    <string name="feature_player_usb_output_c6800e" formatted="false">"USB 出力"</string>
+    <string name="feature_player_violet_a03e22" formatted="false">"紫"</string>
+    <string name="feature_player_waiting_for_audio_info_a869fd" formatted="false">"音声情報を待っています"</string>
+    <string name="feature_player_warm_060f63" formatted="false">"暖"</string>
+    <string name="feature_player_white_cc6c04" formatted="false">"白"</string>
+    <string name="feature_player_word_d653ce" formatted="false">"文字"</string>
+    <string name="feature_player_word_highlight_f4dec8" formatted="false">"文字ハイライト"</string>
+    <string name="feature_player_word_highlight_off_b0e40a" formatted="false">"文字ハイライト オフ"</string>
+</resources>

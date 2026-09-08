@@ -9,7 +9,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import app.echo.android.design.echoClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -294,7 +294,7 @@ private fun DockItem(
     )
     Box(
         modifier = modifier
-            .clickable(onClick = onClick)
+            .echoClickable(onClick = onClick)
             .padding(vertical = 2.dp),
         contentAlignment = Alignment.Center,
     ) {

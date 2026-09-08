@@ -29,3 +29,5 @@ include(":feature:library")
 include(":feature:player")
 include(":feature:connect")
 include(":feature:settings")
+
+include(":core:i18n")

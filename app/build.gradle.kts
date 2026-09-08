@@ -63,6 +63,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:i18n"))
     implementation(project(":core:data"))
     implementation(project(":core:model"))
     implementation(project(":core:playback"))

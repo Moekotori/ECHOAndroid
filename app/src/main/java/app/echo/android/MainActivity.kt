@@ -12,10 +12,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.annotation.OptIn
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.media3.common.util.UnstableApi
-import app.echo.android.data.applyEchoAppLocale
+import app.echo.android.i18n.initializeEchoAppLocale
 import app.echo.android.data.readEchoStartupThemeSnapshot
 import app.echo.android.data.readEchoStartupThemeSnapshotForLaunch
-import app.echo.android.data.wrapEchoAppLocale
+import app.echo.android.i18n.wrapEchoAppLocale
 import app.echo.android.playback.EchoPlaybackIntents
 
 class MainActivity : ComponentActivity() {
@@ -29,7 +29,7 @@ class MainActivity : ComponentActivity() {
     @OptIn(UnstableApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         val startupThemeSnapshot = applicationContext.readEchoStartupThemeSnapshotForLaunch()
-        applicationContext.applyEchoAppLocale(startupThemeSnapshot.appLanguage)
+        applicationContext.initializeEchoAppLocale(startupThemeSnapshot.appLanguage)
         val startupDarkTheme = resolveEchoDarkTheme(
             systemDarkTheme = applicationContext.isEchoSystemDarkTheme(),
             themeMode = startupThemeSnapshot.themeMode,

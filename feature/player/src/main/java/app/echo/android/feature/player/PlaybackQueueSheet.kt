@@ -1,5 +1,8 @@
 package app.echo.android.feature.player
 
+import app.echo.android.feature.player.R as L10nR
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.EnterTransition
@@ -13,6 +16,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import app.echo.android.design.echoClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -80,7 +84,6 @@ import app.echo.android.design.EchoGlassInk
 import app.echo.android.design.EchoGlassNight
 import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.LocalEchoDarkTheme
-import app.echo.android.design.echoString
 import app.echo.android.design.formatDuration
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoRepeatMode
@@ -371,7 +374,7 @@ private fun QueueSheetHeader(
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
-                text = echoString(en = "Queue", zh = "播放队列", ja = "再生キュー"),
+                text = stringResource(L10nR.string.feature_player_queue_37fa6a),
                 color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Black,
@@ -387,13 +390,13 @@ private fun QueueSheetHeader(
         if (queueState.items.isNotEmpty()) {
             QueueIconButton(
                 icon = Icons.Rounded.DeleteOutline,
-                description = echoString(en = "Clear queue", zh = "清空队列", ja = "キューをクリア"),
+                description = stringResource(L10nR.string.feature_player_clear_queue_eae952),
                 onClick = onClearQueue,
             )
         }
         QueueIconButton(
             icon = Icons.Rounded.Close,
-            description = echoString(en = "Close queue", zh = "关闭队列", ja = "キューを閉じる"),
+            description = stringResource(L10nR.string.feature_player_close_queue_a65caf),
             onClick = onDismiss,
         )
     }
@@ -420,9 +423,9 @@ private fun QueueModeControls(
         QueuePillButton(
             icon = Icons.Rounded.Shuffle,
             title = if (shuffleEnabled) {
-                echoString(en = "Shuffle on", zh = "随机开启", ja = "シャッフルオン")
+                stringResource(L10nR.string.feature_player_shuffle_on_c7c5c4)
             } else {
-                echoString(en = "In order", zh = "顺序播放", ja = "リスト順")
+                stringResource(L10nR.string.feature_player_in_order_47b60a)
             },
             selected = shuffleEnabled,
             onClick = onToggleShuffle,
@@ -467,7 +470,7 @@ private fun QueueTrackRow(
             .clip(RoundedCornerShape(18.dp))
             .background(containerColor)
             .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(18.dp))
-            .clickable(onClick = onPlay)
+            .echoClickable(onClick = onPlay)
             .padding(horizontal = 10.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -517,7 +520,7 @@ private fun QueueTrackRow(
         if (index > 0) {
             QueueIconButton(
                 icon = Icons.Rounded.KeyboardArrowUp,
-                description = echoString(en = "Move up", zh = "上移", ja = "上へ"),
+                description = stringResource(L10nR.string.feature_player_move_up_e6d961),
                 onClick = onMoveUp,
                 compact = true,
             )
@@ -525,7 +528,7 @@ private fun QueueTrackRow(
         if (index < lastIndex) {
             QueueIconButton(
                 icon = Icons.Rounded.KeyboardArrowDown,
-                description = echoString(en = "Move down", zh = "下移", ja = "下へ"),
+                description = stringResource(L10nR.string.feature_player_move_down_cf81ae),
                 onClick = onMoveDown,
                 compact = true,
             )
@@ -533,9 +536,9 @@ private fun QueueTrackRow(
         QueueIconButton(
             icon = if (active) Icons.Rounded.PlayArrow else Icons.Rounded.DeleteOutline,
             description = if (active) {
-                echoString(en = "Now playing", zh = "当前播放", ja = "再生中")
+                stringResource(L10nR.string.feature_player_now_playing_214a7c)
             } else {
-                echoString(en = "Remove track", zh = "移除曲目", ja = "曲を削除")
+                stringResource(L10nR.string.feature_player_remove_track_60c516)
             },
             onClick = if (active) onPlay else onRemove,
             compact = true,
@@ -583,23 +586,19 @@ private fun QueueEmptyState(onOpenLibrary: () -> Unit) {
         }
         Spacer(Modifier.height(14.dp))
         Text(
-            echoString(en = "Queue is empty", zh = "队列为空", ja = "キューは空です"),
+            stringResource(L10nR.string.feature_player_queue_is_empty_1b4178),
             fontWeight = FontWeight.Black,
             style = MaterialTheme.typography.titleLarge,
         )
         Text(
-            echoString(
-                en = "After you pick songs from the library, the actual play order appears here",
-                zh = "从曲库选择歌曲后，这里会显示真实播放顺序",
-                ja = "ライブラリから曲を選ぶと、実際の再生順がここに表示されます",
-            ),
+            stringResource(L10nR.string.feature_player_after_you_pick_songs_from_the_library_the_1b16d7),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodyMedium,
         )
         Spacer(Modifier.height(18.dp))
         QueuePillButton(
             icon = Icons.Rounded.LibraryMusic,
-            title = echoString(en = "Go to library", zh = "去曲库", ja = "ライブラリへ"),
+            title = stringResource(L10nR.string.feature_player_go_to_library_32fd32),
             selected = true,
             onClick = onOpenLibrary,
         )
@@ -636,7 +635,7 @@ private fun QueuePillButton(
                 ),
                 RoundedCornerShape(18.dp),
             )
-            .clickable(onClick = onClick)
+            .echoClickable(onClick = onClick)
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
@@ -673,7 +672,7 @@ private fun QueueIconButton(
             .clip(CircleShape)
             .background(if (LocalEchoDarkTheme.current) EchoGlassPanel.copy(alpha = 0.64f) else scheme.surface.copy(alpha = 0.68f))
             .border(BorderStroke(1.dp, if (LocalEchoDarkTheme.current) EchoDarkGlassBorder else scheme.outlineVariant.copy(alpha = 0.22f)), CircleShape)
-            .clickable(onClick = onClick),
+            .echoClickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -688,15 +687,11 @@ private fun QueueIconButton(
 @Composable
 private fun queueSubtitle(queueState: PlaybackQueueState, status: EchoPlaybackStatus): String {
     if (queueState.items.isEmpty()) {
-        return status.track?.title ?: echoString(en = "Nothing playing", zh = "暂无播放", ja = "再生なし")
+        return status.track?.title ?: stringResource(L10nR.string.feature_player_nothing_playing_3beac0)
     }
     val current = (queueState.currentIndex + 1).coerceAtLeast(0)
     val size = queueState.items.size
-    return echoString(
-        en = "$size tracks · now playing $current",
-        zh = "$size 首 · 当前第 $current 首",
-        ja = "$size 曲 · 現在 $current 曲目",
-    )
+    return stringResource(L10nR.string.feature_player_size_tracks_now_playing_current_7d4647, (size).toString(), (current).toString())
 }
 
 @Composable
@@ -704,12 +699,12 @@ private fun queueTrackDetail(track: EchoTrackRef): String {
     val album = track.album?.takeIf { it.isNotBlank() }
     val duration = track.durationMs.takeIf { it > 0L }?.let(::formatDuration)
     return listOfNotNull(track.artist.takeIf { it.isNotBlank() }, album, duration).joinToString(" · ")
-        .ifBlank { echoString(en = "Local queue", zh = "本地队列", ja = "ローカルキュー") }
+        .ifBlank { stringResource(L10nR.string.feature_player_local_queue_c7d54b) }
 }
 
 @Composable
 private fun repeatModeLabel(mode: EchoRepeatMode): String = when (mode) {
-    EchoRepeatMode.Off -> echoString(en = "Repeat off", zh = "不循环", ja = "リピートしない")
-    EchoRepeatMode.All -> echoString(en = "Repeat all", zh = "列表循环", ja = "全曲リピート")
-    EchoRepeatMode.One -> echoString(en = "Repeat one", zh = "单曲循环", ja = "1曲リピート")
+    EchoRepeatMode.Off -> stringResource(L10nR.string.feature_player_repeat_off_254ca2)
+    EchoRepeatMode.All -> stringResource(L10nR.string.feature_player_repeat_all_b8cce1)
+    EchoRepeatMode.One -> stringResource(L10nR.string.feature_player_repeat_one_3df94f)
 }

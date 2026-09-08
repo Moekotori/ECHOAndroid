@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module-owned translations. English values are the fallback for missing translations. -->
+<resources>
+    <string name="feature_library_add_to_playlist_0f8338" formatted="false">"Add to playlist"</string>
+    <string name="feature_library_add_to_queue_1775d3" formatted="false">"Add to queue"</string>
+    <string name="feature_library_added_155093" formatted="false">"Added"</string>
+    <string name="feature_library_album_724bef" formatted="false">"album"</string>
+    <string name="feature_library_album_artist_6defa0" formatted="false">"Album artist"</string>
+    <string name="feature_library_album_artist_8a1c9e" formatted="false">"Album artist"</string>
+    <string name="feature_library_album_eb13be" formatted="false">"Album"</string>
+    <string name="feature_library_albums_e68c2b" formatted="false">"Albums"</string>
+    <string name="feature_library_allow_30c6b5" formatted="false">"Allow"</string>
+    <string name="feature_library_allow_music_access_a30185" formatted="false">"Allow music access"</string>
+    <string name="feature_library_artist_37d883" formatted="false">"Artist"</string>
+    <string name="feature_library_artist_b6e7ad" formatted="false">"Artist"</string>
+    <string name="feature_library_artist_c15fae" formatted="false">"artist"</string>
+    <string name="feature_library_artists_1e19fb" formatted="false">"Artists"</string>
+    <string name="feature_library_artists_e168aa" formatted="false">"Artists"</string>
+    <string name="feature_library_back_49093c" formatted="false">"Back"</string>
+    <string name="feature_library_back_to_pc_echo_playlists_499312" formatted="false">"Back to PC ECHO playlists"</string>
+    <string name="feature_library_best_after_copying_in_new_music_updates_only_a75783" formatted="false">"Best after copying in new music; updates only the selected folder"</string>
+    <string name="feature_library_cancel_4c5fa5" formatted="false">"Cancel"</string>
+    <string name="feature_library_cancel_library_scan_4033b9" formatted="false">"Cancel library scan"</string>
+    <string name="feature_library_cancel_scan_dcb52d" formatted="false">"Cancel scan"</string>
+    <string name="feature_library_change_artwork_d37180" formatted="false">"Change artwork"</string>
+    <string name="feature_library_choose_the_indexing_range_for_this_scan_58c0af" formatted="false">"Choose the indexing range for this scan"</string>
+    <string name="feature_library_cleaning_removed_music_40b12d" formatted="false">"Cleaning removed music"</string>
+    <string name="feature_library_close_473a69" formatted="false">"Close"</string>
+    <string name="feature_library_close_search_50a720" formatted="false">"Close search"</string>
+    <string name="feature_library_cloud_466e60" formatted="false">"Cloud"</string>
+    <string name="feature_library_comparing_library_90f3c1" formatted="false">"Comparing library"</string>
+    <string name="feature_library_connect_pc_echo_in_link_first_then_you_31fc3e" formatted="false">"Connect PC ECHO in Link first, then you can browse the PC library here."</string>
+    <string name="feature_library_count_albums_554048">"%1$s albums"</string>
+    <string name="feature_library_count_tracks_73b21a">"%1$s tracks"</string>
+    <string name="feature_library_count_tracks_liked_songs_e36fb7">"%1$s tracks · Liked songs"</string>
+    <string name="feature_library_count_tracks_local_playlist_352a0d">"%1$s tracks · Local playlist"</string>
+    <string name="feature_library_count_tracks_navidrome_294a65">"%1$s tracks · Navidrome"</string>
+    <string name="feature_library_create_7b4bc9" formatted="false">"Create"</string>
+    <string name="feature_library_currently_saved_only_to_the_echoandroid_library_index_6c327c" formatted="false">"Currently saved only to the ECHOAndroid library index, not written into the audio file."</string>
+    <string name="feature_library_currently_saved_to_the_echoandroid_library_index_imported_e15a70" formatted="false">"Currently saved to the ECHOAndroid library index; imported lyrics and artwork are also bound to this track."</string>
+    <string name="feature_library_custom_artwork_c8c999" formatted="false">"Custom artwork"</string>
+    <string name="feature_library_delete_138ccf" formatted="false">"Delete"</string>
+    <string name="feature_library_delete_playlist_4d9753" formatted="false">"Delete playlist"</string>
+    <string name="feature_library_delete_playlist_name_songs_in_the_library_will_3541db">"Delete “%1$s”? Songs in the library will not be deleted."</string>
+    <string name="feature_library_disc_3128c0" formatted="false">"Disc"</string>
+    <string name="feature_library_discs_discs_902194">"%1$s discs"</string>
+    <string name="feature_library_done_a5e659" formatted="false">"Done"</string>
+    <string name="feature_library_duration_573e08" formatted="false">"Duration"</string>
+    <string name="feature_library_duration_e1c56c" formatted="false">"duration"</string>
+    <string name="feature_library_edit_tags_c8ec75" formatted="false">"Edit tags"</string>
+    <string name="feature_library_failed_to_load_albums_8a8685" formatted="false">"Failed to load albums."</string>
+    <string name="feature_library_failed_to_load_artists_da82a6" formatted="false">"Failed to load artists."</string>
+    <string name="feature_library_failed_to_load_folder_tracks_0966ba" formatted="false">"Failed to load folder tracks."</string>
+    <string name="feature_library_failed_to_load_folders_d4887b" formatted="false">"Failed to load folders."</string>
+    <string name="feature_library_failed_to_load_playlist_tracks_9130da" formatted="false">"Failed to load playlist tracks."</string>
+    <string name="feature_library_failed_to_load_tracks_f65c9b" formatted="false">"Failed to load tracks."</string>
+    <string name="feature_library_folder_albumcount_albums_3c43c1">"%1$s albums"</string>
+    <string name="feature_library_folder_artistcount_artists_6d0d7e">"%1$s artists"</string>
+    <string name="feature_library_folder_tracks_859f02" formatted="false">"Folder tracks"</string>
+    <string name="feature_library_folder_view_2b3c84" formatted="false">"Folder view"</string>
+    <string name="feature_library_folders_cc514a" formatted="false">"Folders"</string>
+    <string name="feature_library_format_a7775b" formatted="false">"Format"</string>
+    <string name="feature_library_format_pending_ce16a1" formatted="false">"Format pending"</string>
+    <string name="feature_library_frequently_played_9d6932" formatted="false">"frequently played"</string>
+    <string name="feature_library_full_scan_8f63a2" formatted="false">"Full scan"</string>
+    <string name="feature_library_grant_access_to_index_local_music_cloud_libraries_568ef2" formatted="false">"Grant access to index local music. Cloud libraries can open the Cloud tab directly."</string>
+    <string name="feature_library_import_lrc_lyrics_8e2810" formatted="false">"Import LRC lyrics"</string>
+    <string name="feature_library_import_lyrics_744b75" formatted="false">"Import lyrics"</string>
+    <string name="feature_library_incrementally_indexing_local_music_3fc64d" formatted="false">"Incrementally indexing local music"</string>
+    <string name="feature_library_info_41ae25" formatted="false">"Info"</string>
+    <string name="feature_library_it_albums_3c43c1">"%1$s albums"</string>
+    <string name="feature_library_kind_2dcbb1" formatted="false">"Kind"</string>
+    <string name="feature_library_library_848e9b" formatted="false">"Library"</string>
+    <string name="feature_library_library_query_failed_f9c538" formatted="false">"Library query failed."</string>
+    <string name="feature_library_library_scan_failed_94b709" formatted="false">"Library scan failed."</string>
+    <string name="feature_library_liked_c8ac9d" formatted="false">"Liked"</string>
+    <string name="feature_library_liked_songs_8d6245" formatted="false">"Liked songs"</string>
+    <string name="feature_library_linked_5d42a7" formatted="false">"Linked"</string>
+    <string name="feature_library_loading_albums_75c4f3" formatted="false">"Loading albums..."</string>
+    <string name="feature_library_loading_artists_e9b16d" formatted="false">"Loading artists..."</string>
+    <string name="feature_library_loading_folder_tracks_83d4ec" formatted="false">"Loading folder tracks..."</string>
+    <string name="feature_library_loading_folders_54c760" formatted="false">"Loading folders..."</string>
+    <string name="feature_library_loading_library_a77123" formatted="false">"Loading library..."</string>
+    <string name="feature_library_loading_more_from_pc_echo_tracks_size_state_e85d63">"Loading more from PC ECHO (%1$s/%2$s)..."</string>
+    <string name="feature_library_loading_playlist_eb6248" formatted="false">"Loading playlist..."</string>
+    <string name="feature_library_loading_tracks_8e2147" formatted="false">"Loading tracks..."</string>
+    <string name="feature_library_local_9b5178" formatted="false">"Local"</string>
+    <string name="feature_library_local_audio_7fc2a6" formatted="false">"Local audio"</string>
+    <string name="feature_library_local_library_ddf4b1" formatted="false">"Local library"</string>
+    <string name="feature_library_local_playlists_cea002" formatted="false">"Local playlists"</string>
+    <string name="feature_library_mediastore_did_not_provide_a_path_53b27e" formatted="false">"MediaStore did not provide a path"</string>
+    <string name="feature_library_minutes_min_777a53">"%1$s min"</string>
+    <string name="feature_library_move_down_cf81ae" formatted="false">"Move down"</string>
+    <string name="feature_library_move_up_e6d961" formatted="false">"Move up"</string>
+    <string name="feature_library_multiple_sources_0f53d5" formatted="false">"Multiple sources"</string>
+    <string name="feature_library_name_57335e" formatted="false">"Name"</string>
+    <string name="feature_library_new_cc6582" formatted="false">"New"</string>
+    <string name="feature_library_new_playlist_22cdbd" formatted="false">"New playlist"</string>
+    <string name="feature_library_new_playlist_and_add_314ff2" formatted="false">"New playlist and add"</string>
+    <string name="feature_library_no_liked_songs_yet_heart_a_track_from_ba96cc" formatted="false">"No liked songs yet. Heart a track from the player or a song menu."</string>
+    <string name="feature_library_no_local_playlists_yet_create_one_from_the_e13a98" formatted="false">"No local playlists yet. Create one from the top-right, or add from a song menu."</string>
+    <string name="feature_library_no_local_songs_yet_fa3b6a" formatted="false">"No local songs yet"</string>
+    <string name="feature_library_no_playlists_yet_create_one_first_6af586" formatted="false">"No playlists yet. Create one first."</string>
+    <string name="feature_library_no_tracks_yet_c4614a" formatted="false">"No tracks yet."</string>
+    <string name="feature_library_not_available_7d3220" formatted="false">"Not available"</string>
+    <string name="feature_library_not_connected_c4d337" formatted="false">"Not connected"</string>
+    <string name="feature_library_open_folder_ab1708" formatted="false">"Open folder"</string>
+    <string name="feature_library_pc_echo_e0a2d4" formatted="false">"PC ECHO"</string>
+    <string name="feature_library_pc_echo_has_no_albums_to_show_2784be" formatted="false">"PC ECHO has no albums to show."</string>
+    <string name="feature_library_pc_echo_has_no_artists_to_show_b6975c" formatted="false">"PC ECHO has no artists to show."</string>
+    <string name="feature_library_pc_echo_has_no_matching_albums_c433fb" formatted="false">"PC ECHO has no matching albums."</string>
+    <string name="feature_library_pc_echo_has_no_matching_artists_2dbc79" formatted="false">"PC ECHO has no matching artists."</string>
+    <string name="feature_library_pc_echo_has_no_matching_playlists_846ad7" formatted="false">"PC ECHO has no matching playlists."</string>
+    <string name="feature_library_pc_echo_has_no_matching_songs_40afe3" formatted="false">"PC ECHO has no matching songs."</string>
+    <string name="feature_library_pc_echo_has_no_playlists_to_show_8e8438" formatted="false">"PC ECHO has no playlists to show."</string>
+    <string name="feature_library_pc_echo_has_no_songs_to_show_a46ba6" formatted="false">"PC ECHO has no songs to show."</string>
+    <string name="feature_library_pick_an_album_artist_folder_or_playlist_e517b7" formatted="false">"Pick an album, artist, folder, or playlist."</string>
+    <string name="feature_library_play_38419a" formatted="false">"Play"</string>
+    <string name="feature_library_play_all_55c80e" formatted="false">"Play all"</string>
+    <string name="feature_library_play_next_a1f73e" formatted="false">"Play next"</string>
+    <string name="feature_library_play_this_folder_77afdc" formatted="false">"Play this folder"</string>
+    <string name="feature_library_playlist_actions_044945" formatted="false">"Playlist actions"</string>
+    <string name="feature_library_playlist_trackcount_tracks_source_3431c6">"%1$s tracks · %2$s"</string>
+    <string name="feature_library_playlistcount_playlists_220ceb">"%1$s playlists"</string>
+    <string name="feature_library_playlistdisplayname_playlist_playlist_trackcount_tracks_2afcb8">"%1$s · %2$s tracks"</string>
+    <string name="feature_library_playlists_56bf76" formatted="false">"Playlists"</string>
+    <string name="feature_library_preparing_scan_7e7bcf" formatted="false">"Preparing scan"</string>
+    <string name="feature_library_reading_mediastore_87cd18" formatted="false">"Reading MediaStore"</string>
+    <string name="feature_library_reading_pc_echo_library_fccbe4" formatted="false">"Reading PC ECHO library..."</string>
+    <string name="feature_library_reading_pc_echo_playlist_1ba678" formatted="false">"Reading PC ECHO playlist..."</string>
+    <string name="feature_library_recently_played_ce4d5f" formatted="false">"recently played"</string>
+    <string name="feature_library_recently_updated_781ab0" formatted="false">"recently updated"</string>
+    <string name="feature_library_refresh_pc_echo_library_5b6275" formatted="false">"Refresh PC ECHO library"</string>
+    <string name="feature_library_remove_from_playlist_f07718" formatted="false">"Remove from playlist"</string>
+    <string name="feature_library_removed_7be2fd" formatted="false">"Removed"</string>
+    <string name="feature_library_rename_d1a28e" formatted="false">"Rename"</string>
+    <string name="feature_library_rename_playlist_757bb7" formatted="false">"Rename playlist"</string>
+    <string name="feature_library_resync_all_local_music_and_clean_up_deleted_f1b337" formatted="false">"Resync all local music and clean up deleted items"</string>
+    <string name="feature_library_sample_rate_f6382c" formatted="false">"Sample rate"</string>
+    <string name="feature_library_sample_rate_pending_bd6e6d" formatted="false">"Sample rate pending"</string>
+    <string name="feature_library_save_68ae20" formatted="false">"Save"</string>
+    <string name="feature_library_scan_a_single_folder_17bf3e" formatted="false">"Scan a single folder"</string>
+    <string name="feature_library_scan_cancelled_1eefcb" formatted="false">"Scan cancelled"</string>
+    <string name="feature_library_scan_cancelled_the_existing_library_was_kept_266734" formatted="false">"Scan cancelled. The existing library was kept."</string>
+    <string name="feature_library_scan_complete_fbdf16" formatted="false">"Scan complete"</string>
+    <string name="feature_library_scan_complete_scanstate_scannedcount_tracks_added_scanstate_inse_bf2d9e">"Scan complete: %1$s tracks, added %2$s, updated %3$s, removed %4$s"</string>
+    <string name="feature_library_scan_failed_f4c0ae" formatted="false">"Scan failed"</string>
+    <string name="feature_library_scan_fe69d2" formatted="false">"Scan"</string>
+    <string name="feature_library_scan_library_3d1814" formatted="false">"Scan library"</string>
+    <string name="feature_library_scan_local_music_from_the_top_right_corner_584da2" formatted="false">"Scan local music from the top-right corner."</string>
+    <string name="feature_library_scanned_862bfd" formatted="false">"Scanned"</string>
+    <string name="feature_library_search_library_80ef90" formatted="false">"Search library"</string>
+    <string name="feature_library_search_songs_artists_albums_14dc2c" formatted="false">"Search songs, artists, albums"</string>
+    <string name="feature_library_set_track_sort_order_4053c0" formatted="false">"Set track sort order"</string>
+    <string name="feature_library_shuffle_34e7ce" formatted="false">"Shuffle"</string>
+    <string name="feature_library_shuffle_f8e15b" formatted="false">"shuffle"</string>
+    <string name="feature_library_size_49c9f8" formatted="false">"Size"</string>
+    <string name="feature_library_size_f63a75" formatted="false">"Size"</string>
+    <string name="feature_library_song_title_fedd5e" formatted="false">"song title"</string>
+    <string name="feature_library_songs_107b60" formatted="false">"Songs"</string>
+    <string name="feature_library_source_4aff16" formatted="false">"Source"</string>
+    <string name="feature_library_stop_739d16" formatted="false">"Stop"</string>
+    <string name="feature_library_switch_library_source_long_press_to_scan_tracks_2d8c87" formatted="false">"Switch library source; long-press to scan tracks"</string>
+    <string name="feature_library_switch_library_view_f99a55" formatted="false">"Switch library view"</string>
+    <string name="feature_library_text_e9396c" formatted="false">"—"</string>
+    <string name="feature_library_this_folder_has_no_tracks_yet_f1a6e0" formatted="false">"This folder has no tracks yet."</string>
+    <string name="feature_library_this_library_has_no_albums_to_show_yet_925b12" formatted="false">"This library has no albums to show yet."</string>
+    <string name="feature_library_this_library_has_no_artists_to_show_yet_d95101" formatted="false">"This library has no artists to show yet."</string>
+    <string name="feature_library_this_library_has_no_browsable_storage_paths_yet_fb0395" formatted="false">"This library has no browsable storage paths yet."</string>
+    <string name="feature_library_this_pc_echo_playlist_has_no_playable_tracks_b480ec" formatted="false">"This PC ECHO playlist has no playable tracks yet."</string>
+    <string name="feature_library_this_playlist_is_empty_add_songs_from_a_bebd89" formatted="false">"This playlist is empty. Add songs from a track menu."</string>
+    <string name="feature_library_title_af1111" formatted="false">"Title"</string>
+    <string name="feature_library_track_000e4d" formatted="false">"Track"</string>
+    <string name="feature_library_track_info_36a07b" formatted="false">"Track info"</string>
+    <string name="feature_library_tracks_2d80e8" formatted="false">"Tracks"</string>
+    <string name="feature_library_unknown_album_8831c3" formatted="false">"Unknown album"</string>
+    <string name="feature_library_unknown_artist_9acb98" formatted="false">"Unknown artist"</string>
+    <string name="feature_library_unknown_path_e282e8" formatted="false">"Unknown path"</string>
+    <string name="feature_library_unknown_source_d8c291" formatted="false">"Unknown source"</string>
+    <string name="feature_library_unknown_track_6cae0d" formatted="false">"Unknown track"</string>
+    <string name="feature_library_updated_c440c1" formatted="false">"Updated"</string>
+    <string name="feature_library_waiting_for_track_info_f2add7" formatted="false">"Waiting for track info"</string>
+    <string name="feature_library_waiting_to_scan_a5c343" formatted="false">"Waiting to scan"</string>
+    <string name="feature_library_writing_library_f9ac03" formatted="false">"Writing library"</string>
+    <string name="feature_library_year_fe373f" formatted="false">"Year"</string>
+</resources>

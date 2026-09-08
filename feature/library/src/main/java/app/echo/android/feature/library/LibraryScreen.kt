@@ -1,12 +1,15 @@
 package app.echo.android.feature.library
 
+import app.echo.android.feature.library.R as L10nR
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import app.echo.android.design.echoClickable
+import app.echo.android.design.echoCombinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -75,7 +78,7 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoColors
-import app.echo.android.design.EchoMotion
+import app.echo.android.design.rememberEchoContentMotion
 import app.echo.android.design.EchoContentMaxWidth
 import app.echo.android.design.EchoDarkGlassBorder
 import app.echo.android.design.EchoGlassBorder
@@ -88,7 +91,6 @@ import app.echo.android.design.EmptyState
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoWidthSizeClass
 import app.echo.android.design.PageChrome
-import app.echo.android.design.echoString
 import app.echo.android.model.connect.EchoRemoteLibraryState
 import app.echo.android.model.connect.EchoLinkLibraryQueryPolicy
 import app.echo.android.model.connect.EchoRemotePlaylist
@@ -127,12 +129,12 @@ internal enum class LibraryViewMode(
 
 @Composable
 internal fun LibraryViewMode.label(): String = when (this) {
-    LibraryViewMode.Songs -> echoString(en = "Songs", zh = "歌曲", ja = "曲")
-    LibraryViewMode.Folders -> echoString(en = "Folders", zh = "文件夹", ja = "フォルダー")
-    LibraryViewMode.Albums -> echoString(en = "Albums", zh = "专辑", ja = "アルバム")
-    LibraryViewMode.Artists -> echoString(en = "Artists", zh = "艺术家", ja = "アーティスト")
-    LibraryViewMode.Cloud -> echoString(en = "Cloud", zh = "网盘", ja = "クラウド")
-    LibraryViewMode.Playlists -> echoString(en = "Playlists", zh = "歌单", ja = "プレイリスト")
+    LibraryViewMode.Songs -> stringResource(L10nR.string.feature_library_songs_107b60)
+    LibraryViewMode.Folders -> stringResource(L10nR.string.feature_library_folders_cc514a)
+    LibraryViewMode.Albums -> stringResource(L10nR.string.feature_library_albums_e68c2b)
+    LibraryViewMode.Artists -> stringResource(L10nR.string.feature_library_artists_1e19fb)
+    LibraryViewMode.Cloud -> stringResource(L10nR.string.feature_library_cloud_466e60)
+    LibraryViewMode.Playlists -> stringResource(L10nR.string.feature_library_playlists_56bf76)
 }
 
 private enum class LinkedLibraryMode(
@@ -146,10 +148,10 @@ private enum class LinkedLibraryMode(
 
 @Composable
 private fun LinkedLibraryMode.label(): String = when (this) {
-    LinkedLibraryMode.Songs -> echoString(en = "Songs", zh = "歌曲", ja = "曲")
-    LinkedLibraryMode.Albums -> echoString(en = "Albums", zh = "专辑", ja = "アルバム")
-    LinkedLibraryMode.Artists -> echoString(en = "Artists", zh = "艺术家", ja = "アーティスト")
-    LinkedLibraryMode.Playlists -> echoString(en = "Playlists", zh = "歌单", ja = "プレイリスト")
+    LinkedLibraryMode.Songs -> stringResource(L10nR.string.feature_library_songs_107b60)
+    LinkedLibraryMode.Albums -> stringResource(L10nR.string.feature_library_albums_e68c2b)
+    LinkedLibraryMode.Artists -> stringResource(L10nR.string.feature_library_artists_1e19fb)
+    LinkedLibraryMode.Playlists -> stringResource(L10nR.string.feature_library_playlists_56bf76)
 }
 
 private enum class LibrarySourceMode(
@@ -163,46 +165,46 @@ private enum class LibrarySourceMode(
 
 @Composable
 private fun LibrarySourceMode.label(): String = when (this) {
-    LibrarySourceMode.Local -> echoString(en = "Local", zh = "本地", ja = "ローカル")
-    LibrarySourceMode.PcEcho -> echoString(en = "PC ECHO", zh = "PC ECHO", ja = "PC ECHO")
-    LibrarySourceMode.Cloud -> echoString(en = "Cloud", zh = "网盘", ja = "クラウド")
+    LibrarySourceMode.Local -> stringResource(L10nR.string.feature_library_local_9b5178)
+    LibrarySourceMode.PcEcho -> stringResource(L10nR.string.feature_library_pc_echo_e0a2d4)
+    LibrarySourceMode.Cloud -> stringResource(L10nR.string.feature_library_cloud_466e60)
 }
 
 @Composable
 internal fun LibraryTrackSortMode.label(): String = when (this) {
-    LibraryTrackSortMode.Title -> echoString(en = "song title", zh = "歌曲标题", ja = "曲名")
-    LibraryTrackSortMode.Duration -> echoString(en = "duration", zh = "音乐时间", ja = "再生時間")
-    LibraryTrackSortMode.FrequentlyPlayed -> echoString(en = "frequently played", zh = "常听歌曲", ja = "よく聴く曲")
-    LibraryTrackSortMode.RecentlyPlayed -> echoString(en = "recently played", zh = "最近播放", ja = "最近再生した曲")
-    LibraryTrackSortMode.Random -> echoString(en = "shuffle", zh = "随机排序", ja = "ランダム")
-    LibraryTrackSortMode.Artist -> echoString(en = "artist", zh = "艺术家", ja = "アーティスト")
-    LibraryTrackSortMode.Album -> echoString(en = "album", zh = "专辑", ja = "アルバム")
-    LibraryTrackSortMode.RecentlyUpdated -> echoString(en = "recently updated", zh = "最近更新", ja = "最近の更新")
+    LibraryTrackSortMode.Title -> stringResource(L10nR.string.feature_library_song_title_fedd5e)
+    LibraryTrackSortMode.Duration -> stringResource(L10nR.string.feature_library_duration_e1c56c)
+    LibraryTrackSortMode.FrequentlyPlayed -> stringResource(L10nR.string.feature_library_frequently_played_9d6932)
+    LibraryTrackSortMode.RecentlyPlayed -> stringResource(L10nR.string.feature_library_recently_played_ce4d5f)
+    LibraryTrackSortMode.Random -> stringResource(L10nR.string.feature_library_shuffle_f8e15b)
+    LibraryTrackSortMode.Artist -> stringResource(L10nR.string.feature_library_artist_c15fae)
+    LibraryTrackSortMode.Album -> stringResource(L10nR.string.feature_library_album_724bef)
+    LibraryTrackSortMode.RecentlyUpdated -> stringResource(L10nR.string.feature_library_recently_updated_781ab0)
 }
 
 @Composable
 internal fun unknownArtistLabel(): String =
-    echoString(en = "Unknown artist", zh = "未知艺术家", ja = "不明なアーティスト")
+    stringResource(L10nR.string.feature_library_unknown_artist_9acb98)
 
 @Composable
 internal fun unknownAlbumLabel(): String =
-    echoString(en = "Unknown album", zh = "未知专辑", ja = "不明なアルバム")
+    stringResource(L10nR.string.feature_library_unknown_album_8831c3)
 
 @Composable
 internal fun unknownTrackLabel(): String =
-    echoString(en = "Unknown track", zh = "未知曲目", ja = "不明な曲")
+    stringResource(L10nR.string.feature_library_unknown_track_6cae0d)
 
 @Composable
 internal fun libraryTrackCountLabel(count: Int): String =
-    echoString(en = "$count tracks", zh = "$count 首", ja = "$count 曲")
+    stringResource(L10nR.string.feature_library_count_tracks_73b21a, (count).toString())
 
 @Composable
 internal fun libraryAlbumCountLabel(count: Int): String =
-    echoString(en = "$count albums", zh = "$count 张专辑", ja = "アルバム $count 枚")
+    stringResource(L10nR.string.feature_library_count_albums_554048, (count).toString())
 
 @Composable
 internal fun libraryMinutesLabel(minutes: Int): String =
-    echoString(en = "$minutes min", zh = "$minutes 分钟", ja = "$minutes 分")
+    stringResource(L10nR.string.feature_library_minutes_min_777a53, (minutes).toString())
 
 private object LibrarySourceIds {
     const val Local = "local"
@@ -429,7 +431,7 @@ fun LibraryScreen(
 
     if (selectedSource == LibrarySourceMode.PcEcho) {
         PageChrome(
-            title = echoString(en = "Library", zh = "曲库", ja = "ライブラリ"),
+            title = stringResource(L10nR.string.feature_library_library_848e9b),
             subtitle = "PC ECHO",
             badge = selectedSource.label(),
             showBrand = false,
@@ -439,11 +441,7 @@ fun LibraryScreen(
                 IconButton(onClick = { onRefreshLinkedLibrary(libraryQuery) }) {
                     Icon(
                         Icons.Rounded.Refresh,
-                        contentDescription = echoString(
-                            en = "Refresh PC ECHO library",
-                            zh = "刷新 PC ECHO 曲库",
-                            ja = "PC ECHO ライブラリを更新",
-                        ),
+                        contentDescription = stringResource(L10nR.string.feature_library_refresh_pc_echo_library_5b6275),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -460,11 +458,7 @@ fun LibraryScreen(
                 onSelectSource = ::selectSource,
             )
             EmptyState(
-                echoString(
-                    en = "Connect PC ECHO in Link first, then you can browse the PC library here.",
-                    zh = "先到“互联”连接 PC ECHO，然后这里就能浏览 PC 曲库。",
-                    ja = "先に「連携」で PC ECHO を接続すると、ここで PC ライブラリを閲覧できます。",
-                ),
+                stringResource(L10nR.string.feature_library_connect_pc_echo_in_link_first_then_you_31fc3e),
             )
         }
         return
@@ -475,7 +469,7 @@ fun LibraryScreen(
     @Composable
     fun LocalBrowserPane() {
         PageChrome(
-            title = echoString(en = "Library", zh = "曲库", ja = "ライブラリ"),
+            title = stringResource(L10nR.string.feature_library_library_848e9b),
             subtitle = null,
             badge = selectedSource.label(),
             showBrand = false,
@@ -528,10 +522,11 @@ fun LibraryScreen(
                         onSortModeChange = onTrackSortModeChange,
                     )
                     Box(modifier = Modifier.weight(1f)) {
+                        val libraryTabMotion = rememberEchoContentMotion()
                         AnimatedContent(
                             targetState = selectedMode,
                             transitionSpec = {
-                                EchoMotion.tabSwitch(targetState.ordinal > initialState.ordinal)
+                                libraryTabMotion.tabSwitch(targetState.ordinal > initialState.ordinal)
                             },
                             label = "library-mode-transition",
                             modifier = Modifier.fillMaxSize(),
@@ -548,25 +543,13 @@ fun LibraryScreen(
                                 when {
                                     !hasPermission ->
                                         EmptyState(
-                                            echoString(
-                                                en = "Grant access to index local music. Cloud libraries can open the Cloud tab directly.",
-                                                zh = "授权后即可索引本地音乐；云端曲库可直接进入“网盘”页。",
-                                                ja = "許可するとローカル音楽を索引できます。クラウドライブラリは「クラウド」から直接開けます。",
-                                            ),
+                                            stringResource(L10nR.string.feature_library_grant_access_to_index_local_music_cloud_libraries_568ef2),
                                         )
                                     showInitialTrackLoading -> EmptyState(
-                                        echoString(
-                                            en = "Loading library...",
-                                            zh = "正在加载曲库...",
-                                            ja = "ライブラリを読み込み中...",
-                                        ),
+                                        stringResource(L10nR.string.feature_library_loading_library_a77123),
                                     )
                                     showInitialTrackError -> EmptyState(
-                                        echoString(
-                                            en = "Library query failed.",
-                                            zh = "曲库查询失败。",
-                                            ja = "ライブラリの照会に失敗しました。",
-                                        ),
+                                        stringResource(L10nR.string.feature_library_library_query_failed_f9c538),
                                     )
                                     trackItems.itemCount == 0 -> LibraryBootstrapState()
                                     else -> TrackList(
@@ -751,6 +734,8 @@ fun LibraryScreen(
         else -> LibraryDetailTransitionTarget.Browser
     }
 
+    val libraryDetailMotion = rememberEchoContentMotion()
+
     AnimatedContent(
         targetState = detailTransitionTarget,
         contentKey = { target ->
@@ -764,9 +749,9 @@ fun LibraryScreen(
         },
         transitionSpec = {
             if (targetState != LibraryDetailTransitionTarget.Browser) {
-                EchoMotion.pagePush()
+                libraryDetailMotion.pagePush()
             } else {
-                EchoMotion.pagePop()
+                libraryDetailMotion.pagePop()
             }
         },
         label = "library-detail-transition",
@@ -875,11 +860,7 @@ private fun LibrarySplitPlaceholder() {
         contentAlignment = Alignment.Center,
     ) {
         EmptyState(
-            echoString(
-                en = "Pick an album, artist, folder, or playlist.",
-                zh = "选择一张专辑、一位艺术家、一个文件夹或歌单。",
-                ja = "アルバム、アーティスト、フォルダー、またはプレイリストを選んでください。",
-            ),
+            stringResource(L10nR.string.feature_library_pick_an_album_artist_folder_or_playlist_e517b7),
         )
     }
 }
@@ -897,7 +878,7 @@ private fun LibrarySourceMenu(
     val dark = LocalEchoDarkTheme.current
     Box(modifier = modifier) {
         Surface(
-            modifier = Modifier.clickable { expanded = true },
+            modifier = Modifier.echoClickable { expanded = true },
             shape = RoundedCornerShape(8.dp),
             color = if (dark) EchoGlassPanel.copy(alpha = 0.74f) else scheme.surface.copy(alpha = 0.50f),
             border = BorderStroke(1.dp, if (dark) EchoDarkGlassBorder else EchoGlassBorder),
@@ -945,7 +926,7 @@ private fun LibrarySourceMenu(
                     trailingIcon = if (source == LibrarySourceMode.PcEcho && !linkedLibraryAvailable) {
                         {
                             Text(
-                                echoString(en = "Not connected", zh = "未连接", ja = "未接続"),
+                                stringResource(L10nR.string.feature_library_not_connected_c4d337),
                                 color = scheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.labelSmall,
                             )
@@ -982,9 +963,9 @@ private fun LibrarySourceScanButton(
     val scheme = MaterialTheme.colorScheme
     val accent = rememberLibraryControlColor()
     val scanDescription = when {
-        !hasPermission -> echoString(en = "Allow music access", zh = "授权音乐权限", ja = "音楽へのアクセスを許可")
-        scanState.isScanning -> echoString(en = "Cancel library scan", zh = "取消扫描曲库", ja = "ライブラリのスキャンをキャンセル")
-        else -> echoString(en = "Scan library", zh = "扫描曲库", ja = "ライブラリをスキャン")
+        !hasPermission -> stringResource(L10nR.string.feature_library_allow_music_access_a30185)
+        scanState.isScanning -> stringResource(L10nR.string.feature_library_cancel_library_scan_4033b9)
+        else -> stringResource(L10nR.string.feature_library_scan_library_3d1814)
     }
     val scanAction = when {
         !hasPermission -> onRequestPermission
@@ -996,7 +977,7 @@ private fun LibrarySourceScanButton(
 
     Box(modifier = modifier) {
         Surface(
-            modifier = Modifier.combinedClickable(
+            modifier = Modifier.echoCombinedClickable(
                 onClick = { sourceExpanded = true },
                 onLongClick = scanAction,
                 onLongClickLabel = scanDescription,
@@ -1007,11 +988,7 @@ private fun LibrarySourceScanButton(
         ) {
             Icon(
                 imageVector = if (scanState.isScanning) Icons.Rounded.Close else selectedSource.icon,
-                contentDescription = echoString(
-                    en = "Switch library source; long-press to scan tracks",
-                    zh = "切换曲库来源；长按扫描歌曲",
-                    ja = "ライブラリのソースを切り替え。長押しで曲をスキャン",
-                ),
+                contentDescription = stringResource(L10nR.string.feature_library_switch_library_source_long_press_to_scan_tracks_2d8c87),
                 tint = if (scanState.error != null) EchoColors.Coral else scheme.onSurface,
                 modifier = Modifier
                     .padding(horizontal = 10.dp, vertical = 7.dp)
@@ -1042,7 +1019,7 @@ private fun LibrarySourceScanButton(
                     trailingIcon = if (source == LibrarySourceMode.PcEcho && !linkedLibraryAvailable) {
                         {
                             Text(
-                                echoString(en = "Not connected", zh = "未连接", ja = "未接続"),
+                                stringResource(L10nR.string.feature_library_not_connected_c4d337),
                                 color = scheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.labelSmall,
                             )
@@ -1242,6 +1219,7 @@ private fun LinkedEchoLibraryPage(
         )
         else -> LinkedLibraryDetailTarget.Browser
     }
+    val linkedDetailMotion = rememberEchoContentMotion()
     AnimatedContent(
         targetState = linkedDetailTarget,
         contentKey = { target ->
@@ -1253,7 +1231,7 @@ private fun LinkedEchoLibraryPage(
             }
         },
         transitionSpec = {
-            if (targetState == LinkedLibraryDetailTarget.Browser) EchoMotion.pagePop() else EchoMotion.pagePush()
+            if (targetState == LinkedLibraryDetailTarget.Browser) linkedDetailMotion.pagePop() else linkedDetailMotion.pagePush()
         },
         label = "linked-library-detail",
         modifier = modifier,
@@ -1293,11 +1271,7 @@ private fun LinkedEchoLibraryPage(
             IconButton(onClick = { onRefresh(normalizedQuery) }, enabled = !state.isLoading) {
                 Icon(
                     Icons.Rounded.Refresh,
-                    contentDescription = echoString(
-                        en = "Refresh PC ECHO library",
-                        zh = "刷新 PC ECHO 曲库",
-                        ja = "PC ECHO ライブラリを更新",
-                    ),
+                    contentDescription = stringResource(L10nR.string.feature_library_refresh_pc_echo_library_5b6275),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -1321,98 +1295,59 @@ private fun LinkedEchoLibraryPage(
         )
         if (state.isLoadingMore) {
             Text(
-                text = echoString(
-                    en = "Loading more from PC ECHO (${tracks.size}/${state.totalCount})...",
-                    zh = "正在继续读取 PC ECHO 曲库(${tracks.size}/${state.totalCount})...",
-                    ja = "PC ECHO ライブラリを継続読み込み中(${tracks.size}/${state.totalCount})...",
-                ),
+                text = stringResource(L10nR.string.feature_library_loading_more_from_pc_echo_tracks_size_state_e85d63, (tracks.size).toString(), (state.totalCount).toString()),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
             )
         }
+        val linkedTabMotion = rememberEchoContentMotion()
         AnimatedContent(
             targetState = selectedMode,
             transitionSpec = {
-                EchoMotion.tabSwitch(targetState.ordinal > initialState.ordinal)
+                linkedTabMotion.tabSwitch(targetState.ordinal > initialState.ordinal)
             },
             label = "linked-library-mode",
             modifier = Modifier.weight(1f),
         ) { mode ->
         when {
             state.isLoading -> EmptyState(
-                echoString(
-                    en = "Reading PC ECHO library...",
-                    zh = "正在读取 PC ECHO 曲库...",
-                    ja = "PC ECHO ライブラリを読み込み中...",
-                ),
+                stringResource(L10nR.string.feature_library_reading_pc_echo_library_fccbe4),
             )
             !errorMessage.isNullOrBlank() -> EmptyState(errorMessage)
             mode == LinkedLibraryMode.Songs && sortedTracks.isEmpty() -> {
                 EmptyState(
                     if (query.isBlank()) {
-                        echoString(
-                            en = "PC ECHO has no songs to show.",
-                            zh = "PC ECHO 暂无可显示歌曲。",
-                            ja = "PC ECHO に表示できる曲はありません。",
-                        )
+                        stringResource(L10nR.string.feature_library_pc_echo_has_no_songs_to_show_a46ba6)
                     } else {
-                        echoString(
-                            en = "PC ECHO has no matching songs.",
-                            zh = "PC ECHO 没有匹配的歌曲。",
-                            ja = "PC ECHO に一致する曲はありません。",
-                        )
+                        stringResource(L10nR.string.feature_library_pc_echo_has_no_matching_songs_40afe3)
                     },
                 )
             }
             mode == LinkedLibraryMode.Albums && albums.isEmpty() -> {
                 EmptyState(
                     if (query.isBlank()) {
-                        echoString(
-                            en = "PC ECHO has no albums to show.",
-                            zh = "PC ECHO 暂无可显示专辑。",
-                            ja = "PC ECHO に表示できるアルバムはありません。",
-                        )
+                        stringResource(L10nR.string.feature_library_pc_echo_has_no_albums_to_show_2784be)
                     } else {
-                        echoString(
-                            en = "PC ECHO has no matching albums.",
-                            zh = "PC ECHO 没有匹配的专辑。",
-                            ja = "PC ECHO に一致するアルバムはありません。",
-                        )
+                        stringResource(L10nR.string.feature_library_pc_echo_has_no_matching_albums_c433fb)
                     },
                 )
             }
             mode == LinkedLibraryMode.Artists && artists.isEmpty() -> {
                 EmptyState(
                     if (query.isBlank()) {
-                        echoString(
-                            en = "PC ECHO has no artists to show.",
-                            zh = "PC ECHO 暂无可显示艺术家。",
-                            ja = "PC ECHO に表示できるアーティストはありません。",
-                        )
+                        stringResource(L10nR.string.feature_library_pc_echo_has_no_artists_to_show_b6975c)
                     } else {
-                        echoString(
-                            en = "PC ECHO has no matching artists.",
-                            zh = "PC ECHO 没有匹配的艺术家。",
-                            ja = "PC ECHO に一致するアーティストはありません。",
-                        )
+                        stringResource(L10nR.string.feature_library_pc_echo_has_no_matching_artists_2dbc79)
                     },
                 )
             }
             mode == LinkedLibraryMode.Playlists && filteredPlaylists.isEmpty() -> {
                 EmptyState(
                     if (query.isBlank()) {
-                        echoString(
-                            en = "PC ECHO has no playlists to show.",
-                            zh = "PC ECHO 暂无可显示歌单。",
-                            ja = "PC ECHO に表示できるプレイリストはありません。",
-                        )
+                        stringResource(L10nR.string.feature_library_pc_echo_has_no_playlists_to_show_8e8438)
                     } else {
-                        echoString(
-                            en = "PC ECHO has no matching playlists.",
-                            zh = "PC ECHO 没有匹配的歌单。",
-                            ja = "PC ECHO に一致するプレイリストはありません。",
-                        )
+                        stringResource(L10nR.string.feature_library_pc_echo_has_no_matching_playlists_846ad7)
                     },
                 )
             }
@@ -1488,7 +1423,7 @@ private fun LinkedLibraryHeader(
             Column(
                 modifier = Modifier
                     .clip(RoundedCornerShape(16.dp))
-                    .clickable { onSelectMode(mode) }
+                    .echoClickable { onSelectMode(mode) }
                     .padding(horizontal = 4.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -1628,7 +1563,7 @@ private fun LinkedPlaylistRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
             .background(if (dark) EchoGlassPanel.copy(alpha = 0.50f) else EchoHomeMist.copy(alpha = 0.46f))
-            .clickable(onClick = onOpen)
+            .echoClickable(onClick = onOpen)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1691,11 +1626,7 @@ private fun LinkedPlaylistTracksPage(
             IconButton(onClick = onBack) {
                 Icon(
                     Icons.Rounded.Close,
-                    contentDescription = echoString(
-                        en = "Back to PC ECHO playlists",
-                        zh = "返回 PC ECHO 歌单",
-                        ja = "PC ECHO のプレイリストに戻る",
-                    ),
+                    contentDescription = stringResource(L10nR.string.feature_library_back_to_pc_echo_playlists_499312),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -1739,19 +1670,11 @@ private fun LinkedPlaylistTracksPage(
         Spacer(Modifier.height(10.dp))
         when {
             isLoading -> EmptyState(
-                echoString(
-                    en = "Reading PC ECHO playlist...",
-                    zh = "正在读取 PC ECHO 歌单...",
-                    ja = "PC ECHO のプレイリストを読み込み中...",
-                ),
+                stringResource(L10nR.string.feature_library_reading_pc_echo_playlist_1ba678),
             )
             tracks.isEmpty() && !error.isNullOrBlank() -> EmptyState(error)
             tracks.isEmpty() -> EmptyState(
-                echoString(
-                    en = "This PC ECHO playlist has no playable tracks yet.",
-                    zh = "这个 PC ECHO 歌单暂时没有可播放曲目。",
-                    ja = "この PC ECHO のプレイリストには再生できる曲がありません。",
-                ),
+                stringResource(L10nR.string.feature_library_this_pc_echo_playlist_has_no_playable_tracks_b480ec),
             )
             else -> LinkedTrackList(
                 tracks = tracks,
@@ -1886,11 +1809,7 @@ private fun EchoRemoteTrack.toEchoTrack(): EchoTrack =
 @Composable
 private fun linkedPlaylistSubtitle(playlist: EchoRemotePlaylist): String {
     val source = playlist.sourceLabel?.takeIf { it.isNotBlank() } ?: "PC ECHO"
-    return echoString(
-        en = "${playlist.trackCount} tracks · $source",
-        zh = "${playlist.trackCount} 首 · $source",
-        ja = "${playlist.trackCount} 曲 · $source",
-    )
+    return stringResource(L10nR.string.feature_library_playlist_trackcount_tracks_source_3431c6, (playlist.trackCount).toString(), (source).toString())
 }
 
 @Composable
@@ -1903,11 +1822,7 @@ private fun LibraryTrackSortMenu(
         IconButton(onClick = { expanded = true }) {
             Icon(
                 Icons.AutoMirrored.Rounded.Sort,
-                contentDescription = echoString(
-                    en = "Set track sort order",
-                    zh = "设置歌曲排序",
-                    ja = "曲の並び順を設定",
-                ),
+                contentDescription = stringResource(L10nR.string.feature_library_set_track_sort_order_4053c0),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
