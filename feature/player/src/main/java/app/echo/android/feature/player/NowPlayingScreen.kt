@@ -1,6 +1,7 @@
 package app.echo.android.feature.player
 
 import app.echo.android.feature.player.R as L10nR
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.stringResource
 
@@ -55,6 +56,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -1089,6 +1091,7 @@ private fun LyricsSettingsDrawer(
     onOnlineLyricsEnabledChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    BackHandler(enabled = visible, onBack = onDismiss)
     val drawerState = remember { MutableTransitionState(false) }
     drawerState.targetState = visible
     AnimatedVisibility(
@@ -2597,6 +2600,7 @@ private fun PlaybackSettingsDrawer(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    BackHandler(enabled = visible, onBack = onDismiss)
     val drawerState = remember { MutableTransitionState(false) }
     drawerState.targetState = visible
     AnimatedVisibility(

@@ -96,8 +96,9 @@ class OnlineLyricsResolver(
         checkCancelled()
         val response = httpGet(url, NeteaseHeaders) ?: return emptyList()
         checkCancelled()
-        val songs = runCatching { JSONObject(response).optJSONObject("result")?.optJSONArray("songs") }
-            .getOrNull() ?: return emptyList()
+        val root = runCatching { JSONObject(response) }.getOrNull() ?: return emptyList()
+        if (root.optInt("code", 200) != 200) return emptyList()
+        val songs = root.optJSONObject("result")?.optJSONArray("songs") ?: JSONArray()
         val candidates = songs.objects().take(15).mapNotNull { song ->
             val id = song.optLong("id").takeIf { it > 0 } ?: return@mapNotNull null
             val title = song.optString("name")

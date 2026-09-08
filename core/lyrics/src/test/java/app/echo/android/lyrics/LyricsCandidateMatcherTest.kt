@@ -90,9 +90,12 @@ class LyricsCandidateMatcherTest {
 
     @Test fun nativeVersionLabelsCannotBecomeBilingualAliases() {
         val matcher = LyricsCandidateMatcher(EchoLyricsSearchRequest("曲", "歌手", "Album", 180000))
-        listOf("カラオケ", "ライブ", "ライヴ", "라이브", "리믹스", "어쿠스틱", "데모", "TVサイズ", "Off Vocal")
+        listOf("カラオケ", "ライブ", "ライヴ", "라이브", "리믹스", "어쿠스틱", "데모", "TVサイズ", "Off Vocal", "Cover")
             .forEach { assertNull(it, matcher.match("曲 ($it)", "歌手", "Album", 180000)) }
         assertFalse(requireNotNull(matcher.match("曲 (Something)", "歌手", "Album", 195000)).automatic)
+        val ordinaryTitle = LyricsCandidateMatcher(EchoLyricsSearchRequest("デモクラシー", "歌手", "Album", 180000))
+        assertTrue(requireNotNull(ordinaryTitle.match("Democracy", "歌手", "Album", 180000,
+            titleAliases = listOf("デモクラシー"))).automatic)
     }
 
 }

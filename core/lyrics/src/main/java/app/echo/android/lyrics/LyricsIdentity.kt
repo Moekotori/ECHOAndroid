@@ -6,7 +6,7 @@ import java.util.Locale
 internal fun String.lyricsMatchKey(): String = lyricsNormalized().lowercase(Locale.ROOT).replace(NonLetters, "")
 private fun String.lyricsNormalized(): String = Normalizer.normalize(this, Normalizer.Form.NFKC)
 private val NonLetters = Regex("""[^\p{L}\p{N}]+""")
-private val BracketSuffix = Regex("""^(.*?)\s*[([]([^()\[\]]+)[)\]]\s*$""")
+private val BracketSuffix = Regex("""^(.*?)\s*[\(\[]([^()\[\]]+)[\)\]]\s*$""")
 private val Latin = Regex("[A-Za-z]")
 private val EastAsian = Regex("""[\p{IsHan}\p{IsHiragana}\p{IsKatakana}\p{IsHangul}]""")
 private val CharacterCredit = Regex("""\bCV\s*[.:：]?\s*""", RegexOption.IGNORE_CASE)
@@ -61,11 +61,12 @@ internal fun lyricsSearchFallback(request: EchoLyricsSearchRequest): EchoLyricsS
 }
 
 private val VersionPatterns = listOf(
-    """(?<![a-z])live(?![a-z])|ライブ|ライヴ|라이브|现场|現場""",
-    """(?<![a-z])remix(?![a-z])|リミックス|리믹스""",
-    """(?<![a-z])(?:instrumental|karaoke|off[\s-]*vocal)(?![a-z])|カラオケ|インスト(?:ゥルメンタル)?|인스트루멘탈|伴奏|纯音乐|純音樂""",
-    """(?<![a-z])(?:acoustic|unplugged)(?![a-z])|アコースティック|어쿠스틱|不插电|不插電""",
-    """(?<![a-z])demo(?![a-z])|デモ|데모""",
+    """(?<![a-z])live(?![a-z])|(?<![\p{L}\p{N}])(?:ライブ|ライヴ|라이브|现场|現場)(?:版|バージョン)?(?![\p{L}\p{N}])""",
+    """(?<![a-z])remix(?![a-z])|(?<![\p{L}\p{N}])(?:リミックス|리믹스)(?![\p{L}\p{N}])""",
+    """(?<![a-z])(?:instrumental|karaoke|off[\s-]*vocal)(?![a-z])|(?<![\p{L}\p{N}])(?:カラオケ|インスト(?:ゥルメンタル)?|인스트루멘탈|伴奏|纯音乐|純音樂)(?:版)?(?![\p{L}\p{N}])""",
+    """(?<![a-z])(?:acoustic|unplugged)(?![a-z])|(?<![\p{L}\p{N}])(?:アコースティック|어쿠스틱|不插电|不插電)(?![\p{L}\p{N}])""",
+    """(?<![a-z])demo(?![a-z])|(?<![\p{L}\p{N}])(?:デモ|데모)(?![\p{L}\p{N}])""",
+    """(?<![a-z])cover(?![a-z])|(?<![\p{L}\p{N}])(?:カバー|커버|翻唱)(?![\p{L}\p{N}])""",
     """(?<![a-z])radio[\s-]*edit(?![a-z])|ラジオエディット""",
     """(?<![a-z])tv[\s-]*(?:size|edit|version)(?![a-z])|テレビサイズ|TVサイズ|TV판""",
     """(?<![a-z])short[\s-]*(?:ver(?:sion)?|edit)(?![a-z])|ショート(?:バージョン|版)""",

@@ -114,4 +114,18 @@ class OnlineLyricsResolverTest {
         assertEquals(null, resolver.loadForTrack(EchoLyricsSearchRequest("Hello", "Correct artist")))
         assertEquals(false, fetchedLyrics)
     }
+
+    @Test fun retainsJapaneseOriginalRomanizationAndTranslationTogetherThroughOfflineStorage() {
+        val resolver = OnlineLyricsResolver { _, _ -> """{
+            "lrc":{"lyric":"[00:01.00]光が窓に差し込む\n[00:04.00]今日も歩いていこう"},
+            "tlyric":{"lyric":"[00:01.00]光照进窗户\n[00:04.00]今天也继续向前走"},
+            "romalrc":{"lyric":"[00:01.00]hikari ga mado ni sashikomu\n[00:04.00]kyou mo aruite ikou"}
+        }""" }
+        val lyrics = requireNotNull(resolver.loadFromNeteaseSongId(42))
+        val restored = EchoLyricsJson.decode(EchoLyricsJson.encode(lyrics))
+        assertEquals(listOf("光が窓に差し込む", "今日も歩いていこう"), restored.lines.map { it.text })
+        assertEquals(listOf("光照进窗户", "今天也继续向前走"), restored.lines.map { it.translation })
+        assertEquals(listOf("hikari ga mado ni sashikomu", "kyou mo aruite ikou"), restored.lines.map { it.romanization })
+    }
+
 }

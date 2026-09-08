@@ -140,7 +140,7 @@ class OnlineLyricsSelectionTest {
         val resolver = OnlineLyricsResolver { url, _ -> when {
             url.contains("music.163.com/api/search") -> {
                 searches++
-                if (searches == 1) searchResponse() else searchResponse(song(1, title = "Spring Day").apply {
+                if (searches == 1) """{"code":200,"result":{}}""" else searchResponse(song(1, title = "Spring Day").apply {
                     put("alias", JSONArray().put("봄날"))
                     put("artists", JSONArray().put(JSONObject().put("name", "IU").put("alias", JSONArray().put("아이유"))))
                 })
