@@ -12,6 +12,7 @@ data class LibraryScanCompleteness(
 
 object LibraryScanPolicy {
     const val MediaStoreNativeIdPrefix = "mediastore:"
+    const val PendingDocumentMetadataFingerprint = "saf:metadata-pending"
     const val SafTrackIdPrefix = "saf:"
     const val LocalSourceSql = "(source = 'mediastore' OR source = 'saf')"
     const val RemoteSourceSql = "(source != 'mediastore' AND source != 'saf')"
@@ -351,6 +352,8 @@ data class MediaStoreScanOutcome(
     val querySucceeded: Boolean,
     /** 本次所有查询都成功的卷。查询失败/游标为 null 的卷不在列,其行不得被当作缺失删除。 */
     val completeVolumeScopes: List<MediaStoreVolumeScope> = emptyList(),
+    val failedReadCount: Int = 0,
+    val excludedDirectoryCount: Int = 0,
 )
 
 data class RemoteSyncVisit(

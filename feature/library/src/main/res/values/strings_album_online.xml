@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="album_online_title">About this album</string>
+    <string name="album_online_refresh">Refresh</string>
+    <string name="album_online_loading">Looking up MusicBrainz and Wikipedia…</string>
+    <string name="album_online_error">Could not load online information. Tap Refresh to retry.</string>
+    <string name="album_online_no_match">No reliable album match found. Check the album title and artist tags.</string>
+    <string name="album_online_stale">Showing saved information; refresh is currently unavailable.</string>
+    <string name="album_online_partial">Release information loaded; Wikipedia is temporarily unavailable.</string>
+    <string name="album_online_less">Show less</string>
+    <string name="album_online_more">Show more</string>
+    <string name="album_online_attribution">Excerpt from Wikipedia contributors, shortened by ECHO.</string>
+    <string name="album_online_no_wiki">No linked Wikipedia introduction is available.</string>
+    <string name="album_online_release">Matched release</string>
+    <string name="album_online_release_note">Reference edition from MusicBrainz; your files may belong to another edition.</string>
+    <string name="album_online_date">Release date</string>
+    <string name="album_online_country">Region</string>
+    <string name="album_online_label">Label</string>
+    <string name="album_online_catalog">Catalog number</string>
+    <string name="album_online_credits">Credits</string>
+    <string name="album_online_composer">Composer</string>
+    <string name="album_online_lyricist">Lyrics / writing</string>
+    <string name="album_online_producer">Producer</string>
+    <string name="album_online_arranger">Arrangement</string>
+    <string name="album_online_vocal">Vocals</string>
+    <string name="album_online_performer">Performance</string>
+    <string name="album_online_mb_source">MusicBrainz · source and full credits</string>
+    <string name="album_online_link_error">Could not open this link.</string>
+</resources>

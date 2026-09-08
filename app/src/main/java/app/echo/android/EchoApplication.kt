@@ -11,6 +11,9 @@ import app.echo.android.playback.EchoRemotePlaybackAuthRegistry
 
 @UnstableApi
 class EchoApplication : Application() {
+    val albumOnlineInfo by lazy {
+        app.echo.android.data.AlbumOnlineInfoRepository(java.io.File(cacheDir, "album-online-info"))
+    }
     val echoLinkSession by lazy { EchoLinkSession(this) }
 
     override fun onCreate() {

@@ -125,7 +125,7 @@ class EchoPlaybackEnginePolicy(
         )
         val exclusiveLive = EchoPlaybackProcessRuntime.usbExclusiveSinkStatus?.streaming == true
         player.volume = (
-            output.playerVolume *
+            output.playerVolume * EchoPlaybackProcessRuntime.trackFadeGain *
                 EchoSleepTimerPolicy.fadeMultiplier(
                     remainingMs,
                     mode = EchoPlaybackProcessRuntime.sleepTimerMode,
@@ -155,7 +155,7 @@ class EchoPlaybackEnginePolicy(
         ) {
             EchoPlaybackProcessRuntime.cancelSleepTimer()
         }
-        prepareUsbForMediaItemTransition(mediaItem)
+        prepareUsbForMediaItemTransition(mediaItem, reason)
         val mediaId = mediaItem?.mediaId
         activeReplayGainTrackId = mediaId
         activeReplayGainTrackGainDb = replayGainAfterMediaItemChange(
@@ -239,7 +239,14 @@ class EchoPlaybackEnginePolicy(
         return true
     }
 
-    private fun prepareUsbForMediaItemTransition(mediaItem: MediaItem?) {
+    private fun prepareUsbForMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+        if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) {
+            // The sink drains/reuses the real output format. Metadata can be missing or late;
+            // it must never introduce an artificial mute into an automatic queue boundary.
+            usbTransitionJob?.cancel()
+            usbMuteInProgress = false
+            return
+        }
         if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled) {
             usbTransitionJob?.cancel()
             usbMuteInProgress = false

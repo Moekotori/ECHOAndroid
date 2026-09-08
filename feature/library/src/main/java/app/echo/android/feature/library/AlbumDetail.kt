@@ -33,11 +33,15 @@ import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Shuffle
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,10 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import app.echo.android.design.ArtworkPalette
 import app.echo.android.design.ArtworkTile
-import app.echo.android.design.BlurredArtworkBackground
 import app.echo.android.design.EchoContentMaxWidth
-import app.echo.android.design.EchoGlassInk
-import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.displayMetadataOrUnknown
 import app.echo.android.design.formatDuration
@@ -69,8 +70,7 @@ import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackMetadataUpdate
 
 private val AlbumDetailBottomPadding = 168.dp
-private val AlbumOnArtwork = Color.White
-private val AlbumOnArtworkMuted = Color.White.copy(alpha = 0.70f)
+private val LocalAlbumDetail = staticCompositionLocalOf { false }
 private val AlbumTextShadow = Shadow(
     color = Color.Black.copy(alpha = 0.28f),
     offset = Offset(0f, 1.5f),
@@ -121,87 +121,97 @@ internal fun AlbumDetailPage(
 ) {
     val palette = rememberArtworkPalette(album.artworkUri, seedKey = album.albumKey)
     val loadedTracks = tracks.itemSnapshotList.items
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .detailBackSwipe(onBack),
-    ) {
-        AlbumDetailLightBackground(
-            artworkUri = album.artworkUri,
-            palette = palette,
-            modifier = Modifier.fillMaxSize(),
-        )
-        LazyColumn(
-            modifier = Modifier
+    CompositionLocalProvider(LocalAlbumDetail provides true) {
+        Box(
+            modifier = modifier
                 .fillMaxSize()
-                .statusBarsPadding(),
-            contentPadding = PaddingValues(bottom = AlbumDetailBottomPadding),
+                .detailBackSwipe(onBack),
         ) {
-            item(key = "hero") {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .widthIn(max = EchoContentMaxWidth)
-                        .padding(horizontal = 20.dp),
-                ) {
-                    AlbumDetailTopBar(onBack = onBack)
-                    Spacer(Modifier.height(8.dp))
-                    AlbumHero(album = album, palette = palette, onArtworkBackground = true)
-                    Spacer(Modifier.height(18.dp))
-                    AlbumActionBar(onPlayAll = onPlayAll, onShuffle = onShuffle)
-                    Spacer(Modifier.height(18.dp))
-                    AlbumDetailInsights(
-                        source = sourceInsight(loadedTracks),
-                        info = formatInsight(loadedTracks),
-                        palette = palette,
-                    )
-                    Spacer(Modifier.height(22.dp))
-                    AlbumTracksHeader(
-                        count = album.trackCount,
-                        titleColor = AlbumOnArtwork,
-                        metaColor = AlbumOnArtworkMuted,
-                    )
-                    Spacer(Modifier.height(10.dp))
+            AlbumDetailLightBackground(
+                artworkUri = album.artworkUri,
+                palette = palette,
+                modifier = Modifier.fillMaxSize(),
+            )
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding(),
+                contentPadding = PaddingValues(bottom = AlbumDetailBottomPadding),
+            ) {
+                item(key = "hero") {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .widthIn(max = EchoContentMaxWidth)
+                            .padding(horizontal = 24.dp),
+                    ) {
+                        AlbumDetailTopBar(onBack = onBack)
+                        Spacer(Modifier.height(8.dp))
+                        AlbumHero(album = album)
+                        Spacer(Modifier.height(18.dp))
+                        AlbumActionBar(onPlayAll = onPlayAll, onShuffle = onShuffle)
+                        Spacer(Modifier.height(28.dp))
+                        AlbumTracksHeader(
+                            count = album.trackCount,
+                        )
+                        Spacer(Modifier.height(10.dp))
+                    }
                 }
-            }
 
-            when {
-                tracks.isInitialPagingLoad() -> item(key = "loading") {
-                    AlbumDetailNotice(stringResource(L10nR.string.feature_library_loading_tracks_8e2147))
-                }
-                tracks.isInitialPagingError() -> item(key = "error") {
-                    AlbumDetailNotice(stringResource(L10nR.string.feature_library_failed_to_load_tracks_f65c9b))
-                }
-                tracks.itemCount == 0 -> item(key = "empty") {
-                    AlbumDetailNotice(stringResource(L10nR.string.feature_library_no_tracks_yet_c4614a))
-                }
-                else -> items(
-                    count = tracks.itemCount,
-                    key = { index -> tracks.peek(index)?.id ?: "track-$index" },
-                ) { index ->
-                    tracks[index]?.let { track ->
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .widthIn(max = EchoContentMaxWidth)
-                                .padding(horizontal = 20.dp),
-                        ) {
-                            AlbumTrackRow(
-                                index = index,
-                                track = track,
-                                accent = palette.vibrant,
-                                onClick = { onPlayTrack(track) },
-                                onUpdateTrackMetadata = onUpdateTrackMetadata,
-                                onImportLyrics = onImportLyrics,
-                                onPickArtwork = onPickArtwork,
-                                onMatchNeteaseMetadata = onMatchNeteaseMetadata,
-                                onAddToPlaylist = onAddToPlaylist,
-                                onPlayNext = onPlayNext,
-                                onEnqueue = onEnqueue,
-                            )
+                when {
+                    tracks.isInitialPagingLoad() -> item(key = "loading") {
+                        AlbumDetailNotice(stringResource(L10nR.string.feature_library_loading_tracks_8e2147))
+                    }
+                    tracks.isInitialPagingError() -> item(key = "error") {
+                        AlbumDetailNotice(stringResource(L10nR.string.feature_library_failed_to_load_tracks_f65c9b))
+                    }
+                    tracks.itemCount == 0 -> item(key = "empty") {
+                        AlbumDetailNotice(stringResource(L10nR.string.feature_library_no_tracks_yet_c4614a))
+                    }
+                    else -> items(
+                        count = tracks.itemCount,
+                        key = { index -> tracks.peek(index)?.id ?: "track-$index" },
+                    ) { index ->
+                        tracks[index]?.let { track ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .widthIn(max = EchoContentMaxWidth)
+                                    .padding(horizontal = 24.dp),
+                            ) {
+                                AlbumTrackRow(
+                                    index = index,
+                                    track = track,
+                                    accent = palette.vibrant,
+                                    onClick = { onPlayTrack(track) },
+                                    onUpdateTrackMetadata = onUpdateTrackMetadata,
+                                    onImportLyrics = onImportLyrics,
+                                    onPickArtwork = onPickArtwork,
+                                    onMatchNeteaseMetadata = onMatchNeteaseMetadata,
+                                    onAddToPlaylist = onAddToPlaylist,
+                                    onPlayNext = onPlayNext,
+                                    onEnqueue = onEnqueue,
+                                )
+                            }
                         }
                     }
                 }
+                item(key = "album-online-information") {
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp)) {
+                        AlbumOnlineInformation(album)
+                    }
+                }
+                item(key = "album-details") {
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 24.dp)) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                        Spacer(Modifier.height(16.dp))
+                        AlbumInformation(
+                            album = album,
+                            tracks = loadedTracks,
+                        )
+                    }
+                }
+
             }
         }
     }
@@ -222,74 +232,83 @@ internal fun AlbumDetailListPage(
     modifier: Modifier = Modifier,
 ) {
     val palette = rememberArtworkPalette(album.artworkUri, seedKey = album.albumKey)
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .detailBackSwipe(onBack),
-    ) {
-        AlbumDetailLightBackground(
-            artworkUri = album.artworkUri,
-            palette = palette,
-            modifier = Modifier.fillMaxSize(),
-        )
-        LazyColumn(
-            modifier = Modifier
+    CompositionLocalProvider(LocalAlbumDetail provides true) {
+        Box(
+            modifier = modifier
                 .fillMaxSize()
-                .statusBarsPadding(),
-            contentPadding = PaddingValues(bottom = AlbumDetailBottomPadding),
+                .detailBackSwipe(onBack),
         ) {
-            item(key = "hero") {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .widthIn(max = EchoContentMaxWidth)
-                        .padding(horizontal = 20.dp),
-                ) {
-                    AlbumDetailTopBar(onBack = onBack)
-                    Spacer(Modifier.height(8.dp))
-                    AlbumHero(album = album, palette = palette, onArtworkBackground = true)
-                    Spacer(Modifier.height(18.dp))
-                    AlbumActionBar(onPlayAll = onPlayAll, onShuffle = onShuffle)
-                    Spacer(Modifier.height(18.dp))
-                    AlbumDetailInsights(
-                        source = sourceInsight(tracks),
-                        info = formatInsight(tracks),
-                        palette = palette,
-                    )
-                    Spacer(Modifier.height(22.dp))
-                    AlbumTracksHeader(
-                        count = album.trackCount,
-                        titleColor = AlbumOnArtwork,
-                        metaColor = AlbumOnArtworkMuted,
-                    )
-                    Spacer(Modifier.height(10.dp))
-                }
-            }
-
-            if (tracks.isEmpty()) {
-                item(key = "empty") {
-                    AlbumDetailNotice(stringResource(L10nR.string.feature_library_no_tracks_yet_c4614a))
-                }
-            } else {
-                itemsIndexed(
-                    items = tracks,
-                    key = { _, track -> track.id },
-                ) { index, track ->
-                    Box(
+            AlbumDetailLightBackground(
+                artworkUri = album.artworkUri,
+                palette = palette,
+                modifier = Modifier.fillMaxSize(),
+            )
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding(),
+                contentPadding = PaddingValues(bottom = AlbumDetailBottomPadding),
+            ) {
+                item(key = "hero") {
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .widthIn(max = EchoContentMaxWidth)
-                            .padding(horizontal = 20.dp),
+                            .padding(horizontal = 24.dp),
                     ) {
-                        AlbumTrackRow(
-                            index = index,
-                            track = track,
-                            accent = palette.vibrant,
-                            onClick = { onPlayTrack(track) },
-                            onUpdateTrackMetadata = onUpdateTrackMetadata,
-                            onImportLyrics = onImportLyrics,
-                            onPickArtwork = onPickArtwork,
-                            onMatchNeteaseMetadata = onMatchNeteaseMetadata,
+                        AlbumDetailTopBar(onBack = onBack)
+                        Spacer(Modifier.height(8.dp))
+                        AlbumHero(album = album)
+                        Spacer(Modifier.height(18.dp))
+                        AlbumActionBar(onPlayAll = onPlayAll, onShuffle = onShuffle)
+                        Spacer(Modifier.height(28.dp))
+                        AlbumTracksHeader(
+                            count = album.trackCount,
+                        )
+                        Spacer(Modifier.height(10.dp))
+                    }
+                }
+
+                if (tracks.isEmpty()) {
+                    item(key = "empty") {
+                        AlbumDetailNotice(stringResource(L10nR.string.feature_library_no_tracks_yet_c4614a))
+                    }
+                } else {
+                    itemsIndexed(
+                        items = tracks,
+                        key = { _, track -> track.id },
+                    ) { index, track ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .widthIn(max = EchoContentMaxWidth)
+                                .padding(horizontal = 24.dp),
+                        ) {
+                            AlbumTrackRow(
+                                index = index,
+                                track = track,
+                                accent = palette.vibrant,
+                                onClick = { onPlayTrack(track) },
+                                onUpdateTrackMetadata = onUpdateTrackMetadata,
+                                onImportLyrics = onImportLyrics,
+                                onPickArtwork = onPickArtwork,
+                                onMatchNeteaseMetadata = onMatchNeteaseMetadata,
+                            )
+                        }
+                    }
+                }
+                item(key = "album-online-information") {
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp)) {
+                        AlbumOnlineInformation(album)
+                    }
+                }
+                item(key = "album-details") {
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 24.dp)) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                        Spacer(Modifier.height(16.dp))
+                        AlbumInformation(
+                            album = album,
+                            tracks = tracks,
                         )
                     }
                 }
@@ -297,6 +316,7 @@ internal fun AlbumDetailListPage(
         }
     }
 }
+
 
 @Composable
 internal fun ArtistDetailPage(
@@ -523,37 +543,19 @@ private fun AlbumDetailLightBackground(
     modifier: Modifier = Modifier,
 ) {
     val dark = LocalEchoDarkTheme.current
-    Box(modifier = modifier) {
-        BlurredArtworkBackground(
-            artworkUri = artworkUri,
-            palette = palette,
-            modifier = Modifier.fillMaxSize(),
-            artworkScale = 1.12f,
-            artworkBlur = 14.dp,
-            artworkAlpha = if (dark) 0.58f else 0.78f,
-            overlayStartAlpha = 0f,
-            overlayMidAlpha = 0f,
-            overlayEndAlpha = 0.03f,
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    if (dark) {
-                        Brush.verticalGradient(
-                            0f to EchoGlassInk.copy(alpha = 0.08f),
-                            0.42f to Color.Transparent,
-                            1f to EchoGlassPanel.copy(alpha = 0.12f),
-                        )
-                    } else {
-                        Brush.verticalGradient(
-                            0f to Color.White.copy(alpha = 0.26f),
-                            0.42f to Color.White.copy(alpha = 0.16f),
-                            1f to Color(0xFFF5E8EC).copy(alpha = 0.12f),
-                        )
-                    },
+    val base = MaterialTheme.colorScheme.background
+    // Missing artwork must not turn a hash-generated placeholder color into a full-screen wash.
+    Box(modifier = modifier.background(base)) {
+        if (!artworkUri.isNullOrBlank()) {
+            Box(
+                Modifier.fillMaxWidth().height(400.dp).background(
+                    Brush.verticalGradient(
+                        0f to palette.vibrant.copy(alpha = if (dark) 0.12f else 0.08f),
+                        1f to Color.Transparent,
+                    ),
                 ),
-        )
+            )
+        }
     }
 }
 
@@ -625,36 +627,33 @@ private fun AlbumDetailTopBar(onBack: () -> Unit) {
 @Composable
 private fun AlbumHero(
     album: AlbumSummary,
-    palette: ArtworkPalette,
-    onArtworkBackground: Boolean = false,
 ) {
     val colors = rememberDetailGlassColors()
-    val titleColor = if (onArtworkBackground) AlbumOnArtwork else colors.content
-    val artistColor = if (onArtworkBackground) AlbumOnArtwork.copy(alpha = 0.88f) else palette.deep
-    val metaColor = if (onArtworkBackground) AlbumOnArtworkMuted else colors.muted
+    val titleColor = colors.content
+    val artistColor = colors.muted
+    val metaColor = colors.muted
     Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
+        horizontalAlignment = Alignment.Start,
     ) {
         ArtworkTile(
             artworkUri = album.artworkUri,
             modifier = Modifier
-                .padding(top = 6.dp)
-                .size(232.dp),
-            accent = palette.vibrant,
+                .align(Alignment.CenterHorizontally)
+                .padding(top = 4.dp)
+                .size(208.dp),
+            accent = MaterialTheme.colorScheme.primary,
             showSignal = album.artworkUri == null,
-            cornerRadius = 0.dp,
-            elevation = 22.dp,
+            cornerRadius = 8.dp,
+            elevation = 14.dp,
         )
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(24.dp))
         Text(
             displayMetadataOrUnknown(album.title, unknownAlbumLabel()),
             color = titleColor,
-            style = MaterialTheme.typography.headlineSmall.copy(
-                shadow = if (onArtworkBackground) AlbumTextShadow else null,
-            ),
+            style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
+            textAlign = TextAlign.Start,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
@@ -662,22 +661,18 @@ private fun AlbumHero(
         Text(
             displayMetadataOrUnknown(album.albumArtist ?: album.artist, unknownArtistLabel()),
             color = artistColor,
-            style = MaterialTheme.typography.titleMedium.copy(
-                shadow = if (onArtworkBackground) AlbumTextShadow else null,
-            ),
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Start,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(4.dp))
         Text(
             albumMetaLine(album),
             color = metaColor,
-            style = MaterialTheme.typography.labelLarge.copy(
-                shadow = if (onArtworkBackground) AlbumTextShadow else null,
-            ),
-            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodySmall,
+            textAlign = TextAlign.Start,
         )
     }
 }
@@ -687,6 +682,7 @@ private fun AlbumActionBar(
     onPlayAll: () -> Unit,
     onShuffle: () -> Unit,
 ) {
+    val refined = LocalAlbumDetail.current
     val colors = rememberDetailGlassColors()
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
@@ -700,9 +696,9 @@ private fun AlbumActionBar(
             icon = Icons.Rounded.PlayArrow,
             label = stringResource(L10nR.string.feature_library_play_all_55c80e),
             iconSize = 24.dp,
-            contentColor = actionContent,
-            containerColor = colors.elevatedSurface,
-            borderColor = actionBorder,
+            contentColor = if (refined) scheme.onPrimary else actionContent,
+            containerColor = if (refined) scheme.primary else colors.elevatedSurface,
+            borderColor = if (refined) Color.Transparent else actionBorder,
             onClick = onPlayAll,
             modifier = Modifier.weight(1f),
         )
@@ -710,9 +706,9 @@ private fun AlbumActionBar(
             icon = Icons.Rounded.Shuffle,
             label = stringResource(L10nR.string.feature_library_shuffle_34e7ce),
             iconSize = 22.dp,
-            contentColor = actionContent,
+            contentColor = if (refined) colors.content else actionContent,
             containerColor = colors.elevatedSurface,
-            borderColor = actionBorder,
+            borderColor = if (refined) colors.border else actionBorder,
             onClick = onShuffle,
             modifier = Modifier.weight(1f),
         )
@@ -730,7 +726,7 @@ private fun AlbumDetailActionButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(26.dp)
+    val shape = RoundedCornerShape(if (LocalAlbumDetail.current) 14.dp else 26.dp)
     Row(
         modifier = modifier
             .height(52.dp)
@@ -759,6 +755,96 @@ private fun AlbumDetailActionButton(
     }
 }
 
+/** Facts describe the catalog files, not the active audio output route. */
+@Composable
+private fun AlbumInformation(album: AlbumSummary, tracks: List<EchoTrack>) {
+    val context = LocalContext.current
+    val colors = rememberDetailGlassColors()
+    val facts = remember(album, tracks) {
+        AlbumFileFacts(
+            artists = tracks.map { it.artist.trim() }.filter { it.isNotEmpty() }.distinct(),
+            discs = tracks.mapNotNull { it.discNumber?.takeIf { number -> number > 0 } }.distinct().size,
+            sources = tracks.map { it.source.id }.distinct(),
+            formats = tracks.mapNotNull { formatMimeType(it.mimeType) }.distinct(),
+            sampleRates = tracks.mapNotNull { it.sampleRateHz?.takeIf { hz -> hz > 0 } }.distinct(),
+            sizeBytes = tracks.sumOf { it.sizeBytes.coerceAtLeast(0L) },
+            knownSizes = tracks.count { it.sizeBytes > 0L },
+            knownSampleRates = tracks.count { (it.sampleRateHz ?: 0) > 0 },
+        )
+    }
+    val addedDate = remember(album.addedAtSeconds, context.resources.configuration) {
+        album.addedAtSeconds.takeIf { it > 0L }?.let {
+            android.text.format.DateFormat.getDateFormat(context).format(java.util.Date(it * 1000L))
+        }
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Text(stringResource(L10nR.string.album_information_title), color = colors.content,
+            style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        if (tracks.size < album.trackCount) {
+            Text(stringResource(L10nR.string.album_information_partial, tracks.size, album.trackCount),
+                color = colors.muted, style = MaterialTheme.typography.bodySmall)
+        }
+        AlbumInformationRow(stringResource(L10nR.string.album_information_artist),
+            displayMetadataOrUnknown(album.albumArtist ?: album.artist, unknownArtistLabel()))
+        album.year?.takeIf { it > 0 }?.let {
+            AlbumInformationRow(stringResource(L10nR.string.album_information_year), it.toString())
+        }
+        AlbumInformationRow(stringResource(L10nR.string.feature_library_tracks_2d80e8), libraryTrackCountLabel(album.trackCount))
+        if (album.durationMs > 0L) {
+            AlbumInformationRow(stringResource(L10nR.string.album_information_duration), formatDuration(album.durationMs))
+        }
+        addedDate?.let { AlbumInformationRow(stringResource(L10nR.string.album_information_added), it) }
+        if (facts.discs > 1 && tracks.size == album.trackCount) {
+            AlbumInformationRow(stringResource(L10nR.string.album_information_discs), facts.discs.toString())
+        }
+        if (facts.artists.size > 1) {
+            AlbumInformationRow(stringResource(L10nR.string.album_information_track_artists), facts.artists.joinToString(" / ", limit = 8, truncated = "…"))
+        }
+        Spacer(Modifier.height(4.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+        Spacer(Modifier.height(4.dp))
+        Text(stringResource(L10nR.string.album_information_audio), color = colors.content,
+            style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        if (facts.sources.isNotEmpty()) {
+            AlbumInformationRow(stringResource(L10nR.string.feature_library_source_4aff16), facts.sources.map { sourceLabel(it) }.joinToString(" / "))
+        }
+        if (facts.formats.isNotEmpty()) {
+            AlbumInformationRow(stringResource(L10nR.string.feature_library_format_a7775b), facts.formats.joinToString(" / "))
+        }
+        formatSampleRates(facts.sampleRates)?.let {
+            AlbumInformationRow(stringResource(L10nR.string.album_information_sample_rate), it)
+        }
+        if (facts.sizeBytes > 0L) {
+            AlbumInformationRow(stringResource(if (facts.knownSizes == album.trackCount) L10nR.string.album_information_size else L10nR.string.album_information_known_size), formatFileSize(facts.sizeBytes))
+        }
+        if (tracks.isNotEmpty() && (facts.knownSampleRates < tracks.size || facts.knownSizes < tracks.size)) {
+            Text(stringResource(L10nR.string.album_information_missing_specs), color = colors.muted, style = MaterialTheme.typography.bodySmall)
+        }
+        Text(stringResource(L10nR.string.album_information_file_specs), color = colors.muted, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+private data class AlbumFileFacts(
+    val artists: List<String>,
+    val discs: Int,
+    val sources: List<String>,
+    val formats: List<String>,
+    val sampleRates: List<Int>,
+    val sizeBytes: Long,
+    val knownSizes: Int,
+    val knownSampleRates: Int,
+)
+
+@Composable
+private fun AlbumInformationRow(label: String, value: String) {
+    val colors = rememberDetailGlassColors()
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+        Text(label, modifier = Modifier.weight(0.36f), color = colors.muted, style = MaterialTheme.typography.bodyMedium)
+        Text(value, modifier = Modifier.weight(0.64f), color = colors.content,
+            style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.End)
+    }
+}
+
 @Composable
 private fun AlbumDetailInsights(
     source: DetailInsight,
@@ -769,6 +855,19 @@ private fun AlbumDetailInsights(
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
     val shape = RoundedCornerShape(20.dp)
+    val refined = LocalAlbumDetail.current
+    if (refined) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Rounded.MusicNote, contentDescription = null, tint = colors.muted, modifier = Modifier.size(16.dp))
+                Text(source.primary, color = colors.muted, style = MaterialTheme.typography.bodySmall)
+                Text("·", color = colors.muted, style = MaterialTheme.typography.bodySmall)
+                Text(info.primary, color = colors.muted, style = MaterialTheme.typography.labelMedium)
+            }
+            Text(info.secondary, color = colors.muted, style = MaterialTheme.typography.bodySmall)
+        }
+        return
+    }
     val containerBrush = Brush.linearGradient(
         if (dark) {
             listOf(
@@ -784,7 +883,9 @@ private fun AlbumDetailInsights(
             )
         },
     )
-    val borderColor = if (dark) {
+    val borderColor = if (refined) {
+        colors.border
+    } else if (dark) {
         palette.vibrant.copy(alpha = 0.22f)
     } else {
         colors.border
@@ -794,9 +895,9 @@ private fun AlbumDetailInsights(
             .fillMaxWidth()
             .height(76.dp)
             .clip(shape)
-            .background(containerBrush)
+            .then(if (refined) Modifier.background(scheme.surface) else Modifier.background(containerBrush))
             .border(BorderStroke(1.dp, borderColor), shape)
-            .padding(horizontal = 14.dp),
+            .padding(horizontal = if (refined) 4.dp else 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         DetailInsightCell(
@@ -830,8 +931,8 @@ private fun DetailInsightCell(
     val colors = rememberDetailGlassColors()
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
-    val iconTint = if (dark) accent.copy(alpha = 0.82f) else scheme.primary.copy(alpha = 0.74f)
-    val titleColor = if (dark) accent.copy(alpha = 0.86f) else scheme.primary
+    val iconTint = if (LocalAlbumDetail.current) colors.muted else if (dark) accent.copy(alpha = 0.82f) else scheme.primary.copy(alpha = 0.74f)
+    val titleColor = if (LocalAlbumDetail.current) colors.muted else if (dark) accent.copy(alpha = 0.86f) else scheme.primary
     Row(
         modifier = modifier
             .padding(horizontal = 10.dp),
@@ -842,7 +943,7 @@ private fun DetailInsightCell(
             icon,
             contentDescription = null,
             tint = iconTint,
-            modifier = Modifier.size(26.dp),
+            modifier = Modifier.size(if (LocalAlbumDetail.current) 20.dp else 26.dp),
         )
         Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
             Text(
@@ -889,7 +990,7 @@ private fun AlbumTracksHeader(
         Text(
             stringResource(L10nR.string.feature_library_tracks_2d80e8),
             color = resolvedTitleColor,
-            style = MaterialTheme.typography.titleLarge,
+            style = if (LocalAlbumDetail.current) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
         )
         Text(
@@ -1066,6 +1167,7 @@ private fun AlbumTrackRow(
         modifier = Modifier.fillMaxWidth(),
     ) { pressModifier ->
         val dark = LocalEchoDarkTheme.current
+        val refined = LocalAlbumDetail.current
         // 每行的渐变按 (主题, 表面色, 强调色) 记忆,滚动/重组时不再重复分配 Brush
         val rowBrush = remember(dark, colors.surface, accent) {
             Brush.linearGradient(
@@ -1081,17 +1183,18 @@ private fun AlbumTrackRow(
                 .fillMaxWidth()
                 .padding(vertical = 4.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(rowBrush)
-                .border(BorderStroke(1.dp, colors.border), RoundedCornerShape(16.dp))
+                .then(if (refined) Modifier else Modifier
+                    .background(rowBrush)
+                    .border(BorderStroke(1.dp, colors.border), RoundedCornerShape(16.dp)))
                 .then(pressModifier)
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .padding(horizontal = if (refined) 4.dp else 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(
                 text = (track.trackNumber ?: (index + 1)).toString().padStart(2, '0'),
-                color = accent,
-                style = MaterialTheme.typography.titleSmall,
+                color = if (refined) colors.muted else accent,
+                style = if (refined) MaterialTheme.typography.labelMedium else MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.width(26.dp),
                 textAlign = TextAlign.Center,

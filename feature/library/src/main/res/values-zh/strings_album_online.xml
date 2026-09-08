@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="album_online_title">关于这张专辑</string>
+    <string name="album_online_refresh">刷新</string>
+    <string name="album_online_loading">正在查询 MusicBrainz 和 Wikipedia…</string>
+    <string name="album_online_error">在线资料暂时无法加载，点击刷新可重试。</string>
+    <string name="album_online_no_match">暂未找到可靠匹配，请检查专辑名和艺人标签。</string>
+    <string name="album_online_stale">正在显示已保存的资料，暂时无法刷新。</string>
+    <string name="album_online_partial">发行资料已加载，Wikipedia 暂时不可用。</string>
+    <string name="album_online_less">收起</string>
+    <string name="album_online_more">展开更多</string>
+    <string name="album_online_attribution">摘录自 Wikipedia 贡献者，ECHO 已作节选。</string>
+    <string name="album_online_no_wiki">暂无关联的 Wikipedia 专辑简介。</string>
+    <string name="album_online_release">匹配的发行版本</string>
+    <string name="album_online_release_note">资料来自 MusicBrainz 的参考版本，可能与你的文件版本不同。</string>
+    <string name="album_online_date">发行日期</string>
+    <string name="album_online_country">发行地区</string>
+    <string name="album_online_label">唱片厂牌</string>
+    <string name="album_online_catalog">目录编号</string>
+    <string name="album_online_credits">制作与参与人员</string>
+    <string name="album_online_composer">作曲</string>
+    <string name="album_online_lyricist">作词 / 创作</string>
+    <string name="album_online_producer">制作人</string>
+    <string name="album_online_arranger">编曲</string>
+    <string name="album_online_vocal">演唱</string>
+    <string name="album_online_performer">演奏</string>
+    <string name="album_online_mb_source">MusicBrainz · 来源与完整制作名单</string>
+    <string name="album_online_link_error">无法打开此链接。</string>
+</resources>

@@ -8,15 +8,21 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.FilterChip
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.Canvas
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material.icons.rounded.ArrowForward
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.sp
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.ExpandLess
@@ -175,22 +181,22 @@ internal fun LibraryScanOptionsDialog(
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
-            color = colors.surface.copy(alpha = 1f),
+            color = if (LocalEchoDarkTheme.current) Color(0xFF191A1E) else Color(0xFFFAF9F7),
             border = BorderStroke(1.dp, colors.border),
         ) {
-            Column(Modifier.heightIn(max = 640.dp).padding(24.dp)) {
+            Column(Modifier.heightIn(max = 600.dp).padding(22.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(stringResource(L10nR.string.library_add_music), color = colors.content,
-                            style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                            style = MaterialTheme.typography.titleLarge, fontSize = 23.sp, fontWeight = FontWeight.SemiBold)
                         Text(stringResource(L10nR.string.scan_simple_hint), color = colors.muted,
-                            style = MaterialTheme.typography.bodyMedium)
+                            style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal)
                     }
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.Rounded.Close, stringResource(L10nR.string.feature_library_close_473a69), tint = colors.muted)
                     }
                 }
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(20.dp))
                 Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
                     Row(
                         Modifier.fillMaxWidth().toggleable(filtersEnabled, role = Role.Switch, onValueChange = { filtersEnabled = it }),
@@ -203,7 +209,7 @@ internal fun LibraryScanOptionsDialog(
                                 style = MaterialTheme.typography.bodySmall)
                         }
                         Spacer(Modifier.width(12.dp))
-                        Switch(checked = filtersEnabled, onCheckedChange = null)
+                        ScanToggleIndicator(filtersEnabled)
                     }
                     if (filtersEnabled) {
                         TextButton(onClick = { showDetails = !showDetails }) {
@@ -218,20 +224,10 @@ internal fun LibraryScanOptionsDialog(
                             HorizontalDivider(color = colors.border)
                             Text(stringResource(L10nR.string.scan_min_duration), color = colors.muted,
                                 style = MaterialTheme.typography.labelMedium)
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                listOf(0L to L10nR.string.scan_any, 30_000L to L10nR.string.scan_30_seconds, 60_000L to L10nR.string.scan_60_seconds).forEach { (value, label) ->
-                                    FilterChip(modifier = Modifier.weight(1f), selected = minDuration == value,
-                                        onClick = { minDuration = value }, label = { Text(stringResource(label), maxLines = 1) })
-                                }
-                            }
+                            ScanSegments(minDuration, listOf(0L to L10nR.string.scan_any, 30_000L to L10nR.string.scan_30_seconds, 60_000L to L10nR.string.scan_60_seconds)) { minDuration = it }
                             Text(stringResource(L10nR.string.scan_min_size), color = colors.muted,
                                 style = MaterialTheme.typography.labelMedium)
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                listOf(0L to L10nR.string.scan_any, 102_400L to L10nR.string.scan_100_kb, 1_048_576L to L10nR.string.scan_1_mb).forEach { (value, label) ->
-                                    FilterChip(modifier = Modifier.weight(1f), selected = minSize == value,
-                                        onClick = { minSize = value }, label = { Text(stringResource(label), maxLines = 1) })
-                                }
-                            }
+                            ScanSegments(minSize, listOf(0L to L10nR.string.scan_any, 102_400L to L10nR.string.scan_100_kb, 1_048_576L to L10nR.string.scan_1_mb)) { minSize = it }
                             ScanFilterToggle(stringResource(L10nR.string.scan_skip_non_music), excludeNonMusic) { excludeNonMusic = it }
                             ScanFilterToggle(stringResource(L10nR.string.scan_skip_hidden), excludeHidden) { excludeHidden = it }
                             Text(stringResource(L10nR.string.scan_filter_hint), color = colors.muted, style = MaterialTheme.typography.bodySmall)
@@ -240,17 +236,24 @@ internal fun LibraryScanOptionsDialog(
                     }
                 }
                 Spacer(Modifier.height(20.dp))
-                Button(
-                    onClick = { onScanFolder(options) }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = echoAccentColor(), contentColor = MaterialTheme.colorScheme.onPrimary),
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                        .background(echoAccentColor().copy(alpha = 0.12f))
+                        .border(1.dp, echoAccentColor().copy(alpha = 0.22f), RoundedCornerShape(14.dp))
+                        .echoClickable(onClick = { onScanFolder(options) })
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Rounded.FolderOpen, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(10.dp))
-                    Text(stringResource(L10nR.string.scan_choose_folder), fontWeight = FontWeight.SemiBold)
+                    Icon(Icons.Rounded.FolderOpen, contentDescription = null, tint = echoAccentColor(), modifier = Modifier.size(23.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Text(stringResource(L10nR.string.scan_choose_folder), modifier = Modifier.weight(1f),
+                        color = colors.content, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    Icon(Icons.Rounded.ArrowForward, contentDescription = null, tint = echoAccentColor(), modifier = Modifier.size(18.dp))
                 }
-                TextButton(onClick = { onScanAll(options) }, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(L10nR.string.scan_device_instead), color = colors.muted)
+                Box(Modifier.fillMaxWidth().heightIn(min = 44.dp).clip(RoundedCornerShape(12.dp))
+                    .echoClickable(onClick = { onScanAll(options) }), contentAlignment = Alignment.Center) {
+                    Text(stringResource(L10nR.string.scan_device_instead), color = colors.muted,
+                        style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal)
                 }
             }
         }
@@ -259,11 +262,51 @@ internal fun LibraryScanOptionsDialog(
 
 @Composable
 private fun ScanFilterToggle(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    val colors = rememberScanGlassColors()
     Row(
-        Modifier.fillMaxWidth().toggleable(value = checked, role = Role.Checkbox, onValueChange = onChange),
+        Modifier.fillMaxWidth().heightIn(min = 44.dp).clip(RoundedCornerShape(8.dp))
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onChange),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Checkbox(checked = checked, onCheckedChange = null)
-        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+        Text(label, modifier = Modifier.weight(1f), color = colors.content,
+            style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal)
+        Spacer(Modifier.width(12.dp))
+        ScanToggleIndicator(checked)
+    }
+}
+
+@Composable
+private fun ScanToggleIndicator(checked: Boolean) {
+    val position by animateFloatAsState(if (checked) 1f else 0f, tween(160), label = "scan-toggle")
+    val accent = echoAccentColor()
+    val muted = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.22f)
+    Canvas(Modifier.size(width = 34.dp, height = 20.dp)) {
+        drawRoundRect(color = androidx.compose.ui.graphics.lerp(muted, accent.copy(alpha = 0.75f), position),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2))
+        val radius = 7.dp.toPx()
+        drawCircle(color = Color.White, radius = radius,
+            center = Offset(10.dp.toPx() + position * 14.dp.toPx(), size.height / 2))
+    }
+}
+
+@Composable
+private fun ScanSegments(selected: Long, choices: List<Pair<Long, Int>>, onSelect: (Long) -> Unit) {
+    val colors = rememberScanGlassColors()
+    val accent = echoAccentColor()
+    Row(Modifier.fillMaxWidth().selectableGroup().clip(RoundedCornerShape(10.dp))
+        .background(colors.content.copy(alpha = 0.045f)).padding(3.dp)) {
+        choices.forEach { (value, label) ->
+            val active = selected == value
+            Box(
+                Modifier.weight(1f).heightIn(min = 40.dp).clip(RoundedCornerShape(8.dp))
+                    .background(if (active) accent.copy(alpha = 0.16f) else Color.Transparent)
+                    .selectable(selected = active, role = Role.RadioButton, onClick = { onSelect(value) }),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(stringResource(label), color = if (active) accent else colors.muted,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1)
+            }
+        }
     }
 }

@@ -8,6 +8,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.res.stringResource
+import app.echo.android.model.playback.EchoAudioErrorKind
+import app.echo.android.model.playback.EchoPlaybackState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
@@ -41,10 +46,15 @@ fun HomeScreen(
     onOpenLibrary: () -> Unit,
     onOpenConnect: () -> Unit,
     onOpenSearch: () -> Unit = {},
+    bottomInset: Dp = 0.dp,
 ) {
     val configuration = LocalConfiguration.current
     val compactViewport = configuration.screenHeightDp < 620 ||
         configuration.screenWidthDp > configuration.screenHeightDp
+    val distinctRecommendations = remember(recommendedAlbums, recentPlayedAlbums, recentlyAddedAlbums) {
+        val recentKeys = (recentPlayedAlbums + recentlyAddedAlbums).mapTo(hashSetOf()) { it.albumKey }
+        recommendedAlbums.filterNot { it.albumKey in recentKeys }
+    }
     val sectionGap = if (compactViewport) 14.dp else 22.dp
     val blockGap = if (compactViewport) 14.dp else 20.dp
     LazyColumn(
@@ -58,6 +68,17 @@ fun HomeScreen(
                 compact = compactViewport,
                 onOpenSearch = onOpenSearch,
             )
+        }
+        if (status.state == EchoPlaybackState.Error &&
+            status.diagnostics.lastError?.kind == EchoAudioErrorKind.FileMissing) {
+            item(key = "missing-file") {
+                HomeLibraryNotice(
+                    title = stringResource(R.string.home_missing_file_title),
+                    subtitle = stringResource(R.string.home_missing_file_detail),
+                    onClick = onOpenLibrary,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                )
+            }
         }
         item(key = "overview") {
             Spacer(Modifier.height(sectionGap))
@@ -80,14 +101,16 @@ fun HomeScreen(
                 onOpenLibrary = onOpenLibrary,
             )
         }
-        item(key = "recommended") {
-            Spacer(Modifier.height(blockGap))
-            HomeAlbumRecommendationsSection(
-                albums = recommendedAlbums,
-                onRefresh = onRefreshRecommendations,
-                onOpenLibrary = onOpenLibrary,
-                onOpenAlbum = onOpenAlbum,
-            )
+        if (distinctRecommendations.isNotEmpty()) {
+            item(key = "recommended") {
+                Spacer(Modifier.height(blockGap))
+                HomeAlbumRecommendationsSection(
+                    albums = distinctRecommendations,
+                    onRefresh = onRefreshRecommendations,
+                    onOpenLibrary = onOpenLibrary,
+                    onOpenAlbum = onOpenAlbum,
+                )
+            }
         }
         item(key = "artists") {
             Spacer(Modifier.height(blockGap))
@@ -107,7 +130,7 @@ fun HomeScreen(
             )
         }
         item(key = "bottom-inset") {
-            Spacer(Modifier.height(if (compactViewport) 252.dp else 304.dp))
+            Spacer(Modifier.height(bottomInset + 16.dp))
         }
     }
 }

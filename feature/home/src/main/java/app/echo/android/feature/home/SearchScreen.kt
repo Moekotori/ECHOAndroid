@@ -69,7 +69,7 @@ fun SearchScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(homePanelColor(0.98f))
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
         SearchTopBar(
@@ -82,6 +82,7 @@ fun SearchScreen(
         Spacer(Modifier.height(8.dp))
 
         SearchResultsList(
+            hasQuery = searchQuery.isNotBlank(),
             searchResults = searchResults,
             onResultClick = onSearchResultClick,
             onPlayNext = onPlayNext,
@@ -121,7 +122,7 @@ private fun SearchTopBar(
             placeholder = {
                 Text(
                     stringResource(L10nR.string.feature_home_search_songs_albums_and_artists_c46634),
-                    color = homeBodyColor().copy(alpha = 0.4f),
+                    color = homeBodyColor(),
                 )
             },
             leadingIcon = {
@@ -157,6 +158,7 @@ private fun SearchTopBar(
 
 @Composable
 private fun SearchResultsList(
+    hasQuery: Boolean,
     searchResults: List<SearchResult>,
     onResultClick: (SearchResult) -> Unit,
     onPlayNext: (SearchResult) -> Unit,
@@ -168,8 +170,8 @@ private fun SearchResultsList(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = stringResource(L10nR.string.feature_home_enter_a_keyword_to_start_searching_147a79),
-                color = homeBodyColor().copy(alpha = 0.3f),
+                text = stringResource(if (hasQuery) L10nR.string.home_search_no_results else L10nR.string.feature_home_enter_a_keyword_to_start_searching_147a79),
+                color = homeBodyColor(),
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
@@ -188,7 +190,7 @@ private fun SearchResultsList(
                 item(key = "header-tracks") {
                     Text(
                         text = stringResource(L10nR.string.feature_home_songs_107b60),
-                        color = homeBodyColor().copy(alpha = 0.4f),
+                        color = homeBodyColor(),
                         style = MaterialTheme.typography.labelMedium,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
                     )
@@ -210,7 +212,7 @@ private fun SearchResultsList(
                     }
                     Text(
                         text = stringResource(L10nR.string.feature_home_albums_e68c2b),
-                        color = homeBodyColor().copy(alpha = 0.4f),
+                        color = homeBodyColor(),
                         style = MaterialTheme.typography.labelMedium,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
                     )
@@ -225,7 +227,7 @@ private fun SearchResultsList(
                     Spacer(Modifier.height(16.dp))
                     Text(
                         text = stringResource(L10nR.string.feature_home_artists_1e19fb),
-                        color = homeBodyColor().copy(alpha = 0.4f),
+                        color = homeBodyColor(),
                         style = MaterialTheme.typography.labelMedium,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
                     )

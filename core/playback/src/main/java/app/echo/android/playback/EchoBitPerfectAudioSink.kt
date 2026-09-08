@@ -57,6 +57,7 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
     }
 
     override fun handleBuffer(buffer: ByteBuffer, presentationTimeUs: Long, encodedAccessUnitCount: Int): Boolean {
+        if (buffer.hasRemaining()) ended = false
         val wanted = nextFormat ?: format ?: return false
         if (!EchoPlaybackProcessRuntime.usbExclusiveEnabled) initializationFailure(EchoBitPerfectState.UsbUnavailable, wanted)
         if (volume != 1f) initializationFailure(EchoBitPerfectState.VolumeChanged, wanted)

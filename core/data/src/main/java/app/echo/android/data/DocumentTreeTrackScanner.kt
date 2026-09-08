@@ -1,5 +1,7 @@
 package app.echo.android.data
 
+import app.echo.android.model.library.LibraryScanOptions
+import kotlinx.coroutines.CancellationException
 import android.content.ContentResolver
 import android.database.Cursor
 import android.media.MediaMetadataRetriever
@@ -23,6 +25,8 @@ class DocumentTreeTrackScanner(
         existingTracks: Map<String, TrackFingerprint> = emptyMap(),
         mediaStoreDuplicateKeys: Map<String, LibraryTrackEntity> = emptyMap(),
         readSampleRate: Boolean = true,
+        options: LibraryScanOptions = LibraryScanOptions(0L, 0L, false, false),
+        onDuplicate: suspend (oldId: String, targetId: String) -> Unit = { _, _ -> },
         onBatch: suspend (List<LibraryTrackEntity>) -> Unit,
         onProgress: suspend (scannedCount: Int, currentTrack: LibraryTrackEntity?) -> Unit,
     ): MediaStoreScanOutcome {
@@ -32,21 +36,31 @@ class DocumentTreeTrackScanner(
         val pendingDirectories = ArrayDeque<DocumentTreeDirectory>()
         var scannedCount = 0
         var querySucceeded = true
+        var failedReads = 0
+        var excludedDirectories = 0
 
         pendingDirectories.add(DocumentTreeDirectory(rootDocumentId, relativePath = ""))
         while (!pendingDirectories.isEmpty()) {
             coroutineContext.ensureActive()
             val directory = pendingDirectories.removeFirst()
+            if (!options.includesDirectory(combineRelativePath(relativePathPrefix, directory.relativePath))) {
+                excludedDirectories++
+                continue
+            }
             val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, directory.documentId)
             val cursor = try {
                 contentResolver.query(childrenUri, Projection, null, null, null)
+            } catch (error: CancellationException) {
+                throw error
             } catch (error: RuntimeException) {
                 Log.w(TAG, "Document tree directory listing failed.", error)
                 querySucceeded = false
+                failedReads++
                 continue
             }
             if (cursor == null) {
                 querySucceeded = false
+                failedReads++
                 continue
             }
             val audioRows = ArrayList<DocumentAudioRow>()
@@ -92,6 +106,7 @@ class DocumentTreeTrackScanner(
                 )
                 val duplicate = duplicateKey?.let(mediaStoreDuplicateKeys::get)
                 if (duplicate != null) {
+                    onDuplicate("saf:${Uri.encode(row.documentId)}", duplicate.id)
                     // Keep the stable MediaStore ID, but refresh changed tags and folder summaries too.
                     batch += duplicate
                     scannedCount += 1
@@ -114,6 +129,10 @@ class DocumentTreeTrackScanner(
                         readSampleRate = readSampleRate,
                     )
                 }.onSuccess { track ->
+                    if (track.fingerprint == LibraryScanPolicy.PendingDocumentMetadataFingerprint) {
+                        querySucceeded = false
+                        failedReads++
+                    }
                     batch += track
                     scannedCount += 1
                     onProgress(scannedCount, track)
@@ -122,7 +141,9 @@ class DocumentTreeTrackScanner(
                         batch.clear()
                     }
                 }.onFailure { error ->
+                    if (error is CancellationException) throw error
                     querySucceeded = false
+                    failedReads++
                     Log.w(TAG, "Skipping unreadable document tree audio file.", error)
                 }
             }
@@ -133,7 +154,8 @@ class DocumentTreeTrackScanner(
             batch.clear()
         }
         onProgress(scannedCount, null)
-        return MediaStoreScanOutcome(scannedCount = scannedCount, querySucceeded = querySucceeded)
+        return MediaStoreScanOutcome(scannedCount = scannedCount, querySucceeded = querySucceeded,
+            failedReadCount = failedReads, excludedDirectoryCount = excludedDirectories)
     }
 
     private fun Uri.toTrackEntity(
@@ -149,6 +171,9 @@ class DocumentTreeTrackScanner(
         val dateModifiedSeconds = lastModifiedMs.toEpochSeconds()
         if (
             existingTrack != null &&
+            existingTrack.durationMs > 0L &&
+            existingTrack.fingerprint != null &&
+            existingTrack.fingerprint != LibraryScanPolicy.PendingDocumentMetadataFingerprint &&
             LibraryScanPolicy.shouldReuseUnchangedDocumentFingerprint(
                 existingContentUri = existingTrack.contentUri,
                 incomingContentUri = toString(),
@@ -202,7 +227,9 @@ class DocumentTreeTrackScanner(
             dateModifiedSeconds = lastModifiedMs.toEpochSeconds(),
             relativePath = relativePath,
             source = LibraryScanPolicy.SafSourceId,
-        ).withFingerprint()
+        ).withFingerprint().let { track ->
+            if (metadata.readSucceeded) track else track.copy(fingerprint = LibraryScanPolicy.PendingDocumentMetadataFingerprint)
+        }
     }
 
     private fun readMetadata(uri: Uri, readSampleRate: Boolean): DocumentAudioMetadata {
@@ -235,10 +262,12 @@ class DocumentTreeTrackScanner(
                         null
                     },
                 )
-            } ?: DocumentAudioMetadata()
-        } catch (error: Throwable) {
+            } ?: DocumentAudioMetadata(readSucceeded = false)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
             Log.d(TAG, "Unable to read document tree audio metadata for $uri.", error)
-            DocumentAudioMetadata()
+            DocumentAudioMetadata(readSucceeded = false)
         } finally {
             retriever.release()
         }
@@ -279,6 +308,7 @@ class DocumentTreeTrackScanner(
     }
 
     private data class DocumentAudioMetadata(
+        val readSucceeded: Boolean = true,
         val title: String? = null,
         val artist: String? = null,
         val album: String? = null,

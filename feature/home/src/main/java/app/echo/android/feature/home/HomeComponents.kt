@@ -282,7 +282,7 @@ internal fun RoonHomeHeader(
                     Icon(Icons.Rounded.Search, contentDescription = null, tint = homeBodyColor(), modifier = Modifier.size(20.dp))
                     Text(
                         stringResource(L10nR.string.feature_home_search_local_music_albums_and_artists_443a4f),
-                        color = homeBodyColor().copy(alpha = 0.5f),
+                        color = homeBodyColor(),
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -1050,24 +1050,20 @@ internal fun HomeFavoriteAlbumsSection(
             fontWeight = FontWeight.ExtraBold,
             modifier = Modifier.padding(horizontal = 18.dp),
         )
-        Row(
-            modifier = Modifier
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 18.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            if (albums.isEmpty()) {
-                RecentActivityEmptyAlbumCard(
-                    title = stringResource(L10nR.string.feature_home_no_favorite_albums_yet_7c8d3b),
-                    subtitle = stringResource(L10nR.string.feature_home_star_an_album_on_the_player_to_see_edd836),
-                    onClick = onOpenLibrary,
-                )
-            } else {
-                albums.take(4).forEach { album ->
-                    RecommendedAlbumCard(
-                        album = album,
-                        onClick = { onOpenAlbum(album) },
-                    )
+        if (albums.isEmpty()) {
+            HomeLibraryNotice(
+                title = stringResource(L10nR.string.feature_home_no_favorite_albums_yet_7c8d3b),
+                subtitle = stringResource(L10nR.string.feature_home_star_an_album_on_the_player_to_see_edd836),
+                onClick = onOpenLibrary,
+                modifier = Modifier.padding(horizontal = 18.dp),
+            )
+        } else {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 18.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                items(albums.take(4), key = { it.albumKey }) { album ->
+                    RecommendedAlbumCard(album = album, onClick = { onOpenAlbum(album) })
                 }
             }
         }
@@ -2493,3 +2489,28 @@ internal fun repeatModeLabel(mode: EchoRepeatMode): String =
         EchoRepeatMode.One -> stringResource(L10nR.string.feature_home_repeat_one_3df94f)
     }
 
+
+@Composable
+internal fun HomeLibraryNotice(
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .echoClickable(onClick = onClick)
+            .padding(vertical = 12.dp, horizontal = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Rounded.LibraryMusic, contentDescription = null,
+            tint = echoAccentColor(), modifier = Modifier.size(28.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(title, color = homeTitleColor(), style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold)
+            Text(subtitle, color = homeBodyColor(), style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}

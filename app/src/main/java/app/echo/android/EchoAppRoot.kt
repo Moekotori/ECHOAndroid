@@ -52,6 +52,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.core.content.ContextCompat
 import androidx.core.app.ActivityCompat
 import androidx.core.content.edit
@@ -365,6 +367,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedTab by remember { mutableIntStateOf(EchoTab.Now.ordinal) }
     var bottomDockExpanded by remember { mutableStateOf(true) }
+    var bottomDockHeightPx by remember { mutableIntStateOf(0) }
+    val bottomDockInset = with(LocalDensity.current) { bottomDockHeightPx.toDp() }
     var nowPlayingExpanded by remember { mutableStateOf(false) }
     var nowPlayingBackProgress by remember { mutableFloatStateOf(0f) }
     val nowPlayingBackRecoveryJob = remember { arrayOfNulls<Job>(1) }
@@ -709,6 +713,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             )
 
                             EchoPagerPage.Now -> EchoHomePage(
+                                bottomInset = bottomDockInset,
                                 viewModel = viewModel,
                                 playbackStatus = playbackStatus,
                                 onOpenAlbum = { album ->
@@ -996,7 +1001,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     onOpenQueue = { queueSheetVisible = true },
                     onNext = viewModel::skipNext,
                     onPrevious = viewModel::skipPrevious,
-                    modifier = Modifier.align(Alignment.BottomCenter),
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                        .onSizeChanged { bottomDockHeightPx = it.height },
                 )
             }
 

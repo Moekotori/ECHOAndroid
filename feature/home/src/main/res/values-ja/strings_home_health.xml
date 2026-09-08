@@ -1,0 +1,5 @@
+<resources>
+    <string name="home_missing_file_title">音声ファイルが見つかりません</string>
+    <string name="home_missing_file_detail">ライブラリを開いて再スキャンするか、別の曲を選んでください。</string>
+    <string name="home_search_no_results">一致する音楽が見つかりません</string>
+</resources>

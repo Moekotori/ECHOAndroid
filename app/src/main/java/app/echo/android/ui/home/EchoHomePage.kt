@@ -1,5 +1,6 @@
 package app.echo.android.ui.home
 
+import androidx.compose.ui.unit.Dp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -19,6 +20,7 @@ internal fun EchoHomePage(
     onOpenLibrary: () -> Unit,
     onOpenConnect: () -> Unit,
     onOpenSearch: () -> Unit,
+    bottomInset: Dp,
 ) {
     val libraryStats by viewModel.libraryStats.collectAsStateWithLifecycle(LibraryStats())
     val recentPlaybackAlbums by viewModel.recentPlaybackAlbums.collectAsStateWithLifecycle()
@@ -30,6 +32,7 @@ internal fun EchoHomePage(
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
     HomeScreen(
         status = playbackStatus,
+        bottomInset = bottomInset,
         trackCount = libraryStats.trackCount,
         albumCount = libraryStats.albumCount,
         artistCount = libraryStats.artistCount,

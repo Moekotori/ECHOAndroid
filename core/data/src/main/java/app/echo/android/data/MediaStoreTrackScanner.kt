@@ -1,5 +1,6 @@
 package app.echo.android.data
 
+import app.echo.android.model.library.LibraryScanOptions
 import android.content.ContentResolver
 import android.content.Context
 import android.database.Cursor
@@ -28,6 +29,7 @@ class MediaStoreTrackScanner(
         relativePathPrefix: String? = null,
         existingTracks: Map<String, TrackFingerprint> = emptyMap(),
         readSampleRate: Boolean = true,
+        options: LibraryScanOptions = LibraryScanOptions(0L, 0L, false, false),
         onTotalCount: suspend (Int?) -> Unit = {},
         onUnchangedIds: suspend (List<String>) -> Unit = {},
         onBatch: suspend (List<LibraryTrackEntity>) -> Unit,
@@ -57,8 +59,13 @@ class MediaStoreTrackScanner(
             while (listing.moveToNext()) {
                 coroutineContext.ensureActive()
                 val track = runCatching {
-                    listing.toAudioRow(collection, columns)
-                        .toTrackEntity(existingTracks, readSampleRate)
+                    val row = listing.toAudioRow(collection, columns)
+                    if (!options.includesDirectory(row.relativePath)) {
+                        onUnchangedIds(listOf("mediastore:${row.mediaId}"))
+                        scannedCount++
+                        onProgress(scannedCount, null)
+                        null
+                    } else row.toTrackEntity(existingTracks, readSampleRate)
                 }.onFailure { error ->
                     complete = false
                     Log.w(TAG, "Skipping unreadable MediaStore audio row.", error)
@@ -152,8 +159,9 @@ class MediaStoreTrackScanner(
         onProgress(scannedCount, null)
         return MediaStoreScanOutcome(
             scannedCount = scannedCount,
-            querySucceeded = true,
+            querySucceeded = completeVolumeScopes.size == collections.size,
             completeVolumeScopes = completeVolumeScopes,
+            failedReadCount = collections.size - completeVolumeScopes.size,
         )
     }
 

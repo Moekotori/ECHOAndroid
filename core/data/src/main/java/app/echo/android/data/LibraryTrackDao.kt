@@ -23,6 +23,7 @@ data class TrackFingerprint(
     val sizeBytes: Long = 0L,
     val dateModifiedSeconds: Long = 0L,
     val relativePath: String? = null,
+    val durationMs: Long = 0L,
 )
 
 data class TrackAlbumKeyRow(
@@ -529,7 +530,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath
+        SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs
         FROM library_tracks
         WHERE source = :source
         """,
@@ -538,7 +539,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath
+        SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs
         FROM library_tracks
         WHERE source = :source
           AND relativePath LIKE :relativePathLike ESCAPE '\'
@@ -776,6 +777,46 @@ interface LibraryTrackDao {
         deleteTracksByIds(ids)
         deleteFtsByTrackIds(ids)
         rebuildLibrarySummariesForKeys(keys.albumKeys, keys.artistKeys, keys.folderKeys)
+    }
+
+    @Query("INSERT OR REPLACE INTO library_favorites (trackId, favoritedAtEpochMs) SELECT :targetId, MAX(favoritedAtEpochMs) FROM library_favorites WHERE trackId IN (:oldId, :targetId) GROUP BY 'merged'")
+    suspend fun mergeFavoriteReference(oldId: String, targetId: String)
+
+    @Query("DELETE FROM library_favorites WHERE trackId = :oldId")
+    suspend fun deleteMergedFavorite(oldId: String)
+
+    @Query("INSERT OR REPLACE INTO library_playlist_tracks (playlistId, trackId, position) SELECT playlistId, :targetId, MIN(position) FROM library_playlist_tracks WHERE trackId IN (:oldId, :targetId) GROUP BY playlistId")
+    suspend fun mergePlaylistReferences(oldId: String, targetId: String)
+
+    @Query("DELETE FROM library_playlist_tracks WHERE trackId = :oldId")
+    suspend fun deleteMergedPlaylistReferences(oldId: String)
+
+    @Query("UPDATE library_playlists SET trackCount = (SELECT COUNT(*) FROM library_playlist_tracks WHERE playlistId = library_playlists.id) WHERE id IN (SELECT playlistId FROM library_playlist_tracks WHERE trackId = :targetId)")
+    suspend fun refreshMergedPlaylistCounts(targetId: String)
+
+    @Query("INSERT OR REPLACE INTO library_playback_stats (trackId, playCount, lastPlayedAtEpochMs) SELECT :targetId, SUM(playCount), MAX(lastPlayedAtEpochMs) FROM library_playback_stats WHERE trackId IN (:oldId, :targetId) GROUP BY 'merged'")
+    suspend fun mergePlaybackReferences(oldId: String, targetId: String)
+
+    @Query("DELETE FROM library_playback_stats WHERE trackId = :oldId")
+    suspend fun deleteMergedPlaybackReference(oldId: String)
+
+    /** Identity and all user-owned references move together, or roll back together. */
+    @Transaction
+    suspend fun mergeScanDuplicate(oldId: String, targetId: String) {
+        if (oldId == targetId) return
+        val old = getTrackById(oldId) ?: return
+        val target = getTrackById(targetId) ?: return
+        val edited = if ((old.metadataEditedAtEpochMs ?: 0L) > (target.metadataEditedAtEpochMs ?: 0L)) old else target
+        val merged = target.withPreservedUserMetadata(edited).withScanMetadata()
+        mergeFavoriteReference(oldId, targetId)
+        deleteMergedFavorite(oldId)
+        mergePlaylistReferences(oldId, targetId)
+        deleteMergedPlaylistReferences(oldId)
+        refreshMergedPlaylistCounts(targetId)
+        mergePlaybackReferences(oldId, targetId)
+        deleteMergedPlaybackReference(oldId)
+        upsertScanBatch(listOf(merged))
+        deleteScanBatch(listOf(oldId))
     }
 
     @Transaction

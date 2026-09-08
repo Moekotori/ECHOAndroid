@@ -25,6 +25,7 @@ import kotlinx.coroutines.launch
 class EchoPlaybackService : MediaLibraryService() {
     private var mediaSession: MediaLibrarySession? = null
     private var player: ExoPlayer? = null
+    private var trackTransitions: EchoTrackTransitionController? = null
     private var sessionCallback: EchoPlaybackLibrarySessionCallback? = null
     private var sessionRestorer: EchoPlaybackSessionRestorer? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -105,6 +106,7 @@ class EchoPlaybackService : MediaLibraryService() {
             }
 
         player = exoPlayer
+        trackTransitions = EchoTrackTransitionController(exoPlayer, serviceScope, EchoPlaybackProcessRuntime::setTrackFadeGain)
         serviceScope.launch {
             EchoPlaybackRuntimeOptionsStore.options
                 .map { it.skipSilenceEnabled }
@@ -169,6 +171,8 @@ class EchoPlaybackService : MediaLibraryService() {
         }
 
     override fun onDestroy() {
+        trackTransitions?.close()
+        trackTransitions = null
         sessionRestorer?.persistFromPlayer(force = true)
         player?.removeListener(playerListener)
         EchoPlaybackProcessRuntime.enginePolicyOrNull()?.detach()

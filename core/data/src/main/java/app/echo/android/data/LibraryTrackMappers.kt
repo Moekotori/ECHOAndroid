@@ -49,12 +49,12 @@ fun EchoTrack.toLibraryTrackEntity(): LibraryTrackEntity =
     ).withComputedSearchMetadata()
 
 internal fun LibraryTrackEntity.withFingerprint(): LibraryTrackEntity =
-    copy(fingerprint = buildTrackFingerprint(this))
+    copy(fingerprint = if (fingerprint == LibraryScanPolicy.PendingDocumentMetadataFingerprint) fingerprint else buildTrackFingerprint(this))
 
 internal fun LibraryTrackEntity.withScanMetadata(scanRunId: Long = lastSeenScanRunId): LibraryTrackEntity =
     copy(
         lastSeenScanRunId = scanRunId,
-        fingerprint = buildTrackFingerprint(this),
+        fingerprint = if (fingerprint == LibraryScanPolicy.PendingDocumentMetadataFingerprint) fingerprint else buildTrackFingerprint(this),
     ).withComputedSearchMetadata()
 
 internal fun LibraryTrackEntity.withComputedSearchMetadata(): LibraryTrackEntity {

@@ -23,6 +23,7 @@ import kotlinx.coroutines.withContext
 
 data class EchoPlaybackRuntimeOptions(
     val skipSilenceEnabled: Boolean = false,
+    val trackTransitions: app.echo.android.model.playback.EchoTrackTransitionOptions = app.echo.android.model.playback.EchoTrackTransitionOptions(),
 )
 
 object EchoPlaybackRuntimeOptionsStore {
@@ -32,6 +33,10 @@ object EchoPlaybackRuntimeOptionsStore {
     fun setSkipSilenceEnabled(enabled: Boolean) {
         _options.value = _options.value.copy(skipSilenceEnabled = enabled)
     }
+
+    fun setTrackTransitions(options: app.echo.android.model.playback.EchoTrackTransitionOptions) {
+        _options.value = _options.value.copy(trackTransitions = options.normalized())
+    }
 }
 
 fun interface EchoPlaybackStreamResolver {
@@ -40,6 +45,14 @@ fun interface EchoPlaybackStreamResolver {
 
 @UnstableApi
 object EchoPlaybackProcessRuntime {
+    @Volatile
+    internal var trackFadeGain: Float = 1f
+        private set
+
+    internal fun setTrackFadeGain(gain: Float) {
+        trackFadeGain = gain.coerceIn(0f, 1f)
+        enginePolicy?.applyReplayGain()
+    }
     @Volatile
     var usbBitPerfectEnabled: Boolean = false
         private set

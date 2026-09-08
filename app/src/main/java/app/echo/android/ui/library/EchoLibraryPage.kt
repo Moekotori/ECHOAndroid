@@ -63,6 +63,8 @@ internal fun EchoLibraryPage(
         remember(playlistId) { viewModel.playlistTrackPaging(playlistId) }.collectAsLazyPagingItems()
     }
 
+    val application = androidx.compose.ui.platform.LocalContext.current.applicationContext as app.echo.android.EchoApplication
+    app.echo.android.feature.library.AlbumOnlineInfoProvider(application.albumOnlineInfo) {
     LibraryScreen(
         hasPermission = hasAudioPermission,
         scanState = scanState,
@@ -152,6 +154,7 @@ internal fun EchoLibraryPage(
         onOpenPlaylist = onOpenPlaylist,
         onCloseDetail = onCloseDetail,
     )
+    }
 }
 
 private fun playLinkedEchoTracks(

@@ -1,0 +1,5 @@
+<resources>
+    <string name="home_missing_file_title">Audio file unavailable</string>
+    <string name="home_missing_file_detail">Open your library to rescan or choose another track.</string>
+    <string name="home_search_no_results">No matching music found</string>
+</resources>

@@ -1,6 +1,7 @@
 package app.echo.android.data
 
 
+import androidx.room.withTransaction
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
@@ -696,6 +697,7 @@ class EchoLibraryRepository(
                 relativePathPrefix = normalizedRelativePath,
                 existingTracks = existingFingerprints,
                 readSampleRate = !skipSampleRateRead,
+                options = options,
                 onTotalCount = { count ->
                     totalCount = count
                     emitProgress(phase = LibraryScanPhase.QueryingMediaStore)
@@ -765,6 +767,7 @@ class EchoLibraryRepository(
                     // 其曲目保持原样,防止整卷误删(连带用户元数据编辑丢失)
                     val candidateIds = existingRows
                         .filter { LibraryScanPolicy.isMediaStoreNativeId(it.id) }
+                        .filter { options.includesDirectory(it.relativePath) }
                         .filter {
                             LibraryScanPolicy.mediaStoreRowWithinVolumeScopes(
                                 relativePath = it.relativePath,
@@ -775,8 +778,14 @@ class EchoLibraryRepository(
                     LibraryScanPolicy.unseenIds(candidateIds, seenIds)
                 },
             )
+            if (scanOutcome.querySucceeded) reconcileLocalDuplicates(dao)
             emitProgress(
-                phase = LibraryScanPhase.Completed,
+                phase = if (scanOutcome.querySucceeded) LibraryScanPhase.Completed else LibraryScanPhase.Error,
+                error = if (scanOutcome.querySucceeded) null else echoText(
+                    en = "Scan partially completed. Some storage volumes could not be fully read; existing songs were kept. Check the storage and retry.",
+                    zh = "扫描部分完成：部分存储卷未能完整读取，已保留原有曲目。请检查存储设备后重试。",
+                    ja = "スキャンは一部完了しました。読み取れないストレージがあります。既存の曲は保持しました。確認して再試行してください。",
+                ),
                 currentTitle = null,
                 deletedCount = deletion.deletedCount,
                 isCompleted = true,
@@ -870,6 +879,7 @@ class EchoLibraryRepository(
                         relativePathLike = relativePathLike,
                     )
                 ).associateBy(LibraryTrackEntity::id)
+            val duplicateAliases = mutableMapOf<String, String>()
             val seenIds = HashSet<String>(existingFingerprints.size)
             val unresolvedMediaStoreIds = HashSet<String>()
             val mediaStoreDuplicateKeys = scanner.documentTreeDuplicateKeys(existingFingerprints.values) {
@@ -884,6 +894,10 @@ class EchoLibraryRepository(
                 existingTracks = existingFingerprints,
                 mediaStoreDuplicateKeys = mediaStoreDuplicateKeys,
                 readSampleRate = !skipSampleRateRead,
+                options = options,
+                onDuplicate = { oldId, targetId ->
+                    if (oldId in existingFingerprints) duplicateAliases[oldId] = targetId
+                },
                 onProgress = { count, currentTrack ->
                     scannedCount = count
                     val now = System.currentTimeMillis()
@@ -905,7 +919,8 @@ class EchoLibraryRepository(
                 onBatch = { batch ->
                     coroutineContext.ensureActive()
                     seenIds.addAll(batch.map { it.id })
-                    val accepted = filterLocalScanBatch(batch, existingFingerprints.keys, options)
+                    val recovered = retainMetadataOnFailedReads(dao, batch)
+                    val accepted = filterLocalScanBatch(recovered, existingFingerprints.keys, options)
                     skippedCount += batch.size - accepted.size
                     val classified = classifyScanBatch(
                         batch = accepted,
@@ -915,7 +930,12 @@ class EchoLibraryRepository(
                     )
                     seenIds.addAll(classified.seenIds)
                     emitProgress(phase = LibraryScanPhase.WritingDatabase)
-                    writeClassifiedScanBatch(dao, classified)
+                    database.withTransaction {
+                        writeClassifiedScanBatch(dao, classified)
+                        duplicateAliases.forEach { (oldId, targetId) -> dao.mergeScanDuplicate(oldId, targetId) }
+                    }
+                    seenIds.addAll(duplicateAliases.keys)
+                    duplicateAliases.clear()
                     insertedCount += classified.inserts.size
                     updatedCount += classified.updates.size
                     lastProgressEmitCount = scannedCount
@@ -941,7 +961,8 @@ class EchoLibraryRepository(
                         existingFingerprints.keys.filter {
                             (LibraryScanPolicy.isSafTrackId(it) || LibraryScanPolicy.isMediaStoreNativeId(it)) &&
                                 // A fully listed empty tree proves absence; otherwise unknown identities stay safe.
-                                (scannedCount == 0 || it !in unresolvedMediaStoreIds)
+                                (scannedCount == 0 || it !in unresolvedMediaStoreIds) &&
+                                options.includesDirectory(existingFingerprints[it]?.relativePath)
                         },
                         seenIds,
                     )
@@ -949,7 +970,12 @@ class EchoLibraryRepository(
             )
             deletedCount = deletion.deletedCount
             emitProgress(
-                phase = LibraryScanPhase.Completed,
+                phase = if (scanOutcome.querySucceeded) LibraryScanPhase.Completed else LibraryScanPhase.Error,
+                error = if (scanOutcome.querySucceeded) null else echoText(
+                    en = "Scan partially completed: ${scanOutcome.failedReadCount} files or folders could not be read. Existing songs were kept; check the storage and retry.",
+                    zh = "扫描部分完成：${scanOutcome.failedReadCount} 个文件或目录读取失败。已保留原有曲目，请检查存储设备后重试。",
+                    ja = "スキャンは一部完了：${scanOutcome.failedReadCount} 件の読み取りに失敗しました。既存の曲は保持しました。ストレージを確認して再試行してください。",
+                ),
                 currentTitle = null,
                 isCompleted = true,
             )
@@ -1458,6 +1484,35 @@ class EchoLibraryRepository(
             prefetchDistance = 20,
             enablePlaceholders = false,
         )
+
+    private suspend fun retainMetadataOnFailedReads(dao: LibraryTrackDao, batch: List<LibraryTrackEntity>): List<LibraryTrackEntity> =
+        batch.map { incoming ->
+            if (incoming.fingerprint != LibraryScanPolicy.PendingDocumentMetadataFingerprint) incoming
+            else dao.getTrackById(incoming.id)?.copy(
+                contentUri = incoming.contentUri, relativePath = incoming.relativePath,
+                sizeBytes = incoming.sizeBytes, dateModifiedSeconds = incoming.dateModifiedSeconds,
+                fingerprint = LibraryScanPolicy.PendingDocumentMetadataFingerprint,
+            ) ?: incoming
+        }
+
+    private suspend fun reconcileLocalDuplicates(dao: LibraryTrackDao) {
+        val native = scanner.documentTreeDuplicateKeys(dao.getExistingMediaStoreFingerprints(LibrarySource.MediaStore.id))
+        if (native.isEmpty()) return
+        val documents = dao.getExistingMediaStoreFingerprints(LibraryScanPolicy.SafSourceId) +
+            dao.getExistingMediaStoreFingerprints(LibrarySource.MediaStore.id).filter { LibraryScanPolicy.isSafTrackId(it.id) }
+        for (document in documents) {
+            coroutineContext.ensureActive()
+            val name = runCatching {
+                val uri = android.net.Uri.parse(document.contentUri)
+                if (uri.authority != "com.android.externalstorage.documents") return@runCatching null
+                android.provider.DocumentsContract.getDocumentId(uri).substringAfter(':').substringAfterLast('/')
+            }.getOrNull() ?: continue
+            val key = LibraryScanPolicy.localFileDuplicateKey(document.relativePath, document.sizeBytes, document.dateModifiedSeconds, name) ?: continue
+            val target = native[key] ?: continue
+            dao.mergeScanDuplicate(document.id, target.id)
+            yield()
+        }
+    }
 
     private suspend fun deleteMissingIfComplete(
         dao: LibraryTrackDao,

@@ -1,0 +1,27 @@
+{
+  "buildFiles": [
+    "/Users/moekotori/echoandroid/core/usb-audio/src/main/cpp/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/moekotori/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Users/moekotori/echoandroid/core/usb-audio/.cxx/Debug/38a10161/arm64-v8a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/moekotori/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Users/moekotori/echoandroid/core/usb-audio/.cxx/Debug/38a10161/arm64-v8a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "echo_usb_isoc::@6890427a1f51a3e7e1df": {
+      "artifactName": "echo_usb_isoc",
+      "abi": "arm64-v8a",
+      "output": "/tmp/echo-online-verification/_core_usb-audio/intermediates/cxx/Debug/38a10161/obj/arm64-v8a/libecho_usb_isoc.so",
+      "runtimeFiles": []
+    }
+  }
+}

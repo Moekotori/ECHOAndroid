@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="album_information_title">アルバム情報</string>
+    <string name="album_information_artist">アルバムアーティスト</string>
+    <string name="album_information_year">リリース年</string>
+    <string name="album_information_duration">合計再生時間</string>
+    <string name="album_information_added">追加日</string>
+    <string name="album_information_discs">ディスク数</string>
+    <string name="album_information_track_artists">曲のアーティスト</string>
+    <string name="album_information_audio">オーディオ情報</string>
+    <string name="album_information_partial">読み込み済み %1$d / %2$d 曲に基づく情報</string>
+    <string name="album_information_sample_rate">サンプルレート</string>
+    <string name="album_information_size">ファイル合計サイズ</string>
+    <string name="album_information_known_size">確認済みファイルサイズ</string>
+    <string name="album_information_missing_specs">一部のファイルにはサンプルレートやサイズの情報がありません。</string>
+    <string name="album_information_file_specs">ファイルの情報です。実際の再生出力とは異なる場合があります。</string>
+</resources>

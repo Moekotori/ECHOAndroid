@@ -115,6 +115,41 @@ class LibraryTrackDaoAndroidTest {
         assertTrue(dao.getTrackQueueByFts("cancelled*", "%cancelled%", 10).isEmpty())
     }
 
+    @Test
+    fun duplicateMergePreservesUserDataAndRollsBackOnCancellation() = runBlocking {
+        val old = track("saf:old", "My title").copy(metadataEditedAtEpochMs = 100L)
+        val target = track("mediastore:1", "File title")
+        dao.upsertScanBatch(listOf(old, target))
+        val sql = database.openHelper.writableDatabase
+        sql.execSQL("INSERT INTO library_favorites VALUES ('saf:old', 10), ('mediastore:1', 20)")
+        sql.execSQL("INSERT INTO library_playback_stats VALUES ('saf:old', 2, 10), ('mediastore:1', 3, 20)")
+        sql.execSQL("INSERT INTO library_playlists VALUES ('list', 'List', 'mediastore', NULL, 2, 0)")
+        sql.execSQL("INSERT INTO library_playlist_tracks VALUES ('list', 'saf:old', 0), ('list', 'mediastore:1', 4)")
+        val cancelled = launch {
+            database.withTransaction {
+                dao.mergeScanDuplicate(old.id, target.id)
+                throw kotlinx.coroutines.CancellationException("stop during merge")
+            }
+        }
+        cancelled.join()
+        assertTrue(dao.getTrackById(old.id) != null)
+        assertEquals(2, database.playlistDao().getPlaylistTrackIds("list").size)
+        dao.mergeScanDuplicate(old.id, target.id)
+        dao.mergeScanDuplicate(old.id, target.id) // Retrying an already-committed merge must not count twice.
+        assertEquals(null, dao.getTrackById(old.id))
+        assertEquals("My title", dao.getTrackById(target.id)?.title)
+        assertEquals(listOf(target.id), database.playlistDao().getPlaylistTrackIds("list"))
+        assertEquals(1, database.playlistDao().getPlaylist("list")?.trackCount)
+        assertTrue(database.playlistDao().isFavorite(target.id))
+        assertTrue(!database.playlistDao().isFavorite(old.id))
+        sql.query("SELECT playCount, lastPlayedAtEpochMs FROM library_playback_stats WHERE trackId = 'mediastore:1'").use {
+            assertTrue(it.moveToFirst()); assertEquals(5, it.getInt(0)); assertEquals(20L, it.getLong(1))
+        }
+        sql.query("SELECT position FROM library_playlist_tracks WHERE playlistId = 'list'").use {
+            assertTrue(it.moveToFirst()); assertEquals(0, it.getInt(0))
+        }
+    }
+
     private fun track(
         id: String,
         title: String,

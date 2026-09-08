@@ -6,6 +6,10 @@ internal fun LibraryScanOptions.accepts(durationMs: Long, sizeBytes: Long, relat
     // Some supported formats/providers cannot report duration or size. Unknown is not zero-length audio.
     if (durationMs > 0L && durationMs < minDurationMs.coerceAtLeast(0L)) return false
     if (sizeBytes > 0L && sizeBytes < minSizeBytes.coerceAtLeast(0L)) return false
+    return includesDirectory(relativePath)
+}
+
+internal fun LibraryScanOptions.includesDirectory(relativePath: String?): Boolean {
     val folders = relativePath.orEmpty().replace('\\', '/').split('/')
     if (excludeHiddenFolders && folders.any { it.startsWith('.') }) return false
     if (excludeNonMusicFolders && folders.any { it.lowercase(java.util.Locale.ROOT) in NonMusicFolderNames }) return false

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="album_online_title">このアルバムについて</string>
+    <string name="album_online_refresh">更新</string>
+    <string name="album_online_loading">MusicBrainz と Wikipedia を検索中…</string>
+    <string name="album_online_error">オンライン情報を読み込めません。更新して再試行してください。</string>
+    <string name="album_online_no_match">確実な一致が見つかりません。アルバム名とアーティストを確認してください。</string>
+    <string name="album_online_stale">保存済み情報を表示しています。現在更新できません。</string>
+    <string name="album_online_partial">リリース情報を取得しました。Wikipedia は現在利用できません。</string>
+    <string name="album_online_less">閉じる</string>
+    <string name="album_online_more">もっと見る</string>
+    <string name="album_online_attribution">Wikipedia の寄稿者による本文を ECHO が抜粋しています。</string>
+    <string name="album_online_no_wiki">関連する Wikipedia の紹介文はありません。</string>
+    <string name="album_online_release">一致したリリース</string>
+    <string name="album_online_release_note">MusicBrainz の参考版です。ファイルの版とは異なる場合があります。</string>
+    <string name="album_online_date">リリース日</string>
+    <string name="album_online_country">地域</string>
+    <string name="album_online_label">レーベル</string>
+    <string name="album_online_catalog">カタログ番号</string>
+    <string name="album_online_credits">クレジット</string>
+    <string name="album_online_composer">作曲</string>
+    <string name="album_online_lyricist">作詞 / 創作</string>
+    <string name="album_online_producer">プロデューサー</string>
+    <string name="album_online_arranger">編曲</string>
+    <string name="album_online_vocal">ボーカル</string>
+    <string name="album_online_performer">演奏</string>
+    <string name="album_online_mb_source">MusicBrainz · 出典と全クレジット</string>
+    <string name="album_online_link_error">リンクを開けませんでした。</string>
+</resources>

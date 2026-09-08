@@ -1,5 +1,12 @@
 package app.echo.android.data
 
+import app.echo.android.model.library.LibraryScanOptions
+import android.os.ParcelFileDescriptor
+import androidx.test.platform.app.InstrumentationRegistry
+import java.io.File
+import java.io.FileNotFoundException
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import android.content.ContentProvider
 import android.content.ContentResolver
 import android.content.ContentValues
@@ -46,6 +53,41 @@ class DocumentTreeTrackScannerAndroidTest {
         assertFalse(scan(true).querySucceeded)
     }
 
+    @Test
+    fun failedMetadataIsRetriedWithUnchangedFileFingerprint() = runBlocking {
+        val provider = ListingProvider(listOf("retry.wav"))
+        provider.failReads = true
+        val scanner = DocumentTreeTrackScanner(ContentResolver.wrap(provider))
+        val tracks = mutableListOf<LibraryTrackEntity>()
+        val first = scanner.scanAudioTree(tree, "Music/", onBatch = { tracks += it }, onProgress = { _, _ -> })
+        assertFalse(first.querySucceeded)
+        assertEquals(1, first.failedReadCount)
+        val pending = tracks.single().withScanMetadata()
+        assertEquals(LibraryScanPolicy.PendingDocumentMetadataFingerprint, pending.fingerprint)
+        provider.failReads = false
+        tracks.clear()
+        val second = scanner.scanAudioTree(tree, "Music/", existingTracks = mapOf(pending.id to TrackFingerprint(
+            pending.id, pending.contentUri, pending.sampleRateHz, pending.fingerprint,
+            pending.sizeBytes, pending.dateModifiedSeconds, pending.relativePath, pending.durationMs,
+        )), onBatch = { tracks += it }, onProgress = { _, _ -> })
+        assertTrue(second.querySucceeded)
+        assertEquals(2, provider.opens)
+        assertTrue(tracks.single().durationMs > 0)
+        assertTrue(tracks.single().fingerprint != LibraryScanPolicy.PendingDocumentMetadataFingerprint)
+    }
+
+    @Test
+    fun excludedDirectoryIsNeverQueriedOrOpened() = runBlocking {
+        val provider = ListingProvider(listOf("Recordings"))
+        val scanner = DocumentTreeTrackScanner(ContentResolver.wrap(provider))
+        val outcome = scanner.scanAudioTree(tree, "Removable/abcd/Music/", options = LibraryScanOptions(),
+            onBatch = { error("Excluded directory must not yield tracks") }, onProgress = { _, _ -> })
+        assertTrue(outcome.querySucceeded)
+        assertEquals(1, outcome.excludedDirectoryCount)
+        assertEquals(1, provider.queries)
+        assertEquals(0, provider.opens)
+    }
+
     private fun indexedTrack() = LibraryTrackEntity(
         id = "mediastore:1", contentUri = "content://media/external/audio/media/1",
         title = "first", artist = "Artist", album = null, albumArtist = null, artworkUri = null,
@@ -55,8 +97,26 @@ class DocumentTreeTrackScannerAndroidTest {
     )
 
     private class ListingProvider(private val names: List<String>, private val fail: Boolean = false) : ContentProvider() {
+        var failReads = false
+        var opens = 0
+        var queries = 0
+        private val wav by lazy {
+            File.createTempFile("scan-fixture", ".wav", InstrumentationRegistry.getInstrumentation().targetContext.cacheDir).apply {
+                val header = ByteBuffer.allocate(44).order(ByteOrder.LITTLE_ENDIAN)
+                    .put("RIFF".toByteArray()).putInt(16036).put("WAVEfmt ".toByteArray())
+                    .putInt(16).putShort(1).putShort(1).putInt(8000).putInt(16000)
+                    .putShort(2).putShort(16).put("data".toByteArray()).putInt(16000).array()
+                writeBytes(header + ByteArray(16000))
+            }
+        }
+        override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor {
+            opens++
+            if (failReads) throw FileNotFoundException("Temporary SD read failure")
+            return ParcelFileDescriptor.open(wav, ParcelFileDescriptor.MODE_READ_ONLY)
+        }
         override fun onCreate() = true
         override fun query(uri: Uri, projection: Array<out String>?, selection: String?, selectionArgs: Array<out String>?, sortOrder: String?): Cursor? {
+            queries++
             if (fail) return null
             return MatrixCursor(projection!!).apply {
                 names.forEach { name ->
@@ -64,7 +124,7 @@ class DocumentTreeTrackScannerAndroidTest {
                         when (column) {
                             DocumentsContract.Document.COLUMN_DOCUMENT_ID -> "primary:Music/$name"
                             DocumentsContract.Document.COLUMN_DISPLAY_NAME -> name
-                            DocumentsContract.Document.COLUMN_MIME_TYPE -> "audio/wav"
+                            DocumentsContract.Document.COLUMN_MIME_TYPE -> if (name == "Recordings") DocumentsContract.Document.MIME_TYPE_DIR else "audio/wav"
                             DocumentsContract.Document.COLUMN_SIZE -> 1024L
                             DocumentsContract.Document.COLUMN_LAST_MODIFIED -> 1700000000000L
                             else -> null
