@@ -1,23 +1,19 @@
 package app.echo.android.ui.shell
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,13 +26,11 @@ import app.echo.android.EchoAndroidViewModel
 import app.echo.android.EchoTab
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoContentMaxWidth
-import app.echo.android.design.EchoGlassInk
 import app.echo.android.design.EchoGlassNight
 import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.EchoHomeMist
 import app.echo.android.feature.player.MiniPlayer
 import app.echo.android.model.playback.EchoPlaybackStatus
-import app.echo.android.model.playback.PlaybackPositionState
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
 
 private val DockMotionEasing = EchoMotion.Silk
@@ -75,174 +69,51 @@ internal fun EchoBottomDockHost(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        AnimatedContent(
-            targetState = bottomDockExpanded,
-            transitionSpec = {
-                if (effectivePerformanceMode.isLightweight) {
-                    fadeIn(tween(durationMillis = motionDuration(90, effectivePerformanceMode))) togetherWith
-                        fadeOut(tween(durationMillis = motionDuration(90, effectivePerformanceMode)))
-                } else {
-                    val duration = motionDuration(300, effectivePerformanceMode)
-                    val enter = fadeIn(tween(180, delayMillis = 60, easing = DockMotionEasing)) +
-                        slideInVertically(tween(duration, easing = DockMotionEasing)) { it / 8 }
-                    val exit = fadeOut(tween(120, easing = DockMotionEasing)) +
-                        slideOutVertically(tween(180, easing = DockMotionEasing)) { it / 10 }
-                    (enter togetherWith exit).using(
-                        SizeTransform { _, _ -> tween(duration, easing = DockMotionEasing) },
-                    )
-                }
-            },
-            contentAlignment = Alignment.BottomCenter,
-            label = "bottom-controls-transition",
-        ) { expanded ->
-            if (expanded) {
-                ExpandedBottomControls(
-                    status = playbackStatus,
-                    positionState = playbackPosition,
-                    darkTheme = darkTheme,
-                    selectedTab = selectedTab,
-                    selectedTabProgress = dockTabProgress,
-                    selectedTabProgressLive = pagerState.isScrollInProgress,
-                    onPlayPause = onPlayPause,
-                    onHideDock = onHideDock,
-                    onSelectTab = onSelectTab,
-                    onExpand = onExpand,
-                    onNext = onNext,
-                    onPrevious = onPrevious,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            } else {
-                CompactBottomControls(
-                    status = playbackStatus,
-                    positionState = playbackPosition,
-                    darkTheme = darkTheme,
-                    onPlayPause = onPlayPause,
-                    onShowDock = onShowDock,
-                    onOpenQueue = onOpenQueue,
-                    onExpand = onExpand,
-                    onNext = onNext,
-                    onPrevious = onPrevious,
-                    modifier = Modifier
-                        .widthIn(max = LocalEchoContentMaxWidth.current)
-                        .fillMaxWidth(),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ExpandedBottomControls(
-    status: EchoPlaybackStatus,
-    positionState: State<PlaybackPositionState>,
-    darkTheme: Boolean,
-    selectedTab: Int,
-    selectedTabProgress: () -> Float,
-    selectedTabProgressLive: Boolean,
-    onPlayPause: () -> Unit,
-    onHideDock: () -> Unit,
-    onSelectTab: (Int) -> Unit,
-    onExpand: () -> Unit,
-    onNext: () -> Unit,
-    onPrevious: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier.background(
-            if (darkTheme) {
-                Brush.verticalGradient(
-                    listOf(
-                        Color.Transparent,
-                        EchoGlassNight.copy(alpha = 0.28f),
-                        EchoGlassInk.copy(alpha = 0.78f),
-                        EchoGlassPanel.copy(alpha = 0.94f),
-                    ),
-                )
-            } else {
-                Brush.verticalGradient(
-                    listOf(
-                        Color.Transparent,
-                        EchoHomeMist.copy(alpha = 0.78f),
-                        EchoHomeMist.copy(alpha = 0.98f),
-                    ),
-                )
-            },
-        ),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(0.dp),
-    ) {
-        MiniPlayer(
-            status = status,
-            positionState = positionState,
-            onPlayPause = onPlayPause,
-            onHideDock = onHideDock,
-            onExpand = onExpand,
-            onNext = onNext,
-            onPrevious = onPrevious,
-            modifier = Modifier
-                .padding(horizontal = 4.dp)
-                .fillMaxWidth(),
-        )
-        BottomDock(
-            selectedTab = selectedTab,
-            selectedTabProgress = selectedTabProgress,
-            progressLive = selectedTabProgressLive,
-            onLightSurface = !darkTheme,
-            onSelectTab = onSelectTab,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-}
-
-@Composable
-private fun CompactBottomControls(
-    status: EchoPlaybackStatus,
-    positionState: State<PlaybackPositionState>,
-    darkTheme: Boolean,
-    onPlayPause: () -> Unit,
-    onShowDock: () -> Unit,
-    onOpenQueue: () -> Unit,
-    onExpand: () -> Unit,
-    onNext: () -> Unit,
-    onPrevious: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
             .background(
-                if (darkTheme) {
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.Transparent,
-                            EchoGlassNight.copy(alpha = 0.26f),
-                            EchoGlassInk.copy(alpha = 0.76f),
-                            EchoGlassPanel.copy(alpha = 0.92f),
-                        ),
-                    )
-                } else {
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.Transparent,
-                            EchoHomeMist.copy(alpha = 0.82f),
-                        ),
-                    )
-                },
+                Brush.verticalGradient(
+                    if (darkTheme) listOf(Color.Transparent, EchoGlassNight.copy(alpha = 0.40f), EchoGlassPanel.copy(alpha = 0.94f))
+                    else listOf(Color.Transparent, EchoHomeMist.copy(alpha = 0.96f)),
+                ),
             )
-            .padding(horizontal = 10.dp, vertical = 4.dp),
+            .navigationBarsPadding()
+            .padding(top = 6.dp, bottom = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        // Keep the player mounted: expanding navigation must not restart artwork or gestures.
         MiniPlayer(
-            status = status,
-            positionState = positionState,
+            status = playbackStatus,
+            positionState = playbackPosition,
             onPlayPause = onPlayPause,
-            onShowDock = onShowDock,
+            onHideDock = if (bottomDockExpanded) onHideDock else null,
+            onShowDock = if (bottomDockExpanded) null else onShowDock,
             onOpenQueue = onOpenQueue,
             onExpand = onExpand,
             onNext = onNext,
             onPrevious = onPrevious,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .widthIn(max = LocalEchoContentMaxWidth.current)
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp),
         )
+        AnimatedVisibility(
+            visible = bottomDockExpanded,
+            enter = expandVertically(
+                expandFrom = Alignment.Top,
+                animationSpec = tween(motionDuration(280, effectivePerformanceMode), easing = DockMotionEasing),
+            ) + fadeIn(tween(motionDuration(180, effectivePerformanceMode), easing = DockMotionEasing)),
+            exit = shrinkVertically(
+                shrinkTowards = Alignment.Top,
+                animationSpec = tween(motionDuration(220, effectivePerformanceMode), easing = DockMotionEasing),
+            ) + fadeOut(tween(motionDuration(120, effectivePerformanceMode), easing = DockMotionEasing)),
+        ) {
+            BottomDock(
+                selectedTab = selectedTab,
+                selectedTabProgress = dockTabProgress,
+                progressLive = pagerState.isScrollInProgress,
+                onLightSurface = !darkTheme,
+                onSelectTab = onSelectTab,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }

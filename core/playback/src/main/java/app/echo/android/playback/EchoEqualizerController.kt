@@ -150,7 +150,9 @@ class EchoEqualizerController {
         processor.setRuntime(runtime)
         if (runtime.shouldProcess != lastShouldProcess) {
             lastShouldProcess = runtime.shouldProcess
-            if (!EchoPlaybackProcessRuntime.usbBitPerfectEnabled) EchoPlaybackProcessRuntime.reconfigureAudioPipeline()
+            // Media3 determines the active processor chain during configure. A same-position seek
+            // need not reconfigure it, so activation changes must rebuild the sink once.
+            if (!EchoPlaybackProcessRuntime.usbBitPerfectEnabled) EchoPlaybackProcessRuntime.reconfigureAudioPipeline(forceSinkReset = true)
         }
         val nextState = EchoEqualizerState(
             enabled = desiredEnabled,

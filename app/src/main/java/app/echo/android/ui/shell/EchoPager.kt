@@ -59,5 +59,5 @@ internal fun motionDuration(defaultMs: Int, effectivePerformanceMode: EchoEffect
     when {
         effectivePerformanceMode.isLightweight -> (defaultMs * 0.20f).roundToInt().coerceIn(45, 120)
         effectivePerformanceMode.isHighPerformance -> defaultMs
-        else -> (defaultMs * 0.72f).roundToInt().coerceIn(110, defaultMs)
+        else -> (defaultMs * 0.72f).roundToInt().coerceIn(minOf(110, defaultMs), defaultMs)
     }

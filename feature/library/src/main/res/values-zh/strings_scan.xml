@@ -16,4 +16,10 @@
     <string name="scan_device">扫描整机</string>
     <string name="scan_device_hint">按以上条件扫描系统音乐库</string>
     <string name="scan_skipped_count">已跳过 %1$d 个文件</string>
+    <string name="scan_simple_hint">选择音乐所在的文件夹。</string>
+    <string name="scan_enable_filters">过滤非音乐内容</string>
+    <string name="scan_filters_hint">按时长、大小和目录筛选</string>
+    <string name="scan_edit_filters">调整筛选条件</string>
+    <string name="scan_hide_details">收起详细设置</string>
+    <string name="scan_device_instead">或扫描整台设备</string>
 </resources>

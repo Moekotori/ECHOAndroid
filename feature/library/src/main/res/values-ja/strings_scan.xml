@@ -16,4 +16,10 @@
     <string name="scan_device">端末をスキャン</string>
     <string name="scan_device_hint">上の条件でシステム音楽ライブラリを検索</string>
     <string name="scan_skipped_count">%1$d ファイルを除外</string>
+    <string name="scan_simple_hint">音楽が入っているフォルダを選択。</string>
+    <string name="scan_enable_filters">音楽以外を除外</string>
+    <string name="scan_filters_hint">長さ・サイズ・フォルダで絞り込み</string>
+    <string name="scan_edit_filters">条件を調整</string>
+    <string name="scan_hide_details">詳細を閉じる</string>
+    <string name="scan_device_instead">端末全体をスキャン</string>
 </resources>

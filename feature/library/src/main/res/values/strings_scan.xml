@@ -16,4 +16,10 @@
     <string name="scan_device">Scan device</string>
     <string name="scan_device_hint">Scans the system music library using these filters</string>
     <string name="scan_skipped_count">Skipped %1$d files</string>
+    <string name="scan_simple_hint">Choose the folder containing your music.</string>
+    <string name="scan_enable_filters">Filter non-music audio</string>
+    <string name="scan_filters_hint">Filter by duration, size and folder</string>
+    <string name="scan_edit_filters">Adjust filters</string>
+    <string name="scan_hide_details">Hide details</string>
+    <string name="scan_device_instead">Or scan this device</string>
 </resources>
