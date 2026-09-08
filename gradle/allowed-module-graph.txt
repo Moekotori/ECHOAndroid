@@ -9,7 +9,7 @@
 :app -> :core:i18n :core:connect :core:data :core:design :core:lyrics :core:model :core:playback :feature:connect :feature:home :feature:library :feature:player :feature:settings
 :core:connect -> :core:model
 :core:data -> :core:i18n :core:model
-:core:design -> :core:i18n :core:model
+:core:design -> :core:model
 :core:lyrics -> :core:model
 :core:model ->
 :core:playback -> :core:model :core:usb-audio

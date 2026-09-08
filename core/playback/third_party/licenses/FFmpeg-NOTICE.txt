@@ -1,0 +1,11 @@
+ECHOAndroid bundles FFmpeg 6.1.6, built from:
+https://ffmpeg.org/releases/ffmpeg-6.1.6.tar.xz
+SHA-256: d4fcb164028dd3beee5d92c0ac72e46aac6973c75ea12dc14de07bf8f407370a
+
+This configuration uses FFmpeg under LGPL 2.1 or later. See FFmpeg-LGPL-2.1.txt.
+Copyright belongs to the FFmpeg authors; see the corresponding source files.
+
+The Media3 FFmpeg audio bridge comes from AndroidX Media 1.10.1:
+https://github.com/androidx/media/tree/1.10.1/libraries/decoder_ffmpeg
+Copyright The Android Open Source Project. Licensed under Apache 2.0;
+see Media3-FFmpeg-Apache-2.0.txt.

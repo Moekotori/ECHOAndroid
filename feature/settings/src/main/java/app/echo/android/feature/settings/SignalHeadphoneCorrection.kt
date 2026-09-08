@@ -38,7 +38,7 @@ internal fun SignalHeadphoneCorrection(
         OutlinedTextField(
             value = state.query, onValueChange = onQueryChange,
             modifier = Modifier.fillMaxWidth(), singleLine = true,
-            label = { Text(stringResource(R.string.diag_headphone_model)) },
+            label = { Text(stringResource(L10nR.string.diag_headphone_model)) },
             placeholder = { Text("HD 650 / IER-M9 / AirPods Max") },
             shape = RoundedCornerShape(4.dp),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -46,17 +46,17 @@ internal fun SignalHeadphoneCorrection(
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Button(onClick = search, enabled = !state.loading && state.query.isNotBlank(), shape = RoundedCornerShape(4.dp)) {
-                Text(stringResource(if (state.loading) R.string.diag_searching else R.string.diag_search))
+                Text(stringResource(if (state.loading) L10nR.string.diag_searching else L10nR.string.diag_search))
             }
-            TextButton(onClick = onRefresh, enabled = !state.loading) { Text(stringResource(R.string.diag_refresh_library)) }
+            TextButton(onClick = onRefresh, enabled = !state.loading) { Text(stringResource(L10nR.string.diag_refresh_library)) }
         }
         if (state.loading) {
             LinearProgressIndicator(Modifier.fillMaxWidth())
-            SignalNote(stringResource(R.string.diag_reading_opra))
+            SignalNote(stringResource(L10nR.string.diag_reading_opra))
         }
         state.message?.let { SignalNote(it) }
         if (state.status.eqCount > 0) {
-            SignalNote(stringResource(R.string.diag_opra_stats, state.status.vendorCount, state.status.productCount, state.status.eqCount, state.status.source))
+            SignalNote(stringResource(L10nR.string.diag_opra_stats, state.status.vendorCount, state.status.productCount, state.status.eqCount, state.status.source))
         }
         Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             state.results.forEach { product ->
@@ -83,9 +83,9 @@ internal fun SignalHeadphoneCorrection(
         state.selectedPreset?.let { preset ->
             HorizontalDivider()
             Text(preset.displayName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-            SignalNote(stringResource(R.string.diag_eq_preamp, formatEqGain(preset.preampDb)))
+            SignalNote(stringResource(L10nR.string.diag_eq_preamp, formatEqGain(preset.preampDb)))
             Button(onClick = onApplySelected, enabled = !state.loading, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(4.dp)) {
-                Text(stringResource(R.string.diag_apply_approx))
+                Text(stringResource(L10nR.string.diag_apply_approx))
             }
         }
     }

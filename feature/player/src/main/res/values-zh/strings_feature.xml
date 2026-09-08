@@ -107,7 +107,7 @@
     <string name="feature_player_system_mono_6ca8fa" formatted="false">"系统等宽"</string>
     <string name="feature_player_system_output_856789" formatted="false">"系统输出"</string>
     <string name="feature_player_system_serif_ee6148" formatted="false">"系统衬线"</string>
-    <string name="feature_player_tag_status_replaygaintrackgaindb_let_formatreplaygaindb_unread_p_9c7a19">"标签 %3$s · 预增益 %2$s"</string>
+    <string name="feature_player_tag_status_replaygaintrackgaindb_let_formatreplaygaindb_unread_p_9c7a19">"标签 %1$s · 预增益 %2$s"</string>
     <string name="feature_player_this_track_210ea7" formatted="false">"本首结束"</string>
     <string name="feature_player_translation_53c7ce" formatted="false">"翻译"</string>
     <string name="feature_player_translation_romaji_appear_when_the_current_lyrics_include_3b41d9" formatted="false">"翻译 / 罗马音会在当前歌词包含对应数据时显示"</string>
@@ -122,4 +122,5 @@
     <string name="feature_player_word_d653ce" formatted="false">"逐字"</string>
     <string name="feature_player_word_highlight_f4dec8" formatted="false">"逐字强度"</string>
     <string name="feature_player_word_highlight_off_b0e40a" formatted="false">"逐字强度 关"</string>
+    <string name="feature_player_replay_gain_unread">未读取</string>
 </resources>

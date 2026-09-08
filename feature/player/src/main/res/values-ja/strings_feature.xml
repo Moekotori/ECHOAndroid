@@ -107,7 +107,7 @@
     <string name="feature_player_system_mono_6ca8fa" formatted="false">"システム等幅"</string>
     <string name="feature_player_system_output_856789" formatted="false">"システム出力"</string>
     <string name="feature_player_system_serif_ee6148" formatted="false">"システム明朝"</string>
-    <string name="feature_player_tag_status_replaygaintrackgaindb_let_formatreplaygaindb_unread_p_9c7a19">"タグ %4$s · プリアンプ %2$s"</string>
+    <string name="feature_player_tag_status_replaygaintrackgaindb_let_formatreplaygaindb_unread_p_9c7a19">"タグ %1$s · プリアンプ %2$s"</string>
     <string name="feature_player_this_track_210ea7" formatted="false">"この曲の終わり"</string>
     <string name="feature_player_translation_53c7ce" formatted="false">"翻訳"</string>
     <string name="feature_player_translation_romaji_appear_when_the_current_lyrics_include_3b41d9" formatted="false">"翻訳 / ローマ字は、現在の歌詞にデータがあるとき表示されます"</string>
@@ -122,4 +122,5 @@
     <string name="feature_player_word_d653ce" formatted="false">"文字"</string>
     <string name="feature_player_word_highlight_f4dec8" formatted="false">"文字ハイライト"</string>
     <string name="feature_player_word_highlight_off_b0e40a" formatted="false">"文字ハイライト オフ"</string>
+    <string name="feature_player_replay_gain_unread">未読み取り</string>
 </resources>

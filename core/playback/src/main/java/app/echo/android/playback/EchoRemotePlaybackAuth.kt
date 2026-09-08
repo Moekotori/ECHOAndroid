@@ -185,7 +185,21 @@ fun echoRemoteAuthDataSourceFactory(context: Context): ResolvingDataSource.Facto
 
 @UnstableApi
 private fun echoRemoteAuthResolver(): ResolvingDataSource.Resolver =
-    ResolvingDataSource.Resolver { dataSpec -> EchoRemotePlaybackAuthRegistry.resolve(dataSpec) }
+    ResolvingDataSource.Resolver { dataSpec ->
+        // DataSource.open runs on the Media3 loader thread, never the UI thread.
+        val raw = dataSpec.uri.toString()
+        val trackId = EchoLinkPlaybackUri.trackIdFromPersistUri(raw)
+        val resolved = if (trackId != null) {
+            val uri = kotlinx.coroutines.runBlocking {
+                EchoPlaybackProcessRuntime.resolvePlayUri(EchoLinkPlaybackUri.mediaId(trackId), raw)
+            }
+            if (EchoLinkPlaybackUri.trackIdFromPersistUri(uri) != null) {
+                throw IOException("PC ECHO stream is unavailable")
+            }
+            dataSpec.withUri(Uri.parse(uri))
+        } else dataSpec
+        EchoRemotePlaybackAuthRegistry.resolve(resolved)
+    }
 
 @UnstableApi
 private class EchoPlaybackDataSourceFactory(

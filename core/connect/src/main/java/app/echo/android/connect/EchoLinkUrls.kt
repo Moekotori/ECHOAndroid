@@ -31,6 +31,7 @@ internal fun echoLinkPlaylistTracksUrl(
     endpoint: EchoRemoteEndpoint,
     playlistId: String,
     pageSize: Int,
+    page: Int = 1,
 ): HttpUrl =
     HttpUrl.Builder()
         .scheme(endpoint.scheme)
@@ -42,6 +43,6 @@ internal fun echoLinkPlaylistTracksUrl(
         .addPathSegment("playlists")
         .addPathSegment(playlistId.trim())
         .addPathSegment("tracks")
-        .addQueryParameter("page", "1")
+        .addQueryParameter("page", page.coerceAtLeast(1).toString())
         .addQueryParameter("pageSize", pageSize.coerceIn(1, 500).toString())
         .build()

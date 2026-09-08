@@ -122,4 +122,5 @@
     <string name="feature_player_word_d653ce" formatted="false">"Word"</string>
     <string name="feature_player_word_highlight_f4dec8" formatted="false">"Word highlight"</string>
     <string name="feature_player_word_highlight_off_b0e40a" formatted="false">"Word highlight off"</string>
+    <string name="feature_player_replay_gain_unread">Unread</string>
 </resources>

@@ -108,4 +108,60 @@
     <string name="feature_connect_webdav_password_4443d4" formatted="false">"WebDAV パスワード"</string>
     <string name="feature_connect_webdav_username_946873" formatted="false">"WebDAV ユーザー名"</string>
     <string name="feature_connect_writing_library_a8f4bd" formatted="false">"ライブラリに書き込み中"</string>
+    <string name="feature_connect_a_nas_or_cloud_music_folder_5525c7" formatted="false">"NAS やクラウドの音楽フォルダー"</string>
+    <string name="feature_connect_add_a_music_server_or_a_nas_folder_7b39d3" formatted="false">"音楽サーバーや NAS を接続して、スマホで再生できます。"</string>
+    <string name="feature_connect_cancel_sync_8888f1" formatted="false">"同期をキャンセル"</string>
+    <string name="feature_connect_configuration_saved_a7628f" formatted="false">"設定を保存済み"</string>
+    <string name="feature_connect_enter_a_full_http_or_https_address_3c7370" formatted="false">"http:// または https:// の完全なアドレスを入力"</string>
+    <string name="feature_connect_hide_password_3ea7f9" formatted="false">"パスワードを隠す"</string>
+    <string name="feature_connect_library_sources_09e6db" formatted="false">"ライブラリ"</string>
+    <string name="feature_connect_local_files_are_managed_in_library_no_server_c5274c" formatted="false">"ローカルファイルは「ライブラリ」で管理します。サーバー接続は不要です。"</string>
+    <string name="feature_connect_music_on_this_phone_8611a5" formatted="false">"スマホ内の音楽"</string>
+    <string name="feature_connect_not_configured_29b98a" formatted="false">"未設定"</string>
+    <string name="feature_connect_pc_link_4ca6bd" formatted="false">"PC 連携"</string>
+    <string name="feature_connect_remove_acf88e" formatted="false">"削除"</string>
+    <string name="feature_connect_remove_configuration_26bffc" formatted="false">"設定を削除"</string>
+    <string name="feature_connect_remove_title_323067">"%1$s の設定を削除しますか？"</string>
+    <string name="feature_connect_save_and_sync_957e87" formatted="false">"保存して同期"</string>
+    <string name="feature_connect_save_only_831a4d" formatted="false">"保存のみ"</string>
+    <string name="feature_connect_saved_connection_details_will_be_removed_you_can_dc4b49" formatted="false">"保存した接続設定を削除します。後から再設定できます。"</string>
+    <string name="feature_connect_saved_credentials_have_not_necessarily_been_verified_sync_b71597" formatted="false">"設定を保存しました。接続できるかは同期結果で確認してください。"</string>
+    <string name="feature_connect_show_password_211a6d" formatted="false">"パスワードを表示"</string>
+    <string name="feature_connect_sync_library_03a0c6" formatted="false">"ライブラリを同期"</string>
+    <string name="feature_connect_unsaved_changes_1ab4c9" formatted="false">"未保存の変更あり"</string>
+    <string name="feature_connect_your_music_server_dd7eb8" formatted="false">"音楽サーバーを接続"</string>
+    <string name="feature_connect_your_music_wherever_it_lives_e9713c" formatted="false">"音楽ライブラリをつなぐ"</string>
+    <string name="feature_connect_a_saved_pc_is_available_reconnect_or_pair_69fbf8" formatted="false">"前回の PC を保存済みです。再接続または別の PC とペアリングできます。"</string>
+    <string name="feature_connect_available_after_your_first_saved_connection_7136ab" formatted="false">"接続して保存すると利用できます"</string>
+    <string name="feature_connect_cancel_connection_fd085f" formatted="false">"接続をキャンセル"</string>
+    <string name="feature_connect_connection_failed_321409" formatted="false">"接続に失敗しました"</string>
+    <string name="feature_connect_control_pc_playback_from_your_phone_or_browse_20f8b5" formatted="false">"スマホから PC の再生を操作し、連携ライブラリを閲覧できます。"</string>
+    <string name="feature_connect_copy_the_address_and_token_from_pc_echo_5d25bc" formatted="false">"PC ECHO の連携ページからアドレスとトークン、または完全なペアリングリンクをコピーします。"</string>
+    <string name="feature_connect_copy_the_complete_token_from_pc_echo_7d737c" formatted="false">"PC ECHO から完全なトークンをコピーしてください"</string>
+    <string name="feature_connect_disconnect_pc_fd446c" formatted="false">"PC との接続を切断"</string>
+    <string name="feature_connect_enter_address_manually_ec2890" formatted="false">"アドレスを手動入力"</string>
+    <string name="feature_connect_forget_saved_pc_80b440" formatted="false">"保存済み PC を削除しますか？"</string>
+    <string name="feature_connect_forget_saved_pc_8860a3" formatted="false">"保存済み PC を削除"</string>
+    <string name="feature_connect_keep_pc_echo_running_and_both_devices_on_7986ec" formatted="false">"PC ECHO を起動し、両方の端末を同じネットワークに接続してください。"</string>
+    <string name="feature_connect_link_preferences_f81ffb" formatted="false">"連携設定"</string>
+    <string name="feature_connect_listen_together_with_pc_41d068" formatted="false">"PC と接続"</string>
+    <string name="feature_connect_nearby_pcs_b9b12a" formatted="false">"近くの PC"</string>
+    <string name="feature_connect_no_pc_found_use_the_same_wi_fi_ce621e" formatted="false">"PC が見つかりません。同じ Wi-Fi で PC ECHO を起動するか、手動で入力してください。"</string>
+    <string name="feature_connect_no_track_selected_258d56" formatted="false">"曲が未選択です"</string>
+    <string name="feature_connect_off_enable_discord_presence_in_settings_to_share_7f86a5" formatted="false">"オフです。設定で Discord ステータスを有効にすると PC ECHO 経由で再生情報を共有できます。"</string>
+    <string name="feature_connect_open_the_echo_link_page_on_your_pc_d07a0b" formatted="false">"PC ECHO の連携ページを開き、ペアリング QR コードを読み取ってください。"</string>
+    <string name="feature_connect_pause_pc_003bcf" formatted="false">"PC を一時停止"</string>
+    <string name="feature_connect_pc_address_or_pairing_link_a3e680" formatted="false">"PC アドレスまたはペアリングリンク"</string>
+    <string name="feature_connect_play_on_pc_aa41d1" formatted="false">"PC で再生"</string>
+    <string name="feature_connect_playing_on_pc_580a8a" formatted="false">"PC で再生"</string>
+    <string name="feature_connect_read_the_pc_library_after_connecting_local_music_d1da04" formatted="false">"接続後に PC ライブラリを読み込みます。ローカル音楽は別に保持されます。"</string>
+    <string name="feature_connect_ready_to_forward_playback_556606" formatted="false">"再生情報の転送準備ができました"</string>
+    <string name="feature_connect_reconnect_pc_ea8c5f" formatted="false">"PC に再接続"</string>
+    <string name="feature_connect_scan_to_pair_597ba6" formatted="false">"QR コードでペアリング"</string>
+    <string name="feature_connect_select_21bce2" formatted="false">"選択"</string>
+    <string name="feature_connect_try_the_saved_pc_when_opening_connect_38be4d" formatted="false">"接続ページを開くと保存済み PC に再接続"</string>
+    <string name="feature_connect_waiting_for_pc_echo_to_become_available_a74ad2" formatted="false">"PC ECHO の準備待ち"</string>
+    <string name="feature_connect_check_the_pc_address_or_paste_a_complete_0f216a" formatted="false">"PC アドレスを確認するか、完全なペアリングリンクを貼り付けてください"</string>
+    <string name="feature_connect_not_available_yet_forwarding_phone_playback_to_pc_d80b24" formatted="false">"未実装：スマホの再生状態を PC の Discord へ転送する機能はまだ利用できません。"</string>
+    <string name="feature_connect_pair_another_pc_23df07" formatted="false">"別の PC とペアリング"</string>
 </resources>

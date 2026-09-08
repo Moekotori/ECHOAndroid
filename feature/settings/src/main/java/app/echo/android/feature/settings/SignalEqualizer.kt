@@ -49,8 +49,8 @@ internal fun SignalEqualizer(
         }
         // Warn before the sliders: moving a band replaces the parametric correction.
         if (state.parametric) {
-            SignalNote(stringResource(R.string.diag_eq_opra_active, state.sourceLabel ?: stringResource(R.string.diag_eq_parametric)))
-            SignalNote(stringResource(R.string.diag_eq_opra_override))
+            SignalNote(stringResource(L10nR.string.diag_eq_opra_active, state.sourceLabel ?: stringResource(L10nR.string.diag_eq_parametric)))
+            SignalNote(stringResource(L10nR.string.diag_eq_opra_override))
         }
         state.bands.forEach { band ->
             val frequency = formatEqFrequency(band.frequencyHz)
@@ -77,10 +77,10 @@ internal fun SignalEqualizer(
 
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) {
-                SignalNote(if (state.active) stringResource(R.string.diag_eq_active) else stringResource(L10nR.string.feature_settings_eq_is_not_changing_the_signal_da1f47))
+                SignalNote(if (state.active) stringResource(L10nR.string.diag_eq_active) else stringResource(L10nR.string.feature_settings_eq_is_not_changing_the_signal_da1f47))
             }
             TextButton(onClick = onReset) { Text(stringResource(L10nR.string.feature_settings_reset_1106f5)) }
         }
-        if (abs(state.preampDb) >= 0.05f) SignalNote(stringResource(R.string.diag_eq_preamp, formatEqGain(state.preampDb)))
+        if (abs(state.preampDb) >= 0.05f) SignalNote(stringResource(L10nR.string.diag_eq_preamp, formatEqGain(state.preampDb)))
     }
 }

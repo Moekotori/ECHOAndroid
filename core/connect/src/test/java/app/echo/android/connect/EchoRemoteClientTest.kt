@@ -42,6 +42,83 @@ class EchoRemoteClientTest {
     )
 
     @Test
+    fun failedSelectedTrackDoesNotPlayAnotherTrackOrPublishLyrics() = runBlocking {
+        val transport = FakeEchoLinkTransport(failedStreamIds = setOf("selected"))
+        val client = EchoRemoteClient(this, transport)
+        client.connect(endpoint, false)
+        delay(20)
+        var played = false
+        var lyrics = false
+        client.playTracksOnPhone(listOf(remoteTrack("other"), remoteTrack("selected")), 1,
+            onQueueReady = { _, _ -> played = true }, onLyricsReady = { _, _ -> lyrics = true })
+        delay(20)
+        assertFalse(played)
+        assertFalse(lyrics)
+        assertEquals(1, transport.streamCalls)
+        assertTrue(client.library.value.error != null)
+        client.disconnect()
+    }
+
+    @Test
+    fun selectedTrackStartsWithoutResolvingTheRestOfTheQueue() = runBlocking {
+        val transport = FakeEchoLinkTransport()
+        val client = EchoRemoteClient(this, transport)
+        client.connect(endpoint, false)
+        delay(20)
+        var uris = emptyList<String>()
+        var start = -1
+        client.playTracksOnPhone((0..599).map { remoteTrack("$it") }, 300,
+            onQueueReady = { queue, index -> uris = queue.map { it.uri }; start = index })
+        delay(20)
+        assertEquals(300, start)
+        assertEquals(600, uris.size)
+        assertEquals(1, transport.streamCalls)
+        assertTrue(uris[0].startsWith("echo-link://track/"))
+        assertTrue(uris[300].startsWith("http://"))
+        client.disconnect()
+    }
+
+    @Test
+    fun replacingPhonePlaybackCancelsOldStreamRequest() = runBlocking {
+        val blocker = CompletableDeferred<Unit>()
+        val transport = FakeEchoLinkTransport(streamBlocker = blocker)
+        val client = EchoRemoteClient(this, transport)
+        client.connect(endpoint, false)
+        delay(20)
+        var played = ""
+        client.playTrackOnPhone(remoteTrack("old"), { played = it.id })
+        delay(10)
+        client.playTrackOnPhone(remoteTrack("new"), { played = it.id })
+        delay(10)
+        assertEquals(1, transport.cancelledStreams)
+        blocker.complete(Unit)
+        delay(20)
+        assertEquals("echo-link:new", played)
+        client.disconnect()
+    }
+
+    @Test
+    fun playlistLoadsAllPagesAndRefreshInvalidatesSameSizeCache() = runBlocking {
+        val tracks = (0..600).map { remoteTrack("$it") }.toMutableList()
+        val transport = FakeEchoLinkTransport(playlistTracks = mapOf("pl" to tracks))
+        val client = EchoRemoteClient(this, transport)
+        client.connect(endpoint, false)
+        delay(20)
+        val playlist = EchoRemotePlaylist(id = "pl", name = "Playlist", trackCount = 601)
+        client.refreshPlaylistTracks(playlist)
+        delay(20)
+        assertEquals(601, client.library.value.playlistTracks["pl"]?.size)
+        assertEquals(2, transport.playlistTrackCalls)
+        tracks[0] = remoteTrack("replacement")
+        client.refreshLibrary()
+        delay(20)
+        client.refreshPlaylistTracks(playlist)
+        delay(20)
+        assertEquals("replacement", client.library.value.playlistTracks["pl"]?.first()?.id)
+        client.disconnect()
+    }
+
+    @Test
     fun firstFailedConnectIsRetriedUntilStatusSucceeds() = runBlocking {
         val transport = FakeEchoLinkTransport(failStatusTimes = 1)
         val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
@@ -197,7 +274,7 @@ class EchoRemoteClientTest {
     }
 
     @Test
-    fun playTracksOnPhoneResolvesTheFullQueue() = runBlocking {
+    fun playTracksOnPhonePreservesTheQueueAndResolvesOnlyTheSelectedTrack() = runBlocking {
         val transport = FakeEchoLinkTransport()
         val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
         client.connect(endpoint, refreshLibraryOnConnect = false)
@@ -213,7 +290,7 @@ class EchoRemoteClientTest {
             },
         )
         delay(50)
-        assertEquals(3, transport.streamCalls)
+        assertEquals(1, transport.streamCalls)
         assertEquals(listOf("echo-link:a", "echo-link:b", "echo-link:c"), received)
         assertEquals(1, start)
         client.disconnect()
@@ -406,6 +483,7 @@ private class FakeEchoLinkTransport(
     private val playlistTracks: Map<String, List<EchoRemoteTrack>> = emptyMap(),
     private val streamBlocker: CompletableDeferred<Unit>? = null,
     private val failStream: Boolean = false,
+    private val failedStreamIds: Set<String> = emptySet(),
 ) : EchoLinkTransport {
     var statusCalls = 0
     var maxConcurrentStatusCalls = 0
@@ -414,6 +492,7 @@ private class FakeEchoLinkTransport(
     var libraryTrackCalls = 0
     var playlistTrackCalls = 0
     var streamCalls = 0
+    var cancelledStreams = 0
     val commands = mutableListOf<EchoRemoteCommand>()
 
     override suspend fun completePairing(endpoint: EchoRemoteEndpoint): EchoRemoteEndpoint {
@@ -489,26 +568,31 @@ private class FakeEchoLinkTransport(
     override suspend fun fetchPlaylists(
         endpoint: EchoRemoteEndpoint,
         query: String,
+        page: Int,
         pageSize: Int,
     ): EchoLinkPlaylistPage = EchoLinkPlaylistPage(playlists = emptyList(), totalCount = 0)
 
     override suspend fun fetchPlaylistTracks(
         endpoint: EchoRemoteEndpoint,
         playlistId: String,
+        page: Int,
         pageSize: Int,
     ): EchoLinkTrackPage {
         playlistTrackCalls += 1
         playlistBlockers[playlistId]?.await()
         playlistTracks[playlistId]?.let { tracks ->
-            return EchoLinkTrackPage(tracks = tracks, totalCount = tracks.size)
+            return EchoLinkTrackPage(tracks = tracks.drop((page - 1) * pageSize).take(pageSize), totalCount = tracks.size)
         }
         throw EchoLinkHttpException("PC ECHO request failed (404): playlist_not_found")
     }
 
     override suspend fun resolveStream(endpoint: EchoRemoteEndpoint, trackId: String): EchoLinkStreamResponse {
         streamCalls += 1
-        streamBlocker?.await()
-        if (failStream) {
+        try { streamBlocker?.await() } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            cancelledStreams += 1
+            throw cancelled
+        }
+        if (failStream || trackId in failedStreamIds) {
             throw EchoLinkHttpException("PC ECHO request failed (503): stream_unavailable")
         }
         return EchoLinkStreamResponse(streamUrl = "http://192.168.1.20:26789/echo-link/media/token", track = null)

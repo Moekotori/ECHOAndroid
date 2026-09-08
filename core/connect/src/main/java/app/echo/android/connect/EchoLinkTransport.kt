@@ -12,6 +12,13 @@ import java.io.IOException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.CancellationException
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.Response
 import okhttp3.HttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -45,8 +52,8 @@ internal interface EchoLinkTransport {
     suspend fun fetchStatus(endpoint: EchoRemoteEndpoint): EchoLinkStatusResponse
     suspend fun sendCommand(endpoint: EchoRemoteEndpoint, command: EchoRemoteCommand): EchoLinkStatusResponse?
     suspend fun fetchTracks(endpoint: EchoRemoteEndpoint, query: String, page: Int, pageSize: Int): EchoLinkTrackPage
-    suspend fun fetchPlaylists(endpoint: EchoRemoteEndpoint, query: String, pageSize: Int): EchoLinkPlaylistPage
-    suspend fun fetchPlaylistTracks(endpoint: EchoRemoteEndpoint, playlistId: String, pageSize: Int): EchoLinkTrackPage
+    suspend fun fetchPlaylists(endpoint: EchoRemoteEndpoint, query: String, page: Int, pageSize: Int): EchoLinkPlaylistPage
+    suspend fun fetchPlaylistTracks(endpoint: EchoRemoteEndpoint, playlistId: String, page: Int, pageSize: Int): EchoLinkTrackPage
     suspend fun resolveStream(endpoint: EchoRemoteEndpoint, trackId: String): EchoLinkStreamResponse
     suspend fun fetchLyrics(endpoint: EchoRemoteEndpoint, trackId: String): EchoRemoteLyrics?
 }
@@ -141,42 +148,43 @@ internal class OkHttpEchoLinkTransport(
     override suspend fun fetchPlaylists(
         endpoint: EchoRemoteEndpoint,
         query: String,
+        page: Int,
         pageSize: Int,
-    ): EchoLinkPlaylistPage =
-        runCatching {
-            val json = executeJson(
-                Request.Builder()
-                    .url(
-                        endpoint.url("library", "playlists") {
-                            addQueryParameter("page", "1")
-                            addQueryParameter("pageSize", pageSize.coerceIn(1, 500).toString())
-                            query.trim().takeIf { it.isNotEmpty() }?.let { addQueryParameter("q", it) }
-                        },
-                    )
-                    .authorized(endpoint)
-                    .get()
-                    .build(),
-            )
-            val items = json.optJSONArray("playlists") ?: json.optJSONArray("items") ?: JSONArray()
-            val playlists = buildList {
-                for (index in 0 until items.length()) {
-                    items.optJSONObject(index)?.toRemotePlaylist(endpoint)?.let(::add)
-                }
+    ): EchoLinkPlaylistPage {
+        val json = executeJson(
+            Request.Builder()
+                .url(
+                    endpoint.url("library", "playlists") {
+                        addQueryParameter("page", page.toString())
+                        addQueryParameter("pageSize", pageSize.coerceIn(1, 500).toString())
+                        query.trim().takeIf { it.isNotEmpty() }?.let { addQueryParameter("q", it) }
+                    },
+                )
+                .authorized(endpoint)
+                .get()
+                .build(),
+        )
+        val items = json.optJSONArray("playlists") ?: json.optJSONArray("items") ?: JSONArray()
+        val playlists = buildList {
+            for (index in 0 until items.length()) {
+                items.optJSONObject(index)?.toRemotePlaylist(endpoint)?.let(::add)
             }
-            EchoLinkPlaylistPage(
-                playlists = playlists,
-                totalCount = json.optInt("totalCount", json.optInt("total", playlists.size)),
-            )
-        }.getOrElse { EchoLinkPlaylistPage(playlists = emptyList(), totalCount = 0) }
+        }
+        return EchoLinkPlaylistPage(
+            playlists = playlists,
+            totalCount = json.optInt("totalCount", json.optInt("total", playlists.size)),
+        )
+    }
 
     override suspend fun fetchPlaylistTracks(
         endpoint: EchoRemoteEndpoint,
         playlistId: String,
+        page: Int,
         pageSize: Int,
     ): EchoLinkTrackPage {
         val json = executeJson(
             Request.Builder()
-                .url(echoLinkPlaylistTracksUrl(endpoint, playlistId, pageSize))
+                .url(echoLinkPlaylistTracksUrl(endpoint, playlistId, pageSize, page))
                 .authorized(endpoint)
                 .get()
                 .build(),
@@ -222,36 +230,40 @@ internal class OkHttpEchoLinkTransport(
         )
         requests.forEach { request ->
             runCatching { executeText(request).toRemoteLyrics() }
-                .getOrNull()
+                .getOrElse { if (it is CancellationException) throw it else null }
                 ?.takeIf { it.rawText.isNotBlank() }
                 ?.let { return it }
         }
         return null
     }
 
-    private suspend fun executeJson(request: Request): JSONObject =
-        withContext(ioDispatcher) {
-            client.newCall(request).execute().use { response ->
-                val body = response.body?.string().orEmpty()
-                if (!response.isSuccessful) {
-                    val detail = body.take(180).ifBlank { response.message }
-                    throw EchoLinkHttpException("PC ECHO request failed (${response.code}): $detail")
-                }
-                if (body.isBlank()) JSONObject() else JSONObject(body)
-            }
-        }
+    private suspend fun executeJson(request: Request): JSONObject = withContext(ioDispatcher) {
+        val body = executeText(request)
+        if (body.isBlank()) JSONObject() else JSONObject(body)
+    }
 
-    private suspend fun executeText(request: Request): String =
-        withContext(ioDispatcher) {
-            client.newCall(request).execute().use { response ->
-                val body = response.body?.string().orEmpty()
-                if (!response.isSuccessful) {
-                    val detail = body.take(180).ifBlank { response.message }
-                    throw EchoLinkHttpException("PC ECHO request failed (${response.code}): $detail")
-                }
-                body
+    private suspend fun executeText(request: Request): String = suspendCancellableCoroutine { continuation ->
+        val call = client.newCall(request)
+        continuation.invokeOnCancellation { call.cancel() }
+        call.enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                continuation.resumeWithException(e)
             }
-        }
+
+            override fun onResponse(call: Call, response: Response) {
+                val result = runCatching {
+                    response.use {
+                        val body = it.body?.string().orEmpty()
+                        if (!it.isSuccessful) {
+                            throw EchoLinkHttpException("PC ECHO request failed (${it.code}): ${body.take(180).ifBlank { it.message }}")
+                        }
+                        body
+                    }
+                }
+                result.fold(continuation::resume, continuation::resumeWithException)
+            }
+        })
+    }
 
     private fun EchoRemoteEndpoint.url(
         vararg segments: String,

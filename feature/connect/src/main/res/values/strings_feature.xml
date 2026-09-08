@@ -108,4 +108,60 @@
     <string name="feature_connect_webdav_password_4443d4" formatted="false">"WebDAV password"</string>
     <string name="feature_connect_webdav_username_946873" formatted="false">"WebDAV username"</string>
     <string name="feature_connect_writing_library_a8f4bd" formatted="false">"Writing library"</string>
+    <string name="feature_connect_a_nas_or_cloud_music_folder_5525c7" formatted="false">"A NAS or cloud music folder"</string>
+    <string name="feature_connect_add_a_music_server_or_a_nas_folder_7b39d3" formatted="false">"Add a music server or a NAS folder to listen on your phone."</string>
+    <string name="feature_connect_cancel_sync_8888f1" formatted="false">"Cancel sync"</string>
+    <string name="feature_connect_configuration_saved_a7628f" formatted="false">"Configuration saved"</string>
+    <string name="feature_connect_enter_a_full_http_or_https_address_3c7370" formatted="false">"Enter a full http:// or https:// address"</string>
+    <string name="feature_connect_hide_password_3ea7f9" formatted="false">"Hide password"</string>
+    <string name="feature_connect_library_sources_09e6db" formatted="false">"Library sources"</string>
+    <string name="feature_connect_local_files_are_managed_in_library_no_server_c5274c" formatted="false">"Local files are managed in Library. No server connection is needed."</string>
+    <string name="feature_connect_music_on_this_phone_8611a5" formatted="false">"Music on this phone"</string>
+    <string name="feature_connect_not_configured_29b98a" formatted="false">"Not configured"</string>
+    <string name="feature_connect_pc_link_4ca6bd" formatted="false">"PC link"</string>
+    <string name="feature_connect_remove_acf88e" formatted="false">"Remove"</string>
+    <string name="feature_connect_remove_configuration_26bffc" formatted="false">"Remove configuration"</string>
+    <string name="feature_connect_remove_title_323067">"Remove %1$s?"</string>
+    <string name="feature_connect_save_and_sync_957e87" formatted="false">"Save and sync"</string>
+    <string name="feature_connect_save_only_831a4d" formatted="false">"Save only"</string>
+    <string name="feature_connect_saved_connection_details_will_be_removed_you_can_dc4b49" formatted="false">"Saved connection details will be removed. You can configure them again later."</string>
+    <string name="feature_connect_saved_credentials_have_not_necessarily_been_verified_sync_b71597" formatted="false">"Saved credentials have not necessarily been verified. Sync to check the connection."</string>
+    <string name="feature_connect_show_password_211a6d" formatted="false">"Show password"</string>
+    <string name="feature_connect_sync_library_03a0c6" formatted="false">"Sync library"</string>
+    <string name="feature_connect_unsaved_changes_1ab4c9" formatted="false">"Unsaved changes"</string>
+    <string name="feature_connect_your_music_server_dd7eb8" formatted="false">"Your music server"</string>
+    <string name="feature_connect_your_music_wherever_it_lives_e9713c" formatted="false">"Your music, wherever it lives"</string>
+    <string name="feature_connect_a_saved_pc_is_available_reconnect_or_pair_69fbf8" formatted="false">"A saved PC is available. Reconnect or pair a different device."</string>
+    <string name="feature_connect_available_after_your_first_saved_connection_7136ab" formatted="false">"Available after your first saved connection"</string>
+    <string name="feature_connect_cancel_connection_fd085f" formatted="false">"Cancel connection"</string>
+    <string name="feature_connect_connection_failed_321409" formatted="false">"Connection failed"</string>
+    <string name="feature_connect_control_pc_playback_from_your_phone_or_browse_20f8b5" formatted="false">"Control PC playback from your phone, or browse its linked library."</string>
+    <string name="feature_connect_copy_the_address_and_token_from_pc_echo_5d25bc" formatted="false">"Copy the address and token from PC ECHO\'s link page, or paste a complete pairing link."</string>
+    <string name="feature_connect_copy_the_complete_token_from_pc_echo_7d737c" formatted="false">"Copy the complete token from PC ECHO"</string>
+    <string name="feature_connect_disconnect_pc_fd446c" formatted="false">"Disconnect PC"</string>
+    <string name="feature_connect_enter_address_manually_ec2890" formatted="false">"Enter address manually"</string>
+    <string name="feature_connect_forget_saved_pc_80b440" formatted="false">"Forget saved PC?"</string>
+    <string name="feature_connect_forget_saved_pc_8860a3" formatted="false">"Forget saved PC"</string>
+    <string name="feature_connect_keep_pc_echo_running_and_both_devices_on_7986ec" formatted="false">"Keep PC ECHO running and both devices on the same network."</string>
+    <string name="feature_connect_link_preferences_f81ffb" formatted="false">"Link preferences"</string>
+    <string name="feature_connect_listen_together_with_pc_41d068" formatted="false">"Listen together with PC"</string>
+    <string name="feature_connect_nearby_pcs_b9b12a" formatted="false">"Nearby PCs"</string>
+    <string name="feature_connect_no_pc_found_use_the_same_wi_fi_ce621e" formatted="false">"No PC found. Use the same Wi-Fi and open ECHO on your PC, or enter an address below."</string>
+    <string name="feature_connect_no_track_selected_258d56" formatted="false">"No track selected"</string>
+    <string name="feature_connect_off_enable_discord_presence_in_settings_to_share_7f86a5" formatted="false">"Off. Enable Discord presence in Settings to share playback through PC ECHO."</string>
+    <string name="feature_connect_open_the_echo_link_page_on_your_pc_d07a0b" formatted="false">"Open the ECHO Link page on your PC, then scan its pairing QR code."</string>
+    <string name="feature_connect_pause_pc_003bcf" formatted="false">"Pause PC"</string>
+    <string name="feature_connect_pc_address_or_pairing_link_a3e680" formatted="false">"PC address or pairing link"</string>
+    <string name="feature_connect_play_on_pc_aa41d1" formatted="false">"Play on PC"</string>
+    <string name="feature_connect_playing_on_pc_580a8a" formatted="false">"Playing on PC"</string>
+    <string name="feature_connect_read_the_pc_library_after_connecting_local_music_d1da04" formatted="false">"Read the PC library after connecting. Local music stays separate."</string>
+    <string name="feature_connect_ready_to_forward_playback_556606" formatted="false">"Ready to forward playback"</string>
+    <string name="feature_connect_reconnect_pc_ea8c5f" formatted="false">"Reconnect PC"</string>
+    <string name="feature_connect_scan_to_pair_597ba6" formatted="false">"Scan to pair"</string>
+    <string name="feature_connect_select_21bce2" formatted="false">"Select"</string>
+    <string name="feature_connect_try_the_saved_pc_when_opening_connect_38be4d" formatted="false">"Try the saved PC when opening Connect"</string>
+    <string name="feature_connect_waiting_for_pc_echo_to_become_available_a74ad2" formatted="false">"Waiting for PC ECHO to become available"</string>
+    <string name="feature_connect_check_the_pc_address_or_paste_a_complete_0f216a" formatted="false">"Check the PC address or paste a complete pairing link"</string>
+    <string name="feature_connect_not_available_yet_forwarding_phone_playback_to_pc_d80b24" formatted="false">"Not available yet. Forwarding phone playback to PC Discord is not implemented."</string>
+    <string name="feature_connect_pair_another_pc_23df07" formatted="false">"Pair another PC"</string>
 </resources>

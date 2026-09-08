@@ -98,3 +98,5 @@ tasks.register("checkModules") {
         logger.lifecycle("Module graph OK (${included.size} modules).")
     }
 }
+
+apply(from = "gradle/localization.gradle.kts")

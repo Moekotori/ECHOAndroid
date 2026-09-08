@@ -63,3 +63,11 @@ For packaging changes also assemble the app and check that `libffmpegJNI.so` is
 present for all three ABIs. Native loading and decoding must be checked on an
 Android runtime; JVM unit tests cannot establish that. Instrumentation tests
 are not added to default CI.
+
+With an emulator/device connected, run the single JNI/PCM smoke test explicitly:
+
+`./gradlew :core:playback:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=androidx.media3.decoder.ffmpeg.FfmpegBackendSmokeTest`
+
+It checks codec availability and known mu-law samples decoded to both 16-bit and
+float PCM before/after flush. It does not establish whole-file format coverage,
+USB timing or real-device listening quality.

@@ -50,7 +50,7 @@ fun DiagnosticsScreen(
         ) {
             Column(Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxWidth()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.diag_title), Modifier.weight(1f), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Medium)
+                    Text(stringResource(L10nR.string.diag_title), Modifier.weight(1f), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Medium)
                     Text(playbackStateLabel(status.state), style = MaterialTheme.typography.labelMedium, color = if (status.isPlaying) scheme.primary else scheme.onSurfaceVariant)
                 }
                 SecondaryTabRow(selectedTabIndex = selectedTab, containerColor = scheme.background, contentColor = scheme.primary) {

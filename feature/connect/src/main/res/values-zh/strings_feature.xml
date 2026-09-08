@@ -108,4 +108,60 @@
     <string name="feature_connect_webdav_password_4443d4" formatted="false">"WebDAV 密码"</string>
     <string name="feature_connect_webdav_username_946873" formatted="false">"WebDAV 用户名"</string>
     <string name="feature_connect_writing_library_a8f4bd" formatted="false">"写入曲库"</string>
+    <string name="feature_connect_a_nas_or_cloud_music_folder_5525c7" formatted="false">"连接 NAS 或网盘音乐目录"</string>
+    <string name="feature_connect_add_a_music_server_or_a_nas_folder_7b39d3" formatted="false">"连接音乐服务器或 NAS 目录，在手机上浏览和播放。"</string>
+    <string name="feature_connect_cancel_sync_8888f1" formatted="false">"取消同步"</string>
+    <string name="feature_connect_configuration_saved_a7628f" formatted="false">"已保存配置"</string>
+    <string name="feature_connect_enter_a_full_http_or_https_address_3c7370" formatted="false">"请填写完整的 http:// 或 https:// 地址"</string>
+    <string name="feature_connect_hide_password_3ea7f9" formatted="false">"隐藏密码"</string>
+    <string name="feature_connect_library_sources_09e6db" formatted="false">"曲库来源"</string>
+    <string name="feature_connect_local_files_are_managed_in_library_no_server_c5274c" formatted="false">"本地文件在「曲库」中管理，无需在这里配置连接。"</string>
+    <string name="feature_connect_music_on_this_phone_8611a5" formatted="false">"手机里的音乐"</string>
+    <string name="feature_connect_not_configured_29b98a" formatted="false">"尚未配置"</string>
+    <string name="feature_connect_pc_link_4ca6bd" formatted="false">"PC 联动"</string>
+    <string name="feature_connect_remove_acf88e" formatted="false">"移除"</string>
+    <string name="feature_connect_remove_configuration_26bffc" formatted="false">"移除配置"</string>
+    <string name="feature_connect_remove_title_323067">"移除 %1$s 配置？"</string>
+    <string name="feature_connect_save_and_sync_957e87" formatted="false">"保存并同步"</string>
+    <string name="feature_connect_save_only_831a4d" formatted="false">"仅保存"</string>
+    <string name="feature_connect_saved_connection_details_will_be_removed_you_can_dc4b49" formatted="false">"将移除已保存的连接配置，之后可以重新配置。"</string>
+    <string name="feature_connect_saved_credentials_have_not_necessarily_been_verified_sync_b71597" formatted="false">"配置已保存。是否可以连接，以同步结果为准。"</string>
+    <string name="feature_connect_show_password_211a6d" formatted="false">"显示密码"</string>
+    <string name="feature_connect_sync_library_03a0c6" formatted="false">"同步曲库"</string>
+    <string name="feature_connect_unsaved_changes_1ab4c9" formatted="false">"有未保存的修改"</string>
+    <string name="feature_connect_your_music_server_dd7eb8" formatted="false">"连接自建音乐服务器"</string>
+    <string name="feature_connect_your_music_wherever_it_lives_e9713c" formatted="false">"把音乐接进来"</string>
+    <string name="feature_connect_a_saved_pc_is_available_reconnect_or_pair_69fbf8" formatted="false">"已保存上次的 PC，可以重新连接或配对其他设备。"</string>
+    <string name="feature_connect_available_after_your_first_saved_connection_7136ab" formatted="false">"首次连接成功并保存后可用"</string>
+    <string name="feature_connect_cancel_connection_fd085f" formatted="false">"取消连接"</string>
+    <string name="feature_connect_connection_failed_321409" formatted="false">"连接失败"</string>
+    <string name="feature_connect_control_pc_playback_from_your_phone_or_browse_20f8b5" formatted="false">"用手机控制 PC 播放，也可以浏览 PC 的联动曲库。"</string>
+    <string name="feature_connect_copy_the_address_and_token_from_pc_echo_5d25bc" formatted="false">"从 PC ECHO 联动页复制地址和 Token，或直接粘贴完整配对链接。"</string>
+    <string name="feature_connect_copy_the_complete_token_from_pc_echo_7d737c" formatted="false">"请从 PC ECHO 复制完整 Token"</string>
+    <string name="feature_connect_disconnect_pc_fd446c" formatted="false">"断开 PC"</string>
+    <string name="feature_connect_enter_address_manually_ec2890" formatted="false">"手动输入地址"</string>
+    <string name="feature_connect_forget_saved_pc_80b440" formatted="false">"忘记已保存的 PC？"</string>
+    <string name="feature_connect_forget_saved_pc_8860a3" formatted="false">"忘记已保存的 PC"</string>
+    <string name="feature_connect_keep_pc_echo_running_and_both_devices_on_7986ec" formatted="false">"请保持 PC ECHO 运行，并确认两台设备在同一网络。"</string>
+    <string name="feature_connect_link_preferences_f81ffb" formatted="false">"联动偏好"</string>
+    <string name="feature_connect_listen_together_with_pc_41d068" formatted="false">"连接你的 PC"</string>
+    <string name="feature_connect_nearby_pcs_b9b12a" formatted="false">"附近的 PC"</string>
+    <string name="feature_connect_no_pc_found_use_the_same_wi_fi_ce621e" formatted="false">"暂未发现 PC。请连接同一 Wi-Fi 并打开 PC ECHO，也可以在下方手动输入。"</string>
+    <string name="feature_connect_no_track_selected_258d56" formatted="false">"尚未选择曲目"</string>
+    <string name="feature_connect_off_enable_discord_presence_in_settings_to_share_7f86a5" formatted="false">"尚未开启。可在设置中开启 Discord 状态，通过 PC ECHO 转发播放信息。"</string>
+    <string name="feature_connect_open_the_echo_link_page_on_your_pc_d07a0b" formatted="false">"在 PC ECHO 打开联动页，扫描页面上的配对二维码。"</string>
+    <string name="feature_connect_pause_pc_003bcf" formatted="false">"暂停 PC"</string>
+    <string name="feature_connect_pc_address_or_pairing_link_a3e680" formatted="false">"PC 地址或配对链接"</string>
+    <string name="feature_connect_play_on_pc_aa41d1" formatted="false">"在 PC 播放"</string>
+    <string name="feature_connect_playing_on_pc_580a8a" formatted="false">"PC 正在播放"</string>
+    <string name="feature_connect_read_the_pc_library_after_connecting_local_music_d1da04" formatted="false">"连接后自动读取 PC 曲库，本地音乐仍独立保留。"</string>
+    <string name="feature_connect_ready_to_forward_playback_556606" formatted="false">"已就绪，等待转发播放状态"</string>
+    <string name="feature_connect_reconnect_pc_ea8c5f" formatted="false">"重新连接 PC"</string>
+    <string name="feature_connect_scan_to_pair_597ba6" formatted="false">"扫码配对"</string>
+    <string name="feature_connect_select_21bce2" formatted="false">"选择"</string>
+    <string name="feature_connect_try_the_saved_pc_when_opening_connect_38be4d" formatted="false">"打开连接页时尝试连接已保存的 PC"</string>
+    <string name="feature_connect_waiting_for_pc_echo_to_become_available_a74ad2" formatted="false">"等待 PC ECHO 就绪"</string>
+    <string name="feature_connect_check_the_pc_address_or_paste_a_complete_0f216a" formatted="false">"请检查 PC 地址，或粘贴完整配对链接"</string>
+    <string name="feature_connect_not_available_yet_forwarding_phone_playback_to_pc_d80b24" formatted="false">"暂未实现：手机播放状态转发到 PC Discord 尚未接通。"</string>
+    <string name="feature_connect_pair_another_pc_23df07" formatted="false">"扫码配对其他 PC"</string>
 </resources>

@@ -20,7 +20,7 @@ class EchoAppLanguageTest {
     fun fromIdFallsBackToSystem() {
         assertEquals(EchoAppLanguage.System, EchoAppLanguage.fromId(null))
         assertEquals(EchoAppLanguage.System, EchoAppLanguage.fromId(""))
-        assertEquals(EchoAppLanguage.System, EchoAppLanguage.fromId("fr"))
+        assertEquals(EchoAppLanguage.System, EchoAppLanguage.fromId("unsupported-language"))
     }
 
     @Test
@@ -29,6 +29,19 @@ class EchoAppLanguageTest {
         assertEquals(Locale.ENGLISH, EchoAppLanguage.localeOrNull(EchoAppLanguage.English))
         assertEquals(Locale.JAPANESE, EchoAppLanguage.localeOrNull(EchoAppLanguage.Japanese))
         assertNull(EchoAppLanguage.localeOrNull(EchoAppLanguage.System))
+    }
+
+    @Test
+    fun registryDrivesOptionsAndNormalizesPlatformTags() {
+        assertEquals("zh", EchoAppLanguage.fromId("zh-CN"))
+        assertEquals("zh", EchoAppLanguage.fromId("zh_Hans_CN"))
+        assertEquals("en", EchoAppLanguage.fromId("EN-us"))
+        assertEquals("ja", EchoAppLanguage.fromId("ja-JP"))
+        assertEquals(EchoAppLanguage.supported.size, EchoAppLanguage.supported.map { it.id }.distinct().size)
+        EchoAppLanguage.supported.forEach {
+            assertEquals(it.id, EchoAppLanguage.fromId(it.localeTag))
+            assertEquals(it.nativeName, EchoAppLanguage.languageOrNull(it.id)?.nativeName)
+        }
     }
 
     @Test

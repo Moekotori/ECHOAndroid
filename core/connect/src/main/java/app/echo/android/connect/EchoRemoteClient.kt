@@ -18,12 +18,7 @@ import app.echo.android.model.playback.EchoLinkPlaybackUri
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,6 +45,7 @@ class EchoRemoteClient internal constructor(
     private var statusPollJob: Job? = null
     private var libraryRefreshJob: Job? = null
     private var playlistRefreshJob: Job? = null
+    private var phonePlaybackJob: Job? = null
     private var playOnPhoneGeneration = 0L
     private var connectGeneration = 0L
     private var statusRefreshGeneration = 0L
@@ -91,6 +87,8 @@ class EchoRemoteClient internal constructor(
         playlistRefreshJob?.cancel()
         playlistRefreshJob = null
         playOnPhoneGeneration += 1
+        phonePlaybackJob?.cancel()
+        phonePlaybackJob = null
         _status.update {
             it.copy(
                 connectionState = EchoRemoteConnectionState.Connecting,
@@ -174,6 +172,8 @@ class EchoRemoteClient internal constructor(
         playlistRefreshJob?.cancel()
         playlistRefreshJob = null
         playOnPhoneGeneration += 1
+        phonePlaybackJob?.cancel()
+        phonePlaybackJob = null
         endpoint = null
         _status.value = EchoRemoteStatus(mobileDiscordPresence = _status.value.mobileDiscordPresence)
         _library.value = EchoRemoteLibraryState()
@@ -278,7 +278,7 @@ class EchoRemoteClient internal constructor(
                 query = query,
                 tracks = if (sameQuery) current.tracks else emptyList(),
                 playlists = if (sameQuery) current.playlists else emptyList(),
-                playlistTracks = if (sameQuery) current.playlistTracks else emptyMap(),
+                playlistTracks = emptyMap(),
                 loadingPlaylistId = null,
                 totalCount = if (sameQuery) current.totalCount else 0,
                 error = null,
@@ -294,7 +294,7 @@ class EchoRemoteClient internal constructor(
 
             val firstFetch = runSuspendCatching {
                 val trackPage = transport.fetchTracks(target, query, page = 1, pageSize = PcLibraryPageSize)
-                val playlistPage = transport.fetchPlaylists(target, query, PcLibraryPageSize)
+                val playlistPage = fetchAllPlaylists(target, query)
                 trackPage to playlistPage
             }
             val (firstPage, playlistPage) = firstFetch.getOrElse { error ->
@@ -408,7 +408,7 @@ class EchoRemoteClient internal constructor(
         }
         _library.update { it.copy(loadingPlaylistId = playlist.id, error = null) }
         playlistRefreshJob = scope.launch {
-            runSuspendCatching { transport.fetchPlaylistTracks(target, playlist.id, PcPlaylistTrackPageSize) }
+            runSuspendCatching { fetchAllPlaylistTracks(target, playlist.id) }
                 .onSuccess { page ->
                     if (
                         endpoint?.id == target.id &&
@@ -501,8 +501,11 @@ class EchoRemoteClient internal constructor(
             }
             return
         }
+        val generation = ++playOnPhoneGeneration
+        phonePlaybackJob?.cancel()
+        val requested = tracks.getOrNull(startIndex)
         val playable = EchoLinkLibraryQueryPolicy.playableLinkedPhoneTracks(tracks)
-        if (playable.isEmpty()) {
+        if (requested?.id.isNullOrBlank() || !requested.canPlayOnPhone) {
             _library.update {
                 it.copy(
                     error = echoText(
@@ -515,10 +518,17 @@ class EchoRemoteClient internal constructor(
             return
         }
         _library.update { it.copy(error = null) }
-        val requestedId = tracks.getOrNull(startIndex.coerceAtLeast(0))?.id
-        val generation = ++playOnPhoneGeneration
-        scope.launch {
-            val resolved = runSuspendCatching { resolvePhoneQueue(target, playable) }
+        val requestedId = requireNotNull(requested.id)
+        phonePlaybackJob = scope.launch {
+            val resolved = runSuspendCatching {
+                val stream = transport.resolveStream(target, requestedId)
+                playable.map { track ->
+                    track.toPhonePlaybackTrack(
+                        if (track.id == requestedId) stream.streamUrl
+                        else EchoLinkPlaybackUri.persistUri(requireNotNull(track.id)),
+                    )
+                }
+            }
             if (!EchoLinkRequestPolicy.shouldApplyResolvedPlay(generation, playOnPhoneGeneration)) {
                 return@launch
             }
@@ -538,14 +548,13 @@ class EchoRemoteClient internal constructor(
                     }
                     return@onSuccess
                 }
-                val start = requestedId
-                    ?.let { id -> queue.indexOfFirst { EchoLinkPlaybackUri.trackIdFromMediaId(it.id) == id } }
-                    ?.takeIf { it >= 0 }
-                    ?: 0
+                val start = queue.indexOfFirst { EchoLinkPlaybackUri.trackIdFromMediaId(it.id) == requestedId }
+                check(start >= 0) { "Selected PC track is missing from the playback queue" }
                 onQueueReady(queue, start)
-                val startTrack = playable.firstOrNull { it.id == requestedId } ?: playable.first()
-                queue.getOrNull(start)?.let { phoneTrack ->
-                    resolveLyricsForPhoneTrack(target, startTrack, phoneTrack.id, onLyricsReady)
+                val lyrics = runSuspendCatching { transport.fetchLyrics(target, requestedId) }.getOrNull()
+                if (lyrics != null && generation == playOnPhoneGeneration &&
+                    EchoLinkRequestPolicy.isSameEndpoint(endpoint, target)) {
+                    onLyricsReady(queue[start].id, lyrics)
                 }
             }
                 .onFailure { error ->
@@ -559,37 +568,29 @@ class EchoRemoteClient internal constructor(
         }
     }
 
-    private suspend fun resolvePhoneQueue(
-        target: EchoRemoteEndpoint,
-        tracks: List<EchoRemoteTrack>,
-    ): List<EchoTrack> = coroutineScope {
-        val gate = Semaphore(PhoneStreamConcurrency)
-        tracks.map { track ->
-            async {
-                val trackId = track.id ?: return@async null
-                gate.withPermit {
-                    runSuspendCatching { transport.resolveStream(target, trackId) }.getOrNull()
-                }?.let { stream ->
-                    (stream.track ?: track).toPhonePlaybackTrack(stream.streamUrl)
-                }
+    private suspend fun fetchAllPlaylists(target: EchoRemoteEndpoint, query: String): EchoLinkPlaylistPage {
+        val items = mutableListOf<EchoRemotePlaylist>()
+        var page = 1
+        while (true) {
+            val batch = transport.fetchPlaylists(target, query, page, PcLibraryPageSize)
+            items += batch.playlists
+            if (batch.playlists.isEmpty() || items.size >= batch.totalCount) {
+                return EchoLinkPlaylistPage(items, batch.totalCount)
             }
-        }.awaitAll().filterNotNull()
+            check(page++ < MaxLibraryPages) { "PC playlist list exceeds the supported page limit" }
+        }
     }
 
-    private fun resolveLyricsForPhoneTrack(
-        target: EchoRemoteEndpoint,
-        track: EchoRemoteTrack,
-        phoneTrackId: String,
-        onLyricsReady: (String, EchoRemoteLyrics) -> Unit,
-    ) {
-        val trackId = track.id ?: return
-        scope.launch {
-            runSuspendCatching { transport.fetchLyrics(target, trackId) }
-                .onSuccess { lyrics ->
-                    if (lyrics != null && endpoint?.id == target.id) {
-                        onLyricsReady(phoneTrackId, lyrics)
-                    }
-                }
+    private suspend fun fetchAllPlaylistTracks(target: EchoRemoteEndpoint, id: String): EchoLinkTrackPage {
+        val items = mutableListOf<EchoRemoteTrack>()
+        var page = 1
+        while (true) {
+            val batch = transport.fetchPlaylistTracks(target, id, page, PcPlaylistTrackPageSize)
+            items += batch.tracks
+            if (batch.tracks.isEmpty() || items.size >= batch.totalCount) {
+                return EchoLinkTrackPage(items, batch.totalCount)
+            }
+            check(page++ < MaxLibraryPages) { "PC playlist exceeds the supported page limit" }
         }
     }
 
@@ -695,7 +696,6 @@ class EchoRemoteClient internal constructor(
 
         // 流式拉取时每拉取多少页向 UI 合并发布一次,限制下游 catalog 重建次数
         const val PublishEveryPages = 2
-        const val PhoneStreamConcurrency = 4
     }
 }
 

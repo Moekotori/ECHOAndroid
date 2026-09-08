@@ -2907,7 +2907,12 @@ private fun PlaybackSettingsPanel(
             )
         }
         Text(
-            text = stringResource(L10nR.string.feature_player_tag_status_replaygaintrackgaindb_let_formatreplaygaindb_unread_p_9c7a19, (status.replayGainTrackGainDb?.let(::formatReplayGainDb) ?: "Unread").toString(), (formatReplayGainDb(status.replayGainPreampDb)).toString(), (status.replayGainTrackGainDb?.let(::formatReplayGainDb) ?: "未读取").toString(), (status.replayGainTrackGainDb?.let(::formatReplayGainDb) ?: "未読み取り").toString()),
+            text = stringResource(
+                L10nR.string.feature_player_tag_status_replaygaintrackgaindb_let_formatreplaygaindb_unread_p_9c7a19,
+                status.replayGainTrackGainDb?.let(::formatReplayGainDb)
+                    ?: stringResource(L10nR.string.feature_player_replay_gain_unread),
+                formatReplayGainDb(status.replayGainPreampDb),
+            ),
             color = Color.White.copy(alpha = 0.62f),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.SemiBold,

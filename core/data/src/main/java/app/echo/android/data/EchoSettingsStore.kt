@@ -169,7 +169,9 @@ class EchoSettingsStore(
     private var playbackQueueIdentityLoaded: Boolean = false
 
     fun startupAppSettingsSnapshot(): EchoAppSettings =
-        context.readEchoStartupThemeSnapshot().toAppSettings()
+        context.readEchoStartupThemeSnapshot().toAppSettings().let { snapshot ->
+            snapshot.copy(appLanguage = context.echoAppLanguage(snapshot.appLanguage))
+        }
 
     fun cacheStartupThemeSnapshot(
         settings: EchoAppSettings,

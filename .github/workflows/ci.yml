@@ -49,7 +49,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Check module graph
-        run: ./gradlew checkModules --no-configuration-cache
+        run: ./gradlew checkModules checkLocalization --no-configuration-cache
 
       - name: Unit tests and assemble debug
         run: ./gradlew testDebugUnitTest assembleDebug --stacktrace
