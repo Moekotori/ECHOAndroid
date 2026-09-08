@@ -27,7 +27,8 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /** One application-owned instance serializes lookups and the MusicBrainz rate budget. */
-class AlbumOnlineInfoRepository(private val cacheDirectory: File) : AlbumOnlineInfoLoader {
+class AlbumOnlineInfoRepository(private val cacheDirectory: File, appVersion: String = "development") : AlbumOnlineInfoLoader {
+    private val userAgent = "ECHOAndroid/$appVersion (https://github.com/moekotori/echo)"
     private val gate = Mutex()
     private var nextMusicBrainzAt = 0L
     private val client = OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS)
@@ -143,8 +144,8 @@ class AlbumOnlineInfoRepository(private val cacheDirectory: File) : AlbumOnlineI
     private suspend fun json(url: HttpUrl): JSONObject {
         val body = suspendCancellableCoroutine<String> { continuation ->
             val request = Request.Builder().url(url).header("Accept", "application/json")
-                .header("User-Agent", "ECHOAndroid/1.0 (https://github.com/moekotori/echo)")
-                .header("Api-User-Agent", "ECHOAndroid/1.0 (https://github.com/moekotori/echo)").build()
+                .header("User-Agent", userAgent)
+                .header("Api-User-Agent", userAgent).build()
             val call = client.newCall(request)
             continuation.invokeOnCancellation { call.cancel() }
             call.enqueue(object : Callback {

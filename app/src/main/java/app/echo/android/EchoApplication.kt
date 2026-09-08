@@ -8,11 +8,15 @@ import app.echo.android.design.EchoArtworkUrlRewriteRegistry
 import app.echo.android.library.EchoLibraryPlaybackCatalog
 import app.echo.android.playback.EchoPlaybackProcessRuntime
 import app.echo.android.playback.EchoRemotePlaybackAuthRegistry
+import app.echo.android.playback.EchoPlaybackRuntimeOptionsStore
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 
 @UnstableApi
 class EchoApplication : Application() {
     val albumOnlineInfo by lazy {
-        app.echo.android.data.AlbumOnlineInfoRepository(java.io.File(cacheDir, "album-online-info"))
+        app.echo.android.data.AlbumOnlineInfoRepository(java.io.File(cacheDir, "album-online-info"), BuildConfig.VERSION_NAME)
     }
     val echoLinkSession by lazy { EchoLinkSession(this) }
 
@@ -29,9 +33,13 @@ class EchoApplication : Application() {
         EchoPlaybackProcessRuntime.setCatalog(
             EchoLibraryPlaybackCatalog(EchoLibraryDatabase.create(this)),
         )
-        EchoPlaybackProcessRuntime.setSessionStore(
-            EchoSettingsPlaybackSessionStore(EchoSettingsStore(this)),
-        )
+        val settingsStore = EchoSettingsStore(this)
+        EchoPlaybackProcessRuntime.setSessionStore(EchoSettingsPlaybackSessionStore(settingsStore))
+        // Playback preferences remain live when only the service/media buttons are running.
+        EchoPlaybackProcessRuntime.scope.launch {
+            settingsStore.appSettings.map { it.trackTransitions }.distinctUntilChanged()
+                .collect(EchoPlaybackRuntimeOptionsStore::setTrackTransitions)
+        }
         EchoPlaybackSurfaces.bind(this)
     }
 }

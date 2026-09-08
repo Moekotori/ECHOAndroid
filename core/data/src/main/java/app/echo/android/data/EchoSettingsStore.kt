@@ -30,6 +30,7 @@ private val Context.echoPlaybackResumeSettings by preferencesDataStore(name = "e
 private val PlaybackResumeKey = stringPreferencesKey("playback_resume")
 private const val DefaultNeteaseAudioQuality = "lossless"
 data class EchoAppSettings(
+    val trackTransitions: app.echo.android.model.playback.EchoTrackTransitionOptions = app.echo.android.model.playback.EchoTrackTransitionOptions(),
     val preferOffload: Boolean = true,
     val lastOutputRoute: String = "system",
     val dynamicArtworkEnabled: Boolean = true,
@@ -197,6 +198,10 @@ class EchoSettingsStore(
                 onlineLyricsEnabled = preferences[Keys.OnlineLyricsEnabled] ?: false,
                 usbExclusiveEnabled = preferences[Keys.UsbExclusiveEnabled] ?: false,
                 usbBitPerfectEnabled = preferences[Keys.UsbBitPerfectEnabled] ?: false,
+                trackTransitions = app.echo.android.model.playback.EchoTrackTransitionOptions(
+                    preferences[Keys.TrackFadeEnabled] ?: false,
+                    preferences[Keys.TrackFadeDurationMs] ?: 1500,
+                ).normalized(),
                 usbExclusiveAutoRequestOnStartup = preferences[Keys.UsbExclusiveAutoRequestOnStartup] ?: true,
                 equalizerEnabled = preferences[Keys.EqualizerEnabled] ?: false,
                 equalizerPreset = EchoEqualizerPresets.normalizePresetId(preferences[Keys.EqualizerPreset]),
@@ -323,6 +328,14 @@ class EchoSettingsStore(
         context.echoSettings.edit {
             it[Keys.UsbExclusiveEnabled] = enabled
             if (!enabled) it[Keys.UsbBitPerfectEnabled] = false
+        }
+    }
+
+    suspend fun setTrackTransitions(options: app.echo.android.model.playback.EchoTrackTransitionOptions) {
+        val normalized = options.normalized()
+        context.echoSettings.edit {
+            it[Keys.TrackFadeEnabled] = normalized.fadeEnabled
+            it[Keys.TrackFadeDurationMs] = normalized.fadeDurationMs
         }
     }
 
@@ -739,6 +752,8 @@ class EchoSettingsStore(
         val OnlineLyricsEnabled = booleanPreferencesKey("online_lyrics_enabled")
         val UsbExclusiveEnabled = booleanPreferencesKey("usb_exclusive_enabled")
         val UsbBitPerfectEnabled = booleanPreferencesKey("usb_bit_perfect_enabled")
+        val TrackFadeEnabled = booleanPreferencesKey("track_fade_enabled")
+        val TrackFadeDurationMs = intPreferencesKey("track_fade_duration_ms")
         val UsbExclusiveAutoRequestOnStartup = booleanPreferencesKey("usb_exclusive_auto_request_on_startup")
         val EqualizerEnabled = booleanPreferencesKey("equalizer_enabled")
         val EqualizerPreset = stringPreferencesKey("equalizer_preset")

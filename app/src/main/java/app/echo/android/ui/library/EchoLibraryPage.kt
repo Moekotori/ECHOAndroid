@@ -65,95 +65,95 @@ internal fun EchoLibraryPage(
 
     val application = androidx.compose.ui.platform.LocalContext.current.applicationContext as app.echo.android.EchoApplication
     app.echo.android.feature.library.AlbumOnlineInfoProvider(application.albumOnlineInfo) {
-    LibraryScreen(
-        hasPermission = hasAudioPermission,
-        scanState = scanState,
-        libraryQuery = libraryQuery,
-        trackSortMode = libraryTrackSortMode,
-        tracks = viewModel.tracks,
-        albums = viewModel.albums,
-        remoteAlbums = viewModel.remoteAlbums,
-        linkedLibraryActive = remoteStatus.connectionState == EchoRemoteConnectionState.Connected &&
-            appSettings.echoLinkPreferLinkedLibrary,
-        linkedLibraryAvailable = remoteStatus.connectionState == EchoRemoteConnectionState.Connected,
-        linkedLibraryState = remoteClient.library,
-        selectedLibrarySourceId = appSettings.librarySelectedSource,
-        artists = viewModel.artists,
-        folders = viewModel.folders,
-        playlists = localPlaylists,
-        showTrackAudioInfoTags = appSettings.trackAudioInfoTagsVisible,
-        selectedAlbum = selectedAlbum,
-        selectedArtist = selectedArtist,
-        selectedFolder = selectedFolder,
-        selectedPlaylist = selectedPlaylist,
-        albumDetailTracks = albumDetailTracks,
-        artistDetailTracks = artistDetailTracks,
-        folderDetailTracks = folderDetailTracks,
-        playlistDetailTracks = playlistDetailTracks,
-        onRequestPermission = onRequestPermission,
-        onLibraryQueryChange = viewModel::updateLibraryQuery,
-        onLibrarySourceChange = viewModel::setLibrarySelectedSource,
-        onTrackSortModeChange = viewModel::updateLibraryTrackSortMode,
-        onScanFolder = onScanFolder,
-        onScanAll = onScanAll,
-        onCancelScan = viewModel::cancelScan,
-        onRefreshLinkedLibrary = { query -> remoteClient.refreshLibrary(query) },
-        onOpenLinkedPlaylist = { playlist -> remoteClient.refreshPlaylistTracks(playlist) },
-        onPlayLinkedTrack = { track ->
-            playLinkedEchoTracks(
-                tracks = listOf(track),
-                startIndex = 0,
-                viewModel = viewModel,
-                remoteClient = remoteClient,
-            )
-        },
-        onPlayLinkedQueue = { tracks, startIndex ->
-            playLinkedEchoTracks(
-                tracks = tracks,
-                startIndex = startIndex,
-                viewModel = viewModel,
-                remoteClient = remoteClient,
-            )
-        },
-        onPlayTrack = { track, origin -> viewModel.playFromLibrary(track, origin) },
-        onPlayNext = viewModel::playNext,
-        onEnqueueTrack = viewModel::enqueue,
-        onUpdateTrackMetadata = viewModel::updateTrackMetadata,
-        onImportLyricsForTrack = onImportLyricsForTrack,
-        onPickTrackArtwork = onPickTrackArtwork,
-        onPlayAlbum = { album -> viewModel.playAlbum(album.albumKey) },
-        onShuffleAlbum = { album -> viewModel.shuffleAlbum(album.albumKey) },
-        onPlayArtist = { artist -> viewModel.playArtist(artist.artistKey) },
-        onShuffleArtist = { artist -> viewModel.shuffleArtist(artist.artistKey) },
-        onPlayFolder = { folder -> viewModel.playFolder(folder.folderKey) },
-        onPlayPlaylist = { playlist -> viewModel.playPlaylist(playlist.id) },
-        onShufflePlaylist = { playlist -> viewModel.shufflePlaylist(playlist.id) },
-        onCreatePlaylist = { name -> viewModel.createLocalPlaylist(name) },
-        onRenamePlaylist = { playlist, name -> viewModel.renameLocalPlaylist(playlist.id, name) },
-        onDeletePlaylist = { playlist ->
-            viewModel.deleteLocalPlaylist(playlist.id)
-            if (selectedPlaylist?.id == playlist.id) {
-                onCloseDetail()
-            }
-        },
-        onAddTrackToPlaylist = { playlist, track ->
-            viewModel.addTrackToLocalPlaylist(playlist.id, track.id)
-        },
-        onCreatePlaylistAndAddTrack = { name, track ->
-            viewModel.createLocalPlaylist(name, addTrackId = track.id)
-        },
-        onRemoveTrackFromPlaylist = { playlist, track ->
-            viewModel.removeTrackFromLocalPlaylist(playlist.id, track.id)
-        },
-        onReorderPlaylistTracks = { playlist, fromIndex, toIndex ->
-            viewModel.reorderLocalPlaylistTracks(playlist.id, fromIndex, toIndex)
-        },
-        onOpenAlbum = onOpenAlbum,
-        onOpenArtist = onOpenArtist,
-        onOpenFolder = onOpenFolder,
-        onOpenPlaylist = onOpenPlaylist,
-        onCloseDetail = onCloseDetail,
-    )
+        LibraryScreen(
+            hasPermission = hasAudioPermission,
+            scanState = scanState,
+            libraryQuery = libraryQuery,
+            trackSortMode = libraryTrackSortMode,
+            tracks = viewModel.tracks,
+            albums = viewModel.albums,
+            remoteAlbums = viewModel.remoteAlbums,
+            linkedLibraryActive = remoteStatus.connectionState == EchoRemoteConnectionState.Connected &&
+                appSettings.echoLinkPreferLinkedLibrary,
+            linkedLibraryAvailable = remoteStatus.connectionState == EchoRemoteConnectionState.Connected,
+            linkedLibraryState = remoteClient.library,
+            selectedLibrarySourceId = appSettings.librarySelectedSource,
+            artists = viewModel.artists,
+            folders = viewModel.folders,
+            playlists = localPlaylists,
+            showTrackAudioInfoTags = appSettings.trackAudioInfoTagsVisible,
+            selectedAlbum = selectedAlbum,
+            selectedArtist = selectedArtist,
+            selectedFolder = selectedFolder,
+            selectedPlaylist = selectedPlaylist,
+            albumDetailTracks = albumDetailTracks,
+            artistDetailTracks = artistDetailTracks,
+            folderDetailTracks = folderDetailTracks,
+            playlistDetailTracks = playlistDetailTracks,
+            onRequestPermission = onRequestPermission,
+            onLibraryQueryChange = viewModel::updateLibraryQuery,
+            onLibrarySourceChange = viewModel::setLibrarySelectedSource,
+            onTrackSortModeChange = viewModel::updateLibraryTrackSortMode,
+            onScanFolder = onScanFolder,
+            onScanAll = onScanAll,
+            onCancelScan = viewModel::cancelScan,
+            onRefreshLinkedLibrary = { query -> remoteClient.refreshLibrary(query) },
+            onOpenLinkedPlaylist = { playlist -> remoteClient.refreshPlaylistTracks(playlist) },
+            onPlayLinkedTrack = { track ->
+                playLinkedEchoTracks(
+                    tracks = listOf(track),
+                    startIndex = 0,
+                    viewModel = viewModel,
+                    remoteClient = remoteClient,
+                )
+            },
+            onPlayLinkedQueue = { tracks, startIndex ->
+                playLinkedEchoTracks(
+                    tracks = tracks,
+                    startIndex = startIndex,
+                    viewModel = viewModel,
+                    remoteClient = remoteClient,
+                )
+            },
+            onPlayTrack = { track, origin -> viewModel.playFromLibrary(track, origin) },
+            onPlayNext = viewModel::playNext,
+            onEnqueueTrack = viewModel::enqueue,
+            onUpdateTrackMetadata = viewModel::updateTrackMetadata,
+            onImportLyricsForTrack = onImportLyricsForTrack,
+            onPickTrackArtwork = onPickTrackArtwork,
+            onPlayAlbum = { album -> viewModel.playAlbum(album.albumKey) },
+            onShuffleAlbum = { album -> viewModel.shuffleAlbum(album.albumKey) },
+            onPlayArtist = { artist -> viewModel.playArtist(artist.artistKey) },
+            onShuffleArtist = { artist -> viewModel.shuffleArtist(artist.artistKey) },
+            onPlayFolder = { folder -> viewModel.playFolder(folder.folderKey) },
+            onPlayPlaylist = { playlist -> viewModel.playPlaylist(playlist.id) },
+            onShufflePlaylist = { playlist -> viewModel.shufflePlaylist(playlist.id) },
+            onCreatePlaylist = { name -> viewModel.createLocalPlaylist(name) },
+            onRenamePlaylist = { playlist, name -> viewModel.renameLocalPlaylist(playlist.id, name) },
+            onDeletePlaylist = { playlist ->
+                viewModel.deleteLocalPlaylist(playlist.id)
+                if (selectedPlaylist?.id == playlist.id) {
+                    onCloseDetail()
+                }
+            },
+            onAddTrackToPlaylist = { playlist, track ->
+                viewModel.addTrackToLocalPlaylist(playlist.id, track.id)
+            },
+            onCreatePlaylistAndAddTrack = { name, track ->
+                viewModel.createLocalPlaylist(name, addTrackId = track.id)
+            },
+            onRemoveTrackFromPlaylist = { playlist, track ->
+                viewModel.removeTrackFromLocalPlaylist(playlist.id, track.id)
+            },
+            onReorderPlaylistTracks = { playlist, fromIndex, toIndex ->
+                viewModel.reorderLocalPlaylistTracks(playlist.id, fromIndex, toIndex)
+            },
+            onOpenAlbum = onOpenAlbum,
+            onOpenArtist = onOpenArtist,
+            onOpenFolder = onOpenFolder,
+            onOpenPlaylist = onOpenPlaylist,
+            onCloseDetail = onCloseDetail,
+        )
     }
 }
 

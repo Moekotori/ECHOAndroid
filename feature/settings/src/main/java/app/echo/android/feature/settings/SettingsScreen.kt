@@ -83,6 +83,7 @@ fun SettingsScreen(
     onlineLyricsEnabled: Boolean,
     usbExclusiveEnabled: Boolean,
     usbBitPerfectEnabled: Boolean,
+    trackTransitions: app.echo.android.model.playback.EchoTrackTransitionOptions,
     usbExclusiveAutoRequestOnStartup: Boolean,
     usbExclusiveTestResult: String,
     customBackgroundMode: String,
@@ -123,6 +124,7 @@ fun SettingsScreen(
     onOnlineLyricsEnabledChange: (Boolean) -> Unit,
     onUsbExclusiveEnabledChange: (Boolean) -> Unit,
     onUsbBitPerfectEnabledChange: (Boolean) -> Unit,
+    onTrackTransitionsChange: (app.echo.android.model.playback.EchoTrackTransitionOptions) -> Unit,
     onUsbExclusiveAutoRequestOnStartupChange: (Boolean) -> Unit,
     onTestUsbExclusiveDriver: () -> Unit,
     onPickImageBackground: () -> Unit,
@@ -418,6 +420,24 @@ fun SettingsScreen(
                 expanded = playbackSectionExpanded,
                 onExpandedChange = { playbackSectionExpanded = it },
             ) {
+                SettingsInfoRow(
+                    title = stringResource(R.string.settings_gapless),
+                    detail = stringResource(R.string.settings_gapless_detail),
+                )
+                SettingsSwitchRow(
+                    title = stringResource(R.string.settings_track_fade),
+                    detail = stringResource(if (usbBitPerfectEnabled) R.string.settings_track_fade_bypass else R.string.settings_track_fade_detail),
+                    checked = trackTransitions.fadeEnabled,
+                    onCheckedChange = { onTrackTransitionsChange(trackTransitions.copy(fadeEnabled = it)) },
+                )
+                if (trackTransitions.fadeEnabled) SettingsSliderRow(
+                    title = stringResource(R.string.settings_track_fade_duration),
+                    detail = stringResource(R.string.settings_track_fade_seconds, trackTransitions.fadeDurationMs / 1000f),
+                    value = trackTransitions.fadeDurationMs / 1000f,
+                    valueRange = 0.5f..5f,
+                    steps = 8,
+                    onValueChange = { onTrackTransitionsChange(trackTransitions.copy(fadeDurationMs = (it * 1000).toInt())) },
+                )
                 SettingsSwitchRow(
                     title = stringResource(R.string.settings_lyrics_sync_tools),
                     detail = stringResource(R.string.settings_lyrics_sync_tools_detail),

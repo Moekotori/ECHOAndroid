@@ -753,6 +753,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun setTrackTransitions(options: app.echo.android.model.playback.EchoTrackTransitionOptions) {
+        updateSettings { setTrackTransitions(options) }
+    }
+
     fun setUsbBitPerfectEnabled(enabled: Boolean) {
         updateSettings { setUsbBitPerfectEnabled(enabled) }
     }

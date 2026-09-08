@@ -4,12 +4,16 @@ import app.echo.android.data.EchoSavedPlaybackSession
 import app.echo.android.data.EchoSettingsStore
 import app.echo.android.playback.EchoPlaybackSessionSnapshot
 import app.echo.android.playback.EchoPlaybackSessionStore
+import app.echo.android.playback.EchoPlaybackRuntimeOptionsStore
+import kotlinx.coroutines.flow.first
 
 class EchoSettingsPlaybackSessionStore(
     private val settingsStore: EchoSettingsStore,
 ) : EchoPlaybackSessionStore {
-    override suspend fun load(): EchoPlaybackSessionSnapshot? =
-        settingsStore.getSavedPlaybackSession()?.toSnapshot()
+    override suspend fun load(): EchoPlaybackSessionSnapshot? {
+        EchoPlaybackRuntimeOptionsStore.setTrackTransitions(settingsStore.appSettings.first().trackTransitions)
+        return settingsStore.getSavedPlaybackSession()?.toSnapshot()
+    }
 
     override suspend fun save(snapshot: EchoPlaybackSessionSnapshot?) {
         settingsStore.savePlaybackSession(snapshot?.toSavedSession())
