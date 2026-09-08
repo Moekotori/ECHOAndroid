@@ -505,13 +505,10 @@ fun SettingsScreen(
                 )
                 SettingsSwitchRow(
                     title = "Discord Rich Presence",
-                    detail = if (pcHandoffEnabled) {
-                        stringResource(R.string.settings_discord_detail_on)
-                    } else {
-                        stringResource(R.string.settings_discord_detail_off)
-                    },
-                    checked = discordPresenceViaPcEnabled,
-                    onCheckedChange = onDiscordPresenceViaPcEnabledChange,
+                    detail = stringResource(R.string.settings_discord_unavailable),
+                    checked = false,
+                    enabled = false,
+                    onCheckedChange = {},
                 )
                 SettingsActionRow(
                     title = stringResource(R.string.settings_connect_pc),

@@ -164,4 +164,5 @@
     <string name="feature_connect_check_the_pc_address_or_paste_a_complete_0f216a" formatted="false">"Check the PC address or paste a complete pairing link"</string>
     <string name="feature_connect_not_available_yet_forwarding_phone_playback_to_pc_d80b24" formatted="false">"Not available yet. Forwarding phone playback to PC Discord is not implemented."</string>
     <string name="feature_connect_pair_another_pc_23df07" formatted="false">"Pair another PC"</string>
+    <string name="echo_link_handoff_phone">Continue the phone song on PC</string>
 </resources>

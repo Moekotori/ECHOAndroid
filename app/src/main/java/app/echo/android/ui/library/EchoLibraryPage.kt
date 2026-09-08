@@ -101,7 +101,6 @@ internal fun EchoLibraryPage(
                 startIndex = 0,
                 viewModel = viewModel,
                 remoteClient = remoteClient,
-                pcHandoffEnabled = appSettings.pcHandoffEnabled,
             )
         },
         onPlayLinkedQueue = { tracks, startIndex ->
@@ -110,7 +109,6 @@ internal fun EchoLibraryPage(
                 startIndex = startIndex,
                 viewModel = viewModel,
                 remoteClient = remoteClient,
-                pcHandoffEnabled = appSettings.pcHandoffEnabled,
             )
         },
         onPlayTrack = { track, origin -> viewModel.playFromLibrary(track, origin) },
@@ -159,25 +157,7 @@ private fun playLinkedEchoTracks(
     startIndex: Int,
     viewModel: EchoAndroidViewModel,
     remoteClient: EchoRemoteClient,
-    pcHandoffEnabled: Boolean,
 ) {
-    val startTrack = tracks.getOrNull(startIndex.coerceAtLeast(0)) ?: return
-    if (pcHandoffEnabled) {
-        val currentLinkedId = viewModel.playbackStatus.value.track?.id
-        val positionMs = if (startTrack.id != null && currentLinkedId == "echo-link:${startTrack.id}") {
-            // status 不再携带实时进度,交接位置从 playbackPosition 读取
-            viewModel.playbackPosition.value.positionMs
-        } else {
-            0L
-        }
-        remoteClient.handoffToPc(startTrack, positionMs)
-        return
-    }
-    val playable = tracks.filter { it.canPlayOnPhone && !it.id.isNullOrBlank() }
-    if (playable.isEmpty()) {
-        remoteClient.playTrackOnPc(startTrack)
-        return
-    }
     remoteClient.playTracksOnPhone(
         tracks = tracks,
         startIndex = startIndex,

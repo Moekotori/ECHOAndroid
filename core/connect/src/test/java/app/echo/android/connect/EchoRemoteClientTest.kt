@@ -391,6 +391,50 @@ class EchoRemoteClientTest {
     }
 
     @Test
+    fun handoffAcknowledgementSurvivesStatusPolling() = runBlocking {
+        val blocker = CompletableDeferred<Unit>()
+        val transport = FakeEchoLinkTransport(commandBlocker = blocker)
+        val client = EchoRemoteClient(this, transport, statusPollIntervalMs = 5)
+        client.connect(endpoint, false)
+        delay(20)
+        var acknowledged = false
+        client.handoffToPc(remoteTrack("song"), 1200) { acknowledged = true }
+        delay(25)
+        assertFalse(acknowledged)
+        blocker.complete(Unit)
+        delay(20)
+        assertTrue(acknowledged)
+        client.disconnect()
+    }
+
+    @Test
+    fun failedHandoffDoesNotAcknowledgeOrPauseThePhone() = runBlocking {
+        val client = EchoRemoteClient(this, FakeEchoLinkTransport(failCommand = true))
+        client.connect(endpoint, false)
+        delay(20)
+        var acknowledged = false
+        client.handoffToPc(remoteTrack("song"), 1200) { acknowledged = true }
+        delay(20)
+        assertFalse(acknowledged)
+        client.disconnect()
+    }
+
+    @Test
+    fun disconnectedHandoffDoesNotAcknowledge() = runBlocking {
+        val blocker = CompletableDeferred<Unit>()
+        val client = EchoRemoteClient(this, FakeEchoLinkTransport(commandBlocker = blocker))
+        client.connect(endpoint, false)
+        delay(20)
+        var acknowledged = false
+        client.handoffToPc(remoteTrack("song"), 1200) { acknowledged = true }
+        delay(10)
+        client.disconnect()
+        blocker.complete(Unit)
+        delay(20)
+        assertFalse(acknowledged)
+    }
+
+    @Test
     fun canSendPlayOnPcAndHandoffCommands() = runBlocking {
         val transport = FakeEchoLinkTransport()
         val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
@@ -472,6 +516,8 @@ private fun remoteTrack(id: String): EchoRemoteTrack =
 
 private class FakeEchoLinkTransport(
     private val failPairing: Boolean = false,
+    private val commandBlocker: CompletableDeferred<Unit>? = null,
+    private val failCommand: Boolean = false,
     private val failStatusTimes: Int = 0,
     private val libraryPageSize: Int = 500,
     private val libraryTotalCount: Int = 0,
@@ -535,6 +581,8 @@ private class FakeEchoLinkTransport(
         command: EchoRemoteCommand,
     ): EchoLinkStatusResponse? {
         commands += command
+        commandBlocker?.await()
+        if (failCommand) throw EchoLinkHttpException("command failed")
         return EchoLinkStatusResponse(deviceName = endpoint.name, playback = EchoRemotePlaybackSnapshot())
     }
 

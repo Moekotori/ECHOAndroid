@@ -58,3 +58,11 @@ Text(stringResource(R.string.library_loading_count, count))
 CI 在原模块检查步骤一起运行该任务，不增加仪器测试。语言切换布局、专业译文质量、RTL 和 Android 12 以下设备仍需按发布范围验收。
 
 平台依据：[Android 应用语言设置](https://developer.android.com/guide/topics/resources/app-languages)。
+
+### 本次验证
+
+- `checkModules`、`checkLocalization`、`generateEchoLocales`：通过。
+- `:core:data:testDebugUnitTest --tests '*EchoAppLanguageTest'`：6 个用例通过。
+- `:app:assembleDebug`：通过，新 APK 安装成功。
+- API 36 模拟器验证了英语、日语界面及跟随系统；清空应用语言并重启后仍保持跟随系统，没有被旧偏好覆盖。验证后恢复原来的 `zh-CN`。
+- 未覆盖 Android 12 以下真机、RTL、全部长文案布局与后台旧接口的新语言翻译。

@@ -170,44 +170,41 @@ object EchoPlaybackProcessRuntime {
     suspend fun reResolveBoundPlayerQueue() {
         if (streamResolver == null) return
         resolveMutex.withLock {
-            val snapshot = withContext(Dispatchers.Main.immediate) {
-                val player = enginePolicy?.boundPlayer() ?: mediaController ?: return@withContext null
-                if (player.mediaItemCount <= 0) return@withContext null
-                QueueResolveSnapshot(
-                    items = (0 until player.mediaItemCount).map { player.getMediaItemAt(it) },
-                    index = player.currentMediaItemIndex.coerceAtLeast(0),
-                    positionMs = player.currentPosition.coerceAtLeast(0L),
-                    playWhenReady = player.playWhenReady,
-                    playerUnavailable = player.playerError != null ||
-                        player.playbackState == Player.STATE_IDLE,
-                )
-            } ?: return@withLock
-            val needs = snapshot.items.any { item ->
-                val playUri = item.localConfiguration?.uri?.toString().orEmpty()
-                EchoLinkPlaybackUri.playUriNeedsResolve(playUri, snapshot.playerUnavailable) ||
-                    EchoLinkPlaybackUri.trackIdFromPersistUri(playUri) != null
-            }
-            if (!needs) return@withLock
-            val resolvedUris = snapshot.items.map { item ->
-                val playUri = item.localConfiguration?.uri?.toString().orEmpty()
-                resolvePlayUri(item.mediaId, playUri)
-            }
-            val currentUris = snapshot.items.map { it.localConfiguration?.uri?.toString().orEmpty() }
-            if (resolvedUris == currentUris) return@withLock
             withContext(Dispatchers.Main.immediate) {
                 val player = enginePolicy?.boundPlayer() ?: mediaController ?: return@withContext
-                val items = snapshot.items.mapIndexed { index, item ->
-                    item.buildUpon().setUri(Uri.parse(resolvedUris[index])).build()
+                // Healthy playback already resolves future items through the data source.
+                if (player.playerError == null && player.playbackState != Player.STATE_IDLE) return@withContext
+                val item = player.currentMediaItem ?: return@withContext
+                val uri = item.localConfiguration?.uri?.toString().orEmpty()
+                if (!EchoLinkPlaybackUri.requiresStreamResolve(item.mediaId, uri)) return@withContext
+                val index = player.currentMediaItemIndex
+                val position = player.currentPosition
+                val playWhenReady = player.playWhenReady
+                var changed = false
+                val listener = object : Player.Listener {
+                    override fun onEvents(player: Player, events: Player.Events) {
+                        if (events.containsAny(
+                                Player.EVENT_TIMELINE_CHANGED,
+                                Player.EVENT_POSITION_DISCONTINUITY,
+                                Player.EVENT_PLAY_WHEN_READY_CHANGED,
+                            )) changed = true
+                    }
                 }
-                val index = snapshot.index.coerceIn(0, items.lastIndex)
-                player.setMediaItems(items, index, snapshot.positionMs)
-                player.prepare()
-                if (snapshot.playWhenReady) player.play() else player.pause()
-                enginePolicy?.mergeReplayGainUris(
-                    items.associate { item ->
-                        item.mediaId to (item.localConfiguration?.uri?.toString().orEmpty())
-                    },
-                )
+                player.addListener(listener)
+                try {
+                    val resolved = resolvePlayUri(item.mediaId, uri)
+                    if (changed || (enginePolicy?.boundPlayer() ?: mediaController) !== player ||
+                        player.currentMediaItem != item || player.currentMediaItemIndex != index ||
+                        player.currentPosition != position || player.playWhenReady != playWhenReady ||
+                        resolved == uri || EchoLinkPlaybackUri.trackIdFromPersistUri(resolved) != null) return@withContext
+                    player.replaceMediaItem(index, item.buildUpon().setUri(Uri.parse(resolved)).build())
+                    player.seekTo(index, position)
+                    player.prepare()
+                    player.playWhenReady = playWhenReady
+                    enginePolicy?.mergeReplayGainUris(mapOf(item.mediaId to resolved))
+                } finally {
+                    player.removeListener(listener)
+                }
             }
         }
     }
@@ -378,12 +375,4 @@ object EchoPlaybackProcessRuntime {
 }
 
 @UnstableApi
-private data class QueueResolveSnapshot(
-    val items: List<androidx.media3.common.MediaItem>,
-    val index: Int,
-    val positionMs: Long,
-    val playWhenReady: Boolean,
-    val playerUnavailable: Boolean,
-)
-
 private const val AUDIO_SESSION_UNSET = 0

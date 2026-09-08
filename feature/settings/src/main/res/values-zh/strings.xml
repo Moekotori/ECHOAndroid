@@ -272,4 +272,5 @@
     <string name="diag_eq_wait_playback">%1$s · 等待播放</string>
     <string name="diag_eq_wait_system">%1$s · 等待管线 EQ</string>
     <string name="diag_eq_off">关闭 · %1$d bands</string>
+    <string name="settings_discord_unavailable">暂未实现：手机播放状态转发到 PC Discord 尚未接通。</string>
 </resources>

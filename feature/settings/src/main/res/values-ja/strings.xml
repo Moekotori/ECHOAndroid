@@ -272,4 +272,5 @@
     <string name="diag_eq_wait_playback">%1$s · 再生待ち</string>
     <string name="diag_eq_wait_system">%1$s · パイプライン EQ 待ち</string>
     <string name="diag_eq_off">オフ · %1$d bands</string>
+    <string name="settings_discord_unavailable">未実装：スマホの再生状態を PC の Discord へ転送する機能はまだ利用できません。</string>
 </resources>

@@ -65,6 +65,7 @@ fun ConnectScreen(
     discoveredLanDevices: List<EchoLinkLanDevice> = emptyList(),
     onSelectLanDevice: (EchoLinkLanDevice) -> Unit = {},
     onRefreshLanDevices: () -> Unit = {},
+    onHandoffPhoneToPc: (() -> Unit)? = null,
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val scrollStates = listOf(rememberScrollState(), rememberScrollState())

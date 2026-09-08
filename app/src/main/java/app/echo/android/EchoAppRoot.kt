@@ -304,7 +304,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         echoLinkScanMessage = null
         echoLinkScanIsError = false
         echoLinkFallbackScannerVisible = false
-        saveEchoLinkEndpointIfReady(endpoint)
         remoteClient.connect(
             nextEndpoint = endpoint,
             refreshLibraryOnConnect = appSettings.echoLinkPreferLinkedLibrary,
@@ -603,17 +602,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
 
     LaunchedEffect(remoteStatus.endpoint, remoteStatus.connectionState) {
         val endpoint = remoteStatus.endpoint
-        if (
-            EchoLinkRequestPolicy.shouldClearPersistedPairingSecret(
-                connectionFailed = remoteStatus.connectionState == EchoRemoteConnectionState.Error,
-                needsV2PairExchange = endpoint?.needsV2PairExchange == true,
-            )
-        ) {
-            viewModel.saveEchoLinkPcEndpoint(
-                address = endpoint?.let { "${it.scheme}://${it.host}:${it.port}" }.orEmpty(),
-                token = "",
-            )
-        } else if (endpoint != null) {
+        if (endpoint != null && remoteStatus.connectionState == EchoRemoteConnectionState.Connected) {
             saveEchoLinkEndpointIfReady(endpoint)
         }
         EchoArtworkRequestHeadersRegistry.replaceEchoLinkAuthorization(
@@ -943,6 +932,26 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onPlayPause = { remoteClient.send(EchoRemoteCommand.PlayPause) },
                                 onPrevious = { remoteClient.send(EchoRemoteCommand.Previous) },
                                 onNext = { remoteClient.send(EchoRemoteCommand.Next) },
+                                onHandoffPhoneToPc = if (appSettings.pcHandoffEnabled &&
+                                    playbackStatus.track?.id?.let(EchoLinkPlaybackUri::trackIdFromMediaId) != null) {
+                                    {
+                                        val phone = viewModel.playbackStatus.value.track
+                                        val id = phone?.id?.let(EchoLinkPlaybackUri::trackIdFromMediaId)
+                                        if (phone != null && id != null) {
+                                            remoteClient.handoffToPc(
+                                                app.echo.android.model.connect.EchoRemoteTrack(
+                                                    id = id, title = phone.title, artist = phone.artist,
+                                                    album = phone.album, artworkUrl = phone.artworkUri,
+                                                    durationMs = phone.durationMs,
+                                                ),
+                                                viewModel.playbackPosition.value.positionMs,
+                                            ) {
+                                                val live = viewModel.playbackStatus.value
+                                                if (live.track?.id == phone.id && live.isPlaying) viewModel.playPause()
+                                            }
+                                        }
+                                    }
+                                } else null,
                                 onDisconnect = remoteClient::disconnect,
                                 onForgetPc = {
                                     remoteClient.disconnect()

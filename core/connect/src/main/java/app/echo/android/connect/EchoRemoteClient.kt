@@ -219,7 +219,7 @@ class EchoRemoteClient internal constructor(
         }
     }
 
-    fun send(command: EchoRemoteCommand) {
+    fun send(command: EchoRemoteCommand, onSuccess: () -> Unit = {}) {
         val target = endpoint ?: run {
             _status.update {
                 it.copy(
@@ -234,9 +234,12 @@ class EchoRemoteClient internal constructor(
             return
         }
         val generation = ++statusRefreshGeneration
+        val connection = connectGeneration
         scope.launch {
             runSuspendCatching { transport.sendCommand(target, command) }
                 .onSuccess { response ->
+                    if (connection != connectGeneration || !EchoLinkRequestPolicy.isSameEndpoint(endpoint, target)) return@onSuccess
+                    onSuccess()
                     if (generation != statusRefreshGeneration) {
                         return@onSuccess
                     }
@@ -452,7 +455,7 @@ class EchoRemoteClient internal constructor(
         send(EchoRemoteCommand.PlayTrackOnPc(trackId))
     }
 
-    fun handoffToPc(track: EchoRemoteTrack, positionMs: Long) {
+    fun handoffToPc(track: EchoRemoteTrack, positionMs: Long, onSuccess: () -> Unit = {}) {
         val trackId = track.id ?: run {
             _library.update {
                 it.copy(
@@ -465,7 +468,7 @@ class EchoRemoteClient internal constructor(
             }
             return
         }
-        send(EchoRemoteCommand.HandoffToPc(trackId, positionMs.coerceAtLeast(0L)))
+        send(EchoRemoteCommand.HandoffToPc(trackId, positionMs.coerceAtLeast(0L)), onSuccess)
     }
 
     fun playTrackOnPhone(

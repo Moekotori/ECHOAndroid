@@ -346,22 +346,7 @@ class EchoPlaybackEnginePolicy(
         }
         if (!echoLinkRefreshAttempts.add(mediaId)) return false
         EchoPlaybackProcessRuntime.scope.launch {
-            val resolved = EchoPlaybackProcessRuntime.resolvePlayUri(mediaId, currentUri)
-            val stillPersist = EchoLinkPlaybackUri.trackIdFromPersistUri(resolved) != null
-            if (resolved.isBlank() || stillPersist) return@launch
-            withContext(Dispatchers.Main.immediate) {
-                val live = attachedPlayer ?: return@withContext
-                val liveIndex = live.currentMediaItemIndex
-                if (liveIndex < 0 || liveIndex >= live.mediaItemCount) return@withContext
-                val liveItem = live.getMediaItemAt(liveIndex)
-                if (liveItem.mediaId != mediaId) return@withContext
-                live.replaceMediaItem(
-                    liveIndex,
-                    liveItem.buildUpon().setUri(android.net.Uri.parse(resolved)).build(),
-                )
-                live.prepare()
-                live.play()
-            }
+            EchoPlaybackProcessRuntime.reResolveBoundPlayerQueue()
         }
         return true
     }

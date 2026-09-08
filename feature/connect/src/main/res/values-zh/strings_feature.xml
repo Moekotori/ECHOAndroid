@@ -164,4 +164,5 @@
     <string name="feature_connect_check_the_pc_address_or_paste_a_complete_0f216a" formatted="false">"请检查 PC 地址，或粘贴完整配对链接"</string>
     <string name="feature_connect_not_available_yet_forwarding_phone_playback_to_pc_d80b24" formatted="false">"暂未实现：手机播放状态转发到 PC Discord 尚未接通。"</string>
     <string name="feature_connect_pair_another_pc_23df07" formatted="false">"扫码配对其他 PC"</string>
+    <string name="echo_link_handoff_phone">将手机当前歌曲交给 PC 播放</string>
 </resources>

@@ -164,4 +164,5 @@
     <string name="feature_connect_check_the_pc_address_or_paste_a_complete_0f216a" formatted="false">"PC アドレスを確認するか、完全なペアリングリンクを貼り付けてください"</string>
     <string name="feature_connect_not_available_yet_forwarding_phone_playback_to_pc_d80b24" formatted="false">"未実装：スマホの再生状態を PC の Discord へ転送する機能はまだ利用できません。"</string>
     <string name="feature_connect_pair_another_pc_23df07" formatted="false">"別の PC とペアリング"</string>
+    <string name="echo_link_handoff_phone">スマホの曲を PC で引き継ぐ</string>
 </resources>

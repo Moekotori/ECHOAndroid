@@ -278,4 +278,5 @@
     <string name="diag_eq_wait_playback">%1$s · waiting for playback</string>
     <string name="diag_eq_wait_system">%1$s · waiting for playback-pipeline EQ</string>
     <string name="diag_eq_off">Off · %1$d bands</string>
+    <string name="settings_discord_unavailable">Not available yet. Phone playback forwarding to PC Discord is not implemented.</string>
 </resources>

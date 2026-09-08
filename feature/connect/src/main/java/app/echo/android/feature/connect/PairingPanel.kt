@@ -56,6 +56,7 @@ internal fun PcLinkPanel(
     discoveredLanDevices: List<EchoLinkLanDevice>,
     onSelectLanDevice: (EchoLinkLanDevice) -> Unit,
     onRefreshLanDevices: () -> Unit,
+    onHandoffPhoneToPc: (() -> Unit)? = null,
 ) {
     val connected = remoteState == EchoRemoteConnectionState.Connected
     val busy = remoteState in listOf(EchoRemoteConnectionState.Pairing, EchoRemoteConnectionState.Connecting, EchoRemoteConnectionState.Reconnecting)
@@ -87,6 +88,11 @@ internal fun PcLinkPanel(
             }
             connected -> {
                 RemoteNowPlaying(trackTitle, trackArtist, trackArtworkUrl, isPlaying, true, onPlayPause, onPrevious, onNext)
+                if (onHandoffPhoneToPc != null) {
+                    OutlinedButton(onClick = onHandoffPhoneToPc, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(L10nR.string.echo_link_handoff_phone))
+                    }
+                }
                 TextButton(onClick = onDisconnect) { Text(stringResource(L10nR.string.feature_connect_disconnect_pc_fd446c)) }
             }
             else -> {
