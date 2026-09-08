@@ -1,6 +1,6 @@
 # Media3 FFmpeg audio bridge
 
-Unmodified audio Java sources and `ffmpeg_jni.cc` from AndroidX Media **1.10.1**:
+Audio Java sources and `ffmpeg_jni.cc` derived from AndroidX Media **1.10.1**:
 https://github.com/androidx/media/tree/1.10.1/libraries/decoder_ffmpeg
 
 The upstream Apache-2.0 license is in `LICENSE`. Only the four audio Java classes
@@ -26,9 +26,17 @@ auto-detected external libraries, GPL, version3 or nonfree options. Decoder list
 and source checksum are in the build script. Original source, configuration,
 objects and logs remain under `build/ffmpeg` for inspection and relinking.
 
+## Local bridge changes
+
+ECHO exposes the audio decoder/exception constructors to its playback module and
+adds an integer s32 output mode, source precision reporting and strict error
+handling. The original boolean constructor retains normal s16/float behavior.
+The JNI mode values are private bridge values, independent of Media3 encoding
+constants. These changes must be carried forward when refreshing upstream code.
+
 ## Playback policy and boundaries
 
-`EchoRenderersFactory` enables extensions in ON mode: the platform renderer is
+For normal playback, `EchoRenderersFactory` enables extensions in ON mode: the platform renderer is
 preferred and FFmpeg is selected when the platform renderer cannot support the
 format. Both use ECHO's existing AudioSink, EQ and system/USB output provider.
 `setEnableDecoderFallback(true)` permits alternative MediaCodec decoders on
@@ -40,10 +48,10 @@ AMR, FLAC, ALAC and PCM A-law/mu-law decoders. A file still requires a compatibl
 Media3 extractor. In particular APE, DSF/DFF, native DSD and DoP are not added by
 this change, even though scanners may already recognize some of their suffixes.
 
-The upstream renderer negotiates float or 16-bit PCM with the sink. This change
+The normal upstream renderer negotiates float or 16-bit PCM with the sink. This change
 does not enable float output globally or change EQ processing. It does not claim
 bit-perfect, lossless high-bit-depth output, or automatic recovery from runtime
-decoder failures. Those require separate signal-path work and device validation.
+decoder failures. The separate strict USB path is documented in [USB bit-perfect](../../../../docs/usb-bit-perfect.md); end-to-end DAC validation is still required.
 
 ## Distribution
 

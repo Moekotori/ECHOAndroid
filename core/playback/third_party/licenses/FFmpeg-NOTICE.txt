@@ -9,3 +9,6 @@ The Media3 FFmpeg audio bridge comes from AndroidX Media 1.10.1:
 https://github.com/androidx/media/tree/1.10.1/libraries/decoder_ffmpeg
 Copyright The Android Open Source Project. Licensed under Apache 2.0;
 see Media3-FFmpeg-Apache-2.0.txt.
+
+ECHO modifies the Media3 bridge for integer PCM output, source precision reporting
+and strict decode error handling. The original Apache 2.0 license still applies.

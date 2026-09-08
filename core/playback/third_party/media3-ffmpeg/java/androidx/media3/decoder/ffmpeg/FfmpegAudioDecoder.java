@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+// ECHO modification: strict integer PCM output and decoder precision/error reporting.
 package androidx.media3.decoder.ffmpeg;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -317,7 +318,7 @@ public final class FfmpegAudioDecoder
   private native long ffmpegInitialize(
       String codecName,
       @Nullable byte[] extraData,
-      int outputEncoding,
+      int outputMode,
       int rawSampleRate,
       int rawChannelCount);
 

@@ -12,6 +12,7 @@ class UsbAudioDescriptorParserTest {
         val raw = bytes(
             9, 4, 1, 0, 0, 1, 2, 0, 0,
             9, 4, 1, 1, 1, 1, 2, 0, 0,
+            7, 36, 1, 1, 1, 1, 0,
             14, 36, 2, 1, 2, 3, 24, 2, 0x44, 0xac, 0x00, 0x80, 0xbb, 0x00,
             9, 5, 0x01, 0x05, 0x00, 0x02, 1, 0, 0,
         )
@@ -23,6 +24,7 @@ class UsbAudioDescriptorParserTest {
         assertTrue(info.hasIsochronousOut)
         assertEquals(listOf(44100, 48000), info.sampleRates)
         assertEquals(24, info.streamingFormats.single().bitResolution)
+        assertEquals(true, info.streamingFormats.single().pcmIntegerSupported)
     }
 
     @Test
@@ -77,6 +79,7 @@ class UsbAudioDescriptorParserTest {
 
         assertEquals(1, format.terminalLink)
         assertEquals(listOf(5), format.clockSourceIds)
+        assertEquals(true, format.pcmIntegerSupported)
         assertEquals(32, format.bitResolution)
         assertEquals(2, format.channelCount)
     }

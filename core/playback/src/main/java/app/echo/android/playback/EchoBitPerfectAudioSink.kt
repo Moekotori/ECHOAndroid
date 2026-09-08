@@ -60,7 +60,9 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
         val wanted = nextFormat ?: format ?: return false
         if (!EchoPlaybackProcessRuntime.usbExclusiveEnabled) initializationFailure(EchoBitPerfectState.UsbUnavailable, wanted)
         if (volume != 1f) initializationFailure(EchoBitPerfectState.VolumeChanged, wanted)
-        if (session != null && (wanted != format || nextSourceBits != sourceBits)) {
+        if (session != null && (wanted.sampleRate != format?.sampleRate ||
+            wanted.channelCount != format?.channelCount || wanted.pcmEncoding != format?.pcmEncoding ||
+            nextSourceBits != sourceBits)) {
             drain()
             if (hasPendingData()) return false
             closeSession()

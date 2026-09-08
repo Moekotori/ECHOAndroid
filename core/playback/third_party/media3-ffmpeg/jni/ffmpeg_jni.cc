@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+// ECHO modification: strict integer PCM output and decoder precision/error reporting.
 #include <android/log.h>
 #include <jni.h>
 #include <stdlib.h>
@@ -284,6 +285,7 @@ AVCodecContext* createContext(JNIEnv* env, const AVCodec* codec,
     LOGE("Failed to allocate context.");
     return NULL;
   }
+  // ECHO bridge modes: 0 = s16, 1 = float, 2 = s32. Never pass platform encoding constants.
   context->request_sample_fmt =
       outputMode == 2 ? AV_SAMPLE_FMT_S32 :
       (outputMode == 1 ? OUTPUT_FORMAT_PCM_FLOAT : OUTPUT_FORMAT_PCM_16BIT);

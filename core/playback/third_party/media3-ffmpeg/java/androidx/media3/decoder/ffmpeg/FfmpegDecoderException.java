@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+// ECHO modification: strict integer PCM output and decoder precision/error reporting.
 package androidx.media3.decoder.ffmpeg;
 
 import androidx.media3.common.util.UnstableApi;
