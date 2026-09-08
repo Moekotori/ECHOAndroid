@@ -817,6 +817,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onCustomBackgroundBrightnessChange = viewModel::setCustomBackgroundBrightness,
                                 onCustomBackgroundGlassChange = viewModel::setCustomBackgroundGlass,
                                 onCustomBackgroundScaleChange = viewModel::setCustomBackgroundScale,
+                                onCustomBackgroundStyleChange = viewModel::setCustomBackgroundStyle,
                                 onUiFontFamilyChange = viewModel::setUiFontFamily,
                                 onUiFontScaleChange = viewModel::setUiFontScale,
                                 onUiDensityScaleChange = viewModel::setUiDensityScale,

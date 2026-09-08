@@ -33,10 +33,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.QueueMusic
-import androidx.compose.material.icons.rounded.KeyboardArrowUp
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -210,10 +206,10 @@ fun MiniPlayer(
         ) {
             if (onShowDock != null || onHideDock != null) {
                 MiniPlayerActionButton(
-                    icon = Icons.Rounded.KeyboardArrowUp,
+                    icon = PlayerControlIcons.Collapse,
                     description = stringResource(if (onShowDock != null) L10nR.string.feature_player_show_bottom_bar_bf2549 else L10nR.string.feature_player_hide_bottom_bar_e918c8),
                     onClick = { (onShowDock ?: onHideDock)?.invoke() },
-                    rotation = if (onShowDock != null) 0f else 180f,
+                    rotation = if (onShowDock != null) 180f else 0f,
                 )
             }
             Row(
@@ -331,28 +327,19 @@ fun MiniPlayer(
                 contentAlignment = Alignment.Center,
             ) {
                 Crossfade(targetState = status.isPlaying, animationSpec = tween(miniPlayerMotionDuration(140, lightweight)), modifier = Modifier.size(28.dp), label = "mini-play-pause") { playing ->
-                    Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                        if (playing) {
-                            PauseBarsIcon(
-                                tint = if (dark) MiniPlayerGlassRose else scheme.primary,
-                                height = 18.dp,
-                                barWidth = 4.dp,
-                                gap = 4.dp,
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Rounded.PlayArrow,
-                                contentDescription = null,
-                                tint = if (dark) MiniPlayerGlassRose else scheme.primary,
-                                modifier = Modifier.size(28.dp),
-                            )
-                        }
+                    Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = if (playing) PlayerControlIcons.Pause else PlayerControlIcons.Play,
+                            contentDescription = null,
+                            tint = if (dark) MiniPlayerGlassRose else scheme.primary,
+                            modifier = Modifier.size(28.dp),
+                        )
                     }
                 }
             }
             if (onOpenQueue != null) {
                 MiniPlayerActionButton(
-                    icon = Icons.AutoMirrored.Rounded.QueueMusic,
+                    icon = PlayerControlIcons.Queue,
                     description = stringResource(L10nR.string.feature_player_queue_37fa6a),
                     onClick = onOpenQueue,
                 )
@@ -363,29 +350,6 @@ fun MiniPlayer(
 
 private fun miniPlayerMotionDuration(defaultMs: Int, lightweight: Boolean): Int =
     if (lightweight) (defaultMs * 0.48f).toInt().coerceIn(90, defaultMs) else defaultMs
-
-@Composable
-private fun PauseBarsIcon(
-    tint: Color,
-    height: Dp,
-    barWidth: Dp,
-    gap: Dp,
-) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(gap),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        repeat(2) {
-            Box(
-                modifier = Modifier
-                    .width(barWidth)
-                    .height(height)
-                    .clip(RoundedCornerShape(99.dp))
-                    .background(tint),
-            )
-        }
-    }
-}
 
 @Composable
 private fun MiniPlayerActionButton(

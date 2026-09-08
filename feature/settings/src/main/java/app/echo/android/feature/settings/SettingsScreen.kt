@@ -59,6 +59,7 @@ import app.echo.android.design.LocalEchoHapticsEnabled
 import app.echo.android.design.PageChrome
 import app.echo.android.design.performEchoHaptic
 import app.echo.android.model.playback.EchoPlaybackStatus
+import app.echo.android.model.settings.EchoBackgroundStyle
 import app.echo.android.model.settings.EchoAppLanguage
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
 import app.echo.android.model.settings.EchoPerformanceMode
@@ -135,6 +136,7 @@ fun SettingsScreen(
     onCustomBackgroundBrightnessChange: (Float) -> Unit,
     onCustomBackgroundGlassChange: (Float) -> Unit,
     onCustomBackgroundScaleChange: (Float) -> Unit,
+    onCustomBackgroundStyleChange: (EchoBackgroundStyle) -> Unit,
     onUiFontFamilyChange: (String) -> Unit,
     onUiFontScaleChange: (Float) -> Unit,
     onUiDensityScaleChange: (Float) -> Unit,
@@ -295,20 +297,42 @@ fun SettingsScreen(
                     )
                 },
             ) {
+                val backgroundDisabled = customBackgroundMode == "video" &&
+                    LocalEchoEffectivePerformanceMode.current.isLightweight
+                val maxBlur = LocalEchoEffectivePerformanceMode.current.backgroundMaxBlur
+                if (customBackgroundMode != "default" && !customBackgroundUri.isNullOrBlank() && !backgroundDisabled) {
+                    val selectedStyle = EchoBackgroundStyle.entries.firstOrNull {
+                        it.matches(customBackgroundBlur, customBackgroundBrightness, customBackgroundGlass,
+                            customBackgroundScale, maxBlur, isVideo = customBackgroundMode == "video")
+                    }
+                    SettingsChoiceGroupRow(
+                        title = stringResource(R.string.settings_bg_style),
+                        detail = if (selectedStyle == null) stringResource(R.string.settings_bg_style_custom)
+                            else backgroundStyleLabel(selectedStyle),
+                        options = EchoBackgroundStyle.entries.map { SettingsChoiceOption(it.id, backgroundStyleLabel(it)) },
+                        selectedValue = selectedStyle?.id.orEmpty(),
+                        onOptionSelected = { id ->
+                            EchoBackgroundStyle.entries.firstOrNull { it.id == id }?.let(onCustomBackgroundStyleChange)
+                        },
+                    )
+                    Text(
+                        stringResource(if (customBackgroundMode == "video") R.string.settings_bg_style_video_detail
+                            else R.string.settings_bg_style_detail),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 SettingsDisclosureRow(
                     title = stringResource(R.string.settings_advanced),
                     detail = stringResource(R.string.settings_advanced_detail),
                     expanded = customBackgroundAdvancedExpanded,
                     onExpandedChange = { customBackgroundAdvancedExpanded = it },
                 )
-                val backgroundDisabled = customBackgroundMode == "video" &&
-                    LocalEchoEffectivePerformanceMode.current.isLightweight
                 if (backgroundDisabled) {
                     Text(stringResource(R.string.settings_bg_video_disabled), style = MaterialTheme.typography.bodySmall)
                 }
                 if (customBackgroundAdvancedExpanded && customBackgroundMode != "default" &&
                     !customBackgroundUri.isNullOrBlank() && !backgroundDisabled) {
-                    val maxBlur = LocalEchoEffectivePerformanceMode.current.backgroundMaxBlur
                     if (customBackgroundMode == "image") {
                         SettingsSliderRow(
                             title = stringResource(R.string.settings_blur),
@@ -1392,3 +1416,15 @@ private fun usbExclusiveTestDetail(status: EchoPlaybackStatus, result: String): 
         else -> result
     }
 }
+
+@Composable
+private fun backgroundStyleLabel(style: EchoBackgroundStyle): String = stringResource(
+    when (style) {
+        EchoBackgroundStyle.Natural -> R.string.settings_bg_style_natural
+        EchoBackgroundStyle.Soft -> R.string.settings_bg_style_soft
+        EchoBackgroundStyle.Airy -> R.string.settings_bg_style_airy
+        EchoBackgroundStyle.Dreamy -> R.string.settings_bg_style_dreamy
+        EchoBackgroundStyle.Cinematic -> R.string.settings_bg_style_cinematic
+        EchoBackgroundStyle.Focus -> R.string.settings_bg_style_focus
+    },
+)

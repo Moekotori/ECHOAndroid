@@ -42,6 +42,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.TextButton
 import app.echo.android.model.i18n.echoText
 import androidx.compose.foundation.verticalScroll
@@ -85,15 +86,12 @@ import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material.icons.rounded.MoreHoriz
-import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Shuffle
-import androidx.compose.material.icons.rounded.SkipNext
-import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.TextFields
@@ -768,7 +766,7 @@ private fun NowPlayingCoverPage(
                 Spacer(Modifier.height(6.dp))
                 NowPlayingControlDock(
                     isPlaying = status.isPlaying,
-                    leadingIcon = Icons.Rounded.Lyrics,
+                    leadingIcon = PlayerControlIcons.Lyrics,
                     leadingDescription = stringResource(L10nR.string.feature_player_lyrics_b90c97),
                     onLeadingAction = onOpenLyrics,
                     onPlayPause = onPlayPause,
@@ -1020,7 +1018,7 @@ private fun NowPlayingLyricsPage(
                         Spacer(Modifier.height(6.dp))
                         NowPlayingControlDock(
                             isPlaying = status.isPlaying,
-                            leadingIcon = Icons.Rounded.Settings,
+                            leadingIcon = PlayerControlIcons.Settings,
                             leadingDescription = stringResource(L10nR.string.feature_player_lyrics_settings_843bc9),
                             onLeadingAction = onOpenLyricsSettings,
                             onPlayPause = onPlayPause,
@@ -1032,14 +1030,9 @@ private fun NowPlayingLyricsPage(
                 }
                 Spacer(Modifier.height(10.dp))
             } else {
-                GlyphButton(
-                    icon = Icons.Rounded.Settings,
+                PlayerControlButton(
+                    icon = PlayerControlIcons.Settings,
                     description = stringResource(L10nR.string.feature_player_lyrics_settings_843bc9),
-                    touchSize = 44.dp,
-                    iconSize = 22.dp,
-                    tint = Color.White.copy(alpha = 0.86f),
-                    background = Color.Transparent,
-                    glass = true,
                     onClick = onOpenLyricsSettings,
                 )
                 Spacer(Modifier.height(10.dp))
@@ -2258,7 +2251,10 @@ private fun LyricsLineList(
                 seconds?.let { Text(echoText("Vocals in ${it}s", "距下一句 ${it} 秒", "次の歌詞まで ${it} 秒"), color = lyricAccent) }
             }
             if (!following && synced) {
-                TextButton(onClick = { following = true; calibrationIndex = null }) {
+                TextButton(
+                    onClick = { following = true; calibrationIndex = null },
+                    colors = ButtonDefaults.textButtonColors(containerColor = Color.Black),
+                ) {
                     Text(echoText("Back to current line", "回到当前句", "現在の歌詞に戻る"), color = lyricAccent)
                 }
             }
@@ -3339,80 +3335,32 @@ private fun NowPlayingControlDock(
 ) {
     val haptics = rememberEchoHapticPerformer()
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        GlyphButton(
-            icon = leadingIcon,
-            description = leadingDescription,
-            touchSize = 44.dp,
-            iconSize = 24.dp,
-            tint = Color.White.copy(alpha = 0.88f),
-            background = Color.Transparent,
-            onClick = onLeadingAction,
+        PlayerControlButton(leadingIcon, leadingDescription, onLeadingAction)
+        PlayerControlButton(
+            PlayerControlIcons.Previous,
+            stringResource(L10nR.string.feature_player_previous_af0264),
+            onClick = { haptics.tick(); onPrevious() },
+            iconSize = 32.dp,
         )
-        GlyphButton(
-            icon = Icons.Rounded.SkipPrevious,
-            description = stringResource(L10nR.string.feature_player_previous_af0264),
-            touchSize = 56.dp,
-            iconSize = 36.dp,
-            tint = OnArt,
-            background = Color.Transparent,
-            onClick = {
-                haptics.tick()
-                onPrevious()
-            },
+        PlayerControlButton(
+            if (isPlaying) PlayerControlIcons.Pause else PlayerControlIcons.Play,
+            stringResource(L10nR.string.feature_player_play_or_pause_37a70f),
+            onClick = { haptics.confirm(); onPlayPause() },
+            touchSize = 72.dp,
+            iconSize = 48.dp,
+            tint = Color.White,
         )
-        EchoLiquidGlass(
-            modifier = Modifier
-                .size(72.dp)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = {
-                        haptics.confirm()
-                        onPlayPause()
-                    },
-                ),
-            shape = CircleShape,
-            luminous = true,
-            elevation = 14.dp,
-            dark = true,
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                contentDescription = stringResource(L10nR.string.feature_player_play_or_pause_37a70f),
-                tint = Color(0xFF1A191C),
-                modifier = Modifier
-                    .size(36.dp)
-                    .offset(x = if (isPlaying) 0.dp else 2.dp),
-            )
-        }
-        GlyphButton(
-            icon = Icons.Rounded.SkipNext,
-            description = stringResource(L10nR.string.feature_player_next_d67904),
-            touchSize = 56.dp,
-            iconSize = 36.dp,
-            tint = OnArt,
-            background = Color.Transparent,
-            onClick = {
-                haptics.tick()
-                onNext()
-            },
+        PlayerControlButton(
+            PlayerControlIcons.Next,
+            stringResource(L10nR.string.feature_player_next_d67904),
+            onClick = { haptics.tick(); onNext() },
+            iconSize = 32.dp,
         )
-        GlyphButton(
-            icon = Icons.AutoMirrored.Rounded.QueueMusic,
-            description = stringResource(L10nR.string.feature_player_queue_37fa6a),
-            touchSize = 44.dp,
-            iconSize = 24.dp,
-            tint = Color.White.copy(alpha = 0.88f),
-            background = Color.Transparent,
-            onClick = onOpenQueue,
-        )
+        PlayerControlButton(PlayerControlIcons.Queue, stringResource(L10nR.string.feature_player_queue_37fa6a), onOpenQueue)
     }
 }
 

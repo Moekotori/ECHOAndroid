@@ -1,5 +1,7 @@
 package app.echo.android.data
 
+import app.echo.android.model.settings.EchoBackgroundStyle
+
 import app.echo.android.i18n.echoAppLanguage
 import android.content.Context
 import androidx.datastore.preferences.core.MutablePreferences
@@ -426,6 +428,15 @@ class EchoSettingsStore(
             } else {
                 it[Keys.CustomBackgroundUri] = uri
             }
+        }
+    }
+
+    suspend fun setCustomBackgroundStyle(style: EchoBackgroundStyle) {
+        context.echoSettings.edit {
+            it[Keys.CustomBackgroundBlur] = style.blur
+            it[Keys.CustomBackgroundBrightness] = style.brightness
+            it[Keys.CustomBackgroundGlass] = style.glass
+            it[Keys.CustomBackgroundScale] = style.scale
         }
     }
 

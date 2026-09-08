@@ -1,0 +1,12 @@
+<resources>
+    <string name="settings_bg_style">Display style</string>
+    <string name="settings_bg_style_custom">Custom adjustment</string>
+    <string name="settings_bg_style_natural">Natural</string>
+    <string name="settings_bg_style_soft">Soft</string>
+    <string name="settings_bg_style_airy">Airy</string>
+    <string name="settings_bg_style_dreamy">Dreamy</string>
+    <string name="settings_bg_style_cinematic">Cinematic</string>
+    <string name="settings_bg_style_focus">Focus</string>
+    <string name="settings_bg_style_detail">Apply blur, brightness, overlay, and scale together. Blur follows the current performance limit. You can fine-tune below.</string>
+    <string name="settings_bg_style_video_detail">Video styles adjust brightness, overlay, and scale; video blur is not applied. You can fine-tune below.</string>
+</resources>

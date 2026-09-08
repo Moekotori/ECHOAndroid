@@ -1,5 +1,7 @@
 package app.echo.android
 
+import app.echo.android.model.settings.EchoBackgroundStyle
+
 import app.echo.android.model.library.LibraryScanOptions
 import android.app.Application
 import android.net.Uri
@@ -837,6 +839,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         updateSettings {
             setCustomBackground(mode, uri?.toString())
         }
+    }
+
+    fun setCustomBackgroundStyle(style: EchoBackgroundStyle) {
+        updateSettings { setCustomBackgroundStyle(style) }
     }
 
     fun setCustomBackgroundBlur(value: Float) {

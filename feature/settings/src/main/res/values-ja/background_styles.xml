@@ -1,0 +1,12 @@
+<resources>
+    <string name="settings_bg_style">表示効果</string>
+    <string name="settings_bg_style_custom">カスタム調整</string>
+    <string name="settings_bg_style_natural">ナチュラル</string>
+    <string name="settings_bg_style_soft">ソフト</string>
+    <string name="settings_bg_style_airy">クリア</string>
+    <string name="settings_bg_style_dreamy">ドリーミー</string>
+    <string name="settings_bg_style_cinematic">シネマ</string>
+    <string name="settings_bg_style_focus">集中</string>
+    <string name="settings_bg_style_detail">ぼかし・明るさ・オーバーレイ・拡大率をまとめて設定します。ぼかしは現在のパフォーマンス設定の上限に従います。下で微調整できます。</string>
+    <string name="settings_bg_style_video_detail">動画は明るさ・オーバーレイ・拡大率を調整し、ぼかしは適用しません。下で微調整できます。</string>
+</resources>
