@@ -324,4 +324,6 @@
     <string name="opra_source">Preset source</string>
     <string name="opra_attribution">Community headphone profiles · CC BY-SA 4.0</string>
     <string name="opra_project">About OPRA and its contributors</string>
+    <string name="eq_show_filters">Show filter parameters</string>
+    <string name="eq_hide_filters">Hide filter parameters</string>
 </resources>

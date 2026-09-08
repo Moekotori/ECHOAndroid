@@ -1,8 +1,17 @@
 package app.echo.android.feature.library
 
+import app.echo.android.model.library.LibraryScanOptions
 import app.echo.android.feature.library.R as L10nR
 import androidx.compose.ui.res.stringResource
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.FilterChip
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -80,19 +89,17 @@ internal fun LibraryScanAction(
     hasPermission: Boolean,
     scanState: LibraryScanProgress,
     onRequestPermission: () -> Unit,
-    onScanFolder: () -> Unit,
-    onScanAll: () -> Unit,
+    onScanFolder: (LibraryScanOptions) -> Unit,
+    onScanAll: (LibraryScanOptions) -> Unit,
     onCancelScan: () -> Unit,
 ) {
     var showScanOptions by remember { mutableStateOf(false) }
     val colors = rememberScanGlassColors()
     val description = when {
-        !hasPermission -> stringResource(L10nR.string.feature_library_allow_music_access_a30185)
         scanState.isScanning -> stringResource(L10nR.string.feature_library_cancel_library_scan_4033b9)
         else -> stringResource(L10nR.string.feature_library_scan_library_3d1814)
     }
     val label = when {
-        !hasPermission -> stringResource(L10nR.string.feature_library_allow_30c6b5)
         scanState.isScanning -> stringResource(L10nR.string.feature_library_stop_739d16)
         else -> stringResource(L10nR.string.feature_library_scan_fe69d2)
     }
@@ -106,7 +113,6 @@ internal fun LibraryScanAction(
             .clip(RoundedCornerShape(12.dp))
             .echoClickable(
                 onClick = when {
-                    !hasPermission -> onRequestPermission
                     scanState.isScanning -> onCancelScan
                     else -> {
                         { showScanOptions = true }
@@ -135,13 +141,13 @@ internal fun LibraryScanAction(
     if (showScanOptions) {
         LibraryScanOptionsDialog(
             onDismiss = { showScanOptions = false },
-            onScanFolder = {
+            onScanFolder = { options ->
                 showScanOptions = false
-                onScanFolder()
+                onScanFolder(options)
             },
-            onScanAll = {
+            onScanAll = { options ->
                 showScanOptions = false
-                onScanAll()
+                onScanAll(options)
             },
         )
     }
@@ -150,9 +156,14 @@ internal fun LibraryScanAction(
 @Composable
 internal fun LibraryScanOptionsDialog(
     onDismiss: () -> Unit,
-    onScanFolder: () -> Unit,
-    onScanAll: () -> Unit,
+    onScanFolder: (LibraryScanOptions) -> Unit,
+    onScanAll: (LibraryScanOptions) -> Unit,
 ) {
+    var minDuration by rememberSaveable { mutableStateOf(30_000L) }
+    var minSize by rememberSaveable { mutableStateOf(100L * 1024L) }
+    var excludeNonMusic by rememberSaveable { mutableStateOf(true) }
+    var excludeHidden by rememberSaveable { mutableStateOf(true) }
+    val options = LibraryScanOptions(minDuration, minSize, excludeNonMusic, excludeHidden)
     val colors = rememberScanGlassColors()
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -163,7 +174,7 @@ internal fun LibraryScanOptionsDialog(
             tonalElevation = 0.dp,
         ) {
             Column(
-                modifier = Modifier.padding(18.dp),
+                modifier = Modifier.heightIn(max = 640.dp).verticalScroll(rememberScrollState()).padding(18.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Row(
@@ -179,7 +190,7 @@ internal fun LibraryScanOptionsDialog(
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
-                            text = stringResource(L10nR.string.feature_library_choose_the_indexing_range_for_this_scan_58c0af),
+                            text = stringResource(L10nR.string.scan_scope_hint),
                             color = colors.muted,
                             style = MaterialTheme.typography.bodySmall,
                         )
@@ -193,18 +204,34 @@ internal fun LibraryScanOptionsDialog(
                     }
                 }
 
+                Text(stringResource(L10nR.string.scan_min_duration), style = MaterialTheme.typography.labelLarge)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(0L to L10nR.string.scan_any, 30_000L to L10nR.string.scan_30_seconds, 60_000L to L10nR.string.scan_60_seconds).forEach { (value, label) ->
+                        FilterChip(selected = minDuration == value, onClick = { minDuration = value }, label = { Text(stringResource(label)) })
+                    }
+                }
+                Text(stringResource(L10nR.string.scan_min_size), style = MaterialTheme.typography.labelLarge)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(0L to L10nR.string.scan_any, 102_400L to L10nR.string.scan_100_kb, 1_048_576L to L10nR.string.scan_1_mb).forEach { (value, label) ->
+                        FilterChip(selected = minSize == value, onClick = { minSize = value }, label = { Text(stringResource(label)) })
+                    }
+                }
+                ScanFilterToggle(stringResource(L10nR.string.scan_skip_non_music), excludeNonMusic) { excludeNonMusic = it }
+                ScanFilterToggle(stringResource(L10nR.string.scan_skip_hidden), excludeHidden) { excludeHidden = it }
+                Text(stringResource(L10nR.string.scan_filter_hint), color = colors.muted, style = MaterialTheme.typography.bodySmall)
+
                 LibraryScanOption(
                     icon = Icons.Rounded.FolderOpen,
-                    title = stringResource(L10nR.string.feature_library_scan_a_single_folder_17bf3e),
-                    subtitle = stringResource(L10nR.string.feature_library_best_after_copying_in_new_music_updates_only_a75783),
-                    onClick = onScanFolder,
+                    title = stringResource(L10nR.string.scan_choose_folder),
+                    subtitle = stringResource(L10nR.string.scan_folder_hint),
+                    onClick = { onScanFolder(options) },
                     accent = echoAccentColor(),
                 )
                 LibraryScanOption(
                     icon = Icons.Rounded.LibraryMusic,
-                    title = stringResource(L10nR.string.feature_library_full_scan_8f63a2),
-                    subtitle = stringResource(L10nR.string.feature_library_resync_all_local_music_and_clean_up_deleted_f1b337),
-                    onClick = onScanAll,
+                    title = stringResource(L10nR.string.scan_device),
+                    subtitle = stringResource(L10nR.string.scan_device_hint),
+                    onClick = { onScanAll(options) },
                     accent = EchoAccentDeep,
                 )
             }
@@ -261,5 +288,16 @@ private fun LibraryScanOption(
         }
         Spacer(Modifier.width(2.dp))
         Icon(Icons.Rounded.Scanner, contentDescription = null, tint = echoAccentColor(), modifier = Modifier.size(19.dp))
+    }
+}
+
+@Composable
+private fun ScanFilterToggle(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().toggleable(value = checked, role = Role.Checkbox, onValueChange = onChange),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = checked, onCheckedChange = null)
+        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
     }
 }

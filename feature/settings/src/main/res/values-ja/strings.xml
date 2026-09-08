@@ -318,4 +318,6 @@
     <string name="opra_source">プリセットの出典</string>
     <string name="opra_attribution">コミュニティのヘッドホン補正・CC BY-SA 4.0</string>
     <string name="opra_project">OPRA と貢献者について</string>
+    <string name="eq_show_filters">フィルターの詳細を表示</string>
+    <string name="eq_hide_filters">フィルターの詳細を閉じる</string>
 </resources>

@@ -1,5 +1,6 @@
 package app.echo.android
 
+import app.echo.android.model.library.LibraryScanOptions
 import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
@@ -297,16 +298,16 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun playlistTrackPaging(playlistId: String): Flow<PagingData<EchoTrack>> =
         libraryController.playlistTrackPaging(playlistId)
 
-    fun refreshLibrary() {
-        libraryController.refreshLibrary()
+    fun refreshLibrary(options: LibraryScanOptions = LibraryScanOptions()) {
+        libraryController.refreshLibrary(options)
     }
 
     fun refreshLibraryIfEmpty() {
         libraryController.refreshLibraryIfEmpty()
     }
 
-    fun refreshLibraryFolder(treeUri: Uri) {
-        libraryController.refreshLibraryFolder(treeUri)
+    fun refreshLibraryFolder(treeUri: Uri, options: LibraryScanOptions = LibraryScanOptions()) {
+        libraryController.refreshLibraryFolder(treeUri, options)
     }
 
     fun cancelScan() {

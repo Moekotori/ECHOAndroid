@@ -37,6 +37,7 @@ fun DiagnosticsScreen(
     onOpraApplySelected: () -> Unit,
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    var soundPanel by rememberSaveable { mutableIntStateOf(0) }
     val scrollStates = listOf(rememberScrollState(), rememberScrollState(), rememberScrollState())
     val labels = listOf(
         stringResource(L10nR.string.feature_settings_signal_path_2fed34),
@@ -78,7 +79,13 @@ fun DiagnosticsScreen(
                 when (selectedTab) {
                     0 -> SignalOverview(status, equalizerState, onAdjust = { selectedTab = 1 }, onDiagnostics = { selectedTab = 2 })
                     1 -> {
-                        SignalEqualizer(
+                        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                            listOf(L10nR.string.feature_settings_equalizer_7ccb03, L10nR.string.feature_settings_headphone_correction_491ce5).forEachIndexed { index, label ->
+                                SegmentedButton(selected = soundPanel == index, onClick = { soundPanel = index },
+                                    shape = SegmentedButtonDefaults.itemShape(index, 2)) { Text(stringResource(label)) }
+                            }
+                        }
+                        if (soundPanel == 0) SignalEqualizer(
                             state = equalizerState,
                             bypassed = status.diagnostics.usbBitPerfectEnabled,
                             playing = status.isPlaying,
@@ -88,7 +95,7 @@ fun DiagnosticsScreen(
                             onBandGainChange = onEqualizerBandGainChange,
                             onReset = onEqualizerReset,
                         )
-                        SignalHeadphoneCorrection(
+                        else SignalHeadphoneCorrection(
                             state = opraState,
                             equalizer = equalizerState,
                             bypassed = status.diagnostics.usbBitPerfectEnabled,

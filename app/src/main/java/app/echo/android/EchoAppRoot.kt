@@ -1,5 +1,7 @@
 package app.echo.android
 
+import app.echo.android.model.library.LibraryScanOptions
+import androidx.compose.runtime.saveable.rememberSaveable
 import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -131,6 +133,10 @@ private enum class FontImportTarget {
 @Composable
 fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     val context = LocalContext.current
+    val lyricsActionError by viewModel.lyricsManagementError.collectAsStateWithLifecycle()
+    LaunchedEffect(lyricsActionError) {
+        lyricsActionError?.let { android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_LONG).show() }
+    }
     val permissionActivity = remember(context) { context.findActivity() }
     val prefs = remember(context) { context.getSharedPreferences("echo_prefs", Context.MODE_PRIVATE) }
     val permission = remember { audioPermissionName() }
@@ -140,9 +146,12 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     var hasAudioPermission by remember {
         mutableStateOf(ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED)
     }
+    var pendingScanOptions by rememberSaveable { mutableStateOf(LibraryScanOptions()) }
+    var scanAllAfterPermission by rememberSaveable { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         hasAudioPermission = granted
-        if (granted) viewModel.refreshLibrary()
+        if (granted && scanAllAfterPermission) viewModel.refreshLibrary(pendingScanOptions)
+        scanAllAfterPermission = false
     }
     val notifPermName = remember { notificationPermissionName() }
     var notificationPermissionRequested by remember {
@@ -176,7 +185,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     val folderScanLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.let { treeUri ->
             persistReadPermission(treeUri)
-            viewModel.refreshLibraryFolder(treeUri)
+            viewModel.refreshLibraryFolder(treeUri, pendingScanOptions)
         }
     }
     val backgroundImageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -554,11 +563,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         }
     }
 
-    LaunchedEffect(hasAudioPermission) {
-        if (hasAudioPermission) {
-            viewModel.refreshLibraryIfEmpty()
-        }
-    }
 
     EchoDiscordPresenceBridge(
         enabled = false, // No PC forwarding transport is implemented yet.
@@ -652,7 +656,19 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 selectedFolder = selectedFolder,
                                 selectedPlaylist = selectedPlaylist,
                                 onRequestPermission = { permissionLauncher.launch(permission) },
-                                onScanFolder = { folderScanLauncher.launch(null) },
+                                onScanFolder = { options ->
+                                    pendingScanOptions = options
+                                    folderScanLauncher.launch(null)
+                                },
+                                onScanAll = { options ->
+                                    pendingScanOptions = options
+                                    if (ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED) {
+                                        viewModel.refreshLibrary(options)
+                                    } else {
+                                        scanAllAfterPermission = true
+                                        permissionLauncher.launch(permission)
+                                    }
+                                },
                                 onImportLyricsForTrack = { track ->
                                     lyricsImportTrackId = track.id
                                     lyricsImportLauncher.launch(LyricsDocumentMimeTypes)

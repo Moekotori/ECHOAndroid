@@ -6,6 +6,7 @@ data class LibraryScanProgress(
     val insertedCount: Int = 0,
     val updatedCount: Int = 0,
     val deletedCount: Int = 0,
+    val skippedCount: Int = 0,
     val totalCount: Int? = null,
     val currentTitle: String? = null,
     val error: String? = null,

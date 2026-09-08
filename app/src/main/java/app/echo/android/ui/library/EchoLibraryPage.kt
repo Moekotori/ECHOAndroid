@@ -1,5 +1,6 @@
 package app.echo.android.ui.library
 
+import app.echo.android.model.library.LibraryScanOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -31,7 +32,8 @@ internal fun EchoLibraryPage(
     selectedFolder: FolderSummary?,
     selectedPlaylist: EchoPlaylist?,
     onRequestPermission: () -> Unit,
-    onScanFolder: () -> Unit,
+    onScanFolder: (LibraryScanOptions) -> Unit,
+    onScanAll: (LibraryScanOptions) -> Unit,
     onImportLyricsForTrack: (EchoTrack) -> Unit,
     onPickTrackArtwork: (EchoTrack) -> Unit,
     onOpenAlbum: (AlbumSummary) -> Unit,
@@ -91,7 +93,7 @@ internal fun EchoLibraryPage(
         onLibrarySourceChange = viewModel::setLibrarySelectedSource,
         onTrackSortModeChange = viewModel::updateLibraryTrackSortMode,
         onScanFolder = onScanFolder,
-        onScanAll = viewModel::refreshLibrary,
+        onScanAll = onScanAll,
         onCancelScan = viewModel::cancelScan,
         onRefreshLinkedLibrary = { query -> remoteClient.refreshLibrary(query) },
         onOpenLinkedPlaylist = { playlist -> remoteClient.refreshPlaylistTracks(playlist) },

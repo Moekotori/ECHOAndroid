@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -32,12 +32,13 @@ internal fun SignalEqualizer(
     onBandGainChange: (Int, Float) -> Unit,
     onReset: () -> Unit,
 ) {
+    var showFilters by remember(state.filters) { mutableStateOf(false) }
     val title = stringResource(L10nR.string.feature_settings_equalizer_7ccb03)
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Medium)
-                SignalNote(equalizerDetail(state))
+                SignalNote(stringResource(if (state.parametric) L10nR.string.eq_parametric_mode else L10nR.string.eq_graphic_mode))
             }
             Switch(checked = state.enabled, onCheckedChange = onEnabledChange, modifier = Modifier.semantics { contentDescription = title })
         }
@@ -62,7 +63,8 @@ internal fun SignalEqualizer(
         if (state.parametric) {
             Text(state.sourceLabel ?: stringResource(L10nR.string.diag_eq_parametric), style = MaterialTheme.typography.titleSmall)
             SignalNote(stringResource(L10nR.string.eq_parametric_kept, state.filters.size))
-            state.filters.forEach { band ->
+            TextButton(onClick = { showFilters = !showFilters }) { Text(stringResource(if (showFilters) L10nR.string.eq_hide_filters else L10nR.string.eq_show_filters)) }
+            if (showFilters) state.filters.forEach { band ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("${formatEqFrequency(band.frequencyHz.toInt())} · ${band.type}", style = MaterialTheme.typography.bodySmall)
                     Text("${formatEqGain(band.gainDb)} · ${band.q?.let { "Q $it" } ?: "${band.slope ?: 12f} dB/oct"}", style = MaterialTheme.typography.bodySmall)

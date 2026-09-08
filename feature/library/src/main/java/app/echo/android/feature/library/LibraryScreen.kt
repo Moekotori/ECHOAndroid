@@ -1,5 +1,6 @@
 package app.echo.android.feature.library
 
+import app.echo.android.model.library.LibraryScanOptions
 import app.echo.android.feature.library.R as L10nR
 import androidx.compose.ui.res.stringResource
 
@@ -292,8 +293,8 @@ fun LibraryScreen(
     onLibraryQueryChange: (String) -> Unit,
     onLibrarySourceChange: (String) -> Unit,
     onTrackSortModeChange: (LibraryTrackSortMode) -> Unit,
-    onScanFolder: () -> Unit,
-    onScanAll: () -> Unit,
+    onScanFolder: (LibraryScanOptions) -> Unit,
+    onScanAll: (LibraryScanOptions) -> Unit,
     onCancelScan: () -> Unit,
     onRefreshLinkedLibrary: (String) -> Unit,
     onOpenLinkedPlaylist: (EchoRemotePlaylist) -> Unit,
@@ -448,6 +449,12 @@ fun LibraryScreen(
 
     @Composable
     fun LocalBrowserPane() {
+        var showEmptyScanOptions by remember { mutableStateOf(false) }
+        if (showEmptyScanOptions) LibraryScanOptionsDialog(
+            onDismiss = { showEmptyScanOptions = false },
+            onScanFolder = { options -> showEmptyScanOptions = false; onScanFolder(options) },
+            onScanAll = { options -> showEmptyScanOptions = false; onScanAll(options) },
+        )
         LibraryBrowserFrame(
             query = libraryQuery,
             onQueryChange = onLibraryQueryChange,
@@ -499,12 +506,6 @@ fun LibraryScreen(
                                     trackItems.itemCount == 0 &&
                                         trackItems.loadState.refresh is LoadState.Error
                                 when {
-                                    !hasPermission -> LibraryCollectionEmpty(
-                                        title = stringResource(L10nR.string.library_access_title),
-                                        detail = stringResource(L10nR.string.library_access_detail),
-                                        actionLabel = stringResource(L10nR.string.feature_library_allow_music_access_a30185),
-                                        onAction = onRequestPermission,
-                                    )
                                     showInitialTrackLoading -> LibraryCollectionEmpty(
                                         stringResource(L10nR.string.feature_library_loading_library_a77123),
                                     )
@@ -516,7 +517,7 @@ fun LibraryScreen(
                                         title = stringResource(if (libraryQuery.isNotBlank()) L10nR.string.library_no_matches else L10nR.string.library_start_collection),
                                         detail = stringResource(if (libraryQuery.isNotBlank()) L10nR.string.library_search_hint else L10nR.string.library_import_hint),
                                         actionLabel = stringResource(if (libraryQuery.isNotBlank()) L10nR.string.library_clear_search else L10nR.string.library_add_music),
-                                        onAction = if (libraryQuery.isNotBlank()) ({ onLibraryQueryChange("") }) else onScanAll,
+                                        onAction = if (libraryQuery.isNotBlank()) ({ onLibraryQueryChange("") }) else ({ showEmptyScanOptions = true }),
                                     )
                                     else -> TrackList(
                                         tracks = trackItems,
@@ -840,14 +841,14 @@ private fun LibrarySourceScanButton(
     hasPermission: Boolean,
     scanState: LibraryScanProgress,
     onRequestPermission: () -> Unit,
-    onScanFolder: () -> Unit,
-    onScanAll: () -> Unit,
+    onScanFolder: (LibraryScanOptions) -> Unit,
+    onScanAll: (LibraryScanOptions) -> Unit,
     onCancelScan: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showScanOptions by remember { mutableStateOf(false) }
     androidx.compose.material3.TextButton(
-        onClick = { if (!hasPermission) onRequestPermission() else showScanOptions = true },
+        onClick = { showScanOptions = true },
         enabled = !scanState.isScanning, modifier = modifier,
     ) {
         Icon(Icons.Rounded.Add, contentDescription = null, Modifier.size(20.dp))
@@ -856,8 +857,8 @@ private fun LibrarySourceScanButton(
     }
     if (showScanOptions) LibraryScanOptionsDialog(
         onDismiss = { showScanOptions = false },
-        onScanFolder = { showScanOptions = false; onScanFolder() },
-        onScanAll = { showScanOptions = false; onScanAll() },
+        onScanFolder = { options -> showScanOptions = false; onScanFolder(options) },
+        onScanAll = { options -> showScanOptions = false; onScanAll(options) },
     )
 }
 

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="scan_scope_hint">Choose filters, then select where to scan.</string>
+    <string name="scan_min_duration">Minimum duration</string>
+    <string name="scan_any">Any</string>
+    <string name="scan_30_seconds">30 sec</string>
+    <string name="scan_60_seconds">60 sec</string>
+    <string name="scan_min_size">Minimum file size</string>
+    <string name="scan_100_kb">100 KB</string>
+    <string name="scan_1_mb">1 MB</string>
+    <string name="scan_skip_non_music">Skip recordings, ringtones and notification folders</string>
+    <string name="scan_skip_hidden">Skip hidden folders</string>
+    <string name="scan_filter_hint">Unknown duration or size is kept. Filters do not remove songs already in your library.</string>
+    <string name="scan_choose_folder">Choose folder and scan</string>
+    <string name="scan_folder_hint">Recommended · Includes subfolders; no full-device permission needed</string>
+    <string name="scan_device">Scan device</string>
+    <string name="scan_device_hint">Scans the system music library using these filters</string>
+    <string name="scan_skipped_count">Skipped %1$d files</string>
+</resources>

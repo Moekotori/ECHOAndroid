@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="scan_scope_hint">先设置筛选条件，再选择扫描范围。</string>
+    <string name="scan_min_duration">最短时长</string>
+    <string name="scan_any">不限</string>
+    <string name="scan_30_seconds">30 秒</string>
+    <string name="scan_60_seconds">60 秒</string>
+    <string name="scan_min_size">最小文件大小</string>
+    <string name="scan_100_kb">100 KB</string>
+    <string name="scan_1_mb">1 MB</string>
+    <string name="scan_skip_non_music">跳过录音、铃声和通知音目录</string>
+    <string name="scan_skip_hidden">跳过隐藏目录</string>
+    <string name="scan_filter_hint">保留时长或大小未知的文件；筛选不会删除已入库歌曲。</string>
+    <string name="scan_choose_folder">选择文件夹并扫描</string>
+    <string name="scan_folder_hint">推荐 · 包含子文件夹，无需授予整机音乐权限</string>
+    <string name="scan_device">扫描整机</string>
+    <string name="scan_device_hint">按以上条件扫描系统音乐库</string>
+    <string name="scan_skipped_count">已跳过 %1$d 个文件</string>
+</resources>

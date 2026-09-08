@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="scan_scope_hint">条件を設定してから、スキャン範囲を選択します。</string>
+    <string name="scan_min_duration">最短の長さ</string>
+    <string name="scan_any">制限なし</string>
+    <string name="scan_30_seconds">30 秒</string>
+    <string name="scan_60_seconds">60 秒</string>
+    <string name="scan_min_size">最小ファイルサイズ</string>
+    <string name="scan_100_kb">100 KB</string>
+    <string name="scan_1_mb">1 MB</string>
+    <string name="scan_skip_non_music">録音・着信音・通知音フォルダを除外</string>
+    <string name="scan_skip_hidden">隠しフォルダを除外</string>
+    <string name="scan_filter_hint">長さやサイズが不明なファイルは保持します。登録済みの曲は削除しません。</string>
+    <string name="scan_choose_folder">フォルダを選んでスキャン</string>
+    <string name="scan_folder_hint">おすすめ · サブフォルダを含む。端末全体への権限は不要</string>
+    <string name="scan_device">端末をスキャン</string>
+    <string name="scan_device_hint">上の条件でシステム音楽ライブラリを検索</string>
+    <string name="scan_skipped_count">%1$d ファイルを除外</string>
+</resources>

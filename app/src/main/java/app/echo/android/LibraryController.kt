@@ -1,5 +1,6 @@
 package app.echo.android
 
+import app.echo.android.model.library.LibraryScanOptions
 import android.net.Uri
 import androidx.paging.PagingData
 import androidx.paging.map
@@ -196,8 +197,8 @@ internal class LibraryController(
         }
     }
 
-    fun refreshLibrary() {
-        refreshLibrary(relativePathPrefix = null)
+    fun refreshLibrary(options: LibraryScanOptions = LibraryScanOptions()) {
+        refreshLibrary(relativePathPrefix = null, options = options)
     }
 
     fun refreshLibraryIfEmpty() {
@@ -213,7 +214,7 @@ internal class LibraryController(
         }
     }
 
-    fun refreshLibraryFolder(treeUri: Uri) {
+    fun refreshLibraryFolder(treeUri: Uri, options: LibraryScanOptions = LibraryScanOptions()) {
         val folder = MediaStoreAudioFolder.fromTreeUri(treeUri)
         if (folder == null) {
             _scanState.value = LibraryScanProgress(
@@ -224,19 +225,20 @@ internal class LibraryController(
             return
         }
         if (folder.treeUri == null) {
-            refreshLibrary(relativePathPrefix = folder.relativePathPrefix)
+            refreshLibrary(relativePathPrefix = folder.relativePathPrefix, options = options)
         } else {
-            refreshDocumentTree(folder)
+            refreshDocumentTree(folder, options)
         }
     }
 
-    private fun refreshLibrary(relativePathPrefix: String?) {
+    private fun refreshLibrary(relativePathPrefix: String?, options: LibraryScanOptions) {
         if (scanJob?.isActive == true) return
         scanJob = scope.launch {
             try {
                 repository.refreshMediaStoreSnapshot(
                     relativePathPrefix = relativePathPrefix,
                     skipSampleRateRead = skipSampleRateRead(),
+                    options = options,
                 )
                     .collect { progress -> _scanState.value = progress }
             } catch (error: CancellationException) {
@@ -258,7 +260,7 @@ internal class LibraryController(
         }
     }
 
-    private fun refreshDocumentTree(folder: MediaStoreAudioFolder) {
+    private fun refreshDocumentTree(folder: MediaStoreAudioFolder, options: LibraryScanOptions) {
         val treeUri = folder.treeUri ?: return
         if (scanJob?.isActive == true) return
         scanJob = scope.launch {
@@ -267,6 +269,7 @@ internal class LibraryController(
                     treeUri = treeUri,
                     relativePathPrefix = folder.relativePathPrefix,
                     skipSampleRateRead = skipSampleRateRead(),
+                    options = options,
                 )
                     .collect { progress -> _scanState.value = progress }
             } catch (error: CancellationException) {

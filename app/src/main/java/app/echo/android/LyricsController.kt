@@ -75,6 +75,7 @@ internal class LyricsController(
 
     fun importLyrics(uri: Uri, currentTrackId: String?) {
         val target = currentTrackId ?: return
+        _managementError.value = null
         importJob?.cancel()
         importJob = scope.launch {
             try {

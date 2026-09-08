@@ -13,6 +13,7 @@ import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.library.FolderSummary
 import app.echo.android.model.library.LibraryTrackSortMode
 import app.echo.android.model.library.LibraryScanPhase
+import app.echo.android.model.library.LibraryScanOptions
 import app.echo.android.model.library.LibraryScanProgress
 import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.EchoTrackMetadataUpdate
@@ -633,6 +634,7 @@ class EchoLibraryRepository(
         relativePathPrefix: String? = null,
         batchSize: Int = SCAN_BATCH_SIZE,
         skipSampleRateRead: Boolean = false,
+        options: LibraryScanOptions = LibraryScanOptions(),
     ): Flow<LibraryScanProgress> = flow {
         val dao = database.trackDao()
         val source = LibrarySource.MediaStore.id
@@ -642,6 +644,7 @@ class EchoLibraryRepository(
         var progress = LibraryScanProgress(phase = LibraryScanPhase.Preparing)
         var insertedCount = 0
         var updatedCount = 0
+        var skippedCount = 0
         var scannedCount = 0
         var totalCount: Int? = null
         var lastProgressEmitCount = 0
@@ -658,6 +661,7 @@ class EchoLibraryRepository(
                 phase = phase,
                 scannedCount = scannedCount,
                 insertedCount = insertedCount,
+                skippedCount = skippedCount,
                 updatedCount = updatedCount,
                 deletedCount = deletedCount,
                 totalCount = totalCount,
@@ -718,8 +722,11 @@ class EchoLibraryRepository(
                 },
                 onBatch = { batch ->
                     coroutineContext.ensureActive()
+                    seenIds.addAll(batch.map { it.id })
+                    val accepted = filterLocalScanBatch(batch, existingFingerprints.keys, options)
+                    skippedCount += batch.size - accepted.size
                     val classified = classifyScanBatch(
-                        batch = batch,
+                        batch = accepted,
                         existingFingerprints = existingFingerprints,
                         editedTracks = editedTracks,
                         scanRunId = scanRunId,
@@ -800,6 +807,7 @@ class EchoLibraryRepository(
         relativePathPrefix: String,
         batchSize: Int = DOCUMENT_TREE_SCAN_BATCH_SIZE,
         skipSampleRateRead: Boolean = false,
+        options: LibraryScanOptions = LibraryScanOptions(),
     ): Flow<LibraryScanProgress> = flow {
         val dao = database.trackDao()
         val source = LibraryScanPolicy.SafSourceId
@@ -810,6 +818,7 @@ class EchoLibraryRepository(
         var progress = LibraryScanProgress(phase = LibraryScanPhase.Preparing)
         var insertedCount = 0
         var updatedCount = 0
+        var skippedCount = 0
         var scannedCount = 0
         var deletedCount = 0
         var lastProgressEmitCount = 0
@@ -825,6 +834,7 @@ class EchoLibraryRepository(
                 phase = phase,
                 scannedCount = scannedCount,
                 insertedCount = insertedCount,
+                skippedCount = skippedCount,
                 updatedCount = updatedCount,
                 deletedCount = deletedCount,
                 totalCount = null,
@@ -894,8 +904,11 @@ class EchoLibraryRepository(
                 },
                 onBatch = { batch ->
                     coroutineContext.ensureActive()
+                    seenIds.addAll(batch.map { it.id })
+                    val accepted = filterLocalScanBatch(batch, existingFingerprints.keys, options)
+                    skippedCount += batch.size - accepted.size
                     val classified = classifyScanBatch(
-                        batch = batch,
+                        batch = accepted,
                         existingFingerprints = existingFingerprints,
                         editedTracks = editedTracks,
                         scanRunId = scanRunId,
