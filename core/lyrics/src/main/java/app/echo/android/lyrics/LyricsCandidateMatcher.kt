@@ -10,8 +10,12 @@ internal class LyricsCandidateMatcher(private val request: EchoLyricsSearchReque
     private val artists = artistKeys(request.artist)
     private val album = request.album.orEmpty().matchKey()
     private val versions = versionKeys(request.title)
+    private val languages = lyricsLanguageVersions(request.title, request.album)
 
     fun match(candidateTitle: String, candidateArtist: String, candidateAlbum: String?, durationMs: Long): Match? {
+        val otherLanguages = lyricsLanguageVersions(candidateTitle, candidateAlbum)
+        // Explicit singing-language conflicts override matching names, albums and duration.
+        if (languages.isNotEmpty() && otherLanguages.isNotEmpty() && languages != otherLanguages) return null
         val otherTitle = candidateTitle.matchKey()
         val otherArtists = artistKeys(candidateArtist)
         if (title.isBlank() || otherTitle.isBlank() || artists.isEmpty() || otherArtists.isEmpty()) return null

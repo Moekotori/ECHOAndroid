@@ -119,4 +119,18 @@ class OnlineLyricsSelectionTest {
         } catch (_: CancellationException) { }
         assertEquals(1, requests)
     }
+
+    @Test fun conflictingAlbumLanguageNeverDownloadsOrAppearsInManualResults() {
+        var downloads = 0
+        val resolver = OnlineLyricsResolver { url, _ -> when {
+            url.contains("music.163.com/api/search") -> searchResponse(song(1, album = "EP (Korean Ver.)"))
+            url.contains("song/lyric") -> { downloads++; lyricResponse }
+            else -> lrclib().replace("Album", "EP (한국어 버전)")
+        } }
+        val japanese = request.copy(album = "EP (Japanese Ver.)")
+        assertNull(resolver.loadForTrack(japanese))
+        assertTrue(resolver.search(japanese).isEmpty())
+        assertEquals(0, downloads)
+    }
+
 }

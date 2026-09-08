@@ -44,4 +44,29 @@ class LyricsCandidateMatcherTest {
         assertFalse(requireNotNull(matcher.match("Song", "Artist", "Other", 184000)).automatic)
         assertNull(matcher.match("Song", "Artist", "Album", 195001))
     }
+
+    @Test fun rejectsExplicitAlbumLanguageConflictsEvenAtIdenticalDuration() {
+        val japaneseLabels = listOf("Japanese Ver.", "ＪＰＮ Ｖｅｒ．", "日本語版", "日语版", "일본어 버전")
+        val koreanLabels = listOf("Korean Version", "KR ver.", "韓国語版", "韩语版", "한국어 버전")
+        for (japanese in japaneseLabels) for (korean in koreanLabels) {
+            val matcher = LyricsCandidateMatcher(EchoLyricsSearchRequest("Song", "Artist", "EP ($japanese)", 180000))
+            assertNull("$japanese vs $korean", matcher.match("Song", "Artist", "EP ($korean)", 180000))
+        }
+        val korean = LyricsCandidateMatcher(EchoLyricsSearchRequest("Song", "Artist", "EP (한국어 버전)", 180000))
+        assertNull(korean.match("Song", "Artist", "EP (Japanese Ver.)", 180000))
+    }
+
+    @Test fun languageLabelAliasesRemainCompatibleAndUnmarkedAlbumsAreNotInventedConflicts() {
+        val matcher = LyricsCandidateMatcher(EchoLyricsSearchRequest("Song", "Artist", "EP (Japanese Ver.)", 180000))
+        assertTrue(requireNotNull(matcher.match("Song", "Artist", "EP (日本語版)", 180000)).automatic)
+        assertTrue(requireNotNull(matcher.match("Song", "Artist", "EP", 180000)).automatic)
+        val edition = LyricsCandidateMatcher(EchoLyricsSearchRequest("Song", "Artist", "Japan Edition", 180000))
+        assertTrue(requireNotNull(edition.match("Song", "Artist", "Korea Edition", 180000)).automatic)
+    }
+
+    @Test fun trackLanguageOverridesAlbumLabel() {
+        val matcher = LyricsCandidateMatcher(EchoLyricsSearchRequest("Song (Japanese Ver.)", "Artist", "EP (Korean Ver.)", 180000))
+        assertTrue(requireNotNull(matcher.match("Song (Japanese Ver.)", "Artist", "EP (Japanese Ver.)", 180000)).automatic)
+    }
+
 }

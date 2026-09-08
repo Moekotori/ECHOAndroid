@@ -56,7 +56,8 @@ internal fun AlbumOnlineInformation(album: AlbumSummary) {
             info = loader.load(album, language, refresh = attempt > 0)
         } catch (cancelled: CancellationException) {
             throw cancelled
-        } catch (_: Exception) {
+        } catch (failure: Exception) {
+            android.util.Log.w("AlbumOnlineInfo", "Online album lookup failed", failure)
             failed = true
         } finally {
             loading = false
