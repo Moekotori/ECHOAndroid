@@ -205,6 +205,10 @@ internal class PlaybackController(
 
     fun isUsbExclusiveEnabled(): Boolean = usbAudioMonitor.status.value.exclusiveEnabled
 
+    fun setUsbBitPerfectEnabled(enabled: Boolean) {
+        EchoPlaybackProcessRuntime.setUsbBitPerfectEnabled(enabled)
+    }
+
     fun setUsbExclusiveEnabled(enabled: Boolean) {
         val wasEnabled = EchoPlaybackProcessRuntime.usbExclusiveEnabled
         usbAudioMonitor.setExclusiveEnabled(enabled)
@@ -349,6 +353,10 @@ internal class PlaybackController(
             prepare()
             play()
         }
+    }
+
+    fun pause() {
+        withController { pause() }
     }
 
     fun playPause() {
@@ -721,6 +729,11 @@ internal class PlaybackController(
     private fun startUsbAudioUpdates() {
         usbAudioJob?.cancel()
         usbAudioJob = scope.launch {
+            launch {
+                EchoPlaybackProcessRuntime.bitPerfectStates.collect {
+                    updateUsbDiagnostics(usbAudioMonitor.status.value)
+                }
+            }
             var previousPermissionGranted = usbAudioMonitor.status.value.hostPermissionGranted
             var previousConnected = usbAudioMonitor.status.value.connected
             usbAudioMonitor.status.collect { status ->
@@ -990,7 +1003,7 @@ internal class PlaybackController(
                 replayGainUrisByMediaId[track.id] = track.uri
                 track.sampleRateHz?.takeIf { it > 0 }?.let { sampleRatesByMediaId[track.id] = it }
             }
-            val restoredQueue = resolveEchoLinkQueue(session.queue)
+            val restoredQueue = resolveEchoLinkQueue(session.queue, session.currentIndex)
             restoredQueue.forEach { track ->
                 track.sampleRateHz?.takeIf { it > 0 }?.let { sampleRatesByMediaId[track.id] = it }
             }
@@ -1006,7 +1019,7 @@ internal class PlaybackController(
             mediaController.setPlaybackParameters(
                 PlaybackParameters(session.playbackSpeed, session.playbackPitch),
             )
-            val queueUris = restoredQueue.map { it.uri }
+            val queueUris = listOf(restoredQueue[session.currentIndex].uri)
             val unresolvedEchoLink = queueHasUnresolvedEchoLinkUris(queueUris)
             val requiresWebDavAuth = queueRequiresWebDavAuth(queueUris)
             val webDavAuthReady = EchoRemotePlaybackAuthRegistry.isWebDavAuthReadyForUris(queueUris)
@@ -1197,13 +1210,14 @@ internal class PlaybackController(
 
     private suspend fun resolveEchoLinkQueue(
         queue: List<EchoTrackRef>,
+        currentIndex: Int,
     ): List<EchoTrackRef> {
         val resolver = echoLinkPlaybackResolver ?: return queue
-        return queue.map { track ->
-            if (!EchoLinkPlaybackUri.requiresStreamResolve(track.id, track.uri)) {
+        return queue.mapIndexed { index, track ->
+            if (index != currentIndex || !EchoLinkPlaybackUri.requiresStreamResolve(track.id, track.uri)) {
                 track
             } else {
-                runCatching { resolver(track) }.getOrDefault(track)
+                try { resolver(track) } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled } catch (_: Exception) { track }
             }
         }
     }

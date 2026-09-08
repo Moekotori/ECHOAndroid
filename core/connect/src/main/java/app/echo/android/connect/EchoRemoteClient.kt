@@ -40,6 +40,29 @@ class EchoRemoteClient internal constructor(
     private val _library = MutableStateFlow(EchoRemoteLibraryState())
     val library: StateFlow<EchoRemoteLibraryState> = _library.asStateFlow()
 
+    private var refreshOnForeground = false
+    private var foreground = true
+    private var pollFailures = 0
+    private var authRejected = false
+
+    fun setForeground(visible: Boolean) {
+        foreground = visible
+        if (!visible) {
+            statusPollJob?.cancel()
+            if (libraryRefreshJob?.isActive == true) {
+                refreshOnForeground = true
+                libraryRefreshJob?.cancel()
+                _library.update { it.copy(isLoading = false, isLoadingMore = false) }
+            }
+        } else if (endpoint != null && !authRejected) {
+            if (connectJob?.isActive != true) startStatusPolling()
+            if (refreshOnForeground && _status.value.connectionState == EchoRemoteConnectionState.Connected) {
+                refreshOnForeground = false
+                refreshLibrary()
+            }
+        }
+    }
+
     private var endpoint: EchoRemoteEndpoint? = null
     private var connectJob: Job? = null
     private var statusPollJob: Job? = null
@@ -75,6 +98,10 @@ class EchoRemoteClient internal constructor(
     }
 
     fun connect(nextEndpoint: EchoRemoteEndpoint, refreshLibraryOnConnect: Boolean = true) {
+        authRejected = false
+        refreshOnForeground = false
+        pollFailures = 0
+        if (!EchoLinkRequestPolicy.isSameEndpoint(endpoint, nextEndpoint)) _library.value = EchoRemoteLibraryState()
         val generation = ++connectGeneration
         connectJob?.cancel()
         endpoint = nextEndpoint
@@ -137,7 +164,8 @@ class EchoRemoteClient internal constructor(
                         return@launch
                     }
                     applyStatus(resolvedTarget, response)
-                    if (refreshLibraryOnConnect) {
+                    refreshOnForeground = refreshLibraryOnConnect && !foreground
+                    if (refreshLibraryOnConnect && foreground) {
                         refreshLibrary()
                     } else {
                         _library.value = EchoRemoteLibraryState()
@@ -145,6 +173,7 @@ class EchoRemoteClient internal constructor(
                     startStatusPolling()
                     return@launch
                 }
+                if (rejectAuthentication(resolvedTarget, status.exceptionOrNull())) return@launch
                 statusAttempt += 1
                 if (statusAttempt == 1) {
                     markReconnecting(resolvedTarget, status.exceptionOrNull())
@@ -159,6 +188,7 @@ class EchoRemoteClient internal constructor(
     }
 
     fun disconnect() {
+        refreshOnForeground = false
         connectGeneration += 1
         connectJob?.cancel()
         connectJob = null
@@ -295,27 +325,25 @@ class EchoRemoteClient internal constructor(
             fun isCurrentRefresh(): Boolean =
                 endpoint?.id == target.id && generation == libraryRefreshGeneration
 
-            val firstFetch = runSuspendCatching {
-                val trackPage = transport.fetchTracks(target, query, page = 1, pageSize = PcLibraryPageSize)
-                val playlistPage = fetchAllPlaylists(target, query)
-                trackPage to playlistPage
-            }
-            val (firstPage, playlistPage) = firstFetch.getOrElse { error ->
-                if (isCurrentRefresh()) {
-                    _library.update {
-                        it.copy(isLoading = false, query = query, error = error.userMessage())
+            launch {
+                runSuspendCatching { fetchAllPlaylists(target, query) }
+                    .onSuccess { page ->
+                        if (isCurrentRefresh()) _library.update { it.copy(playlists = page.playlists) }
                     }
-                }
+                    .onFailure { error ->
+                        if (isCurrentRefresh()) _library.update { it.copy(error = error.userMessage()) }
+                    }
+            }
+            val firstPage = runSuspendCatching {
+                transport.fetchTracks(target, query, page = 1, pageSize = PcLibraryPageSize)
+            }.getOrElse { error ->
+                if (isCurrentRefresh()) _library.update { it.copy(isLoading = false, isLoadingMore = false, error = error.userMessage()) }
                 return@launch
             }
             if (!isCurrentRefresh()) return@launch
 
             val loadedTracks = ArrayList(firstPage.tracks)
             var totalCount = firstPage.totalCount.coerceAtLeast(loadedTracks.size)
-            val playlistTracks = playlistPage.playlists
-                .filter { it.tracks.isNotEmpty() }
-                .associate { it.id to it.tracks }
-
             fun publish(isLoadingMore: Boolean, error: String? = null) {
                 // 流式拉取期间用户可能并发点开歌单:基于当前状态合并,保留
                 // refreshPlaylistTracks 写入的曲目与 loadingPlaylistId,不能整体覆盖
@@ -325,8 +353,6 @@ class EchoRemoteClient internal constructor(
                         isLoadingMore = isLoadingMore,
                         query = query,
                         tracks = loadedTracks.toList(),
-                        playlists = playlistPage.playlists,
-                        playlistTracks = playlistTracks + current.playlistTracks,
                         totalCount = totalCount,
                         error = error ?: current.error,
                     )
@@ -360,7 +386,11 @@ class EchoRemoteClient internal constructor(
                 page += 1
             }
             if (isCurrentRefresh()) {
-                publish(isLoadingMore = false)
+                publish(isLoadingMore = false, error = if (loadedTracks.size < totalCount) echoText(
+                    en = "Loaded ${loadedTracks.size} of $totalCount tracks. Search to narrow the library.",
+                    zh = "已加载 ${loadedTracks.size}/$totalCount 首；请搜索以缩小曲库范围。",
+                    ja = "$totalCount 曲中 ${loadedTracks.size} 曲を表示中。検索で絞り込んでください。",
+                ) else null)
             }
         }
     }
@@ -599,9 +629,10 @@ class EchoRemoteClient internal constructor(
 
     private fun startStatusPolling() {
         statusPollJob?.cancel()
+        if (!foreground || authRejected) return
         statusPollJob = scope.launch {
-            while (isActive) {
-                delay(statusPollIntervalMs)
+            while (isActive && foreground && !authRejected) {
+                delay((statusPollIntervalMs * (1L shl pollFailures.coerceAtMost(4))).coerceAtMost(60_000L))
                 endpoint?.let { refreshStatusOnce(it) }
             }
         }
@@ -620,6 +651,8 @@ class EchoRemoteClient internal constructor(
                     endpoint?.id == target.id &&
                     generation == statusRefreshGeneration
                 ) {
+                    if (rejectAuthentication(target, error)) return@onFailure
+                    pollFailures += 1
                     _status.update { current ->
                         current.copy(
                             connectionState = EchoRemoteConnectionState.Reconnecting,
@@ -630,8 +663,20 @@ class EchoRemoteClient internal constructor(
             }
     }
 
+    private fun rejectAuthentication(target: EchoRemoteEndpoint, error: Throwable?): Boolean {
+        if ((error as? EchoLinkHttpException)?.statusCode !in listOf(401, 403)) return false
+        authRejected = true
+        markConnectionError(target, EchoLinkHttpException(echoText(
+            en = "PC authorization expired or was revoked. Pair again.",
+            zh = "PC 授权已失效或被撤销，请重新配对。",
+            ja = "PC の認証が失効しました。再ペアリングしてください。",
+        )))
+        return true
+    }
+
     private fun applyStatus(target: EchoRemoteEndpoint, response: EchoLinkStatusResponse) {
         if (endpoint?.id != target.id) return
+        pollFailures = 0
         val namedEndpoint = response.deviceName
             ?.takeIf { it.isNotBlank() }
             ?.let { target.copy(name = it) }

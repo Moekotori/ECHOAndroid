@@ -29,8 +29,11 @@ class EchoLinkLanBrowser(
     private var discoveryListener: NsdManager.DiscoveryListener? = null
     private val pendingResolves = ArrayDeque<NsdServiceInfo>()
     private val resolveAttempts = mutableMapOf<String, Int>()
+    private var resolvingServiceName: String? = null
     private var resolving = false
     private var started = false
+    private var generation = 0L
+    private val lostServices = mutableSetOf<String>()
 
     fun restart() {
         val snapshot = _devices.value
@@ -43,17 +46,27 @@ class EchoLinkLanBrowser(
         if (started) return
         val manager = nsdManager ?: return
         started = true
+        val epoch = ++generation
         runCatching { multicastLock?.acquire() }
         val listener = object : NsdManager.DiscoveryListener {
             override fun onDiscoveryStarted(serviceType: String) = Unit
             override fun onDiscoveryStopped(serviceType: String) = Unit
-            override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) = Unit
+            override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
+                mainHandler.post { if (epoch == generation) stop() }
+            }
             override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) = Unit
             override fun onServiceFound(serviceInfo: NsdServiceInfo) {
-                mainHandler.post { enqueueResolve(serviceInfo) }
+                mainHandler.post {
+                    if (epoch != generation || !started) return@post
+                    lostServices.remove(serviceInfo.serviceName)
+                    enqueueResolve(serviceInfo)
+                }
             }
             override fun onServiceLost(serviceInfo: NsdServiceInfo) {
                 mainHandler.post {
+                    if (epoch != generation || !started) return@post
+                    if (serviceInfo.serviceName == resolvingServiceName) lostServices.add(serviceInfo.serviceName.orEmpty())
+                    pendingResolves.removeAll { it.serviceName == serviceInfo.serviceName }
                     _devices.update { current ->
                         EchoLinkDiscoveryPolicy.removeService(current, serviceInfo.serviceName.orEmpty())
                     }
@@ -73,9 +86,12 @@ class EchoLinkLanBrowser(
     }
 
     fun stop(clearDevices: Boolean = true) {
+        generation += 1
+        lostServices.clear()
         val manager = nsdManager
         val listener = discoveryListener
         discoveryListener = null
+        resolvingServiceName = null
         pendingResolves.clear()
         resolveAttempts.clear()
         resolving = false
@@ -93,6 +109,7 @@ class EchoLinkLanBrowser(
 
     private fun enqueueResolve(serviceInfo: NsdServiceInfo) {
         if (!started) return
+        if (pendingResolves.size >= 64 || pendingResolves.any { it.serviceName == serviceInfo.serviceName }) return
         pendingResolves.addLast(serviceInfo)
         drainResolves()
     }
@@ -102,25 +119,31 @@ class EchoLinkLanBrowser(
         if (!started || resolving) return
         val next = pendingResolves.removeFirstOrNull() ?: return
         resolving = true
+        resolvingServiceName = next.serviceName
+        val epoch = generation
         runCatching {
             manager.resolveService(
                 next,
                 object : NsdManager.ResolveListener {
                     override fun onResolveFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
                         mainHandler.post {
+                            if (epoch != generation || !started) return@post
                             val name = serviceInfo.serviceName.orEmpty()
                             val attempts = (resolveAttempts[name] ?: 0) + 1
                             resolveAttempts[name] = attempts
-                            if (started && attempts < MaxResolveAttempts) {
+                            if (name !in lostServices && attempts < MaxResolveAttempts) {
                                 pendingResolves.addLast(serviceInfo)
+                            } else {
+                                resolveAttempts.remove(name)
                             }
+                            lostServices.remove(serviceInfo.serviceName)
+                            resolvingServiceName = null
                             resolving = false
                             drainResolves()
                         }
                     }
 
                     override fun onServiceResolved(serviceInfo: NsdServiceInfo) {
-                        resolveAttempts.remove(serviceInfo.serviceName.orEmpty())
                         val device = EchoLinkDiscoveryPolicy.deviceFromResolved(
                             serviceName = serviceInfo.serviceName.orEmpty(),
                             host = EchoLinkDiscoveryPolicy.pickHost(resolvedHosts(serviceInfo)),
@@ -128,11 +151,15 @@ class EchoLinkLanBrowser(
                             txt = EchoLinkDiscoveryPolicy.decodeTxt(serviceInfo.attributes.orEmpty()),
                         )
                         mainHandler.post {
-                            if (device != null) {
+                            if (epoch != generation || !started) return@post
+                            resolveAttempts.remove(serviceInfo.serviceName.orEmpty())
+                            if (device != null && device.serviceName !in lostServices) {
                                 _devices.update { current ->
                                     EchoLinkDiscoveryPolicy.upsertDevice(current, device)
                                 }
                             }
+                            lostServices.remove(serviceInfo.serviceName)
+                            resolvingServiceName = null
                             resolving = false
                             drainResolves()
                         }
@@ -140,6 +167,7 @@ class EchoLinkLanBrowser(
                 },
             )
         }.onFailure {
+            resolvingServiceName = null
             resolving = false
             drainResolves()
         }

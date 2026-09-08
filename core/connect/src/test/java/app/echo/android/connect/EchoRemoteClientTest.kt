@@ -119,6 +119,52 @@ class EchoRemoteClientTest {
     }
 
     @Test
+    fun backgroundStopsStatusPollingUntilVisible() = runBlocking {
+        val transport = FakeEchoLinkTransport()
+        val client = EchoRemoteClient(this, transport, statusPollIntervalMs = 5)
+        client.connect(endpoint, false)
+        delay(20)
+        client.setForeground(false)
+        val calls = transport.statusCalls
+        delay(25)
+        assertEquals(calls, transport.statusCalls)
+        client.setForeground(true)
+        delay(20)
+        assertTrue(transport.statusCalls > calls)
+        client.disconnect()
+    }
+
+    @Test
+    fun rejectedAuthorizationStopsRetries() = runBlocking {
+        val transport = FakeEchoLinkTransport(statusError = EchoLinkHttpException("revoked", 401))
+        val client = EchoRemoteClient(this, transport, statusPollIntervalMs = 5)
+        client.connect(endpoint, false)
+        delay(30)
+        assertEquals(1, transport.statusCalls)
+        assertEquals(EchoRemoteConnectionState.Error, client.status.value.connectionState)
+        client.setForeground(true)
+        delay(15)
+        assertEquals(1, transport.statusCalls)
+        client.disconnect()
+    }
+
+    @Test
+    fun playlistListDoesNotBlockFirstTracksAndSwitchingPcClearsOldLibrary() = runBlocking {
+        val blocker = CompletableDeferred<Unit>()
+        val transport = FakeEchoLinkTransport(libraryTotalCount = 2, playlistListBlocker = blocker)
+        val client = EchoRemoteClient(this, transport)
+        client.connect(endpoint, true)
+        delay(30)
+        assertEquals(2, client.library.value.tracks.size)
+        assertFalse(client.library.value.isLoading)
+        client.connect(endpoint.copy(id = "other", host = "192.168.1.21"), false)
+        assertTrue(client.library.value.tracks.isEmpty())
+        delay(20)
+        blocker.complete(Unit)
+        client.disconnect()
+    }
+
+    @Test
     fun firstFailedConnectIsRetriedUntilStatusSucceeds() = runBlocking {
         val transport = FakeEchoLinkTransport(failStatusTimes = 1)
         val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
@@ -516,6 +562,8 @@ private fun remoteTrack(id: String): EchoRemoteTrack =
 
 private class FakeEchoLinkTransport(
     private val failPairing: Boolean = false,
+    private val statusError: Throwable? = null,
+    private val playlistListBlocker: CompletableDeferred<Unit>? = null,
     private val commandBlocker: CompletableDeferred<Unit>? = null,
     private val failCommand: Boolean = false,
     private val failStatusTimes: Int = 0,
@@ -558,6 +606,7 @@ private class FakeEchoLinkTransport(
 
     override suspend fun fetchStatus(endpoint: EchoRemoteEndpoint): EchoLinkStatusResponse {
         statusCalls += 1
+        statusError?.let { throw it }
         activeStatusCalls += 1
         maxConcurrentStatusCalls = maxOf(maxConcurrentStatusCalls, activeStatusCalls)
         try {
@@ -618,7 +667,10 @@ private class FakeEchoLinkTransport(
         query: String,
         page: Int,
         pageSize: Int,
-    ): EchoLinkPlaylistPage = EchoLinkPlaylistPage(playlists = emptyList(), totalCount = 0)
+    ): EchoLinkPlaylistPage {
+        playlistListBlocker?.await()
+        return EchoLinkPlaylistPage(playlists = emptyList(), totalCount = 0)
+    }
 
     override suspend fun fetchPlaylistTracks(
         endpoint: EchoRemoteEndpoint,

@@ -42,6 +42,7 @@ struct Writer {
     int pps;
     int high_speed;
     int fatal;
+    int transfer_error;
     int64_t acc_q16;
     int64_t feedback_q16;
     int64_t nominal_q16;
@@ -131,6 +132,11 @@ static int submit_feedback(Writer* writer, int index) {
 static void mark_completed(Writer* writer, UrbSlot* slot) {
     writer->completed_frames += slot->frames;
     if (!slot->is_silence) {
+        if (slot->urb->status != 0) writer->transfer_error = 1;
+        for (int p = 0; p < slot->urb->number_of_packets; ++p) {
+            const auto& packet = slot->urb->iso_frame_desc[p];
+            if (packet.status != 0 || packet.actual_length != packet.length) writer->transfer_error = 1;
+        }
         writer->audio_completed_frames += slot->frames;
     }
     slot->in_flight = 0;
@@ -468,6 +474,14 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativePrime(JNIEnv*, jclass,
     fill_keepalive(writer);
 }
 
+extern "C" JNIEXPORT jboolean JNICALL
+Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeHasTransferError(JNIEnv*, jclass, jlong handle) {
+    auto* writer = reinterpret_cast<Writer*>(handle);
+    if (writer == nullptr) return JNI_TRUE;
+    reap(writer);
+    return writer->fatal || writer->transfer_error;
+}
+
 extern "C" JNIEXPORT jlong JNICALL
 Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeCompletedFrames(JNIEnv*, jclass, jlong handle) {
     auto* writer = reinterpret_cast<Writer*>(handle);
@@ -495,6 +509,7 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeFlush(JNIEnv*, jclass,
     writer->submitted_frames = 0;
     writer->completed_frames = 0;
     writer->audio_completed_frames = 0;
+    writer->transfer_error = 0;
     if (writer->feedback_ep != 0 && !writer->fatal) {
         for (int i = 0; i < FEEDBACK_URB_COUNT; ++i) {
             submit_feedback(writer, i);

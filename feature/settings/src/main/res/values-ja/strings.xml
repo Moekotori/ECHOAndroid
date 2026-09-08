@@ -273,4 +273,21 @@
     <string name="diag_eq_wait_system">%1$s · パイプライン EQ 待ち</string>
     <string name="diag_eq_off">オフ · %1$d bands</string>
     <string name="settings_discord_unavailable">未実装：スマホの再生状態を PC の Discord へ転送する機能はまだ利用できません。</string>
+    <string name="settings_usb_bitperfect">USB bit-perfect モード</string>
+    <string name="settings_usb_bitperfect_detail">USB 排他出力を有効にし、EQ・補正・ゲイン・速度変更・無音スキップをバイパスします。デジタル音量は 100% 固定です。先に DAC の音量を下げてください。非対応の曲や形式では再生を停止します。</string>
+    <string name="bitperfect_off">厳密モードはオフ</string>
+    <string name="bitperfect_waiting">USB 直接再生を待機中</string>
+    <string name="bitperfect_direct">整数の直接出力が有効</string>
+    <string name="bitperfect_source">停止：16/24-bit WAV・FLAC・ALAC が必要</string>
+    <string name="bitperfect_usb">停止：USB DAC の接続と許可が必要</string>
+    <string name="bitperfect_format">停止：精度を保てる USB 形式がありません</string>
+    <string name="bitperfect_clock">停止：DAC クロックを確認できません</string>
+    <string name="bitperfect_volume">停止：デジタル音量が変更されました</string>
+    <string name="bitperfect_transport">停止：USB 転送エラー</string>
+    <string name="bitperfect_bypass">音声処理をバイパス</string>
+    <string name="bitperfect_bypass_detail">EQ・ゲイン・速度変更などは適用されません</string>
+    <string name="bitperfect_precision">ソース → デコード → USB</string>
+    <string name="bitperfect_precision_value">%1$d-bit → %2$d-bit 整数 → %3$d-bit</string>
+    <string name="bitperfect_clock_label">確認済み USB サンプルレート</string>
+    <string name="bitperfect_playback_error">停止：再生エラー</string>
 </resources>

@@ -42,6 +42,7 @@ data class EchoAppSettings(
     val showLyricsControlDeck: Boolean = false,
     val onlineLyricsEnabled: Boolean = false,
     val usbExclusiveEnabled: Boolean = false,
+    val usbBitPerfectEnabled: Boolean = false,
     val usbExclusiveAutoRequestOnStartup: Boolean = true,
     val equalizerEnabled: Boolean = false,
     val equalizerPreset: String = EchoEqualizerPreset.Flat,
@@ -195,6 +196,7 @@ class EchoSettingsStore(
                 showLyricsControlDeck = preferences[Keys.ShowLyricsControlDeck] ?: false,
                 onlineLyricsEnabled = preferences[Keys.OnlineLyricsEnabled] ?: false,
                 usbExclusiveEnabled = preferences[Keys.UsbExclusiveEnabled] ?: false,
+                usbBitPerfectEnabled = preferences[Keys.UsbBitPerfectEnabled] ?: false,
                 usbExclusiveAutoRequestOnStartup = preferences[Keys.UsbExclusiveAutoRequestOnStartup] ?: true,
                 equalizerEnabled = preferences[Keys.EqualizerEnabled] ?: false,
                 equalizerPreset = EchoEqualizerPresets.normalizePresetId(preferences[Keys.EqualizerPreset]),
@@ -318,7 +320,17 @@ class EchoSettingsStore(
     }
 
     suspend fun setUsbExclusiveEnabled(enabled: Boolean) {
-        context.echoSettings.edit { it[Keys.UsbExclusiveEnabled] = enabled }
+        context.echoSettings.edit {
+            it[Keys.UsbExclusiveEnabled] = enabled
+            if (!enabled) it[Keys.UsbBitPerfectEnabled] = false
+        }
+    }
+
+    suspend fun setUsbBitPerfectEnabled(enabled: Boolean) {
+        context.echoSettings.edit {
+            it[Keys.UsbBitPerfectEnabled] = enabled
+            if (enabled) it[Keys.UsbExclusiveEnabled] = true
+        }
     }
 
     suspend fun setUsbExclusiveAutoRequestOnStartup(enabled: Boolean) {
@@ -719,6 +731,7 @@ class EchoSettingsStore(
         val ShowLyricsControlDeck = booleanPreferencesKey("show_lyrics_control_deck")
         val OnlineLyricsEnabled = booleanPreferencesKey("online_lyrics_enabled")
         val UsbExclusiveEnabled = booleanPreferencesKey("usb_exclusive_enabled")
+        val UsbBitPerfectEnabled = booleanPreferencesKey("usb_bit_perfect_enabled")
         val UsbExclusiveAutoRequestOnStartup = booleanPreferencesKey("usb_exclusive_auto_request_on_startup")
         val EqualizerEnabled = booleanPreferencesKey("equalizer_enabled")
         val EqualizerPreset = stringPreferencesKey("equalizer_preset")

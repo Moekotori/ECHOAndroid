@@ -22,11 +22,11 @@ import androidx.media3.decoder.DecoderException;
 @UnstableApi
 public final class FfmpegDecoderException extends DecoderException {
 
-  /* package */ FfmpegDecoderException(String message) {
+  public FfmpegDecoderException(String message) {
     super(message);
   }
 
-  /* package */ FfmpegDecoderException(String message, Throwable cause) {
+  public FfmpegDecoderException(String message, Throwable cause) {
     super(message, cause);
   }
 }

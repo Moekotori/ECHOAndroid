@@ -19,6 +19,9 @@ fun EchoPlaybackDiagnostics.toReadableLines(): List<String> = buildList {
     usbAudioDescriptorError?.let { add("usbAudioDescriptorError=$it") }
     add("usbBitPerfectSupported=$usbBitPerfectSupported")
     add("usbBitPerfectActive=$usbBitPerfectActive")
+    add("bitPerfectState=$bitPerfectState")
+    add("bitPerfectPrecision=$bitPerfectSourceBits/$bitPerfectDecodedBits/$bitPerfectOutputBits")
+    add("bitPerfectSampleRateHz=$bitPerfectSampleRateHz")
     add("usbExclusiveStreaming=$usbExclusiveStreaming")
     usbExclusiveTransport?.let { add("usbExclusiveTransport=$it") }
     if (usbSupportedSampleRates.isNotEmpty()) {

@@ -30,7 +30,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 /** FFmpeg audio decoder. */
-/* package */ final class FfmpegAudioDecoder
+public final class FfmpegAudioDecoder
     extends SimpleDecoder<DecoderInputBuffer, SimpleDecoderOutputBuffer, FfmpegDecoderException> {
 
   private static final int INITIAL_OUTPUT_BUFFER_SIZE_16BIT = 65535;
@@ -62,6 +62,13 @@ import java.util.List;
       int initialInputBufferSize,
       boolean outputFloat)
       throws FfmpegDecoderException {
+    this(format, numInputBuffers, numOutputBuffers, initialInputBufferSize,
+        outputFloat ? C.ENCODING_PCM_FLOAT : C.ENCODING_PCM_16BIT);
+  }
+
+  // ECHO: integer output avoids a float round trip on the strict lossless path.
+  public FfmpegAudioDecoder(Format format, int numInputBuffers, int numOutputBuffers,
+      int initialInputBufferSize, @C.PcmEncoding int outputEncoding) throws FfmpegDecoderException {
     super(new DecoderInputBuffer[numInputBuffers], new SimpleDecoderOutputBuffer[numOutputBuffers]);
     if (!FfmpegLibrary.isAvailable()) {
       throw new FfmpegDecoderException("Failed to load decoder native libraries.");
@@ -69,11 +76,13 @@ import java.util.List;
     checkNotNull(format.sampleMimeType);
     codecName = checkNotNull(FfmpegLibrary.getCodecName(format.sampleMimeType));
     extraData = getExtraData(format.sampleMimeType, format.initializationData);
-    encoding = outputFloat ? C.ENCODING_PCM_FLOAT : C.ENCODING_PCM_16BIT;
+    encoding = outputEncoding;
     outputBufferSize =
-        outputFloat ? INITIAL_OUTPUT_BUFFER_SIZE_32BIT : INITIAL_OUTPUT_BUFFER_SIZE_16BIT;
+        encoding == C.ENCODING_PCM_16BIT ? INITIAL_OUTPUT_BUFFER_SIZE_16BIT : INITIAL_OUTPUT_BUFFER_SIZE_32BIT;
     nativeContext =
-        ffmpegInitialize(codecName, extraData, outputFloat, format.sampleRate, format.channelCount);
+        ffmpegInitialize(codecName, extraData,
+            encoding == C.ENCODING_PCM_32BIT ? 2 : (encoding == C.ENCODING_PCM_FLOAT ? 1 : 0),
+            format.sampleRate, format.channelCount);
     if (nativeContext == 0) {
       throw new FfmpegDecoderException("Initialization failed.");
     }
@@ -121,6 +130,9 @@ import java.util.List;
     if (result == AUDIO_DECODER_ERROR_OTHER) {
       return new FfmpegDecoderException("Error decoding (see logcat).");
     } else if (result == AUDIO_DECODER_ERROR_INVALID_DATA) {
+      if (encoding == C.ENCODING_PCM_32BIT) {
+        return new FfmpegDecoderException("Invalid lossless packet in strict PCM mode");
+      }
       // Treat invalid data errors as non-fatal to match the behavior of MediaCodec. No output will
       // be produced for this buffer, so mark it as skipped to ensure that the audio sink's
       // position is reset when more audio is produced.
@@ -131,8 +143,15 @@ import java.util.List;
       outputBuffer.shouldBeSkipped = true;
       return null;
     }
+    if (encoding == C.ENCODING_PCM_32BIT && hasOutputFormat
+        && (sampleRate != ffmpegGetSampleRate(nativeContext)
+            || channelCount != ffmpegGetChannelCount(nativeContext)
+            || sourceBitDepth != ffmpegGetSourceBitDepth(nativeContext))) {
+      return new FfmpegDecoderException("Lossless PCM format changed inside a stream");
+    }
     if (!hasOutputFormat) {
       channelCount = ffmpegGetChannelCount(nativeContext);
+      sourceBitDepth = ffmpegGetSourceBitDepth(nativeContext);
       sampleRate = ffmpegGetSampleRate(nativeContext);
       if (sampleRate == 0 && "alac".equals(codecName)) {
         checkNotNull(extraData);
@@ -298,7 +317,7 @@ import java.util.List;
   private native long ffmpegInitialize(
       String codecName,
       @Nullable byte[] extraData,
-      boolean outputFloat,
+      int outputEncoding,
       int rawSampleRate,
       int rawChannelCount);
 
@@ -310,6 +329,9 @@ import java.util.List;
       ByteBuffer outputData,
       int outputSize);
 
+  public int getSourceBitDepth() { return sourceBitDepth; }
+  private volatile int sourceBitDepth;
+  private native int ffmpegGetSourceBitDepth(long context);
   private native int ffmpegGetChannelCount(long context);
 
   private native int ffmpegGetSampleRate(long context);

@@ -13,7 +13,7 @@ class UsbExclusivePcmOutput(context: Context) {
     private val usbManager = appContext.getSystemService(Context.USB_SERVICE) as UsbManager
     private val probe = UsbAudioProbe(appContext)
 
-    fun open(spec: UsbPcmFormatSpec): UsbExclusivePcmSession {
+    fun open(spec: UsbPcmFormatSpec, bitPerfect: Boolean = false): UsbExclusivePcmSession {
         val device = probe.findBestDevice()
             ?: return UsbExclusivePcmSession.closed(
                 UsbExclusiveOpenResult(
@@ -32,7 +32,8 @@ class UsbExclusivePcmOutput(context: Context) {
         }
 
         val snapshot = probe.snapshot()
-        val selectedFormat = UsbPcmFormatSelector.chooseClosestFormat(snapshot.descriptor, spec)
+        val selectedFormat = (if (bitPerfect) UsbPcmFormatSelector.chooseBitPerfectFormat(snapshot.descriptor, spec)
+            else UsbPcmFormatSelector.chooseClosestFormat(snapshot.descriptor, spec))
             ?: return UsbExclusivePcmSession.closed(
                 UsbExclusiveOpenResult(
                     state = UsbExclusiveOutputState.FormatUnavailable,
@@ -81,6 +82,9 @@ class UsbExclusivePcmOutput(context: Context) {
             }
             if (!UsbAudioClock.setSampleRate(connection, selectedFormat, spec.sampleRateHz)) {
                 error("USB audio clock rejected ${spec.sampleRateHz}Hz")
+            }
+            if (bitPerfect && UsbAudioClock.getSampleRate(connection, selectedFormat) != spec.sampleRateHz) {
+                error("bit-perfect:clock-unverified")
             }
             val session = UsbExclusivePcmSession(
                 connection = connection,
@@ -181,6 +185,8 @@ class UsbExclusivePcmSession internal constructor(
             bitDepth = selectedFormat?.bitResolution ?: spec?.bitDepth ?: 16,
             subslotSize = selectedFormat?.subslotSize,
         )
+
+    val bitResolution: Int? get() = selectedFormat?.bitResolution
 
     internal fun startWriter() {
         val endpoint = endpoint ?: return
@@ -293,6 +299,8 @@ class UsbExclusivePcmSession internal constructor(
             UsbPcmWriteResult(UsbExclusiveOutputState.OpenFailed, message = "USB PCM write failed")
         }
     }
+
+    fun hasTransferError(): Boolean = synchronized(lock) { closed || UsbIsochronousNative.hasTransferError(nativeHandle) }
 
     fun queuedFrames(): Long = synchronized(lock) { UsbIsochronousNative.queuedFrames(nativeHandle) }
 

@@ -30,8 +30,8 @@ internal fun SignalOverview(status: EchoPlaybackStatus, equalizer: EchoEqualizer
         SignalSection(stringResource(L10nR.string.feature_settings_signal_path_2fed34)) {
             SignalPathStep("01", stringResource(L10nR.string.diag_source_file), if (hasSource) d.fileFormatLabel() else stringResource(L10nR.string.diag_waiting_playback), status.track?.title, hasSource)
             SignalPathStep("02", stringResource(L10nR.string.diag_decoder), d.codec ?: stringResource(L10nR.string.diag_waiting_decode), if (hasSource) d.decodedFormatLabel() else null, hasSource)
-            SignalPathStep("03", stringResource(L10nR.string.diag_processing_layer), if (equalizer.active) equalizer.sourceLabel ?: equalizer.presetName else d.processingLabel(),
-                if (equalizer.active) stringResource(L10nR.string.diag_integrity_eq) else stringResource(L10nR.string.feature_settings_equalizer_is_not_changing_the_signal_7cf73b), equalizer.active)
+            SignalPathStep("03", stringResource(L10nR.string.diag_processing_layer), if (equalizer.active && !d.usbBitPerfectEnabled) equalizer.sourceLabel ?: equalizer.presetName else if (d.usbBitPerfectEnabled) stringResource(L10nR.string.bitperfect_bypass) else d.processingLabel(),
+                if (equalizer.active && !d.usbBitPerfectEnabled) stringResource(L10nR.string.diag_integrity_eq) else if (d.usbBitPerfectEnabled) stringResource(L10nR.string.bitperfect_bypass_detail) else stringResource(L10nR.string.feature_settings_equalizer_is_not_changing_the_signal_7cf73b), equalizer.active && !d.usbBitPerfectEnabled)
             SignalPathStep("04", stringResource(L10nR.string.diag_output_end), when {
                 d.usbExclusiveStreaming -> stringResource(L10nR.string.diag_usb_exclusive_stream, d.usbExclusiveTransport ?: "PCM")
                 d.usbBitPerfectActive -> stringResource(L10nR.string.diag_usb_bit_perfect)
@@ -42,7 +42,13 @@ internal fun SignalOverview(status: EchoPlaybackStatus, equalizer: EchoEqualizer
         SignalSection(stringResource(L10nR.string.feature_settings_output_details_f242d2)) {
             SignalReadout(stringResource(L10nR.string.diag_decoded_output), d.decodedSampleRateHz?.let(::formatSampleRate) ?: stringResource(L10nR.string.diag_unreported))
             SignalReadout(stringResource(L10nR.string.diag_bitrate), d.bitrate?.let(::formatBitrate) ?: stringResource(L10nR.string.diag_unreported))
-            SignalReadout("Bit-perfect", if (hasSource) d.bitPerfectReadout(equalizer) else stringResource(L10nR.string.diag_waiting_playback))
+            SignalReadout("Bit-perfect", d.bitPerfectReadout(equalizer))
+            if (d.usbBitPerfectEnabled && d.bitPerfectOutputBits != null) {
+                SignalReadout(stringResource(L10nR.string.bitperfect_precision), stringResource(L10nR.string.bitperfect_precision_value,
+                    d.bitPerfectSourceBits ?: 0, d.bitPerfectDecodedBits ?: 0, d.bitPerfectOutputBits ?: 0))
+                SignalReadout(stringResource(L10nR.string.bitperfect_clock_label), d.bitPerfectSampleRateHz?.let(::formatSampleRate)
+                    ?: stringResource(L10nR.string.diag_unreported))
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 TextButton(onClick = onAdjust) { Text(stringResource(L10nR.string.feature_settings_adjust_sound_f8940e)) }
                 TextButton(onClick = onDiagnostics) { Text(stringResource(L10nR.string.feature_settings_view_diagnostics_31fcec)) }

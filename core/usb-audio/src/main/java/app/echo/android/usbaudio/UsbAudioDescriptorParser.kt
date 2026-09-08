@@ -183,6 +183,7 @@ class UsbAudioDescriptorParser {
             val existing = streamingFormats[existingIndex]
             streamingFormats[existingIndex] = existing.copy(
                 formatType = parsed.formatType ?: existing.formatType,
+                pcmIntegerSupported = parsed.pcmIntegerSupported ?: existing.pcmIntegerSupported,
                 channelCount = parsed.channelCount ?: existing.channelCount,
                 subslotSize = parsed.subslotSize ?: existing.subslotSize,
                 bitResolution = parsed.bitResolution ?: existing.bitResolution,
@@ -271,6 +272,12 @@ class UsbAudioDescriptorParser {
             alternateSetting = context.alternateSetting,
             audioClassVersion = context.version,
             channelCount = channelCount,
+            pcmIntegerSupported = when (context.version) {
+                UsbAudioClassVersion.Uac1 -> length >= 7 && raw[offset + 5].u8() == 1 && raw[offset + 6].u8() == 0
+                UsbAudioClassVersion.Uac2 -> length >= 10 && raw[offset + 5].u8() == 1 &&
+                    raw[offset + 6].u8() == 1 && (7..9).all { raw[offset + it].u8() == 0 }
+                else -> false
+            },
             terminalLink = terminalLink,
         )
     }

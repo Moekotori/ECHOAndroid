@@ -48,6 +48,7 @@ data class UsbAudioStreamingFormat(
     val alternateSetting: Int,
     val audioClassVersion: UsbAudioClassVersion,
     val formatType: Int? = null,
+    val pcmIntegerSupported: Boolean? = null,
     val channelCount: Int? = null,
     val subslotSize: Int? = null,
     val bitResolution: Int? = null,

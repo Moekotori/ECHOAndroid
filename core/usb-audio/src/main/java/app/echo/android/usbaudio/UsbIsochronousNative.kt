@@ -35,6 +35,8 @@ internal object UsbIsochronousNative {
         return nativeWrite(handle, packed, offset, length)
     }
 
+    fun hasTransferError(handle: Long): Boolean = handle == 0L || nativeHasTransferError(handle)
+
     fun completedFrames(handle: Long): Long = if (handle == 0L) 0L else nativeCompletedFrames(handle)
 
     fun queuedFrames(handle: Long): Long = if (handle == 0L) 0L else nativeQueuedFrames(handle)
@@ -68,6 +70,9 @@ internal object UsbIsochronousNative {
 
     @JvmStatic
     private external fun nativeWrite(handle: Long, packed: ByteArray, offset: Int, length: Int): Int
+
+    @JvmStatic
+    private external fun nativeHasTransferError(handle: Long): Boolean
 
     @JvmStatic
     private external fun nativeCompletedFrames(handle: Long): Long

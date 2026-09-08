@@ -53,12 +53,13 @@ internal class EchoPlaybackSessionRestorer(
                 restoreCompleted = shouldMarkSavedSessionRestoreComplete(sessionLoadFailed = false)
                 return@withLock null
             }
-            val resolvedQueue = snapshot.queue.map { track ->
+            val resolvedQueue = snapshot.queue.mapIndexed { index, track ->
+                if (index != snapshot.currentIndex) return@mapIndexed track
                 val playUri = EchoPlaybackProcessRuntime.resolvePlayUri(track.id, track.uri)
                 if (playUri == track.uri) track else track.copy(uri = playUri)
             }
             val resolved = snapshot.copy(queue = resolvedQueue)
-            val queueUris = resolved.queue.map { it.uri }
+            val queueUris = listOf(resolved.queue[resolved.currentIndex].uri)
             val unresolvedEchoLink = queueHasUnresolvedEchoLinkUris(queueUris)
             val play = shouldPlayAfterSessionRestore(userRequestedPlay) &&
                 !unresolvedEchoLink &&

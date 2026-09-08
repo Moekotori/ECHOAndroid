@@ -82,6 +82,7 @@ fun SettingsScreen(
     showLyricsControlDeck: Boolean,
     onlineLyricsEnabled: Boolean,
     usbExclusiveEnabled: Boolean,
+    usbBitPerfectEnabled: Boolean,
     usbExclusiveAutoRequestOnStartup: Boolean,
     usbExclusiveTestResult: String,
     customBackgroundMode: String,
@@ -121,6 +122,7 @@ fun SettingsScreen(
     onShowLyricsControlDeckChange: (Boolean) -> Unit,
     onOnlineLyricsEnabledChange: (Boolean) -> Unit,
     onUsbExclusiveEnabledChange: (Boolean) -> Unit,
+    onUsbBitPerfectEnabledChange: (Boolean) -> Unit,
     onUsbExclusiveAutoRequestOnStartupChange: (Boolean) -> Unit,
     onTestUsbExclusiveDriver: () -> Unit,
     onPickImageBackground: () -> Unit,
@@ -439,6 +441,12 @@ fun SettingsScreen(
                     detail = usbExclusiveDetail(status),
                     checked = usbExclusiveEnabled,
                     onCheckedChange = onUsbExclusiveEnabledChange,
+                )
+                SettingsSwitchRow(
+                    title = stringResource(R.string.settings_usb_bitperfect),
+                    detail = stringResource(R.string.settings_usb_bitperfect_detail),
+                    checked = usbBitPerfectEnabled,
+                    onCheckedChange = onUsbBitPerfectEnabledChange,
                 )
                 SettingsSwitchRow(
                     title = stringResource(R.string.settings_usb_auto_request),

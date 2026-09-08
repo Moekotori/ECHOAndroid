@@ -106,6 +106,12 @@ class EchoPlaybackEnginePolicy(
 
     fun applyReplayGain() {
         val player = attachedPlayer ?: return
+        if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled) {
+            player.volume = 1f
+            EchoPlaybackProcessRuntime.setExclusiveMakeupGain(1f)
+            EchoPlaybackProcessRuntime.syncLoudnessEnhancer(C.AUDIO_SESSION_ID_UNSET, 0)
+            return
+        }
         if (!shouldApplyReplayGainPlayerVolume(usbMuteInProgress)) return
         val output = echoReplayGainOutput(
             enabled = EchoPlaybackProcessRuntime.replayGainEnabled,
@@ -192,6 +198,16 @@ class EchoPlaybackEnginePolicy(
 
     override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
         val player = attachedPlayer ?: return
+        if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled) {
+            player.pause()
+            if (EchoPlaybackProcessRuntime.bitPerfectStatus.state in listOf(
+                app.echo.android.model.playback.EchoBitPerfectState.Direct,
+                app.echo.android.model.playback.EchoBitPerfectState.Waiting)) {
+                EchoPlaybackProcessRuntime.bitPerfectStatus = EchoBitPerfectSnapshot(
+                    app.echo.android.model.playback.EchoBitPerfectState.PlaybackError)
+            }
+            return // Strict mode must not auto-transcode, skip the track, or switch output paths.
+        }
         val mapped = error.toEchoPlaybackError()
         if (tryEchoLinkStreamRefresh(player)) {
             return
@@ -224,6 +240,11 @@ class EchoPlaybackEnginePolicy(
     }
 
     private fun prepareUsbForMediaItemTransition(mediaItem: MediaItem?) {
+        if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled) {
+            usbTransitionJob?.cancel()
+            usbMuteInProgress = false
+            return // The strict sink drains and reopens the DAC itself; never change its digital gain.
+        }
         val sampleRateHz = mediaItem?.mediaId?.let(sampleRatesByMediaId::get)
         if (!usbAudioMonitor.status.value.exclusiveEnabled) {
             if (usbMuteInProgress) {

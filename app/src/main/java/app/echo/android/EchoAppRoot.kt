@@ -225,8 +225,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         artworkImportTrackId = null
     }
 
-    val remoteScope = rememberCoroutineScope()
-    val remoteClient = remember(remoteScope) { EchoRemoteClient(remoteScope) }
+    val remoteClient = (context.applicationContext as EchoApplication).echoLinkSession.client
     LaunchedEffect(remoteClient) {
         viewModel.setEchoLinkPlaybackResolver { ref ->
             val trackId = EchoLinkPlaybackUri.trackId(ref.id, ref.uri) ?: return@setEchoLinkPlaybackResolver ref
@@ -271,14 +270,12 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
+    DisposableEffect(remoteClient, appVisible) {
+        remoteClient.setForeground(appVisible)
+        onDispose { remoteClient.setForeground(false) }
+    }
     LaunchedEffect(effectivePerformanceMode) {
         viewModel.setEffectivePerformanceMode(effectivePerformanceMode)
-    }
-    var lastEchoLinkAutoConnectKey by remember { mutableStateOf<String?>(null) }
-    val echoLinkSavedKey = remember(appSettings.echoLinkPcAddress, appSettings.echoLinkPcToken) {
-        val address = appSettings.echoLinkPcAddress?.takeIf { it.isNotBlank() }
-        val token = appSettings.echoLinkPcToken?.takeIf { it.isNotBlank() }
-        if (address != null && token != null) "$address|$token" else null
     }
     val echoLinkQrScanner = remember(context) {
         val options = GmsBarcodeScannerOptions.Builder()
@@ -289,16 +286,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     var echoLinkScanMessage by remember { mutableStateOf<String?>(null) }
     var echoLinkScanIsError by remember { mutableStateOf(false) }
     var echoLinkFallbackScannerVisible by remember { mutableStateOf(false) }
-
-    fun saveEchoLinkEndpointIfReady(endpoint: EchoRemoteEndpoint) {
-        if (!EchoLinkRequestPolicy.shouldPersistEndpoint(endpoint)) return
-        val address = "${endpoint.scheme}://${endpoint.host}:${endpoint.port}"
-        lastEchoLinkAutoConnectKey = "$address|${endpoint.token}"
-        viewModel.saveEchoLinkPcEndpoint(
-            address = address,
-            token = endpoint.token,
-        )
-    }
 
     fun connectEchoLinkEndpoint(endpoint: EchoRemoteEndpoint) {
         echoLinkScanMessage = null
@@ -356,27 +343,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             }
     }
 
-    LaunchedEffect(echoLinkSavedKey, appSettings.echoLinkAutoReconnectEnabled) {
-        val address = appSettings.echoLinkPcAddress?.takeIf { it.isNotBlank() }
-        val token = appSettings.echoLinkPcToken?.takeIf { it.isNotBlank() }
-        if (!appSettings.echoLinkAutoReconnectEnabled) {
-            lastEchoLinkAutoConnectKey = null
-            return@LaunchedEffect
-        }
-        if (
-            address != null &&
-            token != null &&
-            echoLinkSavedKey != null &&
-            lastEchoLinkAutoConnectKey != echoLinkSavedKey
-        ) {
-            lastEchoLinkAutoConnectKey = echoLinkSavedKey
-            remoteClient.connectManual(
-                address = address,
-                token = token,
-                refreshLibraryOnConnect = appSettings.echoLinkPreferLinkedLibrary,
-            )
-        }
-    }
     val lastFmApiKey = appSettings.lastFmApiKey?.takeIf { it.isNotBlank() }
         ?: LastFmApiConfig.API_KEY.takeIf { it.isNotBlank() }
     val lastFmSharedSecret = appSettings.lastFmSharedSecret?.takeIf { it.isNotBlank() }
@@ -595,16 +561,13 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     }
 
     EchoDiscordPresenceBridge(
-        enabled = appSettings.discordPresenceViaPcEnabled,
+        enabled = false, // No PC forwarding transport is implemented yet.
         snapshots = viewModel.discordPresenceSnapshot,
         publish = remoteClient::publishMobileDiscordPresence,
     )
 
     LaunchedEffect(remoteStatus.endpoint, remoteStatus.connectionState) {
         val endpoint = remoteStatus.endpoint
-        if (endpoint != null && remoteStatus.connectionState == EchoRemoteConnectionState.Connected) {
-            saveEchoLinkEndpointIfReady(endpoint)
-        }
         EchoArtworkRequestHeadersRegistry.replaceEchoLinkAuthorization(
             baseUrl = endpoint?.let { "${it.scheme}://${it.host}:${it.port}" },
             token = endpoint?.token,
@@ -775,6 +738,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 showLyricsControlDeck = appSettings.showLyricsControlDeck,
                                 onlineLyricsEnabled = appSettings.onlineLyricsEnabled,
                                 usbExclusiveEnabled = appSettings.usbExclusiveEnabled,
+                                usbBitPerfectEnabled = appSettings.usbBitPerfectEnabled,
                                 usbExclusiveAutoRequestOnStartup = appSettings.usbExclusiveAutoRequestOnStartup,
                                 usbExclusiveTestResult = usbExclusiveTestResult,
                                 customBackgroundMode = appSettings.customBackgroundMode,
@@ -814,6 +778,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onShowLyricsControlDeckChange = viewModel::setShowLyricsControlDeck,
                                 onOnlineLyricsEnabledChange = viewModel::setOnlineLyricsEnabled,
                                 onUsbExclusiveEnabledChange = viewModel::setUsbExclusiveEnabled,
+                                onUsbBitPerfectEnabledChange = viewModel::setUsbBitPerfectEnabled,
                                 onUsbExclusiveAutoRequestOnStartupChange = viewModel::setUsbExclusiveAutoRequestOnStartup,
                                 onTestUsbExclusiveDriver = viewModel::testUsbExclusiveDriver,
                                 onPickImageBackground = { backgroundImageLauncher.launch(arrayOf("image/*")) },
@@ -892,7 +857,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             // 只有真正停留在 Connect 页才启动 LAN 发现;
                             // 邻页预组合(beyondViewportPageCount=1)不应常驻 NSD 扫描
                             val connectPageSettled =
-                                tabPagerState.settledPage == EchoPagerPage.Connect.ordinal
+                                appVisible && tabPagerState.settledPage == EchoPagerPage.Connect.ordinal
                             DisposableEffect(connectPageSettled) {
                                 if (!connectPageSettled) {
                                     return@DisposableEffect onDispose {}
@@ -947,7 +912,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                                 viewModel.playbackPosition.value.positionMs,
                                             ) {
                                                 val live = viewModel.playbackStatus.value
-                                                if (live.track?.id == phone.id && live.isPlaying) viewModel.playPause()
+                                                if (live.track?.id == phone.id && live.isPlaying) viewModel.pause()
                                             }
                                         }
                                     }

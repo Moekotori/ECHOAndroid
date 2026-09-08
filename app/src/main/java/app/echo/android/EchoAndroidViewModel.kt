@@ -244,6 +244,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                     settings.usbExclusiveEnabled
                 }
                 playbackController.setUsbExclusiveEnabled(shouldEnableUsbExclusive)
+                playbackController.setUsbBitPerfectEnabled(settings.usbBitPerfectEnabled)
                 val equalizerSignature =
                     "${settings.equalizerEnabled}|${settings.equalizerPreset}|${settings.equalizerBandGains}|" +
                         "${settings.equalizerPreampDb}|${settings.equalizerParametric}|${settings.equalizerSourceLabel}|" +
@@ -517,6 +518,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun pause() {
+        playbackController.pause()
+    }
+
     fun playPause() {
         playbackController.playPause()
     }
@@ -733,10 +738,15 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun setUsbExclusiveEnabled(enabled: Boolean) {
+        if (!enabled) playbackController.setUsbBitPerfectEnabled(false)
         playbackController.setUsbExclusiveEnabled(enabled)
         updateSettings {
             setUsbExclusiveEnabled(enabled)
         }
+    }
+
+    fun setUsbBitPerfectEnabled(enabled: Boolean) {
+        updateSettings { setUsbBitPerfectEnabled(enabled) }
     }
 
     fun setUsbExclusiveAutoRequestOnStartup(enabled: Boolean) {

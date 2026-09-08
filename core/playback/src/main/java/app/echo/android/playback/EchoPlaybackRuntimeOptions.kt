@@ -40,6 +40,24 @@ fun interface EchoPlaybackStreamResolver {
 
 @UnstableApi
 object EchoPlaybackProcessRuntime {
+    @Volatile
+    var usbBitPerfectEnabled: Boolean = false
+        private set
+
+    private val _bitPerfectStates = MutableStateFlow(EchoBitPerfectSnapshot(app.echo.android.model.playback.EchoBitPerfectState.Off))
+    val bitPerfectStates: StateFlow<app.echo.android.model.playback.EchoBitPerfectStatus> = _bitPerfectStates.asStateFlow()
+    internal var bitPerfectStatus: EchoBitPerfectSnapshot
+        get() = _bitPerfectStates.value
+        set(value) { _bitPerfectStates.value = value }
+
+    fun setUsbBitPerfectEnabled(enabled: Boolean) {
+        if (usbBitPerfectEnabled == enabled) return
+        usbBitPerfectEnabled = enabled
+        bitPerfectStatus = EchoBitPerfectSnapshot(if (enabled) app.echo.android.model.playback.EchoBitPerfectState.Waiting
+            else app.echo.android.model.playback.EchoBitPerfectState.Off)
+        enginePolicy?.applyReplayGain()
+        reconfigureAudioPipeline(forceSinkReset = true)
+    }
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val resolveMutex = Mutex()
 

@@ -1,5 +1,6 @@
 package app.echo.android.feature.settings
 
+import app.echo.android.model.playback.EchoBitPerfectState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import app.echo.android.model.playback.*
@@ -71,6 +72,7 @@ internal fun EchoPlaybackDiagnostics.processingLabel(): String =
 @Composable
 internal fun EchoPlaybackDiagnostics.signalIntegrityLabel(equalizerState: EchoEqualizerState): String =
     when {
+        usbBitPerfectEnabled -> bitPerfectReadout(equalizerState)
         equalizerState.active -> stringResource(R.string.diag_integrity_eq)
         usbBitPerfectActive -> stringResource(R.string.diag_integrity_usb)
         offloadActive -> stringResource(R.string.diag_integrity_offload)
@@ -80,13 +82,18 @@ internal fun EchoPlaybackDiagnostics.signalIntegrityLabel(equalizerState: EchoEq
 
 @Composable
 internal fun EchoPlaybackDiagnostics.bitPerfectReadout(equalizerState: EchoEqualizerState): String =
-    when {
-        equalizerState.active -> stringResource(R.string.diag_bitperfect_no_eq)
-        usbBitPerfectActive -> stringResource(R.string.diag_bitperfect_yes_usb)
-        offloadActive -> stringResource(R.string.diag_unreported)
-        usbExclusiveEnabled -> stringResource(R.string.diag_bitperfect_wait_usb)
-        else -> stringResource(R.string.diag_bitperfect_no_mixer)
-    }
+    stringResource(when (bitPerfectState) {
+        EchoBitPerfectState.Off -> R.string.bitperfect_off
+        EchoBitPerfectState.Waiting -> R.string.bitperfect_waiting
+        EchoBitPerfectState.Direct -> R.string.bitperfect_direct
+        EchoBitPerfectState.UnsupportedSource -> R.string.bitperfect_source
+        EchoBitPerfectState.UsbUnavailable -> R.string.bitperfect_usb
+        EchoBitPerfectState.UnsupportedFormat -> R.string.bitperfect_format
+        EchoBitPerfectState.ClockUnverified -> R.string.bitperfect_clock
+        EchoBitPerfectState.VolumeChanged -> R.string.bitperfect_volume
+        EchoBitPerfectState.TransportError -> R.string.bitperfect_transport
+        EchoBitPerfectState.PlaybackError -> R.string.bitperfect_playback_error
+    })
 
 internal fun formatSampleRate(sampleRateHz: Int): String =
     if (sampleRateHz >= 1000) {

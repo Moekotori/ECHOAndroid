@@ -397,13 +397,13 @@ private inline fun <reified T> Intent.getParcelableExtraCompat(name: String): T?
 @UnstableApi
 fun EchoPlaybackDiagnostics.withUsbAudioStatus(status: EchoUsbAudioStatus): EchoPlaybackDiagnostics {
     val exclusive = EchoPlaybackProcessRuntime.usbExclusiveSinkStatus
+    val strict = EchoPlaybackProcessRuntime.bitPerfectStatus
     val exclusiveStreaming = exclusive?.streaming == true
     val exclusiveRoute = exclusive
         ?.takeIf { it.streaming && status.deviceName != null }
         ?.let { "USB DAC: ${status.deviceName} / exclusive ${it.transport ?: "pcm"}" }
     return copy(
         outputRoute = exclusiveRoute ?: status.outputRoute,
-        offloadActive = status.bitPerfectActive,
         usbExclusiveEnabled = status.exclusiveEnabled,
         usbConnected = status.connected,
         usbDeviceName = status.deviceName,
@@ -417,8 +417,15 @@ fun EchoPlaybackDiagnostics.withUsbAudioStatus(status: EchoUsbAudioStatus): Echo
         usbAudioEndpointSummary = status.endpointSummary,
         usbAudioDescriptorError = status.descriptorError,
         usbBitPerfectSupported = status.bitPerfectSupported,
-        usbBitPerfectActive = status.bitPerfectActive ||
-            EchoPlaybackProcessRuntime.usbExclusiveSinkStatus?.streaming == true,
+        usbBitPerfectActive = EchoPlaybackProcessRuntime.usbBitPerfectEnabled && exclusiveStreaming &&
+            strict.state == app.echo.android.model.playback.EchoBitPerfectState.Direct,
+        usbBitPerfectEnabled = EchoPlaybackProcessRuntime.usbBitPerfectEnabled,
+        bitPerfectState = if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled) strict.state
+            else app.echo.android.model.playback.EchoBitPerfectState.Off,
+        bitPerfectSourceBits = strict.sourceBits,
+        bitPerfectDecodedBits = strict.decodedBits,
+        bitPerfectOutputBits = strict.outputBits,
+        bitPerfectSampleRateHz = strict.sampleRateHz,
         usbExclusiveStreaming = exclusiveStreaming,
         usbExclusiveTransport = exclusive?.transport,
         usbSupportedSampleRates = status.supportedSampleRates,

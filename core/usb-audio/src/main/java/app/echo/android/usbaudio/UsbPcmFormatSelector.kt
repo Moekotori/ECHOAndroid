@@ -1,6 +1,17 @@
 package app.echo.android.usbaudio
 
 object UsbPcmFormatSelector {
+    // Strict mode permits lossless widening, never unknown precision or narrowing.
+    fun chooseBitPerfectFormat(descriptor: UsbAudioDescriptorInfo, spec: UsbPcmFormatSpec): UsbAudioStreamingFormat? =
+        candidates(descriptor, spec, requireBitDepth = false)
+            .filter { it.isIsochronousOut && it.channelCount == spec.channelCount }
+            .filter { it.formatType == 1 && it.pcmIntegerSupported == true }
+            .filter { (it.bitResolution ?: 0) in spec.bitDepth..32 }
+            .filter { it.bitResolution in listOf(16, 24, 32) && it.subslotSize in 2..4 }
+            .filter { it.bitResolution!! <= it.subslotSize!! * 8 }
+            .sortedBy { it.bitResolution }
+            .firstOrNull()
+
     fun chooseFormat(
         descriptor: UsbAudioDescriptorInfo,
         spec: UsbPcmFormatSpec,

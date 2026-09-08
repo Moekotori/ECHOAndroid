@@ -279,4 +279,21 @@
     <string name="diag_eq_wait_system">%1$s · waiting for playback-pipeline EQ</string>
     <string name="diag_eq_off">Off · %1$d bands</string>
     <string name="settings_discord_unavailable">Not available yet. Phone playback forwarding to PC Discord is not implemented.</string>
+    <string name="settings_usb_bitperfect">USB bit-perfect mode</string>
+    <string name="settings_usb_bitperfect_detail">Enables USB exclusive output. Bypasses EQ, correction, gain, speed and silence skipping. Digital volume is fixed at 100%; adjust volume on the DAC before enabling. Unsupported tracks or DAC formats stop playback.</string>
+    <string name="bitperfect_off">Strict mode off</string>
+    <string name="bitperfect_waiting">Waiting for strict USB playback</string>
+    <string name="bitperfect_direct">Integer direct path active</string>
+    <string name="bitperfect_source">Blocked: requires 16/24-bit WAV, FLAC or ALAC</string>
+    <string name="bitperfect_usb">Blocked: connect and authorize USB DAC</string>
+    <string name="bitperfect_format">Blocked: no lossless USB format</string>
+    <string name="bitperfect_clock">Blocked: DAC clock could not be verified</string>
+    <string name="bitperfect_volume">Blocked: digital volume changed</string>
+    <string name="bitperfect_transport">Blocked: USB transport failed</string>
+    <string name="bitperfect_bypass">Processing bypassed</string>
+    <string name="bitperfect_bypass_detail">EQ, gain and speed processing are bypassed</string>
+    <string name="bitperfect_precision">Source → decoded → USB</string>
+    <string name="bitperfect_precision_value">%1$d-bit → %2$d-bit integer → %3$d-bit</string>
+    <string name="bitperfect_clock_label">Verified USB sample rate</string>
+    <string name="bitperfect_playback_error">Stopped: playback failed</string>
 </resources>

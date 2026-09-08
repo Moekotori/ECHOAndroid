@@ -58,7 +58,7 @@ internal interface EchoLinkTransport {
     suspend fun fetchLyrics(endpoint: EchoRemoteEndpoint, trackId: String): EchoRemoteLyrics?
 }
 
-internal class EchoLinkHttpException(message: String) : IOException(message)
+internal class EchoLinkHttpException(message: String, val statusCode: Int? = null) : IOException(message)
 
 internal class OkHttpEchoLinkTransport(
     private val client: OkHttpClient = OkHttpClient.Builder()
@@ -255,7 +255,7 @@ internal class OkHttpEchoLinkTransport(
                     response.use {
                         val body = it.body?.string().orEmpty()
                         if (!it.isSuccessful) {
-                            throw EchoLinkHttpException("PC ECHO request failed (${it.code}): ${body.take(180).ifBlank { it.message }}")
+                            throw EchoLinkHttpException("PC ECHO request failed (${it.code}): ${body.take(180).ifBlank { it.message }}", it.code)
                         }
                         body
                     }

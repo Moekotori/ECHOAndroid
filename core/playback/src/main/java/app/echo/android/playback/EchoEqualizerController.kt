@@ -130,7 +130,7 @@ class EchoEqualizerController {
         processor.setRuntime(runtime)
         if (runtime.shouldProcess != lastShouldProcess) {
             lastShouldProcess = runtime.shouldProcess
-            EchoPlaybackProcessRuntime.reconfigureAudioPipeline()
+            if (!EchoPlaybackProcessRuntime.usbBitPerfectEnabled) EchoPlaybackProcessRuntime.reconfigureAudioPipeline()
         }
         val nextState = EchoEqualizerState(
             enabled = desiredEnabled,
