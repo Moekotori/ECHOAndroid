@@ -329,7 +329,7 @@
     <string name="settings_gapless">Gapless playback</string>
     <string name="settings_gapless_detail">Enabled by default: preloads the next track and keeps compatible output sessions. Sample-rate changes or missing network data can still interrupt playback.</string>
     <string name="settings_track_fade">Track fade in / out</string>
-    <string name="settings_track_fade_detail">Gradually raises the opening and lowers the ending. Tracks do not overlap; unknown-duration streams only fade in.</string>
+    <string name="settings_track_fade_detail">Gradually raises the opening and lowers the ending. Tracks do not overlap. Live audio bypasses fades; unknown-duration tracks only fade in.</string>
     <string name="settings_track_fade_bypass">Saved, but bypassed in strict bit-perfect mode.</string>
     <string name="settings_track_fade_duration">Fade duration</string>
     <string name="settings_track_fade_seconds">%.1f s</string>

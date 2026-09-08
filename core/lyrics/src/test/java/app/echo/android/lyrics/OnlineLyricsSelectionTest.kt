@@ -133,4 +133,34 @@ class OnlineLyricsSelectionTest {
         assertEquals(0, downloads)
     }
 
+
+    @Test fun sourceAliasesAndOneBilingualFallbackPreserveTheOriginalIdentity() {
+        var searches = 0
+        var downloads = 0
+        val resolver = OnlineLyricsResolver { url, _ -> when {
+            url.contains("music.163.com/api/search") -> {
+                searches++
+                if (searches == 1) searchResponse() else searchResponse(song(1, title = "Spring Day").apply {
+                    put("alias", JSONArray().put("봄날"))
+                    put("artists", JSONArray().put(JSONObject().put("name", "IU").put("alias", JSONArray().put("아이유"))))
+                })
+            }
+            url.contains("song/lyric") -> { downloads++; lyricResponse }
+            else -> error("Confirmed match needs no fallback provider")
+        } }
+        assertNotNull(resolver.loadForTrack(request.copy(title = "봄날 (Spring Day)", artist = "아이유 (IU)")))
+        assertEquals(2, searches)
+        assertEquals(1, downloads)
+    }
+
+    @Test fun bilingualSearchFallbackIsBoundedWhenThereAreNoMatches() {
+        var searches = 0
+        val resolver = OnlineLyricsResolver { url, _ ->
+            searches++
+            if (url.contains("music.163.com")) searchResponse() else "[]"
+        }
+        assertNull(resolver.loadForTrack(request.copy(title = "봄날 (Spring Day)", artist = "아이유 (IU)")))
+        assertEquals(4, searches)
+    }
+
 }

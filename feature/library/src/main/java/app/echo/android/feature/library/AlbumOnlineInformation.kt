@@ -64,64 +64,68 @@ internal fun AlbumOnlineInformation(album: AlbumSummary) {
         }
     }
     val colors = MaterialTheme.colorScheme
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.album_online_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            if (loading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-            else TextButton(onClick = { attempt++ }) { Text(stringResource(R.string.album_online_refresh)) }
-        }
-        val result = info
-        when {
-            loading && result == null -> Text(stringResource(R.string.album_online_loading), color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            failed && result == null -> Text(stringResource(R.string.album_online_error), color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-            result == null -> Text(stringResource(R.string.album_online_no_match), color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-            else -> {
-                if (result.stale || failed) Text(stringResource(R.string.album_online_stale), color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                else if (result.partial) Text(stringResource(R.string.album_online_partial), color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                val description = result.description
-                if (description != null) {
-                    Text(description, style = MaterialTheme.typography.bodyMedium,
-                        maxLines = if (expanded) Int.MAX_VALUE else 5, overflow = TextOverflow.Ellipsis)
-                    TextButton(onClick = { expanded = !expanded }) {
-                        Text(stringResource(if (expanded) R.string.album_online_less else R.string.album_online_more))
+    CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides colors.onSurface) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.album_online_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                if (loading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                else TextButton(onClick = { attempt++ }) { Text(stringResource(R.string.album_online_refresh)) }
+            }
+            val result = info
+            when {
+                loading && result == null -> Text(stringResource(R.string.album_online_loading), color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                failed && result == null -> Text(stringResource(R.string.album_online_error), color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                result == null -> Text(stringResource(R.string.album_online_no_match), color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                else -> {
+                    if (result.stale || failed) Text(stringResource(R.string.album_online_stale), color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    else if (result.partial) Text(stringResource(R.string.album_online_partial), color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    val description = result.description
+                    if (description != null) {
+                        Text(description, style = MaterialTheme.typography.bodyMedium,
+                            maxLines = if (expanded) Int.MAX_VALUE else 5, overflow = TextOverflow.Ellipsis)
+                        TextButton(onClick = { expanded = !expanded }) {
+                            Text(stringResource(if (expanded) R.string.album_online_less else R.string.album_online_more))
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            result.wikipediaUrl?.let { OnlineSourceLink("Wikipedia · ${result.wikipediaLanguage}", it) }
+                            OnlineSourceLink("CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0/")
+                        }
+                        Text(stringResource(R.string.album_online_attribution), color = colors.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                    } else if (!result.partial) {
+                        Text(stringResource(R.string.album_online_no_wiki), color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     }
-                    result.wikipediaUrl?.let { OnlineSourceLink("Wikipedia · ${result.wikipediaLanguage}", it) }
-                    Text(stringResource(R.string.album_online_attribution), color = colors.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
-                    OnlineSourceLink("CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0/")
-                } else if (!result.partial) {
-                    Text(stringResource(R.string.album_online_no_wiki), color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                }
-                Text(stringResource(R.string.album_online_release), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                Text("${result.releaseTitle} · ${result.artist}", style = MaterialTheme.typography.bodyMedium)
-                Text(stringResource(R.string.album_online_release_note), color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                result.date?.let { OnlineFact(stringResource(R.string.album_online_date), it) }
-                result.country?.let { OnlineFact(stringResource(R.string.album_online_country), it) }
-                if (result.labels.isNotEmpty()) OnlineFact(stringResource(R.string.album_online_label), result.labels.joinToString(" / "))
-                if (result.catalogNumbers.isNotEmpty()) OnlineFact(stringResource(R.string.album_online_catalog), result.catalogNumbers.joinToString(" / "))
-                if (result.credits.isNotEmpty()) {
-                    Text(stringResource(R.string.album_online_credits), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                    result.credits.take(if (showCredits) 24 else 4).forEach { credit ->
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(credit.name, style = MaterialTheme.typography.bodyMedium)
-                            val role = credit.role.substringBefore(" · ")
-                            val label = when (role) {
-                                "composer" -> stringResource(R.string.album_online_composer)
-                                "lyricist", "writer" -> stringResource(R.string.album_online_lyricist)
-                                "producer" -> stringResource(R.string.album_online_producer)
-                                "arranger" -> stringResource(R.string.album_online_arranger)
-                                "vocal" -> stringResource(R.string.album_online_vocal)
-                                "instrument", "performer" -> stringResource(R.string.album_online_performer)
-                                else -> role
+                    Text(stringResource(R.string.album_online_release), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text("${result.releaseTitle} · ${result.artist}", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.album_online_release_note), color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    result.date?.let { OnlineFact(stringResource(R.string.album_online_date), it) }
+                    result.country?.let { OnlineFact(stringResource(R.string.album_online_country), it) }
+                    if (result.labels.isNotEmpty()) OnlineFact(stringResource(R.string.album_online_label), result.labels.joinToString(" / "))
+                    if (result.catalogNumbers.isNotEmpty()) OnlineFact(stringResource(R.string.album_online_catalog), result.catalogNumbers.joinToString(" / "))
+                    if (result.credits.isNotEmpty()) {
+                        Text(stringResource(R.string.album_online_credits), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        result.credits.take(if (showCredits) 24 else 4).forEach { credit ->
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(credit.name, style = MaterialTheme.typography.bodyMedium)
+                                val role = credit.role.substringBefore(" · ")
+                                val label = when (role) {
+                                    "composer" -> stringResource(R.string.album_online_composer)
+                                    "lyricist", "writer" -> stringResource(R.string.album_online_lyricist)
+                                    "producer" -> stringResource(R.string.album_online_producer)
+                                    "arranger" -> stringResource(R.string.album_online_arranger)
+                                    "vocal" -> stringResource(R.string.album_online_vocal)
+                                    "instrument", "performer" -> stringResource(R.string.album_online_performer)
+                                    else -> role
+                                }
+                                Text(listOfNotNull(label + credit.role.removePrefix(role), credit.track).joinToString(" · "),
+                                    color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                             }
-                            Text(listOfNotNull(label + credit.role.removePrefix(role), credit.track).joinToString(" · "),
-                                color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        }
+                        if (result.credits.size > 4) TextButton(onClick = { showCredits = !showCredits }) {
+                            Text(stringResource(if (showCredits) R.string.album_online_less else R.string.album_online_more))
                         }
                     }
-                    if (result.credits.size > 4) TextButton(onClick = { showCredits = !showCredits }) {
-                        Text(stringResource(if (showCredits) R.string.album_online_less else R.string.album_online_more))
-                    }
+                    OnlineSourceLink(stringResource(R.string.album_online_mb_source), "https://musicbrainz.org/release/${result.releaseId}")
                 }
-                OnlineSourceLink(stringResource(R.string.album_online_mb_source), "https://musicbrainz.org/release/${result.releaseId}")
             }
         }
     }

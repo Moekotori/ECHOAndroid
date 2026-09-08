@@ -6,7 +6,7 @@ import java.security.MessageDigest
 /** Automatic downloads must be re-matched after metadata or matching policy changes. */
 object OnlineLyricsCachePolicy {
     private const val Key = "online_match_fingerprint"
-    private const val Revision = "3"
+    private const val Revision = "4"
 
     fun matches(lyrics: EchoLyrics, request: EchoLyricsSearchRequest): Boolean =
         lyrics.metadata[Key] == fingerprint(request)

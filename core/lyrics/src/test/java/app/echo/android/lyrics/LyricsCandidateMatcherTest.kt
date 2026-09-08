@@ -69,4 +69,30 @@ class LyricsCandidateMatcherTest {
         assertTrue(requireNotNull(matcher.match("Song (Japanese Ver.)", "Artist", "EP (Japanese Ver.)", 180000)).automatic)
     }
 
+
+    @Test fun acceptsExplicitBilingualNamesAndProviderAliases() {
+        val bilingual = LyricsCandidateMatcher(EchoLyricsSearchRequest("봄날 (Spring Day)", "아이유 (IU)", "Album", 180000))
+        assertTrue(requireNotNull(bilingual.match("봄날", "IU", "Album", 180000)).fast)
+        val original = LyricsCandidateMatcher(EchoLyricsSearchRequest("夜に駆ける", "歌手甲", "Album", 180000))
+        assertTrue(requireNotNull(original.match("Yoru ni Kakeru", "Artist A", "Album", 180000,
+            titleAliases = listOf("夜に駆ける"), artistAliases = listOf(listOf("Artist A", "歌手甲")))).fast)
+        assertNull(original.match("Yoru ni Kakeru", "Artist A", "Album", 180000))
+    }
+
+    @Test fun collaborationAliasesKeepEveryMemberAndCvCreditIsManualOnly() {
+        val duet = LyricsCandidateMatcher(EchoLyricsSearchRequest("曲", "歌手甲 × 歌手乙", "Album", 180000))
+        assertTrue(requireNotNull(duet.match("曲", "歌手乙 / 歌手甲", "Album", 180000)).fast)
+        assertFalse(requireNotNull(duet.match("曲", "歌手甲", "Album", 180000)).automatic)
+        val character = LyricsCandidateMatcher(EchoLyricsSearchRequest("曲", "キャラ (CV. 声優甲)", "Album", 180000))
+        assertFalse(requireNotNull(character.match("曲", "声優甲", "Album", 180000)).automatic)
+        assertTrue(requireNotNull(character.match("曲", "キャラ (CV. 声優甲)", "Album", 180000)).automatic)
+    }
+
+    @Test fun nativeVersionLabelsCannotBecomeBilingualAliases() {
+        val matcher = LyricsCandidateMatcher(EchoLyricsSearchRequest("曲", "歌手", "Album", 180000))
+        listOf("カラオケ", "ライブ", "ライヴ", "라이브", "리믹스", "어쿠스틱", "데모", "TVサイズ", "Off Vocal")
+            .forEach { assertNull(it, matcher.match("曲 ($it)", "歌手", "Album", 180000)) }
+        assertFalse(requireNotNull(matcher.match("曲 (Something)", "歌手", "Album", 195000)).automatic)
+    }
+
 }

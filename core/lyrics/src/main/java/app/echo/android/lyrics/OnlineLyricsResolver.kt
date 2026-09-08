@@ -88,6 +88,7 @@ class OnlineLyricsResolver(
 
     private fun neteaseRecords(
         request: EchoLyricsSearchRequest, matcher: LyricsCandidateMatcher, checkCancelled: () -> Unit,
+        allowFallback: Boolean = true,
     ): List<CandidateRecord> {
         val url = buildUrl("https://music.163.com/api/search/get/web", listOf(
             "s" to "${request.title} ${request.artist}", "type" to "1", "limit" to "15", "offset" to "0",
@@ -97,19 +98,28 @@ class OnlineLyricsResolver(
         checkCancelled()
         val songs = runCatching { JSONObject(response).optJSONObject("result")?.optJSONArray("songs") }
             .getOrNull() ?: return emptyList()
-        return songs.objects().take(15).mapNotNull { song ->
+        val candidates = songs.objects().take(15).mapNotNull { song ->
             val id = song.optLong("id").takeIf { it > 0 } ?: return@mapNotNull null
             val title = song.optString("name")
             val artist = song.optJSONArray("artists")?.objects()?.joinToString(" / ") { it.optString("name") }.orEmpty()
             val album = song.optJSONObject("album")?.optString("name")
             val duration = song.optLong("duration")
-            val match = matcher.match(title, artist, album, duration) ?: return@mapNotNull null
+            val artistAliases = song.optJSONArray("artists")?.objects()?.map { person ->
+                listOf(person.optString("name")) + person.lyricsAliases("alias", "trans")
+            }?.toList().orEmpty()
+            val match = matcher.match(title, artist, album, duration,
+                song.lyricsAliases("alias", "tns"), artistAliases) ?: return@mapNotNull null
             CandidateRecord("netease:$id", title, artist, album, duration, match, songId = id)
         }.distinctBy { it.id }.sortedByDescending { it.match.score }.toList()
+        if (candidates.isEmpty() && allowFallback) {
+            lyricsSearchFallback(request)?.let { return neteaseRecords(it, matcher, checkCancelled, false) }
+        }
+        return candidates
     }
 
     private fun lrclibRecords(
         request: EchoLyricsSearchRequest, matcher: LyricsCandidateMatcher, checkCancelled: () -> Unit,
+        allowFallback: Boolean = true,
     ): List<CandidateRecord> {
         // Album is ranking evidence, not a search constraint: compilation tags must not hide the song.
         val url = buildUrl("https://lrclib.net/api/search", listOf(
@@ -119,7 +129,7 @@ class OnlineLyricsResolver(
         val response = httpGet(url, LrclibHeaders) ?: return emptyList()
         checkCancelled()
         val records = runCatching { JSONArray(response) }.getOrNull() ?: return emptyList()
-        return records.objects().take(100).mapNotNull { record ->
+        val candidates = records.objects().take(100).mapNotNull { record ->
             val id = record.optLong("id").takeIf { it > 0 } ?: return@mapNotNull null
             val title = record.optString("trackName", record.optString("name"))
             val artist = record.optString("artistName")
@@ -129,6 +139,10 @@ class OnlineLyricsResolver(
             CandidateRecord("lrclib:$id", title, artist, album, duration, match,
                 synced = record.optLyricsText("syncedLyrics"), plain = record.optLyricsText("plainLyrics"))
         }.distinctBy { it.id }.toList()
+        if (candidates.isEmpty() && allowFallback) {
+            lyricsSearchFallback(request)?.let { return lrclibRecords(it, matcher, checkCancelled, false) }
+        }
+        return candidates
     }
 
     private inner class CandidateRecord(
@@ -224,3 +238,12 @@ private fun JSONArray.objects(): Sequence<JSONObject> =
 private fun JSONObject.optLyricsText(name: String): String? =
     optString(name)
         .takeIf { it.isNotBlank() && it != "null" }
+
+
+private fun JSONObject.lyricsAliases(vararg fields: String): List<String> = fields.flatMap { field ->
+    when (val value = opt(field)) {
+        is JSONArray -> (0 until minOf(value.length(), 12)).mapNotNull { (value.opt(it) as? String)?.takeIf(String::isNotBlank) }
+        is String -> listOf(value).filter(String::isNotBlank)
+        else -> emptyList()
+    }
+}

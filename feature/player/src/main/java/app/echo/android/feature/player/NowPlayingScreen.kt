@@ -1,6 +1,7 @@
 package app.echo.android.feature.player
 
 import app.echo.android.feature.player.R as L10nR
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.stringResource
 
 import androidx.compose.animation.AnimatedVisibility
@@ -24,6 +25,7 @@ import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -1889,7 +1891,7 @@ private fun LyricsToggleTile(
     onClick: () -> Unit,
 ) {
     val dark = LocalEchoDarkTheme.current
-    val active = enabled && available
+    val active = enabled
     val tileColor by animateColorAsState(
         targetValue = if (active) accent.copy(alpha = 0.28f) else if (dark) EchoGlassPanel.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.48f),
         animationSpec = tween(durationMillis = 220, easing = LyricsSettingsMotionEasing),
@@ -1902,7 +1904,7 @@ private fun LyricsToggleTile(
     )
     Column(
         modifier = modifier
-            .height(66.dp)
+            .heightIn(min = 74.dp)
             .graphicsLayer {
                 scaleX = tileScale
                 scaleY = tileScale
@@ -1913,22 +1915,21 @@ private fun LyricsToggleTile(
                 BorderStroke(1.dp, if (active) accent.copy(alpha = 0.38f) else if (dark) EchoDarkGlassBorder else Color.White.copy(alpha = 0.66f)),
                 RoundedCornerShape(18.dp),
             )
-            .then(if (available) Modifier.clickable(onClick = onClick) else Modifier)
-            .alpha(if (available) 1f else 0.56f)
+            .toggleable(value = enabled, role = Role.Switch, onValueChange = { onClick() })
+            .alpha(if (available) 1f else 0.80f)
             .padding(horizontal = 10.dp, vertical = 9.dp),
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(title, color = if (dark) Color.White else Color(0xFF2A282E), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
         Text(
-            when {
-                !available -> stringResource(L10nR.string.feature_player_no_data_5a8239)
-                enabled -> stringResource(L10nR.string.feature_player_on_3062f9)
-                else -> stringResource(L10nR.string.feature_player_off_12ac24)
-            },
+            listOfNotNull(
+                stringResource(if (enabled) L10nR.string.feature_player_on_3062f9 else L10nR.string.feature_player_off_12ac24),
+                if (!available) stringResource(L10nR.string.feature_player_no_data_5a8239) else null,
+            ).joinToString(" · "),
             color = if (dark) Color.White.copy(alpha = 0.78f) else RoonMuted,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
     }
@@ -2227,8 +2228,6 @@ private fun LyricsLineList(
                             },
                             fontWeight = FontWeight.SemiBold,
                             textAlign = textAlign,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                     line.romanization?.takeIf { showRomanization && it.isNotBlank() }?.let { romanization ->
@@ -2243,8 +2242,6 @@ private fun LyricsLineList(
                             ),
                             fontWeight = FontWeight.SemiBold,
                             textAlign = textAlign,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }

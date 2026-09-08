@@ -323,7 +323,7 @@
     <string name="settings_gapless">ギャップレス再生</string>
     <string name="settings_gapless_detail">次の曲を先読みし、互換性のある出力を維持します。サンプルレート変更や通信不足では途切れる場合があります。</string>
     <string name="settings_track_fade">曲のフェードイン／アウト</string>
-    <string name="settings_track_fade_detail">曲の始めと終わりの音量を滑らかに変えます。曲は重ねません。長さ不明の音源はフェードインのみです。</string>
+    <string name="settings_track_fade_detail">曲の始めと終わりの音量を滑らかに変えます。曲は重ねません。ライブは対象外で、長さ不明の曲はフェードインのみです。</string>
     <string name="settings_track_fade_bypass">設定は保存されますが、厳密な bit-perfect モードでは適用しません。</string>
     <string name="settings_track_fade_duration">フェード時間</string>
     <string name="settings_track_fade_seconds">%.1f 秒</string>

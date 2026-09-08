@@ -323,7 +323,7 @@
     <string name="settings_gapless">无缝播放</string>
     <string name="settings_gapless_detail">默认开启：预加载下一首并保留兼容的输出会话。切换采样率或网络数据不足时仍可能中断。</string>
     <string name="settings_track_fade">曲首淡入 / 曲尾淡出</string>
-    <string name="settings_track_fade_detail">渐强曲首、渐弱曲尾，两首歌不重叠；时长未知时仅淡入。</string>
+    <string name="settings_track_fade_detail">渐强曲首、渐弱曲尾，两首歌不重叠。直播不淡化，未知时长曲目仅淡入。</string>
     <string name="settings_track_fade_bypass">设置会保存，严格 bit-perfect 模式下不进行淡化。</string>
     <string name="settings_track_fade_duration">淡化时长</string>
     <string name="settings_track_fade_seconds">%.1f 秒</string>
