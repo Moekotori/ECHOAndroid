@@ -243,8 +243,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                 } else {
                     settings.usbExclusiveEnabled
                 }
-                playbackController.setUsbExclusiveEnabled(shouldEnableUsbExclusive)
-                playbackController.setUsbBitPerfectEnabled(settings.usbBitPerfectEnabled)
+                playbackController.setUsbOutputMode(shouldEnableUsbExclusive, settings.usbBitPerfectEnabled)
                 val equalizerSignature =
                     "${settings.equalizerEnabled}|${settings.equalizerPreset}|${settings.equalizerBandGains}|" +
                         "${settings.equalizerPreampDb}|${settings.equalizerParametric}|${settings.equalizerSourceLabel}|" +
@@ -738,7 +737,6 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun setUsbExclusiveEnabled(enabled: Boolean) {
-        if (!enabled) playbackController.setUsbBitPerfectEnabled(false)
         playbackController.setUsbExclusiveEnabled(enabled)
         updateSettings {
             setUsbExclusiveEnabled(enabled)

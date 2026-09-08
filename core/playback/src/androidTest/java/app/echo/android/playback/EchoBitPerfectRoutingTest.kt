@@ -7,6 +7,8 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.exoplayer.audio.AudioSink
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.echo.android.model.playback.EchoBitPerfectState
@@ -25,7 +27,7 @@ class EchoBitPerfectRoutingTest {
         val context = instrumentation.context
         assumeTrue((context.getSystemService(Context.USB_SERVICE) as UsbManager).deviceList.isEmpty())
         val stopped = CountDownLatch(1)
-        var audioSessionCreated = false
+        val audioTrackCreated = CountDownLatch(1)
         var player: ExoPlayer? = null
         try {
             instrumentation.runOnMainSync {
@@ -35,8 +37,10 @@ class EchoBitPerfectRoutingTest {
                     EchoRenderersFactory(context, EchoEqualizerAudioProcessor())).build()
                 player!!.addListener(object : Player.Listener {
                     override fun onPlayerError(error: PlaybackException) { stopped.countDown() }
-                    override fun onAudioSessionIdChanged(audioSessionId: Int) {
-                        if (audioSessionId > 0) audioSessionCreated = true
+                })
+                player!!.addAnalyticsListener(object : AnalyticsListener {
+                    override fun onAudioTrackInitialized(eventTime: AnalyticsListener.EventTime, audioTrackConfig: AudioSink.AudioTrackConfig) {
+                        audioTrackCreated.countDown()
                     }
                 })
                 player!!.setMediaItem(MediaItem.fromUri("asset:///bitperfect.wav"))
@@ -44,7 +48,13 @@ class EchoBitPerfectRoutingTest {
             }
             assertTrue("Strict mode must report the missing DAC", stopped.await(10, TimeUnit.SECONDS))
             assertEquals(EchoBitPerfectState.UsbUnavailable, EchoPlaybackProcessRuntime.bitPerfectStates.value.state)
-            assertFalse("Strict mode must not fall back to AudioTrack", audioSessionCreated)
+            assertEquals("Strict mode must not fall back to AudioTrack", 1L, audioTrackCreated.count)
+            instrumentation.runOnMainSync {
+                EchoPlaybackProcessRuntime.setUsbBitPerfectEnabled(false)
+                player!!.stop()
+                player!!.prepare()
+            }
+            assertTrue("Disabling strict mode restores normal output", audioTrackCreated.await(5, TimeUnit.SECONDS))
         } finally {
             instrumentation.runOnMainSync {
                 player?.release()

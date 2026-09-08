@@ -209,15 +209,15 @@ internal class PlaybackController(
         EchoPlaybackProcessRuntime.setUsbBitPerfectEnabled(enabled)
     }
 
-    fun setUsbExclusiveEnabled(enabled: Boolean) {
-        val wasEnabled = EchoPlaybackProcessRuntime.usbExclusiveEnabled
-        usbAudioMonitor.setExclusiveEnabled(enabled)
-        EchoPlaybackProcessRuntime.setUsbExclusiveEnabled(enabled)
-        if (enabled) {
+    fun setUsbExclusiveEnabled(enabled: Boolean) =
+        setUsbOutputMode(enabled, enabled && EchoPlaybackProcessRuntime.usbBitPerfectEnabled)
+
+    fun setUsbOutputMode(exclusive: Boolean, strict: Boolean) {
+        usbAudioMonitor.setExclusiveEnabled(exclusive)
+        EchoPlaybackProcessRuntime.setUsbOutputMode(exclusive, strict)
+        if (exclusive && !strict) {
             usbAudioMonitor.prepareForTrack(_playbackDiagnostics.value.diagnostics.sampleRateHz)
         }
-        if (wasEnabled == enabled) return
-        EchoPlaybackProcessRuntime.reconfigureAudioPipeline(forceSinkReset = true)
     }
 
     fun setEqualizerConfig(
@@ -700,7 +700,7 @@ internal class PlaybackController(
             val mapped = error.toEchoPlaybackError()
             stickyPlaybackError = mapped
             stickyErrorMediaId = player.currentMediaItem?.mediaId
-            stickyErrorAutoSkipped = mapped.shouldAutoSkipTrack()
+            stickyErrorAutoSkipped = !EchoPlaybackProcessRuntime.usbBitPerfectEnabled && mapped.shouldAutoSkipTrack()
             updatePlaybackCore(player, mapped)
         }
     }

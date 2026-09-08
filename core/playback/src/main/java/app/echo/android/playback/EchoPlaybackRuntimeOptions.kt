@@ -50,10 +50,14 @@ object EchoPlaybackProcessRuntime {
         get() = _bitPerfectStates.value
         set(value) { _bitPerfectStates.value = value }
 
-    fun setUsbBitPerfectEnabled(enabled: Boolean) {
-        if (usbBitPerfectEnabled == enabled) return
-        usbBitPerfectEnabled = enabled
-        bitPerfectStatus = EchoBitPerfectSnapshot(if (enabled) app.echo.android.model.playback.EchoBitPerfectState.Waiting
+    fun setUsbBitPerfectEnabled(enabled: Boolean) = setUsbOutputMode(usbExclusiveEnabled, enabled)
+
+    fun setUsbOutputMode(exclusive: Boolean, strict: Boolean) {
+        val changed = usbBitPerfectEnabled != strict || usbExclusiveEnabled != exclusive
+        if (!changed) return
+        setUsbExclusiveEnabled(exclusive)
+        usbBitPerfectEnabled = strict
+        bitPerfectStatus = EchoBitPerfectSnapshot(if (strict) app.echo.android.model.playback.EchoBitPerfectState.Waiting
             else app.echo.android.model.playback.EchoBitPerfectState.Off)
         enginePolicy?.applyReplayGain()
         reconfigureAudioPipeline(forceSinkReset = true)
@@ -152,7 +156,7 @@ object EchoPlaybackProcessRuntime {
 
     fun reconfigureAudioPipeline(forceSinkReset: Boolean = false) {
         val player = enginePolicy?.boundPlayer() ?: mediaController ?: return
-        if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) return
+        if ((player.playbackState == Player.STATE_IDLE && player.playerError == null) || player.playbackState == Player.STATE_ENDED) return
         if (forceSinkReset) {
             val index = player.currentMediaItemIndex.coerceAtLeast(0)
             val position = player.currentPosition.coerceAtLeast(0L)

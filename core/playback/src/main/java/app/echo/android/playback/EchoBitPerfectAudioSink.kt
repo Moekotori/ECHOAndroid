@@ -14,6 +14,7 @@ import app.echo.android.model.playback.EchoBitPerfectState
 import app.echo.android.usbaudio.UsbBitPerfectPacker
 import app.echo.android.usbaudio.UsbExclusivePcmOutput
 import app.echo.android.usbaudio.UsbExclusivePcmSession
+import app.echo.android.usbaudio.UsbExclusiveOutputState
 import app.echo.android.usbaudio.UsbPcmFormatSpec
 import java.nio.ByteBuffer
 
@@ -69,7 +70,7 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
             if (!opened.openResult.isReady) {
                 val state = when {
                     opened.openResult.message?.contains("clock-unverified") == true -> EchoBitPerfectState.ClockUnverified
-                    opened.openResult.state.name == "FormatUnavailable" -> EchoBitPerfectState.UnsupportedFormat
+                    opened.openResult.state == UsbExclusiveOutputState.FormatUnavailable -> EchoBitPerfectState.UnsupportedFormat
                     else -> EchoBitPerfectState.UsbUnavailable
                 }
                 opened.close()
@@ -117,14 +118,14 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
         val result = current.writePcm(pending, pendingStart, pendingEnd - pendingStart)
         val frameBytes = current.bytesPerSample * format!!.channelCount
         if (current.isDisconnected() || result.bytesWritten < 0 || result.bytesWritten % frameBytes != 0 ||
-            result.state.name !in listOf("Streaming", "Ready")) {
+            (result.state != UsbExclusiveOutputState.Streaming && result.state != UsbExclusiveOutputState.Ready)) {
             val failedFormat = format!!
             fail(EchoBitPerfectState.TransportError)
             throw AudioSink.WriteException(-1, failedFormat, false)
         }
         pendingStart += result.bytesWritten
         submittedFrames += result.bytesWritten / frameBytes
-        if (result.bytesWritten > 0) {
+        if (result.bytesWritten > 0 && EchoPlaybackProcessRuntime.bitPerfectStatus.state != EchoBitPerfectState.Direct) {
             EchoPlaybackProcessRuntime.setUsbExclusiveSinkStatus(EchoUsbExclusiveSinkStatus(
                 true, "isochronous", format!!.sampleRate, current.bitResolution, "Strict integer PCM",
             ))
@@ -159,6 +160,7 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
         session?.close(); session = null
         pendingStart = 0; pendingEnd = 0; submittedFrames = 0; firstPts = C.TIME_UNSET
         EchoPlaybackProcessRuntime.setUsbExclusiveSinkStatus(null)
+        waiting()
     }
     private fun waiting() {
         if (EchoPlaybackProcessRuntime.bitPerfectStatus.state == EchoBitPerfectState.Direct) {
@@ -182,8 +184,8 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
             C.ENCODING_PCM_24BIT, C.ENCODING_PCM_24BIT_BIG_ENDIAN -> 3
             else -> 4
         }
-        private fun isBigEndian(encoding: Int) = encoding in setOf(C.ENCODING_PCM_16BIT_BIG_ENDIAN,
-            C.ENCODING_PCM_24BIT_BIG_ENDIAN, C.ENCODING_PCM_32BIT_BIG_ENDIAN)
+        private fun isBigEndian(encoding: Int) = encoding == C.ENCODING_PCM_16BIT_BIG_ENDIAN ||
+            encoding == C.ENCODING_PCM_24BIT_BIG_ENDIAN || encoding == C.ENCODING_PCM_32BIT_BIG_ENDIAN
     }
 }
 

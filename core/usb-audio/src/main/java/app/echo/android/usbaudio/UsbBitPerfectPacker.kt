@@ -6,7 +6,7 @@ import java.nio.ByteBuffer
 object UsbBitPerfectPacker {
     fun pack(source: ByteBuffer, sourceBytes: Int, sourceBits: Int, bigEndian: Boolean,
         outputBits: Int, outputBytes: Int, destination: ByteArray, channels: Int): Int {
-        require(sourceBytes in 2..4 && sourceBits in listOf(16, 24))
+        require(sourceBytes in 2..4 && (sourceBits == 16 || sourceBits == 24))
         require(outputBits in sourceBits..32 && outputBits <= outputBytes * 8)
         require(channels in 1..2)
         val frames = minOf(source.remaining() / (sourceBytes * channels), destination.size / (outputBytes * channels))
