@@ -7,6 +7,13 @@ val localProperties = Properties().apply {
     }
 }
 
+val releaseSigningProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.isFile) {
+        file.inputStream().use(::load)
+    }
+}
+
 fun lastFmBuildValue(name: String, fallback: String = ""): String {
     val value = providers.gradleProperty(name).orNull
         ?: providers.environmentVariable(name).orNull
@@ -48,6 +55,22 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    if (releaseSigningProperties.isNotEmpty()) {
+        val releaseSigning = signingConfigs.create("release") {
+            fun signingValue(name: String): String =
+                requireNotNull(releaseSigningProperties.getProperty(name)?.takeIf { it.isNotBlank() }) {
+                    "Missing $name in local keystore.properties"
+                }
+            storeFile = rootProject.file(signingValue("storeFile"))
+            storePassword = signingValue("storePassword")
+            keyAlias = signingValue("keyAlias")
+            keyPassword = signingValue("keyPassword")
+        }
+        buildTypes.getByName("release") {
+            signingConfig = releaseSigning
+        }
     }
 
     compileOptions {
