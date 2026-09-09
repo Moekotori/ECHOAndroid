@@ -11,3 +11,12 @@ data class FolderSummary(
     val totalSizeBytes: Long,
     val latestModifiedSeconds: Long,
 )
+
+enum class FolderSortMode {
+    Path,
+    TrackCount,
+    AlbumCount,
+    Duration,
+    Size,
+    RecentlyModified,
+}

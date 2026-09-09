@@ -1,6 +1,8 @@
 package app.echo.android
 
 import app.echo.android.data.OpraHeadphoneCorrectionRepository
+import app.echo.android.model.error.EchoErrorLog
+import app.echo.android.model.error.EchoErrorSource
 import app.echo.android.model.playback.OpraHeadphoneCorrectionState
 import app.echo.android.playback.EchoEqualizerEngine
 import kotlinx.coroutines.CoroutineScope
@@ -51,9 +53,14 @@ internal class OpraSearchController(
                         found.products.isEmpty() -> text("No matching model", "未找到匹配型号", "一致する機種がありません")
                         else -> null
                     }) }
-            }.onFailure {
-                mutableState.update { state -> state.copy(loading = false,
-                    message = text("Could not load OPRA. Check the connection and retry.", "无法读取 OPRA，请检查网络后重试", "OPRA を読み込めません。接続を確認して再試行してください")) }
+            }.onFailure { error ->
+                val message = text(
+                    "Could not load OPRA. Check the connection and retry.",
+                    "无法读取 OPRA，请检查网络后重试",
+                    "OPRA を読み込めません。接続を確認して再試行してください",
+                )
+                mutableState.update { state -> state.copy(loading = false, message = message) }
+                EchoErrorLog.record(EchoErrorSource.Network, message, throwable = error)
             }
         }
     }

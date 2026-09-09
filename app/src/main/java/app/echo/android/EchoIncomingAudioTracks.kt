@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.OpenableColumns
 import app.echo.android.data.EchoLibraryRepository
+import app.echo.android.data.readLocalAudioTags
 import app.echo.android.data.toEchoTrack
 import app.echo.android.model.i18n.echoText
 import app.echo.android.model.library.EchoTrack
@@ -42,6 +43,9 @@ private fun readStandaloneIncomingTrack(context: Context, uri: Uri): EchoTrack {
         ?.takeIf { it.isNotBlank() }
         ?: uri.lastPathSegment?.substringBeforeLast('.')
         ?: echoText(en = "Unknown Track", zh = "未知曲目", ja = "不明な曲")
+    val fileTags = runCatching {
+        context.contentResolver.openInputStream(uri)?.use(::readLocalAudioTags)
+    }.getOrNull()
     val retriever = MediaMetadataRetriever()
     return try {
         retriever.setDataSource(context, uri)
@@ -59,14 +63,17 @@ private fun readStandaloneIncomingTrack(context: Context, uri: Uri): EchoTrack {
         EchoTrack(
             id = EchoIncomingAudio.incomingTrackId(uri),
             uri = uri.toString(),
-            title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-                ?.takeIf { it.isNotBlank() }
+            title = fileTags?.title?.takeIf { it.isNotBlank() }
+                ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+                    ?.takeIf { it.isNotBlank() }
                 ?: fallbackTitle,
-            artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
-                ?.takeIf { it.isNotBlank() }
+            artist = fileTags?.artist?.takeIf { it.isNotBlank() }
+                ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+                    ?.takeIf { it.isNotBlank() }
                 ?: echoText(en = "Unknown Artist", zh = "未知艺术家", ja = "不明なアーティスト"),
-            album = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
-                ?.takeIf { it.isNotBlank() },
+            album = fileTags?.album?.takeIf { it.isNotBlank() }
+                ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
+                    ?.takeIf { it.isNotBlank() },
             durationMs = durationMs,
             mimeType = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE),
             sampleRateHz = sampleRateHz,

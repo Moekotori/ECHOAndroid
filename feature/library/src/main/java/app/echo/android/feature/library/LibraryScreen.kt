@@ -31,7 +31,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
@@ -40,10 +39,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.CloudQueue
 import androidx.compose.material.icons.rounded.Devices
+import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.LibraryMusic
@@ -57,6 +58,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -94,12 +96,17 @@ import app.echo.android.design.EmptyState
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoWidthSizeClass
 import app.echo.android.design.PageChrome
+import app.echo.android.model.connect.EchoRemoteAlbum
+import app.echo.android.model.connect.EchoRemoteFolder
 import app.echo.android.model.connect.EchoRemoteLibraryState
 import app.echo.android.model.connect.EchoLinkLibraryQueryPolicy
 import app.echo.android.model.connect.EchoRemotePlaylist
 import app.echo.android.model.connect.EchoRemoteTrack
+import app.echo.android.model.library.AlbumSortMode
 import app.echo.android.model.library.AlbumSummary
+import app.echo.android.model.library.ArtistSortMode
 import app.echo.android.model.library.ArtistSummary
+import app.echo.android.model.library.FolderSortMode
 import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackMetadataUpdate
@@ -126,6 +133,7 @@ internal enum class LibraryViewMode(
     Folders(Icons.Rounded.LibraryMusic),
     Albums(Icons.Rounded.LibraryMusic),
     Artists(Icons.Rounded.Person),
+    Genres(Icons.Rounded.LibraryMusic),
     Cloud(Icons.Rounded.CloudQueue),
     Playlists(Icons.Rounded.LibraryMusic),
 }
@@ -136,6 +144,7 @@ internal fun LibraryViewMode.label(): String = when (this) {
     LibraryViewMode.Folders -> stringResource(L10nR.string.feature_library_folders_cc514a)
     LibraryViewMode.Albums -> stringResource(L10nR.string.feature_library_albums_e68c2b)
     LibraryViewMode.Artists -> stringResource(L10nR.string.feature_library_artists_1e19fb)
+    LibraryViewMode.Genres -> stringResource(L10nR.string.feature_library_genres_8c2a11)
     LibraryViewMode.Cloud -> stringResource(L10nR.string.feature_library_cloud_466e60)
     LibraryViewMode.Playlists -> stringResource(L10nR.string.feature_library_playlists_56bf76)
 }
@@ -147,6 +156,7 @@ private enum class LinkedLibraryMode(
     Albums(Icons.Rounded.LibraryMusic),
     Artists(Icons.Rounded.Person),
     Playlists(Icons.Rounded.LibraryMusic),
+    Folders(Icons.Rounded.FolderOpen),
 }
 
 @Composable
@@ -155,6 +165,7 @@ private fun LinkedLibraryMode.label(): String = when (this) {
     LinkedLibraryMode.Albums -> stringResource(L10nR.string.feature_library_albums_e68c2b)
     LinkedLibraryMode.Artists -> stringResource(L10nR.string.feature_library_artists_1e19fb)
     LinkedLibraryMode.Playlists -> stringResource(L10nR.string.feature_library_playlists_56bf76)
+    LinkedLibraryMode.Folders -> stringResource(L10nR.string.feature_library_folders_cc514a)
 }
 
 private enum class LibrarySourceMode(
@@ -183,6 +194,34 @@ internal fun LibraryTrackSortMode.label(): String = when (this) {
     LibraryTrackSortMode.Artist -> stringResource(L10nR.string.feature_library_artist_c15fae)
     LibraryTrackSortMode.Album -> stringResource(L10nR.string.feature_library_album_724bef)
     LibraryTrackSortMode.RecentlyUpdated -> stringResource(L10nR.string.feature_library_recently_updated_781ab0)
+}
+
+@Composable
+internal fun AlbumSortMode.label(): String = when (this) {
+    AlbumSortMode.Title -> stringResource(L10nR.string.feature_library_title_af1111)
+    AlbumSortMode.Artist -> stringResource(L10nR.string.feature_library_artist_b6e7ad)
+    AlbumSortMode.Year -> stringResource(L10nR.string.feature_library_year_fe373f)
+    AlbumSortMode.TrackCount -> stringResource(L10nR.string.feature_library_tracks_2d80e8)
+    AlbumSortMode.Duration -> stringResource(L10nR.string.feature_library_duration_573e08)
+    AlbumSortMode.RecentlyAdded -> stringResource(L10nR.string.feature_library_recently_added_b4e8c1)
+}
+
+@Composable
+internal fun ArtistSortMode.label(): String = when (this) {
+    ArtistSortMode.Name -> stringResource(L10nR.string.feature_library_name_57335e)
+    ArtistSortMode.AlbumCount -> stringResource(L10nR.string.feature_library_albums_e68c2b)
+    ArtistSortMode.TrackCount -> stringResource(L10nR.string.feature_library_tracks_2d80e8)
+    ArtistSortMode.Duration -> stringResource(L10nR.string.feature_library_duration_573e08)
+}
+
+@Composable
+internal fun FolderSortMode.label(): String = when (this) {
+    FolderSortMode.Path -> stringResource(L10nR.string.feature_library_name_57335e)
+    FolderSortMode.TrackCount -> stringResource(L10nR.string.feature_library_tracks_2d80e8)
+    FolderSortMode.AlbumCount -> stringResource(L10nR.string.feature_library_albums_e68c2b)
+    FolderSortMode.Duration -> stringResource(L10nR.string.feature_library_duration_573e08)
+    FolderSortMode.Size -> stringResource(L10nR.string.feature_library_size_f63a75)
+    FolderSortMode.RecentlyModified -> stringResource(L10nR.string.feature_library_recently_updated_781ab0)
 }
 
 @Composable
@@ -249,6 +288,7 @@ private sealed interface LinkedLibraryDetailTarget {
     data class Album(
         val album: AlbumSummary,
         val tracks: List<EchoRemoteTrack>,
+        val isLoading: Boolean = false,
     ) : LinkedLibraryDetailTarget
 
     data class Artist(
@@ -270,6 +310,9 @@ fun LibraryScreen(
     scanState: LibraryScanProgress,
     libraryQuery: String,
     trackSortMode: LibraryTrackSortMode,
+    albumSortMode: AlbumSortMode,
+    artistSortMode: ArtistSortMode,
+    folderSortMode: FolderSortMode,
     tracks: Flow<PagingData<EchoTrack>>,
     albums: Flow<PagingData<AlbumSummary>>,
     remoteAlbums: Flow<PagingData<AlbumSummary>>,
@@ -278,28 +321,37 @@ fun LibraryScreen(
     linkedLibraryState: StateFlow<EchoRemoteLibraryState>,
     selectedLibrarySourceId: String,
     artists: Flow<PagingData<ArtistSummary>>,
+    genres: Flow<PagingData<app.echo.android.model.library.GenreSummary>> = kotlinx.coroutines.flow.emptyFlow(),
     folders: Flow<PagingData<FolderSummary>>,
     playlists: List<EchoPlaylist>,
     showTrackAudioInfoTags: Boolean,
     selectedAlbum: AlbumSummary?,
     selectedArtist: ArtistSummary?,
+    selectedGenre: app.echo.android.model.library.GenreSummary? = null,
     selectedFolder: FolderSummary?,
     selectedPlaylist: EchoPlaylist?,
     albumDetailTracks: LazyPagingItems<EchoTrack>?,
     artistDetailTracks: LazyPagingItems<EchoTrack>?,
+    genreDetailTracks: LazyPagingItems<EchoTrack>? = null,
     folderDetailTracks: LazyPagingItems<EchoTrack>?,
     playlistDetailTracks: LazyPagingItems<EchoTrack>?,
     onRequestPermission: () -> Unit,
     onLibraryQueryChange: (String) -> Unit,
     onLibrarySourceChange: (String) -> Unit,
     onTrackSortModeChange: (LibraryTrackSortMode) -> Unit,
+    onAlbumSortModeChange: (AlbumSortMode) -> Unit,
+    onArtistSortModeChange: (ArtistSortMode) -> Unit,
+    onFolderSortModeChange: (FolderSortMode) -> Unit,
     onScanFolder: (LibraryScanOptions) -> Unit,
     onScanAll: (LibraryScanOptions) -> Unit,
     onCancelScan: () -> Unit,
     onRefreshLinkedLibrary: (String) -> Unit,
     onOpenLinkedPlaylist: (EchoRemotePlaylist) -> Unit,
+    onOpenLinkedAlbum: (EchoRemoteAlbum) -> Unit = {},
+    onRefreshLinkedFolders: (String) -> Unit = {},
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
     onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
+    onPlayLinkedQueueOnPc: (List<EchoRemoteTrack>, Int) -> Unit = { _, _ -> },
     onPlayTrack: (EchoTrack, LibraryPlaybackOrigin) -> Unit,
     onPlayNext: (EchoTrack) -> Unit = {},
     onEnqueueTrack: (EchoTrack) -> Unit = {},
@@ -310,7 +362,10 @@ fun LibraryScreen(
     onShuffleAlbum: (AlbumSummary) -> Unit,
     onPlayArtist: (ArtistSummary) -> Unit,
     onShuffleArtist: (ArtistSummary) -> Unit,
+    onOpenGenre: (app.echo.android.model.library.GenreSummary) -> Unit = {},
+    onPlayGenre: (app.echo.android.model.library.GenreSummary) -> Unit = {},
     onPlayFolder: (FolderSummary) -> Unit,
+    onShuffleFolder: (FolderSummary) -> Unit,
     onPlayPlaylist: (EchoPlaylist) -> Unit,
     onShufflePlaylist: (EchoPlaylist) -> Unit,
     onCreatePlaylist: (String) -> Unit,
@@ -325,6 +380,8 @@ fun LibraryScreen(
     onOpenFolder: (FolderSummary) -> Unit,
     onOpenPlaylist: (EchoPlaylist) -> Unit,
     onCloseDetail: () -> Unit,
+    onImportM3uPlaylist: () -> Unit = {},
+    onExportM3uPlaylist: (EchoPlaylist) -> Unit = {},
 ) {
     val playNext = onPlayNext
     val enqueueTrack = onEnqueueTrack
@@ -403,18 +460,30 @@ fun LibraryScreen(
             selectedAlbumKey = selectedLinkedAlbumKey,
             selectedSource = selectedSource,
             selectedSortMode = trackSortMode,
+            albumSortMode = albumSortMode,
+            artistSortMode = artistSortMode,
+            folderSortMode = folderSortMode,
             showTrackAudioInfoTags = showTrackAudioInfoTags,
             selectedPlaylistId = selectedLinkedPlaylistId,
             onQueryChange = onLibraryQueryChange,
             onSelectSource = ::selectSource,
             onSortModeChange = onTrackSortModeChange,
+            onAlbumSortModeChange = onAlbumSortModeChange,
+            onArtistSortModeChange = onArtistSortModeChange,
+            onFolderSortModeChange = onFolderSortModeChange,
             onSelectMode = { mode ->
                 linkedMode = mode
                 selectedLinkedAlbumKey = null
                 selectedLinkedArtistKey = null
                 selectedLinkedPlaylistId = null
+                if (mode == LinkedLibraryMode.Folders) onRefreshLinkedFolders(linkedState.folderPath)
             },
-            onOpenAlbum = { album -> selectedLinkedAlbumKey = album.albumKey },
+            onOpenAlbum = { album ->
+                selectedLinkedAlbumKey = album.albumKey
+                linkedState.albums.firstOrNull {
+                    EchoLinkLibraryQueryPolicy.remoteAlbumKey(it.id) == album.albumKey
+                }?.let(onOpenLinkedAlbum)
+            },
             selectedArtistKey = selectedLinkedArtistKey,
             onOpenArtist = { artist -> selectedLinkedArtistKey = artist.artistKey },
             onOpenPlaylist = { playlist ->
@@ -425,8 +494,10 @@ fun LibraryScreen(
             onCloseArtist = { selectedLinkedArtistKey = null },
             onClosePlaylist = { selectedLinkedPlaylistId = null },
             onRefresh = onRefreshLinkedLibrary,
+            onRefreshFolders = onRefreshLinkedFolders,
             onPlayLinkedTrack = onPlayLinkedTrack,
             onPlayLinkedQueue = onPlayLinkedQueue,
+            onPlayLinkedQueueOnPc = onPlayLinkedQueueOnPc,
             modifier = Modifier.fillMaxSize(),
         )
         return
@@ -477,6 +548,9 @@ fun LibraryScreen(
                         onSelectSource = ::selectSource,
                         selectedMode = selectedMode,
                         selectedSortMode = trackSortMode,
+                        albumSortMode = albumSortMode,
+                        artistSortMode = artistSortMode,
+                        folderSortMode = folderSortMode,
                         onSelectMode = { mode ->
                             selectedModeIndex = mode.ordinal
                             if (selectedSource == LibrarySourceMode.Cloud && mode != LibraryViewMode.Albums) {
@@ -485,6 +559,9 @@ fun LibraryScreen(
                             }
                         },
                         onSortModeChange = onTrackSortModeChange,
+                        onAlbumSortModeChange = onAlbumSortModeChange,
+                        onArtistSortModeChange = onArtistSortModeChange,
+                        onFolderSortModeChange = onFolderSortModeChange,
                     )
                     Box(modifier = Modifier.weight(1f)) {
                         val libraryTabMotion = rememberEchoContentMotion()
@@ -562,6 +639,12 @@ fun LibraryScreen(
                                 modifier = Modifier.fillMaxSize(),
                             )
 
+                            LibraryViewMode.Genres -> GenreWall(
+                                genres = genres.collectAsLazyPagingItems(),
+                                onOpenGenre = onOpenGenre,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+
                             LibraryViewMode.Cloud -> AlbumWall(
                                 albums = remoteAlbums.collectAsLazyPagingItems(),
                                 onOpenAlbum = onOpenAlbum,
@@ -575,6 +658,8 @@ fun LibraryScreen(
                                 onCreatePlaylist = onCreatePlaylist,
                                 onRenamePlaylist = onRenamePlaylist,
                                 onDeletePlaylist = onDeletePlaylist,
+                                onImportM3uPlaylist = onImportM3uPlaylist,
+                                onExportM3uPlaylist = onExportM3uPlaylist,
                                 modifier = Modifier.fillMaxSize(),
                             )
                         }
@@ -618,6 +703,29 @@ fun LibraryScreen(
                         onEnqueue = enqueueTrack,
                         modifier = Modifier.fillMaxSize(),
                     )
+                    selectedGenre != null && genreDetailTracks != null -> ArtistDetailPage(
+                        artist = ArtistSummary(
+                            artistKey = selectedGenre.genreKey,
+                            name = selectedGenre.name,
+                            artworkUri = selectedGenre.artworkUri,
+                            albumCount = selectedGenre.albumCount,
+                            trackCount = selectedGenre.trackCount,
+                            durationMs = selectedGenre.durationMs,
+                        ),
+                        tracks = genreDetailTracks,
+                        onBack = onCloseDetail,
+                        onPlayAll = { onPlayGenre(selectedGenre) },
+                        onShuffle = { onPlayGenre(selectedGenre) },
+                        onPlayTrack = { track ->
+                            onPlayTrack(track, LibraryPlaybackOrigin.Songs)
+                        },
+                        onUpdateTrackMetadata = onUpdateTrackMetadata,
+                        onImportLyrics = onImportLyricsForTrack,
+                        onPickArtwork = onPickTrackArtwork,
+                        onAddToPlaylist = { track -> addToPlaylistTrack = track },
+                        onPlayNext = playNext,
+                        onEnqueue = enqueueTrack,
+                    )
                     selectedArtist != null && artistDetailTracks != null -> ArtistDetailPage(
                         artist = selectedArtist,
                         tracks = artistDetailTracks,
@@ -640,6 +748,7 @@ fun LibraryScreen(
                         tracks = folderDetailTracks,
                         onBack = onCloseDetail,
                         onPlayAll = { onPlayFolder(selectedFolder) },
+                        onShuffle = { onShuffleFolder(selectedFolder) },
                         onPlayTrack = { track ->
                             onPlayTrack(track, LibraryPlaybackOrigin.Folder(selectedFolder.folderKey))
                         },
@@ -764,6 +873,7 @@ fun LibraryScreen(
                 tracks = target.tracks,
                 onBack = onCloseDetail,
                 onPlayAll = { onPlayFolder(target.folder) },
+                onShuffle = { onShuffleFolder(target.folder) },
                 onPlayTrack = { track ->
                     onPlayTrack(track, LibraryPlaybackOrigin.Folder(target.folder.folderKey))
                 },
@@ -896,11 +1006,17 @@ private fun LinkedEchoLibraryPage(
     selectedArtistKey: String?,
     selectedSource: LibrarySourceMode,
     selectedSortMode: LibraryTrackSortMode,
+    albumSortMode: AlbumSortMode,
+    artistSortMode: ArtistSortMode,
+    folderSortMode: FolderSortMode,
     showTrackAudioInfoTags: Boolean,
     selectedPlaylistId: String?,
     onQueryChange: (String) -> Unit,
     onSelectSource: (LibrarySourceMode) -> Unit,
     onSortModeChange: (LibraryTrackSortMode) -> Unit,
+    onAlbumSortModeChange: (AlbumSortMode) -> Unit,
+    onArtistSortModeChange: (ArtistSortMode) -> Unit,
+    onFolderSortModeChange: (FolderSortMode) -> Unit,
     onSelectMode: (LinkedLibraryMode) -> Unit,
     onOpenAlbum: (AlbumSummary) -> Unit,
     onOpenArtist: (ArtistSummary) -> Unit,
@@ -909,8 +1025,10 @@ private fun LinkedEchoLibraryPage(
     onCloseArtist: () -> Unit,
     onClosePlaylist: () -> Unit,
     onRefresh: (String) -> Unit,
+    onRefreshFolders: (String) -> Unit,
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
     onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
+    onPlayLinkedQueueOnPc: (List<EchoRemoteTrack>, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val tracks = state.tracks
@@ -928,10 +1046,13 @@ private fun LinkedEchoLibraryPage(
         normalizedQuery,
         remoteQuery,
         selectedSortMode,
+        albumSortMode,
+        artistSortMode,
         includeSortedTracks,
         includeAlbums,
         includeArtists,
         includePlaylists,
+        state.albums,
     ) {
         // 输入防抖:按键会重启本协程,连续输入只保留最后一次全量 filter/sort/拼音构建
         if (normalizedQuery.isNotEmpty()) delay(200)
@@ -942,10 +1063,13 @@ private fun LinkedEchoLibraryPage(
                 query = normalizedQuery,
                 remoteQuery = remoteQuery,
                 sortMode = selectedSortMode,
+                albumSortMode = albumSortMode,
+                artistSortMode = artistSortMode,
                 includeSortedTracks = includeSortedTracks,
                 includeAlbums = includeAlbums,
                 includeArtists = includeArtists,
                 includePlaylists = includePlaylists,
+                remoteAlbums = state.albums,
             )
         }
     }
@@ -962,9 +1086,12 @@ private fun LinkedEchoLibraryPage(
     val selectedPlaylist = remember(playlists, selectedPlaylistId) {
         playlists.firstOrNull { it.id == selectedPlaylistId }
     }
-    val selectedAlbumTracks = remember(sortedTracks, selectedAlbumKey) {
+    val remoteAlbumId = selectedAlbumKey?.let(EchoLinkLibraryQueryPolicy::remoteAlbumId)
+    val selectedAlbumTracks = remember(sortedTracks, selectedAlbumKey, state.albumTracks, remoteAlbumId) {
         if (selectedAlbumKey == null) {
             emptyList()
+        } else if (remoteAlbumId != null) {
+            state.albumTracks[remoteAlbumId].orEmpty()
         } else {
             sortedTracks.filter { it.linkedAlbumKey() == selectedAlbumKey }
         }
@@ -982,6 +1109,11 @@ private fun LinkedEchoLibraryPage(
         if (queryToSend != remoteQuery) {
             delay(300L)
             onRefresh(queryToSend)
+        }
+    }
+    LaunchedEffect(state.foldersUnavailable, selectedMode) {
+        if (state.foldersUnavailable && selectedMode == LinkedLibraryMode.Folders) {
+            onSelectMode(LinkedLibraryMode.Songs)
         }
     }
     var lastEmptyAutoRefreshQuery by remember { mutableStateOf<String?>(null) }
@@ -1010,6 +1142,7 @@ private fun LinkedEchoLibraryPage(
         selectedAlbum != null -> LinkedLibraryDetailTarget.Album(
             album = selectedAlbum,
             tracks = selectedAlbumTracks,
+            isLoading = remoteAlbumId != null && state.loadingAlbumId == remoteAlbumId,
         )
         selectedArtist != null -> LinkedLibraryDetailTarget.Artist(
             artist = selectedArtist,
@@ -1044,9 +1177,11 @@ private fun LinkedEchoLibraryPage(
             LinkedAlbumTracksPage(
                 album = target.album,
                 tracks = target.tracks,
+                isLoading = target.isLoading,
                 onBack = onCloseAlbum,
                 onPlayLinkedTrack = onPlayLinkedTrack,
                 onPlayLinkedQueue = onPlayLinkedQueue,
+                onPlayLinkedQueueOnPc = onPlayLinkedQueueOnPc,
                 modifier = Modifier.fillMaxSize(),
             )
         } else if (target is LinkedLibraryDetailTarget.Artist) {
@@ -1056,6 +1191,7 @@ private fun LinkedEchoLibraryPage(
                 onBack = onCloseArtist,
                 onPlayLinkedTrack = onPlayLinkedTrack,
                 onPlayLinkedQueue = onPlayLinkedQueue,
+                onPlayLinkedQueueOnPc = onPlayLinkedQueueOnPc,
                 modifier = Modifier.fillMaxSize(),
             )
         } else if (target is LinkedLibraryDetailTarget.Playlist) {
@@ -1067,6 +1203,7 @@ private fun LinkedEchoLibraryPage(
                 onBack = onClosePlaylist,
                 onPlayLinkedTrack = onPlayLinkedTrack,
                 onPlayLinkedQueue = onPlayLinkedQueue,
+                onPlayLinkedQueueOnPc = onPlayLinkedQueueOnPc,
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
@@ -1085,10 +1222,25 @@ private fun LinkedEchoLibraryPage(
             linkedLibraryAvailable = true,
             selectedMode = selectedMode,
             selectedSortMode = selectedSortMode,
+            albumSortMode = albumSortMode,
+            artistSortMode = artistSortMode,
+            folderSortMode = folderSortMode,
+            foldersAvailable = !state.foldersUnavailable,
             onSelectSource = onSelectSource,
             onSelectMode = onSelectMode,
             onSortModeChange = onSortModeChange,
+            onAlbumSortModeChange = onAlbumSortModeChange,
+            onArtistSortModeChange = onArtistSortModeChange,
+            onFolderSortModeChange = onFolderSortModeChange,
         )
+        errorMessage?.takeIf { it.isNotBlank() }?.let { message ->
+            Text(
+                text = message,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+            )
+        }
         if (state.isLoadingMore) {
             Text(
                 text = stringResource(L10nR.string.feature_library_loading_more_from_pc_echo_tracks_size_state_e85d63, (tracks.size).toString(), (state.totalCount).toString()),
@@ -1107,10 +1259,9 @@ private fun LinkedEchoLibraryPage(
             modifier = Modifier.weight(1f),
         ) { mode ->
         when {
-            state.isLoading -> LibraryCollectionEmpty(
+            state.isLoading && tracks.isEmpty() && albums.isEmpty() && playlists.isEmpty() -> LibraryCollectionEmpty(
                 stringResource(L10nR.string.feature_library_reading_pc_echo_library_fccbe4),
             )
-            !errorMessage.isNullOrBlank() -> LibraryCollectionEmpty(errorMessage)
             mode == LinkedLibraryMode.Songs && sortedTracks.isEmpty() -> {
                 LibraryCollectionEmpty(
                     if (query.isBlank()) {
@@ -1147,6 +1298,19 @@ private fun LinkedEchoLibraryPage(
                     },
                 )
             }
+            mode == LinkedLibraryMode.Folders && state.loadingFolderPath != null &&
+                state.folders.isEmpty() && state.folderTracks.isEmpty() -> {
+                LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_reading_pc_echo_library_fccbe4))
+            }
+            mode == LinkedLibraryMode.Folders && state.folders.isEmpty() && state.folderTracks.isEmpty() -> {
+                LibraryCollectionEmpty(
+                    if (query.isBlank()) {
+                        stringResource(L10nR.string.feature_library_pc_echo_has_no_folders_to_show_9e12b8)
+                    } else {
+                        stringResource(L10nR.string.feature_library_pc_echo_has_no_matching_folders_4c90d1)
+                    },
+                )
+            }
             mode == LinkedLibraryMode.Songs -> LinkedTrackList(
                 tracks = sortedTracks,
                 onPlayLinkedTrack = onPlayLinkedTrack,
@@ -1168,6 +1332,17 @@ private fun LinkedEchoLibraryPage(
                 onOpenPlaylist = onOpenPlaylist,
                 modifier = Modifier.fillMaxSize(),
             )
+            mode == LinkedLibraryMode.Folders -> LinkedFolderBrowser(
+                path = state.folderPath,
+                folders = state.folders,
+                tracks = state.folderTracks,
+                sortMode = folderSortMode,
+                onOpenFolder = onRefreshFolders,
+                onPlayLinkedTrack = onPlayLinkedTrack,
+                onPlayLinkedQueue = onPlayLinkedQueue,
+                onPlayLinkedQueueOnPc = onPlayLinkedQueueOnPc,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
             }
         }
@@ -1181,16 +1356,34 @@ private fun LinkedLibraryHeader(
     linkedLibraryAvailable: Boolean,
     selectedMode: LinkedLibraryMode,
     selectedSortMode: LibraryTrackSortMode,
+    albumSortMode: AlbumSortMode,
+    artistSortMode: ArtistSortMode,
+    folderSortMode: FolderSortMode,
+    foldersAvailable: Boolean,
     onSelectSource: (LibrarySourceMode) -> Unit,
     onSelectMode: (LinkedLibraryMode) -> Unit,
     onSortModeChange: (LibraryTrackSortMode) -> Unit,
+    onAlbumSortModeChange: (AlbumSortMode) -> Unit,
+    onArtistSortModeChange: (ArtistSortMode) -> Unit,
+    onFolderSortModeChange: (FolderSortMode) -> Unit,
 ) {
+    val modes = if (foldersAvailable) {
+        LinkedLibraryMode.entries
+    } else {
+        LinkedLibraryMode.entries.filter { it != LinkedLibraryMode.Folders }
+    }
+    val selectedIndex = modes.indexOf(selectedMode).coerceAtLeast(0)
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.weight(1f)) {
-            LibraryTextTabs(LinkedLibraryMode.entries.map { it.label() }, selectedMode.ordinal,
-                { onSelectMode(LinkedLibraryMode.entries[it]) })
+            LibraryTextTabs(modes.map { it.label() }, selectedIndex, { onSelectMode(modes[it]) })
         }
-        if (selectedMode == LinkedLibraryMode.Songs) LibraryTrackSortMenu(selectedSortMode, onSortModeChange)
+        when (selectedMode) {
+            LinkedLibraryMode.Songs -> LibraryTrackSortMenu(selectedSortMode, onSortModeChange)
+            LinkedLibraryMode.Albums -> LibraryAlbumSortMenu(albumSortMode, onAlbumSortModeChange)
+            LinkedLibraryMode.Artists -> LibraryArtistSortMenu(artistSortMode, onArtistSortModeChange)
+            LinkedLibraryMode.Folders -> LibraryFolderSortMenu(folderSortMode, onFolderSortModeChange)
+            LinkedLibraryMode.Playlists -> Unit
+        }
     }
 }
 
@@ -1311,6 +1504,7 @@ private fun LinkedPlaylistTracksPage(
     onBack: () -> Unit,
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
     onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
+    onPlayLinkedQueueOnPc: (List<EchoRemoteTrack>, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LibraryDetailFrame(
@@ -1368,15 +1562,25 @@ private fun LinkedPlaylistTracksPage(
             tracks.isEmpty() -> LibraryCollectionEmpty(
                 stringResource(L10nR.string.feature_library_this_pc_echo_playlist_has_no_playable_tracks_b480ec),
             )
-            else -> LinkedTrackList(
-                tracks = tracks,
-                onPlayLinkedTrack = { track ->
-                    val index = tracks.indexOfFirst { it.id == track.id }.coerceAtLeast(0)
-                    onPlayLinkedQueue(tracks, index)
-                },
-                showAudioInfoTags = false,
-                modifier = Modifier.weight(1f),
-            )
+            else -> {
+                if (tracks.isNotEmpty()) {
+                    TextButton(
+                        onClick = { onPlayLinkedQueueOnPc(tracks, 0) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(L10nR.string.feature_library_play_on_pc_7c21a4))
+                    }
+                }
+                LinkedTrackList(
+                    tracks = tracks,
+                    onPlayLinkedTrack = { track ->
+                        val index = tracks.indexOfFirst { it.id == track.id }.coerceAtLeast(0)
+                        onPlayLinkedQueue(tracks, index)
+                    },
+                    showAudioInfoTags = false,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
 }
@@ -1388,10 +1592,10 @@ private fun LinkedAlbumWall(
     modifier: Modifier = Modifier,
 ) {
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(148.dp),
+        columns = LibraryWallGridCells,
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
         contentPadding = PaddingValues(bottom = LibraryBottomControlsPadding),
     ) {
         gridItems(
@@ -1410,10 +1614,10 @@ private fun LinkedArtistWall(
     modifier: Modifier = Modifier,
 ) {
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(148.dp),
+        columns = LibraryWallGridCells,
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
         contentPadding = PaddingValues(top = 6.dp, bottom = LibraryBottomControlsPadding),
     ) {
         gridItems(
@@ -1429,14 +1633,33 @@ private fun LinkedArtistWall(
 private fun LinkedAlbumTracksPage(
     album: AlbumSummary,
     tracks: List<EchoRemoteTrack>,
+    isLoading: Boolean,
     onBack: () -> Unit,
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
     onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
+    onPlayLinkedQueueOnPc: (List<EchoRemoteTrack>, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val albumTracks = remember(tracks) { tracks.map { it.toEchoTrack() } }
     val remoteTracksByUiId = remember(tracks, albumTracks) {
         tracks.zip(albumTracks).associate { (remote, uiTrack) -> uiTrack.id to remote }
+    }
+    if (isLoading && tracks.isEmpty()) {
+        LibraryDetailFrame(
+            actions = {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        Icons.Rounded.Close,
+                        contentDescription = stringResource(L10nR.string.feature_library_back_to_pc_echo_playlists_499312),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            modifier = modifier,
+        ) {
+            LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_reading_pc_echo_library_fccbe4))
+        }
+        return
     }
     AlbumDetailListPage(
         album = album,
@@ -1446,6 +1669,7 @@ private fun LinkedAlbumTracksPage(
         onShuffle = {
             if (tracks.isNotEmpty()) onPlayLinkedQueue(tracks.shuffled(), 0)
         },
+        onPlayOnPc = { if (tracks.isNotEmpty()) onPlayLinkedQueueOnPc(tracks, 0) },
         onPlayTrack = { track ->
             val remote = remoteTracksByUiId[track.id] ?: return@AlbumDetailListPage
             val index = tracks.indexOfFirst { it.id == remote.id }.coerceAtLeast(0)
@@ -1462,6 +1686,7 @@ private fun LinkedArtistTracksPage(
     onBack: () -> Unit,
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
     onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
+    onPlayLinkedQueueOnPc: (List<EchoRemoteTrack>, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val artistTracks = remember(tracks) { tracks.map { it.toEchoTrack() } }
@@ -1476,6 +1701,7 @@ private fun LinkedArtistTracksPage(
         onShuffle = {
             if (tracks.isNotEmpty()) onPlayLinkedQueue(tracks.shuffled(), 0)
         },
+        onPlayOnPc = { if (tracks.isNotEmpty()) onPlayLinkedQueueOnPc(tracks, 0) },
         onPlayTrack = { track ->
             val remote = remoteTracksByUiId[track.id] ?: return@ArtistDetailListPage
             val index = tracks.indexOfFirst { it.id == remote.id }.coerceAtLeast(0)
@@ -1483,6 +1709,70 @@ private fun LinkedArtistTracksPage(
         },
         modifier = modifier,
     )
+}
+
+@Composable
+private fun LinkedFolderBrowser(
+    path: String,
+    folders: List<EchoRemoteFolder>,
+    tracks: List<EchoRemoteTrack>,
+    sortMode: FolderSortMode,
+    onOpenFolder: (String) -> Unit,
+    onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
+    onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
+    onPlayLinkedQueueOnPc: (List<EchoRemoteTrack>, Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val parentPath = EchoLinkLibraryQueryPolicy.parentFolderPath(path)
+    val sortedFolders = remember(folders, sortMode) { folders.sortedForLinkedLibrary(sortMode) }
+    Column(modifier.fillMaxSize()) {
+        if (path.isNotBlank()) {
+            TextButton(onClick = { onOpenFolder(parentPath) }) {
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(L10nR.string.feature_library_open_parent_folder_2a11c0))
+            }
+        }
+        if (tracks.isNotEmpty()) {
+            TextButton(
+                onClick = { onPlayLinkedQueueOnPc(tracks, 0) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(L10nR.string.feature_library_play_on_pc_7c21a4))
+            }
+        }
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth().weight(1f),
+            contentPadding = PaddingValues(bottom = LibraryBottomControlsPadding),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            items(sortedFolders, key = { folder -> folder.path }) { folder ->
+                LinkedPlaylistRow(
+                    playlist = EchoRemotePlaylist(
+                        id = folder.path,
+                        name = folder.name,
+                        artworkUrl = folder.artworkUrl,
+                        trackCount = folder.trackCount,
+                        sourceLabel = folder.path,
+                    ),
+                    onOpen = { onOpenFolder(folder.path) },
+                )
+            }
+            items(
+                tracks,
+                key = { track -> track.id ?: "${track.title}-${track.artist}" },
+            ) { track ->
+                TrackRow(
+                    track = track.toEchoTrack(),
+                    onClick = {
+                        val index = tracks.indexOfFirst { it.id == track.id }.coerceAtLeast(0)
+                        onPlayLinkedQueue(tracks, index)
+                    },
+                    showAudioInfoTags = false,
+                )
+            }
+        }
+    }
 }
 
 private fun EchoRemoteTrack.toEchoTrack(): EchoTrack =
@@ -1509,12 +1799,71 @@ private fun LibraryTrackSortMenu(
     selectedSortMode: LibraryTrackSortMode,
     onSortModeChange: (LibraryTrackSortMode) -> Unit,
 ) {
+    LibrarySortMenu(
+        selected = selectedSortMode,
+        options = LibraryTrackSortMode.entries,
+        label = { it.label() },
+        contentDescription = stringResource(L10nR.string.feature_library_set_track_sort_order_4053c0),
+        onSelect = onSortModeChange,
+    )
+}
+
+@Composable
+private fun LibraryAlbumSortMenu(
+    selectedSortMode: AlbumSortMode,
+    onSortModeChange: (AlbumSortMode) -> Unit,
+) {
+    LibrarySortMenu(
+        selected = selectedSortMode,
+        options = AlbumSortMode.entries,
+        label = { it.label() },
+        contentDescription = stringResource(L10nR.string.feature_library_set_album_sort_order_7c2d91),
+        onSelect = onSortModeChange,
+    )
+}
+
+@Composable
+private fun LibraryArtistSortMenu(
+    selectedSortMode: ArtistSortMode,
+    onSortModeChange: (ArtistSortMode) -> Unit,
+) {
+    LibrarySortMenu(
+        selected = selectedSortMode,
+        options = ArtistSortMode.entries,
+        label = { it.label() },
+        contentDescription = stringResource(L10nR.string.feature_library_set_artist_sort_order_e15a06),
+        onSelect = onSortModeChange,
+    )
+}
+
+@Composable
+private fun LibraryFolderSortMenu(
+    selectedSortMode: FolderSortMode,
+    onSortModeChange: (FolderSortMode) -> Unit,
+) {
+    LibrarySortMenu(
+        selected = selectedSortMode,
+        options = FolderSortMode.entries,
+        label = { it.label() },
+        contentDescription = stringResource(L10nR.string.feature_library_set_folder_sort_order_9a4f33),
+        onSelect = onSortModeChange,
+    )
+}
+
+@Composable
+private fun <T> LibrarySortMenu(
+    selected: T,
+    options: List<T>,
+    label: @Composable (T) -> String,
+    contentDescription: String,
+    onSelect: (T) -> Unit,
+) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
             Icon(
                 Icons.AutoMirrored.Rounded.Sort,
-                contentDescription = stringResource(L10nR.string.feature_library_set_track_sort_order_4053c0),
+                contentDescription = contentDescription,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -1522,15 +1871,15 @@ private fun LibraryTrackSortMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
         ) {
-            LibraryTrackSortMode.entries.forEach { mode ->
+            options.forEach { mode ->
                 DropdownMenuItem(
-                    text = { Text(mode.label()) },
+                    text = { Text(label(mode)) },
                     onClick = {
                         expanded = false
-                        onSortModeChange(mode)
+                        onSelect(mode)
                     },
                     trailingIcon = {
-                        if (mode == selectedSortMode) {
+                        if (mode == selected) {
                             Icon(
                                 Icons.Rounded.Check,
                                 contentDescription = null,
@@ -1544,6 +1893,20 @@ private fun LibraryTrackSortMenu(
     }
 }
 
+private fun List<EchoRemoteFolder>.sortedForLinkedLibrary(mode: FolderSortMode): List<EchoRemoteFolder> {
+    val byName = compareBy(String.CASE_INSENSITIVE_ORDER, EchoRemoteFolder::name)
+        .thenBy(String.CASE_INSENSITIVE_ORDER, EchoRemoteFolder::path)
+    return when (mode) {
+        FolderSortMode.Path -> sortedWith(byName)
+        FolderSortMode.TrackCount -> sortedWith(compareByDescending(EchoRemoteFolder::trackCount).then(byName))
+        FolderSortMode.AlbumCount -> sortedWith(compareByDescending(EchoRemoteFolder::childFolderCount).then(byName))
+        FolderSortMode.Duration,
+        FolderSortMode.Size,
+        FolderSortMode.RecentlyModified,
+        -> sortedWith(byName)
+    }
+}
+
 @Composable
 private fun LibraryBrowserHeader(
     scanState: LibraryScanProgress,
@@ -1553,8 +1916,14 @@ private fun LibraryBrowserHeader(
     onSelectSource: (LibrarySourceMode) -> Unit,
     selectedMode: LibraryViewMode,
     selectedSortMode: LibraryTrackSortMode,
+    albumSortMode: AlbumSortMode,
+    artistSortMode: ArtistSortMode,
+    folderSortMode: FolderSortMode,
     onSelectMode: (LibraryViewMode) -> Unit,
     onSortModeChange: (LibraryTrackSortMode) -> Unit,
+    onAlbumSortModeChange: (AlbumSortMode) -> Unit,
+    onArtistSortModeChange: (ArtistSortMode) -> Unit,
+    onFolderSortModeChange: (FolderSortMode) -> Unit,
 ) {
     if (showScanResultBanner) {
         LibraryScanResultBanner(scanState)
@@ -1563,8 +1932,15 @@ private fun LibraryBrowserHeader(
         Box(Modifier.weight(1f)) {
             LibraryPagerTabs(selectedMode, onSelectMode, cloudOnly = selectedSource == LibrarySourceMode.Cloud)
         }
-        if (selectedMode == LibraryViewMode.Songs && selectedSource == LibrarySourceMode.Local) {
-            LibraryTrackSortMenu(selectedSortMode, onSortModeChange)
+        when (selectedMode) {
+            LibraryViewMode.Songs -> if (selectedSource == LibrarySourceMode.Local) {
+                LibraryTrackSortMenu(selectedSortMode, onSortModeChange)
+            }
+            LibraryViewMode.Albums, LibraryViewMode.Cloud ->
+                LibraryAlbumSortMenu(albumSortMode, onAlbumSortModeChange)
+            LibraryViewMode.Artists -> LibraryArtistSortMenu(artistSortMode, onArtistSortModeChange)
+            LibraryViewMode.Folders -> LibraryFolderSortMenu(folderSortMode, onFolderSortModeChange)
+            LibraryViewMode.Genres, LibraryViewMode.Playlists -> Unit
         }
     }
 }

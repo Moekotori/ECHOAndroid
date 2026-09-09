@@ -1,13 +1,25 @@
 package app.echo.android.data
 
+import app.echo.android.model.i18n.echoText
 import app.echo.android.model.library.LibrarySource
+import java.io.InterruptedIOException
+import java.net.ConnectException
+import java.net.NoRouteToHostException
+import java.net.SocketTimeoutException
 import java.net.URI
+import java.net.UnknownHostException
+import java.net.UnknownServiceException
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
+import java.security.cert.CertificateException
 import java.security.SecureRandom
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import javax.net.ssl.SSLException
+import javax.net.ssl.SSLHandshakeException
+import javax.net.ssl.SSLPeerUnverifiedException
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.absoluteValue
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -58,6 +70,7 @@ internal data class SubsonicSong(
     val sizeBytes: Long,
     val bitRateKbps: Int?,
     val path: String?,
+    val sampleRateHz: Int? = null,
 )
 
 internal class SubsonicClient(
@@ -219,13 +232,13 @@ internal class SubsonicClient(
         return runCatching { lyricsByArtistTitle(artist, title) }.getOrNull()
     }
 
-    fun submitListen(songId: String, submission: Boolean, timeSeconds: Long? = null) {
+    fun submitListen(songId: String, submission: Boolean, timeEpochMs: Long? = null) {
         if (songId.isBlank()) return
         val params = buildList {
             add("id" to songId)
             add("submission" to if (submission) "true" else "false")
-            if (submission && timeSeconds != null && timeSeconds > 0L) {
-                add("time" to timeSeconds.toString())
+            if (submission && timeEpochMs != null && timeEpochMs > 0L) {
+                add("time" to timeEpochMs.toString())
             }
         }
         request("scrobble.view", params)
@@ -237,11 +250,16 @@ internal class SubsonicClient(
             ?.jsonObjects("structuredLyrics")
             .orEmpty()
         val rendered = structured.joinToString("\n\n") { block ->
+            val offsetMs = block.optLong("offset", 0L)
             block.jsonObjects("line").mapNotNull { line ->
                 val value = line.optJsonString("value")
                 if (value.isBlank()) return@mapNotNull null
                 val startMs = line.optLong("start", -1L)
-                if (startMs >= 0L) "${formatLrcTimestamp(startMs)}$value" else value
+                if (startMs >= 0L) {
+                    "${formatLrcTimestamp(startMs + offsetMs)}$value"
+                } else {
+                    value
+                }
             }.joinToString("\n")
         }
         return rendered.takeIf { it.isNotBlank() }
@@ -262,7 +280,15 @@ internal class SubsonicClient(
 
     private fun request(path: String, params: List<Pair<String, String>> = emptyList()): JSONObject {
         val url = buildUrl(path, params)
-        val body = httpGet(url) ?: error("远程服务器无响应")
+        val body = try {
+            httpGet(url)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: IllegalStateException) {
+            throw error
+        } catch (error: Throwable) {
+            error(subsonicTransportFailureMessage(error))
+        } ?: error(subsonicUnreachableMessage())
         return parseSubsonicResponse(body)
     }
 
@@ -289,8 +315,8 @@ internal class SubsonicClient(
     internal companion object {
         const val ApiVersion = "1.16.1"
         const val ClientId = "ECHOAndroid"
-        const val AlbumPageSize = 1_000
-        const val SongPageSize = 1_000
+        const val AlbumPageSize = 500
+        const val SongPageSize = 500
         const val CoverArtSizePx = 600
         const val MaxAlbumsPerSync = 2_000
         const val MaxSongsPerSync = 20_000
@@ -327,7 +353,7 @@ internal fun SubsonicSong.toLibraryTrackEntity(
         year = year,
         mimeType = contentType ?: suffix?.let { "audio/$it" },
         sizeBytes = sizeBytes,
-        sampleRateHz = null,
+        sampleRateHz = sampleRateHz,
         dateModifiedSeconds = LibraryFingerprintPolicy.remoteDateModifiedSeconds(scanRunId),
         source = endpoint.sourceId,
         relativePath = path?.substringBeforeLast('/', missingDelimiterValue = ""),
@@ -337,7 +363,7 @@ internal fun SubsonicSong.toLibraryTrackEntity(
 
 internal fun parseSubsonicResponse(body: String): JSONObject {
     val json = runCatching { JSONObject(body) }
-        .getOrElse { error("远程服务器返回了无法解析的数据") }
+        .getOrElse { error(subsonicInvalidJsonMessage()) }
     return json.subsonicRoot()
 }
 
@@ -347,12 +373,12 @@ internal fun subsonicHttpBody(responseCode: Int, successBody: String?, errorBody
 }
 
 private fun JSONObject.subsonicRoot(): JSONObject {
-    val root = optJSONObject("subsonic-response") ?: error("不是 Subsonic 兼容响应")
+    val root = optJSONObject("subsonic-response") ?: error(subsonicIncompatibleResponseMessage())
     val status = root.optString("status")
     if (!status.equals("ok", ignoreCase = true)) {
         val message = root.optJSONObject("error")?.optString("message")
             ?.takeIf { it.isNotBlank() }
-            ?: "Subsonic 认证或请求失败"
+            ?: subsonicRequestFailedMessage()
         error(message)
     }
     return root
@@ -385,6 +411,8 @@ private fun JSONObject.toSubsonicSong(album: SubsonicAlbum? = null): SubsonicSon
         sizeBytes = optLong("size", 0L),
         bitRateKbps = optInt("bitRate").takeIf { it > 0 },
         path = optJsonString("path").takeIf { it.isNotBlank() },
+        sampleRateHz = optInt("samplingRate").takeIf { it > 0 }
+            ?: optInt("sampleRate").takeIf { it > 0 },
     )
 
 private fun JSONObject.optJsonString(name: String): String {
@@ -409,26 +437,166 @@ private val SharedSubsonicHttpClient: OkHttpClient =
         )
         .build()
 
-private fun defaultHttpGet(url: String): String? {
+private fun defaultHttpGet(url: String): String {
     val request = Request.Builder()
         .url(url)
         .header("User-Agent", "ECHOAndroid/0.1")
         .get()
         .build()
-    return runCatching {
+    return try {
         SharedSubsonicHttpClient.newCall(request).execute().use { response ->
-            val body = response.body ?: return@use null
+            val body = response.body ?: error(subsonicHttpStatusMessage(response.code))
             val declaredLength = body.contentLength()
-            if (declaredLength > SubsonicClient.MaxResponseBytes) return@use null
+            if (declaredLength > SubsonicClient.MaxResponseBytes) {
+                error(subsonicResponseTooLargeMessage())
+            }
             val bytes = body.bytes()
-            if (bytes.size > SubsonicClient.MaxResponseBytes) return@use null
+            if (bytes.size > SubsonicClient.MaxResponseBytes) {
+                error(subsonicResponseTooLargeMessage())
+            }
             val text = String(bytes, StandardCharsets.UTF_8)
             val successBody = if (response.isSuccessful) text else null
             val errorBody = if (!response.isSuccessful) text else null
             subsonicHttpBody(response.code, successBody, errorBody)
+                ?: error(subsonicHttpStatusMessage(response.code))
         }
-    }.getOrNull()
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: IllegalStateException) {
+        throw error
+    } catch (error: Throwable) {
+        error(subsonicTransportFailureMessage(error))
+    }
 }
+
+internal fun subsonicTransportFailureMessage(cause: Throwable): String {
+    val chain = ArrayList<Throwable>()
+    var current: Throwable? = cause
+    while (current != null && chain.add(current)) {
+        val next = current.cause
+        current = if (next != null && next in chain) null else next
+    }
+    if (chain.any(::isSubsonicCertificateFailure)) return subsonicCertificateTrustMessage()
+    if (chain.any { it is UnknownHostException }) return subsonicUnknownHostMessage()
+    if (chain.any(::isSubsonicTimeoutFailure)) return subsonicTimeoutMessage()
+    if (chain.any { it is ConnectException || it is NoRouteToHostException }) {
+        return subsonicConnectionRefusedMessage()
+    }
+    if (chain.any(::isSubsonicCleartextBlocked)) return subsonicCleartextBlockedMessage()
+    return subsonicUnreachableMessage()
+}
+
+internal fun subsonicUnreachableMessage(): String =
+    echoText(
+        en = "Can't reach the Navidrome/Subsonic server.",
+        zh = "无法连接到 Navidrome/Subsonic 服务器。",
+        ja = "Navidrome/Subsonic サーバーに接続できません。",
+    )
+
+internal fun subsonicCertificateTrustMessage(): String =
+    echoText(
+        en = "This HTTPS certificate isn't trusted. Use a certificate the system trusts, or HTTP on your LAN.",
+        zh = "HTTPS 证书不受信任。请改用系统信任的证书，或在局域网使用 HTTP。",
+        ja = "この HTTPS 証明書は信頼されていません。システムが信頼する証明書を使うか、LAN では HTTP で接続してください。",
+    )
+
+internal fun subsonicTimeoutMessage(): String =
+    echoText(
+        en = "The Navidrome/Subsonic server timed out.",
+        zh = "连接 Navidrome/Subsonic 超时。",
+        ja = "Navidrome/Subsonic サーバーがタイムアウトしました。",
+    )
+
+internal fun subsonicUnknownHostMessage(): String =
+    echoText(
+        en = "Can't resolve the server address. Check the URL and your network.",
+        zh = "无法解析服务器地址，请检查网址和网络。",
+        ja = "サーバーアドレスを解決できません。URL とネットワークを確認してください。",
+    )
+
+internal fun subsonicConnectionRefusedMessage(): String =
+    echoText(
+        en = "The server refused the connection. Check the address and that Navidrome is running.",
+        zh = "服务器拒绝连接。请确认地址正确，且 Navidrome 正在运行。",
+        ja = "サーバーが接続を拒否しました。アドレスと Navidrome の起動を確認してください。",
+    )
+
+internal fun subsonicCleartextBlockedMessage(): String =
+    echoText(
+        en = "HTTP (not HTTPS) is blocked for this address.",
+        zh = "此地址不允许使用 HTTP（非 HTTPS）。",
+        ja = "このアドレスでは HTTP（非 HTTPS）が許可されていません。",
+    )
+
+internal fun subsonicHttpStatusMessage(code: Int): String =
+    echoText(
+        en = "The server returned HTTP $code.",
+        zh = "服务器返回了 HTTP $code。",
+        ja = "サーバーが HTTP $code を返しました。",
+    )
+
+internal fun subsonicResponseTooLargeMessage(): String =
+    echoText(
+        en = "The server response was too large to read.",
+        zh = "服务器返回的数据过大，无法读取。",
+        ja = "サーバーの応答が大きすぎて読み取れません。",
+    )
+
+internal fun subsonicInvalidJsonMessage(): String =
+    echoText(
+        en = "The server returned data that isn't valid JSON.",
+        zh = "服务器返回了无法解析的数据。",
+        ja = "サーバーが解析できないデータを返しました。",
+    )
+
+internal fun subsonicIncompatibleResponseMessage(): String =
+    echoText(
+        en = "This is not a Subsonic-compatible response. Check the server URL.",
+        zh = "这不是 Subsonic 兼容响应，请检查服务器地址。",
+        ja = "Subsonic 互換の応答ではありません。サーバー URL を確認してください。",
+    )
+
+internal fun subsonicRequestFailedMessage(): String =
+    echoText(
+        en = "Subsonic authentication or request failed.",
+        zh = "Subsonic 认证或请求失败。",
+        ja = "Subsonic の認証またはリクエストに失敗しました。",
+    )
+
+private fun isSubsonicCertificateFailure(error: Throwable): Boolean {
+    if (error is SSLHandshakeException ||
+        error is SSLPeerUnverifiedException ||
+        error is CertificateException ||
+        error is SSLException
+    ) {
+        return true
+    }
+    val name = error.javaClass.name
+    if (name.contains("SSLHandshake", ignoreCase = true) ||
+        name.contains("SSLPeerUnverified", ignoreCase = true) ||
+        name.contains("CertPath", ignoreCase = true) ||
+        name.contains("CertificateException", ignoreCase = true)
+    ) {
+        return true
+    }
+    val message = error.message.orEmpty()
+    return message.contains("Trust anchor", ignoreCase = true) ||
+        message.contains("CertPathValidator", ignoreCase = true)
+}
+
+private fun isSubsonicTimeoutFailure(error: Throwable): Boolean {
+    if (error is SocketTimeoutException) return true
+    if (error is InterruptedIOException &&
+        error.message.orEmpty().contains("timeout", ignoreCase = true)
+    ) {
+        return true
+    }
+    return false
+}
+
+private fun isSubsonicCleartextBlocked(error: Throwable): Boolean =
+    error is UnknownServiceException ||
+        error.message.orEmpty().contains("CLEARTEXT", ignoreCase = true)
 
 private fun JSONArray.objects(): Sequence<JSONObject> =
     sequence {
@@ -557,12 +725,12 @@ fun submitSubsonicListen(
     endpoint: SubsonicEndpoint,
     songId: String,
     submission: Boolean,
-    timeSeconds: Long? = null,
+    timeEpochMs: Long? = null,
 ) {
     SubsonicClient(endpoint).submitListen(
         songId = songId,
         submission = submission,
-        timeSeconds = timeSeconds,
+        timeEpochMs = timeEpochMs,
     )
 }
 

@@ -27,6 +27,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.json)
     implementation(libs.okhttp)
+    implementation(libs.okhttp.sse)
 
     testImplementation(libs.junit)
 }

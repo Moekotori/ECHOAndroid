@@ -10,6 +10,13 @@ fun audioPermissionName(): String =
         Manifest.permission.READ_EXTERNAL_STORAGE
     }
 
+fun writeStoragePermissionName(): String? =
+    if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+        Manifest.permission.WRITE_EXTERNAL_STORAGE
+    } else {
+        null
+    }
+
 fun notificationPermissionName(): String? =
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         Manifest.permission.POST_NOTIFICATIONS

@@ -70,6 +70,18 @@ class EchoPairingParserTest {
     }
 
     @Test
+    fun queueReplaceCommandIncludesTrackIdsAndStart() {
+        val json = EchoRemoteCommand.QueueReplace(listOf("a", "b"), "b").toJson()
+        assertEquals("queueReplace", json.getString("command"))
+        assertEquals("b", json.getString("startTrackId"))
+        assertEquals("pc", json.getString("output"))
+        val ids = json.getJSONArray("trackIds")
+        assertEquals(2, ids.length())
+        assertEquals("a", ids.getString(0))
+        assertEquals("b", ids.getString(1))
+    }
+
+    @Test
     fun playlistTracksUrlDoesNotFallBackToLibraryTracks() {
         val endpoint = EchoPairingParser.parse(
             "echo://pair?host=192.168.1.20&port=26789&token=abcdefghijklmnop",
@@ -78,5 +90,20 @@ class EchoPairingParserTest {
         assertTrue(url.encodedPath.contains("/library/playlists/playlist-1/tracks"))
         assertFalse(url.queryParameterNames.contains("playlistId"))
         assertFalse(url.encodedPath.endsWith("/library/tracks"))
+    }
+
+    @Test
+    fun albumAndFolderUrlsStayOnTheirEndpoints() {
+        val endpoint = EchoPairingParser.parse(
+            "echo://pair?host=192.168.1.20&port=26789&token=abcdefghijklmnop",
+        )!!
+        val albums = echoLinkLibraryAlbumsUrl(endpoint, "radiohead", 1, 25)
+        assertTrue(albums.encodedPath.contains("/library/albums"))
+        assertEquals("radiohead", albums.queryParameter("q"))
+        val albumTracks = echoLinkAlbumTracksUrl(endpoint, "album-1", 1, 500)
+        assertTrue(albumTracks.encodedPath.contains("/library/albums/album-1/tracks"))
+        val folders = echoLinkFoldersUrl(endpoint, "Music/Jazz")
+        assertTrue(folders.encodedPath.contains("/library/folders"))
+        assertEquals("Music/Jazz", folders.queryParameter("path"))
     }
 }

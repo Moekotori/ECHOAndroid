@@ -165,7 +165,9 @@ class LibraryScanPolicyTest {
         assertTrue(LibraryScanPolicy.isLocalLibrarySource(LibraryScanPolicy.SafSourceId))
         assertFalse(LibraryScanPolicy.isLocalLibrarySource("${LibrarySource.Subsonic.id}:abc"))
         assertFalse(LibraryScanPolicy.isLocalLibrarySource("${LibrarySource.WebDav.id}:xyz"))
+        assertFalse(LibraryScanPolicy.isLocalLibrarySource("${LibrarySource.Jellyfin.id}:abc"))
         assertTrue(LibraryScanPolicy.isRemoteLibrarySource("${LibrarySource.Subsonic.id}:abc"))
+        assertTrue(LibraryScanPolicy.isRemoteLibrarySource("${LibrarySource.Jellyfin.id}:abc"))
     }
 
     @Test

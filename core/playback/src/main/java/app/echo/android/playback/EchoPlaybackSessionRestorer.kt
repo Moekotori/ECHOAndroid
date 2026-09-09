@@ -2,8 +2,11 @@ package app.echo.android.playback
 
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import app.echo.android.model.error.EchoErrorLog
+import app.echo.android.model.error.EchoErrorSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -30,6 +33,9 @@ internal class EchoPlaybackSessionRestorer(
     @Volatile
     private var heldSavedPlayWhenReady: Boolean? = null
 
+    @Volatile
+    private var pendingPlayUntilRemoteAuth = false
+
     suspend fun restore(userRequestedPlay: Boolean): EchoPlaybackSessionSnapshot? =
         mutex.withLock {
             val current = player() ?: return@withLock null
@@ -45,7 +51,14 @@ internal class EchoPlaybackSessionRestorer(
             }
             val snapshot = try {
                 withContext(Dispatchers.IO) { store().load() }
-            } catch (_: Exception) {
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                EchoErrorLog.record(
+                    EchoErrorSource.Playback,
+                    error.message ?: "Saved playback session could not be loaded.",
+                    throwable = error,
+                )
                 restoreCompleted = shouldMarkSavedSessionRestoreComplete(sessionLoadFailed = true)
                 return@withLock null
             }
@@ -61,14 +74,22 @@ internal class EchoPlaybackSessionRestorer(
             val resolved = snapshot.copy(queue = resolvedQueue)
             val queueUris = listOf(resolved.queue[resolved.currentIndex].uri)
             val unresolvedEchoLink = queueHasUnresolvedEchoLinkUris(queueUris)
+            val requiresWebDavAuth = queueRequiresWebDavAuth(queueUris)
+            val webDavAuthReady = EchoRemotePlaybackAuthRegistry.isWebDavAuthReadyForUris(queueUris)
+            val requiresSubsonicAuth = queueRequiresSubsonicAuth(queueUris)
+            val subsonicAuthReady = EchoRemotePlaybackAuthRegistry.isSubsonicAuthReadyForUris(queueUris)
+            val requiresJellyfinAuth = queueRequiresJellyfinAuth(queueUris)
+            val jellyfinAuthReady = EchoRemotePlaybackAuthRegistry.isJellyfinAuthReadyForUris(queueUris)
             val play = shouldPlayAfterSessionRestore(userRequestedPlay) &&
                 !unresolvedEchoLink &&
                 shouldAllowRestoredPlayWhenReady(
                     playWhenReady = true,
-                    queueRequiresWebDavAuth = queueRequiresWebDavAuth(queueUris),
-                    webDavAuthReady = EchoRemotePlaybackAuthRegistry.isWebDavAuthReadyForUris(queueUris),
-                    queueRequiresSubsonicAuth = queueRequiresSubsonicAuth(queueUris),
-                    subsonicAuthReady = EchoRemotePlaybackAuthRegistry.isSubsonicAuthReadyForUris(queueUris),
+                    queueRequiresWebDavAuth = requiresWebDavAuth,
+                    webDavAuthReady = webDavAuthReady,
+                    queueRequiresSubsonicAuth = requiresSubsonicAuth,
+                    subsonicAuthReady = subsonicAuthReady,
+                    queueRequiresJellyfinAuth = requiresJellyfinAuth,
+                    jellyfinAuthReady = jellyfinAuthReady,
                 )
             heldSavedPlayWhenReady = if (
                 shouldHoldSavedPlayWhenReadyAfterForcedPause(
@@ -80,6 +101,16 @@ internal class EchoPlaybackSessionRestorer(
             } else {
                 null
             }
+            pendingPlayUntilRemoteAuth = shouldPendRestorePlayUntilRemoteAuth(
+                savedPlayWhenReady = snapshot.playWhenReady,
+                unresolvedEchoLink = unresolvedEchoLink,
+                queueRequiresWebDavAuth = requiresWebDavAuth,
+                webDavAuthReady = webDavAuthReady,
+                queueRequiresSubsonicAuth = requiresSubsonicAuth,
+                subsonicAuthReady = subsonicAuthReady,
+                queueRequiresJellyfinAuth = requiresJellyfinAuth,
+                jellyfinAuthReady = jellyfinAuthReady,
+            )
             withContext(Dispatchers.Main.immediate) {
                 val live = player() ?: return@withContext
                 if (!shouldRestoreIntoEmptyPlayer(live.mediaItemCount)) return@withContext
@@ -94,6 +125,37 @@ internal class EchoPlaybackSessionRestorer(
             restoreCompleted = shouldMarkSavedSessionRestoreComplete(sessionLoadFailed = false)
             resolved
         }
+
+    fun playIfRemoteAuthReady() {
+        scope.launch {
+            val live = mutex.withLock {
+                val current = player() ?: return@withLock null
+                val uri = current.currentMediaItem?.localConfiguration?.uri?.toString().orEmpty()
+                if (uri.isBlank()) return@withLock null
+                val uris = listOf(uri)
+                if (
+                    !shouldResumePendingRemoteAuthPlay(
+                        pendingPlayUntilRemoteAuth = pendingPlayUntilRemoteAuth,
+                        unresolvedEchoLink = queueHasUnresolvedEchoLinkUris(uris),
+                        queueRequiresWebDavAuth = queueRequiresWebDavAuth(uris),
+                        webDavAuthReady = EchoRemotePlaybackAuthRegistry.isWebDavAuthReadyForUris(uris),
+                        queueRequiresSubsonicAuth = queueRequiresSubsonicAuth(uris),
+                        subsonicAuthReady = EchoRemotePlaybackAuthRegistry.isSubsonicAuthReadyForUris(uris),
+                        queueRequiresJellyfinAuth = queueRequiresJellyfinAuth(uris),
+                        jellyfinAuthReady = EchoRemotePlaybackAuthRegistry.isJellyfinAuthReadyForUris(uris),
+                    )
+                ) {
+                    return@withLock null
+                }
+                pendingPlayUntilRemoteAuth = false
+                heldSavedPlayWhenReady = null
+                current
+            } ?: return@launch
+            withContext(Dispatchers.Main.immediate) {
+                if (player() === live) live.play()
+            }
+        }
+    }
 
     fun persistFromPlayer(force: Boolean = false, persistBecauseOfSeek: Boolean = false) {
         if (!restoreCompleted) return

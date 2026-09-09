@@ -148,21 +148,22 @@
     <string name="feature_connect_nearby_pcs_b9b12a" formatted="false">"附近的 PC"</string>
     <string name="feature_connect_no_pc_found_use_the_same_wi_fi_ce621e" formatted="false">"暂未发现 PC。请连接同一 Wi-Fi 并打开 PC ECHO，也可以在下方手动输入。"</string>
     <string name="feature_connect_no_track_selected_258d56" formatted="false">"尚未选择曲目"</string>
-    <string name="feature_connect_off_enable_discord_presence_in_settings_to_share_7f86a5" formatted="false">"尚未开启。可在设置中开启 Discord 状态，通过 PC ECHO 转发播放信息。"</string>
     <string name="feature_connect_open_the_echo_link_page_on_your_pc_d07a0b" formatted="false">"在 PC ECHO 打开联动页，扫描页面上的配对二维码。"</string>
     <string name="feature_connect_pause_pc_003bcf" formatted="false">"暂停 PC"</string>
     <string name="feature_connect_pc_address_or_pairing_link_a3e680" formatted="false">"PC 地址或配对链接"</string>
     <string name="feature_connect_play_on_pc_aa41d1" formatted="false">"在 PC 播放"</string>
     <string name="feature_connect_playing_on_pc_580a8a" formatted="false">"PC 正在播放"</string>
     <string name="feature_connect_read_the_pc_library_after_connecting_local_music_d1da04" formatted="false">"连接后自动读取 PC 曲库，本地音乐仍独立保留。"</string>
-    <string name="feature_connect_ready_to_forward_playback_556606" formatted="false">"已就绪，等待转发播放状态"</string>
     <string name="feature_connect_reconnect_pc_ea8c5f" formatted="false">"重新连接 PC"</string>
     <string name="feature_connect_scan_to_pair_597ba6" formatted="false">"扫码配对"</string>
     <string name="feature_connect_select_21bce2" formatted="false">"选择"</string>
     <string name="feature_connect_try_the_saved_pc_when_opening_connect_38be4d" formatted="false">"打开连接页时尝试连接已保存的 PC"</string>
+    <string name="feature_connect_volume_8f3a19" formatted="false">"音量"</string>
+    <string name="feature_connect_pc_queue_2e91c4" formatted="false">"电脑队列"</string>
     <string name="feature_connect_waiting_for_pc_echo_to_become_available_a74ad2" formatted="false">"等待 PC ECHO 就绪"</string>
     <string name="feature_connect_check_the_pc_address_or_paste_a_complete_0f216a" formatted="false">"请检查 PC 地址，或粘贴完整配对链接"</string>
-    <string name="feature_connect_not_available_yet_forwarding_phone_playback_to_pc_d80b24" formatted="false">"暂未实现：手机播放状态转发到 PC Discord 尚未接通。"</string>
     <string name="feature_connect_pair_another_pc_23df07" formatted="false">"扫码配对其他 PC"</string>
     <string name="echo_link_handoff_phone">将手机当前歌曲交给 PC 播放</string>
+    <string name="feature_connect_jellyfin_or_emby_independent_of_echo_link_a8f3c1" formatted="false">"Jellyfin 或 Emby。与 Echo Link 独立。"</string>
+    <string name="feature_connect_saved_pcs_4d2e91" formatted="false">"已保存的 PC"</string>
 </resources>

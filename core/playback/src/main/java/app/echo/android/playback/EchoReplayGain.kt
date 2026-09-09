@@ -1,5 +1,7 @@
 package app.echo.android.playback
 
+import app.echo.android.model.playback.EchoReplayGainMode
+import app.echo.android.model.playback.EchoReplayGainTags
 import java.io.InputStream
 import kotlin.math.pow
 
@@ -31,27 +33,39 @@ fun echoReplayGainOutput(
 }
 
 sealed class ReplayGainReadOutcome {
-    data class Parsed(val trackGainDb: Float?) : ReplayGainReadOutcome()
+    data class Parsed(val tags: EchoReplayGainTags) : ReplayGainReadOutcome()
     data object Failed : ReplayGainReadOutcome()
 }
 
 fun replayGainAfterMediaItemChange(
     mediaId: String?,
-    cachedGains: Map<String, Float?>,
+    cachedTags: Map<String, EchoReplayGainTags>,
+    mode: EchoReplayGainMode,
     previousGainDb: Float?,
 ): Float? {
     if (mediaId == null) return previousGainDb
-    if (cachedGains.containsKey(mediaId)) return cachedGains.getValue(mediaId)
-    return null
+    val tags = cachedTags[mediaId] ?: return null
+    return tags.selectedGainDb(mode)
+}
+
+fun replayGainTagsLoaded(
+    mediaId: String?,
+    cachedTags: Map<String, EchoReplayGainTags>,
+): Boolean = mediaId != null && cachedTags.containsKey(mediaId)
+
+fun nextReplayGainPrefetchId(currentMediaId: String?, nextMediaId: String?): String? {
+    val next = nextMediaId?.takeIf { it.isNotBlank() } ?: return null
+    if (next == currentMediaId) return null
+    return next
 }
 
 fun replayGainReadOutcome(
     streamOpened: Boolean,
-    parseResult: Result<Float?>,
+    parseResult: Result<EchoReplayGainTags>,
 ): ReplayGainReadOutcome {
     if (!streamOpened) return ReplayGainReadOutcome.Failed
-    val gain = parseResult.getOrElse { return ReplayGainReadOutcome.Failed }
-    return ReplayGainReadOutcome.Parsed(gain)
+    val tags = parseResult.getOrElse { return ReplayGainReadOutcome.Failed }
+    return ReplayGainReadOutcome.Parsed(tags)
 }
 
 fun shouldCacheReplayGainRead(outcome: ReplayGainReadOutcome): Boolean =
@@ -84,11 +98,13 @@ fun canOpenReplayGainStream(
     uri: String,
     webDavAuthReadyForUri: Boolean,
     subsonicAuthReadyForUri: Boolean,
+    jellyfinAuthReadyForUri: Boolean = true,
 ): Boolean {
     val kind = replayGainStreamKind(uri) ?: return false
     if (kind != ReplayGainStreamKind.RemoteHttp) return true
     if (webDavPlaybackUriRequiresCredential(uri) && !webDavAuthReadyForUri) return false
     if (subsonicPlaybackUriRequiresCredential(uri) && !subsonicAuthReadyForUri) return false
+    if (jellyfinPlaybackUriRequiresCredential(uri) && !jellyfinAuthReadyForUri) return false
     return true
 }
 

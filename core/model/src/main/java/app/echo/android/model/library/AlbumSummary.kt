@@ -15,5 +15,8 @@ data class AlbumSummary(
 enum class AlbumSortMode {
     Title,
     Artist,
+    Year,
+    TrackCount,
     Duration,
+    RecentlyAdded,
 }

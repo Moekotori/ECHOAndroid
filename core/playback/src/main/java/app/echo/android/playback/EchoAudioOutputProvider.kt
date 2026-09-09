@@ -8,7 +8,10 @@ import androidx.media3.exoplayer.audio.AudioOutput
 import androidx.media3.exoplayer.audio.AudioOutputProvider
 import androidx.media3.exoplayer.audio.AudioTrackAudioOutputProvider
 import androidx.media3.exoplayer.audio.ForwardingAudioOutputProvider
+import app.echo.android.model.error.EchoErrorLog
+import app.echo.android.model.error.EchoErrorSource
 import app.echo.android.usbaudio.UsbAudioProbe
+import app.echo.android.usbaudio.UsbExclusiveOutputState
 import app.echo.android.usbaudio.UsbExclusivePcmOutput
 import app.echo.android.usbaudio.UsbPcmFormatSelector
 import app.echo.android.usbaudio.UsbPcmFormatSpec
@@ -91,6 +94,7 @@ internal class EchoAudioOutputProvider(
         )
         val session = usbOutput.open(spec)
         if (!session.openResult.isReady) {
+            recordUsbOpenFailure(session.openResult.state, session.openResult.message)
             session.close()
             return null
         }
@@ -99,6 +103,15 @@ internal class EchoAudioOutputProvider(
             outputConfig = outputConfig,
             sourceEncoding = sourceEncoding,
             destBytesPerSample = session.bytesPerSample,
+        )
+    }
+
+    private fun recordUsbOpenFailure(state: UsbExclusiveOutputState, message: String?) {
+        if (state !in reportableUsbOpenFailures) return
+        EchoErrorLog.record(
+            source = EchoErrorSource.Usb,
+            summary = message?.takeIf { it.isNotBlank() } ?: state.name,
+            detail = state.name,
         )
     }
 
@@ -141,4 +154,13 @@ internal class EchoAudioOutputProvider(
         val spec: UsbPcmFormatSpec,
         val outputConfig: AudioOutputProvider.OutputConfig,
     )
+
+    private companion object {
+        val reportableUsbOpenFailures = setOf(
+            UsbExclusiveOutputState.PermissionDenied,
+            UsbExclusiveOutputState.FormatUnavailable,
+            UsbExclusiveOutputState.OpenFailed,
+            UsbExclusiveOutputState.UnsupportedTransport,
+        )
+    }
 }

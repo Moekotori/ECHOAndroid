@@ -141,6 +141,8 @@ internal fun rememberLibraryArtworkAccent(): Color {
     return remember(scheme) { scheme.primary }
 }
 
+internal val LibraryWallGridCells = GridCells.Fixed(3)
+
 @Composable
 internal fun LibraryPagerTabs(selectedMode: LibraryViewMode, onSelectMode: (LibraryViewMode) -> Unit, cloudOnly: Boolean = false) {
     val modes = if (cloudOnly) listOf(LibraryViewMode.Albums) else listOf(
@@ -443,10 +445,10 @@ internal fun AlbumWall(
         return
     }
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(148.dp),
+        columns = LibraryWallGridCells,
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
         contentPadding = PaddingValues(bottom = LibraryBottomControlsPadding),
     ) {
         items(
@@ -502,6 +504,54 @@ internal fun AlbumWallCard(
 }
 
 @Composable
+internal fun GenreWall(
+    genres: LazyPagingItems<app.echo.android.model.library.GenreSummary>,
+    onOpenGenre: (app.echo.android.model.library.GenreSummary) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (genres.loadState.refresh is LoadState.Loading) {
+        LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_loading_genres_4e91aa))
+        return
+    }
+    if (genres.loadState.refresh is LoadState.Error) {
+        LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_failed_to_load_genres_b7c102))
+        return
+    }
+    if (genres.itemCount == 0) {
+        LibraryCollectionEmpty(
+            stringResource(L10nR.string.feature_library_this_library_has_no_genres_to_show_yet_11a90e),
+        )
+        return
+    }
+    LazyVerticalGrid(
+        columns = LibraryWallGridCells,
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(top = 6.dp, bottom = LibraryBottomControlsPadding),
+    ) {
+        items(
+            count = genres.itemCount,
+            key = { index: Int -> genres.peek(index)?.genreKey ?: "genre-$index" },
+        ) { index: Int ->
+            genres[index]?.let { genre ->
+                ArtistWallCard(
+                    artist = ArtistSummary(
+                        artistKey = genre.genreKey,
+                        name = genre.name,
+                        artworkUri = genre.artworkUri,
+                        albumCount = genre.albumCount,
+                        trackCount = genre.trackCount,
+                        durationMs = genre.durationMs,
+                    ),
+                    onClick = { onOpenGenre(genre) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
 internal fun ArtistWall(
     artists: LazyPagingItems<ArtistSummary>,
     onOpenArtist: (ArtistSummary) -> Unit,
@@ -522,10 +572,10 @@ internal fun ArtistWall(
         return
     }
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(148.dp),
+        columns = LibraryWallGridCells,
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
         contentPadding = PaddingValues(top = 6.dp, bottom = LibraryBottomControlsPadding),
     ) {
         items(
@@ -583,7 +633,10 @@ internal fun ArtistWallCard(
 private fun ArtistWallAvatar(artworkUri: String?, palette: ArtworkPalette) {
     EchoArtworkImage(
         artworkUri = artworkUri, contentDescription = null,
-        modifier = Modifier.size(96.dp), shape = CircleShape,
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1f),
+        shape = CircleShape,
     )
 }
 

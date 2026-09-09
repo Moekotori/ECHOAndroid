@@ -45,9 +45,18 @@ data class EchoSubsonicPlaybackCredential(
         baseUrl.trim().trimEnd('/')
 }
 
+data class EchoJellyfinPlaybackCredential(
+    val baseUrl: String,
+    val accessToken: String,
+) {
+    val normalizedBaseUrl: String =
+        baseUrl.trim().trimEnd('/')
+}
+
 object EchoRemotePlaybackAuthRegistry {
     private val webDavCredentials = AtomicReference<List<EchoWebDavPlaybackCredential>>(emptyList())
     private val subsonicCredentials = AtomicReference<List<EchoSubsonicPlaybackCredential>>(emptyList())
+    private val jellyfinCredentials = AtomicReference<List<EchoJellyfinPlaybackCredential>>(emptyList())
 
     fun replaceWebDavCredentials(credentials: List<EchoWebDavPlaybackCredential>) {
         webDavCredentials.set(
@@ -65,6 +74,14 @@ object EchoRemotePlaybackAuthRegistry {
         )
     }
 
+    fun replaceJellyfinCredentials(credentials: List<EchoJellyfinPlaybackCredential>) {
+        jellyfinCredentials.set(
+            credentials
+                .filter { it.normalizedBaseUrl.isNotBlank() && it.accessToken.isNotBlank() }
+                .distinctBy { it.normalizedBaseUrl },
+        )
+    }
+
     fun isWebDavAuthReadyForUris(uris: Iterable<String>): Boolean =
         webDavAuthReadyForQueue(
             uris = uris,
@@ -75,19 +92,28 @@ object EchoRemotePlaybackAuthRegistry {
 
     fun hasSubsonicCredentials(): Boolean = subsonicCredentials.get().isNotEmpty()
 
+    fun hasJellyfinCredentials(): Boolean = jellyfinCredentials.get().isNotEmpty()
+
     fun isSubsonicAuthReadyForUris(uris: Iterable<String>): Boolean =
         subsonicAuthReadyForQueue(
             uris = uris,
             credentialBaseUrls = subsonicCredentials.get().map { it.normalizedBaseUrl },
         )
 
+    fun isJellyfinAuthReadyForUris(uris: Iterable<String>): Boolean =
+        jellyfinAuthReadyForQueue(
+            uris = uris,
+            credentialBaseUrls = jellyfinCredentials.get().map { it.normalizedBaseUrl },
+        )
+
     @UnstableApi
     internal fun resolve(dataSpec: DataSpec): DataSpec {
         val uri = dataSpec.uri
         val signedSubsonicUrl = resolveSubsonicUrl(uri.toString())
-        if (signedSubsonicUrl != uri.toString()) {
+        val signedJellyfinUrl = resolveJellyfinUrl(signedSubsonicUrl)
+        if (signedJellyfinUrl != uri.toString()) {
             return dataSpec.buildUpon()
-                .setUri(Uri.parse(signedSubsonicUrl))
+                .setUri(Uri.parse(signedJellyfinUrl))
                 .build()
         }
 
@@ -113,14 +139,22 @@ object EchoRemotePlaybackAuthRegistry {
         return applySubsonicTokenAuth(url, credential)
     }
 
+    fun resolveJellyfinUrl(url: String): String {
+        val credential = matchingJellyfinCredential(url) ?: return url
+        return applyJellyfinTokenAuth(url, credential)
+    }
+
     internal fun cacheIdentity(uri: Uri, requestHeaders: Map<String, String>): String =
         cacheIdentity(uri.toString(), requestHeaders)
 
     internal fun cacheIdentity(url: String, requestHeaders: Map<String, String>): String {
         val subsonicCredential = matchingSubsonicCredential(url)
+        val jellyfinCredential = matchingJellyfinCredential(url)
         val webDavCredential = matchingWebDavCredentialForUrl(url)
         val credentialIdentity = subsonicCredential?.let { credential ->
             "subsonic:${credential.normalizedBaseUrl}:${credential.username.trim()}"
+        } ?: jellyfinCredential?.let { credential ->
+            "jellyfin:${credential.normalizedBaseUrl}"
         } ?: webDavCredential?.let { credential ->
             "${credential.normalizedBaseUrl}:${credential.username.trim()}"
         }
@@ -134,7 +168,7 @@ object EchoRemotePlaybackAuthRegistry {
         val authorizationHeaders = requestHeaders.entries
             .filter { it.key.equals("Authorization", ignoreCase = true) }
             .map { it.value }
-        val sensitiveQueryValues = if (subsonicCredential != null) {
+        val sensitiveQueryValues = if (subsonicCredential != null || jellyfinCredential != null) {
             emptyList()
         } else {
             parseQueryParameters(url)
@@ -165,6 +199,16 @@ object EchoRemotePlaybackAuthRegistry {
         if (!isSubsonicRestUrl(url)) return null
         val cleanUrl = stripUserInfo(url)
         return subsonicCredentials.get()
+            .firstOrNull { credential ->
+                cleanUrl == credential.normalizedBaseUrl ||
+                    cleanUrl.startsWith("${credential.normalizedBaseUrl}/")
+            }
+    }
+
+    private fun matchingJellyfinCredential(url: String): EchoJellyfinPlaybackCredential? {
+        if (!isJellyfinMediaUrl(url)) return null
+        val cleanUrl = stripUserInfo(url)
+        return jellyfinCredentials.get()
             .firstOrNull { credential ->
                 cleanUrl == credential.normalizedBaseUrl ||
                     cleanUrl.startsWith("${credential.normalizedBaseUrl}/")
@@ -340,6 +384,22 @@ fun subsonicPlaybackUriRequiresCredential(uri: String): Boolean {
 fun queueRequiresSubsonicAuth(uris: Iterable<String>): Boolean =
     uris.any(::subsonicPlaybackUriRequiresCredential)
 
+fun jellyfinPlaybackUriRequiresCredential(uri: String): Boolean = isJellyfinMediaUrl(uri)
+
+fun queueRequiresJellyfinAuth(uris: Iterable<String>): Boolean =
+    uris.any(::jellyfinPlaybackUriRequiresCredential)
+
+fun jellyfinAuthReadyForQueue(
+    uris: Iterable<String>,
+    credentialBaseUrls: Iterable<String>,
+): Boolean {
+    val needing = uris.filter(::jellyfinPlaybackUriRequiresCredential)
+    if (needing.isEmpty()) return true
+    val bases = credentialBaseUrls.map { it.trim().trimEnd('/') }.filter { it.isNotBlank() }
+    if (bases.isEmpty()) return false
+    return needing.all { uri -> bases.any { webDavCredentialCoversUri(uri, it) } }
+}
+
 fun subsonicAuthReadyForQueue(
     uris: Iterable<String>,
     credentialBaseUrls: Iterable<String>,
@@ -398,6 +458,21 @@ private fun isSubsonicRestUrl(url: String): Boolean {
     val path = runCatching { URI(url).path }.getOrNull() ?: return false
     val lower = path.lowercase()
     return lower.contains("/rest/") || lower.endsWith("/rest")
+}
+
+internal fun isJellyfinMediaUrl(url: String): Boolean {
+    val path = runCatching { URI(url).path }.getOrNull()?.lowercase() ?: return false
+    return path.contains("/audio/") && path.contains("/stream") ||
+        path.contains("/items/") && path.contains("/images/")
+}
+
+internal fun applyJellyfinTokenAuth(
+    url: String,
+    credential: EchoJellyfinPlaybackCredential,
+): String {
+    val kept = parseQueryParameters(url)
+        .filterNot { it.first.equals("api_key", ignoreCase = true) }
+    return replaceQuery(url, kept + ("api_key" to credential.accessToken))
 }
 
 private fun parseQueryParameters(url: String): List<Pair<String, String>> {

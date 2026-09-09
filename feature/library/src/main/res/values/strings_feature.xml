@@ -15,6 +15,11 @@
     <string name="feature_library_artist_b6e7ad" formatted="false">"Artist"</string>
     <string name="feature_library_artist_c15fae" formatted="false">"artist"</string>
     <string name="feature_library_artists_1e19fb" formatted="false">"Artists"</string>
+    <string name="feature_library_genres_8c2a11" formatted="false">"Genres"</string>
+    <string name="feature_library_loading_genres_4e91aa" formatted="false">"Loading genres"</string>
+    <string name="feature_library_failed_to_load_genres_b7c102" formatted="false">"Failed to load genres"</string>
+    <string name="feature_library_this_library_has_no_genres_to_show_yet_11a90e" formatted="false">"This library has no genres to show yet"</string>
+    <string name="feature_library_dsd_unsupported_9a1b02" formatted="false">"DSD (can't play)"</string>
     <string name="feature_library_artists_e168aa" formatted="false">"Artists"</string>
     <string name="feature_library_back_49093c" formatted="false">"Back"</string>
     <string name="feature_library_back_to_pc_echo_playlists_499312" formatted="false">"Back to PC ECHO playlists"</string>
@@ -36,8 +41,8 @@
     <string name="feature_library_count_tracks_local_playlist_352a0d">"%1$s tracks · Local playlist"</string>
     <string name="feature_library_count_tracks_navidrome_294a65">"%1$s tracks · Navidrome"</string>
     <string name="feature_library_create_7b4bc9" formatted="false">"Create"</string>
-    <string name="feature_library_currently_saved_only_to_the_echoandroid_library_index_6c327c" formatted="false">"Currently saved only to the ECHOAndroid library index, not written into the audio file."</string>
-    <string name="feature_library_currently_saved_to_the_echoandroid_library_index_imported_e15a70" formatted="false">"Currently saved to the ECHOAndroid library index; imported lyrics and artwork are also bound to this track."</string>
+    <string name="feature_library_currently_saved_only_to_the_echoandroid_library_index_6c327c" formatted="false">"Writes MP3, FLAC, and WAV tags into the audio file when Android allows it. Otherwise this stays in the ECHOAndroid library index."</string>
+    <string name="feature_library_currently_saved_to_the_echoandroid_library_index_imported_e15a70" formatted="false">"Writes MP3, FLAC, and WAV tags, including imported lyrics and artwork, into the audio file when Android allows it."</string>
     <string name="feature_library_custom_artwork_c8c999" formatted="false">"Custom artwork"</string>
     <string name="feature_library_delete_138ccf" formatted="false">"Delete"</string>
     <string name="feature_library_delete_playlist_4d9753" formatted="false">"Delete playlist"</string>
@@ -96,6 +101,8 @@
     <string name="feature_library_name_57335e" formatted="false">"Name"</string>
     <string name="feature_library_new_cc6582" formatted="false">"New"</string>
     <string name="feature_library_new_playlist_22cdbd" formatted="false">"New playlist"</string>
+    <string name="feature_library_import_m3u_2b9c10" formatted="false">"Import M3U"</string>
+    <string name="feature_library_export_m3u_6f18a4" formatted="false">"Export M3U"</string>
     <string name="feature_library_new_playlist_and_add_314ff2" formatted="false">"New playlist and add"</string>
     <string name="feature_library_no_liked_songs_yet_heart_a_track_from_ba96cc" formatted="false">"No liked songs yet. Heart a track from the player or a song menu."</string>
     <string name="feature_library_no_local_playlists_yet_create_one_from_the_e13a98" formatted="false">"No local playlists yet. Create one from the top-right, or add from a song menu."</string>
@@ -112,11 +119,15 @@
     <string name="feature_library_pc_echo_has_no_matching_artists_2dbc79" formatted="false">"PC ECHO has no matching artists."</string>
     <string name="feature_library_pc_echo_has_no_matching_playlists_846ad7" formatted="false">"PC ECHO has no matching playlists."</string>
     <string name="feature_library_pc_echo_has_no_matching_songs_40afe3" formatted="false">"PC ECHO has no matching songs."</string>
+    <string name="feature_library_pc_echo_has_no_folders_to_show_9e12b8" formatted="false">"PC ECHO has no folders to show."</string>
+    <string name="feature_library_pc_echo_has_no_matching_folders_4c90d1" formatted="false">"PC ECHO has no matching folders."</string>
     <string name="feature_library_pc_echo_has_no_playlists_to_show_8e8438" formatted="false">"PC ECHO has no playlists to show."</string>
     <string name="feature_library_pc_echo_has_no_songs_to_show_a46ba6" formatted="false">"PC ECHO has no songs to show."</string>
+    <string name="feature_library_open_parent_folder_2a11c0" formatted="false">"Open parent folder"</string>
     <string name="feature_library_pick_an_album_artist_folder_or_playlist_e517b7" formatted="false">"Pick an album, artist, folder, or playlist."</string>
     <string name="feature_library_play_38419a" formatted="false">"Play"</string>
     <string name="feature_library_play_all_55c80e" formatted="false">"Play all"</string>
+    <string name="feature_library_play_on_pc_7c21a4" formatted="false">"Play on PC"</string>
     <string name="feature_library_play_next_a1f73e" formatted="false">"Play next"</string>
     <string name="feature_library_play_this_folder_77afdc" formatted="false">"Play this folder"</string>
     <string name="feature_library_playlist_actions_044945" formatted="false">"Playlist actions"</string>
@@ -128,6 +139,7 @@
     <string name="feature_library_reading_mediastore_87cd18" formatted="false">"Reading MediaStore"</string>
     <string name="feature_library_reading_pc_echo_library_fccbe4" formatted="false">"Reading PC ECHO library..."</string>
     <string name="feature_library_reading_pc_echo_playlist_1ba678" formatted="false">"Reading PC ECHO playlist..."</string>
+    <string name="feature_library_recently_added_b4e8c1" formatted="false">"Recently added"</string>
     <string name="feature_library_recently_played_ce4d5f" formatted="false">"recently played"</string>
     <string name="feature_library_recently_updated_781ab0" formatted="false">"recently updated"</string>
     <string name="feature_library_refresh_pc_echo_library_5b6275" formatted="false">"Refresh PC ECHO library"</string>
@@ -151,6 +163,9 @@
     <string name="feature_library_scanned_862bfd" formatted="false">"Scanned"</string>
     <string name="feature_library_search_library_80ef90" formatted="false">"Search library"</string>
     <string name="feature_library_search_songs_artists_albums_14dc2c" formatted="false">"Search songs, artists, albums"</string>
+    <string name="feature_library_set_album_sort_order_7c2d91" formatted="false">"Set album sort order"</string>
+    <string name="feature_library_set_artist_sort_order_e15a06" formatted="false">"Set artist sort order"</string>
+    <string name="feature_library_set_folder_sort_order_9a4f33" formatted="false">"Set folder sort order"</string>
     <string name="feature_library_set_track_sort_order_4053c0" formatted="false">"Set track sort order"</string>
     <string name="feature_library_shuffle_34e7ce" formatted="false">"Shuffle"</string>
     <string name="feature_library_shuffle_f8e15b" formatted="false">"shuffle"</string>

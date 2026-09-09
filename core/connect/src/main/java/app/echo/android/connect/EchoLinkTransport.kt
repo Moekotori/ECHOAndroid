@@ -3,7 +3,10 @@ package app.echo.android.connect
 import app.echo.android.model.connect.EchoProtocolVersion
 import app.echo.android.model.connect.EchoRemoteCommand
 import app.echo.android.model.connect.EchoRemoteEndpoint
+import app.echo.android.model.connect.EchoRemoteAlbum
+import app.echo.android.model.connect.EchoRemoteFolder
 import app.echo.android.model.connect.EchoRemoteLyrics
+import app.echo.android.model.connect.EchoRemoteMessage
 import app.echo.android.model.connect.EchoRemotePlaybackSnapshot
 import app.echo.android.model.connect.EchoRemotePlaybackState
 import app.echo.android.model.connect.EchoRemotePlaylist
@@ -24,6 +27,9 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.sse.EventSource
+import okhttp3.sse.EventSourceListener
+import okhttp3.sse.EventSources
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -42,6 +48,17 @@ internal data class EchoLinkPlaylistPage(
     val totalCount: Int,
 )
 
+internal data class EchoLinkAlbumPage(
+    val albums: List<EchoRemoteAlbum>,
+    val totalCount: Int,
+)
+
+internal data class EchoLinkFolderPage(
+    val path: String,
+    val folders: List<EchoRemoteFolder>,
+    val tracks: List<EchoRemoteTrack>,
+)
+
 internal data class EchoLinkStreamResponse(
     val streamUrl: String,
     val track: EchoRemoteTrack?,
@@ -50,10 +67,20 @@ internal data class EchoLinkStreamResponse(
 internal interface EchoLinkTransport {
     suspend fun completePairing(endpoint: EchoRemoteEndpoint): EchoRemoteEndpoint
     suspend fun fetchStatus(endpoint: EchoRemoteEndpoint): EchoLinkStatusResponse
+    suspend fun createEventTicket(endpoint: EchoRemoteEndpoint): EchoLinkEventTicket
+    fun subscribeEvents(
+        endpoint: EchoRemoteEndpoint,
+        ticket: EchoLinkEventTicket,
+        onEvent: (EchoRemoteMessage) -> Unit,
+        onClosed: (Throwable?) -> Unit,
+    ): EchoLinkEventSubscription
     suspend fun sendCommand(endpoint: EchoRemoteEndpoint, command: EchoRemoteCommand): EchoLinkStatusResponse?
     suspend fun fetchTracks(endpoint: EchoRemoteEndpoint, query: String, page: Int, pageSize: Int): EchoLinkTrackPage
     suspend fun fetchPlaylists(endpoint: EchoRemoteEndpoint, query: String, page: Int, pageSize: Int): EchoLinkPlaylistPage
     suspend fun fetchPlaylistTracks(endpoint: EchoRemoteEndpoint, playlistId: String, page: Int, pageSize: Int): EchoLinkTrackPage
+    suspend fun fetchAlbums(endpoint: EchoRemoteEndpoint, query: String, page: Int, pageSize: Int): EchoLinkAlbumPage
+    suspend fun fetchAlbumTracks(endpoint: EchoRemoteEndpoint, albumId: String, page: Int, pageSize: Int): EchoLinkTrackPage
+    suspend fun fetchFolders(endpoint: EchoRemoteEndpoint, path: String): EchoLinkFolderPage
     suspend fun resolveStream(endpoint: EchoRemoteEndpoint, trackId: String): EchoLinkStreamResponse
     suspend fun fetchLyrics(endpoint: EchoRemoteEndpoint, trackId: String): EchoRemoteLyrics?
 }
@@ -91,7 +118,64 @@ internal class OkHttpEchoLinkTransport(
             pairingId = null,
             pairingSecret = null,
             protocolVersion = EchoProtocolVersion.Current,
+            supportsV2Events = true,
         )
+    }
+
+    override suspend fun createEventTicket(endpoint: EchoRemoteEndpoint): EchoLinkEventTicket {
+        val json = executeJson(
+            Request.Builder()
+                .url(endpoint.versionedUrl(2, "events", "ticket"))
+                .authorized(endpoint)
+                .post(JSONObject().toString().toRequestBody(JsonMediaType))
+                .build(),
+        )
+        val ticket = json.optText("ticket")
+            ?: throw EchoLinkHttpException("PC ECHO did not return an event ticket")
+        val eventsUrl = endpoint.resolveEventsUrl(json.optText("eventsUrl"))
+            ?: endpoint.versionedUrl(2, "events") {
+                addQueryParameter("ticket", ticket)
+            }
+        return EchoLinkEventTicket(ticket = ticket, eventsUrl = eventsUrl)
+    }
+
+    override fun subscribeEvents(
+        endpoint: EchoRemoteEndpoint,
+        ticket: EchoLinkEventTicket,
+        onEvent: (EchoRemoteMessage) -> Unit,
+        onClosed: (Throwable?) -> Unit,
+    ): EchoLinkEventSubscription {
+        val request = Request.Builder()
+            .url(ticket.eventsUrl)
+            .header("Accept", "text/event-stream")
+            .authorized(endpoint)
+            .get()
+            .build()
+        val source = EventSources.createFactory(client).newEventSource(
+            request,
+            object : EventSourceListener() {
+                override fun onEvent(
+                    eventSource: EventSource,
+                    id: String?,
+                    type: String?,
+                    data: String,
+                ) {
+                    parseEchoLinkEventData(data, endpoint)?.let(onEvent)
+                }
+
+                override fun onClosed(eventSource: EventSource) {
+                    onClosed(null)
+                }
+
+                override fun onFailure(eventSource: EventSource, t: Throwable?, response: Response?) {
+                    val error = t ?: response?.let {
+                        EchoLinkHttpException("PC ECHO events failed (${it.code})", it.code)
+                    }
+                    onClosed(error)
+                }
+            },
+        )
+        return EchoLinkEventSubscription { source.cancel() }
     }
 
     override suspend fun fetchStatus(endpoint: EchoRemoteEndpoint): EchoLinkStatusResponse {
@@ -190,6 +274,61 @@ internal class OkHttpEchoLinkTransport(
                 .build(),
         )
         return json.toTrackPage(endpoint)
+    }
+
+    override suspend fun fetchAlbums(
+        endpoint: EchoRemoteEndpoint,
+        query: String,
+        page: Int,
+        pageSize: Int,
+    ): EchoLinkAlbumPage {
+        val json = executeJson(
+            Request.Builder()
+                .url(echoLinkLibraryAlbumsUrl(endpoint, query, page, pageSize))
+                .authorized(endpoint)
+                .get()
+                .build(),
+        )
+        val items = json.optJSONArray("albums") ?: json.optJSONArray("items") ?: JSONArray()
+        val albums = buildList {
+            for (index in 0 until items.length()) {
+                items.optJSONObject(index)?.toRemoteAlbum(endpoint)?.let(::add)
+            }
+        }
+        return EchoLinkAlbumPage(
+            albums = albums,
+            totalCount = json.optInt("totalCount", json.optInt("total", albums.size)),
+        )
+    }
+
+    override suspend fun fetchAlbumTracks(
+        endpoint: EchoRemoteEndpoint,
+        albumId: String,
+        page: Int,
+        pageSize: Int,
+    ): EchoLinkTrackPage {
+        val json = executeJson(
+            Request.Builder()
+                .url(echoLinkAlbumTracksUrl(endpoint, albumId, page, pageSize))
+                .authorized(endpoint)
+                .get()
+                .build(),
+        )
+        return json.toTrackPage(endpoint)
+    }
+
+    override suspend fun fetchFolders(
+        endpoint: EchoRemoteEndpoint,
+        path: String,
+    ): EchoLinkFolderPage {
+        val json = executeJson(
+            Request.Builder()
+                .url(echoLinkFoldersUrl(endpoint, path))
+                .authorized(endpoint)
+                .get()
+                .build(),
+        )
+        return json.toFolderPage(endpoint, path)
     }
 
     override suspend fun resolveStream(
@@ -304,18 +443,7 @@ private fun JSONObject.toStatusResponse(endpoint: EchoRemoteEndpoint): EchoLinkS
     )
 }
 
-private fun JSONObject.toPlaybackSnapshot(endpoint: EchoRemoteEndpoint): EchoRemotePlaybackSnapshot =
-    EchoRemotePlaybackSnapshot(
-        state = optText("state").toPlaybackState(),
-        track = optJSONObject("track")?.toRemoteTrack(endpoint),
-        positionMs = optLong("positionMs", 0L).coerceAtLeast(0L),
-        durationMs = optDurationMs(),
-        volume = optDouble("volume", 1.0).toFloat().coerceIn(0f, 1f),
-        outputMode = optText("outputMode") ?: optText("output") ?: "PC ECHO",
-        updatedAtEpochMs = optLong("updatedAtEpochMs", System.currentTimeMillis()),
-    )
-
-private fun JSONObject.toRemoteTrack(endpoint: EchoRemoteEndpoint): EchoRemoteTrack? {
+internal fun JSONObject.toRemoteTrack(endpoint: EchoRemoteEndpoint): EchoRemoteTrack? {
     val title = optText("title") ?: return null
     return EchoRemoteTrack(
         id = optText("id") ?: optText("trackId"),
@@ -326,6 +454,94 @@ private fun JSONObject.toRemoteTrack(endpoint: EchoRemoteEndpoint): EchoRemoteTr
         durationMs = optDurationMs(),
         sourceLabel = optText("sourceLabel") ?: optText("source"),
         canPlayOnPhone = optBoolean("canPlayOnPhone", true),
+    )
+}
+
+private fun JSONObject.toRemoteAlbum(endpoint: EchoRemoteEndpoint): EchoRemoteAlbum? {
+    val id = optText("id") ?: optText("albumId") ?: optText("key") ?: return null
+    val title = optText("title") ?: optText("name") ?: optText("album") ?: return null
+    val tracksArray = optJSONArray("tracks") ?: optJSONArray("items")
+    val tracks = buildList {
+        if (tracksArray != null) {
+            for (index in 0 until tracksArray.length()) {
+                tracksArray.optJSONObject(index)?.toRemoteTrack(endpoint)?.let(::add)
+            }
+        }
+    }
+    val artist = optText("albumArtist") ?: optText("artist") ?: tracks.firstOrNull()?.artist.orEmpty()
+    return EchoRemoteAlbum(
+        id = id,
+        title = title,
+        artist = artist.ifBlank { "Unknown Artist" },
+        albumArtist = optText("albumArtist") ?: optText("artist"),
+        artworkUrl = optArtworkUrl()?.toAbsoluteEchoLinkUrl(endpoint)
+            ?: tracks.firstNotNullOfOrNull { it.artworkUrl },
+        trackCount = optInt("trackCount", optInt("songCount", tracks.size)).coerceAtLeast(tracks.size),
+        durationMs = optDurationMs().takeIf { it > 0L } ?: tracks.sumOf { it.durationMs.coerceAtLeast(0L) },
+        year = optInt("year", 0).takeIf { it > 0 },
+        tracks = tracks,
+    )
+}
+
+private fun JSONObject.toRemoteFolder(endpoint: EchoRemoteEndpoint): EchoRemoteFolder? {
+    val path = optText("path") ?: optText("id") ?: optText("folder") ?: return null
+    val name = optText("name") ?: optText("title") ?: path.substringAfterLast('/').ifBlank { path }
+    return EchoRemoteFolder(
+        path = path,
+        name = name,
+        trackCount = optInt("trackCount", optInt("songCount", 0)),
+        childFolderCount = optInt("childFolderCount", optInt("folderCount", optInt("childCount", 0))),
+        artworkUrl = optArtworkUrl()?.toAbsoluteEchoLinkUrl(endpoint),
+    )
+}
+
+private fun JSONObject.toFolderPage(endpoint: EchoRemoteEndpoint, requestedPath: String): EchoLinkFolderPage {
+    val folderItems = optJSONArray("folders") ?: optJSONArray("children")
+    val folders = buildList {
+        if (folderItems != null) {
+            for (index in 0 until folderItems.length()) {
+                val child = folderItems.optJSONObject(index) ?: continue
+                val type = child.optText("type")?.lowercase()
+                if (type != null && type != "folder" && type != "directory") continue
+                child.toRemoteFolder(endpoint)?.let(::add)
+            }
+        }
+    }
+    val trackItems = optJSONArray("tracks") ?: optJSONArray("files")
+    val tracks = buildList {
+        if (trackItems != null) {
+            for (index in 0 until trackItems.length()) {
+                trackItems.optJSONObject(index)?.toRemoteTrack(endpoint)?.let(::add)
+            }
+        }
+        val mixed = optJSONArray("items")
+        if (mixed != null && trackItems == null) {
+            for (index in 0 until mixed.length()) {
+                val item = mixed.optJSONObject(index) ?: continue
+                val type = item.optText("type")?.lowercase()
+                if (type == "folder" || type == "directory") {
+                    continue
+                }
+                item.toRemoteTrack(endpoint)?.let(::add)
+            }
+        }
+    }
+    val mixedFolders = optJSONArray("items")
+    val extraFolders = buildList {
+        if (folderItems == null && mixedFolders != null) {
+            for (index in 0 until mixedFolders.length()) {
+                val item = mixedFolders.optJSONObject(index) ?: continue
+                val type = item.optText("type")?.lowercase()
+                if (type == "folder" || type == "directory") {
+                    item.toRemoteFolder(endpoint)?.let(::add)
+                }
+            }
+        }
+    }
+    return EchoLinkFolderPage(
+        path = optText("path") ?: requestedPath,
+        folders = folders.ifEmpty { extraFolders },
+        tracks = tracks,
     )
 }
 
@@ -424,7 +640,7 @@ private fun String.toAbsoluteEchoLinkUrl(endpoint: EchoRemoteEndpoint): String {
     return base.resolve(raw)?.toString() ?: raw
 }
 
-private fun String?.toPlaybackState(): EchoRemotePlaybackState =
+internal fun String?.toPlaybackState(): EchoRemotePlaybackState =
     when (this?.lowercase()) {
         "playing" -> EchoRemotePlaybackState.Playing
         "paused" -> EchoRemotePlaybackState.Paused
@@ -434,12 +650,12 @@ private fun String?.toPlaybackState(): EchoRemotePlaybackState =
         else -> EchoRemotePlaybackState.Idle
     }
 
-private fun JSONObject.optDurationMs(): Long {
+internal fun JSONObject.optDurationMs(): Long {
     val durationMs = optLong("durationMs", -1L)
     if (durationMs >= 0L) return durationMs
     val durationSeconds = optDouble("durationSeconds", -1.0)
     return if (durationSeconds >= 0.0) (durationSeconds * 1000.0).toLong() else 0L
 }
 
-private fun JSONObject.optText(name: String): String? =
+internal fun JSONObject.optText(name: String): String? =
     optString(name, "").trim().takeIf { it.isNotEmpty() && it != "null" }

@@ -1,6 +1,8 @@
 package app.echo.android
 
 import app.echo.android.data.EchoAppSettings
+import app.echo.android.model.error.EchoErrorLog
+import app.echo.android.model.error.EchoErrorSource
 import app.echo.android.model.i18n.echoText
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.PlaybackPositionState
@@ -172,6 +174,7 @@ internal class LastFmScrobbleController(
             ),
             lastError = message,
         )
+        EchoErrorLog.record(EchoErrorSource.Network, message)
     }
 
     fun setWebAuthError(message: String) {
@@ -184,6 +187,7 @@ internal class LastFmScrobbleController(
             lastError = message,
             webAuthPending = true,
         )
+        EchoErrorLog.record(EchoErrorSource.Network, message)
     }
 
     private fun handleSnapshot(snapshot: LastFmPlaybackSnapshot) {
@@ -320,14 +324,16 @@ internal class LastFmScrobbleController(
                         ) {
                             active = active?.copy(scrobbled = false)
                         }
+                        val message = error.message ?: "Scrobble failed"
                         _uiState.value = LastFmUiState(
                             lastMessage = echoText(
                                 en = "Last.fm scrobble failed",
                                 zh = "Last.fm scrobble 失败",
                                 ja = "Last.fm の scrobble に失敗しました",
                             ),
-                            lastError = error.message ?: "Scrobble failed",
+                            lastError = message,
                         )
+                        EchoErrorLog.record(EchoErrorSource.Network, message, throwable = error)
                     }
             }
         }
@@ -362,14 +368,16 @@ internal class LastFmScrobbleController(
                         ) {
                             active = active?.copy(nowPlayingSent = false)
                         }
+                        val message = error.message ?: "Now playing failed"
                         _uiState.value = LastFmUiState(
                             lastMessage = echoText(
                                 en = "Last.fm now playing was not submitted",
                                 zh = "Last.fm 当前播放未提交",
                                 ja = "Last.fm の Now Playing を送信できませんでした",
                             ),
-                            lastError = error.message ?: "Now playing failed",
+                            lastError = message,
                         )
+                        EchoErrorLog.record(EchoErrorSource.Network, message, throwable = error)
                     }
             }
         }
@@ -403,14 +411,16 @@ internal class LastFmScrobbleController(
                     )
                 }
                 .onFailure { error ->
+                    val message = error.message ?: "Scrobble failed"
                     _uiState.value = LastFmUiState(
                         lastMessage = echoText(
                             en = "Last.fm scrobble failed",
                             zh = "Last.fm scrobble 失败",
                             ja = "Last.fm の scrobble に失敗しました",
                         ),
-                        lastError = error.message ?: "Scrobble failed",
+                        lastError = message,
                     )
+                    EchoErrorLog.record(EchoErrorSource.Network, message, throwable = error)
                 }
         }
         return true

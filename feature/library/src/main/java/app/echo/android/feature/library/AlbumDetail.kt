@@ -69,7 +69,7 @@ import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackMetadataUpdate
 
-private val AlbumDetailBottomPadding = 168.dp
+internal val AlbumDetailBottomPadding = 168.dp
 private val LocalAlbumDetail = staticCompositionLocalOf { false }
 private val AlbumTextShadow = Shadow(
     color = Color.Black.copy(alpha = 0.28f),
@@ -224,6 +224,7 @@ internal fun AlbumDetailListPage(
     onBack: () -> Unit,
     onPlayAll: () -> Unit,
     onShuffle: () -> Unit,
+    onPlayOnPc: (() -> Unit)? = null,
     onPlayTrack: (EchoTrack) -> Unit,
     onUpdateTrackMetadata: ((EchoTrackMetadataUpdate) -> Unit)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
@@ -260,7 +261,7 @@ internal fun AlbumDetailListPage(
                         Spacer(Modifier.height(8.dp))
                         AlbumHero(album = album)
                         Spacer(Modifier.height(18.dp))
-                        AlbumActionBar(onPlayAll = onPlayAll, onShuffle = onShuffle)
+                        AlbumActionBar(onPlayAll = onPlayAll, onShuffle = onShuffle, onPlayOnPc = onPlayOnPc)
                         Spacer(Modifier.height(28.dp))
                         AlbumTracksHeader(
                             count = album.trackCount,
@@ -434,6 +435,7 @@ internal fun ArtistDetailListPage(
     onBack: () -> Unit,
     onPlayAll: () -> Unit,
     onShuffle: () -> Unit,
+    onPlayOnPc: (() -> Unit)? = null,
     onPlayTrack: (EchoTrack) -> Unit,
     onUpdateTrackMetadata: ((EchoTrackMetadataUpdate) -> Unit)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
@@ -477,7 +479,7 @@ internal fun ArtistDetailListPage(
                     Spacer(Modifier.height(8.dp))
                     ArtistHero(artist = artist, palette = palette)
                     Spacer(Modifier.height(18.dp))
-                    AlbumActionBar(onPlayAll = onPlayAll, onShuffle = onShuffle)
+                    AlbumActionBar(onPlayAll = onPlayAll, onShuffle = onShuffle, onPlayOnPc = onPlayOnPc)
                     Spacer(Modifier.height(18.dp))
                     AlbumDetailInsights(
                         source = sourceInsight(tracks),
@@ -522,7 +524,7 @@ internal fun ArtistDetailListPage(
     }
 }
 
-private fun Modifier.detailBackSwipe(onBack: () -> Unit): Modifier = pointerInput(onBack) {
+internal fun Modifier.detailBackSwipe(onBack: () -> Unit): Modifier = pointerInput(onBack) {
     var dragX = 0f
     detectHorizontalDragGestures(
         onDragStart = { dragX = 0f },
@@ -597,7 +599,7 @@ private fun ArtistHero(artist: ArtistSummary, palette: ArtworkPalette) {
 }
 
 @Composable
-private fun AlbumDetailTopBar(onBack: () -> Unit) {
+internal fun AlbumDetailTopBar(onBack: () -> Unit) {
     val colors = rememberDetailGlassColors()
     Row(
         modifier = Modifier
@@ -678,9 +680,10 @@ private fun AlbumHero(
 }
 
 @Composable
-private fun AlbumActionBar(
+internal fun AlbumActionBar(
     onPlayAll: () -> Unit,
     onShuffle: () -> Unit,
+    onPlayOnPc: (() -> Unit)? = null,
 ) {
     val refined = LocalAlbumDetail.current
     val colors = rememberDetailGlassColors()
@@ -688,6 +691,7 @@ private fun AlbumActionBar(
     val dark = LocalEchoDarkTheme.current
     val actionContent = scheme.primary
     val actionBorder = scheme.primary.copy(alpha = if (dark) 0.36f else 0.30f)
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -712,6 +716,19 @@ private fun AlbumActionBar(
             onClick = onShuffle,
             modifier = Modifier.weight(1f),
         )
+    }
+    if (onPlayOnPc != null) {
+        AlbumDetailActionButton(
+            icon = Icons.Rounded.PlayArrow,
+            label = stringResource(L10nR.string.feature_library_play_on_pc_7c21a4),
+            iconSize = 22.dp,
+            contentColor = if (refined) colors.content else actionContent,
+            containerColor = colors.elevatedSurface,
+            borderColor = if (refined) colors.border else actionBorder,
+            onClick = onPlayOnPc,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
     }
 }
 
@@ -974,7 +991,7 @@ private fun DetailInsightCell(
 }
 
 @Composable
-private fun AlbumTracksHeader(
+internal fun AlbumTracksHeader(
     count: Int,
     titleColor: Color? = null,
     metaColor: Color? = null,
@@ -1074,10 +1091,12 @@ private fun sourceLabel(sourceId: String): String = when (sourceId.lowercase()) 
     "mediastore" -> stringResource(L10nR.string.feature_library_local_library_ddf4b1)
     "subsonic" -> "Subsonic / Navidrome"
     "webdav" -> "WebDAV"
+    "jellyfin" -> "Jellyfin / Emby"
     "unknown" -> stringResource(L10nR.string.feature_library_unknown_source_d8c291)
     else -> when {
         sourceId.startsWith("subsonic:", ignoreCase = true) -> "Subsonic / Navidrome"
         sourceId.startsWith("webdav:", ignoreCase = true) -> "WebDAV"
+        sourceId.startsWith("jellyfin:", ignoreCase = true) -> "Jellyfin / Emby"
         else -> sourceId
     }
 }
@@ -1139,7 +1158,7 @@ private fun readableDuration(durationMs: Long): String {
 }
 
 @Composable
-private fun AlbumTrackRow(
+internal fun AlbumTrackRow(
     index: Int,
     track: EchoTrack,
     accent: Color,
@@ -1226,7 +1245,7 @@ private fun AlbumTrackRow(
 }
 
 @Composable
-private fun AlbumDetailNotice(message: String) {
+internal fun AlbumDetailNotice(message: String) {
     val colors = rememberDetailGlassColors()
     Box(
         modifier = Modifier

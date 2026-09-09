@@ -3,17 +3,25 @@
     <cloud-backup>
         <exclude domain="file" path="datastore/" />
         <exclude domain="sharedpref" path="echo_prefs.xml" />
+        <exclude domain="sharedpref" path="echo_secrets.xml" />
         <exclude domain="database" path="echo-library.db" />
         <exclude domain="database" path="echo-library.db-shm" />
         <exclude domain="database" path="echo-library.db-wal" />
+        <exclude domain="database" path="echo-error-log.db" />
+        <exclude domain="database" path="echo-error-log.db-shm" />
+        <exclude domain="database" path="echo-error-log.db-wal" />
         <exclude domain="root" path="cache/" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="file" path="datastore/" />
         <exclude domain="sharedpref" path="echo_prefs.xml" />
+        <exclude domain="sharedpref" path="echo_secrets.xml" />
         <exclude domain="database" path="echo-library.db" />
         <exclude domain="database" path="echo-library.db-shm" />
         <exclude domain="database" path="echo-library.db-wal" />
+        <exclude domain="database" path="echo-error-log.db" />
+        <exclude domain="database" path="echo-error-log.db-shm" />
+        <exclude domain="database" path="echo-error-log.db-wal" />
         <exclude domain="root" path="cache/" />
     </device-transfer>
 </data-extraction-rules>

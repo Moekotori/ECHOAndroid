@@ -26,6 +26,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.echo.android.model.error.EchoErrorLog
+import app.echo.android.model.error.EchoErrorSource
 import app.echo.android.model.library.AlbumOnlineInfo
 import app.echo.android.model.library.AlbumOnlineInfoLoader
 import app.echo.android.model.library.AlbumSummary
@@ -58,6 +60,11 @@ internal fun AlbumOnlineInformation(album: AlbumSummary) {
             throw cancelled
         } catch (failure: Exception) {
             android.util.Log.w("AlbumOnlineInfo", "Online album lookup failed", failure)
+            EchoErrorLog.record(
+                EchoErrorSource.Network,
+                failure.message ?: "Online album lookup failed.",
+                throwable = failure,
+            )
             failed = true
         } finally {
             loading = false

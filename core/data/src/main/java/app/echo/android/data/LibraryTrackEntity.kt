@@ -21,6 +21,7 @@ import androidx.room.PrimaryKey
         Index(value = ["albumKey"]),
         Index(value = ["artistKey"]),
         Index(value = ["source", "albumKey"]),
+        Index(value = ["genreKey"]),
     ],
 )
 data class LibraryTrackEntity(
@@ -53,4 +54,6 @@ data class LibraryTrackEntity(
     val pinyinAlbum: String? = null,
     val albumKey: String = "",
     val artistKey: String = "",
+    val genre: String? = null,
+    val genreKey: String = "",
 )

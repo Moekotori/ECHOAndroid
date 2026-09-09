@@ -70,4 +70,41 @@ class LibraryMetadataPreserveTest {
         assertEquals("Server Artist", prepared.artist)
         assertEquals(80L, prepared.lastSeenScanRunId)
     }
+
+    @Test
+    fun remoteResyncKeepsExistingIdWhenContentUriMatchesAnotherSourceRow() {
+        val existing = LibraryTrackEntity(
+            id = "subsonic:old:song:1",
+            contentUri = "https://navidrome.example/rest/stream.view?id=s1",
+            title = "Old",
+            artist = "A",
+            album = "B",
+            albumArtist = "A",
+            artworkUri = null,
+            durationMs = 1_000L,
+            trackNumber = 1,
+            discNumber = 1,
+            year = 2020,
+            mimeType = "audio/flac",
+            sizeBytes = 8L,
+            dateModifiedSeconds = 0L,
+            source = "subsonic:old",
+        )
+        val incoming = existing.copy(
+            id = "subsonic:new:song:1",
+            title = "New",
+            source = "subsonic:new",
+        )
+        val remapped = remapRemoteTrackIdentity(
+            incoming = incoming,
+            existingByContentUri = mapOf(existing.contentUri to existing),
+        )
+        assertEquals("subsonic:old:song:1", remapped.id)
+        assertEquals("New", remapped.title)
+        assertEquals("subsonic:new", remapped.source)
+        assertEquals(
+            incoming.id,
+            remapRemoteTrackIdentity(incoming, emptyMap()).id,
+        )
+    }
 }

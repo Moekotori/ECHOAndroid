@@ -6,8 +6,11 @@ import android.net.Uri
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import app.echo.android.model.error.EchoErrorLog
 import app.echo.android.model.playback.EchoLinkPlaybackUri
 import app.echo.android.model.playback.EchoSleepTimerMode
+import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -49,8 +52,18 @@ object EchoPlaybackProcessRuntime {
     internal var trackFadeGain: Float = 1f
         private set
 
+    @Volatile
+    var smartMixArmed: Boolean = false
+        private set
+
     internal fun setTrackFadeGain(gain: Float) {
         trackFadeGain = gain.coerceIn(0f, 1f)
+        enginePolicy?.applyReplayGain()
+    }
+
+    internal fun setSmartMixArmed(armed: Boolean) {
+        if (smartMixArmed == armed) return
+        smartMixArmed = armed
         enginePolicy?.applyReplayGain()
     }
     @Volatile
@@ -75,7 +88,11 @@ object EchoPlaybackProcessRuntime {
         enginePolicy?.applyReplayGain()
         reconfigureAudioPipeline(forceSinkReset = true)
     }
-    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    val scope = CoroutineScope(
+        SupervisorJob() + Dispatchers.Main.immediate + CoroutineExceptionHandler { _, error ->
+            EchoErrorLog.recordUncaught(error)
+        },
+    )
     private val resolveMutex = Mutex()
 
     @Volatile
@@ -92,6 +109,11 @@ object EchoPlaybackProcessRuntime {
 
     @Volatile
     var replayGainEnabled: Boolean = false
+        private set
+
+    @Volatile
+    var replayGainMode: app.echo.android.model.playback.EchoReplayGainMode =
+        app.echo.android.model.playback.EchoReplayGainMode.Auto
         private set
 
     @Volatile
@@ -114,6 +136,9 @@ object EchoPlaybackProcessRuntime {
     private var equalizer: EchoEqualizerController? = null
 
     @Volatile
+    private var smartMixer: EchoSmartTransitionMixer? = null
+
+    @Volatile
     private var mediaController: Player? = null
 
     @Volatile
@@ -131,9 +156,14 @@ object EchoPlaybackProcessRuntime {
     @Volatile
     private var streamResolver: EchoPlaybackStreamResolver? = null
 
+    private val remoteAuthReadyListener = AtomicReference<(() -> Unit)?>(null)
+
     @Volatile
     var surfaceSnapshot: EchoPlaybackSurfaceSnapshot = EchoPlaybackSurfaceSnapshot()
         private set
+
+    private val _surface = MutableStateFlow(EchoPlaybackSurfaceSnapshot())
+    val surface: StateFlow<EchoPlaybackSurfaceSnapshot> = _surface.asStateFlow()
 
     @Volatile
     private var surfaceListener: ((EchoPlaybackSurfaceSnapshot) -> Unit)? = null
@@ -146,6 +176,11 @@ object EchoPlaybackProcessRuntime {
     fun equalizerController(): EchoEqualizerController =
         synchronized(this) {
             equalizer ?: EchoEqualizerController().also { equalizer = it }
+        }
+
+    internal fun smartTransitionMixer(): EchoSmartTransitionMixer =
+        synchronized(this) {
+            smartMixer ?: EchoSmartTransitionMixer().also { smartMixer = it }
         }
 
     fun setUsbExclusiveEnabled(enabled: Boolean) {
@@ -262,6 +297,8 @@ object EchoPlaybackProcessRuntime {
 
     fun enginePolicyOrNull(): EchoPlaybackEnginePolicy? = enginePolicy
 
+    fun replayGainDb(mediaId: String?): Float? = enginePolicy?.replayGainDb(mediaId)
+
     fun setCatalog(catalog: EchoPlaybackCatalog) {
         this.catalog = catalog
     }
@@ -272,6 +309,15 @@ object EchoPlaybackProcessRuntime {
         sessionStore = store
     }
 
+    fun setRemoteAuthReadyListener(listener: (() -> Unit)?) {
+        remoteAuthReadyListener.set(listener)
+    }
+
+    fun notifyRemoteAuthReady() {
+        enginePolicy?.retryUncachedReplayGain()
+        remoteAuthReadyListener.get()?.invoke()
+    }
+
     fun sessionStore(): EchoPlaybackSessionStore = sessionStore
 
     fun setSurfaceListener(listener: ((EchoPlaybackSurfaceSnapshot) -> Unit)?) {
@@ -280,6 +326,7 @@ object EchoPlaybackProcessRuntime {
 
     fun publishSurface(snapshot: EchoPlaybackSurfaceSnapshot) {
         surfaceSnapshot = snapshot
+        _surface.value = snapshot
         surfaceListener?.invoke(snapshot)
     }
 
@@ -335,7 +382,13 @@ object EchoPlaybackProcessRuntime {
 
     fun setReplayGain(enabled: Boolean, preampDb: Float) {
         replayGainEnabled = enabled
-        replayGainPreampDb = preampDb
+        replayGainPreampDb = app.echo.android.model.playback.normalizeReplayGainPreampDb(preampDb)
+        enginePolicy?.onReplayGainPreferenceChanged()
+    }
+
+    fun setReplayGainMode(mode: app.echo.android.model.playback.EchoReplayGainMode) {
+        replayGainMode = mode
+        enginePolicy?.onReplayGainModeChanged()
     }
 
     fun syncLoudnessEnhancer(audioSessionId: Int, enhancerGainMb: Int) {

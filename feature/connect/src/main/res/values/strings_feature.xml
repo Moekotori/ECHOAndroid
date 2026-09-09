@@ -148,21 +148,22 @@
     <string name="feature_connect_nearby_pcs_b9b12a" formatted="false">"Nearby PCs"</string>
     <string name="feature_connect_no_pc_found_use_the_same_wi_fi_ce621e" formatted="false">"No PC found. Use the same Wi-Fi and open ECHO on your PC, or enter an address below."</string>
     <string name="feature_connect_no_track_selected_258d56" formatted="false">"No track selected"</string>
-    <string name="feature_connect_off_enable_discord_presence_in_settings_to_share_7f86a5" formatted="false">"Off. Enable Discord presence in Settings to share playback through PC ECHO."</string>
     <string name="feature_connect_open_the_echo_link_page_on_your_pc_d07a0b" formatted="false">"Open the ECHO Link page on your PC, then scan its pairing QR code."</string>
     <string name="feature_connect_pause_pc_003bcf" formatted="false">"Pause PC"</string>
     <string name="feature_connect_pc_address_or_pairing_link_a3e680" formatted="false">"PC address or pairing link"</string>
     <string name="feature_connect_play_on_pc_aa41d1" formatted="false">"Play on PC"</string>
     <string name="feature_connect_playing_on_pc_580a8a" formatted="false">"Playing on PC"</string>
     <string name="feature_connect_read_the_pc_library_after_connecting_local_music_d1da04" formatted="false">"Read the PC library after connecting. Local music stays separate."</string>
-    <string name="feature_connect_ready_to_forward_playback_556606" formatted="false">"Ready to forward playback"</string>
     <string name="feature_connect_reconnect_pc_ea8c5f" formatted="false">"Reconnect PC"</string>
     <string name="feature_connect_scan_to_pair_597ba6" formatted="false">"Scan to pair"</string>
     <string name="feature_connect_select_21bce2" formatted="false">"Select"</string>
     <string name="feature_connect_try_the_saved_pc_when_opening_connect_38be4d" formatted="false">"Try the saved PC when opening Connect"</string>
+    <string name="feature_connect_volume_8f3a19" formatted="false">"Volume"</string>
+    <string name="feature_connect_pc_queue_2e91c4" formatted="false">"PC queue"</string>
     <string name="feature_connect_waiting_for_pc_echo_to_become_available_a74ad2" formatted="false">"Waiting for PC ECHO to become available"</string>
     <string name="feature_connect_check_the_pc_address_or_paste_a_complete_0f216a" formatted="false">"Check the PC address or paste a complete pairing link"</string>
-    <string name="feature_connect_not_available_yet_forwarding_phone_playback_to_pc_d80b24" formatted="false">"Not available yet. Forwarding phone playback to PC Discord is not implemented."</string>
     <string name="feature_connect_pair_another_pc_23df07" formatted="false">"Pair another PC"</string>
     <string name="echo_link_handoff_phone">Continue the phone song on PC</string>
+    <string name="feature_connect_jellyfin_or_emby_independent_of_echo_link_a8f3c1" formatted="false">"Jellyfin or Emby. Independent of Echo Link."</string>
+    <string name="feature_connect_saved_pcs_4d2e91" formatted="false">"Saved PCs"</string>
 </resources>

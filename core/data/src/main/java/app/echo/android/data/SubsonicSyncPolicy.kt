@@ -120,6 +120,11 @@ object SubsonicSyncPolicy {
         return true
     }
 
+    internal fun localTrackIdsForAlbum(
+        album: SubsonicAlbum,
+        localTrackIdsByAlbumKey: Map<String, List<String>>,
+    ): List<String> = localTrackIdsByAlbumKey[albumCandidateKey(album)].orEmpty()
+
     fun shouldRewriteSyncedPlaylist(
         existingName: String?,
         existingTrackIds: List<String>?,

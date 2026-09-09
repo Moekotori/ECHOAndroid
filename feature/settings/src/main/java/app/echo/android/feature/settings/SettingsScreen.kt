@@ -80,7 +80,6 @@ fun SettingsScreen(
     effectivePerformanceMode: String,
     trackAudioInfoTagsVisible: Boolean,
     pcHandoffEnabled: Boolean,
-    discordPresenceViaPcEnabled: Boolean,
     showLyricsControlDeck: Boolean,
     onlineLyricsEnabled: Boolean,
     usbExclusiveEnabled: Boolean,
@@ -114,6 +113,10 @@ fun SettingsScreen(
     lastFmWebAuthPending: Boolean,
     lastFmApiKeyLocked: Boolean,
     lastFmSharedSecretLocked: Boolean,
+    listenBrainzEnabled: Boolean,
+    listenBrainzToken: String?,
+    listenBrainzStatusLabel: String,
+    listenBrainzErrorLabel: String?,
     onDynamicArtworkEnabledChange: (Boolean) -> Unit,
     onCompactModeEnabledChange: (Boolean) -> Unit,
     onDynamicColorEnabledChange: (Boolean) -> Unit,
@@ -121,7 +124,6 @@ fun SettingsScreen(
     onPerformanceModeChange: (String) -> Unit,
     onTrackAudioInfoTagsVisibleChange: (Boolean) -> Unit,
     onPcHandoffEnabledChange: (Boolean) -> Unit,
-    onDiscordPresenceViaPcEnabledChange: (Boolean) -> Unit,
     onShowLyricsControlDeckChange: (Boolean) -> Unit,
     onOnlineLyricsEnabledChange: (Boolean) -> Unit,
     onUsbExclusiveEnabledChange: (Boolean) -> Unit,
@@ -155,8 +157,13 @@ fun SettingsScreen(
     onCompleteLastFmWebAuth: () -> Unit,
     onDisconnectLastFm: () -> Unit,
     onOpenLastFmApiAccounts: () -> Unit,
+    onListenBrainzEnabledChange: (Boolean) -> Unit,
+    onSaveListenBrainzToken: (String) -> Unit,
+    onDisconnectListenBrainz: () -> Unit,
     onOpenLibrary: () -> Unit,
     onOpenConnect: () -> Unit,
+    errorLogCount: Int = 0,
+    onOpenErrorLog: () -> Unit = {},
     notificationPermissionGranted: Boolean = true,
     onRequestNotificationPermission: () -> Unit = {},
 ) {
@@ -177,6 +184,7 @@ fun SettingsScreen(
     var librarySectionExpanded by rememberSaveable { mutableStateOf(false) }
     var lastFmApiKeyInput by rememberSaveable(lastFmApiKey) { mutableStateOf(lastFmApiKey.orEmpty()) }
     var lastFmSecretInput by rememberSaveable(lastFmSharedSecret) { mutableStateOf(lastFmSharedSecret.orEmpty()) }
+    var listenBrainzTokenInput by rememberSaveable(listenBrainzToken) { mutableStateOf(listenBrainzToken.orEmpty()) }
 
     PageChrome(
         title = stringResource(R.string.settings_title),
@@ -470,7 +478,22 @@ fun SettingsScreen(
                     value = trackTransitions.fadeDurationMs / 1000f,
                     valueRange = 0.5f..5f,
                     steps = 8,
-                    onValueChange = { onTrackTransitionsChange(trackTransitions.copy(fadeDurationMs = (it * 1000).toInt())) },
+                    onValueChange = {
+                        onTrackTransitionsChange(
+                            trackTransitions.copy(fadeDurationMs = (it * 1000f).roundToInt()),
+                        )
+                    },
+                )
+                val smartBypassed = usbExclusiveEnabled || usbBitPerfectEnabled ||
+                    effectivePerformanceMode == EchoEffectivePerformanceMode.Lightweight.id
+                SettingsSwitchRow(
+                    title = stringResource(R.string.settings_smart_transition),
+                    detail = stringResource(
+                        if (smartBypassed) R.string.settings_smart_transition_bypass
+                        else R.string.settings_smart_transition_detail,
+                    ),
+                    checked = trackTransitions.smartEnabled,
+                    onCheckedChange = { onTrackTransitionsChange(trackTransitions.copy(smartEnabled = it)) },
                 )
                 SettingsSwitchRow(
                     title = stringResource(R.string.settings_lyrics_sync_tools),
@@ -559,18 +582,22 @@ fun SettingsScreen(
                     onDisconnect = onDisconnectLastFm,
                     onOpenApiAccounts = onOpenLastFmApiAccounts,
                 )
+                ListenBrainzSettingsPanel(
+                    enabled = listenBrainzEnabled,
+                    connected = !listenBrainzToken.isNullOrBlank(),
+                    statusLabel = listenBrainzStatusLabel,
+                    errorLabel = listenBrainzErrorLabel,
+                    token = listenBrainzTokenInput,
+                    onEnabledChange = onListenBrainzEnabledChange,
+                    onTokenChange = { listenBrainzTokenInput = it },
+                    onSaveToken = { onSaveListenBrainzToken(listenBrainzTokenInput) },
+                    onDisconnect = onDisconnectListenBrainz,
+                )
                 SettingsSwitchRow(
                     title = stringResource(R.string.settings_pc_handoff),
                     detail = stringResource(R.string.settings_pc_handoff_detail),
                     checked = pcHandoffEnabled,
                     onCheckedChange = onPcHandoffEnabledChange,
-                )
-                SettingsSwitchRow(
-                    title = "Discord Rich Presence",
-                    detail = stringResource(R.string.settings_discord_unavailable),
-                    checked = false,
-                    enabled = false,
-                    onCheckedChange = {},
                 )
                 SettingsActionRow(
                     title = stringResource(R.string.settings_connect_pc),
@@ -602,6 +629,15 @@ fun SettingsScreen(
                 )
             }
             SettingsSectionCard(title = stringResource(R.string.settings_section_about)) {
+                SettingsActionRow(
+                    title = stringResource(R.string.settings_error_log),
+                    detail = if (errorLogCount > 0) {
+                        stringResource(R.string.settings_error_log_detail_count, errorLogCount)
+                    } else {
+                        stringResource(R.string.settings_error_log_detail_empty)
+                    },
+                    onClick = onOpenErrorLog,
+                )
                 SettingsInfoRow(
                     title = stringResource(R.string.settings_version),
                     detail = appVersionLabel,
@@ -706,6 +742,48 @@ private fun LastFmSettingsPanel(
             SettingsActionRow(
                 title = stringResource(R.string.settings_lastfm_disconnect),
                 detail = stringResource(R.string.settings_lastfm_disconnect_detail),
+                onClick = onDisconnect,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ListenBrainzSettingsPanel(
+    enabled: Boolean,
+    connected: Boolean,
+    statusLabel: String,
+    errorLabel: String?,
+    token: String,
+    onEnabledChange: (Boolean) -> Unit,
+    onTokenChange: (String) -> Unit,
+    onSaveToken: () -> Unit,
+    onDisconnect: () -> Unit,
+) {
+    SettingsSwitchRow(
+        title = stringResource(R.string.settings_listenbrainz),
+        detail = errorLabel ?: statusLabel,
+        checked = enabled,
+        onCheckedChange = onEnabledChange,
+    )
+    if (enabled) {
+        SettingsTextInputRow(
+            title = stringResource(R.string.settings_listenbrainz_token),
+            value = token,
+            placeholder = stringResource(R.string.settings_listenbrainz_token_placeholder),
+            secret = true,
+            onValueChange = onTokenChange,
+        )
+        SettingsActionRow(
+            title = stringResource(R.string.settings_listenbrainz_save),
+            detail = stringResource(R.string.settings_listenbrainz_token_detail),
+            enabled = token.isNotBlank(),
+            onClick = onSaveToken,
+        )
+        if (connected) {
+            SettingsActionRow(
+                title = stringResource(R.string.settings_listenbrainz_disconnect),
+                detail = stringResource(R.string.settings_listenbrainz_disconnect_detail),
                 onClick = onDisconnect,
             )
         }

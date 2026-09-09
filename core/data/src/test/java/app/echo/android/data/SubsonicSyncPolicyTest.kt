@@ -74,6 +74,23 @@ class SubsonicSyncPolicyTest {
     }
 
     @Test
+    fun failedAlbumFetchReusesLocalIdsForTheAlbumKey() {
+        val album = album("a1", "Blue", "Miles", songCount = 3)
+        val key = SubsonicSyncPolicy.albumCandidateKey(album)
+        assertEquals(
+            listOf("t1", "t2", "t3"),
+            SubsonicSyncPolicy.localTrackIdsForAlbum(
+                album = album,
+                localTrackIdsByAlbumKey = mapOf(key to listOf("t1", "t2", "t3")),
+            ),
+        )
+        assertEquals(
+            emptyList<String>(),
+            SubsonicSyncPolicy.localTrackIdsForAlbum(album, emptyMap()),
+        )
+    }
+
+    @Test
     fun fallbackPlanFetchesAlbumsWithUnknownSongCount() {
         val zeroCount = album("z1", "Zero", "Artist", songCount = 0)
         val plan = SubsonicSyncPolicy.planAlbumFallbackSync(

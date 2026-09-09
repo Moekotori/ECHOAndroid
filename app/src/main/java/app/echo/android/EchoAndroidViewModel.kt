@@ -10,28 +10,41 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.util.UnstableApi
 import androidx.paging.PagingData
 import app.echo.android.connect.EchoLinkLanBrowser
+import app.echo.android.data.EchoErrorLogRepository
 import app.echo.android.data.EchoLibraryDatabase
 import app.echo.android.data.EchoLibraryRepository
+import app.echo.android.model.error.EchoErrorLog
+import app.echo.android.model.error.EchoErrorRecord
+import app.echo.android.model.error.EchoErrorSource
 import app.echo.android.data.EchoAppSettings
 import app.echo.android.data.EchoLibrarySelectedSource
 import app.echo.android.data.EchoSettingsStore
 import app.echo.android.data.LibraryPlaybackQueuePolicy
 import app.echo.android.data.DocumentTreeTrackScanner
+import app.echo.android.data.EmbeddedTagWriteResult
+import app.echo.android.data.EmbeddedTagWriter
 import app.echo.android.data.MediaStoreTrackScanner
 import app.echo.android.data.LocalLibrarySearchResults
 import app.echo.android.data.OpraHeadphoneCorrectionRepository
+import app.echo.android.data.JellyfinEndpoint
 import app.echo.android.data.SubsonicEndpoint
 import app.echo.android.data.fetchSubsonicLyricsText
 import app.echo.android.data.subsonicSongIdFromTrack
 import app.echo.android.lyrics.EchoLyricsParser
-import java.util.concurrent.atomic.AtomicReference
+import app.echo.android.lyrics.EchoLrcFormatter
+import android.content.IntentSender
+import java.util.concurrent.atomic.AtomicLong
+
 import app.echo.android.data.WebDavEndpoint
 import app.echo.android.lyrics.ImportedLyricsStore
 import app.echo.android.lyrics.LocalLyricsResolver
 import app.echo.android.lyrics.OnlineLyricsResolver
 import app.echo.android.model.i18n.echoText
+import app.echo.android.model.library.AlbumSortMode
 import app.echo.android.model.library.AlbumSummary
+import app.echo.android.model.library.ArtistSortMode
 import app.echo.android.model.library.ArtistSummary
+import app.echo.android.model.library.FolderSortMode
 import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackMetadataUpdate
@@ -40,14 +53,11 @@ import app.echo.android.model.library.FolderSummary
 import app.echo.android.model.library.LibraryScanProgress
 import app.echo.android.model.library.LibraryStats
 import app.echo.android.model.library.LibraryTrackSortMode
+import app.echo.android.model.lyrics.EchoLyrics
 import app.echo.android.model.lyrics.EchoLyricsLoadState
-import app.echo.android.model.connect.EchoMobileDiscordPresenceSnapshot
 import app.echo.android.model.connect.EchoRemoteLyrics
-import app.echo.android.model.connect.EchoRemotePlaybackState
-import app.echo.android.model.connect.EchoRemoteTrack
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoTrackRef
-import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoEqualizerState
 import app.echo.android.model.playback.PlaybackControlsState
 import app.echo.android.model.playback.PlaybackDiagnosticsState
@@ -59,31 +69,22 @@ import app.echo.android.model.playback.PlaybackQueueState
 import app.echo.android.i18n.applyEchoAppLocale
 import app.echo.android.model.settings.EchoAppLanguage
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
-import app.echo.android.design.EchoArtworkUrlRewriteRegistry
-import app.echo.android.playback.EchoRemotePlaybackAuthRegistry
 import app.echo.android.playback.PlaybackQueueReplaceIntent
-import app.echo.android.playback.shouldReplaceRegisteredRemoteCredentials
 import app.echo.android.playback.EchoPlaybackCachePolicy
 import app.echo.android.playback.EchoPlaybackProcessRuntime
-import app.echo.android.playback.EchoSubsonicPlaybackCredential
-import app.echo.android.playback.EchoWebDavPlaybackCredential
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.cancellation.CancellationException
 
-@kotlin.OptIn(ExperimentalCoroutinesApi::class)
 @androidx.annotation.OptIn(UnstableApi::class)
 @Suppress("SpellCheckingInspection", "ConstPropertyName", "unused")
 class EchoAndroidViewModel(application: Application) : AndroidViewModel(application) {
@@ -92,15 +93,17 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         database = database,
         scanner = MediaStoreTrackScanner(application),
         documentTreeScanner = DocumentTreeTrackScanner(application.contentResolver),
+        tagWriter = EmbeddedTagWriter(application),
     )
+    private val errorLog = EchoErrorLogRepository.create(application)
     private val settingsStore = EchoSettingsStore(application)
     private val echoLinkLanBrowser = EchoLinkLanBrowser(application)
     private val opraRepository = OpraHeadphoneCorrectionRepository(application)
-    private val subsonicEndpointRef = AtomicReference<SubsonicEndpoint?>(null)
+    private val subsonicEndpointRef = EchoSubsonicEndpointRef
     val initialAppSettings: EchoAppSettings = settingsStore.startupAppSettingsSnapshot()
 
-    // 远程播放凭据由下方 appSettings 收集器在首次发射时应用(applyRemotePlaybackCredentials +
-    // notifyRemotePlaybackAuthReady 门控恢复播放),不在构造期用 runBlocking 同步预读,避免阻塞主线程。
+    // 远程播放凭据由 Application 在进程内常驻收集,ViewModel 再应用一次以便 UI 会话
+    // 立刻刷新歌词/听歌记录端点,并门控 MediaController 的恢复播放。不在构造期 runBlocking。
 
     private val libraryController = LibraryController(
         repository = repository,
@@ -136,16 +139,19 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         libraryController.setPlaybackOccupiesStorage {
             playbackController.playbackControls.value.isPlaying
         }
+        libraryController.startWatchingMediaStore(application.contentResolver)
     }
     private val lastFmClient = LastFmClient()
     private val lastFmController = LastFmScrobbleController(
         scope = EchoPlaybackProcessRuntime.scope,
         client = lastFmClient,
     )
-    private val subsonicListenController = SubsonicListenController(
+    private val listenBrainzClient = ListenBrainzClient()
+    private val listenBrainzController = ListenBrainzScrobbleController(
         scope = EchoPlaybackProcessRuntime.scope,
-        endpointRef = subsonicEndpointRef,
+        client = listenBrainzClient,
     )
+
     private var pendingLastFmAuthToken: String? = null
     private var usbStartupPolicyApplied = false
     private var effectivePerformanceMode: EchoEffectivePerformanceMode = EchoEffectivePerformanceMode.Balanced
@@ -154,10 +160,14 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     val libraryQuery: StateFlow<String> = libraryController.libraryQuery
     val libraryTrackSortMode: StateFlow<LibraryTrackSortMode> = libraryController.trackSortMode
+    val libraryAlbumSortMode: StateFlow<AlbumSortMode> = libraryController.albumSortMode
+    val libraryArtistSortMode: StateFlow<ArtistSortMode> = libraryController.artistSortMode
+    val libraryFolderSortMode: StateFlow<FolderSortMode> = libraryController.folderSortMode
     val tracks: Flow<PagingData<EchoTrack>> = libraryController.tracks
     val albums: Flow<PagingData<AlbumSummary>> = libraryController.albums
     val remoteAlbums: Flow<PagingData<AlbumSummary>> = libraryController.remoteAlbums
     val artists: Flow<PagingData<ArtistSummary>> = libraryController.artists
+    val genres: Flow<PagingData<app.echo.android.model.library.GenreSummary>> = libraryController.genres
     val folders: Flow<PagingData<FolderSummary>> = libraryController.folders
     val localPlaylists: StateFlow<List<EchoPlaylist>> = libraryController.localPlaylists
     val favoriteTrackIds: StateFlow<Set<String>> = libraryController.favoriteTrackIds
@@ -181,6 +191,11 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     val lyricsCandidates = lyricsController.candidates
     val lyricsSearching = lyricsController.searching
     val lyricsManagementError = lyricsController.managementError
+    private val tagWriteRequestIds = AtomicLong(1L)
+    private val _pendingEmbeddedTagWrite = MutableStateFlow<PendingEmbeddedTagWrite?>(null)
+    val pendingEmbeddedTagWrite: StateFlow<PendingEmbeddedTagWrite?> = _pendingEmbeddedTagWrite.asStateFlow()
+    private val _embeddedTagWriteMessage = MutableStateFlow<EmbeddedTagWriteUserMessage?>(null)
+    val embeddedTagWriteMessage: StateFlow<EmbeddedTagWriteUserMessage?> = _embeddedTagWriteMessage.asStateFlow()
 
     fun searchLyrics() = lyricsController.refreshLyrics(playbackController.currentTrackId)
     fun cancelLyricsSearch() = lyricsController.cancelSearch()
@@ -189,28 +204,17 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     val appSettings: Flow<EchoAppSettings> = settingsStore.appSettings
     val lastFmState: StateFlow<LastFmUiState> = lastFmController.uiState
-    val discordPresenceSnapshot: Flow<EchoMobileDiscordPresenceSnapshot?> =
-        settingsStore.appSettings
-            .distinctUntilChanged { previous, next ->
-                previous.discordPresenceViaPcEnabled == next.discordPresenceViaPcEnabled
-            }
-            .flatMapLatest { settings ->
-                if (!settings.discordPresenceViaPcEnabled) {
-                    flowOf(null)
-                } else {
-                    combine(
-                        playbackController.playbackStatus,
-                        playbackController.playbackPosition,
-                    ) { status, position ->
-                        status.toMobileDiscordPresence(position)
-                    }.distinctUntilChanged { previous, next ->
-                        previous.state == next.state &&
-                            previous.track?.id == next.track?.id &&
-                            previous.positionMs / DISCORD_PRESENCE_POSITION_BUCKET_MS ==
-                            next.positionMs / DISCORD_PRESENCE_POSITION_BUCKET_MS
-                    }
-                }
-            }
+    val listenBrainzState: StateFlow<ListenBrainzUiState> = listenBrainzController.uiState
+    val errorLogRecords: Flow<List<EchoErrorRecord>> = errorLog.records
+    val errorLogCount: Flow<Int> = errorLog.count
+
+    fun clearErrorLog() {
+        viewModelScope.launch { errorLog.clear() }
+    }
+
+    fun deleteErrorLog(id: Long) {
+        viewModelScope.launch { errorLog.delete(id) }
+    }
 
     private val _recentPlaybackAlbums = MutableStateFlow<List<AlbumSummary>>(emptyList())
     val recentPlaybackAlbums: StateFlow<List<AlbumSummary>> = _recentPlaybackAlbums.asStateFlow()
@@ -234,7 +238,12 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             playbackStatus = playbackController.playbackStatus,
             playbackPosition = playbackController.playbackPosition,
         )
-        subsonicListenController.start(
+        listenBrainzController.start(
+            settingsFlow = settingsStore.appSettings,
+            playbackStatus = playbackController.playbackStatus,
+            playbackPosition = playbackController.playbackPosition,
+        )
+        EchoSubsonicListen.startFromPlayback(
             playbackStatus = playbackController.playbackStatus,
             playbackPosition = playbackController.playbackPosition,
             settingsReady = settingsStore.appSettings,
@@ -281,8 +290,14 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                 if (settings.lastFmEnabled && !settings.lastFmUsername.isNullOrBlank()) {
                     lastFmController.setConnected(settings.lastFmUsername.orEmpty())
                 }
+                if (settings.listenBrainzEnabled && !settings.listenBrainzToken.isNullOrBlank()) {
+                    listenBrainzController.setConnected(listenBrainzController.uiState.value.userName)
+                }
+                playbackController.setReplayGain(settings.replayGainEnabled, settings.replayGainPreampDb)
+                playbackController.setReplayGainMode(
+                    app.echo.android.model.playback.EchoReplayGainMode.fromId(settings.replayGainMode),
+                )
                 applyRemotePlaybackCredentials(settings, allowClearIfEmpty = true)
-                subsonicEndpointRef.set(subsonicEndpointFrom(settings))
                 playbackController.notifyRemotePlaybackAuthReady()
             }
         }
@@ -293,6 +308,9 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun artistTrackPaging(artistKey: String): Flow<PagingData<EchoTrack>> =
         libraryController.artistTrackPaging(artistKey)
+
+    fun genreTrackPaging(genreKey: String): Flow<PagingData<EchoTrack>> =
+        libraryController.genreTrackPaging(genreKey)
 
     fun folderTrackPaging(folderKey: String): Flow<PagingData<EchoTrack>> =
         libraryController.folderTrackPaging(folderKey)
@@ -326,6 +344,18 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun updateLibraryTrackSortMode(sortMode: LibraryTrackSortMode) {
         libraryController.updateTrackSortMode(sortMode)
+    }
+
+    fun updateLibraryAlbumSortMode(sortMode: AlbumSortMode) {
+        libraryController.updateAlbumSortMode(sortMode)
+    }
+
+    fun updateLibraryArtistSortMode(sortMode: ArtistSortMode) {
+        libraryController.updateArtistSortMode(sortMode)
+    }
+
+    fun updateLibraryFolderSortMode(sortMode: FolderSortMode) {
+        libraryController.updateFolderSortMode(sortMode)
     }
 
     fun setEchoLinkPlaybackResolver(resolver: suspend (EchoTrackRef) -> EchoTrackRef) {
@@ -393,13 +423,102 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun updateTrackMetadata(update: EchoTrackMetadataUpdate) {
         viewModelScope.launch {
-            libraryController.updateTrackMetadata(update)
+            pauseIfCurrentTrack(update.trackId)
+            handleEmbeddedTagWriteResult(
+                trackId = update.trackId,
+                result = libraryController.updateTrackMetadata(update).fileWrite,
+            )
+        }
+    }
+
+    fun onEmbeddedTagWriteAccessResult(granted: Boolean) {
+        val pending = _pendingEmbeddedTagWrite.value ?: return
+        _pendingEmbeddedTagWrite.value = null
+        if (!granted) {
+            _embeddedTagWriteMessage.value = EmbeddedTagWriteUserMessage.IndexOnly
+            return
+        }
+        viewModelScope.launch {
+            pauseIfCurrentTrack(pending.trackId)
+            handleEmbeddedTagWriteResult(
+                trackId = pending.trackId,
+                result = libraryController.writeEmbeddedTagsForTrack(
+                    trackId = pending.trackId,
+                    lyricsText = pending.lyricsText,
+                    artworkUri = pending.artworkUri,
+                ),
+                lyricsText = pending.lyricsText,
+                artworkUri = pending.artworkUri,
+            )
+        }
+    }
+
+    fun consumeEmbeddedTagWriteMessage() {
+        _embeddedTagWriteMessage.value = null
+    }
+
+    private fun pauseIfCurrentTrack(trackId: String) {
+        if (playbackController.currentTrackId == trackId) {
+            playbackController.pause()
+        }
+    }
+
+    private fun handleEmbeddedTagWriteResult(
+        trackId: String,
+        result: EmbeddedTagWriteResult,
+        lyricsText: String? = null,
+        artworkUri: String? = null,
+    ) {
+        when (result) {
+            is EmbeddedTagWriteResult.Written ->
+                _embeddedTagWriteMessage.value = EmbeddedTagWriteUserMessage.Written
+            EmbeddedTagWriteResult.UnsupportedFormat -> {
+                _embeddedTagWriteMessage.value = EmbeddedTagWriteUserMessage.UnsupportedFormat
+                EchoErrorLog.record(
+                    EchoErrorSource.Library,
+                    "Embedded tag write is unsupported for this file format.",
+                    detail = trackId,
+                )
+            }
+            EmbeddedTagWriteResult.Failed -> {
+                _embeddedTagWriteMessage.value = EmbeddedTagWriteUserMessage.Failed
+                EchoErrorLog.record(
+                    EchoErrorSource.Library,
+                    "Embedded tag write failed.",
+                    detail = trackId,
+                )
+            }
+            EmbeddedTagWriteResult.NotLocal ->
+                _embeddedTagWriteMessage.value = EmbeddedTagWriteUserMessage.IndexOnly
+            is EmbeddedTagWriteResult.NeedsMediaStoreConsent ->
+                _pendingEmbeddedTagWrite.value = PendingEmbeddedTagWrite(
+                    requestId = tagWriteRequestIds.getAndIncrement(),
+                    trackId = trackId,
+                    contentUri = result.uriString,
+                    intentSender = result.intentSender,
+                    lyricsText = lyricsText,
+                    artworkUri = artworkUri,
+                )
+            EmbeddedTagWriteResult.NeedsStoragePermission ->
+                _pendingEmbeddedTagWrite.value = PendingEmbeddedTagWrite(
+                    requestId = tagWriteRequestIds.getAndIncrement(),
+                    trackId = trackId,
+                    contentUri = "",
+                    needsStoragePermission = true,
+                    lyricsText = lyricsText,
+                    artworkUri = artworkUri,
+                )
         }
     }
 
     fun updateTrackArtwork(trackId: String, artworkUri: Uri) {
         viewModelScope.launch {
-            libraryController.updateTrackArtwork(trackId, artworkUri)
+            pauseIfCurrentTrack(trackId)
+            handleEmbeddedTagWriteResult(
+                trackId = trackId,
+                result = libraryController.updateTrackArtwork(trackId, artworkUri).fileWrite,
+                artworkUri = artworkUri.toString(),
+            )
         }
     }
 
@@ -444,10 +563,30 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun playGenre(genreKey: String) {
+        viewModelScope.launch {
+            val queue = libraryController.genreTracksForPlayback(genreKey)
+            if (queue.isNotEmpty()) playbackController.playQueue(queue, 0)
+        }
+    }
+
     fun playFolder(folderKey: String) {
         viewModelScope.launch {
             val queue = libraryController.folderTracksForPlayback(folderKey)
             if (queue.isNotEmpty()) playbackController.playQueue(queue, 0)
+        }
+    }
+
+    fun shuffleFolder(folderKey: String) {
+        viewModelScope.launch {
+            val queue = libraryController.folderTracksForPlayback(folderKey)
+            if (queue.isNotEmpty()) {
+                playbackController.playQueue(
+                    queue = queue,
+                    startIndex = queue.indices.random(),
+                    intent = PlaybackQueueReplaceIntent.Shuffle,
+                )
+            }
         }
     }
 
@@ -507,6 +646,35 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun removeTrackFromLocalPlaylist(playlistId: String, trackId: String) {
         viewModelScope.launch {
             libraryController.removeTrackFromLocalPlaylist(playlistId, trackId)
+        }
+    }
+
+    fun importM3uPlaylist(uri: Uri) {
+        viewModelScope.launch {
+            val text = withContext(Dispatchers.IO) {
+                getApplication<Application>().contentResolver.openInputStream(uri)
+                    ?.bufferedReader(java.nio.charset.StandardCharsets.UTF_8)
+                    ?.use { it.readText() }
+            } ?: return@launch
+            val name = uri.lastPathSegment
+                ?.substringAfterLast('/')
+                ?.substringBeforeLast('.')
+                ?.replace('+', ' ')
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
+                ?: "M3U"
+            libraryController.importM3uPlaylist(name, text)
+        }
+    }
+
+    fun exportM3uPlaylist(playlistId: String, uri: Uri) {
+        viewModelScope.launch {
+            val text = libraryController.exportM3uPlaylist(playlistId) ?: return@launch
+            withContext(Dispatchers.IO) {
+                getApplication<Application>().contentResolver.openOutputStream(uri)?.use { output ->
+                    output.write(text.toByteArray(java.nio.charset.StandardCharsets.UTF_8))
+                }
+            }
         }
     }
 
@@ -641,10 +809,18 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun setReplayGain(enabled: Boolean, preampDb: Float) {
         playbackController.setReplayGain(enabled, preampDb)
+        viewModelScope.launch { settingsStore.setReplayGain(enabled, preampDb) }
+    }
+
+    fun setReplayGainMode(mode: app.echo.android.model.playback.EchoReplayGainMode) {
+        playbackController.setReplayGainMode(mode)
+        viewModelScope.launch { settingsStore.setReplayGainMode(mode.id) }
     }
 
     fun adjustReplayGainPreamp(deltaDb: Float) {
         playbackController.adjustReplayGainPreamp(deltaDb)
+        val status = playbackController.playbackStatus.value
+        viewModelScope.launch { settingsStore.setReplayGain(enabled = true, preampDb = status.replayGainPreampDb) }
     }
 
     fun setSkipSilenceEnabled(enabled: Boolean) {
@@ -656,11 +832,29 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun importLyrics(uri: Uri) {
-        lyricsController.importLyrics(uri, playbackController.currentTrackId)
+        val trackId = playbackController.currentTrackId
+        lyricsController.importLyrics(uri, trackId) { lyrics ->
+            trackId?.let { writeImportedLyricsToFile(it, lyrics) }
+        }
     }
 
     fun importLyricsForTrack(trackId: String, uri: Uri) {
-        lyricsController.importLyrics(uri, trackId)
+        lyricsController.importLyrics(uri, trackId) { lyrics ->
+            writeImportedLyricsToFile(trackId, lyrics)
+        }
+    }
+
+    private fun writeImportedLyricsToFile(trackId: String, lyrics: EchoLyrics) {
+        viewModelScope.launch {
+            val text = EchoLrcFormatter.format(lyrics)
+            if (text.isBlank()) return@launch
+            pauseIfCurrentTrack(trackId)
+            handleEmbeddedTagWriteResult(
+                trackId = trackId,
+                result = libraryController.writeEmbeddedLyrics(trackId, text).fileWrite,
+                lyricsText = text,
+            )
+        }
     }
 
     fun setEchoLinkLyrics(trackId: String, lyrics: EchoRemoteLyrics) {
@@ -832,6 +1026,9 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                 playbackController.testUsbExclusiveDriver()
             }
             _usbExclusiveTestResult.value = result
+            if (isUsbExclusiveTestFailure(result)) {
+                EchoErrorLog.record(EchoErrorSource.Usb, result)
+            }
         }
     }
 
@@ -1010,15 +1207,15 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    fun setDiscordPresenceViaPcEnabled(enabled: Boolean) {
-        updateSettings {
-            setDiscordPresenceViaPcEnabled(enabled)
-        }
-    }
-
     fun saveEchoLinkPcEndpoint(address: String, token: String) {
         updateSettings {
             setEchoLinkPcEndpoint(address, token)
+        }
+    }
+
+    fun forgetSavedEchoLinkPc(address: String) {
+        updateSettings {
+            forgetSavedEchoLinkPc(address)
         }
     }
 
@@ -1057,8 +1254,20 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun clearSubsonicCredentials() {
-        updateSettings {
-            clearSubsonicCredentials()
+        viewModelScope.launch {
+            val settings = withContext(Dispatchers.IO) {
+                settingsStore.appSettings.first()
+            }
+            val sourceId = subsonicEndpointFrom(settings)?.sourceId
+            withContext(Dispatchers.IO) {
+                settingsStore.clearSubsonicCredentials()
+            }
+            if (sourceId != null) {
+                libraryController.deleteRemoteSource(sourceId)
+                if (selectedLibrarySource == sourceId) {
+                    setLibrarySelectedSource(EchoLibrarySelectedSource.Local)
+                }
+            }
         }
     }
 
@@ -1072,8 +1281,9 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             username = username,
             password = password,
         )
-        libraryController.refreshSubsonic(endpoint)
-        saveSubsonicCredentials(serverUrl, username, password)
+        libraryController.refreshSubsonic(endpoint) {
+            saveSubsonicCredentials(serverUrl, username, password)
+        }
     }
 
     fun saveWebDavCredentials(
@@ -1104,6 +1314,113 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         )
         libraryController.refreshWebDav(endpoint)
         saveWebDavCredentials(serverUrl, username, password)
+    }
+
+    fun saveJellyfinCredentials(
+        serverUrl: String,
+        username: String,
+        password: String,
+        accessToken: String? = null,
+        userId: String? = null,
+    ) {
+        viewModelScope.launch {
+            var token = accessToken
+            var jellyfinUserId = userId
+            if (token.isNullOrBlank() || jellyfinUserId.isNullOrBlank()) {
+                val authed = runCatching {
+                    libraryController.authenticateJellyfin(
+                        JellyfinEndpoint(serverUrl, username, password),
+                    )
+                }.getOrNull()
+                token = authed?.accessToken ?: token
+                jellyfinUserId = authed?.userId ?: jellyfinUserId
+            }
+            withContext(Dispatchers.IO) {
+                settingsStore.setJellyfinCredentials(
+                    serverUrl = serverUrl,
+                    username = username,
+                    password = password,
+                    accessToken = token,
+                    userId = jellyfinUserId,
+                )
+            }
+        }
+    }
+
+    fun clearJellyfinCredentials() {
+        viewModelScope.launch {
+            val settings = withContext(Dispatchers.IO) {
+                settingsStore.appSettings.first()
+            }
+            val sourceId = jellyfinEndpointFrom(settings)?.sourceId
+            withContext(Dispatchers.IO) {
+                settingsStore.clearJellyfinCredentials()
+            }
+            if (sourceId != null) {
+                libraryController.deleteRemoteSource(sourceId)
+                if (selectedLibrarySource == sourceId) {
+                    setLibrarySelectedSource(EchoLibrarySelectedSource.Local)
+                }
+            }
+        }
+    }
+
+    fun syncJellyfinLibrary(
+        serverUrl: String,
+        username: String,
+        password: String,
+    ) {
+        val endpoint = JellyfinEndpoint(
+            baseUrl = serverUrl,
+            username = username,
+            password = password,
+        )
+        libraryController.refreshJellyfin(endpoint) { token, userId ->
+            saveJellyfinCredentials(
+                serverUrl = serverUrl,
+                username = username,
+                password = password,
+                accessToken = token,
+                userId = userId,
+            )
+        }
+    }
+
+    fun setListenBrainzEnabled(enabled: Boolean) {
+        updateSettings {
+            setListenBrainzEnabled(enabled)
+        }
+    }
+
+    fun saveListenBrainzToken(token: String) {
+        viewModelScope.launch {
+            val trimmed = token.trim()
+            if (trimmed.isBlank()) {
+                listenBrainzController.setError("Missing ListenBrainz token")
+                return@launch
+            }
+            listenBrainzController.setConnecting()
+            val result = withContext(Dispatchers.IO) {
+                listenBrainzClient.validateToken(trimmed)
+            }
+            result
+                .onSuccess { userName ->
+                    withContext(Dispatchers.IO) {
+                        settingsStore.setListenBrainzToken(trimmed)
+                    }
+                    listenBrainzController.setConnected(userName)
+                }
+                .onFailure { error ->
+                    listenBrainzController.setError(error.message ?: "ListenBrainz token is not valid")
+                }
+        }
+    }
+
+    fun disconnectListenBrainz() {
+        listenBrainzController.setDisconnected()
+        updateSettings {
+            clearListenBrainzToken()
+        }
     }
 
     fun connectLastFm(
@@ -1242,9 +1559,18 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         lyricsController.clear()
         playbackController.clear()
         lastFmController.clear()
+        listenBrainzController.clear()
         echoLinkLanBrowser.stop()
+        EchoSubsonicListen.startFromSurface()
         super.onCleared()
     }
+
+    private fun isUsbExclusiveTestFailure(result: String): Boolean =
+        result.startsWith("Permission denied") ||
+            result.startsWith("No USB") ||
+            result.startsWith("Format unavailable") ||
+            result.startsWith("Open failed") ||
+            result.startsWith("Unsupported transport")
 
     private fun recordRecentPlayback(trackId: String) {
         viewModelScope.launch {
@@ -1285,104 +1611,24 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             }
     }
 
-    private fun EchoPlaybackStatus.toMobileDiscordPresence(
-        position: PlaybackPositionState,
-    ): EchoMobileDiscordPresenceSnapshot {
-        val currentTrack = track
-        return EchoMobileDiscordPresenceSnapshot(
-            enabled = true,
-            state = state.toRemotePlaybackState(),
-            track = currentTrack?.let {
-                EchoRemoteTrack(
-                    id = it.id,
-                    title = it.title,
-                    artist = it.artist,
-                    album = it.album,
-                    artworkUrl = it.artworkUri,
-                    durationMs = maxOf(it.durationMs, durationMs, position.durationMs),
-                )
-            },
-            positionMs = position.positionMs,
-            durationMs = maxOf(durationMs, position.durationMs, currentTrack?.durationMs ?: 0L),
-            deviceName = "ECHOAndroid",
-            updatedAtEpochMs = position.positionMs / DISCORD_PRESENCE_POSITION_BUCKET_MS,
-        )
-    }
-
-    private fun EchoPlaybackState.toRemotePlaybackState(): EchoRemotePlaybackState =
-        when (this) {
-            EchoPlaybackState.Playing -> EchoRemotePlaybackState.Playing
-            EchoPlaybackState.Paused -> EchoRemotePlaybackState.Paused
-            EchoPlaybackState.Stopped -> EchoRemotePlaybackState.Stopped
-            EchoPlaybackState.Ended -> EchoRemotePlaybackState.Stopped
-            EchoPlaybackState.Idle -> EchoRemotePlaybackState.Idle
-            EchoPlaybackState.Buffering,
-            EchoPlaybackState.Loading,
-            EchoPlaybackState.Seeking,
-            -> EchoRemotePlaybackState.Loading
-            EchoPlaybackState.Error -> EchoRemotePlaybackState.Error
-        }
-
     private companion object {
         const val HOME_HEATMAP_VISIBLE_DAYS = 84L
-        const val DISCORD_PRESENCE_POSITION_BUCKET_MS = 5_000L
     }
 }
 
-private fun applyRemotePlaybackCredentials(
-    settings: EchoAppSettings,
-    allowClearIfEmpty: Boolean,
-) {
-    val webDav = listOfNotNull(webDavPlaybackCredential(settings))
-    if (
-        shouldReplaceRegisteredRemoteCredentials(
-            incomingEmpty = webDav.isEmpty(),
-            registryAlreadyReady = EchoRemotePlaybackAuthRegistry.hasWebDavCredentials(),
-            allowClearIfEmpty = allowClearIfEmpty,
-        )
-    ) {
-        EchoRemotePlaybackAuthRegistry.replaceWebDavCredentials(webDav)
-    }
-    val subsonic = listOfNotNull(subsonicPlaybackCredential(settings))
-    if (
-        shouldReplaceRegisteredRemoteCredentials(
-            incomingEmpty = subsonic.isEmpty(),
-            registryAlreadyReady = EchoRemotePlaybackAuthRegistry.hasSubsonicCredentials(),
-            allowClearIfEmpty = allowClearIfEmpty,
-        )
-    ) {
-        EchoRemotePlaybackAuthRegistry.replaceSubsonicCredentials(subsonic)
-        EchoArtworkUrlRewriteRegistry.notifyChanged()
-    }
-}
+data class PendingEmbeddedTagWrite(
+    val requestId: Long,
+    val trackId: String,
+    val contentUri: String,
+    val intentSender: IntentSender? = null,
+    val needsStoragePermission: Boolean = false,
+    val lyricsText: String? = null,
+    val artworkUri: String? = null,
+)
 
-private fun webDavPlaybackCredential(settings: EchoAppSettings): EchoWebDavPlaybackCredential? {
-    val serverUrl = settings.webDavServerUrl?.takeIf { it.isNotBlank() } ?: return null
-    val username = settings.webDavUsername?.takeIf { it.isNotBlank() } ?: return null
-    val password = settings.webDavPassword?.takeIf { it.isNotBlank() } ?: return null
-    return EchoWebDavPlaybackCredential(
-        baseUrl = serverUrl,
-        username = username,
-        password = password,
-    )
-}
-
-private fun subsonicEndpointFrom(settings: EchoAppSettings): SubsonicEndpoint? {
-    val credential = subsonicPlaybackCredential(settings) ?: return null
-    return SubsonicEndpoint(
-        baseUrl = credential.baseUrl,
-        username = credential.username,
-        password = credential.password,
-    )
-}
-
-private fun subsonicPlaybackCredential(settings: EchoAppSettings): EchoSubsonicPlaybackCredential? {
-    val serverUrl = settings.subsonicServerUrl?.takeIf { it.isNotBlank() } ?: return null
-    val username = settings.subsonicUsername?.takeIf { it.isNotBlank() } ?: return null
-    val password = settings.subsonicPassword?.takeIf { it.isNotBlank() } ?: return null
-    return EchoSubsonicPlaybackCredential(
-        baseUrl = serverUrl,
-        username = username,
-        password = password,
-    )
+enum class EmbeddedTagWriteUserMessage {
+    Written,
+    IndexOnly,
+    UnsupportedFormat,
+    Failed,
 }

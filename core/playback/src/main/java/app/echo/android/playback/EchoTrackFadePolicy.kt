@@ -10,11 +10,21 @@ internal object EchoTrackFadePolicy {
     fun duration(durationMs: Long, requestedMs: Int): Long =
         if (durationMs > 0) minOf(requestedMs.toLong(), max(1, durationMs / 2)) else requestedMs.toLong()
 
-    fun gain(positionMs: Long, durationMs: Long, requestedMs: Int, enabled: Boolean): Float {
+    fun gain(
+        positionMs: Long,
+        durationMs: Long,
+        requestedMs: Int,
+        enabled: Boolean,
+        suppressFadeOut: Boolean = false,
+    ): Float {
         if (!enabled || requestedMs <= 0) return 1f
         val fade = duration(durationMs, requestedMs).coerceAtLeast(1)
         val fadeIn = curve(positionMs.coerceAtLeast(0).toDouble() / fade)
-        val fadeOut = if (durationMs > 0) curve((durationMs - positionMs).coerceAtLeast(0).toDouble() / fade) else 1.0
+        val fadeOut = if (!suppressFadeOut && durationMs > 0) {
+            curve((durationMs - positionMs).coerceAtLeast(0).toDouble() / fade)
+        } else {
+            1.0
+        }
         return (fadeIn * fadeOut).toFloat().coerceIn(0f, 1f)
     }
 

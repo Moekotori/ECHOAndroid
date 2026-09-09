@@ -6,11 +6,14 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.sqlite.db.SimpleSQLiteQuery
+import app.echo.android.model.error.EchoErrorLog
+import app.echo.android.model.error.EchoErrorSource
 import app.echo.android.model.i18n.echoText
 import app.echo.android.model.library.AlbumSortMode
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSortMode
 import app.echo.android.model.library.ArtistSummary
+import app.echo.android.model.library.FolderSortMode
 import app.echo.android.model.library.FolderSummary
 import app.echo.android.model.library.LibraryTrackSortMode
 import app.echo.android.model.library.LibraryScanPhase
@@ -45,6 +48,7 @@ class EchoLibraryRepository(
     private val database: EchoLibraryDatabase,
     private val scanner: MediaStoreTrackScanner,
     private val documentTreeScanner: DocumentTreeTrackScanner,
+    private val tagWriter: EmbeddedTagWriter? = null,
 ) {
     private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -52,6 +56,8 @@ class EchoLibraryRepository(
         repositoryScope.launch {
             delay(PINYIN_BACKFILL_START_DELAY_MS)
             refreshLegacyLibrarySearchIndex()
+            backfillWavTags()
+            backfillAggregationKeys()
         }
     }
 
@@ -135,11 +141,31 @@ class EchoLibraryRepository(
             },
         ).flow
 
-    fun pagedFolders(query: String? = null): Flow<PagingData<FolderSummary>> =
+    fun pagedGenres(
+        query: String? = null,
+        sort: app.echo.android.model.library.GenreSortMode = app.echo.android.model.library.GenreSortMode.Name,
+    ): Flow<PagingData<app.echo.android.model.library.GenreSummary>> =
         Pager(
             config = defaultPagingConfig(),
             pagingSourceFactory = {
-                database.trackDao().pageFolders(query?.trim()?.takeIf { it.isNotBlank() })
+                database.trackDao().pageGenres(query?.trim()?.takeIf { it.isNotBlank() }, sort.name)
+            },
+        ).flow
+
+    fun pagedGenreTracks(genreKey: String): Flow<PagingData<LibraryTrackEntity>> =
+        Pager(
+            config = defaultPagingConfig(),
+            pagingSourceFactory = { database.trackDao().pageTracksByGenre(genreKey) },
+        ).flow
+
+    fun pagedFolders(
+        query: String? = null,
+        sort: FolderSortMode = FolderSortMode.Path,
+    ): Flow<PagingData<FolderSummary>> =
+        Pager(
+            config = defaultPagingConfig(),
+            pagingSourceFactory = {
+                database.trackDao().pageFolders(query?.trim()?.takeIf { it.isNotBlank() }, sort.name)
             },
         ).flow
 
@@ -281,6 +307,21 @@ class EchoLibraryRepository(
         return true
     }
 
+    suspend fun deleteRemoteLibrarySource(source: String) {
+        val trimmed = source.trim()
+        if (trimmed.isEmpty()) return
+        if (!LibraryScanPolicy.isRemoteLibrarySource(trimmed)) return
+        val dao = database.trackDao()
+        val ids = dao.getIdsFromSource(trimmed)
+        ids.chunked(DATABASE_BATCH_SIZE).forEach { chunk ->
+            dao.deleteFavoritesByTrackIds(chunk)
+            dao.deleteScanBatch(chunk)
+            yield()
+        }
+        database.playlistDao().getPlaylistIdsFromSource(trimmed)
+            .forEach { playlistId -> database.playlistDao().deletePlaylist(playlistId) }
+    }
+
     suspend fun addTrackToLocalPlaylist(playlistId: String, trackId: String): Boolean {
         if (LibraryFavoritePolicy.isLikedSongsId(playlistId)) {
             val id = trackId.trim()
@@ -380,7 +421,12 @@ class EchoLibraryRepository(
             }
         } catch (cancelled: CancellationException) {
             throw cancelled
-        } catch (_: Throwable) {
+        } catch (error: Throwable) {
+            EchoErrorLog.record(
+                EchoErrorSource.Library,
+                error.message ?: "Subsonic playlist sync failed.",
+                throwable = error,
+            )
             return
         }
         val dao = database.playlistDao()
@@ -541,31 +587,107 @@ class EchoLibraryRepository(
     suspend fun trackByContentUri(contentUri: String): LibraryTrackEntity? =
         database.trackDao().getTrackByContentUri(contentUri)
 
-    suspend fun updateTrackMetadata(update: EchoTrackMetadataUpdate): Boolean {
+    suspend fun updateTrackMetadata(update: EchoTrackMetadataUpdate): TrackMetadataUpdateResult {
         val dao = database.trackDao()
-        val current = dao.getTrackById(update.trackId) ?: return false
+        val current = dao.getTrackById(update.trackId)
+            ?: return TrackMetadataUpdateResult(false, EmbeddedTagWriteResult.Failed)
         val updated = current.withUserMetadata(
             update = update,
             editedAtEpochMs = System.currentTimeMillis(),
         )
-        if (current.hasSameUserMetadata(updated)) return true
-        dao.upsertBatchWithFts(listOf(updated))
-        rebuildSummariesIfNeeded(dao, current.toSummaryKeySet() + updated.toSummaryKeySet())
-        return true
+        val indexChanged = !current.hasSameUserMetadata(updated)
+        if (indexChanged) {
+            dao.upsertBatchWithFts(listOf(updated))
+            val albums = listOfNotNull(current.normalizedAlbum, updated.normalizedAlbum).distinct()
+            val siblings = albums.flatMap { album -> dao.getLocalTracksByNormalizedAlbum(album) }
+            var summaryKeys = current.toSummaryKeySet() + updated.toSummaryKeySet() + siblings.toSummaryKeySet()
+            val regrouped = reconcileLocalAlbumGrouping(dao, siblings.ifEmpty { listOf(updated) })
+            summaryKeys += regrouped.toSummaryKeySet()
+            rebuildSummariesIfNeeded(dao, summaryKeys)
+        }
+        val target = if (indexChanged) updated else current
+        val fileWrite = writeEmbeddedTags(target, update.toAudioTagFields())
+        persistWrittenFileStats(dao, target, fileWrite)
+        return TrackMetadataUpdateResult(indexUpdated = true, fileWrite = fileWrite)
     }
 
-    suspend fun updateTrackArtwork(trackId: String, artworkUri: String): Boolean {
+    suspend fun writeEmbeddedTagsForTrack(
+        trackId: String,
+        lyricsText: String? = null,
+        artworkUri: String? = null,
+    ): EmbeddedTagWriteResult {
         val dao = database.trackDao()
-        val current = dao.getTrackById(trackId) ?: return false
+        val current = dao.getTrackById(trackId) ?: return EmbeddedTagWriteResult.Failed
+        val fields = fieldsForWrite(current, lyricsText = lyricsText, artworkUri = artworkUri)
+        val fileWrite = writeEmbeddedTags(current, fields)
+        persistWrittenFileStats(dao, current, fileWrite)
+        return fileWrite
+    }
+
+    private suspend fun writeEmbeddedTags(
+        track: LibraryTrackEntity,
+        fields: AudioTagFields,
+    ): EmbeddedTagWriteResult {
+        val writer = tagWriter ?: return EmbeddedTagWriteResult.NotLocal
+        return writer.write(track, fields)
+    }
+
+    private suspend fun persistWrittenFileStats(
+        dao: LibraryTrackDao,
+        track: LibraryTrackEntity,
+        fileWrite: EmbeddedTagWriteResult,
+    ) {
+        val written = fileWrite as? EmbeddedTagWriteResult.Written ?: return
+        val stamped = track.copy(
+            sizeBytes = written.sizeBytes,
+            dateModifiedSeconds = written.dateModifiedSeconds,
+        ).withScanMetadata()
+        if (stamped.fingerprint == track.fingerprint &&
+            stamped.sizeBytes == track.sizeBytes &&
+            stamped.dateModifiedSeconds == track.dateModifiedSeconds
+        ) {
+            return
+        }
+        dao.upsertBatchWithFts(listOf(stamped))
+    }
+
+    suspend fun updateTrackArtwork(trackId: String, artworkUri: String): TrackMetadataUpdateResult {
+        val dao = database.trackDao()
+        val current = dao.getTrackById(trackId)
+            ?: return TrackMetadataUpdateResult(false, EmbeddedTagWriteResult.Failed)
+        val trimmed = artworkUri.trim().takeIf { it.isNotBlank() }
+            ?: return TrackMetadataUpdateResult(false, EmbeddedTagWriteResult.Failed)
         val updated = current.copy(
-            artworkUri = artworkUri.trim().takeIf { it.isNotBlank() } ?: return false,
+            artworkUri = trimmed,
             metadataEditedAtEpochMs = System.currentTimeMillis(),
         ).withScanMetadata()
-        if (current.hasSameUserMetadata(updated)) return true
-        dao.upsertBatchWithFts(listOf(updated))
-        rebuildSummariesIfNeeded(dao, current.toSummaryKeySet() + updated.toSummaryKeySet())
-        return true
+        if (!current.hasSameUserMetadata(updated)) {
+            dao.upsertBatchWithFts(listOf(updated))
+            rebuildSummariesIfNeeded(dao, current.toSummaryKeySet() + updated.toSummaryKeySet())
+        }
+        val fields = fieldsForWrite(updated, artworkUri = trimmed)
+        val fileWrite = writeEmbeddedTags(updated, fields)
+        persistWrittenFileStats(dao, updated, fileWrite)
+        return TrackMetadataUpdateResult(indexUpdated = true, fileWrite = fileWrite)
     }
+
+    suspend fun writeEmbeddedLyrics(trackId: String, lyricsText: String): TrackMetadataUpdateResult {
+        val dao = database.trackDao()
+        val current = dao.getTrackById(trackId)
+            ?: return TrackMetadataUpdateResult(false, EmbeddedTagWriteResult.Failed)
+        val fields = fieldsForWrite(current, lyricsText = lyricsText)
+        val fileWrite = writeEmbeddedTags(current, fields)
+        persistWrittenFileStats(dao, current, fileWrite)
+        return TrackMetadataUpdateResult(indexUpdated = true, fileWrite = fileWrite)
+    }
+
+    private fun fieldsForWrite(
+        track: LibraryTrackEntity,
+        lyricsText: String? = null,
+        artworkUri: String? = null,
+    ): AudioTagFields =
+        tagWriter?.fieldsForWrite(track, lyricsText, artworkUri)
+            ?: track.toAudioTagFields().copy(lyrics = lyricsText)
 
     suspend fun albumTracksForPlayback(
         albumKey: String,
@@ -591,6 +713,9 @@ class EchoLibraryRepository(
         limit: Int = AGGREGATION_QUEUE_LIMIT,
     ): List<LibraryTrackEntity> =
         database.trackDao().getArtistTracksForPlayback(artistPlaybackQuery(artistKey, limit.coerceAtLeast(1)))
+
+    suspend fun genreTracksForPlayback(genreKey: String): List<LibraryTrackEntity> =
+        database.trackDao().getTracksByGenre(genreKey)
 
     suspend fun folderTracksForPlayback(
         folderKey: String,
@@ -787,10 +912,13 @@ class EchoLibraryRepository(
                     LibraryScanPolicy.unseenIds(candidateIds, seenIds)
                 },
             )
-            if (scanOutcome.querySucceeded) reconcileLocalDuplicates(dao, documentFingerprints,
-                existingFingerprints.values.asSequence().filter { it.id in seenIds && it.id !in changedFingerprints } +
-                    changedFingerprints.values.asSequence(),
-            )
+            if (scanOutcome.querySucceeded) {
+                reconcileLocalDuplicates(dao, documentFingerprints,
+                    existingFingerprints.values.asSequence().filter { it.id in seenIds && it.id !in changedFingerprints } +
+                        changedFingerprints.values.asSequence(),
+                )
+                reconcileLocalAlbumGrouping(dao, dao.getLocalLibraryTracks())
+            }
             emitProgress(
                 phase = if (scanOutcome.querySucceeded) LibraryScanPhase.Completed else LibraryScanPhase.Error,
                 error = if (scanOutcome.querySucceeded) null else echoText(
@@ -986,6 +1114,9 @@ class EchoLibraryRepository(
                 },
             )
             deletedCount = deletion.deletedCount
+            if (scanOutcome.querySucceeded) {
+                reconcileLocalAlbumGrouping(dao, dao.getLocalLibraryTracks())
+            }
             emitProgress(
                 phase = if (scanOutcome.querySucceeded) LibraryScanPhase.Completed else LibraryScanPhase.Error,
                 error = if (scanOutcome.querySucceeded) null else echoText(
@@ -1142,10 +1273,11 @@ class EchoLibraryRepository(
             } else {
                 // 回退路径去 N+1:与本地库按 albumKey 比对,未变专辑跳过 getAlbum,
                 // 只把其本地曲目标记为 seen(轮换窗口内的照常强刷)
+                val localTrackIdsByAlbumKey = dao.getTrackAlbumKeys(source)
+                    .groupBy({ it.albumKey }, { it.id })
                 val fallbackPlan = SubsonicSyncPolicy.planAlbumFallbackSync(
                     albums = albums,
-                    localTrackIdsByAlbumKey = dao.getTrackAlbumKeys(source)
-                        .groupBy({ it.albumKey }, { it.id }),
+                    localTrackIdsByAlbumKey = localTrackIdsByAlbumKey,
                     refreshSalt = scanRunId,
                 )
                 if (fallbackPlan.skippedAlbumCount > 0) {
@@ -1164,10 +1296,28 @@ class EchoLibraryRepository(
                     coroutineContext.ensureActive()
                     val chunkSongs = coroutineScope {
                         chunk.map { album ->
-                            async(LibraryScanDispatchers.Remote) { album to client.fetchAlbumSongs(album) }
+                            async(LibraryScanDispatchers.Remote) {
+                                val songs = try {
+                                    client.fetchAlbumSongs(album)
+                                } catch (cancelled: CancellationException) {
+                                    throw cancelled
+                                } catch (_: Throwable) {
+                                    null
+                                }
+                                album to songs
+                            }
                         }.awaitAll()
                     }
                     for ((album, songs) in chunkSongs) {
+                        if (songs == null) {
+                            val localIds = SubsonicSyncPolicy.localTrackIdsForAlbum(
+                                album,
+                                localTrackIdsByAlbumKey,
+                            )
+                            seenIds.addAll(localIds)
+                            scannedCount += localIds.size
+                            continue
+                        }
                         ingestSongs(songs, album.name)
                     }
                     emitProgress(
@@ -1350,6 +1500,191 @@ class EchoLibraryRepository(
         }
     }.flowOn(LibraryScanDispatchers.Limited)
 
+    suspend fun authenticateJellyfin(endpoint: JellyfinEndpoint): JellyfinEndpoint =
+        withContext(LibraryScanDispatchers.Remote) {
+            val session = JellyfinClient(endpoint).authenticate()
+            endpoint.copy(accessToken = session.accessToken, userId = session.userId)
+        }
+
+    fun refreshJellyfinSnapshot(
+        endpoint: JellyfinEndpoint,
+        batchSize: Int = SCAN_BATCH_SIZE,
+        onAuthenticated: ((accessToken: String, userId: String) -> Unit)? = null,
+    ): Flow<LibraryScanProgress> = flow {
+        val client = JellyfinClient(endpoint)
+        val dao = database.trackDao()
+        val source = endpoint.sourceId
+        val scanRunId = System.currentTimeMillis()
+        var progress = LibraryScanProgress(phase = LibraryScanPhase.Preparing)
+        var insertedCount = 0
+        var updatedCount = 0
+        var scannedCount = 0
+        var totalCount: Int? = null
+        var deletedCount = 0
+        var changedSummaries = LibrarySummaryKeySet()
+        val pending = ArrayList<LibraryTrackEntity>(batchSize)
+
+        suspend fun emitProgress(
+            phase: LibraryScanPhase = progress.phase,
+            currentTitle: String? = progress.currentTitle,
+            error: String? = null,
+            isCompleted: Boolean = false,
+        ) {
+            progress = LibraryScanProgress(
+                phase = phase,
+                scannedCount = scannedCount,
+                insertedCount = insertedCount,
+                updatedCount = updatedCount,
+                deletedCount = deletedCount,
+                totalCount = totalCount,
+                currentTitle = currentTitle,
+                error = error,
+                isCompleted = isCompleted,
+            )
+            emit(progress)
+        }
+
+        try {
+            emitProgress()
+            coroutineContext.ensureActive()
+            val existingFingerprints = dao.getExistingMediaStoreFingerprints(source)
+                .associateBy(TrackFingerprint::id)
+            val editedTracks = dao.getMetadataEditedTracks(source).associateBy(LibraryTrackEntity::id)
+            val seenIds = HashSet<String>(existingFingerprints.size)
+            emitProgress(
+                phase = LibraryScanPhase.QueryingMediaStore,
+                currentTitle = echoText(
+                    en = "Connecting to Jellyfin / Emby",
+                    zh = "连接 Jellyfin / Emby",
+                    ja = "Jellyfin / Emby に接続中",
+                ),
+            )
+            val session = withContext(LibraryScanDispatchers.Remote) {
+                if (endpoint.password.isNotBlank()) {
+                    client.authenticate()
+                } else {
+                    val token = endpoint.accessToken?.trim().orEmpty()
+                    val userId = endpoint.userId?.trim().orEmpty()
+                    if (token.isNotEmpty() && userId.isNotEmpty()) {
+                        JellyfinSession(token, userId)
+                    } else {
+                        client.authenticate()
+                    }
+                }
+            }
+            onAuthenticated?.invoke(session.accessToken, session.userId)
+            var startIndex = 0
+            var hitCap = false
+            while (scannedCount < JellyfinClient.MaxTracksPerSync) {
+                coroutineContext.ensureActive()
+                val page = withContext(LibraryScanDispatchers.Remote) {
+                    client.fetchAudioPage(session, startIndex)
+                }
+                totalCount = page.totalCount
+                if (page.items.isEmpty()) break
+                for (item in page.items) {
+                    scannedCount += 1
+                    pending += item.toLibraryTrackEntity(endpoint, scanRunId)
+                    if (pending.size >= batchSize) {
+                        val written = writeRemoteBatch(dao, pending, existingFingerprints, editedTracks)
+                        insertedCount += written.insertedCount
+                        updatedCount += written.updatedCount
+                        seenIds.addAll(written.seenIds)
+                        changedSummaries += written.summaryKeys
+                        pending.clear()
+                        emitProgress(phase = LibraryScanPhase.WritingDatabase, currentTitle = item.title)
+                        yield()
+                    }
+                }
+                startIndex += page.items.size
+                emitProgress(
+                    phase = LibraryScanPhase.QueryingMediaStore,
+                    currentTitle = page.items.lastOrNull()?.title,
+                )
+                if (startIndex >= page.totalCount) break
+                if (scannedCount >= JellyfinClient.MaxTracksPerSync) {
+                    hitCap = true
+                    break
+                }
+            }
+            if (pending.isNotEmpty()) {
+                val written = writeRemoteBatch(dao, pending, existingFingerprints, editedTracks)
+                insertedCount += written.insertedCount
+                updatedCount += written.updatedCount
+                seenIds.addAll(written.seenIds)
+                changedSummaries += written.summaryKeys
+            }
+            emitProgress(phase = LibraryScanPhase.CleaningRemoved, currentTitle = null)
+            val deletion = deleteMissingIfComplete(
+                dao = dao,
+                completeness = LibraryScanCompleteness(
+                    querySucceeded = true,
+                    scannedCount = scannedCount,
+                    existingCount = existingFingerprints.size,
+                    hitVisitCap = hitCap,
+                ),
+                missingIds = { LibraryScanPolicy.unseenIds(existingFingerprints.keys, seenIds) },
+            )
+            deletedCount = deletion.deletedCount
+            rebuildSummariesIfNeeded(dao, changedSummaries + deletion.summaryKeys)
+            emitProgress(phase = LibraryScanPhase.Completed, currentTitle = null, isCompleted = true)
+        } catch (error: CancellationException) {
+            emitProgress(phase = LibraryScanPhase.Cancelled, currentTitle = null, isCompleted = true)
+            throw error
+        } catch (error: Throwable) {
+            emitProgress(
+                phase = LibraryScanPhase.Error,
+                currentTitle = null,
+                error = error.message ?: echoText(
+                    en = "Jellyfin / Emby library sync failed",
+                    zh = "Jellyfin / Emby 曲库同步失败",
+                    ja = "Jellyfin / Emby ライブラリの同期に失敗しました",
+                ),
+                isCompleted = true,
+            )
+        }
+    }.flowOn(LibraryScanDispatchers.Limited)
+
+    suspend fun importM3uPlaylist(name: String, text: String): EchoPlaylist? {
+        val entries = M3uPlaylistCodec.parse(text)
+        if (entries.isEmpty()) return null
+        val rows = database.trackDao().getLocalM3uMatchRows()
+        val trackIds = entries.mapNotNull { M3uPlaylistCodec.matchTrackId(it, rows) }.distinct()
+        if (trackIds.isEmpty()) return null
+        val created = createLocalPlaylist(name) ?: return null
+        trackIds.forEach { trackId -> addTrackToLocalPlaylist(created.id, trackId) }
+        return database.playlistDao().getPlaylist(created.id)?.let { entity ->
+            LibraryPlaylistRecord(
+                id = entity.id,
+                name = entity.name,
+                trackIds = database.playlistDao().getPlaylistTrackIds(entity.id),
+                artworkUri = entity.artworkUri,
+                updatedAtEpochMs = entity.updatedAtEpochMs,
+            ).toEchoPlaylist()
+        } ?: created
+    }
+
+    suspend fun exportM3uPlaylist(playlistId: String): String? {
+        val tracks = playlistTracksForPlayback(playlistId, limit = 2_000)
+        if (tracks.isEmpty()) return null
+        return M3uPlaylistCodec.write(
+            tracks.map { track ->
+                M3uExportTrack(
+                    title = track.title,
+                    artist = track.artist,
+                    durationMs = track.durationMs,
+                    location = track.relativePath
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { path ->
+                            val fileName = track.contentUri.substringAfterLast('/').takeIf { it.isNotBlank() }
+                            if (fileName != null && !path.endsWith(fileName)) "$path/$fileName" else path
+                        }
+                        ?: track.title,
+                )
+            },
+        )
+    }
+
     suspend fun countTracks(): Int = database.trackDao().countTracks()
 
     suspend fun countTracksFromSource(source: String): Int =
@@ -1449,6 +1784,99 @@ class EchoLibraryRepository(
         if (backfilled) {
             dao.rebuildLibrarySummaries()
         }
+    }
+
+    private suspend fun backfillWavTags() = withContext(LibraryScanDispatchers.Limited) {
+        if (scanner.isWavTagBackfillComplete()) return@withContext
+        val dao = database.trackDao()
+        val ids = dao.getLocalWavTrackIdsForTagBackfill()
+        val pending = ArrayList<LibraryTrackEntity>()
+        var changed = false
+        suspend fun flushPending() {
+            if (pending.isEmpty()) return
+            dao.upsertBatchWithFts(pending.toList())
+            pending.clear()
+            changed = true
+            yield()
+        }
+        for (chunk in ids.chunked(WAV_TAG_BACKFILL_BATCH_SIZE)) {
+            coroutineContext.ensureActive()
+            for (track in dao.getTracksByIds(chunk)) {
+                coroutineContext.ensureActive()
+                val tags = scanner.readAudioTagsFromUri(track.contentUri) ?: continue
+                val next = track.withAudioTags(tags)
+                if (next.hasSameUserMetadata(track)) continue
+                pending += next.withScanMetadata()
+                if (pending.size >= DATABASE_BATCH_SIZE) flushPending()
+            }
+        }
+        flushPending()
+        if (changed) dao.rebuildLibrarySummaries()
+        scanner.markWavTagBackfillComplete()
+    }
+
+    private suspend fun backfillAggregationKeys() = withContext(LibraryScanDispatchers.Limited) {
+        if (scanner.isAggregationKeyBackfillComplete()) return@withContext
+        val dao = database.trackDao()
+        val tracks = dao.getAllTracksForFtsRebuild()
+        val pending = ArrayList<LibraryTrackEntity>()
+        var changed = false
+        suspend fun flushPending() {
+            if (pending.isEmpty()) return
+            dao.upsertBatchWithFts(pending.toList())
+            pending.clear()
+            changed = true
+            yield()
+        }
+        for (track in tracks) {
+            coroutineContext.ensureActive()
+            val cleaned = track.copy(
+                title = track.title.takeUnlessUnknownMetadata() ?: UnknownTrackTitle,
+                artist = track.artist.takeUnlessUnknownMetadata() ?: canonicalUnknownArtist(),
+                album = track.album.takeUnlessUnknownMetadata(),
+                albumArtist = track.albumArtist.takeUnlessUnknownMetadata(),
+            ).withScanMetadata()
+            if (
+                cleaned.title == track.title &&
+                cleaned.artist == track.artist &&
+                cleaned.album == track.album &&
+                cleaned.albumArtist == track.albumArtist &&
+                cleaned.albumKey == track.albumKey &&
+                cleaned.artistKey == track.artistKey &&
+                cleaned.normalizedTitle == track.normalizedTitle &&
+                cleaned.normalizedArtist == track.normalizedArtist &&
+                cleaned.normalizedAlbum == track.normalizedAlbum &&
+                cleaned.normalizedAlbumArtist == track.normalizedAlbumArtist
+            ) {
+                continue
+            }
+            pending += cleaned
+            if (pending.size >= DATABASE_BATCH_SIZE) flushPending()
+        }
+        flushPending()
+        val regrouped = reconcileLocalAlbumGrouping(dao, dao.getLocalLibraryTracks())
+        if (changed || regrouped.isNotEmpty()) dao.rebuildLibrarySummaries()
+        scanner.markAggregationKeyBackfillComplete()
+    }
+
+    private suspend fun reconcileLocalAlbumGrouping(
+        dao: LibraryTrackDao,
+        tracks: List<LibraryTrackEntity>,
+    ): List<LibraryTrackEntity> {
+        val changed = LibraryAlbumGrouping.reconcile(tracks)
+        if (changed.isEmpty()) return emptyList()
+        val before = tracks.associateBy { it.id }
+        var summaryKeys = LibrarySummaryKeySet()
+        changed.forEach { next ->
+            before[next.id]?.let { summaryKeys += it.toSummaryKeySet() }
+            summaryKeys += next.toSummaryKeySet()
+        }
+        changed.chunked(DATABASE_BATCH_SIZE).forEach { chunk ->
+            dao.upsertBatchWithFts(chunk)
+            yield()
+        }
+        rebuildSummariesIfNeeded(dao, summaryKeys)
+        return changed
     }
 
     private fun albumPlaybackQuery(albumKey: String, limit: Int): SimpleSQLiteQuery =
@@ -1618,6 +2046,7 @@ class EchoLibraryRepository(
                 albumKeys = changedSummaries.albumKeys,
                 artistKeys = changedSummaries.artistKeys,
                 folderKeys = changedSummaries.folderKeys,
+                genreKeys = changedSummaries.genreKeys,
             )
         } else {
             dao.rebuildLibrarySummaries()
@@ -1631,6 +2060,7 @@ class EchoLibraryRepository(
         const val SAMPLE_RATE_BACKFILL_LIMIT = 400
         const val PINYIN_BACKFILL_BATCH_SIZE = 200
         const val PINYIN_BACKFILL_START_DELAY_MS = 750L
+        const val WAV_TAG_BACKFILL_BATCH_SIZE = 50
         const val RECOMMENDED_TRACK_LIMIT = 8
         const val RECENT_ALBUM_LIMIT = 12
         const val SEARCH_RESULT_LIMIT_PER_TYPE = 6
@@ -1700,15 +2130,27 @@ private suspend fun writeRemoteBatch(
     val inserts = ArrayList<LibraryTrackEntity>(tracks.size)
     val updates = ArrayList<LibraryTrackEntity>(tracks.size)
     val seenIds = ArrayList<String>(tracks.size)
+    val existingByContentUri = HashMap<String, LibraryTrackEntity>()
+    tracks.map { it.contentUri }.distinct().chunked(500).forEach { chunk ->
+        dao.getTracksByContentUris(chunk).forEach { row ->
+            existingByContentUri[row.contentUri] = row
+        }
+    }
     tracks.forEach { track ->
-        val preserved = track.prepareRemoteSyncTrack(editedTracks[track.id])
+        val remapped = remapRemoteTrackIdentity(track, existingByContentUri)
+        val preserved = remapped.prepareRemoteSyncTrack(editedTracks[remapped.id])
         seenIds += preserved.id
-        when (
+        val existingFingerprint = existingFingerprints[preserved.id]?.fingerprint
+            ?: existingByContentUri[preserved.contentUri]?.fingerprint
+        val action = if (remapped.id != track.id) {
+            LibraryScanRowAction.Update
+        } else {
             LibraryScanPolicy.scanRowAction(
-                existingFingerprint = existingFingerprints[preserved.id]?.fingerprint,
+                existingFingerprint = existingFingerprint,
                 incomingFingerprint = preserved.fingerprint,
             )
-        ) {
+        }
+        when (action) {
             LibraryScanRowAction.Insert -> inserts += preserved
             LibraryScanRowAction.Update -> updates += preserved
             LibraryScanRowAction.RememberSeen -> Unit

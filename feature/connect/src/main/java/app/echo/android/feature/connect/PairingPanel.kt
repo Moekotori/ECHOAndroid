@@ -25,6 +25,7 @@ import app.echo.android.design.echoClickable
 import app.echo.android.design.echoExpandIndicator
 import app.echo.android.model.connect.EchoLinkLanDevice
 import app.echo.android.model.connect.EchoRemoteConnectionState
+import app.echo.android.model.connect.EchoSavedPcEndpoint
 
 @Composable
 internal fun PcLinkPanel(
@@ -39,18 +40,23 @@ internal fun PcLinkPanel(
     scanMessageIsError: Boolean,
     savedPcAddress: String?,
     savedPcToken: String?,
+    savedPcs: List<EchoSavedPcEndpoint> = emptyList(),
     autoReconnectEnabled: Boolean,
     linkedLibraryDefault: Boolean,
-    discordPresenceEnabled: Boolean,
-    discordPresenceReady: Boolean,
-    discordPresenceTrackTitle: String?,
+    positionMs: Long,
+    durationMs: Long,
+    volume: Float,
+    queueTitles: List<String> = emptyList(),
     onConnectPc: (String, String) -> Unit,
     onScanPairingCode: () -> Unit,
     onPlayPause: () -> Unit,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
+    onSeek: (Long) -> Unit,
+    onVolume: (Float) -> Unit,
     onDisconnect: () -> Unit,
     onForgetPc: () -> Unit,
+    onForgetSavedPc: (EchoSavedPcEndpoint) -> Unit = {},
     onAutoReconnectChange: (Boolean) -> Unit,
     onLinkedLibraryDefaultChange: (Boolean) -> Unit,
     discoveredLanDevices: List<EchoLinkLanDevice>,
@@ -87,7 +93,22 @@ internal fun PcLinkPanel(
                 TextButton(onClick = onDisconnect) { Text(stringResource(L10nR.string.feature_connect_cancel_connection_fd085f)) }
             }
             connected -> {
-                RemoteNowPlaying(trackTitle, trackArtist, trackArtworkUrl, isPlaying, true, onPlayPause, onPrevious, onNext)
+                RemoteNowPlaying(
+                    title = trackTitle,
+                    artist = trackArtist,
+                    artworkUrl = trackArtworkUrl,
+                    isPlaying = isPlaying,
+                    controlsEnabled = true,
+                    positionMs = positionMs,
+                    durationMs = durationMs,
+                    volume = volume,
+                    onPlayPause = onPlayPause,
+                    onPrevious = onPrevious,
+                    onNext = onNext,
+                    onSeek = onSeek,
+                    onVolume = onVolume,
+                    queueTitles = queueTitles,
+                )
                 if (onHandoffPhoneToPc != null) {
                     OutlinedButton(onClick = onHandoffPhoneToPc, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(L10nR.string.echo_link_handoff_phone))
@@ -96,7 +117,39 @@ internal fun PcLinkPanel(
                 TextButton(onClick = onDisconnect) { Text(stringResource(L10nR.string.feature_connect_disconnect_pc_fd446c)) }
             }
             else -> {
-                if (hasSaved && !manual) {
+                if (savedPcs.isNotEmpty() && !manual) {
+                    ConnectNote(stringResource(L10nR.string.feature_connect_a_saved_pc_is_available_reconnect_or_pair_69fbf8))
+                    ConnectSection(stringResource(L10nR.string.feature_connect_saved_pcs_4d2e91)) {
+                        savedPcs.asReversed().forEach { pc ->
+                            Row(
+                                Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                Icon(Icons.Rounded.Computer, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                Column(Modifier.weight(1f)) {
+                                    Text(pc.name, style = MaterialTheme.typography.bodyMedium)
+                                    ConnectNote(pc.address)
+                                }
+                                TextButton(
+                                    onClick = { onConnectPc(pc.address, pc.token.orEmpty()) },
+                                    enabled = !pc.token.isNullOrBlank() && !busy,
+                                ) {
+                                    Text(stringResource(L10nR.string.feature_connect_connect_c7c091))
+                                }
+                                TextButton(
+                                    onClick = { onForgetSavedPc(pc) },
+                                    enabled = !busy,
+                                ) {
+                                    Text(
+                                        stringResource(L10nR.string.feature_connect_forget_30df50),
+                                        color = MaterialTheme.colorScheme.error,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else if (hasSaved && !manual) {
                     ConnectNote(stringResource(L10nR.string.feature_connect_a_saved_pc_is_available_reconnect_or_pair_69fbf8))
                     Button(onClick = { onConnectPc(savedPcAddress.orEmpty(), savedPcToken.orEmpty()) }, shape = ConnectControlShape, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(L10nR.string.feature_connect_reconnect_pc_ea8c5f))
@@ -167,9 +220,6 @@ internal fun PcLinkPanel(
             if (hasSaved && !busy) TextButton(onClick = { confirmForget = true }) {
                 Text(stringResource(L10nR.string.feature_connect_forget_saved_pc_8860a3), color = MaterialTheme.colorScheme.error)
             }
-        }
-        ConnectSection("Discord Rich Presence") {
-            ConnectNote(stringResource(L10nR.string.feature_connect_not_available_yet_forwarding_phone_playback_to_pc_d80b24))
         }
     }
     if (confirmForget) ForgetConnectionDialog(

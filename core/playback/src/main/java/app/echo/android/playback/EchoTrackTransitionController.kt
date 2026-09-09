@@ -58,7 +58,13 @@ internal class EchoTrackTransitionController(
     }
 
     private fun updateGain(enabled: Boolean) {
-        val gain = EchoTrackFadePolicy.gain(player.currentPosition, player.duration, options.fadeDurationMs, enabled)
+        val gain = EchoTrackFadePolicy.gain(
+            player.currentPosition,
+            player.duration,
+            options.fadeDurationMs,
+            enabled,
+            suppressFadeOut = EchoPlaybackProcessRuntime.smartMixArmed,
+        )
         if (gain == lastGain) return
         lastGain = gain
         onGain(gain)

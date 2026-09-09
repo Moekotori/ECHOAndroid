@@ -35,6 +35,30 @@ class EchoSavedPlaybackSessionTest {
     }
 
     @Test
+    fun trackNumberAndSourceRoundTripInSavedQueue() {
+        val session = savedSession(currentIndex = 0, positionMs = 1_000L).copy(
+            queue = listOf(
+                EchoTrackRef(
+                    id = "album-1",
+                    uri = "content://echo/album-1",
+                    title = "One",
+                    artist = "Artist",
+                    album = "Album",
+                    durationMs = 180_000L,
+                    sampleRateHz = 48_000,
+                    trackNumber = 2,
+                    discNumber = 1,
+                    sourceId = "mediastore",
+                ),
+            ),
+        )
+        val parsed = parsePlaybackSession(session.toPreferenceValue())
+        assertEquals(2, parsed?.queue?.single()?.trackNumber)
+        assertEquals(1, parsed?.queue?.single()?.discNumber)
+        assertEquals("mediastore", parsed?.queue?.single()?.sourceId)
+    }
+
+    @Test
     fun sampleRateRoundTripsInSavedQueue() {
         val session = savedSession(currentIndex = 0, positionMs = 1_000L).copy(
             queue = listOf(

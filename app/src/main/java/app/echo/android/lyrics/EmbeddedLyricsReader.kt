@@ -8,19 +8,25 @@ import java.nio.charset.StandardCharsets
 
 internal object EmbeddedLyricsReader {
     fun read(input: InputStream): EmbeddedLyricsText? {
-        val header = ByteArray(10)
+        val header = ByteArray(12)
         val read = input.read(header)
-        if (read < header.size) return null
+        if (read < 10) return null
 
         return when {
             header[0] == 'I'.code.toByte() && header[1] == 'D'.code.toByte() && header[2] == '3'.code.toByte() ->
-                readId3v2(input, header)
+                readId3v2(input, header.copyOf(10))
 
             header[0] == 'f'.code.toByte() &&
                 header[1] == 'L'.code.toByte() &&
                 header[2] == 'a'.code.toByte() &&
                 header[3] == 'C'.code.toByte() ->
-                readFlac(input)
+                readFlac(PrefixInputStream(header.copyOfRange(4, read), input))
+
+            header[0] == 'R'.code.toByte() &&
+                header[1] == 'I'.code.toByte() &&
+                header[2] == 'F'.code.toByte() &&
+                header[3] == 'F'.code.toByte() ->
+                readWav(PrefixInputStream(header.copyOf(read), input))
 
             else -> null
         }
@@ -83,6 +89,33 @@ internal object EmbeddedLyricsReader {
         return lines.takeIf { it.isNotEmpty() }
             ?.joinToString("\n")
             ?.let { EmbeddedLyricsText(it, "Embedded ID3 SYLT") }
+    }
+
+    private fun readWav(input: InputStream): EmbeddedLyricsText? {
+        val header = input.readExactly(12) ?: return null
+        if (header.decodeToString(8, 12) != "WAVE") return null
+        var remaining = littleEndianU32(header, 4) - 4L
+        repeat(MAX_WAV_CHUNKS) {
+            if (remaining < 8L) return null
+            val chunkHeader = input.readExactly(8) ?: return null
+            remaining -= 8L
+            val id = chunkHeader.decodeToString(0, 4)
+            val size = littleEndianU32(chunkHeader, 4)
+            if (size < 0L || size == 0xFFFFFFFFL) return null
+            val padded = size + (size and 1L)
+            if (id == "id3 " || id == "ID3 ") {
+                if (size !in 10L..MAX_TAG_BYTES) return null
+                val payload = input.readExactly(size.toInt()) ?: return null
+                if (padded > size && !skipExact(input, padded - size)) return null
+                return readId3v2(
+                    payload.inputStream(offset = 10, length = payload.size - 10),
+                    payload.copyOfRange(0, 10),
+                )
+            }
+            if (!skipExact(input, padded)) return null
+            remaining -= padded
+        }
+        return null
     }
 
     private fun readFlac(input: InputStream): EmbeddedLyricsText? {
@@ -192,6 +225,28 @@ internal object EmbeddedLyricsReader {
             ((bytes[start + 3].toInt() and 0xFF) shl 24)
     }
 
+    private fun littleEndianU32(bytes: ByteArray, start: Int): Long =
+        (bytes[start].toInt() and 0xFF).toLong() or
+            ((bytes[start + 1].toInt() and 0xFF).toLong() shl 8) or
+            ((bytes[start + 2].toInt() and 0xFF).toLong() shl 16) or
+            ((bytes[start + 3].toInt() and 0xFF).toLong() shl 24)
+
+    private fun skipExact(input: InputStream, count: Long): Boolean {
+        if (count <= 0L) return true
+        var left = count
+        val buffer = ByteArray(SKIP_BUFFER)
+        while (left > 0L) {
+            var skipped = input.skip(left)
+            if (skipped <= 0L) {
+                val read = input.read(buffer, 0, minOf(buffer.size.toLong(), left).toInt())
+                if (read < 0) return false
+                skipped = read.toLong()
+            }
+            left -= skipped
+        }
+        return true
+    }
+
     private fun formatLrcTime(timeMs: Int): String {
         val safeMs = timeMs.coerceAtLeast(0)
         val minutes = safeMs / 60_000
@@ -208,9 +263,44 @@ internal object EmbeddedLyricsReader {
     private const val MAX_TAG_BYTES = 2 * 1024 * 1024
     private const val MAX_FLAC_METADATA_BLOCKS = 64
     private const val MAX_VORBIS_COMMENTS = 256
+    private const val MAX_WAV_CHUNKS = 256
+    private const val SKIP_BUFFER = 8 * 1024
     private const val FLAC_VORBIS_COMMENT_BLOCK = 4
     @Suppress("SpellCheckingInspection")
     private val VorbisLyricsKeys = setOf("LYRICS", "UNSYNCEDLYRICS", "SYNCEDLYRICS")
+}
+
+private class PrefixInputStream(
+    private val prefix: ByteArray,
+    private val rest: InputStream,
+) : InputStream() {
+    private var offset = 0
+
+    override fun read(): Int {
+        if (offset < prefix.size) {
+            val value = prefix[offset].toInt() and 0xFF
+            offset += 1
+            return value
+        }
+        return rest.read()
+    }
+
+    override fun read(b: ByteArray, off: Int, len: Int): Int {
+        if (len <= 0) return 0
+        var written = 0
+        while (offset < prefix.size && written < len) {
+            b[off + written] = prefix[offset]
+            offset += 1
+            written += 1
+        }
+        if (written == len) return written
+        val fromRest = rest.read(b, off + written, len - written)
+        return when {
+            fromRest < 0 && written == 0 -> -1
+            fromRest < 0 -> written
+            else -> written + fromRest
+        }
+    }
 }
 
 internal data class EmbeddedLyricsText(

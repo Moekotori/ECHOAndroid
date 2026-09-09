@@ -25,9 +25,12 @@ fun shouldAllowRestoredPlayWhenReady(
     webDavAuthReady: Boolean,
     queueRequiresSubsonicAuth: Boolean = false,
     subsonicAuthReady: Boolean = true,
+    queueRequiresJellyfinAuth: Boolean = false,
+    jellyfinAuthReady: Boolean = true,
 ): Boolean = playWhenReady &&
     (!queueRequiresWebDavAuth || webDavAuthReady) &&
-    (!queueRequiresSubsonicAuth || subsonicAuthReady)
+    (!queueRequiresSubsonicAuth || subsonicAuthReady) &&
+    (!queueRequiresJellyfinAuth || jellyfinAuthReady)
 
 fun shouldApplyPendingRestorePlay(
     pendingRestorePlayUntilAuth: Boolean,
@@ -35,6 +38,8 @@ fun shouldApplyPendingRestorePlay(
     webDavAuthReady: Boolean,
     queueRequiresSubsonicAuth: Boolean = false,
     subsonicAuthReady: Boolean = true,
+    queueRequiresJellyfinAuth: Boolean = false,
+    jellyfinAuthReady: Boolean = true,
 ): Boolean = pendingRestorePlayUntilAuth &&
     shouldAllowRestoredPlayWhenReady(
         playWhenReady = true,
@@ -42,6 +47,46 @@ fun shouldApplyPendingRestorePlay(
         webDavAuthReady = webDavAuthReady,
         queueRequiresSubsonicAuth = queueRequiresSubsonicAuth,
         subsonicAuthReady = subsonicAuthReady,
+        queueRequiresJellyfinAuth = queueRequiresJellyfinAuth,
+        jellyfinAuthReady = jellyfinAuthReady,
+    )
+
+fun shouldPendRestorePlayUntilRemoteAuth(
+    savedPlayWhenReady: Boolean,
+    unresolvedEchoLink: Boolean,
+    queueRequiresWebDavAuth: Boolean,
+    webDavAuthReady: Boolean,
+    queueRequiresSubsonicAuth: Boolean,
+    subsonicAuthReady: Boolean,
+    queueRequiresJellyfinAuth: Boolean = false,
+    jellyfinAuthReady: Boolean = true,
+): Boolean = savedPlayWhenReady &&
+    !unresolvedEchoLink &&
+    (
+        (queueRequiresWebDavAuth && !webDavAuthReady) ||
+            (queueRequiresSubsonicAuth && !subsonicAuthReady) ||
+            (queueRequiresJellyfinAuth && !jellyfinAuthReady)
+        )
+
+fun shouldResumePendingRemoteAuthPlay(
+    pendingPlayUntilRemoteAuth: Boolean,
+    unresolvedEchoLink: Boolean,
+    queueRequiresWebDavAuth: Boolean,
+    webDavAuthReady: Boolean,
+    queueRequiresSubsonicAuth: Boolean,
+    subsonicAuthReady: Boolean,
+    queueRequiresJellyfinAuth: Boolean = false,
+    jellyfinAuthReady: Boolean = true,
+): Boolean = pendingPlayUntilRemoteAuth &&
+    !unresolvedEchoLink &&
+    shouldAllowRestoredPlayWhenReady(
+        playWhenReady = true,
+        queueRequiresWebDavAuth = queueRequiresWebDavAuth,
+        webDavAuthReady = webDavAuthReady,
+        queueRequiresSubsonicAuth = queueRequiresSubsonicAuth,
+        subsonicAuthReady = subsonicAuthReady,
+        queueRequiresJellyfinAuth = queueRequiresJellyfinAuth,
+        jellyfinAuthReady = jellyfinAuthReady,
     )
 
 fun shouldRestoreIntoEmptyPlayer(mediaItemCount: Int): Boolean = mediaItemCount <= 0

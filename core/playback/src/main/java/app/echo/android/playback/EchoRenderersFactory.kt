@@ -15,6 +15,7 @@ import androidx.media3.exoplayer.audio.DefaultAudioSink
 internal class EchoRenderersFactory(
     context: Context,
     private val equalizerProcessor: AudioProcessor,
+    private val smartTransitionProcessor: AudioProcessor = EchoSmartTransitionMixer(),
 ) : DefaultRenderersFactory(context) {
     init {
         // Keep platform decoding first; use the bundled software renderer for unsupported formats.
@@ -41,7 +42,7 @@ internal class EchoRenderersFactory(
         DefaultAudioSink.Builder(context)
             .setEnableFloatOutput(enableFloatOutput)
             .setEnableAudioOutputPlaybackParameters(enableAudioTrackPlaybackParams)
-            .setAudioProcessors(arrayOf(equalizerProcessor))
+            .setAudioProcessors(arrayOf(smartTransitionProcessor, equalizerProcessor))
             .setAudioOutputProvider(EchoAudioOutputProvider(context))
             .build()
 }

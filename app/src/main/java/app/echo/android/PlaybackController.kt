@@ -11,6 +11,8 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import app.echo.android.data.EchoSavedPlaybackSession
 import app.echo.android.data.EchoSettingsStore
+import app.echo.android.model.error.EchoErrorLog
+import app.echo.android.model.error.EchoErrorSource
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.playback.EchoAudioErrorKind
 import app.echo.android.model.playback.EchoEqualizerState
@@ -35,6 +37,7 @@ import app.echo.android.playback.EchoPlaybackRuntimeOptionsStore
 import app.echo.android.playback.EchoPlaybackService
 import app.echo.android.playback.EchoRemotePlaybackAuthRegistry
 import app.echo.android.playback.mergePlayerQueueReplayGainUris
+import app.echo.android.playback.queueRequiresJellyfinAuth
 import app.echo.android.playback.queueRequiresSubsonicAuth
 import app.echo.android.playback.queueRequiresWebDavAuth
 import app.echo.android.playback.shouldAllowRestoredPlayWhenReady
@@ -165,7 +168,7 @@ internal class PlaybackController(
     private var persistenceJob: Job? = null
     private val sampleRatesByMediaId = mutableMapOf<String, Int?>()
     private val replayGainUrisByMediaId = mutableMapOf<String, String>()
-    private val replayGainTrackGainsByMediaId = mutableMapOf<String, Float?>()
+
 
     val currentTrackId: String?
         get() = _playbackMetadata.value.track?.id
@@ -194,6 +197,7 @@ internal class PlaybackController(
 
     fun notifyEchoLinkEndpointReady() {
         scope.launch {
+            EchoPlaybackProcessRuntime.enginePolicyOrNull()?.resetEchoLinkStreamRefresh()
             EchoPlaybackProcessRuntime.reResolveBoundPlayerQueue()
             notifyRemotePlaybackAuthReady()
         }
@@ -269,6 +273,7 @@ internal class PlaybackController(
     }
 
     fun play(track: EchoTrack) {
+        if (refuseIfUnplayable(track)) return
         resetStickyPlaybackError()
         enginePolicy.replaceQueueLookups(listOf(track))
         usbAudioMonitor.prepareForTrack(track.sampleRateHz)
@@ -340,6 +345,7 @@ internal class PlaybackController(
     ) {
         if (queue.isEmpty()) return
         val safeStartIndex = startIndex.coerceIn(0, queue.lastIndex)
+        if (refuseIfUnplayable(queue[safeStartIndex])) return
         resetStickyPlaybackError()
         val mediaItems = ArrayList<MediaItem>(queue.size)
         queue.forEach { track ->
@@ -509,11 +515,37 @@ internal class PlaybackController(
 
     fun setReplayGain(enabled: Boolean, preampDb: Float = replayGainPreampDb) {
         replayGainEnabled = enabled
-        replayGainPreampDb = preampDb.coerceIn(MIN_REPLAY_GAIN_PREAMP_DB, MAX_REPLAY_GAIN_PREAMP_DB)
+        replayGainPreampDb = app.echo.android.model.playback.normalizeReplayGainPreampDb(preampDb)
         EchoPlaybackProcessRuntime.setReplayGain(replayGainEnabled, replayGainPreampDb)
-        enginePolicy.onReplayGainEnabledChanged()
         activeReplayGainTrackGainDb = enginePolicy.activeReplayGainTrackGainDb
         updatePlaybackStatusOptions()
+    }
+
+    fun setReplayGainMode(mode: app.echo.android.model.playback.EchoReplayGainMode) {
+        EchoPlaybackProcessRuntime.setReplayGainMode(mode)
+        activeReplayGainTrackGainDb = enginePolicy.activeReplayGainTrackGainDb
+        updatePlaybackStatusOptions()
+    }
+
+    private fun refuseIfUnplayable(track: EchoTrack): Boolean {
+        if (app.echo.android.model.library.LibraryPlaybackSupport.isPlayableOnPhone(track.mimeType, track.uri)) {
+            return false
+        }
+        val error = EchoPlaybackError(
+            kind = EchoAudioErrorKind.UnsupportedFormat,
+            message = "DSD cannot be decoded on this phone.",
+            recoverable = false,
+        )
+        EchoErrorLog.record(EchoErrorSource.Playback, error.message)
+        updateState(_playbackDiagnostics, _playbackDiagnostics.value.withPlaybackError(error))
+        updateState(
+            _playbackStatus,
+            _playbackStatus.value.copy(
+                state = EchoPlaybackState.Error,
+                diagnostics = _playbackDiagnostics.value.diagnostics,
+            ).withPlaybackOptions(),
+        )
+        return true
     }
 
     fun adjustReplayGainPreamp(deltaDb: Float) {
@@ -521,13 +553,15 @@ internal class PlaybackController(
     }
 
     fun notifyRemotePlaybackAuthReady() {
-        enginePolicy.retryUncachedReplayGain()
+        EchoPlaybackProcessRuntime.notifyRemoteAuthReady()
         if (!pendingRestorePlayUntilWebDavAuth) return
         val uris = pendingRestoreQueueUris.ifEmpty { currentQueueUris() }
         val requiresWebDavAuth = queueRequiresWebDavAuth(uris)
         val webDavAuthReady = EchoRemotePlaybackAuthRegistry.isWebDavAuthReadyForUris(uris)
         val requiresSubsonicAuth = queueRequiresSubsonicAuth(uris)
         val subsonicAuthReady = EchoRemotePlaybackAuthRegistry.isSubsonicAuthReadyForUris(uris)
+        val requiresJellyfinAuth = queueRequiresJellyfinAuth(uris)
+        val jellyfinAuthReady = EchoRemotePlaybackAuthRegistry.isJellyfinAuthReadyForUris(uris)
         if (
             !shouldApplyPendingRestorePlay(
                 pendingRestorePlayUntilAuth = true,
@@ -535,6 +569,8 @@ internal class PlaybackController(
                 webDavAuthReady = webDavAuthReady,
                 queueRequiresSubsonicAuth = requiresSubsonicAuth,
                 subsonicAuthReady = subsonicAuthReady,
+                queueRequiresJellyfinAuth = requiresJellyfinAuth,
+                jellyfinAuthReady = jellyfinAuthReady,
             )
         ) {
             return
@@ -656,6 +692,10 @@ internal class PlaybackController(
                             message = "Media controller connection failed.",
                             recoverable = true,
                         ),
+                    )
+                    EchoErrorLog.record(
+                        EchoErrorSource.Playback,
+                        "Media controller connection failed.",
                     )
                     updateState(_playbackDiagnostics, PlaybackDiagnosticsState(diagnostics, diagnostics.lastError))
                     updateState(
@@ -906,9 +946,11 @@ internal class PlaybackController(
             sleepTimerMode = EchoPlaybackProcessRuntime.sleepTimerMode,
             sleepTimerMinutes = EchoPlaybackProcessRuntime.sleepTimerRequestedMinutes,
             replayGainEnabled = replayGainEnabled,
+            replayGainMode = EchoPlaybackProcessRuntime.replayGainMode,
             replayGainPreampDb = replayGainPreampDb,
             replayGainTrackGainDb = enginePolicy.activeReplayGainTrackGainDb
                 ?: activeReplayGainTrackGainDb,
+            replayGainTagsLoaded = enginePolicy.activeReplayGainTagsLoaded,
             skipSilenceEnabled = skipSilenceEnabled,
         )
 
@@ -977,7 +1019,12 @@ internal class PlaybackController(
         } catch (cancelled: CancellationException) {
             restoredPlaybackSession = false
             throw cancelled
-        } catch (_: Exception) {
+        } catch (error: Exception) {
+            EchoErrorLog.record(
+                EchoErrorSource.Playback,
+                error.message ?: "Saved playback session could not be restored.",
+                throwable = error,
+            )
             restoredPlaybackSession = false
             return
         }
@@ -1000,7 +1047,6 @@ internal class PlaybackController(
         try {
             sampleRatesByMediaId.clear()
             replayGainUrisByMediaId.clear()
-            replayGainTrackGainsByMediaId.clear()
             session.queue.forEach { track ->
                 replayGainUrisByMediaId[track.id] = track.uri
                 track.sampleRateHz?.takeIf { it > 0 }?.let { sampleRatesByMediaId[track.id] = it }
@@ -1027,6 +1073,8 @@ internal class PlaybackController(
             val webDavAuthReady = EchoRemotePlaybackAuthRegistry.isWebDavAuthReadyForUris(queueUris)
             val requiresSubsonicAuth = queueRequiresSubsonicAuth(queueUris)
             val subsonicAuthReady = EchoRemotePlaybackAuthRegistry.isSubsonicAuthReadyForUris(queueUris)
+            val requiresJellyfinAuth = queueRequiresJellyfinAuth(queueUris)
+            val jellyfinAuthReady = EchoRemotePlaybackAuthRegistry.isJellyfinAuthReadyForUris(queueUris)
             if (shouldPrepareRestoredQueue(unresolvedEchoLink)) {
                 mediaController.prepare()
             }
@@ -1038,6 +1086,8 @@ internal class PlaybackController(
                     webDavAuthReady = webDavAuthReady,
                     queueRequiresSubsonicAuth = requiresSubsonicAuth,
                     subsonicAuthReady = subsonicAuthReady,
+                    queueRequiresJellyfinAuth = requiresJellyfinAuth,
+                    jellyfinAuthReady = jellyfinAuthReady,
                 )
             ) {
                 mediaController.play()
@@ -1047,7 +1097,8 @@ internal class PlaybackController(
                     (
                         unresolvedEchoLink ||
                             (requiresWebDavAuth && !webDavAuthReady) ||
-                            (requiresSubsonicAuth && !subsonicAuthReady)
+                            (requiresSubsonicAuth && !subsonicAuthReady) ||
+                            (requiresJellyfinAuth && !jellyfinAuthReady)
                         )
                 pendingRestoreQueueUris = if (pendingRestorePlayUntilWebDavAuth) queueUris else emptyList()
             }
@@ -1055,7 +1106,12 @@ internal class PlaybackController(
         } catch (cancelled: CancellationException) {
             restoredPlaybackSession = false
             throw cancelled
-        } catch (_: Exception) {
+        } catch (error: Exception) {
+            EchoErrorLog.record(
+                EchoErrorSource.Playback,
+                error.message ?: "Saved playback session could not be applied.",
+                throwable = error,
+            )
             restoredPlaybackSession = false
         }
     }
@@ -1202,7 +1258,6 @@ internal class PlaybackController(
     private fun replaceQueueLookups(tracks: List<EchoTrack>) {
         sampleRatesByMediaId.clear()
         replayGainUrisByMediaId.clear()
-        replayGainTrackGainsByMediaId.clear()
         tracks.forEach { track ->
             sampleRatesByMediaId[track.id] = track.sampleRateHz
             replayGainUrisByMediaId[track.id] = track.uri
@@ -1311,8 +1366,7 @@ internal class PlaybackController(
         const val MAX_PLAYBACK_SPEED = 2.0f
         const val SLEEP_TIMER_TICK_MS = 1_000L
         const val MAX_SLEEP_TIMER_MINUTES = 180
-        const val MIN_REPLAY_GAIN_PREAMP_DB = -12f
-        const val MAX_REPLAY_GAIN_PREAMP_DB = 6f
+
         const val PERSIST_POSITION_BUCKET_MS = 15_000L
         const val CONTROLLER_CONNECT_MAX_RETRIES = 3
         const val CONTROLLER_CONNECT_RETRY_MS = 400L

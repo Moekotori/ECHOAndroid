@@ -14,6 +14,10 @@
     <string name="permission_audio_description">Scan and play local music files</string>
     <string name="permission_notification_label">Notifications</string>
     <string name="permission_notification_description">Show media playback controls</string>
+    <string name="tag_write_saved_to_file">Saved tags into the audio file</string>
+    <string name="tag_write_saved_index_only">Saved to the library index. The audio file was not changed</string>
+    <string name="tag_write_unsupported_format">This file format cannot be tagged yet. Saved to the library index</string>
+    <string name="tag_write_failed">Could not write the audio file. Saved to the library index</string>
     <string name="lastfm_disconnected">Last.fm is not connected</string>
     <string name="lastfm_connecting">Last.fm is connecting</string>
     <string name="lastfm_connected">Last.fm connected: %1$s</string>

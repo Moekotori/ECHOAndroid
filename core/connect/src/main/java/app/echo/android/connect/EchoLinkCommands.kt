@@ -1,6 +1,7 @@
 package app.echo.android.connect
 
 import app.echo.android.model.connect.EchoRemoteCommand
+import org.json.JSONArray
 import org.json.JSONObject
 
 internal fun EchoRemoteCommand.toJson(): JSONObject {
@@ -28,6 +29,12 @@ internal fun EchoRemoteCommand.toJson(): JSONObject {
             json.put("trackId", trackId)
             json.put("positionMs", positionMs)
             json.put("target", "pc")
+        }
+        is EchoRemoteCommand.QueueReplace -> {
+            json.put("command", "queueReplace")
+            json.put("trackIds", JSONArray(trackIds))
+            json.put("startTrackId", startTrackId)
+            json.put("output", "pc")
         }
     }
     return json

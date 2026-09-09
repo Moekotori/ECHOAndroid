@@ -153,6 +153,84 @@ class EchoPlaybackRestoreTest {
     }
 
     @Test
+    fun pendingRemoteAuthPlayIsOnlyArmedWhenCredentialsAreMissing() {
+        assertTrue(
+            shouldPendRestorePlayUntilRemoteAuth(
+                savedPlayWhenReady = true,
+                unresolvedEchoLink = false,
+                queueRequiresWebDavAuth = false,
+                webDavAuthReady = true,
+                queueRequiresSubsonicAuth = true,
+                subsonicAuthReady = false,
+            ),
+        )
+        assertFalse(
+            shouldPendRestorePlayUntilRemoteAuth(
+                savedPlayWhenReady = true,
+                unresolvedEchoLink = false,
+                queueRequiresWebDavAuth = false,
+                webDavAuthReady = true,
+                queueRequiresSubsonicAuth = true,
+                subsonicAuthReady = true,
+            ),
+        )
+        assertFalse(
+            shouldPendRestorePlayUntilRemoteAuth(
+                savedPlayWhenReady = false,
+                unresolvedEchoLink = false,
+                queueRequiresWebDavAuth = false,
+                webDavAuthReady = true,
+                queueRequiresSubsonicAuth = true,
+                subsonicAuthReady = false,
+            ),
+        )
+        assertFalse(
+            shouldPendRestorePlayUntilRemoteAuth(
+                savedPlayWhenReady = true,
+                unresolvedEchoLink = true,
+                queueRequiresWebDavAuth = false,
+                webDavAuthReady = true,
+                queueRequiresSubsonicAuth = true,
+                subsonicAuthReady = false,
+            ),
+        )
+    }
+
+    @Test
+    fun heldRemoteAuthPlayResumesAfterMatchingCredentialsArrive() {
+        assertFalse(
+            shouldResumePendingRemoteAuthPlay(
+                pendingPlayUntilRemoteAuth = true,
+                unresolvedEchoLink = false,
+                queueRequiresWebDavAuth = false,
+                webDavAuthReady = true,
+                queueRequiresSubsonicAuth = true,
+                subsonicAuthReady = false,
+            ),
+        )
+        assertTrue(
+            shouldResumePendingRemoteAuthPlay(
+                pendingPlayUntilRemoteAuth = true,
+                unresolvedEchoLink = false,
+                queueRequiresWebDavAuth = false,
+                webDavAuthReady = true,
+                queueRequiresSubsonicAuth = true,
+                subsonicAuthReady = true,
+            ),
+        )
+        assertFalse(
+            shouldResumePendingRemoteAuthPlay(
+                pendingPlayUntilRemoteAuth = false,
+                unresolvedEchoLink = false,
+                queueRequiresWebDavAuth = false,
+                webDavAuthReady = true,
+                queueRequiresSubsonicAuth = true,
+                subsonicAuthReady = true,
+            ),
+        )
+    }
+
+    @Test
     fun attachDoesNotReplaceReadyRegistryWithEmptyCredentials() {
         assertFalse(
             shouldReplaceRegisteredRemoteCredentials(

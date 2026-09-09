@@ -244,12 +244,12 @@ class MediaStoreTrackScanner(
         return MediaStoreAudioRow(
             mediaId = mediaId,
             contentUri = Uri.withAppendedPath(collection.uri, mediaId.toString()).toString(),
-            title = getStringOrNull(columns.titleIndex)?.takeIf { it.isNotBlank() } ?: "未知曲目",
-            artist = getStringOrNull(columns.artistIndex)?.takeIf { it.isNotBlank() } ?: "未知艺术家",
-            album = getStringOrNull(columns.albumIndex)?.takeIf { it.isNotBlank() },
+            title = getStringOrNull(columns.titleIndex).takeUnlessUnknownMetadata() ?: UnknownTrackTitle,
+            artist = getStringOrNull(columns.artistIndex).takeUnlessUnknownMetadata() ?: canonicalUnknownArtist(),
+            album = getStringOrNull(columns.albumIndex).takeUnlessUnknownMetadata(),
             albumArtist = columns.albumArtistIndex
                 ?.let { getStringOrNull(it) }
-                ?.takeIf { it.isNotBlank() },
+                .takeUnlessUnknownMetadata(),
             albumId = albumId,
             durationMs = getLongOrNull(columns.durationIndex) ?: 0L,
             trackNumber = rawTrack?.rem(1000)?.takeIf { it > 0 },
@@ -262,6 +262,7 @@ class MediaStoreTrackScanner(
             },
             dateModifiedSeconds = getLongOrNull(columns.modifiedIndex) ?: 0L,
             relativePath = relativePath(collection.volumeName, columns),
+            genre = columns.genreIndex?.let { getStringOrNull(it) }?.takeIf { it.isNotBlank() },
         )
     }
 
@@ -284,13 +285,46 @@ class MediaStoreTrackScanner(
             discNumber = discNumber,
             year = year,
             mimeType = mimeType,
+            genre = genre,
             sizeBytes = sizeBytes,
             sampleRateHz = LibraryScanPolicy.preferredSampleRateHz(sampleRateHz, existingTrack?.sampleRateHz),
             dateModifiedSeconds = dateModifiedSeconds,
             relativePath = relativePath,
         ).withFingerprint()
-        return entity.withFastPathSampleRate(existingTrack, readSampleRate, ::readSampleRateHz)
+        val tagged = if (LibraryWavTagPolicy.isWavContainer(mimeType, contentUri)) {
+            entity.withAudioTags(readAudioTagsFromUri(contentUri)).withFingerprint()
+        } else {
+            entity
+        }
+        return tagged.withFastPathSampleRate(existingTrack, readSampleRate, ::readSampleRateHz)
     }
+
+    internal fun readAudioTagsFromUri(contentUri: String): AudioTagFields? =
+        runCatching {
+            contentResolver.openInputStream(Uri.parse(contentUri))?.use { input ->
+                readLocalAudioTags(input)
+            }
+        }.onFailure { error ->
+            Log.d(TAG, "Unable to read audio tags for $contentUri.", error)
+        }.getOrNull()
+
+    internal fun isWavTagBackfillComplete(): Boolean = wavTagBackfillMarker().exists()
+
+    internal fun markWavTagBackfillComplete() {
+        runCatching { wavTagBackfillMarker().writeText("1") }
+    }
+
+    internal fun isAggregationKeyBackfillComplete(): Boolean = aggregationKeyBackfillMarker().exists()
+
+    internal fun markAggregationKeyBackfillComplete() {
+        runCatching { aggregationKeyBackfillMarker().writeText("1") }
+    }
+
+    private fun wavTagBackfillMarker(): java.io.File =
+        java.io.File(appContext.filesDir, "wav-tag-backfill-v1")
+
+    private fun aggregationKeyBackfillMarker(): java.io.File =
+        java.io.File(appContext.filesDir, "library-aggregation-keys-v2")
 
     internal fun readSampleRateHz(contentUri: String): Int? =
         runCatching {
@@ -385,6 +419,7 @@ class MediaStoreTrackScanner(
         val dataIndex: Int?,
         val sampleRateIndex: Int?,
         val volumeNameIndex: Int?,
+        val genreIndex: Int?,
     ) {
         companion object {
             fun from(cursor: Cursor): MediaStoreColumns =
@@ -423,6 +458,11 @@ class MediaStoreTrackScanner(
                     },
                     volumeNameIndex = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         cursor.getColumnIndex(MediaStore.MediaColumns.VOLUME_NAME).takeIf { it >= 0 }
+                    } else {
+                        null
+                    },
+                    genreIndex = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        cursor.getColumnIndex(MediaStore.Audio.Media.GENRE).takeIf { it >= 0 }
                     } else {
                         null
                     },
@@ -508,6 +548,9 @@ class MediaStoreTrackScanner(
         if (includeSampleRateColumn) {
             columns = columns + SampleRateColumn
         }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            columns = columns + MediaStore.Audio.Media.GENRE
+        }
         return columns
     }
 
@@ -571,6 +614,7 @@ private data class MediaStoreAudioRow(
     val sampleRateHz: Int?,
     val dateModifiedSeconds: Long,
     val relativePath: String?,
+    val genre: String? = null,
 )
 
 internal fun LibraryTrackEntity.withFastPathSampleRate(

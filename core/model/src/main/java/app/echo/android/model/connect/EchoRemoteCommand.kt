@@ -9,4 +9,8 @@ sealed interface EchoRemoteCommand {
     data class SetVolume(val volume: Float) : EchoRemoteCommand
     data class PlayTrackOnPc(val trackId: String) : EchoRemoteCommand
     data class HandoffToPc(val trackId: String, val positionMs: Long) : EchoRemoteCommand
+    data class QueueReplace(
+        val trackIds: List<String>,
+        val startTrackId: String,
+    ) : EchoRemoteCommand
 }

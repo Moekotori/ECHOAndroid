@@ -1,6 +1,6 @@
 # Prompt for PC ECHO: ECHO Link Phase 2
 
-You are working in `G:\ECHO-main`, the PC ECHO Electron/TypeScript repo. Phase 1 should expose the Android-compatible ECHO Link HTTP server documented in `G:\ECHOAndroid\ECHO_LINK_PC_PROMPT.md`. Phase 2 adds pairing/discovery, queue/handoff polish, and better diagnostics. Keep everything inside main-process service boundaries; do not put LAN server logic in the renderer.
+You are working in https://github.com/moekotori/echosteam (ECHOSteam), the PC ECHO Electron/TypeScript repo. Phase 1 should expose the Android-compatible ECHO Link HTTP server documented in ECHOAndroid `ECHO_LINK_PC_PROMPT.md`. Phase 2 adds pairing/discovery, queue/handoff polish, and better diagnostics. Keep everything inside main-process service boundaries; do not put LAN server logic in the renderer. Do not use any other PC repo path.
 
 Android Phase 2 status:
 - Android remembers the last PC endpoint in DataStore.

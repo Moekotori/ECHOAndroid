@@ -1,8 +1,10 @@
 package app.echo.android.connect
 
+import app.echo.android.model.connect.EchoRemoteAlbum
 import app.echo.android.model.connect.EchoRemoteCommand
 import app.echo.android.model.connect.EchoRemoteConnectionState
 import app.echo.android.model.connect.EchoRemoteEndpoint
+import app.echo.android.model.connect.EchoRemoteFolder
 import app.echo.android.model.connect.EchoRemoteLyrics
 import app.echo.android.model.connect.EchoRemotePlaybackSnapshot
 import app.echo.android.model.connect.EchoRemotePlaylist
@@ -462,6 +464,37 @@ class EchoRemoteClientTest {
         client.handoffToPc(remoteTrack("song"), 1200) { acknowledged = true }
         delay(20)
         assertFalse(acknowledged)
+        assertEquals(EchoRemoteConnectionState.Connected, client.status.value.connectionState)
+        client.disconnect()
+    }
+
+    @Test
+    fun failedCommandKeepsTheSessionConnected() = runBlocking {
+        val client = EchoRemoteClient(this, FakeEchoLinkTransport(failCommand = true))
+        client.connect(endpoint, false)
+        delay(20)
+        client.send(EchoRemoteCommand.SeekTo(12_000))
+        delay(20)
+        assertEquals(EchoRemoteConnectionState.Connected, client.status.value.connectionState)
+        client.disconnect()
+    }
+
+    @Test
+    fun commandAuthRejectionStopsRetries() = runBlocking {
+        val transport = FakeEchoLinkTransport(
+            failCommand = true,
+            commandErrorCode = 401,
+        )
+        val client = EchoRemoteClient(this, transport, statusPollIntervalMs = 60_000)
+        client.connect(endpoint, false)
+        delay(20)
+        assertEquals(1, transport.statusCalls)
+        client.send(EchoRemoteCommand.PlayPause)
+        delay(30)
+        assertEquals(EchoRemoteConnectionState.Error, client.status.value.connectionState)
+        client.setForeground(true)
+        delay(15)
+        assertEquals(1, transport.statusCalls)
         client.disconnect()
     }
 
@@ -478,6 +511,180 @@ class EchoRemoteClientTest {
         blocker.complete(Unit)
         delay(20)
         assertFalse(acknowledged)
+    }
+
+    @Test
+    fun canSendQueueReplaceForALinkedQueue() = runBlocking {
+        val transport = FakeEchoLinkTransport()
+        val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
+        client.connect(endpoint, refreshLibraryOnConnect = false)
+        delay(50)
+        client.playQueueOnPc(listOf(remoteTrack("a"), remoteTrack("b"), remoteTrack("c")), startIndex = 1)
+        delay(50)
+        val replace = transport.commands.filterIsInstance<EchoRemoteCommand.QueueReplace>().single()
+        assertEquals(listOf("a", "b", "c"), replace.trackIds)
+        assertEquals("b", replace.startTrackId)
+        client.disconnect()
+    }
+
+    @Test
+    fun multiTrackHandoffSendsQueueReplaceThenHandoff() = runBlocking {
+        val transport = FakeEchoLinkTransport()
+        val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
+        client.connect(endpoint, refreshLibraryOnConnect = false)
+        delay(20)
+        var acknowledged = false
+        client.handoffPhoneQueueToPc(
+            tracks = listOf(remoteTrack("a"), remoteTrack("b"), remoteTrack("c")),
+            startIndex = 1,
+            positionMs = 4_200,
+        ) { acknowledged = true }
+        delay(50)
+        assertEquals(
+            listOf("queueReplace", "handoff"),
+            transport.commands.map {
+                when (it) {
+                    is EchoRemoteCommand.QueueReplace -> "queueReplace"
+                    is EchoRemoteCommand.HandoffToPc -> "handoff"
+                    else -> it::class.simpleName
+                }
+            },
+        )
+        val replace = transport.commands.filterIsInstance<EchoRemoteCommand.QueueReplace>().single()
+        assertEquals("b", replace.startTrackId)
+        assertEquals(4_200L, (transport.commands.last() as EchoRemoteCommand.HandoffToPc).positionMs)
+        assertTrue(acknowledged)
+        client.disconnect()
+    }
+
+    @Test
+    fun failedQueueReplaceDoesNotSendHandoff() = runBlocking {
+        val transport = FakeEchoLinkTransport(failCommand = true)
+        val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
+        client.connect(endpoint, refreshLibraryOnConnect = false)
+        delay(20)
+        var acknowledged = false
+        client.handoffPhoneQueueToPc(
+            tracks = listOf(remoteTrack("a"), remoteTrack("b")),
+            startIndex = 0,
+            positionMs = 900,
+        ) { acknowledged = true }
+        delay(40)
+        assertEquals(1, transport.commands.size)
+        assertTrue(transport.commands.single() is EchoRemoteCommand.QueueReplace)
+        assertFalse(acknowledged)
+        assertEquals(EchoRemoteConnectionState.Connected, client.status.value.connectionState)
+        client.disconnect()
+    }
+
+    @Test
+    fun missingAlbumEndpointDoesNotFailTheTrackLibrary() = runBlocking {
+        val transport = FakeEchoLinkTransport(failAlbums = true, libraryTotalCount = 2)
+        val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
+        client.connect(endpoint, refreshLibraryOnConnect = true)
+        delay(80)
+        assertEquals(2, client.library.value.tracks.size)
+        assertTrue(client.library.value.albumsUnavailable)
+        assertNull(client.library.value.error)
+        client.disconnect()
+    }
+
+    @Test
+    fun albumTrack404DoesNotDisableAlbumBrowsing() = runBlocking {
+        val album = EchoRemoteAlbum(id = "album-1", title = "Album", artist = "Artist", trackCount = 4)
+        val transport = FakeEchoLinkTransport(
+            libraryTotalCount = 3,
+            albums = listOf(album),
+            failAlbumTrackIds = setOf("album-1"),
+        )
+        val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
+        client.connect(endpoint, refreshLibraryOnConnect = true)
+        delay(80)
+        client.refreshAlbumTracks(album)
+        delay(40)
+        assertFalse(client.library.value.albumsUnavailable)
+        assertEquals(3, client.library.value.tracks.size)
+        assertTrue(client.library.value.error?.contains("404") == true)
+        client.disconnect()
+    }
+
+    @Test
+    fun nestedFolder404DoesNotDisableFolderBrowsing() = runBlocking {
+        val transport = FakeEchoLinkTransport(
+            libraryTotalCount = 2,
+            folderPages = mapOf(
+                "" to EchoLinkFolderPage(
+                    path = "",
+                    folders = listOf(EchoRemoteFolder(path = "Music", name = "Music")),
+                    tracks = emptyList(),
+                ),
+            ),
+        )
+        val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
+        client.connect(endpoint, refreshLibraryOnConnect = false)
+        delay(20)
+        client.refreshFolders("")
+        delay(20)
+        assertFalse(client.library.value.foldersUnavailable)
+        client.refreshFolders("Music/Missing")
+        delay(20)
+        assertFalse(client.library.value.foldersUnavailable)
+        assertEquals("Music", client.library.value.folders.single().name)
+        client.disconnect()
+    }
+
+    @Test
+    fun playOnPcFailureKeepsLoadedTracks() = runBlocking {
+        val transport = FakeEchoLinkTransport(failCommand = true, libraryTotalCount = 4)
+        val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
+        client.connect(endpoint, refreshLibraryOnConnect = true)
+        delay(80)
+        assertEquals(4, client.library.value.tracks.size)
+        client.playQueueOnPc(listOf(remoteTrack("a"), remoteTrack("b")), startIndex = 0)
+        delay(30)
+        assertEquals(4, client.library.value.tracks.size)
+        assertEquals(EchoRemoteConnectionState.Connected, client.status.value.connectionState)
+        client.disconnect()
+    }
+
+    @Test
+    fun unstreamablePhonePlayKeepsLoadedTracks() = runBlocking {
+        val transport = FakeEchoLinkTransport(libraryTotalCount = 5)
+        val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
+        client.connect(endpoint, refreshLibraryOnConnect = true)
+        delay(80)
+        client.playTrackOnPhone(
+            track = EchoRemoteTrack(
+                id = "dsd",
+                title = "DSD",
+                artist = "Artist",
+                album = null,
+                artworkUrl = null,
+                durationMs = 1_000,
+                canPlayOnPhone = false,
+            ),
+            onTrackReady = { error("should not play") },
+        )
+        delay(20)
+        assertEquals(5, client.library.value.tracks.size)
+        client.disconnect()
+    }
+
+    @Test
+    fun emptyLatinSearchKeepsPreviouslyLoadedTracks() = runBlocking {
+        val transport = FakeEchoLinkTransport(
+            libraryTotalCount = 6,
+            emptyRemoteQueries = setOf("radiohead"),
+        )
+        val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
+        client.connect(endpoint, refreshLibraryOnConnect = true)
+        delay(80)
+        assertEquals(6, client.library.value.tracks.size)
+        client.refreshLibrary("radiohead")
+        delay(50)
+        assertEquals(6, client.library.value.tracks.size)
+        assertEquals("radiohead", client.library.value.query)
+        client.disconnect()
     }
 
     @Test
@@ -528,6 +735,30 @@ class EchoRemoteClientTest {
     }
 
     @Test
+    fun v2EventsUpdatePlaybackWithoutWaitingForPoll() = runBlocking {
+        val transport = FakeEchoLinkTransport()
+        val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0, statusPollIntervalMs = 5_000)
+        client.connect(endpoint.copy(supportsV2Events = true), refreshLibraryOnConnect = false)
+        delay(40)
+        assertEquals(1, transport.eventTicketCalls)
+        assertEquals(1, transport.eventSubscriptions)
+        transport.emitSnapshot(
+            EchoRemotePlaybackSnapshot(
+                state = app.echo.android.model.connect.EchoRemotePlaybackState.Playing,
+                positionMs = 42L,
+                queue = app.echo.android.model.connect.EchoRemotePlaybackQueue(
+                    currentTrackId = "a",
+                    items = listOf(remoteTrack("a"), remoteTrack("b")),
+                ),
+            ),
+        )
+        delay(10)
+        assertEquals(42L, client.status.value.playback.positionMs)
+        assertEquals(2, client.status.value.playback.queue.items.size)
+        client.disconnect()
+    }
+
+    @Test
     fun phonePlaybackTrackPersistsStableIdNotOneShotStream() {
         val phoneTrack = remoteTrack("pc-42").toPhonePlaybackTrack(
             "http://192.168.1.20:26789/echo-link/media/token",
@@ -566,6 +797,7 @@ private class FakeEchoLinkTransport(
     private val playlistListBlocker: CompletableDeferred<Unit>? = null,
     private val commandBlocker: CompletableDeferred<Unit>? = null,
     private val failCommand: Boolean = false,
+    private val commandErrorCode: Int? = null,
     private val failStatusTimes: Int = 0,
     private val libraryPageSize: Int = 500,
     private val libraryTotalCount: Int = 0,
@@ -578,6 +810,11 @@ private class FakeEchoLinkTransport(
     private val streamBlocker: CompletableDeferred<Unit>? = null,
     private val failStream: Boolean = false,
     private val failedStreamIds: Set<String> = emptySet(),
+    private val failAlbums: Boolean = false,
+    private val albums: List<EchoRemoteAlbum> = emptyList(),
+    private val failAlbumTrackIds: Set<String> = emptySet(),
+    private val folderPages: Map<String, EchoLinkFolderPage> = emptyMap(),
+    private val emptyRemoteQueries: Set<String> = emptySet(),
 ) : EchoLinkTransport {
     var statusCalls = 0
     var maxConcurrentStatusCalls = 0
@@ -601,7 +838,45 @@ private class FakeEchoLinkTransport(
             pairingId = null,
             pairingSecret = null,
             protocolVersion = app.echo.android.model.connect.EchoProtocolVersion.Current,
+            supportsV2Events = true,
         )
+    }
+
+    var eventTicketCalls = 0
+    var eventSubscriptions = 0
+    var failEventTicket = false
+    private var eventListener: ((app.echo.android.model.connect.EchoRemoteMessage) -> Unit)? = null
+
+    override suspend fun createEventTicket(endpoint: EchoRemoteEndpoint): EchoLinkEventTicket {
+        eventTicketCalls += 1
+        if (failEventTicket) throw EchoLinkHttpException("events unavailable", 404)
+        return EchoLinkEventTicket(
+            ticket = "ticket-1",
+            eventsUrl = okhttp3.HttpUrl.Builder()
+                .scheme(endpoint.scheme)
+                .host(endpoint.host)
+                .port(endpoint.port)
+                .addPathSegment("echo-link")
+                .addPathSegment("v2")
+                .addPathSegment("events")
+                .addQueryParameter("ticket", "ticket-1")
+                .build(),
+        )
+    }
+
+    override fun subscribeEvents(
+        endpoint: EchoRemoteEndpoint,
+        ticket: EchoLinkEventTicket,
+        onEvent: (app.echo.android.model.connect.EchoRemoteMessage) -> Unit,
+        onClosed: (Throwable?) -> Unit,
+    ): EchoLinkEventSubscription {
+        eventSubscriptions += 1
+        eventListener = onEvent
+        return EchoLinkEventSubscription { eventListener = null }
+    }
+
+    fun emitSnapshot(snapshot: EchoRemotePlaybackSnapshot) {
+        eventListener?.invoke(app.echo.android.model.connect.EchoRemoteMessage.StatusSnapshot(snapshot))
     }
 
     override suspend fun fetchStatus(endpoint: EchoRemoteEndpoint): EchoLinkStatusResponse {
@@ -631,7 +906,7 @@ private class FakeEchoLinkTransport(
     ): EchoLinkStatusResponse? {
         commands += command
         commandBlocker?.await()
-        if (failCommand) throw EchoLinkHttpException("command failed")
+        if (failCommand) throw EchoLinkHttpException("command failed", commandErrorCode)
         return EchoLinkStatusResponse(deviceName = endpoint.name, playback = EchoRemotePlaybackSnapshot())
     }
 
@@ -644,6 +919,9 @@ private class FakeEchoLinkTransport(
         trackBlockers[query]?.await()
         trackPageBlockers[page]?.await()
         libraryTrackCalls += 1
+        if (query in emptyRemoteQueries) {
+            return EchoLinkTrackPage(tracks = emptyList(), totalCount = 0)
+        }
         val start = (page - 1) * libraryPageSize
         if (start >= libraryTotalCount) {
             return EchoLinkTrackPage(tracks = emptyList(), totalCount = libraryTotalCount)
@@ -670,6 +948,36 @@ private class FakeEchoLinkTransport(
     ): EchoLinkPlaylistPage {
         playlistListBlocker?.await()
         return EchoLinkPlaylistPage(playlists = emptyList(), totalCount = 0)
+    }
+
+    override suspend fun fetchAlbums(
+        endpoint: EchoRemoteEndpoint,
+        query: String,
+        page: Int,
+        pageSize: Int,
+    ): EchoLinkAlbumPage {
+        if (failAlbums) throw EchoLinkHttpException("PC ECHO request failed (404): albums_not_found", 404)
+        return EchoLinkAlbumPage(albums = albums, totalCount = albums.size)
+    }
+
+    override suspend fun fetchAlbumTracks(
+        endpoint: EchoRemoteEndpoint,
+        albumId: String,
+        page: Int,
+        pageSize: Int,
+    ): EchoLinkTrackPage {
+        if (albumId in failAlbumTrackIds || albums.none { it.id == albumId }) {
+            throw EchoLinkHttpException("PC ECHO request failed (404): album_not_found", 404)
+        }
+        return EchoLinkTrackPage(tracks = emptyList(), totalCount = 0)
+    }
+
+    override suspend fun fetchFolders(
+        endpoint: EchoRemoteEndpoint,
+        path: String,
+    ): EchoLinkFolderPage {
+        folderPages[path]?.let { return it }
+        throw EchoLinkHttpException("PC ECHO request failed (404): folders_not_found", 404)
     }
 
     override suspend fun fetchPlaylistTracks(

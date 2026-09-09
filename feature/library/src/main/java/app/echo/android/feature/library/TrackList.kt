@@ -76,7 +76,6 @@ import app.echo.android.design.displayMetadataOrUnknown
 import app.echo.android.design.formatDuration
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackMetadataUpdate
-import app.echo.android.model.library.LibrarySource
 
 @Composable
 internal fun TrackList(
@@ -346,7 +345,7 @@ internal fun TrackContextMenu(
     var showInfo by remember(track.id) { mutableStateOf(false) }
     var showEditor by remember(track.id) { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val canEditMetadata = onUpdateTrackMetadata != null && track.source == LibrarySource.MediaStore
+    val canEditMetadata = onUpdateTrackMetadata != null && track.source.isLocalAudioFile
 
     Box(modifier = modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1046,6 +1045,9 @@ internal fun trackSubtitle(track: EchoTrack): String {
         }
         track.album?.takeIf { it.isNotBlank() }?.let { album ->
             add(displayMetadataOrUnknown(album, unknownAlbumLabel()))
+        }
+        if (!app.echo.android.model.library.LibraryPlaybackSupport.isPlayableOnPhone(track.mimeType, track.uri)) {
+            add(stringResource(L10nR.string.feature_library_dsd_unsupported_9a1b02))
         }
     }
     return parts.ifEmpty {

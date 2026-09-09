@@ -14,6 +14,10 @@
     <string name="permission_audio_description">端末内の音楽ファイルをスキャンして再生します</string>
     <string name="permission_notification_label">通知</string>
     <string name="permission_notification_description">再生コントロール通知を表示します</string>
+    <string name="tag_write_saved_to_file">タグを音声ファイルに書き込みました</string>
+    <string name="tag_write_saved_index_only">ライブラリ索引に保存しました。音声ファイルは変更していません</string>
+    <string name="tag_write_unsupported_format">この形式のタグ書き込みには未対応です。ライブラリ索引に保存しました</string>
+    <string name="tag_write_failed">音声ファイルに書き込めませんでした。ライブラリ索引に保存しました</string>
     <string name="lastfm_disconnected">Last.fm 未接続</string>
     <string name="lastfm_connecting">Last.fm に接続中</string>
     <string name="lastfm_connected">Last.fm 接続済み：%1$s</string>

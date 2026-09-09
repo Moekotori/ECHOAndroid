@@ -14,6 +14,8 @@ import app.echo.android.lyrics.LyricsApplyPolicy
 import app.echo.android.lyrics.OnlineLyricsCachePolicy
 import app.echo.android.lyrics.OnlineLyricsResolver
 import app.echo.android.model.connect.EchoRemoteLyrics
+import app.echo.android.model.error.EchoErrorLog
+import app.echo.android.model.error.EchoErrorSource
 import app.echo.android.model.lyrics.EchoLyrics
 import app.echo.android.model.lyrics.EchoLyricsLoadState
 import app.echo.android.model.playback.EchoLinkPlaybackUri
@@ -74,23 +76,28 @@ internal class LyricsController(
     @Volatile
     private var echoLinkLyricsFetcher: (suspend (String) -> EchoRemoteLyrics?)? = null
 
-    fun importLyrics(uri: Uri, currentTrackId: String?) {
+    fun importLyrics(
+        uri: Uri,
+        currentTrackId: String?,
+        onImported: ((EchoLyrics) -> Unit)? = null,
+    ) {
         val target = currentTrackId ?: return
         _managementError.value = null
         importJob?.cancel()
         importJob = scope.launch {
             try {
-                withContext(Dispatchers.IO) {
-                    val parsed = lyricsResolver.importFromUri(uri)
-                    importedLyricsStore.save(target, parsed, selected = true)
+                val parsed = withContext(Dispatchers.IO) {
+                    val imported = lyricsResolver.importFromUri(uri)
+                    importedLyricsStore.save(target, imported, selected = true)
                     importedLyricsStore.bindLyrics(target, uri)
-                    parsed
+                    imported
                 }
                 if (target == lastLyricsTrackId) updateLyricsForTrack(target, force = true)
                 _managementError.value = null
+                onImported?.invoke(parsed)
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
-                _managementError.value = error.lyricsErrorMessage("Lyrics import failed")
+                reportManagementError(error.lyricsErrorMessage("Lyrics import failed"))
                 if (target == lastLyricsTrackId && originalLyrics == null) {
                     _lyricsState.value = EchoLyricsLoadState.Error(_managementError.value!!)
                 }
@@ -111,7 +118,7 @@ internal class LyricsController(
                 withContext(Dispatchers.IO) { importedLyricsStore.setLyricsOffset(trackId, target) }
             } } catch (error: Exception) {
                 if (error is CancellationException) throw error
-                _managementError.value = error.lyricsErrorMessage("Could not save timing adjustment")
+                reportManagementError(error.lyricsErrorMessage("Could not save timing adjustment"))
             }
         }
     }
@@ -136,7 +143,7 @@ internal class LyricsController(
                 if (generation == searchGeneration && trackId == lastLyricsTrackId && searchTrackId == trackId) _candidates.value = results
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
-                _managementError.value = error.lyricsErrorMessage("Lyrics search failed")
+                reportManagementError(error.lyricsErrorMessage("Lyrics search failed"))
             } finally { if (generation == searchGeneration) _searching.value = false }
         }
     }
@@ -159,7 +166,7 @@ internal class LyricsController(
                 if (trackId == lastLyricsTrackId) updateLyricsForTrack(trackId, force = true)
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
-                _managementError.value = error.lyricsErrorMessage("Could not save lyrics")
+                reportManagementError(error.lyricsErrorMessage("Could not save lyrics"))
             }
         }
     }
@@ -172,7 +179,7 @@ internal class LyricsController(
                 if (trackId == lastLyricsTrackId) updateLyricsForTrack(trackId, force = true)
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
-                _managementError.value = error.lyricsErrorMessage("Could not clear lyrics selection")
+                reportManagementError(error.lyricsErrorMessage("Could not clear lyrics selection"))
             }
         }
     }
@@ -352,6 +359,11 @@ internal class LyricsController(
             album = album,
             durationMs = durationMs,
         )
+
+    private fun reportManagementError(message: String) {
+        _managementError.value = message
+        EchoErrorLog.record(EchoErrorSource.Lyrics, message)
+    }
 
     private fun Throwable.lyricsErrorMessage(fallback: String): String =
         message?.takeIf { it.isNotBlank() }

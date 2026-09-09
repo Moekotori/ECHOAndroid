@@ -85,6 +85,7 @@ internal fun EchoNowPlayingHost(
         onSetSleepTimerEndOfTrack = viewModel::setSleepTimerEndOfTrack,
         onCancelSleepTimer = viewModel::cancelSleepTimer,
         onSetReplayGain = viewModel::setReplayGain,
+        onSetReplayGainMode = viewModel::setReplayGainMode,
         onAdjustReplayGainPreamp = viewModel::adjustReplayGainPreamp,
         onSetSkipSilenceEnabled = viewModel::setSkipSilenceEnabled,
         onImportLyrics = { showLyricsManager = true },

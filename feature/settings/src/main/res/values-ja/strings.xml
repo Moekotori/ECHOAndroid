@@ -60,8 +60,7 @@
     <string name="settings_section_connect">連携</string>
     <string name="settings_pc_handoff">PC 引き継ぎ入口</string>
     <string name="settings_pc_handoff_detail">デスクトップ接続とリモート操作の入口を残します</string>
-    <string name="settings_discord_detail_on">PC ECHO 経由でスマホの再生状態を Discord に転送します</string>
-    <string name="settings_discord_detail_off">先に PC 引き継ぎ入口をオンにしてください</string>
+
     <string name="settings_connect_pc">PC ECHO に接続</string>
     <string name="settings_connect_pc_detail">ペアリングとリモート再生を管理</string>
     <string name="settings_connect_pc_disabled">PC 引き継ぎ入口はオフです</string>
@@ -71,7 +70,36 @@
     <string name="settings_local_music">端末内の音楽</string>
     <string name="settings_local_music_detail">曲、アルバム、アーティスト、スキャンを開く</string>
     <string name="settings_section_about">情報</string>
+    <string name="settings_error_log">エラー情報</string>
+    <string name="settings_error_log_detail_empty">クラッシュと機能の失敗を収集</string>
+    <string name="settings_error_log_detail_count">%1$d 件を記録</string>
     <string name="settings_version">バージョン</string>
+    <string name="error_log_title">エラー情報</string>
+    <string name="error_log_subtitle">この端末で収集したクラッシュと機能の失敗</string>
+    <string name="error_log_search">エラーを検索</string>
+    <string name="error_log_empty">まだエラーはありません</string>
+    <string name="error_log_empty_filtered">条件に一致するエラーはありません</string>
+    <string name="error_log_clear">消去</string>
+    <string name="error_log_clear_confirm_title">エラー情報を消去しますか？</string>
+    <string name="error_log_clear_confirm">この端末に収集したエラーをすべて削除します。元に戻せません。</string>
+    <string name="error_log_clear_cancel">キャンセル</string>
+    <string name="error_log_copy">コピー</string>
+    <string name="error_log_copy_all">すべてコピー</string>
+    <string name="error_log_share">共有</string>
+    <string name="error_log_delete">削除</string>
+    <string name="error_log_copied">コピーしました</string>
+    <string name="error_log_count">×%1$d</string>
+    <string name="error_log_source_count">%1$s · %2$d</string>
+    <string name="error_log_first_seen">最初 %1$s</string>
+    <string name="error_log_source_all">すべて</string>
+    <string name="error_log_source_crash">クラッシュ</string>
+    <string name="error_log_source_playback">再生</string>
+    <string name="error_log_source_library">ライブラリ</string>
+    <string name="error_log_source_connect">連携</string>
+    <string name="error_log_source_network">ネットワーク</string>
+    <string name="error_log_source_usb">USB</string>
+    <string name="error_log_source_lyrics">歌詞</string>
+    <string name="error_log_source_other">その他</string>
     <string name="settings_lastfm_builtin">内蔵済み。入力は不要です</string>
     <string name="settings_lastfm_reauth">Last.fm を再承認</string>
     <string name="settings_lastfm_open_auth">Last.fm の承認ページを開く</string>
@@ -83,6 +111,13 @@
     <string name="settings_lastfm_api_accounts_detail">ブラウザで API key と shared secret を確認します</string>
     <string name="settings_lastfm_disconnect">Last.fm を切断</string>
     <string name="settings_lastfm_disconnect_detail">端末の session key を消し、次回用に API key は残します</string>
+    <string name="settings_listenbrainz">ListenBrainz</string>
+    <string name="settings_listenbrainz_token">ユーザートークン</string>
+    <string name="settings_listenbrainz_token_placeholder">ListenBrainz ユーザートークン</string>
+    <string name="settings_listenbrainz_save">トークンを保存</string>
+    <string name="settings_listenbrainz_token_detail">ListenBrainz のプロフィール設定でトークンを作成します</string>
+    <string name="settings_listenbrainz_disconnect">ListenBrainz を切断</string>
+    <string name="settings_listenbrainz_disconnect_detail">端末のユーザートークンを消します</string>
     <string name="settings_bg_image">画像の背景：%1$s</string>
     <string name="settings_bg_video">動画の壁紙：%1$s</string>
     <string name="settings_bg_default">デフォルトの ECHO 背景を使用中</string>
@@ -272,7 +307,7 @@
     <string name="diag_eq_wait_playback">%1$s · 再生待ち</string>
     <string name="diag_eq_wait_system">%1$s · パイプライン EQ 待ち</string>
     <string name="diag_eq_off">オフ · %1$d bands</string>
-    <string name="settings_discord_unavailable">未実装：スマホの再生状態を PC の Discord へ転送する機能はまだ利用できません。</string>
+
     <string name="settings_usb_bitperfect">USB bit-perfect モード</string>
     <string name="settings_usb_bitperfect_detail">USB 排他出力を有効にし、EQ・補正・ゲイン・速度変更・無音スキップをバイパスします。デジタル音量は 100% 固定です。先に DAC の音量を下げてください。非対応の曲や形式では再生を停止します。</string>
     <string name="bitperfect_off">厳密モードはオフ</string>
@@ -321,11 +356,14 @@
     <string name="eq_show_filters">フィルターの詳細を表示</string>
     <string name="eq_hide_filters">フィルターの詳細を閉じる</string>
     <string name="settings_gapless">ギャップレス再生</string>
-    <string name="settings_gapless_detail">次の曲を先読みし、互換性のある出力を維持します。サンプルレート変更や通信不足では途切れる場合があります。</string>
+    <string name="settings_gapless_detail">次の曲を先読みし、互換性のある出力を維持します。フェード、無音スキップ、サンプルレート変更、通信不足では途切れる場合があります。</string>
     <string name="settings_track_fade">曲のフェードイン／アウト</string>
-    <string name="settings_track_fade_detail">曲の始めと終わりの音量を滑らかに変えます。曲は重ねません。ライブは対象外で、長さ不明の曲はフェードインのみです。</string>
+    <string name="settings_track_fade_detail">曲の始めと終わりの音量を滑らかに変えます。曲は重ねないため、切替点ではギャップレスになりません。ライブは対象外で、長さ不明の曲はフェードインのみです。</string>
     <string name="settings_track_fade_bypass">設定は保存されますが、厳密な bit-perfect モードでは適用しません。</string>
     <string name="settings_track_fade_duration">フェード時間</string>
     <string name="settings_track_fade_seconds">%.1f 秒</string>
+    <string name="settings_smart_transition">スマートトランジション</string>
+    <string name="settings_smart_transition_detail">Beta。拍に乗れるときは拍から入り、ボーカルが重なると短くし、エネルギーが高いときは低域を交差します。できない場合はギャップレスまたはフェードに戻します。</string>
+    <string name="settings_smart_transition_bypass">設定は保存されますが、軽量モード、USB 独占、bit-perfect では使いません。</string>
     <string name="settings_bg_video_disabled">軽量モードでは動画背景を停止し、デフォルトの背景を表示します。選択した動画は保持されます。</string>
 </resources>

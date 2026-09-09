@@ -30,6 +30,11 @@ class EchoTrackFadePolicyTest {
         assertNull(EchoTrackFadePolicy.nextDelayMs(90000, -1, 1000, 1f))
     }
 
+    @Test fun suppressFadeOutKeepsTheEndingAtUnity() {
+        assertEquals(1f, EchoTrackFadePolicy.gain(10_000, 10_000, 1_000, true, suppressFadeOut = true), 0.0001f)
+        assertEquals(0f, EchoTrackFadePolicy.gain(0, 10_000, 1_000, true, suppressFadeOut = true), 0.0001f)
+    }
+
     @Test fun schedulerSleepsOutsideFadeWindowsAndAccountsForSpeed() {
         assertEquals(20L, EchoTrackFadePolicy.nextDelayMs(100, 180000, 1500, 1f))
         assertEquals(87750L, EchoTrackFadePolicy.nextDelayMs(3000, 180000, 1500, 2f))

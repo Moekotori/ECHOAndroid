@@ -62,6 +62,8 @@ internal fun LocalPlaylistPanel(
     onCreatePlaylist: (String) -> Unit,
     onRenamePlaylist: (EchoPlaylist, String) -> Unit,
     onDeletePlaylist: (EchoPlaylist) -> Unit,
+    onImportM3uPlaylist: () -> Unit = {},
+    onExportM3uPlaylist: (EchoPlaylist) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var createVisible by remember { mutableStateOf(false) }
@@ -77,6 +79,7 @@ internal fun LocalPlaylistPanel(
             LocalPlaylistHeader(
                 playlistCount = playlists.size,
                 onCreatePlaylist = { createVisible = true },
+                onImportM3uPlaylist = onImportM3uPlaylist,
             )
         }
         if (playlists.isEmpty()) {
@@ -96,6 +99,7 @@ internal fun LocalPlaylistPanel(
                     onPlay = { onPlayPlaylist(playlist) },
                     onRename = { if (playlist.canEdit) renaming = playlist },
                     onDelete = { if (playlist.canEdit) deleting = playlist },
+                    onExportM3u = { onExportM3uPlaylist(playlist) },
                 )
             }
         }
@@ -252,10 +256,14 @@ internal fun PlaylistNameDialog(
 private fun LocalPlaylistHeader(
     playlistCount: Int,
     onCreatePlaylist: () -> Unit,
+    onImportM3uPlaylist: () -> Unit,
 ) {
     Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(stringResource(L10nR.string.feature_library_playlistcount_playlists_220ceb, playlistCount.toString()),
             Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        TextButton(onClick = onImportM3uPlaylist) {
+            Text(stringResource(L10nR.string.feature_library_import_m3u_2b9c10))
+        }
         TextButton(onClick = onCreatePlaylist) {
             Icon(Icons.Rounded.Add, contentDescription = null, Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
@@ -271,6 +279,7 @@ private fun LocalPlaylistRow(
     onPlay: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
+    onExportM3u: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth().echoClickable(onClick = onOpen).padding(vertical = 10.dp),
@@ -285,15 +294,21 @@ private fun LocalPlaylistRow(
         androidx.compose.material3.IconButton(onClick = onPlay) {
             Icon(Icons.Rounded.PlayArrow, contentDescription = stringResource(L10nR.string.feature_library_play_38419a))
         }
-        if (playlist.canEdit) Box {
+        Box {
             androidx.compose.material3.IconButton(onClick = { menuOpen = true }) {
                 Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(L10nR.string.library_playlist_actions))
             }
             androidx.compose.material3.DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                androidx.compose.material3.DropdownMenuItem(text = { Text(stringResource(L10nR.string.feature_library_rename_playlist_757bb7)) },
-                    onClick = { menuOpen = false; onRename() })
-                androidx.compose.material3.DropdownMenuItem(text = { Text(stringResource(L10nR.string.feature_library_delete_playlist_4d9753)) },
-                    onClick = { menuOpen = false; onDelete() })
+                if (playlist.canEdit) {
+                    androidx.compose.material3.DropdownMenuItem(text = { Text(stringResource(L10nR.string.feature_library_rename_playlist_757bb7)) },
+                        onClick = { menuOpen = false; onRename() })
+                }
+                androidx.compose.material3.DropdownMenuItem(text = { Text(stringResource(L10nR.string.feature_library_export_m3u_6f18a4)) },
+                    onClick = { menuOpen = false; onExportM3u() })
+                if (playlist.canEdit) {
+                    androidx.compose.material3.DropdownMenuItem(text = { Text(stringResource(L10nR.string.feature_library_delete_playlist_4d9753)) },
+                        onClick = { menuOpen = false; onDelete() })
+                }
             }
         }
     }

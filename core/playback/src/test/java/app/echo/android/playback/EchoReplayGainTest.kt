@@ -1,7 +1,10 @@
 package app.echo.android.playback
 
+import app.echo.android.model.playback.EchoReplayGainMode
+import app.echo.android.model.playback.EchoReplayGainTags
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.pow
@@ -59,12 +62,13 @@ class EchoReplayGainTest {
     @Test
     fun mediaItemChangeDoesNotKeepPreviousGainUntilTagIsCached() {
         val previous = -6.5f
-        val cached = mapOf("known" to -3f)
+        val cached = mapOf("known" to EchoReplayGainTags(trackGainDb = -3f, albumGainDb = -9f))
         assertEquals(
             null,
             replayGainAfterMediaItemChange(
                 mediaId = "next",
-                cachedGains = cached,
+                cachedTags = cached,
+                mode = EchoReplayGainMode.Auto,
                 previousGainDb = previous,
             ),
         )
@@ -72,36 +76,61 @@ class EchoReplayGainTest {
             -3f,
             replayGainAfterMediaItemChange(
                 mediaId = "known",
-                cachedGains = cached,
+                cachedTags = cached,
+                mode = EchoReplayGainMode.Auto,
                 previousGainDb = previous,
             ),
         )
-        val knownZero = mapOf("known-zero" to null)
+        assertEquals(
+            -9f,
+            replayGainAfterMediaItemChange(
+                mediaId = "known",
+                cachedTags = cached,
+                mode = EchoReplayGainMode.Album,
+                previousGainDb = previous,
+            ),
+        )
+        val knownEmpty = mapOf("known-empty" to EchoReplayGainTags())
         assertEquals(
             null,
             replayGainAfterMediaItemChange(
-                mediaId = "known-zero",
-                cachedGains = knownZero,
+                mediaId = "known-empty",
+                cachedTags = knownEmpty,
+                mode = EchoReplayGainMode.Auto,
                 previousGainDb = previous,
             ),
         )
+        assertTrue(replayGainTagsLoaded("known-empty", knownEmpty))
+        assertFalse(replayGainTagsLoaded("next", cached))
+        assertEquals("b", nextReplayGainPrefetchId("a", "b"))
+        assertNull(nextReplayGainPrefetchId("a", "a"))
+        assertNull(nextReplayGainPrefetchId("a", " "))
     }
 
     @Test
     fun failedReplayGainReadIsNotCachedAsNoTag() {
-        val missingStream = replayGainReadOutcome(streamOpened = false, parseResult = Result.success(null))
+        val missingStream = replayGainReadOutcome(
+            streamOpened = false,
+            parseResult = Result.success(EchoReplayGainTags()),
+        )
         val ioFailure = replayGainReadOutcome(
             streamOpened = true,
             parseResult = Result.failure(IllegalStateException("open failed")),
         )
-        val parsedMissingTag = replayGainReadOutcome(streamOpened = true, parseResult = Result.success(null))
-        val parsedGain = replayGainReadOutcome(streamOpened = true, parseResult = Result.success(-7f))
+        val parsedMissingTag = replayGainReadOutcome(
+            streamOpened = true,
+            parseResult = Result.success(EchoReplayGainTags()),
+        )
+        val parsedGain = replayGainReadOutcome(
+            streamOpened = true,
+            parseResult = Result.success(EchoReplayGainTags(trackGainDb = -7f)),
+        )
 
         assertFalse(shouldCacheReplayGainRead(missingStream))
         assertFalse(shouldCacheReplayGainRead(ioFailure))
         assertTrue(shouldCacheReplayGainRead(parsedMissingTag))
         assertTrue(shouldCacheReplayGainRead(parsedGain))
-        assertEquals(ReplayGainReadOutcome.Parsed(-7f), parsedGain)
+        assertEquals(ReplayGainReadOutcome.Parsed(EchoReplayGainTags(trackGainDb = -7f)), parsedGain)
         assertEquals(ReplayGainReadOutcome.Failed, missingStream)
     }
 
@@ -154,7 +183,10 @@ class EchoReplayGainTest {
                 subsonicAuthReadyForUri = true,
             ),
         )
-        val missingRemote = replayGainReadOutcome(streamOpened = false, parseResult = Result.success(null))
+        val missingRemote = replayGainReadOutcome(
+            streamOpened = false,
+            parseResult = Result.success(EchoReplayGainTags()),
+        )
         assertFalse(shouldCacheReplayGainRead(missingRemote))
     }
 

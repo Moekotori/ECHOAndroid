@@ -38,6 +38,17 @@ data class LibraryArtistSummaryEntity(
     val pinyinName: String?,
 )
 
+@Entity(tableName = "library_genre_summaries")
+data class LibraryGenreSummaryEntity(
+    @PrimaryKey val genreKey: String,
+    val name: String,
+    val artworkUri: String?,
+    val albumCount: Int,
+    val trackCount: Int,
+    val durationMs: Long,
+    val pinyinName: String?,
+)
+
 data class LibraryAlbumListenStatsRow(
     val albumKey: String,
     val title: String,
@@ -80,6 +91,7 @@ data class TrackSummaryKeyRow(
     val artistKey: String,
     val relativePath: String?,
     val source: String,
+    val genreKey: String = "",
 )
 
 fun TrackSummaryKeyRow.toSummaryKeySet(): LibrarySummaryKeySet {
@@ -102,6 +114,9 @@ fun TrackSummaryKeyRow.toSummaryKeySet(): LibrarySummaryKeySet {
         albumKeys = setOfNotNull(albumSummaryKey),
         artistKeys = setOfNotNull(artistSummaryKey),
         folderKeys = setOfNotNull(folderSummaryKey),
+        genreKeys = setOfNotNull(
+            genreKey.takeIf { it.isNotBlank() && LibraryScanPolicy.isLocalLibrarySource(source) },
+        ),
     )
 }
 

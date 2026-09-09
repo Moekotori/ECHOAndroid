@@ -6,22 +6,30 @@ import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import androidx.paging.map
 import app.echo.android.data.EchoLibraryRepository
+import app.echo.android.data.EmbeddedTagWriteResult
+import app.echo.android.data.TrackMetadataUpdateResult
 import app.echo.android.data.LibraryScanPolicy
 import app.echo.android.data.LibraryHomeRecommendationPolicy
 import app.echo.android.data.LocalLibrarySearchResults
 import app.echo.android.data.MediaStoreAudioFolder
+import app.echo.android.data.JellyfinEndpoint
 import app.echo.android.data.SubsonicEndpoint
 import app.echo.android.data.WebDavEndpoint
 import app.echo.android.data.toAlbumSummary
 import app.echo.android.data.toEchoTrack
 import app.echo.android.data.toListenSeed
+import app.echo.android.model.library.AlbumSortMode
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.LibrarySource
+import app.echo.android.model.library.ArtistSortMode
 import app.echo.android.model.library.ArtistSummary
+import app.echo.android.model.library.FolderSortMode
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.EchoTrackMetadataUpdate
 import app.echo.android.model.library.FolderSummary
+import app.echo.android.model.error.EchoErrorLog
+import app.echo.android.model.error.EchoErrorSource
 import app.echo.android.model.library.LibraryScanPhase
 import app.echo.android.model.library.LibraryScanProgress
 import app.echo.android.model.library.LibraryStats
@@ -62,12 +70,19 @@ internal class LibraryController(
     val libraryQuery: StateFlow<String> = _libraryQuery.asStateFlow()
     private val _trackSortMode = MutableStateFlow(LibraryTrackSortMode.Title)
     val trackSortMode: StateFlow<LibraryTrackSortMode> = _trackSortMode.asStateFlow()
+    private val _albumSortMode = MutableStateFlow(AlbumSortMode.Title)
+    val albumSortMode: StateFlow<AlbumSortMode> = _albumSortMode.asStateFlow()
+    private val _artistSortMode = MutableStateFlow(ArtistSortMode.Name)
+    val artistSortMode: StateFlow<ArtistSortMode> = _artistSortMode.asStateFlow()
+    private val _folderSortMode = MutableStateFlow(FolderSortMode.Path)
+    val folderSortMode: StateFlow<FolderSortMode> = _folderSortMode.asStateFlow()
     private val _scanState = MutableStateFlow(LibraryScanProgress())
     val scanState: StateFlow<LibraryScanProgress> = _scanState.asStateFlow()
     private val _remoteScanState = MutableStateFlow(LibraryScanProgress())
     val remoteScanState: StateFlow<LibraryScanProgress> = _remoteScanState.asStateFlow()
 
     private var playbackOccupiesStorage: () -> Boolean = { false }
+    private var mediaStoreObserver: app.echo.android.data.MediaStoreLibraryObserver? = null
 
     private val libraryMutationInProgress: Flow<Boolean> =
         combine(_scanState, _remoteScanState) { local, remote ->
@@ -87,23 +102,28 @@ internal class LibraryController(
             .cachedIn(scope)
 
     val albums: Flow<PagingData<AlbumSummary>> =
-        debouncedLibraryQuery
-            .flatMapLatest { query -> repository.pagedAlbums(query) }
+        combine(debouncedLibraryQuery, _albumSortMode) { query, sort -> query to sort }
+            .flatMapLatest { (query, sort) -> repository.pagedAlbums(query, sort) }
             .cachedIn(scope)
 
     val remoteAlbums: Flow<PagingData<AlbumSummary>> =
-        debouncedLibraryQuery
-            .flatMapLatest { query -> repository.pagedRemoteAlbums(query) }
+        combine(debouncedLibraryQuery, _albumSortMode) { query, sort -> query to sort }
+            .flatMapLatest { (query, sort) -> repository.pagedRemoteAlbums(query, sort) }
             .cachedIn(scope)
 
     val artists: Flow<PagingData<ArtistSummary>> =
+        combine(debouncedLibraryQuery, _artistSortMode) { query, sort -> query to sort }
+            .flatMapLatest { (query, sort) -> repository.pagedArtists(query, sort) }
+            .cachedIn(scope)
+
+    val genres: Flow<PagingData<app.echo.android.model.library.GenreSummary>> =
         debouncedLibraryQuery
-            .flatMapLatest { query -> repository.pagedArtists(query) }
+            .flatMapLatest { query -> repository.pagedGenres(query) }
             .cachedIn(scope)
 
     val folders: Flow<PagingData<FolderSummary>> =
-        debouncedLibraryQuery
-            .flatMapLatest { query -> repository.pagedFolders(query) }
+        combine(debouncedLibraryQuery, _folderSortMode) { query, sort -> query to sort }
+            .flatMapLatest { (query, sort) -> repository.pagedFolders(query, sort) }
             .cachedIn(scope)
 
     val localPlaylists: StateFlow<List<EchoPlaylist>> =
@@ -183,6 +203,10 @@ internal class LibraryController(
         repository.pagedArtistTracks(artistKey)
             .map { pagingData -> pagingData.map { it.toEchoTrack() } }
 
+    fun genreTrackPaging(genreKey: String): Flow<PagingData<EchoTrack>> =
+        repository.pagedGenreTracks(genreKey)
+            .map { pagingData -> pagingData.map { it.toEchoTrack() } }
+
     fun folderTrackPaging(folderKey: String): Flow<PagingData<EchoTrack>> =
         repository.pagedFolderTracks(folderKey)
             .map { pagingData -> pagingData.map { it.toEchoTrack() } }
@@ -197,6 +221,18 @@ internal class LibraryController(
 
     fun updateTrackSortMode(sortMode: LibraryTrackSortMode) {
         _trackSortMode.value = sortMode
+    }
+
+    fun updateAlbumSortMode(sortMode: AlbumSortMode) {
+        _albumSortMode.value = sortMode
+    }
+
+    fun updateArtistSortMode(sortMode: ArtistSortMode) {
+        _artistSortMode.value = sortMode
+    }
+
+    fun updateFolderSortMode(sortMode: FolderSortMode) {
+        _folderSortMode.value = sortMode
     }
 
     fun setEffectivePerformanceMode(mode: EchoEffectivePerformanceMode) {
@@ -217,6 +253,18 @@ internal class LibraryController(
         refreshLibrary(relativePathPrefix = null, options = options)
     }
 
+    fun startWatchingMediaStore(resolver: android.content.ContentResolver) {
+        if (mediaStoreObserver != null) return
+        mediaStoreObserver = app.echo.android.data.MediaStoreLibraryObserver(
+            resolver = resolver,
+            scope = scope,
+            onChanged = {
+                if (!playbackOccupiesStorage()) refreshLibrary()
+            },
+        ).also { it.start() }
+        refreshLibraryIfEmpty()
+    }
+
     fun refreshLibraryIfEmpty() {
         if (scanJob?.isActive == true) return
         scope.launch {
@@ -233,11 +281,13 @@ internal class LibraryController(
     fun refreshLibraryFolder(treeUri: Uri, options: LibraryScanOptions = LibraryScanOptions()) {
         val folder = MediaStoreAudioFolder.fromTreeUri(treeUri)
         if (folder == null) {
+            val message = "Unsupported folder source. Please choose a local music folder or scan all audio."
             _scanState.value = LibraryScanProgress(
                 phase = LibraryScanPhase.Error,
-                error = "Unsupported folder source. Please choose a local music folder or scan all audio.",
+                error = message,
                 isCompleted = true,
             )
+            EchoErrorLog.record(EchoErrorSource.Library, message)
             return
         }
         if (folder.treeUri == null) {
@@ -256,7 +306,7 @@ internal class LibraryController(
                     skipSampleRateRead = skipSampleRateRead(),
                     options = options,
                 )
-                    .collect { progress -> _scanState.value = progress }
+                    .collect { progress -> publishScanProgress(_scanState, progress, "Library scan failed") }
             } catch (error: CancellationException) {
                 _scanState.value = _scanState.value.copy(
                     phase = LibraryScanPhase.Cancelled,
@@ -266,12 +316,7 @@ internal class LibraryController(
                 )
                 throw error
             } catch (error: Throwable) {
-                _scanState.value = _scanState.value.copy(
-                    phase = LibraryScanPhase.Error,
-                    currentTitle = null,
-                    error = error.message ?: "Library scan failed",
-                    isCompleted = true,
-                )
+                publishScanFailure(_scanState, error.message ?: "Library scan failed", error)
             }
         }
     }
@@ -287,7 +332,7 @@ internal class LibraryController(
                     skipSampleRateRead = skipSampleRateRead(),
                     options = options,
                 )
-                    .collect { progress -> _scanState.value = progress }
+                    .collect { progress -> publishScanProgress(_scanState, progress, "Document tree scan failed") }
             } catch (error: CancellationException) {
                 _scanState.value = _scanState.value.copy(
                     phase = LibraryScanPhase.Cancelled,
@@ -297,12 +342,7 @@ internal class LibraryController(
                 )
                 throw error
             } catch (error: Throwable) {
-                _scanState.value = _scanState.value.copy(
-                    phase = LibraryScanPhase.Error,
-                    currentTitle = null,
-                    error = error.message ?: "Document tree scan failed",
-                    isCompleted = true,
-                )
+                publishScanFailure(_scanState, error.message ?: "Document tree scan failed", error)
             }
         }
     }
@@ -320,15 +360,22 @@ internal class LibraryController(
         }
     }
 
-    fun refreshSubsonic(endpoint: SubsonicEndpoint) {
+    fun refreshSubsonic(endpoint: SubsonicEndpoint, onSucceeded: (() -> Unit)? = null) {
         startRemoteSync(
             fallbackError = echoText(
                 en = "Subsonic / Navidrome sync failed",
                 zh = "Subsonic / Navidrome 同步失败",
                 ja = "Subsonic / Navidrome の同期に失敗しました",
             ),
+            onSucceeded = onSucceeded,
         ) {
             repository.refreshSubsonicSnapshot(endpoint)
+        }
+    }
+
+    fun deleteRemoteSource(source: String) {
+        scope.launch(Dispatchers.IO) {
+            repository.deleteRemoteLibrarySource(source)
         }
     }
 
@@ -344,8 +391,51 @@ internal class LibraryController(
         }
     }
 
+    fun refreshJellyfin(
+        endpoint: JellyfinEndpoint,
+        onSucceeded: ((accessToken: String, userId: String) -> Unit)? = null,
+    ) {
+        var accessToken: String? = null
+        var userId: String? = null
+        startRemoteSync(
+            fallbackError = echoText(
+                en = "Jellyfin / Emby sync failed",
+                zh = "Jellyfin / Emby 同步失败",
+                ja = "Jellyfin / Emby の同期に失敗しました",
+            ),
+            onSucceeded = {
+                val token = accessToken
+                val id = userId
+                if (!token.isNullOrBlank() && !id.isNullOrBlank()) {
+                    onSucceeded?.invoke(token, id)
+                }
+            },
+        ) {
+            repository.refreshJellyfinSnapshot(endpoint) { token, id ->
+                accessToken = token
+                userId = id
+            }
+        }
+    }
+
+    suspend fun authenticateJellyfin(endpoint: JellyfinEndpoint): JellyfinEndpoint =
+        withContext(Dispatchers.IO) {
+            repository.authenticateJellyfin(endpoint)
+        }
+
+    suspend fun importM3uPlaylist(name: String, text: String): EchoPlaylist? =
+        withContext(Dispatchers.IO) {
+            repository.importM3uPlaylist(name, text)
+        }
+
+    suspend fun exportM3uPlaylist(playlistId: String): String? =
+        withContext(Dispatchers.IO) {
+            repository.exportM3uPlaylist(playlistId)
+        }
+
     private fun startRemoteSync(
         fallbackError: String,
+        onSucceeded: (() -> Unit)? = null,
         progressFlow: () -> Flow<LibraryScanProgress>,
     ) {
         if (remoteScanJob?.isActive == true) {
@@ -366,7 +456,12 @@ internal class LibraryController(
         _remoteScanState.value = LibraryScanProgress(phase = LibraryScanPhase.Preparing)
         remoteScanJob = scope.launch {
             try {
-                progressFlow().collect { progress -> _remoteScanState.value = progress }
+                progressFlow().collect { progress ->
+                    publishScanProgress(_remoteScanState, progress, fallbackError)
+                    if (progress.phase == LibraryScanPhase.Completed && progress.isCompleted) {
+                        onSucceeded?.invoke()
+                    }
+                }
             } catch (error: CancellationException) {
                 _remoteScanState.value = _remoteScanState.value.copy(
                     phase = LibraryScanPhase.Cancelled,
@@ -376,12 +471,7 @@ internal class LibraryController(
                 )
                 throw error
             } catch (error: Throwable) {
-                _remoteScanState.value = _remoteScanState.value.copy(
-                    phase = LibraryScanPhase.Error,
-                    currentTitle = null,
-                    error = error.message ?: fallbackError,
-                    isCompleted = true,
-                )
+                publishScanFailure(_remoteScanState, error.message ?: fallbackError, error)
             }
         }
     }
@@ -430,6 +520,11 @@ internal class LibraryController(
     suspend fun artistTracksForPlayback(artistKey: String): List<EchoTrack> =
         withContext(Dispatchers.IO) {
             repository.artistTracksForPlayback(artistKey).map { it.toEchoTrack() }
+        }
+
+    suspend fun genreTracksForPlayback(genreKey: String): List<EchoTrack> =
+        withContext(Dispatchers.IO) {
+            repository.genreTracksForPlayback(genreKey).map { it.toEchoTrack() }
         }
 
     suspend fun folderTracksForPlayback(folderKey: String): List<EchoTrack> =
@@ -491,17 +586,33 @@ internal class LibraryController(
             repository.searchLocalLibrary(query)
         }
 
-    suspend fun updateTrackMetadata(update: EchoTrackMetadataUpdate): Boolean =
+    suspend fun updateTrackMetadata(update: EchoTrackMetadataUpdate): TrackMetadataUpdateResult =
         withContext(Dispatchers.IO) {
             repository.updateTrackMetadata(update)
         }
 
-    suspend fun updateTrackArtwork(trackId: String, artworkUri: Uri): Boolean =
+    suspend fun writeEmbeddedTagsForTrack(
+        trackId: String,
+        lyricsText: String? = null,
+        artworkUri: String? = null,
+    ): EmbeddedTagWriteResult =
+        withContext(Dispatchers.IO) {
+            repository.writeEmbeddedTagsForTrack(trackId, lyricsText, artworkUri)
+        }
+
+    suspend fun updateTrackArtwork(trackId: String, artworkUri: Uri): TrackMetadataUpdateResult =
         withContext(Dispatchers.IO) {
             repository.updateTrackArtwork(trackId, artworkUri.toString())
         }
 
+    suspend fun writeEmbeddedLyrics(trackId: String, lyricsText: String): TrackMetadataUpdateResult =
+        withContext(Dispatchers.IO) {
+            repository.writeEmbeddedLyrics(trackId, lyricsText)
+        }
+
     fun clear() {
+        mediaStoreObserver?.stop()
+        mediaStoreObserver = null
         scanJob?.cancel()
         remoteScanJob?.cancel()
         sampleRateBackfillJob?.cancel()
@@ -530,4 +641,29 @@ internal class LibraryController(
                 this@holdDuringLibraryMutation
             }
         }
+
+    private fun publishScanProgress(
+        target: MutableStateFlow<LibraryScanProgress>,
+        progress: LibraryScanProgress,
+        fallback: String,
+    ) {
+        target.value = progress
+        if (progress.phase == LibraryScanPhase.Error) {
+            EchoErrorLog.record(EchoErrorSource.Library, progress.error ?: fallback)
+        }
+    }
+
+    private fun publishScanFailure(
+        target: MutableStateFlow<LibraryScanProgress>,
+        message: String,
+        error: Throwable,
+    ) {
+        target.value = target.value.copy(
+            phase = LibraryScanPhase.Error,
+            currentTitle = null,
+            error = message,
+            isCompleted = true,
+        )
+        EchoErrorLog.record(EchoErrorSource.Library, message, throwable = error)
+    }
 }

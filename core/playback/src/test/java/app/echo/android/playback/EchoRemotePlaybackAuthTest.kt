@@ -16,12 +16,14 @@ class EchoRemotePlaybackAuthTest {
     fun resetRegistry() {
         EchoRemotePlaybackAuthRegistry.replaceWebDavCredentials(emptyList())
         EchoRemotePlaybackAuthRegistry.replaceSubsonicCredentials(emptyList())
+        EchoRemotePlaybackAuthRegistry.replaceJellyfinCredentials(emptyList())
     }
 
     @After
     fun clearRegistry() {
         EchoRemotePlaybackAuthRegistry.replaceWebDavCredentials(emptyList())
         EchoRemotePlaybackAuthRegistry.replaceSubsonicCredentials(emptyList())
+        EchoRemotePlaybackAuthRegistry.replaceJellyfinCredentials(emptyList())
     }
 
     @Test
@@ -152,6 +154,47 @@ class EchoRemotePlaybackAuthTest {
         )
         val bobIdentity = EchoRemotePlaybackAuthRegistry.cacheIdentity(url, emptyMap())
         assertNotEquals(aliceIdentity, bobIdentity)
+    }
+
+    @Test
+    fun resolveSignsJellyfinStreamAndArtworkWithApiKey() {
+        EchoRemotePlaybackAuthRegistry.replaceJellyfinCredentials(
+            listOf(
+                EchoJellyfinPlaybackCredential(
+                    baseUrl = "http://nas:8096",
+                    accessToken = "tok-1",
+                ),
+            ),
+        )
+        val stream = "http://nas:8096/Audio/abc/stream?static=true"
+        val artwork = "http://nas:8096/Items/abc/Images/Primary?maxWidth=600&tag=t1"
+        assertEquals("tok-1", queryMap(EchoRemotePlaybackAuthRegistry.resolveJellyfinUrl(stream))["api_key"])
+        assertEquals("tok-1", queryMap(EchoRemotePlaybackAuthRegistry.resolveJellyfinUrl(artwork))["api_key"])
+        assertTrue(queueRequiresJellyfinAuth(listOf(stream)))
+        assertTrue(EchoRemotePlaybackAuthRegistry.isJellyfinAuthReadyForUris(listOf(stream, artwork)))
+        assertFalse(
+            EchoRemotePlaybackAuthRegistry.isJellyfinAuthReadyForUris(
+                listOf("http://other:8096/Audio/abc/stream?static=true"),
+            ),
+        )
+    }
+
+    @Test
+    fun jellyfinCacheIdentityIgnoresRotatingApiKey() {
+        EchoRemotePlaybackAuthRegistry.replaceJellyfinCredentials(
+            listOf(
+                EchoJellyfinPlaybackCredential(
+                    baseUrl = "http://nas:8096",
+                    accessToken = "tok-1",
+                ),
+            ),
+        )
+        val first = "http://nas:8096/Audio/abc/stream?static=true&api_key=tok-1"
+        val second = "http://nas:8096/Audio/abc/stream?static=true&api_key=tok-2"
+        assertEquals(
+            EchoRemotePlaybackAuthRegistry.cacheIdentity(first, emptyMap()),
+            EchoRemotePlaybackAuthRegistry.cacheIdentity(second, emptyMap()),
+        )
     }
 }
 

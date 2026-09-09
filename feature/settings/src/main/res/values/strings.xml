@@ -66,8 +66,7 @@
     <string name="settings_section_connect">Link</string>
     <string name="settings_pc_handoff">PC handoff entry</string>
     <string name="settings_pc_handoff_detail">Keep the desktop connection and remote control entry</string>
-    <string name="settings_discord_detail_on">Forward phone playback to Discord through PC ECHO</string>
-    <string name="settings_discord_detail_off">Turn on PC handoff first</string>
+
     <string name="settings_connect_pc">Connect PC ECHO</string>
     <string name="settings_connect_pc_detail">Manage pairing and remote playback</string>
     <string name="settings_connect_pc_disabled">PC handoff is turned off</string>
@@ -77,7 +76,36 @@
     <string name="settings_local_music">Local music</string>
     <string name="settings_local_music_detail">Browse tracks, albums, artists, and scanning</string>
     <string name="settings_section_about">About</string>
+    <string name="settings_error_log">Error log</string>
+    <string name="settings_error_log_detail_empty">Collected crashes and feature failures</string>
+    <string name="settings_error_log_detail_count">%1$d recorded</string>
     <string name="settings_version">Version</string>
+    <string name="error_log_title">Error log</string>
+    <string name="error_log_subtitle">Crashes and feature failures collected on this phone</string>
+    <string name="error_log_search">Search errors</string>
+    <string name="error_log_empty">No errors recorded yet</string>
+    <string name="error_log_empty_filtered">No errors match this search</string>
+    <string name="error_log_clear">Clear</string>
+    <string name="error_log_clear_confirm_title">Clear the error log?</string>
+    <string name="error_log_clear_confirm">This removes every collected error on this phone. It cannot be undone.</string>
+    <string name="error_log_clear_cancel">Cancel</string>
+    <string name="error_log_copy">Copy</string>
+    <string name="error_log_copy_all">Copy all</string>
+    <string name="error_log_share">Share</string>
+    <string name="error_log_delete">Delete</string>
+    <string name="error_log_copied">Copied</string>
+    <string name="error_log_count">×%1$d</string>
+    <string name="error_log_source_count">%1$s · %2$d</string>
+    <string name="error_log_first_seen">First seen %1$s</string>
+    <string name="error_log_source_all">All</string>
+    <string name="error_log_source_crash">Crash</string>
+    <string name="error_log_source_playback">Playback</string>
+    <string name="error_log_source_library">Library</string>
+    <string name="error_log_source_connect">Link</string>
+    <string name="error_log_source_network">Network</string>
+    <string name="error_log_source_usb">USB</string>
+    <string name="error_log_source_lyrics">Lyrics</string>
+    <string name="error_log_source_other">Other</string>
     <string name="settings_lastfm_builtin">Built in; you do not need to enter this</string>
     <string name="settings_lastfm_reauth">Re-authorize Last.fm</string>
     <string name="settings_lastfm_open_auth">Open Last.fm authorization</string>
@@ -89,6 +117,13 @@
     <string name="settings_lastfm_api_accounts_detail">Review the API key and shared secret in the browser</string>
     <string name="settings_lastfm_disconnect">Disconnect Last.fm</string>
     <string name="settings_lastfm_disconnect_detail">Clear the local session key and keep the API key for next time</string>
+    <string name="settings_listenbrainz">ListenBrainz</string>
+    <string name="settings_listenbrainz_token">User token</string>
+    <string name="settings_listenbrainz_token_placeholder">ListenBrainz user token</string>
+    <string name="settings_listenbrainz_save">Save token</string>
+    <string name="settings_listenbrainz_token_detail">Create a token in ListenBrainz profile settings</string>
+    <string name="settings_listenbrainz_disconnect">Disconnect ListenBrainz</string>
+    <string name="settings_listenbrainz_disconnect_detail">Clear the local user token</string>
     <string name="settings_bg_image">Image background: %1$s</string>
     <string name="settings_bg_video">Video wallpaper: %1$s</string>
     <string name="settings_bg_default">Using the default ECHO background</string>
@@ -278,7 +313,7 @@
     <string name="diag_eq_wait_playback">%1$s · waiting for playback</string>
     <string name="diag_eq_wait_system">%1$s · waiting for playback-pipeline EQ</string>
     <string name="diag_eq_off">Off · %1$d bands</string>
-    <string name="settings_discord_unavailable">Not available yet. Phone playback forwarding to PC Discord is not implemented.</string>
+
     <string name="settings_usb_bitperfect">USB bit-perfect mode</string>
     <string name="settings_usb_bitperfect_detail">Enables USB exclusive output. Bypasses EQ, correction, gain, speed and silence skipping. Digital volume is fixed at 100%; adjust volume on the DAC before enabling. Unsupported tracks or DAC formats stop playback.</string>
     <string name="bitperfect_off">Strict mode off</string>
@@ -327,11 +362,14 @@
     <string name="eq_show_filters">Show filter parameters</string>
     <string name="eq_hide_filters">Hide filter parameters</string>
     <string name="settings_gapless">Gapless playback</string>
-    <string name="settings_gapless_detail">Enabled by default: preloads the next track and keeps compatible output sessions. Sample-rate changes or missing network data can still interrupt playback.</string>
+    <string name="settings_gapless_detail">Enabled by default: preloads the next track and keeps compatible output sessions. Track fade in/out, skip silence, sample-rate changes, or missing network data can still interrupt playback.</string>
     <string name="settings_track_fade">Track fade in / out</string>
-    <string name="settings_track_fade_detail">Gradually raises the opening and lowers the ending. Tracks do not overlap. Live audio bypasses fades; unknown-duration tracks only fade in.</string>
+    <string name="settings_track_fade_detail">Gradually raises the opening and lowers the ending. Tracks do not overlap, so this replaces gapless at the boundary. Live audio bypasses fades; unknown-duration tracks only fade in.</string>
     <string name="settings_track_fade_bypass">Saved, but bypassed in strict bit-perfect mode.</string>
     <string name="settings_track_fade_duration">Fade duration</string>
     <string name="settings_track_fade_seconds">%.1f s</string>
+    <string name="settings_smart_transition">Smart transitions</string>
+    <string name="settings_smart_transition_detail">Beta. Enters on a beat when it can, shortens if vocals collide, and splits bass on energetic pairs. Falls back to gapless or fade when it cannot run.</string>
+    <string name="settings_smart_transition_bypass">Saved, but not used in Lightweight mode, USB exclusive, or bit-perfect output.</string>
     <string name="settings_bg_video_disabled">Video backgrounds are paused in Lightweight mode. The default background is shown; your selection is retained.</string>
 </resources>

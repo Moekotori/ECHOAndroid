@@ -15,6 +15,11 @@
     <string name="feature_library_artist_b6e7ad" formatted="false">"艺术家"</string>
     <string name="feature_library_artist_c15fae" formatted="false">"艺术家"</string>
     <string name="feature_library_artists_1e19fb" formatted="false">"艺术家"</string>
+    <string name="feature_library_genres_8c2a11" formatted="false">"曲风"</string>
+    <string name="feature_library_loading_genres_4e91aa" formatted="false">"正在加载曲风"</string>
+    <string name="feature_library_failed_to_load_genres_b7c102" formatted="false">"无法加载曲风"</string>
+    <string name="feature_library_this_library_has_no_genres_to_show_yet_11a90e" formatted="false">"这个曲库还没有曲风"</string>
+    <string name="feature_library_dsd_unsupported_9a1b02" formatted="false">"DSD（无法播放）"</string>
     <string name="feature_library_artists_e168aa" formatted="false">"艺人"</string>
     <string name="feature_library_back_49093c" formatted="false">"返回"</string>
     <string name="feature_library_back_to_pc_echo_playlists_499312" formatted="false">"返回 PC ECHO 歌单"</string>
@@ -36,8 +41,8 @@
     <string name="feature_library_count_tracks_local_playlist_352a0d">"%1$s 首 · 本地歌单"</string>
     <string name="feature_library_count_tracks_navidrome_294a65">"%1$s 首 · Navidrome"</string>
     <string name="feature_library_create_7b4bc9" formatted="false">"创建"</string>
-    <string name="feature_library_currently_saved_only_to_the_echoandroid_library_index_6c327c" formatted="false">"当前只保存到 ECHOAndroid 曲库索引，不直接写入音频文件。"</string>
-    <string name="feature_library_currently_saved_to_the_echoandroid_library_index_imported_e15a70" formatted="false">"当前保存到 ECHOAndroid 曲库索引；导入歌词和封面也会绑定到这首歌。"</string>
+    <string name="feature_library_currently_saved_only_to_the_echoandroid_library_index_6c327c" formatted="false">"在系统允许写入时，会把 MP3 / FLAC / WAV 标签写进音频文件；否则只保存在 ECHOAndroid 曲库索引。"</string>
+    <string name="feature_library_currently_saved_to_the_echoandroid_library_index_imported_e15a70" formatted="false">"在系统允许写入时，会把 MP3 / FLAC / WAV 标签写进音频文件，包括导入的歌词和封面。"</string>
     <string name="feature_library_custom_artwork_c8c999" formatted="false">"自定义封面"</string>
     <string name="feature_library_delete_138ccf" formatted="false">"删除"</string>
     <string name="feature_library_delete_playlist_4d9753" formatted="false">"删除歌单"</string>
@@ -96,6 +101,8 @@
     <string name="feature_library_name_57335e" formatted="false">"名称"</string>
     <string name="feature_library_new_cc6582" formatted="false">"新建"</string>
     <string name="feature_library_new_playlist_22cdbd" formatted="false">"新建歌单"</string>
+    <string name="feature_library_import_m3u_2b9c10" formatted="false">"导入 M3U"</string>
+    <string name="feature_library_export_m3u_6f18a4" formatted="false">"导出 M3U"</string>
     <string name="feature_library_new_playlist_and_add_314ff2" formatted="false">"新建歌单并加入"</string>
     <string name="feature_library_no_liked_songs_yet_heart_a_track_from_ba96cc" formatted="false">"还没有喜欢的歌曲。在播放页或歌曲菜单里点红心。"</string>
     <string name="feature_library_no_local_playlists_yet_create_one_from_the_e13a98" formatted="false">"还没有本地歌单。点右上角创建，或从歌曲菜单加入。"</string>
@@ -112,11 +119,15 @@
     <string name="feature_library_pc_echo_has_no_matching_artists_2dbc79" formatted="false">"PC ECHO 没有匹配的艺术家。"</string>
     <string name="feature_library_pc_echo_has_no_matching_playlists_846ad7" formatted="false">"PC ECHO 没有匹配的歌单。"</string>
     <string name="feature_library_pc_echo_has_no_matching_songs_40afe3" formatted="false">"PC ECHO 没有匹配的歌曲。"</string>
+    <string name="feature_library_pc_echo_has_no_folders_to_show_9e12b8" formatted="false">"PC ECHO 暂无可显示文件夹。"</string>
+    <string name="feature_library_pc_echo_has_no_matching_folders_4c90d1" formatted="false">"PC ECHO 没有匹配的文件夹。"</string>
     <string name="feature_library_pc_echo_has_no_playlists_to_show_8e8438" formatted="false">"PC ECHO 暂无可显示歌单。"</string>
     <string name="feature_library_pc_echo_has_no_songs_to_show_a46ba6" formatted="false">"PC ECHO 暂无可显示歌曲。"</string>
+    <string name="feature_library_open_parent_folder_2a11c0" formatted="false">"返回上级文件夹"</string>
     <string name="feature_library_pick_an_album_artist_folder_or_playlist_e517b7" formatted="false">"选择一张专辑、一位艺术家、一个文件夹或歌单。"</string>
     <string name="feature_library_play_38419a" formatted="false">"播放"</string>
     <string name="feature_library_play_all_55c80e" formatted="false">"播放全部"</string>
+    <string name="feature_library_play_on_pc_7c21a4" formatted="false">"在 PC 上播放"</string>
     <string name="feature_library_play_next_a1f73e" formatted="false">"下一首播放"</string>
     <string name="feature_library_play_this_folder_77afdc" formatted="false">"播放这个文件夹"</string>
     <string name="feature_library_playlist_actions_044945" formatted="false">"歌单操作"</string>
@@ -128,6 +139,7 @@
     <string name="feature_library_reading_mediastore_87cd18" formatted="false">"正在读取 MediaStore"</string>
     <string name="feature_library_reading_pc_echo_library_fccbe4" formatted="false">"正在读取 PC ECHO 曲库..."</string>
     <string name="feature_library_reading_pc_echo_playlist_1ba678" formatted="false">"正在读取 PC ECHO 歌单..."</string>
+    <string name="feature_library_recently_added_b4e8c1" formatted="false">"最近添加"</string>
     <string name="feature_library_recently_played_ce4d5f" formatted="false">"最近播放"</string>
     <string name="feature_library_recently_updated_781ab0" formatted="false">"最近更新"</string>
     <string name="feature_library_refresh_pc_echo_library_5b6275" formatted="false">"刷新 PC ECHO 曲库"</string>
@@ -151,6 +163,9 @@
     <string name="feature_library_scanned_862bfd" formatted="false">"已扫描"</string>
     <string name="feature_library_search_library_80ef90" formatted="false">"搜索曲库"</string>
     <string name="feature_library_search_songs_artists_albums_14dc2c" formatted="false">"搜索歌曲、艺术家、专辑"</string>
+    <string name="feature_library_set_album_sort_order_7c2d91" formatted="false">"设置专辑排序"</string>
+    <string name="feature_library_set_artist_sort_order_e15a06" formatted="false">"设置艺人排序"</string>
+    <string name="feature_library_set_folder_sort_order_9a4f33" formatted="false">"设置文件夹排序"</string>
     <string name="feature_library_set_track_sort_order_4053c0" formatted="false">"设置歌曲排序"</string>
     <string name="feature_library_shuffle_34e7ce" formatted="false">"随机播放"</string>
     <string name="feature_library_shuffle_f8e15b" formatted="false">"随机排序"</string>

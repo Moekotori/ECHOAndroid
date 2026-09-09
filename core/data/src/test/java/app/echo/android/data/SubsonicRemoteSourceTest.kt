@@ -1,6 +1,11 @@
 package app.echo.android.data
 
+import java.io.InterruptedIOException
+import java.net.ConnectException
+import java.net.SocketTimeoutException
 import java.net.URI
+import java.net.UnknownHostException
+import javax.net.ssl.SSLHandshakeException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -78,7 +83,7 @@ class SubsonicRemoteSourceTest {
         )
         client.fetchAlbums()
         val albumUrl = requested.first { it.contains("getAlbumList2.view") }
-        assertEquals("1000", queryParam(albumUrl, "size"))
+        assertEquals("500", queryParam(albumUrl, "size"))
     }
 
     @Test
@@ -214,6 +219,8 @@ class SubsonicRemoteSourceTest {
         assertNotNull(text)
         assertTrue(text!!.contains("Hello"))
         assertTrue(text.contains("World"))
+        assertTrue(text.contains("[00:00.00]Hello"))
+        assertTrue(text.contains("[00:01.50]World"))
     }
 
     @Test
@@ -238,6 +245,49 @@ class SubsonicRemoteSourceTest {
     }
 
     @Test
+    fun structuredLyricsApplyBlockOffsetToLineStart() {
+        val client = SubsonicClient(
+            endpoint = SubsonicEndpoint(
+                baseUrl = "https://navidrome.example",
+                username = "user",
+                password = "pass",
+            ),
+            httpGet = { url ->
+                if (url.contains("getLyricsBySongId.view")) {
+                    """{"subsonic-response":{"status":"ok","lyricsList":{"structuredLyrics":[{"offset":-100,"line":[{"value":"Hello","start":0},{"value":"World","start":1500}]}]}}}"""
+                } else {
+                    """{"subsonic-response":{"status":"ok"}}"""
+                }
+            },
+        )
+        val text = client.fetchLyricsText("s1", "A", "Hello")
+        assertNotNull(text)
+        assertTrue(text!!.contains("[00:00.00]Hello"))
+        assertTrue(text.contains("[00:01.40]World"))
+    }
+
+    @Test
+    fun readsOpenSubsonicSamplingRate() {
+        val client = SubsonicClient(
+            endpoint = SubsonicEndpoint(
+                baseUrl = "https://navidrome.example",
+                username = "user",
+                password = "pass",
+            ),
+            httpGet = {
+                search3Body(listOf("""{"id":"s1","title":"HiRes","artist":"A","album":"B","duration":1,"size":1,"samplingRate":96000}"""))
+            },
+        )
+        val songs = client.fetchSongsBySearch3()
+        assertEquals(96_000, songs.single().sampleRateHz)
+        val entity = songs.single().toLibraryTrackEntity(
+            SubsonicEndpoint("https://navidrome.example", "user", "pass"),
+            scanRunId = 1L,
+        )
+        assertEquals(96_000, entity.sampleRateHz)
+    }
+
+    @Test
     fun scrobbleSubmissionUsesListenTime() {
         var requested = ""
         val client = SubsonicClient(
@@ -251,11 +301,11 @@ class SubsonicRemoteSourceTest {
                 """{"subsonic-response":{"status":"ok"}}"""
             },
         )
-        client.submitListen(songId = "s1", submission = true, timeSeconds = 1_700_000_000L)
+        client.submitListen(songId = "s1", submission = true, timeEpochMs = 1_700_000_000_000L)
         assertTrue(requested.contains("scrobble.view"))
         assertTrue(requested.contains("id=s1"))
         assertTrue(requested.contains("submission=true"))
-        assertTrue(requested.contains("time=1700000000"))
+        assertTrue(requested.contains("time=1700000000000"))
     }
 
     @Test
@@ -409,6 +459,98 @@ class SubsonicRemoteSourceTest {
     fun blankErrorHttpStillCountsAsNoBody() {
         assertEquals(null, subsonicHttpBody(responseCode = 401, successBody = null, errorBody = "  "))
         assertEquals(null, subsonicHttpBody(responseCode = 500, successBody = null, errorBody = null))
+    }
+
+    @Test
+    fun sslHandshakeIsCertificateTrustMessageNotUnreachable() {
+        val cause = SSLHandshakeException("Trust anchor for certification path not found.")
+        val wrapped = RuntimeException("okhttp", cause)
+        assertEquals(subsonicCertificateTrustMessage(), subsonicTransportFailureMessage(wrapped))
+        assertFalse(subsonicTransportFailureMessage(wrapped).contains("无响应"))
+        assertFalse(subsonicTransportFailureMessage(wrapped).contains("Can't reach"))
+    }
+
+    @Test
+    fun unknownHostIsDnsMessage() {
+        assertEquals(
+            subsonicUnknownHostMessage(),
+            subsonicTransportFailureMessage(UnknownHostException("navidrome.example")),
+        )
+    }
+
+    @Test
+    fun socketTimeoutIsTimeoutMessage() {
+        assertEquals(
+            subsonicTimeoutMessage(),
+            subsonicTransportFailureMessage(SocketTimeoutException("timeout")),
+        )
+        assertEquals(
+            subsonicTimeoutMessage(),
+            subsonicTransportFailureMessage(InterruptedIOException("timeout")),
+        )
+    }
+
+    @Test
+    fun connectionRefusedIsRefusedMessage() {
+        assertEquals(
+            subsonicConnectionRefusedMessage(),
+            subsonicTransportFailureMessage(ConnectException("Failed to connect to /192.168.1.8:4533")),
+        )
+    }
+
+    @Test
+    fun pingNullBodyUsesUnreachableMessage() {
+        val client = SubsonicClient(
+            endpoint = SubsonicEndpoint(
+                baseUrl = "https://navidrome.example",
+                username = "user",
+                password = "pass",
+            ),
+            httpGet = { null },
+        )
+        val thrown = runCatching { client.ping() }.exceptionOrNull()
+        assertEquals(subsonicUnreachableMessage(), thrown?.message)
+        assertFalse(thrown?.message.orEmpty().contains("无响应"))
+    }
+
+    @Test
+    fun pingTimeoutSurfacesTimeoutMessage() {
+        val client = SubsonicClient(
+            endpoint = SubsonicEndpoint(
+                baseUrl = "https://navidrome.example",
+                username = "user",
+                password = "pass",
+            ),
+            httpGet = { throw SocketTimeoutException("timeout") },
+        )
+        val thrown = runCatching { client.ping() }.exceptionOrNull()
+        assertEquals(subsonicTimeoutMessage(), thrown?.message)
+    }
+
+    @Test
+    fun pingSslFailureSurfacesCertificateMessage() {
+        val client = SubsonicClient(
+            endpoint = SubsonicEndpoint(
+                baseUrl = "https://navidrome.example",
+                username = "user",
+                password = "pass",
+            ),
+            httpGet = { throw SSLHandshakeException("Trust anchor for certification path not found.") },
+        )
+        val thrown = runCatching { client.ping() }.exceptionOrNull()
+        assertEquals(subsonicCertificateTrustMessage(), thrown?.message)
+    }
+
+    @Test
+    fun invalidJsonUsesParseMessage() {
+        val thrown = runCatching { parseSubsonicResponse("<html>502</html>") }.exceptionOrNull()
+        assertEquals(subsonicInvalidJsonMessage(), thrown?.message)
+    }
+
+    @Test
+    fun missingSubsonicRootUsesIncompatibleMessage() {
+        val thrown = runCatching { parseSubsonicResponse("""{"status":"ok"}""") }.exceptionOrNull()
+        assertEquals(subsonicIncompatibleResponseMessage(), thrown?.message)
     }
 
     @Test

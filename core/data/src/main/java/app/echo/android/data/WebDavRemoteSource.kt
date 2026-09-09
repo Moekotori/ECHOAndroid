@@ -78,7 +78,7 @@ internal class WebDavClient(
                         hitVisitCap = true
                     }
                     queue += entry.href
-                } else if (entry.href.isSupportedAudio()) {
+                } else if (LocalAudioFileTypes.isSupported(entry.href.path.substringAfterLast('/'), entry.contentType)) {
                     onFile(entry.toAudioFile(root))
                     trackCount += 1
                     if (trackCount >= maxTracks) {
@@ -125,7 +125,10 @@ internal class WebDavClient(
             album = album,
             artist = "WebDAV",
             path = path,
-            mimeType = contentType ?: href.audioMimeType(),
+            mimeType = LocalAudioFileTypes.resolvedMimeType(
+                href.path.substringAfterLast('/'),
+                contentType,
+            ),
             sizeBytes = contentLength,
             modifiedSeconds = lastModifiedSeconds,
         )
@@ -301,24 +304,7 @@ private fun Element.childText(localName: String): String? {
     return nodes.item(0)?.textContent?.trim()?.takeIf { it.isNotBlank() }
 }
 
-private fun URI.isSupportedAudio(): Boolean =
-    audioMimeType() != null
 
-private fun URI.audioMimeType(): String? {
-    val name = path.substringAfterLast('/').lowercase(Locale.ROOT)
-    return when {
-        name.endsWith(".flac") -> "audio/flac"
-        name.endsWith(".mp3") -> "audio/mpeg"
-        name.endsWith(".m4a") || name.endsWith(".mp4") -> "audio/mp4"
-        name.endsWith(".aac") -> "audio/aac"
-        name.endsWith(".ogg") || name.endsWith(".oga") -> "audio/ogg"
-        name.endsWith(".opus") -> "audio/opus"
-        name.endsWith(".wav") -> "audio/wav"
-        name.endsWith(".aiff") || name.endsWith(".aif") -> "audio/aiff"
-        name.endsWith(".ape") -> "audio/ape"
-        else -> null
-    }
-}
 
 private fun String.parseHttpDateSeconds(): Long? =
     runCatching {

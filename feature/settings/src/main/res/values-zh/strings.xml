@@ -60,8 +60,7 @@
     <string name="settings_section_connect">互联</string>
     <string name="settings_pc_handoff">PC 接力入口</string>
     <string name="settings_pc_handoff_detail">保留桌面端连接与远程控制入口</string>
-    <string name="settings_discord_detail_on">通过 PC ECHO 把手机播放状态同步到 Discord</string>
-    <string name="settings_discord_detail_off">需要先开启 PC 接力入口</string>
+
     <string name="settings_connect_pc">连接 PC ECHO</string>
     <string name="settings_connect_pc_detail">管理配对和远程播放状态</string>
     <string name="settings_connect_pc_disabled">PC 接力入口已关闭</string>
@@ -71,7 +70,36 @@
     <string name="settings_local_music">本地音乐</string>
     <string name="settings_local_music_detail">查看歌曲、专辑、艺术家和扫描入口</string>
     <string name="settings_section_about">关于</string>
+    <string name="settings_error_log">错误信息</string>
+    <string name="settings_error_log_detail_empty">收集崩溃与功能失败记录</string>
+    <string name="settings_error_log_detail_count">已记录 %1$d 条</string>
     <string name="settings_version">版本号</string>
+    <string name="error_log_title">错误信息</string>
+    <string name="error_log_subtitle">本机收集的崩溃与功能失败</string>
+    <string name="error_log_search">搜索错误</string>
+    <string name="error_log_empty">还没有记录到错误</string>
+    <string name="error_log_empty_filtered">没有符合条件的错误</string>
+    <string name="error_log_clear">清空</string>
+    <string name="error_log_clear_confirm_title">清空错误信息？</string>
+    <string name="error_log_clear_confirm">将删除本机已收集的全部错误，且无法恢复。</string>
+    <string name="error_log_clear_cancel">取消</string>
+    <string name="error_log_copy">复制</string>
+    <string name="error_log_copy_all">全部复制</string>
+    <string name="error_log_share">分享</string>
+    <string name="error_log_delete">删除</string>
+    <string name="error_log_copied">已复制</string>
+    <string name="error_log_count">×%1$d</string>
+    <string name="error_log_source_count">%1$s · %2$d</string>
+    <string name="error_log_first_seen">首次 %1$s</string>
+    <string name="error_log_source_all">全部</string>
+    <string name="error_log_source_crash">崩溃</string>
+    <string name="error_log_source_playback">播放</string>
+    <string name="error_log_source_library">曲库</string>
+    <string name="error_log_source_connect">互联</string>
+    <string name="error_log_source_network">网络</string>
+    <string name="error_log_source_usb">USB</string>
+    <string name="error_log_source_lyrics">歌词</string>
+    <string name="error_log_source_other">其他</string>
     <string name="settings_lastfm_builtin">已内置，用户无需填写</string>
     <string name="settings_lastfm_reauth">重新授权 Last.fm</string>
     <string name="settings_lastfm_open_auth">打开 Last.fm 授权网页</string>
@@ -83,6 +111,13 @@
     <string name="settings_lastfm_api_accounts_detail">在网页里查看已申请的 API key 和 shared secret</string>
     <string name="settings_lastfm_disconnect">断开 Last.fm</string>
     <string name="settings_lastfm_disconnect_detail">清除本机 session key，保留 API key 方便下次连接</string>
+    <string name="settings_listenbrainz">ListenBrainz</string>
+    <string name="settings_listenbrainz_token">用户令牌</string>
+    <string name="settings_listenbrainz_token_placeholder">ListenBrainz 用户令牌</string>
+    <string name="settings_listenbrainz_save">保存令牌</string>
+    <string name="settings_listenbrainz_token_detail">在 ListenBrainz 个人设置中创建令牌</string>
+    <string name="settings_listenbrainz_disconnect">断开 ListenBrainz</string>
+    <string name="settings_listenbrainz_disconnect_detail">清除本机用户令牌</string>
     <string name="settings_bg_image">图片背景：%1$s</string>
     <string name="settings_bg_video">视频壁纸：%1$s</string>
     <string name="settings_bg_default">正在使用默认 ECHO 背景</string>
@@ -272,7 +307,7 @@
     <string name="diag_eq_wait_playback">%1$s · 等待播放</string>
     <string name="diag_eq_wait_system">%1$s · 等待管线 EQ</string>
     <string name="diag_eq_off">关闭 · %1$d bands</string>
-    <string name="settings_discord_unavailable">暂未实现：手机播放状态转发到 PC Discord 尚未接通。</string>
+
     <string name="settings_usb_bitperfect">USB bit-perfect 模式</string>
     <string name="settings_usb_bitperfect_detail">开启 USB 独占，旁路 EQ、耳机校正、增益、变速与跳过静音。数字音量固定 100%，请先调低 DAC 音量。不支持的曲目或设备格式将停止播放。</string>
     <string name="bitperfect_off">未开启严格直通</string>
@@ -321,11 +356,14 @@
     <string name="eq_show_filters">查看滤波器参数</string>
     <string name="eq_hide_filters">收起滤波器参数</string>
     <string name="settings_gapless">无缝播放</string>
-    <string name="settings_gapless_detail">默认开启：预加载下一首并保留兼容的输出会话。切换采样率或网络数据不足时仍可能中断。</string>
+    <string name="settings_gapless_detail">默认开启：预加载下一首并保留兼容的输出会话。曲首淡入/曲尾淡出、跳过静音、切换采样率或网络数据不足时仍可能中断。</string>
     <string name="settings_track_fade">曲首淡入 / 曲尾淡出</string>
-    <string name="settings_track_fade_detail">渐强曲首、渐弱曲尾，两首歌不重叠。直播不淡化，未知时长曲目仅淡入。</string>
+    <string name="settings_track_fade_detail">渐强曲首、渐弱曲尾，两首歌不重叠，因此切歌处不再无缝。直播不淡化，未知时长曲目仅淡入。</string>
     <string name="settings_track_fade_bypass">设置会保存，严格 bit-perfect 模式下不进行淡化。</string>
     <string name="settings_track_fade_duration">淡化时长</string>
     <string name="settings_track_fade_seconds">%.1f 秒</string>
+    <string name="settings_smart_transition">智能过渡</string>
+    <string name="settings_smart_transition_detail">Beta。能对上拍就从拍点进，人声冲突会缩短，能量高时低频错峰；做不到就回到无缝播放或淡化。</string>
+    <string name="settings_smart_transition_bypass">设置会保存，轻量档、USB 独占或严格 bit-perfect 下不应用。</string>
     <string name="settings_bg_video_disabled">轻量模式暂停视频背景，当前显示默认背景；已保留你的视频选择。</string>
 </resources>

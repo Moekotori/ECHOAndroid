@@ -26,6 +26,7 @@ class EchoPlaybackService : MediaLibraryService() {
     private var mediaSession: MediaLibrarySession? = null
     private var player: ExoPlayer? = null
     private var trackTransitions: EchoTrackTransitionController? = null
+    private var smartTransitions: EchoSmartTransitionController? = null
     private var sessionCallback: EchoPlaybackLibrarySessionCallback? = null
     private var sessionRestorer: EchoPlaybackSessionRestorer? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -78,11 +79,13 @@ class EchoPlaybackService : MediaLibraryService() {
 
     override fun onCreate() {
         super.onCreate()
+        val smartMixer = EchoPlaybackProcessRuntime.smartTransitionMixer()
         val exoPlayer = ExoPlayer.Builder(this)
             .setRenderersFactory(
                 EchoRenderersFactory(
                     this,
                     EchoPlaybackProcessRuntime.equalizerController().processor,
+                    smartMixer,
                 ),
             )
             .setMediaSourceFactory(DefaultMediaSourceFactory(echoPlaybackDataSourceFactory(this)))
@@ -107,6 +110,17 @@ class EchoPlaybackService : MediaLibraryService() {
 
         player = exoPlayer
         trackTransitions = EchoTrackTransitionController(exoPlayer, serviceScope, EchoPlaybackProcessRuntime::setTrackFadeGain)
+        val decoder = EchoSmartTransitionDecoder(this)
+        smartTransitions = EchoSmartTransitionController(
+            player = exoPlayer,
+            scope = serviceScope,
+            mixer = smartMixer,
+            analyzer = EchoSmartTransitionAnalyzer(
+                decoder = decoder,
+                cache = EchoSmartTransitionCache(java.io.File(cacheDir, "echo-smart-transition")),
+            ),
+            decoder = decoder,
+        )
         serviceScope.launch {
             EchoPlaybackRuntimeOptionsStore.options
                 .map { it.skipSilenceEnabled }
@@ -122,6 +136,7 @@ class EchoPlaybackService : MediaLibraryService() {
             enginePolicy = { EchoPlaybackProcessRuntime.enginePolicyOrNull() },
         )
         sessionRestorer = restorer
+        EchoPlaybackProcessRuntime.setRemoteAuthReadyListener(restorer::playIfRemoteAuthReady)
         val callback = EchoPlaybackLibrarySessionCallback(
             context = this,
             scope = serviceScope,
@@ -173,6 +188,9 @@ class EchoPlaybackService : MediaLibraryService() {
     override fun onDestroy() {
         trackTransitions?.close()
         trackTransitions = null
+        smartTransitions?.close()
+        smartTransitions = null
+        EchoPlaybackProcessRuntime.setRemoteAuthReadyListener(null)
         sessionRestorer?.persistFromPlayer(force = true)
         player?.removeListener(playerListener)
         EchoPlaybackProcessRuntime.enginePolicyOrNull()?.detach()

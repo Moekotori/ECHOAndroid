@@ -22,4 +22,12 @@ object EchoLinkRequestPolicy {
         connectionFailed: Boolean,
         needsV2PairExchange: Boolean,
     ): Boolean = connectionFailed && needsV2PairExchange
+
+    fun shouldDisconnectOnCommandFailure(statusCode: Int?): Boolean =
+        statusCode == 401 || statusCode == 403
+
+    fun shouldMarkAlbumsUnavailable(collectionNotFound: Boolean): Boolean = collectionNotFound
+
+    fun shouldMarkFoldersUnavailable(path: String, notFound: Boolean): Boolean =
+        notFound && path.trim().trim('/').isEmpty()
 }

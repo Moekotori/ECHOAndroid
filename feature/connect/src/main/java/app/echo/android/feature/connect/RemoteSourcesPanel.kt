@@ -26,6 +26,7 @@ import java.net.URI
 internal fun RemoteSourcesPanel(
     subsonicServerUrl: String?, subsonicUsername: String?, subsonicPassword: String?,
     webDavServerUrl: String?, webDavUsername: String?, webDavPassword: String?,
+    jellyfinServerUrl: String?, jellyfinUsername: String?, jellyfinPassword: String?,
     scanState: LibraryScanProgress,
     onSyncSubsonic: (String, String, String) -> Unit,
     onSaveSubsonic: (String, String, String) -> Unit,
@@ -33,6 +34,9 @@ internal fun RemoteSourcesPanel(
     onSyncWebDav: (String, String, String) -> Unit,
     onSaveWebDav: (String, String, String) -> Unit,
     onClearWebDav: () -> Unit,
+    onSyncJellyfin: (String, String, String) -> Unit,
+    onSaveJellyfin: (String, String, String) -> Unit,
+    onClearJellyfin: () -> Unit,
     onCancel: () -> Unit,
 ) {
     var expandedSource by rememberSaveable { mutableStateOf<String?>(null) }
@@ -68,6 +72,14 @@ internal fun RemoteSourcesPanel(
             savedUrl = webDavServerUrl, savedUsername = webDavUsername, savedPassword = webDavPassword,
             expanded = expandedSource == "webdav", onExpand = { expandedSource = if (expandedSource == "webdav") null else "webdav" },
             busy = scanState.isScanning, onSave = onSaveWebDav, onSync = onSyncWebDav, onClear = onClearWebDav,
+        )
+        SourceEditor(
+            title = "Jellyfin / Emby",
+            description = stringResource(L10nR.string.feature_connect_jellyfin_or_emby_independent_of_echo_link_a8f3c1),
+            placeholder = "http://192.168.1.10:8096",
+            savedUrl = jellyfinServerUrl, savedUsername = jellyfinUsername, savedPassword = jellyfinPassword,
+            expanded = expandedSource == "jellyfin", onExpand = { expandedSource = if (expandedSource == "jellyfin") null else "jellyfin" },
+            busy = scanState.isScanning, onSave = onSaveJellyfin, onSync = onSyncJellyfin, onClear = onClearJellyfin,
         )
         ConnectSection(stringResource(L10nR.string.feature_connect_music_on_this_phone_8611a5)) {
             ConnectNote(stringResource(L10nR.string.feature_connect_local_files_are_managed_in_library_no_server_c5274c))

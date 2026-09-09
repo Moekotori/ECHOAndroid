@@ -22,6 +22,7 @@ fun LibraryTrackEntity.toEchoTrack(): EchoTrack =
         sampleRateHz = sampleRateHz,
         dateModifiedSeconds = dateModifiedSeconds,
         source = LibrarySource(source),
+        genre = genre,
     )
 
 fun EchoTrack.toLibraryTrackEntity(): LibraryTrackEntity =
@@ -71,11 +72,12 @@ internal fun LibraryTrackEntity.withComputedSearchMetadata(): LibraryTrackEntity
         pinyinArtist = ChinesePinyin.toPinyin(artist),
         pinyinAlbum = album?.let { ChinesePinyin.toPinyin(it) },
         albumKey = libraryAlbumKey(
-            normalizedAlbum = nextNormalizedAlbum,
+            normalizedAlbum = LibraryAlbumGrouping.albumNameForKey(nextNormalizedAlbum),
             normalizedAlbumArtist = nextNormalizedAlbumArtist,
             normalizedArtist = nextNormalizedArtist,
         ),
         artistKey = libraryArtistKey(nextNormalizedArtist),
+        genreKey = libraryGenreKey(genre?.normalizedForSearch()),
     )
 }
 
@@ -117,6 +119,15 @@ internal fun LibraryTrackEntity.prepareRemoteSyncTrack(
 ): LibraryTrackEntity =
     withPreservedUserMetadata(editedTrack).withScanMetadata(lastSeenScanRunId)
 
+internal fun remapRemoteTrackIdentity(
+    incoming: LibraryTrackEntity,
+    existingByContentUri: Map<String, LibraryTrackEntity>,
+): LibraryTrackEntity {
+    val existing = existingByContentUri[incoming.contentUri] ?: return incoming
+    if (existing.id == incoming.id) return incoming
+    return incoming.copy(id = existing.id)
+}
+
 internal fun buildTrackFingerprint(track: EchoTrack): String =
     LibraryFingerprintPolicy.fingerprint(
         contentUri = track.uri,
@@ -157,8 +168,15 @@ internal fun buildTrackFingerprint(track: LibraryTrackEntity): String =
         remote = LibraryScanPolicy.isRemoteLibrarySource(track.source),
     )
 
-internal fun String.normalizedForSearch(): String =
-    trim().lowercase()
+internal fun String.normalizedForSearch(): String {
+    val collapsed = java.text.Normalizer.normalize(trim(), java.text.Normalizer.Form.NFKC)
+        .replace(AggregationWhitespace, " ")
+        .lowercase()
+        .trim()
+    return if (LibraryMetadataSentinels.isUnknown(collapsed)) "" else collapsed
+}
+
+private val AggregationWhitespace = Regex("\\s+")
 
 internal fun LibraryTrackEntity.toSummaryKeySet(): LibrarySummaryKeySet {
     val albumSummaryKey = albumKey.takeIf { it.isNotBlank() }?.let { key ->
@@ -176,10 +194,14 @@ internal fun LibraryTrackEntity.toSummaryKeySet(): LibrarySummaryKeySet {
     } else {
         null
     }
+    val genreSummaryKey = genreKey.takeIf {
+        it.isNotBlank() && LibraryScanPolicy.isLocalLibrarySource(source)
+    }
     return LibrarySummaryKeySet(
         albumKeys = setOfNotNull(albumSummaryKey),
         artistKeys = setOfNotNull(artistSummaryKey),
         folderKeys = setOfNotNull(folderSummaryKey),
+        genreKeys = setOfNotNull(genreSummaryKey),
     )
 }
 

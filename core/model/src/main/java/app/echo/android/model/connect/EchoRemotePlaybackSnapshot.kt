@@ -8,4 +8,5 @@ data class EchoRemotePlaybackSnapshot(
     val volume: Float = 1f,
     val outputMode: String = "system",
     val updatedAtEpochMs: Long = 0L,
+    val queue: EchoRemotePlaybackQueue = EchoRemotePlaybackQueue(),
 )

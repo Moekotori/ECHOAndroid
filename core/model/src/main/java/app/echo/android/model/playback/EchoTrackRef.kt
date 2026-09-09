@@ -9,4 +9,7 @@ data class EchoTrackRef(
     val artworkUri: String? = null,
     val durationMs: Long = 0L,
     val sampleRateHz: Int? = null,
+    val trackNumber: Int? = null,
+    val discNumber: Int? = null,
+    val sourceId: String? = null,
 )

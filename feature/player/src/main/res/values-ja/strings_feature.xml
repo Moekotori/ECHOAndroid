@@ -123,4 +123,5 @@
     <string name="feature_player_word_highlight_f4dec8" formatted="false">"文字ハイライト"</string>
     <string name="feature_player_word_highlight_off_b0e40a" formatted="false">"文字ハイライト オフ"</string>
     <string name="feature_player_replay_gain_unread">未読み取り</string>
+    <string name="feature_player_replay_gain_none">タグなし</string>
 </resources>

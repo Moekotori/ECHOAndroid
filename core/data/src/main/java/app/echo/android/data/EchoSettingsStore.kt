@@ -15,6 +15,7 @@ import app.echo.android.model.playback.EchoEqualizerPreset
 import app.echo.android.model.playback.EchoEqualizerPresets
 import app.echo.android.model.playback.OpraEqBand
 import app.echo.android.model.playback.EchoRepeatMode
+import app.echo.android.model.playback.EchoReplayGainMode
 import app.echo.android.model.playback.EchoTrackRef
 import app.echo.android.model.settings.EchoAppLanguage
 import app.echo.android.model.settings.EchoPerformanceMode
@@ -30,7 +31,6 @@ import java.security.MessageDigest
 private val Context.echoSettings by preferencesDataStore(name = "echo-settings")
 private val Context.echoPlaybackResumeSettings by preferencesDataStore(name = "echo-playback-resume")
 private val PlaybackResumeKey = stringPreferencesKey("playback_resume")
-private const val DefaultNeteaseAudioQuality = "lossless"
 data class EchoAppSettings(
     val trackTransitions: app.echo.android.model.playback.EchoTrackTransitionOptions = app.echo.android.model.playback.EchoTrackTransitionOptions(),
     val preferOffload: Boolean = true,
@@ -87,11 +87,15 @@ data class EchoAppSettings(
     val lastFmSharedSecret: String? = null,
     val lastFmUsername: String? = null,
     val lastFmSessionKey: String? = null,
-    val discordPresenceViaPcEnabled: Boolean = false,
     val echoLinkPcAddress: String? = null,
     val echoLinkPcToken: String? = null,
+    val echoLinkV2Events: Boolean = false,
     val echoLinkAutoReconnectEnabled: Boolean = true,
     val echoLinkPreferLinkedLibrary: Boolean = true,
+    val echoLinkSavedPcs: List<app.echo.android.model.connect.EchoSavedPcEndpoint> = emptyList(),
+    val replayGainMode: String = EchoReplayGainMode.Auto.id,
+    val replayGainEnabled: Boolean = false,
+    val replayGainPreampDb: Float = 0f,
     val librarySelectedSource: String = EchoLibrarySelectedSource.Local,
     val subsonicServerUrl: String? = null,
     val subsonicUsername: String? = null,
@@ -99,10 +103,13 @@ data class EchoAppSettings(
     val webDavServerUrl: String? = null,
     val webDavUsername: String? = null,
     val webDavPassword: String? = null,
-    val neteaseUserId: Long? = null,
-    val neteaseNickname: String? = null,
-    val neteaseCookie: String? = null,
-    val neteaseAudioQuality: String = DefaultNeteaseAudioQuality,
+    val jellyfinServerUrl: String? = null,
+    val jellyfinUsername: String? = null,
+    val jellyfinPassword: String? = null,
+    val jellyfinAccessToken: String? = null,
+    val jellyfinUserId: String? = null,
+    val listenBrainzEnabled: Boolean = false,
+    val listenBrainzToken: String? = null,
 )
 
 object EchoBackgroundMode {
@@ -164,6 +171,7 @@ data class EchoSavedPlaybackSession(
 
 class EchoSettingsStore(
     private val context: Context,
+    private val secrets: EchoSecretStore = EchoSecretStore(context),
 ) {
     @Volatile
     private var cachedStartupThemeSnapshot: EchoStartupThemeSnapshot? = null
@@ -201,8 +209,9 @@ class EchoSettingsStore(
                 usbExclusiveEnabled = preferences[Keys.UsbExclusiveEnabled] ?: false,
                 usbBitPerfectEnabled = preferences[Keys.UsbBitPerfectEnabled] ?: false,
                 trackTransitions = app.echo.android.model.playback.EchoTrackTransitionOptions(
-                    preferences[Keys.TrackFadeEnabled] ?: false,
-                    preferences[Keys.TrackFadeDurationMs] ?: 1500,
+                    fadeEnabled = preferences[Keys.TrackFadeEnabled] ?: false,
+                    fadeDurationMs = preferences[Keys.TrackFadeDurationMs] ?: 1500,
+                    smartEnabled = preferences[Keys.TrackSmartTransitionEnabled] ?: false,
                 ).normalized(),
                 usbExclusiveAutoRequestOnStartup = preferences[Keys.UsbExclusiveAutoRequestOnStartup] ?: true,
                 equalizerEnabled = preferences[Keys.EqualizerEnabled] ?: false,
@@ -245,28 +254,68 @@ class EchoSettingsStore(
                 scheduledDarkEndMinute = (preferences[Keys.ScheduledDarkEndMinute] ?: 7 * 60).coerceIn(0, 23 * 60 + 59),
                 lastFmEnabled = preferences[Keys.LastFmEnabled] ?: false,
                 lastFmApiKey = preferences[Keys.LastFmApiKey],
-                lastFmSharedSecret = preferences[Keys.LastFmSharedSecret],
+                lastFmSharedSecret = secrets.takeIfMigrated(
+                    EchoSecretKeys.LastFmSharedSecret,
+                    preferences[Keys.LastFmSharedSecret],
+                ),
                 lastFmUsername = preferences[Keys.LastFmUsername],
-                lastFmSessionKey = preferences[Keys.LastFmSessionKey],
-                discordPresenceViaPcEnabled = preferences[Keys.DiscordPresenceViaPcEnabled] ?: false,
+                lastFmSessionKey = secrets.takeIfMigrated(
+                    EchoSecretKeys.LastFmSessionKey,
+                    preferences[Keys.LastFmSessionKey],
+                ),
                 echoLinkPcAddress = preferences[Keys.EchoLinkPcAddress],
-                echoLinkPcToken = preferences[Keys.EchoLinkPcToken],
+                echoLinkPcToken = secrets.takeIfMigrated(
+                    EchoSecretKeys.EchoLinkToken,
+                    preferences[Keys.EchoLinkPcToken],
+                ),
+                echoLinkV2Events = preferences[Keys.EchoLinkV2Events] ?: false,
                 echoLinkAutoReconnectEnabled = preferences[Keys.EchoLinkAutoReconnectEnabled] ?: true,
                 echoLinkPreferLinkedLibrary = preferences[Keys.EchoLinkPreferLinkedLibrary] ?: true,
+                echoLinkSavedPcs = echoLinkSavedPcsFromPreferences(
+                    raw = preferences[Keys.EchoLinkSavedPcs],
+                    currentAddress = preferences[Keys.EchoLinkPcAddress],
+                    currentSupportsV2 = preferences[Keys.EchoLinkV2Events] ?: false,
+                    currentToken = secrets.takeIfMigrated(
+                        EchoSecretKeys.EchoLinkToken,
+                        preferences[Keys.EchoLinkPcToken],
+                    ),
+                    secrets = secrets,
+                ),
+                replayGainMode = EchoReplayGainMode.fromId(preferences[Keys.ReplayGainMode]).id,
+                replayGainEnabled = preferences[Keys.ReplayGainEnabled] ?: false,
+                replayGainPreampDb = app.echo.android.model.playback.normalizeReplayGainPreampDb(
+                    preferences[Keys.ReplayGainPreampDb] ?: 0f,
+                ),
                 librarySelectedSource = normalizeLibrarySelectedSource(preferences[Keys.LibrarySelectedSource]),
                 subsonicServerUrl = preferences[Keys.SubsonicServerUrl]
                     ?.let(::normalizeSubsonicBaseUrl)
                     ?.takeIf { it.isNotBlank() },
                 subsonicUsername = preferences[Keys.SubsonicUsername],
-                subsonicPassword = preferences[Keys.SubsonicPassword],
+                subsonicPassword = secrets.takeIfMigrated(
+                    EchoSecretKeys.SubsonicPassword,
+                    preferences[Keys.SubsonicPassword],
+                ),
                 webDavServerUrl = preferences[Keys.WebDavServerUrl],
                 webDavUsername = preferences[Keys.WebDavUsername],
-                webDavPassword = preferences[Keys.WebDavPassword],
-                neteaseUserId = preferences[Keys.NeteaseUserId]?.toLongOrNull(),
-                neteaseNickname = preferences[Keys.NeteaseNickname],
-                neteaseCookie = preferences[Keys.NeteaseCookie],
-                neteaseAudioQuality = preferences[Keys.NeteaseAudioQuality]?.takeIf { it.isNotBlank() }
-                    ?: DefaultNeteaseAudioQuality,
+                webDavPassword = secrets.takeIfMigrated(
+                    EchoSecretKeys.WebDavPassword,
+                    preferences[Keys.WebDavPassword],
+                ),
+                jellyfinServerUrl = preferences[Keys.JellyfinServerUrl]
+                    ?.let(::normalizeJellyfinBaseUrl)
+                    ?.takeIf { it.isNotBlank() },
+                jellyfinUsername = preferences[Keys.JellyfinUsername],
+                jellyfinPassword = secrets.takeIfMigrated(
+                    EchoSecretKeys.JellyfinPassword,
+                    preferences[Keys.JellyfinPassword],
+                ),
+                jellyfinAccessToken = secrets.get(EchoSecretKeys.JellyfinAccessToken),
+                jellyfinUserId = preferences[Keys.JellyfinUserId],
+                listenBrainzEnabled = preferences[Keys.ListenBrainzEnabled] ?: false,
+                listenBrainzToken = secrets.takeIfMigrated(
+                    EchoSecretKeys.ListenBrainzToken,
+                    preferences[Keys.ListenBrainzToken],
+                ),
             )
         }
 
@@ -338,6 +387,7 @@ class EchoSettingsStore(
         context.echoSettings.edit {
             it[Keys.TrackFadeEnabled] = normalized.fadeEnabled
             it[Keys.TrackFadeDurationMs] = normalized.fadeDurationMs
+            it[Keys.TrackSmartTransitionEnabled] = normalized.smartEnabled
         }
     }
 
@@ -594,41 +644,87 @@ class EchoSettingsStore(
         username: String,
         sessionKey: String,
     ) {
+        secrets.set(EchoSecretKeys.LastFmSharedSecret, sharedSecret)
+        secrets.set(EchoSecretKeys.LastFmSessionKey, sessionKey)
         context.echoSettings.edit {
             it[Keys.LastFmApiKey] = apiKey.trim()
-            it[Keys.LastFmSharedSecret] = sharedSecret.trim()
+            it.remove(Keys.LastFmSharedSecret)
             it[Keys.LastFmUsername] = username.trim()
-            it[Keys.LastFmSessionKey] = sessionKey.trim()
+            it.remove(Keys.LastFmSessionKey)
             it[Keys.LastFmEnabled] = true
         }
     }
 
     suspend fun clearLastFmCredentials() {
+        secrets.set(EchoSecretKeys.LastFmSessionKey, null)
+        secrets.set(EchoSecretKeys.LastFmSharedSecret, null)
         context.echoSettings.edit {
             it[Keys.LastFmEnabled] = false
             it.remove(Keys.LastFmUsername)
             it.remove(Keys.LastFmSessionKey)
+            it.remove(Keys.LastFmSharedSecret)
         }
-    }
-
-    suspend fun setDiscordPresenceViaPcEnabled(enabled: Boolean) {
-        context.echoSettings.edit { it[Keys.DiscordPresenceViaPcEnabled] = enabled }
     }
 
     suspend fun setEchoLinkPcEndpoint(
         address: String,
         token: String,
+        supportsV2Events: Boolean = false,
+        name: String? = null,
     ) {
+        val safeAddress = address.trim().trimEnd('/')
+        val safeToken = token.trim()
+        if (safeAddress.isBlank() || safeToken.isBlank()) {
+            clearEchoLinkPcEndpoint()
+            return
+        }
+        secrets.set(EchoSecretKeys.EchoLinkToken, safeToken)
+        secrets.set(EchoSecretKeys.echoLinkTokenKey(safeAddress), safeToken)
         context.echoSettings.edit {
-            val safeAddress = address.trim().trimEnd('/')
-            val safeToken = token.trim()
-            if (safeAddress.isBlank() || safeToken.isBlank()) {
-                it.remove(Keys.EchoLinkPcAddress)
-                it.remove(Keys.EchoLinkPcToken)
-            } else {
-                it[Keys.EchoLinkPcAddress] = safeAddress
-                it[Keys.EchoLinkPcToken] = safeToken
+            val previousAddress = it[Keys.EchoLinkPcAddress]
+            val previousV2 = it[Keys.EchoLinkV2Events] ?: false
+            var saved = EchoSavedPcCodec.decode(it[Keys.EchoLinkSavedPcs])
+            if (!previousAddress.isNullOrBlank() &&
+                previousAddress.trim().trimEnd('/').lowercase() != safeAddress.lowercase()
+            ) {
+                val previousName = saved.firstOrNull {
+                    endpoint -> endpoint.id == previousAddress.trim().trimEnd('/').lowercase()
+                }?.name ?: previousAddress
+                saved = EchoSavedPcCodec.upsert(
+                    saved,
+                    app.echo.android.model.connect.EchoSavedPcEndpoint(
+                        address = previousAddress.trim().trimEnd('/'),
+                        name = previousName,
+                        supportsV2Events = previousV2,
+                    ),
+                )
             }
+            val existingName = saved.firstOrNull { endpoint -> endpoint.id == safeAddress.lowercase() }?.name
+            saved = EchoSavedPcCodec.upsert(
+                saved,
+                app.echo.android.model.connect.EchoSavedPcEndpoint(
+                    address = safeAddress,
+                    name = name?.trim()?.takeIf { label -> label.isNotBlank() } ?: existingName ?: safeAddress,
+                    supportsV2Events = supportsV2Events,
+                ),
+            )
+            it[Keys.EchoLinkPcAddress] = safeAddress
+            it.remove(Keys.EchoLinkPcToken)
+            it[Keys.EchoLinkV2Events] = supportsV2Events
+            it[Keys.EchoLinkSavedPcs] = EchoSavedPcCodec.encode(saved)
+        }
+    }
+
+    suspend fun setReplayGainMode(mode: String) {
+        context.echoSettings.edit {
+            it[Keys.ReplayGainMode] = EchoReplayGainMode.fromId(mode).id
+        }
+    }
+
+    suspend fun setReplayGain(enabled: Boolean, preampDb: Float) {
+        context.echoSettings.edit {
+            it[Keys.ReplayGainEnabled] = enabled
+            it[Keys.ReplayGainPreampDb] = app.echo.android.model.playback.normalizeReplayGainPreampDb(preampDb)
         }
     }
 
@@ -689,9 +785,40 @@ class EchoSettingsStore(
     }
 
     suspend fun clearEchoLinkPcEndpoint() {
+        val current = context.echoSettings.data.first()[Keys.EchoLinkPcAddress]
+        if (!current.isNullOrBlank()) {
+            forgetSavedEchoLinkPc(current)
+            return
+        }
+        secrets.set(EchoSecretKeys.EchoLinkToken, null)
         context.echoSettings.edit {
             it.remove(Keys.EchoLinkPcAddress)
             it.remove(Keys.EchoLinkPcToken)
+            it.remove(Keys.EchoLinkV2Events)
+        }
+    }
+
+    suspend fun forgetSavedEchoLinkPc(address: String) {
+        val safeAddress = address.trim().trimEnd('/')
+        if (safeAddress.isBlank()) return
+        secrets.set(EchoSecretKeys.echoLinkTokenKey(safeAddress), null)
+        context.echoSettings.edit {
+            val currentAddress = it[Keys.EchoLinkPcAddress]?.trim()?.trimEnd('/')
+            val saved = EchoSavedPcCodec.remove(
+                EchoSavedPcCodec.decode(it[Keys.EchoLinkSavedPcs]),
+                safeAddress,
+            )
+            if (saved.isEmpty()) {
+                it.remove(Keys.EchoLinkSavedPcs)
+            } else {
+                it[Keys.EchoLinkSavedPcs] = EchoSavedPcCodec.encode(saved)
+            }
+            if (currentAddress?.lowercase() == safeAddress.lowercase()) {
+                secrets.set(EchoSecretKeys.EchoLinkToken, null)
+                it.remove(Keys.EchoLinkPcAddress)
+                it.remove(Keys.EchoLinkPcToken)
+                it.remove(Keys.EchoLinkV2Events)
+            }
         }
     }
 
@@ -703,18 +830,21 @@ class EchoSettingsStore(
         context.echoSettings.edit {
             val normalizedUrl = normalizeSubsonicBaseUrl(serverUrl)
             if (normalizedUrl.isBlank() || username.isBlank() || password.isBlank()) {
+                secrets.set(EchoSecretKeys.SubsonicPassword, null)
                 it.remove(Keys.SubsonicServerUrl)
                 it.remove(Keys.SubsonicUsername)
                 it.remove(Keys.SubsonicPassword)
             } else {
+                secrets.set(EchoSecretKeys.SubsonicPassword, password)
                 it[Keys.SubsonicServerUrl] = normalizedUrl
                 it[Keys.SubsonicUsername] = username.trim()
-                it[Keys.SubsonicPassword] = password
+                it.remove(Keys.SubsonicPassword)
             }
         }
     }
 
     suspend fun clearSubsonicCredentials() {
+        secrets.set(EchoSecretKeys.SubsonicPassword, null)
         context.echoSettings.edit {
             it.remove(Keys.SubsonicServerUrl)
             it.remove(Keys.SubsonicUsername)
@@ -730,22 +860,93 @@ class EchoSettingsStore(
         context.echoSettings.edit {
             val normalizedUrl = serverUrl.trim().trimEnd('/')
             if (normalizedUrl.isBlank() || username.isBlank() || password.isBlank()) {
+                secrets.set(EchoSecretKeys.WebDavPassword, null)
                 it.remove(Keys.WebDavServerUrl)
                 it.remove(Keys.WebDavUsername)
                 it.remove(Keys.WebDavPassword)
             } else {
+                secrets.set(EchoSecretKeys.WebDavPassword, password)
                 it[Keys.WebDavServerUrl] = normalizedUrl
                 it[Keys.WebDavUsername] = username.trim()
-                it[Keys.WebDavPassword] = password
+                it.remove(Keys.WebDavPassword)
             }
         }
     }
 
     suspend fun clearWebDavCredentials() {
+        secrets.set(EchoSecretKeys.WebDavPassword, null)
         context.echoSettings.edit {
             it.remove(Keys.WebDavServerUrl)
             it.remove(Keys.WebDavUsername)
             it.remove(Keys.WebDavPassword)
+        }
+    }
+
+    suspend fun setJellyfinCredentials(
+        serverUrl: String,
+        username: String,
+        password: String,
+        accessToken: String? = null,
+        userId: String? = null,
+    ) {
+        context.echoSettings.edit {
+            val normalizedUrl = normalizeJellyfinBaseUrl(serverUrl)
+            if (normalizedUrl.isBlank() || username.isBlank() || password.isBlank()) {
+                secrets.set(EchoSecretKeys.JellyfinPassword, null)
+                secrets.set(EchoSecretKeys.JellyfinAccessToken, null)
+                it.remove(Keys.JellyfinServerUrl)
+                it.remove(Keys.JellyfinUsername)
+                it.remove(Keys.JellyfinPassword)
+                it.remove(Keys.JellyfinUserId)
+            } else {
+                secrets.set(EchoSecretKeys.JellyfinPassword, password)
+                secrets.set(EchoSecretKeys.JellyfinAccessToken, accessToken)
+                it[Keys.JellyfinServerUrl] = normalizedUrl
+                it[Keys.JellyfinUsername] = username.trim()
+                it.remove(Keys.JellyfinPassword)
+                val safeUserId = userId?.trim()?.takeIf { id -> id.isNotEmpty() }
+                if (safeUserId == null) {
+                    it.remove(Keys.JellyfinUserId)
+                } else {
+                    it[Keys.JellyfinUserId] = safeUserId
+                }
+            }
+        }
+    }
+
+    suspend fun clearJellyfinCredentials() {
+        secrets.set(EchoSecretKeys.JellyfinPassword, null)
+        secrets.set(EchoSecretKeys.JellyfinAccessToken, null)
+        context.echoSettings.edit {
+            it.remove(Keys.JellyfinServerUrl)
+            it.remove(Keys.JellyfinUsername)
+            it.remove(Keys.JellyfinPassword)
+            it.remove(Keys.JellyfinUserId)
+        }
+    }
+
+    suspend fun setListenBrainzEnabled(enabled: Boolean) {
+        context.echoSettings.edit { it[Keys.ListenBrainzEnabled] = enabled }
+    }
+
+    suspend fun setListenBrainzToken(token: String) {
+        val safeToken = token.trim()
+        if (safeToken.isBlank()) {
+            clearListenBrainzToken()
+            return
+        }
+        secrets.set(EchoSecretKeys.ListenBrainzToken, safeToken)
+        context.echoSettings.edit {
+            it.remove(Keys.ListenBrainzToken)
+            it[Keys.ListenBrainzEnabled] = true
+        }
+    }
+
+    suspend fun clearListenBrainzToken() {
+        secrets.set(EchoSecretKeys.ListenBrainzToken, null)
+        context.echoSettings.edit {
+            it[Keys.ListenBrainzEnabled] = false
+            it.remove(Keys.ListenBrainzToken)
         }
     }
 
@@ -765,6 +966,7 @@ class EchoSettingsStore(
         val UsbBitPerfectEnabled = booleanPreferencesKey("usb_bit_perfect_enabled")
         val TrackFadeEnabled = booleanPreferencesKey("track_fade_enabled")
         val TrackFadeDurationMs = intPreferencesKey("track_fade_duration_ms")
+        val TrackSmartTransitionEnabled = booleanPreferencesKey("track_smart_transition")
         val UsbExclusiveAutoRequestOnStartup = booleanPreferencesKey("usb_exclusive_auto_request_on_startup")
         val EqualizerEnabled = booleanPreferencesKey("equalizer_enabled")
         val EqualizerPreset = stringPreferencesKey("equalizer_preset")
@@ -806,9 +1008,12 @@ class EchoSettingsStore(
         val LastFmSharedSecret = stringPreferencesKey("lastfm_shared_secret")
         val LastFmUsername = stringPreferencesKey("lastfm_username")
         val LastFmSessionKey = stringPreferencesKey("lastfm_session_key")
-        val DiscordPresenceViaPcEnabled = booleanPreferencesKey("discord_presence_via_pc_enabled")
         val EchoLinkPcAddress = stringPreferencesKey("echo_link_pc_address")
         val EchoLinkPcToken = stringPreferencesKey("echo_link_pc_token")
+        val EchoLinkV2Events = booleanPreferencesKey("echo_link_v2_events")
+        val ReplayGainMode = stringPreferencesKey("replay_gain_mode")
+        val ReplayGainEnabled = booleanPreferencesKey("replay_gain_enabled")
+        val ReplayGainPreampDb = floatPreferencesKey("replay_gain_preamp_db")
         val EchoLinkAutoReconnectEnabled = booleanPreferencesKey("echo_link_auto_reconnect_enabled")
         val EchoLinkPreferLinkedLibrary = booleanPreferencesKey("echo_link_prefer_linked_library")
         val LibrarySelectedSource = stringPreferencesKey("library_selected_source")
@@ -819,10 +1024,13 @@ class EchoSettingsStore(
         val WebDavServerUrl = stringPreferencesKey("webdav_server_url")
         val WebDavUsername = stringPreferencesKey("webdav_username")
         val WebDavPassword = stringPreferencesKey("webdav_password")
-        val NeteaseUserId = stringPreferencesKey("netease_user_id")
-        val NeteaseNickname = stringPreferencesKey("netease_nickname")
-        val NeteaseCookie = stringPreferencesKey("netease_cookie")
-        val NeteaseAudioQuality = stringPreferencesKey("netease_audio_quality")
+        val EchoLinkSavedPcs = stringPreferencesKey("echo_link_saved_pcs")
+        val JellyfinServerUrl = stringPreferencesKey("jellyfin_server_url")
+        val JellyfinUsername = stringPreferencesKey("jellyfin_username")
+        val JellyfinPassword = stringPreferencesKey("jellyfin_password")
+        val JellyfinUserId = stringPreferencesKey("jellyfin_user_id")
+        val ListenBrainzEnabled = booleanPreferencesKey("listenbrainz_enabled")
+        val ListenBrainzToken = stringPreferencesKey("listenbrainz_token")
     }
 }
 
@@ -849,6 +1057,39 @@ private fun normalizeLyricsMotionMode(value: String?): String =
         EchoLyricsMotionMode.Stage -> value
         else -> EchoLyricsMotionMode.Smooth
     }
+
+private fun echoLinkSavedPcsFromPreferences(
+    raw: String?,
+    currentAddress: String?,
+    currentSupportsV2: Boolean,
+    currentToken: String?,
+    secrets: EchoSecretStore,
+): List<app.echo.android.model.connect.EchoSavedPcEndpoint> {
+    val current = currentAddress?.trim()?.trimEnd('/')?.takeIf { it.isNotBlank() }
+    if (!current.isNullOrBlank() && !currentToken.isNullOrBlank()) {
+        val perAddressKey = EchoSecretKeys.echoLinkTokenKey(current)
+        if (secrets.get(perAddressKey).isNullOrBlank()) {
+            secrets.set(perAddressKey, currentToken)
+        }
+    }
+    var saved = EchoSavedPcCodec.decode(raw)
+    if (!current.isNullOrBlank()) {
+        val existingName = saved.firstOrNull { it.id == current.lowercase() }?.name
+        saved = EchoSavedPcCodec.upsert(
+            saved,
+            app.echo.android.model.connect.EchoSavedPcEndpoint(
+                address = current,
+                name = existingName ?: current,
+                supportsV2Events = currentSupportsV2,
+            ),
+        )
+    }
+    return saved.map { endpoint ->
+        val token = secrets.get(EchoSecretKeys.echoLinkTokenKey(endpoint.address))
+            ?: if (endpoint.id == current?.lowercase()) currentToken else null
+        endpoint.copy(token = token)
+    }
+}
 
 private fun normalizeLibrarySelectedSource(value: String?): String =
     when (value) {
@@ -929,6 +1170,9 @@ internal fun EchoSavedPlaybackSession.toPreferenceValue(): String =
                             put("artworkUri", track.artworkUri)
                             put("durationMs", track.durationMs.coerceAtLeast(0L))
                             track.sampleRateHz?.takeIf { it > 0 }?.let { put("sampleRateHz", it) }
+                            track.trackNumber?.takeIf { it > 0 }?.let { put("trackNumber", it) }
+                            track.discNumber?.takeIf { it > 0 }?.let { put("discNumber", it) }
+                            track.sourceId?.takeIf { it.isNotBlank() }?.let { put("sourceId", it) }
                         },
                     )
                 }
@@ -1033,6 +1277,9 @@ internal fun parsePlaybackSession(raw: String): EchoSavedPlaybackSession? =
                         artworkUri = item.optString("artworkUri").takeIf { it.isNotBlank() },
                         durationMs = item.optLong("durationMs").coerceAtLeast(0L),
                         sampleRateHz = item.optInt("sampleRateHz").takeIf { it > 0 },
+                        trackNumber = item.optInt("trackNumber").takeIf { it > 0 },
+                        discNumber = item.optInt("discNumber").takeIf { it > 0 },
+                        sourceId = item.optString("sourceId").takeIf { it.isNotBlank() },
                     ),
                 )
             }

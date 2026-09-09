@@ -10,6 +10,7 @@ data class EchoRemoteEndpoint(
     val protocolVersion: EchoProtocolVersion = EchoProtocolVersion.Current,
     val pairingId: String? = null,
     val pairingSecret: String? = null,
+    val supportsV2Events: Boolean = false,
 ) {
     val needsV2PairExchange: Boolean
         get() = !pairingId.isNullOrBlank() && !pairingSecret.isNullOrBlank()

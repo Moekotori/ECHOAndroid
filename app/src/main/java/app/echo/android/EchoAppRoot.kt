@@ -11,6 +11,9 @@ import android.content.ContextWrapper
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.os.Build
+import android.provider.MediaStore
+import androidx.activity.result.IntentSenderRequest
 import android.graphics.Color as AndroidColor
 import android.os.PowerManager
 import androidx.activity.ComponentActivity
@@ -78,8 +81,11 @@ import app.echo.android.feature.connect.ConnectScreen
 import app.echo.android.feature.home.SearchScreen
 import app.echo.android.feature.player.PlaybackQueueSheet
 import app.echo.android.feature.settings.DiagnosticsScreen
+import app.echo.android.feature.settings.ErrorLogScreen
 import app.echo.android.feature.settings.SettingsScreen
-import app.echo.android.ui.discord.EchoDiscordPresenceBridge
+import app.echo.android.model.error.EchoErrorLog
+import app.echo.android.model.error.EchoErrorRecord
+import app.echo.android.model.error.EchoErrorSource
 import app.echo.android.ui.home.EchoHomePage
 import app.echo.android.ui.library.EchoLibraryPage
 import app.echo.android.ui.playback.EchoNowPlayingHost
@@ -178,16 +184,24 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         showPermissionDialog = false
         prefs.edit { putBoolean(ECHO_PERMISSION_DIALOG_SHOWN_KEY, true) }
     }
-    fun persistReadPermission(uri: AndroidUri): Boolean =
-        runCatching {
-            context.contentResolver.takePersistableUriPermission(
-                uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION,
+    fun persistReadPermission(uri: AndroidUri, write: Boolean = false): Boolean {
+        val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+            if (write) Intent.FLAG_GRANT_WRITE_URI_PERMISSION else 0
+        return runCatching {
+            context.contentResolver.takePersistableUriPermission(uri, flags)
+        }.isSuccess || (
+            write &&
+                runCatching {
+                    context.contentResolver.takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                    )
+                }.isSuccess
             )
-        }.isSuccess
+    }
     val folderScanLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.let { treeUri ->
-            persistReadPermission(treeUri)
+            persistReadPermission(treeUri, write = true)
             viewModel.refreshLibraryFolder(treeUri, pendingScanOptions)
         }
     }
@@ -241,6 +255,60 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             }
         }
         artworkImportTrackId = null
+    }
+
+    val pendingEmbeddedTagWrite by viewModel.pendingEmbeddedTagWrite.collectAsStateWithLifecycle()
+    val embeddedTagWriteMessage by viewModel.embeddedTagWriteMessage.collectAsStateWithLifecycle()
+    val mediaStoreTagWriteLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult(),
+    ) { result ->
+        viewModel.onEmbeddedTagWriteAccessResult(result.resultCode == Activity.RESULT_OK)
+    }
+    val storageTagWriteLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        viewModel.onEmbeddedTagWriteAccessResult(granted)
+    }
+    var launchedTagWriteRequestId by remember { mutableStateOf<Long?>(null) }
+    LaunchedEffect(pendingEmbeddedTagWrite) {
+        val pending = pendingEmbeddedTagWrite ?: return@LaunchedEffect
+        if (launchedTagWriteRequestId == pending.requestId) return@LaunchedEffect
+        launchedTagWriteRequestId = pending.requestId
+        if (pending.needsStoragePermission) {
+            val permission = writeStoragePermissionName()
+            if (permission == null) {
+                viewModel.onEmbeddedTagWriteAccessResult(false)
+            } else {
+                storageTagWriteLauncher.launch(permission)
+            }
+            return@LaunchedEffect
+        }
+        val sender = pending.intentSender ?: runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                MediaStore.createWriteRequest(
+                    context.contentResolver,
+                    listOf(AndroidUri.parse(pending.contentUri)),
+                ).intentSender
+            } else {
+                null
+            }
+        }.getOrNull()
+        if (sender == null) {
+            viewModel.onEmbeddedTagWriteAccessResult(false)
+        } else {
+            mediaStoreTagWriteLauncher.launch(IntentSenderRequest.Builder(sender).build())
+        }
+    }
+    LaunchedEffect(embeddedTagWriteMessage) {
+        val message = embeddedTagWriteMessage ?: return@LaunchedEffect
+        val text = when (message) {
+            EmbeddedTagWriteUserMessage.Written -> context.getString(R.string.tag_write_saved_to_file)
+            EmbeddedTagWriteUserMessage.IndexOnly -> context.getString(R.string.tag_write_saved_index_only)
+            EmbeddedTagWriteUserMessage.UnsupportedFormat -> context.getString(R.string.tag_write_unsupported_format)
+            EmbeddedTagWriteUserMessage.Failed -> context.getString(R.string.tag_write_failed)
+        }
+        android.widget.Toast.makeText(context, text, android.widget.Toast.LENGTH_SHORT).show()
+        viewModel.consumeEmbeddedTagWriteMessage()
     }
 
     val remoteClient = (context.applicationContext as EchoApplication).echoLinkSession.client
@@ -343,6 +411,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                 } else {
                     echoLinkScanIsError = true
                     echoLinkScanMessage = context.getString(R.string.echo_link_scan_unrecognized)
+                    EchoErrorLog.record(
+                        EchoErrorSource.Connect,
+                        context.getString(R.string.echo_link_scan_unrecognized),
+                    )
                 }
             }
             .addOnCanceledListener {
@@ -358,6 +430,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                 echoLinkScanMessage = detail?.let {
                     context.getString(R.string.echo_link_scan_unavailable, it)
                 } ?: context.getString(R.string.echo_link_scan_unavailable_manual)
+                EchoErrorLog.record(
+                    EchoErrorSource.Connect,
+                    echoLinkScanMessage ?: context.getString(R.string.echo_link_scan_unavailable_manual),
+                    throwable = error,
+                )
             }
     }
 
@@ -367,11 +444,13 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         ?: LastFmApiConfig.SHARED_SECRET.takeIf { it.isNotBlank() }
     var selectedAlbum by remember { mutableStateOf<AlbumSummary?>(null) }
     var selectedArtist by remember { mutableStateOf<ArtistSummary?>(null) }
+    var selectedGenre by remember { mutableStateOf<app.echo.android.model.library.GenreSummary?>(null) }
     var selectedFolder by remember { mutableStateOf<FolderSummary?>(null) }
     var selectedPlaylist by remember { mutableStateOf<EchoPlaylist?>(null) }
     var detailReturnPage by remember { mutableStateOf<EchoPagerPage?>(null) }
     var searchVisible by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
+    var errorLogVisible by rememberSaveable { mutableStateOf(false) }
     var selectedTab by remember { mutableIntStateOf(EchoTab.Now.ordinal) }
     var bottomDockExpanded by remember { mutableStateOf(true) }
     var bottomDockHeightPx by remember { mutableIntStateOf(0) }
@@ -412,7 +491,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         }
     }
     val openLibraryRequest by EchoLaunchActions.openLibrary.collectAsStateWithLifecycle()
-    val libraryDetailOpen = selectedAlbum != null || selectedArtist != null || selectedFolder != null || selectedPlaylist != null
+    val libraryDetailOpen = selectedAlbum != null || selectedArtist != null || selectedGenre != null || selectedFolder != null || selectedPlaylist != null
     LaunchedEffect(effectivePerformanceMode, appVisible, nowPlayingExpanded) {
         val visibility = when {
             !appVisible -> PlaybackProgressUiVisibility.Background
@@ -508,6 +587,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     fun clearLibraryDetail() {
         selectedAlbum = null
         selectedArtist = null
+        selectedGenre = null
         selectedFolder = null
         selectedPlaylist = null
     }
@@ -563,12 +643,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     }
 
 
-    EchoDiscordPresenceBridge(
-        enabled = false, // No PC forwarding transport is implemented yet.
-        snapshots = viewModel.discordPresenceSnapshot,
-        publish = remoteClient::publishMobileDiscordPresence,
-    )
-
     LaunchedEffect(remoteStatus.endpoint, remoteStatus.connectionState) {
         val endpoint = remoteStatus.endpoint
         EchoArtworkRequestHeadersRegistry.replaceEchoLinkAuthorization(
@@ -580,6 +654,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     EchoOverlayBackHandler(enabled = searchVisible) {
         searchVisible = false
         searchQuery = ""
+    }
+    EchoOverlayBackHandler(enabled = errorLogVisible) {
+        errorLogVisible = false
     }
     EchoOverlayBackHandler(enabled = queueSheetVisible) { queueSheetVisible = false }
     EchoOverlayBackHandler(
@@ -629,6 +706,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                 onLoadError = { failedUri ->
                     if (appSettings.customBackgroundUri == failedUri) {
                         android.widget.Toast.makeText(context, R.string.background_load_error, android.widget.Toast.LENGTH_LONG).show()
+                        EchoErrorLog.record(
+                            EchoErrorSource.Other,
+                            context.getString(R.string.background_load_error),
+                            detail = failedUri,
+                        )
                         viewModel.setCustomBackground(EchoBackgroundMode.Default, null)
                     }
                 },
@@ -661,6 +743,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 hasAudioPermission = hasAudioPermission,
                                 selectedAlbum = selectedAlbum,
                                 selectedArtist = selectedArtist,
+                                selectedGenre = selectedGenre,
                                 selectedFolder = selectedFolder,
                                 selectedPlaylist = selectedPlaylist,
                                 onRequestPermission = { permissionLauncher.launch(permission) },
@@ -688,6 +771,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onOpenAlbum = { album ->
                                     detailReturnPage = EchoPagerPage.Library
                                     selectedArtist = null
+                                    selectedGenre = null
                                     selectedFolder = null
                                     selectedPlaylist = null
                                     selectedAlbum = album
@@ -695,14 +779,24 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onOpenArtist = { artist ->
                                     detailReturnPage = EchoPagerPage.Library
                                     selectedAlbum = null
+                                    selectedGenre = null
                                     selectedFolder = null
                                     selectedPlaylist = null
                                     selectedArtist = artist
+                                },
+                                onOpenGenre = { genre ->
+                                    detailReturnPage = EchoPagerPage.Library
+                                    selectedAlbum = null
+                                    selectedArtist = null
+                                    selectedFolder = null
+                                    selectedPlaylist = null
+                                    selectedGenre = genre
                                 },
                                 onOpenFolder = { folder ->
                                     detailReturnPage = EchoPagerPage.Library
                                     selectedAlbum = null
                                     selectedArtist = null
+                                    selectedGenre = null
                                     selectedPlaylist = null
                                     selectedFolder = folder
                                 },
@@ -710,6 +804,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                     detailReturnPage = EchoPagerPage.Library
                                     selectedAlbum = null
                                     selectedArtist = null
+                                    selectedGenre = null
                                     selectedFolder = null
                                     selectedPlaylist = playlist
                                 },
@@ -723,6 +818,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onOpenAlbum = { album ->
                                     detailReturnPage = EchoPagerPage.Now
                                     selectedArtist = null
+                                    selectedGenre = null
                                     selectedFolder = null
                                     selectedPlaylist = null
                                     selectedAlbum = album
@@ -731,6 +827,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onOpenArtist = { artist ->
                                     detailReturnPage = EchoPagerPage.Now
                                     selectedAlbum = null
+                                    selectedGenre = null
                                     selectedFolder = null
                                     selectedPlaylist = null
                                     selectedArtist = artist
@@ -744,7 +841,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             EchoPagerPage.Settings -> {
                             val libraryStats by viewModel.libraryStats.collectAsStateWithLifecycle(LibraryStats())
                             val lastFmState by viewModel.lastFmState.collectAsStateWithLifecycle()
+                            val listenBrainzState by viewModel.listenBrainzState.collectAsStateWithLifecycle()
                             val usbExclusiveTestResult by viewModel.usbExclusiveTestResult.collectAsStateWithLifecycle()
+                            val errorLogCount by viewModel.errorLogCount.collectAsStateWithLifecycle(0)
                             SettingsScreen(
                                 status = playbackStatus,
                                 trackCount = libraryStats.trackCount,
@@ -759,7 +858,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 effectivePerformanceMode = effectivePerformanceMode.id,
                                 trackAudioInfoTagsVisible = appSettings.trackAudioInfoTagsVisible,
                                 pcHandoffEnabled = appSettings.pcHandoffEnabled,
-                                discordPresenceViaPcEnabled = appSettings.discordPresenceViaPcEnabled,
                                 showLyricsControlDeck = appSettings.showLyricsControlDeck,
                                 onlineLyricsEnabled = appSettings.onlineLyricsEnabled,
                                 usbExclusiveEnabled = appSettings.usbExclusiveEnabled,
@@ -793,6 +891,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 lastFmWebAuthPending = lastFmState.webAuthPending,
                                 lastFmApiKeyLocked = LastFmApiConfig.HAS_API_KEY,
                                 lastFmSharedSecretLocked = LastFmApiConfig.HAS_SHARED_SECRET,
+                                listenBrainzEnabled = appSettings.listenBrainzEnabled,
+                                listenBrainzToken = appSettings.listenBrainzToken,
+                                listenBrainzStatusLabel = listenBrainzState.lastMessage,
+                                listenBrainzErrorLabel = listenBrainzState.lastError,
                                 onDynamicArtworkEnabledChange = viewModel::setDynamicArtworkEnabled,
                                 onCompactModeEnabledChange = viewModel::setCompactModeEnabled,
                                 onDynamicColorEnabledChange = viewModel::setDynamicColorEnabled,
@@ -800,7 +902,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onPerformanceModeChange = viewModel::setPerformanceMode,
                                 onTrackAudioInfoTagsVisibleChange = viewModel::setTrackAudioInfoTagsVisible,
                                 onPcHandoffEnabledChange = viewModel::setPcHandoffEnabled,
-                                onDiscordPresenceViaPcEnabledChange = viewModel::setDiscordPresenceViaPcEnabled,
                                 onShowLyricsControlDeckChange = viewModel::setShowLyricsControlDeck,
                                 onOnlineLyricsEnabledChange = viewModel::setOnlineLyricsEnabled,
                                 onUsbExclusiveEnabledChange = viewModel::setUsbExclusiveEnabled,
@@ -857,6 +958,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 },
                                 onCompleteLastFmWebAuth = viewModel::completeLastFmWebAuth,
                                 onDisconnectLastFm = viewModel::disconnectLastFm,
+                                onListenBrainzEnabledChange = viewModel::setListenBrainzEnabled,
+                                onSaveListenBrainzToken = viewModel::saveListenBrainzToken,
+                                onDisconnectListenBrainz = viewModel::disconnectListenBrainz,
                                 notificationPermissionGranted = hasNotifPermission,
                                 onRequestNotificationPermission = {
                                     val perm = notifPermName ?: return@SettingsScreen
@@ -876,6 +980,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 },
                                 onOpenLibrary = { selectDockTab(EchoTab.Library) },
                                 onOpenConnect = { selectDockTab(EchoTab.Connect) },
+                                errorLogCount = errorLogCount,
+                                onOpenErrorLog = { errorLogVisible = true },
                             )
                             }
 
@@ -907,35 +1013,60 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 savedPcToken = appSettings.echoLinkPcToken,
                                 autoReconnectEnabled = appSettings.echoLinkAutoReconnectEnabled,
                                 linkedLibraryDefault = appSettings.echoLinkPreferLinkedLibrary,
-                                discordPresenceEnabled = appSettings.discordPresenceViaPcEnabled,
-                                discordPresenceReady = remoteStatus.connectionState == EchoRemoteConnectionState.Connected &&
-                                    remoteStatus.mobileDiscordPresence?.enabled == true,
-                                discordPresenceTrackTitle = remoteStatus.mobileDiscordPresence?.track?.title,
+                                positionMs = remoteStatus.playback.positionMs,
+                                durationMs = remoteStatus.playback.durationMs,
+                                volume = remoteStatus.playback.volume,
+                                queueTitles = remoteStatus.playback.queue.items.map { it.title },
                                 subsonicServerUrl = appSettings.subsonicServerUrl,
                                 subsonicUsername = appSettings.subsonicUsername,
                                 subsonicPassword = appSettings.subsonicPassword,
                                 webDavServerUrl = appSettings.webDavServerUrl,
                                 webDavUsername = appSettings.webDavUsername,
                                 webDavPassword = appSettings.webDavPassword,
+                                jellyfinServerUrl = appSettings.jellyfinServerUrl,
+                                jellyfinUsername = appSettings.jellyfinUsername,
+                                jellyfinPassword = appSettings.jellyfinPassword,
+                                savedPcs = appSettings.echoLinkSavedPcs,
                                 remoteScanState = remoteScanState,
                                 onConnectPc = ::connectEchoLinkAddress,
                                 onScanPairingCode = ::scanEchoLinkPairingCode,
                                 onPlayPause = { remoteClient.send(EchoRemoteCommand.PlayPause) },
                                 onPrevious = { remoteClient.send(EchoRemoteCommand.Previous) },
                                 onNext = { remoteClient.send(EchoRemoteCommand.Next) },
+                                onSeek = { positionMs -> remoteClient.send(EchoRemoteCommand.SeekTo(positionMs)) },
+                                onVolume = { volume -> remoteClient.send(EchoRemoteCommand.SetVolume(volume)) },
                                 onHandoffPhoneToPc = if (appSettings.pcHandoffEnabled &&
                                     playbackStatus.track?.id?.let(EchoLinkPlaybackUri::trackIdFromMediaId) != null) {
                                     {
                                         val phone = viewModel.playbackStatus.value.track
                                         val id = phone?.id?.let(EchoLinkPlaybackUri::trackIdFromMediaId)
+                                        val queue = viewModel.playbackQueue.value
+                                        val linkedQueue = queue.items.mapNotNull { item ->
+                                            val trackId = EchoLinkPlaybackUri.trackIdFromMediaId(item.id)
+                                                ?: return@mapNotNull null
+                                            app.echo.android.model.connect.EchoRemoteTrack(
+                                                id = trackId,
+                                                title = item.title,
+                                                artist = item.artist,
+                                                album = item.album,
+                                                artworkUrl = item.artworkUri,
+                                                durationMs = item.durationMs,
+                                            )
+                                        }
                                         if (phone != null && id != null) {
-                                            remoteClient.handoffToPc(
-                                                app.echo.android.model.connect.EchoRemoteTrack(
-                                                    id = id, title = phone.title, artist = phone.artist,
-                                                    album = phone.album, artworkUrl = phone.artworkUri,
-                                                    durationMs = phone.durationMs,
-                                                ),
-                                                viewModel.playbackPosition.value.positionMs,
+                                            val startIndex = linkedQueue.indexOfFirst { it.id == id }.coerceAtLeast(0)
+                                            remoteClient.handoffPhoneQueueToPc(
+                                                tracks = linkedQueue.ifEmpty {
+                                                    listOf(
+                                                        app.echo.android.model.connect.EchoRemoteTrack(
+                                                            id = id, title = phone.title, artist = phone.artist,
+                                                            album = phone.album, artworkUrl = phone.artworkUri,
+                                                            durationMs = phone.durationMs,
+                                                        ),
+                                                    )
+                                                },
+                                                startIndex = startIndex,
+                                                positionMs = viewModel.playbackPosition.value.positionMs,
                                             ) {
                                                 val live = viewModel.playbackStatus.value
                                                 if (live.track?.id == phone.id && live.isPlaying) viewModel.pause()
@@ -961,6 +1092,19 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onSyncWebDavLibrary = viewModel::syncWebDavLibrary,
                                 onSaveWebDavCredentials = viewModel::saveWebDavCredentials,
                                 onClearWebDavCredentials = viewModel::clearWebDavCredentials,
+                                onSyncJellyfinLibrary = viewModel::syncJellyfinLibrary,
+                                onSaveJellyfinCredentials = { url, user, pass ->
+                                    viewModel.saveJellyfinCredentials(url, user, pass)
+                                },
+                                onClearJellyfinCredentials = viewModel::clearJellyfinCredentials,
+                                onForgetSavedPc = { pc ->
+                                    val current = appSettings.echoLinkPcAddress
+                                        ?.trim()?.trimEnd('/')
+                                    if (pc.id == current?.lowercase()) {
+                                        remoteClient.disconnect()
+                                    }
+                                    viewModel.forgetSavedEchoLinkPc(pc.address)
+                                },
                                 onCancelRemoteSync = viewModel::cancelRemoteSync,
                                 discoveredLanDevices = echoLinkLanDevices,
                                 onRefreshLanDevices = viewModel::refreshEchoLinkDiscovery,
@@ -1175,6 +1319,39 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                         searchVisible = false
                         searchQuery = ""
                     },
+                )
+            }
+            AnimatedVisibility(
+                visible = errorLogVisible,
+                enter = if (effectivePerformanceMode.isLightweight) {
+                    fadeIn(tween(durationMillis = motionDuration(90, effectivePerformanceMode)))
+                } else {
+                    EchoMotion.overlayEnter(
+                        enterMs = motionDuration(EchoMotion.OverlayMs, effectivePerformanceMode),
+                        fadeMs = motionDuration(EchoMotion.OverlayFadeMs, effectivePerformanceMode),
+                    )
+                },
+                exit = if (effectivePerformanceMode.isLightweight) {
+                    fadeOut(tween(durationMillis = motionDuration(90, effectivePerformanceMode)))
+                } else {
+                    EchoMotion.overlayExit(
+                        exitMs = motionDuration(EchoMotion.OverlayExitMs, effectivePerformanceMode),
+                    )
+                },
+            ) {
+                val errorLogRecords by produceState(
+                    initialValue = emptyList<EchoErrorRecord>(),
+                    key1 = errorLogVisible,
+                ) {
+                    if (errorLogVisible) {
+                        viewModel.errorLogRecords.collect { value = it }
+                    }
+                }
+                ErrorLogScreen(
+                    records = errorLogRecords,
+                    onClear = viewModel::clearErrorLog,
+                    onDelete = viewModel::deleteErrorLog,
+                    onBack = { errorLogVisible = false },
                 )
             }
             AnimatedVisibility(

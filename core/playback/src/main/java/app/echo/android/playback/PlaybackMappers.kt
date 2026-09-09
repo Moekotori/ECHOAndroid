@@ -26,6 +26,10 @@ fun MediaItem.toEchoTrackRef(durationMs: Long = 0L): EchoTrackRef {
     val persistUri = metadata.extras?.getString(EchoPlaybackPersistUriExtra)
         ?: EchoLinkPlaybackUri.persistableUri(mediaId, playUri)
     val extrasSampleRate = metadata.extras?.getInt(EchoPlaybackSampleRateExtra, 0)?.takeIf { it > 0 }
+    val extrasTrackNumber = metadata.extras?.getInt(EchoPlaybackTrackNumberExtra, 0)?.takeIf { it > 0 }
+        ?: metadata.trackNumber?.takeIf { it > 0 }
+    val extrasDiscNumber = metadata.extras?.getInt(EchoPlaybackDiscNumberExtra, 0)?.takeIf { it > 0 }
+        ?: metadata.discNumber?.takeIf { it > 0 }
     return EchoTrackRef(
         id = mediaId,
         uri = persistUri,
@@ -35,6 +39,9 @@ fun MediaItem.toEchoTrackRef(durationMs: Long = 0L): EchoTrackRef {
         artworkUri = metadata.artworkUri?.toString(),
         durationMs = durationMs.takeIf { it > 0L } ?: metadataDurationMs,
         sampleRateHz = extrasSampleRate,
+        trackNumber = extrasTrackNumber,
+        discNumber = extrasDiscNumber,
+        sourceId = metadata.extras?.getString(EchoPlaybackSourceExtra)?.takeIf { it.isNotBlank() },
     )
 }
 
@@ -50,6 +57,8 @@ fun EchoTrackRef.toMediaItem(): MediaItem =
                 .setArtworkUri(artworkUri?.let(Uri::parse))
                 .also { builder ->
                     if (durationMs > 0L) builder.setDurationMs(durationMs)
+                    trackNumber?.takeIf { it > 0 }?.let(builder::setTrackNumber)
+                    discNumber?.takeIf { it > 0 }?.let(builder::setDiscNumber)
                 }
                 .setExtras(
                     playbackItemExtras(
@@ -57,6 +66,9 @@ fun EchoTrackRef.toMediaItem(): MediaItem =
                         persistUri = EchoLinkPlaybackUri.persistableUri(id, uri),
                         artworkUri = artworkUri,
                         sampleRateHz = sampleRateHz,
+                        trackNumber = trackNumber,
+                        discNumber = discNumber,
+                        sourceId = sourceId,
                     ),
                 )
                 .build(),
@@ -73,6 +85,9 @@ fun EchoTrack.toEchoTrackRef(): EchoTrackRef =
         artworkUri = artworkUri,
         durationMs = durationMs,
         sampleRateHz = sampleRateHz,
+        trackNumber = trackNumber,
+        discNumber = discNumber,
+        sourceId = source.id,
     )
 
 fun EchoTrack.toMediaItem(): MediaItem {
@@ -88,6 +103,8 @@ fun EchoTrack.toMediaItem(): MediaItem {
                 .setArtworkUri(artworkUri?.let(Uri::parse))
                 .also { builder ->
                     if (durationMs > 0L) builder.setDurationMs(durationMs)
+                    trackNumber?.takeIf { it > 0 }?.let(builder::setTrackNumber)
+                    discNumber?.takeIf { it > 0 }?.let(builder::setDiscNumber)
                 }
                 .setExtras(
                     playbackItemExtras(
@@ -95,6 +112,9 @@ fun EchoTrack.toMediaItem(): MediaItem {
                         persistUri = persistUri,
                         artworkUri = artworkUri,
                         sampleRateHz = sampleRateHz,
+                        trackNumber = trackNumber,
+                        discNumber = discNumber,
+                        sourceId = source.id,
                     ),
                 )
                 .build(),
@@ -327,6 +347,9 @@ internal fun playbackItemExtras(
     persistUri: String,
     artworkUri: String?,
     sampleRateHz: Int? = null,
+    trackNumber: Int? = null,
+    discNumber: Int? = null,
+    sourceId: String? = null,
 ): Bundle? {
     val extras = Bundle()
     if (persistUri.isNotBlank() && persistUri != playUri) {
@@ -336,8 +359,14 @@ internal fun playbackItemExtras(
         extras.putString(EchoEmbeddedArtworkSourceUriExtra, playUri)
     }
     sampleRateHz?.takeIf { it > 0 }?.let { extras.putInt(EchoPlaybackSampleRateExtra, it) }
+    trackNumber?.takeIf { it > 0 }?.let { extras.putInt(EchoPlaybackTrackNumberExtra, it) }
+    discNumber?.takeIf { it > 0 }?.let { extras.putInt(EchoPlaybackDiscNumberExtra, it) }
+    sourceId?.takeIf { it.isNotBlank() }?.let { extras.putString(EchoPlaybackSourceExtra, it) }
     return extras.takeIf { !it.isEmpty }
 }
 
 internal const val EchoPlaybackPersistUriExtra = "app.echo.android.playback.PERSIST_URI"
 internal const val EchoPlaybackSampleRateExtra = "app.echo.android.playback.SAMPLE_RATE_HZ"
+internal const val EchoPlaybackTrackNumberExtra = "app.echo.android.playback.TRACK_NUMBER"
+internal const val EchoPlaybackDiscNumberExtra = "app.echo.android.playback.DISC_NUMBER"
+internal const val EchoPlaybackSourceExtra = "app.echo.android.playback.SOURCE"

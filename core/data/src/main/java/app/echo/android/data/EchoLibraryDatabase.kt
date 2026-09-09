@@ -18,8 +18,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LibraryAlbumSummaryEntity::class,
         LibraryArtistSummaryEntity::class,
         LibraryFolderSummaryEntity::class,
+        LibraryGenreSummaryEntity::class,
     ],
-    version = 13,
+    version = 14,
     exportSchema = true,
 )
 abstract class EchoLibraryDatabase : RoomDatabase() {
@@ -51,6 +52,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                         Migration10To11,
                         Migration11To12,
                         Migration12To13,
+                        Migration13To14,
                     )
                     .build()
                     .also { instance = it }
@@ -342,6 +344,27 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
             }
         }
 
+        internal val Migration13To14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE library_tracks ADD COLUMN genre TEXT")
+                db.execSQL("ALTER TABLE library_tracks ADD COLUMN genreKey TEXT NOT NULL DEFAULT ''")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_library_tracks_genreKey ON library_tracks(genreKey)")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS library_genre_summaries (
+                        genreKey TEXT NOT NULL PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        artworkUri TEXT,
+                        albumCount INTEGER NOT NULL,
+                        trackCount INTEGER NOT NULL,
+                        durationMs INTEGER NOT NULL,
+                        pinyinName TEXT
+                    )
+                    """.trimIndent(),
+                )
+            }
+        }
+
         internal const val RebuildAlbumSummariesSql =
             """
             INSERT INTO library_album_summaries (
@@ -356,11 +379,12 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                 CASE WHEN source = 'mediastore' OR source = 'saf' THEN 0 ELSE 1 END,
                 CASE WHEN album IS NULL OR trim(album) = '' THEN '未知专辑' ELSE album END,
                 CASE
-                    WHEN albumArtist IS NOT NULL AND trim(albumArtist) != '' THEN albumArtist
-                    WHEN artist IS NOT NULL AND trim(artist) != '' THEN artist
-                    ELSE NULL
+                    WHEN MAX(CASE WHEN albumArtist IS NOT NULL AND trim(albumArtist) != '' THEN albumArtist END) IS NOT NULL
+                        THEN MAX(CASE WHEN albumArtist IS NOT NULL AND trim(albumArtist) != '' THEN albumArtist END)
+                    WHEN COUNT(DISTINCT artistKey) > 1 THEN '群星'
+                    ELSE MAX(CASE WHEN artist IS NOT NULL AND trim(artist) != '' THEN artist END)
                 END,
-                CASE WHEN artist IS NULL OR trim(artist) = '' THEN NULL ELSE artist END,
+                MAX(CASE WHEN artist IS NOT NULL AND trim(artist) != '' THEN artist END),
                 MAX(artworkUri),
                 COUNT(*),
                 COALESCE(SUM(durationMs), 0),
@@ -431,11 +455,12 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                 CASE WHEN source = 'mediastore' OR source = 'saf' THEN 0 ELSE 1 END,
                 CASE WHEN album IS NULL OR trim(album) = '' THEN '未知专辑' ELSE album END,
                 CASE
-                    WHEN albumArtist IS NOT NULL AND trim(albumArtist) != '' THEN albumArtist
-                    WHEN artist IS NOT NULL AND trim(artist) != '' THEN artist
-                    ELSE NULL
+                    WHEN MAX(CASE WHEN albumArtist IS NOT NULL AND trim(albumArtist) != '' THEN albumArtist END) IS NOT NULL
+                        THEN MAX(CASE WHEN albumArtist IS NOT NULL AND trim(albumArtist) != '' THEN albumArtist END)
+                    WHEN COUNT(DISTINCT artistKey) > 1 THEN '群星'
+                    ELSE MAX(CASE WHEN artist IS NOT NULL AND trim(artist) != '' THEN artist END)
                 END,
-                CASE WHEN artist IS NULL OR trim(artist) = '' THEN NULL ELSE artist END,
+                MAX(CASE WHEN artist IS NOT NULL AND trim(artist) != '' THEN artist END),
                 MAX(artworkUri),
                 COUNT(*),
                 COALESCE(SUM(durationMs), 0),
@@ -498,6 +523,45 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
             WHERE (source = 'mediastore' OR source = 'saf')
               AND COALESCE(NULLIF(relativePath, ''), '') IN (:keys)
             GROUP BY COALESCE(NULLIF(relativePath, ''), '')
+            """
+
+        internal const val RebuildGenreSummariesSql =
+            """
+            INSERT INTO library_genre_summaries (
+                genreKey, name, artworkUri, albumCount, trackCount, durationMs, pinyinName
+            )
+            SELECT
+                genreKey,
+                CASE WHEN genre IS NULL OR trim(genre) = '' THEN genreKey ELSE genre END,
+                MAX(artworkUri),
+                COUNT(DISTINCT albumKey),
+                COUNT(*),
+                COALESCE(SUM(durationMs), 0),
+                MAX(genreKey)
+            FROM library_tracks
+            WHERE (source = 'mediastore' OR source = 'saf')
+              AND genreKey IS NOT NULL AND trim(genreKey) != ''
+            GROUP BY genreKey
+            """
+
+        internal const val RebuildGenreSummariesForKeysSql =
+            """
+            INSERT INTO library_genre_summaries (
+                genreKey, name, artworkUri, albumCount, trackCount, durationMs, pinyinName
+            )
+            SELECT
+                genreKey,
+                CASE WHEN genre IS NULL OR trim(genre) = '' THEN genreKey ELSE genre END,
+                MAX(artworkUri),
+                COUNT(DISTINCT albumKey),
+                COUNT(*),
+                COALESCE(SUM(durationMs), 0),
+                MAX(genreKey)
+            FROM library_tracks
+            WHERE (source = 'mediastore' OR source = 'saf')
+              AND genreKey IS NOT NULL AND trim(genreKey) != ''
+              AND genreKey IN (:keys)
+            GROUP BY genreKey
             """
     }
 }

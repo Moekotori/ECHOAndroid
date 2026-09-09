@@ -1,6 +1,7 @@
 package app.echo.android.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LibraryAggregationKeysTest {
@@ -41,6 +42,50 @@ class LibraryAggregationKeysTest {
         assertEquals(UnknownArtistKey, libraryArtistKey(null))
         assertEquals(UnknownArtistKey, libraryArtistKey(""))
         assertEquals("artist", libraryArtistKey("artist"))
+    }
+
+    @Test
+    fun unknownSentinelsShareAlbumAndArtistKeys() {
+        val album = "夜曲".normalizedForSearch()
+        assertEquals(
+            libraryAlbumKey(album, null, "未知艺术家".normalizedForSearch()),
+            libraryAlbumKey(album, null, "Unknown artist".normalizedForSearch()),
+        )
+        assertEquals(
+            libraryAlbumKey(album, null, "未知艺术家".normalizedForSearch()),
+            libraryAlbumKey(album, null, "<unknown>".normalizedForSearch()),
+        )
+        assertEquals(UnknownArtistKey, libraryArtistKey("Unknown artist".normalizedForSearch()))
+        assertEquals(UnknownArtistKey, libraryArtistKey("<unknown>".normalizedForSearch()))
+    }
+
+    @Test
+    fun variousArtistsAliasesShareAlbumKey() {
+        val album = "now that's what i call music".normalizedForSearch()
+        assertEquals(
+            libraryAlbumKey(album, "Various Artists".normalizedForSearch(), "oasis".normalizedForSearch()),
+            libraryAlbumKey(album, "群星".normalizedForSearch(), "spice girls".normalizedForSearch()),
+        )
+    }
+
+    @Test
+    fun extraWhitespaceDoesNotSplitAlbumOrArtist() {
+        assertEquals(
+            "hotel california::eagles",
+            libraryAlbumKey("Hotel  California".normalizedForSearch(), null, " Eagles ".normalizedForSearch()),
+        )
+        assertEquals("eagles", libraryArtistKey("Eagles".normalizedForSearch()))
+        assertEquals("eagles", libraryArtistKey("Eagles  ".normalizedForSearch()))
+        assertEquals("eagles", libraryArtistKey("Ｅａｇｌｅｓ".normalizedForSearch()))
+    }
+
+    @Test
+    fun missingAlbumArtistStillSplitsCompilationByTrackArtist() {
+        val album = "compilation".normalizedForSearch()
+        assertTrue(
+            libraryAlbumKey(album, null, "oasis".normalizedForSearch()) !=
+                libraryAlbumKey(album, null, "blur".normalizedForSearch()),
+        )
     }
 
     @Test

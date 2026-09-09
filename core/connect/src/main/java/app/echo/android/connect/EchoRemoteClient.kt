@@ -1,6 +1,6 @@
 package app.echo.android.connect
 
-import app.echo.android.model.connect.EchoMobileDiscordPresenceSnapshot
+import app.echo.android.model.connect.EchoRemoteAlbum
 import app.echo.android.model.connect.EchoRemoteCommand
 import app.echo.android.model.connect.EchoRemoteConnectionState
 import app.echo.android.model.connect.EchoRemoteEndpoint
@@ -48,6 +48,7 @@ class EchoRemoteClient internal constructor(
     fun setForeground(visible: Boolean) {
         foreground = visible
         if (!visible) {
+            stopEventStream()
             statusPollJob?.cancel()
             if (libraryRefreshJob?.isActive == true) {
                 refreshOnForeground = true
@@ -55,7 +56,7 @@ class EchoRemoteClient internal constructor(
                 _library.update { it.copy(isLoading = false, isLoadingMore = false) }
             }
         } else if (endpoint != null && !authRejected) {
-            if (connectJob?.isActive != true) startStatusPolling()
+            if (connectJob?.isActive != true) startRealtimeStatus()
             if (refreshOnForeground && _status.value.connectionState == EchoRemoteConnectionState.Connected) {
                 refreshOnForeground = false
                 refreshLibrary()
@@ -66,17 +67,30 @@ class EchoRemoteClient internal constructor(
     private var endpoint: EchoRemoteEndpoint? = null
     private var connectJob: Job? = null
     private var statusPollJob: Job? = null
+    private var eventsJob: Job? = null
+    private var eventSubscription: EchoLinkEventSubscription? = null
+    private var eventStreamActive = false
     private var libraryRefreshJob: Job? = null
     private var playlistRefreshJob: Job? = null
+    private var albumRefreshJob: Job? = null
+    private var folderRefreshJob: Job? = null
     private var phonePlaybackJob: Job? = null
     private var playOnPhoneGeneration = 0L
     private var connectGeneration = 0L
     private var statusRefreshGeneration = 0L
     private var libraryRefreshGeneration = 0L
     private var playlistRefreshGeneration = 0L
+    private var albumRefreshGeneration = 0L
+    private var folderRefreshGeneration = 0L
 
-    fun connectManual(address: String, token: String, refreshLibraryOnConnect: Boolean = true) {
+    fun connectManual(
+        address: String,
+        token: String,
+        refreshLibraryOnConnect: Boolean = true,
+        supportsV2Events: Boolean = false,
+    ) {
         val parsed = EchoPairingParser.parseManual(address, token)
+            ?.copy(supportsV2Events = supportsV2Events)
         if (parsed == null) {
             _status.update {
                 it.copy(
@@ -105,6 +119,7 @@ class EchoRemoteClient internal constructor(
         val generation = ++connectGeneration
         connectJob?.cancel()
         endpoint = nextEndpoint
+        stopEventStream()
         statusPollJob?.cancel()
         statusRefreshGeneration += 1
         libraryRefreshGeneration += 1
@@ -113,6 +128,12 @@ class EchoRemoteClient internal constructor(
         playlistRefreshGeneration += 1
         playlistRefreshJob?.cancel()
         playlistRefreshJob = null
+        albumRefreshGeneration += 1
+        albumRefreshJob?.cancel()
+        albumRefreshJob = null
+        folderRefreshGeneration += 1
+        folderRefreshJob?.cancel()
+        folderRefreshJob = null
         playOnPhoneGeneration += 1
         phonePlaybackJob?.cancel()
         phonePlaybackJob = null
@@ -170,7 +191,7 @@ class EchoRemoteClient internal constructor(
                     } else {
                         _library.value = EchoRemoteLibraryState()
                     }
-                    startStatusPolling()
+                    startRealtimeStatus()
                     return@launch
                 }
                 if (rejectAuthentication(resolvedTarget, status.exceptionOrNull())) return@launch
@@ -181,7 +202,7 @@ class EchoRemoteClient internal constructor(
                     continue
                 }
                 markReconnecting(resolvedTarget, status.exceptionOrNull())
-                startStatusPolling()
+                startRealtimeStatus()
                 return@launch
             }
         }
@@ -192,6 +213,7 @@ class EchoRemoteClient internal constructor(
         connectGeneration += 1
         connectJob?.cancel()
         connectJob = null
+        stopEventStream()
         statusPollJob?.cancel()
         statusPollJob = null
         statusRefreshGeneration += 1
@@ -201,25 +223,29 @@ class EchoRemoteClient internal constructor(
         playlistRefreshGeneration += 1
         playlistRefreshJob?.cancel()
         playlistRefreshJob = null
+        albumRefreshGeneration += 1
+        albumRefreshJob?.cancel()
+        albumRefreshJob = null
+        folderRefreshGeneration += 1
+        folderRefreshJob?.cancel()
+        folderRefreshJob = null
         playOnPhoneGeneration += 1
         phonePlaybackJob?.cancel()
         phonePlaybackJob = null
         endpoint = null
-        _status.value = EchoRemoteStatus(mobileDiscordPresence = _status.value.mobileDiscordPresence)
+        _status.value = EchoRemoteStatus()
         _library.value = EchoRemoteLibraryState()
     }
 
     fun ingest(message: EchoRemoteMessage) {
         when (message) {
-            is EchoRemoteMessage.StatusSnapshot -> _status.update {
-                it.copy(
-                    connectionState = EchoRemoteConnectionState.Connected,
-                    playback = message.payload,
-                    error = null,
+            is EchoRemoteMessage.StatusSnapshot -> {
+                val target = endpoint ?: return
+                applyStatus(
+                    target,
+                    EchoLinkStatusResponse(deviceName = target.name, playback = message.payload),
                 )
             }
-
-            is EchoRemoteMessage.MobileDiscordPresence -> publishMobileDiscordPresence(message.payload)
 
             is EchoRemoteMessage.Error -> _status.update {
                 it.copy(connectionState = EchoRemoteConnectionState.Error, error = message.message)
@@ -229,23 +255,6 @@ class EchoRemoteClient internal constructor(
             EchoRemoteMessage.Ping,
             EchoRemoteMessage.Pong,
             -> Unit
-        }
-    }
-
-    fun publishMobileDiscordPresence(snapshot: EchoMobileDiscordPresenceSnapshot?) {
-        _status.update { current ->
-            current.copy(
-                mobileDiscordPresence = snapshot,
-                error = when {
-                    snapshot?.enabled != true -> current.error
-                    current.connectionState != EchoRemoteConnectionState.Connected -> echoText(
-                        en = "Discord Presence is waiting for a PC ECHO pairing",
-                        zh = "Discord Presence 等待 PC ECHO 配对",
-                        ja = "Discord Presence は PC ECHO のペアリング待ちです",
-                    )
-                    else -> current.error
-                },
-            )
         }
     }
 
@@ -263,27 +272,8 @@ class EchoRemoteClient internal constructor(
             }
             return
         }
-        val generation = ++statusRefreshGeneration
-        val connection = connectGeneration
         scope.launch {
-            runSuspendCatching { transport.sendCommand(target, command) }
-                .onSuccess { response ->
-                    if (connection != connectGeneration || !EchoLinkRequestPolicy.isSameEndpoint(endpoint, target)) return@onSuccess
-                    onSuccess()
-                    if (generation != statusRefreshGeneration) {
-                        return@onSuccess
-                    }
-                    if (response != null) {
-                        applyStatus(target, response)
-                    } else {
-                        refreshStatusOnce(target)
-                    }
-                }
-                .onFailure { error ->
-                    if (generation == statusRefreshGeneration) {
-                        markConnectionError(target, error)
-                    }
-                }
+            dispatchCommand(target, command, onSuccess)
         }
     }
 
@@ -304,16 +294,25 @@ class EchoRemoteClient internal constructor(
         playlistRefreshGeneration += 1
         playlistRefreshJob?.cancel()
         playlistRefreshJob = null
+        albumRefreshGeneration += 1
+        albumRefreshJob?.cancel()
+        albumRefreshJob = null
         _library.update { current ->
             val sameQuery = current.query.trim() == query.trim()
+            val keepTracks = sameQuery ||
+                EchoLinkLibraryQueryPolicy.shouldKeepLoadedTracksForQuery(query, current.tracks.size)
             current.copy(
-                isLoading = true,
+                isLoading = current.tracks.isEmpty(),
+                isLoadingMore = keepTracks && !sameQuery,
                 query = query,
-                tracks = if (sameQuery) current.tracks else emptyList(),
+                tracks = if (keepTracks) current.tracks else emptyList(),
+                albums = if (sameQuery) current.albums else emptyList(),
+                albumTracks = emptyMap(),
+                loadingAlbumId = null,
                 playlists = if (sameQuery) current.playlists else emptyList(),
                 playlistTracks = emptyMap(),
                 loadingPlaylistId = null,
-                totalCount = if (sameQuery) current.totalCount else 0,
+                totalCount = if (keepTracks) current.totalCount else 0,
                 error = null,
             )
         }
@@ -334,6 +333,31 @@ class EchoRemoteClient internal constructor(
                         if (isCurrentRefresh()) _library.update { it.copy(error = error.userMessage()) }
                     }
             }
+            if (!_library.value.albumsUnavailable) {
+                launch {
+                    runSuspendCatching { fetchAllAlbums(target, query) }
+                        .onSuccess { page ->
+                            if (isCurrentRefresh()) {
+                                _library.update {
+                                    it.copy(albums = page.albums, albumsUnavailable = false)
+                                }
+                            }
+                        }
+                        .onFailure { error ->
+                            if (isCurrentRefresh()) {
+                                _library.update { current ->
+                                    current.copy(
+                                        albums = emptyList(),
+                                        albumsUnavailable = EchoLinkRequestPolicy.shouldMarkAlbumsUnavailable(
+                                            collectionNotFound = error.isEchoLinkNotFound(),
+                                        ),
+                                        error = if (error.isEchoLinkNotFound()) current.error else error.userMessage(),
+                                    )
+                                }
+                            }
+                        }
+                }
+            }
             val firstPage = runSuspendCatching {
                 transport.fetchTracks(target, query, page = 1, pageSize = PcLibraryPageSize)
             }.getOrElse { error ->
@@ -342,8 +366,18 @@ class EchoRemoteClient internal constructor(
             }
             if (!isCurrentRefresh()) return@launch
 
-            val loadedTracks = ArrayList(firstPage.tracks)
-            var totalCount = firstPage.totalCount.coerceAtLeast(loadedTracks.size)
+            val previousTracks = _library.value.tracks
+            val keepPrevious = EchoLinkLibraryQueryPolicy.shouldKeepPreviousTracksOnEmptyRemotePage(
+                query = query,
+                remoteTrackCount = firstPage.tracks.size,
+                previousTrackCount = previousTracks.size,
+            )
+            val loadedTracks = ArrayList(if (keepPrevious) previousTracks else firstPage.tracks)
+            var totalCount = if (keepPrevious) {
+                _library.value.totalCount.coerceAtLeast(loadedTracks.size)
+            } else {
+                firstPage.totalCount.coerceAtLeast(loadedTracks.size)
+            }
             fun publish(isLoadingMore: Boolean, error: String? = null) {
                 // 流式拉取期间用户可能并发点开歌单:基于当前状态合并,保留
                 // refreshPlaylistTracks 写入的曲目与 loadingPlaylistId,不能整体覆盖
@@ -359,7 +393,7 @@ class EchoRemoteClient internal constructor(
                 }
             }
 
-            var hasMore = firstPage.tracks.isNotEmpty() && loadedTracks.size < totalCount
+            var hasMore = !keepPrevious && firstPage.tracks.isNotEmpty() && loadedTracks.size < totalCount
             publish(isLoadingMore = hasMore)
 
             var page = 2
@@ -466,6 +500,211 @@ class EchoRemoteClient internal constructor(
                         }
                     }
                 }
+        }
+    }
+
+    fun refreshAlbumTracks(album: EchoRemoteAlbum) {
+        val generation = ++albumRefreshGeneration
+        albumRefreshJob?.cancel()
+        albumRefreshJob = null
+        val target = endpoint ?: run {
+            _library.update {
+                it.copy(
+                    error = echoText(
+                        en = "PC ECHO is not connected yet",
+                        zh = "还没有连接 PC ECHO",
+                        ja = "まだ PC ECHO に接続していません",
+                    ),
+                )
+            }
+            return
+        }
+        if (album.id.isBlank()) {
+            _library.update {
+                it.copy(
+                    error = echoText(
+                        en = "This PC album is missing an albumId and cannot be opened",
+                        zh = "PC 专辑缺少 albumId，不能打开",
+                        ja = "この PC アルバムには albumId がないため開けません",
+                    ),
+                )
+            }
+            return
+        }
+        val knownTracks = _library.value.albumTracks[album.id] ?: album.tracks
+        if (
+            !EchoLinkLibraryQueryPolicy.shouldFetchPlaylistTracks(
+                knownTrackCount = knownTracks.size,
+                declaredTrackCount = album.trackCount,
+            )
+        ) {
+            _library.update { current ->
+                current.copy(
+                    albumTracks = current.albumTracks + (album.id to knownTracks),
+                    loadingAlbumId = null,
+                    error = null,
+                )
+            }
+            return
+        }
+        _library.update { it.copy(loadingAlbumId = album.id, error = null) }
+        albumRefreshJob = scope.launch {
+            runSuspendCatching { fetchAllAlbumTracks(target, album.id) }
+                .onSuccess { page ->
+                    if (endpoint?.id == target.id && generation == albumRefreshGeneration) {
+                        _library.update { current ->
+                            current.copy(
+                                albumTracks = current.albumTracks + (album.id to page.tracks),
+                                loadingAlbumId = null,
+                                error = null,
+                            )
+                        }
+                    }
+                }
+                .onFailure { error ->
+                    if (endpoint?.id == target.id && generation == albumRefreshGeneration) {
+                        _library.update {
+                            it.copy(
+                                loadingAlbumId = null,
+                                error = error.userMessage(),
+                            )
+                        }
+                    }
+                }
+        }
+    }
+
+    fun refreshFolders(path: String = _library.value.folderPath) {
+        val target = endpoint ?: run {
+            _library.update {
+                it.copy(
+                    error = echoText(
+                        en = "PC ECHO is not connected yet",
+                        zh = "还没有连接 PC ECHO",
+                        ja = "まだ PC ECHO に接続していません",
+                    ),
+                )
+            }
+            return
+        }
+        if (_library.value.foldersUnavailable) return
+        val generation = ++folderRefreshGeneration
+        folderRefreshJob?.cancel()
+        val normalizedPath = path.trim().trim('/')
+        _library.update {
+            it.copy(
+                folderPath = normalizedPath,
+                loadingFolderPath = normalizedPath,
+                error = null,
+            )
+        }
+        folderRefreshJob = scope.launch {
+            runSuspendCatching { transport.fetchFolders(target, normalizedPath) }
+                .onSuccess { page ->
+                    if (endpoint?.id == target.id && generation == folderRefreshGeneration) {
+                        _library.update { current ->
+                            current.copy(
+                                folders = page.folders,
+                                folderPath = page.path.ifBlank { normalizedPath },
+                                folderTracks = page.tracks,
+                                foldersUnavailable = false,
+                                loadingFolderPath = null,
+                                error = null,
+                            )
+                        }
+                    }
+                }
+                .onFailure { error ->
+                    if (endpoint?.id == target.id && generation == folderRefreshGeneration) {
+                        val missing = error.isEchoLinkNotFound()
+                        val collectionMissing = EchoLinkRequestPolicy.shouldMarkFoldersUnavailable(
+                            path = normalizedPath,
+                            notFound = missing,
+                        )
+                        _library.update { current ->
+                            current.copy(
+                                folders = if (collectionMissing) emptyList() else current.folders,
+                                folderTracks = if (collectionMissing) emptyList() else current.folderTracks,
+                                foldersUnavailable = current.foldersUnavailable || collectionMissing,
+                                loadingFolderPath = null,
+                                error = if (collectionMissing) current.error else error.userMessage(),
+                            )
+                        }
+                    }
+                }
+        }
+    }
+
+    fun playQueueOnPc(tracks: List<EchoRemoteTrack>, startIndex: Int = 0) {
+        val ids = EchoLinkLibraryQueryPolicy.playableLinkedPcTrackIds(tracks)
+        val startId = EchoLinkLibraryQueryPolicy.queueReplaceStartId(
+            trackIds = ids,
+            requestedId = tracks.getOrNull(startIndex)?.id,
+        )
+        if (ids.isEmpty() || startId == null) {
+            _library.update {
+                it.copy(
+                    error = echoText(
+                        en = "This PC queue has no playable track IDs",
+                        zh = "这个 PC 队列没有可播放的 trackId",
+                        ja = "この PC キューには再生できる trackId がありません",
+                    ),
+                )
+            }
+            return
+        }
+        send(EchoRemoteCommand.QueueReplace(trackIds = ids, startTrackId = startId))
+    }
+
+    fun handoffPhoneQueueToPc(
+        tracks: List<EchoRemoteTrack>,
+        startIndex: Int,
+        positionMs: Long,
+        onSuccess: () -> Unit = {},
+    ) {
+        val startTrack = tracks.getOrNull(startIndex) ?: tracks.firstOrNull()
+        val trackId = startTrack?.id?.takeIf { it.isNotBlank() } ?: run {
+            _library.update {
+                it.copy(
+                    error = echoText(
+                        en = "This PC track is missing a trackId and cannot be handed off",
+                        zh = "PC 曲目缺少 trackId，不能交接播放",
+                        ja = "この PC トラックには trackId がないため引き継ぎできません",
+                    ),
+                )
+            }
+            return
+        }
+        val target = endpoint ?: run {
+            _status.update {
+                it.copy(
+                    connectionState = EchoRemoteConnectionState.Error,
+                    error = echoText(
+                        en = "PC ECHO is not connected yet",
+                        zh = "还没有连接 PC ECHO",
+                        ja = "まだ PC ECHO に接続していません",
+                    ),
+                )
+            }
+            return
+        }
+        val ids = EchoLinkLibraryQueryPolicy.playableLinkedPcTrackIds(tracks)
+        val startId = EchoLinkLibraryQueryPolicy.queueReplaceStartId(ids, trackId) ?: trackId
+        val connection = connectGeneration
+        scope.launch {
+            if (ids.size > 1) {
+                val replaced = dispatchCommand(
+                    target = target,
+                    command = EchoRemoteCommand.QueueReplace(trackIds = ids, startTrackId = startId),
+                )
+                if (!replaced || connection != connectGeneration) return@launch
+            }
+            val handedOff = dispatchCommand(
+                target = target,
+                command = EchoRemoteCommand.HandoffToPc(trackId, positionMs.coerceAtLeast(0L)),
+                onSuccess = onSuccess,
+            )
+            if (!handedOff) return@launch
         }
     }
 
@@ -601,6 +840,32 @@ class EchoRemoteClient internal constructor(
         }
     }
 
+    private suspend fun fetchAllAlbums(target: EchoRemoteEndpoint, query: String): EchoLinkAlbumPage {
+        val items = mutableListOf<EchoRemoteAlbum>()
+        var page = 1
+        while (true) {
+            val batch = transport.fetchAlbums(target, query, page, PcLibraryPageSize)
+            items += batch.albums
+            if (batch.albums.isEmpty() || items.size >= batch.totalCount) {
+                return EchoLinkAlbumPage(items, batch.totalCount.coerceAtLeast(items.size))
+            }
+            check(page++ < MaxLibraryPages) { "PC album list exceeds the supported page limit" }
+        }
+    }
+
+    private suspend fun fetchAllAlbumTracks(target: EchoRemoteEndpoint, id: String): EchoLinkTrackPage {
+        val items = mutableListOf<EchoRemoteTrack>()
+        var page = 1
+        while (true) {
+            val batch = transport.fetchAlbumTracks(target, id, page, PcPlaylistTrackPageSize)
+            items += batch.tracks
+            if (batch.tracks.isEmpty() || items.size >= batch.totalCount) {
+                return EchoLinkTrackPage(items, batch.totalCount.coerceAtLeast(items.size))
+            }
+            check(page++ < MaxLibraryPages) { "PC album exceeds the supported page limit" }
+        }
+    }
+
     private suspend fun fetchAllPlaylists(target: EchoRemoteEndpoint, query: String): EchoLinkPlaylistPage {
         val items = mutableListOf<EchoRemotePlaylist>()
         var page = 1
@@ -627,12 +892,104 @@ class EchoRemoteClient internal constructor(
         }
     }
 
-    private fun startStatusPolling() {
+    private suspend fun dispatchCommand(
+        target: EchoRemoteEndpoint,
+        command: EchoRemoteCommand,
+        onSuccess: () -> Unit = {},
+    ): Boolean {
+        val generation = ++statusRefreshGeneration
+        val connection = connectGeneration
+        val result = runSuspendCatching { transport.sendCommand(target, command) }
+        result.onSuccess { response ->
+            if (connection != connectGeneration || !EchoLinkRequestPolicy.isSameEndpoint(endpoint, target)) {
+                return@onSuccess
+            }
+            onSuccess()
+            if (generation != statusRefreshGeneration) return@onSuccess
+            if (response != null) {
+                applyStatus(target, response)
+            } else {
+                refreshStatusOnce(target)
+            }
+        }.onFailure { error ->
+            if (connection != connectGeneration) return@onFailure
+            val statusCode = (error as? EchoLinkHttpException)?.statusCode
+            if (EchoLinkRequestPolicy.shouldDisconnectOnCommandFailure(statusCode)) {
+                rejectAuthentication(target, error)
+                return@onFailure
+            }
+            if (generation == statusRefreshGeneration) {
+                _status.update { current ->
+                    current.copy(error = error.userMessage())
+                }
+                _library.update { current ->
+                    current.copy(error = error.userMessage())
+                }
+            }
+        }
+        return result.isSuccess &&
+            connection == connectGeneration &&
+            EchoLinkRequestPolicy.isSameEndpoint(endpoint, target)
+    }
+
+    private fun startRealtimeStatus() {
+        val target = endpoint ?: return
+        if (!foreground || authRejected) return
+        if (target.supportsV2Events) {
+            startEventStream(target)
+            startStatusPolling(SseHeartbeatPollIntervalMs)
+        } else {
+            stopEventStream()
+            startStatusPolling(statusPollIntervalMs)
+        }
+    }
+
+    private fun startEventStream(target: EchoRemoteEndpoint) {
+        eventsJob?.cancel()
+        eventSubscription?.cancel()
+        eventSubscription = null
+        eventStreamActive = false
+        eventsJob = scope.launch {
+            val ticket = runSuspendCatching { transport.createEventTicket(target) }
+            val resolved = ticket.getOrNull()
+            if (resolved == null) {
+                if (rejectAuthentication(target, ticket.exceptionOrNull())) return@launch
+                startStatusPolling(statusPollIntervalMs)
+                return@launch
+            }
+            if (!isActive || !foreground || authRejected || endpoint?.id != target.id) return@launch
+            eventStreamActive = true
+            eventSubscription = transport.subscribeEvents(
+                endpoint = target,
+                ticket = resolved,
+                onEvent = { message ->
+                    if (endpoint?.id == target.id && !authRejected) ingest(message)
+                },
+                onClosed = { error ->
+                    eventStreamActive = false
+                    if (error != null && rejectAuthentication(target, error)) return@subscribeEvents
+                    if (foreground && !authRejected && endpoint?.id == target.id) {
+                        startStatusPolling(statusPollIntervalMs)
+                    }
+                },
+            )
+        }
+    }
+
+    private fun stopEventStream() {
+        eventsJob?.cancel()
+        eventsJob = null
+        eventSubscription?.cancel()
+        eventSubscription = null
+        eventStreamActive = false
+    }
+
+    private fun startStatusPolling(intervalMs: Long = statusPollIntervalMs) {
         statusPollJob?.cancel()
         if (!foreground || authRejected) return
         statusPollJob = scope.launch {
             while (isActive && foreground && !authRejected) {
-                delay((statusPollIntervalMs * (1L shl pollFailures.coerceAtMost(4))).coerceAtMost(60_000L))
+                delay((intervalMs * (1L shl pollFailures.coerceAtMost(4))).coerceAtMost(60_000L))
                 endpoint?.let { refreshStatusOnce(it) }
             }
         }
@@ -738,6 +1095,7 @@ class EchoRemoteClient internal constructor(
 
     private companion object {
         const val StatusPollIntervalMs = 5_000L
+        const val SseHeartbeatPollIntervalMs = 30_000L
         const val PcLibraryPageSize = 500
         const val PcPlaylistTrackPageSize = 500
         const val MaxLibraryPages = 40
@@ -760,6 +1118,9 @@ internal fun EchoRemoteTrack.toPhonePlaybackTrack(streamUrl: String): EchoTrack 
         source = LibrarySource("echo-link"),
     )
 }
+
+private fun Throwable.isEchoLinkNotFound(): Boolean =
+    (this as? EchoLinkHttpException)?.statusCode == 404
 
 private suspend inline fun <T> runSuspendCatching(block: () -> T): Result<T> =
     try {

@@ -12,7 +12,6 @@ import androidx.core.database.getLongOrNull
 import androidx.core.database.getStringOrNull
 import kotlinx.coroutines.ensureActive
 import java.util.ArrayDeque
-import java.util.Locale
 import kotlin.coroutines.coroutineContext
 
 class DocumentTreeTrackScanner(
@@ -210,7 +209,7 @@ class DocumentTreeTrackScanner(
                 id = "saf:${Uri.encode(documentId)}",
                 contentUri = toString(),
                 title = displayName.removeAudioExtension(),
-                artist = "Unknown artist",
+                artist = canonicalUnknownArtist(),
                 album = null,
                 albumArtist = null,
                 artworkUri = null,
@@ -227,16 +226,16 @@ class DocumentTreeTrackScanner(
                 source = LibraryScanPolicy.SafSourceId,
             )
         }
-        val metadata = readMetadata(this, readSampleRate)
-        val title = metadata.title?.takeIf { it.isNotBlank() } ?: displayName.removeAudioExtension()
-        val artist = metadata.artist?.takeIf { it.isNotBlank() } ?: "Unknown artist"
+        val metadata = readMetadata(this, readSampleRate, mimeType, displayName)
+        val title = metadata.title.takeUnlessUnknownMetadata() ?: displayName.removeAudioExtension()
+        val artist = metadata.artist.takeUnlessUnknownMetadata() ?: canonicalUnknownArtist()
         return LibraryTrackEntity(
             id = "saf:${Uri.encode(documentId)}",
             contentUri = toString(),
             title = title,
             artist = artist,
-            album = metadata.album?.takeIf { it.isNotBlank() },
-            albumArtist = metadata.albumArtist?.takeIf { it.isNotBlank() },
+            album = metadata.album.takeUnlessUnknownMetadata(),
+            albumArtist = metadata.albumArtist.takeUnlessUnknownMetadata(),
             artworkUri = null,
             durationMs = metadata.durationMs,
             trackNumber = metadata.trackNumber,
@@ -253,28 +252,45 @@ class DocumentTreeTrackScanner(
         }
     }
 
-    private fun readMetadata(uri: Uri, readSampleRate: Boolean): DocumentAudioMetadata {
+    private fun readMetadata(
+        uri: Uri,
+        readSampleRate: Boolean,
+        mimeType: String?,
+        displayName: String,
+    ): DocumentAudioMetadata {
+        val fileTags = if (LibraryWavTagPolicy.isWavContainer(mimeType, displayName)) {
+            runCatching { contentResolver.openInputStream(uri)?.use(::readLocalAudioTags) }.getOrNull()
+        } else {
+            null
+        }
         val retriever = MediaMetadataRetriever()
         return try {
             contentResolver.openFileDescriptor(uri, "r")?.use { descriptor ->
                 retriever.setDataSource(descriptor.fileDescriptor)
                 DocumentAudioMetadata(
-                    title = retriever.metadata(MediaMetadataRetriever.METADATA_KEY_TITLE),
-                    artist = retriever.metadata(MediaMetadataRetriever.METADATA_KEY_ARTIST),
-                    album = retriever.metadata(MediaMetadataRetriever.METADATA_KEY_ALBUM),
-                    albumArtist = retriever.metadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST),
+                    title = fileTags?.title?.takeIf { it.isNotBlank() }
+                        ?: retriever.metadata(MediaMetadataRetriever.METADATA_KEY_TITLE),
+                    artist = fileTags?.artist?.takeIf { it.isNotBlank() }
+                        ?: retriever.metadata(MediaMetadataRetriever.METADATA_KEY_ARTIST),
+                    album = fileTags?.album?.takeIf { it.isNotBlank() }
+                        ?: retriever.metadata(MediaMetadataRetriever.METADATA_KEY_ALBUM),
+                    albumArtist = fileTags?.albumArtist?.takeIf { it.isNotBlank() }
+                        ?: retriever.metadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST),
                     durationMs = retriever.metadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
                         ?.toLongOrNull()
                         ?.coerceAtLeast(0L)
                         ?: 0L,
-                    trackNumber = retriever.metadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER)
-                        .parseLeadingPositiveInt(),
-                    discNumber = retriever.metadata(MediaMetadataRetriever.METADATA_KEY_DISC_NUMBER)
-                        .parseLeadingPositiveInt(),
-                    year = retriever.metadata(MediaMetadataRetriever.METADATA_KEY_YEAR)
-                        ?.take(4)
-                        ?.toIntOrNull()
-                        ?.takeIf { it > 0 },
+                    trackNumber = fileTags?.trackNumber
+                        ?: retriever.metadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER)
+                            .parseLeadingPositiveInt(),
+                    discNumber = fileTags?.discNumber
+                        ?: retriever.metadata(MediaMetadataRetriever.METADATA_KEY_DISC_NUMBER)
+                            .parseLeadingPositiveInt(),
+                    year = fileTags?.year
+                        ?: retriever.metadata(MediaMetadataRetriever.METADATA_KEY_YEAR)
+                            ?.take(4)
+                            ?.toIntOrNull()
+                            ?.takeIf { it > 0 },
                     sampleRateHz = if (readSampleRate) {
                         retriever.metadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)
                             ?.toIntOrNull()
@@ -283,16 +299,28 @@ class DocumentTreeTrackScanner(
                         null
                     },
                 )
-            } ?: DocumentAudioMetadata(readSucceeded = false)
+            } ?: fileTags.toDocumentMetadata(readSucceeded = false)
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
             Log.d(TAG, "Unable to read document tree audio metadata for $uri.", error)
-            DocumentAudioMetadata(readSucceeded = false)
+            fileTags.toDocumentMetadata(readSucceeded = false)
         } finally {
             retriever.release()
         }
     }
+
+    private fun AudioTagFields?.toDocumentMetadata(readSucceeded: Boolean): DocumentAudioMetadata =
+        DocumentAudioMetadata(
+            readSucceeded = readSucceeded,
+            title = this?.title?.takeIf { it.isNotBlank() },
+            artist = this?.artist?.takeIf { it.isNotBlank() },
+            album = this?.album?.takeIf { it.isNotBlank() },
+            albumArtist = this?.albumArtist?.takeIf { it.isNotBlank() },
+            trackNumber = this?.trackNumber,
+            discNumber = this?.discNumber,
+            year = this?.year,
+        )
 
     private data class DocumentTreeDirectory(
         val documentId: String,
@@ -388,28 +416,10 @@ private fun combineRelativePath(prefix: String, folderPath: String): String =
     ) ?: prefix
 
 private fun isSupportedAudio(name: String, mimeType: String?): Boolean =
-    mimeType?.startsWith("audio/", ignoreCase = true) == true || name.audioMimeType() != null
+    LocalAudioFileTypes.isSupported(name, mimeType)
 
 private fun resolvedAudioMimeType(name: String, mimeType: String?): String? =
-    mimeType?.takeIf { it.startsWith("audio/", ignoreCase = true) } ?: name.audioMimeType()
-
-private fun String.audioMimeType(): String? {
-    val name = lowercase(Locale.ROOT)
-    return when {
-        name.endsWith(".flac") -> "audio/flac"
-        name.endsWith(".mp3") -> "audio/mpeg"
-        name.endsWith(".m4a") || name.endsWith(".mp4") -> "audio/mp4"
-        name.endsWith(".aac") -> "audio/aac"
-        name.endsWith(".ogg") || name.endsWith(".oga") -> "audio/ogg"
-        name.endsWith(".opus") -> "audio/opus"
-        name.endsWith(".wav") -> "audio/wav"
-        name.endsWith(".aiff") || name.endsWith(".aif") -> "audio/aiff"
-        name.endsWith(".ape") -> "audio/ape"
-        name.endsWith(".dsf") -> "audio/dsf"
-        name.endsWith(".dff") -> "audio/dff"
-        else -> null
-    }
-}
+    LocalAudioFileTypes.resolvedMimeType(name, mimeType)
 
 private fun String.removeAudioExtension(): String =
     substringBeforeLast('.', missingDelimiterValue = this)

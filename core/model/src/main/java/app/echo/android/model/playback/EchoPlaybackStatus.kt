@@ -14,8 +14,10 @@ data class EchoPlaybackStatus(
     val sleepTimerMode: EchoSleepTimerMode = EchoSleepTimerMode.Off,
     val sleepTimerMinutes: Int? = null,
     val replayGainEnabled: Boolean = false,
+    val replayGainMode: EchoReplayGainMode = EchoReplayGainMode.Auto,
     val replayGainPreampDb: Float = 0f,
     val replayGainTrackGainDb: Float? = null,
+    val replayGainTagsLoaded: Boolean = false,
     val skipSilenceEnabled: Boolean = false,
     val diagnostics: EchoPlaybackDiagnostics = EchoPlaybackDiagnostics(),
 )

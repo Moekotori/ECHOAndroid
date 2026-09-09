@@ -46,3 +46,59 @@ internal fun echoLinkPlaylistTracksUrl(
         .addQueryParameter("page", page.coerceAtLeast(1).toString())
         .addQueryParameter("pageSize", pageSize.coerceIn(1, 500).toString())
         .build()
+
+internal fun echoLinkLibraryAlbumsUrl(
+    endpoint: EchoRemoteEndpoint,
+    query: String,
+    page: Int,
+    pageSize: Int,
+): HttpUrl {
+    val builder = HttpUrl.Builder()
+        .scheme(endpoint.scheme)
+        .host(endpoint.host)
+        .port(endpoint.port)
+        .addPathSegment("echo-link")
+        .addPathSegment("v${endpoint.protocolVersion.number}")
+        .addPathSegment("library")
+        .addPathSegment("albums")
+        .addQueryParameter("page", page.coerceAtLeast(1).toString())
+        .addQueryParameter("pageSize", pageSize.coerceIn(1, 500).toString())
+    query.trim().takeIf { it.isNotEmpty() }?.let { builder.addQueryParameter("q", it) }
+    return builder.build()
+}
+
+internal fun echoLinkAlbumTracksUrl(
+    endpoint: EchoRemoteEndpoint,
+    albumId: String,
+    page: Int,
+    pageSize: Int,
+): HttpUrl =
+    HttpUrl.Builder()
+        .scheme(endpoint.scheme)
+        .host(endpoint.host)
+        .port(endpoint.port)
+        .addPathSegment("echo-link")
+        .addPathSegment("v${endpoint.protocolVersion.number}")
+        .addPathSegment("library")
+        .addPathSegment("albums")
+        .addPathSegment(albumId.trim())
+        .addPathSegment("tracks")
+        .addQueryParameter("page", page.coerceAtLeast(1).toString())
+        .addQueryParameter("pageSize", pageSize.coerceIn(1, 500).toString())
+        .build()
+
+internal fun echoLinkFoldersUrl(
+    endpoint: EchoRemoteEndpoint,
+    path: String,
+): HttpUrl {
+    val builder = HttpUrl.Builder()
+        .scheme(endpoint.scheme)
+        .host(endpoint.host)
+        .port(endpoint.port)
+        .addPathSegment("echo-link")
+        .addPathSegment("v${endpoint.protocolVersion.number}")
+        .addPathSegment("library")
+        .addPathSegment("folders")
+    path.trim().takeIf { it.isNotEmpty() }?.let { builder.addQueryParameter("path", it) }
+    return builder.build()
+}

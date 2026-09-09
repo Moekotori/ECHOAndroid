@@ -42,7 +42,9 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
 import app.echo.android.model.i18n.echoText
 import androidx.compose.foundation.verticalScroll
@@ -244,6 +246,7 @@ fun NowPlayingScreen(
     onSetSleepTimerEndOfTrack: () -> Unit = {},
     onCancelSleepTimer: () -> Unit,
     onSetReplayGain: (Boolean, Float) -> Unit,
+    onSetReplayGainMode: (app.echo.android.model.playback.EchoReplayGainMode) -> Unit = {},
     onAdjustReplayGainPreamp: (Float) -> Unit,
     onSetSkipSilenceEnabled: (Boolean) -> Unit,
     onImportLyrics: () -> Unit,
@@ -662,6 +665,7 @@ fun NowPlayingScreen(
             onSetSleepTimerEndOfTrack = onSetSleepTimerEndOfTrack,
             onCancelSleepTimer = onCancelSleepTimer,
             onSetReplayGain = onSetReplayGain,
+            onSetReplayGainMode = onSetReplayGainMode,
             onAdjustReplayGainPreamp = onAdjustReplayGainPreamp,
             onSetSkipSilenceEnabled = onSetSkipSilenceEnabled,
             lyricsOffsetMs = readyLyrics?.metadata?.get("user_offset_ms")?.toLongOrNull() ?: 0L,
@@ -2587,6 +2591,7 @@ private fun PlaybackSettingsDrawer(
     onSetSleepTimerEndOfTrack: () -> Unit = {},
     onCancelSleepTimer: () -> Unit,
     onSetReplayGain: (Boolean, Float) -> Unit,
+    onSetReplayGainMode: (app.echo.android.model.playback.EchoReplayGainMode) -> Unit = {},
     onAdjustReplayGainPreamp: (Float) -> Unit,
     onSetSkipSilenceEnabled: (Boolean) -> Unit,
     lyricsOffsetMs: Long,
@@ -2657,6 +2662,7 @@ private fun PlaybackSettingsDrawer(
                     onSetSleepTimerEndOfTrack = onSetSleepTimerEndOfTrack,
                     onCancelSleepTimer = onCancelSleepTimer,
                     onSetReplayGain = onSetReplayGain,
+                    onSetReplayGainMode = onSetReplayGainMode,
                     onAdjustReplayGainPreamp = onAdjustReplayGainPreamp,
                     onSetSkipSilenceEnabled = onSetSkipSilenceEnabled,
                     lyricsOffsetMs = lyricsOffsetMs,
@@ -2680,6 +2686,7 @@ private fun PlaybackSettingsPanel(
     onSetSleepTimerEndOfTrack: () -> Unit = {},
     onCancelSleepTimer: () -> Unit,
     onSetReplayGain: (Boolean, Float) -> Unit,
+    onSetReplayGainMode: (app.echo.android.model.playback.EchoReplayGainMode) -> Unit = {},
     onAdjustReplayGainPreamp: (Float) -> Unit,
     onSetSkipSilenceEnabled: (Boolean) -> Unit,
     lyricsOffsetMs: Long,
@@ -2690,6 +2697,7 @@ private fun PlaybackSettingsPanel(
 ) {
     val nightcore = isNightcorePlayback(status)
     val dark = LocalEchoDarkTheme.current
+    var showCustomSleepTimer by remember { mutableStateOf(false) }
     val panelShape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
     val titleColor = if (dark) Color.White else RoonInk
     val mutedColor = if (dark) Color.White.copy(alpha = 0.76f) else RoonMuted
@@ -2806,6 +2814,47 @@ private fun PlaybackSettingsPanel(
                     onClick = { onSetSleepTimer(minutes) },
                 )
             }
+            PlaybackSpeedChip(
+                text = if (
+                    status.sleepTimerMode == EchoSleepTimerMode.Timed &&
+                    status.sleepTimerMinutes != null &&
+                    status.sleepTimerMinutes !in SleepTimerOptions
+                ) {
+                    "${status.sleepTimerMinutes}m"
+                } else {
+                    "…"
+                },
+                selected = status.sleepTimerMode == EchoSleepTimerMode.Timed &&
+                    status.sleepTimerMinutes != null &&
+                    status.sleepTimerMinutes !in SleepTimerOptions,
+                onClick = { showCustomSleepTimer = true },
+            )
+        }
+        if (showCustomSleepTimer) {
+            var customMinutes by remember { mutableStateOf("45") }
+            AlertDialog(
+                onDismissRequest = { showCustomSleepTimer = false },
+                title = { Text("Sleep timer") },
+                text = {
+                    OutlinedTextField(
+                        value = customMinutes,
+                        onValueChange = { customMinutes = it.filter(Char::isDigit).take(3) },
+                        label = { Text("Minutes (1–180)") },
+                        singleLine = true,
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            customMinutes.toIntOrNull()?.coerceIn(1, 180)?.let(onSetSleepTimer)
+                            showCustomSleepTimer = false
+                        },
+                    ) { Text("Set") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showCustomSleepTimer = false }) { Text("Cancel") }
+                },
+            )
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -2887,6 +2936,26 @@ private fun PlaybackSettingsPanel(
                 onClick = { onSetReplayGain(!status.replayGainEnabled, status.replayGainPreampDb) },
                 modifier = Modifier.weight(1f),
             )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            PlaybackSpeedChip(
+                text = "Auto",
+                selected = status.replayGainMode == app.echo.android.model.playback.EchoReplayGainMode.Auto,
+                onClick = { onSetReplayGainMode(app.echo.android.model.playback.EchoReplayGainMode.Auto) },
+            )
+            PlaybackSpeedChip(
+                text = "Track",
+                selected = status.replayGainMode == app.echo.android.model.playback.EchoReplayGainMode.Track,
+                onClick = { onSetReplayGainMode(app.echo.android.model.playback.EchoReplayGainMode.Track) },
+            )
+            PlaybackSpeedChip(
+                text = "Album",
+                selected = status.replayGainMode == app.echo.android.model.playback.EchoReplayGainMode.Album,
+                onClick = { onSetReplayGainMode(app.echo.android.model.playback.EchoReplayGainMode.Album) },
+            )
             PlaybackSettingButton(
                 icon = Icons.Rounded.FastRewind,
                 title = "-3dB",
@@ -2906,7 +2975,13 @@ private fun PlaybackSettingsPanel(
             text = stringResource(
                 L10nR.string.feature_player_tag_status_replaygaintrackgaindb_let_formatreplaygaindb_unread_p_9c7a19,
                 status.replayGainTrackGainDb?.let(::formatReplayGainDb)
-                    ?: stringResource(L10nR.string.feature_player_replay_gain_unread),
+                    ?: stringResource(
+                        if (status.replayGainTagsLoaded) {
+                            L10nR.string.feature_player_replay_gain_none
+                        } else {
+                            L10nR.string.feature_player_replay_gain_unread
+                        },
+                    ),
                 formatReplayGainDb(status.replayGainPreampDb),
             ),
             color = Color.White.copy(alpha = 0.62f),

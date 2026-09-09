@@ -309,9 +309,10 @@ data class LibrarySummaryKeySet(
     val albumKeys: Set<String> = emptySet(),
     val artistKeys: Set<String> = emptySet(),
     val folderKeys: Set<String> = emptySet(),
+    val genreKeys: Set<String> = emptySet(),
 ) {
     val changedKeyCount: Int
-        get() = albumKeys.size + artistKeys.size + folderKeys.size
+        get() = albumKeys.size + artistKeys.size + folderKeys.size + genreKeys.size
 
     operator fun plus(other: LibrarySummaryKeySet): LibrarySummaryKeySet =
         if (other.changedKeyCount == 0) {
@@ -323,6 +324,7 @@ data class LibrarySummaryKeySet(
                 albumKeys = albumKeys + other.albumKeys,
                 artistKeys = artistKeys + other.artistKeys,
                 folderKeys = folderKeys + other.folderKeys,
+                genreKeys = genreKeys + other.genreKeys,
             )
         }
 }

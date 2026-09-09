@@ -10,8 +10,11 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSourceInputStream
 import androidx.media3.datasource.DataSpec
 import app.echo.android.model.library.EchoTrack
+import app.echo.android.model.error.EchoErrorLog
+import app.echo.android.model.error.EchoErrorSource
 import app.echo.android.model.playback.EchoAudioErrorKind
 import app.echo.android.model.playback.EchoLinkPlaybackUri
+import app.echo.android.model.playback.EchoReplayGainTags
 import java.io.FileInputStream
 import java.io.InputStream
 import kotlinx.coroutines.Job
@@ -29,18 +32,26 @@ class EchoPlaybackEnginePolicy(
     private val appContext = context.applicationContext
     private var attachedPlayer: Player? = null
     private var usbTransitionJob: Job? = null
-    private var replayGainJob: Job? = null
     private var usbMuteInProgress: Boolean = false
     private var consecutiveErrorSkips: Int = 0
-    private var lastReplayGainTrackId: String? = null
     private var activeReplayGainTrackId: String? = null
     var activeReplayGainTrackGainDb: Float? = null
         private set
+
+    fun replayGainDb(mediaId: String?): Float? {
+        if (mediaId.isNullOrBlank()) return null
+        return replayGainTagsByMediaId[mediaId]?.selectedGainDb(EchoPlaybackProcessRuntime.replayGainMode)
+    }
+    val activeReplayGainTagsLoaded: Boolean
+        get() = replayGainTagsLoaded(activeReplayGainTrackId, replayGainTagsByMediaId)
     private val sampleRatesByMediaId = mutableMapOf<String, Int?>()
     private val replayGainUrisByMediaId = mutableMapOf<String, String>()
-    private val replayGainTrackGainsByMediaId = mutableMapOf<String, Float?>()
+    private val replayGainTagsByMediaId = mutableMapOf<String, EchoReplayGainTags>()
+    private val replayGainJobs = mutableMapOf<String, Job>()
     private val subsonicTranscodeFallbackAttempts = hashSetOf<String>()
-    private val echoLinkRefreshAttempts = hashSetOf<String>()
+    private val echoLinkRefreshAttempts = mutableMapOf<String, Int>()
+    private val echoLinkRefreshAttemptAtMs = mutableMapOf<String, Long>()
+    private val echoLinkRefreshInFlight = mutableSetOf<String>()
 
     fun attachTo(player: Player) {
         if (attachedPlayer === player) return
@@ -49,6 +60,17 @@ class EchoPlaybackEnginePolicy(
         player.addListener(this)
         (player as? ExoPlayer)?.pauseAtEndOfMediaItems =
             EchoSleepTimerPolicy.shouldPauseAtEndOfMediaItem(EchoPlaybackProcessRuntime.sleepTimerMode)
+        val mediaId = player.currentMediaItem?.mediaId
+        activeReplayGainTrackId = mediaId
+        activeReplayGainTrackGainDb = replayGainAfterMediaItemChange(
+            mediaId = mediaId,
+            cachedTags = replayGainTagsByMediaId,
+            mode = EchoPlaybackProcessRuntime.replayGainMode,
+            previousGainDb = activeReplayGainTrackGainDb,
+        )
+        loadReplayGainForTrack(mediaId)
+        loadReplayGainForTrack(nextReplayGainPrefetchId(mediaId, nextMediaId(player)))
+        applyReplayGain()
     }
 
     fun boundPlayer(): Player? = attachedPlayer
@@ -62,16 +84,29 @@ class EchoPlaybackEnginePolicy(
         attachedPlayer = null
         usbTransitionJob?.cancel()
         usbMuteInProgress = false
-        replayGainJob?.cancel()
+        cancelReplayGainJobs()
     }
 
     fun replaceQueueLookups(tracks: List<EchoTrack>) {
         sampleRatesByMediaId.clear()
         replayGainUrisByMediaId.clear()
-        replayGainTrackGainsByMediaId.clear()
+        replayGainTagsByMediaId.clear()
+        cancelReplayGainJobs()
         subsonicTranscodeFallbackAttempts.clear()
-        echoLinkRefreshAttempts.clear()
+        resetEchoLinkStreamRefresh()
         tracks.forEach(::mergeQueueLookups)
+    }
+
+    fun resetEchoLinkStreamRefresh(mediaId: String? = null) {
+        if (mediaId == null) {
+            echoLinkRefreshAttempts.clear()
+            echoLinkRefreshAttemptAtMs.clear()
+            echoLinkRefreshInFlight.clear()
+            return
+        }
+        echoLinkRefreshAttempts.remove(mediaId)
+        echoLinkRefreshAttemptAtMs.remove(mediaId)
+        echoLinkRefreshInFlight.remove(mediaId)
     }
 
     fun mergeQueueLookups(track: EchoTrack) {
@@ -95,9 +130,19 @@ class EchoPlaybackEnginePolicy(
         }
     }
 
-    fun onReplayGainEnabledChanged() {
+    fun onReplayGainEnabledChanged() = onReplayGainPreferenceChanged()
+
+    fun onReplayGainPreferenceChanged() {
+        if (EchoPlaybackProcessRuntime.replayGainEnabled) {
+            loadReplayGainForTrack(activeReplayGainTrackId)
+            loadReplayGainForTrack(nextReplayGainPrefetchId(activeReplayGainTrackId, nextMediaId()))
+        }
+        applySelectedReplayGainFromCache()
+    }
+
+    fun onReplayGainModeChanged() {
+        applySelectedReplayGainFromCache()
         loadReplayGainForTrack(activeReplayGainTrackId)
-        applyReplayGain()
     }
 
     fun retryUncachedReplayGain() {
@@ -160,13 +205,12 @@ class EchoPlaybackEnginePolicy(
         activeReplayGainTrackId = mediaId
         activeReplayGainTrackGainDb = replayGainAfterMediaItemChange(
             mediaId = mediaId,
-            cachedGains = replayGainTrackGainsByMediaId,
+            cachedTags = replayGainTagsByMediaId,
+            mode = EchoPlaybackProcessRuntime.replayGainMode,
             previousGainDb = activeReplayGainTrackGainDb,
         )
-        if (mediaId != lastReplayGainTrackId) {
-            lastReplayGainTrackId = mediaId
-            loadReplayGainForTrack(mediaId)
-        }
+        loadReplayGainForTrack(mediaId)
+        loadReplayGainForTrack(nextReplayGainPrefetchId(mediaId, nextMediaId()))
         applyReplayGain()
     }
 
@@ -180,6 +224,7 @@ class EchoPlaybackEnginePolicy(
             player.playerError == null
         ) {
             consecutiveErrorSkips = 0
+            player.currentMediaItem?.mediaId?.takeIf { it.isNotBlank() }?.let(::resetEchoLinkStreamRefresh)
         }
         if (
             events.containsAny(
@@ -197,6 +242,13 @@ class EchoPlaybackEnginePolicy(
     }
 
     override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+        val mapped = error.toEchoPlaybackError()
+        EchoErrorLog.record(
+            source = EchoErrorSource.Playback,
+            summary = mapped.message,
+            detail = mapped.kind.name,
+            throwable = error,
+        )
         val player = attachedPlayer ?: return
         if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled) {
             player.pause()
@@ -208,7 +260,6 @@ class EchoPlaybackEnginePolicy(
             }
             return // Strict mode must not auto-transcode, skip the track, or switch output paths.
         }
-        val mapped = error.toEchoPlaybackError()
         if (tryEchoLinkStreamRefresh(player)) {
             return
         }
@@ -297,35 +348,62 @@ class EchoPlaybackEnginePolicy(
         }
     }
 
+    private fun applySelectedReplayGainFromCache() {
+        activeReplayGainTrackGainDb = replayGainAfterMediaItemChange(
+            mediaId = activeReplayGainTrackId,
+            cachedTags = replayGainTagsByMediaId,
+            mode = EchoPlaybackProcessRuntime.replayGainMode,
+            previousGainDb = null,
+        )
+        applyReplayGain()
+    }
+
+    private fun nextMediaId(player: Player? = attachedPlayer): String? {
+        player ?: return null
+        val index = player.nextMediaItemIndex
+        if (index == C.INDEX_UNSET || index < 0 || index >= player.mediaItemCount) return null
+        return player.getMediaItemAt(index).mediaId.takeIf { it.isNotBlank() }
+    }
+
+    private fun cancelReplayGainJobs() {
+        replayGainJobs.values.forEach { it.cancel() }
+        replayGainJobs.clear()
+    }
+
     private fun loadReplayGainForTrack(trackId: String?) {
         if (!EchoPlaybackProcessRuntime.replayGainEnabled) return
-        if (trackId == null || replayGainTrackGainsByMediaId.containsKey(trackId)) return
+        if (trackId.isNullOrBlank() || replayGainTagsByMediaId.containsKey(trackId)) return
+        if (replayGainJobs[trackId]?.isActive == true) return
         val uri = replayGainUriForMediaId(trackId, replayGainUrisByMediaId) ?: return
-        replayGainJob?.cancel()
-        replayGainJob = EchoPlaybackProcessRuntime.scope.launch {
-            val outcome = withContext(Dispatchers.IO) {
-                val stream = runCatching { openReplayGainStream(uri) }.getOrNull()
-                if (stream == null) {
-                    ReplayGainReadOutcome.Failed
-                } else {
-                    replayGainReadOutcome(
-                        streamOpened = true,
-                        parseResult = runCatching { stream.use(EchoReplayGainReader::readTrackGainDb) },
-                    )
+        replayGainJobs[trackId] = EchoPlaybackProcessRuntime.scope.launch {
+            try {
+                val outcome = withContext(Dispatchers.IO) {
+                    val stream = runCatching { openReplayGainStream(uri) }.getOrNull()
+                    if (stream == null) {
+                        ReplayGainReadOutcome.Failed
+                    } else {
+                        replayGainReadOutcome(
+                            streamOpened = true,
+                            parseResult = runCatching {
+                                stream.use { input -> EchoReplayGainReader.readTags(input) }
+                            },
+                        )
+                    }
                 }
-            }
-            if (!shouldCacheReplayGainRead(outcome)) {
-                if (outcome is ReplayGainReadOutcome.Failed && activeReplayGainTrackId == trackId) {
-                    activeReplayGainTrackGainDb = null
+                if (!shouldCacheReplayGainRead(outcome)) {
+                    if (outcome is ReplayGainReadOutcome.Failed && activeReplayGainTrackId == trackId) {
+                        applySelectedReplayGainFromCache()
+                    }
+                    return@launch
+                }
+                val tags = (outcome as ReplayGainReadOutcome.Parsed).tags
+                replayGainTagsByMediaId[trackId] = tags
+                if (activeReplayGainTrackId == trackId) {
+                    activeReplayGainTrackGainDb = tags.selectedGainDb(EchoPlaybackProcessRuntime.replayGainMode)
                     applyReplayGain()
                 }
-                return@launch
-            }
-            val parsed = (outcome as ReplayGainReadOutcome.Parsed).trackGainDb
-            replayGainTrackGainsByMediaId[trackId] = parsed
-            if (activeReplayGainTrackId == trackId) {
-                activeReplayGainTrackGainDb = parsed
-                applyReplayGain()
+            } finally {
+                replayGainJobs.remove(trackId)
             }
         }
     }
@@ -334,7 +412,8 @@ class EchoPlaybackEnginePolicy(
         val parsed = runCatching { uri.toUri() }.getOrNull() ?: return null
         val webDavReady = EchoRemotePlaybackAuthRegistry.isWebDavAuthReadyForUris(listOf(uri))
         val subsonicReady = EchoRemotePlaybackAuthRegistry.isSubsonicAuthReadyForUris(listOf(uri))
-        if (!canOpenReplayGainStream(uri, webDavReady, subsonicReady)) return null
+        val jellyfinReady = EchoRemotePlaybackAuthRegistry.isJellyfinAuthReadyForUris(listOf(uri))
+        if (!canOpenReplayGainStream(uri, webDavReady, subsonicReady, jellyfinReady)) return null
         return when (replayGainStreamKind(uri)) {
             ReplayGainStreamKind.LocalContent -> appContext.contentResolver.openInputStream(parsed)
             ReplayGainStreamKind.LocalFile -> parsed.path?.takeIf { it.isNotBlank() }?.let(::FileInputStream)
@@ -372,9 +451,28 @@ class EchoPlaybackEnginePolicy(
         ) {
             return false
         }
-        if (!echoLinkRefreshAttempts.add(mediaId)) return false
+        if (mediaId in echoLinkRefreshInFlight) return true
+        val nowElapsedMs = android.os.SystemClock.elapsedRealtime()
+        val previousAttempts = echoLinkRefreshAttempts[mediaId] ?: 0
+        val lastAttemptAt = echoLinkRefreshAttemptAtMs[mediaId] ?: 0L
+        if (
+            !EchoLinkStreamRefreshPolicy.shouldAttempt(
+                previousAttempts = previousAttempts,
+                lastAttemptElapsedMs = lastAttemptAt,
+                nowElapsedMs = nowElapsedMs,
+            )
+        ) {
+            return false
+        }
+        echoLinkRefreshAttempts[mediaId] = previousAttempts + 1
+        echoLinkRefreshAttemptAtMs[mediaId] = nowElapsedMs
+        echoLinkRefreshInFlight.add(mediaId)
         EchoPlaybackProcessRuntime.scope.launch {
-            EchoPlaybackProcessRuntime.reResolveBoundPlayerQueue()
+            try {
+                EchoPlaybackProcessRuntime.reResolveBoundPlayerQueue()
+            } finally {
+                echoLinkRefreshInFlight.remove(mediaId)
+            }
         }
         return true
     }

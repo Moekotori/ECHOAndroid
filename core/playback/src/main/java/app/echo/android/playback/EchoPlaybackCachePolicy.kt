@@ -2,6 +2,7 @@ package app.echo.android.playback
 
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 
 object EchoPlaybackCachePolicy {
     const val BalancedMaxBytes = 256L * 1024L * 1024L
@@ -9,11 +10,16 @@ object EchoPlaybackCachePolicy {
     const val HighPerformanceMaxBytes = 512L * 1024L * 1024L
 
     private val maxBytes = AtomicLong(BalancedMaxBytes)
+    private val mode = AtomicReference(EchoEffectivePerformanceMode.Balanced)
 
     val maxCacheBytes: Long
         get() = maxBytes.get()
 
+    val effectiveMode: EchoEffectivePerformanceMode
+        get() = mode.get()
+
     fun setEffectivePerformanceMode(mode: EchoEffectivePerformanceMode) {
+        this.mode.set(mode)
         val next = when {
             mode.isLightweight -> LightweightMaxBytes
             mode.isHighPerformance -> HighPerformanceMaxBytes

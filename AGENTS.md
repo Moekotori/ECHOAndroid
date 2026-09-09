@@ -2,7 +2,33 @@
 
 Android 多模块播放器。包名 `app.echo.android`。JDK 21，compileSdk 36。
 
-本地：
+PC 端是独立产品 **ECHOSteam**，仓库永远是 [https://github.com/moekotori/echosteam](https://github.com/moekotori/echosteam)。不要用其他 GitHub 地址、镜像、旧目录名或本地盘符（例如 `G:\ECHO-main`）代替。
+
+本仓库只改 Android。PC 播放器、Echo Link 服务端、PC 曲库与 PC 端配对 UI 在 echosteam。未明确要求改 PC 时，不要 clone、改写或把 Electron/TypeScript 实现拷进本仓库。
+
+## 大改动先列计划
+
+小改直接做：单模块 bug、文案、局部 UI、测试、注释。
+
+以下算出手之前必须先列计划、等用户确认，确认前不改代码：
+
+- 新 Gradle 模块、新功能面、或一次改动跨 3 个以上模块
+- 播放 / USB / PCM / 均衡器 / 通知热路径
+- Echo Link 协议、配对契约、或会迫使 echosteam 跟着改的接口
+- `:core:model` 公共类型、Room schema、模块依赖图
+- 大规模搬迁、重命名、拆合文件、或把职责从 `:app` 再拆一轮
+
+计划写清楚即可，不要写成设计论文：
+
+1. 要做成什么，明确不做的范围
+2. 改哪些模块、主要文件（新增的文件写归属模块）
+3. 对外 API / 协议是否变化；若变，Android 与 echosteam 各自要改什么
+4. 性能风险：主线程、音频热路径、内存、耗电、列表重组
+5. 怎么验证：哪条 Gradle、哪些单测；不默认加仪器测试
+
+计划被否或范围变了就停手，不要边写边扩。与任务无关的重构、搬家、重命名不做。
+
+## 本地与 CI
 
 ```bat
 git config core.hooksPath .githooks
@@ -13,24 +39,34 @@ gradlew testDebugUnitTest assembleDebug
 
 CI（`.github/workflows/ci.yml`）跑同样的 `checkModules`、单元测试和 `assembleDebug`。不要把仪器测试塞进默认 CI。`AGENTS.md` 要入库，不要写进 `.gitignore`。
 
+改语言资源时加跑 `checkLocalization`；新增语言走 `docs/localization.md`。
+
+## Echo PC / Echo Link
+
+- PC 仓库：**永远** `https://github.com/moekotori/echosteam`
+- Android 是客户端：发现、配对、拉曲库预览、遥控、拉流播放
+- PC 是服务端：LAN HTTP、配对 token、曲库查询、PCM/流、PC 本机播放
+- 协议形状放 `:core:model` 的 connect 包；传输与解析放 `:core:connect`；Connect UI 放 `:feature:connect`；会话接线放 `:app`
+- 改协议默认向后兼容。破坏性变更必须先写进计划，并写清 echosteam 对应改动；不要只改手机端让 PC 静默坏掉
+- `ECHO_LINK_PC_PROMPT.md` / `ECHO_LINK_PC_PHASE2_PROMPT.md` 是给 PC 仓库看的契约草稿。其中旧本地路径作废，PC 仓库以 GitHub 为准
+- 需要改 PC 时：在计划里写 echosteam 的改动点，等确认后再动那个仓库；不要把 PC 代码以“方便对照”为名复制进 Android
+
 ## 模块
 
 依赖向下：`:app` → `:feature:*` → `:core:*` → `:core:model`。
 
 `project(":…")` 写在 `gradle/allowed-module-graph.txt` 里，改依赖时一起改。`checkModules` 会核对。
 
-真正要守住的：
+硬规则：
 
 - 不要依赖 `:app`
 - `:core` 不要依赖 `:feature`
 - `:feature` 之间不要互相依赖
 
-其余是习惯，不是高压线：新 UI 优先进对应 feature；`:app` 做导航、权限、Controller 接线；共享类型进 `:core:model`。`app/.../ui/` 里已有的 shell 可以留，不必为了纯洁再搬一次。feature 一般只靠 `:core:model` 和 `:core:design`，真需要别的 core 就写进模块图，不要硬绕。
-
 | 模块 | 放什么 |
 | --- | --- |
-| `:app` | Application、Activity、导航、权限、把 core 接到 UI |
-| `:feature:home` / `library` / `player` / `connect` / `settings` | 各功能 Compose UI |
+| `:app` | Application、Activity、导航、权限、把 core 接到 UI；已有 `app/.../ui/` shell 可留 |
+| `:feature:home` / `library` / `player` / `connect` / `settings` | 各功能 Compose UI 与本功能文案 |
 | `:core:model` | 共享模型和协议形状 |
 | `:core:design` | 主题、表面、封面 |
 | `:core:data` | Room、扫描、设置、远程曲库 |
@@ -38,27 +74,37 @@ CI（`.github/workflows/ci.yml`）跑同样的 `checkModules`、单元测试和 
 | `:core:usb-audio` | USB 独占 PCM |
 | `:core:connect` | Echo Link 传输与配对 |
 | `:core:lyrics` | 歌词解析 |
+| `:core:i18n` | 语言选择、系统语言、Context 包装、平台语言迁移 |
 
 新 feature：建模块 → `settings.gradle.kts` → 模块图 → `:app` 依赖。新 core 只在现有 core 装不下、且会有两个以上消费者时再拆。
 
-### 模块化开发要求
+### 文件必须落在模块里
 
-- 动手前确认改动归属、调用方和现有依赖；优先在负责这项能力的模块内完成，不把新业务逻辑持续堆进 Activity、根 Composable 或总 ViewModel。
-- feature 对外暴露必要的页面入口、状态和事件；跨 feature 跳转、共享播放状态由 `:app` 接线，不能通过互相引用页面或 ViewModel 绕过边界。
-- `:core:model` 只放共享模型和协议，不塞数据库、网络、播放器实现或页面状态。实现细节留在所属 core，避免把 Room Entity、Media3 实现类型泄露为通用 UI 协议。
-- core 之间的依赖也要有明确职责、保持无环；模块图是依赖白名单，不是把违规依赖写进去就算通过。新增依赖优先用 `implementation`，只有公共 API 确实需要传递类型时才用 `api`。
-- 接口用于明确边界、替换实现或隔离测试；不要给每个类机械添加接口、Repository、UseCase，也不要为一次调用新拆模块。
-- 修改公共模型或接口时同步检查所有调用方。不要靠复制模型、全局单例或隐式可变状态解决模块通信。
-- 现有 shell 和接线代码可留在 `:app`；按本次需求逐步收敛职责，不做与任务无关的大规模搬迁或重命名。
+每个新源码、资源、测试、JNI 文件从第一天起放进负责该能力的模块，不要先堆到 Activity、根 Composable、总 ViewModel 或仓库根目录“以后再搬”。
 
-## 性能要求
+- 动手前确认改动归属、调用方和现有依赖；优先在负责这项能力的模块内完成。
+- 新 UI 进对应 `:feature:*`。跨 feature 跳转、共享播放状态由 `:app` 接线，不能互相引用页面或 ViewModel。
+- 一个文件一个主要职责。页面、列表项、空态、扫描、协议、I/O、播放不要写进同一个 kt。
+- 文件已经又长又混职责时，按**本次改动**拆开，不要继续往里堆。不要为每个函数新建文件，也不要为一次调用新建 Gradle 模块。
+- `:core:model` 只放共享模型和协议，不塞数据库、网络、播放器实现或页面状态。Room Entity、Media3、OkHttp 实现类型不要泄露成通用 UI 协议。
+- 资源跟代码走：strings / drawable 放所属 feature 或 core，feature 不读 `:app` 的 `R`。语言 qualifier 按 `docs/localization.md`。
+- native / JNI 跟所属 core（`:core:playback`、`:core:usb-audio`）。
+- 测试放所属模块的 `src/test`，测该模块的公开行为。
+- core 之间无环；模块图是白名单，不是把违规依赖写进去就算通过。新依赖优先 `implementation`，只有公共 API 必须传递类型时才用 `api`。
+- 接口用于边界、替换实现或测试隔离；不要给每个类机械加接口、Repository、UseCase。
+- 修改公共模型或接口时同步检查所有调用方。不要靠复制模型、全局单例或隐式可变状态做模块通信。
+- `app/.../ui/` 里已有的 shell 可以留。按本次需求收敛职责，不做与任务无关的大规模搬迁。
 
-性能与功能一起考虑，重点守住播放连续性、界面响应、内存和后台耗电。以下是开发约束，不代表现有代码已全部满足；发现问题时结合本次范围修正，不顺手扩大重构。
+## 性能
+
+性能是功能的一部分，不是后补优化。默认档（Balanced）就要流畅；`EchoPerformanceMode` 只是用户可调档位，不能靠“开高性能才不卡”来掩盖主线程或热路径问题。重点守住：**播放连续性、界面响应、内存、后台耗电**。
+
+以下是开发约束，不代表现有代码已全部满足；发现问题结合本次范围修正，不顺手扩大重构。
 
 ### 主线程与并发
 
 - 主线程只做轻量 UI 和必要的线程绑定调用。文件读写、网络、曲库扫描、数据库重操作、封面解码、歌词解析及大集合排序不能阻塞主线程。
-- `suspend` 本身不保证切换线程：阻塞 I/O 使用合适的 I/O 调度器，CPU 密集计算使用计算调度器；遵守 Media3 等组件自己的线程约束，不机械地把所有调用移到后台。
+- `suspend` 本身不保证切换线程：阻塞 I/O 用 I/O 调度器，CPU 密集用计算调度器；遵守 Media3 等组件自己的线程约束，不机械地把所有调用移到后台。
 - 协程绑定明确生命周期，页面退出、查询替换、连接断开时取消无用任务。不要吞掉取消异常，不用无归属的 `GlobalScope` 启动常驻任务。
 - 扫描、下载、解码等并发要有上限；合并重复请求，搜索等连续输入按需防抖并取消过期结果，避免每次状态变化都启动一轮全量工作。
 
@@ -68,6 +114,7 @@ CI（`.github/workflows/ci.yml`）跑同样的 `checkModules`、单元测试和 
 - 播放服务/引擎提供实际播放状态，UI 只负责展示和必要插值；不要让 UI 动画或重复计时器成为播放进度的事实来源。
 - 进度、频谱、逐字歌词等高频更新限制在使用它们的局部 UI，不能因为每次 tick 重建整个页面状态、播放队列或曲库列表。
 - UI 不可见时停止无用动画、频谱计算和 UI 轮询；后台播放仍需保留必要的音频、通知和会话更新，不能为省电破坏播放。
+- 新动画、模糊、频谱、高刷新逻辑必须尊重 `EchoPerformanceMode` 解析后的有效档。轻量档关掉非必要开销；高性能档也不得在热路径上分配、阻塞或打日志。
 
 ### Compose 与列表
 
@@ -101,5 +148,5 @@ CI（`.github/workflows/ci.yml`）跑同样的 `checkModules`、单元测试和 
 
 `.grok/workflows/`：
 
-- `/echo-dev` — 按模块实现一项改动。参数 `task`。
+- `/echo-dev` — 按模块实现一项**已经确认范围**的改动。参数 `task`。大改动不要直接开这个流程。
 - `/echo-review` — 看一眼当前 diff。可选 `base`，默认 `HEAD`。

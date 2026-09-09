@@ -64,4 +64,17 @@ class EchoLinkRequestPolicyTest {
             ),
         )
     }
+
+    @Test
+    fun commandFailuresDisconnectOnlyOnAuthRejection() {
+        assertFalse(EchoLinkRequestPolicy.shouldDisconnectOnCommandFailure(null))
+        assertFalse(EchoLinkRequestPolicy.shouldDisconnectOnCommandFailure(500))
+        assertTrue(EchoLinkRequestPolicy.shouldDisconnectOnCommandFailure(401))
+        assertTrue(EchoLinkRequestPolicy.shouldDisconnectOnCommandFailure(403))
+        assertTrue(EchoLinkRequestPolicy.shouldMarkAlbumsUnavailable(collectionNotFound = true))
+        assertFalse(EchoLinkRequestPolicy.shouldMarkAlbumsUnavailable(collectionNotFound = false))
+        assertTrue(EchoLinkRequestPolicy.shouldMarkFoldersUnavailable(path = "", notFound = true))
+        assertFalse(EchoLinkRequestPolicy.shouldMarkFoldersUnavailable(path = "Music/Jazz", notFound = true))
+        assertFalse(EchoLinkRequestPolicy.shouldMarkFoldersUnavailable(path = "", notFound = false))
+    }
 }

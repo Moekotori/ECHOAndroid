@@ -1,6 +1,6 @@
 # Prompt for PC ECHO: ECHO Link Phase 1 Server
 
-You are working in `G:\ECHO-main`, the PC ECHO Electron/TypeScript repo. Implement the PC side for Android ECHO Link Phase 1. The Android client is already implemented in `G:\ECHOAndroid` and expects the protocol below.
+You are working in https://github.com/moekotori/echosteam (ECHOSteam), the PC ECHO Electron/TypeScript repo. Implement the PC side for Android ECHO Link Phase 1. The Android client is ECHOAndroid and expects the protocol below. Do not use any other PC repo path.
 
 Goal:
 - Android can connect to PC ECHO over LAN.
