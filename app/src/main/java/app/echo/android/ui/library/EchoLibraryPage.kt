@@ -47,6 +47,7 @@ internal fun EchoLibraryPage(
     onOpenFolder: (FolderSummary) -> Unit,
     onOpenPlaylist: (EchoPlaylist) -> Unit,
     onCloseDetail: () -> Unit,
+    onOpenConnect: () -> Unit,
 ) {
     val libraryQuery by viewModel.libraryQuery.collectAsStateWithLifecycle()
     val libraryTrackSortMode by viewModel.libraryTrackSortMode.collectAsStateWithLifecycle()
@@ -198,6 +199,10 @@ internal fun EchoLibraryPage(
             onOpenFolder = onOpenFolder,
             onOpenPlaylist = onOpenPlaylist,
             onCloseDetail = onCloseDetail,
+            onOpenConnect = onOpenConnect,
+            cloudLibraryConfigured = !appSettings.webDavServerUrl.isNullOrBlank() ||
+                !appSettings.subsonicServerUrl.isNullOrBlank() ||
+                !appSettings.jellyfinServerUrl.isNullOrBlank(),
             onImportM3uPlaylist = {
                 importM3uLauncher.launch(
                     arrayOf(

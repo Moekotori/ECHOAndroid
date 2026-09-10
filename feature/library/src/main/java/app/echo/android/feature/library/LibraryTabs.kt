@@ -141,7 +141,10 @@ internal fun rememberLibraryArtworkAccent(): Color {
     return remember(scheme) { scheme.primary }
 }
 
-internal val LibraryWallGridCells = GridCells.Fixed(3)
+internal const val LibraryWallColumnCount = 3
+internal val LibraryWallGridCells = GridCells.Fixed(LibraryWallColumnCount)
+internal val LibraryWallHorizontalSpacing = 8.dp
+internal val LibraryWallVerticalSpacing = 16.dp
 
 @Composable
 internal fun LibraryPagerTabs(selectedMode: LibraryViewMode, onSelectMode: (LibraryViewMode) -> Unit, cloudOnly: Boolean = false) {
@@ -428,6 +431,10 @@ internal fun LibraryViewModeMenu(
 internal fun AlbumWall(
     albums: LazyPagingItems<AlbumSummary>,
     onOpenAlbum: (AlbumSummary) -> Unit,
+    emptyTitle: String = stringResource(L10nR.string.feature_library_this_library_has_no_albums_to_show_yet_925b12),
+    emptyDetail: String? = null,
+    emptyActionLabel: String? = null,
+    onEmptyAction: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     if (albums.loadState.refresh is LoadState.Loading) {
@@ -440,15 +447,18 @@ internal fun AlbumWall(
     }
     if (albums.itemCount == 0) {
         LibraryCollectionEmpty(
-            stringResource(L10nR.string.feature_library_this_library_has_no_albums_to_show_yet_925b12),
+            title = emptyTitle,
+            detail = emptyDetail,
+            actionLabel = emptyActionLabel,
+            onAction = onEmptyAction,
         )
         return
     }
     LazyVerticalGrid(
         columns = LibraryWallGridCells,
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(LibraryWallHorizontalSpacing),
+        verticalArrangement = Arrangement.spacedBy(LibraryWallVerticalSpacing),
         contentPadding = PaddingValues(bottom = LibraryBottomControlsPadding),
     ) {
         items(
@@ -458,6 +468,29 @@ internal fun AlbumWall(
             albums[index]?.let { album ->
                 AlbumWallCard(album = album, onClick = { onOpenAlbum(album) })
             }
+        }
+    }
+}
+
+@Composable
+internal fun AlbumSummaryWall(
+    albums: List<AlbumSummary>,
+    onOpenAlbum: (AlbumSummary) -> Unit,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(bottom = LibraryBottomControlsPadding),
+) {
+    LazyVerticalGrid(
+        columns = LibraryWallGridCells,
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(LibraryWallHorizontalSpacing),
+        verticalArrangement = Arrangement.spacedBy(LibraryWallVerticalSpacing),
+        contentPadding = contentPadding,
+    ) {
+        items(
+            items = albums,
+            key = { album -> album.albumKey },
+        ) { album ->
+            AlbumWallCard(album = album, onClick = { onOpenAlbum(album) })
         }
     }
 }
@@ -526,8 +559,8 @@ internal fun GenreWall(
     LazyVerticalGrid(
         columns = LibraryWallGridCells,
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(LibraryWallHorizontalSpacing),
+        verticalArrangement = Arrangement.spacedBy(LibraryWallVerticalSpacing),
         contentPadding = PaddingValues(top = 6.dp, bottom = LibraryBottomControlsPadding),
     ) {
         items(
@@ -574,8 +607,8 @@ internal fun ArtistWall(
     LazyVerticalGrid(
         columns = LibraryWallGridCells,
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(LibraryWallHorizontalSpacing),
+        verticalArrangement = Arrangement.spacedBy(LibraryWallVerticalSpacing),
         contentPadding = PaddingValues(top = 6.dp, bottom = LibraryBottomControlsPadding),
     ) {
         items(
@@ -585,6 +618,29 @@ internal fun ArtistWall(
             artists[index]?.let { artist ->
                 ArtistWallCard(artist = artist, onClick = { onOpenArtist(artist) })
             }
+        }
+    }
+}
+
+@Composable
+internal fun ArtistSummaryWall(
+    artists: List<ArtistSummary>,
+    onOpenArtist: (ArtistSummary) -> Unit,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(top = 6.dp, bottom = LibraryBottomControlsPadding),
+) {
+    LazyVerticalGrid(
+        columns = LibraryWallGridCells,
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(LibraryWallHorizontalSpacing),
+        verticalArrangement = Arrangement.spacedBy(LibraryWallVerticalSpacing),
+        contentPadding = contentPadding,
+    ) {
+        items(
+            items = artists,
+            key = { artist -> artist.artistKey },
+        ) { artist ->
+            ArtistWallCard(artist = artist, onClick = { onOpenArtist(artist) })
         }
     }
 }

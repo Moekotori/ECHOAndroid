@@ -119,11 +119,6 @@ dependencies {
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
-    implementation(libs.play.services.code.scanner)
-    implementation(libs.androidx.camera.camera2)
-    implementation(libs.androidx.camera.lifecycle)
-    implementation(libs.androidx.camera.view)
-    implementation(libs.mlkit.barcode.scanning)
     implementation("com.belerweb:pinyin4j:2.5.1")
 
     debugImplementation(libs.androidx.compose.ui.tooling)

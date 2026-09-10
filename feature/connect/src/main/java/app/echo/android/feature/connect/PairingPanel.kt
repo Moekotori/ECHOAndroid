@@ -2,13 +2,13 @@ package app.echo.android.feature.connect
 
 import app.echo.android.feature.connect.R as L10nR
 
+import app.echo.android.connect.EchoLinkDiscoveryState
 import androidx.compose.ui.res.stringResource
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Computer
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -36,8 +36,6 @@ internal fun PcLinkPanel(
     trackArtworkUrl: String?,
     isPlaying: Boolean,
     remoteError: String?,
-    scanMessage: String?,
-    scanMessageIsError: Boolean,
     savedPcAddress: String?,
     savedPcToken: String?,
     savedPcs: List<EchoSavedPcEndpoint> = emptyList(),
@@ -48,7 +46,6 @@ internal fun PcLinkPanel(
     volume: Float,
     queueTitles: List<String> = emptyList(),
     onConnectPc: (String, String) -> Unit,
-    onScanPairingCode: () -> Unit,
     onPlayPause: () -> Unit,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
@@ -59,6 +56,7 @@ internal fun PcLinkPanel(
     onForgetSavedPc: (EchoSavedPcEndpoint) -> Unit = {},
     onAutoReconnectChange: (Boolean) -> Unit,
     onLinkedLibraryDefaultChange: (Boolean) -> Unit,
+    discoveryState: EchoLinkDiscoveryState = EchoLinkDiscoveryState.Idle,
     discoveredLanDevices: List<EchoLinkLanDevice>,
     onSelectLanDevice: (EchoLinkLanDevice) -> Unit,
     onRefreshLanDevices: () -> Unit,
@@ -85,7 +83,6 @@ internal fun PcLinkPanel(
             ConnectNote(stringResource(L10nR.string.feature_connect_control_pc_playback_from_your_phone_or_browse_20f8b5))
         }
         remoteError?.takeIf { it.isNotBlank() }?.let { ConnectNote(it, error = true) }
-        scanMessage?.takeIf { it.isNotBlank() }?.let { ConnectNote(it, error = scanMessageIsError) }
         when {
             busy -> {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -155,28 +152,25 @@ internal fun PcLinkPanel(
                         Text(stringResource(L10nR.string.feature_connect_reconnect_pc_ea8c5f))
                     }
                 }
-                if (!manual) {
-                    if (!hasSaved) ConnectNote(stringResource(L10nR.string.feature_connect_open_the_echo_link_page_on_your_pc_d07a0b))
-                    if (hasSaved) {
-                        OutlinedButton(onClick = onScanPairingCode, shape = ConnectControlShape, modifier = Modifier.fillMaxWidth()) {
-                            Text(stringResource(L10nR.string.feature_connect_pair_another_pc_23df07))
-                        }
-                    } else {
-                        Button(onClick = onScanPairingCode, shape = ConnectControlShape, modifier = Modifier.fillMaxWidth()) {
-                            Icon(Icons.Rounded.QrCodeScanner, contentDescription = null, Modifier.size(20.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(L10nR.string.feature_connect_scan_to_pair_597ba6))
-                        }
-                    }
-                }
+                ConnectNote(stringResource(L10nR.string.feature_connect_open_the_echo_link_page_on_your_pc_d07a0b))
                 ConnectSection(stringResource(L10nR.string.feature_connect_nearby_pcs_b9b12a),
                     action = { TextButton(onClick = onRefreshLanDevices) { Text(stringResource(L10nR.string.feature_connect_refresh_828c69)) } }) {
-                    if (discoveredLanDevices.isEmpty()) ConnectNote(stringResource(L10nR.string.feature_connect_no_pc_found_use_the_same_wi_fi_ce621e))
+                    if (discoveredLanDevices.isEmpty()) {
+                        if (discoveryState == EchoLinkDiscoveryState.Searching) LinearProgressIndicator(Modifier.fillMaxWidth())
+                        ConnectNote(stringResource(when (discoveryState) {
+                            EchoLinkDiscoveryState.Searching -> L10nR.string.echo_link_lan_searching
+                            EchoLinkDiscoveryState.Failed -> L10nR.string.echo_link_lan_failed
+                            else -> L10nR.string.feature_connect_no_pc_found_use_the_same_wi_fi_ce621e
+                        }), error = discoveryState == EchoLinkDiscoveryState.Failed)
+                    }
                     discoveredLanDevices.forEach { device ->
                         Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).echoClickable(role = Role.Button) {
                             address = EchoLinkDiscoveryPolicy.addressLabel(device)
-                            token = EchoLinkDiscoveryPolicy.tokenAfterSelecting(device, savedPcAddress, savedPcToken)
-                            manual = true
+                            val saved = savedPcs.firstOrNull { EchoLinkDiscoveryPolicy.addressMatchesDevice(it.address, device) }
+                            token = saved?.token?.takeIf { it.isNotBlank() }
+                                ?: EchoLinkDiscoveryPolicy.tokenAfterSelecting(device, savedPcAddress, savedPcToken)
+                            manual = token.isBlank()
+                            if (token.isNotBlank()) onConnectPc(address, token)
                             onSelectLanDevice(device)
                         }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Icon(Icons.Rounded.Computer, contentDescription = null, tint = MaterialTheme.colorScheme.primary)

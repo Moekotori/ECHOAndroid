@@ -1,6 +1,7 @@
 package app.echo.android.feature.connect
 
 import app.echo.android.feature.connect.R as L10nR
+import app.echo.android.connect.EchoLinkDiscoveryState
 import androidx.compose.ui.res.stringResource
 
 import androidx.compose.animation.AnimatedContent
@@ -33,8 +34,6 @@ fun ConnectScreen(
     trackArtworkUrl: String?,
     isPlaying: Boolean,
     remoteError: String?,
-    scanMessage: String?,
-    scanMessageIsError: Boolean = false,
     savedPcAddress: String?,
     savedPcToken: String?,
     autoReconnectEnabled: Boolean,
@@ -55,7 +54,6 @@ fun ConnectScreen(
     savedPcs: List<app.echo.android.model.connect.EchoSavedPcEndpoint> = emptyList(),
     remoteScanState: LibraryScanProgress,
     onConnectPc: (String, String) -> Unit,
-    onScanPairingCode: () -> Unit,
     onPlayPause: () -> Unit,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
@@ -76,6 +74,7 @@ fun ConnectScreen(
     onClearJellyfinCredentials: () -> Unit,
     onForgetSavedPc: (app.echo.android.model.connect.EchoSavedPcEndpoint) -> Unit = {},
     onCancelRemoteSync: () -> Unit,
+    discoveryState: EchoLinkDiscoveryState = EchoLinkDiscoveryState.Idle,
     discoveredLanDevices: List<EchoLinkLanDevice> = emptyList(),
     onSelectLanDevice: (EchoLinkLanDevice) -> Unit = {},
     onRefreshLanDevices: () -> Unit = {},
@@ -150,8 +149,6 @@ fun ConnectScreen(
                                 trackArtworkUrl = trackArtworkUrl,
                                 isPlaying = isPlaying,
                                 remoteError = remoteError,
-                                scanMessage = scanMessage,
-                                scanMessageIsError = scanMessageIsError,
                                 savedPcAddress = savedPcAddress,
                                 savedPcToken = savedPcToken,
                                 savedPcs = savedPcs,
@@ -162,7 +159,6 @@ fun ConnectScreen(
                                 volume = volume,
                                 queueTitles = queueTitles,
                                 onConnectPc = onConnectPc,
-                                onScanPairingCode = onScanPairingCode,
                                 onPlayPause = onPlayPause,
                                 onPrevious = onPrevious,
                                 onNext = onNext,
@@ -174,6 +170,7 @@ fun ConnectScreen(
                                 onForgetSavedPc = onForgetSavedPc,
                                 onAutoReconnectChange = onAutoReconnectChange,
                                 onLinkedLibraryDefaultChange = onLinkedLibraryDefaultChange,
+                                discoveryState = discoveryState,
                                 discoveredLanDevices = discoveredLanDevices,
                                 onSelectLanDevice = onSelectLanDevice,
                                 onRefreshLanDevices = onRefreshLanDevices,

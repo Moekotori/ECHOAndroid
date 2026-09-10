@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
+enum class EchoLinkDiscoveryState { Idle, Searching, Watching, Failed }
+
 class EchoLinkLanBrowser(
     context: Context,
 ) {
@@ -25,6 +27,12 @@ class EchoLinkLanBrowser(
     private val mainHandler = Handler(Looper.getMainLooper())
     private val _devices = MutableStateFlow<List<EchoLinkLanDevice>>(emptyList())
     val devices: StateFlow<List<EchoLinkLanDevice>> = _devices.asStateFlow()
+
+    private val _state = MutableStateFlow(EchoLinkDiscoveryState.Idle)
+    val state: StateFlow<EchoLinkDiscoveryState> = _state.asStateFlow()
+    private val searchWindowEnd = Runnable {
+        if (started) _state.value = EchoLinkDiscoveryState.Watching
+    }
 
     private var discoveryListener: NsdManager.DiscoveryListener? = null
     private val pendingResolves = ArrayDeque<NsdServiceInfo>()
@@ -44,15 +52,22 @@ class EchoLinkLanBrowser(
 
     fun start() {
         if (started) return
-        val manager = nsdManager ?: return
+        val manager = nsdManager ?: run { _state.value = EchoLinkDiscoveryState.Failed; return }
         started = true
+        _state.value = EchoLinkDiscoveryState.Searching
+        mainHandler.postDelayed(searchWindowEnd, 8_000L)
         val epoch = ++generation
         runCatching { multicastLock?.acquire() }
         val listener = object : NsdManager.DiscoveryListener {
             override fun onDiscoveryStarted(serviceType: String) = Unit
             override fun onDiscoveryStopped(serviceType: String) = Unit
             override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
-                mainHandler.post { if (epoch == generation) stop() }
+                mainHandler.post {
+                    if (epoch == generation) {
+                        stop()
+                        _state.value = EchoLinkDiscoveryState.Failed
+                    }
+                }
             }
             override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) = Unit
             override fun onServiceFound(serviceInfo: NsdServiceInfo) {
@@ -82,10 +97,13 @@ class EchoLinkLanBrowser(
             )
         }.onFailure {
             stop()
+            _state.value = EchoLinkDiscoveryState.Failed
         }
     }
 
     fun stop(clearDevices: Boolean = true) {
+        mainHandler.removeCallbacks(searchWindowEnd)
+        _state.value = EchoLinkDiscoveryState.Idle
         generation += 1
         lostServices.clear()
         val manager = nsdManager
@@ -115,7 +133,7 @@ class EchoLinkLanBrowser(
     }
 
     private fun drainResolves() {
-        val manager = nsdManager ?: return
+        val manager = nsdManager ?: run { _state.value = EchoLinkDiscoveryState.Failed; return }
         if (!started || resolving) return
         val next = pendingResolves.removeFirstOrNull() ?: return
         resolving = true

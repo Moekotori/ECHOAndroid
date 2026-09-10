@@ -8,6 +8,11 @@
     <string name="library_search_hint">试试其他歌名、艺人或专辑。</string>
     <string name="library_start_collection">把喜欢的音乐收进来</string>
     <string name="library_import_hint">扫描手机音乐，或从右上角添加音乐文件夹。</string>
+    <string name="library_cloud_empty_title">把网盘音乐接进来</string>
+    <string name="library_cloud_empty_detail">到“互联”配置 WebDAV、Subsonic 或 Jellyfin，同步后专辑会显示在这里。</string>
+    <string name="library_cloud_empty_configured_title">网盘里还没有专辑</string>
+    <string name="library_cloud_empty_configured_detail">到“互联”再同步一次，或确认网盘目录里有音乐。</string>
+    <string name="library_open_connect">去互联</string>
     <string name="library_clear_search">清除搜索</string>
     <string name="library_track_actions">歌曲操作</string>
     <string name="library_playlist_actions">歌单操作</string>

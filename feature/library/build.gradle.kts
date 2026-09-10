@@ -36,5 +36,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation("com.belerweb:pinyin4j:2.5.1")
 
+    testImplementation(libs.junit)
+
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

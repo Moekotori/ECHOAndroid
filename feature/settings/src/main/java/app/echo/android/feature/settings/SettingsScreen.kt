@@ -172,7 +172,6 @@ fun SettingsScreen(
     val hapticsEnabled = LocalEchoHapticsEnabled.current
     var hiddenAppearanceUnlocked by rememberSaveable { mutableStateOf(false) }
     val showHiddenAppearanceOptions = hiddenAppearanceUnlocked
-    val showThemeModeRow = showHiddenAppearanceOptions || themeMode != "dark"
     val showScheduledDarkMode = showHiddenAppearanceOptions || scheduledDarkModeEnabled
     var themeSectionExpanded by rememberSaveable { mutableStateOf(true) }
     var interfaceSectionExpanded by rememberSaveable { mutableStateOf(true) }
@@ -206,15 +205,10 @@ fun SettingsScreen(
                 expanded = themeSectionExpanded,
                 onExpandedChange = { themeSectionExpanded = it },
             ) {
-                if (showThemeModeRow) {
-                    SettingsChoiceGroupRow(
-                        title = stringResource(R.string.settings_display_mode),
-                        detail = themeDetail(themeMode),
-                        options = themeOptions(includeHidden = showHiddenAppearanceOptions),
-                        selectedValue = themeMode,
-                        onOptionSelected = onThemeModeChange,
-                    )
-                }
+                ThemeModeSelector(
+                    selectedMode = themeMode,
+                    onSelect = onThemeModeChange,
+                )
                 SettingsSwitchRow(
                     title = stringResource(R.string.settings_dynamic_color),
                     detail = if (Build.VERSION.SDK_INT >= 31) {
@@ -878,25 +872,6 @@ private data class SettingsChoiceOption(
     val value: String,
     val label: String,
 )
-
-@Composable
-private fun themeOptions(includeHidden: Boolean): List<SettingsChoiceOption> {
-    val dark = SettingsChoiceOption("dark", stringResource(R.string.settings_theme_dark))
-    if (!includeHidden) return listOf(dark)
-    return listOf(
-        SettingsChoiceOption("system", stringResource(R.string.settings_theme_system)),
-        SettingsChoiceOption("light", stringResource(R.string.settings_theme_light)),
-        dark,
-    )
-}
-
-@Composable
-private fun themeDetail(mode: String): String =
-    when (mode) {
-        "light" -> stringResource(R.string.settings_theme_detail_light)
-        "dark" -> stringResource(R.string.settings_theme_detail_dark)
-        else -> stringResource(R.string.settings_theme_detail_system)
-    }
 
 @Composable
 private fun languageOptions(): List<SettingsChoiceOption> =

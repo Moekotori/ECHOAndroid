@@ -8,6 +8,11 @@
     <string name="library_search_hint">Try another title, artist or album.</string>
     <string name="library_start_collection">Build your collection</string>
     <string name="library_import_hint">Scan this phone or add a music folder using Add music.</string>
+    <string name="library_cloud_empty_title">Bring in your cloud library</string>
+    <string name="library_cloud_empty_detail">Set up WebDAV, Subsonic, or Jellyfin in Link, then sync. Albums will show up here.</string>
+    <string name="library_cloud_empty_configured_title">No cloud albums yet</string>
+    <string name="library_cloud_empty_configured_detail">Sync again in Link, or check that the cloud folder has music.</string>
+    <string name="library_open_connect">Open Link</string>
     <string name="library_clear_search">Clear search</string>
     <string name="library_track_actions">Track actions</string>
     <string name="library_playlist_actions">Playlist actions</string>

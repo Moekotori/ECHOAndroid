@@ -178,6 +178,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     val recommendedAlbums: StateFlow<List<AlbumSummary>> = libraryController.recommendedAlbums
     val scanState: StateFlow<LibraryScanProgress> = libraryController.scanState
     val remoteScanState: StateFlow<LibraryScanProgress> = libraryController.remoteScanState
+    val echoLinkDiscoveryState = echoLinkLanBrowser.state
     val echoLinkLanDevices = echoLinkLanBrowser.devices
 
     val playbackStatus: StateFlow<EchoPlaybackStatus> = playbackController.playbackStatus

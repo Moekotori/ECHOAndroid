@@ -70,9 +70,9 @@ val EchoContentMaxWidth = 560.dp
 val EchoAccent = Color(0xFFD3A9B5)
 val EchoAccentText = Color(0xFFE4C4CC)
 val EchoAccentDeep = Color(0xFF9B5B6A)
-val EchoBgTop = Color(0xFFF8F6F7)
-val EchoBgMid = Color(0xFFF3F1F2)
-val EchoBgBottom = Color(0xFFEDEBED)
+val EchoBgTop = Color(0xFFFCF9F6)
+val EchoBgMid = Color(0xFFF8F3F1)
+val EchoBgBottom = Color(0xFFF0E8E7)
 val RoonInk = Color(0xFF25242A)
 val RoonMuted = Color(0xFF6D6D73)
 val EchoHomeBlue = EchoAccent
@@ -103,10 +103,10 @@ fun GlassSurface(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(28.dp),
-        color = if (dark) EchoGlassPanel.copy(alpha = (alpha + 0.40f).coerceIn(0.48f, 0.68f)) else Color.White.copy(alpha = alpha),
+        color = if (dark) EchoGlassPanel.copy(alpha = (alpha + 0.40f).coerceIn(0.48f, 0.68f)) else MaterialTheme.colorScheme.surface.copy(alpha = (alpha + 0.72f).coerceIn(0.88f, 1f)),
         border = BorderStroke(
             1.dp,
-            if (dark) EchoDarkGlassBorder else Color.White.copy(alpha = 0.32f),
+            if (dark) EchoDarkGlassBorder else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f),
         ),
         content = { content() },
     )
@@ -170,7 +170,7 @@ fun echoDarkGlassBorder(selected: Boolean = false): BorderStroke {
         if (dark) {
             if (selected) scheme.primary.copy(alpha = 0.28f) else Color.White.copy(alpha = 0.08f)
         } else {
-            if (selected) scheme.primary.copy(alpha = 0.24f) else Color.White.copy(alpha = 0.84f)
+            if (selected) scheme.primary.copy(alpha = 0.24f) else scheme.outlineVariant.copy(alpha = 0.65f)
         },
     )
 }

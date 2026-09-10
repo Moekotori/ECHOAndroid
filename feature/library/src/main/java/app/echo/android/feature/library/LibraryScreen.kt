@@ -31,8 +31,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -380,6 +378,8 @@ fun LibraryScreen(
     onOpenFolder: (FolderSummary) -> Unit,
     onOpenPlaylist: (EchoPlaylist) -> Unit,
     onCloseDetail: () -> Unit,
+    onOpenConnect: () -> Unit = {},
+    cloudLibraryConfigured: Boolean = false,
     onImportM3uPlaylist: () -> Unit = {},
     onExportM3uPlaylist: (EchoPlaylist) -> Unit = {},
 ) {
@@ -511,6 +511,8 @@ fun LibraryScreen(
             LibraryCollectionEmpty(
                 title = stringResource(L10nR.string.feature_library_not_connected_c4d337),
                 detail = stringResource(L10nR.string.feature_library_connect_pc_echo_in_link_first_then_you_31fc3e),
+                actionLabel = stringResource(L10nR.string.library_open_connect),
+                onAction = onOpenConnect,
             )
         }
         return
@@ -626,9 +628,15 @@ fun LibraryScreen(
                                 } else {
                                     albums.collectAsLazyPagingItems()
                                 }
-                                AlbumWall(
+                                GuidedAlbumWall(
                                     albums = albumItems,
                                     onOpenAlbum = onOpenAlbum,
+                                    isCloud = selectedSource == LibrarySourceMode.Cloud,
+                                    cloudConfigured = cloudLibraryConfigured,
+                                    query = libraryQuery,
+                                    onClearSearch = { onLibraryQueryChange("") },
+                                    onAddMusic = { showEmptyScanOptions = true },
+                                    onOpenConnect = onOpenConnect,
                                     modifier = Modifier.fillMaxSize(),
                                 )
                             }
@@ -645,9 +653,15 @@ fun LibraryScreen(
                                 modifier = Modifier.fillMaxSize(),
                             )
 
-                            LibraryViewMode.Cloud -> AlbumWall(
+                            LibraryViewMode.Cloud -> GuidedAlbumWall(
                                 albums = remoteAlbums.collectAsLazyPagingItems(),
                                 onOpenAlbum = onOpenAlbum,
+                                isCloud = true,
+                                cloudConfigured = cloudLibraryConfigured,
+                                query = libraryQuery,
+                                onClearSearch = { onLibraryQueryChange("") },
+                                onAddMusic = { showEmptyScanOptions = true },
+                                onOpenConnect = onOpenConnect,
                                 modifier = Modifier.fillMaxSize(),
                             )
 
@@ -1591,20 +1605,11 @@ private fun LinkedAlbumWall(
     onOpenAlbum: (AlbumSummary) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LazyVerticalGrid(
-        columns = LibraryWallGridCells,
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(bottom = LibraryBottomControlsPadding),
-    ) {
-        gridItems(
-            items = albums,
-            key = { album -> album.albumKey },
-        ) { album ->
-            AlbumWallCard(album = album, onClick = { onOpenAlbum(album) })
-        }
-    }
+    AlbumSummaryWall(
+        albums = albums,
+        onOpenAlbum = onOpenAlbum,
+        modifier = modifier,
+    )
 }
 
 @Composable
@@ -1613,20 +1618,11 @@ private fun LinkedArtistWall(
     onOpenArtist: (ArtistSummary) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LazyVerticalGrid(
-        columns = LibraryWallGridCells,
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(top = 6.dp, bottom = LibraryBottomControlsPadding),
-    ) {
-        gridItems(
-            items = artists,
-            key = { artist -> artist.artistKey },
-        ) { artist ->
-            ArtistWallCard(artist = artist, onClick = { onOpenArtist(artist) })
-        }
-    }
+    ArtistSummaryWall(
+        artists = artists,
+        onOpenArtist = onOpenArtist,
+        modifier = modifier,
+    )
 }
 
 @Composable

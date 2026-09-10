@@ -110,9 +110,6 @@ import app.echo.android.model.library.FolderSummary
 import app.echo.android.model.library.LibraryStats
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
 import app.echo.android.model.settings.EchoPerformanceMode
-import com.google.mlkit.vision.barcode.common.Barcode
-import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
-import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import app.echo.android.design.echoFontFamilyForMode
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AudioFile
@@ -363,20 +360,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     LaunchedEffect(effectivePerformanceMode) {
         viewModel.setEffectivePerformanceMode(effectivePerformanceMode)
     }
-    val echoLinkQrScanner = remember(context) {
-        val options = GmsBarcodeScannerOptions.Builder()
-            .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
-            .build()
-        GmsBarcodeScanning.getClient(context, options)
-    }
-    var echoLinkScanMessage by remember { mutableStateOf<String?>(null) }
-    var echoLinkScanIsError by remember { mutableStateOf(false) }
-    var echoLinkFallbackScannerVisible by remember { mutableStateOf(false) }
-
     fun connectEchoLinkEndpoint(endpoint: EchoRemoteEndpoint) {
-        echoLinkScanMessage = null
-        echoLinkScanIsError = false
-        echoLinkFallbackScannerVisible = false
         remoteClient.connect(
             nextEndpoint = endpoint,
             refreshLibraryOnConnect = appSettings.echoLinkPreferLinkedLibrary,
@@ -388,54 +372,12 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         if (endpoint != null) {
             connectEchoLinkEndpoint(endpoint)
         } else {
-            echoLinkScanMessage = null
-            echoLinkScanIsError = false
             remoteClient.connectManual(
                 address = address,
                 token = token,
                 refreshLibraryOnConnect = appSettings.echoLinkPreferLinkedLibrary,
             )
         }
-    }
-
-    fun scanEchoLinkPairingCode() {
-        echoLinkScanMessage = null
-        echoLinkScanIsError = false
-        echoLinkFallbackScannerVisible = false
-        echoLinkQrScanner.startScan()
-            .addOnSuccessListener { barcode ->
-                val endpoint = barcode.rawValue
-                    ?.let(EchoPairingParser::parse)
-                if (endpoint != null) {
-                    connectEchoLinkEndpoint(endpoint)
-                } else {
-                    echoLinkScanIsError = true
-                    echoLinkScanMessage = context.getString(R.string.echo_link_scan_unrecognized)
-                    EchoErrorLog.record(
-                        EchoErrorSource.Connect,
-                        context.getString(R.string.echo_link_scan_unrecognized),
-                    )
-                }
-            }
-            .addOnCanceledListener {
-                echoLinkScanIsError = false
-                echoLinkScanMessage = context.getString(R.string.echo_link_scan_cancelled)
-            }
-            .addOnFailureListener { error ->
-                echoLinkFallbackScannerVisible = true
-                val detail = error.localizedMessage
-                    ?.takeIf { it.isNotBlank() }
-                    ?: error.message?.takeIf { it.isNotBlank() }
-                echoLinkScanIsError = true
-                echoLinkScanMessage = detail?.let {
-                    context.getString(R.string.echo_link_scan_unavailable, it)
-                } ?: context.getString(R.string.echo_link_scan_unavailable_manual)
-                EchoErrorLog.record(
-                    EchoErrorSource.Connect,
-                    echoLinkScanMessage ?: context.getString(R.string.echo_link_scan_unavailable_manual),
-                    throwable = error,
-                )
-            }
     }
 
     val lastFmApiKey = appSettings.lastFmApiKey?.takeIf { it.isNotBlank() }
@@ -809,6 +751,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                     selectedPlaylist = playlist
                                 },
                                 onCloseDetail = { closeLibraryDetail() },
+                                onOpenConnect = { selectDockTab(EchoTab.Connect) },
                             )
 
                             EchoPagerPage.Now -> EchoHomePage(
@@ -998,6 +941,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onDispose { viewModel.stopEchoLinkDiscovery() }
                             }
                             val remoteScanState by viewModel.remoteScanState.collectAsStateWithLifecycle()
+                            val discoveryState by viewModel.echoLinkDiscoveryState.collectAsStateWithLifecycle()
                             val echoLinkLanDevices by viewModel.echoLinkLanDevices.collectAsStateWithLifecycle()
                             ConnectScreen(
                                 remoteState = remoteStatus.connectionState,
@@ -1007,8 +951,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 trackArtworkUrl = remoteStatus.playback.track?.artworkUrl,
                                 isPlaying = remoteStatus.playback.state == EchoRemotePlaybackState.Playing,
                                 remoteError = remoteStatus.error,
-                                scanMessage = echoLinkScanMessage,
-                                scanMessageIsError = echoLinkScanIsError,
                                 savedPcAddress = appSettings.echoLinkPcAddress,
                                 savedPcToken = appSettings.echoLinkPcToken,
                                 autoReconnectEnabled = appSettings.echoLinkAutoReconnectEnabled,
@@ -1029,7 +971,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 savedPcs = appSettings.echoLinkSavedPcs,
                                 remoteScanState = remoteScanState,
                                 onConnectPc = ::connectEchoLinkAddress,
-                                onScanPairingCode = ::scanEchoLinkPairingCode,
                                 onPlayPause = { remoteClient.send(EchoRemoteCommand.PlayPause) },
                                 onPrevious = { remoteClient.send(EchoRemoteCommand.Previous) },
                                 onNext = { remoteClient.send(EchoRemoteCommand.Next) },
@@ -1107,6 +1048,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 },
                                 onCancelRemoteSync = viewModel::cancelRemoteSync,
                                 discoveredLanDevices = echoLinkLanDevices,
+                                discoveryState = discoveryState,
                                 onRefreshLanDevices = viewModel::refreshEchoLinkDiscovery,
                             )
                             }
@@ -1354,40 +1296,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     onBack = { errorLogVisible = false },
                 )
             }
-            AnimatedVisibility(
-                visible = echoLinkFallbackScannerVisible,
-                enter = EchoMotion.overlayEnter(
-                    enterMs = motionDuration(EchoMotion.OverlayMs, effectivePerformanceMode),
-                    fadeMs = motionDuration(EchoMotion.OverlayFadeMs, effectivePerformanceMode),
-                ),
-                exit = EchoMotion.overlayExit(
-                    exitMs = motionDuration(EchoMotion.OverlayExitMs, effectivePerformanceMode),
-                ),
-            ) {
-            EchoLinkQrScannerFallback(
-                visible = true,
-                onResult = { rawValue ->
-                    val endpoint = EchoPairingParser.parse(rawValue)
-                    if (endpoint != null) {
-                        connectEchoLinkEndpoint(endpoint)
-                    } else {
-                        echoLinkFallbackScannerVisible = false
-                        echoLinkScanIsError = true
-                        echoLinkScanMessage = context.getString(R.string.echo_link_scan_unrecognized)
-                    }
-                },
-                onCancel = {
-                    echoLinkFallbackScannerVisible = false
-                    echoLinkScanIsError = false
-                    echoLinkScanMessage = context.getString(R.string.echo_link_scan_cancelled)
-                },
-                onError = { message ->
-                    echoLinkScanIsError = true
-                    echoLinkScanMessage = message
-                },
-            )
-            }
-
             val permissionEntries = remember(
                 permissionActivity,
                 audioPermissionRequested,

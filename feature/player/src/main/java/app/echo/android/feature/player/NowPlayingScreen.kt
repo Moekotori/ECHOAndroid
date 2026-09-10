@@ -181,10 +181,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 // 封面毛玻璃背景上的前景色：白色为主，半透明分级
-private val OnArt = Color.White
-private val OnArtMuted = Color.White.copy(alpha = 0.84f)
-private val OnArtFaint = Color.White.copy(alpha = 0.42f)
-private val OnArtChip = Color.White.copy(alpha = 0.24f)
 private val LyricsSettingsMotionEasing = CubicBezierEasing(0.16f, 1f, 0.30f, 1f)
 
 private data class LyricsColorOption(
@@ -730,7 +726,10 @@ private fun NowPlayingCoverPage(
                         scaleX = playingScale
                         scaleY = playingScale
                     }
-                    .shadow(elevation = 28.dp, shape = artworkShape, clip = false),
+                    .then(
+                        if (LocalEchoDarkTheme.current) Modifier.shadow(28.dp, artworkShape, clip = false)
+                        else Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f), artworkShape)
+                    ),
                 shape = artworkShape,
                 sizeClass = EchoArtworkSize.Hero,
             )
@@ -815,7 +814,7 @@ private fun NowPlayingTopBar(
                 description = stringResource(L10nR.string.feature_player_close_player_d23966),
                 touchSize = 44.dp,
                 iconSize = 30.dp,
-                tint = Color.White.copy(alpha = 0.88f),
+                tint = OnArt.copy(alpha = 0.88f),
                 background = Color.Transparent,
                 onClick = onDismiss,
                 modifier = Modifier.align(Alignment.CenterStart),
@@ -834,7 +833,7 @@ private fun NowPlayingTopBar(
                     modifier = Modifier
                         .size(width = 44.dp, height = 5.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.42f)),
+                        .background(OnArt.copy(alpha = 0.42f)),
                 )
             }
         }
@@ -855,7 +854,7 @@ private fun NowPlayingTopBar(
                             .width(dotWidth)
                             .height(6.dp)
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = if (selected) 0.90f else 0.26f)),
+                            .background(OnArt.copy(alpha = if (selected) 0.90f else 0.26f)),
                     )
                 }
             }
@@ -932,7 +931,7 @@ private fun NowPlayingLyricsPage(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = lyricsDimAlpha)),
+                .background((if (LocalEchoDarkTheme.current) Color.Black else MaterialTheme.colorScheme.surface).copy(alpha = lyricsDimAlpha)),
         )
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -1872,7 +1871,7 @@ private fun LyricsColorSwatch(
         Spacer(Modifier.height(8.dp))
         Text(
             lyricsColorLabel(option.value),
-            color = if (selected) option.color else if (dark) Color.White.copy(alpha = 0.74f) else Color(0xFF2A282E),
+            color = if (selected) lyricsColorForMode(option.value) else if (dark) Color.White.copy(alpha = 0.74f) else Color(0xFF2A282E),
             style = MaterialTheme.typography.labelSmall.copy(lineHeight = 14.sp),
             fontWeight = FontWeight.Black,
             maxLines = 1,
@@ -1979,8 +1978,12 @@ private fun LyricsToolButton(
     }
 }
 
-private fun lyricsColorForMode(mode: String): Color =
-    LyricsColorOptions.firstOrNull { it.value == mode }?.color ?: Color.White
+@Composable
+private fun lyricsColorForMode(mode: String): Color {
+    val color = LyricsColorOptions.firstOrNull { it.value == mode }?.color ?: Color.White
+    return if (LocalEchoDarkTheme.current) color else if (mode == "white") MaterialTheme.colorScheme.onSurface
+    else androidx.compose.ui.graphics.lerp(color, Color(0xFF29252A), 0.62f)
+}
 
 @Composable
 private fun lyricsColorLabel(mode: String): String = when (mode) {
@@ -2504,9 +2507,9 @@ private fun NowPlayingTrackInfo(
                             .fillMaxWidth()
                             .clickable(onClick = onOpenLyrics)
                             .basicMarquee(iterations = Int.MAX_VALUE),
-                        color = Color.White.copy(alpha = 0.82f),
+                        color = OnArt.copy(alpha = 0.82f),
                         style = MaterialTheme.typography.titleSmall.copy(
-                            color = Color.White.copy(alpha = 0.82f),
+                            color = OnArt.copy(alpha = 0.82f),
                         ),
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
@@ -2536,7 +2539,7 @@ private fun NowPlayingTrackInfo(
                     Text(
                         value,
                         modifier = Modifier.clickable(onClick = onOpenAlbum),
-                        color = Color.White.copy(alpha = 0.78f),
+                        color = OnArt.copy(alpha = 0.78f),
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
@@ -2558,8 +2561,8 @@ private fun NowPlayingTrackInfo(
                     },
                     touchSize = 40.dp,
                     iconSize = 21.dp,
-                    tint = if (isFavorite) Color(0xFFFFD54F) else Color.White.copy(alpha = 0.90f),
-                    background = Color.White.copy(alpha = 0.12f),
+                    tint = if (isFavorite) Color(0xFFFFD54F) else OnArt.copy(alpha = 0.90f),
+                    background = OnArtChip,
                     onClick = { if (favoriteEnabled) onToggleFavorite() },
                 )
                 GlyphButton(
@@ -2571,8 +2574,8 @@ private fun NowPlayingTrackInfo(
                     },
                     touchSize = 40.dp,
                     iconSize = 21.dp,
-                    tint = Color.White.copy(alpha = 0.92f),
-                    background = Color.White.copy(alpha = 0.12f),
+                    tint = OnArt.copy(alpha = 0.92f),
+                    background = OnArtChip,
                     onClick = onOpenPlaybackSettings,
                 )
             }
@@ -2984,7 +2987,7 @@ private fun PlaybackSettingsPanel(
                     ),
                 formatReplayGainDb(status.replayGainPreampDb),
             ),
-            color = Color.White.copy(alpha = 0.62f),
+            color = OnArt.copy(alpha = 0.62f),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.SemiBold,
         )
@@ -3037,7 +3040,7 @@ private fun PlaybackSettingsPanel(
 private fun PlaybackSettingsLabel(text: String) {
     Text(
         text,
-        color = Color.White.copy(alpha = 0.70f),
+        color = OnArt.copy(alpha = 0.70f),
         style = MaterialTheme.typography.labelSmall,
         fontWeight = FontWeight.ExtraBold,
     )
@@ -3052,12 +3055,12 @@ private fun PlaybackSettingButton(
     modifier: Modifier = Modifier,
 ) {
     val containerColor by animateColorAsState(
-        targetValue = if (selected) Color.White.copy(alpha = 0.24f) else Color.White.copy(alpha = 0.10f),
+        targetValue = if (selected) OnArt.copy(alpha = 0.24f) else OnArt.copy(alpha = 0.10f),
         animationSpec = tween(durationMillis = 180, easing = LyricsSettingsMotionEasing),
         label = "playback-setting-container",
     )
     val borderColor by animateColorAsState(
-        targetValue = if (selected) Color.White.copy(alpha = 0.34f) else Color.White.copy(alpha = 0.12f),
+        targetValue = if (selected) OnArt.copy(alpha = 0.34f) else OnArt.copy(alpha = 0.12f),
         animationSpec = tween(durationMillis = 180, easing = LyricsSettingsMotionEasing),
         label = "playback-setting-border",
     )
@@ -3079,12 +3082,12 @@ private fun PlaybackSettingButton(
         Icon(
             icon,
             contentDescription = title,
-            tint = Color.White.copy(alpha = if (selected) 0.96f else 0.76f),
+            tint = OnArt.copy(alpha = if (selected) 0.96f else 0.76f),
             modifier = Modifier.size(18.dp),
         )
         Text(
             title,
-            color = Color.White.copy(alpha = if (selected) 0.98f else 0.78f),
+            color = OnArt.copy(alpha = if (selected) 0.98f else 0.78f),
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
@@ -3100,7 +3103,7 @@ private fun PlaybackSpeedChip(
     onClick: () -> Unit,
 ) {
     val containerColor by animateColorAsState(
-        targetValue = if (selected) Color.White.copy(alpha = 0.26f) else Color.White.copy(alpha = 0.10f),
+        targetValue = if (selected) OnArt.copy(alpha = 0.26f) else OnArt.copy(alpha = 0.10f),
         animationSpec = tween(durationMillis = 180, easing = LyricsSettingsMotionEasing),
         label = "playback-speed-chip-container",
     )
@@ -3110,7 +3113,7 @@ private fun PlaybackSpeedChip(
             .clip(RoundedCornerShape(8.dp))
             .background(containerColor)
             .border(
-                BorderStroke(1.dp, if (selected) Color.White.copy(alpha = 0.34f) else Color.White.copy(alpha = 0.10f)),
+                BorderStroke(1.dp, if (selected) OnArt.copy(alpha = 0.34f) else OnArt.copy(alpha = 0.10f)),
                 RoundedCornerShape(8.dp),
             )
             .clickable(
@@ -3123,7 +3126,7 @@ private fun PlaybackSpeedChip(
     ) {
         Text(
             text,
-            color = Color.White.copy(alpha = if (selected) 0.96f else 0.72f),
+            color = OnArt.copy(alpha = if (selected) 0.96f else 0.72f),
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
         )
@@ -3306,7 +3309,7 @@ private fun NowPlayingFormatInfo(diagnostics: EchoPlaybackDiagnostics) {
         bitrateKbps?.let { kbps ->
             Text(
                 "$kbps kbps",
-                color = Color.White.copy(alpha = 0.78f),
+                color = OnArt.copy(alpha = 0.78f),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 2.dp),
@@ -3321,13 +3324,13 @@ private fun FormatChip(text: String, highlight: Boolean) {
     Box(
         modifier = Modifier
             .clip(chipShape)
-            .background(Color.White.copy(alpha = if (highlight) 0.20f else 0.10f))
+            .background(OnArt.copy(alpha = if (highlight) 0.20f else 0.10f))
             .padding(horizontal = 9.dp, vertical = 3.5.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text,
-            color = if (highlight) Color.White.copy(alpha = 0.98f) else Color.White.copy(alpha = 0.78f),
+            color = if (highlight) OnArt.copy(alpha = 0.98f) else OnArt.copy(alpha = 0.78f),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
         )
@@ -3374,7 +3377,7 @@ private fun NowPlayingScrubber(
             },
             trackHeight = 4.dp,
             thumbSize = 10.dp,
-            inactiveColor = Color.White.copy(alpha = 0.18f),
+            inactiveColor = OnArt.copy(alpha = 0.18f),
         )
         Spacer(Modifier.height(2.dp))
         Row(
@@ -3383,13 +3386,13 @@ private fun NowPlayingScrubber(
         ) {
             Text(
                 formatDuration(currentMs),
-                color = Color.White.copy(alpha = 0.82f),
+                color = OnArt.copy(alpha = 0.82f),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
             )
             Text(
                 "-" + formatDuration(remainingMs),
-                color = Color.White.copy(alpha = 0.82f),
+                color = OnArt.copy(alpha = 0.82f),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
             )
@@ -3427,7 +3430,7 @@ private fun NowPlayingControlDock(
             onClick = { haptics.confirm(); onPlayPause() },
             touchSize = 72.dp,
             iconSize = 48.dp,
-            tint = Color.White,
+            tint = OnArt,
         )
         PlayerControlButton(
             PlayerControlIcons.Next,
@@ -3450,9 +3453,9 @@ private fun ThinSlider(
     modifier: Modifier = Modifier,
     trackHeight: Dp = 6.dp,
     thumbSize: Dp = 13.dp,
-    activeColor: Color = Color.White,
+    activeColor: Color = OnArt,
     inactiveColor: Color = OnArtFaint,
-    thumbColor: Color = Color.White,
+    thumbColor: Color = OnArt,
 ) {
     val f = fraction.coerceIn(0f, 1f)
     fun fractionAt(x: Float, width: Int): Float =
@@ -3537,7 +3540,7 @@ private fun GlyphButton(
             shape = CircleShape,
             strength = 0.92f,
             elevation = 8.dp,
-            dark = true,
+            dark = LocalEchoDarkTheme.current,
             contentAlignment = Alignment.Center,
         ) {
             Icon(icon, contentDescription = description, tint = tint, modifier = Modifier.size(iconSize))
@@ -3564,6 +3567,15 @@ private fun NowPlayingBackdrop(
     reveal: () -> Float,
     modifier: Modifier = Modifier,
 ) {
+    if (!LocalEchoDarkTheme.current) {
+        val scheme = MaterialTheme.colorScheme
+        Box(modifier.background(Brush.verticalGradient(listOf(
+            scheme.surface,
+            androidx.compose.ui.graphics.lerp(scheme.surface, scheme.primaryContainer, 0.12f),
+            scheme.background,
+        ))))
+        return
+    }
     // 每帧变化的 reveal 只在这里读取,横滑时重组范围被限制在背景层
     val lyricsReveal = reveal()
     // 模糊半径量化为 5 档,避免每帧重建 RenderEffect
@@ -3593,6 +3605,7 @@ private fun NowPlayingBackdrop(
                     ),
                 ),
         )
+
     }
 }
 

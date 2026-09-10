@@ -53,7 +53,7 @@ fun EchoPanel(
                 ),
             )
             .border(
-                if (dark) BorderStroke(1.dp, EchoDarkGlassBorder) else BorderStroke(1.dp, Color.White.copy(alpha = 0.96f)),
+                if (dark) BorderStroke(1.dp, EchoDarkGlassBorder) else BorderStroke(1.dp, scheme.outlineVariant.copy(alpha = 0.65f)),
                 shape,
             ),
     ) {
@@ -114,7 +114,7 @@ fun EchoMetricTile(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
         color = if (dark) scheme.surface.copy(alpha = 0.58f) else scheme.surface.copy(alpha = 0.92f),
-        border = if (dark) BorderStroke(1.dp, EchoDarkGlassBorder) else BorderStroke(1.dp, Color.White.copy(alpha = 0.96f)),
+        border = if (dark) BorderStroke(1.dp, EchoDarkGlassBorder) else BorderStroke(1.dp, scheme.outlineVariant.copy(alpha = 0.65f)),
     ) {
         Column(
             Modifier.padding(horizontal = 10.dp, vertical = 9.dp),

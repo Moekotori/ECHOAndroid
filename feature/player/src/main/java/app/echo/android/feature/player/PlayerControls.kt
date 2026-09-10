@@ -112,7 +112,7 @@ internal fun PlayerControlButton(
     onClick: () -> Unit,
     touchSize: Dp = 52.dp,
     iconSize: Dp = 26.dp,
-    tint: Color = Color.White.copy(alpha = 0.86f),
+    tint: Color = OnArt.copy(alpha = 0.86f),
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()

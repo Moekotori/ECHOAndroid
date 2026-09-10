@@ -8,6 +8,11 @@
     <string name="library_search_hint">別の曲名、アーティスト、アルバムを試してください。</string>
     <string name="library_start_collection">お気に入りの音楽を集めよう</string>
     <string name="library_import_hint">スマホをスキャンするか、右上から音楽フォルダーを追加できます。</string>
+    <string name="library_cloud_empty_title">クラウドの音楽を取り込む</string>
+    <string name="library_cloud_empty_detail">「連携」で WebDAV、Subsonic、Jellyfin を設定して同期すると、ここにアルバムが表示されます。</string>
+    <string name="library_cloud_empty_configured_title">クラウドに表示できるアルバムはありません</string>
+    <string name="library_cloud_empty_configured_detail">「連携」でもう一度同期するか、クラウドの音楽フォルダーを確認してください。</string>
+    <string name="library_open_connect">連携を開く</string>
     <string name="library_clear_search">検索をクリア</string>
     <string name="library_track_actions">曲の操作</string>
     <string name="library_playlist_actions">プレイリストの操作</string>

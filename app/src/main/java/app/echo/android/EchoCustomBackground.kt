@@ -258,9 +258,9 @@ private fun EchoBackgroundGlassOverlay(glass: Float) {
         )
     } else {
         listOf(
-            Color.White.copy(alpha = (glass * 0.68f).coerceIn(0f, 0.72f)),
-            Color.White.copy(alpha = (glass * 0.42f).coerceIn(0f, 0.54f)),
-            Color.White.copy(alpha = (glass * 0.74f).coerceIn(0f, 0.78f)),
+            Color.White.copy(alpha = (0.68f + readableGlass * 0.28f).coerceAtMost(0.96f)),
+            Color.White.copy(alpha = (0.60f + readableGlass * 0.30f).coerceAtMost(0.90f)),
+            Color.White.copy(alpha = (0.74f + readableGlass * 0.24f).coerceAtMost(0.98f)),
         )
     }
     Box(

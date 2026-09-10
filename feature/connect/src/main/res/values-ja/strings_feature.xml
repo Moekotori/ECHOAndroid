@@ -43,7 +43,7 @@
     <string name="feature_connect_music_services_c8d7d1" formatted="false">"音楽サービス"</string>
     <string name="feature_connect_nearby_pcs_then_address_and_pairing_token_d5b4e2" formatted="false">"近くの PC、続けてアドレスとトークン"</string>
     <string name="feature_connect_next_on_pc_303358" formatted="false">"PC の次の曲"</string>
-    <string name="feature_connect_no_lan_pcs_yet_scan_a_qr_code_0b3f56" formatted="false">"LAN 上の PC は未検出。QR または手動入力。"</string>
+    <string name="feature_connect_no_lan_pcs_yet_scan_a_qr_code_0b3f56" formatted="false">PC が見つかりません。同じ Wi-Fi と Echo Link の設定を確認して再検索してください。</string>
     <string name="feature_connect_none_836573" formatted="false">"未選択"</string>
     <string name="feature_connect_not_connected_c4d337" formatted="false">"未接続"</string>
     <string name="feature_connect_not_set_up_287510" formatted="false">"未設定"</string>
@@ -76,8 +76,6 @@
     <string name="feature_connect_remote_libraries_520815" formatted="false">"リモートライブラリ"</string>
     <string name="feature_connect_remote_library_sync_failed_e55eb1" formatted="false">"リモートライブラリの同期に失敗しました"</string>
     <string name="feature_connect_save_68ae20" formatted="false">"保存"</string>
-    <string name="feature_connect_scan_qr_b42f5b" formatted="false">"スキャン"</string>
-    <string name="feature_connect_scan_the_qr_code_shown_on_pc_to_e7ce7b" formatted="false">"PC に表示された QR コードをスキャンしてペアリング"</string>
     <string name="feature_connect_server_address_ec245e" formatted="false">"サーバーアドレス"</string>
     <string name="feature_connect_standby_751331" formatted="false">"スタンバイ"</string>
     <string name="feature_connect_supports_192_168_1_12_26789_or_a_7d7e27" formatted="false">"192.168.1.12:26789 または http / https の完全なアドレスに対応"</string>
@@ -146,16 +144,15 @@
     <string name="feature_connect_link_preferences_f81ffb" formatted="false">"連携設定"</string>
     <string name="feature_connect_listen_together_with_pc_41d068" formatted="false">"PC と接続"</string>
     <string name="feature_connect_nearby_pcs_b9b12a" formatted="false">"近くの PC"</string>
-    <string name="feature_connect_no_pc_found_use_the_same_wi_fi_ce621e" formatted="false">"PC が見つかりません。同じ Wi-Fi で PC ECHO を起動するか、手動で入力してください。"</string>
+    <string name="feature_connect_no_pc_found_use_the_same_wi_fi_ce621e" formatted="false">PC が見つかりません。同じ Wi-Fi と Echo Link の設定を確認して再検索してください。</string>
     <string name="feature_connect_no_track_selected_258d56" formatted="false">"曲が未選択です"</string>
-    <string name="feature_connect_open_the_echo_link_page_on_your_pc_d07a0b" formatted="false">"PC ECHO の連携ページを開き、ペアリング QR コードを読み取ってください。"</string>
+    <string name="feature_connect_open_the_echo_link_page_on_your_pc_d07a0b" formatted="false">PC の ECHOSteam で Echo Link を開き、両方の端末を同じ Wi-Fi に接続して、近くの PC を選んでください。</string>
     <string name="feature_connect_pause_pc_003bcf" formatted="false">"PC を一時停止"</string>
     <string name="feature_connect_pc_address_or_pairing_link_a3e680" formatted="false">"PC アドレスまたはペアリングリンク"</string>
     <string name="feature_connect_play_on_pc_aa41d1" formatted="false">"PC で再生"</string>
     <string name="feature_connect_playing_on_pc_580a8a" formatted="false">"PC で再生"</string>
     <string name="feature_connect_read_the_pc_library_after_connecting_local_music_d1da04" formatted="false">"接続後に PC ライブラリを読み込みます。ローカル音楽は別に保持されます。"</string>
     <string name="feature_connect_reconnect_pc_ea8c5f" formatted="false">"PC に再接続"</string>
-    <string name="feature_connect_scan_to_pair_597ba6" formatted="false">"QR コードでペアリング"</string>
     <string name="feature_connect_select_21bce2" formatted="false">"選択"</string>
     <string name="feature_connect_try_the_saved_pc_when_opening_connect_38be4d" formatted="false">"接続ページを開くと保存済み PC に再接続"</string>
     <string name="feature_connect_volume_8f3a19" formatted="false">"音量"</string>
@@ -166,4 +163,6 @@
     <string name="echo_link_handoff_phone">スマホの曲を PC で引き継ぐ</string>
     <string name="feature_connect_jellyfin_or_emby_independent_of_echo_link_a8f3c1" formatted="false">"Jellyfin または Emby。Echo Link とは独立しています。"</string>
     <string name="feature_connect_saved_pcs_4d2e91" formatted="false">"保存した PC"</string>
+    <string name="echo_link_lan_searching">近くの PC を検索中…</string>
+    <string name="echo_link_lan_failed">LAN 検索を開始できませんでした。Wi-Fi を確認して再試行してください。</string>
 </resources>

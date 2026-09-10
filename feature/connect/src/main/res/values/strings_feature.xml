@@ -43,7 +43,7 @@
     <string name="feature_connect_music_services_c8d7d1" formatted="false">"Music services"</string>
     <string name="feature_connect_nearby_pcs_then_address_and_pairing_token_d5b4e2" formatted="false">"Nearby PCs, then address and pairing token"</string>
     <string name="feature_connect_next_on_pc_303358" formatted="false">"Next on PC"</string>
-    <string name="feature_connect_no_lan_pcs_yet_scan_a_qr_code_0b3f56" formatted="false">"No LAN PCs yet. Scan a QR code or type the address."</string>
+    <string name="feature_connect_no_lan_pcs_yet_scan_a_qr_code_0b3f56" formatted="false">No computers found. Check that Echo Link is enabled on the same Wi-Fi, then try again.</string>
     <string name="feature_connect_none_836573" formatted="false">"None"</string>
     <string name="feature_connect_not_connected_c4d337" formatted="false">"Not connected"</string>
     <string name="feature_connect_not_set_up_287510" formatted="false">"Not set up"</string>
@@ -76,8 +76,6 @@
     <string name="feature_connect_remote_libraries_520815" formatted="false">"Remote libraries"</string>
     <string name="feature_connect_remote_library_sync_failed_e55eb1" formatted="false">"Remote library sync failed"</string>
     <string name="feature_connect_save_68ae20" formatted="false">"Save"</string>
-    <string name="feature_connect_scan_qr_b42f5b" formatted="false">"Scan QR"</string>
-    <string name="feature_connect_scan_the_qr_code_shown_on_pc_to_e7ce7b" formatted="false">"Scan the QR code shown on PC to pair"</string>
     <string name="feature_connect_server_address_ec245e" formatted="false">"Server address"</string>
     <string name="feature_connect_standby_751331" formatted="false">"Standby"</string>
     <string name="feature_connect_supports_192_168_1_12_26789_or_a_7d7e27" formatted="false">"Supports 192.168.1.12:26789 or a full http / https URL"</string>
@@ -146,16 +144,15 @@
     <string name="feature_connect_link_preferences_f81ffb" formatted="false">"Link preferences"</string>
     <string name="feature_connect_listen_together_with_pc_41d068" formatted="false">"Listen together with PC"</string>
     <string name="feature_connect_nearby_pcs_b9b12a" formatted="false">"Nearby PCs"</string>
-    <string name="feature_connect_no_pc_found_use_the_same_wi_fi_ce621e" formatted="false">"No PC found. Use the same Wi-Fi and open ECHO on your PC, or enter an address below."</string>
+    <string name="feature_connect_no_pc_found_use_the_same_wi_fi_ce621e" formatted="false">No computers found. Check that Echo Link is enabled on the same Wi-Fi, then try again.</string>
     <string name="feature_connect_no_track_selected_258d56" formatted="false">"No track selected"</string>
-    <string name="feature_connect_open_the_echo_link_page_on_your_pc_d07a0b" formatted="false">"Open the ECHO Link page on your PC, then scan its pairing QR code."</string>
+    <string name="feature_connect_open_the_echo_link_page_on_your_pc_d07a0b" formatted="false">Open Echo Link in ECHOSteam on your computer and keep both devices on the same Wi-Fi. Select a nearby computer to connect.</string>
     <string name="feature_connect_pause_pc_003bcf" formatted="false">"Pause PC"</string>
     <string name="feature_connect_pc_address_or_pairing_link_a3e680" formatted="false">"PC address or pairing link"</string>
     <string name="feature_connect_play_on_pc_aa41d1" formatted="false">"Play on PC"</string>
     <string name="feature_connect_playing_on_pc_580a8a" formatted="false">"Playing on PC"</string>
     <string name="feature_connect_read_the_pc_library_after_connecting_local_music_d1da04" formatted="false">"Read the PC library after connecting. Local music stays separate."</string>
     <string name="feature_connect_reconnect_pc_ea8c5f" formatted="false">"Reconnect PC"</string>
-    <string name="feature_connect_scan_to_pair_597ba6" formatted="false">"Scan to pair"</string>
     <string name="feature_connect_select_21bce2" formatted="false">"Select"</string>
     <string name="feature_connect_try_the_saved_pc_when_opening_connect_38be4d" formatted="false">"Try the saved PC when opening Connect"</string>
     <string name="feature_connect_volume_8f3a19" formatted="false">"Volume"</string>
@@ -166,4 +163,6 @@
     <string name="echo_link_handoff_phone">Continue the phone song on PC</string>
     <string name="feature_connect_jellyfin_or_emby_independent_of_echo_link_a8f3c1" formatted="false">"Jellyfin or Emby. Independent of Echo Link."</string>
     <string name="feature_connect_saved_pcs_4d2e91" formatted="false">"Saved PCs"</string>
+    <string name="echo_link_lan_searching">Looking for nearby computers…</string>
+    <string name="echo_link_lan_failed">Could not start local network discovery. Check Wi-Fi and try again.</string>
 </resources>
