@@ -762,6 +762,7 @@ private fun NowPlayingCoverPage(
                 NowPlayingFormatInfo(diagnostics = status.diagnostics)
                 Spacer(Modifier.height(12.dp))
                 NowPlayingScrubber(
+                    trackKey = status.track?.id,
                     positionMsState = positionMsState,
                     durationMsState = durationMsState,
                     onSeek = onSeek,
@@ -1014,6 +1015,7 @@ private fun NowPlayingLyricsPage(
                 Box(modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                         NowPlayingScrubber(
+                            trackKey = status.track?.id,
                             positionMsState = positionMsState,
                             durationMsState = durationMsState,
                             onSeek = onSeek,
@@ -3352,6 +3354,7 @@ private fun channelLabel(channels: Int): String = when (channels) {
 
 @Composable
 private fun NowPlayingScrubber(
+    trackKey: String?,
     positionMsState: State<Long>,
     durationMsState: State<Long>,
     onSeek: (Long) -> Unit,
@@ -3359,25 +3362,23 @@ private fun NowPlayingScrubber(
     // 进度 State 只在此叶子读取,tick 只重组 scrubber 本身
     val positionMs = positionMsState.value
     val durationMs = durationMsState.value
-    var scrubFraction by remember { mutableStateOf<Float?>(null) }
+    var scrubFraction by remember(trackKey, durationMs) { mutableStateOf<Float?>(null) }
     val liveFraction = progressFraction(positionMs, durationMs)
     val shown = scrubFraction ?: liveFraction
     val currentMs = if (durationMs > 0L) (shown * durationMs).toLong() else positionMs
     val remainingMs = (durationMs - currentMs).coerceAtLeast(0L)
 
     Column(Modifier.fillMaxWidth()) {
-        ThinSlider(
+        WaveformSeekBar(
+            trackKey = trackKey,
             fraction = shown,
-            onValueChange = { scrubFraction = it },
-            onValueChangeFinished = { fraction ->
-                if (durationMs > 0L) {
-                    onSeek((fraction * durationMs).toLong())
-                }
+            enabled = durationMs > 0L,
+            onPreview = { scrubFraction = it },
+            onCommit = { fraction ->
+                if (durationMs > 0L) onSeek((fraction * durationMs).toLong())
                 scrubFraction = null
             },
-            trackHeight = 4.dp,
-            thumbSize = 10.dp,
-            inactiveColor = OnArt.copy(alpha = 0.18f),
+            onCancel = { scrubFraction = null },
         )
         Spacer(Modifier.height(2.dp))
         Row(
@@ -3413,32 +3414,37 @@ private fun NowPlayingControlDock(
 ) {
     val haptics = rememberEchoHapticPerformer()
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        PlayerControlButton(leadingIcon, leadingDescription, onLeadingAction)
-        PlayerControlButton(
-            PlayerControlIcons.Previous,
-            stringResource(L10nR.string.feature_player_previous_af0264),
-            onClick = { haptics.tick(); onPrevious() },
-            iconSize = 32.dp,
-        )
-        PlayerControlButton(
-            if (isPlaying) PlayerControlIcons.Pause else PlayerControlIcons.Play,
-            stringResource(L10nR.string.feature_player_play_or_pause_37a70f),
-            onClick = { haptics.confirm(); onPlayPause() },
-            touchSize = 72.dp,
-            iconSize = 48.dp,
-            tint = OnArt,
-        )
-        PlayerControlButton(
-            PlayerControlIcons.Next,
-            stringResource(L10nR.string.feature_player_next_d67904),
-            onClick = { haptics.tick(); onNext() },
-            iconSize = 32.dp,
-        )
-        PlayerControlButton(PlayerControlIcons.Queue, stringResource(L10nR.string.feature_player_queue_37fa6a), onOpenQueue)
+        PlayerControlButton(leadingIcon, leadingDescription, onLeadingAction,
+            touchSize = 48.dp, iconSize = 21.dp, tint = OnArt.copy(alpha = 0.55f))
+        Row(
+            Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            PlayerControlButton(
+                PlayerControlIcons.Previous,
+                stringResource(L10nR.string.feature_player_previous_af0264),
+                onClick = { haptics.tick(); onPrevious() },
+                touchSize = 48.dp, iconSize = 29.dp, tint = OnArt.copy(alpha = 0.90f),
+            )
+            PlayerControlButton(
+                if (isPlaying) PlayerControlIcons.Pause else PlayerControlIcons.Play,
+                stringResource(L10nR.string.feature_player_play_or_pause_37a70f),
+                onClick = { haptics.confirm(); onPlayPause() },
+                touchSize = 64.dp, iconSize = 44.dp, tint = MaterialTheme.colorScheme.primary,
+            )
+            PlayerControlButton(
+                PlayerControlIcons.Next,
+                stringResource(L10nR.string.feature_player_next_d67904),
+                onClick = { haptics.tick(); onNext() },
+                touchSize = 48.dp, iconSize = 29.dp, tint = OnArt.copy(alpha = 0.90f),
+            )
+        }
+        PlayerControlButton(PlayerControlIcons.Queue, stringResource(L10nR.string.feature_player_queue_37fa6a), onOpenQueue,
+            touchSize = 48.dp, iconSize = 21.dp, tint = OnArt.copy(alpha = 0.55f))
     }
 }
 

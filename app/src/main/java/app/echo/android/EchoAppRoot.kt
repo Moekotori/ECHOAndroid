@@ -788,6 +788,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             val usbExclusiveTestResult by viewModel.usbExclusiveTestResult.collectAsStateWithLifecycle()
                             val errorLogCount by viewModel.errorLogCount.collectAsStateWithLifecycle(0)
                             SettingsScreen(
+                                isActive = tabPagerState.currentPage == EchoPagerPage.Settings.ordinal &&
+                                    !nowPlayingExpanded && !searchVisible && !errorLogVisible && !queueSheetVisible,
                                 status = playbackStatus,
                                 trackCount = libraryStats.trackCount,
                                 albumCount = libraryStats.albumCount,

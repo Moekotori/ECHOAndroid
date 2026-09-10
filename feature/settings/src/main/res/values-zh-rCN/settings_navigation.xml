@@ -1,0 +1,18 @@
+<resources>
+    <string name="settings_category_appearance">外观</string>
+    <string name="settings_category_interface">界面与语言</string>
+    <string name="settings_category_playback">播放与歌词</string>
+    <string name="settings_category_services">互联与服务</string>
+    <string name="settings_category_appearance_detail">调整主题、背景与字体，让 ECHO 更合你的习惯。</string>
+    <string name="settings_category_interface_detail">设置语言、界面密度与性能偏好。</string>
+    <string name="settings_category_playback_detail">调整歌曲衔接、歌词与 USB 输出偏好。</string>
+    <string name="settings_category_services_detail">连接电脑，管理听歌记录服务。</string>
+    <string name="settings_category_library_detail">管理本地音乐与曲库中的信息展示。</string>
+    <string name="settings_category_about_detail">查看应用版本与错误日志。</string>
+    <string name="settings_home_detail">按你的习惯，调整 ECHO。</string>
+    <string name="settings_back">返回设置首页</string>
+    <string name="settings_group_personal">个性化</string>
+    <string name="settings_group_music">音乐与连接</string>
+    <string name="settings_group_app">应用</string>
+    <string name="settings_library_summary">%1$d 首歌曲 · %2$d 张专辑 · %3$d 位艺人</string>
+</resources>

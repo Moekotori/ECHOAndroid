@@ -1,0 +1,18 @@
+<resources>
+    <string name="settings_category_appearance">Appearance</string>
+    <string name="settings_category_interface">Interface &amp; language</string>
+    <string name="settings_category_playback">Playback &amp; lyrics</string>
+    <string name="settings_category_services">Connections &amp; services</string>
+    <string name="settings_category_appearance_detail">Make ECHO yours with themes, backgrounds and fonts.</string>
+    <string name="settings_category_interface_detail">Language, layout and performance preferences.</string>
+    <string name="settings_category_playback_detail">Transitions, lyrics and USB output preferences.</string>
+    <string name="settings_category_services_detail">Connect your computer and listening history services.</string>
+    <string name="settings_category_library_detail">Manage local music and the information shown in your library.</string>
+    <string name="settings_category_about_detail">App version and error logs.</string>
+    <string name="settings_home_detail">A little tuning. Your own ECHO.</string>
+    <string name="settings_back">Back to settings</string>
+    <string name="settings_group_personal">PERSONALIZATION</string>
+    <string name="settings_group_music">MUSIC &amp; CONNECTIONS</string>
+    <string name="settings_group_app">APPLICATION</string>
+    <string name="settings_library_summary">%1$d tracks · %2$d albums · %3$d artists</string>
+</resources>
