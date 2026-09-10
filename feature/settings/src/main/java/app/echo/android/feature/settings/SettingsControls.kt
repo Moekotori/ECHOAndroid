@@ -1,24 +1,26 @@
 package app.echo.android.feature.settings
 
-import app.echo.android.design.backgroundMaxBlur
 import app.echo.android.design.echoAnimateContentSize
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import app.echo.android.design.echoClickable
-import app.echo.android.design.echoCombinedClickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.material3.Switch
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
@@ -30,20 +32,18 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import android.os.Build
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -51,13 +51,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.EchoGlassPanel
-import app.echo.android.design.EchoHapticKind
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
-import app.echo.android.design.LocalEchoHapticsEnabled
-import app.echo.android.design.PageChrome
-import app.echo.android.design.performEchoHaptic
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.settings.EchoBackgroundStyle
 import app.echo.android.model.settings.EchoAppLanguage
@@ -77,7 +72,8 @@ internal fun SettingsTextInputRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 10.dp),
+            .heightIn(min = 56.dp)
+            .padding(vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.Top,
     ) {
@@ -205,7 +201,7 @@ internal fun SettingsSectionCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(settingsPanelColor())
             .then(if (animateSize) Modifier.echoAnimateContentSize() else Modifier)
             .padding(horizontal = 20.dp, vertical = 18.dp),
@@ -281,7 +277,8 @@ internal fun SettingsBackgroundSourceRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 10.dp),
+            .heightIn(min = 56.dp)
+            .padding(vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -340,7 +337,7 @@ internal fun BackgroundSourceAction(
     val accent = if (selected) settingsControlColor() else if (dark) Color.White.copy(alpha = 0.74f) else MaterialTheme.colorScheme.onSurfaceVariant
     Row(
         modifier = modifier
-            .height(28.dp)
+            .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(settingsRowColor(selected))
             .then(if (enabled) Modifier.echoClickable(onClick = onClick) else Modifier)
@@ -368,60 +365,18 @@ internal fun SettingsSwitchRow(
     onCheckedChange: (Boolean) -> Unit,
     enabled: Boolean = true,
 ) {
-    SettingsRowShell(title = title, detail = detail) {
-        EchoSettingsSwitch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-internal fun SettingsInfoRow(
-    title: String,
-    detail: String,
-    onLongClick: (() -> Unit)? = null,
-) {
     SettingsRowShell(
-        title = title,
-        detail = detail,
-        modifier = if (onLongClick != null) {
-            Modifier.echoCombinedClickable(onClick = {}, onLongClick = onLongClick)
-        } else {
-            Modifier
-        },
-        trailing = {},
-    )
+        title = title, detail = detail,
+        modifier = Modifier.toggleable(value = checked, enabled = enabled, role = Role.Switch,
+            onValueChange = onCheckedChange).alpha(if (enabled) 1f else 0.5f),
+    ) {
+        Switch(checked = checked, onCheckedChange = null, enabled = enabled)
+    }
 }
 
 @Composable
-internal fun EchoSettingsSwitch(
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    enabled: Boolean = true,
-) {
-    val dark = LocalEchoDarkTheme.current
-    val scheme = MaterialTheme.colorScheme
-    Box(
-        modifier = Modifier
-            .size(width = 46.dp, height = 26.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .alpha(if (enabled) 1f else 0.42f)
-            .background(settingsControlSurfaceColor(checked))
-            .toggleable(
-                value = checked,
-                enabled = enabled,
-                role = Role.Switch,
-                onValueChange = onCheckedChange,
-            )
-            .padding(horizontal = 5.dp),
-        contentAlignment = if (checked) Alignment.CenterEnd else Alignment.CenterStart,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(17.dp)
-                .clip(RoundedCornerShape(9.dp))
-                .background(if (dark) Color.White.copy(alpha = 0.72f) else scheme.onSurfaceVariant.copy(alpha = 0.82f)),
-        )
-    }
+internal fun SettingsInfoRow(title: String, detail: String) {
+    SettingsRowShell(title = title, detail = detail, trailing = {})
 }
 
 @Composable
@@ -449,6 +404,7 @@ internal fun SettingsActionRow(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun SettingsChoiceGroupRow(
     title: String,
@@ -458,12 +414,12 @@ internal fun SettingsChoiceGroupRow(
     onOptionSelected: (String) -> Unit,
 ) {
     SettingsRowShell(title = title, detail = detail, trailing = {})
-    Row(
+    FlowRow(
         modifier = Modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
+            .selectableGroup(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         options.forEach { option ->
             SettingsOptionChip(
@@ -485,11 +441,11 @@ internal fun SettingsOptionChip(
     val dark = LocalEchoDarkTheme.current
     Box(
         modifier = Modifier
-            .height(28.dp)
+            .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(settingsRowColor(selected))
-            .echoClickable(onClick = onClick)
-            .padding(horizontal = 10.dp),
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -506,7 +462,7 @@ internal fun SettingsOptionChip(
 @OptIn(ExperimentalMaterial3Api::class)
 internal fun SettingsSliderRow(
     title: String,
-    detail: String,
+    valueLabel: @Composable (Float) -> String,
     value: Float,
     valueRange: ClosedFloatingPointRange<Float>,
     steps: Int,
@@ -516,11 +472,13 @@ internal fun SettingsSliderRow(
     val dark = LocalEchoDarkTheme.current
     val controlColor = settingsControlColor()
     var localValue by rememberSaveable { mutableFloatStateOf(value) }
-    LaunchedEffect(value) { localValue = value }
+    var dragging by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(value) { if (!dragging) localValue = value }
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 10.dp),
+            .heightIn(min = 56.dp)
+            .padding(vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -539,7 +497,7 @@ internal fun SettingsSliderRow(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    detail,
+                    valueLabel(localValue),
                     color = if (dark) Color.White.copy(alpha = 0.72f) else scheme.onSurfaceVariant,
                     style = MaterialTheme.typography.labelMedium,
                     maxLines = 1,
@@ -547,11 +505,12 @@ internal fun SettingsSliderRow(
             }
             Slider(
                 value = localValue,
-                onValueChange = { localValue = it },
-                onValueChangeFinished = { onValueChange(localValue) },
+                onValueChange = { dragging = true; localValue = it },
+                onValueChangeFinished = { onValueChange(localValue); dragging = false },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(28.dp),
+                    .heightIn(min = 48.dp)
+                    .semantics { contentDescription = title },
                 valueRange = valueRange,
                 steps = steps,
                 colors = SliderDefaults.colors(
@@ -564,8 +523,8 @@ internal fun SettingsSliderRow(
                 thumb = {
                     Box(
                         Modifier
-                            .size(10.dp)
-                            .clip(RoundedCornerShape(5.dp))
+                            .size(20.dp)
+                            .clip(RoundedCornerShape(10.dp))
                             .background(controlColor.copy(alpha = if (dark) 0.92f else 0.72f)),
                     )
                 },
@@ -598,7 +557,8 @@ internal fun SettingsRowShell(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 10.dp),
+            .heightIn(min = 56.dp)
+            .padding(vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -608,15 +568,11 @@ internal fun SettingsRowShell(
                 color = if (dark) Color.White.copy(alpha = 0.94f) else scheme.onSurface,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
             )
             Text(
                 detail,
                 color = if (dark) Color.White.copy(alpha = 0.70f) else scheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
             )
         }
         trailing()

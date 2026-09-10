@@ -8,7 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.ChevronRight
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -36,6 +36,7 @@ internal enum class SettingsCategory(val title: Int, val description: Int, val i
 @Composable
 internal fun SettingsNavigation(
     isActive: Boolean,
+    compactMode: Boolean,
     summaries: Map<SettingsCategory, String>,
     content: @Composable (SettingsCategory) -> Unit,
 ) {
@@ -58,10 +59,12 @@ internal fun SettingsNavigation(
                 titleContent = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (category != null) IconButton(onClick = { selected = null }) {
-                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.settings_back))
+                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.settings_back), tint = MaterialTheme.colorScheme.onSurface)
                         }
                         Text(
                             stringResource(category?.title ?: R.string.settings_title),
+                            modifier = Modifier.weight(1f),
+                            color = MaterialTheme.colorScheme.onSurface,
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
                         )
@@ -71,7 +74,7 @@ internal fun SettingsNavigation(
                 Column(
                     Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                         .padding(top = 12.dp, bottom = 172.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(if (compactMode) 6.dp else if (category == null) 10.dp else 16.dp),
                 ) {
                     if (category == null) {
                         Text(
@@ -117,7 +120,7 @@ private fun SettingsCategoryRow(category: SettingsCategory, summary: String, onC
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
-            Modifier.padding(horizontal = 16.dp, vertical = 18.dp).heightIn(min = 48.dp),
+            Modifier.padding(horizontal = 16.dp, vertical = 12.dp).heightIn(min = 48.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
@@ -129,7 +132,7 @@ private fun SettingsCategoryRow(category: SettingsCategory, summary: String, onC
                 Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
-            Icon(Icons.AutoMirrored.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
