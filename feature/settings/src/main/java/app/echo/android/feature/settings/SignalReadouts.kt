@@ -70,10 +70,15 @@ internal fun EchoPlaybackDiagnostics.processingLabel(): String =
     }
 
 @Composable
-internal fun EchoPlaybackDiagnostics.signalIntegrityLabel(equalizerState: EchoEqualizerState): String =
+internal fun EchoPlaybackDiagnostics.signalIntegrityLabel(
+    equalizerState: EchoEqualizerState,
+    channelBalance: EchoChannelBalanceState = EchoChannelBalanceState(),
+): String =
     when {
         usbBitPerfectEnabled -> bitPerfectReadout(equalizerState)
+        equalizerState.active && channelBalance.active -> stringResource(R.string.diag_integrity_eq_balance)
         equalizerState.active -> stringResource(R.string.diag_integrity_eq)
+        channelBalance.active -> stringResource(R.string.diag_integrity_balance)
         usbBitPerfectActive -> stringResource(R.string.diag_integrity_usb)
         offloadActive -> stringResource(R.string.diag_integrity_offload)
         usbExclusiveEnabled && usbConnected -> stringResource(R.string.diag_integrity_usb_wait)

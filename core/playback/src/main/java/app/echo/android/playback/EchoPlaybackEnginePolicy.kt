@@ -114,6 +114,21 @@ class EchoPlaybackEnginePolicy(
         replayGainUrisByMediaId[track.id] = track.uri
     }
 
+    fun retainQueueLookups(mediaIds: Set<String>) {
+        if (mediaIds.isEmpty()) return
+        sampleRatesByMediaId.keys.retainAll(mediaIds)
+        replayGainUrisByMediaId.keys.retainAll(mediaIds)
+        replayGainTagsByMediaId.keys.retainAll(mediaIds)
+        subsonicTranscodeFallbackAttempts.retainAll(mediaIds)
+        echoLinkRefreshAttempts.keys.retainAll(mediaIds)
+        echoLinkRefreshAttemptAtMs.keys.retainAll(mediaIds)
+        echoLinkRefreshInFlight.retainAll(mediaIds)
+        val staleJobs = replayGainJobs.keys.filterNot(mediaIds::contains)
+        staleJobs.forEach { id ->
+            replayGainJobs.remove(id)?.cancel()
+        }
+    }
+
     fun mergeSampleRates(ratesByMediaId: Map<String, Int?>) {
         ratesByMediaId.forEach { (mediaId, sampleRateHz) ->
             if (mediaId.isNotBlank() && sampleRateHz != null && sampleRateHz > 0) {

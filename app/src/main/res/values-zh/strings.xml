@@ -46,4 +46,9 @@
     <string name="shortcut_play_long">继续上次播放</string>
     <string name="shortcut_library">曲库</string>
     <string name="shortcut_library_long">打开曲库</string>
+    <string name="echo_link_cast_notification_channel">ECHOSteam 投送</string>
+    <string name="echo_link_cast_notification_title">正在向电脑提供音频</string>
+    <string name="echo_link_cast_notification_text">投送期间请保持手机与电脑在同一 Wi-Fi。</string>
+    <string name="echo_link_cast_no_lan">找不到手机的局域网地址，请检查 Wi-Fi 后重试。</string>
+    <string name="echo_link_cast_notification_stop">停止</string>
 </resources>

@@ -16,6 +16,7 @@ internal class EchoRenderersFactory(
     context: Context,
     private val equalizerProcessor: AudioProcessor,
     private val smartTransitionProcessor: AudioProcessor = EchoSmartTransitionMixer(),
+    private val channelBalanceProcessor: AudioProcessor = EchoChannelBalanceAudioProcessor(),
 ) : DefaultRenderersFactory(context) {
     init {
         // Keep platform decoding first; use the bundled software renderer for unsupported formats.
@@ -42,7 +43,7 @@ internal class EchoRenderersFactory(
         DefaultAudioSink.Builder(context)
             .setEnableFloatOutput(enableFloatOutput)
             .setEnableAudioOutputPlaybackParameters(enableAudioTrackPlaybackParams)
-            .setAudioProcessors(arrayOf(smartTransitionProcessor, equalizerProcessor))
+            .setAudioProcessors(arrayOf(smartTransitionProcessor, equalizerProcessor, channelBalanceProcessor))
             .setAudioOutputProvider(EchoAudioOutputProvider(context))
             .build()
 }

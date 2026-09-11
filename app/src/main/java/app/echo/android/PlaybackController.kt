@@ -15,6 +15,7 @@ import app.echo.android.model.error.EchoErrorLog
 import app.echo.android.model.error.EchoErrorSource
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.playback.EchoAudioErrorKind
+import app.echo.android.model.playback.EchoChannelBalanceState
 import app.echo.android.model.playback.EchoEqualizerState
 import app.echo.android.model.playback.EchoPlaybackDiagnostics
 import app.echo.android.model.playback.EchoPlaybackError
@@ -127,6 +128,9 @@ internal class PlaybackController(
 
     private val equalizerController = EchoPlaybackProcessRuntime.equalizerController()
     val equalizerState: StateFlow<EchoEqualizerState> = equalizerController.state
+
+    private val channelBalanceController = EchoPlaybackProcessRuntime.channelBalanceController()
+    val channelBalanceState: StateFlow<EchoChannelBalanceState> = channelBalanceController.state
 
     private val usbAudioMonitor = EchoPlaybackProcessRuntime.usbAudioMonitor(application)
     private val enginePolicy = EchoPlaybackProcessRuntime.enginePolicy(application)
@@ -260,6 +264,14 @@ internal class PlaybackController(
         equalizerController.reset()
     }
 
+    fun setChannelBalance(state: EchoChannelBalanceState) {
+        channelBalanceController.setState(state)
+    }
+
+    fun resetChannelBalance() {
+        channelBalanceController.reset()
+    }
+
     fun applyOpraPreset(preset: OpraHeadphoneCorrectionPreset): List<Float> =
         equalizerController.applyOpraPreset(preset)
 
@@ -367,6 +379,29 @@ internal class PlaybackController(
         withController { pause() }
     }
 
+    fun releaseCurrentItemForFileWrite(trackId: String): Boolean {
+        if (currentTrackId != trackId) return false
+        val mediaController = controller ?: return false
+        if (shouldQueueControllerActionUntilSessionReady(sessionReadyForCommands)) return false
+        mediaController.pause()
+        mediaController.stop()
+        updatePlaybackCore(mediaController)
+        return true
+    }
+
+    fun prepareAfterFileWrite(trackId: String) {
+        if (currentTrackId != trackId) return
+        val mediaController = controller ?: return
+        if (shouldQueueControllerActionUntilSessionReady(sessionReadyForCommands)) return
+        if (
+            mediaController.playbackState == Player.STATE_IDLE &&
+            mediaController.mediaItemCount > 0
+        ) {
+            mediaController.prepare()
+        }
+        updatePlaybackCore(mediaController)
+    }
+
     fun playPause() {
         val playWhenReady = controller
             ?.takeIf { !shouldQueueControllerActionUntilSessionReady(sessionReadyForCommands) }
@@ -442,6 +477,7 @@ internal class PlaybackController(
         withController {
             if (index !in 0 until mediaItemCount) return@withController
             removeMediaItem(index)
+            if (mediaItemCount == 0) replaceQueueLookups(emptyList())
             updatePlaybackCore(this)
         }
     }
@@ -460,6 +496,7 @@ internal class PlaybackController(
         withController {
             if (mediaItemCount <= 0) return@withController
             removeMediaItems(0, mediaItemCount)
+            replaceQueueLookups(emptyList())
             updatePlaybackCore(this)
         }
     }
@@ -841,6 +878,7 @@ internal class PlaybackController(
         }
         val position = player.toPlaybackPositionState()
         if (remapQueue) {
+            retainQueueLookups(player)
             updateState(_playbackQueue, player.toPlaybackQueueState())
         } else {
             val currentQueue = _playbackQueue.value
@@ -1236,6 +1274,18 @@ internal class PlaybackController(
         return (0 until mediaController.mediaItemCount).map { index ->
             mediaController.getMediaItemAt(index).localConfiguration?.uri?.toString().orEmpty()
         }
+    }
+
+    private fun retainQueueLookups(player: Player) {
+        val ids = HashSet<String>(player.mediaItemCount)
+        for (index in 0 until player.mediaItemCount) {
+            val id = player.getMediaItemAt(index).mediaId
+            if (id.isNotBlank()) ids += id
+        }
+        if (ids.isEmpty()) return
+        sampleRatesByMediaId.keys.retainAll(ids)
+        replayGainUrisByMediaId.keys.retainAll(ids)
+        enginePolicy.retainQueueLookups(ids)
     }
 
     private fun mergeReplayGainLookupsFromPlayer(player: Player) {

@@ -38,7 +38,8 @@ fun EchoPanel(
     content: @Composable () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val dark = LocalEchoDarkTheme.current
+    val theme = echoTheme()
+    val dark = theme.dark
     val shape = RoundedCornerShape(24.dp)
     Box(
         modifier = modifier
@@ -53,7 +54,7 @@ fun EchoPanel(
                 ),
             )
             .border(
-                if (dark) BorderStroke(1.dp, EchoDarkGlassBorder) else BorderStroke(1.dp, scheme.outlineVariant.copy(alpha = 0.65f)),
+                if (dark) BorderStroke(1.dp, theme.glassBorder) else BorderStroke(1.dp, scheme.outlineVariant.copy(alpha = 0.65f)),
                 shape,
             ),
     ) {
@@ -109,12 +110,13 @@ fun EchoMetricTile(
     detail: String? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val dark = LocalEchoDarkTheme.current
+    val theme = echoTheme()
+    val dark = theme.dark
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
         color = if (dark) scheme.surface.copy(alpha = 0.58f) else scheme.surface.copy(alpha = 0.92f),
-        border = if (dark) BorderStroke(1.dp, EchoDarkGlassBorder) else BorderStroke(1.dp, scheme.outlineVariant.copy(alpha = 0.65f)),
+        border = if (dark) BorderStroke(1.dp, theme.glassBorder) else BorderStroke(1.dp, scheme.outlineVariant.copy(alpha = 0.65f)),
     ) {
         Column(
             Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
@@ -161,7 +163,7 @@ fun EchoSegmentChip(
             if (selected) {
                 scheme.primary.copy(alpha = if (dark) 0.24f else 0.30f)
             } else {
-                if (dark) EchoDarkGlassBorder else Color.White.copy(alpha = 0.96f)
+                if (dark) echoTheme().glassBorder else Color.White.copy(alpha = 0.96f)
             },
         ),
     ) {

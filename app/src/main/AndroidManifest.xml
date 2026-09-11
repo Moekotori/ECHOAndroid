@@ -67,6 +67,11 @@
         </activity>
 
         <service
+            android:name=".EchoLinkCastService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <service
             android:name="app.echo.android.playback.EchoPlaybackService"
             android:exported="true"
             android:foregroundServiceType="mediaPlayback">

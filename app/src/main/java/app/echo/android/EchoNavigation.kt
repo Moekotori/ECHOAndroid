@@ -62,8 +62,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.EchoAccent
-import app.echo.android.design.EchoHomeMist
+import app.echo.android.design.echoTheme
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.echoDarkGlassBorder
 import app.echo.android.design.LocalEchoDarkTheme
@@ -73,7 +72,7 @@ import kotlinx.coroutines.flow.collectLatest
 private val DockItemMotionEasing = EchoMotion.Silk
 private val DockGlassShape = RoundedCornerShape(28.dp)
 private val DockItemShape = RoundedCornerShape(22.dp)
-private val DockSelectedRose = EchoAccent
+
 
 enum class EchoTab(
     val icon: ImageVector,
@@ -107,6 +106,7 @@ fun BottomDock(
     val dark = LocalEchoDarkTheme.current
     val density = LocalDensity.current
     val scheme = MaterialTheme.colorScheme
+    val theme = echoTheme()
     val tabCount = EchoTab.entries.size
     val swipeThresholdPx = with(density) { 46.dp.toPx() }
     var dragOffsetX by remember { mutableStateOf(0f) }
@@ -138,7 +138,7 @@ fun BottomDock(
                             ),
                         )
                     } else {
-                        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.72f), EchoHomeMist.copy(alpha = 0.86f)))
+                        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.72f), theme.mist.copy(alpha = 0.86f)))
                     },
                 )
                 .border(
@@ -224,7 +224,7 @@ fun BottomDock(
                 )
                 else -> Brush.horizontalGradient(
                     listOf(
-                        DockSelectedRose.copy(alpha = 0.16f),
+                        theme.accent.copy(alpha = 0.16f),
                         Color.White.copy(alpha = 0.05f),
                     ),
                 )
@@ -281,9 +281,10 @@ private fun DockItem(
     modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val accent = echoTheme().accent
     val targetIconColor = when {
         selected && onLightSurface -> scheme.onSurface
-        selected -> DockSelectedRose
+        selected -> accent
         onLightSurface -> scheme.onSurfaceVariant
         else -> Color.White.copy(alpha = 0.70f)
     }

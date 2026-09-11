@@ -46,4 +46,9 @@
     <string name="shortcut_play_long">Play last queue</string>
     <string name="shortcut_library">Library</string>
     <string name="shortcut_library_long">Open library</string>
+    <string name="echo_link_cast_notification_channel">ECHOSteam cast</string>
+    <string name="echo_link_cast_notification_title">Sending audio to the computer</string>
+    <string name="echo_link_cast_notification_text">Keep this phone on the same Wi-Fi while ECHOSteam is playing.</string>
+    <string name="echo_link_cast_no_lan">Could not find this phone\'s LAN address. Check Wi-Fi and try again.</string>
+    <string name="echo_link_cast_notification_stop">Stop</string>
 </resources>

@@ -50,6 +50,26 @@ class EchoRemotePlaybackAuthTest {
     }
 
     @Test
+    fun playbackRequestSignsSubsonicWithoutLeakingPasswordHeader() {
+        EchoRemotePlaybackAuthRegistry.replaceSubsonicCredentials(
+            listOf(
+                EchoSubsonicPlaybackCredential(
+                    baseUrl = "https://navidrome.example",
+                    username = "alice",
+                    password = "secret",
+                ),
+            ),
+        )
+        val request = EchoRemotePlaybackAuthRegistry.playbackRequest(
+            "https://navidrome.example/rest/stream.view?id=s1",
+        )
+        val query = queryMap(request.url)
+        assertEquals("alice", query["u"])
+        assertFalse(query["t"].isNullOrBlank())
+        assertTrue(request.headers.isEmpty())
+    }
+
+    @Test
     fun resolveLeavesUnsignedStreamWhenCredentialsCleared() {
         val unsigned = "https://navidrome.example/rest/stream.view?id=s1"
         val resolved = EchoRemotePlaybackAuthRegistry.resolveSubsonicUrl(unsigned)

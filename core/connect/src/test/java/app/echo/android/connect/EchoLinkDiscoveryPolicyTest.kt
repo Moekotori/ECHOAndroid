@@ -107,6 +107,16 @@ class EchoLinkDiscoveryPolicyTest {
         )
         assertTrue(EchoLinkDiscoveryPolicy.addressMatchesDevice("http://192.168.1.12:26789/echo-link", device))
         assertFalse(EchoLinkDiscoveryPolicy.addressMatchesDevice("192.168.1.120:26789", device))
+        assertTrue(
+            EchoLinkDiscoveryPolicy.sameLanEndpoint(
+                "http://192.168.1.12:26789",
+                "192.168.1.12:26789",
+            ),
+        )
+        assertEquals(
+            "192.168.1.12:26789",
+            EchoLinkDiscoveryPolicy.lanEndpointKey("http://192.168.1.12:26789/echo-link"),
+        )
     }
 
     @Test

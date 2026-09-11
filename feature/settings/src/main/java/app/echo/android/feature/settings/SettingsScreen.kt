@@ -41,6 +41,7 @@ fun SettingsScreen(
     lyricsFontScale: Float,
     importedFontUri: String?,
     themeMode: String,
+    colorTheme: String,
     appLanguage: String,
     scheduledDarkModeEnabled: Boolean,
     scheduledDarkStartMinute: Int,
@@ -89,6 +90,7 @@ fun SettingsScreen(
     onImportLyricsFont: () -> Unit,
     onClearImportedFont: () -> Unit,
     onThemeModeChange: (String) -> Unit,
+    onColorThemeChange: (String) -> Unit,
     onAppLanguageChange: (String) -> Unit,
     onScheduledDarkModeEnabledChange: (Boolean) -> Unit,
     onScheduledDarkStartMinuteChange: (Int) -> Unit,
@@ -116,7 +118,7 @@ fun SettingsScreen(
                 "dark" -> R.string.settings_theme_dark
                 "light" -> R.string.settings_theme_light
                 else -> R.string.settings_theme_system
-            }) + " · " + backgroundDetail(customBackgroundMode, customBackgroundUri)),
+            }) + " · " + colorThemeLabel(colorTheme) + " · " + backgroundDetail(customBackgroundMode, customBackgroundUri)),
             SettingsCategory.Interface to (languageDetail(appLanguage) + " · " +
                 performanceModeOptions().firstOrNull { it.value == performanceMode }?.label.orEmpty()),
             SettingsCategory.Playback to stringResource(if (usbExclusiveEnabled) R.string.settings_usb_exclusive else R.string.settings_gapless),
@@ -141,6 +143,7 @@ fun SettingsScreen(
                     lyricsFontScale = lyricsFontScale,
                     importedFontUri = importedFontUri,
                     themeMode = themeMode,
+                    colorTheme = colorTheme,
                     scheduledDarkModeEnabled = scheduledDarkModeEnabled,
                     scheduledDarkStartMinute = scheduledDarkStartMinute,
                     scheduledDarkEndMinute = scheduledDarkEndMinute,
@@ -162,6 +165,7 @@ fun SettingsScreen(
                     onImportLyricsFont = onImportLyricsFont,
                     onClearImportedFont = onClearImportedFont,
                     onThemeModeChange = onThemeModeChange,
+                    onColorThemeChange = onColorThemeChange,
                     onScheduledDarkModeEnabledChange = onScheduledDarkModeEnabledChange,
                     onScheduledDarkStartMinuteChange = onScheduledDarkStartMinuteChange,
                     onScheduledDarkEndMinuteChange = onScheduledDarkEndMinuteChange,

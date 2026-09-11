@@ -23,14 +23,19 @@ internal class EchoPlaybackCacheEvictor : CacheEvictor {
     }
 
     override fun onSpanAdded(cache: Cache, span: CacheSpan) {
-        leastRecentlyUsed.add(span)
-        currentSize += span.length
-        evictCache(cache, 0L)
+        synchronized(cache) {
+            leastRecentlyUsed.add(span)
+            currentSize += span.length
+            evictCacheLocked(cache, 0L)
+        }
     }
 
     override fun onSpanRemoved(cache: Cache, span: CacheSpan) {
-        leastRecentlyUsed.remove(span)
-        currentSize -= span.length
+        synchronized(cache) {
+            if (leastRecentlyUsed.remove(span)) {
+                currentSize -= span.length
+            }
+        }
     }
 
     override fun onSpanTouched(cache: Cache, oldSpan: CacheSpan, newSpan: CacheSpan) {
@@ -39,10 +44,22 @@ internal class EchoPlaybackCacheEvictor : CacheEvictor {
     }
 
     fun trim(cache: Cache) {
-        evictCache(cache, 0L)
+        synchronized(cache) {
+            evictCacheLocked(cache, 0L)
+        }
     }
 
+    internal fun cachedSizeBytes(): Long = currentSize
+
+    internal fun cachedSpanCount(): Int = leastRecentlyUsed.size
+
     private fun evictCache(cache: Cache, requiredSpace: Long) {
+        synchronized(cache) {
+            evictCacheLocked(cache, requiredSpace)
+        }
+    }
+
+    private fun evictCacheLocked(cache: Cache, requiredSpace: Long) {
         val maxBytes = EchoPlaybackCachePolicy.maxCacheBytes
         while (currentSize + requiredSpace > maxBytes && leastRecentlyUsed.isNotEmpty()) {
             cache.removeSpan(leastRecentlyUsed.first())

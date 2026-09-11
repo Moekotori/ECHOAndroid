@@ -1,6 +1,8 @@
 package app.echo.android.connect
 
 import app.echo.android.model.connect.EchoRemoteCommand
+import app.echo.android.model.connect.EchoRemoteStreamItem
+import app.echo.android.model.connect.EchoRemoteTrack
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -79,6 +81,52 @@ class EchoPairingParserTest {
         assertEquals(2, ids.length())
         assertEquals("a", ids.getString(0))
         assertEquals("b", ids.getString(1))
+    }
+
+    @Test
+    fun playRemoteStreamCommandIncludesUrlAndTrack() {
+        val json = EchoRemoteCommand.PlayRemoteStream(
+            streamUrl = "http://192.168.1.20:26800/echo-link/cast/abcd",
+            positionMs = 12_000,
+            track = EchoRemoteTrack(
+                id = "phone-1",
+                title = "Song",
+                artist = "Artist",
+                album = "Album",
+                artworkUrl = null,
+                durationMs = 240_000,
+            ),
+        ).toJson()
+        assertEquals("playRemoteStream", json.getString("command"))
+        assertEquals("pc", json.getString("target"))
+        assertEquals(12_000, json.getLong("positionMs"))
+        assertEquals("http://192.168.1.20:26800/echo-link/cast/abcd", json.getString("streamUrl"))
+        assertEquals("phone-1", json.getJSONObject("track").getString("id"))
+    }
+
+    @Test
+    fun queueReplaceRemoteCommandIncludesItems() {
+        val json = EchoRemoteCommand.QueueReplaceRemote(
+            items = listOf(
+                EchoRemoteStreamItem(
+                    id = "a",
+                    streamUrl = "http://phone/echo-link/cast/a",
+                    title = "A",
+                    artist = "Artist",
+                ),
+                EchoRemoteStreamItem(
+                    id = "b",
+                    streamUrl = "http://phone/echo-link/cast/b",
+                    title = "B",
+                    artist = "Artist",
+                ),
+            ),
+            startTrackId = "b",
+        ).toJson()
+        assertEquals("queueReplaceRemote", json.getString("command"))
+        assertEquals("b", json.getString("startTrackId"))
+        assertEquals(2, json.getJSONArray("items").length())
+        assertEquals("http://phone/echo-link/cast/a", json.getJSONArray("items").getJSONObject(0).getString("streamUrl"))
     }
 
     @Test

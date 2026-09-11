@@ -151,6 +151,7 @@
     <string name="feature_library_sample_rate_f6382c" formatted="false">"Sample rate"</string>
     <string name="feature_library_sample_rate_pending_bd6e6d" formatted="false">"Sample rate pending"</string>
     <string name="feature_library_save_68ae20" formatted="false">"Save"</string>
+    <string name="feature_library_saving_9f2a14" formatted="false">"Saving…"</string>
     <string name="feature_library_scan_a_single_folder_17bf3e" formatted="false">"Scan a single folder"</string>
     <string name="feature_library_scan_cancelled_1eefcb" formatted="false">"Scan cancelled"</string>
     <string name="feature_library_scan_cancelled_the_existing_library_was_kept_266734" formatted="false">"Scan cancelled. The existing library was kept."</string>

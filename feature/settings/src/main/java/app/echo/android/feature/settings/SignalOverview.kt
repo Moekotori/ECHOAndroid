@@ -13,14 +13,20 @@ import androidx.compose.ui.unit.dp
 import app.echo.android.model.playback.*
 
 @Composable
-internal fun SignalOverview(status: EchoPlaybackStatus, equalizer: EchoEqualizerState, onAdjust: () -> Unit, onDiagnostics: () -> Unit) {
+internal fun SignalOverview(
+    status: EchoPlaybackStatus,
+    equalizer: EchoEqualizerState,
+    channelBalance: EchoChannelBalanceState = EchoChannelBalanceState(),
+    onAdjust: () -> Unit,
+    onDiagnostics: () -> Unit,
+) {
     val d = status.diagnostics
     val hasSource = status.track != null || status.isPlaying
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SignalNote(stringResource(L10nR.string.diag_output_end))
             Text(d.usbDeviceName ?: d.outputRoute, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Medium)
-            SignalNote(if (hasSource) d.signalIntegrityLabel(equalizer) else stringResource(L10nR.string.diag_pick_track))
+            SignalNote(if (hasSource) d.signalIntegrityLabel(equalizer, channelBalance) else stringResource(L10nR.string.diag_pick_track))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             SignalMetric(stringResource(L10nR.string.diag_sample_rate), d.sampleRateHz?.let(::formatSampleRate) ?: "—", Modifier.weight(1f))
@@ -30,8 +36,13 @@ internal fun SignalOverview(status: EchoPlaybackStatus, equalizer: EchoEqualizer
         SignalSection(stringResource(L10nR.string.feature_settings_signal_path_2fed34)) {
             SignalPathStep("01", stringResource(L10nR.string.diag_source_file), if (hasSource) d.fileFormatLabel() else stringResource(L10nR.string.diag_waiting_playback), status.track?.title, hasSource)
             SignalPathStep("02", stringResource(L10nR.string.diag_decoder), d.codec ?: stringResource(L10nR.string.diag_waiting_decode), if (hasSource) d.decodedFormatLabel() else null, hasSource)
-            SignalPathStep("03", stringResource(L10nR.string.diag_processing_layer), if (equalizer.active && !d.usbBitPerfectEnabled) equalizer.sourceLabel ?: equalizer.presetName else if (d.usbBitPerfectEnabled) stringResource(L10nR.string.bitperfect_bypass) else d.processingLabel(),
-                if (equalizer.active && !d.usbBitPerfectEnabled) stringResource(L10nR.string.diag_integrity_eq) else if (d.usbBitPerfectEnabled) stringResource(L10nR.string.bitperfect_bypass_detail) else stringResource(L10nR.string.feature_settings_equalizer_is_not_changing_the_signal_7cf73b), equalizer.active && !d.usbBitPerfectEnabled)
+            SignalPathStep(
+                "03",
+                stringResource(L10nR.string.diag_processing_layer),
+                processingLayerValue(d, equalizer, channelBalance),
+                processingLayerDetail(d, equalizer, channelBalance),
+                (equalizer.active || channelBalance.active) && !d.usbBitPerfectEnabled,
+            )
             SignalPathStep("04", stringResource(L10nR.string.diag_output_end), when {
                 d.usbExclusiveStreaming -> stringResource(L10nR.string.diag_usb_exclusive_stream, d.usbExclusiveTransport ?: "PCM")
                 d.usbBitPerfectActive -> stringResource(L10nR.string.diag_usb_bit_perfect)
@@ -71,4 +82,31 @@ private fun SignalPathStep(index: String, label: String, value: String, detail: 
             if (!detail.isNullOrBlank()) SignalNote(detail)
         }
     }
+}
+
+@Composable
+private fun processingLayerValue(
+    diagnostics: EchoPlaybackDiagnostics,
+    equalizer: EchoEqualizerState,
+    channelBalance: EchoChannelBalanceState,
+): String = when {
+    diagnostics.usbBitPerfectEnabled -> stringResource(L10nR.string.bitperfect_bypass)
+    equalizer.active && channelBalance.active ->
+        "${equalizer.sourceLabel ?: equalizer.presetName} · ${stringResource(L10nR.string.channel_balance)}"
+    equalizer.active -> equalizer.sourceLabel ?: equalizer.presetName
+    channelBalance.active -> stringResource(L10nR.string.channel_balance)
+    else -> diagnostics.processingLabel()
+}
+
+@Composable
+private fun processingLayerDetail(
+    diagnostics: EchoPlaybackDiagnostics,
+    equalizer: EchoEqualizerState,
+    channelBalance: EchoChannelBalanceState,
+): String = when {
+    diagnostics.usbBitPerfectEnabled -> stringResource(L10nR.string.bitperfect_bypass_detail)
+    equalizer.active && channelBalance.active -> stringResource(L10nR.string.diag_integrity_eq_balance)
+    equalizer.active -> stringResource(L10nR.string.diag_integrity_eq)
+    channelBalance.active -> stringResource(L10nR.string.diag_integrity_balance)
+    else -> stringResource(L10nR.string.feature_settings_equalizer_is_not_changing_the_signal_7cf73b)
 }

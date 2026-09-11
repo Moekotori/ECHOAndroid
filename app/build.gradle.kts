@@ -1,4 +1,9 @@
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.Properties
+import org.gradle.api.plugins.BasePluginExtension
+import org.gradle.api.provider.ValueSource
+import org.gradle.api.provider.ValueSourceParameters
 
 val localProperties = Properties().apply {
     val file = rootProject.file("local.properties")
@@ -22,10 +27,27 @@ fun lastFmBuildValue(name: String, fallback: String = ""): String {
     return value.replace("\\", "\\\\").replace("\"", "\\\"")
 }
 
+/** Build calendar in Asia/Shanghai so CI (UTC) matches the product date. */
+abstract class EchoCalendarDateSource : ValueSource<String, ValueSourceParameters.None> {
+    override fun obtain(): String = LocalDate.now(ZoneId.of("Asia/Shanghai")).toString()
+}
+
+fun echoCalendarVersionName(date: LocalDate): String =
+    "${date.year % 100}.${date.monthValue}.${date.dayOfMonth}"
+
+fun echoCalendarVersionCode(date: LocalDate): Int {
+    val y = date.year % 100
+    return y * 10_000 + date.monthValue * 100 + date.dayOfMonth
+}
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
 }
+
+val echoBuildDate = LocalDate.parse(providers.of(EchoCalendarDateSource::class) {}.get())
+val echoVersionName = echoCalendarVersionName(echoBuildDate)
+val echoVersionCode = echoCalendarVersionCode(echoBuildDate)
 
 the<org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension>().compilerOptions {
 }
@@ -38,8 +60,8 @@ android {
         applicationId = "app.echo.android"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0-foundation"
+        versionName = echoVersionName
+        versionCode = echoVersionCode
         buildConfigField(
             "String",
             "LASTFM_API_KEY",
@@ -83,6 +105,10 @@ android {
             useLegacyPackaging = false
         }
     }
+}
+
+extensions.configure<BasePluginExtension>("base") {
+    archivesName.set("ECHOAndroid-$echoVersionName")
 }
 
 dependencies {

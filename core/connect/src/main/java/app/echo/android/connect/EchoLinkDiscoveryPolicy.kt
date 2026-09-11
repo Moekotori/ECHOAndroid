@@ -49,6 +49,18 @@ object EchoLinkDiscoveryPolicy {
 
     fun addressLabel(device: EchoLinkLanDevice): String = hostPortKey(device.host, device.port)
 
+    fun lanEndpointKey(address: String?): String? {
+        val parsed = parseLanHostPort(address) ?: return null
+        return lanEndpointKey(parsed.first, parsed.second)
+    }
+
+    fun lanEndpointKey(host: String, port: Int): String = hostPortKey(host, port).lowercase()
+
+    fun sameLanEndpoint(left: String?, right: String?): Boolean {
+        val leftKey = lanEndpointKey(left) ?: return false
+        return leftKey == lanEndpointKey(right)
+    }
+
     fun pickHost(hosts: Iterable<String?>): String? {
         val cleaned = hosts.mapNotNull { it?.trim()?.takeIf(String::isNotEmpty) }
         if (cleaned.isEmpty()) return null

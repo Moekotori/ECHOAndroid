@@ -1,26 +1,38 @@
 package app.echo.android
 
 import android.app.Application
+import app.echo.android.connect.EchoLinkCastPolicy
+import app.echo.android.connect.EchoLinkCastPublication
+import app.echo.android.connect.EchoLinkCastServer
+import app.echo.android.connect.EchoLinkCastSourceTrack
+import app.echo.android.connect.EchoLinkLanAddresses
 import app.echo.android.connect.EchoRemoteClient
 import app.echo.android.data.EchoSettingsStore
+import app.echo.android.model.connect.EchoRemoteCommand
 import app.echo.android.model.connect.EchoRemoteConnectionState
+import app.echo.android.model.connect.EchoRemoteStreamItem
 import app.echo.android.model.error.EchoErrorLog
 import app.echo.android.model.error.EchoErrorSource
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 /** Process-owned connection: activity recreation must not replace playback credentials. */
-class EchoLinkSession(application: Application) {
+class EchoLinkSession(private val application: Application) {
     private val scope = CoroutineScope(
         SupervisorJob() + Dispatchers.Main.immediate + CoroutineExceptionHandler { _, error ->
             EchoErrorLog.recordUncaught(error)
         },
     )
     val client = EchoRemoteClient(scope).apply { setForeground(false) }
+    val castServer = EchoLinkCastServer(
+        openBody = EchoLinkCastMediaOpener(application.contentResolver),
+        allowedPeerHost = { client.status.value.endpoint?.host },
+    )
     private val settings = EchoSettingsStore(application)
     private var persistedKey: Pair<String?, String?>? = null
     private var attemptedKey: Pair<String?, String?>? = null
@@ -68,6 +80,9 @@ class EchoLinkSession(application: Application) {
                 } else if (status.connectionState == EchoRemoteConnectionState.Connected) {
                     lastConnectionError = null
                 }
+                if (status.connectionState == EchoRemoteConnectionState.Disconnected) {
+                    stopLocalCast()
+                }
             }
         }
         scope.launch {
@@ -82,5 +97,47 @@ class EchoLinkSession(application: Application) {
                 }
             }
         }
+        scope.launch {
+            while (true) {
+                delay(60_000)
+                if (castServer.isIdle(System.currentTimeMillis())) {
+                    stopLocalCast()
+                }
+            }
+        }
+    }
+
+    fun publishLocalCast(tracks: List<EchoLinkCastSourceTrack>): List<EchoRemoteStreamItem>? {
+        val host = EchoLinkLanAddresses.ipv4(application) ?: return null
+        val port = runCatching { castServer.start() }.getOrNull() ?: return null
+        val publications = tracks.map { track ->
+            EchoLinkCastPublication(
+                token = EchoLinkCastPolicy.newToken(),
+                trackId = track.id,
+                uri = track.uri,
+                mimeType = track.mimeType,
+                title = track.title,
+                artist = track.artist,
+                album = track.album,
+                artworkUrl = track.artworkUri,
+                durationMs = track.durationMs,
+            )
+        }
+        val items = castServer.publish(publications, host, port)
+        if (items.isEmpty()) return null
+        runCatching { EchoLinkCastService.start(application) }
+        return items
+    }
+
+    fun stopLocalCast() {
+        castServer.stop()
+        EchoLinkCastService.stop(application)
+    }
+
+    fun stopCastPlayback() {
+        if (client.status.value.connectionState == EchoRemoteConnectionState.Connected) {
+            client.send(EchoRemoteCommand.Stop)
+        }
+        stopLocalCast()
     }
 }

@@ -1,5 +1,6 @@
 package app.echo.android.data
 
+import app.echo.android.model.settings.EchoColorTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -20,6 +21,8 @@ class EchoStartupThemeSnapshotTest {
     fun defaultThemeModeIsDark() {
         assertEquals(EchoThemeMode.Dark, EchoStartupThemeSnapshot().themeMode)
         assertEquals(EchoThemeMode.Dark, EchoAppSettings().themeMode)
+        assertEquals(EchoColorTheme.Default.id, EchoStartupThemeSnapshot().colorTheme)
+        assertEquals(EchoColorTheme.Default.id, EchoAppSettings().colorTheme)
     }
 
     @Test

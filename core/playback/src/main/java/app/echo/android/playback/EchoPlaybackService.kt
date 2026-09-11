@@ -86,8 +86,10 @@ class EchoPlaybackService : MediaLibraryService() {
                     this,
                     EchoPlaybackProcessRuntime.equalizerController().processor,
                     smartMixer,
+                    EchoPlaybackProcessRuntime.channelBalanceController().processor,
                 ),
             )
+            .setLoadControl(EchoPlaybackLoadControl())
             .setMediaSourceFactory(DefaultMediaSourceFactory(echoPlaybackDataSourceFactory(this)))
             .setAudioAttributes(
                 AudioAttributes.Builder()

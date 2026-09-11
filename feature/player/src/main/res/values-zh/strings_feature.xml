@@ -124,4 +124,19 @@
     <string name="feature_player_word_highlight_off_b0e40a" formatted="false">"逐字强度 关"</string>
     <string name="feature_player_replay_gain_unread">未读取</string>
     <string name="feature_player_replay_gain_none">无标签</string>
+    <string name="feature_player_lyrics_offset">歌词偏移</string>
+    <string name="feature_player_nightcore">Nightcore</string>
+    <string name="feature_player_playback_mode">播放方式</string>
+    <string name="feature_player_replay_gain">ReplayGain</string>
+    <string name="feature_player_replay_gain_album">专辑</string>
+    <string name="feature_player_replay_gain_auto">自动</string>
+    <string name="feature_player_replay_gain_preamp">预增益</string>
+    <string name="feature_player_replay_gain_preamp_down">降低预增益</string>
+    <string name="feature_player_replay_gain_preamp_up">提高预增益</string>
+    <string name="feature_player_replay_gain_reset_preamp">重置预增益</string>
+    <string name="feature_player_replay_gain_track">曲目</string>
+    <string name="feature_player_shuffle">随机</string>
+    <string name="feature_player_sleep_timer_apply">开始定时</string>
+    <string name="feature_player_sleep_timer_custom">自定义</string>
+    <string name="feature_player_sleep_timer_minutes_value">%1$d 分钟</string>
 </resources>

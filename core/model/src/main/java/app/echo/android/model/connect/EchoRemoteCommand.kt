@@ -13,4 +13,13 @@ sealed interface EchoRemoteCommand {
         val trackIds: List<String>,
         val startTrackId: String,
     ) : EchoRemoteCommand
+    data class PlayRemoteStream(
+        val streamUrl: String,
+        val positionMs: Long,
+        val track: EchoRemoteTrack,
+    ) : EchoRemoteCommand
+    data class QueueReplaceRemote(
+        val items: List<EchoRemoteStreamItem>,
+        val startTrackId: String,
+    ) : EchoRemoteCommand
 }

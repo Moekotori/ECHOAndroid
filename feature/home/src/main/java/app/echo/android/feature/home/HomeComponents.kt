@@ -67,30 +67,22 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.ArtworkTile
-import app.echo.android.design.EchoAccentDeep
 import app.echo.android.design.EchoColors
-import app.echo.android.design.EchoDarkGlassBorder
-import app.echo.android.design.EchoGlassBorder
-import app.echo.android.design.EchoGlassInk
-import app.echo.android.design.EchoGlassPanel
-import app.echo.android.design.EchoHomeMist
 import app.echo.android.design.echoAccentColor
 import app.echo.android.design.echoOnAccentColor
 import app.echo.android.design.EchoIconBadge
 import app.echo.android.design.EchoPanel
 import app.echo.android.design.EchoPlaceholderLine
 import app.echo.android.design.EchoSectionTitle
-import app.echo.android.design.EchoSoftLine
 import app.echo.android.design.AmbientPlanet
 import app.echo.android.design.GlassIconButton
 import app.echo.android.design.GlassSurface
 import app.echo.android.design.LocalEchoDarkTheme
-import app.echo.android.design.RoonInk
-import app.echo.android.design.RoonMuted
 import app.echo.android.design.echoDarkGlassBorder
 import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.design.formatDuration
 import app.echo.android.design.progressFraction
+import app.echo.android.design.echoTheme
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.library.EchoTrack
@@ -120,7 +112,7 @@ private const val HomeHeatmapWeeks = 12
 @Composable
 internal fun homePanelColor(lightAlpha: Float = 0.90f): Color {
     return if (LocalEchoDarkTheme.current) {
-        EchoGlassPanel.copy(alpha = (lightAlpha * 0.58f).coerceIn(0.42f, 0.62f))
+        echoTheme().panel.copy(alpha = (lightAlpha * 0.58f).coerceIn(0.42f, 0.62f))
     } else {
         Color.White.copy(alpha = lightAlpha.coerceIn(0.95f, 1.00f))
     }
@@ -130,17 +122,17 @@ internal fun homePanelColor(lightAlpha: Float = 0.90f): Color {
 private fun homePanelBorder(lightAlpha: Float = 0.94f): BorderStroke {
     return BorderStroke(
         1.dp,
-        if (LocalEchoDarkTheme.current) EchoDarkGlassBorder else EchoSoftLine.copy(alpha = lightAlpha.coerceIn(0.74f, 0.96f)),
+        if (LocalEchoDarkTheme.current) echoTheme().glassBorder else echoTheme().softLine.copy(alpha = lightAlpha.coerceIn(0.74f, 0.96f)),
     )
 }
 
 @Composable
 private fun homeTitleColor(): Color =
-    if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.92f) else RoonInk
+    if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.92f) else echoTheme().heading
 
 @Composable
 internal fun homeBodyColor(): Color =
-    if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.66f) else RoonMuted.copy(alpha = 0.94f)
+    if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.66f) else echoTheme().muted.copy(alpha = 0.94f)
 
 @Composable
 private fun homePanelBrush(): Brush {
@@ -148,8 +140,8 @@ private fun homePanelBrush(): Brush {
         Brush.linearGradient(
             listOf(
                 Color.White.copy(alpha = 0.035f),
-                EchoGlassPanel.copy(alpha = 0.56f),
-                EchoGlassInk.copy(alpha = 0.62f),
+                echoTheme().panel.copy(alpha = 0.56f),
+                echoTheme().ink.copy(alpha = 0.62f),
             ),
         )
     } else {
@@ -157,7 +149,7 @@ private fun homePanelBrush(): Brush {
             listOf(
                 Color.White.copy(alpha = 1.00f),
                 Color(0xFFF7F5F6),
-                EchoHomeMist.copy(alpha = 0.76f),
+                echoTheme().mist.copy(alpha = 0.76f),
             ),
         )
     }
@@ -862,7 +854,7 @@ internal fun RecommendedAlbumCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f),
-            accent = EchoAccentDeep,
+            accent = echoTheme().accentDeep,
             showSignal = album.artworkUri == null,
             cornerRadius = 14.dp,
             elevation = if (LocalEchoDarkTheme.current) 0.dp else 6.dp,
@@ -949,7 +941,7 @@ private fun ArtistRankRow(
                     Brush.horizontalGradient(
                         listOf(
                             scheme.primary.copy(alpha = if (dark) 0.12f else 0.12f),
-                            if (dark) Color.White.copy(alpha = 0.025f) else EchoAccentDeep.copy(alpha = 0.10f),
+                            if (dark) Color.White.copy(alpha = 0.025f) else echoTheme().accentDeep.copy(alpha = 0.10f),
                             Color.Transparent,
                         ),
                     )
@@ -1082,11 +1074,11 @@ private fun FavoriteAlbumHeatmap(days: List<PlaybackHeatmapDay>) {
             .padding(horizontal = 18.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(if (dark) EchoGlassPanel.copy(alpha = 0.38f) else EchoHomeMist.copy(alpha = 0.52f))
+            .background(if (dark) echoTheme().panel.copy(alpha = 0.38f) else echoTheme().mist.copy(alpha = 0.52f))
             .border(
                 BorderStroke(
                     1.dp,
-                    if (dark) EchoDarkGlassBorder else EchoGlassBorder,
+                    if (dark) echoTheme().glassBorder else echoTheme().glassBorder,
                 ),
                 RoundedCornerShape(14.dp),
             )
@@ -1299,7 +1291,7 @@ private fun heatmapLevelColor(level: Int): Color {
         2 -> accent.copy(alpha = if (dark) 0.28f else 0.36f)
         3 -> accent.copy(alpha = if (dark) 0.42f else 0.56f)
         4 -> accent.copy(alpha = if (dark) 0.58f else 0.82f)
-        else -> if (dark) Color.White.copy(alpha = 0.07f) else EchoHomeMist
+        else -> if (dark) Color.White.copy(alpha = 0.07f) else echoTheme().mist
     }
 }
 
@@ -1315,14 +1307,14 @@ private fun EmptyRankingNotice(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .background(if (dark) EchoGlassPanel.copy(alpha = 0.28f) else EchoHomeMist.copy(alpha = 0.42f))
+            .background(if (dark) echoTheme().panel.copy(alpha = 0.28f) else echoTheme().mist.copy(alpha = 0.42f))
             .border(if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, Color.Transparent), RoundedCornerShape(18.dp))
             .echoClickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 14.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text(title, color = if (dark) scheme.onSurface else RoonInk, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-        Text(subtitle, color = if (dark) scheme.onSurfaceVariant else RoonMuted, style = MaterialTheme.typography.labelLarge)
+        Text(title, color = if (dark) scheme.onSurface else echoTheme().heading, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+        Text(subtitle, color = if (dark) scheme.onSurfaceVariant else echoTheme().muted, style = MaterialTheme.typography.labelLarge)
     }
 }
 
@@ -1557,7 +1549,7 @@ internal fun RecommendationCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f),
-            accent = EchoAccentDeep,
+            accent = echoTheme().accentDeep,
             showSignal = track.artworkUri == null,
             cornerRadius = 4.dp,
             elevation = 0.dp,
@@ -1716,7 +1708,7 @@ internal fun DailyRecommendationCard(
                         Color(0xFF2C2B31),
                         Color(0xFF242328),
                         Color(0xFF1C1B20),
-                        EchoAccentDeep.copy(alpha = 0.55f),
+                        echoTheme().accentDeep.copy(alpha = 0.55f),
                     ),
                 ),
             ),
@@ -2169,14 +2161,14 @@ internal fun NowPlayingHero(
         if (dark) {
             listOf(
                 Color.White.copy(alpha = 0.04f),
-                EchoGlassPanel.copy(alpha = 0.56f),
-                EchoGlassInk.copy(alpha = 0.62f),
+                echoTheme().panel.copy(alpha = 0.56f),
+                echoTheme().ink.copy(alpha = 0.62f),
                 scheme.primary.copy(alpha = 0.10f),
             )
         } else {
             listOf(
                 Color.White.copy(alpha = 0.72f),
-                EchoHomeMist.copy(alpha = 0.58f),
+                echoTheme().mist.copy(alpha = 0.58f),
                 scheme.primary.copy(alpha = 0.10f),
             )
         },
@@ -2197,7 +2189,7 @@ internal fun NowPlayingHero(
             .heightIn(min = 274.dp)
             .clip(RoundedCornerShape(26.dp))
             .background(heroBrush)
-            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.84f)), RoundedCornerShape(26.dp))
+            .border(BorderStroke(1.dp, echoTheme().glassBorder.copy(alpha = 0.84f)), RoundedCornerShape(26.dp))
             .padding(18.dp),
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2266,7 +2258,7 @@ internal fun CompactNowPlayingHero(
             .fillMaxWidth()
             .clip(RoundedCornerShape(22.dp))
             .background(heroBrush)
-            .border(BorderStroke(1.dp, EchoGlassBorder.copy(alpha = 0.82f)), RoundedCornerShape(22.dp))
+            .border(BorderStroke(1.dp, echoTheme().glassBorder.copy(alpha = 0.82f)), RoundedCornerShape(22.dp))
             .padding(14.dp),
     ) {
         val artworkSize = if (maxWidth < 420.dp) 76.dp else 92.dp

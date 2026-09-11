@@ -60,13 +60,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import app.echo.android.design.EchoColors
-import app.echo.android.design.EchoDarkGlassBorder
-import app.echo.android.design.EchoGlassBorder
-import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.echoAccentColor
-import app.echo.android.design.RoonInk
-import app.echo.android.design.RoonMuted
+import app.echo.android.design.echoTheme
 import app.echo.android.model.library.LibraryScanProgress
 
 private data class ScanGlassColors(
@@ -80,12 +76,13 @@ private data class ScanGlassColors(
 private fun rememberScanGlassColors(): ScanGlassColors {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
-    return remember(scheme, dark) {
+    val theme = echoTheme()
+    return remember(scheme, dark, theme) {
         ScanGlassColors(
-            surface = if (dark) EchoGlassPanel.copy(alpha = 0.54f) else Color.White.copy(alpha = 0.96f),
-            border = if (dark) EchoDarkGlassBorder else EchoGlassBorder,
-            content = if (dark) scheme.onSurface else RoonInk,
-            muted = if (dark) scheme.onSurfaceVariant.copy(alpha = 0.90f) else RoonMuted,
+            surface = if (dark) theme.panel.copy(alpha = 0.54f) else Color.White.copy(alpha = 0.96f),
+            border = theme.glassBorder,
+            content = if (dark) scheme.onSurface else theme.heading,
+            muted = if (dark) scheme.onSurfaceVariant.copy(alpha = 0.90f) else theme.muted,
         )
     }
 }

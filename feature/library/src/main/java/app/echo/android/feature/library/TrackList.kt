@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -42,13 +43,16 @@ import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -58,6 +62,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -76,12 +81,15 @@ import app.echo.android.design.displayMetadataOrUnknown
 import app.echo.android.design.formatDuration
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackMetadataUpdate
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 internal fun TrackList(
     tracks: LazyPagingItems<EchoTrack>,
     onPlayTrack: (EchoTrack) -> Unit,
-    onUpdateTrackMetadata: ((EchoTrackMetadataUpdate) -> Unit)? = null,
+    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
@@ -134,7 +142,7 @@ internal fun TrackList(
 internal fun TrackList(
     tracks: List<EchoTrack>,
     onPlayTrack: (EchoTrack) -> Unit,
-    onUpdateTrackMetadata: ((EchoTrackMetadataUpdate) -> Unit)? = null,
+    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
@@ -186,7 +194,7 @@ internal fun TrackList(
 internal fun TrackRow(
     track: EchoTrack,
     onClick: () -> Unit,
-    onUpdateTrackMetadata: ((EchoTrackMetadataUpdate) -> Unit)? = null,
+    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
@@ -326,7 +334,7 @@ private enum class TrackSheetMode {
 internal fun TrackContextMenu(
     track: EchoTrack,
     onPlay: () -> Unit,
-    onUpdateTrackMetadata: ((EchoTrackMetadataUpdate) -> Unit)? = null,
+    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
@@ -344,7 +352,13 @@ internal fun TrackContextMenu(
     var sheetMode by remember(track.id) { mutableStateOf<TrackSheetMode?>(null) }
     var showInfo by remember(track.id) { mutableStateOf(false) }
     var showEditor by remember(track.id) { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var editorSaving by remember(track.id) { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = { value ->
+            !editorSaving || value != SheetValue.Hidden
+        },
+    )
     val canEditMetadata = onUpdateTrackMetadata != null && track.source.isLocalAudioFile
 
     Box(modifier = modifier) {
@@ -416,7 +430,7 @@ internal fun TrackContextMenu(
 
     sheetMode?.let { mode ->
         ModalBottomSheet(
-            onDismissRequest = { sheetMode = null },
+            onDismissRequest = { if (!editorSaving) sheetMode = null },
             sheetState = sheetState,
             containerColor = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp,
@@ -480,11 +494,10 @@ internal fun TrackContextMenu(
                 TrackSheetMode.Editor -> if (onUpdateTrackMetadata != null) {
                     TrackMetadataEditorSheet(
                         track = track,
+                        saving = editorSaving,
                         onDismiss = { sheetMode = null },
-                        onSave = { update ->
-                            onUpdateTrackMetadata(update)
-                            sheetMode = null
-                        },
+                        onSave = onUpdateTrackMetadata,
+                        onSavingChange = { editorSaving = it },
                     )
                 }
             }
@@ -500,11 +513,10 @@ internal fun TrackContextMenu(
     if (showEditor && onUpdateTrackMetadata != null) {
         TrackMetadataEditorDialog(
             track = track,
+            saving = editorSaving,
             onDismiss = { showEditor = false },
-            onSave = { update ->
-                onUpdateTrackMetadata(update)
-                showEditor = false
-            },
+            onSave = onUpdateTrackMetadata,
+            onSavingChange = { editorSaving = it },
         )
     }
 }
@@ -677,8 +689,10 @@ private fun TrackActionRow(
 @Composable
 private fun TrackMetadataEditorSheet(
     track: EchoTrack,
+    saving: Boolean,
     onDismiss: () -> Unit,
-    onSave: (EchoTrackMetadataUpdate) -> Unit,
+    onSave: suspend (EchoTrackMetadataUpdate) -> Unit,
+    onSavingChange: (Boolean) -> Unit,
 ) {
     var title by remember(track.id) { mutableStateOf(track.title) }
     var artist by remember(track.id) { mutableStateOf(track.artist) }
@@ -688,11 +702,13 @@ private fun TrackMetadataEditorSheet(
     var discNumber by remember(track.id) { mutableStateOf(track.discNumber?.toString().orEmpty()) }
     var year by remember(track.id) { mutableStateOf(track.year?.toString().orEmpty()) }
     val canSave = title.isNotBlank() && artist.isNotBlank()
+    val scope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(max = 620.dp)
+            .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp)
             .padding(bottom = 24.dp),
@@ -713,13 +729,14 @@ private fun TrackMetadataEditorSheet(
                 fontWeight = FontWeight.ExtraBold,
                 style = MaterialTheme.typography.titleLarge,
             )
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, enabled = !saving) {
                 Text(stringResource(L10nR.string.feature_library_cancel_4c5fa5))
             }
         }
         TextField(
             value = title,
             onValueChange = { title = it },
+            enabled = !saving,
             label = { Text(stringResource(L10nR.string.feature_library_title_af1111)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
@@ -727,6 +744,7 @@ private fun TrackMetadataEditorSheet(
         TextField(
             value = artist,
             onValueChange = { artist = it },
+            enabled = !saving,
             label = { Text(stringResource(L10nR.string.feature_library_artist_37d883)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
@@ -734,6 +752,7 @@ private fun TrackMetadataEditorSheet(
         TextField(
             value = album,
             onValueChange = { album = it },
+            enabled = !saving,
             label = { Text(stringResource(L10nR.string.feature_library_album_eb13be)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
@@ -741,6 +760,7 @@ private fun TrackMetadataEditorSheet(
         TextField(
             value = albumArtist,
             onValueChange = { albumArtist = it },
+            enabled = !saving,
             label = { Text(stringResource(L10nR.string.feature_library_album_artist_6defa0)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
@@ -749,18 +769,21 @@ private fun TrackMetadataEditorSheet(
             NumericMetadataField(
                 value = trackNumber,
                 onValueChange = { trackNumber = it },
+                enabled = !saving,
                 label = stringResource(L10nR.string.feature_library_track_000e4d),
                 modifier = Modifier.weight(1f),
             )
             NumericMetadataField(
                 value = discNumber,
                 onValueChange = { discNumber = it },
+                enabled = !saving,
                 label = stringResource(L10nR.string.feature_library_disc_3128c0),
                 modifier = Modifier.weight(1f),
             )
             NumericMetadataField(
                 value = year,
                 onValueChange = { year = it },
+                enabled = !saving,
                 label = stringResource(L10nR.string.feature_library_year_fe373f),
                 modifier = Modifier.weight(1f),
             )
@@ -771,25 +794,35 @@ private fun TrackMetadataEditorSheet(
             style = MaterialTheme.typography.bodySmall,
         )
         Button(
-            enabled = canSave,
+            enabled = canSave || saving,
             onClick = {
-                onSave(
-                    EchoTrackMetadataUpdate(
-                        trackId = track.id,
-                        title = title.trim(),
-                        artist = artist.trim(),
-                        album = album.trim().takeIf { it.isNotBlank() },
-                        albumArtist = albumArtist.trim().takeIf { it.isNotBlank() },
-                        trackNumber = trackNumber.toPositiveIntOrNull(),
-                        discNumber = discNumber.toPositiveIntOrNull(),
-                        year = year.toPositiveIntOrNull(),
-                        artworkUri = track.artworkUri,
-                    ),
+                if (saving || !canSave) return@Button
+                val update = EchoTrackMetadataUpdate(
+                    trackId = track.id,
+                    title = title.trim(),
+                    artist = artist.trim(),
+                    album = album.trim().takeIf { it.isNotBlank() },
+                    albumArtist = albumArtist.trim().takeIf { it.isNotBlank() },
+                    trackNumber = trackNumber.toPositiveIntOrNull(),
+                    discNumber = discNumber.toPositiveIntOrNull(),
+                    year = year.toPositiveIntOrNull(),
+                    artworkUri = track.artworkUri,
                 )
+                onSavingChange(true)
+                scope.launch {
+                    try {
+                        withContext(NonCancellable) {
+                            onSave(update)
+                        }
+                    } finally {
+                        onSavingChange(false)
+                        onDismiss()
+                    }
+                }
             },
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(stringResource(L10nR.string.feature_library_save_68ae20))
+            MetadataSaveButtonLabel(saving)
         }
     }
 }
@@ -797,8 +830,10 @@ private fun TrackMetadataEditorSheet(
 @Composable
 private fun TrackMetadataEditorDialog(
     track: EchoTrack,
+    saving: Boolean,
     onDismiss: () -> Unit,
-    onSave: (EchoTrackMetadataUpdate) -> Unit,
+    onSave: suspend (EchoTrackMetadataUpdate) -> Unit,
+    onSavingChange: (Boolean) -> Unit,
 ) {
     var title by remember(track.id) { mutableStateOf(track.title) }
     var artist by remember(track.id) { mutableStateOf(track.artist) }
@@ -808,9 +843,10 @@ private fun TrackMetadataEditorDialog(
     var discNumber by remember(track.id) { mutableStateOf(track.discNumber?.toString().orEmpty()) }
     var year by remember(track.id) { mutableStateOf(track.year?.toString().orEmpty()) }
     val canSave = title.isNotBlank() && artist.isNotBlank()
+    val scope = rememberCoroutineScope()
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!saving) onDismiss() },
         title = {
             Text(
                 stringResource(L10nR.string.feature_library_edit_tags_c8ec75),
@@ -823,6 +859,7 @@ private fun TrackMetadataEditorDialog(
                 TextField(
                     value = title,
                     onValueChange = { title = it },
+                    enabled = !saving,
                     label = { Text(stringResource(L10nR.string.feature_library_title_af1111)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
@@ -830,6 +867,7 @@ private fun TrackMetadataEditorDialog(
                 TextField(
                     value = artist,
                     onValueChange = { artist = it },
+                    enabled = !saving,
                     label = { Text(stringResource(L10nR.string.feature_library_artist_b6e7ad)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
@@ -837,6 +875,7 @@ private fun TrackMetadataEditorDialog(
                 TextField(
                     value = album,
                     onValueChange = { album = it },
+                    enabled = !saving,
                     label = { Text(stringResource(L10nR.string.feature_library_album_eb13be)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
@@ -844,6 +883,7 @@ private fun TrackMetadataEditorDialog(
                 TextField(
                     value = albumArtist,
                     onValueChange = { albumArtist = it },
+                    enabled = !saving,
                     label = { Text(stringResource(L10nR.string.feature_library_album_artist_8a1c9e)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
@@ -852,18 +892,21 @@ private fun TrackMetadataEditorDialog(
                     NumericMetadataField(
                         value = trackNumber,
                         onValueChange = { trackNumber = it },
+                        enabled = !saving,
                         label = stringResource(L10nR.string.feature_library_track_000e4d),
                         modifier = Modifier.weight(1f),
                     )
                     NumericMetadataField(
                         value = discNumber,
                         onValueChange = { discNumber = it },
+                        enabled = !saving,
                         label = stringResource(L10nR.string.feature_library_disc_3128c0),
                         modifier = Modifier.weight(1f),
                     )
                     NumericMetadataField(
                         value = year,
                         onValueChange = { year = it },
+                        enabled = !saving,
                         label = stringResource(L10nR.string.feature_library_year_fe373f),
                         modifier = Modifier.weight(1f),
                     )
@@ -877,31 +920,60 @@ private fun TrackMetadataEditorDialog(
         },
         confirmButton = {
             TextButton(
-                enabled = canSave,
+                enabled = canSave || saving,
                 onClick = {
-                    onSave(
-                        EchoTrackMetadataUpdate(
-                            trackId = track.id,
-                            title = title.trim(),
-                            artist = artist.trim(),
-                            album = album.trim().takeIf { it.isNotBlank() },
-                            albumArtist = albumArtist.trim().takeIf { it.isNotBlank() },
-                            trackNumber = trackNumber.toPositiveIntOrNull(),
-                            discNumber = discNumber.toPositiveIntOrNull(),
-                            year = year.toPositiveIntOrNull(),
-                        ),
+                    if (saving || !canSave) return@TextButton
+                    val update = EchoTrackMetadataUpdate(
+                        trackId = track.id,
+                        title = title.trim(),
+                        artist = artist.trim(),
+                        album = album.trim().takeIf { it.isNotBlank() },
+                        albumArtist = albumArtist.trim().takeIf { it.isNotBlank() },
+                        trackNumber = trackNumber.toPositiveIntOrNull(),
+                        discNumber = discNumber.toPositiveIntOrNull(),
+                        year = year.toPositiveIntOrNull(),
                     )
+                    onSavingChange(true)
+                    scope.launch {
+                        try {
+                            withContext(NonCancellable) {
+                                onSave(update)
+                            }
+                        } finally {
+                            onSavingChange(false)
+                            onDismiss()
+                        }
+                    }
                 },
             ) {
-                Text(stringResource(L10nR.string.feature_library_save_68ae20))
+                MetadataSaveButtonLabel(saving)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, enabled = !saving) {
                 Text(stringResource(L10nR.string.feature_library_cancel_4c5fa5))
             }
         },
     )
+}
+
+@Composable
+private fun MetadataSaveButtonLabel(saving: Boolean) {
+    if (!saving) {
+        Text(stringResource(L10nR.string.feature_library_save_68ae20))
+        return
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(18.dp),
+            strokeWidth = 2.dp,
+            color = LocalContentColor.current,
+        )
+        Text(stringResource(L10nR.string.feature_library_saving_9f2a14))
+    }
 }
 
 @Composable
@@ -910,10 +982,12 @@ private fun NumericMetadataField(
     onValueChange: (String) -> Unit,
     label: String,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     TextField(
         value = value,
         onValueChange = { next -> onValueChange(next.filter(Char::isDigit).take(4)) },
+        enabled = enabled,
         label = { Text(label) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),

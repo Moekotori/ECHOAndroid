@@ -124,4 +124,19 @@
     <string name="feature_player_word_highlight_off_b0e40a" formatted="false">"Word highlight off"</string>
     <string name="feature_player_replay_gain_unread">Unread</string>
     <string name="feature_player_replay_gain_none">No tag</string>
+    <string name="feature_player_lyrics_offset">Lyrics offset</string>
+    <string name="feature_player_nightcore">Nightcore</string>
+    <string name="feature_player_playback_mode">Play mode</string>
+    <string name="feature_player_replay_gain">ReplayGain</string>
+    <string name="feature_player_replay_gain_album">Album</string>
+    <string name="feature_player_replay_gain_auto">Auto</string>
+    <string name="feature_player_replay_gain_preamp">Preamp</string>
+    <string name="feature_player_replay_gain_preamp_down">Lower preamp</string>
+    <string name="feature_player_replay_gain_preamp_up">Raise preamp</string>
+    <string name="feature_player_replay_gain_reset_preamp">Reset preamp</string>
+    <string name="feature_player_replay_gain_track">Track</string>
+    <string name="feature_player_shuffle">Shuffle</string>
+    <string name="feature_player_sleep_timer_apply">Start timer</string>
+    <string name="feature_player_sleep_timer_custom">Custom</string>
+    <string name="feature_player_sleep_timer_minutes_value">%1$d min</string>
 </resources>

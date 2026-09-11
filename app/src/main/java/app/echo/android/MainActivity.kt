@@ -15,6 +15,8 @@ import androidx.media3.common.util.UnstableApi
 import app.echo.android.i18n.initializeEchoAppLocale
 import app.echo.android.data.readEchoStartupThemeSnapshot
 import app.echo.android.data.readEchoStartupThemeSnapshotForLaunch
+import app.echo.android.design.echoStartupWindowColor
+import app.echo.android.model.settings.EchoColorTheme
 import app.echo.android.i18n.wrapEchoAppLocale
 import app.echo.android.playback.EchoPlaybackIntents
 
@@ -42,7 +44,9 @@ class MainActivity : ComponentActivity() {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
         splashScreen.installEchoExitTransition(this, restored = savedInstanceState != null)
-        window.decorView.setBackgroundColor(startupWindowBackground(startupDarkTheme))
+        window.decorView.setBackgroundColor(
+            echoStartupWindowColor(EchoColorTheme.fromId(startupThemeSnapshot.colorTheme), startupDarkTheme),
+        )
         applyEdgeToEdge(startupDarkTheme)
         setContent {
             EchoMobileApp()
@@ -89,9 +93,6 @@ class MainActivity : ComponentActivity() {
             },
         )
     }
-
-    private fun startupWindowBackground(darkTheme: Boolean): Int =
-        if (darkTheme) ECHO_DARK_WINDOW_BACKGROUND else ECHO_LIGHT_WINDOW_BACKGROUND
 
     private fun requestHighRefreshRate() {
         val preferredMode = bestSupportedHighRefreshMode() ?: return
@@ -169,7 +170,5 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val MIN_HIGH_REFRESH_RATE = 90f
-        val ECHO_DARK_WINDOW_BACKGROUND: Int = Color.rgb(8, 11, 18)
-        val ECHO_LIGHT_WINDOW_BACKGROUND: Int = Color.rgb(241, 241, 243)
     }
 }

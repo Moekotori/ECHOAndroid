@@ -67,14 +67,13 @@ import app.echo.android.design.ArtworkPalette
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.BlurredArtworkBackground
 import app.echo.android.design.EchoContentMaxWidth
-import app.echo.android.design.EchoGlassInk
-import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.displayMetadataOrUnknown
 import app.echo.android.design.echoAccentColor
 import app.echo.android.design.echoOnAccentColor
 import app.echo.android.design.formatDuration
 import app.echo.android.design.rememberArtworkPalette
+import app.echo.android.design.echoTheme
 import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackMetadataUpdate
@@ -124,7 +123,7 @@ internal fun PlaylistDetailPage(
     onDeletePlaylist: () -> Unit,
     onRemoveTrack: (EchoTrack) -> Unit,
     onMoveTrack: (fromIndex: Int, toIndex: Int) -> Unit,
-    onUpdateTrackMetadata: ((EchoTrackMetadataUpdate) -> Unit)? = null,
+    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
@@ -343,9 +342,9 @@ private fun PlaylistDetailBackground(
                 .background(
                     if (dark) {
                         Brush.verticalGradient(
-                            0f to EchoGlassInk.copy(alpha = 0.18f),
+                            0f to echoTheme().ink.copy(alpha = 0.18f),
                             0.46f to Color.Transparent,
-                            1f to EchoGlassPanel.copy(alpha = 0.16f),
+                            1f to echoTheme().panel.copy(alpha = 0.16f),
                         )
                     } else {
                         Brush.verticalGradient(
@@ -745,7 +744,7 @@ private fun PlaylistTrackRow(
     track: EchoTrack,
     accent: Color,
     onClick: () -> Unit,
-    onUpdateTrackMetadata: ((EchoTrackMetadataUpdate) -> Unit)?,
+    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)?,
     onImportLyrics: ((EchoTrack) -> Unit)?,
     onPickArtwork: ((EchoTrack) -> Unit)?,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)?,

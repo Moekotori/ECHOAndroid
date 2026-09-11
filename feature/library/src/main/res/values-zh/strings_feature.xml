@@ -151,6 +151,7 @@
     <string name="feature_library_sample_rate_f6382c" formatted="false">"采样率"</string>
     <string name="feature_library_sample_rate_pending_bd6e6d" formatted="false">"采样率待解析"</string>
     <string name="feature_library_save_68ae20" formatted="false">"保存"</string>
+    <string name="feature_library_saving_9f2a14" formatted="false">"保存中…"</string>
     <string name="feature_library_scan_a_single_folder_17bf3e" formatted="false">"扫描单个文件夹"</string>
     <string name="feature_library_scan_cancelled_1eefcb" formatted="false">"扫描已取消"</string>
     <string name="feature_library_scan_cancelled_the_existing_library_was_kept_266734" formatted="false">"扫描已取消，已保留现有曲库。"</string>

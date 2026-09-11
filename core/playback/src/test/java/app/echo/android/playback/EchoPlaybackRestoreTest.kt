@@ -281,4 +281,31 @@ class EchoPlaybackRestoreTest {
         )
         assertEquals(null, replayGainUriForMediaId("track-1", emptyControllerMaps))
     }
+
+    @Test
+    fun replayGainUriLookupDropsTracksThatLeftThePlayerQueue() {
+        val existing = mapOf(
+            "track-old" to "https://dav.example/music/old.flac",
+            "track-1" to "https://dav.example/music/stale.flac",
+        )
+        val playerQueueUris = mapOf(
+            "track-1" to "https://dav.example/music/a.flac",
+            "track-2" to "https://dav.example/music/b.flac",
+        )
+        val merged = mergePlayerQueueReplayGainUris(existing, playerQueueUris)
+
+        assertEquals("https://dav.example/music/a.flac", replayGainUriForMediaId("track-1", merged))
+        assertEquals("https://dav.example/music/b.flac", replayGainUriForMediaId("track-2", merged))
+        assertEquals(null, replayGainUriForMediaId("track-old", merged))
+    }
+
+    @Test
+    fun replayGainUriLookupKeepsExistingUriWhenPlayerQueueOmitsIt() {
+        val existing = mapOf("track-1" to "https://dav.example/music/a.flac")
+        val merged = mergePlayerQueueReplayGainUris(
+            existing,
+            mapOf("track-1" to ""),
+        )
+        assertEquals("https://dav.example/music/a.flac", replayGainUriForMediaId("track-1", merged))
+    }
 }

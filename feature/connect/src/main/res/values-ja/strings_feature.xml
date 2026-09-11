@@ -165,4 +165,17 @@
     <string name="feature_connect_saved_pcs_4d2e91" formatted="false">"保存した PC"</string>
     <string name="echo_link_lan_searching">近くの PC を検索中…</string>
     <string name="echo_link_lan_failed">LAN 検索を開始できませんでした。Wi-Fi を確認して再試行してください。</string>
+    <string name="echo_link_cast_tab">キャスト</string>
+    <string name="echo_link_cast_title">ECHOSteam にキャスト</string>
+    <string name="echo_link_cast_subtitle">LAN 上の ECHOSteam を探して、スマホで再生中の曲を送ります。ローカルファイルとリモートライブラリはスマホ経由で配信します。</string>
+    <string name="echo_link_cast_now_playing">このスマホ</string>
+    <string name="echo_link_cast_play_first">先にスマホで曲を再生してから、PC に送ってください。</string>
+    <string name="echo_link_cast_unsupported_source">このソースはまだキャストできません。</string>
+    <string name="echo_link_cast_sending">PC に送信中…</string>
+    <string name="echo_link_cast_active">%1$s で再生中。同じ Wi-Fi に接続したままにしてください。</string>
+    <string name="echo_link_cast_stop">キャストを停止</string>
+    <string name="echo_link_cast_devices">近くの PC</string>
+    <string name="echo_link_cast_send">キャスト</string>
+    <string name="echo_link_cast_pair_first">先にペアリング</string>
+    <string name="echo_link_cast_playing_here">ここで再生中 · %1$s</string>
 </resources>

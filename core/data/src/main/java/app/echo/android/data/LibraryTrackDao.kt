@@ -282,9 +282,14 @@ interface LibraryTrackDao {
         WHERE s.isRemote = 0
           AND (t.source = 'mediastore' OR t.source = 'saf')
         GROUP BY s.albumKey
+        ORDER BY
+            COALESCE(MAX(f.favoritedAtEpochMs), 0) DESC,
+            COALESCE(SUM(stats.playCount), 0) DESC,
+            COALESCE(MAX(stats.lastPlayedAtEpochMs), 0) DESC
+        LIMIT :limit
         """,
     )
-    fun observeAlbumListenStats(): Flow<List<LibraryAlbumListenStatsRow>>
+    fun observeAlbumListenStats(limit: Int): Flow<List<LibraryAlbumListenStatsRow>>
 
     @Query(
         """
@@ -560,9 +565,10 @@ interface LibraryTrackDao {
             CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
             CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
             title COLLATE NOCASE ASC
+        LIMIT :limit
         """,
     )
-    suspend fun getTracksByGenre(genreKey: String): List<LibraryTrackEntity>
+    suspend fun getTracksByGenre(genreKey: String, limit: Int): List<LibraryTrackEntity>
 
     @Query(
         """

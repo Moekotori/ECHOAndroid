@@ -23,6 +23,8 @@ import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 data class EchoWebDavPlaybackCredential(
     val baseUrl: String,
@@ -52,6 +54,11 @@ data class EchoJellyfinPlaybackCredential(
     val normalizedBaseUrl: String =
         baseUrl.trim().trimEnd('/')
 }
+
+data class EchoRemotePlaybackRequest(
+    val url: String,
+    val headers: Map<String, String> = emptyMap(),
+)
 
 object EchoRemotePlaybackAuthRegistry {
     private val webDavCredentials = AtomicReference<List<EchoWebDavPlaybackCredential>>(emptyList())
@@ -142,6 +149,26 @@ object EchoRemotePlaybackAuthRegistry {
     fun resolveJellyfinUrl(url: String): String {
         val credential = matchingJellyfinCredential(url) ?: return url
         return applyJellyfinTokenAuth(url, credential)
+    }
+
+    fun playbackRequest(url: String): EchoRemotePlaybackRequest {
+        val signed = resolveJellyfinUrl(resolveSubsonicUrl(url.trim()))
+        val webDav = matchingWebDavCredentialForUrl(signed)
+        if (webDav != null) {
+            return EchoRemotePlaybackRequest(
+                url = stripUserInfo(signed),
+                headers = mapOf("Authorization" to webDav.authorizationHeader),
+            )
+        }
+        val userInfo = userInfoFromUrl(signed)
+        val authorization = userInfo?.let(::basicAuthorizationFromUserInfo)
+        if (!authorization.isNullOrBlank()) {
+            return EchoRemotePlaybackRequest(
+                url = stripUserInfo(signed),
+                headers = mapOf("Authorization" to authorization),
+            )
+        }
+        return EchoRemotePlaybackRequest(url = signed)
     }
 
     internal fun cacheIdentity(uri: Uri, requestHeaders: Map<String, String>): String =
@@ -312,15 +339,21 @@ private object EchoRemotePlaybackCache {
     private val evictor = EchoPlaybackCacheEvictor()
 
     @Synchronized
-    fun get(context: Context): SimpleCache =
-        cache ?: SimpleCache(
+    fun get(context: Context): SimpleCache {
+        EchoPlaybackCachePolicy.bindDeviceConstraints(context)
+        return cache ?: SimpleCache(
             File(context.cacheDir, "echo-remote-playback-cache"),
             evictor,
             StandaloneDatabaseProvider(context),
         ).also { created ->
             cache = created
-            EchoPlaybackCacheTrim.action = { evictor.trim(created) }
+            EchoPlaybackCacheTrim.action = {
+                EchoPlaybackProcessRuntime.scope.launch(Dispatchers.IO) {
+                    evictor.trim(created)
+                }
+            }
         }
+    }
 }
 
 @UnstableApi

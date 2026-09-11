@@ -8,6 +8,7 @@ import app.echo.android.model.connect.EchoRemoteFolder
 import app.echo.android.model.connect.EchoRemoteLyrics
 import app.echo.android.model.connect.EchoRemotePlaybackSnapshot
 import app.echo.android.model.connect.EchoRemotePlaylist
+import app.echo.android.model.connect.EchoRemoteStreamItem
 import app.echo.android.model.connect.EchoRemoteTrack
 import java.util.Locale
 import kotlinx.coroutines.CompletableDeferred
@@ -707,6 +708,59 @@ class EchoRemoteClientTest {
         delay(50)
         assertTrue(transport.commands.any { it is EchoRemoteCommand.PlayTrackOnPc && it.trackId == "track-1" })
         assertTrue(transport.commands.any { it is EchoRemoteCommand.HandoffToPc && it.positionMs == 12_000L })
+        client.disconnect()
+    }
+
+    @Test
+    fun multiTrackCastSendsQueueReplaceRemoteThenPlayRemoteStream() = runBlocking {
+        val transport = FakeEchoLinkTransport()
+        val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
+        client.connect(endpoint, refreshLibraryOnConnect = false)
+        delay(20)
+        var acknowledged = false
+        client.castRemoteQueueToPc(
+            items = listOf(
+                EchoRemoteStreamItem("a", "http://phone/echo-link/cast/a", "A", "Artist"),
+                EchoRemoteStreamItem("b", "http://phone/echo-link/cast/b", "B", "Artist"),
+            ),
+            startIndex = 1,
+            positionMs = 3_000,
+        ) { acknowledged = true }
+        delay(50)
+        assertEquals(
+            listOf("queueReplaceRemote", "playRemoteStream"),
+            transport.commands.map {
+                when (it) {
+                    is EchoRemoteCommand.QueueReplaceRemote -> "queueReplaceRemote"
+                    is EchoRemoteCommand.PlayRemoteStream -> "playRemoteStream"
+                    else -> it::class.simpleName
+                }
+            },
+        )
+        assertEquals("b", (transport.commands.first() as EchoRemoteCommand.QueueReplaceRemote).startTrackId)
+        assertEquals(3_000L, (transport.commands.last() as EchoRemoteCommand.PlayRemoteStream).positionMs)
+        assertTrue(acknowledged)
+        client.disconnect()
+    }
+
+    @Test
+    fun unsupportedCastCommandSurfacesUpgradeError() = runBlocking {
+        val transport = FakeEchoLinkTransport(failCommand = true, commandErrorCode = 400)
+        val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
+        client.connect(endpoint, refreshLibraryOnConnect = false)
+        delay(20)
+        var failed = false
+        client.castRemoteQueueToPc(
+            items = listOf(EchoRemoteStreamItem("a", "http://phone/echo-link/cast/a", "A", "Artist")),
+            startIndex = 0,
+            positionMs = 0,
+            onFailure = { failed = true },
+            onSuccess = {},
+        )
+        delay(40)
+        assertTrue(failed)
+        assertTrue(client.status.value.error.orEmpty().contains("ECHOSteam"))
+        assertEquals(EchoRemoteConnectionState.Connected, client.status.value.connectionState)
         client.disconnect()
     }
 

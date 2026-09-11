@@ -136,6 +136,9 @@ object EchoPlaybackProcessRuntime {
     private var equalizer: EchoEqualizerController? = null
 
     @Volatile
+    private var channelBalance: EchoChannelBalanceController? = null
+
+    @Volatile
     private var smartMixer: EchoSmartTransitionMixer? = null
 
     @Volatile
@@ -176,6 +179,11 @@ object EchoPlaybackProcessRuntime {
     fun equalizerController(): EchoEqualizerController =
         synchronized(this) {
             equalizer ?: EchoEqualizerController().also { equalizer = it }
+        }
+
+    fun channelBalanceController(): EchoChannelBalanceController =
+        synchronized(this) {
+            channelBalance ?: EchoChannelBalanceController().also { channelBalance = it }
         }
 
     internal fun smartTransitionMixer(): EchoSmartTransitionMixer =

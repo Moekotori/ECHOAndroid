@@ -133,12 +133,11 @@ fun mergePlayerQueueReplayGainUris(
     playerQueueUrisByMediaId: Map<String, String>,
 ): Map<String, String> {
     if (playerQueueUrisByMediaId.isEmpty()) return existingUrisByMediaId
-    val merged = LinkedHashMap<String, String>(existingUrisByMediaId.size + playerQueueUrisByMediaId.size)
-    merged.putAll(existingUrisByMediaId)
+    val merged = LinkedHashMap<String, String>(playerQueueUrisByMediaId.size)
     playerQueueUrisByMediaId.forEach { (mediaId, uri) ->
-        if (mediaId.isNotBlank() && uri.isNotBlank()) {
-            merged[mediaId] = uri
-        }
+        if (mediaId.isBlank()) return@forEach
+        val resolved = uri.takeIf { it.isNotBlank() } ?: existingUrisByMediaId[mediaId]
+        if (!resolved.isNullOrBlank()) merged[mediaId] = resolved
     }
     return merged
 }

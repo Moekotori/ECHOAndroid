@@ -124,4 +124,19 @@
     <string name="feature_player_word_highlight_off_b0e40a" formatted="false">"文字ハイライト オフ"</string>
     <string name="feature_player_replay_gain_unread">未読み取り</string>
     <string name="feature_player_replay_gain_none">タグなし</string>
+    <string name="feature_player_lyrics_offset">歌詞オフセット</string>
+    <string name="feature_player_nightcore">Nightcore</string>
+    <string name="feature_player_playback_mode">再生モード</string>
+    <string name="feature_player_replay_gain">ReplayGain</string>
+    <string name="feature_player_replay_gain_album">アルバム</string>
+    <string name="feature_player_replay_gain_auto">自動</string>
+    <string name="feature_player_replay_gain_preamp">プリアンプ</string>
+    <string name="feature_player_replay_gain_preamp_down">プリアンプを下げる</string>
+    <string name="feature_player_replay_gain_preamp_up">プリアンプを上げる</string>
+    <string name="feature_player_replay_gain_reset_preamp">プリアンプをリセット</string>
+    <string name="feature_player_replay_gain_track">トラック</string>
+    <string name="feature_player_shuffle">シャッフル</string>
+    <string name="feature_player_sleep_timer_apply">タイマー開始</string>
+    <string name="feature_player_sleep_timer_custom">カスタム</string>
+    <string name="feature_player_sleep_timer_minutes_value">%1$d 分</string>
 </resources>

@@ -39,6 +39,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
@@ -57,6 +58,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.echo.android.model.settings.EchoColorTheme
 import coil.compose.AsyncImage
 import coil.imageLoader
 import coil.request.ImageRequest
@@ -66,7 +68,7 @@ import kotlinx.coroutines.withContext
 
 val EchoContentMaxWidth = 560.dp
 
-// Dusty rose + graphite. Change this set when adding more themes.
+// Default Echo palette constants. Prefer echoTheme() in UI.
 val EchoAccent = Color(0xFFD3A9B5)
 val EchoAccentText = Color(0xFFE4C4CC)
 val EchoAccentDeep = Color(0xFF9B5B6A)
@@ -99,14 +101,15 @@ fun GlassSurface(
     alpha: Float = 0.16f,
     content: @Composable () -> Unit,
 ) {
-    val dark = LocalEchoDarkTheme.current
+    val theme = echoTheme()
+    val dark = theme.dark
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(28.dp),
-        color = if (dark) EchoGlassPanel.copy(alpha = (alpha + 0.40f).coerceIn(0.48f, 0.68f)) else MaterialTheme.colorScheme.surface.copy(alpha = (alpha + 0.72f).coerceIn(0.88f, 1f)),
+        color = if (dark) theme.panel.copy(alpha = (alpha + 0.40f).coerceIn(0.48f, 0.68f)) else MaterialTheme.colorScheme.surface.copy(alpha = (alpha + 0.72f).coerceIn(0.88f, 1f)),
         border = BorderStroke(
             1.dp,
-            if (dark) EchoDarkGlassBorder else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f),
+            if (dark) theme.glassBorder else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f),
         ),
         content = { content() },
     )
@@ -115,23 +118,25 @@ fun GlassSurface(
 @Composable
 fun echoGlassContainerBrush(
     strength: Float = 1f,
-    accent: Color = EchoGlassCyan,
+    accent: Color? = null,
 ): Brush {
-    val dark = LocalEchoDarkTheme.current
+    val theme = echoTheme()
+    val dark = theme.dark
+    val wash = accent ?: theme.glassWash
     val clamped = strength.coerceIn(0.40f, 1.20f)
     return Brush.linearGradient(
         if (dark) {
             listOf(
                 Color.White.copy(alpha = 0.030f * clamped),
-                EchoGlassPanel.copy(alpha = 0.50f * clamped),
-                EchoGlassInk.copy(alpha = 0.64f * clamped),
-                accent.copy(alpha = 0.05f * clamped),
+                theme.panel.copy(alpha = 0.50f * clamped),
+                theme.ink.copy(alpha = 0.64f * clamped),
+                wash.copy(alpha = 0.05f * clamped),
             )
         } else {
             listOf(
                 Color.White.copy(alpha = 0.98f),
-                Color(0xFFF6F4F5),
-                EchoHomeMist.copy(alpha = 0.92f),
+                theme.glassWash,
+                theme.mist.copy(alpha = 0.92f),
             )
         },
     )
@@ -140,22 +145,24 @@ fun echoGlassContainerBrush(
 @Composable
 fun echoGlassRowBrush(
     selected: Boolean = false,
-    accent: Color = EchoGlassCyan,
+    accent: Color? = null,
 ): Brush {
-    val dark = LocalEchoDarkTheme.current
+    val theme = echoTheme()
+    val dark = theme.dark
+    val wash = accent ?: theme.glassWash
     return Brush.linearGradient(
         if (dark) {
             listOf(
                 Color.White.copy(alpha = if (selected) 0.06f else 0.025f),
-                EchoGlassPanel.copy(alpha = if (selected) 0.56f else 0.44f),
-                EchoGlassInk.copy(alpha = if (selected) 0.60f else 0.50f),
-                accent.copy(alpha = if (selected) 0.08f else 0.04f),
+                theme.panel.copy(alpha = if (selected) 0.56f else 0.44f),
+                theme.ink.copy(alpha = if (selected) 0.60f else 0.50f),
+                wash.copy(alpha = if (selected) 0.08f else 0.04f),
             )
         } else {
             listOf(
                 Color.White.copy(alpha = 0.98f),
-                EchoHomeMist.copy(alpha = 0.82f),
-                if (selected) accent.copy(alpha = 0.08f) else Color(0xFFF6F4F5),
+                theme.mist.copy(alpha = 0.82f),
+                if (selected) wash.copy(alpha = 0.08f) else theme.glassWash,
             )
         },
     )
@@ -163,12 +170,12 @@ fun echoGlassRowBrush(
 
 @Composable
 fun echoDarkGlassBorder(selected: Boolean = false): BorderStroke {
-    val dark = LocalEchoDarkTheme.current
+    val theme = echoTheme()
     val scheme = MaterialTheme.colorScheme
     return BorderStroke(
         1.dp,
-        if (dark) {
-            if (selected) scheme.primary.copy(alpha = 0.28f) else Color.White.copy(alpha = 0.08f)
+        if (theme.dark) {
+            if (selected) scheme.primary.copy(alpha = 0.28f) else theme.glassBorder
         } else {
             if (selected) scheme.primary.copy(alpha = 0.24f) else scheme.outlineVariant.copy(alpha = 0.65f)
         },
@@ -192,25 +199,39 @@ fun GlassIconButton(
 
 @Composable
 fun EchoGlassBackground(modifier: Modifier = Modifier) {
-    val dark = LocalEchoDarkTheme.current
+    val theme = echoTheme()
+    val dark = theme.dark
+    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    val echoDefault = theme.id == EchoColorTheme.Echo.id
     val baseGradient = Brush.verticalGradient(
-        if (dark) {
-            listOf(
-                EchoGlassNight,
-                Color(0xFF1D1D21),
-                EchoGlassInk,
-                Color(0xFF151519),
-            )
+        if (dark && echoDefault) {
+            listOf(theme.night, theme.bgMid, theme.ink, theme.bgBottom)
         } else {
-            listOf(
-                EchoBgTop,
-                EchoBgMid,
-                EchoBgBottom,
-            )
+            listOf(theme.bgTop, theme.bgMid, theme.bgBottom)
         },
     )
+    val showWashes = !lightweight && !echoDefault
+    val accentWash = theme.accent.copy(alpha = if (dark) 0.06f else 0.12f)
+    val secondaryWash = theme.secondary.copy(alpha = if (dark) 0.045f else 0.09f)
     Canvas(modifier = modifier.background(baseGradient)) {
         val h = size.height
+        val w = size.width
+        if (showWashes) {
+            drawRect(
+                brush = Brush.radialGradient(
+                    colors = listOf(accentWash, Color.Transparent),
+                    center = Offset(w * 0.12f, h * -0.04f),
+                    radius = w.coerceAtLeast(h) * 0.72f,
+                ),
+            )
+            drawRect(
+                brush = Brush.radialGradient(
+                    colors = listOf(secondaryWash, Color.Transparent),
+                    center = Offset(w * 0.92f, h * -0.02f),
+                    radius = w.coerceAtLeast(h) * 0.64f,
+                ),
+            )
+        }
         if (!dark) {
             drawRect(
                 brush = Brush.verticalGradient(
@@ -244,7 +265,7 @@ fun AmbientPlanet(modifier: Modifier = Modifier) {
                 .fillMaxWidth(0.84f)
                 .height(10.dp),
             shape = RoundedCornerShape(8.dp),
-            color = EchoAccent.copy(alpha = 0.55f),
+            color = echoTheme().accent.copy(alpha = 0.55f),
             content = {},
         )
     }
@@ -268,7 +289,8 @@ fun PageChrome(
         val windowInfo = LocalWindowInfo.current
         val density = LocalDensity.current
         val densityScale = LocalEchoDensityScale.current
-        val dark = LocalEchoDarkTheme.current
+        val theme = echoTheme()
+        val dark = theme.dark
         val scheme = MaterialTheme.colorScheme
         val heightDp = (windowInfo.containerSize.height / density.density).dp
         val widthDp = (windowInfo.containerSize.width / density.density).dp
@@ -278,9 +300,9 @@ fun PageChrome(
         val chromeGradient = if (dark) {
             Brush.verticalGradient(
                 listOf(
-                    EchoGlassNight.copy(alpha = 0.62f),
-                    EchoGlassInk.copy(alpha = 0.44f),
-                    EchoGlassPanel.copy(alpha = 0.20f),
+                    theme.night.copy(alpha = 0.62f),
+                    theme.ink.copy(alpha = 0.44f),
+                    theme.panel.copy(alpha = 0.20f),
                     Color.Transparent,
                 ),
             )
@@ -288,8 +310,8 @@ fun PageChrome(
             Brush.verticalGradient(
                 listOf(
                     Color.White.copy(alpha = 0.36f),
-                    EchoHomeMist.copy(alpha = 0.28f),
-                    EchoHomeMist.copy(alpha = 0.22f),
+                    theme.mist.copy(alpha = 0.28f),
+                    theme.mist.copy(alpha = 0.22f),
                 ),
             )
         }
@@ -356,11 +378,8 @@ fun PageChrome(
                         } else {
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
-                                color = if (dark) EchoGlassPanel.copy(alpha = 0.74f) else scheme.surface.copy(alpha = 0.50f),
-                                border = BorderStroke(
-                                    1.dp,
-                                    if (dark) EchoDarkGlassBorder else EchoGlassBorder,
-                                ),
+                                color = if (dark) theme.panel.copy(alpha = 0.74f) else scheme.surface.copy(alpha = 0.50f),
+                                border = BorderStroke(1.dp, theme.glassBorder),
                             ) {
                                 Text(
                                     resolvedBadge,
@@ -469,7 +488,24 @@ data class ArtworkPalette(
 }
 
 @Composable
+fun echoThemeArtworkPalette(): ArtworkPalette {
+    val theme = echoTheme()
+    return remember(theme) {
+        ArtworkPalette(
+            vibrant = theme.accent,
+            deep = theme.accentDeep,
+            soft = theme.mist,
+            onColor = if (theme.dark) Color.White else theme.onAccent,
+        )
+    }
+}
+
+@Composable
 fun rememberArtworkPalette(artworkUri: String?, seedKey: String? = artworkUri): ArtworkPalette {
+    val themePalette = echoThemeArtworkPalette()
+    if (artworkUri.isNullOrBlank()) {
+        return themePalette
+    }
     val effectivePerformanceMode = LocalEchoEffectivePerformanceMode.current
     if (effectivePerformanceMode.isLightweight) {
         return remember(seedKey) { ArtworkPalette.fromSeed(seedKey) }
@@ -480,13 +516,14 @@ fun rememberArtworkPalette(artworkUri: String?, seedKey: String? = artworkUri): 
     val fetchUri = resolvedArtworkFetchUri(artworkUri)
     val requestHeaders = EchoArtworkRequestHeadersRegistry.headersFor(artworkUri)
     val palette by produceState(
-        ArtworkPalette.fromSeed(seedKey),
+        themePalette,
         artworkUri,
         fetchUri,
         seedKey,
         sampleSize,
         rewriteRevision,
         requestHeaders,
+        themePalette,
     ) {
         value = withContext(Dispatchers.IO) {
             val bitmap = loadArtworkSwatch(
@@ -498,7 +535,7 @@ fun rememberArtworkPalette(artworkUri: String?, seedKey: String? = artworkUri): 
             if (bitmap != null) {
                 extractPalette(bitmap)
             } else {
-                ArtworkPalette.fromSeed(seedKey)
+                themePalette
             }
         }
     }
@@ -631,6 +668,8 @@ fun BlurredArtworkBackground(
     val rewriteRevision = EchoArtworkUrlRewriteRegistry.revision
     val fetchUri = resolvedArtworkFetchUri(artworkUri)
     val highBitDepth = effectivePerformanceMode.isHighPerformance
+    val theme = echoTheme()
+    val hasArtwork = !fetchUri.isNullOrBlank()
     val artworkModel = remember(
         context,
         artworkUri,
@@ -648,21 +687,26 @@ fun BlurredArtworkBackground(
         )
     }
     Box(modifier = modifier.fillMaxSize()) {
-        // 鍙栬壊搴曪紝淇濊瘉鏃犲皝闈?浣庝簬 API 31 鏃朵篃鏈夋矇娴歌壊
         Box(
             Modifier
                 .fillMaxSize()
                 .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            palette.vibrant,
-                            palette.deep,
-                            lerp(palette.deep, EchoGlassNight, 0.32f),
-                        ),
-                    ),
+                    if (hasArtwork) {
+                        Brush.verticalGradient(
+                            listOf(
+                                palette.vibrant,
+                                palette.deep,
+                                lerp(palette.deep, theme.night, 0.32f),
+                            ),
+                        )
+                    } else {
+                        Brush.verticalGradient(
+                            listOf(theme.bgTop, theme.bgMid, theme.bgBottom),
+                        )
+                    },
                 ),
         )
-        if (!effectivePerformanceMode.isLightweight && !fetchUri.isNullOrBlank()) {
+        if (!effectivePerformanceMode.isLightweight && hasArtwork) {
             AsyncImage(
                 model = artworkModel,
                 contentDescription = null,
@@ -680,20 +724,21 @@ fun BlurredArtworkBackground(
                     .alpha(effectiveArtworkAlpha),
             )
         }
-        // 鍘嬫殫鐨勬瘺鐜荤拑缃╋紝淇濊瘉鐧借壊鏂囧瓧涓庢帶浠跺彲璇?
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            EchoGlassNight.copy(alpha = overlayStartAlpha * 0.70f),
-                            EchoGlassInk.copy(alpha = overlayMidAlpha * 0.72f),
-                            lerp(palette.deep, EchoGlassPanel, 0.42f).copy(alpha = overlayEndAlpha * 0.86f),
+        if (hasArtwork) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                theme.night.copy(alpha = overlayStartAlpha * 0.70f),
+                                theme.ink.copy(alpha = overlayMidAlpha * 0.72f),
+                                lerp(palette.deep, theme.panel, 0.42f).copy(alpha = overlayEndAlpha * 0.86f),
+                            ),
                         ),
                     ),
-                ),
-        )
+            )
+        }
     }
 }
 

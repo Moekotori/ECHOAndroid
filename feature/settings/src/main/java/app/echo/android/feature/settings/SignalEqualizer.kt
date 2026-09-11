@@ -2,25 +2,57 @@ package app.echo.android.feature.settings
 
 import app.echo.android.feature.settings.R as L10nR
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import app.echo.android.model.playback.*
-import kotlin.math.abs
-import kotlin.math.roundToInt
+import app.echo.android.design.EchoExpand
+import app.echo.android.design.EchoMotion
+import app.echo.android.design.EchoTextButton
+import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.echoGlassRowBrush
+import app.echo.android.design.echoTheme
+import app.echo.android.model.playback.EchoEqualizerPreset
+import app.echo.android.model.playback.EchoEqualizerPresetDefinition
+import app.echo.android.model.playback.EchoEqualizerPresets
+import app.echo.android.model.playback.EchoEqualizerState
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SignalEqualizer(
     state: EchoEqualizerState,
@@ -34,96 +66,236 @@ internal fun SignalEqualizer(
 ) {
     var showFilters by remember(state.filters) { mutableStateOf(false) }
     val title = stringResource(L10nR.string.feature_settings_equalizer_7ccb03)
+    val scheme = MaterialTheme.colorScheme
+    val live = state.enabled && !bypassed
+    val fadersEnabled = state.enabled && state.supported
+    val status = stringResource(when {
+        bypassed -> L10nR.string.eq_bypassed
+        !state.enabled -> L10nR.string.eq_disabled
+        !playing -> L10nR.string.eq_waiting_audio
+        state.processingSampleRateHz == null -> L10nR.string.eq_waiting_pipeline
+        else -> L10nR.string.eq_processing
+    })
+    val subtitle = stringResource(
+        when {
+            state.parametric -> L10nR.string.eq_parametric_mode
+            state.presetId == EchoEqualizerPreset.Harman -> L10nR.string.eq_preset_harman_detail
+            else -> L10nR.string.eq_graphic_mode
+        },
+    )
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Medium)
-                SignalNote(stringResource(if (state.parametric) L10nR.string.eq_parametric_mode else L10nR.string.eq_graphic_mode))
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            SignalLiveDot(active = live && playing && state.processingSampleRateHz != null)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    if (state.parametric) {
+                        state.sourceLabel ?: stringResource(L10nR.string.diag_eq_parametric)
+                    } else {
+                        eqPresetLabel(state.presetId)
+                    },
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = scheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    status,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = when {
+                        bypassed -> scheme.error
+                        live && playing -> scheme.primary
+                        else -> scheme.onSurfaceVariant
+                    },
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             Switch(checked = state.enabled, onCheckedChange = onEnabledChange, modifier = Modifier.semantics { contentDescription = title })
         }
-        SignalNote(stringResource(when {
-            bypassed -> L10nR.string.eq_bypassed
-            !state.enabled -> L10nR.string.eq_disabled
-            !playing -> L10nR.string.eq_waiting_audio
-            state.processingSampleRateHz == null -> L10nR.string.eq_waiting_pipeline
-            else -> L10nR.string.eq_processing
-        }))
-        SignalEqCurve(state.responseCurve)
         state.warning?.let { SignalNote(it, error = true) }
-        if (!state.enabled) SignalNote(stringResource(L10nR.string.feature_settings_choose_a_preset_then_enable_eq_to_hear_76c79b))
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            EchoEqualizerPresets.presets.forEach { preset ->
-                FilterChip(selected = state.presetId == preset.id && !state.parametric,
-                    onClick = { onPresetSelected(preset.id) }, label = { Text(eqPresetLabel(preset.id)) },
-                    shape = RoundedCornerShape(4.dp), border = null)
-            }
-        }
-        // Warn before the sliders: moving a band replaces the parametric correction.
-        if (state.parametric) {
-            Text(state.sourceLabel ?: stringResource(L10nR.string.diag_eq_parametric), style = MaterialTheme.typography.titleSmall)
-            SignalNote(stringResource(L10nR.string.eq_parametric_kept, state.filters.size))
-            TextButton(onClick = { showFilters = !showFilters }) { Text(stringResource(if (showFilters) L10nR.string.eq_hide_filters else L10nR.string.eq_show_filters)) }
-            if (showFilters) state.filters.forEach { band ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("${formatEqFrequency(band.frequencyHz.toInt())} · ${band.type}", style = MaterialTheme.typography.bodySmall)
-                    Text("${formatEqGain(band.gainDb)} · ${band.q?.let { "Q $it" } ?: "${band.slope ?: 12f} dB/oct"}", style = MaterialTheme.typography.bodySmall)
+
+        SignalEqWell(Modifier.fillMaxWidth()) {
+            if (state.parametric) {
+                SignalEqPlot(
+                    points = state.responseCurve,
+                    live = live,
+                    showFrequencyLabels = true,
+                    modifier = Modifier.fillMaxWidth().height(168.dp),
+                )
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SignalNote(stringResource(L10nR.string.eq_parametric_kept, state.filters.size))
+                    TextButton(onClick = { showFilters = !showFilters }) {
+                        Text(stringResource(if (showFilters) L10nR.string.eq_hide_filters else L10nR.string.eq_show_filters))
+                    }
+                    EchoExpand(showFilters) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            state.filters.forEach { band ->
+                                SignalReadout(
+                                    "${formatEqFrequency(band.frequencyHz.toInt())} · ${band.type}",
+                                    "${formatEqGain(band.gainDb)} · ${band.q?.let { "Q $it" } ?: "${band.slope ?: 12f} dB/oct"}",
+                                )
+                            }
+                        }
+                    }
+                    TextButton(onClick = { onPresetSelected(EchoEqualizerPreset.Flat) }) {
+                        Text(stringResource(L10nR.string.eq_use_graphic))
+                    }
+                }
+            } else {
+                SignalEqPlot(
+                    points = state.responseCurve,
+                    markerFrequenciesHz = state.bands.map { it.frequencyHz },
+                    live = live,
+                    showFrequencyLabels = false,
+                    modifier = Modifier.fillMaxWidth().height(152.dp),
+                )
+                Row(
+                    Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, bottom = 12.dp).heightIn(min = 220.dp),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    state.bands.forEach { band ->
+                        SignalEqFader(
+                            frequencyHz = band.frequencyHz,
+                            gainDb = band.gainDb,
+                            minGainDb = band.minGainDb,
+                            maxGainDb = band.maxGainDb,
+                            enabled = fadersEnabled,
+                            onGainChange = { onBandGainChange(band.index, it) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
             }
-            TextButton(onClick = { onPresetSelected(EchoEqualizerPreset.Flat) }) {
-                Text(stringResource(L10nR.string.eq_use_graphic))
+        }
+
+        if (!state.parametric) {
+            Column(
+                Modifier.fillMaxWidth().selectableGroup(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                EchoEqualizerPresets.presets.chunked(3).forEach { row ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        row.forEach { preset ->
+                            EqPresetCard(
+                                preset = preset,
+                                selected = state.presetId == preset.id,
+                                onSelect = { onPresetSelected(preset.id) },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
             }
         }
-        if (!state.parametric) state.bands.forEach { band ->
-            val frequency = formatEqFrequency(band.frequencyHz)
-            val enabled = state.enabled && state.supported
-            val controlColor = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(frequency, Modifier.width(62.dp), style = MaterialTheme.typography.labelMedium)
-                Slider(
-                    value = band.gainDb.coerceIn(band.minGainDb, band.maxGainDb),
-                    onValueChange = { onBandGainChange(band.index, (it * 10f).roundToInt() / 10f) },
-                    valueRange = band.minGainDb..band.maxGainDb,
-                    enabled = enabled,
-                    modifier = Modifier.weight(1f).semantics { contentDescription = frequency },
-                    thumb = { Box(Modifier.size(width = 4.dp, height = 20.dp).background(controlColor)) },
-                    track = { sliderState ->
-                        SliderDefaults.Track(sliderState = sliderState, enabled = enabled,
-                            modifier = Modifier.height(4.dp), thumbTrackGapSize = 0.dp, drawStopIndicator = null)
-                    },
+
+        SignalEqWell(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(L10nR.string.eq_preamp), style = MaterialTheme.typography.titleSmall)
+                        Text(formatEqGain(state.preampDb), style = MaterialTheme.typography.labelLarge, color = scheme.primary)
+                    }
+                    EchoTextButton(text = stringResource(L10nR.string.feature_settings_reset_1106f5), onClick = onReset)
+                }
+                val preampLabel = stringResource(L10nR.string.eq_preamp)
+                SignalGainStrip(
+                    value = state.preampDb.coerceIn(-24f, 12f),
+                    valueRange = -24f..12f,
+                    enabled = true,
+                    contentDescription = preampLabel,
+                    onValueChange = onPreampChange,
                 )
-                Text(formatEqGain(band.gainDb), Modifier.width(56.dp), style = MaterialTheme.typography.labelMedium, color = controlColor,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                if (state.preampDb > state.suggestedPreampDb + 0.1f) {
+                    SignalNote(stringResource(L10nR.string.eq_headroom_warning, formatEqGain(state.suggestedPreampDb)), error = true)
+                    TextButton(onClick = { onPreampChange(state.suggestedPreampDb) }) {
+                        Text(stringResource(L10nR.string.eq_apply_headroom))
+                    }
+                }
             }
-        }
-
-        HorizontalDivider()
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(L10nR.string.eq_preamp), style = MaterialTheme.typography.titleSmall)
-            Text(formatEqGain(state.preampDb), style = MaterialTheme.typography.labelLarge)
-        }
-        val preampLabel = stringResource(L10nR.string.eq_preamp)
-        Slider(value = state.preampDb.coerceIn(-24f, 12f), onValueChange = { onPreampChange((it * 10).roundToInt() / 10f) },
-            valueRange = -24f..12f, modifier = Modifier.fillMaxWidth().semantics { contentDescription = preampLabel })
-        if (state.preampDb > state.suggestedPreampDb + 0.1f) {
-            SignalNote(stringResource(L10nR.string.eq_headroom_warning, formatEqGain(state.suggestedPreampDb)), error = true)
-            TextButton(onClick = { onPreampChange(state.suggestedPreampDb) }) { Text(stringResource(L10nR.string.eq_apply_headroom)) }
-        }
-
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.weight(1f)) {
-                SignalNote(stringResource(if (state.parametric) L10nR.string.eq_parametric_mode else L10nR.string.eq_graphic_mode))
-            }
-            TextButton(onClick = onReset) { Text(stringResource(L10nR.string.feature_settings_reset_1106f5)) }
         }
     }
 }
 
 @Composable
+internal fun SignalLiveDot(active: Boolean) {
+    val scheme = MaterialTheme.colorScheme
+    Box(
+        Modifier
+            .size(8.dp)
+            .clip(CircleShape)
+            .background(if (active) scheme.primary else scheme.outlineVariant),
+    )
+}
+
+@Composable
+private fun EqPresetCard(
+    preset: EchoEqualizerPresetDefinition,
+    selected: Boolean,
+    onSelect: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val theme = echoTheme()
+    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    val shape = RoundedCornerShape(18.dp)
+    val borderColor by animateColorAsState(
+        targetValue = if (selected) scheme.primary else if (theme.dark) theme.glassBorder else scheme.outlineVariant,
+        animationSpec = if (lightweight) snap() else tween(EchoMotion.FadeMs, easing = EchoMotion.Silk),
+        label = "eq-preset-border",
+    )
+    Column(
+        modifier
+            .clip(shape)
+            .background(echoGlassRowBrush(selected))
+            .border(width = if (selected) 2.dp else 1.dp, color = borderColor, shape = shape)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect)
+            .padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(if (theme.dark) Color.Black.copy(alpha = 0.28f) else scheme.surface.copy(alpha = 0.72f))
+                .padding(horizontal = 4.dp, vertical = 6.dp),
+        ) {
+            SignalEqSparkline(
+                gainsDb = preset.gainsDb,
+                frequenciesHz = EchoEqualizerPresets.defaultFrequenciesHz,
+                active = selected,
+            )
+        }
+        Text(
+            eqPresetLabel(preset.id),
+            color = if (selected) scheme.primary else scheme.onSurface,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
 private fun eqPresetLabel(id: String): String = stringResource(when (id) {
+    EchoEqualizerPreset.Harman -> L10nR.string.eq_preset_harman
     EchoEqualizerPreset.Warm -> L10nR.string.eq_preset_warm
     EchoEqualizerPreset.Bass -> L10nR.string.eq_preset_bass
     EchoEqualizerPreset.Vocal -> L10nR.string.eq_preset_vocal
     EchoEqualizerPreset.Bright -> L10nR.string.eq_preset_bright
+    EchoEqualizerPreset.Acoustic -> L10nR.string.eq_preset_acoustic
+    EchoEqualizerPreset.Electronic -> L10nR.string.eq_preset_electronic
+    EchoEqualizerPreset.Night -> L10nR.string.eq_preset_night
+    EchoEqualizerPreset.Custom -> L10nR.string.eq_preset_custom
     else -> L10nR.string.eq_preset_flat
 })

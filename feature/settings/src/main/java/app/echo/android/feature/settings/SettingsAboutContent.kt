@@ -10,6 +10,10 @@ internal fun SettingsAboutContent(
     onOpenErrorLog: () -> Unit = {},
 ) {
     SettingsSectionCard(title = stringResource(R.string.settings_section_about)) {
+        SettingsInfoRow(
+            title = stringResource(R.string.settings_version),
+            detail = appVersionLabel,
+        )
         SettingsActionRow(
             title = stringResource(R.string.settings_error_log),
             detail = if (errorLogCount > 0) {
@@ -18,10 +22,6 @@ internal fun SettingsAboutContent(
                 stringResource(R.string.settings_error_log_detail_empty)
             },
             onClick = onOpenErrorLog,
-        )
-        SettingsInfoRow(
-            title = stringResource(R.string.settings_version),
-            detail = appVersionLabel,
         )
     }
 }

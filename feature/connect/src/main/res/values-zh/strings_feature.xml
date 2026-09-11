@@ -165,4 +165,17 @@
     <string name="feature_connect_saved_pcs_4d2e91" formatted="false">"已保存的 PC"</string>
     <string name="echo_link_lan_searching">正在搜索附近的电脑…</string>
     <string name="echo_link_lan_failed">局域网搜索未能启动，请检查 Wi-Fi 后重试。</string>
+    <string name="echo_link_cast_tab">串流</string>
+    <string name="echo_link_cast_title">投送到 ECHOSteam</string>
+    <string name="echo_link_cast_subtitle">扫描局域网里的 ECHOSteam，把手机正在播放的歌曲投到电脑。本机文件和远程曲库由手机转发。</string>
+    <string name="echo_link_cast_now_playing">本机正在播放</string>
+    <string name="echo_link_cast_play_first">先在手机播放一首歌，再投送到电脑。</string>
+    <string name="echo_link_cast_unsupported_source">当前来源暂不支持投送。</string>
+    <string name="echo_link_cast_sending">正在投送到电脑…</string>
+    <string name="echo_link_cast_active">正在 %1$s 播放。投送期间请保持同一 Wi-Fi。</string>
+    <string name="echo_link_cast_stop">停止投送</string>
+    <string name="echo_link_cast_devices">附近的电脑</string>
+    <string name="echo_link_cast_send">投送</string>
+    <string name="echo_link_cast_pair_first">先配对</string>
+    <string name="echo_link_cast_playing_here">正在此设备播放 · %1$s</string>
 </resources>

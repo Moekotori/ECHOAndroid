@@ -36,16 +36,16 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import app.echo.android.data.EchoAppSettings
 import app.echo.android.data.EchoBackgroundMode
-import app.echo.android.design.EchoGlassInk
-import app.echo.android.design.EchoGlassNight
 import app.echo.android.design.EchoGlassBackground
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.echoTheme
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 
@@ -163,47 +163,65 @@ private fun EchoVideoWallpaper(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val player = remember(context, uri, lifecycleOwner) {
-        ExoPlayer.Builder(context)
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
-                    .setUsage(C.USAGE_UNKNOWN)
-                    .build(),
-                false,
-            )
-            .setHandleAudioBecomingNoisy(false)
-            .setWakeMode(C.WAKE_MODE_NONE)
-            .build()
-            .apply {
-                repeatMode = Player.REPEAT_MODE_ONE
-                volume = 0f
-                playWhenReady = true
-                setMediaItem(MediaItem.fromUri(uri.toUri()))
-                prepare()
-            }
-    }
+    var player by remember { mutableStateOf<ExoPlayer?>(null) }
     val currentOnError by androidx.compose.runtime.rememberUpdatedState(onError)
-    DisposableEffect(player, lifecycleOwner) {
+    DisposableEffect(uri, lifecycleOwner) {
+        fun createPlayer(): ExoPlayer =
+            ExoPlayer.Builder(context)
+                .setLoadControl(
+                    DefaultLoadControl.Builder()
+                        .setBufferDurationsMs(1_000, 5_000, 500, 1_000)
+                        .setTargetBufferBytes(2 * 1024 * 1024)
+                        .build(),
+                )
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                        .setUsage(C.USAGE_UNKNOWN)
+                        .build(),
+                    false,
+                )
+                .setHandleAudioBecomingNoisy(false)
+                .setWakeMode(C.WAKE_MODE_NONE)
+                .build()
+                .apply {
+                    repeatMode = Player.REPEAT_MODE_ONE
+                    volume = 0f
+                    playWhenReady = true
+                    setMediaItem(MediaItem.fromUri(uri.toUri()))
+                    prepare()
+                }
+
         val listener = object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
                 currentOnError()
             }
         }
-        player.addListener(listener)
-        if (player.playerError != null) currentOnError()
+        fun attach(next: ExoPlayer) {
+            next.addListener(listener)
+            if (next.playerError != null) currentOnError()
+            player = next
+        }
+        fun detach() {
+            val current = player
+            player = null
+            current?.removeListener(listener)
+            current?.release()
+        }
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> player.play()
-                Lifecycle.Event.ON_STOP -> player.pause()
+                Lifecycle.Event.ON_START -> if (player == null) attach(createPlayer())
+                Lifecycle.Event.ON_STOP -> detach()
                 else -> Unit
             }
+        }
+        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            attach(createPlayer())
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            player.removeListener(listener)
-            player.release()
+            detach()
         }
     }
     Box(Modifier.fillMaxSize()) {
@@ -252,9 +270,9 @@ private fun EchoBackgroundGlassOverlay(glass: Float) {
     val readableGlass = glass.coerceIn(0.08f, 0.90f)
     val colors = if (dark) {
         listOf(
-            EchoGlassNight.copy(alpha = (readableGlass * 0.90f)),
-            EchoGlassInk.copy(alpha = (readableGlass * 0.82f)),
-            EchoGlassNight.copy(alpha = (readableGlass * 0.94f)),
+            echoTheme().night.copy(alpha = (readableGlass * 0.90f)),
+            echoTheme().ink.copy(alpha = (readableGlass * 0.82f)),
+            echoTheme().night.copy(alpha = (readableGlass * 0.94f)),
         )
     } else {
         listOf(

@@ -76,15 +76,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.ArtworkTile
-import app.echo.android.design.EchoAccentDeep
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.echoAccentColor
-import app.echo.android.design.EchoDarkGlassBorder
-import app.echo.android.design.EchoGlassInk
-import app.echo.android.design.EchoGlassNight
-import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.formatDuration
+import app.echo.android.design.echoTheme
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoRepeatMode
 import app.echo.android.model.playback.EchoTrackRef
@@ -174,9 +170,9 @@ fun PlaybackQueueSheet(
                     .background(
                         Brush.verticalGradient(
                             listOf(
-                                EchoGlassNight.copy(alpha = scrimAlpha * 0.58f),
-                                EchoGlassInk.copy(alpha = scrimAlpha * 0.42f),
-                                EchoGlassPanel.copy(alpha = scrimAlpha * 0.50f),
+                                echoTheme().night.copy(alpha = scrimAlpha * 0.58f),
+                                echoTheme().ink.copy(alpha = scrimAlpha * 0.42f),
+                                echoTheme().panel.copy(alpha = scrimAlpha * 0.50f),
                             ),
                         ),
                     )
@@ -278,9 +274,9 @@ private fun QueueSheetSurface(
                 if (dark) {
                     Brush.verticalGradient(
                         listOf(
-                            EchoGlassNight.copy(alpha = 0.94f),
-                            EchoGlassInk.copy(alpha = 0.91f),
-                            EchoGlassPanel.copy(alpha = 0.88f),
+                            echoTheme().night.copy(alpha = 0.94f),
+                            echoTheme().ink.copy(alpha = 0.91f),
+                            echoTheme().panel.copy(alpha = 0.88f),
                         ),
                     )
                 } else {
@@ -450,7 +446,7 @@ private fun QueueTrackRow(
         targetValue = if (active) {
             scheme.primary.copy(alpha = if (LocalEchoDarkTheme.current) 0.30f else 0.13f)
         } else {
-            if (LocalEchoDarkTheme.current) EchoGlassPanel.copy(alpha = 0.64f) else scheme.surface.copy(alpha = 0.62f)
+            if (LocalEchoDarkTheme.current) echoTheme().panel.copy(alpha = 0.64f) else scheme.surface.copy(alpha = 0.62f)
         },
         animationSpec = tween(durationMillis = 220, easing = QueueSheetMotionEasing),
         label = "queue-row-container",
@@ -459,7 +455,7 @@ private fun QueueTrackRow(
         targetValue = if (active) {
             scheme.primary.copy(alpha = 0.34f)
         } else {
-            if (LocalEchoDarkTheme.current) EchoDarkGlassBorder else scheme.outlineVariant.copy(alpha = 0.22f)
+            if (LocalEchoDarkTheme.current) echoTheme().glassBorder else scheme.outlineVariant.copy(alpha = 0.22f)
         },
         animationSpec = tween(durationMillis = 220, easing = QueueSheetMotionEasing),
         label = "queue-row-border",
@@ -574,7 +570,7 @@ private fun QueueEmptyState(onOpenLibrary: () -> Unit) {
             modifier = Modifier
                 .size(72.dp)
                 .clip(CircleShape)
-                .background(Brush.linearGradient(listOf(echoAccentColor().copy(alpha = 0.20f), EchoAccentDeep.copy(alpha = 0.18f)))),
+                .background(Brush.linearGradient(listOf(echoAccentColor().copy(alpha = 0.20f), echoTheme().accentDeep.copy(alpha = 0.18f)))),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -618,7 +614,7 @@ private fun QueuePillButton(
         targetValue = if (selected) {
             scheme.primary.copy(alpha = if (LocalEchoDarkTheme.current) 0.28f else 0.16f)
         } else {
-            if (LocalEchoDarkTheme.current) EchoGlassPanel.copy(alpha = 0.62f) else scheme.surface.copy(alpha = 0.50f)
+            if (LocalEchoDarkTheme.current) echoTheme().panel.copy(alpha = 0.62f) else scheme.surface.copy(alpha = 0.50f)
         },
         animationSpec = tween(durationMillis = 220, easing = QueueSheetMotionEasing),
         label = "queue-pill-container",
@@ -631,7 +627,7 @@ private fun QueuePillButton(
             .border(
                 BorderStroke(
                     1.dp,
-                    if (selected) scheme.primary.copy(alpha = 0.30f) else if (LocalEchoDarkTheme.current) EchoDarkGlassBorder else scheme.outlineVariant.copy(alpha = 0.22f),
+                    if (selected) scheme.primary.copy(alpha = 0.30f) else if (LocalEchoDarkTheme.current) echoTheme().glassBorder else scheme.outlineVariant.copy(alpha = 0.22f),
                 ),
                 RoundedCornerShape(18.dp),
             )
@@ -670,8 +666,8 @@ private fun QueueIconButton(
         modifier = Modifier
             .size(if (compact) 34.dp else 40.dp)
             .clip(CircleShape)
-            .background(if (LocalEchoDarkTheme.current) EchoGlassPanel.copy(alpha = 0.64f) else scheme.surface.copy(alpha = 0.68f))
-            .border(BorderStroke(1.dp, if (LocalEchoDarkTheme.current) EchoDarkGlassBorder else scheme.outlineVariant.copy(alpha = 0.22f)), CircleShape)
+            .background(if (LocalEchoDarkTheme.current) echoTheme().panel.copy(alpha = 0.64f) else scheme.surface.copy(alpha = 0.68f))
+            .border(BorderStroke(1.dp, if (LocalEchoDarkTheme.current) echoTheme().glassBorder else scheme.outlineVariant.copy(alpha = 0.22f)), CircleShape)
             .echoClickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

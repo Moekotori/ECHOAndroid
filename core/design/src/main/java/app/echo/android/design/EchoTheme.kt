@@ -12,7 +12,9 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
+import app.echo.android.model.settings.EchoColorTheme
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -38,17 +40,35 @@ object EchoColors {
 private val EchoDarkScheme = darkColorScheme(
     primary = EchoColors.Sky,
     onPrimary = Color(0xFF251B20),
+    primaryContainer = Color(0xFF3A2C32),
+    onPrimaryContainer = Color(0xFFE4C4CC),
+    inversePrimary = Color(0xFF925568),
     secondary = EchoColors.Sky,
     onSecondary = Color(0xFF251B20),
+    secondaryContainer = Color(0xFF322A2E),
+    onSecondaryContainer = Color(0xFFE4C4CC),
     tertiary = EchoColors.Coral,
+    onTertiary = Color(0xFF2A1614),
+    tertiaryContainer = Color(0xFF3A2A28),
+    onTertiaryContainer = Color(0xFFF0D0C8),
     background = EchoColors.Night,
     onBackground = EchoColors.Paper,
     surface = EchoColors.Ink,
     onSurface = EchoColors.Paper,
     surfaceVariant = EchoColors.Slate,
     onSurfaceVariant = Color(0xFFBCBBC2),
+    surfaceTint = EchoColors.Sky,
+    inverseSurface = Color(0xFFE8E4E6),
+    inverseOnSurface = Color(0xFF1C1C20),
     outline = Color(0xFF5D5C63),
     outlineVariant = Color(0xFF3A3A40),
+    surfaceDim = Color(0xFF151519),
+    surfaceBright = Color(0xFF2B2C31),
+    surfaceContainerLowest = Color(0xFF101014),
+    surfaceContainerLow = Color(0xFF1C1C20),
+    surfaceContainer = Color(0xFF202126),
+    surfaceContainerHigh = Color(0xFF2A2B30),
+    surfaceContainerHighest = Color(0xFF323338),
 )
 
 private val EchoLightScheme = lightColorScheme(
@@ -87,7 +107,11 @@ private val EchoLightScheme = lightColorScheme(
 
 val LocalEchoDensityScale = staticCompositionLocalOf { 1f }
 val LocalEchoDarkTheme = staticCompositionLocalOf { true }
+val LocalEchoTheme = staticCompositionLocalOf { echoThemeTokens(EchoColorTheme.Echo, dark = true) }
 val LocalEchoEffectivePerformanceMode = staticCompositionLocalOf { EchoEffectivePerformanceMode.Balanced }
+
+@Composable
+fun echoTheme(): EchoThemeTokens = LocalEchoTheme.current
 
 fun echoFontFamilyForMode(
     mode: String,
@@ -140,6 +164,7 @@ private fun TextUnit.scale(scale: Float): TextUnit =
 fun EchoMobileTheme(
     darkTheme: Boolean = true,
     dynamicColor: Boolean = false,
+    colorTheme: EchoColorTheme = EchoColorTheme.Default,
     playbackHapticsEnabled: Boolean = true,
     fontFamily: FontFamily = FontFamily.SansSerif,
     fontScale: Float = 1f,
@@ -149,18 +174,32 @@ fun EchoMobileTheme(
 ) {
     val context = LocalContext.current
     val widthClass = rememberEchoWidthSizeClass()
-    val colorScheme = remember(darkTheme, dynamicColor, context) {
+    val tokens = remember(colorTheme, darkTheme) { echoThemeTokens(colorTheme, darkTheme) }
+    val colorScheme = remember(tokens, darkTheme, dynamicColor, context) {
+        val base = echoColorScheme(tokens)
         val useDynamic = dynamicColor && Build.VERSION.SDK_INT >= 31
-        when {
-            useDynamic && darkTheme -> dynamicDarkColorScheme(context)
-            useDynamic -> dynamicLightColorScheme(context)
-            darkTheme -> EchoDarkScheme
-            else -> EchoLightScheme
+        if (!useDynamic) {
+            base
+        } else {
+            val dynamic = if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            base.copy(
+                primary = dynamic.primary,
+                onPrimary = dynamic.onPrimary,
+                primaryContainer = dynamic.primaryContainer,
+                onPrimaryContainer = dynamic.onPrimaryContainer,
+                secondary = dynamic.secondary,
+                onSecondary = dynamic.onSecondary,
+                tertiary = dynamic.tertiary,
+                onTertiary = dynamic.onTertiary,
+                inversePrimary = dynamic.inversePrimary,
+                surfaceTint = dynamic.primary,
+            )
         }
     }
     CompositionLocalProvider(
         LocalEchoDensityScale provides densityScale.coerceIn(0.90f, 1.12f),
         LocalEchoDarkTheme provides darkTheme,
+        LocalEchoTheme provides tokens,
         LocalEchoEffectivePerformanceMode provides effectivePerformanceMode,
         LocalEchoWidthSizeClass provides widthClass,
         LocalEchoContentMaxWidth provides widthClass.contentMaxWidth(),
@@ -176,3 +215,87 @@ fun EchoMobileTheme(
         )
     }
 }
+
+internal fun echoColorScheme(tokens: EchoThemeTokens) =
+    if (tokens.id == EchoColorTheme.Echo.id) {
+        if (tokens.dark) EchoDarkScheme else EchoLightScheme
+    } else {
+        tokens.toMaterialScheme()
+    }
+
+private fun EchoThemeTokens.toMaterialScheme() =
+    if (dark) {
+        val primaryBox = lerp(panel, accent, 0.22f)
+        val secondaryBox = lerp(panel, secondary, 0.20f)
+        val tertiaryBox = lerp(panel, accentDeep, 0.20f)
+        darkColorScheme(
+            primary = accent,
+            onPrimary = onAccent,
+            primaryContainer = primaryBox,
+            onPrimaryContainer = heading,
+            inversePrimary = accentDeep,
+            secondary = this.secondary,
+            onSecondary = onAccent,
+            secondaryContainer = secondaryBox,
+            onSecondaryContainer = heading,
+            tertiary = accentDeep,
+            onTertiary = onAccent,
+            tertiaryContainer = tertiaryBox,
+            onTertiaryContainer = heading,
+            background = night,
+            onBackground = onSurface,
+            surface = this.surface,
+            onSurface = onSurface,
+            surfaceVariant = panel,
+            onSurfaceVariant = onSurfaceVariant,
+            surfaceTint = accent,
+            inverseSurface = onSurface,
+            inverseOnSurface = night,
+            outline = this.outline,
+            outlineVariant = outlineVariant,
+            surfaceDim = bgBottom,
+            surfaceBright = panel,
+            surfaceContainerLowest = night,
+            surfaceContainerLow = ink,
+            surfaceContainer = panel,
+            surfaceContainerHigh = lerp(panel, accent, 0.08f),
+            surfaceContainerHighest = lerp(panel, heading, 0.10f),
+        )
+    } else {
+        val primaryBox = lerp(mist, accent, 0.16f)
+        val secondaryBox = lerp(mist, secondary, 0.12f)
+        val tertiaryBox = lerp(mist, accentDeep, 0.12f)
+        lightColorScheme(
+            primary = accent,
+            onPrimary = onAccent,
+            primaryContainer = primaryBox,
+            onPrimaryContainer = heading,
+            inversePrimary = accentDeep,
+            secondary = this.secondary,
+            onSecondary = onAccent,
+            secondaryContainer = secondaryBox,
+            onSecondaryContainer = heading,
+            tertiary = accentDeep,
+            onTertiary = onAccent,
+            tertiaryContainer = tertiaryBox,
+            onTertiaryContainer = heading,
+            background = bgTop,
+            onBackground = onSurface,
+            surface = this.surface,
+            onSurface = onSurface,
+            surfaceVariant = mist,
+            onSurfaceVariant = onSurfaceVariant,
+            surfaceTint = accent,
+            inverseSurface = heading,
+            inverseOnSurface = panel,
+            outline = this.outline,
+            outlineVariant = outlineVariant,
+            surfaceDim = lerp(mist, heading, 0.08f),
+            surfaceBright = panel,
+            surfaceContainerLowest = Color.White,
+            surfaceContainerLow = panel,
+            surfaceContainer = mist,
+            surfaceContainerHigh = lerp(mist, accent, 0.08f),
+            surfaceContainerHighest = lerp(mist, heading, 0.08f),
+        )
+    }

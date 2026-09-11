@@ -11,6 +11,9 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import app.echo.android.model.playback.EchoChannelBalance
+import app.echo.android.model.playback.EchoChannelBalanceMonoMode
+import app.echo.android.model.playback.EchoChannelBalanceState
 import app.echo.android.model.playback.EchoEqualizerPreset
 import app.echo.android.model.playback.EchoEqualizerPresets
 import app.echo.android.model.playback.OpraEqBand
@@ -18,6 +21,7 @@ import app.echo.android.model.playback.EchoRepeatMode
 import app.echo.android.model.playback.EchoReplayGainMode
 import app.echo.android.model.playback.EchoTrackRef
 import app.echo.android.model.settings.EchoAppLanguage
+import app.echo.android.model.settings.EchoColorTheme
 import app.echo.android.model.settings.EchoPerformanceMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -54,6 +58,7 @@ data class EchoAppSettings(
     val equalizerParametric: Boolean = false,
     val equalizerSourceLabel: String? = null,
     val equalizerFilters: List<OpraEqBand> = emptyList(),
+    val channelBalance: EchoChannelBalanceState = EchoChannelBalanceState(),
     val customBackgroundMode: String = EchoBackgroundMode.Default,
     val customBackgroundUri: String? = null,
     val customBackgroundBlur: Float = 24f,
@@ -78,6 +83,7 @@ data class EchoAppSettings(
     val lyricsFocusGlowEnabled: Boolean = false,
     val importedFontUri: String? = null,
     val themeMode: String = EchoThemeMode.Dark,
+    val colorTheme: String = EchoColorTheme.Default.id,
     val appLanguage: String = EchoAppLanguage.System,
     val scheduledDarkModeEnabled: Boolean = false,
     val scheduledDarkStartMinute: Int = 22 * 60,
@@ -224,6 +230,14 @@ class EchoSettingsStore(
                 equalizerParametric = preferences[Keys.EqualizerParametric] ?: false,
                 equalizerSourceLabel = preferences[Keys.EqualizerSourceLabel],
                 equalizerFilters = parseEqualizerFilters(preferences[Keys.EqualizerFilters]),
+                channelBalance = EchoChannelBalanceState(
+                    enabled = preferences[Keys.ChannelBalanceEnabled] ?: false,
+                    balance = EchoChannelBalance.clampBalance(preferences[Keys.ChannelBalance] ?: 0f),
+                    leftGainDb = EchoChannelBalance.clampGainDb(preferences[Keys.ChannelBalanceLeftGainDb] ?: 0f),
+                    rightGainDb = EchoChannelBalance.clampGainDb(preferences[Keys.ChannelBalanceRightGainDb] ?: 0f),
+                    swapLeftRight = preferences[Keys.ChannelBalanceSwap] ?: false,
+                    monoMode = EchoChannelBalanceMonoMode.fromId(preferences[Keys.ChannelBalanceMono]),
+                ),
                 customBackgroundMode = preferences[Keys.CustomBackgroundMode] ?: EchoBackgroundMode.Default,
                 customBackgroundUri = preferences[Keys.CustomBackgroundUri],
                 customBackgroundBlur = (preferences[Keys.CustomBackgroundBlur] ?: 24f).coerceIn(0f, 80f),
@@ -248,6 +262,7 @@ class EchoSettingsStore(
                 lyricsFocusGlowEnabled = preferences[Keys.LyricsFocusGlowEnabled] ?: false,
                 importedFontUri = preferences[Keys.ImportedFontUri],
                 themeMode = normalizeThemeMode(preferences[Keys.ThemeMode]),
+                colorTheme = EchoColorTheme.fromId(preferences[Keys.ColorTheme]).id,
                 appLanguage = context.echoAppLanguage(EchoAppLanguage.fromId(preferences[Keys.AppLanguage])),
                 scheduledDarkModeEnabled = preferences[Keys.ScheduledDarkModeEnabled] ?: false,
                 scheduledDarkStartMinute = (preferences[Keys.ScheduledDarkStartMinute] ?: 22 * 60).coerceIn(0, 23 * 60 + 59),
@@ -463,6 +478,18 @@ class EchoSettingsStore(
         }
     }
 
+    suspend fun setChannelBalance(state: EchoChannelBalanceState) {
+        val normalized = state.normalized
+        context.echoSettings.edit {
+            it[Keys.ChannelBalanceEnabled] = normalized.enabled
+            it[Keys.ChannelBalance] = normalized.balance
+            it[Keys.ChannelBalanceLeftGainDb] = normalized.leftGainDb
+            it[Keys.ChannelBalanceRightGainDb] = normalized.rightGainDb
+            it[Keys.ChannelBalanceSwap] = normalized.swapLeftRight
+            it[Keys.ChannelBalanceMono] = normalized.monoMode.id
+        }
+    }
+
     private fun clearEqualizerParametric(preferences: MutablePreferences) {
         preferences[Keys.EqualizerPreampDb] = 0f
         preferences[Keys.EqualizerParametric] = false
@@ -591,6 +618,15 @@ class EchoSettingsStore(
         context.echoSettings.edit { it[Keys.ThemeMode] = safeValue }
         cacheStartupThemeSnapshot(
             currentStartupThemeSnapshot().copy(themeMode = safeValue),
+            synchronous = true,
+        )
+    }
+
+    suspend fun setColorTheme(value: String) {
+        val safeValue = EchoColorTheme.fromId(value).id
+        context.echoSettings.edit { it[Keys.ColorTheme] = safeValue }
+        cacheStartupThemeSnapshot(
+            currentStartupThemeSnapshot().copy(colorTheme = safeValue),
             synchronous = true,
         )
     }
@@ -975,6 +1011,12 @@ class EchoSettingsStore(
         val EqualizerParametric = booleanPreferencesKey("equalizer_parametric")
         val EqualizerSourceLabel = stringPreferencesKey("equalizer_source_label")
         val EqualizerFilters = stringPreferencesKey("equalizer_filters")
+        val ChannelBalanceEnabled = booleanPreferencesKey("channel_balance_enabled")
+        val ChannelBalance = floatPreferencesKey("channel_balance")
+        val ChannelBalanceLeftGainDb = floatPreferencesKey("channel_balance_left_gain_db")
+        val ChannelBalanceRightGainDb = floatPreferencesKey("channel_balance_right_gain_db")
+        val ChannelBalanceSwap = booleanPreferencesKey("channel_balance_swap")
+        val ChannelBalanceMono = stringPreferencesKey("channel_balance_mono")
         val CustomBackgroundMode = stringPreferencesKey("custom_background_mode")
         val CustomBackgroundUri = stringPreferencesKey("custom_background_uri")
         val CustomBackgroundBlur = floatPreferencesKey("custom_background_blur")
@@ -999,6 +1041,7 @@ class EchoSettingsStore(
         val LyricsFocusGlowEnabled = booleanPreferencesKey("lyrics_focus_glow_enabled")
         val ImportedFontUri = stringPreferencesKey("imported_font_uri")
         val ThemeMode = stringPreferencesKey("theme_mode")
+        val ColorTheme = stringPreferencesKey("color_theme")
         val AppLanguage = stringPreferencesKey("app_language")
         val ScheduledDarkModeEnabled = booleanPreferencesKey("scheduled_dark_mode_enabled")
         val ScheduledDarkStartMinute = intPreferencesKey("scheduled_dark_start_minute")

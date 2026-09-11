@@ -67,13 +67,13 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.ArtworkTile
-import app.echo.android.design.EchoAccent
 import app.echo.android.design.echoAccentColor
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.design.progressFraction
+import app.echo.android.design.echoTheme
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.PlaybackPositionState
@@ -82,7 +82,6 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 private val MiniPlayerMotionEasing = EchoMotion.Silk
-private val MiniPlayerGlassRose = EchoAccent
 private val MiniPlayerSwipeReturnSpring = spring<Float>(
     dampingRatio = Spring.DampingRatioNoBouncy,
     stiffness = Spring.StiffnessMediumLow,
@@ -105,6 +104,7 @@ fun MiniPlayer(
     val scope = rememberCoroutineScope()
     val haptics = rememberEchoHapticPerformer()
     val scheme = MaterialTheme.colorScheme
+    val theme = echoTheme()
     val dark = LocalEchoDarkTheme.current
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val dragOffset = remember { mutableFloatStateOf(0f) }
@@ -176,19 +176,11 @@ fun MiniPlayer(
                     )
                 } else {
                     Brush.verticalGradient(
-                        if (compactDock) {
-                            listOf(
-                                Color.White,
-                                Color(0xFFFBF9FA),
-                                Color(0xFFF5F2F3),
-                            )
-                        } else {
-                            listOf(
-                                Color.White,
-                                Color(0xFFFAFAFA),
-                                Color(0xFFF4F4F5),
-                            )
-                        }
+                        listOf(
+                            Color.White,
+                            theme.glassWash,
+                            theme.mist,
+                        ),
                     )
                 },
             )
@@ -305,7 +297,7 @@ fun MiniPlayer(
                             .height(2.dp)
                             .clip(RoundedCornerShape(99.dp))
                             .graphicsLayer { alpha = progressAlpha },
-                        color = if (dark) MiniPlayerGlassRose.copy(alpha = 0.62f) else scheme.primary,
+                        color = if (dark) theme.accent.copy(alpha = 0.62f) else scheme.primary,
                         trackColor = if (dark) Color.White.copy(alpha = 0.08f) else scheme.outlineVariant.copy(alpha = 0.55f),
                         gapSize = 0.dp,
                         drawStopIndicator = {},
@@ -331,7 +323,7 @@ fun MiniPlayer(
                         Icon(
                             imageVector = if (playing) PlayerControlIcons.Pause else PlayerControlIcons.Play,
                             contentDescription = null,
-                            tint = if (dark) MiniPlayerGlassRose else scheme.primary,
+                            tint = if (dark) theme.accent else scheme.primary,
                             modifier = Modifier.size(28.dp),
                         )
                     }

@@ -42,9 +42,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
 import app.echo.android.model.i18n.echoText
 import androidx.compose.foundation.verticalScroll
@@ -76,7 +74,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ErrorOutline
@@ -84,16 +81,11 @@ import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.FastRewind
 import androidx.compose.material.icons.rounded.ColorLens
 import androidx.compose.material.icons.rounded.FormatSize
-import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material.icons.rounded.MoreHoriz
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Repeat
-import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.TextFields
@@ -149,10 +141,6 @@ import app.echo.android.design.EchoArtworkImage
 import app.echo.android.design.EchoArtworkSize
 import app.echo.android.design.EchoLiquidGlass
 import app.echo.android.design.echoAccentColor
-import app.echo.android.design.EchoDarkGlassBorder
-import app.echo.android.design.EchoGlassInk
-import app.echo.android.design.EchoGlassNight
-import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
@@ -162,8 +150,7 @@ import app.echo.android.design.echoDarkGlassBorder
 import app.echo.android.design.formatDuration
 import app.echo.android.design.progressFraction
 import app.echo.android.design.rememberArtworkPalette
-import app.echo.android.design.RoonInk
-import app.echo.android.design.RoonMuted
+import app.echo.android.design.echoTheme
 import app.echo.android.model.lyrics.EchoLyricLine
 import app.echo.android.model.lyrics.EchoLyrics
 import app.echo.android.model.lyrics.EchoLyricsFormat
@@ -172,8 +159,6 @@ import app.echo.android.model.playback.EchoAudioErrorKind
 import app.echo.android.model.playback.EchoPlaybackDiagnostics
 import app.echo.android.model.playback.EchoPlaybackError
 import app.echo.android.model.playback.EchoPlaybackStatus
-import app.echo.android.model.playback.EchoRepeatMode
-import app.echo.android.model.playback.EchoSleepTimerMode
 import app.echo.android.model.playback.PlaybackPositionState
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -181,7 +166,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 // 封面毛玻璃背景上的前景色：白色为主，半透明分级
-private val LyricsSettingsMotionEasing = CubicBezierEasing(0.16f, 1f, 0.30f, 1f)
+internal val LyricsSettingsMotionEasing = CubicBezierEasing(0.16f, 1f, 0.30f, 1f)
 
 private data class LyricsColorOption(
     val value: String,
@@ -212,8 +197,6 @@ private val LyricsMotionOptions = listOf(
     LyricsTextOption("stage"),
 )
 
-private val PlaybackSpeedOptions = listOf(0.75f, 1f, 1.25f, 1.5f, 2f)
-private val SleepTimerOptions = listOf(15, 30, 60)
 private val NowPlayingDismissSpring = spring<Float>(
     dampingRatio = Spring.DampingRatioNoBouncy,
     stiffness = Spring.StiffnessMediumLow,
@@ -385,7 +368,7 @@ fun NowPlayingScreen(
     ) {
         NowPlayingBackdrop(
             artworkUri = track?.artworkUri,
-            palette = palette.asNowPlayingWash(),
+            palette = palette.asNowPlayingWash(echoTheme().night),
             reveal = lyricsReveal,
             modifier = Modifier.fillMaxSize(),
         )
@@ -1236,8 +1219,8 @@ private fun LyricsSettingsPanel(
     val highlightFraction = ((highlight - 0.45f) / (1.35f - 0.45f)).coerceIn(0f, 1f)
     val dark = LocalEchoDarkTheme.current
     val panelShape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
-    val titleColor = if (dark) Color.White else RoonInk
-    val mutedColor = if (dark) Color.White.copy(alpha = 0.78f) else RoonMuted
+    val titleColor = if (dark) Color.White else echoTheme().heading
+    val mutedColor = if (dark) Color.White.copy(alpha = 0.78f) else echoTheme().muted
     val scrollState = rememberScrollState()
     Column(
         modifier = Modifier
@@ -1249,9 +1232,9 @@ private fun LyricsSettingsPanel(
                 if (dark) {
                     Brush.verticalGradient(
                         listOf(
-                            EchoGlassPanel.copy(alpha = 0.96f),
-                            EchoGlassInk.copy(alpha = 0.96f),
-                            EchoGlassNight.copy(alpha = 0.96f),
+                            echoTheme().panel.copy(alpha = 0.96f),
+                            echoTheme().ink.copy(alpha = 0.96f),
+                            echoTheme().night.copy(alpha = 0.96f),
                         ),
                     )
                 } else {
@@ -1313,7 +1296,7 @@ private fun LyricsSettingsPanel(
                 touchSize = 40.dp,
                 iconSize = 22.dp,
                 tint = titleColor,
-                background = if (dark) EchoGlassPanel.copy(alpha = 0.42f) else Color.White.copy(alpha = 0.62f),
+                background = if (dark) echoTheme().panel.copy(alpha = 0.42f) else Color.White.copy(alpha = 0.62f),
                 onClick = onDismiss,
             )
         }
@@ -1548,7 +1531,7 @@ private fun LyricsSettingsPanel(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(18.dp))
-                .background(if (dark) EchoGlassPanel.copy(alpha = 0.54f) else RoonInk.copy(alpha = 0.06f))
+                .background(if (dark) echoTheme().panel.copy(alpha = 0.54f) else echoTheme().heading.copy(alpha = 0.06f))
                 .border(if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, Color.Transparent), RoundedCornerShape(18.dp))
                 .clickable(onClick = onCloseLyrics)
                 .padding(horizontal = 14.dp, vertical = 12.dp),
@@ -1576,8 +1559,8 @@ private fun LyricsSettingsSection(
     content: @Composable () -> Unit,
 ) {
     val dark = LocalEchoDarkTheme.current
-    val titleColor = if (dark) Color.White else RoonInk
-    val mutedColor = if (dark) Color.White.copy(alpha = 0.78f) else RoonMuted
+    val titleColor = if (dark) Color.White else echoTheme().heading
+    val mutedColor = if (dark) Color.White.copy(alpha = 0.78f) else echoTheme().muted
     var appeared by remember { mutableStateOf(false) }
     LaunchedEffect(enterDelayMillis) {
         appeared = false
@@ -1617,7 +1600,7 @@ private fun LyricsSettingsSection(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(1.dp)
-                .background(if (dark) Color.White.copy(alpha = 0.06f) else RoonInk.copy(alpha = 0.06f)),
+                .background(if (dark) Color.White.copy(alpha = 0.06f) else echoTheme().heading.copy(alpha = 0.06f)),
         )
     }
 }
@@ -1664,7 +1647,7 @@ private fun LyricsPreviewCard(
                 Brush.verticalGradient(
                     listOf(
                         lyricAccent.copy(alpha = if (dark) backgroundAlpha * 0.34f else backgroundAlpha * 0.22f),
-                        if (dark) EchoGlassInk.copy(alpha = backgroundAlpha) else Color.White.copy(alpha = 0.62f),
+                        if (dark) echoTheme().ink.copy(alpha = backgroundAlpha) else Color.White.copy(alpha = 0.62f),
                     ),
                 ),
             )
@@ -1711,7 +1694,7 @@ private fun LyricsPreviewCard(
         Text(
             text = stringResource(L10nR.string.feature_player_translation_romaji_appear_when_the_current_lyrics_include_3b41d9),
             modifier = Modifier.fillMaxWidth(),
-            color = if (dark) Color.White.copy(alpha = 0.68f) else RoonMuted,
+            color = if (dark) Color.White.copy(alpha = 0.68f) else echoTheme().muted,
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.SemiBold,
             textAlign = textAlign,
@@ -1734,7 +1717,7 @@ private fun LyricsMiniSliderRow(
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(label, color = if (dark) Color.White.copy(alpha = 0.92f) else Color(0xFF2A282E), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
             Spacer(Modifier.weight(1f))
-            Text(valueLabel, color = if (dark) Color.White.copy(alpha = 0.70f) else RoonMuted, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+            Text(valueLabel, color = if (dark) Color.White.copy(alpha = 0.70f) else echoTheme().muted, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
         }
         ThinSlider(
             fraction = fraction,
@@ -1759,7 +1742,7 @@ private fun LyricsChoiceChip(
         targetValue = if (selected) {
             accent.copy(alpha = if (dark) 0.20f else 0.18f)
         } else {
-            if (dark) EchoGlassPanel.copy(alpha = 0.46f) else Color.White.copy(alpha = 0.56f)
+            if (dark) echoTheme().panel.copy(alpha = 0.46f) else Color.White.copy(alpha = 0.56f)
         },
         animationSpec = tween(durationMillis = 180, easing = LyricsSettingsMotionEasing),
         label = "lyrics-choice-container",
@@ -1768,7 +1751,7 @@ private fun LyricsChoiceChip(
         targetValue = if (selected) {
             accent.copy(alpha = 0.78f)
         } else {
-            if (dark) EchoDarkGlassBorder else Color.White.copy(alpha = 0.68f)
+            if (dark) echoTheme().glassBorder else Color.White.copy(alpha = 0.68f)
         },
         animationSpec = tween(durationMillis = 180, easing = LyricsSettingsMotionEasing),
         label = "lyrics-choice-border",
@@ -1814,7 +1797,7 @@ private fun LyricsChoiceChip(
         )
         Text(
             text = text,
-            color = if (dark) Color.White else RoonInk,
+            color = if (dark) Color.White else echoTheme().heading,
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Black,
             maxLines = 1,
@@ -1832,7 +1815,7 @@ private fun LyricsColorSwatch(
 ) {
     val dark = LocalEchoDarkTheme.current
     val ringColor by animateColorAsState(
-        targetValue = if (selected) option.color else if (dark) Color.White.copy(alpha = 0.18f) else RoonInk.copy(alpha = 0.12f),
+        targetValue = if (selected) option.color else if (dark) Color.White.copy(alpha = 0.18f) else echoTheme().heading.copy(alpha = 0.12f),
         animationSpec = tween(durationMillis = 180, easing = LyricsSettingsMotionEasing),
         label = "lyrics-palette-ring",
     )
@@ -1894,7 +1877,7 @@ private fun LyricsToggleTile(
     val dark = LocalEchoDarkTheme.current
     val active = enabled
     val tileColor by animateColorAsState(
-        targetValue = if (active) accent.copy(alpha = 0.28f) else if (dark) EchoGlassPanel.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.48f),
+        targetValue = if (active) accent.copy(alpha = 0.28f) else if (dark) echoTheme().panel.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.48f),
         animationSpec = tween(durationMillis = 220, easing = LyricsSettingsMotionEasing),
         label = "lyrics-toggle-color",
     )
@@ -1913,7 +1896,7 @@ private fun LyricsToggleTile(
             .clip(RoundedCornerShape(18.dp))
             .background(tileColor)
             .border(
-                BorderStroke(1.dp, if (active) accent.copy(alpha = 0.38f) else if (dark) EchoDarkGlassBorder else Color.White.copy(alpha = 0.66f)),
+                BorderStroke(1.dp, if (active) accent.copy(alpha = 0.38f) else if (dark) echoTheme().glassBorder else Color.White.copy(alpha = 0.66f)),
                 RoundedCornerShape(18.dp),
             )
             .toggleable(value = enabled, role = Role.Switch, onValueChange = { onClick() })
@@ -1927,7 +1910,7 @@ private fun LyricsToggleTile(
                 stringResource(if (enabled) L10nR.string.feature_player_on_3062f9 else L10nR.string.feature_player_off_12ac24),
                 if (!available) stringResource(L10nR.string.feature_player_no_data_5a8239) else null,
             ).joinToString(" · "),
-            color = if (dark) Color.White.copy(alpha = 0.78f) else RoonMuted,
+            color = if (dark) Color.White.copy(alpha = 0.78f) else echoTheme().muted,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             maxLines = 2,
@@ -1949,7 +1932,7 @@ private fun LyricsToolButton(
         targetValue = if (selected) {
             Color.White.copy(alpha = if (dark) 0.22f else 0.12f)
         } else {
-            if (dark) EchoGlassPanel.copy(alpha = 0.56f) else Color.White.copy(alpha = 0.54f)
+            if (dark) echoTheme().panel.copy(alpha = 0.56f) else Color.White.copy(alpha = 0.54f)
         },
         animationSpec = tween(durationMillis = 220, easing = LyricsSettingsMotionEasing),
         label = "lyrics-tool-container",
@@ -2340,12 +2323,12 @@ private fun LyricsControlDeck(
             .background(
                 Brush.verticalGradient(
                     listOf(
-                        EchoGlassPanel.copy(alpha = 0.54f),
-                        EchoGlassInk.copy(alpha = 0.66f),
+                        echoTheme().panel.copy(alpha = 0.54f),
+                        echoTheme().ink.copy(alpha = 0.66f),
                     ),
                 ),
             )
-            .border(BorderStroke(1.dp, EchoDarkGlassBorder), RoundedCornerShape(16.dp))
+            .border(BorderStroke(1.dp, echoTheme().glassBorder), RoundedCornerShape(16.dp))
             .padding(horizontal = 12.dp, vertical = 9.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -2450,7 +2433,7 @@ private fun EchoLyricsFormat.label(): String = when (this) {
     EchoLyricsFormat.PlainText -> "Plain"
 }
 
-private fun formatLyricsOffset(offsetMs: Long): String {
+internal fun formatLyricsOffset(offsetMs: Long): String {
     val sign = when {
         offsetMs > 0L -> "+"
         offsetMs < 0L -> "-"
@@ -2586,646 +2569,6 @@ private fun NowPlayingTrackInfo(
 }
 
 @Composable
-private fun PlaybackSettingsDrawer(
-    visible: Boolean,
-    status: EchoPlaybackStatus,
-    onCycleRepeatMode: () -> Unit,
-    onToggleShuffle: () -> Unit,
-    onSetPlaybackSpeed: (Float, Boolean) -> Unit,
-    onSetSleepTimer: (Int) -> Unit,
-    onSetSleepTimerEndOfTrack: () -> Unit = {},
-    onCancelSleepTimer: () -> Unit,
-    onSetReplayGain: (Boolean, Float) -> Unit,
-    onSetReplayGainMode: (app.echo.android.model.playback.EchoReplayGainMode) -> Unit = {},
-    onAdjustReplayGainPreamp: (Float) -> Unit,
-    onSetSkipSilenceEnabled: (Boolean) -> Unit,
-    lyricsOffsetMs: Long,
-    onAdjustLyricsOffset: (Long) -> Unit,
-    onResetLyricsOffset: () -> Unit,
-    onOpenQueue: () -> Unit,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    BackHandler(enabled = visible, onBack = onDismiss)
-    val drawerState = remember { MutableTransitionState(false) }
-    drawerState.targetState = visible
-    AnimatedVisibility(
-        visibleState = drawerState,
-        enter = fadeIn(tween(durationMillis = 90, easing = LyricsSettingsMotionEasing)),
-        exit = fadeOut(tween(durationMillis = 180, easing = LyricsSettingsMotionEasing)),
-        modifier = modifier.fillMaxSize(),
-    ) {
-        Box(Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.18f))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onDismiss,
-                    ),
-            )
-            AnimatedVisibility(
-                visibleState = drawerState,
-                enter = slideInVertically(
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioLowBouncy,
-                        stiffness = Spring.StiffnessMediumLow,
-                    ),
-                ) { it } +
-                    expandVertically(
-                        expandFrom = Alignment.Bottom,
-                        animationSpec = EchoMotion.silkSize(360),
-                    ) +
-                    fadeIn(tween(durationMillis = 260, delayMillis = 35, easing = LyricsSettingsMotionEasing)) +
-                    scaleIn(
-                        initialScale = 0.965f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioLowBouncy,
-                            stiffness = Spring.StiffnessMediumLow,
-                        ),
-                    ),
-                exit = slideOutVertically(EchoMotion.silkOffset(260)) { it } +
-                    shrinkVertically(
-                        shrinkTowards = Alignment.Bottom,
-                        animationSpec = EchoMotion.silkSize(260),
-                    ) +
-                    fadeOut(tween(durationMillis = 160, easing = LyricsSettingsMotionEasing)) +
-                    scaleOut(
-                        targetScale = 0.98f,
-                        animationSpec = EchoMotion.silkFloat(260),
-                    ),
-                modifier = Modifier.align(Alignment.BottomCenter),
-            ) {
-                PlaybackSettingsPanel(
-                    status = status,
-                    onCycleRepeatMode = onCycleRepeatMode,
-                    onToggleShuffle = onToggleShuffle,
-                    onSetPlaybackSpeed = onSetPlaybackSpeed,
-                    onSetSleepTimer = onSetSleepTimer,
-                    onSetSleepTimerEndOfTrack = onSetSleepTimerEndOfTrack,
-                    onCancelSleepTimer = onCancelSleepTimer,
-                    onSetReplayGain = onSetReplayGain,
-                    onSetReplayGainMode = onSetReplayGainMode,
-                    onAdjustReplayGainPreamp = onAdjustReplayGainPreamp,
-                    onSetSkipSilenceEnabled = onSetSkipSilenceEnabled,
-                    lyricsOffsetMs = lyricsOffsetMs,
-                    onAdjustLyricsOffset = onAdjustLyricsOffset,
-                    onResetLyricsOffset = onResetLyricsOffset,
-                    onOpenQueue = onOpenQueue,
-                    onDismiss = onDismiss,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun PlaybackSettingsPanel(
-    status: EchoPlaybackStatus,
-    onCycleRepeatMode: () -> Unit,
-    onToggleShuffle: () -> Unit,
-    onSetPlaybackSpeed: (Float, Boolean) -> Unit,
-    onSetSleepTimer: (Int) -> Unit,
-    onSetSleepTimerEndOfTrack: () -> Unit = {},
-    onCancelSleepTimer: () -> Unit,
-    onSetReplayGain: (Boolean, Float) -> Unit,
-    onSetReplayGainMode: (app.echo.android.model.playback.EchoReplayGainMode) -> Unit = {},
-    onAdjustReplayGainPreamp: (Float) -> Unit,
-    onSetSkipSilenceEnabled: (Boolean) -> Unit,
-    lyricsOffsetMs: Long,
-    onAdjustLyricsOffset: (Long) -> Unit,
-    onResetLyricsOffset: () -> Unit,
-    onOpenQueue: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val nightcore = isNightcorePlayback(status)
-    val dark = LocalEchoDarkTheme.current
-    var showCustomSleepTimer by remember { mutableStateOf(false) }
-    val panelShape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
-    val titleColor = if (dark) Color.White else RoonInk
-    val mutedColor = if (dark) Color.White.copy(alpha = 0.76f) else RoonMuted
-    val accentColor = echoAccentColor()
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .fillMaxHeight(0.62f)
-            .navigationBarsPadding()
-            .clip(panelShape)
-            .background(
-                if (dark) {
-                    Brush.verticalGradient(
-                        listOf(
-                            EchoGlassPanel.copy(alpha = 0.98f),
-                            EchoGlassInk.copy(alpha = 0.98f),
-                            EchoGlassNight.copy(alpha = 0.98f),
-                        ),
-                    )
-                } else {
-                    Brush.verticalGradient(
-                        listOf(
-                            Color(0xFFF7F5F6).copy(alpha = 0.98f),
-                            Color(0xFFEFECEE).copy(alpha = 0.98f),
-                        ),
-                    )
-                },
-            )
-            .border(
-                BorderStroke(1.dp, if (dark) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.72f)),
-                panelShape,
-            )
-            .verticalScroll(rememberScrollState())
-            .animateContentSize(tween(durationMillis = 300, easing = LyricsSettingsMotionEasing))
-            .padding(horizontal = 20.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .size(width = 48.dp, height = 5.dp)
-                .clip(CircleShape)
-                .background(if (dark) Color.White.copy(alpha = 0.28f) else Color(0xFF2A282E).copy(alpha = 0.22f)),
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .background(accentColor.copy(alpha = 0.18f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Rounded.Settings,
-                    contentDescription = null,
-                    tint = accentColor,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-            Column(Modifier.weight(1f)) {
-                Text(
-                    stringResource(L10nR.string.feature_player_playback_settings_651436),
-                    color = titleColor,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.ExtraBold,
-                )
-                Text(
-                    playbackSettingsSummary(status),
-                    color = mutedColor,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            GlyphButton(
-                icon = Icons.Rounded.Close,
-                description = stringResource(L10nR.string.feature_player_close_playback_settings_289e1a),
-                touchSize = 42.dp,
-                iconSize = 22.dp,
-                tint = titleColor,
-                background = Color.Transparent,
-                onClick = onDismiss,
-            )
-        }
-        PlaybackSettingsLabel(
-            text = sleepTimerLabel(status),
-        )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(7.dp),
-        ) {
-            PlaybackSpeedChip(
-                text = stringResource(L10nR.string.feature_player_off_12ac24),
-                selected = status.sleepTimerMode == EchoSleepTimerMode.Off,
-                onClick = onCancelSleepTimer,
-            )
-            PlaybackSpeedChip(
-                text = stringResource(L10nR.string.feature_player_this_track_210ea7),
-                selected = status.sleepTimerMode == EchoSleepTimerMode.EndOfTrack,
-                onClick = onSetSleepTimerEndOfTrack,
-            )
-            SleepTimerOptions.forEach { minutes ->
-                PlaybackSpeedChip(
-                    text = "${minutes}m",
-                    selected = status.sleepTimerMode == EchoSleepTimerMode.Timed &&
-                        status.sleepTimerMinutes == minutes,
-                    onClick = { onSetSleepTimer(minutes) },
-                )
-            }
-            PlaybackSpeedChip(
-                text = if (
-                    status.sleepTimerMode == EchoSleepTimerMode.Timed &&
-                    status.sleepTimerMinutes != null &&
-                    status.sleepTimerMinutes !in SleepTimerOptions
-                ) {
-                    "${status.sleepTimerMinutes}m"
-                } else {
-                    "…"
-                },
-                selected = status.sleepTimerMode == EchoSleepTimerMode.Timed &&
-                    status.sleepTimerMinutes != null &&
-                    status.sleepTimerMinutes !in SleepTimerOptions,
-                onClick = { showCustomSleepTimer = true },
-            )
-        }
-        if (showCustomSleepTimer) {
-            var customMinutes by remember { mutableStateOf("45") }
-            AlertDialog(
-                onDismissRequest = { showCustomSleepTimer = false },
-                title = { Text("Sleep timer") },
-                text = {
-                    OutlinedTextField(
-                        value = customMinutes,
-                        onValueChange = { customMinutes = it.filter(Char::isDigit).take(3) },
-                        label = { Text("Minutes (1–180)") },
-                        singleLine = true,
-                    )
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            customMinutes.toIntOrNull()?.coerceIn(1, 180)?.let(onSetSleepTimer)
-                            showCustomSleepTimer = false
-                        },
-                    ) { Text("Set") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showCustomSleepTimer = false }) { Text("Cancel") }
-                },
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            PlaybackSettingButton(
-                icon = if (status.repeatMode == EchoRepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
-                title = repeatModeLabel(status.repeatMode),
-                selected = status.repeatMode != EchoRepeatMode.Off,
-                onClick = onCycleRepeatMode,
-                modifier = Modifier.weight(1f),
-            )
-            PlaybackSettingButton(
-                icon = Icons.Rounded.Shuffle,
-                title = if (status.shuffleEnabled) {
-                    stringResource(L10nR.string.feature_player_shuffle_on_c7c5c4)
-                } else {
-                    stringResource(L10nR.string.feature_player_in_order_47b60a)
-                },
-                selected = status.shuffleEnabled,
-                onClick = onToggleShuffle,
-                modifier = Modifier.weight(1f),
-            )
-            PlaybackSettingButton(
-                icon = Icons.AutoMirrored.Rounded.QueueMusic,
-                title = stringResource(L10nR.string.feature_player_queue_84794b),
-                selected = false,
-                onClick = onOpenQueue,
-                modifier = Modifier.weight(1f),
-            )
-        }
-        PlaybackSettingsLabel(text = stringResource(L10nR.string.feature_player_speed_1d93fc))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            PlaybackSettingButton(
-                icon = Icons.Rounded.PlayArrow,
-                title = stringResource(L10nR.string.feature_player_normal_speed_a8fc98),
-                selected = !nightcore,
-                onClick = { onSetPlaybackSpeed(status.playbackSpeed, false) },
-                modifier = Modifier.weight(1f),
-            )
-            PlaybackSettingButton(
-                icon = Icons.Rounded.StarBorder,
-                title = "Nightcore",
-                selected = nightcore,
-                onClick = { onSetPlaybackSpeed(status.playbackSpeed.coerceAtLeast(1.25f), true) },
-                modifier = Modifier.weight(1f),
-            )
-        }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(7.dp),
-        ) {
-            PlaybackSpeedOptions.forEach { speed ->
-                PlaybackSpeedChip(
-                    text = playbackSpeedLabel(speed),
-                    selected = abs(status.playbackSpeed - speed) < 0.01f,
-                    onClick = { onSetPlaybackSpeed(speed, nightcore) },
-                )
-            }
-        }
-        PlaybackSettingsLabel(text = "ReplayGain")
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            PlaybackSettingButton(
-                icon = Icons.Rounded.GraphicEq,
-                title = if (status.replayGainEnabled) {
-                    stringResource(L10nR.string.feature_player_enabled_889420)
-                } else {
-                    stringResource(L10nR.string.feature_player_disabled_3bd0d0)
-                },
-                selected = status.replayGainEnabled,
-                onClick = { onSetReplayGain(!status.replayGainEnabled, status.replayGainPreampDb) },
-                modifier = Modifier.weight(1f),
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            PlaybackSpeedChip(
-                text = "Auto",
-                selected = status.replayGainMode == app.echo.android.model.playback.EchoReplayGainMode.Auto,
-                onClick = { onSetReplayGainMode(app.echo.android.model.playback.EchoReplayGainMode.Auto) },
-            )
-            PlaybackSpeedChip(
-                text = "Track",
-                selected = status.replayGainMode == app.echo.android.model.playback.EchoReplayGainMode.Track,
-                onClick = { onSetReplayGainMode(app.echo.android.model.playback.EchoReplayGainMode.Track) },
-            )
-            PlaybackSpeedChip(
-                text = "Album",
-                selected = status.replayGainMode == app.echo.android.model.playback.EchoReplayGainMode.Album,
-                onClick = { onSetReplayGainMode(app.echo.android.model.playback.EchoReplayGainMode.Album) },
-            )
-            PlaybackSettingButton(
-                icon = Icons.Rounded.FastRewind,
-                title = "-3dB",
-                selected = false,
-                onClick = { onAdjustReplayGainPreamp(-3f) },
-                modifier = Modifier.weight(1f),
-            )
-            PlaybackSettingButton(
-                icon = Icons.Rounded.FastForward,
-                title = "+3dB",
-                selected = false,
-                onClick = { onAdjustReplayGainPreamp(3f) },
-                modifier = Modifier.weight(1f),
-            )
-        }
-        Text(
-            text = stringResource(
-                L10nR.string.feature_player_tag_status_replaygaintrackgaindb_let_formatreplaygaindb_unread_p_9c7a19,
-                status.replayGainTrackGainDb?.let(::formatReplayGainDb)
-                    ?: stringResource(
-                        if (status.replayGainTagsLoaded) {
-                            L10nR.string.feature_player_replay_gain_none
-                        } else {
-                            L10nR.string.feature_player_replay_gain_unread
-                        },
-                    ),
-                formatReplayGainDb(status.replayGainPreampDb),
-            ),
-            color = OnArt.copy(alpha = 0.62f),
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            PlaybackSettingButton(
-                icon = Icons.Rounded.MoreHoriz,
-                title = if (status.skipSilenceEnabled) {
-                    stringResource(L10nR.string.feature_player_skip_silence_on_159990)
-                } else {
-                    stringResource(L10nR.string.feature_player_skip_silence_off_8f8ae6)
-                },
-                selected = status.skipSilenceEnabled,
-                onClick = { onSetSkipSilenceEnabled(!status.skipSilenceEnabled) },
-                modifier = Modifier.weight(1f),
-            )
-            PlaybackSettingButton(
-                icon = Icons.Rounded.RestartAlt,
-                title = stringResource(L10nR.string.feature_player_lyrics_formatlyricsoffset_lyricsoffsetms_6c3953, (formatLyricsOffset(lyricsOffsetMs)).toString()),
-                selected = lyricsOffsetMs != 0L,
-                onClick = onResetLyricsOffset,
-                modifier = Modifier.weight(1f),
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            PlaybackSettingButton(
-                icon = Icons.Rounded.FastRewind,
-                title = "-0.5s",
-                selected = false,
-                onClick = { onAdjustLyricsOffset(-500L) },
-                modifier = Modifier.weight(1f),
-            )
-            PlaybackSettingButton(
-                icon = Icons.Rounded.FastForward,
-                title = "+0.5s",
-                selected = false,
-                onClick = { onAdjustLyricsOffset(500L) },
-                modifier = Modifier.weight(1f),
-            )
-        }
-    }
-}
-
-@Composable
-private fun PlaybackSettingsLabel(text: String) {
-    Text(
-        text,
-        color = OnArt.copy(alpha = 0.70f),
-        style = MaterialTheme.typography.labelSmall,
-        fontWeight = FontWeight.ExtraBold,
-    )
-}
-
-@Composable
-private fun PlaybackSettingButton(
-    icon: ImageVector,
-    title: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val containerColor by animateColorAsState(
-        targetValue = if (selected) OnArt.copy(alpha = 0.24f) else OnArt.copy(alpha = 0.10f),
-        animationSpec = tween(durationMillis = 180, easing = LyricsSettingsMotionEasing),
-        label = "playback-setting-container",
-    )
-    val borderColor by animateColorAsState(
-        targetValue = if (selected) OnArt.copy(alpha = 0.34f) else OnArt.copy(alpha = 0.12f),
-        animationSpec = tween(durationMillis = 180, easing = LyricsSettingsMotionEasing),
-        label = "playback-setting-border",
-    )
-    Row(
-        modifier = modifier
-            .height(42.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(containerColor)
-            .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(8.dp))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick,
-            )
-            .padding(horizontal = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Icon(
-            icon,
-            contentDescription = title,
-            tint = OnArt.copy(alpha = if (selected) 0.96f else 0.76f),
-            modifier = Modifier.size(18.dp),
-        )
-        Text(
-            title,
-            color = OnArt.copy(alpha = if (selected) 0.98f else 0.78f),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-@Composable
-private fun PlaybackSpeedChip(
-    text: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    val containerColor by animateColorAsState(
-        targetValue = if (selected) OnArt.copy(alpha = 0.26f) else OnArt.copy(alpha = 0.10f),
-        animationSpec = tween(durationMillis = 180, easing = LyricsSettingsMotionEasing),
-        label = "playback-speed-chip-container",
-    )
-    Box(
-        modifier = Modifier
-            .height(32.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(containerColor)
-            .border(
-                BorderStroke(1.dp, if (selected) OnArt.copy(alpha = 0.34f) else OnArt.copy(alpha = 0.10f)),
-                RoundedCornerShape(8.dp),
-            )
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick,
-            )
-            .padding(horizontal = 11.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text,
-            color = OnArt.copy(alpha = if (selected) 0.96f else 0.72f),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-        )
-    }
-}
-
-@Composable
-private fun playbackSettingsSummary(status: EchoPlaybackStatus): String {
-    val diagnostics = status.diagnostics
-    val format = buildList {
-        diagnostics.codec?.let { add(it) }
-        diagnostics.sampleRateHz?.takeIf { it > 0 }?.let { add(formatSampleRate(it)) }
-        diagnostics.bitDepth?.takeIf { it > 0 }?.let { add("${it}bit") }
-    }.joinToString(" · ").ifBlank {
-        stringResource(L10nR.string.feature_player_waiting_for_audio_info_a869fd)
-    }
-    val output = if (diagnostics.usbDeviceName != null) {
-        stringResource(L10nR.string.feature_player_usb_output_c6800e)
-    } else {
-        stringResource(L10nR.string.feature_player_system_output_856789)
-    }
-    val mode = if (isNightcorePlayback(status)) {
-        stringResource(L10nR.string.feature_player_nightcore_pitch_65449f)
-    } else {
-        stringResource(L10nR.string.feature_player_normal_speed_a8fc98)
-    }
-    val silence = if (status.skipSilenceEnabled) {
-        stringResource(L10nR.string.feature_player_skip_silence_d27e03)
-    } else {
-        null
-    }
-    return listOfNotNull(format, output, mode, silence).joinToString(" · ")
-}
-
-private fun isNightcorePlayback(status: EchoPlaybackStatus): Boolean =
-    status.playbackSpeed > 1.01f && abs(status.playbackPitch - status.playbackSpeed) < 0.01f
-
-private fun playbackSpeedLabel(speed: Float): String {
-    val rounded = (speed * 100f).roundToInt() / 100f
-    return if (abs(rounded - rounded.toInt()) < 0.01f) {
-        "${rounded.toInt()}x"
-    } else {
-        "${"%.2f".format(rounded).trimEnd('0').trimEnd('.')}x"
-    }
-}
-
-@Composable
-private fun sleepTimerLabel(status: EchoPlaybackStatus): String {
-    if (status.sleepTimerMode == EchoSleepTimerMode.Off) {
-        return stringResource(L10nR.string.feature_player_sleep_timer_108738)
-    }
-    if (status.sleepTimerMode == EchoSleepTimerMode.EndOfTrack) {
-        val remaining = status.sleepTimerRemainingMs
-        return if (remaining in 1 until 12 * 60 * 60 * 1000L) {
-            val clock = formatSleepTimerRemaining(remaining)
-            stringResource(L10nR.string.feature_player_sleep_timer_this_track_clock_e76a6a, (clock).toString())
-        } else {
-            stringResource(L10nR.string.feature_player_sleep_timer_this_track_1ae161)
-        }
-    }
-    return if (status.sleepTimerRemainingMs > 0L) {
-        val remaining = formatSleepTimerRemaining(status.sleepTimerRemainingMs)
-        stringResource(L10nR.string.feature_player_sleep_timer_remaining_4b8c3f, (remaining).toString())
-    } else {
-        stringResource(L10nR.string.feature_player_sleep_timer_108738)
-    }
-}
-
-private fun formatSleepTimerRemaining(remainingMs: Long): String {
-    val totalMinutes = ((remainingMs + 59_999L) / 60_000L).coerceAtLeast(1L)
-    val hours = totalMinutes / 60L
-    val minutes = totalMinutes % 60L
-    return if (hours > 0L) {
-        "${hours}h ${minutes}m"
-    } else {
-        "${minutes}m"
-    }
-}
-
-private fun formatReplayGainDb(value: Float): String {
-    val rounded = (value * 10f).roundToInt() / 10f
-    val sign = if (rounded > 0f) "+" else ""
-    return if (abs(rounded - rounded.toInt()) < 0.01f) {
-        "$sign${rounded.toInt()}dB"
-    } else {
-        "$sign${"%.1f".format(rounded)}dB"
-    }
-}
-
-@Composable
-private fun repeatModeLabel(mode: EchoRepeatMode): String = when (mode) {
-    EchoRepeatMode.Off -> stringResource(L10nR.string.feature_player_repeat_off_e1d801)
-    EchoRepeatMode.All -> stringResource(L10nR.string.feature_player_repeat_all_751078)
-    EchoRepeatMode.One -> stringResource(L10nR.string.feature_player_repeat_one_3df94f)
-}
-
-@Composable
 private fun NowPlayingErrorBanner(
     error: EchoPlaybackError,
     autoSkipped: Boolean,
@@ -3339,7 +2682,7 @@ private fun FormatChip(text: String, highlight: Boolean) {
     }
 }
 
-private fun formatSampleRate(hz: Int): String {
+internal fun formatSampleRate(hz: Int): String {
     val khzTimes10 = (hz + 50) / 100
     val whole = khzTimes10 / 10
     val frac = khzTimes10 % 10
@@ -3521,7 +2864,7 @@ private fun ThinSlider(
 }
 
 @Composable
-private fun GlyphButton(
+internal fun GlyphButton(
     icon: ImageVector,
     description: String,
     touchSize: Dp,
@@ -3605,8 +2948,8 @@ private fun NowPlayingBackdrop(
                 .height(170.dp)
                 .background(
                     Brush.verticalGradient(
-                        0f to EchoGlassNight.copy(alpha = 0.34f - 0.08f * lyricsReveal),
-                        0.48f to EchoGlassInk.copy(alpha = 0.16f - 0.04f * lyricsReveal),
+                        0f to echoTheme().night.copy(alpha = 0.34f - 0.08f * lyricsReveal),
+                        0.48f to echoTheme().ink.copy(alpha = 0.16f - 0.04f * lyricsReveal),
                         1f to Color.Transparent,
                     ),
                 ),
@@ -3684,8 +3027,7 @@ private fun rememberNowPlayingDismissConnection(
     }
 }
 
-private fun ArtworkPalette.asNowPlayingWash(): ArtworkPalette {
-    val night = EchoGlassNight
+private fun ArtworkPalette.asNowPlayingWash(night: Color): ArtworkPalette {
     return copy(
         vibrant = lerp(deep, night, 0.48f),
         deep = lerp(deep, night, 0.22f),

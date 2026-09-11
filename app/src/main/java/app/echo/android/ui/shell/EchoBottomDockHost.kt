@@ -26,9 +26,7 @@ import app.echo.android.EchoAndroidViewModel
 import app.echo.android.EchoTab
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoContentMaxWidth
-import app.echo.android.design.EchoGlassNight
-import app.echo.android.design.EchoGlassPanel
-import app.echo.android.design.EchoHomeMist
+import app.echo.android.design.echoTheme
 import app.echo.android.feature.player.MiniPlayer
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
@@ -71,8 +69,12 @@ internal fun EchoBottomDockHost(
             .fillMaxWidth()
             .background(
                 Brush.verticalGradient(
-                    if (darkTheme) listOf(Color.Transparent, EchoGlassNight.copy(alpha = 0.40f), EchoGlassPanel.copy(alpha = 0.94f))
-                    else listOf(Color.Transparent, EchoHomeMist.copy(alpha = 0.96f)),
+                    if (darkTheme) {
+                        val theme = echoTheme()
+                        listOf(Color.Transparent, theme.night.copy(alpha = 0.40f), theme.panel.copy(alpha = 0.94f))
+                    } else {
+                        listOf(Color.Transparent, echoTheme().mist.copy(alpha = 0.96f))
+                    },
                 ),
             )
             .navigationBarsPadding()

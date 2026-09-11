@@ -10,6 +10,7 @@ import app.echo.android.model.connect.EchoRemoteLyrics
 import app.echo.android.model.connect.EchoRemoteMessage
 import app.echo.android.model.connect.EchoRemotePlaylist
 import app.echo.android.model.connect.EchoRemoteStatus
+import app.echo.android.model.connect.EchoRemoteStreamItem
 import app.echo.android.model.connect.EchoRemoteTrack
 import app.echo.android.model.i18n.echoText
 import app.echo.android.model.library.EchoTrack
@@ -660,6 +661,7 @@ class EchoRemoteClient internal constructor(
         tracks: List<EchoRemoteTrack>,
         startIndex: Int,
         positionMs: Long,
+        onFailure: (Throwable?) -> Unit = {},
         onSuccess: () -> Unit = {},
     ) {
         val startTrack = tracks.getOrNull(startIndex) ?: tracks.firstOrNull()
@@ -673,6 +675,7 @@ class EchoRemoteClient internal constructor(
                     ),
                 )
             }
+            onFailure(null)
             return
         }
         val target = endpoint ?: run {
@@ -686,6 +689,7 @@ class EchoRemoteClient internal constructor(
                     ),
                 )
             }
+            onFailure(null)
             return
         }
         val ids = EchoLinkLibraryQueryPolicy.playableLinkedPcTrackIds(tracks)
@@ -696,15 +700,80 @@ class EchoRemoteClient internal constructor(
                 val replaced = dispatchCommand(
                     target = target,
                     command = EchoRemoteCommand.QueueReplace(trackIds = ids, startTrackId = startId),
+                    onFailure = onFailure,
                 )
                 if (!replaced || connection != connectGeneration) return@launch
             }
-            val handedOff = dispatchCommand(
+            dispatchCommand(
                 target = target,
                 command = EchoRemoteCommand.HandoffToPc(trackId, positionMs.coerceAtLeast(0L)),
                 onSuccess = onSuccess,
+                onFailure = onFailure,
             )
-            if (!handedOff) return@launch
+        }
+    }
+
+    fun castRemoteQueueToPc(
+        items: List<EchoRemoteStreamItem>,
+        startIndex: Int,
+        positionMs: Long,
+        onFailure: (Throwable?) -> Unit = {},
+        onSuccess: () -> Unit = {},
+    ) {
+        val startItem = items.getOrNull(startIndex) ?: items.firstOrNull()
+        if (startItem == null || startItem.streamUrl.isBlank()) {
+            val message = echoText(
+                en = "There is no local file that can be sent to PC",
+                zh = "没有可投送到电脑的本机文件",
+                ja = "PC に送れるローカルファイルがありません",
+            )
+            _library.update { it.copy(error = message) }
+            _status.update { it.copy(error = message) }
+            onFailure(null)
+            return
+        }
+        val target = endpoint ?: run {
+            _status.update {
+                it.copy(
+                    connectionState = EchoRemoteConnectionState.Error,
+                    error = echoText(
+                        en = "PC ECHO is not connected yet",
+                        zh = "还没有连接 PC ECHO",
+                        ja = "まだ PC ECHO に接続していません",
+                    ),
+                )
+            }
+            onFailure(null)
+            return
+        }
+        val connection = connectGeneration
+        val safePosition = positionMs.coerceAtLeast(0L)
+        scope.launch {
+            val castFailure: (Throwable) -> Unit = { error ->
+                applyCastFailure(error)
+                onFailure(error)
+            }
+            if (items.size > 1) {
+                val replaced = dispatchCommand(
+                    target = target,
+                    command = EchoRemoteCommand.QueueReplaceRemote(
+                        items = items,
+                        startTrackId = startItem.id,
+                    ),
+                    onFailure = castFailure,
+                )
+                if (!replaced || connection != connectGeneration) return@launch
+            }
+            dispatchCommand(
+                target = target,
+                command = EchoRemoteCommand.PlayRemoteStream(
+                    streamUrl = startItem.streamUrl,
+                    positionMs = safePosition,
+                    track = startItem.toRemoteTrack(),
+                ),
+                onSuccess = onSuccess,
+                onFailure = castFailure,
+            )
         }
     }
 
@@ -896,6 +965,7 @@ class EchoRemoteClient internal constructor(
         target: EchoRemoteEndpoint,
         command: EchoRemoteCommand,
         onSuccess: () -> Unit = {},
+        onFailure: (Throwable) -> Unit = {},
     ): Boolean {
         val generation = ++statusRefreshGeneration
         val connection = connectGeneration
@@ -916,6 +986,7 @@ class EchoRemoteClient internal constructor(
             val statusCode = (error as? EchoLinkHttpException)?.statusCode
             if (EchoLinkRequestPolicy.shouldDisconnectOnCommandFailure(statusCode)) {
                 rejectAuthentication(target, error)
+                onFailure(error)
                 return@onFailure
             }
             if (generation == statusRefreshGeneration) {
@@ -926,10 +997,25 @@ class EchoRemoteClient internal constructor(
                     current.copy(error = error.userMessage())
                 }
             }
+            onFailure(error)
         }
         return result.isSuccess &&
             connection == connectGeneration &&
             EchoLinkRequestPolicy.isSameEndpoint(endpoint, target)
+    }
+
+    private fun applyCastFailure(error: Throwable) {
+        val message = if (EchoLinkCastPolicy.isUnsupportedRemoteStreamCommand(error)) {
+            echoText(
+                en = "This PC ECHO build cannot receive a phone stream yet. Update ECHOSteam.",
+                zh = "这台电脑的 ECHOSteam 还不支持接收手机串流，请升级后再投送。",
+                ja = "この PC の ECHOSteam はスマホからのキャストに未対応です。アップデートしてください。",
+            )
+        } else {
+            error.userMessage()
+        }
+        _status.update { current -> current.copy(error = message) }
+        _library.update { current -> current.copy(error = message) }
     }
 
     private fun startRealtimeStatus() {

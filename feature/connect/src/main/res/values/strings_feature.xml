@@ -165,4 +165,17 @@
     <string name="feature_connect_saved_pcs_4d2e91" formatted="false">"Saved PCs"</string>
     <string name="echo_link_lan_searching">Looking for nearby computers…</string>
     <string name="echo_link_lan_failed">Could not start local network discovery. Check Wi-Fi and try again.</string>
+    <string name="echo_link_cast_tab">Cast</string>
+    <string name="echo_link_cast_title">Cast to ECHOSteam</string>
+    <string name="echo_link_cast_subtitle">Scan the LAN for ECHOSteam, then send the song playing on this phone. Local files and linked library streams are sent through the phone.</string>
+    <string name="echo_link_cast_now_playing">This phone</string>
+    <string name="echo_link_cast_play_first">Play a song on the phone first, then send it to a computer.</string>
+    <string name="echo_link_cast_unsupported_source">This source cannot be cast yet.</string>
+    <string name="echo_link_cast_sending">Sending to the computer…</string>
+    <string name="echo_link_cast_active">Playing on %1$s. Keep this phone on the same Wi-Fi.</string>
+    <string name="echo_link_cast_stop">Stop casting</string>
+    <string name="echo_link_cast_devices">Nearby computers</string>
+    <string name="echo_link_cast_send">Cast</string>
+    <string name="echo_link_cast_pair_first">Pair first</string>
+    <string name="echo_link_cast_playing_here">Playing here · %1$s</string>
 </resources>

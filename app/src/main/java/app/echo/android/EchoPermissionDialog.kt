@@ -38,13 +38,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.echo.android.design.EchoMotion
-import app.echo.android.design.EchoGlassBorder
-import app.echo.android.design.EchoGlassInk
-import app.echo.android.design.EchoGlassNight
-import app.echo.android.design.EchoGlassPanel
-import app.echo.android.design.EchoHomeMist
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.echoDarkGlassBorder
+import app.echo.android.design.echoTheme
 
 @Composable
 fun EchoPermissionDialog(
@@ -61,8 +57,8 @@ fun EchoPermissionDialog(
     ) {
         val dark = LocalEchoDarkTheme.current
         val scheme = MaterialTheme.colorScheme
-        val surfaceColor = if (dark) EchoGlassPanel.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.96f)
-        val borderColor = if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, EchoGlassBorder)
+        val surfaceColor = if (dark) echoTheme().panel.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.96f)
+        val borderColor = if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, echoTheme().glassBorder)
 
         Box(
             modifier = Modifier
@@ -70,8 +66,8 @@ fun EchoPermissionDialog(
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            EchoGlassNight.copy(alpha = if (dark) 0.92f else 0.72f),
-                            EchoGlassInk.copy(alpha = if (dark) 0.88f else 0.68f),
+                            echoTheme().night.copy(alpha = if (dark) 0.92f else 0.72f),
+                            echoTheme().ink.copy(alpha = if (dark) 0.88f else 0.68f),
                         ),
                     ),
                 ),
@@ -90,11 +86,11 @@ fun EchoPermissionDialog(
                 Icon(
                     imageVector = Icons.Rounded.Storage,
                     contentDescription = null,
-                    tint = if (dark) EchoGlassNight else scheme.primary,
+                    tint = if (dark) echoTheme().night else scheme.primary,
                     modifier = Modifier
                         .size(56.dp)
                         .clip(CircleShape)
-                        .background(if (dark) EchoGlassInk.copy(alpha = 0.6f) else scheme.primary.copy(alpha = 0.1f))
+                        .background(if (dark) echoTheme().ink.copy(alpha = 0.6f) else scheme.primary.copy(alpha = 0.1f))
                         .padding(12.dp),
                 )
 
@@ -179,7 +175,7 @@ private fun PermissionRow(
     dark: Boolean,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val rowBg = if (dark) EchoGlassInk.copy(alpha = 0.45f) else EchoHomeMist
+    val rowBg = if (dark) echoTheme().ink.copy(alpha = 0.45f) else echoTheme().mist
     val checkColor = if (dark) Color(0xFF6DD4A0) else Color(0xFF2E8B57)
 
     Row(
@@ -193,7 +189,7 @@ private fun PermissionRow(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = if (granted) checkColor else if (dark) EchoGlassNight else scheme.primary,
+            tint = if (granted) checkColor else if (dark) echoTheme().night else scheme.primary,
             modifier = Modifier.size(28.dp),
         )
 

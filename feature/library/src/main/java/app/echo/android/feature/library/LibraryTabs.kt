@@ -84,19 +84,15 @@ import app.echo.android.design.ArtworkPalette
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoColors
 import app.echo.android.design.EchoMotion
-import app.echo.android.design.EchoGlassBorder
-import app.echo.android.design.EchoGlassInk
-import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.EchoArtworkImage
 import app.echo.android.design.EchoIconBadge
 import app.echo.android.design.EchoPanel
 import app.echo.android.design.EchoTextButton
 import app.echo.android.design.EmptyState
 import app.echo.android.design.LocalEchoDarkTheme
-import app.echo.android.design.RoonInk
-import app.echo.android.design.RoonMuted
 import app.echo.android.design.displayMetadataOrUnknown
 import app.echo.android.design.formatDuration
+import app.echo.android.design.echoTheme
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.library.EchoTrack
@@ -118,13 +114,14 @@ private data class LibraryGlassColors(
 private fun rememberLibraryGlassColors(): LibraryGlassColors {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
-    return remember(scheme, dark) {
+    val theme = echoTheme()
+    return remember(scheme, dark, theme) {
         LibraryGlassColors(
-            surface = if (dark) EchoGlassPanel.copy(alpha = 0.58f) else Color.White.copy(alpha = 0.60f),
-            elevatedSurface = if (dark) EchoGlassInk.copy(alpha = 0.48f) else Color.White.copy(alpha = 0.56f),
-            border = if (dark) Color.White.copy(alpha = 0.13f) else EchoGlassBorder.copy(alpha = 0.78f),
-            content = if (dark) Color.White.copy(alpha = 0.96f) else RoonInk,
-            muted = if (dark) Color.White.copy(alpha = 0.74f) else RoonMuted,
+            surface = if (dark) theme.panel.copy(alpha = 0.58f) else Color.White.copy(alpha = 0.60f),
+            elevatedSurface = if (dark) theme.ink.copy(alpha = 0.48f) else Color.White.copy(alpha = 0.56f),
+            border = if (dark) Color.White.copy(alpha = 0.13f) else theme.glassBorder.copy(alpha = 0.78f),
+            content = if (dark) Color.White.copy(alpha = 0.96f) else theme.heading,
+            muted = if (dark) Color.White.copy(alpha = 0.74f) else theme.muted,
         )
     }
 }
@@ -797,7 +794,7 @@ internal fun LibraryDetailPage(
     onBack: () -> Unit,
     onPlayAll: () -> Unit,
     onPlayTrack: (EchoTrack) -> Unit,
-    onUpdateTrackMetadata: ((EchoTrackMetadataUpdate) -> Unit)? = null,
+    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,

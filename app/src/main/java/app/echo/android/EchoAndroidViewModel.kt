@@ -58,6 +58,7 @@ import app.echo.android.model.lyrics.EchoLyricsLoadState
 import app.echo.android.model.connect.EchoRemoteLyrics
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoTrackRef
+import app.echo.android.model.playback.EchoChannelBalanceState
 import app.echo.android.model.playback.EchoEqualizerState
 import app.echo.android.model.playback.PlaybackControlsState
 import app.echo.android.model.playback.PlaybackDiagnosticsState
@@ -70,6 +71,7 @@ import app.echo.android.i18n.applyEchoAppLocale
 import app.echo.android.model.settings.EchoAppLanguage
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
 import app.echo.android.playback.PlaybackQueueReplaceIntent
+import app.echo.android.design.EchoArtworkImageLoader
 import app.echo.android.playback.EchoPlaybackCachePolicy
 import app.echo.android.playback.EchoPlaybackProcessRuntime
 import java.time.LocalDate
@@ -188,6 +190,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     val playbackQueue: StateFlow<PlaybackQueueState> = playbackController.playbackQueue
     val playbackDiagnostics: StateFlow<PlaybackDiagnosticsState> = playbackController.playbackDiagnostics
     val equalizerState: StateFlow<EchoEqualizerState> = playbackController.equalizerState
+    val channelBalanceState: StateFlow<EchoChannelBalanceState> = playbackController.channelBalanceState
     val lyricsState: StateFlow<EchoLyricsLoadState> = lyricsController.lyricsState
     val lyricsCandidates = lyricsController.candidates
     val lyricsSearching = lyricsController.searching
@@ -251,6 +254,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         )
         viewModelScope.launch {
             var lastEqualizerSignature: String? = null
+            var lastChannelBalance = EchoChannelBalanceState()
             settingsStore.appSettings.collect { settings ->
                 selectedLibrarySource = settings.librarySelectedSource
                 withContext(Dispatchers.IO) {
@@ -280,6 +284,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                         filters = if (settings.equalizerParametric) settings.equalizerFilters else emptyList(),
                         sourceLabel = settings.equalizerSourceLabel,
                     )
+                }
+                if (settings.channelBalance != lastChannelBalance) {
+                    lastChannelBalance = settings.channelBalance
+                    playbackController.setChannelBalance(settings.channelBalance)
                 }
                 if (firstSettingsEmission &&
                     settings.usbExclusiveEnabled &&
@@ -422,9 +430,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     suspend fun searchLocalLibrary(query: String): LocalLibrarySearchResults =
         libraryController.searchLocalLibrary(query)
 
-    fun updateTrackMetadata(update: EchoTrackMetadataUpdate) {
-        viewModelScope.launch {
-            pauseIfCurrentTrack(update.trackId)
+    suspend fun updateTrackMetadata(update: EchoTrackMetadataUpdate) {
+        withReleasedPlaybackFile(update.trackId) {
             handleEmbeddedTagWriteResult(
                 trackId = update.trackId,
                 result = libraryController.updateTrackMetadata(update).fileWrite,
@@ -440,17 +447,18 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             return
         }
         viewModelScope.launch {
-            pauseIfCurrentTrack(pending.trackId)
-            handleEmbeddedTagWriteResult(
-                trackId = pending.trackId,
-                result = libraryController.writeEmbeddedTagsForTrack(
+            withReleasedPlaybackFile(pending.trackId) {
+                handleEmbeddedTagWriteResult(
                     trackId = pending.trackId,
+                    result = libraryController.writeEmbeddedTagsForTrack(
+                        trackId = pending.trackId,
+                        lyricsText = pending.lyricsText,
+                        artworkUri = pending.artworkUri,
+                    ),
                     lyricsText = pending.lyricsText,
                     artworkUri = pending.artworkUri,
-                ),
-                lyricsText = pending.lyricsText,
-                artworkUri = pending.artworkUri,
-            )
+                )
+            }
         }
     }
 
@@ -458,9 +466,12 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         _embeddedTagWriteMessage.value = null
     }
 
-    private fun pauseIfCurrentTrack(trackId: String) {
-        if (playbackController.currentTrackId == trackId) {
-            playbackController.pause()
+    private suspend fun withReleasedPlaybackFile(trackId: String, block: suspend () -> Unit) {
+        val released = playbackController.releaseCurrentItemForFileWrite(trackId)
+        try {
+            block()
+        } finally {
+            if (released) playbackController.prepareAfterFileWrite(trackId)
         }
     }
 
@@ -514,12 +525,13 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun updateTrackArtwork(trackId: String, artworkUri: Uri) {
         viewModelScope.launch {
-            pauseIfCurrentTrack(trackId)
-            handleEmbeddedTagWriteResult(
-                trackId = trackId,
-                result = libraryController.updateTrackArtwork(trackId, artworkUri).fileWrite,
-                artworkUri = artworkUri.toString(),
-            )
+            withReleasedPlaybackFile(trackId) {
+                handleEmbeddedTagWriteResult(
+                    trackId = trackId,
+                    result = libraryController.updateTrackArtwork(trackId, artworkUri).fileWrite,
+                    artworkUri = artworkUri.toString(),
+                )
+            }
         }
     }
 
@@ -849,12 +861,13 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             val text = EchoLrcFormatter.format(lyrics)
             if (text.isBlank()) return@launch
-            pauseIfCurrentTrack(trackId)
-            handleEmbeddedTagWriteResult(
-                trackId = trackId,
-                result = libraryController.writeEmbeddedLyrics(trackId, text).fileWrite,
-                lyricsText = text,
-            )
+            withReleasedPlaybackFile(trackId) {
+                handleEmbeddedTagWriteResult(
+                    trackId = trackId,
+                    result = libraryController.writeEmbeddedLyrics(trackId, text).fileWrite,
+                    lyricsText = text,
+                )
+            }
         }
     }
 
@@ -906,9 +919,12 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun setEffectivePerformanceMode(mode: EchoEffectivePerformanceMode) {
         if (effectivePerformanceMode == mode) return
+        val previous = effectivePerformanceMode
         effectivePerformanceMode = mode
         libraryController.setEffectivePerformanceMode(mode)
+        EchoPlaybackCachePolicy.bindDeviceConstraints(getApplication())
         EchoPlaybackCachePolicy.setEffectivePerformanceMode(mode)
+        EchoArtworkImageLoader.setEffectivePerformanceMode(getApplication(), previous, mode)
         playbackController.setProgressUpdatePolicy(mode, playbackProgressUiVisibility)
     }
 
@@ -997,6 +1013,16 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         updateSettings {
             resetEqualizer()
         }
+    }
+
+    fun setChannelBalance(state: EchoChannelBalanceState) {
+        playbackController.setChannelBalance(state)
+        updateSettings { setChannelBalance(state) }
+    }
+
+    fun resetChannelBalance() {
+        playbackController.resetChannelBalance()
+        updateSettings { setChannelBalance(EchoChannelBalanceState()) }
     }
 
     fun updateOpraQuery(query: String) = opraSearch.setQuery(query)
@@ -1172,6 +1198,12 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun setThemeMode(value: String) {
         updateSettings {
             setThemeMode(value)
+        }
+    }
+
+    fun setColorTheme(value: String) {
+        updateSettings {
+            setColorTheme(value)
         }
     }
 

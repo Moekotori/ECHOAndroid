@@ -46,4 +46,9 @@
     <string name="shortcut_play_long">前回の再生を続ける</string>
     <string name="shortcut_library">ライブラリ</string>
     <string name="shortcut_library_long">ライブラリを開く</string>
+    <string name="echo_link_cast_notification_channel">ECHOSteam キャスト</string>
+    <string name="echo_link_cast_notification_title">PC にオーディオを送信中</string>
+    <string name="echo_link_cast_notification_text">ECHOSteam が再生している間は、同じ Wi-Fi に接続したままにしてください。</string>
+    <string name="echo_link_cast_no_lan">スマホの LAN アドレスを取得できません。Wi-Fi を確認して再試行してください。</string>
+    <string name="echo_link_cast_notification_stop">停止</string>
 </resources>

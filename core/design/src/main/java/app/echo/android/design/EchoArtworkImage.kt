@@ -56,7 +56,7 @@ fun EchoArtworkImage(
         modifier = modifier,
         shape = shape,
         sizeClass = sizeClass,
-        accent = EchoAccent,
+        accent = echoTheme().accent,
         showSignal = false,
         placeholderIconSize = null,
     )
@@ -69,11 +69,12 @@ internal fun EchoArtworkImage(
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(14.dp),
     sizeClass: EchoArtworkSize = EchoArtworkSize.Thumbnail,
-    accent: Color = EchoAccent,
+    accent: Color? = null,
     showSignal: Boolean = false,
     placeholderIconSize: Dp? = null,
 ) {
     val context = LocalContext.current
+    val resolvedAccent = accent ?: echoTheme().accent
     val effectivePerformanceMode = LocalEchoEffectivePerformanceMode.current
     val requestHeaders = EchoArtworkRequestHeadersRegistry.headersFor(artworkUri)
     val rewriteRevision = EchoArtworkUrlRewriteRegistry.revision
@@ -103,7 +104,7 @@ internal fun EchoArtworkImage(
             .background(
                 Brush.linearGradient(
                     listOf(
-                        accent,
+                        resolvedAccent,
                         MaterialTheme.colorScheme.surfaceVariant,
                         MaterialTheme.colorScheme.surface,
                     ),
@@ -114,14 +115,14 @@ internal fun EchoArtworkImage(
         if (artworkUri.isNullOrBlank()) {
             EchoArtworkPlaceholder(
                 sizeClass = sizeClass,
-                accent = accent,
+                accent = resolvedAccent,
                 showSignal = showSignal,
                 iconSize = placeholderIconSize,
             )
         } else {
             EchoArtworkPlaceholder(
                 sizeClass = sizeClass,
-                accent = accent,
+                accent = resolvedAccent,
                 showSignal = showSignal,
                 iconSize = placeholderIconSize,
             )
@@ -147,13 +148,14 @@ private fun EchoArtworkPlaceholder(
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
     val motifSize = iconSize ?: sizeClass.defaultMotifSize(showSignal)
+    val theme = echoTheme()
     val baseColors = if (dark) {
-        listOf(Color(0xFF202126), Color(0xFF16161A), Color(0xFF101014))
+        listOf(theme.ink, theme.night, theme.bgBottom)
     } else {
-        listOf(Color(0xFFF3F0F2), Color(0xFFF8F2F5), Color.White)
+        listOf(theme.mist, theme.bgTop, Color.White)
     }
     val primaryGlow = if (dark) scheme.primary.copy(alpha = 0.34f) else accent.copy(alpha = 0.30f)
-    val secondaryGlow = if (dark) Color(0xFFB8A3AA).copy(alpha = 0.18f) else Color(0xFFD4C0C6).copy(alpha = 0.24f)
+    val secondaryGlow = theme.accent.copy(alpha = if (dark) 0.18f else 0.24f)
     Box(Modifier.fillMaxSize()) {
         Canvas(Modifier.fillMaxSize()) {
             val width = size.width

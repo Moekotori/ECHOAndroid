@@ -27,12 +27,15 @@ fun DiagnosticsScreen(
     status: EchoPlaybackStatus,
     positionFlow: StateFlow<PlaybackPositionState>,
     equalizerState: EchoEqualizerState,
+    channelBalanceState: EchoChannelBalanceState,
     opraState: OpraHeadphoneCorrectionState,
     onEqualizerEnabledChange: (Boolean) -> Unit,
     onEqualizerPresetSelected: (String) -> Unit,
     onEqualizerBandGainChange: (Int, Float) -> Unit,
     onEqualizerReset: () -> Unit,
     onEqualizerPreampChange: (Float) -> Unit,
+    onChannelBalanceChange: (EchoChannelBalanceState) -> Unit,
+    onChannelBalanceReset: () -> Unit,
     onOpraQueryChange: (String) -> Unit,
     onOpraSearch: () -> Unit,
     onOpraRefresh: () -> Unit,
@@ -87,40 +90,52 @@ fun DiagnosticsScreen(
                         }
                     }
                     when (tab) {
-                        0 -> SignalOverview(status, equalizerState, onAdjust = { selectedTab = 1 }, onDiagnostics = { selectedTab = 2 })
+                        0 -> SignalOverview(status, equalizerState, channelBalanceState, onAdjust = { selectedTab = 1 }, onDiagnostics = { selectedTab = 2 })
                         1 -> {
-                            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                                listOf(L10nR.string.feature_settings_equalizer_7ccb03, L10nR.string.feature_settings_headphone_correction_491ce5).forEachIndexed { index, label ->
-                                    SegmentedButton(selected = soundPanel == index, onClick = { soundPanel = index },
-                                        shape = SegmentedButtonDefaults.itemShape(index, 2)) { Text(stringResource(label)) }
+                            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                SignalSoundModeRow(
+                                    selectedIndex = soundPanel,
+                                    labels = listOf(
+                                        stringResource(L10nR.string.feature_settings_equalizer_7ccb03),
+                                        stringResource(L10nR.string.feature_settings_headphone_correction_491ce5),
+                                        stringResource(L10nR.string.channel_balance),
+                                    ),
+                                    onSelect = { soundPanel = it },
+                                )
+                                AnimatedContent(
+                                    targetState = soundPanel,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    transitionSpec = { EchoMotion.tabSwitch(targetState > initialState) },
+                                    label = "SignalSoundPanel",
+                                ) { panel ->
+                                    if (panel == 0) SignalEqualizer(
+                                        state = equalizerState,
+                                        bypassed = status.diagnostics.usbBitPerfectEnabled,
+                                        playing = status.isPlaying,
+                                        onPreampChange = onEqualizerPreampChange,
+                                        onEnabledChange = onEqualizerEnabledChange,
+                                        onPresetSelected = onEqualizerPresetSelected,
+                                        onBandGainChange = onEqualizerBandGainChange,
+                                        onReset = onEqualizerReset,
+                                    )
+                                    else if (panel == 1) SignalHeadphoneCorrection(
+                                        state = opraState,
+                                        equalizer = equalizerState,
+                                        bypassed = status.diagnostics.usbBitPerfectEnabled,
+                                        onQueryChange = onOpraQueryChange,
+                                        onSearch = onOpraSearch,
+                                        onRefresh = onOpraRefresh,
+                                        onPresetSelected = onOpraPresetSelected,
+                                        onApplySelected = onOpraApplySelected,
+                                    )
+                                    else SignalChannelBalance(
+                                        state = channelBalanceState,
+                                        bypassed = status.diagnostics.usbBitPerfectEnabled,
+                                        playing = status.isPlaying,
+                                        onStateChange = onChannelBalanceChange,
+                                        onReset = onChannelBalanceReset,
+                                    )
                                 }
-                            }
-                            AnimatedContent(
-                                targetState = soundPanel,
-                                modifier = Modifier.fillMaxWidth(),
-                                transitionSpec = { EchoMotion.tabSwitch(targetState > initialState) },
-                                label = "SignalSoundPanel",
-                            ) { panel ->
-                                if (panel == 0) SignalEqualizer(
-                                    state = equalizerState,
-                                    bypassed = status.diagnostics.usbBitPerfectEnabled,
-                                    playing = status.isPlaying,
-                                    onPreampChange = onEqualizerPreampChange,
-                                    onEnabledChange = onEqualizerEnabledChange,
-                                    onPresetSelected = onEqualizerPresetSelected,
-                                    onBandGainChange = onEqualizerBandGainChange,
-                                    onReset = onEqualizerReset,
-                                )
-                                else SignalHeadphoneCorrection(
-                                    state = opraState,
-                                    equalizer = equalizerState,
-                                    bypassed = status.diagnostics.usbBitPerfectEnabled,
-                                    onQueryChange = onOpraQueryChange,
-                                    onSearch = onOpraSearch,
-                                    onRefresh = onOpraRefresh,
-                                    onPresetSelected = onOpraPresetSelected,
-                                    onApplySelected = onOpraApplySelected,
-                                )
                             }
                         }
                         else -> {

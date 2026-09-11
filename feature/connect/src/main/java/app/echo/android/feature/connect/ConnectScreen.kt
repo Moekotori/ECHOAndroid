@@ -1,6 +1,7 @@
 package app.echo.android.feature.connect
 
 import app.echo.android.feature.connect.R as L10nR
+import app.echo.android.connect.EchoLinkCastBlockReason
 import app.echo.android.connect.EchoLinkDiscoveryState
 import androidx.compose.ui.res.stringResource
 
@@ -79,15 +80,28 @@ fun ConnectScreen(
     onSelectLanDevice: (EchoLinkLanDevice) -> Unit = {},
     onRefreshLanDevices: () -> Unit = {},
     onHandoffPhoneToPc: (() -> Unit)? = null,
+    phoneTrackTitle: String? = null,
+    phoneTrackArtist: String? = null,
+    phoneTrackArtworkUrl: String? = null,
+    castBlockedReason: EchoLinkCastBlockReason? = null,
+    casting: Boolean = false,
+    castSessionActive: Boolean = false,
+    castSessionName: String? = null,
+    sendingAddress: String? = null,
+    connectedLanAddress: String? = null,
+    onCastToAddress: (String, String) -> Unit = { _, _ -> },
+    onStopCast: () -> Unit = {},
+    onRequestPairing: () -> Unit = {},
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
-    val scrollStates = listOf(rememberScrollState(), rememberScrollState())
+    val scrollStates = listOf(rememberScrollState(), rememberScrollState(), rememberScrollState())
     val savedTabs = rememberSaveableStateHolder()
     val keyboard = LocalSoftwareKeyboardController.current
     val scheme = MaterialTheme.colorScheme
     val tabs = listOf(
         stringResource(L10nR.string.feature_connect_library_sources_09e6db),
         stringResource(L10nR.string.feature_connect_pc_link_4ca6bd),
+        stringResource(L10nR.string.echo_link_cast_tab),
     )
     Surface(Modifier.fillMaxSize(), color = scheme.background, contentColor = scheme.onBackground) {
         Column(Modifier.statusBarsPadding().imePadding(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -117,8 +131,8 @@ fun ConnectScreen(
                             .padding(top = 24.dp, bottom = 188.dp),
                         verticalArrangement = Arrangement.spacedBy(24.dp),
                     ) {
-                        if (tab == 0) {
-                            RemoteSourcesPanel(
+                        when (tab) {
+                            0 -> RemoteSourcesPanel(
                                 subsonicServerUrl = subsonicServerUrl,
                                 subsonicUsername = subsonicUsername,
                                 subsonicPassword = subsonicPassword,
@@ -140,8 +154,7 @@ fun ConnectScreen(
                                 onClearJellyfin = onClearJellyfinCredentials,
                                 onCancel = onCancelRemoteSync,
                             )
-                        } else {
-                            PcLinkPanel(
+                            1 -> PcLinkPanel(
                                 remoteState = remoteState,
                                 pcTitle = pcTitle,
                                 trackTitle = trackTitle,
@@ -173,6 +186,30 @@ fun ConnectScreen(
                                 discoveryState = discoveryState,
                                 discoveredLanDevices = discoveredLanDevices,
                                 onSelectLanDevice = onSelectLanDevice,
+                                onRefreshLanDevices = onRefreshLanDevices,
+                            )
+                            else -> CastDevicesPanel(
+                                phoneTrackTitle = phoneTrackTitle,
+                                phoneTrackArtist = phoneTrackArtist,
+                                phoneTrackArtworkUrl = phoneTrackArtworkUrl,
+                                blockedReason = castBlockedReason,
+                                casting = casting,
+                                castSessionActive = castSessionActive,
+                                castSessionName = castSessionName,
+                                sendingAddress = sendingAddress,
+                                remoteError = remoteError,
+                                discoveryState = discoveryState,
+                                discoveredLanDevices = discoveredLanDevices,
+                                savedPcs = savedPcs,
+                                savedPcAddress = savedPcAddress,
+                                savedPcToken = savedPcToken,
+                                connectedAddress = connectedLanAddress,
+                                onCastToAddress = onCastToAddress,
+                                onStopCast = onStopCast,
+                                onRequestPairing = {
+                                    selectedTab = 1
+                                    onRequestPairing()
+                                },
                                 onRefreshLanDevices = onRefreshLanDevices,
                             )
                         }

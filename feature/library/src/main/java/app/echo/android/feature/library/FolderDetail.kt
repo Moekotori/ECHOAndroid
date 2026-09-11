@@ -53,7 +53,7 @@ internal fun FolderDetailPage(
     onPlayAll: () -> Unit,
     onShuffle: () -> Unit,
     onPlayTrack: (EchoTrack) -> Unit,
-    onUpdateTrackMetadata: ((EchoTrackMetadataUpdate) -> Unit)? = null,
+    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,

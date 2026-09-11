@@ -102,8 +102,8 @@ class EchoLibraryRepository(
         database.trackDao().observeRecentlyAddedAlbums(limit)
             .flowOn(Dispatchers.IO)
 
-    fun observeAlbumListenStats(): Flow<List<LibraryAlbumListenStatsRow>> =
-        database.trackDao().observeAlbumListenStats()
+    fun observeAlbumListenStats(limit: Int = LISTEN_STATS_SEED_LIMIT): Flow<List<LibraryAlbumListenStatsRow>> =
+        database.trackDao().observeAlbumListenStats(limit.coerceAtLeast(1))
             // GROUP BY 大查询在任何 join 表失效时都会重跑;结果没变就不向下游发射
             .distinctUntilChanged()
             .flowOn(Dispatchers.IO)
@@ -714,8 +714,11 @@ class EchoLibraryRepository(
     ): List<LibraryTrackEntity> =
         database.trackDao().getArtistTracksForPlayback(artistPlaybackQuery(artistKey, limit.coerceAtLeast(1)))
 
-    suspend fun genreTracksForPlayback(genreKey: String): List<LibraryTrackEntity> =
-        database.trackDao().getTracksByGenre(genreKey)
+    suspend fun genreTracksForPlayback(
+        genreKey: String,
+        limit: Int = AGGREGATION_QUEUE_LIMIT,
+    ): List<LibraryTrackEntity> =
+        database.trackDao().getTracksByGenre(genreKey, limit.coerceAtLeast(1))
 
     suspend fun folderTracksForPlayback(
         folderKey: String,
@@ -2062,6 +2065,7 @@ class EchoLibraryRepository(
         const val PINYIN_BACKFILL_START_DELAY_MS = 750L
         const val WAV_TAG_BACKFILL_BATCH_SIZE = 50
         const val RECOMMENDED_TRACK_LIMIT = 8
+        const val LISTEN_STATS_SEED_LIMIT = 256
         const val RECENT_ALBUM_LIMIT = 12
         const val SEARCH_RESULT_LIMIT_PER_TYPE = 6
         const val TRACK_QUEUE_LIMIT = 200

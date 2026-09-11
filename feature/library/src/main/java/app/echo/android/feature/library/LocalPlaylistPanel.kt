@@ -46,12 +46,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.ArtworkTile
-import app.echo.android.design.EchoGlassBorder
-import app.echo.android.design.EchoHomeMist
 import app.echo.android.design.EchoIconBadge
 import app.echo.android.design.EchoPanel
 import app.echo.android.design.EchoTextButton
 import app.echo.android.design.EmptyState
+import app.echo.android.design.echoTheme
 import app.echo.android.model.library.EchoPlaylist
 
 @Composable
@@ -326,7 +325,7 @@ private fun IconButtonLite(
             .clip(RoundedCornerShape(12.dp))
             .echoClickable(onClick = onClick),
         color = accent.copy(alpha = 0.10f),
-        border = BorderStroke(1.dp, EchoGlassBorder),
+        border = BorderStroke(1.dp, echoTheme().glassBorder),
         shape = RoundedCornerShape(12.dp),
     ) {
         Box(contentAlignment = Alignment.Center) {

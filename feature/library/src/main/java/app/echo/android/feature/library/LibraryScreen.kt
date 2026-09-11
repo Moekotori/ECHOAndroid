@@ -83,17 +83,12 @@ import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoColors
 import app.echo.android.design.rememberEchoContentMotion
 import app.echo.android.design.EchoContentMaxWidth
-import app.echo.android.design.EchoDarkGlassBorder
-import app.echo.android.design.EchoGlassBorder
-import app.echo.android.design.EchoGlassInk
-import app.echo.android.design.EchoGlassNight
-import app.echo.android.design.EchoGlassPanel
-import app.echo.android.design.EchoHomeMist
 import app.echo.android.design.EchoPanel
 import app.echo.android.design.EmptyState
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoWidthSizeClass
 import app.echo.android.design.PageChrome
+import app.echo.android.design.echoTheme
 import app.echo.android.model.connect.EchoRemoteAlbum
 import app.echo.android.model.connect.EchoRemoteFolder
 import app.echo.android.model.connect.EchoRemoteLibraryState
@@ -353,7 +348,7 @@ fun LibraryScreen(
     onPlayTrack: (EchoTrack, LibraryPlaybackOrigin) -> Unit,
     onPlayNext: (EchoTrack) -> Unit = {},
     onEnqueueTrack: (EchoTrack) -> Unit = {},
-    onUpdateTrackMetadata: (EchoTrackMetadataUpdate) -> Unit,
+    onUpdateTrackMetadata: suspend (EchoTrackMetadataUpdate) -> Unit,
     onImportLyricsForTrack: (EchoTrack) -> Unit,
     onPickTrackArtwork: (EchoTrack) -> Unit,
     onPlayAlbum: (AlbumSummary) -> Unit,
@@ -1461,7 +1456,7 @@ private fun LinkedPlaylistRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .background(if (dark) EchoGlassPanel.copy(alpha = 0.50f) else EchoHomeMist.copy(alpha = 0.46f))
+            .background(if (dark) echoTheme().panel.copy(alpha = 0.50f) else echoTheme().mist.copy(alpha = 0.46f))
             .echoClickable(onClick = onOpen)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -1494,7 +1489,7 @@ private fun LinkedPlaylistRow(
         Surface(
             modifier = Modifier.size(38.dp),
             color = accent.copy(alpha = 0.10f),
-            border = BorderStroke(1.dp, if (dark) EchoDarkGlassBorder else EchoGlassBorder),
+            border = BorderStroke(1.dp, if (dark) echoTheme().glassBorder else echoTheme().glassBorder),
             shape = RoundedCornerShape(12.dp),
         ) {
             Box(contentAlignment = Alignment.Center) {

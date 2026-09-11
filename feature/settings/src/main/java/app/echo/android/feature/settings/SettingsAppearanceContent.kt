@@ -31,6 +31,7 @@ internal fun SettingsAppearanceContent(
     lyricsFontScale: Float,
     importedFontUri: String?,
     themeMode: String,
+    colorTheme: String,
     scheduledDarkModeEnabled: Boolean,
     scheduledDarkStartMinute: Int,
     scheduledDarkEndMinute: Int,
@@ -52,6 +53,7 @@ internal fun SettingsAppearanceContent(
     onImportLyricsFont: () -> Unit,
     onClearImportedFont: () -> Unit,
     onThemeModeChange: (String) -> Unit,
+    onColorThemeChange: (String) -> Unit,
     onScheduledDarkModeEnabledChange: (Boolean) -> Unit,
     onScheduledDarkStartMinuteChange: (Int) -> Unit,
     onScheduledDarkEndMinuteChange: (Int) -> Unit,
@@ -64,6 +66,10 @@ internal fun SettingsAppearanceContent(
         ThemeModeSelector(
             selectedMode = themeMode,
             onSelect = onThemeModeChange,
+        )
+        ThemePaletteSelector(
+            selectedId = colorTheme,
+            onSelect = onColorThemeChange,
         )
         SettingsSwitchRow(
             title = stringResource(R.string.settings_dynamic_color),

@@ -5,8 +5,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import app.echo.android.design.EchoGlassPanel
 import app.echo.android.design.LocalEchoDarkTheme
+import app.echo.android.design.echoTheme
 
 @Composable
 internal fun LastFmSettingsPanel(
@@ -146,7 +146,7 @@ internal fun ListenBrainzSettingsPanel(
 internal fun settingsPanelColor(): Color {
     val scheme = MaterialTheme.colorScheme
     return if (LocalEchoDarkTheme.current) {
-        EchoGlassPanel.copy(alpha = 0.58f)
+        echoTheme().panel.copy(alpha = 0.58f)
     } else {
         scheme.surface.copy(alpha = 0.72f)
     }

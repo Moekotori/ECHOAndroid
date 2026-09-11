@@ -86,6 +86,7 @@ class EmbeddedTagWriter(
         val cacheDir = File(appContext.cacheDir, TAG_CACHE_DIR).apply { mkdirs() }
         val original = File(cacheDir, "original-${track.id.hashCode()}")
         val tagged = File(cacheDir, "tagged-${track.id.hashCode()}")
+        var keepBackup = false
         return try {
             copyUriToFile(uri, original)
             when (
@@ -99,16 +100,23 @@ class EmbeddedTagWriter(
                 AudioTagRewriteStatus.UnsupportedFormat -> EmbeddedTagWriteResult.UnsupportedFormat
                 AudioTagRewriteStatus.InvalidSource -> EmbeddedTagWriteResult.Failed
                 AudioTagRewriteStatus.Written -> {
-                    val verified = FileInputStream(tagged).use { AudioFileTagRewriter.readFields(it) }
-                    if (verified?.title != fields.title || verified.artist != fields.artist) {
+                    if (!fileFieldsMatch(tagged, fields)) {
                         EmbeddedTagWriteResult.Failed
                     } else {
-                        replaceUriContents(uri, tagged)
-                        notifyMediaStore(uri, tagged, fields, track)
-                        EmbeddedTagWriteResult.Written(
-                            sizeBytes = tagged.length(),
-                            dateModifiedSeconds = System.currentTimeMillis() / 1000L,
-                        )
+                        when (replaceWithRestore(uri, tagged, original, fields)) {
+                            EmbeddedTagReplaceStatus.Replaced -> {
+                                notifyMediaStore(uri, tagged, fields, track)
+                                EmbeddedTagWriteResult.Written(
+                                    sizeBytes = tagged.length(),
+                                    dateModifiedSeconds = System.currentTimeMillis() / 1000L,
+                                )
+                            }
+                            EmbeddedTagReplaceStatus.Restored -> EmbeddedTagWriteResult.Failed
+                            EmbeddedTagReplaceStatus.BackupKept -> {
+                                keepBackup = true
+                                EmbeddedTagWriteResult.Failed
+                            }
+                        }
                     }
                 }
             }
@@ -118,8 +126,16 @@ class EmbeddedTagWriter(
             Log.w(TAG, "Unable to write embedded tags for ${track.id}.", error)
             EmbeddedTagWriteResult.Failed
         } finally {
-            original.delete()
             tagged.delete()
+            if (keepBackup) {
+                EmbeddedTagBackup.preserveOriginal(
+                    original = original,
+                    cacheDir = cacheDir,
+                    trackKey = track.id.hashCode().toString(),
+                )
+            } else {
+                original.delete()
+            }
         }
     }
 
@@ -228,6 +244,70 @@ class EmbeddedTagWriter(
                 input.copyTo(output, COPY_BUFFER)
             }
         } ?: error("Unable to open $uri")
+    }
+
+    private fun replaceWithRestore(
+        uri: Uri,
+        tagged: File,
+        original: File,
+        fields: AudioTagFields,
+    ): EmbeddedTagReplaceStatus {
+        val fileTarget = writableLocalFile(uri)
+        try {
+            if (fileTarget != null) {
+                EmbeddedTagFileReplace.replace(fileTarget, tagged)
+            } else {
+                replaceUriContents(uri, tagged)
+            }
+            if (liveFieldsMatch(uri, fields)) return EmbeddedTagReplaceStatus.Replaced
+            Log.w(TAG, "Embedded tag verify failed for $uri, restoring original.")
+        } catch (error: SecurityException) {
+            throw error
+        } catch (error: Exception) {
+            Log.w(TAG, "Unable to replace $uri, restoring original.", error)
+        }
+        return restoreOriginal(uri, fileTarget, original)
+    }
+
+    private fun restoreOriginal(
+        uri: Uri,
+        fileTarget: File?,
+        original: File,
+    ): EmbeddedTagReplaceStatus {
+        return try {
+            if (fileTarget != null) {
+                EmbeddedTagFileReplace.replace(fileTarget, original)
+            } else {
+                replaceUriContents(uri, original)
+            }
+            EmbeddedTagReplaceStatus.Restored
+        } catch (error: SecurityException) {
+            throw error
+        } catch (error: Exception) {
+            Log.e(TAG, "Unable to restore $uri. Backup kept at ${original.absolutePath}.", error)
+            EmbeddedTagReplaceStatus.BackupKept
+        }
+    }
+
+    private fun fileFieldsMatch(file: File, fields: AudioTagFields): Boolean {
+        val verified = runCatching {
+            FileInputStream(file).use { AudioFileTagRewriter.readFields(it) }
+        }.getOrNull()
+        return verified?.title == fields.title && verified.artist == fields.artist
+    }
+
+    private fun liveFieldsMatch(uri: Uri, fields: AudioTagFields): Boolean {
+        val live = runCatching {
+            resolver.openInputStream(uri)?.use { AudioFileTagRewriter.readFields(it) }
+        }.getOrNull()
+        return live?.title == fields.title && live.artist == fields.artist
+    }
+
+    private fun writableLocalFile(uri: Uri): File? {
+        if (uri.scheme != ContentResolver.SCHEME_FILE) return null
+        val path = uri.path?.takeIf { it.isNotBlank() } ?: return null
+        val file = File(path)
+        return file.takeIf { it.isFile && it.canWrite() }
     }
 
     private fun replaceUriContents(uri: Uri, tagged: File) {

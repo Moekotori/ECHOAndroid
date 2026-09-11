@@ -47,10 +47,14 @@ data class EchoEqualizerState(
 
 object EchoEqualizerPreset {
     const val Flat = "flat"
+    const val Harman = "harman"
     const val Warm = "warm"
     const val Bass = "bass"
     const val Vocal = "vocal"
     const val Bright = "bright"
+    const val Acoustic = "acoustic"
+    const val Electronic = "electronic"
+    const val Night = "night"
     const val Custom = "custom"
 }
 
@@ -93,23 +97,21 @@ object EchoEqualizerPresets {
 
     val presets: List<EchoEqualizerPresetDefinition> = listOf(
         EchoEqualizerPresetDefinition(EchoEqualizerPreset.Flat, "Flat", listOf(0f, 0f, 0f, 0f, 0f)),
+        // 5-band fit of Harman OE 2018: bass shelf, near-flat mids, pinna presence, air roll-off.
+        EchoEqualizerPresetDefinition(EchoEqualizerPreset.Harman, "Harman", listOf(5.0f, 1.2f, -0.2f, 1.8f, -1.6f)),
         EchoEqualizerPresetDefinition(EchoEqualizerPreset.Warm, "Warm", listOf(2f, 1.2f, 0f, -0.8f, -1.4f)),
         EchoEqualizerPresetDefinition(EchoEqualizerPreset.Bass, "Bass", listOf(4f, 2.8f, 0.4f, -0.8f, -1.2f)),
         EchoEqualizerPresetDefinition(EchoEqualizerPreset.Vocal, "Vocal", listOf(-1.2f, -0.4f, 2.2f, 1.8f, 0.2f)),
         EchoEqualizerPresetDefinition(EchoEqualizerPreset.Bright, "Bright", listOf(-2f, -0.8f, 0f, 2f, 3.2f)),
+        EchoEqualizerPresetDefinition(EchoEqualizerPreset.Acoustic, "Acoustic", listOf(1.0f, 0.4f, 0.6f, 1.4f, 1.8f)),
+        EchoEqualizerPresetDefinition(EchoEqualizerPreset.Electronic, "Electronic", listOf(4.8f, 1.0f, -1.4f, 1.2f, 2.6f)),
+        EchoEqualizerPresetDefinition(EchoEqualizerPreset.Night, "Night", listOf(1.2f, 0.6f, 0f, -1.4f, -2.6f)),
     )
 
-    fun normalizePresetId(id: String?): String =
-        when (id) {
-            EchoEqualizerPreset.Warm,
-            EchoEqualizerPreset.Bass,
-            EchoEqualizerPreset.Vocal,
-            EchoEqualizerPreset.Bright,
-            EchoEqualizerPreset.Custom,
-            EchoEqualizerPreset.Flat,
-            -> id
-            else -> EchoEqualizerPreset.Flat
-        }
+    fun normalizePresetId(id: String?): String {
+        if (id == EchoEqualizerPreset.Custom) return EchoEqualizerPreset.Custom
+        return presets.firstOrNull { it.id == id }?.id ?: EchoEqualizerPreset.Flat
+    }
 
     fun nameFor(id: String): String =
         if (id == EchoEqualizerPreset.Custom) {
