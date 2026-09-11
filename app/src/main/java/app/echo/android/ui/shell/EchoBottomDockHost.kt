@@ -5,6 +5,8 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
@@ -19,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.echo.android.BottomDock
@@ -64,6 +67,26 @@ internal fun EchoBottomDockHost(
                 ).coerceIn(0f, EchoTab.entries.lastIndex.toFloat())
         }
     }
+    val dockMotionDuration = motionDuration(420, effectivePerformanceMode)
+    // A non-bouncy spring preserves velocity when the user reverses the toggle mid-motion.
+    val dockSizeMotion = if (effectivePerformanceMode.isLightweight) {
+        tween<IntSize>(dockMotionDuration, easing = DockMotionEasing)
+    } else {
+        spring<IntSize>(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = EchoMotion.silkStiffness(dockMotionDuration),
+            visibilityThreshold = IntSize(1, 1),
+        )
+    }
+    val dockFadeMotion = if (effectivePerformanceMode.isLightweight) {
+        tween<Float>(dockMotionDuration, easing = DockMotionEasing)
+    } else {
+        spring<Float>(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = EchoMotion.silkStiffness(dockMotionDuration),
+            visibilityThreshold = 0.01f,
+        )
+    }
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -97,16 +120,17 @@ internal fun EchoBottomDockHost(
                 .fillMaxWidth()
                 .padding(horizontal = 10.dp),
         )
+        // Reveal from the bottom so navigation stays anchored while the player moves above it.
         AnimatedVisibility(
             visible = bottomDockExpanded,
             enter = expandVertically(
-                expandFrom = Alignment.Top,
-                animationSpec = tween(motionDuration(280, effectivePerformanceMode), easing = DockMotionEasing),
-            ) + fadeIn(tween(motionDuration(180, effectivePerformanceMode), easing = DockMotionEasing)),
+                expandFrom = Alignment.Bottom,
+                animationSpec = dockSizeMotion,
+            ) + fadeIn(dockFadeMotion),
             exit = shrinkVertically(
-                shrinkTowards = Alignment.Top,
-                animationSpec = tween(motionDuration(220, effectivePerformanceMode), easing = DockMotionEasing),
-            ) + fadeOut(tween(motionDuration(120, effectivePerformanceMode), easing = DockMotionEasing)),
+                shrinkTowards = Alignment.Bottom,
+                animationSpec = dockSizeMotion,
+            ) + fadeOut(dockFadeMotion),
         ) {
             BottomDock(
                 selectedTab = selectedTab,

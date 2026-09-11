@@ -45,65 +45,68 @@ internal fun SettingsNavigation(
     val motion = rememberEchoContentMotion()
     // Pager neighbours remain composed: they must not intercept another page's back action.
     BackHandler(enabled = isActive && selected != null) { selected = null }
-    AnimatedContent(
-        targetState = selected,
-        transitionSpec = { if (targetState == null) motion.pagePop() else motion.pagePush() },
-        modifier = Modifier.fillMaxSize(),
-        label = "settings-navigation",
-    ) { category ->
-        stateHolder.SaveableStateProvider(category?.name ?: "home") {
-            PageChrome(
-                title = stringResource(category?.title ?: R.string.settings_title),
-                subtitle = null,
-                badgeContent = {},
-                titleContent = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (category != null) IconButton(onClick = { selected = null }) {
-                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.settings_back), tint = MaterialTheme.colorScheme.onSurface)
-                        }
-                        Text(
-                            stringResource(category?.title ?: R.string.settings_title),
-                            modifier = Modifier.weight(1f),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                },
-            ) {
-                Column(
-                    Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                        .padding(top = 12.dp, bottom = 172.dp),
-                    verticalArrangement = Arrangement.spacedBy(if (compactMode) 6.dp else if (category == null) 10.dp else 16.dp),
-                ) {
-                    if (category == null) {
-                        Text(
-                            stringResource(R.string.settings_home_detail),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
-                        )
-                        SettingsCategory.entries.forEachIndexed { index, entry ->
-                            if (index == 0 || index == 2 || index == 5) Text(
-                                stringResource(when (index) {
-                                    0 -> R.string.settings_group_personal
-                                    2 -> R.string.settings_group_music
-                                    else -> R.string.settings_group_app
-                                }),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(start = 4.dp, top = 4.dp),
+    // PageChrome draws its own background without providing a content color.
+    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+        AnimatedContent(
+            targetState = selected,
+            transitionSpec = { if (targetState == null) motion.pagePop() else motion.pagePush() },
+            modifier = Modifier.fillMaxSize(),
+            label = "settings-navigation",
+        ) { category ->
+            stateHolder.SaveableStateProvider(category?.name ?: "home") {
+                PageChrome(
+                    title = stringResource(category?.title ?: R.string.settings_title),
+                    subtitle = null,
+                    badgeContent = {},
+                    titleContent = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (category != null) IconButton(onClick = { selected = null }) {
+                                Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.settings_back), tint = MaterialTheme.colorScheme.onSurface)
+                            }
+                            Text(
+                                stringResource(category?.title ?: R.string.settings_title),
+                                modifier = Modifier.weight(1f),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold,
                             )
-                            SettingsCategoryRow(entry, summaries[entry].orEmpty()) { selected = entry }
                         }
-                    } else {
-                        Text(
-                            stringResource(category.description),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 4.dp),
-                        )
-                        content(category)
+                    },
+                ) {
+                    Column(
+                        Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                            .padding(top = 12.dp, bottom = 172.dp),
+                        verticalArrangement = Arrangement.spacedBy(if (compactMode) 6.dp else if (category == null) 10.dp else 16.dp),
+                    ) {
+                        if (category == null) {
+                            Text(
+                                stringResource(R.string.settings_home_detail),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
+                            )
+                            SettingsCategory.entries.forEachIndexed { index, entry ->
+                                if (index == 0 || index == 2 || index == 5) Text(
+                                    stringResource(when (index) {
+                                        0 -> R.string.settings_group_personal
+                                        2 -> R.string.settings_group_music
+                                        else -> R.string.settings_group_app
+                                    }),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(start = 4.dp, top = 4.dp),
+                                )
+                                SettingsCategoryRow(entry, summaries[entry].orEmpty()) { selected = entry }
+                            }
+                        } else {
+                            Text(
+                                stringResource(category.description),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 4.dp),
+                            )
+                            content(category)
+                        }
                     }
                 }
             }
@@ -117,6 +120,7 @@ private fun SettingsCategoryRow(category: SettingsCategory, summary: String, onC
         onClick = onClick,
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.86f),
+        contentColor = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
