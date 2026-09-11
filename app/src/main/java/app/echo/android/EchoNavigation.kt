@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -64,13 +63,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.echoTheme
 import app.echo.android.design.EchoMotion
-import app.echo.android.design.echoDarkGlassBorder
 import app.echo.android.design.LocalEchoDarkTheme
 import kotlin.math.abs
 import kotlinx.coroutines.flow.collectLatest
 
 private val DockItemMotionEasing = EchoMotion.Silk
-private val DockGlassShape = RoundedCornerShape(28.dp)
+private val DockGlassShape = RoundedCornerShape(26.dp)
 private val DockItemShape = RoundedCornerShape(22.dp)
 
 
@@ -118,31 +116,38 @@ fun BottomDock(
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .navigationBarsPadding()
                 .padding(horizontal = 10.dp, vertical = 5.dp)
                 .shadow(
-                    elevation = if (dark) 8.dp else 8.dp,
+                    elevation = 10.dp,
                     shape = DockGlassShape,
-                    ambientColor = if (dark) Color.Black.copy(alpha = 0.18f) else Color.Black.copy(alpha = 0.05f),
-                    spotColor = if (dark) Color.Black.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.06f),
+                    ambientColor = if (dark) Color.Black.copy(alpha = 0.18f) else scheme.onSurface.copy(alpha = 0.08f),
+                    spotColor = if (dark) Color.Black.copy(alpha = 0.10f) else scheme.onSurface.copy(alpha = 0.10f),
                 )
                 .clip(DockGlassShape)
-                .background(if (dark) scheme.surface.copy(alpha = 0.58f) else Color.White.copy(alpha = 0.72f))
+                .background(if (dark) scheme.surface.copy(alpha = 0.92f) else scheme.surface.copy(alpha = 0.94f))
                 .background(
                     if (dark) {
                         Brush.verticalGradient(
                             listOf(
-                                Color.White.copy(alpha = 0.035f),
-                                scheme.surfaceVariant.copy(alpha = 0.42f),
-                                scheme.surface.copy(alpha = 0.62f),
+                                Color.White.copy(alpha = 0.07f),
+                                Color.White.copy(alpha = 0.02f),
+                                Color.Transparent,
                             ),
                         )
                     } else {
-                        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.72f), theme.mist.copy(alpha = 0.86f)))
+                        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.80f), theme.mist.copy(alpha = 0.30f)))
                     },
                 )
                 .border(
-                    if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, Color.White.copy(alpha = 0.82f)),
+                    BorderStroke(
+                        0.75.dp,
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(alpha = if (dark) 0.18f else 0.95f),
+                                scheme.onSurface.copy(alpha = if (dark) 0.05f else 0.07f),
+                            ),
+                        ),
+                    ),
                     DockGlassShape,
                 )
                 .pointerInput(selectedTab, swipeThresholdPx) {
@@ -168,7 +173,7 @@ fun BottomDock(
                         },
                     )
                 }
-                .padding(horizontal = 2.dp, vertical = 3.dp),
+                .padding(horizontal = 4.dp, vertical = 5.dp),
         ) {
             if (dark) {
                 Box(
@@ -218,14 +223,14 @@ fun BottomDock(
             val indicatorBrush = when {
                 onLightSurface -> Brush.horizontalGradient(
                     listOf(
-                        scheme.primary.copy(alpha = 0.10f),
-                        scheme.primary.copy(alpha = 0.16f),
+                        scheme.primary.copy(alpha = 0.09f),
+                        scheme.primary.copy(alpha = 0.05f),
                     ),
                 )
                 else -> Brush.horizontalGradient(
                     listOf(
-                        theme.accent.copy(alpha = 0.16f),
-                        Color.White.copy(alpha = 0.05f),
+                        theme.accent.copy(alpha = 0.19f),
+                        theme.accent.copy(alpha = 0.08f),
                     ),
                 )
             }
@@ -243,9 +248,12 @@ fun BottomDock(
                     val bounds = lerp(fromBounds, toBounds, progress - from)
                     drawRoundRect(
                         brush = indicatorBrush,
-                        topLeft = bounds.topLeft - rowOrigin,
-                        size = bounds.size,
-                        cornerRadius = CornerRadius(22.dp.toPx()),
+                        topLeft = Offset(
+                            bounds.center.x - rowOrigin.x - 21.dp.toPx(),
+                            bounds.top - rowOrigin.y,
+                        ),
+                        size = Size(42.dp.toPx(), 30.dp.toPx()),
+                        cornerRadius = CornerRadius(12.dp.toPx()),
                     )
                 }
                 Row(
@@ -305,7 +313,7 @@ private fun DockItem(
         label = "dock-label-color",
     )
     val iconScale by animateFloatAsState(
-        targetValue = if (selected) 1.04f else 0.90f,
+        targetValue = if (selected) 1f else 0.94f,
         animationSpec = spring(
             dampingRatio = 0.72f,
             stiffness = Spring.StiffnessMediumLow,
@@ -325,28 +333,33 @@ private fun DockItem(
                         Rect(it.positionInRoot(), Size(it.size.width.toFloat(), it.size.height.toFloat())),
                     )
                 }
-                .defaultMinSize(minWidth = 56.dp, minHeight = 48.dp)
+                .defaultMinSize(minWidth = 56.dp, minHeight = 52.dp)
                 .clip(DockItemShape)
-                .padding(horizontal = 2.dp, vertical = 1.dp),
+                .padding(horizontal = 2.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Icon(
-                tab.icon,
-                contentDescription = tab.label(),
-                tint = iconColor,
-                modifier = Modifier
-                    .size(24.dp)
-                    .graphicsLayer {
-                        scaleX = iconScale
-                        scaleY = iconScale
-                    },
-            )
+            Box(
+                modifier = Modifier.size(width = 42.dp, height = 30.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    tab.icon,
+                    contentDescription = null,
+                    tint = iconColor,
+                    modifier = Modifier
+                        .size(24.dp)
+                        .graphicsLayer {
+                            scaleX = iconScale
+                            scaleY = iconScale
+                        },
+                )
+            }
             Text(
                 text = tab.label(),
                 color = labelColor,
                 style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
