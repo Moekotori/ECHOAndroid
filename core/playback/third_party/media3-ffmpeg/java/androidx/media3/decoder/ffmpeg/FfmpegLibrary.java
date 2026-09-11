@@ -22,6 +22,7 @@ import androidx.media3.common.MimeTypes;
 import androidx.media3.common.util.LibraryLoader;
 import androidx.media3.common.util.Log;
 import androidx.media3.common.util.UnstableApi;
+import app.echo.android.playback.EchoDsdMime;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 
 /** Configures and queries the underlying native library. */
@@ -116,6 +117,10 @@ public final class FfmpegLibrary {
    */
   @Nullable
   /* package */ static String getCodecName(String mimeType) {
+    @Nullable String dsdCodec = EchoDsdMime.ffmpegCodecName(mimeType);
+    if (dsdCodec != null) {
+      return dsdCodec;
+    }
     switch (mimeType) {
       case MimeTypes.AUDIO_AAC:
         return "aac";

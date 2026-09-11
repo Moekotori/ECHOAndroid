@@ -48,4 +48,15 @@ object EchoLaunchActions {
     fun consumeOpenLibrary() {
         _openLibrary.value = false
     }
+
+    private val _openCast = MutableStateFlow(false)
+    val openCast: StateFlow<Boolean> = _openCast.asStateFlow()
+
+    fun requestOpenCast() {
+        _openCast.value = true
+    }
+
+    fun consumeOpenCast() {
+        _openCast.value = false
+    }
 }

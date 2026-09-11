@@ -14,6 +14,7 @@ data class AudioTagFields(
     val lyrics: String? = null,
     val artworkBytes: ByteArray? = null,
     val artworkMime: String? = null,
+    val replayGainTrackGainDb: Float? = null,
 )
 
 fun readLocalAudioTags(input: InputStream): AudioTagFields? =
@@ -64,6 +65,7 @@ internal fun mergeAudioTags(preferred: AudioTagFields?, fallback: AudioTagFields
         lyrics = preferred.lyrics?.takeIf { it.isNotBlank() } ?: fallback.lyrics,
         artworkBytes = preferred.artworkBytes ?: fallback.artworkBytes,
         artworkMime = preferred.artworkMime ?: fallback.artworkMime,
+        replayGainTrackGainDb = preferred.replayGainTrackGainDb ?: fallback.replayGainTrackGainDb,
     )
 }
 

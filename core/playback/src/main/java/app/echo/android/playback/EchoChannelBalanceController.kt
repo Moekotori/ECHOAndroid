@@ -1,7 +1,6 @@
 package app.echo.android.playback
 
 import androidx.media3.common.util.UnstableApi
-import app.echo.android.model.playback.EchoChannelBalance
 import app.echo.android.model.playback.EchoChannelBalanceState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,7 +33,7 @@ class EchoChannelBalanceController {
 
     private fun publish(state: EchoChannelBalanceState) {
         processor.setRuntime(state)
-        val shouldProcess = EchoChannelBalance.shouldProcess(state)
+        val shouldProcess = state.enabled
         if (shouldProcess != lastShouldProcess) {
             lastShouldProcess = shouldProcess
             if (!EchoPlaybackProcessRuntime.usbBitPerfectEnabled) {

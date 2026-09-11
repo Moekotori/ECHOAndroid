@@ -44,9 +44,10 @@ initialization failure; it does **not** implement a retry through FFmpeg after a
 platform decoder fails mid-track.
 
 The software backend includes AAC, MP3, AC-3/E-AC-3, TrueHD, DTS, Vorbis, Opus,
-AMR, FLAC, ALAC and PCM A-law/mu-law decoders. A file still requires a compatible
-Media3 extractor. In particular APE, DSF/DFF, native DSD and DoP are not added by
-this change, even though scanners may already recognize some of their suffixes.
+AMR, FLAC, ALAC, PCM A-law/mu-law and DSD (dsd_lsbf / dsd_msbf / planar) decoders.
+DSF and uncompressed DFF are demuxed by ECHO extractors, then converted to PCM
+and downsampled to 88.2 kHz (DSD64) or 176.4 kHz (DSD128+). DST-compressed DFF,
+native DSD and DoP are not supported. APE still needs a compatible extractor.
 
 The normal upstream renderer negotiates float or 16-bit PCM with the sink. This change
 does not enable float output globally or change EQ processing. It does not claim

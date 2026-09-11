@@ -31,6 +31,10 @@ internal class EchoBitPerfectAudioRenderer(handler: Handler, listener: AudioRend
         input = format
         EchoPlaybackProcessRuntime.bitPerfectStatus = EchoBitPerfectSnapshot()
         if (format.cryptoType != C.CRYPTO_TYPE_NONE) unsupported()
+        if (EchoDsdMime.isDecoderMime(format.sampleMimeType)) {
+            if (EchoDsdDop.sampleRateHz(format.sampleRate) == null || format.channelCount !in 1..2) unsupported()
+            return EchoDsdDopDecoder(format)
+        }
         return when (format.sampleMimeType) {
             MimeTypes.AUDIO_FLAC, MimeTypes.AUDIO_ALAC -> FfmpegAudioDecoder(format, 4, 4,
                 format.maxInputSize.takeIf { it > 0 } ?: 65536, C.ENCODING_PCM_32BIT)
@@ -44,6 +48,15 @@ internal class EchoBitPerfectAudioRenderer(handler: Handler, listener: AudioRend
     }
 
     override fun getOutputFormat(decoder: SimpleDecoder<DecoderInputBuffer, SimpleDecoderOutputBuffer, FfmpegDecoderException>): Format {
+        if (decoder is EchoDsdDopDecoder) {
+            sink.sourcePrecision(EchoDsdDop.SourceBits, dsdDop = true)
+            return Format.Builder()
+                .setSampleMimeType(MimeTypes.AUDIO_RAW)
+                .setPcmEncoding(C.ENCODING_PCM_24BIT)
+                .setSampleRate(decoder.outputSampleRateHz)
+                .setChannelCount(decoder.channelCount)
+                .build()
+        }
         if (decoder is FfmpegAudioDecoder) {
             val bits = decoder.sourceBitDepth
             if (bits !in listOf(16, 24)) unsupported()
@@ -57,7 +70,7 @@ internal class EchoBitPerfectAudioRenderer(handler: Handler, listener: AudioRend
 
     private fun unsupported(): Nothing {
         EchoPlaybackProcessRuntime.bitPerfectStatus = EchoBitPerfectSnapshot(EchoBitPerfectState.UnsupportedSource)
-        throw FfmpegDecoderException("Strict USB supports unencrypted 16/24-bit WAV PCM, FLAC and ALAC")
+        throw FfmpegDecoderException("Strict USB supports unencrypted 16/24-bit WAV PCM, FLAC, ALAC, or DSD DoP")
     }
 }
 

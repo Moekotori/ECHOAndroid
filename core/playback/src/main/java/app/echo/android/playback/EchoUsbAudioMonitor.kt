@@ -18,6 +18,7 @@ import android.os.Looper
 import androidx.core.content.ContextCompat
 import androidx.media3.common.util.UnstableApi
 import app.echo.android.model.playback.EchoAudioErrorKind
+import app.echo.android.model.playback.EchoOutputDeviceKind
 import app.echo.android.model.playback.EchoPlaybackDiagnostics
 import app.echo.android.model.playback.EchoPlaybackError
 import app.echo.android.usbaudio.UsbAudioDeviceSnapshot
@@ -431,5 +432,23 @@ fun EchoPlaybackDiagnostics.withUsbAudioStatus(status: EchoUsbAudioStatus): Echo
         usbSupportedSampleRates = status.supportedSampleRates,
         usbLastRequestedSampleRateHz = status.lastRequestedSampleRateHz,
         usbLastRequestError = status.lastRequestError,
+    )
+}
+
+fun EchoPlaybackDiagnostics.withOutputRoute(route: EchoOutputRoute): EchoPlaybackDiagnostics {
+    if (usbExclusiveStreaming || usbBitPerfectActive) {
+        return copy(
+            outputDeviceKind = EchoOutputDeviceKind.Usb.id,
+            outputDeviceName = usbDeviceName ?: route.deviceName,
+            bluetoothCodec = null,
+        )
+    }
+    val kind = EchoOutputDeviceKind.fromId(route.kind)
+    return copy(
+        outputRoute = EchoOutputRoutePolicy.routeLabel(kind, route.deviceName, route.bluetoothCodec)
+            .ifBlank { outputRoute },
+        outputDeviceKind = kind.id,
+        outputDeviceName = route.deviceName,
+        bluetoothCodec = route.bluetoothCodec,
     )
 }

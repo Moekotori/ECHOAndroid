@@ -1,5 +1,6 @@
 package app.echo.android.connect
 
+import app.echo.android.model.connect.EchoRemoteAudioFormat
 import app.echo.android.model.connect.EchoRemoteCommand
 import app.echo.android.model.connect.EchoRemoteStreamItem
 import app.echo.android.model.connect.EchoRemoteTrack
@@ -41,9 +42,11 @@ internal fun EchoRemoteCommand.toJson(): JSONObject {
         is EchoRemoteCommand.PlayRemoteStream -> {
             json.put("command", "playRemoteStream")
             json.put("target", "pc")
+            json.put("quality", EchoLinkCastPolicy.QualityOriginal)
             json.put("positionMs", positionMs.coerceAtLeast(0L))
             json.put("streamUrl", streamUrl)
             json.put("track", track.toCommandJson())
+            audio?.toCommandJson()?.let { json.put("audio", it) }
         }
         is EchoRemoteCommand.QueueReplaceRemote -> {
             json.put("command", "queueReplaceRemote")
@@ -73,3 +76,15 @@ private fun EchoRemoteStreamItem.toCommandJson(): JSONObject = JSONObject()
     .put("album", album.orEmpty())
     .put("durationMs", durationMs)
     .putOpt("artworkUrl", artworkUrl)
+    .also { json -> audio?.toCommandJson()?.let { json.put("audio", it) } }
+
+private fun EchoRemoteAudioFormat.toCommandJson(): JSONObject {
+    val json = JSONObject()
+    codec?.takeIf { it.isNotBlank() }?.let { json.put("codec", it) }
+    mimeType?.takeIf { it.isNotBlank() }?.let { json.put("mimeType", it) }
+    sampleRateHz?.takeIf { it > 0 }?.let { json.put("sampleRateHz", it) }
+    bitDepth?.takeIf { it > 0 }?.let { json.put("bitDepth", it) }
+    channelCount?.takeIf { it > 0 }?.let { json.put("channelCount", it) }
+    lossless?.let { json.put("lossless", it) }
+    return json
+}

@@ -7,12 +7,13 @@ EQ、耳机校正、ReplayGain、睡眠渐弱、变速和跳过静音不参与�
 ## 支持范围
 
 - WAV 的 16/24 位整数 PCM；FLAC、ALAC 的 16/24 位无损音频；单声道或双声道。
+- DSF / 未压缩 DFF 的 DSD64 与 DSD128：打成 24-bit DoP（DSD64 → 176.4 kHz，DSD128 → 352.8 kHz），不经 dsd2pcm。DAC 必须提供对应的 Type I 24-bit PCM 时钟；不支持则停止，不在严格模式里转 PCM。
 - FLAC/ALAC 强制经 FFmpeg 输出左对齐 s32，读取解码器实际报告的有效位深。WAV 原整数样本直接复制。
 - USB Type I 整数 PCM、UAC1/UAC2、等时 OUT 端点。设备须明确报告通道、有效位深和容器大小。
 - 只允许原采样率和不损失有效位的格式；例如 16 位送入 24 位容器属于无损扩位，界面会显示实际位深。
 - 设置 DAC 时钟后必须读回同一采样率；仅返回 SET 成功不能通过严格检查。
 
-暂不覆盖浮点 WAV、32 位有效精度、DSD/DoP、APE、多声道、UAC3、Bulk 输出，以及需要额外 encoder delay/padding 裁剪的流。
+暂不覆盖浮点 WAV、32 位有效精度、原生 1-bit USB DSD、DSD256、DST、APE、多声道、UAC3、Bulk 输出，以及需要额外 encoder delay/padding 裁剪的流。
 未知格式、未知精度、无法读回时钟时会拒绝播放，兼容模式仍可正常尝试这些设备。
 
 ## 实现边界

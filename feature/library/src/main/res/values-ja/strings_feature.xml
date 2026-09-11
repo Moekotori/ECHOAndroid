@@ -19,7 +19,6 @@
     <string name="feature_library_loading_genres_4e91aa" formatted="false">"ジャンルを読み込み中"</string>
     <string name="feature_library_failed_to_load_genres_b7c102" formatted="false">"ジャンルを読み込めません"</string>
     <string name="feature_library_this_library_has_no_genres_to_show_yet_11a90e" formatted="false">"表示できるジャンルがありません"</string>
-    <string name="feature_library_dsd_unsupported_9a1b02" formatted="false">"DSD（再生不可）"</string>
     <string name="feature_library_artists_e168aa" formatted="false">"アーティスト"</string>
     <string name="feature_library_back_49093c" formatted="false">"戻る"</string>
     <string name="feature_library_back_to_pc_echo_playlists_499312" formatted="false">"PC ECHO のプレイリストに戻る"</string>
@@ -80,6 +79,16 @@
     <string name="feature_library_library_scan_failed_94b709" formatted="false">"ライブラリのスキャンに失敗しました。"</string>
     <string name="feature_library_liked_c8ac9d" formatted="false">"お気に入り"</string>
     <string name="feature_library_liked_songs_8d6245" formatted="false">"お気に入り"</string>
+    <string name="feature_library_smart_recent">最近再生した曲</string>
+    <string name="feature_library_smart_frequent">よく聴く曲</string>
+    <string name="feature_library_smart_never">未再生</string>
+    <string name="feature_library_smart_added">最近追加</string>
+    <string name="feature_library_smart_kind">スマートプレイリスト</string>
+    <string name="feature_library_smart_empty_recent">再生するとここに表示されます</string>
+    <string name="feature_library_smart_empty_frequent">再生回数が多い曲が並びます</string>
+    <string name="feature_library_smart_empty_never">すべての曲が再生済みです</string>
+    <string name="feature_library_smart_empty_added">ライブラリをスキャンすると表示されます</string>
+    <string name="feature_library_count_tracks_smart">%1$s 曲 · スマートプレイリスト</string>
     <string name="feature_library_linked_5d42a7" formatted="false">"リンク"</string>
     <string name="feature_library_loading_albums_75c4f3" formatted="false">"アルバムを読み込み中..."</string>
     <string name="feature_library_loading_artists_e9b16d" formatted="false">"アーティストを読み込み中..."</string>

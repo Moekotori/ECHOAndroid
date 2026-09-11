@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-// ECHO modification: strict integer PCM output and decoder precision/error reporting.
+// ECHO modification: strict integer PCM output, decoder precision/error reporting,
+// and DSD→PCM downsample for phone AudioTrack rates.
 #include <android/log.h>
 #include <jni.h>
 #include <stdlib.h>
@@ -29,6 +30,7 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavutil/channel_layout.h>
 #include <libavutil/error.h>
+#include <libavutil/mem.h>
 #include <libavutil/opt.h>
 #include <libswresample/swresample.h>
 }
@@ -73,6 +75,43 @@ static const int AUDIO_DECODER_ERROR_OTHER = -2;
 // LINT.ThenChange(../java/androidx/media3/decoder/ffmpeg/FfmpegAudioDecoder.java)
 
 static jmethodID growOutputBufferMethod;
+
+// Keep in sync with EchoDsdPcm.outputSampleRateHz.
+typedef struct EchoFfmpegResampler {
+  SwrContext* swr;
+  int out_sample_rate;
+} EchoFfmpegResampler;
+
+static int is_dsd_codec(const AVCodec* codec) {
+  if (!codec) {
+    return 0;
+  }
+  return codec->id == AV_CODEC_ID_DSD_LSBF ||
+         codec->id == AV_CODEC_ID_DSD_MSBF ||
+         codec->id == AV_CODEC_ID_DSD_LSBF_PLANAR ||
+         codec->id == AV_CODEC_ID_DSD_MSBF_PLANAR;
+}
+
+static int echo_dsd_output_sample_rate(int decoder_pcm_hz) {
+  if (decoder_pcm_hz <= 0) {
+    return 0;
+  }
+  if (decoder_pcm_hz <= 352800) {
+    return 88200;
+  }
+  return 176400;
+}
+
+static EchoFfmpegResampler* resampler_state(AVCodecContext* context) {
+  return context ? (EchoFfmpegResampler*)context->opaque : NULL;
+}
+
+static void free_resampler_swr(EchoFfmpegResampler* state) {
+  if (state && state->swr) {
+    swr_free(&state->swr);
+    state->swr = NULL;
+  }
+}
 
 /**
  * Returns the AVCodec with the specified name, or NULL if it is not available.
@@ -230,7 +269,12 @@ AUDIO_DECODER_FUNC(jint, ffmpegGetSampleRate, jlong context) {
     LOGE("Context must be non-NULL.");
     return -1;
   }
-  return ((AVCodecContext*)context)->sample_rate;
+  AVCodecContext* codecContext = (AVCodecContext*)context;
+  EchoFfmpegResampler* state = resampler_state(codecContext);
+  if (state && state->out_sample_rate > 0) {
+    return state->out_sample_rate;
+  }
+  return codecContext->sample_rate;
 }
 
 AUDIO_DECODER_FUNC(jlong, ffmpegReset, jlong jContext, jbyteArray extraData) {
@@ -257,6 +301,7 @@ AUDIO_DECODER_FUNC(jlong, ffmpegReset, jlong jContext, jbyteArray extraData) {
                                 /* rawChannelCount= */ -1);
   }
 
+  free_resampler_swr(resampler_state(context));
   avcodec_flush_buffers(context);
   return (jlong)context;
 }
@@ -302,7 +347,8 @@ AVCodecContext* createContext(JNIEnv* env, const AVCodec* codec,
     env->GetByteArrayRegion(extraData, 0, size, (jbyte*)context->extradata);
   }
   if (context->codec_id == AV_CODEC_ID_PCM_MULAW ||
-      context->codec_id == AV_CODEC_ID_PCM_ALAW) {
+      context->codec_id == AV_CODEC_ID_PCM_ALAW ||
+      is_dsd_codec(codec)) {
     context->sample_rate = rawSampleRate;
     av_channel_layout_default(&context->ch_layout, rawChannelCount);
   }
@@ -313,6 +359,17 @@ AVCodecContext* createContext(JNIEnv* env, const AVCodec* codec,
     releaseContext(context);
     return NULL;
   }
+  EchoFfmpegResampler* state =
+      (EchoFfmpegResampler*)av_mallocz(sizeof(EchoFfmpegResampler));
+  if (!state) {
+    LOGE("Failed to allocate resampler state.");
+    releaseContext(context);
+    return NULL;
+  }
+  if (is_dsd_codec(codec)) {
+    state->out_sample_rate = echo_dsd_output_sample_rate(context->sample_rate);
+  }
+  context->opaque = state;
   return context;
 }
 
@@ -350,15 +407,22 @@ int decodePacket(AVCodecContext* context, AVPacket* packet,
     int channelCount = context->ch_layout.nb_channels;
     int sampleRate = context->sample_rate;
     int sampleCount = frame->nb_samples;
-    int dataSize = av_samples_get_buffer_size(NULL, channelCount, sampleCount,
-                                              sampleFormat, 1);
-    SwrContext* resampleContext = static_cast<SwrContext*>(context->opaque);
+    EchoFfmpegResampler* state = resampler_state(context);
+    if (!state) {
+      LOGE("Missing resampler state.");
+      av_frame_free(&frame);
+      return AUDIO_DECODER_ERROR_OTHER;
+    }
+    int outRate =
+        state->out_sample_rate > 0 ? state->out_sample_rate : sampleRate;
+    int rateChange = outRate != sampleRate;
+    SwrContext* resampleContext = state->swr;
     if (!resampleContext) {
       result =
           swr_alloc_set_opts2(&resampleContext,             // ps
                               &context->ch_layout,          // out_ch_layout
                               context->request_sample_fmt,  // out_sample_fmt
-                              sampleRate,                   // out_sample_rate
+                              outRate,                      // out_sample_rate
                               &context->ch_layout,          // in_ch_layout
                               sampleFormat,                 // in_sample_fmt
                               sampleRate,                   // in_sample_rate
@@ -376,7 +440,7 @@ int decodePacket(AVCodecContext* context, AVPacket* packet,
         av_frame_free(&frame);
         return transformError(result);
       }
-      context->opaque = resampleContext;
+      state->swr = resampleContext;
     }
 
     int outSampleSize = av_get_bytes_per_sample(context->request_sample_fmt);
@@ -395,21 +459,34 @@ int decodePacket(AVCodecContext* context, AVPacket* packet,
         return AUDIO_DECODER_ERROR_OTHER;
       }
     }
-    result = swr_convert(resampleContext, &outputBuffer, bufferOutSize,
-                         (const uint8_t**)frame->data, frame->nb_samples);
-    av_frame_free(&frame);
-    if (result < 0) {
-      logError("swr_convert", result);
-      return AUDIO_DECODER_ERROR_INVALID_DATA;
+    if (rateChange) {
+      result = swr_convert(resampleContext, &outputBuffer, outSamples,
+                           (const uint8_t**)frame->data, frame->nb_samples);
+      av_frame_free(&frame);
+      if (result < 0) {
+        logError("swr_convert", result);
+        return AUDIO_DECODER_ERROR_INVALID_DATA;
+      }
+      int written = result * outSampleSize * channelCount;
+      outputBuffer += written;
+      outSize += written;
+    } else {
+      result = swr_convert(resampleContext, &outputBuffer, bufferOutSize,
+                           (const uint8_t**)frame->data, frame->nb_samples);
+      av_frame_free(&frame);
+      if (result < 0) {
+        logError("swr_convert", result);
+        return AUDIO_DECODER_ERROR_INVALID_DATA;
+      }
+      int available = swr_get_out_samples(resampleContext, 0);
+      if (available != 0) {
+        LOGE("Expected no samples remaining after resampling, but found %d.",
+             available);
+        return AUDIO_DECODER_ERROR_INVALID_DATA;
+      }
+      outputBuffer += bufferOutSize;
+      outSize += bufferOutSize;
     }
-    int available = swr_get_out_samples(resampleContext, 0);
-    if (available != 0) {
-      LOGE("Expected no samples remaining after resampling, but found %d.",
-           available);
-      return AUDIO_DECODER_ERROR_INVALID_DATA;
-    }
-    outputBuffer += bufferOutSize;
-    outSize += bufferOutSize;
   }
   return outSize;
 }
@@ -430,9 +507,10 @@ void releaseContext(AVCodecContext* context) {
   if (!context) {
     return;
   }
-  SwrContext* swrContext;
-  if ((swrContext = (SwrContext*)context->opaque)) {
-    swr_free(&swrContext);
+  EchoFfmpegResampler* state = resampler_state(context);
+  if (state) {
+    free_resampler_swr(state);
+    av_free(state);
     context->opaque = NULL;
   }
   avcodec_free_context(&context);

@@ -174,6 +174,17 @@
     <string name="echo_link_cast_sending">正在投送到电脑…</string>
     <string name="echo_link_cast_active">正在 %1$s 播放。投送期间请保持同一 Wi-Fi。</string>
     <string name="echo_link_cast_stop">停止投送</string>
+    <string name="echo_link_cast_original">原文件直传 · 不转码</string>
+    <string name="echo_link_cast_send_to">投送到 %1$s</string>
+    <string name="echo_link_cast_queue_count">将投送 %1$d 首</string>
+    <string name="echo_link_cast_dsd_warning">DSD 按原文件发送，电脑端可能还不能播放。</string>
+    <string name="echo_link_cast_tvs">电视和音箱</string>
+    <string name="echo_link_cast_tvs_note">DLNA 电视和数播按原文件直传。Chromecast 仍只显示、不投送。</string>
+    <string name="echo_link_cast_tvs_searching">正在搜索电视和音箱…</string>
+    <string name="echo_link_cast_tvs_empty">这台 Wi-Fi 上还没扫到电视或音箱。</string>
+    <string name="echo_link_cast_tv_unavailable">暂不支持</string>
+    <string name="echo_link_cast_tv_kind_dlna">DLNA</string>
+    <string name="echo_link_cast_tv_kind_cast">Cast</string>
     <string name="echo_link_cast_devices">附近的电脑</string>
     <string name="echo_link_cast_send">投送</string>
     <string name="echo_link_cast_pair_first">先配对</string>

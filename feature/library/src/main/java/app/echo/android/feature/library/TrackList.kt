@@ -1120,9 +1120,6 @@ internal fun trackSubtitle(track: EchoTrack): String {
         track.album?.takeIf { it.isNotBlank() }?.let { album ->
             add(displayMetadataOrUnknown(album, unknownAlbumLabel()))
         }
-        if (!app.echo.android.model.library.LibraryPlaybackSupport.isPlayableOnPhone(track.mimeType, track.uri)) {
-            add(stringResource(L10nR.string.feature_library_dsd_unsupported_9a1b02))
-        }
     }
     return parts.ifEmpty {
         listOf(stringResource(L10nR.string.feature_library_local_audio_7fc2a6))

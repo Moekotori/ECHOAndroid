@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoContentMaxWidth
+import app.echo.android.model.connect.EchoLanRenderer
 import app.echo.android.model.connect.EchoLinkLanDevice
 import app.echo.android.model.connect.EchoRemoteConnectionState
 import app.echo.android.model.library.LibraryScanProgress
@@ -83,6 +84,8 @@ fun ConnectScreen(
     phoneTrackTitle: String? = null,
     phoneTrackArtist: String? = null,
     phoneTrackArtworkUrl: String? = null,
+    phoneTrackFormat: String? = null,
+    phoneTrackLossless: Boolean = false,
     castBlockedReason: EchoLinkCastBlockReason? = null,
     casting: Boolean = false,
     castSessionActive: Boolean = false,
@@ -90,14 +93,25 @@ fun ConnectScreen(
     sendingAddress: String? = null,
     connectedLanAddress: String? = null,
     onCastToAddress: (String, String) -> Unit = { _, _ -> },
+    onCastToConnected: (() -> Unit)? = null,
     onStopCast: () -> Unit = {},
     onRequestPairing: () -> Unit = {},
+    openCastTabNonce: Int = 0,
+    castQueueCount: Int = 0,
+    showDsdWarning: Boolean = false,
+    lanRenderers: List<EchoLanRenderer> = emptyList(),
+    lanRendererState: EchoLinkDiscoveryState = EchoLinkDiscoveryState.Idle,
+    activeRendererId: String? = null,
+    onCastToRenderer: (EchoLanRenderer) -> Unit = {},
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val scrollStates = listOf(rememberScrollState(), rememberScrollState(), rememberScrollState())
     val savedTabs = rememberSaveableStateHolder()
     val keyboard = LocalSoftwareKeyboardController.current
     val scheme = MaterialTheme.colorScheme
+    LaunchedEffect(openCastTabNonce) {
+        if (openCastTabNonce > 0) selectedTab = 2
+    }
     val tabs = listOf(
         stringResource(L10nR.string.feature_connect_library_sources_09e6db),
         stringResource(L10nR.string.feature_connect_pc_link_4ca6bd),
@@ -192,6 +206,8 @@ fun ConnectScreen(
                                 phoneTrackTitle = phoneTrackTitle,
                                 phoneTrackArtist = phoneTrackArtist,
                                 phoneTrackArtworkUrl = phoneTrackArtworkUrl,
+                                phoneTrackFormat = phoneTrackFormat,
+                                phoneTrackLossless = phoneTrackLossless,
                                 blockedReason = castBlockedReason,
                                 casting = casting,
                                 castSessionActive = castSessionActive,
@@ -205,7 +221,16 @@ fun ConnectScreen(
                                 savedPcToken = savedPcToken,
                                 connectedAddress = connectedLanAddress,
                                 onCastToAddress = onCastToAddress,
+                                onCastToConnected = onCastToConnected,
                                 onStopCast = onStopCast,
+                                onSelectLanDevice = onSelectLanDevice,
+                                connectedPcName = pcTitle,
+                                castQueueCount = castQueueCount,
+                                showDsdWarning = showDsdWarning,
+                                lanRenderers = lanRenderers,
+                                lanRendererState = lanRendererState,
+                                activeRendererId = activeRendererId,
+                                onCastToRenderer = onCastToRenderer,
                                 onRequestPairing = {
                                     selectedTab = 1
                                     onRequestPairing()

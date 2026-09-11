@@ -591,6 +591,177 @@ interface LibraryTrackDao {
     @RawQuery
     suspend fun getArtistTracksForPlayback(query: SupportSQLiteQuery): List<LibraryTrackEntity>
 
+    @Query(
+        """
+        SELECT
+          (SELECT COUNT(*) FROM library_tracks t
+             INNER JOIN library_playback_stats s ON s.trackId = t.id
+             WHERE (t.source = 'mediastore' OR t.source = 'saf') AND s.lastPlayedAtEpochMs > 0)
+            AS recentCount,
+          (SELECT COUNT(*) FROM library_tracks t
+             INNER JOIN library_playback_stats s ON s.trackId = t.id
+             WHERE (t.source = 'mediastore' OR t.source = 'saf') AND s.playCount > 0)
+            AS frequentCount,
+          (SELECT COUNT(*) FROM library_tracks t
+             LEFT JOIN library_playback_stats s ON s.trackId = t.id
+             WHERE (t.source = 'mediastore' OR t.source = 'saf')
+               AND (s.trackId IS NULL OR s.playCount = 0))
+            AS neverCount,
+          (SELECT COUNT(*) FROM library_tracks t
+             WHERE t.source = 'mediastore' OR t.source = 'saf')
+            AS addedCount,
+          (SELECT t.artworkUri FROM library_tracks t
+             INNER JOIN library_playback_stats s ON s.trackId = t.id
+             WHERE (t.source = 'mediastore' OR t.source = 'saf') AND s.lastPlayedAtEpochMs > 0
+             ORDER BY s.lastPlayedAtEpochMs DESC LIMIT 1)
+            AS recentArtworkUri,
+          (SELECT t.artworkUri FROM library_tracks t
+             INNER JOIN library_playback_stats s ON s.trackId = t.id
+             WHERE (t.source = 'mediastore' OR t.source = 'saf') AND s.playCount > 0
+             ORDER BY s.playCount DESC, s.lastPlayedAtEpochMs DESC LIMIT 1)
+            AS frequentArtworkUri,
+          (SELECT t.artworkUri FROM library_tracks t
+             LEFT JOIN library_playback_stats s ON s.trackId = t.id
+             WHERE (t.source = 'mediastore' OR t.source = 'saf')
+               AND (s.trackId IS NULL OR s.playCount = 0)
+             ORDER BY t.title COLLATE NOCASE ASC LIMIT 1)
+            AS neverArtworkUri,
+          (SELECT t.artworkUri FROM library_tracks t
+             WHERE t.source = 'mediastore' OR t.source = 'saf'
+             ORDER BY t.dateModifiedSeconds DESC, t.title COLLATE NOCASE ASC LIMIT 1)
+            AS addedArtworkUri
+        """,
+    )
+    fun observeSmartPlaylistStats(): Flow<LibrarySmartPlaylistStats>
+
+    @Query(
+        """
+        SELECT t.* FROM library_tracks t
+        INNER JOIN library_playback_stats s ON s.trackId = t.id
+        WHERE (t.source = 'mediastore' OR t.source = 'saf') AND s.lastPlayedAtEpochMs > 0
+        ORDER BY s.lastPlayedAtEpochMs DESC, t.title COLLATE NOCASE ASC
+        """,
+    )
+    fun pageRecentlyPlayedTracks(): PagingSource<Int, LibraryTrackEntity>
+
+    @Query(
+        """
+        SELECT t.* FROM library_tracks t
+        INNER JOIN library_playback_stats s ON s.trackId = t.id
+        WHERE (t.source = 'mediastore' OR t.source = 'saf') AND s.playCount > 0
+        ORDER BY s.playCount DESC, s.lastPlayedAtEpochMs DESC, t.title COLLATE NOCASE ASC
+        """,
+    )
+    fun pageFrequentlyPlayedTracks(): PagingSource<Int, LibraryTrackEntity>
+
+    @Query(
+        """
+        SELECT t.* FROM library_tracks t
+        LEFT JOIN library_playback_stats s ON s.trackId = t.id
+        WHERE (t.source = 'mediastore' OR t.source = 'saf')
+          AND (s.trackId IS NULL OR s.playCount = 0)
+        ORDER BY t.title COLLATE NOCASE ASC
+        """,
+    )
+    fun pageNeverPlayedTracks(): PagingSource<Int, LibraryTrackEntity>
+
+    @Query(
+        """
+        SELECT t.* FROM library_tracks t
+        WHERE t.source = 'mediastore' OR t.source = 'saf'
+        ORDER BY t.dateModifiedSeconds DESC, t.title COLLATE NOCASE ASC
+        """,
+    )
+    fun pageRecentlyAddedTracks(): PagingSource<Int, LibraryTrackEntity>
+
+    @Query(
+        """
+        SELECT t.* FROM library_tracks t
+        INNER JOIN library_playback_stats s ON s.trackId = t.id
+        WHERE (t.source = 'mediastore' OR t.source = 'saf') AND s.lastPlayedAtEpochMs > 0
+        ORDER BY s.lastPlayedAtEpochMs DESC, t.title COLLATE NOCASE ASC
+        LIMIT :limit
+        """,
+    )
+    suspend fun getRecentlyPlayedTracksForPlayback(limit: Int): List<LibraryTrackEntity>
+
+    @Query(
+        """
+        SELECT t.* FROM library_tracks t
+        INNER JOIN library_playback_stats s ON s.trackId = t.id
+        WHERE (t.source = 'mediastore' OR t.source = 'saf') AND s.playCount > 0
+        ORDER BY s.playCount DESC, s.lastPlayedAtEpochMs DESC, t.title COLLATE NOCASE ASC
+        LIMIT :limit
+        """,
+    )
+    suspend fun getFrequentlyPlayedTracksForPlayback(limit: Int): List<LibraryTrackEntity>
+
+    @Query(
+        """
+        SELECT t.* FROM library_tracks t
+        LEFT JOIN library_playback_stats s ON s.trackId = t.id
+        WHERE (t.source = 'mediastore' OR t.source = 'saf')
+          AND (s.trackId IS NULL OR s.playCount = 0)
+        ORDER BY t.title COLLATE NOCASE ASC
+        LIMIT :limit
+        """,
+    )
+    suspend fun getNeverPlayedTracksForPlayback(limit: Int): List<LibraryTrackEntity>
+
+    @Query(
+        """
+        SELECT t.* FROM library_tracks t
+        WHERE t.source = 'mediastore' OR t.source = 'saf'
+        ORDER BY t.dateModifiedSeconds DESC, t.title COLLATE NOCASE ASC
+        LIMIT :limit
+        """,
+    )
+    suspend fun getRecentlyAddedTracksForPlayback(limit: Int): List<LibraryTrackEntity>
+
+    @Query(
+        """
+        SELECT t.* FROM library_tracks t
+        INNER JOIN library_playback_stats s ON s.trackId = t.id
+        WHERE (t.source = 'mediastore' OR t.source = 'saf') AND s.lastPlayedAtEpochMs > 0
+        ORDER BY s.lastPlayedAtEpochMs DESC, t.title COLLATE NOCASE ASC
+        LIMIT :limit OFFSET :offset
+        """,
+    )
+    suspend fun listRecentlyPlayedTracksForBrowse(limit: Int, offset: Int): List<LibraryTrackEntity>
+
+    @Query(
+        """
+        SELECT t.* FROM library_tracks t
+        INNER JOIN library_playback_stats s ON s.trackId = t.id
+        WHERE (t.source = 'mediastore' OR t.source = 'saf') AND s.playCount > 0
+        ORDER BY s.playCount DESC, s.lastPlayedAtEpochMs DESC, t.title COLLATE NOCASE ASC
+        LIMIT :limit OFFSET :offset
+        """,
+    )
+    suspend fun listFrequentlyPlayedTracksForBrowse(limit: Int, offset: Int): List<LibraryTrackEntity>
+
+    @Query(
+        """
+        SELECT t.* FROM library_tracks t
+        LEFT JOIN library_playback_stats s ON s.trackId = t.id
+        WHERE (t.source = 'mediastore' OR t.source = 'saf')
+          AND (s.trackId IS NULL OR s.playCount = 0)
+        ORDER BY t.title COLLATE NOCASE ASC
+        LIMIT :limit OFFSET :offset
+        """,
+    )
+    suspend fun listNeverPlayedTracksForBrowse(limit: Int, offset: Int): List<LibraryTrackEntity>
+
+    @Query(
+        """
+        SELECT t.* FROM library_tracks t
+        WHERE t.source = 'mediastore' OR t.source = 'saf'
+        ORDER BY t.dateModifiedSeconds DESC, t.title COLLATE NOCASE ASC
+        LIMIT :limit OFFSET :offset
+        """,
+    )
+    suspend fun listRecentlyAddedTracksForBrowse(limit: Int, offset: Int): List<LibraryTrackEntity>
+
     @Query("SELECT COUNT(*) FROM library_tracks")
     suspend fun countTracks(): Int
 

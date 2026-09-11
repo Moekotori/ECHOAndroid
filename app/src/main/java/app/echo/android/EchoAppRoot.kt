@@ -3,6 +3,7 @@ package app.echo.android
 import app.echo.android.i18n.refreshEchoAppLocale
 
 import app.echo.android.model.library.LibraryScanOptions
+import app.echo.android.model.playback.EchoOutputDeviceKind
 import androidx.compose.runtime.saveable.rememberSaveable
 import android.app.Activity
 import android.content.BroadcastReceiver
@@ -69,13 +70,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.echo.android.data.LocalLibrarySearchResults
 import app.echo.android.feature.home.SearchResult
 import app.echo.android.feature.home.SearchResultType
+import app.echo.android.connect.EchoDlnaException
 import app.echo.android.connect.EchoPairingParser
+import app.echo.android.connect.EchoLinkCastFormat
 import app.echo.android.connect.EchoLinkCastPlan
 import app.echo.android.connect.EchoLinkCastPolicy
 import app.echo.android.connect.EchoLinkCastSourceTrack
 import app.echo.android.connect.EchoLinkDiscoveryPolicy
 import app.echo.android.connect.EchoLinkRequestPolicy
+import app.echo.android.model.connect.EchoLanRenderer
+import app.echo.android.model.connect.EchoLanRendererKind
 import app.echo.android.model.playback.EchoLinkPlaybackUri
+import app.echo.android.model.playback.EchoPlaybackDiagnostics
 import app.echo.android.model.playback.EchoTrackRef
 import app.echo.android.design.EchoArtworkRequestHeadersRegistry
 import app.echo.android.design.EchoMobileTheme
@@ -180,6 +186,18 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             hasNotifPermission = granted
         }
     }
+    val bluetoothPermName = remember { bluetoothConnectPermissionName() }
+    var hasBluetoothConnectPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, bluetoothPermName) == PackageManager.PERMISSION_GRANTED,
+        )
+    }
+    val bluetoothPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        hasBluetoothConnectPermission = granted
+        if (granted) viewModel.refreshOutputRoute()
+    }
     var showPermissionDialog by remember {
         mutableStateOf(!prefs.getBoolean(ECHO_PERMISSION_DIALOG_SHOWN_KEY, false))
     }
@@ -238,6 +256,16 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             }
         }
         fontImportTarget = null
+    }
+    val backupExportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        uri?.let(viewModel::exportBackup)
+    }
+    val backupImportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        uri?.let(viewModel::importBackup)
     }
     var lyricsImportTrackId by remember { mutableStateOf<String?>(null) }
     val lyricsImportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -333,15 +361,27 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     var castingToPc by remember { mutableStateOf(false) }
     var pendingCast by remember { mutableStateOf<Pair<String, String>?>(null) }
     var sendingCastAddress by remember { mutableStateOf<String?>(null) }
-    var castSessionActive by remember { mutableStateOf(false) }
-    var castSessionName by remember { mutableStateOf<String?>(null) }
+    var openCastTabNonce by remember { mutableIntStateOf(0) }
     var castSetupError by remember { mutableStateOf<String?>(null) }
+    val castSessionActive by echoLinkSession.castActive.collectAsStateWithLifecycle()
+    val castSessionName by echoLinkSession.castTargetName.collectAsStateWithLifecycle()
+    val dlnaRenderer by echoLinkSession.dlnaRenderer.collectAsStateWithLifecycle()
+    fun routedPlayPause() {
+        if (dlnaRenderer != null) echoLinkSession.dlnaPlayPause() else viewModel.playPause()
+    }
+    fun routedSkipNext() {
+        if (dlnaRenderer != null) echoLinkSession.dlnaSkip(1) else viewModel.skipNext()
+    }
+    fun routedSkipPrevious() {
+        if (dlnaRenderer != null) echoLinkSession.dlnaSkip(-1) else viewModel.skipPrevious()
+    }
+    fun routedSeek(positionMs: Long) {
+        if (dlnaRenderer != null) echoLinkSession.dlnaSeek(positionMs) else viewModel.seekTo(positionMs)
+    }
     LaunchedEffect(remoteStatus.connectionState) {
         if (remoteStatus.connectionState == EchoRemoteConnectionState.Connected) {
             viewModel.notifyEchoLinkConnected()
-        } else if (remoteStatus.connectionState == EchoRemoteConnectionState.Disconnected) {
-            castSessionActive = false
-            castSessionName = null
+        } else if (remoteStatus.connectionState == EchoRemoteConnectionState.Disconnected && dlnaRenderer == null) {
             sendingCastAddress = null
         }
     }
@@ -350,6 +390,28 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             tracks = playbackQueue.items.map { it.toCastSource() },
             startIndex = playbackQueue.currentIndex,
         )
+    }
+    val phoneCastFormatLabel = remember(playbackStatus.track, playbackStatus.diagnostics) {
+        val track = playbackStatus.track ?: return@remember null
+        EchoLinkCastFormat.formatLabel(
+            EchoLinkCastFormat.fromTrack(
+                uri = track.uri,
+                sampleRateHz = playbackStatus.diagnostics.sampleRateHz ?: track.sampleRateHz,
+                bitDepth = playbackStatus.diagnostics.bitDepth,
+                channelCount = playbackStatus.diagnostics.channelCount,
+                codec = playbackStatus.diagnostics.codec,
+            ),
+        )
+    }
+    val phoneCastLossless = remember(playbackStatus.track, playbackStatus.diagnostics) {
+        val track = playbackStatus.track ?: return@remember false
+        EchoLinkCastFormat.fromTrack(
+            uri = track.uri,
+            sampleRateHz = playbackStatus.diagnostics.sampleRateHz ?: track.sampleRateHz,
+            bitDepth = playbackStatus.diagnostics.bitDepth,
+            channelCount = playbackStatus.diagnostics.channelCount,
+            codec = playbackStatus.diagnostics.codec,
+        ).lossless == true
     }
     val appSettings by viewModel.appSettings.collectAsStateWithLifecycle(viewModel.initialAppSettings)
     val systemPowerSaveMode = rememberSystemPowerSaveMode()
@@ -363,7 +425,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> appVisible = true
+                Lifecycle.Event.ON_START -> {
+                    appVisible = true
+                    viewModel.onLibraryForeground()
+                }
                 Lifecycle.Event.ON_RESUME -> {
                     hasAudioPermission =
                         ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
@@ -375,6 +440,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
+        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            viewModel.onLibraryForeground()
+        }
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     DisposableEffect(remoteClient, appVisible) {
@@ -406,8 +474,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
 
     fun finishPhoneCast(pauseTrackId: String?) {
         castingToPc = false
-        castSessionActive = true
-        castSessionName = remoteClient.status.value.endpoint?.name
+        echoLinkSession.markCastStarted(remoteClient.status.value.endpoint?.name)
         if (pauseTrackId != null) {
             val live = viewModel.playbackStatus.value
             if (live.track?.id == pauseTrackId && live.isPlaying) viewModel.pause()
@@ -418,9 +485,72 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         castingToPc = false
         pendingCast = null
         sendingCastAddress = null
-        castSessionActive = false
-        castSessionName = null
         echoLinkSession.stopCastPlayback()
+    }
+
+    fun dlnaErrorMessage(error: Throwable): String {
+        val code = (error as? EchoDlnaException)?.message
+        val res = when (code) {
+            "unsupported_format" -> R.string.echo_link_cast_tv_unsupported_format
+            "dsd_not_supported" -> R.string.echo_link_cast_tv_dsd
+            "no_avtransport" -> R.string.echo_link_cast_tv_no_control
+            "chromecast_unsupported" -> R.string.echo_link_cast_chromecast_unsupported
+            "no_lan" -> R.string.echo_link_cast_no_lan
+            else -> R.string.echo_link_cast_tv_failed
+        }
+        return context.getString(res)
+    }
+
+    fun performDlnaCast(renderer: EchoLanRenderer) {
+        if (castingToPc) return
+        if (renderer.kind == EchoLanRendererKind.Chromecast) {
+            castSetupError = context.getString(R.string.echo_link_cast_chromecast_unsupported)
+            return
+        }
+        sendingCastAddress = renderer.host
+        castSetupError = null
+        val queue = viewModel.playbackQueue.value
+        val phoneId = viewModel.playbackStatus.value.track?.id
+        val positionMs = viewModel.playbackPosition.value.positionMs
+        when (
+            val plan = EchoLinkCastPolicy.plan(
+                tracks = queue.items.mapIndexed { index, item ->
+                    item.toCastSource(
+                        diagnostics = viewModel.playbackStatus.value.diagnostics.takeIf {
+                            index == queue.currentIndex
+                        },
+                    )
+                },
+                startIndex = queue.currentIndex,
+            )
+        ) {
+            is EchoLinkCastPlan.Blocked -> return
+            is EchoLinkCastPlan.HandoffPcLibrary -> {
+                sendingCastAddress = null
+                castSetupError = context.getString(R.string.echo_link_cast_pc_library_not_tv)
+            }
+            is EchoLinkCastPlan.LocalHttp -> {
+                castingToPc = true
+                echoLinkSession.startDlnaCast(
+                    renderer = renderer,
+                    tracks = plan.tracks,
+                    startIndex = plan.startIndex,
+                    positionMs = positionMs,
+                    onFailure = { error ->
+                        castingToPc = false
+                        sendingCastAddress = null
+                        castSetupError = dlnaErrorMessage(error)
+                    },
+                    onSuccess = {
+                        castingToPc = false
+                        if (phoneId != null) {
+                            val live = viewModel.playbackStatus.value
+                            if (live.track?.id == phoneId && live.isPlaying) viewModel.pause()
+                        }
+                    },
+                )
+            }
+        }
     }
 
     fun performPhoneCast() {
@@ -437,7 +567,13 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         val positionMs = viewModel.playbackPosition.value.positionMs
         when (
             val plan = EchoLinkCastPolicy.plan(
-                tracks = queue.items.map { it.toCastSource() },
+                tracks = queue.items.mapIndexed { index, item ->
+                    item.toCastSource(
+                        diagnostics = viewModel.playbackStatus.value.diagnostics.takeIf {
+                            index == queue.currentIndex
+                        },
+                    )
+                },
                 startIndex = queue.currentIndex,
             )
         ) {
@@ -458,6 +594,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                 val items = echoLinkSession.publishLocalCast(plan.tracks)
                 if (items == null) {
                     castingToPc = false
+                    echoLinkSession.stopLocalCast()
                     castSetupError = context.getString(R.string.echo_link_cast_no_lan)
                     return
                 }
@@ -466,7 +603,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     items = items,
                     startIndex = plan.startIndex,
                     positionMs = positionMs,
-                    onFailure = { castingToPc = false },
+                    onFailure = {
+                        castingToPc = false
+                        echoLinkSession.stopLocalCast()
+                    },
                     onSuccess = { finishPhoneCast(phoneId) },
                 )
             }
@@ -561,6 +701,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         }
     }
     val openLibraryRequest by EchoLaunchActions.openLibrary.collectAsStateWithLifecycle()
+    val openCastRequest by EchoLaunchActions.openCast.collectAsStateWithLifecycle()
     val libraryDetailOpen = selectedAlbum != null || selectedArtist != null || selectedGenre != null || selectedFolder != null || selectedPlaylist != null
     LaunchedEffect(effectivePerformanceMode, appVisible, nowPlayingExpanded) {
         val visibility = when {
@@ -648,6 +789,32 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         }
     }
     fun selectDockTab(tab: EchoTab) = navigateToPage(tab.pagerPage)
+    fun onNowPlayingCast() {
+        val connected = remoteClient.status.value.connectionState == EchoRemoteConnectionState.Connected
+        val canCast = phoneCastPlan !is EchoLinkCastPlan.Blocked && playbackStatus.track != null
+        when {
+            echoLinkSession.castActive.value -> {
+                nowPlayingExpanded = false
+                openCastTabNonce += 1
+                selectDockTab(EchoTab.Connect)
+            }
+            connected && canCast -> performPhoneCast()
+            else -> {
+                nowPlayingExpanded = false
+                openCastTabNonce += 1
+                selectDockTab(EchoTab.Connect)
+            }
+        }
+    }
+    LaunchedEffect(openCastRequest) {
+        if (openCastRequest) {
+            nowPlayingExpanded = false
+            queueSheetVisible = false
+            openCastTabNonce += 1
+            selectDockTab(EchoTab.Connect)
+            EchoLaunchActions.consumeOpenCast()
+        }
+    }
     LaunchedEffect(openLibraryRequest) {
         if (openLibraryRequest) {
             nowPlayingExpanded = false
@@ -919,6 +1086,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             val listenBrainzState by viewModel.listenBrainzState.collectAsStateWithLifecycle()
                             val usbExclusiveTestResult by viewModel.usbExclusiveTestResult.collectAsStateWithLifecycle()
                             val errorLogCount by viewModel.errorLogCount.collectAsStateWithLifecycle(0)
+                            val backupNotice by viewModel.backupNotice.collectAsStateWithLifecycle()
                             SettingsScreen(
                                 isActive = tabPagerState.currentPage == EchoPagerPage.Settings.ordinal &&
                                     !nowPlayingExpanded && !searchVisible && !errorLogVisible && !queueSheetVisible,
@@ -934,6 +1102,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 performanceMode = appSettings.performanceMode,
                                 effectivePerformanceMode = effectivePerformanceMode.id,
                                 trackAudioInfoTagsVisible = appSettings.trackAudioInfoTagsVisible,
+                                watchedFolderRescanEnabled = appSettings.watchedFolderRescanEnabled,
                                 pcHandoffEnabled = appSettings.pcHandoffEnabled,
                                 showLyricsControlDeck = appSettings.showLyricsControlDeck,
                                 onlineLyricsEnabled = appSettings.onlineLyricsEnabled,
@@ -979,6 +1148,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onPlaybackHapticsEnabledChange = viewModel::setPlaybackHapticsEnabled,
                                 onPerformanceModeChange = viewModel::setPerformanceMode,
                                 onTrackAudioInfoTagsVisibleChange = viewModel::setTrackAudioInfoTagsVisible,
+                                onWatchedFolderRescanEnabledChange = viewModel::setWatchedFolderRescanEnabled,
                                 onPcHandoffEnabledChange = viewModel::setPcHandoffEnabled,
                                 onShowLyricsControlDeckChange = viewModel::setShowLyricsControlDeck,
                                 onOnlineLyricsEnabledChange = viewModel::setOnlineLyricsEnabled,
@@ -1061,6 +1231,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onOpenConnect = { selectDockTab(EchoTab.Connect) },
                                 errorLogCount = errorLogCount,
                                 onOpenErrorLog = { errorLogVisible = true },
+                                backupNotice = backupNotice,
+                                onExportBackup = { backupExportLauncher.launch("echo-backup.json") },
+                                onImportBackup = {
+                                    backupImportLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
+                                },
                             )
                             }
 
@@ -1079,6 +1254,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             val remoteScanState by viewModel.remoteScanState.collectAsStateWithLifecycle()
                             val discoveryState by viewModel.echoLinkDiscoveryState.collectAsStateWithLifecycle()
                             val echoLinkLanDevices by viewModel.echoLinkLanDevices.collectAsStateWithLifecycle()
+                            val lanRenderers by viewModel.lanRenderers.collectAsStateWithLifecycle()
+                            val lanRendererState by viewModel.lanRendererDiscoveryState.collectAsStateWithLifecycle()
                             ConnectScreen(
                                 remoteState = remoteStatus.connectionState,
                                 pcTitle = remoteStatus.endpoint?.name ?: "PC ECHO",
@@ -1121,6 +1298,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 phoneTrackTitle = playbackStatus.track?.title,
                                 phoneTrackArtist = playbackStatus.track?.artist,
                                 phoneTrackArtworkUrl = playbackStatus.track?.artworkUri,
+                                phoneTrackFormat = phoneCastFormatLabel,
+                                phoneTrackLossless = phoneCastLossless,
                                 castBlockedReason = (phoneCastPlan as? EchoLinkCastPlan.Blocked)?.reason,
                                 casting = castingToPc,
                                 castSessionActive = castSessionActive,
@@ -1132,7 +1311,23 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                         .removePrefix("https://")
                                 },
                                 onCastToAddress = ::requestPhoneCast,
+                                onCastToConnected = if (
+                                    remoteStatus.connectionState == EchoRemoteConnectionState.Connected &&
+                                    phoneCastPlan !is EchoLinkCastPlan.Blocked
+                                ) {
+                                    { performPhoneCast() }
+                                } else null,
                                 onStopCast = ::stopPhoneCast,
+                                lanRenderers = lanRenderers,
+                                lanRendererState = lanRendererState,
+                                activeRendererId = dlnaRenderer?.id,
+                                onCastToRenderer = ::performDlnaCast,
+                                openCastTabNonce = openCastTabNonce,
+                                castQueueCount = EchoLinkCastPolicy.trackCount(phoneCastPlan),
+                                showDsdWarning = EchoLinkCastPolicy.isDsd(
+                                    playbackStatus.diagnostics.codec
+                                        ?: EchoLinkCastFormat.fromTrack(playbackStatus.track?.uri.orEmpty()).codec,
+                                ),
                                 onDisconnect = remoteClient::disconnect,
                                 onForgetPc = {
                                     remoteClient.disconnect()
@@ -1193,6 +1388,13 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                     onOpraRefresh = { viewModel.searchOpraHeadphoneCorrections(refresh = true) },
                                     onOpraPresetSelected = viewModel::selectOpraPreset,
                                     onOpraApplySelected = viewModel::applySelectedOpraPreset,
+                                    bluetoothCodecNeedsPermission = !hasBluetoothConnectPermission &&
+                                        playbackStatus.diagnostics.outputDeviceKind == EchoOutputDeviceKind.Bluetooth.id,
+                                    onRequestBluetoothCodecPermission = {
+                                        if (!hasBluetoothConnectPermission) {
+                                            bluetoothPermissionLauncher.launch(bluetoothPermName)
+                                        }
+                                    },
                                 )
                             }
                         }
@@ -1206,14 +1408,14 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     selectedTab = selectedTab,
                     bottomDockExpanded = bottomDockExpanded,
                     effectivePerformanceMode = effectivePerformanceMode,
-                    onPlayPause = viewModel::playPause,
+                    onPlayPause = ::routedPlayPause,
                     onHideDock = { bottomDockExpanded = false },
                     onShowDock = { bottomDockExpanded = true },
                     onSelectTab = { selectDockTab(EchoTab.entries[it]) },
                     onExpand = { expandNowPlaying() },
                     onOpenQueue = { queueSheetVisible = true },
-                    onNext = viewModel::skipNext,
-                    onPrevious = viewModel::skipPrevious,
+                    onNext = ::routedSkipNext,
+                    onPrevious = ::routedSkipPrevious,
                     modifier = Modifier.align(Alignment.BottomCenter)
                         .onSizeChanged { bottomDockHeightPx = it.height },
                 )
@@ -1246,6 +1448,12 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     onDismiss = { nowPlayingExpanded = false },
                     predictiveBackProgress = { nowPlayingBackProgress },
                     onOpenQueue = { queueSheetVisible = true },
+                    onCast = ::onNowPlayingCast,
+                    castActive = castSessionActive,
+                    onPlayPause = ::routedPlayPause,
+                    onNext = ::routedSkipNext,
+                    onPrevious = ::routedSkipPrevious,
+                    onSeek = ::routedSeek,
                     onImportLyrics = {
                         lyricsImportTrackId = playbackStatus.track?.id
                         lyricsImportLauncher.launch(LyricsDocumentMimeTypes)
@@ -1585,7 +1793,9 @@ private fun EchoOverlayBackHandler(
     }
 }
 
-private fun EchoTrackRef.toCastSource(): EchoLinkCastSourceTrack = EchoLinkCastSourceTrack(
+private fun EchoTrackRef.toCastSource(
+    diagnostics: EchoPlaybackDiagnostics? = null,
+): EchoLinkCastSourceTrack = EchoLinkCastSourceTrack(
     id = id,
     uri = uri,
     title = title,
@@ -1594,6 +1804,10 @@ private fun EchoTrackRef.toCastSource(): EchoLinkCastSourceTrack = EchoLinkCastS
     artworkUri = artworkUri,
     durationMs = durationMs,
     sourceId = sourceId,
+    sampleRateHz = diagnostics?.sampleRateHz?.takeIf { it > 0 } ?: sampleRateHz,
+    bitDepth = diagnostics?.bitDepth?.takeIf { it > 0 },
+    channelCount = diagnostics?.channelCount?.takeIf { it > 0 },
+    codec = diagnostics?.codec?.takeIf { it.isNotBlank() },
 )
 
 private fun Context.findActivity(): Activity? {

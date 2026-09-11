@@ -24,4 +24,11 @@ fun notificationPermissionName(): String? =
         null
     }
 
+fun bluetoothConnectPermissionName(): String =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        Manifest.permission.BLUETOOTH_CONNECT
+    } else {
+        Manifest.permission.BLUETOOTH
+    }
+
 const val ECHO_PERMISSION_DIALOG_SHOWN_KEY = "echo_permission_dialog_shown_v1"

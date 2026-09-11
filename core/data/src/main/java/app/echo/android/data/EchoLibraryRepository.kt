@@ -21,6 +21,7 @@ import app.echo.android.model.library.LibraryScanOptions
 import app.echo.android.model.library.LibraryScanProgress
 import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.EchoTrackMetadataUpdate
+import app.echo.android.model.library.LibrarySmartPlaylistKind
 import app.echo.android.model.library.LibrarySource
 import app.echo.android.model.library.LibraryStats
 import kotlinx.coroutines.CoroutineScope
@@ -220,12 +221,15 @@ class EchoLibraryRepository(
             database.playlistDao().observeAllPlaylists(),
             database.playlistDao().observeFavoriteTrackIds(),
             database.playlistDao().observeFavoriteAlbums(1),
-        ) { playlists, favoriteIds, favoriteAlbums ->
+            database.trackDao().observeSmartPlaylistStats(),
+        ) { playlists, favoriteIds, favoriteAlbums, smartStats ->
             val liked = LibraryFavoritePolicy.likedSongsPlaylist(
                 trackCount = favoriteIds.size,
                 artworkUri = favoriteAlbums.firstOrNull()?.artworkUri,
             )
-            listOf(liked) + playlists.map { it.toEchoPlaylist() }.filterNot { it.isLikedSongs }
+            val pinned = LibrarySmartPlaylistPolicy.pinned(smartStats)
+            listOf(liked) + pinned + playlists.map { it.toEchoPlaylist() }
+                .filterNot { it.isLikedSongs || it.isSmartPlaylist }
         }.flowOn(Dispatchers.IO)
 
     fun observeFavoriteTrackIds(): Flow<Set<String>> =
@@ -241,10 +245,16 @@ class EchoLibraryRepository(
         Pager(
             config = defaultPagingConfig(),
             pagingSourceFactory = {
-                if (LibraryFavoritePolicy.isLikedSongsId(playlistId)) {
-                    database.playlistDao().pageFavoriteTracks()
-                } else {
-                    database.playlistDao().pagePlaylistTracks(playlistId)
+                when (LibrarySmartPlaylistKind.fromId(playlistId)) {
+                    LibrarySmartPlaylistKind.Recent -> database.trackDao().pageRecentlyPlayedTracks()
+                    LibrarySmartPlaylistKind.Frequent -> database.trackDao().pageFrequentlyPlayedTracks()
+                    LibrarySmartPlaylistKind.Never -> database.trackDao().pageNeverPlayedTracks()
+                    LibrarySmartPlaylistKind.Added -> database.trackDao().pageRecentlyAddedTracks()
+                    null -> if (LibraryFavoritePolicy.isLikedSongsId(playlistId)) {
+                        database.playlistDao().pageFavoriteTracks()
+                    } else {
+                        database.playlistDao().pagePlaylistTracks(playlistId)
+                    }
                 }
             },
         ).flow
@@ -267,6 +277,96 @@ class EchoLibraryRepository(
             dao.deleteFavorite(id)
         }
         return liked
+    }
+
+    suspend fun exportBackupPlaylists(): List<app.echo.android.model.backup.EchoBackupPlaylist> {
+        val dao = database.playlistDao()
+        return dao.getPlaylistsBySource(LibrarySource.MediaStore.id).map { playlist ->
+            val tracks = dao.getPlaylistTracksForPlayback(playlist.id, 10_000)
+            app.echo.android.model.backup.EchoBackupPlaylist(
+                name = playlist.name,
+                tracks = tracks.map { track ->
+                    app.echo.android.model.backup.EchoBackupTrackRef(
+                        title = track.title,
+                        artist = track.artist,
+                        relativePath = track.relativePath,
+                        durationMs = track.durationMs,
+                    )
+                },
+            )
+        }
+    }
+
+    suspend fun exportBackupFavorites(): List<app.echo.android.model.backup.EchoBackupTrackRef> {
+        val ids = database.playlistDao().getFavoriteTrackIds()
+        if (ids.isEmpty()) return emptyList()
+        val rows = database.trackDao().getLocalM3uMatchRows().associateBy { it.id }
+        return ids.mapNotNull { id ->
+            val row = rows[id] ?: return@mapNotNull null
+            app.echo.android.model.backup.EchoBackupTrackRef(
+                title = row.title,
+                artist = row.artist,
+                relativePath = row.relativePath,
+            )
+        }
+    }
+
+    suspend fun restoreBackupCatalog(
+        playlists: List<app.echo.android.model.backup.EchoBackupPlaylist>,
+        favorites: List<app.echo.android.model.backup.EchoBackupTrackRef>,
+    ): app.echo.android.model.backup.EchoBackupRestoreResult {
+        val rows = database.trackDao().getLocalM3uMatchRows()
+        var matched = 0
+        var missing = 0
+        fun resolve(track: app.echo.android.model.backup.EchoBackupTrackRef): String? {
+            val id = EchoBackupCodec.matchTrackId(track, rows)
+            if (id == null) {
+                missing++
+                return null
+            }
+            matched++
+            return id
+        }
+        var playlistsRestored = 0
+        val existing = database.playlistDao().getPlaylistsBySource(LibrarySource.MediaStore.id)
+        playlists.forEach { playlist ->
+            val trackIds = playlist.tracks.mapNotNull(::resolve)
+            val current = existing.firstOrNull { it.name.equals(playlist.name, ignoreCase = true) }
+            val record = if (current != null) {
+                LibraryPlaylistRecord(
+                    id = current.id,
+                    name = current.name,
+                    trackIds = trackIds,
+                    artworkUri = current.artworkUri,
+                    updatedAtEpochMs = System.currentTimeMillis(),
+                )
+            } else {
+                val created = createLocalPlaylist(playlist.name) ?: return@forEach
+                LibraryPlaylistRecord(
+                    id = created.id,
+                    name = created.name,
+                    trackIds = trackIds,
+                    updatedAtEpochMs = System.currentTimeMillis(),
+                )
+            }
+            persistPlaylistRecord(record)
+            playlistsRestored++
+        }
+        var favoritesRestored = 0
+        val liked = database.playlistDao().getFavoriteTrackIds().toSet()
+        favorites.forEach { track ->
+            val id = resolve(track) ?: return@forEach
+            if (id !in liked) {
+                toggleFavorite(id)
+            }
+            favoritesRestored++
+        }
+        return app.echo.android.model.backup.EchoBackupRestoreResult(
+            playlistsRestored = playlistsRestored,
+            favoritesRestored = favoritesRestored,
+            tracksMatched = matched,
+            tracksMissing = missing,
+        )
     }
 
     suspend fun createLocalPlaylist(name: String): EchoPlaylist? {
@@ -389,6 +489,7 @@ class EchoLibraryRepository(
         val id = playlistId.trim()
         if (id.isEmpty()) return false
         if (LibraryFavoritePolicy.isLikedSongsId(id)) return false
+        if (LibrarySmartPlaylistPolicy.isSmartPlaylistId(id)) return false
         if (id.startsWith("${LibrarySource.Subsonic.id}:")) return false
         if (id.startsWith("${LibrarySource.WebDav.id}:")) return false
         return true
@@ -611,6 +712,16 @@ class EchoLibraryRepository(
         return TrackMetadataUpdateResult(indexUpdated = true, fileWrite = fileWrite)
     }
 
+    suspend fun writeReplayGainTrackGain(trackId: String, gainDb: Float): EmbeddedTagWriteResult {
+        val dao = database.trackDao()
+        val current = dao.getTrackById(trackId) ?: return EmbeddedTagWriteResult.Failed
+        val writer = tagWriter ?: return EmbeddedTagWriteResult.NotLocal
+        val fields = writer.fieldsForWrite(current).copy(replayGainTrackGainDb = gainDb)
+        val fileWrite = writeEmbeddedTags(current, fields)
+        persistWrittenFileStats(dao, current, fileWrite)
+        return fileWrite
+    }
+
     suspend fun writeEmbeddedTagsForTrack(
         trackId: String,
         lyricsText: String? = null,
@@ -731,10 +842,20 @@ class EchoLibraryRepository(
         limit: Int = AGGREGATION_QUEUE_LIMIT,
     ): List<LibraryTrackEntity> {
         val safeLimit = limit.coerceAtLeast(1)
-        return if (LibraryFavoritePolicy.isLikedSongsId(playlistId)) {
-            database.playlistDao().listFavoriteTracksForBrowse(safeLimit, 0)
-        } else {
-            database.playlistDao().getPlaylistTracksForPlayback(playlistId, safeLimit)
+        return when (LibrarySmartPlaylistKind.fromId(playlistId)) {
+            LibrarySmartPlaylistKind.Recent ->
+                database.trackDao().getRecentlyPlayedTracksForPlayback(safeLimit)
+            LibrarySmartPlaylistKind.Frequent ->
+                database.trackDao().getFrequentlyPlayedTracksForPlayback(safeLimit)
+            LibrarySmartPlaylistKind.Never ->
+                database.trackDao().getNeverPlayedTracksForPlayback(safeLimit)
+            LibrarySmartPlaylistKind.Added ->
+                database.trackDao().getRecentlyAddedTracksForPlayback(safeLimit)
+            null -> if (LibraryFavoritePolicy.isLikedSongsId(playlistId)) {
+                database.playlistDao().listFavoriteTracksForBrowse(safeLimit, 0)
+            } else {
+                database.playlistDao().getPlaylistTracksForPlayback(playlistId, safeLimit)
+            }
         }
     }
 

@@ -19,7 +19,6 @@
     <string name="feature_library_loading_genres_4e91aa" formatted="false">"正在加载曲风"</string>
     <string name="feature_library_failed_to_load_genres_b7c102" formatted="false">"无法加载曲风"</string>
     <string name="feature_library_this_library_has_no_genres_to_show_yet_11a90e" formatted="false">"这个曲库还没有曲风"</string>
-    <string name="feature_library_dsd_unsupported_9a1b02" formatted="false">"DSD（无法播放）"</string>
     <string name="feature_library_artists_e168aa" formatted="false">"艺人"</string>
     <string name="feature_library_back_49093c" formatted="false">"返回"</string>
     <string name="feature_library_back_to_pc_echo_playlists_499312" formatted="false">"返回 PC ECHO 歌单"</string>
@@ -80,6 +79,16 @@
     <string name="feature_library_library_scan_failed_94b709" formatted="false">"曲库扫描失败。"</string>
     <string name="feature_library_liked_c8ac9d" formatted="false">"喜欢"</string>
     <string name="feature_library_liked_songs_8d6245" formatted="false">"喜欢的歌曲"</string>
+    <string name="feature_library_smart_recent">最近在听</string>
+    <string name="feature_library_smart_frequent">常听</string>
+    <string name="feature_library_smart_never">从未播放</string>
+    <string name="feature_library_smart_added">最近加入</string>
+    <string name="feature_library_smart_kind">智能播放列表</string>
+    <string name="feature_library_smart_empty_recent">播几首歌，这里就会出现</string>
+    <string name="feature_library_smart_empty_frequent">多听几遍，常听会排在这里</string>
+    <string name="feature_library_smart_empty_never">本地歌曲都已经播过了</string>
+    <string name="feature_library_smart_empty_added">扫描曲库文件夹后会出现在这里</string>
+    <string name="feature_library_count_tracks_smart">%1$s 首 · 智能播放列表</string>
     <string name="feature_library_linked_5d42a7" formatted="false">"互联"</string>
     <string name="feature_library_loading_albums_75c4f3" formatted="false">"正在加载专辑..."</string>
     <string name="feature_library_loading_artists_e9b16d" formatted="false">"正在加载艺人..."</string>

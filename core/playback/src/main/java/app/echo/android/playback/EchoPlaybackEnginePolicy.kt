@@ -109,6 +109,18 @@ class EchoPlaybackEnginePolicy(
         echoLinkRefreshInFlight.remove(mediaId)
     }
 
+    fun invalidateReplayGain(trackId: String) {
+        val id = trackId.trim()
+        if (id.isEmpty()) return
+        replayGainJobs[id]?.cancel()
+        replayGainJobs.remove(id)
+        replayGainTagsByMediaId.remove(id)
+        if (activeReplayGainTrackId == id) {
+            activeReplayGainTrackGainDb = null
+            loadReplayGainForTrack(id)
+        }
+    }
+
     fun mergeQueueLookups(track: EchoTrack) {
         sampleRatesByMediaId[track.id] = track.sampleRateHz
         replayGainUrisByMediaId[track.id] = track.uri

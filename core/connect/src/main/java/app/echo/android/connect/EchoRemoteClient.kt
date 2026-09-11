@@ -770,6 +770,7 @@ class EchoRemoteClient internal constructor(
                     streamUrl = startItem.streamUrl,
                     positionMs = safePosition,
                     track = startItem.toRemoteTrack(),
+                    audio = startItem.audio,
                 ),
                 onSuccess = onSuccess,
                 onFailure = castFailure,

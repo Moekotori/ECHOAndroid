@@ -1,5 +1,6 @@
 package app.echo.android.connect
 
+import app.echo.android.model.connect.EchoRemoteAudioFormat
 import app.echo.android.model.connect.EchoRemoteStreamItem
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
@@ -42,7 +43,9 @@ data class EchoLinkCastPublication(
     val artist: String,
     val album: String? = null,
     val artworkUrl: String? = null,
+    val artworkToken: String? = null,
     val durationMs: Long = 0L,
+    val format: EchoRemoteAudioFormat? = null,
 )
 
 class EchoLinkCastServer(
@@ -117,8 +120,9 @@ class EchoLinkCastServer(
                 title = item.title,
                 artist = item.artist,
                 album = item.album,
-                artworkUrl = item.artworkUrl,
+                artworkUrl = publishedArtworkUrl(item, host, boundPort),
                 durationMs = item.durationMs,
+                audio = item.format,
             )
         }
     }
@@ -163,9 +167,11 @@ class EchoLinkCastServer(
     }
 
     private fun handle(client: Socket) {
+        runCatching { client.sendBufferSize = EchoLinkCastPolicy.SendBufferBytes }
+        client.tcpNoDelay = true
         client.soTimeout = 15_000
         val input = BufferedInputStream(client.getInputStream())
-        val output = BufferedOutputStream(client.getOutputStream())
+        val output = BufferedOutputStream(client.getOutputStream(), EchoLinkCastPolicy.CopyBufferBytes)
         val request = readRequest(input) ?: run {
             reply(output, 400, "Bad Request", 0)
             return
@@ -179,10 +185,15 @@ class EchoLinkCastServer(
             reply(output, 405, "Method Not Allowed", 0)
             return
         }
-        val token = tokenFromPath(request.path)
-        val publication = token?.let(publications::get)
-        if (publication == null) {
+        val located = locatePublication(request.path)
+        if (located == null) {
             reply(output, 404, "Not Found", 0)
+            return
+        }
+        val (publication, artwork) = located
+        if (artwork) {
+            lastActivityMs.set(System.currentTimeMillis())
+            serveArtwork(client, output, method, publication, rangeHeader = request.headers["range"])
             return
         }
         lastActivityMs.set(System.currentTimeMillis())
@@ -207,8 +218,102 @@ class EchoLinkCastServer(
                 reply(output, 416, "Range Not Satisfiable", 0, extraHeaders = rangeUnsatisfiable(totalLength))
                 return
             }
+            val source = if (start == 0L) {
+                BufferedInputStream(opened.stream, EchoLinkCastPolicy.HeaderSniffBytes)
+            } else {
+                opened.stream
+            }
+            val sniffed = if (start == 0L && source is BufferedInputStream) {
+                source.mark(EchoLinkCastPolicy.HeaderSniffBytes)
+                val header = ByteArray(EchoLinkCastPolicy.HeaderSniffBytes)
+                val read = source.read(header)
+                source.reset()
+                if (read > 0) EchoLinkCastFormat.sniff(header.copyOf(read)) else null
+            } else {
+                null
+            }
+            val format = EchoLinkCastFormat.merge(publication.format, sniffed)
+            if (format != null && format != publication.format) {
+                publications[publication.token] = publication.copy(format = format)
+            }
             val end = range?.second ?: totalLength?.minus(1L)
-            val mime = EchoLinkCastPolicy.mimeTypeForUri(publication.uri, publication.mimeType ?: opened.mimeType)
+            val mime = EchoLinkCastPolicy.mimeTypeForUri(
+                publication.uri,
+                format?.mimeType ?: publication.mimeType ?: opened.mimeType,
+            )
+            val contentLength = when {
+                end != null -> (end - start + 1L).coerceAtLeast(0L)
+                totalLength != null -> (totalLength - start).coerceAtLeast(0L)
+                else -> null
+            }
+            val extra = buildString {
+                append("Accept-Ranges: bytes\r\n")
+                if (range != null && end != null) {
+                    val total = totalLength?.toString() ?: "*"
+                    append("Content-Range: bytes $start-$end/$total\r\n")
+                }
+                EchoLinkCastFormat.httpHeaders(format).forEach { (name, value) ->
+                    append("$name: $value\r\n")
+                }
+            }
+            val status = if (range != null) 206 else 200
+            val reason = if (range != null) "Partial Content" else "OK"
+            writeStatus(output, status, reason, mime, contentLength, extra)
+            if (method == "HEAD") {
+                output.flush()
+                return
+            }
+            client.soTimeout = 0
+            copyBody(source, output, contentLength)
+            output.flush()
+        }
+    }
+
+    private fun locatePublication(path: String): Pair<EchoLinkCastPublication, Boolean>? {
+        val normalized = path.substringBefore('?')
+        val artworkToken = tokenAfterPrefix(normalized, EchoLinkCastPolicy.ArtworkPathPrefix)
+        if (artworkToken != null) {
+            val publication = publications.values.firstOrNull { it.artworkToken == artworkToken }
+            return publication?.let { it to true }
+        }
+        val token = tokenAfterPrefix(normalized, EchoLinkCastPolicy.PathPrefix) ?: return null
+        val publication = publications[token] ?: return null
+        return publication to false
+    }
+
+    private fun tokenAfterPrefix(path: String, prefix: String): String? {
+        if (!path.startsWith(prefix)) return null
+        return path.removePrefix(prefix).trim('/').takeIf(EchoLinkCastPolicy::isCastToken)
+    }
+
+    private fun publishedArtworkUrl(item: EchoLinkCastPublication, host: String, port: Int): String? {
+        val raw = item.artworkUrl?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        if (EchoLinkCastPolicy.isRemoteHttpUri(raw)) return raw
+        val token = item.artworkToken?.takeIf(EchoLinkCastPolicy::isCastToken) ?: return null
+        return EchoLinkCastPolicy.artworkUrl(host, port, token)
+    }
+
+    private fun serveArtwork(
+        client: Socket,
+        output: java.io.OutputStream,
+        method: String,
+        publication: EchoLinkCastPublication,
+        rangeHeader: String?,
+    ) {
+        val uri = publication.artworkUrl?.trim()?.takeIf { it.isNotEmpty() } ?: run {
+            reply(output, 404, "Not Found", 0)
+            return
+        }
+        val range = EchoLinkCastPolicy.parseRange(rangeHeader, null)
+        val start = range?.first ?: 0L
+        val body = openBody.open(uri, start) ?: run {
+            reply(output, 404, "Not Found", 0)
+            return
+        }
+        body.use { opened ->
+            val totalLength = opened.totalLength
+            val end = range?.second ?: totalLength?.minus(1L)
+            val mime = EchoLinkCastPolicy.imageMimeType(uri)
             val contentLength = when {
                 end != null -> (end - start + 1L).coerceAtLeast(0L)
                 totalLength != null -> (totalLength - start).coerceAtLeast(0L)
@@ -221,23 +326,22 @@ class EchoLinkCastServer(
                     append("Content-Range: bytes $start-$end/$total\r\n")
                 }
             }
-            val status = if (range != null) 206 else 200
-            val reason = if (range != null) "Partial Content" else "OK"
-            writeStatus(output, status, reason, mime, contentLength, extra)
+            writeStatus(
+                output,
+                if (range != null) 206 else 200,
+                if (range != null) "Partial Content" else "OK",
+                mime,
+                contentLength,
+                extra,
+            )
             if (method == "HEAD") {
                 output.flush()
                 return
             }
+            client.soTimeout = 0
             copyBody(opened.stream, output, contentLength)
             output.flush()
         }
-    }
-
-    private fun tokenFromPath(path: String): String? {
-        val normalized = path.substringBefore('?')
-        if (!normalized.startsWith(EchoLinkCastPolicy.PathPrefix)) return null
-        val token = normalized.removePrefix(EchoLinkCastPolicy.PathPrefix).trim('/')
-        return token.takeIf(EchoLinkCastPolicy::isCastToken)
     }
 
     private fun readRequest(input: InputStream): CastHttpRequest? {

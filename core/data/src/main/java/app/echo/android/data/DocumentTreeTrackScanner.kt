@@ -263,6 +263,24 @@ class DocumentTreeTrackScanner(
         } else {
             null
         }
+        if (EchoDsdMetadata.isDsd(mimeType, displayName)) {
+            val dsd = runCatching {
+                contentResolver.openInputStream(uri)?.use(EchoDsdMetadata::read)
+            }.getOrNull()
+            if (dsd != null) {
+                return DocumentAudioMetadata(
+                    title = dsd.tags?.title?.takeIf { it.isNotBlank() } ?: fileTags?.title,
+                    artist = dsd.tags?.artist?.takeIf { it.isNotBlank() } ?: fileTags?.artist,
+                    album = dsd.tags?.album ?: fileTags?.album,
+                    albumArtist = dsd.tags?.albumArtist ?: fileTags?.albumArtist,
+                    durationMs = dsd.durationMs.coerceAtLeast(0L),
+                    trackNumber = dsd.tags?.trackNumber ?: fileTags?.trackNumber,
+                    discNumber = dsd.tags?.discNumber ?: fileTags?.discNumber,
+                    year = dsd.tags?.year ?: fileTags?.year,
+                    sampleRateHz = if (readSampleRate) dsd.sampleRateHz.takeIf { it > 0 } else null,
+                )
+            }
+        }
         val retriever = MediaMetadataRetriever()
         return try {
             contentResolver.openFileDescriptor(uri, "r")?.use { descriptor ->

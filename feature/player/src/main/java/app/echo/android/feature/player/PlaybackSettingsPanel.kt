@@ -64,6 +64,7 @@ import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -95,6 +96,8 @@ import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoRepeatMode
 import app.echo.android.model.playback.EchoReplayGainMode
+import app.echo.android.model.playback.EchoReplayGainScanFailure
+import app.echo.android.model.playback.EchoReplayGainScanState
 import app.echo.android.model.playback.EchoReplayGainPreampMaxDb
 import app.echo.android.model.playback.EchoReplayGainPreampMinDb
 import app.echo.android.model.playback.EchoSleepTimerMode
@@ -138,6 +141,24 @@ internal fun formatPlaybackSpeedLabel(speed: Float): String {
     }
 }
 
+@Composable
+private fun replayGainScanLabel(state: EchoReplayGainScanState): String = when (state) {
+    EchoReplayGainScanState.Idle -> stringResource(L10nR.string.feature_player_replay_gain_scan)
+    EchoReplayGainScanState.Scanning -> stringResource(L10nR.string.feature_player_replay_gain_scanning)
+    is EchoReplayGainScanState.Written -> stringResource(
+        L10nR.string.feature_player_replay_gain_scanned,
+        formatReplayGainDb(state.gainDb),
+    )
+    is EchoReplayGainScanState.Failed -> stringResource(
+        when (state.reason) {
+            EchoReplayGainScanFailure.NotLocal -> L10nR.string.feature_player_replay_gain_scan_not_local
+            EchoReplayGainScanFailure.Unsupported -> L10nR.string.feature_player_replay_gain_scan_unsupported
+            EchoReplayGainScanFailure.DecodeFailed -> L10nR.string.feature_player_replay_gain_scan_decode
+            EchoReplayGainScanFailure.WriteFailed -> L10nR.string.feature_player_replay_gain_scan_write
+        },
+    )
+}
+
 internal fun formatReplayGainDb(value: Float): String {
     val rounded = (value * 10f).roundToInt() / 10f
     val sign = if (rounded > 0f) "+" else ""
@@ -178,6 +199,8 @@ internal fun PlaybackSettingsDrawer(
     onSetReplayGain: (Boolean, Float) -> Unit,
     onSetReplayGainMode: (EchoReplayGainMode) -> Unit = {},
     onAdjustReplayGainPreamp: (Float) -> Unit,
+    replayGainScanState: EchoReplayGainScanState = EchoReplayGainScanState.Idle,
+    onScanReplayGain: () -> Unit = {},
     onSetSkipSilenceEnabled: (Boolean) -> Unit,
     lyricsOffsetMs: Long,
     onAdjustLyricsOffset: (Long) -> Unit,
@@ -249,6 +272,8 @@ internal fun PlaybackSettingsDrawer(
                     onSetReplayGain = onSetReplayGain,
                     onSetReplayGainMode = onSetReplayGainMode,
                     onAdjustReplayGainPreamp = onAdjustReplayGainPreamp,
+                    replayGainScanState = replayGainScanState,
+                    onScanReplayGain = onScanReplayGain,
                     onSetSkipSilenceEnabled = onSetSkipSilenceEnabled,
                     lyricsOffsetMs = lyricsOffsetMs,
                     onAdjustLyricsOffset = onAdjustLyricsOffset,
@@ -276,6 +301,8 @@ private fun PlaybackSettingsSheet(
     onSetReplayGain: (Boolean, Float) -> Unit,
     onSetReplayGainMode: (EchoReplayGainMode) -> Unit,
     onAdjustReplayGainPreamp: (Float) -> Unit,
+    replayGainScanState: EchoReplayGainScanState = EchoReplayGainScanState.Idle,
+    onScanReplayGain: () -> Unit = {},
     onSetSkipSilenceEnabled: (Boolean) -> Unit,
     lyricsOffsetMs: Long,
     onAdjustLyricsOffset: (Long) -> Unit,
@@ -653,6 +680,13 @@ private fun PlaybackSettingsSheet(
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.SemiBold,
                             )
+                            TextButton(
+                                onClick = onScanReplayGain,
+                                enabled = replayGainScanState !is EchoReplayGainScanState.Scanning &&
+                                    status.track != null,
+                            ) {
+                                Text(replayGainScanLabel(replayGainScanState))
+                            }
                         }
                     }
                 }
@@ -1096,11 +1130,10 @@ private fun PlaybackStepperButton(
 @Composable
 private fun playbackSettingsSummary(status: EchoPlaybackStatus): String {
     val diagnostics = status.diagnostics
-    val format = buildList {
-        diagnostics.codec?.let { add(it) }
-        diagnostics.sampleRateHz?.takeIf { it > 0 }?.let { add(formatSampleRate(it)) }
-        diagnostics.bitDepth?.takeIf { it > 0 }?.let { add("${it}bit") }
-    }.joinToString(" · ").ifBlank {
+    val format = playbackFormatChips(
+        diagnostics = diagnostics,
+        pcmRateLabel = ::formatSampleRate,
+    ).joinToString(" · ").ifBlank {
         stringResource(L10nR.string.feature_player_waiting_for_audio_info_a869fd)
     }
     val output = if (diagnostics.usbDeviceName != null) {

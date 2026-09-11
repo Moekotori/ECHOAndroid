@@ -73,6 +73,8 @@
     <string name="feature_player_playback_was_interrupted_by_the_system_70c8d1" formatted="false">"播放被系统中断"</string>
     <string name="feature_player_previous_af0264" formatted="false">"上一首"</string>
     <string name="feature_player_queue_37fa6a" formatted="false">"播放队列"</string>
+    <string name="feature_player_cast">投送</string>
+    <string name="feature_player_cast_active">正在投送</string>
     <string name="feature_player_queue_84794b" formatted="false">"队列"</string>
     <string name="feature_player_queue_is_empty_1b4178" formatted="false">"队列为空"</string>
     <string name="feature_player_reading_local_lyrics_807f08" formatted="false">"正在读取本地歌词…"</string>
@@ -124,6 +126,13 @@
     <string name="feature_player_word_highlight_off_b0e40a" formatted="false">"逐字强度 关"</string>
     <string name="feature_player_replay_gain_unread">未读取</string>
     <string name="feature_player_replay_gain_none">无标签</string>
+    <string name="feature_player_replay_gain_scan">扫描并写入音轨增益</string>
+    <string name="feature_player_replay_gain_scanning">正在扫描…</string>
+    <string name="feature_player_replay_gain_scanned">已写入 %1$s</string>
+    <string name="feature_player_replay_gain_scan_not_local">只能写入本地 MP3/FLAC</string>
+    <string name="feature_player_replay_gain_scan_unsupported">这个格式存不了 ReplayGain 标签</string>
+    <string name="feature_player_replay_gain_scan_decode">测不出响度</string>
+    <string name="feature_player_replay_gain_scan_write">写不进标签</string>
     <string name="feature_player_lyrics_offset">歌词偏移</string>
     <string name="feature_player_nightcore">Nightcore</string>
     <string name="feature_player_playback_mode">播放方式</string>

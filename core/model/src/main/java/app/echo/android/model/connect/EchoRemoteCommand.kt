@@ -17,6 +17,7 @@ sealed interface EchoRemoteCommand {
         val streamUrl: String,
         val positionMs: Long,
         val track: EchoRemoteTrack,
+        val audio: EchoRemoteAudioFormat? = null,
     ) : EchoRemoteCommand
     data class QueueReplaceRemote(
         val items: List<EchoRemoteStreamItem>,

@@ -8,6 +8,7 @@ data class EchoRemoteStreamItem(
     val album: String? = null,
     val artworkUrl: String? = null,
     val durationMs: Long = 0L,
+    val audio: EchoRemoteAudioFormat? = null,
 ) {
     fun toRemoteTrack(): EchoRemoteTrack = EchoRemoteTrack(
         id = id,

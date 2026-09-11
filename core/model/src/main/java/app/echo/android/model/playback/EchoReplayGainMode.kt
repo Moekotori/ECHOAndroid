@@ -34,3 +34,17 @@ const val EchoReplayGainPreampMaxDb = 6f
 
 fun normalizeReplayGainPreampDb(value: Float): Float =
     value.coerceIn(EchoReplayGainPreampMinDb, EchoReplayGainPreampMaxDb)
+
+sealed class EchoReplayGainScanState {
+    data object Idle : EchoReplayGainScanState()
+    data object Scanning : EchoReplayGainScanState()
+    data class Written(val gainDb: Float) : EchoReplayGainScanState()
+    data class Failed(val reason: EchoReplayGainScanFailure) : EchoReplayGainScanState()
+}
+
+enum class EchoReplayGainScanFailure {
+    NotLocal,
+    Unsupported,
+    DecodeFailed,
+    WriteFailed,
+}

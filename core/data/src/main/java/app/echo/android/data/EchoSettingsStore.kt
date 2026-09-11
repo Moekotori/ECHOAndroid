@@ -103,6 +103,7 @@ data class EchoAppSettings(
     val replayGainEnabled: Boolean = false,
     val replayGainPreampDb: Float = 0f,
     val librarySelectedSource: String = EchoLibrarySelectedSource.Local,
+    val watchedFolderRescanEnabled: Boolean = false,
     val subsonicServerUrl: String? = null,
     val subsonicUsername: String? = null,
     val subsonicPassword: String? = null,
@@ -237,7 +238,14 @@ class EchoSettingsStore(
                     rightGainDb = EchoChannelBalance.clampGainDb(preferences[Keys.ChannelBalanceRightGainDb] ?: 0f),
                     swapLeftRight = preferences[Keys.ChannelBalanceSwap] ?: false,
                     monoMode = EchoChannelBalanceMonoMode.fromId(preferences[Keys.ChannelBalanceMono]),
-                ),
+                    constantPower = preferences[Keys.ChannelBalanceConstantPower] ?: true,
+                    invertLeft = preferences[Keys.ChannelBalanceInvertLeft] ?: false,
+                    invertRight = preferences[Keys.ChannelBalanceInvertRight] ?: false,
+                    leftBandGainsDb = parseChannelBalanceBands(preferences[Keys.ChannelBalanceLeftBands]),
+                    rightBandGainsDb = parseChannelBalanceBands(preferences[Keys.ChannelBalanceRightBands]),
+                    leftDelayMs = EchoChannelBalance.clampDelayMs(preferences[Keys.ChannelBalanceLeftDelayMs] ?: 0f),
+                    rightDelayMs = EchoChannelBalance.clampDelayMs(preferences[Keys.ChannelBalanceRightDelayMs] ?: 0f),
+                ).normalized,
                 customBackgroundMode = preferences[Keys.CustomBackgroundMode] ?: EchoBackgroundMode.Default,
                 customBackgroundUri = preferences[Keys.CustomBackgroundUri],
                 customBackgroundBlur = (preferences[Keys.CustomBackgroundBlur] ?: 24f).coerceIn(0f, 80f),
@@ -302,6 +310,7 @@ class EchoSettingsStore(
                     preferences[Keys.ReplayGainPreampDb] ?: 0f,
                 ),
                 librarySelectedSource = normalizeLibrarySelectedSource(preferences[Keys.LibrarySelectedSource]),
+                watchedFolderRescanEnabled = preferences[Keys.WatchedFolderRescanEnabled] ?: false,
                 subsonicServerUrl = preferences[Keys.SubsonicServerUrl]
                     ?.let(::normalizeSubsonicBaseUrl)
                     ?.takeIf { it.isNotBlank() },
@@ -487,6 +496,13 @@ class EchoSettingsStore(
             it[Keys.ChannelBalanceRightGainDb] = normalized.rightGainDb
             it[Keys.ChannelBalanceSwap] = normalized.swapLeftRight
             it[Keys.ChannelBalanceMono] = normalized.monoMode.id
+            it[Keys.ChannelBalanceConstantPower] = normalized.constantPower
+            it[Keys.ChannelBalanceInvertLeft] = normalized.invertLeft
+            it[Keys.ChannelBalanceInvertRight] = normalized.invertRight
+            it[Keys.ChannelBalanceLeftBands] = formatChannelBalanceBands(normalized.leftBandGainsDb)
+            it[Keys.ChannelBalanceRightBands] = formatChannelBalanceBands(normalized.rightBandGainsDb)
+            it[Keys.ChannelBalanceLeftDelayMs] = normalized.leftDelayMs
+            it[Keys.ChannelBalanceRightDelayMs] = normalized.rightDelayMs
         }
     }
 
@@ -778,6 +794,27 @@ class EchoSettingsStore(
         }
     }
 
+    suspend fun setWatchedFolderRescanEnabled(enabled: Boolean) {
+        context.echoSettings.edit { it[Keys.WatchedFolderRescanEnabled] = enabled }
+    }
+
+    suspend fun watchedFolderRescanEnabled(): Boolean =
+        context.echoSettings.data.first()[Keys.WatchedFolderRescanEnabled] ?: false
+
+    suspend fun watchedLibraryTrees(): List<WatchedLibraryTree> =
+        parseWatchedLibraryTrees(context.echoSettings.data.first()[Keys.WatchedLibraryTrees])
+
+    suspend fun setWatchedLibraryTrees(trees: List<WatchedLibraryTree>) {
+        val encoded = formatWatchedLibraryTrees(trees)
+        context.echoSettings.edit { prefs ->
+            if (encoded == "[]") {
+                prefs.remove(Keys.WatchedLibraryTrees)
+            } else {
+                prefs[Keys.WatchedLibraryTrees] = encoded
+            }
+        }
+    }
+
     suspend fun savePlaybackSession(session: EchoSavedPlaybackSession?) {
         if (session == null || session.queue.isEmpty() || session.currentIndex !in session.queue.indices) {
             context.echoSettings.edit { it.remove(Keys.LastPlaybackSession) }
@@ -986,6 +1023,77 @@ class EchoSettingsStore(
         }
     }
 
+    suspend fun applyBackupSettings(backup: app.echo.android.model.backup.EchoBackupSettings) {
+        context.echoSettings.edit { prefs ->
+            backup.themeMode?.let { prefs[Keys.ThemeMode] = it }
+            backup.colorTheme?.let { prefs[Keys.ColorTheme] = it }
+            backup.appLanguage?.let { prefs[Keys.AppLanguage] = it }
+            backup.performanceMode?.let { prefs[Keys.PerformanceMode] = it }
+            backup.dynamicColorEnabled?.let { prefs[Keys.DynamicColorEnabled] = it }
+            backup.dynamicArtworkEnabled?.let { prefs[Keys.DynamicArtworkEnabled] = it }
+            backup.compactModeEnabled?.let { prefs[Keys.CompactModeEnabled] = it }
+            backup.scheduledDarkModeEnabled?.let { prefs[Keys.ScheduledDarkModeEnabled] = it }
+            backup.scheduledDarkStartMinute?.let { prefs[Keys.ScheduledDarkStartMinute] = it }
+            backup.scheduledDarkEndMinute?.let { prefs[Keys.ScheduledDarkEndMinute] = it }
+            backup.playbackHapticsEnabled?.let { prefs[Keys.PlaybackHapticsEnabled] = it }
+            backup.pcHandoffEnabled?.let { prefs[Keys.PcHandoffEnabled] = it }
+            backup.showLyricsControlDeck?.let { prefs[Keys.ShowLyricsControlDeck] = it }
+            backup.onlineLyricsEnabled?.let { prefs[Keys.OnlineLyricsEnabled] = it }
+            backup.usbExclusiveEnabled?.let { prefs[Keys.UsbExclusiveEnabled] = it }
+            backup.usbBitPerfectEnabled?.let { prefs[Keys.UsbBitPerfectEnabled] = it }
+            backup.usbExclusiveAutoRequestOnStartup?.let { prefs[Keys.UsbExclusiveAutoRequestOnStartup] = it }
+            backup.trackAudioInfoTagsVisible?.let { prefs[Keys.TrackAudioInfoTagsVisible] = it }
+            backup.replayGainEnabled?.let { prefs[Keys.ReplayGainEnabled] = it }
+            backup.replayGainMode?.let { prefs[Keys.ReplayGainMode] = it }
+            backup.replayGainPreampDb?.let { prefs[Keys.ReplayGainPreampDb] = it }
+            backup.trackTransitions?.normalized()?.let { transitions ->
+                prefs[Keys.TrackFadeEnabled] = transitions.fadeEnabled
+                prefs[Keys.TrackFadeDurationMs] = transitions.fadeDurationMs
+                prefs[Keys.TrackSmartTransitionEnabled] = transitions.smartEnabled
+            }
+            backup.equalizerEnabled?.let { prefs[Keys.EqualizerEnabled] = it }
+            backup.equalizerPreset?.let { prefs[Keys.EqualizerPreset] = it }
+            backup.equalizerBandGains?.let { prefs[Keys.EqualizerBandGains] = formatEqualizerBandGains(it) }
+            backup.equalizerPreampDb?.let { prefs[Keys.EqualizerPreampDb] = it }
+            backup.equalizerParametric?.let { prefs[Keys.EqualizerParametric] = it }
+            backup.equalizerSourceLabel?.let { label ->
+                if (label.isBlank()) prefs.remove(Keys.EqualizerSourceLabel) else prefs[Keys.EqualizerSourceLabel] = label
+            }
+            backup.equalizerFilters?.let { prefs[Keys.EqualizerFilters] = formatEqualizerFilters(it) }
+            backup.channelBalance?.normalized?.let { state ->
+                prefs[Keys.ChannelBalanceEnabled] = state.enabled
+                prefs[Keys.ChannelBalance] = state.balance
+                prefs[Keys.ChannelBalanceLeftGainDb] = state.leftGainDb
+                prefs[Keys.ChannelBalanceRightGainDb] = state.rightGainDb
+                prefs[Keys.ChannelBalanceSwap] = state.swapLeftRight
+                prefs[Keys.ChannelBalanceMono] = state.monoMode.id
+                prefs[Keys.ChannelBalanceConstantPower] = state.constantPower
+                prefs[Keys.ChannelBalanceInvertLeft] = state.invertLeft
+                prefs[Keys.ChannelBalanceInvertRight] = state.invertRight
+                prefs[Keys.ChannelBalanceLeftBands] = formatChannelBalanceBands(state.leftBandGainsDb)
+                prefs[Keys.ChannelBalanceRightBands] = formatChannelBalanceBands(state.rightBandGainsDb)
+                prefs[Keys.ChannelBalanceLeftDelayMs] = state.leftDelayMs
+                prefs[Keys.ChannelBalanceRightDelayMs] = state.rightDelayMs
+            }
+            backup.lyricsFontFamily?.let { prefs[Keys.LyricsFontFamily] = it }
+            backup.lyricsFontScale?.let { prefs[Keys.LyricsFontScale] = it }
+            backup.lyricsColorMode?.let { prefs[Keys.LyricsColorMode] = it }
+            backup.lyricsAlignment?.let { prefs[Keys.LyricsAlignment] = it }
+            backup.lyricsLineSpacing?.let { prefs[Keys.LyricsLineSpacing] = it }
+            backup.lyricsBackgroundDim?.let { prefs[Keys.LyricsBackgroundDim] = it }
+            backup.lyricsWordHighlightEnabled?.let { prefs[Keys.LyricsWordHighlightEnabled] = it }
+            backup.lyricsWordHighlightIntensity?.let { prefs[Keys.LyricsWordHighlightIntensity] = it }
+            backup.lyricsImmersiveModeEnabled?.let { prefs[Keys.LyricsImmersiveModeEnabled] = it }
+            backup.lyricsMotionMode?.let { prefs[Keys.LyricsMotionMode] = it }
+            backup.lyricsShowTranslation?.let { prefs[Keys.LyricsShowTranslation] = it }
+            backup.lyricsShowRomanization?.let { prefs[Keys.LyricsShowRomanization] = it }
+            backup.lyricsFocusGlowEnabled?.let { prefs[Keys.LyricsFocusGlowEnabled] = it }
+            backup.uiFontFamily?.let { prefs[Keys.UiFontFamily] = it }
+            backup.uiFontScale?.let { prefs[Keys.UiFontScale] = it }
+            backup.uiDensityScale?.let { prefs[Keys.UiDensityScale] = it }
+        }
+    }
+
     private object Keys {
         val PreferOffload = booleanPreferencesKey("prefer_offload")
         val LastOutputRoute = stringPreferencesKey("last_output_route")
@@ -1017,6 +1125,13 @@ class EchoSettingsStore(
         val ChannelBalanceRightGainDb = floatPreferencesKey("channel_balance_right_gain_db")
         val ChannelBalanceSwap = booleanPreferencesKey("channel_balance_swap")
         val ChannelBalanceMono = stringPreferencesKey("channel_balance_mono")
+        val ChannelBalanceConstantPower = booleanPreferencesKey("channel_balance_constant_power")
+        val ChannelBalanceInvertLeft = booleanPreferencesKey("channel_balance_invert_left")
+        val ChannelBalanceInvertRight = booleanPreferencesKey("channel_balance_invert_right")
+        val ChannelBalanceLeftBands = stringPreferencesKey("channel_balance_left_bands")
+        val ChannelBalanceRightBands = stringPreferencesKey("channel_balance_right_bands")
+        val ChannelBalanceLeftDelayMs = floatPreferencesKey("channel_balance_left_delay_ms")
+        val ChannelBalanceRightDelayMs = floatPreferencesKey("channel_balance_right_delay_ms")
         val CustomBackgroundMode = stringPreferencesKey("custom_background_mode")
         val CustomBackgroundUri = stringPreferencesKey("custom_background_uri")
         val CustomBackgroundBlur = floatPreferencesKey("custom_background_blur")
@@ -1060,6 +1175,8 @@ class EchoSettingsStore(
         val EchoLinkAutoReconnectEnabled = booleanPreferencesKey("echo_link_auto_reconnect_enabled")
         val EchoLinkPreferLinkedLibrary = booleanPreferencesKey("echo_link_prefer_linked_library")
         val LibrarySelectedSource = stringPreferencesKey("library_selected_source")
+        val WatchedFolderRescanEnabled = booleanPreferencesKey("watched_folder_rescan_enabled")
+        val WatchedLibraryTrees = stringPreferencesKey("watched_library_trees")
         val LastPlaybackSession = stringPreferencesKey("last_playback_session")
         val SubsonicServerUrl = stringPreferencesKey("subsonic_server_url")
         val SubsonicUsername = stringPreferencesKey("subsonic_username")
@@ -1154,6 +1271,17 @@ private fun formatEqualizerBandGains(gainsDb: List<Float>): String =
         ((value.coerceIn(-18f, 18f) * 10f).toInt() / 10f).toString()
     }
 
+private fun parseChannelBalanceBands(value: String?): List<Float> {
+    if (value.isNullOrBlank()) return EchoChannelBalance.zeroBands
+    val parsed = value.split(',').mapNotNull { part -> part.toFloatOrNull() }
+    return EchoChannelBalance.resizeBands(parsed)
+}
+
+private fun formatChannelBalanceBands(gainsDb: List<Float>): String =
+    EchoChannelBalance.resizeBands(gainsDb).joinToString(",") { value ->
+        ((value * 10f).toInt() / 10f).toString()
+    }
+
 internal fun parseEqualizerFilters(value: String?): List<OpraEqBand> {
     if (value.isNullOrBlank()) return emptyList()
     return runCatching {
@@ -1173,6 +1301,56 @@ internal fun parseEqualizerFilters(value: String?): List<OpraEqBand> {
             }
     }.getOrDefault(emptyList())
 }
+
+fun EchoAppSettings.toBackupSettings(): app.echo.android.model.backup.EchoBackupSettings =
+    app.echo.android.model.backup.EchoBackupSettings(
+        themeMode = themeMode,
+        colorTheme = colorTheme,
+        appLanguage = appLanguage,
+        performanceMode = performanceMode,
+        dynamicColorEnabled = dynamicColorEnabled,
+        dynamicArtworkEnabled = dynamicArtworkEnabled,
+        compactModeEnabled = compactModeEnabled,
+        scheduledDarkModeEnabled = scheduledDarkModeEnabled,
+        scheduledDarkStartMinute = scheduledDarkStartMinute,
+        scheduledDarkEndMinute = scheduledDarkEndMinute,
+        playbackHapticsEnabled = playbackHapticsEnabled,
+        pcHandoffEnabled = pcHandoffEnabled,
+        showLyricsControlDeck = showLyricsControlDeck,
+        onlineLyricsEnabled = onlineLyricsEnabled,
+        usbExclusiveEnabled = usbExclusiveEnabled,
+        usbBitPerfectEnabled = usbBitPerfectEnabled,
+        usbExclusiveAutoRequestOnStartup = usbExclusiveAutoRequestOnStartup,
+        trackAudioInfoTagsVisible = trackAudioInfoTagsVisible,
+        replayGainEnabled = replayGainEnabled,
+        replayGainMode = replayGainMode,
+        replayGainPreampDb = replayGainPreampDb,
+        trackTransitions = trackTransitions,
+        equalizerEnabled = equalizerEnabled,
+        equalizerPreset = equalizerPreset,
+        equalizerBandGains = equalizerBandGains,
+        equalizerPreampDb = equalizerPreampDb,
+        equalizerParametric = equalizerParametric,
+        equalizerSourceLabel = equalizerSourceLabel,
+        equalizerFilters = equalizerFilters,
+        channelBalance = channelBalance,
+        lyricsFontFamily = lyricsFontFamily,
+        lyricsFontScale = lyricsFontScale,
+        lyricsColorMode = lyricsColorMode,
+        lyricsAlignment = lyricsAlignment,
+        lyricsLineSpacing = lyricsLineSpacing,
+        lyricsBackgroundDim = lyricsBackgroundDim,
+        lyricsWordHighlightEnabled = lyricsWordHighlightEnabled,
+        lyricsWordHighlightIntensity = lyricsWordHighlightIntensity,
+        lyricsImmersiveModeEnabled = lyricsImmersiveModeEnabled,
+        lyricsMotionMode = lyricsMotionMode,
+        lyricsShowTranslation = lyricsShowTranslation,
+        lyricsShowRomanization = lyricsShowRomanization,
+        lyricsFocusGlowEnabled = lyricsFocusGlowEnabled,
+        uiFontFamily = uiFontFamily,
+        uiFontScale = uiFontScale,
+        uiDensityScale = uiDensityScale,
+    )
 
 internal fun formatEqualizerFilters(filters: List<OpraEqBand>): String {
     val array = JSONArray()

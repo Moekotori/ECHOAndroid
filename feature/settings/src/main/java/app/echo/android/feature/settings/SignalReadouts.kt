@@ -43,6 +43,13 @@ internal fun commandLabel(command: String?): String =
 
 @Composable
 internal fun EchoPlaybackDiagnostics.fileFormatLabel(): String {
+    if (isDsdSource()) {
+        val parts = listOfNotNull(
+            dsdFamilyLabel() ?: codec ?: stringResource(R.string.diag_unknown_codec),
+            stringResource(R.string.diag_dsd_one_bit),
+        )
+        return parts.joinToString(" / ")
+    }
     val parts = listOfNotNull(
         codec ?: stringResource(R.string.diag_unknown_codec),
         sampleRateHz?.let(::formatSampleRate),
@@ -53,6 +60,17 @@ internal fun EchoPlaybackDiagnostics.fileFormatLabel(): String {
 
 @Composable
 internal fun EchoPlaybackDiagnostics.decodedFormatLabel(): String {
+    if (isDsdSource()) {
+        val parts = listOfNotNull(
+            decodedSampleRateHz?.let(::formatSampleRate) ?: sampleRateHz?.let(::formatSampleRate),
+            channelCount?.let(::formatChannels),
+            bitDepth?.let { depth ->
+                if (isDsdDopOutput()) "${depth}bit DoP" else "${depth}bit PCM"
+            },
+        )
+        return parts.takeIf { it.isNotEmpty() }?.joinToString(" / ")
+            ?: stringResource(R.string.diag_dsd_converted)
+    }
     val parts = listOfNotNull(
         decodedSampleRateHz?.let(::formatSampleRate) ?: sampleRateHz?.let(::formatSampleRate),
         channelCount?.let(::formatChannels),
@@ -115,6 +133,27 @@ internal fun formatChannels(channelCount: Int): String =
         8 -> "7.1"
         else -> "${channelCount}ch"
     }
+
+@Composable
+internal fun outputDeviceKindLabel(kind: String): String =
+    stringResource(
+        when (EchoOutputDeviceKind.fromId(kind)) {
+            EchoOutputDeviceKind.Speaker -> R.string.diag_output_speaker
+            EchoOutputDeviceKind.Wired -> R.string.diag_output_wired
+            EchoOutputDeviceKind.Bluetooth -> R.string.diag_output_bluetooth
+            EchoOutputDeviceKind.Usb -> R.string.diag_output_usb
+            EchoOutputDeviceKind.Other -> R.string.diag_output_other
+            EchoOutputDeviceKind.System -> R.string.diag_output_system
+        },
+    )
+
+@Composable
+internal fun EchoPlaybackDiagnostics.outputDeviceReadout(): String {
+    val kind = outputDeviceKindLabel(outputDeviceKind)
+    val name = outputDeviceName?.trim()?.takeIf { it.isNotEmpty() }
+    val codec = bluetoothCodec?.trim()?.takeIf { it.isNotEmpty() }
+    return listOfNotNull(kind, name, codec).joinToString(" · ").ifBlank { outputRoute }
+}
 
 internal fun formatBitrate(bitrate: Int): String =
     if (bitrate >= 1_000_000) {

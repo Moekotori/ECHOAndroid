@@ -50,5 +50,11 @@
     <string name="echo_link_cast_notification_title">Sending audio to the computer</string>
     <string name="echo_link_cast_notification_text">Keep this phone on the same Wi-Fi while ECHOSteam is playing.</string>
     <string name="echo_link_cast_no_lan">Could not find this phone\'s LAN address. Check Wi-Fi and try again.</string>
+    <string name="echo_link_cast_tv_unsupported_format">This TV or streamer cannot play this original file. No transcode.</string>
+    <string name="echo_link_cast_tv_dsd">DSD is not sent to TVs.</string>
+    <string name="echo_link_cast_tv_no_control">This device has no DLNA play control.</string>
+    <string name="echo_link_cast_tv_failed">The TV or streamer rejected the stream.</string>
+    <string name="echo_link_cast_pc_library_not_tv">PC library tracks stay on ECHOSteam. Play a local file to send to a TV.</string>
+    <string name="echo_link_cast_chromecast_unsupported">Chromecast is not supported yet.</string>
     <string name="echo_link_cast_notification_stop">Stop</string>
 </resources>

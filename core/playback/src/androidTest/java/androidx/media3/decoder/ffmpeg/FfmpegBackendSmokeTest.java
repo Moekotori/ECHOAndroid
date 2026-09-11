@@ -19,7 +19,8 @@ public class FfmpegBackendSmokeTest {
   public void bundledDecoderProducesKnownSamplesAndCanFlush() throws Exception {
     assertTrue("Packaged FFmpeg JNI must load", FfmpegLibrary.isAvailable());
     for (String mime : new String[] {MimeTypes.AUDIO_FLAC, MimeTypes.AUDIO_ALAC,
-        MimeTypes.AUDIO_AAC, MimeTypes.AUDIO_MPEG, MimeTypes.AUDIO_OPUS}) {
+        MimeTypes.AUDIO_AAC, MimeTypes.AUDIO_MPEG, MimeTypes.AUDIO_OPUS,
+        "audio/x-dsd-msbf-planar", "audio/x-dsd-msbf"}) {
       assertTrue("Missing decoder: " + mime, FfmpegLibrary.supportsFormat(mime));
     }
     Format format = new Format.Builder().setSampleMimeType(MimeTypes.AUDIO_MLAW)

@@ -108,6 +108,11 @@ class EchoLinkCastPolicyTest {
         assertEquals("audio/flac", EchoLinkCastPolicy.mimeTypeForUri("file:///a/b.flac"))
         assertEquals("audio/mpeg", EchoLinkCastPolicy.mimeTypeForUri("content://media/1.mp3"))
         assertEquals("audio/ogg", EchoLinkCastPolicy.mimeTypeForUri("ignored", "audio/ogg"))
+        assertEquals("audio/x-dsf", EchoLinkCastPolicy.mimeTypeForUri("file:///a.dsf"))
+        assertEquals("audio/x-wavpack", EchoLinkCastPolicy.mimeTypeForUri("file:///a.wv"))
+        assertEquals("image/png", EchoLinkCastPolicy.imageMimeType("content://media/1.png"))
+        assertTrue(EchoLinkCastPolicy.isDsd("dsd"))
+        assertFalse(EchoLinkCastPolicy.isDsd("flac"))
     }
 
     @Test

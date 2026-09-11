@@ -1,5 +1,6 @@
 package app.echo.android.feature.player
 
+import app.echo.android.model.playback.EchoPlaybackDiagnostics
 import app.echo.android.model.playback.EchoReplayGainPreampMaxDb
 import app.echo.android.model.playback.EchoReplayGainPreampMinDb
 import app.echo.android.model.playback.EchoSleepTimerMode
@@ -9,6 +10,50 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PlaybackSettingsLogicTest {
+    @Test
+    fun dsdChipsShowFamilyAndConvertedPcm() {
+        val chips = playbackFormatChips(
+            diagnostics = EchoPlaybackDiagnostics(
+                codec = "DSD",
+                sampleRateHz = 2_822_400,
+                decodedSampleRateHz = 88_200,
+                bitDepth = 16,
+                channelCount = 2,
+            ),
+            pcmRateLabel = { hz -> if (hz == 88_200) "88.2kHz" else "${hz}Hz" },
+        )
+        assertEquals(listOf("DSD64", "88.2kHz PCM", "2CH"), chips)
+    }
+
+    @Test
+    fun dsdChipsShowDopWhenDecodedRateMatchesDoP() {
+        val chips = playbackFormatChips(
+            diagnostics = EchoPlaybackDiagnostics(
+                codec = "DSD",
+                sampleRateHz = 2_822_400,
+                decodedSampleRateHz = 176_400,
+                bitDepth = 24,
+                channelCount = 2,
+            ),
+            pcmRateLabel = { hz -> if (hz == 176_400) "176.4kHz" else "${hz}Hz" },
+        )
+        assertEquals(listOf("DSD64", "176.4kHz DoP", "2CH"), chips)
+    }
+
+    @Test
+    fun flacChipsKeepSourceRateAndBitDepth() {
+        val chips = playbackFormatChips(
+            diagnostics = EchoPlaybackDiagnostics(
+                codec = "FLAC",
+                sampleRateHz = 96_000,
+                bitDepth = 24,
+                channelCount = 2,
+            ),
+            pcmRateLabel = { hz -> "${hz / 1000}kHz" },
+        )
+        assertEquals(listOf("FLAC", "96kHz", "24bit", "2CH"), chips)
+    }
+
     @Test
     fun nightcoreRequiresMatchingPitchAboveOne() {
         assertFalse(isNightcorePlayback(1f, 1f))

@@ -28,6 +28,8 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
     private var nextFormat: Format? = null
     private var sourceBits = 0
     private var nextSourceBits = 0
+    private var dsdDop = false
+    private var nextDsdDop = false
     private var playing = false
     private var volume = 1f
     private var ended = false
@@ -38,7 +40,10 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
     private var pendingStart = 0
     private var pendingEnd = 0
 
-    fun sourcePrecision(bits: Int) { nextSourceBits = bits }
+    fun sourcePrecision(bits: Int, dsdDop: Boolean = false) {
+        nextSourceBits = bits
+        nextDsdDop = dsdDop
+    }
 
     override fun setListener(listener: AudioSink.Listener) { this.listener = listener }
     override fun getFormatSupport(format: Format): Int =
@@ -82,6 +87,7 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
             session = opened
             format = wanted
             sourceBits = nextSourceBits
+            dsdDop = nextDsdDop
             firstPts = C.TIME_UNSET
             submittedFrames = 0
             ended = false
@@ -130,7 +136,8 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
         submittedFrames += result.bytesWritten / frameBytes
         if (result.bytesWritten > 0 && EchoPlaybackProcessRuntime.bitPerfectStatus.state != EchoBitPerfectState.Direct) {
             EchoPlaybackProcessRuntime.setUsbExclusiveSinkStatus(EchoUsbExclusiveSinkStatus(
-                true, "isochronous", format!!.sampleRate, current.bitResolution, "Strict integer PCM",
+                true, "isochronous", format!!.sampleRate, current.bitResolution,
+                if (dsdDop) "Strict DSD DoP" else "Strict integer PCM",
             ))
             EchoPlaybackProcessRuntime.bitPerfectStatus = EchoBitPerfectSnapshot(
                 EchoBitPerfectState.Direct, sourceBits, pcmBytes(format!!.pcmEncoding) * 8,

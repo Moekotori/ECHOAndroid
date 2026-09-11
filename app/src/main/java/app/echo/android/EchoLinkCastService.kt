@@ -66,8 +66,10 @@ class EchoLinkCastService : Service() {
     }
 
     private fun launchIntent(): PendingIntent {
-        val launch = packageManager.getLaunchIntentForPackage(packageName)
-            ?: Intent(this, MainActivity::class.java)
+        val launch = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(ExtraOpenCast, true)
+        }
         return PendingIntent.getActivity(
             this,
             0,
@@ -114,6 +116,7 @@ class EchoLinkCastService : Service() {
         private const val ChannelId = "echo_link_cast"
         private const val NotificationId = 0xEC01
         private const val ActionStop = "app.echo.android.action.STOP_ECHO_LINK_CAST"
+        const val ExtraOpenCast = "app.echo.android.extra.OPEN_CAST"
 
         fun start(context: Context) {
             val app = context.applicationContext

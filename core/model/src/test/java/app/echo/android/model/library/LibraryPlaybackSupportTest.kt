@@ -13,10 +13,19 @@ class LibraryPlaybackSupportTest {
     }
 
     @Test
-    fun dsdMimeAndExtensionsAreNotPlayable() {
-        assertFalse(LibraryPlaybackSupport.isPlayableOnPhone("audio/dsf", null))
-        assertFalse(LibraryPlaybackSupport.isPlayableOnPhone("audio/dff", "track.dff"))
-        assertFalse(LibraryPlaybackSupport.isPlayableOnPhone("audio/x-dsd", null))
-        assertFalse(LibraryPlaybackSupport.isPlayableOnPhone(null, "Music/album/song.dsf"))
+    fun dsdMimeAndExtensionsArePlayable() {
+        assertTrue(LibraryPlaybackSupport.isPlayableOnPhone("audio/dsf", null))
+        assertTrue(LibraryPlaybackSupport.isPlayableOnPhone("audio/dff", "track.dff"))
+        assertTrue(LibraryPlaybackSupport.isPlayableOnPhone("audio/x-dsd", null))
+        assertTrue(LibraryPlaybackSupport.isPlayableOnPhone(null, "Music/album/song.dsf"))
+    }
+
+    @Test
+    fun dsdDetectionUsesMimeAndExtension() {
+        assertTrue(LibraryPlaybackSupport.isDsd("audio/dsf", null))
+        assertTrue(LibraryPlaybackSupport.isDsd("audio/dff", "track.dff"))
+        assertTrue(LibraryPlaybackSupport.isDsd(null, "Music/album/song.dsf"))
+        assertFalse(LibraryPlaybackSupport.isDsd("audio/flac", "song.flac"))
+        assertFalse(LibraryPlaybackSupport.isDsd(null, null))
     }
 }

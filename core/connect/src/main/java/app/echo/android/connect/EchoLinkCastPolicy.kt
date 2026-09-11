@@ -15,6 +15,10 @@ data class EchoLinkCastSourceTrack(
     val durationMs: Long = 0L,
     val mimeType: String? = null,
     val sourceId: String? = null,
+    val sampleRateHz: Int? = null,
+    val bitDepth: Int? = null,
+    val channelCount: Int? = null,
+    val codec: String? = null,
 )
 
 sealed interface EchoLinkCastPlan {
@@ -41,10 +45,14 @@ enum class EchoLinkCastBlockReason {
 object EchoLinkCastPolicy {
     const val MaxQueueSize = 50
     const val PathPrefix = "/echo-link/cast/"
+    const val ArtworkPathPrefix = "/echo-link/cast-art/"
     const val MaxConnections = 4
     const val TokenLength = 32
     const val IdleTimeoutMs = 20L * 60L * 1000L
-    const val CopyBufferBytes = 64 * 1024
+    const val CopyBufferBytes = 128 * 1024
+    const val SendBufferBytes = 256 * 1024
+    const val HeaderSniffBytes = 256
+    const val QualityOriginal = "original"
 
     fun kind(id: String, uri: String, sourceId: String?): EchoLinkCastKind {
         if (EchoLinkPlaybackUri.trackId(id, uri) != null) return EchoLinkCastKind.PcLibrary
@@ -124,6 +132,28 @@ object EchoLinkCastPolicy {
     fun streamUrl(host: String, port: Int, token: String): String =
         advertisedBaseUrl(host, port) + PathPrefix + token
 
+    fun artworkUrl(host: String, port: Int, token: String): String =
+        advertisedBaseUrl(host, port) + ArtworkPathPrefix + token
+
+    fun imageMimeType(uri: String): String {
+        val ext = uri.substringBefore('?').substringAfterLast('.', "").lowercase()
+        return when (ext) {
+            "png" -> "image/png"
+            "webp" -> "image/webp"
+            "gif" -> "image/gif"
+            else -> "image/jpeg"
+        }
+    }
+
+    fun trackCount(plan: EchoLinkCastPlan): Int = when (plan) {
+        is EchoLinkCastPlan.HandoffPcLibrary -> plan.tracks.size
+        is EchoLinkCastPlan.LocalHttp -> plan.tracks.size
+        is EchoLinkCastPlan.Blocked -> 0
+    }
+
+    fun isDsd(codec: String?): Boolean =
+        codec?.equals("dsd", ignoreCase = true) == true
+
     fun mimeTypeForUri(uri: String, explicit: String? = null): String {
         explicit?.trim()?.takeIf { it.isNotEmpty() && it != "application/octet-stream" }?.let { return it }
         val path = uri.substringBefore('?').substringAfterLast('/')
@@ -137,6 +167,12 @@ object EchoLinkCastPolicy {
             "opus" -> "audio/ogg"
             "aiff", "aif" -> "audio/aiff"
             "alac" -> "audio/mp4"
+            "dsf" -> "audio/x-dsf"
+            "dff", "dsd" -> "audio/x-dff"
+            "wv" -> "audio/x-wavpack"
+            "ape" -> "audio/x-ape"
+            "tak" -> "audio/x-tak"
+            "pcm" -> "audio/pcm"
             else -> "application/octet-stream"
         }
     }

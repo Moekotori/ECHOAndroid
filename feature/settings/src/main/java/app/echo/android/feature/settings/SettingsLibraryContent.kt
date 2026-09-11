@@ -6,7 +6,9 @@ import androidx.compose.ui.res.stringResource
 @Composable
 internal fun SettingsLibraryContent(
     trackAudioInfoTagsVisible: Boolean,
+    watchedFolderRescanEnabled: Boolean,
     onTrackAudioInfoTagsVisibleChange: (Boolean) -> Unit,
+    onWatchedFolderRescanEnabledChange: (Boolean) -> Unit,
     onOpenLibrary: () -> Unit,
 ) {
     SettingsSectionCard(
@@ -17,6 +19,12 @@ internal fun SettingsLibraryContent(
             detail = stringResource(R.string.settings_audio_tags_detail),
             checked = trackAudioInfoTagsVisible,
             onCheckedChange = onTrackAudioInfoTagsVisibleChange,
+        )
+        SettingsSwitchRow(
+            title = stringResource(R.string.settings_watched_folder_rescan),
+            detail = stringResource(R.string.settings_watched_folder_rescan_detail),
+            checked = watchedFolderRescanEnabled,
+            onCheckedChange = onWatchedFolderRescanEnabledChange,
         )
         SettingsActionRow(
             title = stringResource(R.string.settings_local_music),

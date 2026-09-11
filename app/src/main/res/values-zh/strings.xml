@@ -50,5 +50,11 @@
     <string name="echo_link_cast_notification_title">正在向电脑提供音频</string>
     <string name="echo_link_cast_notification_text">投送期间请保持手机与电脑在同一 Wi-Fi。</string>
     <string name="echo_link_cast_no_lan">找不到手机的局域网地址，请检查 Wi-Fi 后重试。</string>
+    <string name="echo_link_cast_tv_unsupported_format">这台电视或数播不能直接播放该原文件，本轮不转码。</string>
+    <string name="echo_link_cast_tv_dsd">DSD 不会投送到电视。</string>
+    <string name="echo_link_cast_tv_no_control">这台设备没有 DLNA 播放控制。</string>
+    <string name="echo_link_cast_tv_failed">电视或数播拒绝了这次串流。</string>
+    <string name="echo_link_cast_pc_library_not_tv">PC 曲库仍只投到 ECHOSteam。投电视请先播本机文件。</string>
+    <string name="echo_link_cast_chromecast_unsupported">暂不支持 Chromecast。</string>
     <string name="echo_link_cast_notification_stop">停止</string>
 </resources>

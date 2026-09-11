@@ -72,6 +72,7 @@ import app.echo.android.playback.toPlaybackMetadataState
 import app.echo.android.playback.playbackSessionPersistSignature
 import app.echo.android.playback.toPlaybackPositionState
 import app.echo.android.playback.toPlaybackQueueState
+import app.echo.android.playback.withOutputRoute
 import app.echo.android.playback.withUsbAudioStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -133,6 +134,7 @@ internal class PlaybackController(
     val channelBalanceState: StateFlow<EchoChannelBalanceState> = channelBalanceController.state
 
     private val usbAudioMonitor = EchoPlaybackProcessRuntime.usbAudioMonitor(application)
+    private val outputRouteMonitor = EchoPlaybackProcessRuntime.outputRouteMonitor(application)
     private val enginePolicy = EchoPlaybackProcessRuntime.enginePolicy(application)
     private val usbExclusiveDriverTester = EchoUsbExclusiveDriverTester(application)
     private var controller: MediaController? = null
@@ -272,6 +274,10 @@ internal class PlaybackController(
         channelBalanceController.reset()
     }
 
+    fun invalidateReplayGain(trackId: String) {
+        enginePolicy.invalidateReplayGain(trackId)
+    }
+
     fun applyOpraPreset(preset: OpraHeadphoneCorrectionPreset): List<Float> =
         equalizerController.applyOpraPreset(preset)
 
@@ -285,7 +291,6 @@ internal class PlaybackController(
     }
 
     fun play(track: EchoTrack) {
-        if (refuseIfUnplayable(track)) return
         resetStickyPlaybackError()
         enginePolicy.replaceQueueLookups(listOf(track))
         usbAudioMonitor.prepareForTrack(track.sampleRateHz)
@@ -357,7 +362,6 @@ internal class PlaybackController(
     ) {
         if (queue.isEmpty()) return
         val safeStartIndex = startIndex.coerceIn(0, queue.lastIndex)
-        if (refuseIfUnplayable(queue[safeStartIndex])) return
         resetStickyPlaybackError()
         val mediaItems = ArrayList<MediaItem>(queue.size)
         queue.forEach { track ->
@@ -562,27 +566,6 @@ internal class PlaybackController(
         EchoPlaybackProcessRuntime.setReplayGainMode(mode)
         activeReplayGainTrackGainDb = enginePolicy.activeReplayGainTrackGainDb
         updatePlaybackStatusOptions()
-    }
-
-    private fun refuseIfUnplayable(track: EchoTrack): Boolean {
-        if (app.echo.android.model.library.LibraryPlaybackSupport.isPlayableOnPhone(track.mimeType, track.uri)) {
-            return false
-        }
-        val error = EchoPlaybackError(
-            kind = EchoAudioErrorKind.UnsupportedFormat,
-            message = "DSD cannot be decoded on this phone.",
-            recoverable = false,
-        )
-        EchoErrorLog.record(EchoErrorSource.Playback, error.message)
-        updateState(_playbackDiagnostics, _playbackDiagnostics.value.withPlaybackError(error))
-        updateState(
-            _playbackStatus,
-            _playbackStatus.value.copy(
-                state = EchoPlaybackState.Error,
-                diagnostics = _playbackDiagnostics.value.diagnostics,
-            ).withPlaybackOptions(),
-        )
-        return true
     }
 
     fun adjustReplayGainPreamp(deltaDb: Float) {
@@ -813,6 +796,11 @@ internal class PlaybackController(
                     updateUsbDiagnostics(usbAudioMonitor.status.value)
                 }
             }
+            launch {
+                outputRouteMonitor.route.collect {
+                    updateUsbDiagnostics(usbAudioMonitor.status.value)
+                }
+            }
             var previousPermissionGranted = usbAudioMonitor.status.value.hostPermissionGranted
             var previousConnected = usbAudioMonitor.status.value.connected
             usbAudioMonitor.status.collect { status ->
@@ -867,6 +855,7 @@ internal class PlaybackController(
         val diagnostics = player.toPlaybackDiagnosticsState(
             usbAudioStatus = usbAudioMonitor.status.value,
             sourceSampleRateHz = sourceSampleRateHz,
+            outputRoute = outputRouteMonitor.route.value,
         ).withPlaybackError(displayedError).let { state ->
             if (displayedError != null && stickyErrorAutoSkipped && activePlaybackError == null) {
                 state.copy(
@@ -920,9 +909,15 @@ internal class PlaybackController(
     }
 
     private fun updateUsbDiagnostics(status: EchoUsbAudioStatus) {
-        val diagnostics = _playbackDiagnostics.value.diagnostics.withUsbAudioStatus(status)
+        val diagnostics = _playbackDiagnostics.value.diagnostics
+            .withUsbAudioStatus(status)
+            .withOutputRoute(outputRouteMonitor.route.value)
         updateState(_playbackDiagnostics, PlaybackDiagnosticsState(diagnostics, diagnostics.lastError))
         updateState(_playbackStatus, _playbackStatus.value.copy(diagnostics = diagnostics).withPlaybackOptions())
+    }
+
+    fun refreshOutputRoute() {
+        outputRouteMonitor.refreshBluetoothPermission()
     }
 
     private fun withController(

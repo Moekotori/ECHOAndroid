@@ -41,6 +41,8 @@ fun DiagnosticsScreen(
     onOpraRefresh: () -> Unit,
     onOpraPresetSelected: (String) -> Unit,
     onOpraApplySelected: () -> Unit,
+    bluetoothCodecNeedsPermission: Boolean = false,
+    onRequestBluetoothCodecPermission: () -> Unit = {},
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var soundPanel by rememberSaveable { mutableIntStateOf(0) }
@@ -139,7 +141,11 @@ fun DiagnosticsScreen(
                             }
                         }
                         else -> {
-                            HealthPanel(status)
+                            HealthPanel(
+                                status = status,
+                                bluetoothCodecNeedsPermission = bluetoothCodecNeedsPermission,
+                                onRequestBluetoothCodecPermission = onRequestBluetoothCodecPermission,
+                            )
                             UsbOutputPanel(status)
                             CurrentStreamPanel(status, positionFlow)
                         }

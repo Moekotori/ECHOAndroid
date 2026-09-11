@@ -1,5 +1,6 @@
 package app.echo.android.connect
 
+import app.echo.android.model.connect.EchoRemoteAudioFormat
 import app.echo.android.model.connect.EchoRemoteCommand
 import app.echo.android.model.connect.EchoRemoteStreamItem
 import app.echo.android.model.connect.EchoRemoteTrack
@@ -102,6 +103,36 @@ class EchoPairingParserTest {
         assertEquals(12_000, json.getLong("positionMs"))
         assertEquals("http://192.168.1.20:26800/echo-link/cast/abcd", json.getString("streamUrl"))
         assertEquals("phone-1", json.getJSONObject("track").getString("id"))
+        assertEquals("original", json.getString("quality"))
+    }
+
+    @Test
+    fun playRemoteStreamIncludesAudioFormat() {
+        val json = EchoRemoteCommand.PlayRemoteStream(
+            streamUrl = "http://192.168.1.20:26800/echo-link/cast/abcd",
+            positionMs = 0,
+            track = EchoRemoteTrack(
+                id = "phone-1",
+                title = "Song",
+                artist = "Artist",
+                album = null,
+                artworkUrl = null,
+                durationMs = 1_000,
+            ),
+            audio = EchoRemoteAudioFormat(
+                codec = "flac",
+                mimeType = "audio/flac",
+                sampleRateHz = 96_000,
+                bitDepth = 24,
+                channelCount = 2,
+                lossless = true,
+            ),
+        ).toJson()
+        val audio = json.getJSONObject("audio")
+        assertEquals("flac", audio.getString("codec"))
+        assertEquals(96_000, audio.getInt("sampleRateHz"))
+        assertEquals(24, audio.getInt("bitDepth"))
+        assertTrue(audio.getBoolean("lossless"))
     }
 
     @Test

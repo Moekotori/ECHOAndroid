@@ -4,6 +4,9 @@ import app.echo.android.model.playback.EchoPlaybackDiagnostics
 
 fun EchoPlaybackDiagnostics.toReadableLines(): List<String> = buildList {
     add("route=$outputRoute")
+    add("outputDeviceKind=$outputDeviceKind")
+    outputDeviceName?.let { add("outputDevice=$it") }
+    bluetoothCodec?.let { add("bluetoothCodec=$it") }
     add("offload=$offloadActive")
     add("usbExclusiveEnabled=$usbExclusiveEnabled")
     add("usbConnected=$usbConnected")

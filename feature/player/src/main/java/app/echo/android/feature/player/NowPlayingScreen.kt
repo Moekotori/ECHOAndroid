@@ -218,6 +218,8 @@ fun NowPlayingScreen(
     onPrevious: () -> Unit,
     onSeek: (Long) -> Unit,
     onOpenQueue: () -> Unit,
+    onCast: (() -> Unit)? = null,
+    castActive: Boolean = false,
     onCycleRepeatMode: () -> Unit,
     onToggleShuffle: () -> Unit,
     onSetPlaybackSpeed: (Float, Boolean) -> Unit,
@@ -227,6 +229,9 @@ fun NowPlayingScreen(
     onSetReplayGain: (Boolean, Float) -> Unit,
     onSetReplayGainMode: (app.echo.android.model.playback.EchoReplayGainMode) -> Unit = {},
     onAdjustReplayGainPreamp: (Float) -> Unit,
+    replayGainScanState: app.echo.android.model.playback.EchoReplayGainScanState =
+        app.echo.android.model.playback.EchoReplayGainScanState.Idle,
+    onScanReplayGain: () -> Unit = {},
     onSetSkipSilenceEnabled: (Boolean) -> Unit,
     onImportLyrics: () -> Unit,
     onAdjustLyricsOffset: (Long) -> Unit,
@@ -436,6 +441,8 @@ fun NowPlayingScreen(
                         onPrevious = onPrevious,
                         onSeek = onSeek,
                         onOpenQueue = onOpenQueue,
+                        onCast = onCast,
+                        castActive = castActive,
                         playbackSettingsExpanded = playbackSettingsVisible,
                         onOpenPlaybackSettings = { playbackSettingsVisible = true },
                         isCurrentTrackFavorite = isCurrentTrackFavorite,
@@ -470,6 +477,8 @@ fun NowPlayingScreen(
                         onPrevious = onPrevious,
                         onSeek = onSeek,
                         onOpenQueue = onOpenQueue,
+                        onCast = onCast,
+                        castActive = castActive,
                         positionMsState = positionMsState,
                         durationMsState = durationMsState,
                         onCloseLyrics = {},
@@ -516,6 +525,8 @@ fun NowPlayingScreen(
                         onPrevious = onPrevious,
                         onSeek = onSeek,
                         onOpenQueue = onOpenQueue,
+                        onCast = onCast,
+                        castActive = castActive,
                         playbackSettingsExpanded = playbackSettingsVisible,
                         onOpenPlaybackSettings = { playbackSettingsVisible = true },
                         isCurrentTrackFavorite = isCurrentTrackFavorite,
@@ -555,6 +566,8 @@ fun NowPlayingScreen(
                         onPrevious = onPrevious,
                         onSeek = onSeek,
                         onOpenQueue = onOpenQueue,
+                        onCast = onCast,
+                        castActive = castActive,
                         positionMsState = positionMsState,
                         durationMsState = durationMsState,
                         onCloseLyrics = {
@@ -646,6 +659,8 @@ fun NowPlayingScreen(
             onSetReplayGain = onSetReplayGain,
             onSetReplayGainMode = onSetReplayGainMode,
             onAdjustReplayGainPreamp = onAdjustReplayGainPreamp,
+            replayGainScanState = replayGainScanState,
+            onScanReplayGain = onScanReplayGain,
             onSetSkipSilenceEnabled = onSetSkipSilenceEnabled,
             lyricsOffsetMs = readyLyrics?.metadata?.get("user_offset_ms")?.toLongOrNull() ?: 0L,
             onAdjustLyricsOffset = onAdjustLyricsOffset,
@@ -668,6 +683,8 @@ private fun NowPlayingCoverPage(
     onPrevious: () -> Unit,
     onSeek: (Long) -> Unit,
     onOpenQueue: () -> Unit,
+    onCast: (() -> Unit)? = null,
+    castActive: Boolean = false,
     playbackSettingsExpanded: Boolean,
     onOpenPlaybackSettings: () -> Unit,
     isCurrentTrackFavorite: Boolean,
@@ -760,6 +777,8 @@ private fun NowPlayingCoverPage(
                     onNext = onNext,
                     onPrevious = onPrevious,
                     onOpenQueue = onOpenQueue,
+                    onCast = onCast,
+                    castActive = castActive,
                 )
             }
         }
@@ -873,6 +892,8 @@ private fun NowPlayingLyricsPage(
     onPrevious: () -> Unit,
     onSeek: (Long) -> Unit,
     onOpenQueue: () -> Unit,
+    onCast: (() -> Unit)? = null,
+    castActive: Boolean = false,
     positionMsState: State<Long>,
     durationMsState: State<Long>,
     onCloseLyrics: () -> Unit,
@@ -1013,6 +1034,8 @@ private fun NowPlayingLyricsPage(
                             onNext = onNext,
                             onPrevious = onPrevious,
                             onOpenQueue = onOpenQueue,
+                            onCast = onCast,
+                            castActive = castActive,
                         )
                     }
                 }
@@ -2632,12 +2655,11 @@ private fun playbackErrorLabel(error: EchoPlaybackError): String = when (error.k
 
 @Composable
 private fun NowPlayingFormatInfo(diagnostics: EchoPlaybackDiagnostics) {
-    val chips = buildList {
-        diagnostics.codec?.let { add(it) }
-        diagnostics.sampleRateHz?.takeIf { it > 0 }?.let { add(formatSampleRate(it)) }
-        diagnostics.bitDepth?.takeIf { it > 0 }?.let { add("${it}bit") }
-        diagnostics.channelCount?.takeIf { it > 0 }?.let { add(channelLabel(it)) }
-    }
+    val chips = playbackFormatChips(
+        diagnostics = diagnostics,
+        pcmRateLabel = ::formatSampleRate,
+        channelLabel = ::channelLabel,
+    )
     val bitrateKbps = diagnostics.bitrate?.takeIf { it > 0 }?.let { it / 1000 }
     if (chips.isEmpty() && bitrateKbps == null) return
 
@@ -2754,6 +2776,8 @@ private fun NowPlayingControlDock(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onOpenQueue: () -> Unit,
+    onCast: (() -> Unit)? = null,
+    castActive: Boolean = false,
 ) {
     val haptics = rememberEchoHapticPerformer()
     Row(
@@ -2786,8 +2810,23 @@ private fun NowPlayingControlDock(
                 touchSize = 48.dp, iconSize = 29.dp, tint = OnArt.copy(alpha = 0.90f),
             )
         }
-        PlayerControlButton(PlayerControlIcons.Queue, stringResource(L10nR.string.feature_player_queue_37fa6a), onOpenQueue,
-            touchSize = 48.dp, iconSize = 21.dp, tint = OnArt.copy(alpha = 0.55f))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (onCast != null) {
+                PlayerControlButton(
+                    PlayerControlIcons.Cast,
+                    stringResource(
+                        if (castActive) L10nR.string.feature_player_cast_active
+                        else L10nR.string.feature_player_cast,
+                    ),
+                    onClick = { haptics.tick(); onCast() },
+                    touchSize = 44.dp,
+                    iconSize = 21.dp,
+                    tint = if (castActive) MaterialTheme.colorScheme.primary else OnArt.copy(alpha = 0.55f),
+                )
+            }
+            PlayerControlButton(PlayerControlIcons.Queue, stringResource(L10nR.string.feature_player_queue_37fa6a), onOpenQueue,
+                touchSize = 48.dp, iconSize = 21.dp, tint = OnArt.copy(alpha = 0.55f))
+        }
     }
 }
 

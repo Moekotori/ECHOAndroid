@@ -148,6 +148,9 @@ object EchoPlaybackProcessRuntime {
     private var usbMonitor: EchoUsbAudioMonitor? = null
 
     @Volatile
+    private var outputRouteMonitor: EchoOutputRouteMonitor? = null
+
+    @Volatile
     private var enginePolicy: EchoPlaybackEnginePolicy? = null
 
     @Volatile
@@ -291,6 +294,14 @@ object EchoPlaybackProcessRuntime {
         synchronized(this) {
             usbMonitor ?: EchoUsbAudioMonitor(context.applicationContext).also { monitor ->
                 usbMonitor = monitor
+                monitor.start()
+            }
+        }
+
+    fun outputRouteMonitor(context: Context): EchoOutputRouteMonitor =
+        synchronized(this) {
+            outputRouteMonitor ?: EchoOutputRouteMonitor(context.applicationContext).also { monitor ->
+                outputRouteMonitor = monitor
                 monitor.start()
             }
         }

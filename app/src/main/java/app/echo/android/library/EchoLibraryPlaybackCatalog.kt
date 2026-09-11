@@ -4,10 +4,13 @@ import app.echo.android.data.EchoLibraryDatabase
 import app.echo.android.data.LibraryFavoriteEntity
 import app.echo.android.data.LibraryFavoritePolicy
 import app.echo.android.data.LibraryFavoriteSnapshot
+import app.echo.android.data.LibrarySmartPlaylistPolicy
 import app.echo.android.data.LibraryTrackEntity
 import app.echo.android.model.i18n.echoText
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
+import app.echo.android.model.library.EchoPlaylist
+import app.echo.android.model.library.LibrarySmartPlaylistKind
 import app.echo.android.model.library.LibrarySource
 import app.echo.android.model.playback.EchoLinkPlaybackUri
 import app.echo.android.playback.EchoPlaybackBrowseItem
@@ -15,6 +18,7 @@ import app.echo.android.playback.EchoPlaybackBrowseKind
 import app.echo.android.playback.EchoPlaybackCatalog
 import app.echo.android.playback.EchoPlaybackLibraryIds
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 class EchoLibraryPlaybackCatalog(
@@ -42,24 +46,7 @@ class EchoLibraryPlaybackCatalog(
                 database.trackDao().listAlbumsForBrowse(limit, offset).map { it.toBrowseItem() }
             EchoPlaybackLibraryIds.ARTISTS ->
                 database.trackDao().listArtistsForBrowse(limit, offset).map { it.toBrowseItem() }
-            EchoPlaybackLibraryIds.PLAYLISTS ->
-                database.playlistDao()
-                    .listPlaylistsForBrowse(LibrarySource.MediaStore.id, limit, offset)
-                    .map { row ->
-                        EchoPlaybackBrowseItem(
-                            mediaId = EchoPlaybackLibraryIds.playlist(row.id),
-                            title = row.name,
-                            subtitle = echoText(
-                                en = "${row.trackCount} tracks",
-                                zh = "${row.trackCount} 首",
-                                ja = "${row.trackCount} 曲",
-                            ),
-                            artworkUri = row.artworkUri,
-                            browsable = true,
-                            playable = row.trackCount > 0,
-                            kind = EchoPlaybackBrowseKind.Playlist,
-                        )
-                    }
+            EchoPlaybackLibraryIds.PLAYLISTS -> playlistBrowsePage(limit, offset)
             EchoPlaybackLibraryIds.FAVORITES ->
                 database.playlistDao().listFavoriteTracksForBrowse(limit, offset).map { it.toBrowseItem() }
             EchoPlaybackLibraryIds.TRACKS ->
@@ -79,9 +66,10 @@ class EchoLibraryPlaybackCatalog(
                 }
                 val playlistId = EchoPlaybackLibraryIds.playlistId(parentId)
                 if (playlistId != null) {
-                    return@withContext database.playlistDao()
-                        .listPlaylistTracksForBrowse(playlistId, limit, offset)
-                        .map { it.toBrowseItem() }
+                    return@withContext smartPlaylistTracksForBrowse(playlistId, limit, offset)
+                        ?: database.playlistDao()
+                            .listPlaylistTracksForBrowse(playlistId, limit, offset)
+                            .map { it.toBrowseItem() }
                 }
                 emptyList()
             }
@@ -104,6 +92,7 @@ class EchoLibraryPlaybackCatalog(
                     return@withContext database.trackDao().getArtistSummary(key)?.toBrowseItem()
                 }
                 EchoPlaybackLibraryIds.playlistId(mediaId)?.let { id ->
+                    virtualPlaylistItem(id)?.let { return@withContext it }
                     val playlist = database.playlistDao().getPlaylist(id) ?: return@withContext null
                     return@withContext EchoPlaybackBrowseItem(
                         mediaId = EchoPlaybackLibraryIds.playlist(playlist.id),
@@ -163,9 +152,10 @@ class EchoLibraryPlaybackCatalog(
                             .map { it.toBrowseItem() }
                     }
                     EchoPlaybackLibraryIds.playlistId(mediaId)?.let { id ->
-                        return@withContext database.playlistDao()
-                            .listPlaylistTracksForBrowse(id, limit, 0)
-                            .map { it.toBrowseItem() }
+                        return@withContext smartPlaylistTracksForBrowse(id, limit, 0)
+                            ?: database.playlistDao()
+                                .listPlaylistTracksForBrowse(id, limit, 0)
+                                .map { it.toBrowseItem() }
                     }
                     if (EchoPlaybackLibraryIds.isTrackMediaId(mediaId)) {
                         val track = database.trackDao().getTrackById(mediaId) ?: return@withContext emptyList()
@@ -210,6 +200,110 @@ class EchoLibraryPlaybackCatalog(
         }
         liked
     }
+
+    private suspend fun playlistBrowsePage(limit: Int, offset: Int): List<EchoPlaybackBrowseItem> {
+        val pinned = pinnedPlaylistItems()
+        val userOffset = (offset - pinned.size).coerceAtLeast(0)
+        val userLimit = when {
+            offset >= pinned.size -> limit
+            else -> (limit - (pinned.size - offset)).coerceAtLeast(0)
+        }
+        val pinnedSlice = if (offset < pinned.size) {
+            pinned.subList(offset, (offset + limit).coerceAtMost(pinned.size))
+        } else {
+            emptyList()
+        }
+        val user = if (userLimit > 0) {
+            database.playlistDao()
+                .listPlaylistsForBrowse(LibrarySource.MediaStore.id, userLimit, userOffset)
+                .map { row ->
+                    EchoPlaybackBrowseItem(
+                        mediaId = EchoPlaybackLibraryIds.playlist(row.id),
+                        title = row.name,
+                        subtitle = playlistCountSubtitle(row.trackCount),
+                        artworkUri = row.artworkUri,
+                        browsable = true,
+                        playable = row.trackCount > 0,
+                        kind = EchoPlaybackBrowseKind.Playlist,
+                    )
+                }
+        } else {
+            emptyList()
+        }
+        return pinnedSlice + user
+    }
+
+    private suspend fun pinnedPlaylistItems(): List<EchoPlaybackBrowseItem> {
+        val favoriteCount = database.playlistDao().getFavoriteTrackIds().size
+        val favoriteArt = database.playlistDao().observeFavoriteAlbums(1).first().firstOrNull()?.artworkUri
+        val liked = EchoPlaybackBrowseItem(
+            mediaId = EchoPlaybackLibraryIds.playlist(EchoPlaylist.LikedSongsId),
+            title = echoText(en = "Liked songs", zh = "喜欢的歌曲", ja = "好きな曲"),
+            subtitle = playlistCountSubtitle(favoriteCount),
+            artworkUri = favoriteArt,
+            browsable = true,
+            playable = favoriteCount > 0,
+            kind = EchoPlaybackBrowseKind.Playlist,
+        )
+        val stats = database.trackDao().observeSmartPlaylistStats().first()
+        val smart = LibrarySmartPlaylistPolicy.pinned(stats).map { playlist ->
+            EchoPlaybackBrowseItem(
+                mediaId = EchoPlaybackLibraryIds.playlist(playlist.id),
+                title = smartPlaylistTitle(playlist.smartKind),
+                subtitle = playlistCountSubtitle(playlist.trackCount),
+                artworkUri = playlist.artworkUri,
+                browsable = true,
+                playable = playlist.trackCount > 0,
+                kind = EchoPlaybackBrowseKind.Playlist,
+            )
+        }
+        return listOf(liked) + smart
+    }
+
+    private suspend fun virtualPlaylistItem(id: String): EchoPlaybackBrowseItem? {
+        if (LibraryFavoritePolicy.isLikedSongsId(id)) {
+            return pinnedPlaylistItems().firstOrNull {
+                EchoPlaybackLibraryIds.playlistId(it.mediaId) == EchoPlaylist.LikedSongsId
+            }
+        }
+        if (!LibrarySmartPlaylistPolicy.isSmartPlaylistId(id)) return null
+        return pinnedPlaylistItems().firstOrNull {
+            EchoPlaybackLibraryIds.playlistId(it.mediaId) == id
+        }
+    }
+
+    private suspend fun smartPlaylistTracksForBrowse(
+        playlistId: String,
+        limit: Int,
+        offset: Int,
+    ): List<EchoPlaybackBrowseItem>? {
+        if (LibraryFavoritePolicy.isLikedSongsId(playlistId)) {
+            return database.playlistDao().listFavoriteTracksForBrowse(limit, offset).map { it.toBrowseItem() }
+        }
+        val tracks = when (LibrarySmartPlaylistKind.fromId(playlistId)) {
+            LibrarySmartPlaylistKind.Recent ->
+                database.trackDao().listRecentlyPlayedTracksForBrowse(limit, offset)
+            LibrarySmartPlaylistKind.Frequent ->
+                database.trackDao().listFrequentlyPlayedTracksForBrowse(limit, offset)
+            LibrarySmartPlaylistKind.Never ->
+                database.trackDao().listNeverPlayedTracksForBrowse(limit, offset)
+            LibrarySmartPlaylistKind.Added ->
+                database.trackDao().listRecentlyAddedTracksForBrowse(limit, offset)
+            null -> return null
+        }
+        return tracks.map { it.toBrowseItem() }
+    }
+
+    private fun smartPlaylistTitle(kind: LibrarySmartPlaylistKind?): String = when (kind) {
+        LibrarySmartPlaylistKind.Recent -> echoText(en = "Recently played", zh = "最近在听", ja = "最近再生した曲")
+        LibrarySmartPlaylistKind.Frequent -> echoText(en = "Most played", zh = "常听", ja = "よく聴く曲")
+        LibrarySmartPlaylistKind.Never -> echoText(en = "Never played", zh = "从未播放", ja = "未再生")
+        LibrarySmartPlaylistKind.Added -> echoText(en = "Recently added", zh = "最近加入", ja = "最近追加")
+        null -> ""
+    }
+
+    private fun playlistCountSubtitle(count: Int): String =
+        echoText(en = "$count tracks", zh = "${count} 首", ja = "${count} 曲")
 
     private fun rootChildren(): List<EchoPlaybackBrowseItem> = listOf(
         categoryItem(

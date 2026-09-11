@@ -20,6 +20,7 @@ fun SettingsScreen(
     performanceMode: String,
     effectivePerformanceMode: String,
     trackAudioInfoTagsVisible: Boolean,
+    watchedFolderRescanEnabled: Boolean,
     pcHandoffEnabled: Boolean,
     showLyricsControlDeck: Boolean,
     onlineLyricsEnabled: Boolean,
@@ -65,6 +66,7 @@ fun SettingsScreen(
     onPlaybackHapticsEnabledChange: (Boolean) -> Unit,
     onPerformanceModeChange: (String) -> Unit,
     onTrackAudioInfoTagsVisibleChange: (Boolean) -> Unit,
+    onWatchedFolderRescanEnabledChange: (Boolean) -> Unit,
     onPcHandoffEnabledChange: (Boolean) -> Unit,
     onShowLyricsControlDeckChange: (Boolean) -> Unit,
     onOnlineLyricsEnabledChange: (Boolean) -> Unit,
@@ -107,6 +109,9 @@ fun SettingsScreen(
     onOpenConnect: () -> Unit,
     errorLogCount: Int = 0,
     onOpenErrorLog: () -> Unit = {},
+    backupNotice: app.echo.android.model.backup.EchoBackupNotice? = null,
+    onExportBackup: () -> Unit = {},
+    onImportBackup: () -> Unit = {},
     notificationPermissionGranted: Boolean = true,
     onRequestNotificationPermission: () -> Unit = {},
 ) {
@@ -231,13 +236,18 @@ fun SettingsScreen(
                 )
                 SettingsCategory.Library -> SettingsLibraryContent(
                     trackAudioInfoTagsVisible = trackAudioInfoTagsVisible,
+                    watchedFolderRescanEnabled = watchedFolderRescanEnabled,
                     onTrackAudioInfoTagsVisibleChange = onTrackAudioInfoTagsVisibleChange,
+                    onWatchedFolderRescanEnabledChange = onWatchedFolderRescanEnabledChange,
                     onOpenLibrary = onOpenLibrary,
                 )
                 SettingsCategory.About -> SettingsAboutContent(
                     appVersionLabel = appVersionLabel,
                     errorLogCount = errorLogCount,
                     onOpenErrorLog = onOpenErrorLog,
+                    backupNotice = backupNotice,
+                    onExportBackup = onExportBackup,
+                    onImportBackup = onImportBackup,
                 )
         }
     }

@@ -12,7 +12,7 @@ import urllib.request
 
 VERSION = "6.1.6"
 SHA256 = "d4fcb164028dd3beee5d92c0ac72e46aac6973c75ea12dc14de07bf8f407370a"
-DECODERS = "aac,mp3,ac3,eac3,truehd,dca,vorbis,opus,amrnb,amrwb,flac,alac,pcm_mulaw,pcm_alaw"
+DECODERS = "aac,mp3,ac3,eac3,truehd,dca,vorbis,opus,amrnb,amrwb,flac,alac,pcm_mulaw,pcm_alaw,dsd_lsbf,dsd_msbf,dsd_lsbf_planar,dsd_msbf_planar"
 TARGETS = {
     "armeabi-v7a": ("arm", "armv7a-linux-androideabi", ["--cpu=armv7-a", "--extra-cflags=-march=armv7-a -mfloat-abi=softfp"]),
     "arm64-v8a": ("aarch64", "aarch64-linux-android", ["--cpu=armv8-a"]),

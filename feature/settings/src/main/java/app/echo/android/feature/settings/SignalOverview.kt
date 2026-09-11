@@ -25,17 +25,45 @@ internal fun SignalOverview(
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SignalNote(stringResource(L10nR.string.diag_output_end))
-            Text(d.usbDeviceName ?: d.outputRoute, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Medium)
+            Text(
+                d.usbDeviceName ?: d.outputDeviceName ?: outputDeviceKindLabel(d.outputDeviceKind),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Medium,
+            )
             SignalNote(if (hasSource) d.signalIntegrityLabel(equalizer, channelBalance) else stringResource(L10nR.string.diag_pick_track))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            SignalMetric(stringResource(L10nR.string.diag_sample_rate), d.sampleRateHz?.let(::formatSampleRate) ?: "—", Modifier.weight(1f))
+            SignalMetric(
+                stringResource(L10nR.string.diag_sample_rate),
+                if (d.isDsdSource()) {
+                    d.decodedSampleRateHz?.let(::formatSampleRate) ?: d.dsdFamilyLabel() ?: "—"
+                } else {
+                    d.sampleRateHz?.let(::formatSampleRate) ?: "—"
+                },
+                Modifier.weight(1f),
+            )
             SignalMetric(stringResource(L10nR.string.diag_bit_depth), d.bitDepth?.let { "$it bit" } ?: "—", Modifier.weight(1f))
             SignalMetric(stringResource(L10nR.string.diag_channels), d.channelCount?.let(::formatChannels) ?: "—", Modifier.weight(1f))
         }
         SignalSection(stringResource(L10nR.string.feature_settings_signal_path_2fed34)) {
             SignalPathStep("01", stringResource(L10nR.string.diag_source_file), if (hasSource) d.fileFormatLabel() else stringResource(L10nR.string.diag_waiting_playback), status.track?.title, hasSource)
-            SignalPathStep("02", stringResource(L10nR.string.diag_decoder), d.codec ?: stringResource(L10nR.string.diag_waiting_decode), if (hasSource) d.decodedFormatLabel() else null, hasSource)
+            SignalPathStep(
+                "02",
+                stringResource(L10nR.string.diag_decoder),
+                when {
+                    !hasSource -> stringResource(L10nR.string.diag_waiting_decode)
+                    d.isDsdDopOutput() -> stringResource(L10nR.string.diag_dsd_dop)
+                    d.isDsdSource() -> stringResource(L10nR.string.diag_dsd_converted)
+                    else -> d.codec ?: stringResource(L10nR.string.diag_waiting_decode)
+                },
+                when {
+                    !hasSource -> null
+                    d.isDsdDopOutput() -> stringResource(L10nR.string.diag_dsd_dop_detail, d.decodedFormatLabel())
+                    d.isDsdSource() -> stringResource(L10nR.string.diag_dsd_converted_detail, d.decodedFormatLabel())
+                    else -> d.decodedFormatLabel()
+                },
+                hasSource,
+            )
             SignalPathStep(
                 "03",
                 stringResource(L10nR.string.diag_processing_layer),
@@ -47,11 +75,18 @@ internal fun SignalOverview(
                 d.usbExclusiveStreaming -> stringResource(L10nR.string.diag_usb_exclusive_stream, d.usbExclusiveTransport ?: "PCM")
                 d.usbBitPerfectActive -> stringResource(L10nR.string.diag_usb_bit_perfect)
                 d.usbHostPermissionPending -> stringResource(L10nR.string.diag_usb_wait_auth)
-                else -> d.outputRoute
-            }, d.usbDeviceName, hasSource, last = true)
+                else -> d.outputDeviceReadout()
+            }, d.usbDeviceName ?: d.outputDeviceName, hasSource, last = true)
         }
         SignalSection(stringResource(L10nR.string.feature_settings_output_details_f242d2)) {
-            SignalReadout(stringResource(L10nR.string.diag_decoded_output), d.decodedSampleRateHz?.let(::formatSampleRate) ?: stringResource(L10nR.string.diag_unreported))
+            SignalReadout(
+                stringResource(L10nR.string.diag_decoded_output),
+                if (d.isDsdSource()) {
+                    d.decodedFormatLabel()
+                } else {
+                    d.decodedSampleRateHz?.let(::formatSampleRate) ?: stringResource(L10nR.string.diag_unreported)
+                },
+            )
             SignalReadout(stringResource(L10nR.string.diag_bitrate), d.bitrate?.let(::formatBitrate) ?: stringResource(L10nR.string.diag_unreported))
             SignalReadout("Bit-perfect", d.bitPerfectReadout(equalizer))
             if (d.usbBitPerfectEnabled && d.bitPerfectOutputBits != null) {

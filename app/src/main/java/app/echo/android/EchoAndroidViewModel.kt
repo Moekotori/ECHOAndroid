@@ -9,6 +9,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.util.UnstableApi
 import androidx.paging.PagingData
+import app.echo.android.connect.EchoLanRendererBrowser
 import app.echo.android.connect.EchoLinkLanBrowser
 import app.echo.android.data.EchoErrorLogRepository
 import app.echo.android.data.EchoLibraryDatabase
@@ -18,7 +19,11 @@ import app.echo.android.model.error.EchoErrorRecord
 import app.echo.android.model.error.EchoErrorSource
 import app.echo.android.data.EchoAppSettings
 import app.echo.android.data.EchoLibrarySelectedSource
+import app.echo.android.data.EchoBackupCodec
 import app.echo.android.data.EchoSettingsStore
+import app.echo.android.data.toBackupSettings
+import app.echo.android.model.backup.EchoBackupDocument
+import app.echo.android.model.backup.EchoBackupException
 import app.echo.android.data.LibraryPlaybackQueuePolicy
 import app.echo.android.data.DocumentTreeTrackScanner
 import app.echo.android.data.EmbeddedTagWriteResult
@@ -51,6 +56,7 @@ import app.echo.android.model.library.EchoTrackMetadataUpdate
 import app.echo.android.model.library.LibraryPlaybackOrigin
 import app.echo.android.model.library.FolderSummary
 import app.echo.android.model.library.LibraryScanProgress
+import app.echo.android.model.library.LibrarySource
 import app.echo.android.model.library.LibraryStats
 import app.echo.android.model.library.LibraryTrackSortMode
 import app.echo.android.model.lyrics.EchoLyrics
@@ -74,8 +80,12 @@ import app.echo.android.playback.PlaybackQueueReplaceIntent
 import app.echo.android.design.EchoArtworkImageLoader
 import app.echo.android.playback.EchoPlaybackCachePolicy
 import app.echo.android.playback.EchoPlaybackProcessRuntime
+import app.echo.android.playback.EchoReplayGainScanner
+import app.echo.android.model.playback.EchoReplayGainScanFailure
+import app.echo.android.model.playback.EchoReplayGainScanState
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -100,6 +110,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     private val errorLog = EchoErrorLogRepository.create(application)
     private val settingsStore = EchoSettingsStore(application)
     private val echoLinkLanBrowser = EchoLinkLanBrowser(application)
+    private val lanRendererBrowser = EchoLanRendererBrowser(application)
     private val opraRepository = OpraHeadphoneCorrectionRepository(application)
     private val subsonicEndpointRef = EchoSubsonicEndpointRef
     val initialAppSettings: EchoAppSettings = settingsStore.startupAppSettingsSnapshot()
@@ -110,6 +121,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     private val libraryController = LibraryController(
         repository = repository,
         scope = viewModelScope,
+        settingsStore = settingsStore,
+        resolver = application.contentResolver,
     )
     private val lyricsController = LyricsController(
         repository = repository,
@@ -182,6 +195,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     val remoteScanState: StateFlow<LibraryScanProgress> = libraryController.remoteScanState
     val echoLinkDiscoveryState = echoLinkLanBrowser.state
     val echoLinkLanDevices = echoLinkLanBrowser.devices
+    val lanRendererDiscoveryState = lanRendererBrowser.state
+    val lanRenderers = lanRendererBrowser.devices
 
     val playbackStatus: StateFlow<EchoPlaybackStatus> = playbackController.playbackStatus
     val playbackMetadata: StateFlow<PlaybackMetadataState> = playbackController.playbackMetadata
@@ -191,6 +206,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     val playbackDiagnostics: StateFlow<PlaybackDiagnosticsState> = playbackController.playbackDiagnostics
     val equalizerState: StateFlow<EchoEqualizerState> = playbackController.equalizerState
     val channelBalanceState: StateFlow<EchoChannelBalanceState> = playbackController.channelBalanceState
+    private val replayGainScanner by lazy { EchoReplayGainScanner(getApplication()) }
+    private var replayGainScanJob: Job? = null
+    private val _replayGainScanState = MutableStateFlow<EchoReplayGainScanState>(EchoReplayGainScanState.Idle)
+    val replayGainScanState: StateFlow<EchoReplayGainScanState> = _replayGainScanState.asStateFlow()
     val lyricsState: StateFlow<EchoLyricsLoadState> = lyricsController.lyricsState
     val lyricsCandidates = lyricsController.candidates
     val lyricsSearching = lyricsController.searching
@@ -207,6 +226,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun removeLyricsSelection() = lyricsController.removeSelection(playbackController.currentTrackId)
 
     val appSettings: Flow<EchoAppSettings> = settingsStore.appSettings
+    private val _backupNotice = MutableStateFlow<app.echo.android.model.backup.EchoBackupNotice?>(null)
+    val backupNotice: StateFlow<app.echo.android.model.backup.EchoBackupNotice?> = _backupNotice.asStateFlow()
     val lastFmState: StateFlow<LastFmUiState> = lastFmController.uiState
     val listenBrainzState: StateFlow<ListenBrainzUiState> = listenBrainzController.uiState
     val errorLogRecords: Flow<List<EchoErrorRecord>> = errorLog.records
@@ -337,6 +358,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun refreshLibraryFolder(treeUri: Uri, options: LibraryScanOptions = LibraryScanOptions()) {
         libraryController.refreshLibraryFolder(treeUri, options)
+    }
+
+    fun onLibraryForeground() {
+        libraryController.onForeground()
     }
 
     fun cancelScan() {
@@ -680,6 +705,51 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun exportBackup(uri: Uri) {
+        viewModelScope.launch {
+            runCatching {
+                val document = EchoBackupDocument(
+                    version = EchoBackupDocument.CurrentVersion,
+                    exportedAtEpochMs = System.currentTimeMillis(),
+                    settings = settingsStore.appSettings.first().toBackupSettings(),
+                    playlists = libraryController.exportBackupPlaylists(),
+                    favorites = libraryController.exportBackupFavorites(),
+                )
+                val text = EchoBackupCodec.encode(document)
+                withContext(Dispatchers.IO) {
+                    getApplication<Application>().contentResolver.openOutputStream(uri)?.use { output ->
+                        output.write(text.toByteArray(java.nio.charset.StandardCharsets.UTF_8))
+                    } ?: error("Could not write backup")
+                }
+                _backupNotice.value = app.echo.android.model.backup.EchoBackupNotice.Exported
+            }.onFailure { error ->
+                _backupNotice.value = app.echo.android.model.backup.EchoBackupNotice.Failed(
+                    error.message ?: "Backup failed",
+                )
+            }
+        }
+    }
+
+    fun importBackup(uri: Uri) {
+        viewModelScope.launch {
+            runCatching {
+                val text = withContext(Dispatchers.IO) {
+                    getApplication<Application>().contentResolver.openInputStream(uri)
+                        ?.bufferedReader()
+                        ?.use { it.readText() }
+                } ?: error("Could not read backup")
+                val document = EchoBackupCodec.decode(text)
+                settingsStore.applyBackupSettings(document.settings)
+                val restored = libraryController.restoreBackupCatalog(document.playlists, document.favorites)
+                _backupNotice.value = app.echo.android.model.backup.EchoBackupNotice.Restored(restored)
+            }.onFailure { error ->
+                _backupNotice.value = app.echo.android.model.backup.EchoBackupNotice.Failed(
+                    (error as? EchoBackupException)?.message ?: error.message ?: "Restore failed",
+                )
+            }
+        }
+    }
+
     fun exportM3uPlaylist(playlistId: String, uri: Uri) {
         viewModelScope.launch {
             val text = libraryController.exportM3uPlaylist(playlistId) ?: return@launch
@@ -810,14 +880,47 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun startEchoLinkDiscovery() {
         echoLinkLanBrowser.start()
+        lanRendererBrowser.start()
     }
 
     fun refreshEchoLinkDiscovery() {
         echoLinkLanBrowser.restart()
+        lanRendererBrowser.restart()
     }
 
     fun stopEchoLinkDiscovery() {
         echoLinkLanBrowser.stop()
+        lanRendererBrowser.stop()
+    }
+
+    fun scanReplayGainForCurrentTrack() {
+        val track = playbackController.playbackStatus.value.track ?: return
+        replayGainScanJob?.cancel()
+        replayGainScanJob = viewModelScope.launch {
+            _replayGainScanState.value = EchoReplayGainScanState.Scanning
+            val next = withContext(Dispatchers.IO) {
+                val local = libraryController.trackById(track.id)
+                val source = LibrarySource(track.sourceId ?: local?.source?.id.orEmpty())
+                if (!source.isLocalAudioFile) {
+                    return@withContext EchoReplayGainScanState.Failed(EchoReplayGainScanFailure.NotLocal)
+                }
+                val uri = local?.uri ?: track.uri
+                val gain = replayGainScanner.scanTrackGainDb(uri, local?.mimeType)
+                    ?: return@withContext EchoReplayGainScanState.Failed(EchoReplayGainScanFailure.DecodeFailed)
+                when (libraryController.writeReplayGainTrackGain(track.id, gain)) {
+                    is EmbeddedTagWriteResult.Written -> {
+                        playbackController.invalidateReplayGain(track.id)
+                        EchoReplayGainScanState.Written(gain)
+                    }
+                    EmbeddedTagWriteResult.UnsupportedFormat ->
+                        EchoReplayGainScanState.Failed(EchoReplayGainScanFailure.Unsupported)
+                    EmbeddedTagWriteResult.NotLocal ->
+                        EchoReplayGainScanState.Failed(EchoReplayGainScanFailure.NotLocal)
+                    else -> EchoReplayGainScanState.Failed(EchoReplayGainScanFailure.WriteFailed)
+                }
+            }
+            _replayGainScanState.value = next
+        }
     }
 
     fun setReplayGain(enabled: Boolean, preampDb: Float) {
@@ -940,6 +1043,19 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun setWatchedFolderRescanEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                settingsStore.setWatchedFolderRescanEnabled(enabled)
+            }
+            if (enabled) {
+                libraryController.onForeground()
+            } else {
+                libraryController.cancelWatchedFolderRescan()
+            }
+        }
+    }
+
     fun setPcHandoffEnabled(enabled: Boolean) {
         updateSettings {
             setPcHandoffEnabled(enabled)
@@ -1023,6 +1139,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun resetChannelBalance() {
         playbackController.resetChannelBalance()
         updateSettings { setChannelBalance(EchoChannelBalanceState()) }
+    }
+
+    fun refreshOutputRoute() {
+        playbackController.refreshOutputRoute()
     }
 
     fun updateOpraQuery(query: String) = opraSearch.setQuery(query)
@@ -1594,6 +1714,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         lastFmController.clear()
         listenBrainzController.clear()
         echoLinkLanBrowser.stop()
+        lanRendererBrowser.stop()
         EchoSubsonicListen.startFromSurface()
         super.onCleared()
     }

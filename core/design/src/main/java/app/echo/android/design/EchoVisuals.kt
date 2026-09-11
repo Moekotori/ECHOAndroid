@@ -211,8 +211,8 @@ fun EchoGlassBackground(modifier: Modifier = Modifier) {
         },
     )
     val showWashes = !lightweight && !echoDefault
-    val accentWash = theme.accent.copy(alpha = if (dark) 0.06f else 0.12f)
-    val secondaryWash = theme.secondary.copy(alpha = if (dark) 0.045f else 0.09f)
+    val accentWash = theme.accent.copy(alpha = if (dark) 0.18f else 0.16f)
+    val secondaryWash = theme.secondary.copy(alpha = if (dark) 0.14f else 0.12f)
     Canvas(modifier = modifier.background(baseGradient)) {
         val h = size.height
         val w = size.width

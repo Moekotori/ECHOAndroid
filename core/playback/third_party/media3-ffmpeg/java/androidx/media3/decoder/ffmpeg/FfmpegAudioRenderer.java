@@ -35,6 +35,8 @@ import androidx.media3.exoplayer.audio.AudioSink;
 import androidx.media3.exoplayer.audio.AudioSink.SinkFormatSupport;
 import androidx.media3.exoplayer.audio.DecoderAudioRenderer;
 import androidx.media3.exoplayer.audio.DefaultAudioSink;
+import app.echo.android.playback.EchoDsdMime;
+import app.echo.android.playback.EchoDsdPcm;
 
 /** Decodes and renders audio using FFmpeg. */
 @UnstableApi
@@ -140,8 +142,12 @@ public final class FfmpegAudioRenderer extends DecoderAudioRenderer<FfmpegAudioD
    * from the decoder for the given input format and requested output encoding.
    */
   private boolean sinkSupportsFormat(Format inputFormat, @C.PcmEncoding int pcmEncoding) {
+    int sampleRate = inputFormat.sampleRate;
+    if (EchoDsdMime.isDecoderMime(inputFormat.sampleMimeType)) {
+      sampleRate = EchoDsdPcm.outputSampleRateHz(sampleRate);
+    }
     return sinkSupportsFormat(
-        Util.getPcmFormat(pcmEncoding, inputFormat.channelCount, inputFormat.sampleRate));
+        Util.getPcmFormat(pcmEncoding, inputFormat.channelCount, sampleRate));
   }
 
   private boolean shouldOutputFloat(Format inputFormat) {

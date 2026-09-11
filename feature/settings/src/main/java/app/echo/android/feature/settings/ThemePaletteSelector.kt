@@ -3,9 +3,11 @@ package app.echo.android.feature.settings
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -103,7 +105,7 @@ private fun ColorThemeSwatch(
     val tokens = remember(theme, darkPreview) { echoThemeTokens(theme, darkPreview) }
     val label = stringResource(colorThemeLabelRes(theme))
     val shape = RoundedCornerShape(14.dp)
-    Canvas(
+    Box(
         modifier = modifier
             .height(52.dp)
             .clip(shape)
@@ -112,32 +114,33 @@ private fun ColorThemeSwatch(
                 color = if (selected) scheme.primary else scheme.outlineVariant,
                 shape = shape,
             )
-            .semantics { contentDescription = label }
             .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect)
-            .padding(3.dp),
+            .semantics { contentDescription = label },
     ) {
-        val w = size.width
-        val h = size.height
-        drawRect(
-            brush = Brush.linearGradient(
-                colors = listOf(tokens.bgTop, tokens.bgMid, tokens.bgBottom),
-            ),
-        )
-        drawCircle(
-            color = tokens.accent,
-            radius = 5.dp.toPx(),
-            center = Offset(w * 0.32f, h * 0.52f),
-        )
-        drawCircle(
-            color = tokens.secondary,
-            radius = 3.5.dp.toPx(),
-            center = Offset(w * 0.62f, h * 0.52f),
-        )
-        drawCircle(
-            color = tokens.panel.copy(alpha = if (tokens.dark) 0.92f else 0.96f),
-            radius = 2.5.dp.toPx(),
-            center = Offset(w * 0.82f, h * 0.52f),
-        )
+        Canvas(Modifier.fillMaxSize().padding(3.dp)) {
+            val w = size.width
+            val h = size.height
+            drawRect(
+                brush = Brush.linearGradient(
+                    colors = listOf(tokens.bgTop, tokens.bgMid, tokens.bgBottom),
+                ),
+            )
+            drawCircle(
+                color = tokens.accent,
+                radius = 5.dp.toPx(),
+                center = Offset(w * 0.32f, h * 0.52f),
+            )
+            drawCircle(
+                color = tokens.secondary,
+                radius = 3.5.dp.toPx(),
+                center = Offset(w * 0.62f, h * 0.52f),
+            )
+            drawCircle(
+                color = tokens.panel.copy(alpha = if (tokens.dark) 0.92f else 0.96f),
+                radius = 2.5.dp.toPx(),
+                center = Offset(w * 0.82f, h * 0.52f),
+            )
+        }
     }
 }
 

@@ -86,6 +86,15 @@ internal object PlayerControlIcons {
             moveTo(14f, 14.5f); lineTo(14f, 19.5f)
         }
     }
+    val Cast = vector("PlayerCast") {
+        path(stroke = SolidColor(Color.Black), strokeLineWidth = 1.8f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
+            moveTo(4f, 7.5f); lineTo(4f, 6.5f); quadTo(4f, 5f, 5.5f, 5f); lineTo(18.5f, 5f)
+            quadTo(20f, 5f, 20f, 6.5f); lineTo(20f, 17.5f); quadTo(20f, 19f, 18.5f, 19f); lineTo(13f, 19f)
+            moveTo(4f, 19f); lineTo(5.2f, 19f)
+            moveTo(4f, 16.2f); quadTo(6.6f, 16.2f, 6.6f, 19f)
+            moveTo(4f, 13.5f); quadTo(9.2f, 13.5f, 9.2f, 19f)
+        }
+    }
     val Queue = vector("PlayerQueue") {
         path(stroke = SolidColor(Color.Black), strokeLineWidth = 1.8f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
             moveTo(4f, 6f); lineTo(20f, 6f)

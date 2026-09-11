@@ -161,6 +161,10 @@ class MainActivity : ComponentActivity() {
                 intent.action = Intent.ACTION_MAIN
             }
         }
+        if (intent.getBooleanExtra(EchoLinkCastService.ExtraOpenCast, false)) {
+            intent.removeExtra(EchoLinkCastService.ExtraOpenCast)
+            EchoLaunchActions.requestOpenCast()
+        }
     }
 
     private data class DisplayModePreference(

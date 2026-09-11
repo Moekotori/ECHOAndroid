@@ -25,10 +25,26 @@ internal fun CurrentStreamPanel(status: EchoPlaybackStatus, positionFlow: StateF
 }
 
 @Composable
-internal fun HealthPanel(status: EchoPlaybackStatus) {
+internal fun HealthPanel(
+    status: EchoPlaybackStatus,
+    bluetoothCodecNeedsPermission: Boolean = false,
+    onRequestBluetoothCodecPermission: () -> Unit = {},
+) {
     val d = status.diagnostics
     SignalSection(stringResource(R.string.diag_health), stringResource(R.string.diag_no_error).takeIf { d.lastError == null }) {
-        SignalReadout(stringResource(R.string.diag_output_route), d.outputRoute)
+        SignalReadout(stringResource(R.string.diag_output_route), d.outputDeviceReadout())
+        if (EchoOutputDeviceKind.fromId(d.outputDeviceKind) == EchoOutputDeviceKind.Bluetooth) {
+            SignalReadout(
+                stringResource(R.string.diag_bluetooth_codec),
+                d.bluetoothCodec?.trim()?.takeIf { it.isNotEmpty() }
+                    ?: stringResource(R.string.diag_bluetooth_codec_unknown),
+            )
+            if (bluetoothCodecNeedsPermission && d.bluetoothCodec.isNullOrBlank()) {
+                TextButton(onClick = onRequestBluetoothCodecPermission) {
+                    Text(stringResource(R.string.diag_bluetooth_codec_permission))
+                }
+            }
+        }
         SignalReadout(stringResource(R.string.diag_buffer_remaining), "${d.bufferedMs / 1000}s")
         SignalReadout(stringResource(R.string.diag_decode_error), d.lastError?.message ?: stringResource(R.string.diag_none))
         SignalReadout(stringResource(R.string.diag_usb_fallback), d.usbLastRequestError?.message ?: stringResource(R.string.diag_none))

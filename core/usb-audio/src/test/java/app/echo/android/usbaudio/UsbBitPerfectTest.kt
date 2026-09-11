@@ -50,4 +50,26 @@ class UsbBitPerfectTest {
         assertNull(choose(format.copy(sampleRates = listOf(48000))))
         assertEquals(format.copy(bitResolution = 32), choose(format.copy(bitResolution = 32)))
     }
+
+    @Test
+    fun dsd64DopSelects176400Hz24BitPcm() {
+        val format = UsbAudioStreamingFormat(
+            1, 1, UsbAudioClassVersion.Uac2, formatType = 1,
+            pcmIntegerSupported = true, channelCount = 2, subslotSize = 4, bitResolution = 24,
+            sampleRates = listOf(44_100, 48_000, 176_400),
+            endpointDirection = UsbEndpointDirection.Out,
+            endpointTransferType = UsbEndpointTransferType.Isochronous,
+        )
+        val chosen = UsbPcmFormatSelector.chooseBitPerfectFormat(
+            UsbAudioDescriptorInfo(streamingFormats = listOf(format)),
+            UsbPcmFormatSpec(176_400, 2, 24),
+        )
+        assertEquals(format, chosen)
+        assertNull(
+            UsbPcmFormatSelector.chooseBitPerfectFormat(
+                UsbAudioDescriptorInfo(streamingFormats = listOf(format.copy(sampleRates = listOf(44_100, 48_000)))),
+                UsbPcmFormatSpec(176_400, 2, 24),
+            ),
+        )
+    }
 }

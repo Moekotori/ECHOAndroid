@@ -73,6 +73,8 @@
     <string name="feature_player_playback_was_interrupted_by_the_system_70c8d1" formatted="false">"Playback was interrupted by the system"</string>
     <string name="feature_player_previous_af0264" formatted="false">"Previous"</string>
     <string name="feature_player_queue_37fa6a" formatted="false">"Queue"</string>
+    <string name="feature_player_cast">Cast</string>
+    <string name="feature_player_cast_active">Casting</string>
     <string name="feature_player_queue_84794b" formatted="false">"Queue"</string>
     <string name="feature_player_queue_is_empty_1b4178" formatted="false">"Queue is empty"</string>
     <string name="feature_player_reading_local_lyrics_807f08" formatted="false">"Reading local lyrics…"</string>
@@ -124,6 +126,13 @@
     <string name="feature_player_word_highlight_off_b0e40a" formatted="false">"Word highlight off"</string>
     <string name="feature_player_replay_gain_unread">Unread</string>
     <string name="feature_player_replay_gain_none">No tag</string>
+    <string name="feature_player_replay_gain_scan">Scan and write track gain</string>
+    <string name="feature_player_replay_gain_scanning">Scanning…</string>
+    <string name="feature_player_replay_gain_scanned">Wrote %1$s</string>
+    <string name="feature_player_replay_gain_scan_not_local">Only local MP3/FLAC files can be written</string>
+    <string name="feature_player_replay_gain_scan_unsupported">This format cannot store ReplayGain tags</string>
+    <string name="feature_player_replay_gain_scan_decode">Could not measure loudness</string>
+    <string name="feature_player_replay_gain_scan_write">Could not write tags</string>
     <string name="feature_player_lyrics_offset">Lyrics offset</string>
     <string name="feature_player_nightcore">Nightcore</string>
     <string name="feature_player_playback_mode">Play mode</string>

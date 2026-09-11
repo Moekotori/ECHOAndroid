@@ -174,6 +174,17 @@
     <string name="echo_link_cast_sending">PC に送信中…</string>
     <string name="echo_link_cast_active">%1$s で再生中。同じ Wi-Fi に接続したままにしてください。</string>
     <string name="echo_link_cast_stop">キャストを停止</string>
+    <string name="echo_link_cast_original">原ファイルをそのまま送信 · 変換なし</string>
+    <string name="echo_link_cast_send_to">%1$s にキャスト</string>
+    <string name="echo_link_cast_queue_count">%1$d 曲を送信します</string>
+    <string name="echo_link_cast_dsd_warning">DSD は原ファイルのまま送ります。PC では再生できない場合があります。</string>
+    <string name="echo_link_cast_tvs">テレビとスピーカー</string>
+    <string name="echo_link_cast_tvs_note">DLNA テレビとストリーマーには原ファイルを送ります。Chromecast は一覧のみです。</string>
+    <string name="echo_link_cast_tvs_searching">テレビとスピーカーを検索中…</string>
+    <string name="echo_link_cast_tvs_empty">この Wi-Fi ではテレビやスピーカーが見つかりません。</string>
+    <string name="echo_link_cast_tv_unavailable">未対応</string>
+    <string name="echo_link_cast_tv_kind_dlna">DLNA</string>
+    <string name="echo_link_cast_tv_kind_cast">Cast</string>
     <string name="echo_link_cast_devices">近くの PC</string>
     <string name="echo_link_cast_send">キャスト</string>
     <string name="echo_link_cast_pair_first">先にペアリング</string>

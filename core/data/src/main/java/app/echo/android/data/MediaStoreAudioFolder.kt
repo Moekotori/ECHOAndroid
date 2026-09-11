@@ -7,6 +7,7 @@ data class MediaStoreAudioFolder(
     val displayName: String,
     val relativePathPrefix: String,
     val treeUri: Uri? = null,
+    val documentId: String? = null,
 ) {
     companion object {
         fun fromTreeUri(uri: Uri): MediaStoreAudioFolder? {
@@ -19,6 +20,7 @@ data class MediaStoreAudioFolder(
                 displayName = displayName,
                 relativePathPrefix = relativePath,
                 treeUri = if (LibraryScanPolicy.usesDocumentTreeScan(rawVolume)) uri else null,
+                documentId = documentId,
             )
         }
     }

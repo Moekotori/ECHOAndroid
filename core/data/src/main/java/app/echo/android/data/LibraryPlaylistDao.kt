@@ -37,6 +37,9 @@ interface LibraryPlaylistDao {
     @Query("SELECT id FROM library_playlists WHERE source = :source")
     suspend fun getPlaylistIdsFromSource(source: String): List<String>
 
+    @Query("SELECT * FROM library_playlists WHERE source = :source ORDER BY name COLLATE NOCASE ASC")
+    suspend fun getPlaylistsBySource(source: String): List<LibraryPlaylistEntity>
+
     @Query(
         """
         SELECT library_tracks.* FROM library_tracks

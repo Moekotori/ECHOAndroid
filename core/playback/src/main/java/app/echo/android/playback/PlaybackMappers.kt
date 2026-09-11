@@ -7,6 +7,8 @@ import androidx.media3.common.Format
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import app.echo.android.model.library.EchoTrack
+import app.echo.android.model.library.LibraryPlaybackSupport
+import app.echo.android.model.playback.EchoDsdRates
 import app.echo.android.model.playback.EchoPlaybackDiagnostics
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
@@ -237,35 +239,36 @@ fun Player.toPlaybackControlsState(): PlaybackControlsState =
 fun Player.toPlaybackDiagnosticsState(
     usbAudioStatus: EchoUsbAudioStatus = EchoUsbAudioStatus(),
     sourceSampleRateHz: Int? = null,
+    outputRoute: EchoOutputRoute = EchoOutputRoute(),
 ): PlaybackDiagnosticsState {
     val item = currentMediaItem
     val format = currentAudioFormat()
     val bitDepth = format?.takeIf { it.pcmEncoding != Format.NO_VALUE }
         ?.let { pcmBitDepth(it.pcmEncoding) }
-    val decodedSampleRate = format?.sampleRate?.takeIf { it != Format.NO_VALUE }
-    val sampleRate = sourceSampleRateHz?.takeIf { it > 0 } ?: decodedSampleRate
+    val formatSampleRate = format?.sampleRate?.takeIf { it != Format.NO_VALUE }
     val channels = format?.channelCount?.takeIf { it != Format.NO_VALUE }
-    val codec = codecLabel(format?.sampleMimeType)
-    val rawBitrate = listOf(format?.bitrate, format?.averageBitrate)
-        .firstOrNull { it != null && it != Format.NO_VALUE }
-    val bitrate = rawBitrate ?: run {
-        if (codec == "PCM" && sampleRate != null && bitDepth != null && channels != null) {
-            sampleRate * bitDepth * channels
-        } else {
-            null
-        }
-    }
-    val diagnostics = EchoPlaybackDiagnostics(
-        codec = codec,
-        sampleRateHz = sampleRate,
-        decodedSampleRateHz = decodedSampleRate?.takeIf { it != sampleRate },
-        channelCount = channels,
+    val mediaUri = item?.localConfiguration?.uri?.toString() ?: item?.requestMetadata?.mediaUri?.toString()
+    val readout = echoAudioFormatReadout(
+        mimeType = format?.sampleMimeType,
+        mediaUri = mediaUri,
+        formatSampleRateHz = formatSampleRate,
+        sourceSampleRateHz = sourceSampleRateHz,
         bitDepth = bitDepth,
-        bitrate = bitrate,
+        channelCount = channels,
+        bitrate = listOf(format?.bitrate, format?.averageBitrate)
+            .firstOrNull { it != null && it != Format.NO_VALUE },
+    )
+    val diagnostics = EchoPlaybackDiagnostics(
+        codec = readout.codec,
+        sampleRateHz = readout.sampleRateHz,
+        decodedSampleRateHz = readout.decodedSampleRateHz,
+        channelCount = readout.channelCount,
+        bitDepth = readout.bitDepth,
+        bitrate = readout.bitrate,
         bufferedMs = (bufferedPosition - currentPosition).coerceAtLeast(0L),
         requestToken = item?.mediaId?.hashCode()?.toLong() ?: 0L,
         lastCommand = if (isPlaying) "play" else "idle",
-    ).withUsbAudioStatus(usbAudioStatus)
+    ).withUsbAudioStatus(usbAudioStatus).withOutputRoute(outputRoute)
     return PlaybackDiagnosticsState(
         diagnostics = diagnostics,
         lastError = diagnostics.lastError,
@@ -284,6 +287,76 @@ private fun Player.currentAudioFormat(): Format? {
     return null
 }
 
+internal data class EchoAudioFormatReadout(
+    val codec: String?,
+    val sampleRateHz: Int?,
+    val decodedSampleRateHz: Int?,
+    val channelCount: Int?,
+    val bitDepth: Int?,
+    val bitrate: Int?,
+)
+
+internal fun echoAudioFormatReadout(
+    mimeType: String?,
+    mediaUri: String? = null,
+    formatSampleRateHz: Int?,
+    sourceSampleRateHz: Int?,
+    bitDepth: Int?,
+    channelCount: Int?,
+    bitrate: Int?,
+): EchoAudioFormatReadout {
+    val mimeCodec = codecLabel(mimeType)
+    val sourceRate = sourceSampleRateHz?.takeIf { it > 0 }
+    val formatRate = formatSampleRateHz?.takeIf { it > 0 }
+    val sourceIsDsd = mimeCodec == "DSD" ||
+        EchoDsdMime.isDecoderMime(mimeType) ||
+        LibraryPlaybackSupport.isDsd(mimeType, mediaUri) ||
+        (sourceRate != null && EchoDsdRates.isDsdRate(sourceRate))
+    val dsdRateHz = when {
+        !sourceIsDsd -> null
+        sourceRate != null && EchoDsdRates.isDsdRate(sourceRate) -> sourceRate
+        formatRate != null && EchoDsdRates.isDsdRate(formatRate) -> formatRate
+        formatRate != null -> EchoDsdRates.dsdRateFromDecoderPcm(formatRate)
+        sourceRate != null -> EchoDsdRates.dsdRateFromDecoderPcm(sourceRate)
+        else -> null
+    }
+    val sampleRate = dsdRateHz ?: sourceRate ?: formatRate
+    val decodedRate = if (sourceIsDsd) {
+        val dopRate = dsdRateHz?.let(EchoDsdRates::dopSampleRateHz)
+        when {
+            formatRate != null && dopRate != null && formatRate == dopRate -> formatRate
+            formatRate != null && !EchoDsdRates.isDsdRate(formatRate) -> {
+                val decoderPcm = formatRate
+                if (dsdRateHz != null && decoderPcm == EchoDsdRates.decoderPcmRateHz(dsdRateHz)) {
+                    EchoDsdRates.outputPcmRateHz(decoderPcm)
+                } else {
+                    decoderPcm
+                }
+            }
+            dsdRateHz != null -> EchoDsdRates.outputPcmRateHz(EchoDsdRates.decoderPcmRateHz(dsdRateHz))
+            else -> formatRate
+        }
+    } else {
+        formatRate
+    }
+    val codec = if (sourceIsDsd) "DSD" else mimeCodec
+    val resolvedBitrate = bitrate ?: run {
+        if (codec == "PCM" && sampleRate != null && bitDepth != null && channelCount != null) {
+            sampleRate * bitDepth * channelCount
+        } else {
+            null
+        }
+    }
+    return EchoAudioFormatReadout(
+        codec = codec,
+        sampleRateHz = sampleRate,
+        decodedSampleRateHz = decodedRate?.takeIf { it != sampleRate },
+        channelCount = channelCount,
+        bitDepth = bitDepth,
+        bitrate = resolvedBitrate,
+    )
+}
+
 private fun codecLabel(mime: String?): String? {
     if (mime.isNullOrBlank()) return null
     return when {
@@ -291,7 +364,9 @@ private fun codecLabel(mime: String?): String? {
         mime.contains("flac", ignoreCase = true) -> "FLAC"
         mime.contains("alac", ignoreCase = true) -> "ALAC"
         mime.contains("wav", ignoreCase = true) -> "WAV"
-        mime.contains("dsd", ignoreCase = true) || mime.contains("dsf", ignoreCase = true) -> "DSD"
+        mime.contains("dsd", ignoreCase = true) ||
+            mime.contains("dsf", ignoreCase = true) ||
+            mime.contains("dff", ignoreCase = true) -> "DSD"
         mime.contains("mpeg", ignoreCase = true) || mime.contains("mp3", ignoreCase = true) -> "MP3"
         mime.contains("mp4a", ignoreCase = true) || mime.contains("aac", ignoreCase = true) -> "AAC"
         mime.contains("opus", ignoreCase = true) -> "Opus"

@@ -50,5 +50,11 @@
     <string name="echo_link_cast_notification_title">PC にオーディオを送信中</string>
     <string name="echo_link_cast_notification_text">ECHOSteam が再生している間は、同じ Wi-Fi に接続したままにしてください。</string>
     <string name="echo_link_cast_no_lan">スマホの LAN アドレスを取得できません。Wi-Fi を確認して再試行してください。</string>
+    <string name="echo_link_cast_tv_unsupported_format">このテレビ／ストリーマーは原ファイルを再生できません。変換はしません。</string>
+    <string name="echo_link_cast_tv_dsd">DSD はテレビに送りません。</string>
+    <string name="echo_link_cast_tv_no_control">この端末に DLNA 再生コントロールがありません。</string>
+    <string name="echo_link_cast_tv_failed">テレビ／ストリーマーがストリームを拒否しました。</string>
+    <string name="echo_link_cast_pc_library_not_tv">PC ライブラリは ECHOSteam 向けです。テレビへ送るにはローカルファイルを再生してください。</string>
+    <string name="echo_link_cast_chromecast_unsupported">Chromecast には未対応です。</string>
     <string name="echo_link_cast_notification_stop">停止</string>
 </resources>

@@ -291,6 +291,19 @@ class MediaStoreTrackScanner(
             dateModifiedSeconds = dateModifiedSeconds,
             relativePath = relativePath,
         ).withFingerprint()
+        if (EchoDsdMetadata.isDsd(mimeType, relativePath) || EchoDsdMetadata.isDsd(mimeType, contentUri)) {
+            val dsd = runCatching {
+                contentResolver.openInputStream(Uri.parse(contentUri))?.use(EchoDsdMetadata::read)
+            }.onFailure { error ->
+                Log.d(TAG, "Unable to read DSD metadata for $contentUri.", error)
+            }.getOrNull()
+            if (dsd != null) {
+                return entity.copy(
+                    durationMs = dsd.durationMs.takeIf { it > 0L } ?: durationMs,
+                    sampleRateHz = dsd.sampleRateHz.takeIf { it > 0 } ?: sampleRateHz,
+                ).withAudioTags(dsd.tags).withFingerprint()
+            }
+        }
         val tagged = if (LibraryWavTagPolicy.isWavContainer(mimeType, contentUri)) {
             entity.withAudioTags(readAudioTagsFromUri(contentUri)).withFingerprint()
         } else {

@@ -85,6 +85,26 @@ class AudioFileTagRewriterTest {
     }
 
     @Test
+    fun flacWriteReplacesReplayGainTrackGain() {
+        val original = flacFile(
+            comments = listOf(
+                "TITLE=Old",
+                "ARTIST=Who",
+                "REPLAYGAIN_TRACK_GAIN=-6.00 dB",
+            ),
+            audio = byteArrayOf(9, 8, 7, 6),
+        )
+        val rewritten = rewrite(
+            original,
+            SAMPLE_FIELDS.copy(replayGainTrackGainDb = -3.5f),
+            "audio/flac",
+        )
+        val text = rewritten.asString()
+        assertTrue(text.contains("REPLAYGAIN_TRACK_GAIN=-3.50 dB"))
+        assertTrue(!text.contains("-6.00 dB"))
+    }
+
+    @Test
     fun writesLyricsIntoId3AndKeepsArtwork() {
         val artwork = Id3FrameBytes("APIC", byteArrayOf(0, 105, 109, 97, 103, 101, 47, 106, 112, 101, 103, 0, 3, 0, 1, 2, 3))
         val original = id3File(

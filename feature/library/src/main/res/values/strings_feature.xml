@@ -19,7 +19,6 @@
     <string name="feature_library_loading_genres_4e91aa" formatted="false">"Loading genres"</string>
     <string name="feature_library_failed_to_load_genres_b7c102" formatted="false">"Failed to load genres"</string>
     <string name="feature_library_this_library_has_no_genres_to_show_yet_11a90e" formatted="false">"This library has no genres to show yet"</string>
-    <string name="feature_library_dsd_unsupported_9a1b02" formatted="false">"DSD (can't play)"</string>
     <string name="feature_library_artists_e168aa" formatted="false">"Artists"</string>
     <string name="feature_library_back_49093c" formatted="false">"Back"</string>
     <string name="feature_library_back_to_pc_echo_playlists_499312" formatted="false">"Back to PC ECHO playlists"</string>
@@ -80,6 +79,16 @@
     <string name="feature_library_library_scan_failed_94b709" formatted="false">"Library scan failed."</string>
     <string name="feature_library_liked_c8ac9d" formatted="false">"Liked"</string>
     <string name="feature_library_liked_songs_8d6245" formatted="false">"Liked songs"</string>
+    <string name="feature_library_smart_recent">Recently played</string>
+    <string name="feature_library_smart_frequent">Most played</string>
+    <string name="feature_library_smart_never">Never played</string>
+    <string name="feature_library_smart_added">Recently added</string>
+    <string name="feature_library_smart_kind">Smart playlist</string>
+    <string name="feature_library_smart_empty_recent">Play something to fill this list</string>
+    <string name="feature_library_smart_empty_frequent">Play more tracks to rank them here</string>
+    <string name="feature_library_smart_empty_never">Every local track has been played</string>
+    <string name="feature_library_smart_empty_added">Scan a library folder to fill this list</string>
+    <string name="feature_library_count_tracks_smart">%1$s tracks · Smart playlist</string>
     <string name="feature_library_linked_5d42a7" formatted="false">"Linked"</string>
     <string name="feature_library_loading_albums_75c4f3" formatted="false">"Loading albums..."</string>
     <string name="feature_library_loading_artists_e9b16d" formatted="false">"Loading artists..."</string>

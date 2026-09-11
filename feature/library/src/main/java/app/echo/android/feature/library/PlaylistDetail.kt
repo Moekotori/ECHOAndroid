@@ -77,6 +77,7 @@ import app.echo.android.design.echoTheme
 import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackMetadataUpdate
+import app.echo.android.model.library.LibrarySmartPlaylistKind
 import app.echo.android.model.library.LibrarySource
 
 private val PlaylistDetailBottomPadding = 168.dp
@@ -856,10 +857,16 @@ private fun playlistHeroCaption(playlist: EchoPlaylist, durationMs: Long): Strin
 
 @Composable
 internal fun playlistDisplayName(playlist: EchoPlaylist): String =
-    if (playlist.isLikedSongs) {
-        stringResource(L10nR.string.feature_library_liked_songs_8d6245)
-    } else {
-        playlist.name
+    when (playlist.smartKind) {
+        LibrarySmartPlaylistKind.Recent -> stringResource(L10nR.string.feature_library_smart_recent)
+        LibrarySmartPlaylistKind.Frequent -> stringResource(L10nR.string.feature_library_smart_frequent)
+        LibrarySmartPlaylistKind.Never -> stringResource(L10nR.string.feature_library_smart_never)
+        LibrarySmartPlaylistKind.Added -> stringResource(L10nR.string.feature_library_smart_added)
+        null -> if (playlist.isLikedSongs) {
+            stringResource(L10nR.string.feature_library_liked_songs_8d6245)
+        } else {
+            playlist.name
+        }
     }
 
 @Composable
@@ -867,6 +874,7 @@ internal fun playlistCaption(playlist: EchoPlaylist): String {
     val count = playlist.trackCount
     return when {
         playlist.isLikedSongs -> stringResource(L10nR.string.feature_library_count_tracks_liked_songs_e36fb7, (count).toString())
+        playlist.isSmartPlaylist -> stringResource(L10nR.string.feature_library_count_tracks_smart, count.toString())
         playlist.canEdit -> stringResource(L10nR.string.feature_library_count_tracks_local_playlist_352a0d, (count).toString())
         else -> stringResource(L10nR.string.feature_library_count_tracks_navidrome_294a65, (count).toString())
     }
@@ -875,16 +883,23 @@ internal fun playlistCaption(playlist: EchoPlaylist): String {
 @Composable
 private fun playlistKindLabel(playlist: EchoPlaylist): String = when {
     playlist.isLikedSongs -> stringResource(L10nR.string.feature_library_liked_c8ac9d)
+    playlist.isSmartPlaylist -> stringResource(L10nR.string.feature_library_smart_kind)
     playlist.source == LibrarySource.MediaStore.id -> stringResource(L10nR.string.feature_library_local_9b5178)
     else -> stringResource(L10nR.string.feature_library_linked_5d42a7)
 }
 
 @Composable
 private fun playlistEmptyMessage(playlist: EchoPlaylist): String =
-    if (playlist.isLikedSongs) {
-        stringResource(L10nR.string.feature_library_no_liked_songs_yet_heart_a_track_from_ba96cc)
-    } else {
-        stringResource(L10nR.string.feature_library_this_playlist_is_empty_add_songs_from_a_bebd89)
+    when (playlist.smartKind) {
+        LibrarySmartPlaylistKind.Recent -> stringResource(L10nR.string.feature_library_smart_empty_recent)
+        LibrarySmartPlaylistKind.Frequent -> stringResource(L10nR.string.feature_library_smart_empty_frequent)
+        LibrarySmartPlaylistKind.Never -> stringResource(L10nR.string.feature_library_smart_empty_never)
+        LibrarySmartPlaylistKind.Added -> stringResource(L10nR.string.feature_library_smart_empty_added)
+        null -> if (playlist.isLikedSongs) {
+            stringResource(L10nR.string.feature_library_no_liked_songs_yet_heart_a_track_from_ba96cc)
+        } else {
+            stringResource(L10nR.string.feature_library_this_playlist_is_empty_add_songs_from_a_bebd89)
+        }
     }
 
 @Composable

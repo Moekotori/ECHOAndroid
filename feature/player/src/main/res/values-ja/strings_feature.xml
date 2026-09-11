@@ -73,6 +73,8 @@
     <string name="feature_player_playback_was_interrupted_by_the_system_70c8d1" formatted="false">"再生がシステムに中断されました"</string>
     <string name="feature_player_previous_af0264" formatted="false">"前の曲"</string>
     <string name="feature_player_queue_37fa6a" formatted="false">"再生キュー"</string>
+    <string name="feature_player_cast">キャスト</string>
+    <string name="feature_player_cast_active">キャスト中</string>
     <string name="feature_player_queue_84794b" formatted="false">"キュー"</string>
     <string name="feature_player_queue_is_empty_1b4178" formatted="false">"キューは空です"</string>
     <string name="feature_player_reading_local_lyrics_807f08" formatted="false">"ローカル歌詞を読み込み中…"</string>
@@ -124,6 +126,13 @@
     <string name="feature_player_word_highlight_off_b0e40a" formatted="false">"文字ハイライト オフ"</string>
     <string name="feature_player_replay_gain_unread">未読み取り</string>
     <string name="feature_player_replay_gain_none">タグなし</string>
+    <string name="feature_player_replay_gain_scan">トラックゲインを計測して書き込む</string>
+    <string name="feature_player_replay_gain_scanning">計測中…</string>
+    <string name="feature_player_replay_gain_scanned">%1$s を書き込みました</string>
+    <string name="feature_player_replay_gain_scan_not_local">ローカルの MP3/FLAC のみ書き込めます</string>
+    <string name="feature_player_replay_gain_scan_unsupported">この形式には ReplayGain を保存できません</string>
+    <string name="feature_player_replay_gain_scan_decode">ラウドネスを測れませんでした</string>
+    <string name="feature_player_replay_gain_scan_write">タグを書き込めませんでした</string>
     <string name="feature_player_lyrics_offset">歌詞オフセット</string>
     <string name="feature_player_nightcore">Nightcore</string>
     <string name="feature_player_playback_mode">再生モード</string>

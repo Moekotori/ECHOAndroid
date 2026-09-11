@@ -90,7 +90,12 @@ class EchoPlaybackService : MediaLibraryService() {
                 ),
             )
             .setLoadControl(EchoPlaybackLoadControl())
-            .setMediaSourceFactory(DefaultMediaSourceFactory(echoPlaybackDataSourceFactory(this)))
+            .setMediaSourceFactory(
+                DefaultMediaSourceFactory(
+                    echoPlaybackDataSourceFactory(this),
+                    EchoExtractorsFactory(),
+                ),
+            )
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)

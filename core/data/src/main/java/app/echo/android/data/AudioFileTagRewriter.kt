@@ -339,7 +339,10 @@ internal object AudioFileTagRewriter {
         val managed = HashSet(if (version == 4) ManagedId3v24 else ManagedId3v23)
         if (fields.lyrics != null) managed += "USLT"
         if (fields.artworkBytes != null) managed += "APIC"
-        val kept = frames.filterNot { it.id in managed }
+        val kept = frames.filterNot { frame ->
+            frame.id in managed ||
+                (fields.replayGainTrackGainDb != null && isReplayGainTrackTxxx(frame))
+        }
         val next = ArrayList<Id3Frame>(kept.size + 10)
         next += textFrame(version, "TIT2", fields.title)
         next += textFrame(version, "TPE1", fields.artist)
@@ -357,6 +360,9 @@ internal object AudioFileTagRewriter {
         fields.lyrics?.takeIf { it.isNotBlank() }?.let { next += usltFrame(version, it) }
         fields.artworkBytes?.takeIf { it.isNotEmpty() }?.let { bytes ->
             next += apicFrame(version, bytes, fields.artworkMime ?: "image/jpeg")
+        }
+        fields.replayGainTrackGainDb?.let { gain ->
+            next += txxxFrame(version, "REPLAYGAIN_TRACK_GAIN", formatReplayGainTag(gain))
         }
         next += kept
         return next
@@ -383,6 +389,58 @@ internal object AudioFileTagRewriter {
         val mimeBytes = mime.ifBlank { "image/jpeg" }.toByteArray(StandardCharsets.ISO_8859_1)
         val payload = byteArrayOf(0) + mimeBytes + 0 + 3 + 0 + image
         return Id3Frame("APIC", byteArrayOf(0, 0), payload)
+    }
+
+    private fun txxxFrame(version: Int, description: String, value: String): Id3Frame {
+        val payload = if (version == 4) {
+            byteArrayOf(3) +
+                description.toByteArray(StandardCharsets.UTF_8) + 0 +
+                value.toByteArray(StandardCharsets.UTF_8)
+        } else {
+            byteArrayOf(1) +
+                byteArrayOf(0xFF.toByte(), 0xFE.toByte()) +
+                description.toByteArray(Charsets.UTF_16LE) +
+                byteArrayOf(0, 0) +
+                byteArrayOf(0xFF.toByte(), 0xFE.toByte()) +
+                value.toByteArray(Charsets.UTF_16LE) +
+                byteArrayOf(0, 0)
+        }
+        return Id3Frame("TXXX", byteArrayOf(0, 0), payload)
+    }
+
+    private fun isReplayGainTrackTxxx(frame: Id3Frame): Boolean {
+        if (frame.id != "TXXX") return false
+        return txxxDescription(frame.payload).equals("REPLAYGAIN_TRACK_GAIN", ignoreCase = true)
+    }
+
+    private fun txxxDescription(payload: ByteArray): String {
+        if (payload.isEmpty()) return ""
+        val encoding = when (payload[0].toInt() and 0xFF) {
+            1, 2 -> Charsets.UTF_16
+            3 -> StandardCharsets.UTF_8
+            else -> StandardCharsets.ISO_8859_1
+        }
+        val terminator = if (encoding == Charsets.UTF_16 || encoding == Charsets.UTF_16BE) 2 else 1
+        var end = 1
+        while (end + terminator <= payload.size) {
+            val zero = if (terminator == 2) {
+                payload[end] == 0.toByte() && payload[end + 1] == 0.toByte()
+            } else {
+                payload[end] == 0.toByte()
+            }
+            if (zero) break
+            end++
+        }
+        return if (end > 1) {
+            String(payload, 1, end - 1, encoding).trim('\u0000', ' ')
+        } else {
+            ""
+        }
+    }
+
+    private fun formatReplayGainTag(gainDb: Float): String {
+        val hundredths = (gainDb * 100f).toInt() / 100.0
+        return "%+.2f dB".format(java.util.Locale.US, hundredths)
     }
 
     private fun textFrame(version: Int, id: String, value: String): Id3Frame {
@@ -482,6 +540,7 @@ internal object AudioFileTagRewriter {
                 val upper = key.uppercase()
                 if (upper in ManagedVorbisKeys) return@forEach
                 if (fields.lyrics != null && upper in VorbisLyricsKeys) return@forEach
+                if (fields.replayGainTrackGainDb != null && upper == "REPLAYGAIN_TRACK_GAIN") return@forEach
                 comments[key] = value
             }
         }
@@ -493,6 +552,7 @@ internal object AudioFileTagRewriter {
         fields.discNumber?.let { comments["DISCNUMBER"] = it.toString() }
         fields.year?.let { comments["DATE"] = it.toString() }
         fields.lyrics?.takeIf { it.isNotBlank() }?.let { comments["LYRICS"] = it }
+        fields.replayGainTrackGainDb?.let { comments["REPLAYGAIN_TRACK_GAIN"] = formatReplayGainTag(it) }
         val vorbis = encodeVorbis(vendor, comments)
         val dropPicture = fields.artworkBytes != null
         val kept = blocks.filterNot { block ->
