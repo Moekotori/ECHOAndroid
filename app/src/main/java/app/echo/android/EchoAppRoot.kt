@@ -832,6 +832,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         selectedPlaylist = null
     }
     fun closeLibraryDetail() {
+        if (selectedAlbum != null && selectedArtist != null) {
+            selectedAlbum = null
+            return
+        }
         val returnPage = detailReturnPage ?: EchoPagerPage.Library
         detailReturnPage = null
         if (returnPage == EchoPagerPage.Library) {
@@ -1010,8 +1014,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                     artworkImportLauncher.launch(ArtworkDocumentMimeTypes)
                                 },
                                 onOpenAlbum = { album ->
-                                    detailReturnPage = EchoPagerPage.Library
-                                    selectedArtist = null
+                                    if (selectedArtist == null) detailReturnPage = EchoPagerPage.Library
                                     selectedGenre = null
                                     selectedFolder = null
                                     selectedPlaylist = null

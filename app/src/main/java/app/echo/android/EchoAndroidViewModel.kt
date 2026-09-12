@@ -336,8 +336,14 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun albumTrackPaging(albumKey: String): Flow<PagingData<EchoTrack>> =
         libraryController.albumTrackPaging(albumKey)
 
-    fun artistTrackPaging(artistKey: String): Flow<PagingData<EchoTrack>> =
-        libraryController.artistTrackPaging(artistKey)
+    fun artistAlbumPaging(artistKey: String): Flow<PagingData<AlbumSummary>> =
+        libraryController.artistAlbumPaging(artistKey)
+
+    fun observeArtistSummary(artistKey: String): Flow<ArtistSummary?> =
+        libraryController.observeArtistSummary(artistKey)
+
+    fun artistTrackPaging(artistKey: String, query: String? = null, sort: LibraryTrackSortMode = LibraryTrackSortMode.Album): Flow<PagingData<EchoTrack>> =
+        libraryController.artistTrackPaging(artistKey, query, sort)
 
     fun genreTrackPaging(genreKey: String): Flow<PagingData<EchoTrack>> =
         libraryController.genreTrackPaging(genreKey)

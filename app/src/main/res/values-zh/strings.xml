@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ECHO 移动端</string>
+    <string name="app_name">ECHO Beta</string>
     <string name="tab_home">我的音乐</string>
     <string name="tab_library">曲库</string>
     <string name="tab_connect">互联</string>

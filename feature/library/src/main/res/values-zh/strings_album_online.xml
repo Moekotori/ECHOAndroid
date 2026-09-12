@@ -26,4 +26,6 @@
     <string name="album_online_performer">演奏</string>
     <string name="album_online_mb_source">MusicBrainz · 来源与完整制作名单</string>
     <string name="album_online_link_error">无法打开此链接。</string>
+    <string name="album_page_tracks">曲目</string>
+    <string name="album_page_information">专辑信息</string>
 </resources>

@@ -325,6 +325,11 @@ fun LibraryScreen(
     selectedPlaylist: EchoPlaylist?,
     albumDetailTracks: LazyPagingItems<EchoTrack>?,
     artistDetailTracks: LazyPagingItems<EchoTrack>?,
+    artistDetailAlbums: LazyPagingItems<AlbumSummary>? = null,
+    artistQuery: String = "",
+    artistSort: LibraryTrackSortMode = LibraryTrackSortMode.Album,
+    onArtistQueryChange: (String) -> Unit = {},
+    onArtistSortChange: (LibraryTrackSortMode) -> Unit = {},
     genreDetailTracks: LazyPagingItems<EchoTrack>? = null,
     folderDetailTracks: LazyPagingItems<EchoTrack>?,
     playlistDetailTracks: LazyPagingItems<EchoTrack>?,
@@ -378,6 +383,12 @@ fun LibraryScreen(
     onImportM3uPlaylist: () -> Unit = {},
     onExportM3uPlaylist: (EchoPlaylist) -> Unit = {},
 ) {
+    val artistListState = rememberSaveable(selectedArtist?.artistKey, saver = androidx.compose.foundation.lazy.LazyListState.Saver) {
+        androidx.compose.foundation.lazy.LazyListState()
+    }
+    val artistAlbumListState = rememberSaveable(selectedArtist?.artistKey, saver = androidx.compose.foundation.lazy.LazyListState.Saver) {
+        androidx.compose.foundation.lazy.LazyListState()
+    }
     val playNext = onPlayNext
     val enqueueTrack = onEnqueueTrack
     var selectedModeIndex by rememberSaveable { mutableIntStateOf(LibraryViewMode.Songs.ordinal) }
@@ -712,7 +723,7 @@ fun LibraryScreen(
                         onEnqueue = enqueueTrack,
                         modifier = Modifier.fillMaxSize(),
                     )
-                    selectedGenre != null && genreDetailTracks != null -> ArtistDetailPage(
+                    selectedGenre != null && genreDetailTracks != null -> GenreTrackDetailPage(
                         artist = ArtistSummary(
                             artistKey = selectedGenre.genreKey,
                             name = selectedGenre.name,
@@ -738,6 +749,14 @@ fun LibraryScreen(
                     selectedArtist != null && artistDetailTracks != null -> ArtistDetailPage(
                         artist = selectedArtist,
                         tracks = artistDetailTracks,
+                        albums = artistDetailAlbums,
+                        query = artistQuery,
+                        sort = artistSort,
+                        onQueryChange = onArtistQueryChange,
+                        onSortChange = onArtistSortChange,
+                        onOpenAlbum = onOpenAlbum,
+                        listState = artistListState,
+                        albumListState = artistAlbumListState,
                         onBack = onCloseDetail,
                         onPlayAll = { onPlayArtist(selectedArtist) },
                         onShuffle = { onShuffleArtist(selectedArtist) },
@@ -833,10 +852,12 @@ fun LibraryScreen(
             }
         },
         transitionSpec = {
-            if (targetState != LibraryDetailTransitionTarget.Browser) {
-                libraryDetailMotion.pagePush()
-            } else {
+            if (targetState == LibraryDetailTransitionTarget.Browser ||
+                (initialState is LibraryDetailTransitionTarget.AlbumDetail && targetState is LibraryDetailTransitionTarget.ArtistDetail)
+            ) {
                 libraryDetailMotion.pagePop()
+            } else {
+                libraryDetailMotion.pagePush()
             }
         },
         label = "library-detail-transition",
@@ -865,6 +886,14 @@ fun LibraryScreen(
                 tracks = target.tracks,
                 onBack = onCloseDetail,
                 onPlayAll = { onPlayArtist(target.artist) },
+                albums = artistDetailAlbums,
+                query = artistQuery,
+                sort = artistSort,
+                onQueryChange = onArtistQueryChange,
+                onSortChange = onArtistSortChange,
+                onOpenAlbum = onOpenAlbum,
+                listState = artistListState,
+                albumListState = artistAlbumListState,
                 onShuffle = { onShuffleArtist(target.artist) },
                 onPlayTrack = { track ->
                     onPlayTrack(track, LibraryPlaybackOrigin.Artist(target.artist.artistKey))

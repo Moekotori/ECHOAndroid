@@ -402,16 +402,38 @@ interface LibraryTrackDao {
     @Query(
         """
         SELECT * FROM library_tracks
-        WHERE (source = 'mediastore' OR source = 'saf')
-          AND artistKey = :artistKey
+        WHERE source IN ('mediastore', 'saf') AND artistKey = :artistKey
+          AND (:query IS NULL OR instr(lower(title), lower(:query)) > 0
+               OR instr(lower(COALESCE(album, '')), lower(:query)) > 0)
         ORDER BY
+            CASE WHEN :sort = 'Title' THEN title END COLLATE NOCASE ASC,
+            CASE WHEN :sort = 'Duration' THEN durationMs END DESC,
             album COLLATE NOCASE ASC,
-            CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
-            CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
-            title COLLATE NOCASE ASC
+            COALESCE(discNumber, 0) ASC, COALESCE(trackNumber, 0) ASC,
+            title COLLATE NOCASE ASC, id ASC
         """,
     )
-    fun pageTracksByArtist(artistKey: String): PagingSource<Int, LibraryTrackEntity>
+    fun pageTracksByArtist(
+        artistKey: String,
+        query: String? = null,
+        sort: String = "Album",
+    ): PagingSource<Int, LibraryTrackEntity>
+
+    @Query(
+        """
+        SELECT albumKey, title, albumArtist, artist, artworkUri, trackCount, durationMs, year, addedAtSeconds
+        FROM library_album_summaries
+        WHERE isRemote = 0 AND albumKey IN (
+            SELECT DISTINCT albumKey FROM library_tracks
+            WHERE artistKey = :artistKey AND source IN ('mediastore', 'saf')
+        )
+        ORDER BY year DESC, title COLLATE NOCASE ASC, albumKey ASC
+        """,
+    )
+    fun pageAlbumsByArtist(artistKey: String): PagingSource<Int, AlbumSummary>
+
+    @Query("SELECT artistKey, name, artworkUri, albumCount, trackCount, durationMs FROM library_artist_summaries WHERE artistKey = :artistKey")
+    fun observeArtistSummary(artistKey: String): Flow<ArtistSummary?>
 
     @Query(
         """

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="path_unverified">出力未確認</string>
+    <string name="path_verified">ビットパーフェクト確認済み</string>
+    <string name="path_processing">DSP 処理中</string>
+    <string name="path_unverified_detail">デバイスのクロックと最終出力は未確認です。システム経路は無損失出力を保証しません。</string>
+    <string name="path_pending_detail">再生すると実際の経路を確認できます。選択済みの曲だけでは出力の確立を確認できません。</string>
+    <string name="path_error_detail">再生エラーが発生しました。以下の段階は音声の正常な通過を示すものではありません。</string>
+    <string name="path_format_change">報告されたレート変更</string>
+    <string name="path_format_pair">ソース %1$s → デコード %2$s</string>
+    <string name="path_eq_detail">プリアンプ %1$s · 処理レート %2$s</string>
+    <string name="path_channel_detail">左 %1$s · 右 %2$s</string>
+    <string name="path_source_format">ソース形式</string>
+    <string name="path_device_clock">報告されたデバイスクロック：%1$s</string>
+</resources>

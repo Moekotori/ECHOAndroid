@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ECHO モバイル</string>
+    <string name="app_name">ECHO Beta</string>
     <string name="tab_home">マイミュージック</string>
     <string name="tab_library">ライブラリ</string>
     <string name="tab_connect">連携</string>

@@ -204,10 +204,18 @@ class EchoLibraryRepository(
             },
         ).flow
 
-    fun pagedArtistTracks(artistKey: String): Flow<PagingData<LibraryTrackEntity>> =
+    fun pagedArtistAlbums(artistKey: String): Flow<PagingData<AlbumSummary>> =
+        Pager(config = defaultPagingConfig(), pagingSourceFactory = {
+            database.trackDao().pageAlbumsByArtist(artistKey)
+        }).flow
+
+    fun observeArtistSummary(artistKey: String): Flow<ArtistSummary?> =
+        database.trackDao().observeArtistSummary(artistKey)
+
+    fun pagedArtistTracks(artistKey: String, query: String? = null, sort: LibraryTrackSortMode = LibraryTrackSortMode.Album): Flow<PagingData<LibraryTrackEntity>> =
         Pager(
             config = defaultPagingConfig(),
-            pagingSourceFactory = { database.trackDao().pageTracksByArtist(artistKey) },
+            pagingSourceFactory = { database.trackDao().pageTracksByArtist(artistKey, query?.trim()?.takeIf { it.isNotEmpty() }, sort.name) },
         ).flow
 
     fun pagedFolderTracks(folderKey: String): Flow<PagingData<LibraryTrackEntity>> =

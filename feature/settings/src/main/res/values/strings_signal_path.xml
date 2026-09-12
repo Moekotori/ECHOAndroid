@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="path_unverified">Output unverified</string>
+    <string name="path_verified">Bit-perfect confirmed</string>
+    <string name="path_processing">DSP processing</string>
+    <string name="path_unverified_detail">The device clock and final samples are not verified. A system route does not confirm lossless output.</string>
+    <string name="path_pending_detail">Start playback to inspect the active path. Saved track information does not confirm an active output.</string>
+    <string name="path_error_detail">Playback failed. These stages do not confirm a working audio path.</string>
+    <string name="path_format_change">Reported rate change</string>
+    <string name="path_format_pair">Source %1$s → decoded %2$s</string>
+    <string name="path_eq_detail">Preamp %1$s · processing rate %2$s</string>
+    <string name="path_channel_detail">L %1$s · R %2$s</string>
+    <string name="path_source_format">Source format</string>
+    <string name="path_device_clock">Reported device clock: %1$s</string>
+</resources>

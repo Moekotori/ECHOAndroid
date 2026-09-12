@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="path_unverified">输出未验证</string>
+    <string name="path_verified">直通已确认</string>
+    <string name="path_processing">DSP 处理中</string>
+    <string name="path_unverified_detail">尚未验证设备时钟和最终输出采样；系统链路不代表无损直通。</string>
+    <string name="path_pending_detail">开始播放后查看实际路径；已选歌曲不代表输出已建立。</string>
+    <string name="path_error_detail">播放发生错误，以下节点不代表音频已成功通过。</string>
+    <string name="path_format_change">已上报采样率变化</string>
+    <string name="path_format_pair">源 %1$s → 解码 %2$s</string>
+    <string name="path_eq_detail">前级 %1$s · 处理采样率 %2$s</string>
+    <string name="path_channel_detail">左 %1$s · 右 %2$s</string>
+    <string name="path_source_format">源文件格式</string>
+    <string name="path_device_clock">已上报设备时钟：%1$s</string>
+</resources>

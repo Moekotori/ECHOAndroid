@@ -3,6 +3,10 @@ package app.echo.android.ui.library
 import app.echo.android.model.library.LibraryScanOptions
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.delay
+import app.echo.android.model.library.LibraryTrackSortMode
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -63,8 +67,26 @@ internal fun EchoLibraryPage(
     val albumDetailTracks = selectedAlbumKey?.let { albumKey ->
         remember(albumKey) { viewModel.albumTrackPaging(albumKey) }.collectAsLazyPagingItems()
     }
+    var artistQuery by rememberSaveable(selectedArtistKey) { mutableStateOf("") }
+    var artistSortName by rememberSaveable(selectedArtistKey) { mutableStateOf(LibraryTrackSortMode.Album.name) }
+    val artistSort = LibraryTrackSortMode.valueOf(artistSortName)
+    val debouncedArtistQuery by androidx.compose.runtime.key(selectedArtistKey) {
+        produceState(artistQuery, artistQuery) {
+            delay(250)
+            value = artistQuery
+        }
+    }
+    val liveArtist = selectedArtistKey?.let { artistKey ->
+        remember(artistKey) { viewModel.observeArtistSummary(artistKey) }
+            .collectAsStateWithLifecycle(initialValue = selectedArtist).value
+    }
     val artistDetailTracks = selectedArtistKey?.let { artistKey ->
-        remember(artistKey) { viewModel.artistTrackPaging(artistKey) }.collectAsLazyPagingItems()
+        remember(artistKey, debouncedArtistQuery, artistSort) {
+            viewModel.artistTrackPaging(artistKey, debouncedArtistQuery, artistSort)
+        }.collectAsLazyPagingItems()
+    }
+    val artistDetailAlbums = selectedArtistKey?.let { artistKey ->
+        remember(artistKey) { viewModel.artistAlbumPaging(artistKey) }.collectAsLazyPagingItems()
     }
     val selectedGenreKey = selectedGenre?.genreKey
     val genreDetailTracks = selectedGenreKey?.let { genreKey ->
@@ -116,12 +138,17 @@ internal fun EchoLibraryPage(
             playlists = localPlaylists,
             showTrackAudioInfoTags = appSettings.trackAudioInfoTagsVisible,
             selectedAlbum = selectedAlbum,
-            selectedArtist = selectedArtist,
+            selectedArtist = liveArtist ?: selectedArtist?.copy(albumCount = 0, trackCount = 0, durationMs = 0),
             selectedGenre = selectedGenre,
             selectedFolder = selectedFolder,
             selectedPlaylist = selectedPlaylist,
             albumDetailTracks = albumDetailTracks,
             artistDetailTracks = artistDetailTracks,
+            artistDetailAlbums = artistDetailAlbums,
+            artistQuery = artistQuery,
+            artistSort = artistSort,
+            onArtistQueryChange = { artistQuery = it },
+            onArtistSortChange = { artistSortName = it.name },
             genreDetailTracks = genreDetailTracks,
             folderDetailTracks = folderDetailTracks,
             playlistDetailTracks = playlistDetailTracks,

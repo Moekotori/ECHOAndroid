@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ECHO Mobile</string>
+    <string name="app_name">ECHO Beta</string>
     <string name="tab_home">My music</string>
     <string name="tab_library">Library</string>
     <string name="tab_connect">Link</string>

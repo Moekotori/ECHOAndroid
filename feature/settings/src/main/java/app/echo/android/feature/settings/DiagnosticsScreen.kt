@@ -4,6 +4,7 @@ import app.echo.android.feature.settings.R as L10nR
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -59,16 +60,18 @@ fun DiagnosticsScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxWidth()) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(L10nR.string.diag_title), Modifier.weight(1f), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Medium)
-                    Text(playbackStateLabel(status.state), style = MaterialTheme.typography.labelMedium, color = if (status.isPlaying) scheme.primary else scheme.onSurfaceVariant)
-                }
-                SecondaryTabRow(selectedTabIndex = selectedTab, containerColor = scheme.background, contentColor = scheme.primary) {
-                    labels.forEachIndexed { index, label ->
-                        Tab(selected = selectedTab == index, onClick = { selectedTab = index }, unselectedContentColor = scheme.onSurfaceVariant, text = {
-                            Text(label, fontWeight = if (selectedTab == index) FontWeight.SemiBold else FontWeight.Normal)
-                        })
+                Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(L10nR.string.diag_title), Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = if (status.state == EchoPlaybackState.Error) scheme.errorContainer.copy(alpha = 0.24f) else scheme.surfaceContainerHigh,
+                        contentColor = if (status.state == EchoPlaybackState.Error) scheme.error else scheme.primary,
+                    ) {
+                        Text(playbackStateLabel(status.state), Modifier.padding(horizontal = 12.dp, vertical = 7.dp), style = MaterialTheme.typography.labelMedium)
                     }
+                }
+                Box(Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) {
+                    SignalSoundModeRow(selectedIndex = selectedTab, labels = labels, onSelect = { selectedTab = it })
                 }
             }
             AnimatedContent(
@@ -81,14 +84,18 @@ fun DiagnosticsScreen(
                 Column(
                     Modifier.fillMaxSize()
                         .verticalScroll(scrollStates[tab]).padding(horizontal = 24.dp)
-                        .padding(top = 24.dp, bottom = 188.dp),
-                    verticalArrangement = Arrangement.spacedBy(28.dp),
+                        .padding(top = 20.dp, bottom = 188.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
                 ) {
                     val error = status.diagnostics.lastError?.message ?: status.diagnostics.usbLastRequestError?.message
                     if (error != null && tab != 2) {
-                        Column(Modifier.fillMaxWidth().background(scheme.errorContainer).padding(12.dp)) {
-                            Text(error, color = scheme.onErrorContainer, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal)
-                            TextButton(onClick = { selectedTab = 2 }) { Text(labels[2], color = scheme.onErrorContainer) }
+                        Row(
+                            Modifier.fillMaxWidth().background(scheme.errorContainer.copy(alpha = 0.24f), RoundedCornerShape(16.dp)).padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text(error, Modifier.weight(1f), color = scheme.error, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal)
+                            TextButton(onClick = { selectedTab = 2 }) { Text(labels[2], color = scheme.error) }
                         }
                     }
                     when (tab) {

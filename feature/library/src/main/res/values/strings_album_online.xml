@@ -26,4 +26,6 @@
     <string name="album_online_performer">Performance</string>
     <string name="album_online_mb_source">MusicBrainz · source and full credits</string>
     <string name="album_online_link_error">Could not open this link.</string>
+    <string name="album_page_tracks">Tracks</string>
+    <string name="album_page_information">Album info</string>
 </resources>

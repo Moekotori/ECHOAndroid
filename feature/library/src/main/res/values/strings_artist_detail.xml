@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="artist_search_tracks">Search songs or albums</string>
+    <string name="artist_sort_album">Album order</string>
+    <string name="artist_sort_title">Title</string>
+    <string name="artist_sort_duration">Duration</string>
+    <string name="artist_albums">Albums</string>
+    <string name="artist_no_albums">No albums in your library yet</string>
+    <string name="artist_no_matches">No matching songs</string>
+    <string name="artist_load_failed">Unable to load this content</string>
+    <string name="artist_retry">Retry</string>
+    <string name="artist_total_time">%1$d hr %2$d min in your library</string>
+    <string name="artist_total_minutes">%1$d min in your library</string>
+    <string name="artist_tracks">Tracks</string>
+    <string name="artist_clear_search">Clear search</string>
+    <plurals name="artist_album_count">
+        <item quantity="one">%1$d album</item>
+        <item quantity="other">%1$d albums</item>
+    </plurals>
+    <plurals name="artist_track_count">
+        <item quantity="one">%1$d track</item>
+        <item quantity="other">%1$d tracks</item>
+    </plurals>
+</resources>

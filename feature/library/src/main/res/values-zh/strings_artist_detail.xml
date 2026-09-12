@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="artist_search_tracks">搜索歌曲或专辑</string>
+    <string name="artist_sort_album">专辑顺序</string>
+    <string name="artist_sort_title">歌曲名</string>
+    <string name="artist_sort_duration">时长</string>
+    <string name="artist_albums">专辑</string>
+    <string name="artist_no_albums">曲库中暂无专辑</string>
+    <string name="artist_no_matches">没有匹配的歌曲</string>
+    <string name="artist_load_failed">内容加载失败</string>
+    <string name="artist_retry">重试</string>
+    <string name="artist_total_time">曲库中共 %1$d 小时 %2$d 分钟</string>
+    <string name="artist_total_minutes">曲库中共 %1$d 分钟</string>
+    <string name="artist_tracks">曲目</string>
+    <string name="artist_clear_search">清空搜索</string>
+    <plurals name="artist_album_count">
+        <item quantity="one">%1$d 张专辑</item>
+        <item quantity="other">%1$d 张专辑</item>
+    </plurals>
+    <plurals name="artist_track_count">
+        <item quantity="one">%1$d 首</item>
+        <item quantity="other">%1$d 首</item>
+    </plurals>
+</resources>

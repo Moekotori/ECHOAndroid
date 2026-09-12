@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="artist_search_tracks">曲名・アルバムを検索</string>
+    <string name="artist_sort_album">アルバム順</string>
+    <string name="artist_sort_title">曲名</string>
+    <string name="artist_sort_duration">再生時間</string>
+    <string name="artist_albums">アルバム</string>
+    <string name="artist_no_albums">ライブラリにアルバムがありません</string>
+    <string name="artist_no_matches">一致する曲がありません</string>
+    <string name="artist_load_failed">コンテンツを読み込めませんでした</string>
+    <string name="artist_retry">再試行</string>
+    <string name="artist_total_time">ライブラリ内 %1$d 時間 %2$d 分</string>
+    <string name="artist_total_minutes">ライブラリ内 %1$d 分</string>
+    <string name="artist_tracks">曲</string>
+    <string name="artist_clear_search">検索をクリア</string>
+    <plurals name="artist_album_count">
+        <item quantity="one">%1$d 枚のアルバム</item>
+        <item quantity="other">%1$d 枚のアルバム</item>
+    </plurals>
+    <plurals name="artist_track_count">
+        <item quantity="one">%1$d 曲</item>
+        <item quantity="other">%1$d 曲</item>
+    </plurals>
+</resources>

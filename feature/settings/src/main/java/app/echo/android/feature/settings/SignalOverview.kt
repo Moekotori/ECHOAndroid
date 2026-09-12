@@ -2,13 +2,13 @@ package app.echo.android.feature.settings
 
 import app.echo.android.feature.settings.R as L10nR
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.echo.android.model.playback.*
 
@@ -21,63 +21,9 @@ internal fun SignalOverview(
     onDiagnostics: () -> Unit,
 ) {
     val d = status.diagnostics
-    val hasSource = status.track != null || status.isPlaying
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SignalNote(stringResource(L10nR.string.diag_output_end))
-            Text(
-                d.usbDeviceName ?: d.outputDeviceName ?: outputDeviceKindLabel(d.outputDeviceKind),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Medium,
-            )
-            SignalNote(if (hasSource) d.signalIntegrityLabel(equalizer, channelBalance) else stringResource(L10nR.string.diag_pick_track))
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            SignalMetric(
-                stringResource(L10nR.string.diag_sample_rate),
-                if (d.isDsdSource()) {
-                    d.decodedSampleRateHz?.let(::formatSampleRate) ?: d.dsdFamilyLabel() ?: "—"
-                } else {
-                    d.sampleRateHz?.let(::formatSampleRate) ?: "—"
-                },
-                Modifier.weight(1f),
-            )
-            SignalMetric(stringResource(L10nR.string.diag_bit_depth), d.bitDepth?.let { "$it bit" } ?: "—", Modifier.weight(1f))
-            SignalMetric(stringResource(L10nR.string.diag_channels), d.channelCount?.let(::formatChannels) ?: "—", Modifier.weight(1f))
-        }
-        SignalSection(stringResource(L10nR.string.feature_settings_signal_path_2fed34)) {
-            SignalPathStep("01", stringResource(L10nR.string.diag_source_file), if (hasSource) d.fileFormatLabel() else stringResource(L10nR.string.diag_waiting_playback), status.track?.title, hasSource)
-            SignalPathStep(
-                "02",
-                stringResource(L10nR.string.diag_decoder),
-                when {
-                    !hasSource -> stringResource(L10nR.string.diag_waiting_decode)
-                    d.isDsdDopOutput() -> stringResource(L10nR.string.diag_dsd_dop)
-                    d.isDsdSource() -> stringResource(L10nR.string.diag_dsd_converted)
-                    else -> d.codec ?: stringResource(L10nR.string.diag_waiting_decode)
-                },
-                when {
-                    !hasSource -> null
-                    d.isDsdDopOutput() -> stringResource(L10nR.string.diag_dsd_dop_detail, d.decodedFormatLabel())
-                    d.isDsdSource() -> stringResource(L10nR.string.diag_dsd_converted_detail, d.decodedFormatLabel())
-                    else -> d.decodedFormatLabel()
-                },
-                hasSource,
-            )
-            SignalPathStep(
-                "03",
-                stringResource(L10nR.string.diag_processing_layer),
-                processingLayerValue(d, equalizer, channelBalance),
-                processingLayerDetail(d, equalizer, channelBalance),
-                (equalizer.active || channelBalance.active) && !d.usbBitPerfectEnabled,
-            )
-            SignalPathStep("04", stringResource(L10nR.string.diag_output_end), when {
-                d.usbExclusiveStreaming -> stringResource(L10nR.string.diag_usb_exclusive_stream, d.usbExclusiveTransport ?: "PCM")
-                d.usbBitPerfectActive -> stringResource(L10nR.string.diag_usb_bit_perfect)
-                d.usbHostPermissionPending -> stringResource(L10nR.string.diag_usb_wait_auth)
-                else -> d.outputDeviceReadout()
-            }, d.usbDeviceName ?: d.outputDeviceName, hasSource, last = true)
-        }
+        SignalDeviceCard(status)
+        SignalPathPanel(status, equalizer, channelBalance)
         SignalSection(stringResource(L10nR.string.feature_settings_output_details_f242d2)) {
             SignalReadout(
                 stringResource(L10nR.string.diag_decoded_output),
@@ -101,47 +47,4 @@ internal fun SignalOverview(
             }
         }
     }
-}
-
-@Composable
-private fun SignalPathStep(index: String, label: String, value: String, detail: String?, active: Boolean, last: Boolean = false) {
-    val scheme = MaterialTheme.colorScheme
-    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        Column(Modifier.width(28.dp).fillMaxHeight(), horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
-            Text(index, style = MaterialTheme.typography.labelMedium, color = if (active) scheme.primary else scheme.onSurfaceVariant)
-            if (!last) Box(Modifier.padding(top = 8.dp).width(1.dp).weight(1f).background(scheme.outlineVariant))
-        }
-        Column(Modifier.weight(1f).padding(bottom = if (last) 0.dp else 16.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            SignalNote(label)
-            Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-            if (!detail.isNullOrBlank()) SignalNote(detail)
-        }
-    }
-}
-
-@Composable
-private fun processingLayerValue(
-    diagnostics: EchoPlaybackDiagnostics,
-    equalizer: EchoEqualizerState,
-    channelBalance: EchoChannelBalanceState,
-): String = when {
-    diagnostics.usbBitPerfectEnabled -> stringResource(L10nR.string.bitperfect_bypass)
-    equalizer.active && channelBalance.active ->
-        "${equalizer.sourceLabel ?: equalizer.presetName} · ${stringResource(L10nR.string.channel_balance)}"
-    equalizer.active -> equalizer.sourceLabel ?: equalizer.presetName
-    channelBalance.active -> stringResource(L10nR.string.channel_balance)
-    else -> diagnostics.processingLabel()
-}
-
-@Composable
-private fun processingLayerDetail(
-    diagnostics: EchoPlaybackDiagnostics,
-    equalizer: EchoEqualizerState,
-    channelBalance: EchoChannelBalanceState,
-): String = when {
-    diagnostics.usbBitPerfectEnabled -> stringResource(L10nR.string.bitperfect_bypass_detail)
-    equalizer.active && channelBalance.active -> stringResource(L10nR.string.diag_integrity_eq_balance)
-    equalizer.active -> stringResource(L10nR.string.diag_integrity_eq)
-    channelBalance.active -> stringResource(L10nR.string.diag_integrity_balance)
-    else -> stringResource(L10nR.string.feature_settings_equalizer_is_not_changing_the_signal_7cf73b)
 }

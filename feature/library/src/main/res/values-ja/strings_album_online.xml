@@ -26,4 +26,6 @@
     <string name="album_online_performer">演奏</string>
     <string name="album_online_mb_source">MusicBrainz · 出典と全クレジット</string>
     <string name="album_online_link_error">リンクを開けませんでした。</string>
+    <string name="album_page_tracks">曲目</string>
+    <string name="album_page_information">アルバム情報</string>
 </resources>

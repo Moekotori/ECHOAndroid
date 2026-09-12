@@ -210,8 +210,14 @@ internal class LibraryController(
         repository.pagedAlbumTracks(albumKey)
             .map { pagingData -> pagingData.map { it.toEchoTrack() } }
 
-    fun artistTrackPaging(artistKey: String): Flow<PagingData<EchoTrack>> =
-        repository.pagedArtistTracks(artistKey)
+    fun artistAlbumPaging(artistKey: String): Flow<PagingData<AlbumSummary>> =
+        repository.pagedArtistAlbums(artistKey)
+
+    fun observeArtistSummary(artistKey: String): Flow<ArtistSummary?> =
+        repository.observeArtistSummary(artistKey)
+
+    fun artistTrackPaging(artistKey: String, query: String? = null, sort: LibraryTrackSortMode = LibraryTrackSortMode.Album): Flow<PagingData<EchoTrack>> =
+        repository.pagedArtistTracks(artistKey, query, sort)
             .map { pagingData -> pagingData.map { it.toEchoTrack() } }
 
     fun genreTrackPaging(genreKey: String): Flow<PagingData<EchoTrack>> =
