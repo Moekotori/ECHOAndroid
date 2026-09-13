@@ -179,45 +179,31 @@ class EchoPlaybackEnginePolicy(
     fun applyReplayGain() {
         val player = attachedPlayer ?: return
         if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled) {
+            EchoPlaybackProcessRuntime.dspReplayGainDb = 0f
             player.volume = 1f
             EchoPlaybackProcessRuntime.setExclusiveMakeupGain(1f)
             EchoPlaybackProcessRuntime.syncLoudnessEnhancer(C.AUDIO_SESSION_ID_UNSET, 0)
             return
         }
         if (!shouldApplyReplayGainPlayerVolume(usbMuteInProgress)) return
-        val output = echoReplayGainOutput(
-            enabled = EchoPlaybackProcessRuntime.replayGainEnabled,
-            preampDb = EchoPlaybackProcessRuntime.replayGainPreampDb,
-            trackGainDb = activeReplayGainTrackGainDb,
-        )
+        EchoPlaybackProcessRuntime.dspReplayGainDb = if (EchoPlaybackProcessRuntime.replayGainEnabled) {
+            EchoPlaybackProcessRuntime.replayGainPreampDb + (activeReplayGainTrackGainDb ?: 0f)
+        } else 0f
         val durationMs = player.duration.takeIf { it > 0L } ?: 0L
         val remainingMs = EchoPlaybackProcessRuntime.sleepTimerRemainingMs(
             trackRemainingMs = (durationMs - player.currentPosition).coerceAtLeast(0L),
             trackDurationKnown = durationMs > 0L,
         )
-        val exclusiveLive = EchoPlaybackProcessRuntime.usbExclusiveSinkStatus?.streaming == true
         player.volume = (
-            output.playerVolume * EchoPlaybackProcessRuntime.trackFadeGain *
+            EchoPlaybackProcessRuntime.trackFadeGain *
                 EchoSleepTimerPolicy.fadeMultiplier(
                     remainingMs,
                     mode = EchoPlaybackProcessRuntime.sleepTimerMode,
                 )
             ).coerceIn(0f, 1f)
-        if (exclusiveLive) {
-            EchoPlaybackProcessRuntime.setExclusiveMakeupGain(
-                echoReplayGainMakeupLinear(output.enhancerGainMb),
-            )
-            EchoPlaybackProcessRuntime.syncLoudnessEnhancer(
-                audioSessionId = C.AUDIO_SESSION_ID_UNSET,
-                enhancerGainMb = 0,
-            )
-        } else {
-            EchoPlaybackProcessRuntime.setExclusiveMakeupGain(1f)
-            EchoPlaybackProcessRuntime.syncLoudnessEnhancer(
-                audioSessionId = player.audioSessionId,
-                enhancerGainMb = output.enhancerGainMb,
-            )
-        }
+        // Gain now precedes the DSP limiter on both normal and processed USB output.
+        EchoPlaybackProcessRuntime.setExclusiveMakeupGain(1f)
+        EchoPlaybackProcessRuntime.syncLoudnessEnhancer(C.AUDIO_SESSION_ID_UNSET, 0)
     }
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {

@@ -48,6 +48,11 @@ fun interface EchoPlaybackStreamResolver {
 
 @UnstableApi
 object EchoPlaybackProcessRuntime {
+    @Volatile var dspSettings = app.echo.android.model.playback.EchoDspSettings()
+        private set
+    @Volatile internal var dspReplayGainDb = 0f
+    fun setDspSettings(value: app.echo.android.model.playback.EchoDspSettings) { dspSettings = value.normalized }
+
     @Volatile
     internal var trackFadeGain: Float = 1f
         private set

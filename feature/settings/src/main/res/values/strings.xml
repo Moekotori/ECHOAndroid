@@ -455,4 +455,10 @@
     <string name="settings_import_font">Import font file</string>
     <string name="settings_clear_action">Clear</string>
     <string name="settings_unavailable">Unavailable</string>
+    <string name="settings_summary_bg_default">Default background</string>
+    <string name="settings_summary_bg_image">Image background</string>
+    <string name="settings_summary_bg_video">Video background</string>
+    <string name="settings_font_preview_ui">Your music, your way</string>
+    <string name="settings_font_preview_lyrics">Let the melody stay with you</string>
+    <string name="settings_font_preview_characters">ECHO · Aa Bb · 0123456789</string>
 </resources>

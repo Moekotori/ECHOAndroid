@@ -53,6 +53,7 @@ data class EchoAppSettings(
     val usbExclusiveEnabled: Boolean = false,
     val usbBitPerfectEnabled: Boolean = false,
     val usbExclusiveAutoRequestOnStartup: Boolean = true,
+    val dsp: app.echo.android.model.playback.EchoDspSettings = app.echo.android.model.playback.EchoDspSettings(),
     val equalizerEnabled: Boolean = false,
     val equalizerPreset: String = EchoEqualizerPreset.Flat,
     val equalizerBandGains: List<Float> = EchoEqualizerPresets.gainsForPreset(EchoEqualizerPreset.Flat),
@@ -223,6 +224,12 @@ class EchoSettingsStore(
                     smartEnabled = preferences[Keys.TrackSmartTransitionEnabled] ?: false,
                 ).normalized(),
                 usbExclusiveAutoRequestOnStartup = preferences[Keys.UsbExclusiveAutoRequestOnStartup] ?: true,
+                dsp = app.echo.android.model.playback.EchoDspSettings(
+                    preferences[Keys.DspLimiterEnabled] ?: false,
+                    preferences[Keys.DspLimiterCeiling] ?: -1f,
+                    preferences[Keys.DspCrossfeedEnabled] ?: false,
+                    preferences[Keys.DspCrossfeedAmount] ?: 0.3f,
+                ).normalized,
                 equalizerEnabled = preferences[Keys.EqualizerEnabled] ?: false,
                 equalizerPreset = EchoEqualizerPresets.normalizePresetId(preferences[Keys.EqualizerPreset]),
                 equalizerBandGains = parseEqualizerBandGains(
@@ -429,6 +436,16 @@ class EchoSettingsStore(
         context.echoSettings.edit { it[Keys.UsbExclusiveAutoRequestOnStartup] = enabled }
     }
 
+    suspend fun setDspSettings(value: app.echo.android.model.playback.EchoDspSettings) {
+        val state = value.normalized
+        context.echoSettings.edit {
+            it[Keys.DspLimiterEnabled] = state.limiterEnabled
+            it[Keys.DspLimiterCeiling] = state.limiterCeilingDb
+            it[Keys.DspCrossfeedEnabled] = state.crossfeedEnabled
+            it[Keys.DspCrossfeedAmount] = state.crossfeedAmount
+        }
+    }
+
     suspend fun setEqualizerEnabled(enabled: Boolean) {
         context.echoSettings.edit { it[Keys.EqualizerEnabled] = enabled }
     }
@@ -467,9 +484,10 @@ class EchoSettingsStore(
         preampDb: Float,
         filters: List<OpraEqBand>,
         sourceLabel: String?,
+        enabled: Boolean = true,
     ) {
         context.echoSettings.edit {
-            it[Keys.EqualizerEnabled] = true
+            it[Keys.EqualizerEnabled] = enabled
             it[Keys.EqualizerPreset] = EchoEqualizerPreset.Custom
             it[Keys.EqualizerBandGains] = formatEqualizerBandGains(gainsDb)
             it[Keys.EqualizerPreampDb] = preampDb.coerceIn(-24f, 12f)
@@ -1126,6 +1144,10 @@ class EchoSettingsStore(
         val TrackFadeDurationMs = intPreferencesKey("track_fade_duration_ms")
         val TrackSmartTransitionEnabled = booleanPreferencesKey("track_smart_transition")
         val UsbExclusiveAutoRequestOnStartup = booleanPreferencesKey("usb_exclusive_auto_request_on_startup")
+        val DspLimiterEnabled = booleanPreferencesKey("dsp_limiter_enabled")
+        val DspLimiterCeiling = floatPreferencesKey("dsp_limiter_ceiling")
+        val DspCrossfeedEnabled = booleanPreferencesKey("dsp_crossfeed_enabled")
+        val DspCrossfeedAmount = floatPreferencesKey("dsp_crossfeed_amount")
         val EqualizerEnabled = booleanPreferencesKey("equalizer_enabled")
         val EqualizerPreset = stringPreferencesKey("equalizer_preset")
         val EqualizerBandGains = stringPreferencesKey("equalizer_band_gains")

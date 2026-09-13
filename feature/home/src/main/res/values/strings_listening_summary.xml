@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_listening_journal">Listening journal</string>
+    <string name="home_listening_play_count">Plays · %1$s</string>
+    <string name="home_listening_empty_title">Music is waiting</string>
+    <string name="home_listening_empty_detail">Pick something you love and start listening.</string>
+    <string name="home_listening_open_library">Browse library</string>
+    <plurals name="home_listening_days">
+        <item quantity="one">Music kept you company on %1$d day over the past 12 weeks.</item>
+        <item quantity="other">Music kept you company on %1$d days over the past 12 weeks.</item>
+    </plurals>
+</resources>

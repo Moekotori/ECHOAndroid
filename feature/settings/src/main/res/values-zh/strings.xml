@@ -449,4 +449,10 @@
     <string name="settings_import_font">导入字体文件</string>
     <string name="settings_clear_action">清除</string>
     <string name="settings_unavailable">不可用</string>
+    <string name="settings_summary_bg_default">默认背景</string>
+    <string name="settings_summary_bg_image">图片背景</string>
+    <string name="settings_summary_bg_video">视频背景</string>
+    <string name="settings_font_preview_ui">好音乐，随心听</string>
+    <string name="settings_font_preview_lyrics">让旋律，停留在此刻</string>
+    <string name="settings_font_preview_characters">ECHO · Aa Bb · 0123456789</string>
 </resources>

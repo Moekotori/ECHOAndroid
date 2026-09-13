@@ -46,7 +46,9 @@ internal fun SignalEqualizer(
     onPresetSelected: (String) -> Unit,
     onBandGainChange: (Int, Float) -> Unit,
     onReset: () -> Unit,
+    onParametricChange: (List<app.echo.android.model.playback.OpraEqBand>) -> Unit,
 ) {
+    var showEditor by remember { mutableStateOf(false) }
     var showFilters by remember(state.filters) { mutableStateOf(false) }
     val title = stringResource(L10nR.string.feature_settings_equalizer_7ccb03)
     val scheme = MaterialTheme.colorScheme
@@ -97,6 +99,13 @@ internal fun SignalEqualizer(
                 )
             }
             Switch(checked = state.enabled, onCheckedChange = onEnabledChange, modifier = Modifier.semantics { contentDescription = title })
+        }
+        TextButton(onClick = {
+            if (!state.parametric) onParametricChange(state.bands.map { app.echo.android.model.playback.OpraEqBand("peak_dip", it.frequencyHz.toFloat(), it.gainDb, 1f, null) })
+            showEditor = !showEditor
+        }, enabled = !bypassed) { Text(stringResource(L10nR.string.dsp_peq)) }
+        EchoExpand(showEditor && state.parametric) {
+            SignalPeqEditor(state.filters, !bypassed, onParametricChange)
         }
         state.warning?.let { SignalNote(it, error = true) }
 

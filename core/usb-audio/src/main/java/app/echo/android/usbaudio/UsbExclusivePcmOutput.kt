@@ -213,6 +213,7 @@ class UsbExclusivePcmSession internal constructor(
             packetsPerSecond = packetsPerSecond,
             feedbackEndpointAddress = format.feedbackEndpointAddress ?: 0,
             feedbackMaxPacketSize = format.feedbackMaxPacketSize ?: 0,
+            endpointInterval = format.endpointInterval ?: endpoint.interval,
         )
         if (nativeHandle == 0L) {
             error("Unable to start native isochronous writer")
@@ -264,7 +265,9 @@ class UsbExclusivePcmSession internal constructor(
         }
     }
 
-    fun writePcm(buffer: ByteArray, offset: Int = 0, length: Int = buffer.size): UsbPcmWriteResult = synchronized(lock) {
+    /** At a stream boundary, transmit the last whole PCM frames without zero padding. */
+    fun writePcm(buffer: ByteArray, offset: Int = 0, length: Int = buffer.size,
+        endOfStream: Boolean = false): UsbPcmWriteResult = synchronized(lock) {
         if (closed) {
             return UsbPcmWriteResult(UsbExclusiveOutputState.Closed, message = "USB PCM session is closed")
         }
@@ -275,7 +278,7 @@ class UsbExclusivePcmSession internal constructor(
         val safeOffset = offset.coerceIn(0, buffer.size)
         val safeLength = length.coerceIn(0, buffer.size - safeOffset)
         if (endpoint.type == UsbConstants.USB_ENDPOINT_XFER_ISOC) {
-            val written = UsbIsochronousNative.write(nativeHandle, buffer, safeOffset, safeLength)
+            val written = UsbIsochronousNative.write(nativeHandle, buffer, safeOffset, safeLength, endOfStream)
             return when {
                 written == UsbIsochronousNative.FATAL -> {
                     disconnected = true

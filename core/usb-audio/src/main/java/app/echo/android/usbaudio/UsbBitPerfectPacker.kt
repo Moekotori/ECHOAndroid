@@ -5,13 +5,16 @@ import java.nio.ByteBuffer
 /** Integer-only PCM packing. Source s32 is left-aligned as returned by libswresample. */
 object UsbBitPerfectPacker {
     fun pack(source: ByteBuffer, sourceBytes: Int, sourceBits: Int, bigEndian: Boolean,
-        outputBits: Int, outputBytes: Int, destination: ByteArray, channels: Int): Int {
+        outputBits: Int, outputBytes: Int, destination: ByteArray, channels: Int,
+        destinationOffset: Int = 0): Int {
         require(sourceBytes in 2..4 && (sourceBits == 16 || sourceBits == 24))
         require(sourceBits <= sourceBytes * 8 && outputBytes in 2..4)
         require(outputBits in sourceBits..32 && outputBits <= outputBytes * 8)
         require(channels in 1..2)
-        val frames = minOf(source.remaining() / (sourceBytes * channels), destination.size / (outputBytes * channels))
-        var out = 0
+        require(destinationOffset in 0..destination.size && destinationOffset % (outputBytes * channels) == 0)
+        val frames = minOf(source.remaining() / (sourceBytes * channels),
+            (destination.size - destinationOffset) / (outputBytes * channels))
+        var out = destinationOffset
         repeat(frames * channels) {
             var raw = 0
             repeat(sourceBytes) { byte ->
@@ -24,6 +27,6 @@ object UsbBitPerfectPacker {
             val packed = normalized shr (32 - outputBytes * 8)
             repeat(outputBytes) { byte -> destination[out++] = (packed shr (byte * 8)).toByte() }
         }
-        return out
+        return out - destinationOffset
     }
 }

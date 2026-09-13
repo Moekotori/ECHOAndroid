@@ -15,6 +15,8 @@ import kotlin.math.abs
 class EchoChannelBalanceAudioProcessor(
     private val onProcessingFormatChanged: (Int?) -> Unit = {},
 ) : BaseAudioProcessor() {
+    internal var preserveFloatHeadroom = false
+
     @Volatile
     private var runtime: EchoChannelBalanceState = EchoChannelBalanceState()
 
@@ -202,11 +204,11 @@ class EchoChannelBalanceAudioProcessor(
         repeat(frameCount) {
             if (channelCount <= 1) {
                 processMonoSample(floatIn.get(), state)
-                floatOut.put(frame[0].coerceIn(-1f, 1f))
+                floatOut.put(if (preserveFloatHeadroom) frame[0] else frame[0].coerceIn(-1f, 1f))
             } else {
                 processStereoSample(floatIn.get(), floatIn.get(), state)
-                floatOut.put(frame[0].coerceIn(-1f, 1f))
-                floatOut.put(frame[1].coerceIn(-1f, 1f))
+                floatOut.put(if (preserveFloatHeadroom) frame[0] else frame[0].coerceIn(-1f, 1f))
+                floatOut.put(if (preserveFloatHeadroom) frame[1] else frame[1].coerceIn(-1f, 1f))
                 copyRemainingFloats(floatIn, floatOut, channelCount - 2)
             }
         }

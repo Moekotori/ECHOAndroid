@@ -64,9 +64,10 @@ internal fun SettingsNavigation(
                 PageChrome(
                     title = stringResource(category?.title ?: R.string.settings_title),
                     subtitle = null,
+                    compactHeader = true,
                     badgeContent = {},
                     titleContent = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
                             if (category != null) IconButton(onClick = { selected = null }) {
                                 Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.settings_back), tint = MaterialTheme.colorScheme.onSurface)
                             }
@@ -82,16 +83,10 @@ internal fun SettingsNavigation(
                 ) {
                     Column(
                         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                            .padding(top = 12.dp, bottom = 172.dp),
+                            .padding(top = 2.dp, bottom = 172.dp),
                         verticalArrangement = Arrangement.spacedBy(if (compactMode) 8.dp else 12.dp),
                     ) {
                         if (category == null) {
-                            Text(
-                                stringResource(R.string.settings_home_detail),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
-                            )
                             settingsGroups.forEach { (title, entries) ->
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text(

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_listening_journal">音乐足迹</string>
+    <string name="home_listening_play_count">%1$s 次播放</string>
+    <string name="home_listening_empty_title">下一首，从这里开始</string>
+    <string name="home_listening_empty_detail">挑一首喜欢的音乐，留下你的听歌足迹。</string>
+    <string name="home_listening_open_library">去曲库</string>
+    <plurals name="home_listening_days">
+        <item quantity="other">近 12 周，有 %1$d 个日子与音乐相伴。</item>
+    </plurals>
+</resources>

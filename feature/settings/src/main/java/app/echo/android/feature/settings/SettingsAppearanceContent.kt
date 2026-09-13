@@ -4,6 +4,7 @@ import app.echo.android.design.backgroundMaxBlur
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
@@ -20,6 +21,7 @@ import kotlin.math.roundToInt
 
 @Composable
 internal fun SettingsAppearanceContent(
+    importedFontFamily: FontFamily?,
     dynamicColorEnabled: Boolean,
     customBackgroundMode: String,
     customBackgroundUri: String?,
@@ -231,6 +233,9 @@ internal fun SettingsAppearanceContent(
             valueRange = 0.88f..1.18f,
             steps = 14,
             onValueChange = onUiFontScaleChange,
+            preview = { scale ->
+                SettingsFontPreview(uiFontFamily, importedFontFamily, scale, lyrics = false)
+            },
         )
         SettingsSliderRow(
             title = stringResource(R.string.settings_ui_density),
@@ -264,6 +269,9 @@ internal fun SettingsAppearanceContent(
             valueRange = 0.82f..1.28f,
             steps = 22,
             onValueChange = onLyricsFontScaleChange,
+            preview = { scale ->
+                SettingsFontPreview(lyricsFontFamily, importedFontFamily, scale, lyrics = true)
+            },
         )
         HorizontalDivider(
             modifier = Modifier.padding(vertical = 6.dp),

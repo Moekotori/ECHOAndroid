@@ -15,6 +15,7 @@ internal object UsbIsochronousNative {
         packetsPerSecond: Int,
         feedbackEndpointAddress: Int = 0,
         feedbackMaxPacketSize: Int = 0,
+        endpointInterval: Int = 1,
     ): Long {
         if (!available || fileDescriptor < 0) return 0L
         return nativeCreate(
@@ -27,12 +28,13 @@ internal object UsbIsochronousNative {
             packetsPerSecond,
             feedbackEndpointAddress,
             feedbackMaxPacketSize,
+            endpointInterval,
         )
     }
 
-    fun write(handle: Long, packed: ByteArray, offset: Int, length: Int): Int {
+    fun write(handle: Long, packed: ByteArray, offset: Int, length: Int, endOfStream: Boolean = false): Int {
         if (handle == 0L || length <= 0) return 0
-        return nativeWrite(handle, packed, offset, length)
+        return nativeWrite(handle, packed, offset, length, endOfStream)
     }
 
     fun hasTransferError(handle: Long): Boolean = handle == 0L || nativeHasTransferError(handle)
@@ -66,10 +68,11 @@ internal object UsbIsochronousNative {
         packetsPerSecond: Int,
         feedbackEndpointAddress: Int,
         feedbackMaxPacketSize: Int,
+        endpointInterval: Int,
     ): Long
 
     @JvmStatic
-    private external fun nativeWrite(handle: Long, packed: ByteArray, offset: Int, length: Int): Int
+    private external fun nativeWrite(handle: Long, packed: ByteArray, offset: Int, length: Int, endOfStream: Boolean): Int
 
     @JvmStatic
     private external fun nativeHasTransferError(handle: Long): Boolean

@@ -1096,6 +1096,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             val errorLogCount by viewModel.errorLogCount.collectAsStateWithLifecycle(0)
                             val backupNotice by viewModel.backupNotice.collectAsStateWithLifecycle()
                             SettingsScreen(
+                                importedFontFamily = importedFontFamily,
                                 isActive = tabPagerState.currentPage == EchoPagerPage.Settings.ordinal &&
                                     !nowPlayingExpanded && !searchVisible && !errorLogVisible && !queueSheetVisible,
                                 status = playbackStatus,
@@ -1383,10 +1384,18 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 val equalizerState by viewModel.equalizerState.collectAsStateWithLifecycle()
                                 val channelBalanceState by viewModel.channelBalanceState.collectAsStateWithLifecycle()
                                 val opraState by viewModel.opraState.collectAsStateWithLifecycle()
+                                val replayGainScan by viewModel.replayGainScanState.collectAsStateWithLifecycle()
                                 DiagnosticsScreen(
                                     status = playbackStatus,
                                     positionFlow = viewModel.playbackPosition,
                                     equalizerState = equalizerState,
+                                    dspSettings = appSettings.dsp,
+                                    replayGainScan = replayGainScan,
+                                    onDspSettings = viewModel::setDspSettings,
+                                    onReplayGain = viewModel::setReplayGain,
+                                    onReplayGainMode = viewModel::setReplayGainMode,
+                                    onReplayGainScan = viewModel::scanReplayGainForCurrentTrack,
+                                    onParametricChange = viewModel::setParametricFilters,
                                     channelBalanceState = channelBalanceState,
                                     opraState = opraState,
                                     onEqualizerEnabledChange = viewModel::setEqualizerEnabled,

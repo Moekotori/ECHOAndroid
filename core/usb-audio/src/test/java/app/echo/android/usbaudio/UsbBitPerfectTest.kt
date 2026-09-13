@@ -6,6 +6,19 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class UsbBitPerfectTest {
+    @Test fun appendingDecodedFramesPreservesUsbTailAndBackpressure() {
+        val output = ByteArray(24)
+        val tail = byteArrayOf(1, 2, 3, 4, 5, 6, 7, 8)
+        tail.copyInto(output)
+        val input = ByteBuffer.wrap(ByteArray(24) { (it + 9).toByte() })
+        val written = UsbBitPerfectPacker.pack(input, 2, 16, false, 16, 2, output, 2, tail.size)
+        assertEquals(16, written)
+        assertEquals(16, input.position())
+        assertArrayEquals(ByteArray(24) { (it + 1).toByte() }, output)
+        assertEquals(0, UsbBitPerfectPacker.pack(input, 2, 16, false, 16, 2, output, 2, output.size))
+        assertEquals(16, input.position())
+    }
+
     @Test fun all16BitValuesSurviveEndianConversionAndWidening() {
         for (big in listOf(false, true)) {
             val input = ByteBuffer.allocate(65536 * 2).order(if (big) ByteOrder.BIG_ENDIAN else ByteOrder.LITTLE_ENDIAN)

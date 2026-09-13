@@ -291,6 +291,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                     settings.usbExclusiveEnabled
                 }
                 playbackController.setUsbOutputMode(shouldEnableUsbExclusive, settings.usbBitPerfectEnabled)
+                EchoPlaybackProcessRuntime.setDspSettings(settings.dsp)
                 val equalizerSignature =
                     "${settings.equalizerEnabled}|${settings.equalizerPreset}|${settings.equalizerBandGains}|" +
                         "${settings.equalizerPreampDb}|${settings.equalizerParametric}|${settings.equalizerSourceLabel}|" +
@@ -1099,6 +1100,19 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun setUsbExclusiveAutoRequestOnStartup(enabled: Boolean) {
         updateSettings {
             setUsbExclusiveAutoRequestOnStartup(enabled)
+        }
+    }
+
+    fun setDspSettings(value: app.echo.android.model.playback.EchoDspSettings) {
+        EchoPlaybackProcessRuntime.setDspSettings(value)
+        updateSettings { setDspSettings(value) }
+    }
+
+    fun setParametricFilters(filters: List<app.echo.android.model.playback.OpraEqBand>) {
+        EchoPlaybackProcessRuntime.equalizerController().setParametricFilters(filters)
+        val selected = playbackController.equalizerState.value
+        updateSettings {
+            setEqualizerParametricConfig(selected.gainsDb, selected.preampDb, selected.filters, selected.sourceLabel, enabled = selected.enabled)
         }
     }
 

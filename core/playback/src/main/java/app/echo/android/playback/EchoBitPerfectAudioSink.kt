@@ -68,8 +68,8 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
         if (volume != 1f) initializationFailure(EchoBitPerfectState.VolumeChanged, wanted)
         if (session != null && (wanted.sampleRate != format?.sampleRate ||
             wanted.channelCount != format?.channelCount || wanted.pcmEncoding != format?.pcmEncoding ||
-            nextSourceBits != sourceBits)) {
-            drain()
+            nextSourceBits != sourceBits || nextDsdDop != dsdDop)) {
+            drain(endOfStream = true)
             if (hasPendingData()) return false
             closeSession()
         }
@@ -99,15 +99,20 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
             listener?.onPositionDiscontinuity()
         }
         drain()
-        if (pendingEnd > pendingStart) return false
+        // Preserve a partial USB packet and append the next decoded frames to it.
+        // Returning early here would leave that tail permanently unable to form a packet.
+        if (pendingStart > 0) {
+            pending.copyInto(pending, 0, pendingStart, pendingEnd)
+            pendingEnd -= pendingStart
+            pendingStart = 0
+        }
         val bytes = pcmBytes(current.pcmEncoding)
         if (buffer.remaining() % (bytes * current.channelCount) != 0) {
             initializationFailure(EchoBitPerfectState.UnsupportedSource, current)
         }
         try {
-            pendingEnd = UsbBitPerfectPacker.pack(buffer, bytes, sourceBits, isBigEndian(current.pcmEncoding),
-                session!!.bitResolution!!, session!!.bytesPerSample, pending, current.channelCount)
-            pendingStart = 0
+            pendingEnd += UsbBitPerfectPacker.pack(buffer, bytes, sourceBits, isBigEndian(current.pcmEncoding),
+                session!!.bitResolution!!, session!!.bytesPerSample, pending, current.channelCount, pendingEnd)
         } catch (error: IllegalArgumentException) {
             initializationFailure(EchoBitPerfectState.UnsupportedSource, current)
         }
@@ -115,7 +120,7 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
         return !buffer.hasRemaining()
     }
 
-    private fun drain() {
+    private fun drain(endOfStream: Boolean = false) {
         val current = session ?: return
         if (current.hasTransferError()) {
             val failedFormat = format!!
@@ -124,7 +129,7 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
         }
         if (!playing || pendingStart == pendingEnd) return
         if (volume != 1f) initializationFailure(EchoBitPerfectState.VolumeChanged, format!!)
-        val result = current.writePcm(pending, pendingStart, pendingEnd - pendingStart)
+        val result = current.writePcm(pending, pendingStart, pendingEnd - pendingStart, endOfStream)
         val frameBytes = current.bytesPerSample * format!!.channelCount
         if (current.isDisconnected() || result.bytesWritten < 0 || result.bytesWritten % frameBytes != 0 ||
             (result.state != UsbExclusiveOutputState.Streaming && result.state != UsbExclusiveOutputState.Ready)) {
@@ -153,7 +158,7 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
         else firstPts + completedFrames() * 1_000_000L / format!!.sampleRate
     override fun hasPendingData(): Boolean = pendingEnd > pendingStart || completedFrames() < submittedFrames
     override fun isEnded(): Boolean = ended && !hasPendingData()
-    override fun playToEndOfStream() { ended = true; drain() }
+    override fun playToEndOfStream() { ended = true; drain(endOfStream = true) }
     override fun play() { playing = true }
     override fun pause() { playing = false; waiting() }
     override fun handleDiscontinuity() { discontinuity = true }

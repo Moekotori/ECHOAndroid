@@ -41,9 +41,10 @@ internal class EchoRenderersFactory(
         enableAudioTrackPlaybackParams: Boolean,
     ): AudioSink =
         DefaultAudioSink.Builder(context)
-            .setEnableFloatOutput(enableFloatOutput)
+            // Custom DSP uses internal float buffers and preserves the negotiated output encoding.
+            .setEnableFloatOutput(false)
             .setEnableAudioOutputPlaybackParameters(enableAudioTrackPlaybackParams)
-            .setAudioProcessors(arrayOf(smartTransitionProcessor, equalizerProcessor, channelBalanceProcessor))
+            .setAudioProcessors(arrayOf(EchoDspAudioProcessor(arrayOf(smartTransitionProcessor, equalizerProcessor, channelBalanceProcessor))))
             .setAudioOutputProvider(EchoAudioOutputProvider(context))
             .build()
 }

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dsp_title">DSP</string>
+    <string name="dsp_limiter">ピークリミッター</string>
+    <string name="dsp_limiter_detail">左右連動でピークを抑え、滑らかに復帰します。トゥルーピーク方式ではありません。</string>
+    <string name="dsp_ceiling">出力上限 · %1$.1f dBFS</string>
+    <string name="dsp_loudness">音量の均一化</string>
+    <string name="dsp_loudness_detail">ReplayGain タグで音量を揃えます。アルバムモードは曲間の音量差を保ちます。</string>
+    <string name="dsp_auto">自動</string>
+    <string name="dsp_track">曲</string>
+    <string name="dsp_album">アルバム</string>
+    <string name="dsp_gain">ゲイン · %1$.1f dB</string>
+    <string name="dsp_missing_tags">音量情報がありません。ローカル曲を解析して作成できます。</string>
+    <string name="dsp_scan">現在のローカル曲を解析してタグを保存</string>
+    <string name="dsp_scanned">保存済み · %1$.1f dB</string>
+    <string name="dsp_scan_failed">解析またはタグの書き込みに失敗しました。対応形式と書き込み権限を確認してください。</string>
+    <string name="dsp_crossfeed">ヘッドホンのクロスフィード</string>
+    <string name="dsp_crossfeed_detail">フィルターと短い遅延を通した音を反対のチャンネルに混ぜます。ステレオのみ。</string>
+    <string name="dsp_gentle">弱</string>
+    <string name="dsp_natural">標準</string>
+    <string name="dsp_strong">強</string>
+    <string name="dsp_peq">パラメトリック EQ を編集</string>
+    <string name="dsp_peq_detail">最大 12 バンド。適用すると応答を更新して保存します。編集後は手動設定となり、ヘッドルームを再計算します。</string>
+    <string name="dsp_add_band">フィルターを追加</string>
+    <string name="dsp_band">フィルター %1$d</string>
+    <string name="dsp_peak">ピーク / ディップ</string>
+    <string name="dsp_low_shelf">ローシェルフ</string>
+    <string name="dsp_high_shelf">ハイシェルフ</string>
+    <string name="dsp_low_pass">ローパス</string>
+    <string name="dsp_high_pass">ハイパス</string>
+    <string name="dsp_notch">ノッチ</string>
+    <string name="dsp_band_pass">バンドパス</string>
+    <string name="dsp_frequency">周波数 · Hz</string>
+    <string name="dsp_band_gain">ゲイン · dB</string>
+    <string name="dsp_peq_range">20–20000 Hz · −12〜+12 dB · Q 0.1–10</string>
+    <string name="dsp_apply">適用して保存</string>
+    <string name="dsp_remove">削除</string>
+</resources>

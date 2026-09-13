@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dsp_title">DSP</string>
+    <string name="dsp_limiter">峰值限制器</string>
+    <string name="dsp_limiter_detail">双声道联动保护峰值，平滑释放。不是采样间真峰值限制器。</string>
+    <string name="dsp_ceiling">输出上限 · %1$.1f dBFS</string>
+    <string name="dsp_loudness">响度统一</string>
+    <string name="dsp_loudness_detail">使用 ReplayGain 标签统一播放音量；专辑模式保留专辑内曲目间的音量差。</string>
+    <string name="dsp_auto">自动</string>
+    <string name="dsp_track">曲目</string>
+    <string name="dsp_album">专辑</string>
+    <string name="dsp_gain">增益 · %1$.1f dB</string>
+    <string name="dsp_missing_tags">暂无响度数据，可扫描本地曲目生成。</string>
+    <string name="dsp_scan">分析当前本地曲目并保存标签</string>
+    <string name="dsp_scanned">已保存 · %1$.1f dB</string>
+    <string name="dsp_scan_failed">分析或标签写入失败，请确认本地文件受支持且可写。</string>
+    <string name="dsp_crossfeed">耳机交叉馈送</string>
+    <string name="dsp_crossfeed_detail">将经过滤波、轻微延迟的声音混入另一声道，缓和耳机左右分离感。仅用于立体声。</string>
+    <string name="dsp_gentle">轻柔</string>
+    <string name="dsp_natural">自然</string>
+    <string name="dsp_strong">明显</string>
+    <string name="dsp_peq">编辑参数均衡器</string>
+    <string name="dsp_peq_detail">最多 12 段。应用后更新频响并保存；编辑会转为手动配置，并重新计算防削波预增益。</string>
+    <string name="dsp_add_band">添加滤波段</string>
+    <string name="dsp_band">滤波段 %1$d</string>
+    <string name="dsp_peak">峰值 / 凹陷</string>
+    <string name="dsp_low_shelf">低架滤波</string>
+    <string name="dsp_high_shelf">高架滤波</string>
+    <string name="dsp_low_pass">低通滤波</string>
+    <string name="dsp_high_pass">高通滤波</string>
+    <string name="dsp_notch">陷波</string>
+    <string name="dsp_band_pass">带通滤波</string>
+    <string name="dsp_frequency">频率 · Hz</string>
+    <string name="dsp_band_gain">增益 · dB</string>
+    <string name="dsp_peq_range">20–20000 Hz · −12 至 +12 dB · Q 0.1–10</string>
+    <string name="dsp_apply">应用并保存</string>
+    <string name="dsp_remove">移除</string>
+</resources>

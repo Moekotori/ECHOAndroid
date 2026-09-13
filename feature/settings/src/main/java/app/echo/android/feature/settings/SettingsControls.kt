@@ -469,6 +469,7 @@ internal fun SettingsSliderRow(
     valueRange: ClosedFloatingPointRange<Float>,
     steps: Int,
     onValueChange: (Float) -> Unit,
+    preview: (@Composable (Float) -> Unit)? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
@@ -504,6 +505,7 @@ internal fun SettingsSliderRow(
                     maxLines = 1,
                 )
             }
+            preview?.invoke(localValue)
             Slider(
                 value = localValue,
                 onValueChange = { dragging = true; localValue = it },

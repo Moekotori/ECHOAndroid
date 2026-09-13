@@ -1,5 +1,8 @@
 package app.echo.android.playback
 
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.CancellationException
 import android.content.Context
 import android.media.MediaCodec
 import android.media.MediaExtractor
@@ -13,7 +16,7 @@ import java.nio.ByteOrder
 class EchoReplayGainScanner(context: Context) {
     private val appContext = context.applicationContext
 
-    fun scanTrackGainDb(uri: String, mimeType: String? = null): Float? {
+    suspend fun scanTrackGainDb(uri: String, mimeType: String? = null): Float? {
         if (LibraryPlaybackSupport.isDsd(mimeType, uri)) return null
         val parsed = runCatching { uri.toUri() }.getOrNull() ?: return null
         val scheme = parsed.scheme?.lowercase()
@@ -38,6 +41,8 @@ class EchoReplayGainScanner(context: Context) {
                 runCatching { codec.stop() }
                 runCatching { codec.release() }
             }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: Exception) {
             null
         } finally {
@@ -53,7 +58,7 @@ class EchoReplayGainScanner(context: Context) {
         return null
     }
 
-    private fun drain(
+    private suspend fun drain(
         extractor: MediaExtractor,
         codec: MediaCodec,
         sampleRate: Int,
@@ -67,7 +72,8 @@ class EchoReplayGainScanner(context: Context) {
         var inputDone = false
         var outputDone = false
         while (!outputDone) {
-            if (SystemClock.elapsedRealtime() - startedAt > MaxScanMs) return acc.gainDb()
+            currentCoroutineContext().ensureActive()
+            if (SystemClock.elapsedRealtime() - startedAt > MaxScanMs) return null
             if (!inputDone) {
                 val index = codec.dequeueInputBuffer(10_000)
                 if (index >= 0) {

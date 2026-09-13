@@ -40,6 +40,7 @@ struct Writer {
     int channels;
     int bytes_per_sample;
     int pps;
+    int service_interval;
     int high_speed;
     int fatal;
     int transfer_error;
@@ -60,7 +61,8 @@ static int bytes_per_frame(const Writer* writer) {
 }
 
 static int next_packet_samples(Writer* writer) {
-    writer->acc_q16 += writer->feedback_q16;
+    // Feedback is expressed per bus (micro)frame, not per endpoint service interval.
+    writer->acc_q16 += writer->feedback_q16 * writer->service_interval;
     int samples = (int)(writer->acc_q16 >> 16);
     writer->acc_q16 &= 0xffff;
     return samples > 0 ? samples : 1;
@@ -309,7 +311,7 @@ static void fill_keepalive(Writer* writer) {
     }
 }
 
-static void apply_bus_speed(Writer* writer, int requested_pps) {
+static void apply_bus_speed(Writer* writer, int requested_pps, int endpoint_interval) {
     writer->pps = requested_pps >= 8000 ? 8000 : 1000;
     int speed = ioctl(writer->fd, USBDEVFS_GET_SPEED);
     if (speed >= 3) {
@@ -318,20 +320,18 @@ static void apply_bus_speed(Writer* writer, int requested_pps) {
         writer->pps = 1000;
     }
     writer->high_speed = writer->pps >= 8000 ? 1 : 0;
-    writer->packets_per_urb = writer->high_speed ? 8 : 1;
+    writer->service_interval = 1 << (endpoint_interval - 1);
+    const int packets_per_ms = (writer->high_speed ? 8 : 1) / writer->service_interval;
+    writer->packets_per_urb = packets_per_ms > 0 ? packets_per_ms : 1;
 }
 
-static void ensure_packet_fits(Writer* writer) {
+static bool packet_fits(const Writer* writer) {
     const int frame = bytes_per_frame(writer);
-    if (frame <= 0 || writer->pps <= 0 || writer->sample_rate <= 0) return;
-    int samples = writer->sample_rate / writer->pps;
-    if (samples < 1) samples = 1;
-    if (samples * frame <= writer->max_packet) return;
-    if (writer->pps < 8000) {
-        writer->pps = 8000;
-        writer->high_speed = 1;
-        writer->packets_per_urb = 8;
-    }
+    if (frame <= 0 || writer->pps <= 0 || writer->sample_rate <= 0) return false;
+    const int64_t samples = ((int64_t)writer->sample_rate * writer->service_interval +
+                             writer->pps - 1) / writer->pps;
+    // Reject an impossible alternate setting; changing the assumed bus speed loses audio.
+    return samples * frame <= writer->max_packet;
 }
 
 extern "C" JNIEXPORT jlong JNICALL
@@ -346,8 +346,10 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeCreate(
         jint bytes_per_sample,
         jint packets_per_second,
         jint feedback_endpoint,
-        jint feedback_max_packet) {
-    if (fd < 0 || sample_rate_hz <= 0 || channel_count <= 0 || bytes_per_sample <= 0) {
+        jint feedback_max_packet,
+        jint endpoint_interval) {
+    if (fd < 0 || sample_rate_hz <= 0 || channel_count <= 0 || bytes_per_sample <= 0 ||
+        endpoint_interval < 1 || endpoint_interval > 16) {
         return 0;
     }
     auto* writer = (Writer*)calloc(1, sizeof(Writer));
@@ -358,8 +360,11 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeCreate(
     writer->sample_rate = sample_rate_hz;
     writer->channels = channel_count;
     writer->bytes_per_sample = bytes_per_sample;
-    apply_bus_speed(writer, packets_per_second);
-    ensure_packet_fits(writer);
+    apply_bus_speed(writer, packets_per_second, endpoint_interval);
+    if (!packet_fits(writer)) {
+        free(writer);
+        return 0;
+    }
     writer->nominal_q16 = ((int64_t)sample_rate_hz << 16) / writer->pps;
     writer->feedback_q16 = writer->nominal_q16;
     writer->feedback_ep = (uint8_t)feedback_endpoint;
@@ -385,8 +390,9 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeCreate(
             submit_feedback(writer, i);
         }
     }
-    LOGI("iso writer fd=%d ep=0x%x rate=%d ch=%d bps=%d pps=%d fb=0x%x",
-         fd, endpoint_address, sample_rate_hz, channel_count, bytes_per_sample, writer->pps, feedback_endpoint);
+    LOGI("iso writer fd=%d ep=0x%x rate=%d ch=%d bps=%d bus_pps=%d interval=%d fb=0x%x",
+         fd, endpoint_address, sample_rate_hz, channel_count, bytes_per_sample,
+         writer->pps, writer->service_interval, feedback_endpoint);
     return reinterpret_cast<jlong>(writer);
 }
 
@@ -397,16 +403,19 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeWrite(
         jlong handle,
         jbyteArray packed,
         jint offset,
-        jint length) {
+        jint length,
+        jboolean end_of_stream) {
     auto* writer = reinterpret_cast<Writer*>(handle);
     if (writer == nullptr || packed == nullptr || length <= 0) return 0;
+    const int frame_bytes = bytes_per_frame(writer);
+    if (frame_bytes <= 0 || length % frame_bytes != 0 || offset < 0 ||
+        offset > env->GetArrayLength(packed) - length) return -1;
     if (writer->fatal) return WRITE_FATAL;
     reap(writer);
     if (writer->fatal) return WRITE_FATAL;
     jbyte* src = env->GetByteArrayElements(packed, nullptr);
     if (src == nullptr) return -1;
     int consumed = 0;
-    const int frame_bytes = bytes_per_frame(writer);
     while (consumed < length) {
         int free_slot = -1;
         for (int i = 0; i < URB_COUNT; ++i) {
@@ -423,13 +432,18 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeWrite(
         int frames_this_urb = 0;
         int64_t saved_acc = writer->acc_q16;
         for (int p = 0; p < writer->packets_per_urb; ++p) {
-            const int samples = next_packet_samples(writer);
-            const int packet_bytes = samples * frame_bytes;
+            int samples = next_packet_samples(writer);
+            int packet_bytes = samples * frame_bytes;
             if (packet_bytes <= 0 || packet_bytes > writer->max_packet) {
                 LOGE("iso packet %d exceeds max %d", packet_bytes, writer->max_packet);
                 writer->acc_q16 = urb_start_acc;
                 env->ReleaseByteArrayElements(packed, src, JNI_ABORT);
                 return -1;
+            }
+            if (end_of_stream && consumed < length && packet_bytes > length - consumed) {
+                // Final short packet: retain every source frame, never synthesize PCM/DoP data.
+                packet_bytes = length - consumed;
+                samples = packet_bytes / frame_bytes;
             }
             if (used + packet_bytes > writer->max_packet * writer->packets_per_urb ||
                 consumed + packet_bytes > length) {
@@ -521,7 +535,8 @@ extern "C" JNIEXPORT jlong JNICALL
 Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeCapacityFrames(JNIEnv*, jclass, jlong handle) {
     auto* writer = reinterpret_cast<Writer*>(handle);
     if (writer == nullptr || writer->pps <= 0) return 1;
-    const int samples = writer->sample_rate / writer->pps;
+    const int samples = (int)(((int64_t)writer->sample_rate * writer->service_interval +
+                               writer->pps - 1) / writer->pps);
     const int per_urb = (samples > 0 ? samples : 1) * writer->packets_per_urb;
     return (jlong)per_urb * URB_COUNT;
 }

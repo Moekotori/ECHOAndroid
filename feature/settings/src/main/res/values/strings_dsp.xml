@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dsp_title">DSP</string>
+    <string name="dsp_limiter">Peak limiter</string>
+    <string name="dsp_limiter_detail">Linked stereo peak protection with smooth release. Not a true-peak limiter.</string>
+    <string name="dsp_ceiling">Ceiling · %1$.1f dBFS</string>
+    <string name="dsp_loudness">Loudness normalization</string>
+    <string name="dsp_loudness_detail">ReplayGain tags keep playback levels consistent. Album mode preserves relative track levels.</string>
+    <string name="dsp_auto">Auto</string>
+    <string name="dsp_track">Track</string>
+    <string name="dsp_album">Album</string>
+    <string name="dsp_gain">Gain · %1$.1f dB</string>
+    <string name="dsp_missing_tags">No loudness value available. Scan a local track to create one.</string>
+    <string name="dsp_scan">Analyze current local track and save tag</string>
+    <string name="dsp_scanned">Saved · %1$.1f dB</string>
+    <string name="dsp_scan_failed">Analysis or tag writing failed. Check that this local file is supported and writable.</string>
+    <string name="dsp_crossfeed">Headphone crossfeed</string>
+    <string name="dsp_crossfeed_detail">Blend a filtered, slightly delayed signal into the opposite channel. Stereo only.</string>
+    <string name="dsp_gentle">Gentle</string>
+    <string name="dsp_natural">Natural</string>
+    <string name="dsp_strong">Strong</string>
+    <string name="dsp_peq">Edit parametric EQ</string>
+    <string name="dsp_peq_detail">Up to 12 filters. Apply each edit to update the response and save it. Editing creates a manual configuration and recalculates headroom.</string>
+    <string name="dsp_add_band">Add filter</string>
+    <string name="dsp_band">Filter %1$d</string>
+    <string name="dsp_peak">Peak / dip</string>
+    <string name="dsp_low_shelf">Low shelf</string>
+    <string name="dsp_high_shelf">High shelf</string>
+    <string name="dsp_low_pass">Low pass</string>
+    <string name="dsp_high_pass">High pass</string>
+    <string name="dsp_notch">Notch</string>
+    <string name="dsp_band_pass">Band pass</string>
+    <string name="dsp_frequency">Frequency · Hz</string>
+    <string name="dsp_band_gain">Gain · dB</string>
+    <string name="dsp_peq_range">20–20000 Hz · −12 to +12 dB · Q 0.1–10</string>
+    <string name="dsp_apply">Apply and save</string>
+    <string name="dsp_remove">Remove</string>
+</resources>

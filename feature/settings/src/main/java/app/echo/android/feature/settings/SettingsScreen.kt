@@ -2,12 +2,14 @@ package app.echo.android.feature.settings
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.settings.EchoBackgroundStyle
 
 @Composable
 fun SettingsScreen(
     isActive: Boolean = true,
+    importedFontFamily: FontFamily? = null,
     status: EchoPlaybackStatus,
     trackCount: Int,
     albumCount: Int,
@@ -124,7 +126,11 @@ fun SettingsScreen(
                 "dark" -> R.string.settings_theme_dark
                 "light" -> R.string.settings_theme_light
                 else -> R.string.settings_theme_system
-            }) + " · " + colorThemeLabel(colorTheme) + " · " + backgroundDetail(customBackgroundMode, customBackgroundUri)),
+            }) + " · " + colorThemeLabel(colorTheme) + " · " + stringResource(when (customBackgroundMode) {
+                "image" -> R.string.settings_summary_bg_image
+                "video" -> R.string.settings_summary_bg_video
+                else -> R.string.settings_summary_bg_default
+            })),
             SettingsCategory.Interface to (languageDetail(appLanguage) + " · " +
                 performanceModeOptions().firstOrNull { it.value == performanceMode }?.label.orEmpty()),
             SettingsCategory.Playback to stringResource(if (usbExclusiveEnabled) R.string.settings_usb_exclusive else R.string.settings_gapless),
@@ -135,6 +141,7 @@ fun SettingsScreen(
     ) { category ->
         when (category) {
                 SettingsCategory.Appearance -> SettingsAppearanceContent(
+                    importedFontFamily = importedFontFamily,
                     dynamicColorEnabled = dynamicColorEnabled,
                     customBackgroundMode = customBackgroundMode,
                     customBackgroundUri = customBackgroundUri,

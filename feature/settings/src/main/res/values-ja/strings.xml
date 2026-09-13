@@ -449,4 +449,10 @@
     <string name="settings_import_font">フォントファイルを読み込む</string>
     <string name="settings_clear_action">削除</string>
     <string name="settings_unavailable">利用不可</string>
+    <string name="settings_summary_bg_default">標準の背景</string>
+    <string name="settings_summary_bg_image">画像の背景</string>
+    <string name="settings_summary_bg_video">動画の背景</string>
+    <string name="settings_font_preview_ui">好きな音楽を、あなたらしく</string>
+    <string name="settings_font_preview_lyrics">この瞬間に、メロディーを</string>
+    <string name="settings_font_preview_characters">ECHO · Aa Bb · 0123456789</string>
 </resources>

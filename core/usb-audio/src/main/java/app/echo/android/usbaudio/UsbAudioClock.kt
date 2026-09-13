@@ -14,9 +14,23 @@ data class UsbAudioClockRange(
     }
 }
 
+internal fun interface UsbAudioControlTransfer {
+    fun controlTransfer(requestType: Int, request: Int, value: Int, index: Int,
+        payload: ByteArray, length: Int, timeoutMs: Int): Int
+}
+
 object UsbAudioClock {
-    fun setSampleRate(
-        connection: UsbDeviceConnection,
+    fun setSampleRate(connection: UsbDeviceConnection, format: UsbAudioStreamingFormat, sampleRateHz: Int): Boolean =
+        setSampleRate(UsbAudioControlTransfer(connection::controlTransfer), format, sampleRateHz)
+
+    fun getSampleRate(connection: UsbDeviceConnection, format: UsbAudioStreamingFormat): Int? =
+        getSampleRate(UsbAudioControlTransfer(connection::controlTransfer), format)
+
+    fun getSupportedSampleRates(connection: UsbDeviceConnection, format: UsbAudioStreamingFormat): List<UsbAudioClockRange> =
+        getSupportedSampleRates(UsbAudioControlTransfer(connection::controlTransfer), format)
+
+    internal fun setSampleRate(
+        connection: UsbAudioControlTransfer,
         format: UsbAudioStreamingFormat,
         sampleRateHz: Int,
     ): Boolean {
@@ -31,14 +45,14 @@ object UsbAudioClock {
         }
     }
 
-    fun getSampleRate(
-        connection: UsbDeviceConnection,
+    internal fun getSampleRate(
+        connection: UsbAudioControlTransfer,
         format: UsbAudioStreamingFormat,
     ): Int? =
         getUac2ClockRate(connection, format) ?: getUac1EndpointRate(connection, format)
 
-    fun getSupportedSampleRates(
-        connection: UsbDeviceConnection,
+    internal fun getSupportedSampleRates(
+        connection: UsbAudioControlTransfer,
         format: UsbAudioStreamingFormat,
     ): List<UsbAudioClockRange> {
         if (
@@ -56,7 +70,7 @@ object UsbAudioClock {
         return clockIdsFor(format).firstNotNullOfOrNull { clockId ->
             val transferred = connection.controlTransfer(
                 UAC2_INTERFACE_GET,
-                GET_RANGE,
+                UAC2_RANGE,
                 UAC2_CS_SAM_FREQ shl 8,
                 clockIndex(clockId, format.acInterfaceNumber),
                 payload,
@@ -94,7 +108,7 @@ object UsbAudioClock {
     }
 
     private fun setUac1EndpointRate(
-        connection: UsbDeviceConnection,
+        connection: UsbAudioControlTransfer,
         format: UsbAudioStreamingFormat,
         sampleRateHz: Int,
     ): Boolean {
@@ -115,7 +129,7 @@ object UsbAudioClock {
     }
 
     private fun getUac1EndpointRate(
-        connection: UsbDeviceConnection,
+        connection: UsbAudioControlTransfer,
         format: UsbAudioStreamingFormat,
     ): Int? {
         val endpoint = format.endpointAddress ?: return null
@@ -134,7 +148,7 @@ object UsbAudioClock {
     }
 
     private fun setUac2ClockRate(
-        connection: UsbDeviceConnection,
+        connection: UsbAudioControlTransfer,
         format: UsbAudioStreamingFormat,
         sampleRateHz: Int,
     ): Boolean {
@@ -142,7 +156,7 @@ object UsbAudioClock {
         return clockIdsFor(format).any { clockId ->
             val transferred = connection.controlTransfer(
                 UAC2_INTERFACE_SET,
-                SET_CUR,
+                UAC2_CUR,
                 UAC2_CS_SAM_FREQ shl 8,
                 clockIndex(clockId, format.acInterfaceNumber),
                 payload,
@@ -156,7 +170,7 @@ object UsbAudioClock {
     }
 
     private fun getUac2ClockRate(
-        connection: UsbDeviceConnection,
+        connection: UsbAudioControlTransfer,
         format: UsbAudioStreamingFormat,
         clockId: Int? = null,
     ): Int? {
@@ -165,7 +179,7 @@ object UsbAudioClock {
         return clocks.firstNotNullOfOrNull { id ->
             val transferred = connection.controlTransfer(
                 UAC2_INTERFACE_GET,
-                GET_CUR,
+                UAC2_CUR,
                 UAC2_CS_SAM_FREQ shl 8,
                 clockIndex(id, format.acInterfaceNumber),
                 payload,
@@ -180,7 +194,7 @@ object UsbAudioClock {
         format.clockSourceIds.filter { it > 0 }.ifEmpty { listOf(1, 2, 3, 4, 5) }
 
     private fun clockIndex(clockId: Int, acInterfaceNumber: Int?): Int =
-        (clockId and 0xff) or ((acInterfaceNumber ?: 0) shl 8)
+        ((clockId and 0xff) shl 8) or ((acInterfaceNumber ?: 0) and 0xff)
 
     private fun Int.toUac1RateBytes(): ByteArray =
         byteArrayOf(
@@ -225,7 +239,8 @@ object UsbAudioClock {
 
     private const val SET_CUR = 0x01
     private const val GET_CUR = 0x81
-    private const val GET_RANGE = 0x82
+    private const val UAC2_CUR = 0x01
+    private const val UAC2_RANGE = 0x02
     private const val CS_SAM_FREQ = 0x01
     private const val UAC2_CS_SAM_FREQ = 0x01
     private const val UAC1_ENDPOINT_SET = 0x22

@@ -9,6 +9,8 @@ import java.nio.ByteOrder
 
 @UnstableApi
 internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
+    internal var preserveFloatHeadroom = false
+
     data class MixSession(
         val pcm: FloatArray,
         val frames: Int,
@@ -176,7 +178,7 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
                 channels,
                 mix,
                 incoming = { floatIn.get() },
-                outgoing = { _, sample -> floatOut.put(sample.coerceIn(-1f, 1f)) },
+                outgoing = { _, sample -> floatOut.put(if (preserveFloatHeadroom) sample else sample.coerceIn(-1f, 1f)) },
             )
         }
         input.position(input.limit())

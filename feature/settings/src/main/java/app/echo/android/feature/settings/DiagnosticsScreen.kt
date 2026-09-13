@@ -42,6 +42,13 @@ fun DiagnosticsScreen(
     onOpraRefresh: () -> Unit,
     onOpraPresetSelected: (String) -> Unit,
     onOpraApplySelected: () -> Unit,
+    dspSettings: EchoDspSettings,
+    replayGainScan: EchoReplayGainScanState,
+    onDspSettings: (EchoDspSettings) -> Unit,
+    onReplayGain: (Boolean, Float) -> Unit,
+    onReplayGainMode: (EchoReplayGainMode) -> Unit,
+    onReplayGainScan: () -> Unit,
+    onParametricChange: (List<OpraEqBand>) -> Unit,
     bluetoothCodecNeedsPermission: Boolean = false,
     onRequestBluetoothCodecPermission: () -> Unit = {},
 ) {
@@ -108,6 +115,7 @@ fun DiagnosticsScreen(
                                         stringResource(L10nR.string.feature_settings_equalizer_7ccb03),
                                         stringResource(L10nR.string.feature_settings_headphone_correction_491ce5),
                                         stringResource(L10nR.string.channel_balance),
+                                        stringResource(L10nR.string.dsp_title),
                                     ),
                                     onSelect = { soundPanel = it },
                                 )
@@ -126,6 +134,7 @@ fun DiagnosticsScreen(
                                         onPresetSelected = onEqualizerPresetSelected,
                                         onBandGainChange = onEqualizerBandGainChange,
                                         onReset = onEqualizerReset,
+                                        onParametricChange = onParametricChange,
                                     )
                                     else if (panel == 1) SignalHeadphoneCorrection(
                                         state = opraState,
@@ -137,13 +146,14 @@ fun DiagnosticsScreen(
                                         onPresetSelected = onOpraPresetSelected,
                                         onApplySelected = onOpraApplySelected,
                                     )
-                                    else SignalChannelBalance(
+                                    else if (panel == 2) SignalChannelBalance(
                                         state = channelBalanceState,
                                         bypassed = status.diagnostics.usbBitPerfectEnabled,
                                         playing = status.isPlaying,
                                         onStateChange = onChannelBalanceChange,
                                         onReset = onChannelBalanceReset,
                                     )
+                                    else SignalDspPanel(dspSettings, status, replayGainScan, onDspSettings, onReplayGain, onReplayGainMode, onReplayGainScan)
                                 }
                             }
                         }

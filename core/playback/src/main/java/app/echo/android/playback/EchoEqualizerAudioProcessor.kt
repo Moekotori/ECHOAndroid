@@ -12,6 +12,8 @@ import java.nio.ByteOrder
 class EchoEqualizerAudioProcessor(
     private val onProcessingFormatChanged: (Int?) -> Unit = {},
 ) : BaseAudioProcessor() {
+    internal var preserveFloatHeadroom = false
+
     private var reportedSampleRate: Int? = null
     private fun reportProcessing(rate: Int?) {
         if (reportedSampleRate == rate) return
@@ -179,7 +181,7 @@ class EchoEqualizerAudioProcessor(
             for (channel in 0 until channelCount) {
                 var sample = floatIn.get() * preampLinear
                 sample = filterSample(channel, sample, filters)
-                floatOut.put(sample.coerceIn(-1f, 1f))
+                floatOut.put(if (preserveFloatHeadroom) sample else sample.coerceIn(-1f, 1f))
             }
         }
         inputBuffer.position(inputBuffer.limit())
