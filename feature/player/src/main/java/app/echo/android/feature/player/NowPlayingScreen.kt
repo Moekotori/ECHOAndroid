@@ -1,5 +1,9 @@
 package app.echo.android.feature.player
 
+import androidx.compose.runtime.DisposableEffect
+
+import androidx.compose.runtime.snapshotFlow
+
 import app.echo.android.feature.player.R as L10nR
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.semantics.Role
@@ -118,12 +122,9 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -196,10 +197,7 @@ private val LyricsMotionOptions = listOf(
     LyricsTextOption("stage"),
 )
 
-private val NowPlayingDismissSpring = spring<Float>(
-    dampingRatio = Spring.DampingRatioNoBouncy,
-    stiffness = Spring.StiffnessMediumLow,
-)
+
 
 private enum class NowPlayingPage {
     Cover,
@@ -275,6 +273,8 @@ fun NowPlayingScreen(
     onToggleFavorite: () -> Unit = {},
     openLyricsRequestId: Int = 0,
     predictiveBackProgress: () -> Float = { 0f },
+    presentationExpanded: Boolean = true,
+    onDragProgress: (Float) -> Unit = {},
 ) {
     val track = status.track
     val effectivePerformanceMode = LocalEchoEffectivePerformanceMode.current
@@ -323,7 +323,19 @@ fun NowPlayingScreen(
     val dismissScope = rememberCoroutineScope()
     val dismissHaptics = rememberEchoHapticPerformer()
     val dismissDrag = remember { NowPlayingDismissDragState() }
+    val dragProgressCallback = rememberUpdatedState(onDragProgress)
+    LaunchedEffect(presentationExpanded) {
+        if (presentationExpanded && dismissDrag.offsetPx > 0f) {
+            dismissDrag.settleJob?.cancel()
+            dismissDrag.settleJob = dismissScope.launch { restoreNowPlayingDismiss(dismissDrag) }
+        }
+    }
     val dismissThresholdPx = remember(density) { with(density) { 108.dp.toPx() } }
+    LaunchedEffect(dismissDrag, dismissThresholdPx) {
+        snapshotFlow { (dismissDrag.offsetPx / dismissThresholdPx).coerceIn(0f, 1f) }
+            .collect { dragProgressCallback.value(it) }
+    }
+    DisposableEffect(Unit) { onDispose { dragProgressCallback.value(0f) } }
     val dismissFlingPx = remember(density) { with(density) { 1080.dp.toPx() } }
     val overlayBlocking = lyricsSettingsVisible || playbackSettingsVisible
     val dismissEnabledState = rememberUpdatedState(!overlayBlocking)
@@ -336,7 +348,8 @@ fun NowPlayingScreen(
             if (crossed) dismissHaptics.tick()
         },
         onSettle = { velocityY ->
-            dismissScope.launch {
+            dismissDrag.settleJob?.cancel()
+            dismissDrag.settleJob = dismissScope.launch {
                 settleNowPlayingDismiss(
                     dragState = dismissDrag,
                     velocityY = velocityY,
@@ -398,7 +411,8 @@ fun NowPlayingScreen(
                 },
                 onHandleDragEnd = { velocityY ->
                     if (dismissEnabledState.value) {
-                        dismissScope.launch {
+                        dismissDrag.settleJob?.cancel()
+                        dismissDrag.settleJob = dismissScope.launch {
                             settleNowPlayingDismiss(
                                 dragState = dismissDrag,
                                 velocityY = velocityY,
@@ -802,6 +816,7 @@ private fun NowPlayingTopBar(
             .draggable(
                 state = handleDragState,
                 orientation = Orientation.Vertical,
+                onDragStarted = { onHandleDragLatest.value(0f) },
                 onDragStopped = { velocity -> onHandleDragEnd(velocity) },
             ),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -2884,76 +2899,6 @@ internal fun GlyphButton(
 }
 
 
-private class NowPlayingDismissDragState {
-    var offsetPx by mutableFloatStateOf(0f)
-    var crossedThreshold by mutableStateOf(false)
-
-    fun applyDelta(delta: Float, thresholdPx: Float, onCrossedThreshold: (Boolean) -> Unit) {
-        val resisted = if (offsetPx > thresholdPx && delta > 0f) delta * 0.38f else delta
-        offsetPx = (offsetPx + resisted).coerceAtLeast(0f)
-        val crossed = offsetPx >= thresholdPx
-        if (crossed != crossedThreshold) {
-            crossedThreshold = crossed
-            onCrossedThreshold(crossed)
-        }
-    }
-
-    fun reset() {
-        offsetPx = 0f
-        crossedThreshold = false
-    }
-}
-
-@Composable
-private fun rememberNowPlayingDismissConnection(
-    dragState: NowPlayingDismissDragState,
-    enabled: State<Boolean>,
-    thresholdPx: Float,
-    onCrossedThreshold: (Boolean) -> Unit,
-    onSettle: (Float) -> Unit,
-): NestedScrollConnection {
-    val thresholdState = rememberUpdatedState(thresholdPx)
-    val crossedState = rememberUpdatedState(onCrossedThreshold)
-    val settleState = rememberUpdatedState(onSettle)
-    return remember(dragState) {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (!enabled.value || available.y == 0f) return Offset.Zero
-                if (dragState.offsetPx <= 0f && available.y <= 0f) return Offset.Zero
-                if (dragState.offsetPx <= 0f) return Offset.Zero
-                val consumed = if (available.y < 0f) {
-                    available.y.coerceAtLeast(-dragState.offsetPx)
-                } else {
-                    available.y
-                }
-                dragState.applyDelta(consumed, thresholdState.value, crossedState.value)
-                return Offset(0f, consumed)
-            }
-
-            override fun onPostScroll(
-                consumed: Offset,
-                available: Offset,
-                source: NestedScrollSource,
-            ): Offset {
-                if (!enabled.value || available.y <= 0f) return Offset.Zero
-                if (dragState.offsetPx <= 0f && available.y < 10f) return Offset.Zero
-                dragState.applyDelta(available.y, thresholdState.value, crossedState.value)
-                return Offset(0f, available.y)
-            }
-
-            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                if (!enabled.value) return Velocity.Zero
-                if (dragState.offsetPx > 0f || available.y > 0f) {
-                    settleState.value(available.y)
-                    return available
-                }
-                return Velocity.Zero
-            }
-        }
-    }
-}
-
-
 /** 歌词行按 startMs 升序(解析器已排序),二分找最后一个 startMs <= positionMs+80 的行;无则 -1。 */
 private fun syncedLyricIndexAt(lines: List<EchoLyricLine>, positionMs: Long): Int {
     val target = positionMs
@@ -2979,43 +2924,4 @@ private fun currentSyncedLyricText(lyrics: EchoLyrics?, positionMs: Long): Strin
     val line = lyrics.lines[index]
     if (line.endMs?.let { positionMs >= it } == true) return null
     return line.text.takeIf { it.isNotBlank() }
-}
-
-private suspend fun settleNowPlayingDismiss(
-    dragState: NowPlayingDismissDragState,
-    velocityY: Float,
-    thresholdPx: Float,
-    flingVelocityPx: Float,
-    onDismiss: () -> Unit,
-) {
-    val shouldDismiss = dragState.offsetPx >= thresholdPx ||
-        (velocityY >= flingVelocityPx && dragState.offsetPx > thresholdPx * 0.28f)
-    if (shouldDismiss) {
-        onDismiss()
-        // 退场动画期间组合仍存活:把偏移缓释回 0,避免退场中快速重开时带着
-        // 残留偏移渲染(整页下移、封面翻页被锁)。全屏下滑退场会掩盖这点回移。
-        animate(
-            initialValue = dragState.offsetPx,
-            targetValue = 0f,
-            animationSpec = NowPlayingDismissSpring,
-        ) { value, _ ->
-            dragState.offsetPx = value
-        }
-        dragState.reset()
-        return
-    }
-    val start = dragState.offsetPx
-    if (start <= 0f) {
-        dragState.reset()
-        return
-    }
-    animate(
-        initialValue = start,
-        targetValue = 0f,
-        initialVelocity = velocityY,
-        animationSpec = NowPlayingDismissSpring,
-    ) { value, _ ->
-        dragState.offsetPx = value
-    }
-    dragState.reset()
 }

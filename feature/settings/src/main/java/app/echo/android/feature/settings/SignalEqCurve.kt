@@ -269,9 +269,7 @@ internal fun SignalEqFader(
     modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val theme = echoTheme()
     val frequency = formatEqFrequency(frequencyHz)
-    val slot = if (theme.dark) Color.Black.copy(alpha = 0.38f) else scheme.outlineVariant.copy(alpha = 0.70f)
     val active = if (enabled) scheme.primary else scheme.onSurface.copy(alpha = 0.38f)
     var dragging by remember { mutableStateOf(false) }
     var localGain by remember { mutableFloatStateOf(gainDb) }
@@ -306,7 +304,7 @@ internal fun SignalEqFader(
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(176.dp)
+                .height(140.dp)
                 .pointerInput(enabled, minGainDb, maxGainDb) {
                     awaitEachGesture {
                         val down = awaitFirstDown()
@@ -314,7 +312,7 @@ internal fun SignalEqFader(
                         // Consume immediately so the parent Signal page does not steal the vertical drag.
                         down.consume()
                         dragging = true
-                        val inset = 5.dp.toPx()
+                        val inset = 8.dp.toPx()
                         val next = snapEqGain(eqLinearValue(down.position.y, size.height.toFloat(), maxGainDb, minGainDb, inset))
                         localGain = next
                         onGainChange(next)
@@ -329,57 +327,32 @@ internal fun SignalEqFader(
                 },
         ) {
             Canvas(Modifier.fillMaxSize().padding(horizontal = 4.dp)) {
-                val wellWidth = 20.dp.toPx()
-                val slotWidth = 8.dp.toPx()
-                val fillWidth = 5.dp.toPx()
-                val thumbW = 22.dp.toPx()
-                val thumbH = 10.dp.toPx()
-                val inset = thumbH / 2f
                 val x = size.width / 2f
+                val inset = 8.dp.toPx()
                 val zeroY = eqLinearPosition(0f, size.height, maxGainDb, minGainDb, inset)
                 val gainY = eqLinearPosition(display, size.height, maxGainDb, minGainDb, inset)
-                drawRoundRect(
-                    color = if (theme.dark) Color.Black.copy(alpha = 0.46f) else slot,
-                    topLeft = Offset(x - wellWidth / 2f, 0f),
-                    size = Size(wellWidth, size.height),
-                    cornerRadius = CornerRadius(wellWidth / 2f),
-                )
-                drawRoundRect(
-                    color = slot.copy(alpha = if (theme.dark) 0.85f else 1f),
-                    topLeft = Offset(x - slotWidth / 2f, 4.dp.toPx()),
-                    size = Size(slotWidth, size.height - 8.dp.toPx()),
-                    cornerRadius = CornerRadius(slotWidth / 2f),
-                )
-                val fillTop = minOf(zeroY, gainY)
-                val fillHeight = abs(zeroY - gainY).coerceAtLeast(fillWidth)
-                drawRoundRect(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(active.copy(alpha = 0.98f), active.copy(alpha = 0.52f)),
-                    ),
-                    topLeft = Offset(x - fillWidth / 2f, fillTop),
-                    size = Size(fillWidth, fillHeight),
-                    cornerRadius = CornerRadius(fillWidth / 2f),
-                )
                 drawLine(
-                    color = scheme.onSurface.copy(alpha = 0.38f),
-                    start = Offset(x - 11.dp.toPx(), zeroY),
-                    end = Offset(x + 11.dp.toPx(), zeroY),
-                    strokeWidth = 1.2.dp.toPx(),
+                    color = scheme.outlineVariant,
+                    start = Offset(x, inset),
+                    end = Offset(x, size.height - inset),
+                    strokeWidth = 3.dp.toPx(),
                     cap = StrokeCap.Round,
                 )
-                drawRoundRect(
-                    color = active,
-                    topLeft = Offset(x - thumbW / 2f, gainY - thumbH / 2f),
-                    size = Size(thumbW, thumbH),
-                    cornerRadius = CornerRadius(thumbH / 2f),
-                )
                 drawLine(
-                    color = Color.White.copy(alpha = if (theme.dark) 0.40f else 0.62f),
-                    start = Offset(x - thumbW / 2f + 5.dp.toPx(), gainY),
-                    end = Offset(x + thumbW / 2f - 5.dp.toPx(), gainY),
+                    color = scheme.onSurfaceVariant.copy(alpha = 0.4f),
+                    start = Offset(x - 7.dp.toPx(), zeroY),
+                    end = Offset(x + 7.dp.toPx(), zeroY),
                     strokeWidth = 1.dp.toPx(),
+                )
+                drawLine(
+                    color = active,
+                    start = Offset(x, zeroY),
+                    end = Offset(x, gainY),
+                    strokeWidth = 3.dp.toPx(),
                     cap = StrokeCap.Round,
                 )
+                drawCircle(color = active, radius = 8.dp.toPx(), center = Offset(x, gainY))
+                drawCircle(color = scheme.surface, radius = 2.dp.toPx(), center = Offset(x, gainY))
             }
         }
         Text(

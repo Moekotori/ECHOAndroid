@@ -669,6 +669,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     var bottomDockHeightPx by remember { mutableIntStateOf(0) }
     val bottomDockInset = with(LocalDensity.current) { bottomDockHeightPx.toDp() }
     var nowPlayingExpanded by remember { mutableStateOf(false) }
+    var nowPlayingDragProgress by remember { mutableFloatStateOf(0f) }
     var nowPlayingBackProgress by remember { mutableFloatStateOf(0f) }
     val nowPlayingBackRecoveryJob = remember { arrayOfNulls<Job>(1) }
     // 在设置 expanded=true 的同一帧归零返回进度,避免重开首帧带着残留位移渲染
@@ -965,7 +966,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             )
             Box(
                 modifier = Modifier.fillMaxSize()
-                    .echoPlayerDepth(nowPlayingExpanded) { nowPlayingBackProgress },
+                    .echoPlayerDepth(nowPlayingExpanded) { maxOf(nowPlayingBackProgress, nowPlayingDragProgress) },
             ) {
                 HorizontalPager(
                     state = tabPagerState,
@@ -1438,18 +1439,16 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                 enter = if (effectivePerformanceMode.isLightweight) {
                     fadeIn(tween(durationMillis = motionDuration(90, effectivePerformanceMode)))
                 } else {
-                    EchoMotion.nowPlayingEnter(
-                        enterMs = motionDuration(520, effectivePerformanceMode),
-                        fadeMs = motionDuration(260, effectivePerformanceMode),
-                    )
+                    androidx.compose.animation.slideInVertically(
+                        EchoMotion.silkOffset(motionDuration(460, effectivePerformanceMode)),
+                    ) { it }
                 },
                 exit = if (effectivePerformanceMode.isLightweight) {
                     fadeOut(tween(durationMillis = motionDuration(90, effectivePerformanceMode)))
                 } else {
-                    EchoMotion.nowPlayingExit(
-                        exitMs = motionDuration(380, effectivePerformanceMode),
-                        fadeMs = motionDuration(200, effectivePerformanceMode),
-                    )
+                    androidx.compose.animation.slideOutVertically(
+                        EchoMotion.silkOffset(motionDuration(380, effectivePerformanceMode)),
+                    ) { it }
                 },
             ) {
                 EchoNowPlayingHost(
@@ -1459,6 +1458,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     lyricsFontFamily = lyricsFontFamily,
                     onDismiss = { nowPlayingExpanded = false },
                     predictiveBackProgress = { nowPlayingBackProgress },
+                    presentationExpanded = nowPlayingExpanded,
+                    onDragProgress = { nowPlayingDragProgress = it },
                     onOpenQueue = { queueSheetVisible = true },
                     onCast = ::onNowPlayingCast,
                     castActive = castSessionActive,

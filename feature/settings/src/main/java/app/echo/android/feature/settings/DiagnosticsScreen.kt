@@ -102,7 +102,7 @@ fun DiagnosticsScreen(
                         0 -> SignalOverview(status, equalizerState, channelBalanceState, onAdjust = { selectedTab = 1 }, onDiagnostics = { selectedTab = 2 })
                         1 -> {
                             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                SignalSoundModeRow(
+                                SignalSoundTabs(
                                     selectedIndex = soundPanel,
                                     labels = listOf(
                                         stringResource(L10nR.string.feature_settings_equalizer_7ccb03),

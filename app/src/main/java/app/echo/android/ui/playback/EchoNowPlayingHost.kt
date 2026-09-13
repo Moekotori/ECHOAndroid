@@ -33,6 +33,8 @@ internal fun EchoNowPlayingHost(
     modifier: Modifier = Modifier,
     openLyricsRequestId: Int = 0,
     predictiveBackProgress: () -> Float = { 0f },
+    presentationExpanded: Boolean = true,
+    onDragProgress: (Float) -> Unit = {},
 ) {
     // 传 State 引用而非值:进度 tick 不在宿主层触发重组,由页内叶子订阅
     val playbackPosition = viewModel.playbackPosition.collectAsStateWithLifecycle()
@@ -123,6 +125,8 @@ internal fun EchoNowPlayingHost(
         onToggleFavorite = { viewModel.toggleFavorite() },
         openLyricsRequestId = openLyricsRequestId,
         predictiveBackProgress = predictiveBackProgress,
+        presentationExpanded = presentationExpanded,
+        onDragProgress = onDragProgress,
         modifier = modifier.fillMaxSize(),
     )
 }

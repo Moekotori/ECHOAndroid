@@ -12,12 +12,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.drawWithCache
+import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.ArtworkPalette
 import app.echo.android.design.BlurredArtworkBackground
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.echoTheme
-import kotlin.math.roundToInt
 
 @Composable
 internal fun NowPlayingBackdrop(
@@ -47,20 +49,24 @@ internal fun NowPlayingBackdrop(
         )
         return
     }
-    // 每帧变化的 reveal 只在这里读取,横滑时重组范围被限制在背景层
-    val lyricsReveal = reveal()
-    // 模糊半径量化为 5 档,避免每帧重建 RenderEffect
-    val blurStep = (lyricsReveal * 4f).roundToInt()
+    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    val theme = echoTheme()
+    // Read page progress only when updating the layer/drawing the veil. Keep image
+    // composition and the blur radius stable throughout a horizontal gesture.
     Box(modifier = modifier) {
         BlurredArtworkBackground(
             artworkUri = artworkUri,
             palette = palette.asNowPlayingWash(echoTheme().night),
-            modifier = Modifier.fillMaxSize(),
-            artworkScale = 1.16f + 0.10f * lyricsReveal,
-            artworkBlur = 24.dp + 2.dp * blurStep,
-            artworkAlpha = 0.58f - 0.08f * lyricsReveal,
-            overlayStartAlpha = 0.46f + 0.12f * lyricsReveal,
-            overlayMidAlpha = 0.58f + 0.10f * lyricsReveal,
+            modifier = Modifier.fillMaxSize().graphicsLayer {
+                val scale = if (lightweight) 1f else 1f + 0.06f * reveal()
+                scaleX = scale
+                scaleY = scale
+            },
+            artworkScale = 1.16f,
+            artworkBlur = 28.dp,
+            artworkAlpha = 0.58f,
+            overlayStartAlpha = 0.46f,
+            overlayMidAlpha = 0.58f,
             overlayEndAlpha = 0.90f,
         )
         Box(
@@ -70,13 +76,17 @@ internal fun NowPlayingBackdrop(
                 .height(170.dp)
                 .background(
                     Brush.verticalGradient(
-                        0f to echoTheme().night.copy(alpha = 0.34f - 0.08f * lyricsReveal),
-                        0.48f to echoTheme().ink.copy(alpha = 0.16f - 0.04f * lyricsReveal),
+                        0f to theme.night.copy(alpha = 0.34f),
+                        0.48f to theme.ink.copy(alpha = 0.16f),
                         1f to Color.Transparent,
                     ),
                 ),
         )
-
+        Box(Modifier.fillMaxSize().drawWithCache {
+            onDrawBehind {
+                drawRect(theme.night.copy(alpha = 0.10f * reveal().coerceIn(0f, 1f)))
+            }
+        })
     }
 }
 
