@@ -80,7 +80,7 @@ class EchoEqualizerController {
         desiredPresetId = EchoEqualizerPresets.normalizePresetId(presetId)
         clearParametric()
         desiredGainsDb = EchoEqualizerPresets.gainsForPreset(desiredPresetId)
-        publish()
+        publish(applySuggestedPreamp = true)
     }
 
     fun setBandGain(index: Int, gainDb: Float) {
@@ -128,20 +128,23 @@ class EchoEqualizerController {
         publish()
     }
 
-    private fun publish() {
+    private fun publish(applySuggestedPreamp: Boolean = false) {
         val bands = EchoEqualizerPresets.defaultBands(desiredGainsDb)
         val processingFilters = EchoEqualizerEngine.processingFilters(
             parametric = desiredParametric,
             filters = desiredFilters,
             gainsDb = desiredGainsDb,
         )
-        val processingPreampDb = desiredPreampDb
         if (curveFilters != processingFilters) {
             curveFilters = processingFilters
             filterCurve = EchoEqualizerEngine.responseCurve(processingFilters)
         }
         val maxBoost = filterCurve.maxOfOrNull { it.gainDb }?.coerceAtLeast(0f) ?: 0f
         val suggestedPreamp = if (maxBoost < 0.05f) 0f else -(ceil(maxBoost * 10) / 10 + 0.5f).coerceAtMost(24f)
+        // Apply headroom in the same runtime update as the new filters. Restored and manually
+        // adjusted gains remain explicit user settings; only selecting a preset chooses a new default.
+        if (applySuggestedPreamp) desiredPreampDb = suggestedPreamp
+        val processingPreampDb = desiredPreampDb
         val runtime = EchoEqualizerRuntime(
             enabled = desiredEnabled,
             preampDb = processingPreampDb,

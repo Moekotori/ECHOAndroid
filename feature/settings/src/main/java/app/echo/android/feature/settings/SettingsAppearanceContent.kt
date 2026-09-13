@@ -1,6 +1,9 @@
 package app.echo.android.feature.settings
 
 import app.echo.android.design.backgroundMaxBlur
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
@@ -237,6 +240,10 @@ internal fun SettingsAppearanceContent(
             steps = 10,
             onValueChange = onUiDensityScaleChange,
         )
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 6.dp),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+        )
         SettingsChoiceGroupRow(
             title = stringResource(R.string.settings_lyrics_font),
             detail = fontDetail(lyricsFontFamily, importedFontUri),
@@ -258,8 +265,12 @@ internal fun SettingsAppearanceContent(
             steps = 22,
             onValueChange = onLyricsFontScaleChange,
         )
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 6.dp),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+        )
         SettingsActionRow(
-            title = stringResource(R.string.settings_reselect_font),
+            title = stringResource(if (importedFontUri.isNullOrBlank()) R.string.settings_import_font else R.string.settings_reselect_font),
             detail = if (importedFontUri.isNullOrBlank()) {
                 stringResource(R.string.settings_import_font_detail)
             } else {
@@ -278,6 +289,8 @@ internal fun SettingsAppearanceContent(
                 stringResource(R.string.settings_clear_font_detail)
             },
             enabled = !importedFontUri.isNullOrBlank(),
+            actionLabel = stringResource(R.string.settings_clear_action),
+            disabledLabel = stringResource(R.string.settings_unavailable),
             onClick = onClearImportedFont,
         )
     }

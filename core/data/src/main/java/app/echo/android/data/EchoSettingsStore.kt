@@ -433,7 +433,8 @@ class EchoSettingsStore(
         context.echoSettings.edit { it[Keys.EqualizerEnabled] = enabled }
     }
 
-    suspend fun setEqualizerPreset(presetId: String) {
+    suspend fun setEqualizerPreset(presetId: String, preampDb: Float) {
+        if (!preampDb.isFinite()) return
         val safePresetId = EchoEqualizerPresets.normalizePresetId(presetId)
         context.echoSettings.edit {
             it[Keys.EqualizerPreset] = safePresetId
@@ -441,6 +442,8 @@ class EchoSettingsStore(
                 EchoEqualizerPresets.gainsForPreset(safePresetId),
             )
             clearEqualizerParametric(it)
+            // Persist the controller's compensated gain atomically with the preset.
+            it[Keys.EqualizerPreampDb] = preampDb.coerceIn(-24f, 12f)
         }
     }
 

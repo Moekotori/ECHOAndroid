@@ -445,6 +445,9 @@ fun NowPlayingScreen(
                     horizontalArrangement = Arrangement.spacedBy(18.dp),
                 ) {
                     NowPlayingCoverPage(
+                        palette = palette,
+                        presentationExpanded = presentationExpanded,
+                        lightStrength = { 1f - 0.55f * (currentDismissOffsetPx() / dismissThresholdPx).coerceIn(0f, 1f) },
                         status = status,
                         positionMsState = positionMsState,
                         durationMsState = durationMsState,
@@ -529,6 +532,9 @@ fun NowPlayingScreen(
             ) { page ->
                 when (NowPlayingPage.entries[page]) {
                     NowPlayingPage.Cover -> NowPlayingCoverPage(
+                        palette = palette,
+                        presentationExpanded = presentationExpanded,
+                        lightStrength = { 1f - 0.55f * (currentDismissOffsetPx() / dismissThresholdPx).coerceIn(0f, 1f) },
                         status = status,
                         positionMsState = positionMsState,
                         durationMsState = durationMsState,
@@ -687,6 +693,9 @@ fun NowPlayingScreen(
 
 @Composable
 private fun NowPlayingCoverPage(
+    palette: ArtworkPalette,
+    presentationExpanded: Boolean,
+    lightStrength: () -> Float,
     status: EchoPlaybackStatus,
     positionMsState: State<Long>,
     durationMsState: State<Long>,
@@ -730,22 +739,29 @@ private fun NowPlayingCoverPage(
         ) {
             val tileSize = minOf(maxWidth, maxHeight)
             val artworkShape = RoundedCornerShape(24.dp)
-            EchoArtworkImage(
-                artworkUri = track?.artworkUri,
-                contentDescription = track?.title,
-                modifier = Modifier
-                    .size(tileSize)
-                    .graphicsLayer {
-                        scaleX = playingScale
-                        scaleY = playingScale
-                    }
-                    .then(
-                        if (LocalEchoDarkTheme.current) Modifier.shadow(28.dp, artworkShape, clip = false)
-                        else Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f), artworkShape)
-                    ),
-                shape = artworkShape,
-                sizeClass = EchoArtworkSize.Hero,
-            )
+            NowPlayingArtworkLight(
+                palette = palette,
+                expanded = presentationExpanded,
+                gestureStrength = lightStrength,
+                modifier = Modifier.size(tileSize).graphicsLayer {
+                    scaleX = playingScale
+                    scaleY = playingScale
+                },
+            ) {
+                EchoArtworkImage(
+                    artworkUri = track?.artworkUri,
+                    contentDescription = track?.title,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(
+                            if (!LocalEchoEffectivePerformanceMode.current.isLightweight && LocalEchoDarkTheme.current) {
+                                Modifier.shadow(18.dp, artworkShape, clip = false)
+                            } else Modifier
+                        ),
+                    shape = artworkShape,
+                    sizeClass = EchoArtworkSize.Hero,
+                )
+            }
         }
 
         Box(modifier = Modifier.fillMaxWidth()) {

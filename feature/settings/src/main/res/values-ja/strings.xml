@@ -446,4 +446,7 @@
     <string name="settings_smart_transition_detail">Beta。拍に乗れるときは拍から入り、ボーカルが重なると短くし、エネルギーが高いときは低域を交差します。できない場合はギャップレスまたはフェードに戻します。</string>
     <string name="settings_smart_transition_bypass">設定は保存されますが、軽量モード、USB 独占、bit-perfect では使いません。</string>
     <string name="settings_bg_video_disabled">軽量モードでは動画背景を停止し、デフォルトの背景を表示します。選択した動画は保持されます。</string>
+    <string name="settings_import_font">フォントファイルを読み込む</string>
+    <string name="settings_clear_action">削除</string>
+    <string name="settings_unavailable">利用不可</string>
 </resources>

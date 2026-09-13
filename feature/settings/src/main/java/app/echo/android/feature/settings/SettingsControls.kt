@@ -73,7 +73,7 @@ internal fun SettingsTextInputRow(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .padding(vertical = 12.dp),
+            .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.Top,
     ) {
@@ -82,7 +82,7 @@ internal fun SettingsTextInputRow(
                 title,
                 color = scheme.onSurface,
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -201,11 +201,11 @@ internal fun SettingsSectionCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(settingsPanelColor())
             .then(if (animateSize) Modifier.echoAnimateContentSize() else Modifier)
-            .padding(horizontal = 20.dp, vertical = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Row(
             modifier = if (collapsible) {
@@ -223,7 +223,7 @@ internal fun SettingsSectionCard(
                 title,
                 color = if (dark) Color.White.copy(alpha = 0.96f) else scheme.onSurface,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Medium,
             )
             if (collapsible) {
                 Icon(
@@ -278,7 +278,7 @@ internal fun SettingsBackgroundSourceRow(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .padding(vertical = 12.dp),
+            .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -287,7 +287,7 @@ internal fun SettingsBackgroundSourceRow(
                 stringResource(R.string.settings_bg_source),
                 color = if (dark) Color.White.copy(alpha = 0.94f) else scheme.onSurface,
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -350,7 +350,7 @@ internal fun BackgroundSourceAction(
             label,
             color = accent,
             style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -385,6 +385,7 @@ internal fun SettingsActionRow(
     detail: String,
     enabled: Boolean = true,
     actionLabel: String? = null,
+    disabledLabel: String? = null,
     onClick: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -393,13 +394,14 @@ internal fun SettingsActionRow(
     SettingsRowShell(
         title = title,
         detail = detail,
-        modifier = if (enabled) Modifier.echoClickable(onClick = onClick) else Modifier,
+        modifier = Modifier.echoClickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .alpha(if (enabled) 1f else 0.55f),
     ) {
         Text(
-            if (enabled) resolvedActionLabel else stringResource(R.string.settings_closed),
+            if (enabled) resolvedActionLabel else disabledLabel ?: stringResource(R.string.settings_unavailable),
             color = if (enabled) controlColor else if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.58f) else scheme.onSurfaceVariant,
             style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Medium,
         )
     }
 }
@@ -452,7 +454,7 @@ internal fun SettingsOptionChip(
             label,
             color = if (selected) settingsControlColor() else if (dark) Color.White.copy(alpha = 0.74f) else scheme.onSurfaceVariant,
             style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Medium,
             maxLines = 1,
         )
     }
@@ -478,7 +480,7 @@ internal fun SettingsSliderRow(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .padding(vertical = 12.dp),
+            .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -492,9 +494,8 @@ internal fun SettingsSliderRow(
                     title,
                     color = if (dark) Color.White.copy(alpha = 0.94f) else scheme.onSurface,
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.weight(1f).padding(end = 12.dp),
                 )
                 Text(
                     valueLabel(localValue),
@@ -514,8 +515,8 @@ internal fun SettingsSliderRow(
                 valueRange = valueRange,
                 steps = steps,
                 colors = SliderDefaults.colors(
-                    thumbColor = controlColor.copy(alpha = if (dark) 0.92f else 0.78f),
-                    activeTrackColor = controlColor.copy(alpha = if (dark) 0.46f else 0.40f),
+                    thumbColor = controlColor,
+                    activeTrackColor = controlColor.copy(alpha = 0.65f),
                     inactiveTrackColor = if (dark) Color.White.copy(alpha = 0.12f) else scheme.outlineVariant.copy(alpha = 0.46f),
                     activeTickColor = Color.Transparent,
                     inactiveTickColor = Color.Transparent,
@@ -525,7 +526,7 @@ internal fun SettingsSliderRow(
                         Modifier
                             .size(20.dp)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(controlColor.copy(alpha = if (dark) 0.92f else 0.72f)),
+                            .background(controlColor),
                     )
                 },
                 track = { sliderState ->
@@ -533,7 +534,7 @@ internal fun SettingsSliderRow(
                         sliderState = sliderState,
                         modifier = Modifier.height(4.dp),
                         colors = SliderDefaults.colors(
-                            activeTrackColor = controlColor.copy(alpha = if (dark) 0.38f else 0.34f),
+                            activeTrackColor = controlColor.copy(alpha = 0.65f),
                             inactiveTrackColor = if (dark) Color.White.copy(alpha = 0.10f) else scheme.outlineVariant.copy(alpha = 0.40f),
                             activeTickColor = Color.Transparent,
                             inactiveTickColor = Color.Transparent,
@@ -558,7 +559,7 @@ internal fun SettingsRowShell(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .padding(vertical = 12.dp),
+            .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -567,7 +568,7 @@ internal fun SettingsRowShell(
                 title,
                 color = if (dark) Color.White.copy(alpha = 0.94f) else scheme.onSurface,
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Medium,
             )
             Text(
                 detail,

@@ -33,12 +33,12 @@ fun Modifier.echoFrostedGlass(shape: Shape, elevation: Dp = 8.dp): Modifier {
             1f to scheme.secondary.copy(alpha = if (dark) 0.045f else 0.055f),
         )
     }
-    val rim = remember(scheme, dark) {
+    val rim = remember(scheme, dark, lightweight) {
         Brush.linearGradient(
-            0f to Color.White.copy(alpha = if (dark) 0.23f else 0.94f),
+            0f to Color.White.copy(alpha = if (dark) { if (lightweight) 0.23f else 0.30f } else 0.94f),
             0.38f to scheme.primary.copy(alpha = if (dark) 0.09f else 0.12f),
             0.72f to scheme.onSurface.copy(alpha = if (dark) 0.035f else 0.07f),
-            1f to Color.White.copy(alpha = if (dark) 0.11f else 0.58f),
+            1f to Color.White.copy(alpha = if (dark) { if (lightweight) 0.11f else 0.14f } else 0.58f),
         )
     }
     return this

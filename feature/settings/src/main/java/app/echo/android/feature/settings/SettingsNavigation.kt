@@ -16,6 +16,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -32,6 +33,12 @@ internal enum class SettingsCategory(val title: Int, val description: Int, val i
     Library(R.string.settings_section_library, R.string.settings_category_library_detail, Icons.Rounded.LibraryMusic),
     About(R.string.settings_section_about, R.string.settings_category_about_detail, Icons.Rounded.Info),
 }
+
+private val settingsGroups = listOf(
+    R.string.settings_group_personal to listOf(SettingsCategory.Appearance, SettingsCategory.Interface),
+    R.string.settings_group_music to listOf(SettingsCategory.Playback, SettingsCategory.Services, SettingsCategory.Library),
+    R.string.settings_group_app to listOf(SettingsCategory.About),
+)
 
 @Composable
 internal fun SettingsNavigation(
@@ -67,8 +74,8 @@ internal fun SettingsNavigation(
                                 stringResource(category?.title ?: R.string.settings_title),
                                 modifier = Modifier.weight(1f),
                                 color = MaterialTheme.colorScheme.onSurface,
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.SemiBold,
                             )
                         }
                     },
@@ -76,7 +83,7 @@ internal fun SettingsNavigation(
                     Column(
                         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                             .padding(top = 12.dp, bottom = 172.dp),
-                        verticalArrangement = Arrangement.spacedBy(if (compactMode) 6.dp else if (category == null) 10.dp else 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(if (compactMode) 8.dp else 12.dp),
                     ) {
                         if (category == null) {
                             Text(
@@ -85,18 +92,29 @@ internal fun SettingsNavigation(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
                             )
-                            SettingsCategory.entries.forEachIndexed { index, entry ->
-                                if (index == 0 || index == 2 || index == 5) Text(
-                                    stringResource(when (index) {
-                                        0 -> R.string.settings_group_personal
-                                        2 -> R.string.settings_group_music
-                                        else -> R.string.settings_group_app
-                                    }),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(start = 4.dp, top = 4.dp),
-                                )
-                                SettingsCategoryRow(entry, summaries[entry].orEmpty()) { selected = entry }
+                            settingsGroups.forEach { (title, entries) ->
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(
+                                        stringResource(title),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(start = 16.dp, top = 8.dp),
+                                    )
+                                    Surface(
+                                        shape = RoundedCornerShape(18.dp),
+                                        color = settingsPanelColor(),
+                                    ) {
+                                        Column {
+                                            entries.forEachIndexed { index, entry ->
+                                                if (index > 0) HorizontalDivider(
+                                                    modifier = Modifier.padding(start = 64.dp, end = 16.dp),
+                                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                                                )
+                                                SettingsCategoryRow(entry, summaries[entry].orEmpty(), compactMode) { selected = entry }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         } else {
                             Text(
@@ -115,28 +133,27 @@ internal fun SettingsNavigation(
 }
 
 @Composable
-private fun SettingsCategoryRow(category: SettingsCategory, summary: String, onClick: () -> Unit) {
+private fun SettingsCategoryRow(category: SettingsCategory, summary: String, compactMode: Boolean, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.86f),
+        color = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
-            Modifier.padding(horizontal = 16.dp, vertical = 12.dp).heightIn(min = 48.dp),
+            Modifier.padding(horizontal = 16.dp, vertical = if (compactMode) 8.dp else 12.dp).heightIn(min = 48.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.primaryContainer) {
-                Icon(category.icon, null, Modifier.padding(11.dp).size(22.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+            Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)) {
+                Icon(category.icon, null, Modifier.padding(8.dp).size(20.dp), tint = MaterialTheme.colorScheme.primary)
             }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(stringResource(category.title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(stringResource(category.title), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                 Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
-            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

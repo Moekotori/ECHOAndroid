@@ -446,4 +446,7 @@
     <string name="settings_smart_transition_detail">Beta。能对上拍就从拍点进，人声冲突会缩短，能量高时低频错峰；做不到就回到无缝播放或淡化。</string>
     <string name="settings_smart_transition_bypass">设置会保存，轻量档、USB 独占或严格 bit-perfect 下不应用。</string>
     <string name="settings_bg_video_disabled">轻量模式暂停视频背景，当前显示默认背景；已保留你的视频选择。</string>
+    <string name="settings_import_font">导入字体文件</string>
+    <string name="settings_clear_action">清除</string>
+    <string name="settings_unavailable">不可用</string>
 </resources>

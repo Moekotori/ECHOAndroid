@@ -452,4 +452,7 @@
     <string name="settings_smart_transition_detail">Beta. Enters on a beat when it can, shortens if vocals collide, and splits bass on energetic pairs. Falls back to gapless or fade when it cannot run.</string>
     <string name="settings_smart_transition_bypass">Saved, but not used in Lightweight mode, USB exclusive, or bit-perfect output.</string>
     <string name="settings_bg_video_disabled">Video backgrounds are paused in Lightweight mode. The default background is shown; your selection is retained.</string>
+    <string name="settings_import_font">Import font file</string>
+    <string name="settings_clear_action">Clear</string>
+    <string name="settings_unavailable">Unavailable</string>
 </resources>

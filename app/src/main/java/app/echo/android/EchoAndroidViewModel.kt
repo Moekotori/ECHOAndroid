@@ -1116,8 +1116,9 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun setEqualizerPreset(presetId: String) {
         playbackController.setEqualizerPreset(presetId)
+        val selected = playbackController.equalizerState.value
         updateSettings {
-            setEqualizerPreset(presetId)
+            setEqualizerPreset(selected.presetId, selected.preampDb)
         }
     }
 
