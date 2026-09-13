@@ -12,4 +12,19 @@
     <string name="update_install">Install</string>
     <string name="update_download">Download</string>
     <string name="update_later">Later</string>
+    <string name="update_version_current">Current version: %1$s</string>
+    <string name="update_package_size">Download size: %1$s</string>
+    <string name="update_error_check">Could not check GitHub. Check your connection and try again.</string>
+    <string name="update_error_download">Download interrupted. Check your connection and available storage, then retry.</string>
+    <string name="update_error_verification">This APK failed verification or has an incompatible signature. Keep your current app and contact the release maintainer.</string>
+    <string name="update_error_permission">Allow ECHO to install apps in system settings, then tap Install again.</string>
+    <string name="update_error_install">Could not open the installer. Tap Install to retry.</string>
+    <string name="update_verifying">Verifying package…</string>
+    <string name="update_install_hint">Downloading requires your approval. Android will ask you to confirm installation.</string>
+    <string name="update_percent">%1$d%%</string>
+    <string name="update_cancel_download">Cancel download</string>
+    <string name="update_notes">What is new</string>
+    <string name="update_retry">Retry</string>
+    <string name="update_done">Done</string>
+    <string name="update_hide_download">Hide download</string>
 </resources>

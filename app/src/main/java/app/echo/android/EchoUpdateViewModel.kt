@@ -9,6 +9,10 @@ import app.echo.android.data.update.GithubUpdate
 import app.echo.android.data.update.GithubUpdateRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import app.echo.android.feature.settings.UpdateProblem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -18,13 +22,15 @@ import java.io.File
 
 data class EchoUpdateState(val visible: Boolean = false, val busy: Boolean = false,
     val update: GithubUpdate? = null, val progress: Int? = null, val apk: File? = null,
-    val error: Boolean = false, val checked: Boolean = false)
+    val error: UpdateProblem? = null, val checked: Boolean = false)
 
 class EchoUpdateViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = GithubUpdateRepository(application)
     private val mutableState = MutableStateFlow(EchoUpdateState())
     val state = mutableState.asStateFlow()
     private var autoInstallRequested = false
+    private var mayPrompt = true
+    private var operation: Job? = null
     init { check(false) }
 
     fun open() {
@@ -36,18 +42,30 @@ class EchoUpdateViewModel(application: Application) : AndroidViewModel(applicati
         return true
     }
 
-    fun dismiss() { mutableState.value = mutableState.value.copy(visible = false) }
-    fun show() { mutableState.value = mutableState.value.copy(visible = true) }
-    fun installFailed() { mutableState.value = mutableState.value.copy(error = true, busy = false) }
+    fun dismiss() { mayPrompt = false; mutableState.update { it.copy(visible = false) } }
+    fun show() { mayPrompt = true; mutableState.update { it.copy(visible = true) } }
+    fun installFailed(permission: Boolean = false) {
+        mutableState.update { it.copy(error = if (permission) UpdateProblem.Permission else UpdateProblem.Install, busy = false) }
+    }
+    fun installing() { mutableState.update { it.copy(error = null) } }
+    fun cancelDownload() {
+        operation?.cancel()
+        repository.cancelPendingRequests()
+    }
+    override fun onCleared() {
+        repository.cancelPendingRequests()
+        super.onCleared()
+    }
     fun check(manual: Boolean = true) {
         if (mutableState.value.busy) { if (manual) show(); return }
+        mayPrompt = true
         mutableState.value = EchoUpdateState(visible = manual, busy = true)
-        viewModelScope.launch {
+        operation = viewModelScope.launch {
             try {
                 val update = repository.check(BuildConfig.VERSION_CODE.toLong(), manual)
-                mutableState.value = EchoUpdateState(visible = manual || update != null, update = update, checked = true)
+                mutableState.value = EchoUpdateState(visible = mayPrompt && (mutableState.value.visible || update != null), update = update, checked = true)
             } catch (e: CancellationException) { throw e }
-            catch (_: Exception) { mutableState.value = EchoUpdateState(visible = manual, error = true) }
+            catch (_: Exception) { mutableState.value = EchoUpdateState(visible = mutableState.value.visible && mayPrompt, error = UpdateProblem.Check) }
         }
     }
 
@@ -55,17 +73,23 @@ class EchoUpdateViewModel(application: Application) : AndroidViewModel(applicati
         val update = mutableState.value.update ?: return
         if (mutableState.value.busy) return
         autoInstallRequested = false
-        mutableState.value = mutableState.value.copy(busy = true, error = false, progress = 0)
-        viewModelScope.launch {
+        mutableState.value = mutableState.value.copy(busy = true, error = null, progress = 0)
+        operation = viewModelScope.launch {
+            var verifying = false
             try {
                 val apk = repository.download(update) { percent ->
                     mutableState.update { it.copy(progress = percent) }
                 }
+                verifying = true
                 withContext(Dispatchers.IO) { verifyApk(apk, update.versionCode) }
                 mutableState.value = mutableState.value.copy(busy = false, progress = null, apk = apk)
             } catch (e: CancellationException) { throw e }
-            catch (_: Exception) {
-                mutableState.value = mutableState.value.copy(busy = false, progress = null, apk = null, error = true)
+            catch (e: Exception) {
+                currentCoroutineContext().ensureActive()
+                mutableState.value = mutableState.value.copy(busy = false, progress = null, apk = null,
+                    error = if (verifying || e is IllegalArgumentException) UpdateProblem.Verification else UpdateProblem.Download)
+            } finally {
+                mutableState.update { it.copy(busy = false, progress = null) }
             }
         }
     }

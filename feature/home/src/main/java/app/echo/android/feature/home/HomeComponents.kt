@@ -2,6 +2,8 @@ package app.echo.android.feature.home
 
 import app.echo.android.feature.home.R as L10nR
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.foundation.layout.defaultMinSize
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -166,10 +168,7 @@ internal fun LibraryOverview(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
-            .background(homePanelBrush())
-            .border(homePanelBorder(), RoundedCornerShape(22.dp))
-            .padding(14.dp),
+            .padding(horizontal = 4.dp, vertical = 8.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
@@ -232,8 +231,8 @@ internal fun LibraryMetric(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(value, color = homeTitleColor(), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Text(label, color = homeBodyColor(), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+        Text(value, color = homeTitleColor(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+        Text(label, color = homeBodyColor(), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Normal)
     }
 }
 
@@ -259,15 +258,16 @@ internal fun RoonHomeHeader(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .defaultMinSize(minHeight = 48.dp)
                     .echoClickable { onOpenSearch() },
                 shape = shape,
-                color = homePanelColor(0.94f),
-                border = homePanelBorder(0.88f),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.64f),
+                border = null,
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
@@ -373,64 +373,44 @@ internal fun RoonRecentActivitySection(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
-            .shadow(
-                elevation = if (LocalEchoDarkTheme.current) 0.dp else 14.dp,
-                shape = RoundedCornerShape(28.dp),
-                ambientColor = Color.Black.copy(alpha = 0.045f),
-                spotColor = Color.Black.copy(alpha = 0.035f),
-            )
-            .clip(RoundedCornerShape(28.dp))
-            .background(homePanelBrush())
-            .border(homePanelBorder(0.94f), RoundedCornerShape(28.dp))
-            .padding(top = 14.dp, bottom = 14.dp),
+            .padding(top = 4.dp, bottom = 4.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
                 stringResource(L10nR.string.feature_home_recent_activity_581ef8),
                 color = homeTitleColor(),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
             )
             RecentActivityTabs(
                 selectedMode = selectedMode,
                 onSelect = { selectedMode = it },
             )
         }
-        LazyRow(
-            modifier = Modifier.height(if (displayAlbums.isEmpty()) RecentActivityEmptyCardHeight else RecentActivityAlbumCardHeight),
-            contentPadding = PaddingValues(horizontal = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            if (displayAlbums.isEmpty()) {
-                item {
-                    RecentActivityEmptyAlbumCard(
-                        title = if (selectedMode == RecentActivityMode.Played) {
-                            stringResource(L10nR.string.feature_home_nothing_played_yet_988bfc)
-                        } else {
-                            stringResource(L10nR.string.feature_home_no_new_albums_yet_ac7085)
-                        },
-                        subtitle = if (selectedMode == RecentActivityMode.Played) {
-                            stringResource(L10nR.string.feature_home_appears_after_you_play_an_album_26effb)
-                        } else {
-                            stringResource(L10nR.string.feature_home_appears_after_you_scan_your_library_5ae1b0)
-                        },
-                        onClick = onOpenLibrary,
-                    )
-                }
-            } else {
+        if (displayAlbums.isEmpty()) {
+            HomeLibraryNotice(
+                title = stringResource(
+                    if (selectedMode == RecentActivityMode.Played) L10nR.string.feature_home_nothing_played_yet_988bfc
+                    else L10nR.string.feature_home_no_new_albums_yet_ac7085,
+                ),
+                subtitle = stringResource(
+                    if (selectedMode == RecentActivityMode.Played) L10nR.string.feature_home_appears_after_you_play_an_album_26effb
+                    else L10nR.string.feature_home_appears_after_you_scan_your_library_5ae1b0,
+                ),
+                onClick = onOpenLibrary,
+            )
+        } else {
+            LazyRow(
+                modifier = Modifier.heightIn(min = RecentActivityAlbumCardHeight),
+                contentPadding = PaddingValues(vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
                 items(displayAlbums, key = { it.albumKey }) { album ->
-                    RecentAlbumCard(
-                        album = album,
-                        mode = displayMode,
-                        onClick = { onOpenAlbum(album) },
-                    )
+                    RecentAlbumCard(album = album, mode = displayMode, onClick = { onOpenAlbum(album) })
                 }
             }
         }
@@ -442,7 +422,6 @@ internal enum class RecentActivityMode {
     Added,
 }
 
-private val RecentActivityAlbumCardWidth = 124.dp
 private val RecentActivityAlbumCardHeight = 202.dp
 private val RecentActivityEmptyCardWidth = 126.dp
 private val RecentActivityEmptyCardHeight = 184.dp
@@ -454,11 +433,11 @@ internal fun RecentActivityTabs(
 ) {
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = homePanelColor(0.94f),
-        border = homePanelBorder(0.84f),
+        color = Color.Transparent,
+        border = null,
     ) {
         Row(
-            modifier = Modifier.padding(3.dp),
+            modifier = Modifier,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             RecentActivityModeTab(
@@ -484,9 +463,11 @@ private fun RecentActivityModeTab(
     val scheme = MaterialTheme.colorScheme
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(9.dp))
-            .background(if (selected) scheme.primary.copy(alpha = 0.24f) else Color.Transparent)
+            .defaultMinSize(minHeight = 48.dp)
             .echoClickable(onClick = onClick)
+            .padding(vertical = 8.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (selected) scheme.primary.copy(alpha = 0.13f) else Color.Transparent)
             .padding(horizontal = 10.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -494,7 +475,7 @@ private fun RecentActivityModeTab(
             label,
             color = if (selected) scheme.primary else homeBodyColor(),
             style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             maxLines = 1,
         )
     }
@@ -532,11 +513,12 @@ internal fun RecentAlbumCard(
     mode: RecentActivityMode,
     onClick: () -> Unit,
 ) {
+    val cardWidth = ((LocalConfiguration.current.screenWidthDp.dp - 64.dp) / 2).coerceIn(124.dp, 180.dp)
     val artistLabel = album.albumArtist ?: album.artist ?: stringResource(L10nR.string.feature_home_unknown_artist_85ee30)
     Column(
         modifier = Modifier
-            .width(RecentActivityAlbumCardWidth)
-            .height(RecentActivityAlbumCardHeight)
+            .width(cardWidth)
+            .heightIn(min = RecentActivityAlbumCardHeight)
             .echoClickable(onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -554,7 +536,7 @@ internal fun RecentAlbumCard(
             album.title,
             color = homeTitleColor(),
             style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.ExtraBold,
+            fontWeight = FontWeight.SemiBold,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
@@ -562,7 +544,7 @@ internal fun RecentAlbumCard(
             recentAlbumSubtitle(album, mode, artistLabel),
             color = homeBodyColor(),
             style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Normal,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -764,22 +746,12 @@ internal fun HomeAlbumRecommendationsSection(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
-            .shadow(
-                elevation = if (LocalEchoDarkTheme.current) 0.dp else 12.dp,
-                shape = RoundedCornerShape(26.dp),
-                ambientColor = Color.Black.copy(alpha = 0.04f),
-                spotColor = Color.Black.copy(alpha = 0.03f),
-            )
-            .clip(RoundedCornerShape(24.dp))
-            .background(homePanelBrush())
-            .border(homePanelBorder(), RoundedCornerShape(24.dp))
             .padding(top = 18.dp, bottom = 18.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+                .fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -787,7 +759,7 @@ internal fun HomeAlbumRecommendationsSection(
                 stringResource(L10nR.string.feature_home_recommended_for_you_8335d9),
                 color = homeTitleColor(),
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.ExtraBold,
+                fontWeight = FontWeight.SemiBold,
             )
             Surface(
                 modifier = Modifier
@@ -814,7 +786,7 @@ internal fun HomeAlbumRecommendationsSection(
             }
         }
         LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
+            contentPadding = PaddingValues(vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             if (albums.isEmpty()) {
@@ -863,7 +835,7 @@ internal fun RecommendedAlbumCard(
             album.title,
             color = homeTitleColor(),
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.ExtraBold,
+            fontWeight = FontWeight.SemiBold,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
@@ -871,7 +843,7 @@ internal fun RecommendedAlbumCard(
             artistLabel,
             color = homeBodyColor(),
             style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Normal,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -889,17 +861,14 @@ internal fun HomeArtistRankingSection(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
-            .clip(RoundedCornerShape(26.dp))
-            .background(homePanelColor(0.90f))
-            .border(homePanelBorder(), RoundedCornerShape(26.dp))
-            .padding(horizontal = 18.dp, vertical = 16.dp),
+            .padding(vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
             stringResource(L10nR.string.feature_home_artist_ranking_80100b),
             color = scheme.onSurface,
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.ExtraBold,
+            fontWeight = FontWeight.SemiBold,
         )
         if (artists.isEmpty()) {
             EmptyRankingNotice(
@@ -1029,9 +998,6 @@ internal fun HomeFavoriteAlbumsSection(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
-            .clip(RoundedCornerShape(26.dp))
-            .background(homePanelColor(0.90f))
-            .border(homePanelBorder(), RoundedCornerShape(26.dp))
             .padding(top = 16.dp, bottom = 18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -1039,19 +1005,17 @@ internal fun HomeFavoriteAlbumsSection(
             stringResource(L10nR.string.feature_home_albums_you_like_95a2b9),
             color = scheme.onSurface,
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.ExtraBold,
-            modifier = Modifier.padding(horizontal = 18.dp),
+            fontWeight = FontWeight.SemiBold,
         )
         if (albums.isEmpty()) {
             HomeLibraryNotice(
                 title = stringResource(L10nR.string.feature_home_no_favorite_albums_yet_7c8d3b),
                 subtitle = stringResource(L10nR.string.feature_home_star_an_album_on_the_player_to_see_edd836),
                 onClick = onOpenLibrary,
-                modifier = Modifier.padding(horizontal = 18.dp),
-            )
+                )
         } else {
             LazyRow(
-                contentPadding = PaddingValues(horizontal = 18.dp),
+                contentPadding = PaddingValues(vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 items(albums.take(4), key = { it.albumKey }) { album ->

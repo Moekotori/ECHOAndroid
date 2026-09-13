@@ -24,6 +24,7 @@ internal fun EchoUpdateHost(viewModel: EchoUpdateViewModel) {
     fun install() {
         val apk = state.apk ?: return
         try {
+            viewModel.installing()
             val uri = FileProvider.getUriForFile(context, "${context.packageName}.updates", apk)
             context.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.android.package-archive")
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
@@ -31,7 +32,7 @@ internal fun EchoUpdateHost(viewModel: EchoUpdateViewModel) {
     }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         if (context.packageManager.canRequestPackageInstalls()) install()
-        else viewModel.installFailed()
+        else viewModel.installFailed(permission = true)
     }
     fun requestInstall() {
         try {
@@ -48,9 +49,11 @@ internal fun EchoUpdateHost(viewModel: EchoUpdateViewModel) {
         }
     }
     if (state.visible) SettingsUpdateDialog(
+        currentVersion = BuildConfig.VERSION_NAME, sizeBytes = state.update?.size,
         version = state.update?.versionName, notes = state.update?.notes.orEmpty(),
         busy = state.busy, progress = state.progress, ready = state.apk != null, error = state.error,
         onDismiss = viewModel::dismiss, onCheck = { viewModel.check() },
+        onCancel = viewModel::cancelDownload,
         onDownload = viewModel::download, onInstall = { requestInstall() },
     )
 }

@@ -80,6 +80,15 @@ fun HomeScreen(
                 )
             }
         }
+        item(key = "recent") {
+            Spacer(Modifier.height(sectionGap))
+            RoonRecentActivitySection(
+                recentPlayedAlbums = recentPlayedAlbums,
+                recentlyAddedAlbums = recentlyAddedAlbums,
+                onOpenAlbum = onOpenAlbum,
+                onOpenLibrary = onOpenLibrary,
+            )
+        }
         item(key = "overview") {
             Spacer(Modifier.height(sectionGap))
             Box(Modifier.padding(horizontal = 24.dp)) {
@@ -91,15 +100,6 @@ fun HomeScreen(
                     onOpenLibrary = onOpenLibrary,
                 )
             }
-        }
-        item(key = "recent") {
-            Spacer(Modifier.height(sectionGap))
-            RoonRecentActivitySection(
-                recentPlayedAlbums = recentPlayedAlbums,
-                recentlyAddedAlbums = recentlyAddedAlbums,
-                onOpenAlbum = onOpenAlbum,
-                onOpenLibrary = onOpenLibrary,
-            )
         }
         if (distinctRecommendations.isNotEmpty()) {
             item(key = "recommended") {

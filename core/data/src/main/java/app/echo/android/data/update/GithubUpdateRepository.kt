@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import okhttp3.Call
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
@@ -22,6 +23,16 @@ class GithubUpdateRepository(context: Context) {
     private val client = OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS).callTimeout(10, TimeUnit.MINUTES)
         .followSslRedirects(false).build()
+
+    @Volatile private var activeCall: Call? = null
+
+    fun cancelPendingRequests() { activeCall?.cancel() }
+
+    private suspend fun execute(call: Call): okhttp3.Response {
+        activeCall = call
+        currentCoroutineContext().ensureActive()
+        return call.execute()
+    }
 
     suspend fun check(currentCode: Long, manual: Boolean): GithubUpdate? = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
@@ -46,11 +57,11 @@ class GithubUpdateRepository(context: Context) {
         update.takeIf { it.versionCode > currentCode }
     }
 
-    private fun getText(url: String, allowMissing: Boolean = false): String? {
+    private suspend fun getText(url: String, allowMissing: Boolean = false): String? {
         val request = Request.Builder().url(url).header("User-Agent", "ECHOAndroid-Updater").build()
         val call = client.newCall(request)
         call.timeout().timeout(30, TimeUnit.SECONDS)
-        return call.execute().use { response ->
+        return execute(call).use { response ->
             if (allowMissing && response.code == 404) return@use null
             check(response.isSuccessful) { "HTTP ${response.code}" }
             val source = requireNotNull(response.body).source()
@@ -69,7 +80,7 @@ class GithubUpdateRepository(context: Context) {
         try {
             val digest = MessageDigest.getInstance("SHA-256")
             val request = Request.Builder().url(update.url).build()
-            client.newCall(request).execute().use { response ->
+            execute(client.newCall(request)).use { response ->
                 check(response.isSuccessful) { "HTTP ${response.code}" }
                 requireNotNull(response.body).byteStream().use { input ->
                     partial.outputStream().use { output ->

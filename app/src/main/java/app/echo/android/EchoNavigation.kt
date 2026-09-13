@@ -117,7 +117,7 @@ fun BottomDock(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 10.dp, vertical = 5.dp)
-                .echoFrostedGlass(shape = DockGlassShape, elevation = 10.dp)
+                .echoFrostedGlass(shape = DockGlassShape, elevation = 6.dp)
                 .pointerInput(selectedTab, swipeThresholdPx) {
                     detectHorizontalDragGestures(
                         onDragStart = { dragOffsetX = 0f },
@@ -317,7 +317,7 @@ private fun DockItem(
                     contentDescription = null,
                     tint = iconColor,
                     modifier = Modifier
-                        .size(24.dp)
+                        .size(22.dp)
                         .graphicsLayer {
                             scaleX = iconScale
                             scaleY = iconScale
@@ -328,7 +328,7 @@ private fun DockItem(
                 text = tab.label(),
                 color = labelColor,
                 style = MaterialTheme.typography.labelSmall,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

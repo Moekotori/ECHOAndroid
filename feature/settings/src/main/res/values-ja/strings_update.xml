@@ -12,4 +12,19 @@
     <string name="update_install">インストール</string>
     <string name="update_download">ダウンロード</string>
     <string name="update_later">後で</string>
+    <string name="update_version_current">現在のバージョン：%1$s</string>
+    <string name="update_package_size">ダウンロードサイズ：%1$s</string>
+    <string name="update_error_check">GitHub を確認できません。接続を確認して再試行してください。</string>
+    <string name="update_error_download">ダウンロードが中断されました。接続と空き容量を確認してください。</string>
+    <string name="update_error_verification">検証に失敗したか署名が一致しません。現在のアプリを保持して配布元にお問い合わせください。</string>
+    <string name="update_error_permission">システム設定で ECHO のアプリインストールを許可し、もう一度インストールを押してください。</string>
+    <string name="update_error_install">インストーラーを開けません。もう一度お試しください。</string>
+    <string name="update_verifying">パッケージを検証中…</string>
+    <string name="update_install_hint">承認後にダウンロードします。インストール時にもシステム画面での確認が必要です。</string>
+    <string name="update_percent">%1$d%%</string>
+    <string name="update_cancel_download">ダウンロードを中止</string>
+    <string name="update_notes">更新内容</string>
+    <string name="update_retry">再試行</string>
+    <string name="update_done">完了</string>
+    <string name="update_hide_download">ダウンロードを閉じる</string>
 </resources>
