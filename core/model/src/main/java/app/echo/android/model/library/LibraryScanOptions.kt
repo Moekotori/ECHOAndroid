@@ -6,4 +6,6 @@ data class LibraryScanOptions(
     val minSizeBytes: Long = 100L * 1024L,
     val excludeNonMusicFolders: Boolean = true,
     val excludeHiddenFolders: Boolean = true,
+    /** Storage-relative directory paths; includes descendants, never deletes imported tracks. */
+    val excludedRelativePaths: Set<String> = emptySet(),
 ) : java.io.Serializable

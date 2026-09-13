@@ -13,6 +13,7 @@ fun SettingsScreen(
     albumCount: Int,
     artistCount: Int,
     appVersionLabel: String,
+    updateContent: @Composable () -> Unit = {},
     dynamicArtworkEnabled: Boolean,
     compactModeEnabled: Boolean,
     dynamicColorEnabled: Boolean,
@@ -243,6 +244,7 @@ fun SettingsScreen(
                 )
                 SettingsCategory.About -> SettingsAboutContent(
                     appVersionLabel = appVersionLabel,
+                    updateContent = updateContent,
                     errorLogCount = errorLogCount,
                     onOpenErrorLog = onOpenErrorLog,
                     backupNotice = backupNotice,

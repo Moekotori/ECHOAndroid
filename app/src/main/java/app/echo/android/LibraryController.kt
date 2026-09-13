@@ -266,7 +266,7 @@ internal class LibraryController(
         }
     }
 
-    fun refreshLibrary(options: LibraryScanOptions = LibraryScanOptions()) {
+    fun refreshLibrary(options: LibraryScanOptions? = null) {
         refreshLibrary(relativePathPrefix = null, options = options)
     }
 
@@ -336,13 +336,15 @@ internal class LibraryController(
         }
     }
 
-    private fun refreshLibrary(relativePathPrefix: String?, options: LibraryScanOptions) {
+    private fun refreshLibrary(relativePathPrefix: String?, options: LibraryScanOptions?) {
         startScanJob(auto = false) {
             try {
+                if (options != null) settingsStore.setLibraryScanOptions(options)
+                val effectiveOptions = settingsStore.libraryScanOptions()
                 repository.refreshMediaStoreSnapshot(
                     relativePathPrefix = relativePathPrefix,
                     skipSampleRateRead = skipSampleRateRead(),
-                    options = options,
+                    options = effectiveOptions,
                 )
                     .collect { progress -> publishScanProgress(_scanState, progress, "Library scan failed") }
             } catch (error: CancellationException) {
@@ -464,11 +466,15 @@ internal class LibraryController(
     ) {
         val treeUri = folder.treeUri ?: return
         try {
+            if (!quiet) settingsStore.setLibraryScanOptions(options)
+            val effectiveOptions = options.copy(
+                excludedRelativePaths = settingsStore.libraryScanOptions().excludedRelativePaths,
+            )
             repository.refreshDocumentTreeSnapshot(
                 treeUri = treeUri,
                 relativePathPrefix = folder.relativePathPrefix,
                 skipSampleRateRead = skipSampleRateRead(),
-                options = options,
+                options = effectiveOptions,
             ).collect { progress ->
                 if (!quiet) {
                     publishScanProgress(_scanState, progress, "Document tree scan failed")

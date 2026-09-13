@@ -7,6 +7,7 @@ import app.echo.android.model.backup.EchoBackupNotice
 @Composable
 internal fun SettingsAboutContent(
     appVersionLabel: String,
+    updateContent: @Composable () -> Unit = {},
     errorLogCount: Int = 0,
     onOpenErrorLog: () -> Unit = {},
     backupNotice: EchoBackupNotice? = null,
@@ -18,6 +19,7 @@ internal fun SettingsAboutContent(
             title = stringResource(R.string.settings_version),
             detail = appVersionLabel,
         )
+        updateContent()
         SettingsActionRow(
             title = stringResource(R.string.settings_backup_export),
             detail = when (backupNotice) {

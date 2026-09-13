@@ -1,5 +1,6 @@
 package app.echo.android.data
 
+import app.echo.android.model.library.LibraryScanOptions
 import app.echo.android.model.settings.EchoBackgroundStyle
 
 import app.echo.android.i18n.echoAppLanguage
@@ -36,6 +37,7 @@ private val Context.echoSettings by preferencesDataStore(name = "echo-settings")
 private val Context.echoPlaybackResumeSettings by preferencesDataStore(name = "echo-playback-resume")
 private val PlaybackResumeKey = stringPreferencesKey("playback_resume")
 data class EchoAppSettings(
+    val libraryScanOptions: LibraryScanOptions = LibraryScanOptions(),
     val trackTransitions: app.echo.android.model.playback.EchoTrackTransitionOptions = app.echo.android.model.playback.EchoTrackTransitionOptions(),
     val preferOffload: Boolean = true,
     val lastOutputRoute: String = "system",
@@ -310,6 +312,7 @@ class EchoSettingsStore(
                     preferences[Keys.ReplayGainPreampDb] ?: 0f,
                 ),
                 librarySelectedSource = normalizeLibrarySelectedSource(preferences[Keys.LibrarySelectedSource]),
+                libraryScanOptions = decodeLibraryScanOptions(preferences[Keys.LibraryScanOptions]),
                 watchedFolderRescanEnabled = preferences[Keys.WatchedFolderRescanEnabled] ?: false,
                 subsonicServerUrl = preferences[Keys.SubsonicServerUrl]
                     ?.let(::normalizeSubsonicBaseUrl)
@@ -794,6 +797,13 @@ class EchoSettingsStore(
         }
     }
 
+    suspend fun libraryScanOptions(): LibraryScanOptions =
+        decodeLibraryScanOptions(context.echoSettings.data.first()[Keys.LibraryScanOptions])
+
+    suspend fun setLibraryScanOptions(options: LibraryScanOptions) {
+        context.echoSettings.edit { it[Keys.LibraryScanOptions] = encodeLibraryScanOptions(options) }
+    }
+
     suspend fun setWatchedFolderRescanEnabled(enabled: Boolean) {
         context.echoSettings.edit { it[Keys.WatchedFolderRescanEnabled] = enabled }
     }
@@ -1095,6 +1105,7 @@ class EchoSettingsStore(
     }
 
     private object Keys {
+        val LibraryScanOptions = stringPreferencesKey("library_scan_options")
         val PreferOffload = booleanPreferencesKey("prefer_offload")
         val LastOutputRoute = stringPreferencesKey("last_output_route")
         val DynamicArtworkEnabled = booleanPreferencesKey("dynamic_artwork_enabled")

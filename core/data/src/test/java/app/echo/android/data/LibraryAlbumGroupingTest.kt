@@ -47,6 +47,19 @@ class LibraryAlbumGroupingTest {
     }
 
     @Test
+    fun issue8GuestArtistsDoNotSplitOneLocalAlbum() {
+        val tracks = listOf("周杰伦", "周杰伦;潘儿", "周杰伦;费玉清").mapIndexed { index, artist ->
+            track("$index", "依然范特西", artist, path = "Music/依然范特西/")
+                .withComputedSearchMetadata()
+        }
+        val changes = LibraryAlbumGrouping.reconcile(tracks).associateBy { it.id }
+        val reconciled = tracks.map { changes[it.id] ?: it }
+        assertEquals(1, reconciled.map { it.albumKey }.distinct().size)
+        assertEquals(tracks.map { it.artist }, reconciled.map { it.artist })
+        assertTrue(LibraryAlbumGrouping.reconcile(reconciled).isEmpty())
+    }
+
+    @Test
     fun partialAlbumArtistInSameFolderWins() {
         val tagged = track(
             id = "1",

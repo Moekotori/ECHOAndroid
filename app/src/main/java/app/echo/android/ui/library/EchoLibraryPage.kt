@@ -161,6 +161,7 @@ internal fun EchoLibraryPage(
             onFolderSortModeChange = viewModel::updateLibraryFolderSortMode,
             onScanFolder = onScanFolder,
             onScanAll = onScanAll,
+            initialScanOptions = appSettings.libraryScanOptions,
             onCancelScan = viewModel::cancelScan,
             onRefreshLinkedLibrary = { query -> remoteClient.refreshLibrary(query) },
             onOpenLinkedPlaylist = { playlist -> remoteClient.refreshPlaylistTracks(playlist) },

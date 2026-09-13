@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_check">Check for updates</string>
+    <string name="update_source">Automatically checks GitHub Releases every 12 hours when opened</string>
+    <string name="update_title">ECHO updates</string>
+    <string name="update_error">Could not complete the update. Check your connection, installation permission, and APK signing compatibility, then retry.</string>
+    <string name="update_downloading">Downloading update…</string>
+    <string name="update_checking">Checking GitHub…</string>
+    <string name="update_ready">Download verified. Continue with the system installer.</string>
+    <string name="update_available">A new version is available</string>
+    <string name="update_current">No newer release is available</string>
+    <string name="update_install">Install</string>
+    <string name="update_download">Download</string>
+    <string name="update_later">Later</string>
+</resources>

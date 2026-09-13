@@ -37,27 +37,7 @@ fun EchoPanel(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    val scheme = MaterialTheme.colorScheme
-    val theme = echoTheme()
-    val dark = theme.dark
-    val shape = RoundedCornerShape(24.dp)
-    Box(
-        modifier = modifier
-            .clip(shape)
-            .background(
-                if (dark) echoGlassContainerBrush(1.00f) else Brush.linearGradient(
-                    listOf(
-                        Color.White.copy(alpha = 0.96f),
-                        Color.White.copy(alpha = 0.88f),
-                        scheme.primary.copy(alpha = 0.08f),
-                    ),
-                ),
-            )
-            .border(
-                if (dark) BorderStroke(1.dp, theme.glassBorder) else BorderStroke(1.dp, scheme.outlineVariant.copy(alpha = 0.65f)),
-                shape,
-            ),
-    ) {
+    Box(modifier = modifier.echoFrostedGlass(RoundedCornerShape(24.dp), elevation = 2.dp)) {
         content()
     }
 }

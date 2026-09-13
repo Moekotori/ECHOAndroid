@@ -342,6 +342,7 @@ fun LibraryScreen(
     onFolderSortModeChange: (FolderSortMode) -> Unit,
     onScanFolder: (LibraryScanOptions) -> Unit,
     onScanAll: (LibraryScanOptions) -> Unit,
+    initialScanOptions: LibraryScanOptions = LibraryScanOptions(),
     onCancelScan: () -> Unit,
     onRefreshLinkedLibrary: (String) -> Unit,
     onOpenLinkedPlaylist: (EchoRemotePlaylist) -> Unit,
@@ -530,6 +531,7 @@ fun LibraryScreen(
     fun LocalBrowserPane() {
         var showEmptyScanOptions by remember { mutableStateOf(false) }
         if (showEmptyScanOptions) LibraryScanOptionsDialog(
+            initialOptions = initialScanOptions,
             onDismiss = { showEmptyScanOptions = false },
             onScanFolder = { options -> showEmptyScanOptions = false; onScanFolder(options) },
             onScanAll = { options -> showEmptyScanOptions = false; onScanAll(options) },
@@ -542,6 +544,7 @@ fun LibraryScreen(
                 if (selectedSource == LibrarySourceMode.Local) LibrarySourceScanButton(
                     selectedSource, linkedLibraryAvailable, ::selectSource,
                     hasPermission, scanState, onRequestPermission, onScanFolder, onScanAll, onCancelScan,
+                    initialScanOptions = initialScanOptions,
                 )
             },
         ) {
@@ -992,6 +995,7 @@ private fun LibrarySourceScanButton(
     onScanFolder: (LibraryScanOptions) -> Unit,
     onScanAll: (LibraryScanOptions) -> Unit,
     onCancelScan: () -> Unit,
+    initialScanOptions: LibraryScanOptions = LibraryScanOptions(),
     modifier: Modifier = Modifier,
 ) {
     var showScanOptions by remember { mutableStateOf(false) }
@@ -1004,6 +1008,7 @@ private fun LibrarySourceScanButton(
         Text(stringResource(L10nR.string.library_add_music))
     }
     if (showScanOptions) LibraryScanOptionsDialog(
+        initialOptions = initialScanOptions,
         onDismiss = { showScanOptions = false },
         onScanFolder = { options -> showScanOptions = false; onScanFolder(options) },
         onScanAll = { options -> showScanOptions = false; onScanAll(options) },

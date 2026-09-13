@@ -8,8 +8,8 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.border
+import app.echo.android.design.echoFrostedGlass
+import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.echoClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -43,7 +43,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -102,6 +101,7 @@ fun BottomDock(
     progressLive: Boolean = false,
 ) {
     val dark = LocalEchoDarkTheme.current
+    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val density = LocalDensity.current
     val scheme = MaterialTheme.colorScheme
     val theme = echoTheme()
@@ -117,39 +117,7 @@ fun BottomDock(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 10.dp, vertical = 5.dp)
-                .shadow(
-                    elevation = 10.dp,
-                    shape = DockGlassShape,
-                    ambientColor = if (dark) Color.Black.copy(alpha = 0.18f) else scheme.onSurface.copy(alpha = 0.08f),
-                    spotColor = if (dark) Color.Black.copy(alpha = 0.10f) else scheme.onSurface.copy(alpha = 0.10f),
-                )
-                .clip(DockGlassShape)
-                .background(if (dark) scheme.surface.copy(alpha = 0.92f) else scheme.surface.copy(alpha = 0.94f))
-                .background(
-                    if (dark) {
-                        Brush.verticalGradient(
-                            listOf(
-                                Color.White.copy(alpha = 0.07f),
-                                Color.White.copy(alpha = 0.02f),
-                                Color.Transparent,
-                            ),
-                        )
-                    } else {
-                        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.80f), theme.mist.copy(alpha = 0.30f)))
-                    },
-                )
-                .border(
-                    BorderStroke(
-                        0.75.dp,
-                        Brush.verticalGradient(
-                            listOf(
-                                Color.White.copy(alpha = if (dark) 0.18f else 0.95f),
-                                scheme.onSurface.copy(alpha = if (dark) 0.05f else 0.07f),
-                            ),
-                        ),
-                    ),
-                    DockGlassShape,
-                )
+                .echoFrostedGlass(shape = DockGlassShape, elevation = 10.dp)
                 .pointerInput(selectedTab, swipeThresholdPx) {
                     detectHorizontalDragGestures(
                         onDragStart = { dragOffsetX = 0f },
@@ -200,14 +168,14 @@ fun BottomDock(
             val indicatorAnim = remember { Animatable(selectedTabProgress().coerceIn(0f, maxIndicatorIndex)) }
             // 手指驱动(pager 滑动 / dock 拖拽)时指示条 1:1 直跟,离散跳转(点按)才走弹簧,
             // 避免弹簧追赶连续目标带来的滞后感。
-            LaunchedEffect(tabWidthPx) {
+            LaunchedEffect(tabWidthPx, lightweight) {
                 snapshotFlow {
                     val dragProgress = (-dragOffsetX / tabWidthPx).coerceIn(-1f, 1f)
                     val target = (selectedTabProgressState.value() + dragProgress)
                         .coerceIn(0f, maxIndicatorIndex)
                     target to (progressLiveState.value || dragOffsetX != 0f)
                 }.collectLatest { (target, live) ->
-                    if (live) {
+                    if (live || lightweight) {
                         indicatorAnim.snapTo(target)
                     } else if (target != indicatorAnim.targetValue || target != indicatorAnim.value) {
                         indicatorAnim.animateTo(
@@ -290,6 +258,7 @@ private fun DockItem(
 ) {
     val scheme = MaterialTheme.colorScheme
     val accent = echoTheme().accent
+    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val targetIconColor = when {
         selected && onLightSurface -> scheme.onSurface
         selected -> accent
@@ -304,17 +273,17 @@ private fun DockItem(
     }
     val iconColor by animateColorAsState(
         targetValue = targetIconColor,
-        animationSpec = tween(durationMillis = 180, easing = DockItemMotionEasing),
+        animationSpec = tween(durationMillis = if (lightweight) 0 else 180, easing = DockItemMotionEasing),
         label = "dock-icon-color",
     )
     val labelColor by animateColorAsState(
         targetValue = targetLabelColor,
-        animationSpec = tween(durationMillis = 180, easing = DockItemMotionEasing),
+        animationSpec = tween(durationMillis = if (lightweight) 0 else 180, easing = DockItemMotionEasing),
         label = "dock-label-color",
     )
     val iconScale by animateFloatAsState(
         targetValue = if (selected) 1f else 0.94f,
-        animationSpec = spring(
+        animationSpec = if (lightweight) tween(0) else spring(
             dampingRatio = 0.72f,
             stiffness = Spring.StiffnessMediumLow,
         ),

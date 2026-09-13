@@ -354,7 +354,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun playlistTrackPaging(playlistId: String): Flow<PagingData<EchoTrack>> =
         libraryController.playlistTrackPaging(playlistId)
 
-    fun refreshLibrary(options: LibraryScanOptions = LibraryScanOptions()) {
+    fun refreshLibrary(options: LibraryScanOptions? = null) {
         libraryController.refreshLibrary(options)
     }
 

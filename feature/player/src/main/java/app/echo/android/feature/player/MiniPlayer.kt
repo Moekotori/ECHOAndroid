@@ -53,8 +53,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -73,6 +71,7 @@ import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.design.progressFraction
+import app.echo.android.design.echoFrostedGlass
 import app.echo.android.design.echoTheme
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
@@ -157,33 +156,7 @@ fun MiniPlayer(
         modifier = modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 64.dp)
-            .shadow(
-                elevation = surfaceElevation,
-                shape = shape,
-                ambientColor = if (dark) Color.Black.copy(alpha = 0.20f) else Color.Black.copy(alpha = 0.08f),
-                spotColor = if (dark) Color.Black.copy(alpha = 0.12f) else scheme.primary.copy(alpha = 0.16f),
-            )
-            .clip(shape)
-            .background(scheme.surface.copy(alpha = 0.98f))
-            .background(
-                if (dark) {
-                    Brush.linearGradient(
-                        listOf(
-                            Color.White.copy(alpha = if (compactDock) 0.04f else 0.03f),
-                            scheme.surfaceVariant.copy(alpha = if (compactDock) 0.42f else 0.34f),
-                            scheme.surface.copy(alpha = if (compactDock) 0.66f else 0.58f),
-                        ),
-                    )
-                } else {
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.White,
-                            theme.glassWash,
-                            theme.mist,
-                        ),
-                    )
-                },
-            )
+            .echoFrostedGlass(shape = shape, elevation = surfaceElevation)
             .padding(
                 start = if (compactDock) 4.dp else 12.dp,
                 top = if (compactDock) 7.dp else 5.dp,

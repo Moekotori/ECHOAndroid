@@ -46,8 +46,13 @@ plugins {
 }
 
 val echoBuildDate = LocalDate.parse(providers.of(EchoCalendarDateSource::class) {}.get())
-val echoVersionName = echoCalendarVersionName(echoBuildDate)
-val echoVersionCode = echoCalendarVersionCode(echoBuildDate)
+val echoVersionName = providers.gradleProperty("echoVersionName").orNull ?: echoCalendarVersionName(echoBuildDate)
+require(echoVersionName.matches(Regex("[0-9]{2}\\.[1-9][0-9]?\\.[1-9][0-9]?")))
+val echoVersionParts = echoVersionName.split(".").map(String::toInt)
+val echoVersionDate = LocalDate.of(2000 + echoVersionParts[0], echoVersionParts[1], echoVersionParts[2])
+val echoVersionCode = providers.gradleProperty("echoVersionCode").orNull?.toInt()
+    ?: (echoCalendarVersionCode(echoVersionDate) * 100)
+require(echoVersionCode in 1..2_100_000_000)
 
 the<org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension>().compilerOptions {
 }

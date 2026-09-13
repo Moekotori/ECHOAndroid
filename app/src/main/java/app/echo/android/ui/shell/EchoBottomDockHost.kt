@@ -94,9 +94,9 @@ internal fun EchoBottomDockHost(
                 Brush.verticalGradient(
                     if (darkTheme) {
                         val theme = echoTheme()
-                        listOf(Color.Transparent, theme.night.copy(alpha = 0.40f), theme.panel.copy(alpha = 0.94f))
+                        listOf(Color.Transparent, theme.night.copy(alpha = 0.50f), theme.night.copy(alpha = 0.94f))
                     } else {
-                        listOf(Color.Transparent, echoTheme().mist.copy(alpha = 0.96f))
+                        listOf(Color.Transparent, echoTheme().night.copy(alpha = 0.50f), echoTheme().night.copy(alpha = 0.94f))
                     },
                 ),
             )

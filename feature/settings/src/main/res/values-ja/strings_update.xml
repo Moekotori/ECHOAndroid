@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_check">更新を確認</string>
+    <string name="update_source">アプリ起動時に GitHub Releases を確認（12 時間間隔）</string>
+    <string name="update_title">ECHO の更新</string>
+    <string name="update_error">更新できませんでした。接続、インストール権限、APK の署名互換性を確認して再試行してください。</string>
+    <string name="update_downloading">更新をダウンロード中…</string>
+    <string name="update_checking">GitHub を確認中…</string>
+    <string name="update_ready">検証が完了しました。システムのインストーラーで続行してください。</string>
+    <string name="update_available">新しいバージョンがあります</string>
+    <string name="update_current">新しいリリースはありません</string>
+    <string name="update_install">インストール</string>
+    <string name="update_download">ダウンロード</string>
+    <string name="update_later">後で</string>
+</resources>

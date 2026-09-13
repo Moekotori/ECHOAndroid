@@ -1,0 +1,64 @@
+name: GitHub release APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version YY.M.D (e.g. 26.9.13)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: "tools platform-tools platforms;android-36 ndk;27.2.12479018 cmake;3.22.1"
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/cache@v4
+        with:
+          path: |
+            core/playback/build/ffmpeg/downloads
+            core/playback/build/ffmpeg/native
+          key: ffmpeg-${{ runner.os }}-ndk27-${{ hashFiles('scripts/build-ffmpeg.py') }}
+      - name: Validate version and prepare signing
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: python3 scripts/prepare-android-release.py
+      - name: Verify and build signed APK
+        run: |
+          chmod +x gradlew
+          ./gradlew checkModules checkLocalization :core:data:testDebugUnitTest --tests '*GithubUpdateTest' :app:assembleRelease -PechoVersionName="$RELEASE_VERSION" -PechoVersionCode="$RELEASE_CODE" --no-configuration-cache --no-parallel
+      - name: Create update metadata
+        run: python3 scripts/prepare-android-release.py --metadata
+      - name: Create reviewable draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$RELEASE_VERSION" app/build/outputs/apk/release/*.apk app/build/outputs/apk/release/update.json --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --title "ECHOAndroid $RELEASE_VERSION" --generate-notes
+      - name: Remove signing material
+        if: always()
+        run: rm -f release-signing.jks keystore.properties

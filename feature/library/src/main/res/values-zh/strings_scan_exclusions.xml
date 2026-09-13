@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="scan_excluded_folders">禁止扫描的文件夹</string>
+    <string name="scan_excluded_folders_hint">每行填写一个存储空间内的相对路径，例如 Recordings/Call，包含其子文件夹。开始扫描时保存，关闭其他筛选后仍生效；删除对应行可恢复扫描。已入库歌曲会保留。</string>
+</resources>

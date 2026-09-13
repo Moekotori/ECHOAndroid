@@ -40,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
@@ -200,55 +201,48 @@ fun GlassIconButton(
 @Composable
 fun EchoGlassBackground(modifier: Modifier = Modifier) {
     val theme = echoTheme()
+    val scheme = MaterialTheme.colorScheme
     val dark = theme.dark
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
-    val echoDefault = theme.id == EchoColorTheme.Echo.id
-    val baseGradient = Brush.verticalGradient(
-        if (dark && echoDefault) {
-            listOf(theme.night, theme.bgMid, theme.ink, theme.bgBottom)
-        } else {
-            listOf(theme.bgTop, theme.bgMid, theme.bgBottom)
+    // Static, theme-derived washes: no bitmap allocation, blur pass, or idle animation.
+    // Brushes are rebuilt only when the palette, performance mode, or size changes.
+    Box(
+        modifier = modifier.drawWithCache {
+            val base = Brush.verticalGradient(listOf(theme.bgTop, theme.bgMid, theme.bgBottom))
+            val radius = size.maxDimension
+            val accent = Brush.radialGradient(
+                colors = listOf(scheme.primary.copy(alpha = if (dark) 0.20f else 0.12f), Color.Transparent),
+                center = Offset(size.width * 0.04f, size.height * 0.06f),
+                radius = radius * 0.62f,
+            )
+            val secondary = Brush.radialGradient(
+                colors = listOf(scheme.tertiary.copy(alpha = if (dark) 0.13f else 0.09f), Color.Transparent),
+                center = Offset(size.width * 1.06f, size.height * 0.40f),
+                radius = radius * 0.54f,
+            )
+            val foot = Brush.radialGradient(
+                colors = listOf(scheme.primary.copy(alpha = if (dark) 0.09f else 0.055f), Color.Transparent),
+                center = Offset(size.width * 0.28f, size.height * 1.04f),
+                radius = radius * 0.45f,
+            )
+            val veil = Brush.verticalGradient(
+                colors = listOf(
+                    if (dark) Color.Transparent else Color.White.copy(alpha = 0.18f),
+                    Color.Transparent,
+                    theme.night.copy(alpha = 0.16f),
+                ),
+            )
+            onDrawBehind {
+                drawRect(base)
+                if (!lightweight) {
+                    drawRect(accent)
+                    drawRect(secondary)
+                    drawRect(foot)
+                }
+                drawRect(veil)
+            }
         },
     )
-    val showWashes = !lightweight && !echoDefault
-    val accentWash = theme.accent.copy(alpha = if (dark) 0.18f else 0.16f)
-    val secondaryWash = theme.secondary.copy(alpha = if (dark) 0.14f else 0.12f)
-    Canvas(modifier = modifier.background(baseGradient)) {
-        val h = size.height
-        val w = size.width
-        if (showWashes) {
-            drawRect(
-                brush = Brush.radialGradient(
-                    colors = listOf(accentWash, Color.Transparent),
-                    center = Offset(w * 0.12f, h * -0.04f),
-                    radius = w.coerceAtLeast(h) * 0.72f,
-                ),
-            )
-            drawRect(
-                brush = Brush.radialGradient(
-                    colors = listOf(secondaryWash, Color.Transparent),
-                    center = Offset(w * 0.92f, h * -0.02f),
-                    radius = w.coerceAtLeast(h) * 0.64f,
-                ),
-            )
-        }
-        if (!dark) {
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.28f), Color.Transparent),
-                    startY = 0f,
-                    endY = h * 0.45f,
-                ),
-            )
-        }
-        drawRect(
-            brush = Brush.verticalGradient(
-                colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (dark) 0.08f else 0.04f)),
-                startY = h * 0.44f,
-                endY = h,
-            ),
-        )
-    }
 }
 
 @Composable

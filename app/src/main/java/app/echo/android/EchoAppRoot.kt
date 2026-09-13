@@ -101,6 +101,7 @@ import app.echo.android.model.error.EchoErrorSource
 import app.echo.android.ui.home.EchoHomePage
 import app.echo.android.ui.library.EchoLibraryPage
 import app.echo.android.ui.playback.EchoNowPlayingHost
+import app.echo.android.ui.shell.echoPlayerDepth
 import app.echo.android.ui.shell.EchoBottomDockHost
 import app.echo.android.ui.shell.EchoPagerPage
 import app.echo.android.ui.shell.dockTab
@@ -151,6 +152,8 @@ private enum class FontImportTarget {
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
 fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
+    val updater: EchoUpdateViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    EchoUpdateHost(updater)
     val context = LocalContext.current
     val lyricsActionError by viewModel.lyricsManagementError.collectAsStateWithLifecycle()
     LaunchedEffect(lyricsActionError) {
@@ -961,7 +964,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                 },
             )
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
+                    .echoPlayerDepth(nowPlayingExpanded) { nowPlayingBackProgress },
             ) {
                 HorizontalPager(
                     state = tabPagerState,
@@ -1098,6 +1102,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 albumCount = libraryStats.albumCount,
                                 artistCount = libraryStats.artistCount,
                                 appVersionLabel = BuildConfig.VERSION_NAME,
+                                updateContent = {
+                                    app.echo.android.feature.settings.SettingsUpdateRow {
+                                        updater.open()
+                                    }
+                                },
                                 dynamicArtworkEnabled = appSettings.dynamicArtworkEnabled,
                                 compactModeEnabled = appSettings.compactModeEnabled,
                                 dynamicColorEnabled = appSettings.dynamicColorEnabled,

@@ -158,20 +158,26 @@ internal fun LibraryScanAction(
 
 @Composable
 internal fun LibraryScanOptionsDialog(
+    initialOptions: LibraryScanOptions = LibraryScanOptions(),
     onDismiss: () -> Unit,
     onScanFolder: (LibraryScanOptions) -> Unit,
     onScanAll: (LibraryScanOptions) -> Unit,
 ) {
-    var minDuration by rememberSaveable { mutableStateOf(30_000L) }
-    var minSize by rememberSaveable { mutableStateOf(100L * 1024L) }
-    var excludeNonMusic by rememberSaveable { mutableStateOf(true) }
-    var excludeHidden by rememberSaveable { mutableStateOf(true) }
-    var filtersEnabled by rememberSaveable { mutableStateOf(true) }
+    var minDuration by rememberSaveable { mutableStateOf(initialOptions.minDurationMs) }
+    var minSize by rememberSaveable { mutableStateOf(initialOptions.minSizeBytes) }
+    var excludeNonMusic by rememberSaveable { mutableStateOf(initialOptions.excludeNonMusicFolders) }
+    var excludeHidden by rememberSaveable { mutableStateOf(initialOptions.excludeHiddenFolders) }
+    var excludedPaths by rememberSaveable { mutableStateOf(initialOptions.excludedRelativePaths.joinToString("\n")) }
+    val excludedDirectories = remember(excludedPaths) { excludedPaths.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.toSet() }
+    var filtersEnabled by rememberSaveable { mutableStateOf(
+        initialOptions.minDurationMs > 0 || initialOptions.minSizeBytes > 0 ||
+            initialOptions.excludeNonMusicFolders || initialOptions.excludeHiddenFolders
+    ) }
     var showDetails by rememberSaveable { mutableStateOf(false) }
     val options = if (filtersEnabled) {
-        LibraryScanOptions(minDuration, minSize, excludeNonMusic, excludeHidden)
+        LibraryScanOptions(minDuration, minSize, excludeNonMusic, excludeHidden, excludedDirectories)
     } else {
-        LibraryScanOptions(0L, 0L, false, false)
+        LibraryScanOptions(0L, 0L, false, false, excludedDirectories)
     }
     val colors = rememberScanGlassColors()
     Dialog(onDismissRequest = onDismiss) {
@@ -216,6 +222,15 @@ internal fun LibraryScanOptionsDialog(
                                 contentDescription = null, modifier = Modifier.size(18.dp))
                         }
                     }
+                    androidx.compose.material3.OutlinedTextField(
+                        value = excludedPaths,
+                        onValueChange = { excludedPaths = it },
+                        label = { Text(stringResource(L10nR.string.scan_excluded_folders)) },
+                        supportingText = { Text(stringResource(L10nR.string.scan_excluded_folders_hint)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2,
+                        maxLines = 4,
+                    )
                     AnimatedVisibility(visible = filtersEnabled && showDetails) {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             HorizontalDivider(color = colors.border)
