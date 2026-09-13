@@ -1,0 +1,5 @@
+<resources>
+    <string name="dsp_output_ceiling">输出上限</string>
+    <string name="dsp_mix_amount">混合强度</string>
+    <string name="dsp_scan_short">分析并保存曲目响度</string>
+</resources>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_daily_album">今日の一枚</string>
+    <string name="home_daily_album_detail">ライブラリから、今日の気分に合う一枚を。</string>
+    <string name="home_daily_album_empty">好きなアルバムをライブラリに追加しましょう。</string>
+    <string name="home_daily_album_play">アルバムを再生</string>
+    <string name="home_daily_album_another">別の一枚</string>
+    <string name="home_rediscover">久しぶりの一枚</string>
+    <string name="home_rediscover_detail">30日以上聴いていないアルバムを、もう一度。</string>
+    <string name="home_rediscover_empty">まだありません。聴いた記録から、懐かしい一枚を見つけます。</string>
+    <string name="home_resume">続きを聴く</string>
+    <string name="home_resume_detail">あのアルバムを、止めたところから。</string>
+    <string name="home_resume_empty">曲を選んで、次の音楽の時間を始めましょう。</string>
+    <string name="home_resume_open_player">プレーヤーを開く</string>
+    <string name="home_resume_play">再生を続ける</string>
+    <string name="home_resume_position">%1$s / %2$s</string>
+</resources>

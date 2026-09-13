@@ -104,9 +104,6 @@ internal fun SignalEqualizer(
             if (!state.parametric) onParametricChange(state.bands.map { app.echo.android.model.playback.OpraEqBand("peak_dip", it.frequencyHz.toFloat(), it.gainDb, 1f, null) })
             showEditor = !showEditor
         }, enabled = !bypassed) { Text(stringResource(L10nR.string.dsp_peq)) }
-        EchoExpand(showEditor && state.parametric) {
-            SignalPeqEditor(state.filters, !bypassed, onParametricChange)
-        }
         state.warning?.let { SignalNote(it, error = true) }
 
         if (!state.parametric) {
@@ -119,9 +116,9 @@ internal fun SignalEqualizer(
                     points = state.responseCurve,
                     live = live,
                     showFrequencyLabels = true,
-                    modifier = Modifier.fillMaxWidth().height(168.dp),
+                    modifier = Modifier.fillMaxWidth().height(if (showEditor) 128.dp else 168.dp),
                 )
-                Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (!showEditor) Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SignalNote(stringResource(L10nR.string.eq_parametric_kept, state.filters.size))
                     TextButton(onClick = { showFilters = !showFilters }) {
                         Text(stringResource(if (showFilters) L10nR.string.eq_hide_filters else L10nR.string.eq_show_filters))
@@ -165,6 +162,10 @@ internal fun SignalEqualizer(
                     }
                 }
             }
+        }
+
+        EchoExpand(showEditor && state.parametric) {
+            SignalPeqEditor(state.filters, !bypassed, onParametricChange)
         }
 
 

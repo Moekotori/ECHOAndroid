@@ -46,6 +46,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
+import app.echo.android.ui.home.rediscoverHomeAlbums
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
@@ -165,11 +167,17 @@ internal class LibraryController(
     private val recommendationSalt = MutableStateFlow(0)
     private var lastRecommendationSalt = 0
     private var lastRecommendedKeys: List<String> = emptyList()
+    private val homeAlbumListenStats = repository.observeAlbumListenStats()
+        .debounce(400.milliseconds)
+        .holdDuringLibraryMutation()
+        .stateIn(scope, listSharingStarted, emptyList())
+    val rediscoveredAlbums: StateFlow<List<AlbumSummary>> = homeAlbumListenStats
+        .map { rows -> rediscoverHomeAlbums(rows, System.currentTimeMillis()) }
+        .flowOn(Dispatchers.Default)
+        .stateIn(scope, listSharingStarted, emptyList())
     val recommendedAlbums: StateFlow<List<AlbumSummary>> =
         combine(
-            repository.observeAlbumListenStats()
-                .debounce(400.milliseconds)
-                .holdDuringLibraryMutation(),
+            homeAlbumListenStats,
             recommendationSalt,
         ) { rows, salt ->
             val keys = LibraryHomeRecommendationPolicy.resolveAlbumKeys(

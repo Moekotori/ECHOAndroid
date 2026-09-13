@@ -19,6 +19,7 @@ internal fun EchoHomePage(
     onOpenLibrary: () -> Unit,
     onOpenConnect: () -> Unit,
     onOpenSearch: () -> Unit,
+    onResumePlayback: () -> Unit,
     bottomInset: Dp,
 ) {
     val libraryStats by viewModel.libraryStats.collectAsStateWithLifecycle()
@@ -28,9 +29,15 @@ internal fun EchoHomePage(
     val recentlyAddedAlbums by viewModel.recentlyAddedAlbums.collectAsStateWithLifecycle()
     val favoriteAlbums by viewModel.favoriteAlbums.collectAsStateWithLifecycle()
     val homeRecommendedAlbums by viewModel.recommendedAlbums.collectAsStateWithLifecycle()
+    val rediscoveredAlbums by viewModel.rediscoveredAlbums.collectAsStateWithLifecycle()
+    val playbackPosition = viewModel.playbackPosition.collectAsStateWithLifecycle()
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
     HomeScreen(
         status = playbackStatus,
+        rediscoveredAlbums = rediscoveredAlbums,
+        positionState = playbackPosition,
+        onPlayAlbum = { viewModel.playAlbum(it.albumKey) },
+        onResumePlayback = onResumePlayback,
         bottomInset = bottomInset,
         trackCount = libraryStats.trackCount,
         albumCount = libraryStats.albumCount,

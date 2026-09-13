@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.runtime.State
+import app.echo.android.model.playback.PlaybackPositionState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.Dp
@@ -47,6 +49,10 @@ fun HomeScreen(
     onOpenConnect: () -> Unit,
     onOpenSearch: () -> Unit = {},
     bottomInset: Dp = 0.dp,
+    rediscoveredAlbums: List<AlbumSummary> = emptyList(),
+    positionState: State<PlaybackPositionState>? = null,
+    onPlayAlbum: (AlbumSummary) -> Unit = onOpenAlbum,
+    onResumePlayback: () -> Unit = onPlayPause,
 ) {
     val configuration = LocalConfiguration.current
     val compactViewport = configuration.screenHeightDp < 620 ||
@@ -54,6 +60,10 @@ fun HomeScreen(
     val distinctRecommendations = remember(recommendedAlbums, recentPlayedAlbums, recentlyAddedAlbums) {
         val recentKeys = (recentPlayedAlbums + recentlyAddedAlbums).mapTo(hashSetOf()) { it.albumKey }
         recommendedAlbums.filterNot { it.albumKey in recentKeys }
+    }
+    val dailyAlbums = remember(recommendedAlbums, recentlyAddedAlbums, favoriteAlbums) {
+        (recommendedAlbums.take(24) + recentlyAddedAlbums.take(24) + favoriteAlbums.take(24))
+            .distinctBy { it.albumKey }.take(24)
     }
     val sectionGap = if (compactViewport) 14.dp else 22.dp
     val blockGap = if (compactViewport) 14.dp else 20.dp
@@ -128,6 +138,18 @@ fun HomeScreen(
                 onOpenAlbum = onOpenAlbum,
                 onOpenLibrary = onOpenLibrary,
             )
+        }
+        item(key = "daily-album") {
+            Spacer(Modifier.height(blockGap))
+            HomeDailyAlbumSection(dailyAlbums, onPlayAlbum, onOpenAlbum, onOpenLibrary)
+        }
+        item(key = "rediscover") {
+            Spacer(Modifier.height(blockGap))
+            HomeRediscoverySection(rediscoveredAlbums, onOpenAlbum, onOpenLibrary)
+        }
+        item(key = "resume-listening") {
+            Spacer(Modifier.height(blockGap))
+            HomeResumeSection(status, positionState, onResumePlayback, onOpenLibrary)
         }
         item(key = "bottom-inset") {
             Spacer(Modifier.height(bottomInset + 16.dp))

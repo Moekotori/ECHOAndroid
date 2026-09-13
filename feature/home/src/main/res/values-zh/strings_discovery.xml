@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_daily_album">今天听这张</string>
+    <string name="home_daily_album_detail">从本地曲库，找一点今天的灵感。</string>
+    <string name="home_daily_album_empty">先把喜欢的专辑加入曲库吧。</string>
+    <string name="home_daily_album_play">播放专辑</string>
+    <string name="home_daily_album_another">换一张</string>
+    <string name="home_rediscover">好久没听</string>
+    <string name="home_rediscover_detail">找回至少 30 天没听过的专辑。</string>
+    <string name="home_rediscover_empty">暂时还没有，听歌记录会帮你找回老朋友。</string>
+    <string name="home_resume">接着听</string>
+    <string name="home_resume_detail">回到那张专辑，从停下的地方继续。</string>
+    <string name="home_resume_empty">先选一首歌，开启下一段听歌时光。</string>
+    <string name="home_resume_open_player">打开播放页</string>
+    <string name="home_resume_play">继续播放</string>
+    <string name="home_resume_position">%1$s / %2$s</string>
+</resources>

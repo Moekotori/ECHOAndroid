@@ -2,6 +2,7 @@ package app.echo.android.feature.settings
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +12,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material3.Icon
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -27,7 +33,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.echoThemeTokens
 import app.echo.android.design.LocalEchoDarkTheme
@@ -44,19 +49,25 @@ internal fun ThemePaletteSelector(
     val dark = LocalEchoDarkTheme.current
     val selected = EchoColorTheme.fromId(selectedId)
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(
-            stringResource(R.string.settings_color_theme),
-            color = scheme.onSurface,
-            style = MaterialTheme.typography.titleSmall,
-        )
-        Text(
-            colorThemeLabel(selected.id),
-            color = scheme.primary,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Row(
+            Modifier.fillMaxWidth().padding(top = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(R.string.settings_color_theme),
+                modifier = Modifier.weight(1f),
+                color = scheme.onSurface,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Medium,
+            )
+            Text(
+                colorThemeLabel(selected.id),
+                color = scheme.primary,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Medium,
+            )
+        }
         Column(
             modifier = Modifier.selectableGroup(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -117,7 +128,7 @@ private fun ColorThemeSwatch(
             .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect)
             .semantics { contentDescription = label },
     ) {
-        Canvas(Modifier.fillMaxSize().padding(3.dp)) {
+        Canvas(Modifier.fillMaxSize().padding(3.dp).clip(RoundedCornerShape(11.dp))) {
             val w = size.width
             val h = size.height
             drawRect(
@@ -139,6 +150,16 @@ private fun ColorThemeSwatch(
                 color = tokens.panel.copy(alpha = if (tokens.dark) 0.92f else 0.96f),
                 radius = 2.5.dp.toPx(),
                 center = Offset(w * 0.82f, h * 0.52f),
+            )
+        }
+        if (selected) {
+            Icon(
+                Icons.Rounded.Check,
+                contentDescription = null,
+                tint = scheme.onPrimary,
+                modifier = Modifier.align(Alignment.TopEnd).padding(5.dp)
+                    .background(scheme.primary, RoundedCornerShape(5.dp))
+                    .padding(2.dp).size(12.dp),
             )
         }
     }

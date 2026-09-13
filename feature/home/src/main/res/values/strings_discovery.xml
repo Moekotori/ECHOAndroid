@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_daily_album">An album for today</string>
+    <string name="home_daily_album_detail">A little inspiration from your library.</string>
+    <string name="home_daily_album_empty">Add some albums to find your next listen.</string>
+    <string name="home_daily_album_play">Play album</string>
+    <string name="home_daily_album_another">Try another</string>
+    <string name="home_rediscover">Rediscover</string>
+    <string name="home_rediscover_detail">Albums you last played at least 30 days ago.</string>
+    <string name="home_rediscover_empty">Nothing here yet. Your listening history will bring old favorites back.</string>
+    <string name="home_resume">Pick up where you left off</string>
+    <string name="home_resume_detail">Back to your album, right where you paused.</string>
+    <string name="home_resume_empty">Choose a song to start your next listening session.</string>
+    <string name="home_resume_open_player">Open player</string>
+    <string name="home_resume_play">Continue</string>
+    <string name="home_resume_position">%1$s / %2$s</string>
+</resources>

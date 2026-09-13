@@ -978,9 +978,9 @@ internal class PlaybackController(
             sleepTimerRemainingMs = sleepTimerRemainingMs(),
             sleepTimerMode = EchoPlaybackProcessRuntime.sleepTimerMode,
             sleepTimerMinutes = EchoPlaybackProcessRuntime.sleepTimerRequestedMinutes,
-            replayGainEnabled = replayGainEnabled,
+            replayGainEnabled = this@PlaybackController.replayGainEnabled,
             replayGainMode = EchoPlaybackProcessRuntime.replayGainMode,
-            replayGainPreampDb = replayGainPreampDb,
+            replayGainPreampDb = this@PlaybackController.replayGainPreampDb,
             replayGainTrackGainDb = enginePolicy.activeReplayGainTrackGainDb
                 ?: activeReplayGainTrackGainDb,
             replayGainTagsLoaded = enginePolicy.activeReplayGainTagsLoaded,

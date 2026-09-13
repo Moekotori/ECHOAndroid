@@ -1086,6 +1086,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onOpenLibrary = { selectDockTab(EchoTab.Library) },
                                 onOpenConnect = { selectDockTab(EchoTab.Connect) },
                                 onOpenSearch = { searchVisible = true },
+                                onResumePlayback = {
+                                    if (!playbackStatus.isPlaying) routedPlayPause()
+                                    expandNowPlaying()
+                                },
                             )
 
                             EchoPagerPage.Settings -> {

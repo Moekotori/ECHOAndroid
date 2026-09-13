@@ -2,6 +2,7 @@ package app.echo.android.feature.settings
 
 import app.echo.android.design.echoAnimateContentSize
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import app.echo.android.design.echoClickable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,6 +24,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -390,19 +393,27 @@ internal fun SettingsActionRow(
 ) {
     val scheme = MaterialTheme.colorScheme
     val controlColor = settingsControlColor()
-    val resolvedActionLabel = actionLabel ?: stringResource(R.string.settings_enter)
     SettingsRowShell(
         title = title,
         detail = detail,
         modifier = Modifier.echoClickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .alpha(if (enabled) 1f else 0.55f),
     ) {
-        Text(
-            if (enabled) resolvedActionLabel else disabledLabel ?: stringResource(R.string.settings_unavailable),
-            color = if (enabled) controlColor else if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.58f) else scheme.onSurfaceVariant,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Medium,
-        )
+        if (enabled && actionLabel == null) {
+            Icon(
+                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = scheme.onSurfaceVariant,
+            )
+        } else {
+            Text(
+                if (enabled) actionLabel.orEmpty() else disabledLabel ?: stringResource(R.string.settings_unavailable),
+                color = if (enabled) controlColor else scheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Medium,
+            )
+        }
     }
 }
 
@@ -415,20 +426,31 @@ internal fun SettingsChoiceGroupRow(
     selectedValue: String,
     onOptionSelected: (String) -> Unit,
 ) {
-    SettingsRowShell(title = title, detail = detail, trailing = {})
-    FlowRow(
-        modifier = Modifier
-            .fillMaxWidth()
-            .selectableGroup(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        options.forEach { option ->
-            SettingsOptionChip(
-                label = option.label,
-                selected = selectedValue == option.value,
-                onClick = { onOptionSelected(option.value) },
+        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+            Text(
+                detail,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Normal,
             )
+        }
+        FlowRow(
+            modifier = Modifier.fillMaxWidth().selectableGroup(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            options.forEach { option ->
+                SettingsOptionChip(
+                    label = option.label,
+                    selected = selectedValue == option.value,
+                    onClick = { onOptionSelected(option.value) },
+                )
+            }
         }
     }
 }
@@ -441,15 +463,22 @@ internal fun SettingsOptionChip(
 ) {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
-    Box(
+    val shape = RoundedCornerShape(12.dp)
+    Row(
         modifier = Modifier
             .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(shape)
             .background(settingsRowColor(selected))
+            .border(1.dp, if (selected) settingsControlColor().copy(alpha = 0.5f) else scheme.outlineVariant.copy(alpha = 0.55f), shape)
             .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        contentAlignment = Alignment.Center,
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
+        // Reserve the mark's width so selecting another option does not reflow the group.
+        Box(Modifier.size(16.dp), contentAlignment = Alignment.Center) {
+            if (selected) Icon(Icons.Rounded.Check, null, Modifier.size(16.dp), tint = settingsControlColor())
+        }
         Text(
             label,
             color = if (selected) settingsControlColor() else if (dark) Color.White.copy(alpha = 0.74f) else scheme.onSurfaceVariant,

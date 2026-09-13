@@ -59,6 +59,41 @@ class EchoDspAudioProcessorTest {
         }
     }
 
+    @Test fun activeGainPreservesPcmEncodingAndChannelSigns() {
+        clear()
+        EchoPlaybackProcessRuntime.dspReplayGainDb = -6f
+        for ((encoding, bits, bigEndian) in listOf(
+            Triple(C.ENCODING_PCM_16BIT, 16, false), Triple(C.ENCODING_PCM_24BIT, 24, false), Triple(C.ENCODING_PCM_32BIT, 32, false),
+            Triple(C.ENCODING_PCM_16BIT_BIG_ENDIAN, 16, true), Triple(C.ENCODING_PCM_24BIT_BIG_ENDIAN, 24, true), Triple(C.ENCODING_PCM_32BIT_BIG_ENDIAN, 32, true))) {
+            val bytes = bits / 8
+            val input = ByteBuffer.allocateDirect(bytes * 2)
+            for (sign in listOf(1, -1)) {
+                val value = (0.75 * (1L shl (bits - 1)) * sign).toLong()
+                for (index in 0 until bytes) {
+                    val shift = (if (bigEndian) bytes - 1 - index else index) * 8
+                    input.put((value shr shift).toByte())
+                }
+            }
+            input.flip()
+            val processor = EchoDspAudioProcessor(emptyArray())
+            assertEquals(encoding, processor.configure(AudioProcessor.AudioFormat(48000, 2, encoding)).encoding)
+            processor.flush(AudioProcessor.StreamMetadata.DEFAULT); processor.queueInput(input)
+            val output = processor.output
+            assertEquals(bytes * 2, output.remaining())
+            for (sign in listOf(1, -1)) {
+                var value = 0L
+                for (index in 0 until bytes) {
+                    val shift = (if (bigEndian) bytes - 1 - index else index) * 8
+                    value = value or ((output.get().toLong() and 255) shl shift)
+                }
+                if (value and (1L shl (bits - 1)) != 0L) value -= 1L shl bits
+                val sample = value.toDouble() / (1L shl (bits - 1))
+                assertEquals(sign * 0.75 * 10.0.pow(-6.0 / 20), sample, 0.00004)
+            }
+            processor.reset()
+        }
+    }
+
     @Test fun crossfeedIsDelayedAndDoesNotProcessMono() {
         val kernel = EchoDspKernel()
         kernel.configure(48000)

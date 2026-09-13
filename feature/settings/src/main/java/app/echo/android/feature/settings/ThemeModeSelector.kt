@@ -32,8 +32,8 @@ internal fun ThemeModeSelector(selectedMode: String, onSelect: (String) -> Unit)
     val currentTheme = EchoColorTheme.fromId(echoTheme().id)
     val darkTokens = remember(currentTheme) { echoThemeTokens(currentTheme, true) }
     val lightTokens = remember(currentTheme) { echoThemeTokens(currentTheme, false) }
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(stringResource(R.string.settings_display_mode), color = scheme.onSurface, style = MaterialTheme.typography.titleSmall)
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(stringResource(R.string.settings_display_mode), color = scheme.onSurface, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
         Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             listOf(
                 "light" to R.string.settings_theme_light,
@@ -41,7 +41,7 @@ internal fun ThemeModeSelector(selectedMode: String, onSelect: (String) -> Unit)
                 "system" to R.string.settings_theme_system,
             ).forEach { (mode, label) ->
                 val selected = selectedMode == mode
-                val shape = RoundedCornerShape(16.dp)
+                val shape = RoundedCornerShape(12.dp)
                 Column(
                     Modifier.weight(1f).clip(shape)
                         .border(if (selected) 2.dp else 1.dp, if (selected) scheme.primary else scheme.outlineVariant, shape)
@@ -49,7 +49,7 @@ internal fun ThemeModeSelector(selectedMode: String, onSelect: (String) -> Unit)
                         .padding(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Canvas(Modifier.fillMaxWidth().height(72.dp).clip(RoundedCornerShape(9.dp))) {
+                    Canvas(Modifier.fillMaxWidth().height(52.dp).clip(RoundedCornerShape(7.dp))) {
                         fun preview(tokens: EchoThemeTokens) {
                             val base = tokens.bgMid
                             val card = tokens.panel
@@ -72,8 +72,8 @@ internal fun ThemeModeSelector(selectedMode: String, onSelect: (String) -> Unit)
                     }
                     Text(stringResource(label), Modifier.fillMaxWidth(), textAlign = TextAlign.Center,
                         color = if (selected) scheme.primary else scheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium)
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium)
                 }
             }
         }

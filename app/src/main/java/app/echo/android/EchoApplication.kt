@@ -51,6 +51,7 @@ class EchoApplication : Application(), ImageLoaderFactory {
             EchoLibraryPlaybackCatalog(EchoLibraryDatabase.create(this)),
         )
         val settingsStore = EchoSettingsStore(this)
+        bindPlaybackDspSettings(settingsStore)
         EchoPlaybackProcessRuntime.setSessionStore(EchoSettingsPlaybackSessionStore(settingsStore))
         // Playback preferences and remote stream signing remain live when only the
         // service/media buttons are running (no ViewModel).

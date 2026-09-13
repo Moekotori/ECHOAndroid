@@ -191,6 +191,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     val recommendedTracks: StateFlow<List<EchoTrack>> = libraryController.recommendedTracks
     val recentlyAddedAlbums: StateFlow<List<AlbumSummary>> = libraryController.recentlyAddedAlbums
     val recommendedAlbums: StateFlow<List<AlbumSummary>> = libraryController.recommendedAlbums
+    val rediscoveredAlbums: StateFlow<List<AlbumSummary>> = libraryController.rediscoveredAlbums
     val scanState: StateFlow<LibraryScanProgress> = libraryController.scanState
     val remoteScanState: StateFlow<LibraryScanProgress> = libraryController.remoteScanState
     val echoLinkDiscoveryState = echoLinkLanBrowser.state
@@ -274,7 +275,6 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             settingsReady = settingsStore.appSettings,
         )
         viewModelScope.launch {
-            var lastEqualizerSignature: String? = null
             var lastChannelBalance = EchoChannelBalanceState()
             settingsStore.appSettings.collect { settings ->
                 selectedLibrarySource = settings.librarySelectedSource
@@ -291,22 +291,6 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                     settings.usbExclusiveEnabled
                 }
                 playbackController.setUsbOutputMode(shouldEnableUsbExclusive, settings.usbBitPerfectEnabled)
-                EchoPlaybackProcessRuntime.setDspSettings(settings.dsp)
-                val equalizerSignature =
-                    "${settings.equalizerEnabled}|${settings.equalizerPreset}|${settings.equalizerBandGains}|" +
-                        "${settings.equalizerPreampDb}|${settings.equalizerParametric}|${settings.equalizerSourceLabel}|" +
-                        settings.equalizerFilters
-                if (equalizerSignature != lastEqualizerSignature) {
-                    lastEqualizerSignature = equalizerSignature
-                    playbackController.setEqualizerConfig(
-                        enabled = settings.equalizerEnabled,
-                        presetId = settings.equalizerPreset,
-                        gainsDb = settings.equalizerBandGains,
-                        preampDb = settings.equalizerPreampDb,
-                        filters = if (settings.equalizerParametric) settings.equalizerFilters else emptyList(),
-                        sourceLabel = settings.equalizerSourceLabel,
-                    )
-                }
                 if (settings.channelBalance != lastChannelBalance) {
                     lastChannelBalance = settings.channelBalance
                     playbackController.setChannelBalance(settings.channelBalance)

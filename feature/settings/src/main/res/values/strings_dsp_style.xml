@@ -1,0 +1,5 @@
+<resources>
+    <string name="dsp_output_ceiling">Output ceiling</string>
+    <string name="dsp_mix_amount">Mix amount</string>
+    <string name="dsp_scan_short">Analyze and save track loudness</string>
+</resources>

@@ -1,0 +1,5 @@
+<resources>
+    <string name="dsp_output_ceiling">出力上限</string>
+    <string name="dsp_mix_amount">ミックス量</string>
+    <string name="dsp_scan_short">曲の音量を解析して保存</string>
+</resources>
