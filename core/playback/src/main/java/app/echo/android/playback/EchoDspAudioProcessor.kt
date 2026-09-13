@@ -20,7 +20,8 @@ internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>) 
         }
     }
     private val kernel = EchoDspKernel()
-    private var scratch = ByteBuffer.allocateDirect(1024 * 2 * 4).order(ByteOrder.nativeOrder())
+    private var scratch = ByteBuffer.allocateDirect(1024 * 8 * 4).order(ByteOrder.nativeOrder())
+    private val multichannelFrame = FloatArray(8)
     private var bytesPerSample = 2
     private var order = ByteOrder.LITTLE_ENDIAN
 
@@ -31,7 +32,7 @@ internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>) 
             C.ENCODING_PCM_32BIT, C.ENCODING_PCM_32BIT_BIG_ENDIAN, C.ENCODING_PCM_FLOAT -> 4
             else -> throw AudioProcessor.UnhandledAudioFormatException(format)
         }
-        if (format.channelCount !in 1..2) throw AudioProcessor.UnhandledAudioFormatException(format)
+        if (format.channelCount !in 1..8) throw AudioProcessor.UnhandledAudioFormatException(format)
         order = when (format.encoding) {
             C.ENCODING_PCM_16BIT_BIG_ENDIAN, C.ENCODING_PCM_24BIT_BIG_ENDIAN, C.ENCODING_PCM_32BIT_BIG_ENDIAN -> ByteOrder.BIG_ENDIAN
             else -> ByteOrder.LITTLE_ENDIAN
@@ -79,11 +80,24 @@ internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>) 
         }
         kernel.setTarget(settings, replayGain)
         repeat(frames) {
-            val l = samples.float.let { if (it.isFinite()) it else 0f }
-            val r = if (channels == 2) samples.float.let { if (it.isFinite()) it else 0f } else l
-            kernel.process(l, r, channels == 2)
-            writeSample(output, kernel.left)
-            if (channels == 2) writeSample(output, kernel.right)
+            if (channels <= 2) {
+                val l = samples.float.let { if (it.isFinite()) it else 0f }
+                val r = if (channels == 2) samples.float.let { if (it.isFinite()) it else 0f } else l
+                kernel.process(l, r, channels == 2)
+                writeSample(output, kernel.left)
+                if (channels == 2) writeSample(output, kernel.right)
+            } else {
+                var peak = 0f
+                repeat(channels) { channel ->
+                    val value = samples.float.let { if (it.isFinite()) it else 0f }
+                    multichannelFrame[channel] = value
+                    peak = maxOf(peak, kotlin.math.abs(value))
+                }
+                // No crossfeed for surround; all channels share one limiter envelope.
+                kernel.process(peak, peak, false)
+                val factor = if (peak > 0f) kernel.left / peak else 0f
+                repeat(channels) { writeSample(output, multichannelFrame[it] * factor) }
+            }
         }
         output.flip()
     }

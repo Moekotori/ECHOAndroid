@@ -2,7 +2,7 @@ package app.echo.android.feature.settings
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -25,7 +25,7 @@ internal fun SignalDspPanel(
         DspSection(stringResource(R.string.dsp_limiter), stringResource(R.string.dsp_limiter_detail), settings.limiterEnabled, !bypassed,
             { onSettings(settings.copy(limiterEnabled = it)) }) {
             Text(stringResource(R.string.dsp_ceiling, settings.limiterCeilingDb), style = MaterialTheme.typography.labelLarge)
-            Slider(value = settings.limiterCeilingDb, onValueChange = { onSettings(settings.copy(limiterCeilingDb = it)) }, valueRange = -6f..-0.1f, enabled = !bypassed && settings.limiterEnabled)
+            DspSlider(value = settings.limiterCeilingDb, onCommit = { onSettings(settings.copy(limiterCeilingDb = it)) }, valueRange = -6f..-0.1f, enabled = !bypassed && settings.limiterEnabled)
         }
         DspSection(stringResource(R.string.dsp_loudness), stringResource(R.string.dsp_loudness_detail), status.replayGainEnabled, !bypassed,
             { onReplayGain(it, status.replayGainPreampDb) }) {
@@ -36,7 +36,7 @@ internal fun SignalDspPanel(
             }
             Text(if (status.replayGainTrackGainDb != null) stringResource(R.string.dsp_gain, status.replayGainTrackGainDb!!) else stringResource(R.string.dsp_missing_tags), style = MaterialTheme.typography.bodySmall)
             Text(stringResource(R.string.dsp_gain, status.replayGainPreampDb), style = MaterialTheme.typography.labelLarge)
-            Slider(value = status.replayGainPreampDb.coerceIn(-12f, 6f), onValueChange = { onReplayGain(status.replayGainEnabled, it) }, valueRange = -12f..6f, enabled = !bypassed && status.replayGainEnabled)
+            DspSlider(value = status.replayGainPreampDb.coerceIn(-12f, 6f), onCommit = { onReplayGain(status.replayGainEnabled, it) }, valueRange = -12f..6f, enabled = !bypassed && status.replayGainEnabled)
             TextButton(onClick = onScan, enabled = status.track != null && scan != EchoReplayGainScanState.Scanning) { Text(stringResource(R.string.dsp_scan)) }
             when (scan) {
                 EchoReplayGainScanState.Scanning -> LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -52,7 +52,7 @@ internal fun SignalDspPanel(
                     FilterChip(selected = kotlin.math.abs(settings.crossfeedAmount - amount) < 0.01f, onClick = { onSettings(settings.copy(crossfeedAmount = amount)) }, label = { Text(stringResource(label)) }, enabled = !bypassed)
                 }
             }
-            Slider(value = settings.crossfeedAmount, onValueChange = { onSettings(settings.copy(crossfeedAmount = it)) }, valueRange = 0f..0.6f, enabled = !bypassed && settings.crossfeedEnabled)
+            DspSlider(value = settings.crossfeedAmount, onCommit = { onSettings(settings.copy(crossfeedAmount = it)) }, valueRange = 0f..0.6f, enabled = !bypassed && settings.crossfeedEnabled)
         }
     }
 }
@@ -69,4 +69,10 @@ private fun DspSection(title: String, detail: String, checked: Boolean, enabled:
             content()
         }
     }
+}
+
+@Composable
+private fun DspSlider(value: Float, onCommit: (Float) -> Unit, valueRange: ClosedFloatingPointRange<Float>, enabled: Boolean) {
+    var draft by remember(value) { mutableFloatStateOf(value) }
+    Slider(value = draft, onValueChange = { draft = it }, onValueChangeFinished = { onCommit(draft) }, valueRange = valueRange, enabled = enabled)
 }
