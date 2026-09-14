@@ -750,7 +750,7 @@ class EchoSettingsStore(
     ) {
         val safeAddress = address.trim().trimEnd('/')
         val safeToken = token.trim()
-        if (safeAddress.isBlank() || safeToken.isBlank()) {
+        if (safeAddress.isBlank()) {
             clearEchoLinkPcEndpoint()
             return
         }

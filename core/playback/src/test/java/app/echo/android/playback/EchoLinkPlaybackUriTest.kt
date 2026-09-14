@@ -43,4 +43,29 @@ class EchoLinkPlaybackUriTest {
             ),
         )
     }
+
+    @Test
+    fun pcLibrarySourceUsesEchoLinkIdOrPersistUri() {
+        assertTrue(
+            EchoLinkPlaybackUri.isPcLibrarySource(
+                sourceId = "echo-link",
+                mediaId = "echo-link:pc-42",
+                uri = "http://192.168.1.20:26789/echo-link/media/token",
+            ),
+        )
+        assertTrue(
+            EchoLinkPlaybackUri.isPcLibrarySource(
+                sourceId = null,
+                mediaId = "echo-link:pc-42",
+                uri = "echo-link://track/pc-42",
+            ),
+        )
+        assertFalse(
+            EchoLinkPlaybackUri.isPcLibrarySource(
+                sourceId = "mediastore",
+                mediaId = "mediastore:1",
+                uri = "content://media/external/audio/media/1",
+            ),
+        )
+    }
 }

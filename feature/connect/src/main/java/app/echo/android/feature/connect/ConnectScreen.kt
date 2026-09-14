@@ -122,12 +122,12 @@ fun ConnectScreen(
             Column(Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxWidth()) {
                 Text(stringResource(L10nR.string.feature_connect_connect_c7c091),
                     Modifier.padding(horizontal = 24.dp, vertical = 20.dp),
-                    style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Medium)
+                    style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
                 SecondaryTabRow(selectedTabIndex = selectedTab, containerColor = scheme.background) {
                     tabs.forEachIndexed { index, label ->
                         Tab(selected = selectedTab == index, onClick = { keyboard?.hide(); selectedTab = index },
                             unselectedContentColor = scheme.onSurfaceVariant,
-                            text = { Text(label, fontWeight = if (selectedTab == index) FontWeight.SemiBold else FontWeight.Normal) })
+                            text = { Text(label, fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.SemiBold) })
                     }
                 }
             }

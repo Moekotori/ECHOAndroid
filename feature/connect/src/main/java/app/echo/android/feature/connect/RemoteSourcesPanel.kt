@@ -44,7 +44,7 @@ internal fun RemoteSourcesPanel(
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(L10nR.string.feature_connect_your_music_wherever_it_lives_e9713c),
-                style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Medium)
+                style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             ConnectNote(stringResource(L10nR.string.feature_connect_add_a_music_server_or_a_nas_folder_7b39d3))
         }
         if (scanState.phase != LibraryScanPhase.Idle) {
@@ -112,7 +112,7 @@ private fun SourceEditor(
         Row(Modifier.fillMaxWidth().echoClickable(role = Role.Button) { keyboard?.hide(); onExpand() }.padding(vertical = 20.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 ConnectNote(description)
                 ConnectNote(if (dirty) stringResource(L10nR.string.feature_connect_unsaved_changes_1ab4c9)
                     else if (saved) stringResource(L10nR.string.feature_connect_configuration_saved_a7628f)

@@ -3,6 +3,7 @@ package app.echo.android.playback
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class EchoRemotePlaybackCachePolicyTest {
@@ -27,5 +28,24 @@ class EchoRemotePlaybackCachePolicyTest {
     @Test
     fun publicRequestsShareAStableNamespace() {
         assertEquals(remotePlaybackCacheNamespace(), remotePlaybackCacheNamespace())
+    }
+
+    @Test
+    fun bitPerfectBypassesEchoLinkOneShotCacheOnly() {
+        val oneShot = "http://192.168.1.20:26789/echo-link/media/token"
+        assertTrue(EchoRemotePlaybackCachePolicy.shouldBypassCache(oneShot, usbBitPerfectEnabled = true))
+        assertFalse(EchoRemotePlaybackCachePolicy.shouldBypassCache(oneShot, usbBitPerfectEnabled = false))
+        assertFalse(
+            EchoRemotePlaybackCachePolicy.shouldBypassCache(
+                "https://nas.example/rest/stream.view?id=1",
+                usbBitPerfectEnabled = true,
+            ),
+        )
+        assertFalse(
+            EchoRemotePlaybackCachePolicy.shouldBypassCache(
+                "echo-link://track/pc-42",
+                usbBitPerfectEnabled = true,
+            ),
+        )
     }
 }

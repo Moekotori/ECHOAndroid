@@ -11,5 +11,7 @@
     <string name="path_eq_detail">프리앰프 %1$s · 처리 레이트 %2$s</string>
     <string name="path_channel_detail">L %1$s · R %2$s</string>
     <string name="path_source_format">소스 형식</string>
+    <string name="path_source_pc">PC ECHO · %1$s</string>
+    <string name="path_source_pc_detail">연결된 PC 라이브러리의 원본 파일</string>
     <string name="path_device_clock">보고된 기기 클럭: %1$s</string>
 </resources>

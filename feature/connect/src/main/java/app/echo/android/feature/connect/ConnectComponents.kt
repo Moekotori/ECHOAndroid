@@ -28,7 +28,7 @@ internal val ConnectControlShape = RoundedCornerShape(4.dp)
 
 @Composable
 internal fun ConnectNote(text: String, error: Boolean = false) {
-    Text(text, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal,
+    Text(text, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold,
         color = if (error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
@@ -38,7 +38,7 @@ internal fun ConnectSection(title: String, subtitle: String? = null, action: (@C
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 if (!subtitle.isNullOrBlank()) ConnectNote(subtitle)
             }
             action?.invoke()
@@ -82,7 +82,7 @@ internal fun ConnectInput(
 internal fun ConnectPreference(title: String, detail: String, checked: Boolean, enabled: Boolean = true, onChange: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth().heightIn(min = 64.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+            Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
             ConnectNote(detail)
         }
         Switch(checked, onCheckedChange = onChange, enabled = enabled, modifier = Modifier.semantics { contentDescription = title })

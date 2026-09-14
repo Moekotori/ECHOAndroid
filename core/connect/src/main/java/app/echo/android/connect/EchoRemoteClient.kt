@@ -1058,7 +1058,8 @@ class EchoRemoteClient internal constructor(
     private fun rejectAuthentication(target: EchoRemoteEndpoint, error: Throwable?): Boolean {
         if ((error as? EchoLinkHttpException)?.statusCode !in listOf(401, 403)) return false
         authRejected = true
-        markConnectionError(target, EchoLinkHttpException(text(R.string.connect_auth_expired)))
+        val message = if (target.token.isBlank()) R.string.connect_direct_unavailable else R.string.connect_auth_expired
+        markConnectionError(target, EchoLinkHttpException(text(message)))
         clearStreamCache()
         return true
     }
@@ -1187,7 +1188,7 @@ internal fun EchoRemoteTrack.toPhonePlaybackTrack(streamUrl: String): EchoTrack 
         album = album,
         artworkUri = artworkUrl,
         durationMs = durationMs,
-        source = LibrarySource("echo-link"),
+        source = LibrarySource.EchoLink,
     )
 }
 

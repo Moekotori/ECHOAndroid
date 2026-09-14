@@ -14,6 +14,23 @@ import java.net.URLEncoder
 
 class EchoPairingParserTest {
     @Test
+    fun manualAddressConnectsWithoutTokenAndKeepsLegacyPairing() {
+        val direct = EchoPairingParser.parseManual("192.168.1.20")!!
+        assertEquals("", direct.token)
+        assertEquals(26789, direct.port)
+        assertFalse(direct.needsV2PairExchange)
+        assertTrue(EchoLinkRequestPolicy.shouldPersistEndpoint(direct))
+        assertEquals("https", EchoPairingParser.parseManual("https://192.168.1.20:26800")!!.scheme)
+        assertEquals("192.168.1.20", EchoPairingParser.parseManual("http://192.168.1.20:26789/echo-link/v2/remote")!!.host)
+        assertEquals("::1", EchoPairingParser.parseManual("[::1]:26789")!!.host)
+        assertNull(EchoPairingParser.parseManual("192.168.1.20:70000"))
+        assertNull(EchoPairingParser.parseManual("user@192.168.1.20"))
+        assertNull(EchoPairingParser.parseManual("192.168.1.20", "short"))
+        val legacy = EchoPairingParser.parseManual("echo://pair?host=192.168.1.20&token=abcdefghijklmnop")!!
+        assertEquals("abcdefghijklmnop", legacy.token)
+    }
+
+    @Test
     fun parseV1PairingUri() {
         val endpoint = EchoPairingParser.parse(
             "echo://pair?host=192.168.1.20&port=26789&token=abcdefghijklmnop&name=PC%20ECHO&scheme=http",

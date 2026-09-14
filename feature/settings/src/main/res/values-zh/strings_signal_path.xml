@@ -11,5 +11,7 @@
     <string name="path_eq_detail">前级 %1$s · 处理采样率 %2$s</string>
     <string name="path_channel_detail">左 %1$s · 右 %2$s</string>
     <string name="path_source_format">源文件格式</string>
+    <string name="path_source_pc">PC ECHO · %1$s</string>
+    <string name="path_source_pc_detail">来自已连接 PC 曲库的原文件</string>
     <string name="path_device_clock">已上报设备时钟：%1$s</string>
 </resources>

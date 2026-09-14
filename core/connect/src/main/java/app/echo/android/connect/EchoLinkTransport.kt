@@ -421,8 +421,13 @@ internal class OkHttpEchoLinkTransport(
     }
 
     private fun Request.Builder.authorized(endpoint: EchoRemoteEndpoint): Request.Builder =
-        header("Authorization", "Bearer ${endpoint.token}")
-            .header("X-ECHO-Link-Version", endpoint.protocolVersion.number.toString())
+        apply {
+            if (endpoint.token.isBlank()) {
+                header("X-ECHO-Link-Direct", "1")
+            } else {
+                header("Authorization", "Bearer ${endpoint.token}")
+            }
+        }.header("X-ECHO-Link-Version", endpoint.protocolVersion.number.toString())
 
     private companion object {
         val JsonMediaType = "application/json; charset=utf-8".toMediaType()

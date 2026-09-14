@@ -120,7 +120,7 @@ internal fun RemoteNowPlaying(
                 shape = ConnectControlShape, sizeClass = EchoArtworkSize.Thumbnail)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(title.ifBlank { stringResource(L10nR.string.feature_connect_no_track_selected_258d56) },
-                    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+                    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 if (artist.isNotBlank()) ConnectNote(artist)
             }
         }

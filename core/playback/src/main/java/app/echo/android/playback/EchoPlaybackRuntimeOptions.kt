@@ -91,6 +91,7 @@ object EchoPlaybackProcessRuntime {
         bitPerfectStatus = EchoBitPerfectSnapshot(if (strict) app.echo.android.model.playback.EchoBitPerfectState.Waiting
             else app.echo.android.model.playback.EchoBitPerfectState.Off)
         enginePolicy?.applyReplayGain()
+        enginePolicy?.refreshUsbNetworkEndpoint()
         reconfigureAudioPipeline(forceSinkReset = true)
     }
     val scope = CoroutineScope(
@@ -128,6 +129,10 @@ object EchoPlaybackProcessRuntime {
     @Volatile
     var usbExclusiveEnabled: Boolean = false
         private set
+
+    @Volatile
+    var usbNetworkEndpointActive: Boolean = false
+        internal set
 
     @Volatile
     var usbExclusiveSinkStatus: EchoUsbExclusiveSinkStatus? = null

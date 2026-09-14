@@ -13,6 +13,7 @@ data class LibrarySource(
         val WebDav = LibrarySource("webdav")
         val Jellyfin = LibrarySource("jellyfin")
         val Netease = LibrarySource("netease")
+        val EchoLink = LibrarySource("echo-link")
         val Unknown = LibrarySource("unknown")
     }
 }

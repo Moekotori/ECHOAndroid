@@ -65,10 +65,24 @@ internal fun SignalPathPanel(
     }
     val unknown = stringResource(R.string.diag_unreported)
     val stages = buildList {
+        val sourceFormat = d.fileFormatLabel()
+        val pcLibrary = EchoLinkPlaybackUri.isPcLibrarySource(
+            sourceId = status.track?.sourceId,
+            mediaId = status.track?.id,
+            uri = status.track?.uri.orEmpty(),
+        )
         add(PathStage(
             stringResource(R.string.diag_source_file),
-            if (status.track != null) d.fileFormatLabel() else stringResource(R.string.diag_waiting_playback),
-            listOfNotNull(status.track?.title, d.channelCount?.takeIf { it > 0 }?.let(::formatChannels)).joinToString(" · ").ifBlank { null },
+            when {
+                status.track == null -> stringResource(R.string.diag_waiting_playback)
+                pcLibrary -> stringResource(R.string.path_source_pc, sourceFormat)
+                else -> sourceFormat
+            },
+            listOfNotNull(
+                if (pcLibrary) stringResource(R.string.path_source_pc_detail) else null,
+                status.track?.title,
+                d.channelCount?.takeIf { it > 0 }?.let(::formatChannels),
+            ).joinToString(" · ").ifBlank { null },
             Icons.Rounded.AudioFile,
             live && !d.codec.isNullOrBlank(),
         ))

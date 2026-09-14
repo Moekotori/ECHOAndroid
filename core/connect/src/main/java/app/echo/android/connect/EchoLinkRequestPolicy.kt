@@ -13,7 +13,7 @@ object EchoLinkRequestPolicy {
         current != null && endpointIdentity(current) == endpointIdentity(target)
 
     fun shouldPersistEndpoint(endpoint: EchoRemoteEndpoint): Boolean =
-        !endpoint.needsV2PairExchange && endpoint.token.isNotBlank()
+        !endpoint.needsV2PairExchange
 
     fun shouldFailPairingAfterAttempts(attempts: Int, maxAttempts: Int = 2): Boolean =
         attempts >= maxAttempts

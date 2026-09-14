@@ -72,7 +72,7 @@ internal fun CastDevicesPanel(
             Text(
                 stringResource(L10nR.string.echo_link_cast_title),
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Bold,
             )
             ConnectNote(stringResource(L10nR.string.echo_link_cast_subtitle))
         }
@@ -95,7 +95,7 @@ internal fun CastDevicesPanel(
                         sizeClass = EchoArtworkSize.Thumbnail,
                     )
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+                        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         phoneTrackArtist?.trim()?.takeIf { it.isNotEmpty() }?.let { ConnectNote(it) }
                         phoneTrackFormat?.takeIf { it.isNotBlank() }?.let { ConnectNote(it) }
                         if (phoneTrackLossless) {
@@ -183,14 +183,9 @@ internal fun CastDevicesPanel(
                         connected != null &&
                         EchoLinkDiscoveryPolicy.addressMatchesDevice(connected, device),
                     sending = casting && EchoLinkDiscoveryPolicy.sameLanEndpoint(sendingAddress, address),
-                    token = token,
                     canCast = blockedReason == null && !phoneTrackTitle.isNullOrBlank(),
                     casting = casting,
                     onCast = { onCastToAddress(address, token) },
-                    onPair = {
-                        onSelectLanDevice(device)
-                        onRequestPairing()
-                    },
                 )
             }
         }
@@ -232,7 +227,6 @@ internal fun CastDevicesPanel(
                     address = "$kindLabel · ${renderer.host}",
                     sessionHere = activeRendererId == renderer.id,
                     sending = casting && EchoLinkDiscoveryPolicy.sameLanEndpoint(sendingAddress, renderer.host),
-                    token = if (dlnaReady) "dlna" else "",
                     canCast = dlnaReady && blockedReason == null && !phoneTrackTitle.isNullOrBlank(),
                     casting = casting,
                     onCast = { onCastToRenderer(renderer) },
@@ -252,11 +246,9 @@ internal fun CastDevicesPanel(
                         address = pc.address,
                         sessionHere = castSessionActive && EchoLinkDiscoveryPolicy.sameLanEndpoint(connected, pc.address),
                         sending = casting && EchoLinkDiscoveryPolicy.sameLanEndpoint(sendingAddress, pc.address),
-                        token = pc.token.orEmpty(),
                         canCast = blockedReason == null && !phoneTrackTitle.isNullOrBlank(),
                         casting = casting,
                         onCast = { onCastToAddress(pc.address, pc.token.orEmpty()) },
-                        onPair = onRequestPairing,
                     )
                 }
             }
@@ -270,14 +262,11 @@ private fun CastDeviceRow(
     address: String,
     sessionHere: Boolean,
     sending: Boolean,
-    token: String,
     canCast: Boolean,
     casting: Boolean,
     onCast: () -> Unit = {},
-    onPair: () -> Unit = {},
     unavailableLabel: String? = null,
 ) {
-    val paired = token.isNotBlank()
     Row(
         Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -300,18 +289,13 @@ private fun CastDeviceRow(
                     Text(unavailableLabel)
                 }
             }
-            paired -> {
+            else -> {
                 Button(
                     onClick = onCast,
                     enabled = canCast && !casting,
                     shape = ConnectControlShape,
                 ) {
                     Text(stringResource(L10nR.string.echo_link_cast_send))
-                }
-            }
-            else -> {
-                OutlinedButton(onClick = onPair, enabled = !casting, shape = ConnectControlShape) {
-                    Text(stringResource(L10nR.string.echo_link_cast_pair_first))
                 }
             }
         }

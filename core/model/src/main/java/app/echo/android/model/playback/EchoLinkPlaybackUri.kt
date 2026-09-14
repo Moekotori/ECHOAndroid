@@ -1,5 +1,6 @@
 package app.echo.android.model.playback
 
+import app.echo.android.model.library.LibrarySource
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -47,6 +48,11 @@ object EchoLinkPlaybackUri {
     fun playUriNeedsResolve(playUri: String, playerUnavailable: Boolean): Boolean {
         if (trackIdFromPersistUri(playUri) != null) return true
         return isOneShotStreamUri(playUri) && playerUnavailable
+    }
+
+    fun isPcLibrarySource(sourceId: String?, mediaId: String?, uri: String): Boolean {
+        if (sourceId == LibrarySource.EchoLink.id) return true
+        return trackId(mediaId.orEmpty(), uri) != null
     }
 
     private fun encodeSegment(value: String): String =

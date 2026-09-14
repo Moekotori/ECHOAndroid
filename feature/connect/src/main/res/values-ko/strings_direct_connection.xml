@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="echo_link_direct_address_hint">근처 PC를 선택하거나 주소를 입력하면 연결됩니다. 토큰은 필요하지 않습니다. 이전 버전 PC는 전체 페어링 링크를 사용할 수 있습니다.</string>
+</resources>

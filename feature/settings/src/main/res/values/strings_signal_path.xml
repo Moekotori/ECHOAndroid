@@ -11,5 +11,7 @@
     <string name="path_eq_detail">Preamp %1$s · processing rate %2$s</string>
     <string name="path_channel_detail">L %1$s · R %2$s</string>
     <string name="path_source_format">Source format</string>
+    <string name="path_source_pc">PC ECHO · %1$s</string>
+    <string name="path_source_pc_detail">Original file from the linked PC library</string>
     <string name="path_device_clock">Reported device clock: %1$s</string>
 </resources>

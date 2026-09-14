@@ -618,7 +618,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     }
 
     fun requestPhoneCast(address: String, token: String) {
-        if (token.isBlank()) return
         sendingCastAddress = address
         castSetupError = null
         val endpoint = remoteClient.status.value.endpoint

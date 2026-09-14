@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="echo_link_direct_address_hint">Select a nearby computer or enter its address to connect. No token needed. Older PCs can still use a complete pairing link.</string>
+</resources>

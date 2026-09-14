@@ -1828,7 +1828,7 @@ private fun EchoRemoteTrack.toEchoTrack(): EchoTrack =
         albumArtist = artist.takeIf { it.isNotBlank() },
         artworkUri = artworkUrl,
         durationMs = durationMs,
-        source = LibrarySource("echo-link"),
+        source = LibrarySource.EchoLink,
     )
 
 @Composable

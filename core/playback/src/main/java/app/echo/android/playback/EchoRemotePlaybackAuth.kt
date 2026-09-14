@@ -308,10 +308,14 @@ private class EchoSchemeRoutingDataSource(
     }
 
     override fun open(dataSpec: DataSpec): Long {
-        activeDataSource = if (dataSpec.uri.isRemotePlaybackUri()) {
-            remoteDataSource
-        } else {
-            localDataSource
+        val uri = dataSpec.uri.toString()
+        activeDataSource = when {
+            !dataSpec.uri.isRemotePlaybackUri() -> localDataSource
+            EchoRemotePlaybackCachePolicy.shouldBypassCache(
+                uri = uri,
+                usbBitPerfectEnabled = EchoPlaybackProcessRuntime.usbBitPerfectEnabled,
+            ) -> localDataSource
+            else -> remoteDataSource
         }
         return requireNotNull(activeDataSource).open(dataSpec)
     }
@@ -629,6 +633,13 @@ private fun sha256(value: String): String =
         .joinToString(separator = "") { byte ->
             (byte.toInt() and 0xFF).toString(16).padStart(2, '0')
         }
+
+internal object EchoRemotePlaybackCachePolicy {
+    fun shouldBypassCache(uri: String, usbBitPerfectEnabled: Boolean): Boolean {
+        if (!usbBitPerfectEnabled) return false
+        return EchoLinkPlaybackUri.isOneShotStreamUri(uri)
+    }
+}
 
 internal fun remotePlaybackCacheNamespace(
     credentialIdentity: String? = null,

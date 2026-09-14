@@ -46,8 +46,8 @@ class EchoLinkSession(private val application: Application) {
     )
     private val dlnaClient = EchoDlnaClient()
     private val settings = EchoSettingsStore(application)
-    private var persistedKey: Pair<String?, String?>? = null
-    private var attemptedKey: Pair<String?, String?>? = null
+    private var persistedKey: Pair<String?, String>? = null
+    private var attemptedKey: Pair<String?, String>? = null
     private val _castActive = MutableStateFlow(false)
     val castActive: StateFlow<Boolean> = _castActive.asStateFlow()
     private val _castTargetName = MutableStateFlow<String?>(null)
@@ -61,14 +61,14 @@ class EchoLinkSession(private val application: Application) {
     init {
         scope.launch {
             settings.appSettings.collect { saved ->
-                val key = saved.echoLinkPcAddress to saved.echoLinkPcToken
+                val key = saved.echoLinkPcAddress to saved.echoLinkPcToken.orEmpty()
                 if (!saved.echoLinkAutoReconnectEnabled) {
                     attemptedKey = null
-                } else if (key != attemptedKey && !key.first.isNullOrBlank() && !key.second.isNullOrBlank()) {
+                } else if (key != attemptedKey && !key.first.isNullOrBlank()) {
                     attemptedKey = key
                     client.connectManual(
                         address = key.first!!,
-                        token = key.second!!,
+                        token = key.second,
                         refreshLibraryOnConnect = saved.echoLinkPreferLinkedLibrary,
                         supportsV2Events = saved.echoLinkV2Events,
                     )

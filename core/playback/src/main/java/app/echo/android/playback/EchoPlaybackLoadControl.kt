@@ -41,7 +41,10 @@ internal class EchoPlaybackLoadControl(
     ) = delegate.shouldContinuePreloading(playerId, timeline, mediaPeriodId, bufferedDurationUs)
 
     override fun shouldContinueLoading(parameters: LoadControl.Parameters): Boolean {
-        val budget = EchoPlaybackLoadControlPolicy.forMode(EchoPlaybackCachePolicy.effectiveMode)
+        val budget = EchoPlaybackLoadControlPolicy.budgetFor(
+            EchoPlaybackCachePolicy.effectiveMode,
+            EchoPlaybackProcessRuntime.usbNetworkEndpointActive,
+        )
         if (!EchoPlaybackLoadControlPolicy.shouldContinueLoading(parameters.bufferedDurationUs, budget.maxBufferMs)) {
             return false
         }
@@ -49,7 +52,10 @@ internal class EchoPlaybackLoadControl(
     }
 
     override fun shouldStartPlayback(parameters: LoadControl.Parameters): Boolean {
-        val budget = EchoPlaybackLoadControlPolicy.forMode(EchoPlaybackCachePolicy.effectiveMode)
+        val budget = EchoPlaybackLoadControlPolicy.budgetFor(
+            EchoPlaybackCachePolicy.effectiveMode,
+            EchoPlaybackProcessRuntime.usbNetworkEndpointActive,
+        )
         return EchoPlaybackLoadControlPolicy.shouldStartPlayback(
             bufferedDurationUs = parameters.bufferedDurationUs,
             playbackSpeed = parameters.playbackSpeed,

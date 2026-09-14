@@ -11,5 +11,7 @@
     <string name="path_eq_detail">プリアンプ %1$s · 処理レート %2$s</string>
     <string name="path_channel_detail">左 %1$s · 右 %2$s</string>
     <string name="path_source_format">ソース形式</string>
+    <string name="path_source_pc">PC ECHO · %1$s</string>
+    <string name="path_source_pc_detail">リンクした PC ライブラリの原ファイル</string>
     <string name="path_device_clock">報告されたデバイスクロック：%1$s</string>
 </resources>

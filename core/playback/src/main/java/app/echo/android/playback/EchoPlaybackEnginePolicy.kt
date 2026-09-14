@@ -72,6 +72,7 @@ class EchoPlaybackEnginePolicy(
         loadReplayGainForTrack(mediaId)
         loadReplayGainForTrack(nextReplayGainPrefetchId(mediaId, nextMediaId(player)))
         applyReplayGain()
+        refreshUsbNetworkEndpoint(player)
     }
 
     fun boundPlayer(): Player? = attachedPlayer
@@ -87,6 +88,7 @@ class EchoPlaybackEnginePolicy(
         usbMuteInProgress = false
         echoLinkPrefetchJob?.cancel()
         echoLinkPrefetchJob = null
+        EchoPlaybackProcessRuntime.usbNetworkEndpointActive = false
         cancelReplayGainJobs()
     }
 
@@ -230,6 +232,7 @@ class EchoPlaybackEnginePolicy(
         loadReplayGainForTrack(mediaId)
         loadReplayGainForTrack(nextReplayGainPrefetchId(mediaId, nextMediaId()))
         applyReplayGain()
+        refreshUsbNetworkEndpoint()
         attachedPlayer?.let(::prefetchNextEchoLinkStream)
     }
 
@@ -244,6 +247,7 @@ class EchoPlaybackEnginePolicy(
         ) {
             consecutiveErrorSkips = 0
             player.currentMediaItem?.mediaId?.takeIf { it.isNotBlank() }?.let(::resetEchoLinkStreamRefresh)
+            refreshUsbNetworkEndpoint(player)
             prefetchNextEchoLinkStream(player)
         }
         if (
@@ -376,6 +380,18 @@ class EchoPlaybackEnginePolicy(
             previousGainDb = null,
         )
         applyReplayGain()
+    }
+
+    fun refreshUsbNetworkEndpoint(player: Player? = attachedPlayer) {
+        val item = player?.currentMediaItem
+        val uri = item?.localConfiguration?.uri?.toString().orEmpty()
+        EchoPlaybackProcessRuntime.usbNetworkEndpointActive =
+            EchoPlaybackLoadControlPolicy.isUsbNetworkEndpoint(
+                usbExclusive = EchoPlaybackProcessRuntime.usbExclusiveEnabled,
+                usbBitPerfect = EchoPlaybackProcessRuntime.usbBitPerfectEnabled,
+                mediaId = item?.mediaId,
+                uri = uri,
+            )
     }
 
     private fun nextMediaId(player: Player? = attachedPlayer): String? {

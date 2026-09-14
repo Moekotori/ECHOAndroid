@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="echo_link_direct_address_hint">近くの PC を選ぶか、アドレスを入力して接続します。トークンは不要です。旧バージョンの PC では完全なペアリングリンクも使用できます。</string>
+</resources>
