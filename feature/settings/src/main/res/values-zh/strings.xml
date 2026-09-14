@@ -455,4 +455,6 @@
     <string name="settings_font_preview_ui">好音乐，随心听</string>
     <string name="settings_font_preview_lyrics">让旋律，停留在此刻</string>
     <string name="settings_font_preview_characters">ECHO · Aa Bb · 0123456789</string>
+    <string name="settings_font_outfit" translatable="false">Outfit</string>
+    <string name="settings_font_detail_outfit">内置 Outfit，中文等字形由系统补齐</string>
 </resources>

@@ -461,4 +461,6 @@
     <string name="settings_font_preview_ui">Your music, your way</string>
     <string name="settings_font_preview_lyrics">Let the melody stay with you</string>
     <string name="settings_font_preview_characters">ECHO · Aa Bb · 0123456789</string>
+    <string name="settings_font_outfit" translatable="false">Outfit</string>
+    <string name="settings_font_detail_outfit">Built-in Outfit; other scripts use system fallback</string>
 </resources>

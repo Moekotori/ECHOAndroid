@@ -68,7 +68,7 @@ data class EchoAppSettings(
     val customBackgroundBrightness: Float = 0.88f,
     val customBackgroundGlass: Float = 0.42f,
     val customBackgroundScale: Float = 1.05f,
-    val uiFontFamily: String = EchoFontFamilyMode.System,
+    val uiFontFamily: String = EchoFontFamilyMode.Outfit,
     val uiFontScale: Float = 1f,
     val uiDensityScale: Float = 1f,
     val lyricsFontFamily: String = EchoFontFamilyMode.System,
@@ -261,7 +261,7 @@ class EchoSettingsStore(
                 customBackgroundBrightness = (preferences[Keys.CustomBackgroundBrightness] ?: 0.88f).coerceIn(0.35f, 1.15f),
                 customBackgroundGlass = (preferences[Keys.CustomBackgroundGlass] ?: 0.42f).coerceIn(0.08f, 0.90f),
                 customBackgroundScale = (preferences[Keys.CustomBackgroundScale] ?: 1.05f).coerceIn(1.00f, 1.40f),
-                uiFontFamily = normalizeFontFamilyMode(preferences[Keys.UiFontFamily]),
+                uiFontFamily = normalizeFontFamilyMode(preferences[Keys.UiFontFamily] ?: EchoFontFamilyMode.Outfit),
                 uiFontScale = (preferences[Keys.UiFontScale] ?: 1f).coerceIn(0.88f, 1.18f),
                 uiDensityScale = (preferences[Keys.UiDensityScale] ?: 1f).coerceIn(0.90f, 1.12f),
                 lyricsFontFamily = normalizeFontFamilyMode(preferences[Keys.LyricsFontFamily]),
@@ -1232,6 +1232,7 @@ class EchoSettingsStore(
 
 private fun normalizeFontFamilyMode(value: String?): String =
     when (value) {
+        EchoFontFamilyMode.Outfit,
         EchoFontFamilyMode.Serif,
         EchoFontFamilyMode.Monospace,
         EchoFontFamilyMode.Imported -> value

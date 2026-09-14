@@ -117,6 +117,7 @@ fun echoFontFamilyForMode(
     mode: String,
     importedFontFamily: FontFamily? = null,
 ): FontFamily = when (mode) {
+    "outfit" -> EchoOutfitFontFamily
     "serif" -> FontFamily.Serif
     "monospace" -> FontFamily.Monospace
     "imported" -> importedFontFamily ?: FontFamily.SansSerif

@@ -152,6 +152,7 @@ internal fun performanceModeDetail(mode: String, effectiveMode: String): String 
 
 @Composable
 internal fun fontOptions(importedFontUri: String?): List<SettingsChoiceOption> = buildList {
+    add(SettingsChoiceOption("outfit", stringResource(R.string.settings_font_outfit)))
     add(SettingsChoiceOption("system", stringResource(R.string.settings_font_system)))
     add(SettingsChoiceOption("serif", stringResource(R.string.settings_font_serif)))
     add(SettingsChoiceOption("monospace", stringResource(R.string.settings_font_mono)))
@@ -170,7 +171,7 @@ internal fun fontOptions(importedFontUri: String?): List<SettingsChoiceOption> =
 @Composable
 internal fun fontDetail(mode: String, importedFontUri: String?): String =
     when (mode) {
-        "outfit" -> stringResource(R.string.settings_font_detail_system)
+        "outfit" -> stringResource(R.string.settings_font_detail_outfit)
         "serif" -> stringResource(R.string.settings_font_detail_serif)
         "monospace" -> stringResource(R.string.settings_font_detail_mono)
         "imported" -> importedFontUri?.substringAfterLast('/')?.takeLast(28)?.let {
