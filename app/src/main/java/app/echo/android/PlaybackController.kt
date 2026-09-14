@@ -19,6 +19,7 @@ import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.playback.EchoAudioErrorKind
 import app.echo.android.model.playback.EchoChannelBalanceState
 import app.echo.android.model.playback.EchoEqualizerState
+import app.echo.android.model.playback.EchoEqualizerUserPreset
 import app.echo.android.model.playback.EchoPlaybackDiagnostics
 import app.echo.android.model.playback.EchoPlaybackError
 import app.echo.android.model.playback.EchoPlaybackState
@@ -279,6 +280,9 @@ internal class PlaybackController(
     fun invalidateReplayGain(trackId: String) {
         enginePolicy.invalidateReplayGain(trackId)
     }
+
+    fun applyEqualizerUserPreset(preset: EchoEqualizerUserPreset): Boolean =
+        equalizerController.applyUserPreset(preset)
 
     fun applyOpraPreset(preset: OpraHeadphoneCorrectionPreset): List<Float> =
         equalizerController.applyOpraPreset(preset)

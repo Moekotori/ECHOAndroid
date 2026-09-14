@@ -21,4 +21,13 @@ class LocalAudioFileTypesTest {
         assertFalse(LocalAudioFileTypes.isSupported("notes.txt", "text/plain"))
         assertFalse(LocalAudioFileTypes.isSupported("track.wv", null))
     }
+
+    @Test
+    fun videoMimeIsNotRescuedByAudioFileExtension() {
+        assertFalse(LocalAudioFileTypes.isSupported("clip.mp4", "video/mp4"))
+        assertFalse(LocalAudioFileTypes.isSupported("clip.m4a", "video/mp4"))
+        assertTrue(LocalAudioFileTypes.isSupported("song.mp4", "audio/mp4"))
+        assertTrue(LocalAudioFileTypes.isSupported("song.mp4", null))
+        assertTrue(LocalAudioFileTypes.isSupported("song.m4a", "audio/mp4"))
+    }
 }

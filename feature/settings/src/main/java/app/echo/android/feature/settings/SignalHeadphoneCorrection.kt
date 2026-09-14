@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,6 +23,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -45,12 +48,15 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoExpand
 import app.echo.android.design.echoClickable
 import app.echo.android.model.playback.EchoEqualizerState
+import app.echo.android.model.playback.EchoEqualizerUserPresets
 import app.echo.android.model.playback.OpraHeadphoneCorrectionState
 import kotlin.math.abs
 
@@ -59,16 +65,22 @@ internal fun SignalHeadphoneCorrection(
     state: OpraHeadphoneCorrectionState,
     equalizer: EchoEqualizerState,
     bypassed: Boolean,
+    userPresets: List<app.echo.android.model.playback.EchoEqualizerUserPreset>,
+    lastQuery: String,
     onQueryChange: (String) -> Unit,
     onSearch: () -> Unit,
     onRefresh: () -> Unit,
     onPresetSelected: (String) -> Unit,
     onApplySelected: () -> Unit,
+    onToggleFavorite: () -> Unit,
+    onApplyUserPreset: (String) -> Unit,
 ) {
     val keyboard = LocalSoftwareKeyboardController.current
     val uriHandler = LocalUriHandler.current
     val scheme = MaterialTheme.colorScheme
     val search = { if (!state.loading && state.query.isNotBlank()) { keyboard?.hide(); onSearch() } }
+    val favorites = remember(userPresets) { EchoEqualizerUserPresets.opraFavorites(userPresets) }
+    val starredEqId = state.selectedEqId?.let { eqId -> favorites.firstOrNull { it.opraEqId == eqId }?.opraEqId }
     var expandedProduct by remember(state.results) { mutableStateOf(state.results.firstOrNull()?.productId) }
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -115,11 +127,36 @@ internal fun SignalHeadphoneCorrection(
                     }
                     TextButton(onClick = onRefresh, enabled = !state.loading) { Text(stringResource(L10nR.string.diag_refresh_library)) }
                 }
+                if (lastQuery.isNotBlank()) {
+                    TextButton(
+                        onClick = {
+                            if (state.query != lastQuery) onQueryChange(lastQuery)
+                            onSearch()
+                        },
+                        enabled = !state.loading,
+                        contentPadding = PaddingValues(horizontal = 0.dp),
+                    ) { Text(stringResource(L10nR.string.opra_last_used, lastQuery)) }
+                }
                 if (state.loading) {
                     LinearProgressIndicator(Modifier.fillMaxWidth(), color = scheme.primary, trackColor = scheme.outlineVariant)
                     SignalNote(stringResource(L10nR.string.opra_first_download))
                 }
                 state.message?.let { SignalNote(it) }
+            }
+        }
+        if (favorites.isNotEmpty()) {
+            SignalEqWell(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(L10nR.string.opra_favorites), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    favorites.forEach { preset ->
+                        SignalEqUserPresetRow(
+                            preset = preset,
+                            active = equalizer.sourceLabel == preset.sourceLabel && equalizer.parametric,
+                            enabled = !state.loading,
+                            onApply = { onApplyUserPreset(preset.id) },
+                        )
+                    }
+                }
             }
         }
         // Keep the selected curve and apply action above the potentially long result list.
@@ -135,13 +172,33 @@ internal fun SignalHeadphoneCorrection(
                         SignalNote(stringResource(L10nR.string.opra_filter_summary, preset.bands.size, formatEqGain(preset.preampDb)))
                     }
                     SignalEqCurve(state.previewCurve, live = !bypassed, showFrequencyLabels = true)
-                    Button(
-                        onClick = onApplySelected,
-                        enabled = !state.loading && !current,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(48.dp),
-                        shape = RoundedCornerShape(16.dp),
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text(stringResource(if (current) L10nR.string.opra_applied else L10nR.string.diag_apply_approx))
+                        Button(
+                            onClick = onApplySelected,
+                            enabled = !state.loading && !current,
+                            modifier = Modifier.weight(1f).height(48.dp),
+                            shape = RoundedCornerShape(16.dp),
+                        ) {
+                            Text(stringResource(if (current) L10nR.string.opra_applied else L10nR.string.diag_apply_approx))
+                        }
+                        val starred = starredEqId != null
+                        val canStar = starred || userPresets.size < EchoEqualizerUserPresets.MaxCount
+                        val starLabel = stringResource(if (starred) L10nR.string.opra_unfavorite else L10nR.string.opra_favorite)
+                        IconButton(
+                            onClick = onToggleFavorite,
+                            enabled = !state.loading && canStar,
+                            modifier = Modifier.semantics { contentDescription = starLabel },
+                        ) {
+                            Icon(
+                                if (starred) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                                contentDescription = null,
+                                tint = if (starred) scheme.primary else scheme.onSurfaceVariant,
+                            )
+                        }
                     }
                     preset.sourceUrl?.takeIf { it.startsWith("https://") || it.startsWith("http://") }?.let { link ->
                         TextButton(

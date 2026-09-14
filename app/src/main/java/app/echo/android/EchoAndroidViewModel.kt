@@ -65,6 +65,7 @@ import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoTrackRef
 import app.echo.android.model.playback.EchoChannelBalanceState
 import app.echo.android.model.playback.EchoEqualizerState
+import app.echo.android.model.playback.EchoEqualizerUserPresets
 import app.echo.android.model.playback.PlaybackControlsState
 import app.echo.android.model.playback.PlaybackDiagnosticsState
 import app.echo.android.model.playback.OpraHeadphoneCorrectionState
@@ -83,6 +84,7 @@ import app.echo.android.playback.EchoReplayGainScanner
 import app.echo.android.model.playback.EchoReplayGainScanFailure
 import app.echo.android.model.playback.EchoReplayGainScanState
 import java.time.LocalDate
+import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -288,6 +290,9 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                 lyricsController.setOnlineLyricsEnabled(settings.onlineLyricsEnabled, playbackController.currentTrackId)
                 val firstSettingsEmission = !usbStartupPolicyApplied
                 usbStartupPolicyApplied = true
+                if (firstSettingsEmission) {
+                    opraSearch.restoreQuery(settings.opraLastQuery)
+                }
                 val usbAlreadyActive = playbackController.isUsbExclusiveEnabled()
                 val shouldEnableUsbExclusive = if (firstSettingsEmission && !usbAlreadyActive) {
                     settings.usbExclusiveEnabled && settings.usbExclusiveAutoRequestOnStartup
@@ -1156,7 +1161,11 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun updateOpraQuery(query: String) = opraSearch.setQuery(query)
 
-    fun searchOpraHeadphoneCorrections(refresh: Boolean = false) = opraSearch.search(refresh)
+    fun searchOpraHeadphoneCorrections(refresh: Boolean = false) {
+        opraSearch.search(refresh)
+        val query = opraState.value.query.trim()
+        if (query.isNotBlank()) updateSettings { setOpraLastQuery(query) }
+    }
 
     fun selectOpraPreset(eqId: String) = opraSearch.select(eqId)
 
@@ -1165,8 +1174,22 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         if (opraState.value.loading) return
         playbackController.applyOpraPreset(preset)
         val equalizer = playbackController.equalizerState.value
-        updateSettings {
-            setEqualizerParametricConfig(equalizer.gainsDb, equalizer.preampDb, equalizer.filters, equalizer.sourceLabel)
+        val query = opraState.value.query.trim()
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                settingsStore.setEqualizerParametricConfig(
+                    equalizer.gainsDb,
+                    equalizer.preampDb,
+                    equalizer.filters,
+                    equalizer.sourceLabel,
+                )
+                if (query.isNotBlank()) settingsStore.setOpraLastQuery(query)
+                val starredId = settingsStore.appSettings.first()
+                    .equalizerUserPresets
+                    .firstOrNull { it.opraEqId == preset.eqId }
+                    ?.id
+                settingsStore.setEqualizerActiveUserPresetId(starredId)
+            }
         }
         opraSearch.message(
             if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled) {
@@ -1175,6 +1198,55 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                 getApplication<Application>().getString(R.string.opra_saved_eq, preset.displayName)
             },
         )
+    }
+
+    fun saveCurrentEqualizerPreset(name: String) {
+        val captured = EchoEqualizerUserPresets.capture(
+            id = UUID.randomUUID().toString(),
+            name = name,
+            state = playbackController.equalizerState.value,
+            updatedAtEpochMs = System.currentTimeMillis(),
+        ) ?: return
+        updateSettings { upsertEqualizerUserPreset(captured) }
+    }
+
+    fun applyEqualizerUserPreset(id: String) {
+        viewModelScope.launch {
+            val preset = withContext(Dispatchers.IO) {
+                settingsStore.appSettings.first().equalizerUserPresets.firstOrNull { it.id == id }
+            } ?: return@launch
+            if (!playbackController.applyEqualizerUserPreset(preset)) return@launch
+            withContext(Dispatchers.IO) { settingsStore.applyEqualizerUserPreset(preset) }
+        }
+    }
+
+    fun renameEqualizerUserPreset(id: String, name: String) {
+        updateSettings { renameEqualizerUserPreset(id, name) }
+    }
+
+    fun deleteEqualizerUserPreset(id: String) {
+        updateSettings { deleteEqualizerUserPreset(id) }
+    }
+
+    fun toggleStarredOpraPreset() {
+        val selected = opraState.value.selectedPreset ?: return
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val settings = settingsStore.appSettings.first()
+                val existing = settings.equalizerUserPresets.firstOrNull { it.opraEqId == selected.eqId }
+                if (existing != null) {
+                    settingsStore.deleteEqualizerUserPreset(existing.id)
+                    return@withContext
+                }
+                val captured = EchoEqualizerUserPresets.captureOpra(
+                    id = UUID.randomUUID().toString(),
+                    name = selected.displayName,
+                    preset = selected,
+                    updatedAtEpochMs = System.currentTimeMillis(),
+                ) ?: return@withContext
+                settingsStore.upsertEqualizerUserPreset(captured)
+            }
+        }
     }
 
     fun testUsbExclusiveDriver() {

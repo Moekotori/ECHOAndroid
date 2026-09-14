@@ -24,6 +24,7 @@ class MediaStoreTrackScanner(
     internal val rejectedFileCache by lazy { LocalScanFilterCache(java.io.File(appContext.cacheDir, "scan-rejected-v1.json")) }
     private var includeSampleRateColumn =
         LibraryScanPolicy.mediaStoreSampleRateColumnAvailable(Build.VERSION.SDK_INT)
+    private var includeChangeProbePathColumns = true
 
     suspend fun scanAudio(
         batchSize: Int = DefaultBatchSize,
@@ -107,7 +108,8 @@ class MediaStoreTrackScanner(
                 if (complete) completeVolumeScopes += volumeScope
                 continue
             }
-            // 增量:先用 _ID/DATE_MODIFIED/SIZE 三列轻量游标与库内快照比对,
+            // 增量:先用 _ID/DATE_MODIFIED/SIZE 轻量游标与库内快照比对,
+            // 带上路径列以便排除目录在探针阶段剪枝,不必再拉全列。
             // 未变行只上报 id(供删除检测),只有变化/新增行才做全列拉取和指纹重算。
             val probe = queryChangeProbe(collection, selection, selectionArgs) ?: continue
             querySucceeded = true
@@ -118,29 +120,57 @@ class MediaStoreTrackScanner(
                 val idIndex = listing.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
                 val modifiedIndex = listing.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
                 val sizeIndex = listing.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
+                val relativePathIndex = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    listing.getColumnIndex(MediaStore.Audio.Media.RELATIVE_PATH)
+                } else {
+                    -1
+                }
+                val volumeNameIndex = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    listing.getColumnIndex(MediaStore.MediaColumns.VOLUME_NAME)
+                } else {
+                    -1
+                }
+                @Suppress("DEPRECATION")
+                val dataIndex = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                    listing.getColumnIndex(MediaStore.Audio.Media.DATA)
+                } else {
+                    -1
+                }
                 val unchangedIds = ArrayList<String>()
                 while (listing.moveToNext()) {
                     coroutineContext.ensureActive()
                     val mediaId = listing.getLong(idIndex)
                     val trackId = "${LibraryScanPolicy.MediaStoreNativeIdPrefix}$mediaId"
-                    if (existingTracks[trackId] == null && rejectedFiles?.shouldSkip(
-                            Uri.withAppendedPath(collection.uri, mediaId.toString()).toString(),
-                            listing.getLongOrNull(sizeIndex) ?: 0L, listing.getLongOrNull(modifiedIndex) ?: 0L, options,
-                        ) == true) {
-                        scannedCount++
-                        onSkipped()
-                        continue
-                    }
-                    val unchanged = LibraryScanPolicy.isMediaStoreRowUnchanged(
-                        existing = existingTracks[trackId],
-                        dateModifiedSeconds = listing.getLongOrNull(modifiedIndex) ?: 0L,
-                        sizeBytes = listing.getLongOrNull(sizeIndex) ?: 0L,
-                    )
-                    if (unchanged) {
-                        unchangedIds += trackId
-                        scannedCount += 1
-                    } else {
-                        changedMediaIds += mediaId
+                    val sizeBytes = listing.getLongOrNull(sizeIndex) ?: 0L
+                    val dateModifiedSeconds = listing.getLongOrNull(modifiedIndex) ?: 0L
+                    val rejectedByCache = existingTracks[trackId] == null && rejectedFiles?.shouldSkip(
+                        Uri.withAppendedPath(collection.uri, mediaId.toString()).toString(),
+                        sizeBytes, dateModifiedSeconds, options,
+                    ) == true
+                    when (
+                        LibraryScanPolicy.classifyMediaStoreProbeRow(
+                            existing = existingTracks[trackId],
+                            relativePath = listing.probeRelativePath(
+                                collectionVolumeName = collection.volumeName,
+                                relativePathIndex = relativePathIndex,
+                                volumeNameIndex = volumeNameIndex,
+                                dataIndex = dataIndex,
+                            ),
+                            dateModifiedSeconds = dateModifiedSeconds,
+                            sizeBytes = sizeBytes,
+                            options = options,
+                            rejectedByCache = rejectedByCache,
+                        )
+                    ) {
+                        MediaStoreProbeAction.SkipRejected -> {
+                            scannedCount++
+                            onSkipped()
+                        }
+                        MediaStoreProbeAction.RememberSeen -> {
+                            unchangedIds += trackId
+                            scannedCount += 1
+                        }
+                        MediaStoreProbeAction.FetchFull -> changedMediaIds += mediaId
                     }
                 }
                 if (unchangedIds.isNotEmpty()) {
@@ -508,14 +538,74 @@ class MediaStoreTrackScanner(
         collection: MediaStoreCollection,
         selection: String,
         selectionArgs: Array<String>?,
-    ): Cursor? =
-        contentResolver.query(
-            collection.uri,
-            ChangeProbeProjection,
-            selection,
-            selectionArgs,
-            null,
+    ): Cursor? {
+        val projection = if (includeChangeProbePathColumns) {
+            changeProbeProjection()
+        } else {
+            ChangeProbeProjection
+        }
+        return try {
+            contentResolver.query(
+                collection.uri,
+                projection,
+                selection,
+                selectionArgs,
+                null,
+            )
+        } catch (error: IllegalArgumentException) {
+            if (!includeChangeProbePathColumns) throw error
+            Log.w(TAG, "MediaStore change probe path columns unavailable; retrying without them.", error)
+            includeChangeProbePathColumns = false
+            contentResolver.query(
+                collection.uri,
+                ChangeProbeProjection,
+                selection,
+                selectionArgs,
+                null,
+            )
+        }
+    }
+
+    private fun changeProbeProjection(): Array<String> =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ChangeProbeProjection +
+                MediaStore.Audio.Media.RELATIVE_PATH +
+                MediaStore.MediaColumns.VOLUME_NAME
+        } else {
+            @Suppress("DEPRECATION")
+            ChangeProbeProjection + MediaStore.Audio.Media.DATA
+        }
+
+    private fun Cursor.probeRelativePath(
+        collectionVolumeName: String?,
+        relativePathIndex: Int,
+        volumeNameIndex: Int,
+        dataIndex: Int,
+    ): String? {
+        if (relativePathIndex < 0 && dataIndex < 0) return null
+        val rowVolumeName = if (volumeNameIndex >= 0) getStringOrNull(volumeNameIndex) else null
+        val volumeName = LibraryScanPolicy.resolvedMediaStoreVolumeName(
+            collectionVolumeName = collectionVolumeName,
+            rowVolumeName = rowVolumeName,
         )
+        return when {
+            relativePathIndex >= 0 -> LibraryScanPolicy.mediaStoreRelativePathForVolume(
+                volumeName = volumeName,
+                mediaStoreRelativePath = getStringOrNull(relativePathIndex),
+            )
+            else -> {
+                @Suppress("DEPRECATION")
+                val storageRoot = Environment.getExternalStorageDirectory()
+                    .absolutePath
+                    .replace('\\', '/')
+                    .trimEnd('/')
+                LibraryScanPolicy.legacyDataRelativePath(
+                    dataPath = getStringOrNull(dataIndex),
+                    primaryStorageRoot = storageRoot,
+                )
+            }
+        }
+    }
 
     private fun queryAudioListing(
         collection: MediaStoreCollection,

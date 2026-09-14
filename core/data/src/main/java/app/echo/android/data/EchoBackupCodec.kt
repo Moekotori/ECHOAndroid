@@ -137,6 +137,11 @@ object EchoBackupCodec {
         settings.equalizerFilters?.takeIf { it.isNotEmpty() }?.let {
             put("equalizerFilters", JSONArray(formatEqualizerFilters(it)))
         }
+        settings.equalizerUserPresets?.let { presets ->
+            put("equalizerUserPresets", JSONArray(EchoEqualizerUserPresetCodec.encode(presets)))
+        }
+        putOpt("equalizerActiveUserPresetId", settings.equalizerActiveUserPresetId)
+        putOpt("opraLastQuery", settings.opraLastQuery)
         settings.channelBalance?.let { put("channelBalance", encodeBalance(it)) }
         putOpt("lyricsFontFamily", settings.lyricsFontFamily)
         settings.lyricsFontScale?.let { put("lyricsFontScale", it.toDouble()) }
@@ -171,6 +176,12 @@ object EchoBackupCodec {
             is String -> parseEqualizerFilters(filtersRaw)
             else -> null
         }
+        val userPresetsRaw = json.opt("equalizerUserPresets")
+        val userPresets = when (userPresetsRaw) {
+            is JSONArray -> EchoEqualizerUserPresetCodec.decode(userPresetsRaw.toString())
+            is String -> EchoEqualizerUserPresetCodec.decode(userPresetsRaw)
+            else -> null
+        }
         return EchoBackupSettings(
             themeMode = json.optionalString("themeMode"),
             colorTheme = json.optionalString("colorTheme"),
@@ -201,6 +212,9 @@ object EchoBackupCodec {
             equalizerParametric = json.optionalBoolean("equalizerParametric"),
             equalizerSourceLabel = json.optionalString("equalizerSourceLabel"),
             equalizerFilters = filters,
+            equalizerUserPresets = userPresets,
+            equalizerActiveUserPresetId = json.optionalString("equalizerActiveUserPresetId"),
+            opraLastQuery = json.optionalString("opraLastQuery"),
             channelBalance = json.optJSONObject("channelBalance")?.let(::decodeBalance),
             lyricsFontFamily = json.optionalString("lyricsFontFamily"),
             lyricsFontScale = json.optionalFloat("lyricsFontScale"),

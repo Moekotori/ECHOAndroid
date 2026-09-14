@@ -17,6 +17,8 @@ import app.echo.android.model.playback.EchoChannelBalanceMonoMode
 import app.echo.android.model.playback.EchoChannelBalanceState
 import app.echo.android.model.playback.EchoEqualizerPreset
 import app.echo.android.model.playback.EchoEqualizerPresets
+import app.echo.android.model.playback.EchoEqualizerUserPreset
+import app.echo.android.model.playback.EchoEqualizerUserPresets
 import app.echo.android.model.playback.OpraEqBand
 import app.echo.android.model.playback.EchoRepeatMode
 import app.echo.android.model.playback.EchoReplayGainMode
@@ -61,6 +63,9 @@ data class EchoAppSettings(
     val equalizerParametric: Boolean = false,
     val equalizerSourceLabel: String? = null,
     val equalizerFilters: List<OpraEqBand> = emptyList(),
+    val equalizerUserPresets: List<EchoEqualizerUserPreset> = emptyList(),
+    val equalizerActiveUserPresetId: String? = null,
+    val opraLastQuery: String = "",
     val channelBalance: EchoChannelBalanceState = EchoChannelBalanceState(),
     val customBackgroundMode: String = EchoBackgroundMode.Default,
     val customBackgroundUri: String? = null,
@@ -240,6 +245,9 @@ class EchoSettingsStore(
                 equalizerParametric = preferences[Keys.EqualizerParametric] ?: false,
                 equalizerSourceLabel = preferences[Keys.EqualizerSourceLabel],
                 equalizerFilters = parseEqualizerFilters(preferences[Keys.EqualizerFilters]),
+                equalizerUserPresets = EchoEqualizerUserPresetCodec.decode(preferences[Keys.EqualizerUserPresets]),
+                equalizerActiveUserPresetId = preferences[Keys.EqualizerActiveUserPresetId]?.trim()?.takeIf { it.isNotEmpty() },
+                opraLastQuery = preferences[Keys.OpraLastQuery]?.trim().orEmpty(),
                 channelBalance = EchoChannelBalanceState(
                     enabled = preferences[Keys.ChannelBalanceEnabled] ?: false,
                     balance = EchoChannelBalance.clampBalance(preferences[Keys.ChannelBalance] ?: 0f),
@@ -461,6 +469,7 @@ class EchoSettingsStore(
             clearEqualizerParametric(it)
             // Persist the controller's compensated gain atomically with the preset.
             it[Keys.EqualizerPreampDb] = preampDb.coerceIn(-24f, 12f)
+            it.remove(Keys.EqualizerActiveUserPresetId)
         }
     }
 
@@ -471,12 +480,16 @@ class EchoSettingsStore(
             val preamp = it[Keys.EqualizerPreampDb]
             clearEqualizerParametric(it)
             if (preamp != null) it[Keys.EqualizerPreampDb] = preamp
+            it.remove(Keys.EqualizerActiveUserPresetId)
         }
     }
 
     suspend fun setEqualizerPreamp(gainDb: Float) {
         if (!gainDb.isFinite()) return
-        context.echoSettings.edit { it[Keys.EqualizerPreampDb] = gainDb.coerceIn(-24f, 12f) }
+        context.echoSettings.edit {
+            it[Keys.EqualizerPreampDb] = gainDb.coerceIn(-24f, 12f)
+            it.remove(Keys.EqualizerActiveUserPresetId)
+        }
     }
 
     suspend fun setEqualizerParametricConfig(
@@ -498,6 +511,7 @@ class EchoSettingsStore(
             } else {
                 it[Keys.EqualizerSourceLabel] = sourceLabel
             }
+            it.remove(Keys.EqualizerActiveUserPresetId)
         }
     }
 
@@ -508,6 +522,94 @@ class EchoSettingsStore(
                 EchoEqualizerPresets.gainsForPreset(EchoEqualizerPreset.Flat),
             )
             clearEqualizerParametric(it)
+            it.remove(Keys.EqualizerActiveUserPresetId)
+        }
+    }
+
+    suspend fun upsertEqualizerUserPreset(preset: EchoEqualizerUserPreset): Boolean {
+        var saved = false
+        context.echoSettings.edit {
+            val current = EchoEqualizerUserPresetCodec.decode(it[Keys.EqualizerUserPresets])
+            val next = EchoEqualizerUserPresets.upsert(current, preset) ?: return@edit
+            it[Keys.EqualizerUserPresets] = EchoEqualizerUserPresetCodec.encode(next)
+            saved = true
+        }
+        return saved
+    }
+
+    suspend fun renameEqualizerUserPreset(id: String, name: String) {
+        context.echoSettings.edit {
+            val current = EchoEqualizerUserPresetCodec.decode(it[Keys.EqualizerUserPresets])
+            it[Keys.EqualizerUserPresets] = EchoEqualizerUserPresetCodec.encode(
+                EchoEqualizerUserPresets.rename(current, id, name, System.currentTimeMillis()),
+            )
+        }
+    }
+
+    suspend fun deleteEqualizerUserPreset(id: String) {
+        context.echoSettings.edit {
+            val current = EchoEqualizerUserPresetCodec.decode(it[Keys.EqualizerUserPresets])
+            it[Keys.EqualizerUserPresets] = EchoEqualizerUserPresetCodec.encode(
+                EchoEqualizerUserPresets.remove(current, id),
+            )
+            if (it[Keys.EqualizerActiveUserPresetId] == id) {
+                it.remove(Keys.EqualizerActiveUserPresetId)
+            }
+        }
+    }
+
+    suspend fun setEqualizerActiveUserPresetId(id: String?) {
+        context.echoSettings.edit {
+            val trimmed = id?.trim().orEmpty()
+            if (trimmed.isEmpty()) {
+                it.remove(Keys.EqualizerActiveUserPresetId)
+            } else {
+                it[Keys.EqualizerActiveUserPresetId] = trimmed
+            }
+        }
+    }
+
+    suspend fun setOpraLastQuery(query: String) {
+        context.echoSettings.edit {
+            val trimmed = query.trim()
+            if (trimmed.isEmpty()) {
+                it.remove(Keys.OpraLastQuery)
+            } else {
+                it[Keys.OpraLastQuery] = trimmed.take(EchoEqualizerUserPresets.MaxNameLength * 2)
+            }
+        }
+    }
+
+    suspend fun applyEqualizerUserPreset(preset: EchoEqualizerUserPreset) {
+        val normalized = EchoEqualizerUserPresets.normalize(preset) ?: return
+        context.echoSettings.edit {
+            it[Keys.EqualizerEnabled] = true
+            it[Keys.EqualizerActiveUserPresetId] = normalized.id
+            it[Keys.EqualizerPreampDb] = normalized.preampDb
+            if (normalized.parametric) {
+                it[Keys.EqualizerPreset] = EchoEqualizerPreset.Custom
+                it[Keys.EqualizerBandGains] = formatEqualizerBandGains(normalized.gainsDb)
+                it[Keys.EqualizerParametric] = true
+                it[Keys.EqualizerFilters] = formatEqualizerFilters(normalized.filters)
+                val sourceLabel = normalized.sourceLabel
+                if (sourceLabel.isNullOrBlank()) {
+                    it.remove(Keys.EqualizerSourceLabel)
+                } else {
+                    it[Keys.EqualizerSourceLabel] = sourceLabel
+                }
+            } else {
+                it[Keys.EqualizerPreset] = normalized.graphicPresetId
+                it[Keys.EqualizerBandGains] = formatEqualizerBandGains(
+                    if (normalized.graphicPresetId == EchoEqualizerPreset.Custom) {
+                        normalized.gainsDb
+                    } else {
+                        EchoEqualizerPresets.gainsForPreset(normalized.graphicPresetId)
+                    },
+                )
+                it[Keys.EqualizerParametric] = false
+                it.remove(Keys.EqualizerSourceLabel)
+                it.remove(Keys.EqualizerFilters)
+            }
         }
     }
 
@@ -1091,6 +1193,15 @@ class EchoSettingsStore(
                 if (label.isBlank()) prefs.remove(Keys.EqualizerSourceLabel) else prefs[Keys.EqualizerSourceLabel] = label
             }
             backup.equalizerFilters?.let { prefs[Keys.EqualizerFilters] = formatEqualizerFilters(it) }
+            backup.equalizerUserPresets?.let { presets ->
+                prefs[Keys.EqualizerUserPresets] = EchoEqualizerUserPresetCodec.encode(presets)
+            }
+            backup.equalizerActiveUserPresetId?.let { id ->
+                if (id.isBlank()) prefs.remove(Keys.EqualizerActiveUserPresetId) else prefs[Keys.EqualizerActiveUserPresetId] = id
+            }
+            backup.opraLastQuery?.let { query ->
+                if (query.isBlank()) prefs.remove(Keys.OpraLastQuery) else prefs[Keys.OpraLastQuery] = query
+            }
             backup.channelBalance?.normalized?.let { state ->
                 prefs[Keys.ChannelBalanceEnabled] = state.enabled
                 prefs[Keys.ChannelBalance] = state.balance
@@ -1155,6 +1266,9 @@ class EchoSettingsStore(
         val EqualizerParametric = booleanPreferencesKey("equalizer_parametric")
         val EqualizerSourceLabel = stringPreferencesKey("equalizer_source_label")
         val EqualizerFilters = stringPreferencesKey("equalizer_filters")
+        val EqualizerUserPresets = stringPreferencesKey("equalizer_user_presets")
+        val EqualizerActiveUserPresetId = stringPreferencesKey("equalizer_active_user_preset_id")
+        val OpraLastQuery = stringPreferencesKey("opra_last_query")
         val ChannelBalanceEnabled = booleanPreferencesKey("channel_balance_enabled")
         val ChannelBalance = floatPreferencesKey("channel_balance")
         val ChannelBalanceLeftGainDb = floatPreferencesKey("channel_balance_left_gain_db")
@@ -1370,6 +1484,9 @@ fun EchoAppSettings.toBackupSettings(): app.echo.android.model.backup.EchoBackup
         equalizerParametric = equalizerParametric,
         equalizerSourceLabel = equalizerSourceLabel,
         equalizerFilters = equalizerFilters,
+        equalizerUserPresets = equalizerUserPresets,
+        equalizerActiveUserPresetId = equalizerActiveUserPresetId,
+        opraLastQuery = opraLastQuery.takeIf { it.isNotBlank() },
         channelBalance = channelBalance,
         lyricsFontFamily = lyricsFontFamily,
         lyricsFontScale = lyricsFontScale,

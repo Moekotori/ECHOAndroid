@@ -23,8 +23,10 @@ internal object LocalAudioFileTypes {
         }
     }
 
-    fun isSupported(name: String, mimeType: String?): Boolean =
-        mimeType.isAudioMime() || mimeTypeForFileName(name) != null
+    fun isSupported(name: String, mimeType: String?): Boolean {
+        if (mimeType.isVideoMime()) return false
+        return mimeType.isAudioMime() || mimeTypeForFileName(name) != null
+    }
 
     fun resolvedMimeType(name: String, mimeType: String?): String? =
         mimeType?.takeIf { it.isAudioMime() } ?: mimeTypeForFileName(name)
@@ -32,3 +34,6 @@ internal object LocalAudioFileTypes {
 
 internal fun String?.isAudioMime(): Boolean =
     this?.startsWith("audio/", ignoreCase = true) == true
+
+internal fun String?.isVideoMime(): Boolean =
+    this?.startsWith("video/", ignoreCase = true) == true

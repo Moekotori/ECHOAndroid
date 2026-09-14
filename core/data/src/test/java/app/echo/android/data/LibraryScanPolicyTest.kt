@@ -1,5 +1,6 @@
 package app.echo.android.data
 
+import app.echo.android.model.library.LibraryScanOptions
 import app.echo.android.model.library.LibrarySource
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -46,6 +47,103 @@ class LibraryScanPolicyTest {
                 existing = fingerprint(),
                 dateModifiedSeconds = 1_700_000_000L,
                 sizeBytes = 2_048L,
+            ),
+        )
+    }
+
+    @Test
+    fun probeSkipsFullFetchForExcludedDirectoriesWithoutDeletingImportedRows() {
+        val existing = fingerprint()
+        val options = LibraryScanOptions(
+            excludedRelativePaths = setOf("Recordings"),
+        )
+        assertEquals(
+            MediaStoreProbeAction.RememberSeen,
+            LibraryScanPolicy.classifyMediaStoreProbeRow(
+                existing = existing,
+                relativePath = "Recordings/Call/",
+                dateModifiedSeconds = 1_700_000_000L,
+                sizeBytes = 1_024L,
+                options = options,
+                rejectedByCache = false,
+            ),
+        )
+        assertEquals(
+            MediaStoreProbeAction.RememberSeen,
+            LibraryScanPolicy.classifyMediaStoreProbeRow(
+                existing = null,
+                relativePath = "Recordings/Call/",
+                dateModifiedSeconds = 1_700_000_000L,
+                sizeBytes = 1_024L,
+                options = options,
+                rejectedByCache = false,
+            ),
+        )
+        assertEquals(
+            MediaStoreProbeAction.FetchFull,
+            LibraryScanPolicy.classifyMediaStoreProbeRow(
+                existing = null,
+                relativePath = "Music/",
+                dateModifiedSeconds = 1_700_000_000L,
+                sizeBytes = 1_024L,
+                options = options,
+                rejectedByCache = false,
+            ),
+        )
+    }
+
+    @Test
+    fun probeDoesNotTreatUnknownPathAsAnExcludedRoot() {
+        val options = LibraryScanOptions(
+            excludedRelativePaths = setOf("Removable/1d0c-1a0e"),
+        )
+        assertEquals(
+            MediaStoreProbeAction.FetchFull,
+            LibraryScanPolicy.classifyMediaStoreProbeRow(
+                existing = null,
+                relativePath = null,
+                dateModifiedSeconds = 1_700_000_000L,
+                sizeBytes = 1_024L,
+                options = options,
+                rejectedByCache = false,
+            ),
+        )
+    }
+
+    @Test
+    fun probeReusesRejectionCacheAndUnchangedSnapshots() {
+        val options = LibraryScanOptions()
+        assertEquals(
+            MediaStoreProbeAction.SkipRejected,
+            LibraryScanPolicy.classifyMediaStoreProbeRow(
+                existing = null,
+                relativePath = "Music/",
+                dateModifiedSeconds = 1_700_000_000L,
+                sizeBytes = 1_024L,
+                options = options,
+                rejectedByCache = true,
+            ),
+        )
+        assertEquals(
+            MediaStoreProbeAction.RememberSeen,
+            LibraryScanPolicy.classifyMediaStoreProbeRow(
+                existing = fingerprint(),
+                relativePath = "Music/",
+                dateModifiedSeconds = 1_700_000_000L,
+                sizeBytes = 1_024L,
+                options = options,
+                rejectedByCache = false,
+            ),
+        )
+        assertEquals(
+            MediaStoreProbeAction.FetchFull,
+            LibraryScanPolicy.classifyMediaStoreProbeRow(
+                existing = fingerprint(),
+                relativePath = "Music/",
+                dateModifiedSeconds = 1_700_000_001L,
+                sizeBytes = 1_024L,
+                options = options,
+                rejectedByCache = false,
             ),
         )
     }

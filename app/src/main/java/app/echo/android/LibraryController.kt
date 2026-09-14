@@ -454,13 +454,14 @@ internal class LibraryController(
                 lightweight = effectivePerformanceMode.isLightweight,
                 enabled = settingsStore.watchedFolderRescanEnabled(),
             )
+            val globalOptions = settingsStore.libraryScanOptions()
             var watched = pruned
             for (tree in due) {
                 if (playbackOccupiesStorage()) break
                 val uri = runCatching { Uri.parse(tree.uri) }.getOrNull() ?: continue
                 val folder = MediaStoreAudioFolder.fromTreeUri(uri) ?: continue
                 if (folder.treeUri == null) continue
-                scanDocumentTree(folder, tree.scanOptions(), quiet = true)
+                scanDocumentTree(folder, globalOptions, quiet = true)
                 val now = System.currentTimeMillis()
                 watched = LibraryFolderWatchPolicy.markScanned(watched, tree.uri, now)
                 withContext(Dispatchers.IO) { settingsStore.setWatchedLibraryTrees(watched) }

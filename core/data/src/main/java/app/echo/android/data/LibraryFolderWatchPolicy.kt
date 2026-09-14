@@ -8,19 +8,12 @@ data class WatchedLibraryTree(
     val uri: String,
     val documentId: String,
     val lastScanEpochMs: Long = 0L,
+    // Snapshot from the last manual folder scan. Auto-rescan uses current global LibraryScanOptions.
     val minDurationMs: Long = LibraryScanOptions().minDurationMs,
     val minSizeBytes: Long = LibraryScanOptions().minSizeBytes,
     val excludeNonMusicFolders: Boolean = LibraryScanOptions().excludeNonMusicFolders,
     val excludeHiddenFolders: Boolean = LibraryScanOptions().excludeHiddenFolders,
-) {
-    fun scanOptions(): LibraryScanOptions =
-        LibraryScanOptions(
-            minDurationMs = minDurationMs,
-            minSizeBytes = minSizeBytes,
-            excludeNonMusicFolders = excludeNonMusicFolders,
-            excludeHiddenFolders = excludeHiddenFolders,
-        )
-}
+)
 
 object LibraryFolderWatchPolicy {
     const val MaxTrees = 8

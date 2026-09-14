@@ -1,6 +1,7 @@
 package app.echo.android.model.backup
 
 import app.echo.android.model.playback.EchoChannelBalanceState
+import app.echo.android.model.playback.EchoEqualizerUserPreset
 import app.echo.android.model.playback.EchoTrackTransitionOptions
 import app.echo.android.model.playback.OpraEqBand
 
@@ -46,6 +47,9 @@ data class EchoBackupSettings(
     val equalizerParametric: Boolean? = null,
     val equalizerSourceLabel: String? = null,
     val equalizerFilters: List<OpraEqBand>? = null,
+    val equalizerUserPresets: List<EchoEqualizerUserPreset>? = null,
+    val equalizerActiveUserPresetId: String? = null,
+    val opraLastQuery: String? = null,
     val channelBalance: EchoChannelBalanceState? = null,
     val lyricsFontFamily: String? = null,
     val lyricsFontScale: Float? = null,

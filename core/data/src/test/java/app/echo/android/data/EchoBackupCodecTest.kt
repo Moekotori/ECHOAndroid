@@ -6,6 +6,8 @@ import app.echo.android.model.backup.EchoBackupPlaylist
 import app.echo.android.model.backup.EchoBackupSettings
 import app.echo.android.model.backup.EchoBackupTrackRef
 import app.echo.android.model.playback.EchoChannelBalanceState
+import app.echo.android.model.playback.EchoEqualizerPreset
+import app.echo.android.model.playback.EchoEqualizerUserPreset
 import app.echo.android.model.playback.EchoTrackTransitionOptions
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -26,6 +28,17 @@ class EchoBackupCodecTest {
                 equalizerPreset = "custom",
                 equalizerBandGains = listOf(1f, 0f, -1f),
                 equalizerPreampDb = -3f,
+                equalizerUserPresets = listOf(
+                    EchoEqualizerUserPreset(
+                        id = "g1",
+                        name = "Evening",
+                        graphicPresetId = EchoEqualizerPreset.Bass,
+                        gainsDb = listOf(4f, 2.8f, 0.4f, -0.8f, -1.2f),
+                        preampDb = -2.5f,
+                    ),
+                ),
+                equalizerActiveUserPresetId = "g1",
+                opraLastQuery = "HD 650",
                 channelBalance = EchoChannelBalanceState(enabled = true, balance = -0.25f),
                 trackTransitions = EchoTrackTransitionOptions(fadeEnabled = true, fadeDurationMs = 1500),
                 replayGainEnabled = true,
@@ -45,6 +58,9 @@ class EchoBackupCodecTest {
         assertEquals("dark", decoded.settings.themeMode)
         assertEquals(listOf(1f, 0f, -1f), decoded.settings.equalizerBandGains)
         assertEquals(-3f, decoded.settings.equalizerPreampDb)
+        assertEquals("Evening", decoded.settings.equalizerUserPresets?.single()?.name)
+        assertEquals("g1", decoded.settings.equalizerActiveUserPresetId)
+        assertEquals("HD 650", decoded.settings.opraLastQuery)
         assertEquals(-0.25f, decoded.settings.channelBalance?.balance)
         assertEquals("Late night", decoded.playlists.single().name)
         assertEquals("Music/Album/song.flac", decoded.playlists.single().tracks.single().relativePath)
@@ -64,6 +80,16 @@ class EchoBackupCodecTest {
         assertFalse(keys.contains("echoLinkPcToken"))
         assertTrue(keys.contains("themeMode"))
         assertTrue(keys.contains("equalizerEnabled"))
+        assertFalse(keys.contains("equalizerUserPresets"))
+    }
+
+    @Test
+    fun missingUserPresetsStayNull() {
+        val decoded = EchoBackupCodec.decode(
+            JSONObject().put("version", 1).put("settings", JSONObject().put("themeMode", "dark")).toString(),
+        )
+        assertEquals(null, decoded.settings.equalizerUserPresets)
+        assertEquals(null, decoded.settings.opraLastQuery)
     }
 
     @Test

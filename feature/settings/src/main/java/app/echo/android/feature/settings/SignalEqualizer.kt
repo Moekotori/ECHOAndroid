@@ -41,12 +41,18 @@ internal fun SignalEqualizer(
     state: EchoEqualizerState,
     bypassed: Boolean,
     playing: Boolean,
+    userPresets: List<app.echo.android.model.playback.EchoEqualizerUserPreset>,
+    activeUserPresetId: String?,
     onPreampChange: (Float) -> Unit,
     onEnabledChange: (Boolean) -> Unit,
     onPresetSelected: (String) -> Unit,
     onBandGainChange: (Int, Float) -> Unit,
     onReset: () -> Unit,
     onParametricChange: (List<app.echo.android.model.playback.OpraEqBand>) -> Unit,
+    onSaveUserPreset: (String) -> Unit,
+    onApplyUserPreset: (String) -> Unit,
+    onRenameUserPreset: (String, String) -> Unit,
+    onDeleteUserPreset: (String) -> Unit,
 ) {
     var showEditor by remember { mutableStateOf(false) }
     var showFilters by remember(state.filters) { mutableStateOf(false) }
@@ -192,6 +198,23 @@ internal fun SignalEqualizer(
                         Text(stringResource(L10nR.string.eq_apply_headroom))
                     }
                 }
+            }
+        }
+
+        val defaultSaveName = state.sourceLabel?.takeIf { it.isNotBlank() }
+            ?: if (state.parametric) stringResource(L10nR.string.eq_user_preset_parametric) else eqPresetLabel(state.presetId)
+        SignalEqWell(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+                SignalEqUserPresets(
+                    presets = userPresets,
+                    activeId = activeUserPresetId,
+                    defaultSaveName = defaultSaveName,
+                    enabled = true,
+                    onSave = onSaveUserPreset,
+                    onApply = onApplyUserPreset,
+                    onRename = onRenameUserPreset,
+                    onDelete = onDeleteUserPreset,
+                )
             }
         }
     }

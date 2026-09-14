@@ -31,6 +31,14 @@ internal class OpraSearchController(
             selectedEqId = null, previewCurve = emptyList(), message = null) }
     }
 
+    fun restoreQuery(query: String) {
+        val trimmed = query.trim()
+        if (trimmed.isEmpty()) return
+        mutableState.update { current ->
+            if (current.query.isNotBlank()) current else current.copy(query = trimmed)
+        }
+    }
+
     fun search(refresh: Boolean) {
         val query = state.value.query.trim()
         if (query.isBlank() && !refresh) {

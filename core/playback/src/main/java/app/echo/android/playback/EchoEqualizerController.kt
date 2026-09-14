@@ -4,6 +4,8 @@ import androidx.media3.common.util.UnstableApi
 import app.echo.android.model.playback.EchoEqualizerPreset
 import app.echo.android.model.playback.EchoEqualizerPresets
 import app.echo.android.model.playback.EchoEqualizerState
+import app.echo.android.model.playback.EchoEqualizerUserPreset
+import app.echo.android.model.playback.EchoEqualizerUserPresets
 import app.echo.android.model.playback.OpraEqBand
 import app.echo.android.model.playback.OpraHeadphoneCorrectionPreset
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -120,6 +122,19 @@ class EchoEqualizerController {
         desiredGainsDb = EchoEqualizerPresets.gainsForPreset(EchoEqualizerPreset.Flat)
         clearParametric()
         publish()
+    }
+
+    fun applyUserPreset(preset: EchoEqualizerUserPreset): Boolean {
+        val normalized = EchoEqualizerUserPresets.normalize(preset) ?: return false
+        setConfig(
+            enabled = true,
+            presetId = if (normalized.parametric) EchoEqualizerPreset.Custom else normalized.graphicPresetId,
+            gainsDb = normalized.gainsDb,
+            preampDb = normalized.preampDb,
+            filters = if (normalized.parametric) normalized.filters else emptyList(),
+            sourceLabel = normalized.sourceLabel,
+        )
+        return true
     }
 
     fun applyOpraPreset(preset: OpraHeadphoneCorrectionPreset): List<Float> {

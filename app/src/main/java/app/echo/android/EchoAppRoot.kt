@@ -1418,6 +1418,14 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                     onOpraRefresh = { viewModel.searchOpraHeadphoneCorrections(refresh = true) },
                                     onOpraPresetSelected = viewModel::selectOpraPreset,
                                     onOpraApplySelected = viewModel::applySelectedOpraPreset,
+                                    userPresets = appSettings.equalizerUserPresets,
+                                    activeUserPresetId = appSettings.equalizerActiveUserPresetId,
+                                    opraLastQuery = appSettings.opraLastQuery,
+                                    onSaveUserPreset = viewModel::saveCurrentEqualizerPreset,
+                                    onApplyUserPreset = viewModel::applyEqualizerUserPreset,
+                                    onRenameUserPreset = viewModel::renameEqualizerUserPreset,
+                                    onDeleteUserPreset = viewModel::deleteEqualizerUserPreset,
+                                    onToggleOpraFavorite = viewModel::toggleStarredOpraPreset,
                                     bluetoothCodecNeedsPermission = !hasBluetoothConnectPermission &&
                                         playbackStatus.diagnostics.outputDeviceKind == EchoOutputDeviceKind.Bluetooth.id,
                                     onRequestBluetoothCodecPermission = {

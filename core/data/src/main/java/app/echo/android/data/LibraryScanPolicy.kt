@@ -1,5 +1,6 @@
 package app.echo.android.data
 
+import app.echo.android.model.library.LibraryScanOptions
 import app.echo.android.model.library.LibrarySource
 
 data class LibraryScanCompleteness(
@@ -67,6 +68,26 @@ object LibraryScanPolicy {
             (dateModifiedSeconds > 0L || sizeBytes > 0L) &&
             existing.dateModifiedSeconds == dateModifiedSeconds &&
             existing.sizeBytes == sizeBytes
+
+    /**
+     * 增量探针行的下一步:排除目录不拉全列,已入库行仍记为 seen。
+     * 路径未知时不按目录剪枝,避免 RELATIVE_PATH 缺失时把整卷当成排除根。
+     */
+    fun classifyMediaStoreProbeRow(
+        existing: TrackFingerprint?,
+        relativePath: String?,
+        dateModifiedSeconds: Long,
+        sizeBytes: Long,
+        options: LibraryScanOptions,
+        rejectedByCache: Boolean,
+    ): MediaStoreProbeAction {
+        if (!options.includesDirectory(relativePath)) return MediaStoreProbeAction.RememberSeen
+        if (existing == null && rejectedByCache) return MediaStoreProbeAction.SkipRejected
+        if (isMediaStoreRowUnchanged(existing, dateModifiedSeconds, sizeBytes)) {
+            return MediaStoreProbeAction.RememberSeen
+        }
+        return MediaStoreProbeAction.FetchFull
+    }
 
     fun unseenIds(existingIds: Collection<String>, seenIds: Set<String>): List<String> =
         existingIds.distinct().filterNot(seenIds::contains)
@@ -335,6 +356,12 @@ enum class LibraryScanRowAction {
     Insert,
     Update,
     RememberSeen,
+}
+
+enum class MediaStoreProbeAction {
+    FetchFull,
+    RememberSeen,
+    SkipRejected,
 }
 
 /** MediaStore 卷在删除判定里的行范围:只有本次完整扫过的卷才允许删其缺失行。 */

@@ -1,6 +1,7 @@
 package app.echo.android.playback
 
 import app.echo.android.model.playback.EchoEqualizerPreset
+import app.echo.android.model.playback.EchoEqualizerUserPreset
 import app.echo.android.model.playback.OpraEqBand
 import androidx.media3.common.util.UnstableApi
 import org.junit.Assert.*
@@ -28,5 +29,29 @@ class EchoEqualizerControllerTest {
         controller.setPreamp(-7f)
         assertEquals(filters, controller.state.value.filters)
         assertEquals(-7f, controller.state.value.preampDb, 0.001f)
+    }
+
+    @Test fun userPresetKeepsMoreThanTwelveParametricBands() {
+        val controller = EchoEqualizerController()
+        val filters = (1..13).map { index ->
+            OpraEqBand("peak_dip", 80f * index, if (index == 1) 4f else -1f, 1.1f, null)
+        }
+        assertTrue(
+            controller.applyUserPreset(
+                EchoEqualizerUserPreset(
+                    id = "wide",
+                    name = "OPRA",
+                    parametric = true,
+                    preampDb = -6f,
+                    filters = filters,
+                    sourceLabel = "Wide correction",
+                    opraEqId = "eq-wide",
+                ),
+            ),
+        )
+        assertEquals(13, controller.state.value.filters.size)
+        assertEquals(-6f, controller.state.value.preampDb, 0.001f)
+        assertTrue(controller.state.value.enabled)
+        assertEquals("Wide correction", controller.state.value.sourceLabel)
     }
 }
