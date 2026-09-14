@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Call
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -40,20 +41,10 @@ class GithubUpdateRepository(context: Context) {
         if (!manual && elapsed in 0 until TimeUnit.HOURS.toMillis(12)) return@withContext null
         // Persist attempts as well as successes, so offline launches do not repeatedly connect.
         prefs.edit().putLong("checked", now).apply()
-        val releaseText = getText("https://api.github.com/repos/moekotori/echoandroid/releases/latest", true)
+        // The public download endpoint avoids the anonymous API quota shared by an IP.
+        val metadata = getText("https://github.com/moekotori/echoandroid/releases/latest/download/update.json", true)
             ?: return@withContext null
-        val release = JSONObject(releaseText)
-        if (release.optBoolean("draft") || release.optBoolean("prerelease")) return@withContext null
-        val assets = release.getJSONArray("assets")
-        val metadata = (0 until assets.length()).map { assets.getJSONObject(it) }
-            .singleOrNull { it.optString("name") == "update.json" } ?: error("Missing update metadata")
-        val metadataUrl = metadata.getString("browser_download_url")
-        require(isReleaseAssetUrl(metadataUrl))
-        val update = parseUpdate(getText(metadataUrl)!!, release.optString("body"))
-        require((0 until assets.length()).any {
-            val asset = assets.getJSONObject(it)
-            asset.optString("browser_download_url") == update.url && asset.optLong("size") == update.size
-        })
+        val update = parseUpdate(metadata, JSONObject(metadata).optString("releaseNotes"))
         update.takeIf { it.versionCode > currentCode }
     }
 
@@ -109,9 +100,18 @@ class GithubUpdateRepository(context: Context) {
     }
 }
 
-internal fun isReleaseAssetUrl(url: String): Boolean =
-    url.startsWith("https://github.com/moekotori/echoandroid/releases/download/") &&
-        !url.contains("?") && !url.contains("#") && !url.contains("..")
+internal fun isReleaseAssetUrl(url: String): Boolean {
+    val parsed = url.toHttpUrlOrNull() ?: return false
+    val path = parsed.pathSegments
+    return parsed.scheme == "https" && parsed.host == "github.com" && parsed.port == 443 &&
+        parsed.username.isEmpty() && parsed.password.isEmpty() &&
+        parsed.query == null && parsed.fragment == null && !url.contains("..") &&
+        path.size == 6 && path[0].equals("moekotori", ignoreCase = true) &&
+        path[1].equals("echoandroid", ignoreCase = true) &&
+        path[2] == "releases" && path[3] == "download" &&
+        path[4].isNotBlank() && path[5].isNotBlank() &&
+        path.none { it.contains('/') || it.contains('\\') }
+}
 
 internal fun parseUpdate(text: String, notes: String): GithubUpdate {
     val json = JSONObject(text)

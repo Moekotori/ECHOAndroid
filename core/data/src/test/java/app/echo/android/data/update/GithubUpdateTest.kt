@@ -16,6 +16,23 @@ class GithubUpdateTest {
         assertEquals(16000, first.notes.length)
         assertEquals(42, first.size)
     }
+    @Test fun acceptsGithubCanonicalRepositoryCasing() {
+        val url = "https://github.com/Moekotori/ECHOAndroid/releases/download/v26.9.14-r3/ECHOAndroid-26.9.14-release.apk"
+        assertEquals(url, parseUpdate(metadata(url = url), "").url)
+        assertTrue(isReleaseAssetUrl("https://github.com/Moekotori/ECHOAndroid/releases/download/v26.9.14-r3/update.json"))
+    }
+
+    @Test fun rejectsLookalikeHostsCredentialsAndEncodedPathEscapes() {
+        listOf(
+            "https://github.com.evil.test/moekotori/echoandroid/releases/download/v1/ECHO.apk",
+            "https://user@github.com/moekotori/echoandroid/releases/download/v1/ECHO.apk",
+            "https://github.com:8443/moekotori/echoandroid/releases/download/v1/ECHO.apk",
+            "https://github.com/moekotori/echoandroid/releases/download/v1/ECHO.apk?x=1",
+            "https://github.com/moekotori/echoandroid/releases/download/v1/ECHO.apk#fragment",
+            "https://github.com/moekotori/echoandroid/releases/download/v1%2Fother/ECHO.apk",
+        ).forEach { assertFalse(it, isReleaseAssetUrl(it)) }
+    }
+
     @Test fun rejectsForeignRepositoryAndMalformedArtifacts() {
         listOf(
             metadata(url = "https://github.com/moekotori/echosteam/releases/download/v1/ECHO.apk"),
