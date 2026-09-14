@@ -23,7 +23,7 @@ ECHO 使用 Android 原生资源回退，不维护一份全局文案 Map，也�
 
 新语言不需要新 Gradle module。模块划分按功能职责，语言版本由资源 qualifier 划分。允许逐模块补翻译，缺失的条目由 Android 回退到默认英文 `values/`；不要把空字符串当作“尚未翻译”，空值不会触发回退。注册语言前应决定是否接受部分页面英文。
 
-`strings_feature.xml` 中已经迁出的 key 是稳定标识，后面的短后缀只用于避免碰撞；修改文案时保留 key，不要重新生成或按文案改名。已有中英日译文均保留。
+`strings_feature.xml` 中已经迁出的 key 是稳定标识，后面的短后缀只用于避免碰撞；修改文案时保留 key，不要重新生成或按文案改名。已有中英日韩译文均保留。
 
 ## 编写文案
 
@@ -49,11 +49,11 @@ Text(stringResource(R.string.library_loading_count, count))
 - Android 13+：`LocaleManager.applicationLocales` 是实际选择；启动只做一次旧偏好迁移，之后不会拿过期 DataStore 值覆盖用户在系统设置中的选择。
 - Android 8–12：沿用已保存偏好与 Activity Context 包装，切换后由 app 重建 Activity。跟随系统从系统 Resources 读取，不从已被应用修改的 `Locale.getDefault()` 反推系统语言。
 - UI 使用 `stringResource`，随 Context 配置变化刷新。语言资源由 Android 负责匹配与默认回退。
-- 兼容期保留 `echoString` 和非 UI 的 `echoText`。前者已没有业务 UI 调用，新增调用会被检查拒绝；后者仍是中英日旧接口，后台异常/扫描状态等文字尚未全部迁移，不代表这些旧调用已支持新增语言。新代码不再使用三语参数接口。
+- 兼容期保留已废弃的 `echoString` / `echoText`。业务代码应使用模块 string 资源；新增 `echoString(` / `echoText(` 调用会被 `checkLocalization` 拒绝。
 
 ## 检查与边界
 
-`checkLocalization` 无需 Python 或设备，会检查注册表与系统声明一致性、模块内 string key 重复、译文是否有本模块默认值、string 格式参数，以及是否重新引入 UI 内嵌三语调用；输出各已有资源目录的 string 覆盖率。缺译允许回退，不强制伪造翻译。复数/数组由 Android 资源编译校验，当前覆盖率只统计 string。
+`checkLocalization` 无需 Python 或设备，会检查注册表与系统声明一致性、模块内 string/plural key 重复、译文是否有本模块默认值、string 与 plural 格式参数、空译文，以及是否重新引入 `echoString` / `echoText`；输出各语言资源目录的 string 与 plural 覆盖率（忽略 `values-v29` 等非语言 qualifier）。缺译允许回退，不强制伪造翻译。复数资源必须有 `other`。
 
 CI 在原模块检查步骤一起运行该任务，不增加仪器测试。语言切换布局、专业译文质量、RTL 和 Android 12 以下设备仍需按发布范围验收。
 
@@ -61,8 +61,7 @@ CI 在原模块检查步骤一起运行该任务，不增加仪器测试。语�
 
 ### 本次验证
 
-- `checkModules`、`checkLocalization`、`generateEchoLocales`：通过。
-- `:core:data:testDebugUnitTest --tests '*EchoAppLanguageTest'`：6 个用例通过。
-- `:app:assembleDebug`：通过，新 APK 安装成功。
-- API 36 模拟器验证了英语、日语界面及跟随系统；清空应用语言并重启后仍保持跟随系统，没有被旧偏好覆盖。验证后恢复原来的 `zh-CN`。
-- 未覆盖 Android 12 以下真机、RTL、全部长文案布局与后台旧接口的新语言翻译。
+- `checkModules`、`checkLocalization`：通过。
+- 设置分类导航已补 zh/ja；更新文案从 `values-zh-rCN` 收回 `values-zh`。
+- 业务 `echoText` 已迁到所属模块 string 资源。Android 8–12 的 Application/Service 会包装到与应用语言一致的 Context。
+- 未覆盖 Android 12 以下真机、RTL 与全部长文案布局。

@@ -1,5 +1,6 @@
 package app.echo.android.playback
 
+import app.echo.android.usbaudio.UsbExclusiveOutputState
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -59,6 +60,45 @@ class EchoUsbExclusiveApplyPolicyTest {
                 exclusiveEnabled = true,
                 previouslyGranted = false,
                 currentlyGranted = false,
+            ),
+        )
+    }
+
+    @Test
+    fun mixerFallbackOnlyWhenUsbIsMissingOrUnauthorized() {
+        assertTrue(
+            EchoUsbExclusiveApplyPolicy.shouldFallBackToMixer(
+                connected = false,
+                permissionGranted = false,
+                openState = UsbExclusiveOutputState.DeviceUnavailable,
+            ),
+        )
+        assertTrue(
+            EchoUsbExclusiveApplyPolicy.shouldFallBackToMixer(
+                connected = true,
+                permissionGranted = false,
+                openState = UsbExclusiveOutputState.PermissionDenied,
+            ),
+        )
+        assertFalse(
+            EchoUsbExclusiveApplyPolicy.shouldFallBackToMixer(
+                connected = true,
+                permissionGranted = true,
+                openState = UsbExclusiveOutputState.OpenFailed,
+            ),
+        )
+        assertFalse(
+            EchoUsbExclusiveApplyPolicy.shouldFallBackToMixer(
+                connected = true,
+                permissionGranted = true,
+                openState = UsbExclusiveOutputState.FormatUnavailable,
+            ),
+        )
+        assertFalse(
+            EchoUsbExclusiveApplyPolicy.shouldFallBackToMixer(
+                connected = true,
+                permissionGranted = true,
+                openState = UsbExclusiveOutputState.UnsupportedTransport,
             ),
         )
     }

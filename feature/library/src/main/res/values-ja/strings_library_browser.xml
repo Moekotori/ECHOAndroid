@@ -16,4 +16,5 @@
     <string name="library_clear_search">検索をクリア</string>
     <string name="library_track_actions">曲の操作</string>
     <string name="library_playlist_actions">プレイリストの操作</string>
+    <string name="library_track_count">%1$d 曲</string>
 </resources>

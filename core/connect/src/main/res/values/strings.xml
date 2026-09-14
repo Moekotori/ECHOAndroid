@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connect_invalid_pairing">Invalid PC address or pairing token</string>
+    <string name="connect_not_connected">PC ECHO is not connected yet</string>
+    <string name="connect_library_partial">Loaded %1$d of %2$d tracks. Search to narrow the library.</string>
+    <string name="connect_playlist_missing_id">This PC playlist is missing a playlistId and cannot be opened</string>
+    <string name="connect_album_missing_id">This PC album is missing an albumId and cannot be opened</string>
+    <string name="connect_queue_no_ids">This PC queue has no playable track IDs</string>
+    <string name="connect_track_missing_id_handoff">This PC track is missing a trackId and cannot be handed off</string>
+    <string name="connect_no_local_cast_file">There is no local file that can be sent to PC</string>
+    <string name="connect_track_missing_id_remote">This PC track is missing a trackId and cannot be played remotely</string>
+    <string name="connect_stream_unavailable">This track cannot be streamed to the phone right now</string>
+    <string name="connect_cast_unsupported">This PC ECHO build cannot receive a phone stream yet. Update ECHOSteam.</string>
+    <string name="connect_auth_expired">PC authorization expired or was revoked. Pair again.</string>
+    <string name="connect_failed">PC ECHO connection failed</string>
+</resources>

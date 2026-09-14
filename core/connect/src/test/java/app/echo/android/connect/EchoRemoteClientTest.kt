@@ -82,6 +82,62 @@ class EchoRemoteClientTest {
     }
 
     @Test
+    fun freshStreamCacheSkipsASecondTransportCall() = runBlocking {
+        val transport = FakeEchoLinkTransport(
+            streamExpiresAtEpochMs = System.currentTimeMillis() + 60_000L,
+        )
+        val client = EchoRemoteClient(this, transport)
+        client.connect(endpoint, false)
+        delay(20)
+        val first = client.resolvePhoneStreamUrl("track-1")
+        val second = client.resolvePhoneStreamUrl("track-1")
+        assertEquals(first, second)
+        assertEquals(1, transport.streamCalls)
+        client.disconnect()
+    }
+
+    @Test
+    fun missingExpiryDoesNotCacheStreamUrls() = runBlocking {
+        val transport = FakeEchoLinkTransport()
+        val client = EchoRemoteClient(this, transport)
+        client.connect(endpoint, false)
+        delay(20)
+        assertTrue(!client.resolvePhoneStreamUrl("track-1").isNullOrBlank())
+        assertTrue(!client.resolvePhoneStreamUrl("track-1").isNullOrBlank())
+        assertEquals(2, transport.streamCalls)
+        client.disconnect()
+    }
+
+    @Test
+    fun expiredStreamCacheRefetches() = runBlocking {
+        val transport = FakeEchoLinkTransport(streamExpiresAtEpochMs = 1L)
+        val client = EchoRemoteClient(this, transport)
+        client.connect(endpoint, false)
+        delay(20)
+        client.resolvePhoneStreamUrl("track-1")
+        client.resolvePhoneStreamUrl("track-1")
+        assertEquals(2, transport.streamCalls)
+        client.disconnect()
+    }
+
+    @Test
+    fun disconnectClearsStreamCache() = runBlocking {
+        val transport = FakeEchoLinkTransport(
+            streamExpiresAtEpochMs = System.currentTimeMillis() + 60_000L,
+        )
+        val client = EchoRemoteClient(this, transport)
+        client.connect(endpoint, false)
+        delay(20)
+        client.resolvePhoneStreamUrl("track-1")
+        client.disconnect()
+        client.connect(endpoint, false)
+        delay(20)
+        client.resolvePhoneStreamUrl("track-1")
+        assertEquals(2, transport.streamCalls)
+        client.disconnect()
+    }
+
+    @Test
     fun replacingPhonePlaybackCancelsOldStreamRequest() = runBlocking {
         val blocker = CompletableDeferred<Unit>()
         val transport = FakeEchoLinkTransport(streamBlocker = blocker)
@@ -759,7 +815,7 @@ class EchoRemoteClientTest {
         )
         delay(40)
         assertTrue(failed)
-        assertTrue(client.status.value.error.orEmpty().contains("ECHOSteam"))
+        assertTrue(!client.status.value.error.isNullOrBlank())
         assertEquals(EchoRemoteConnectionState.Connected, client.status.value.connectionState)
         client.disconnect()
     }
@@ -784,7 +840,7 @@ class EchoRemoteClientTest {
         )
         delay(20)
         assertEquals(0, transport.streamCalls)
-        assertTrue(client.library.value.error?.contains("stream", ignoreCase = true) == true)
+        assertTrue(!client.library.value.error.isNullOrBlank())
         client.disconnect()
     }
 
@@ -864,6 +920,7 @@ private class FakeEchoLinkTransport(
     private val streamBlocker: CompletableDeferred<Unit>? = null,
     private val failStream: Boolean = false,
     private val failedStreamIds: Set<String> = emptySet(),
+    private val streamExpiresAtEpochMs: Long? = null,
     private val failAlbums: Boolean = false,
     private val albums: List<EchoRemoteAlbum> = emptyList(),
     private val failAlbumTrackIds: Set<String> = emptySet(),
@@ -1057,7 +1114,11 @@ private class FakeEchoLinkTransport(
         if (failStream || trackId in failedStreamIds) {
             throw EchoLinkHttpException("PC ECHO request failed (503): stream_unavailable")
         }
-        return EchoLinkStreamResponse(streamUrl = "http://192.168.1.20:26789/echo-link/media/token", track = null)
+        return EchoLinkStreamResponse(
+            streamUrl = "http://192.168.1.20:26789/echo-link/media/token-$streamCalls",
+            track = null,
+            expiresAtEpochMs = streamExpiresAtEpochMs,
+        )
     }
 
     override suspend fun fetchLyrics(endpoint: EchoRemoteEndpoint, trackId: String): EchoRemoteLyrics? = null

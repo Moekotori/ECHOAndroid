@@ -35,6 +35,7 @@ internal class EchoPlaybackLibrarySessionCallback(
 
     fun currentButtons(player: Player? = this.player()) =
         echoPlaybackCommandButtons(
+            context = context,
             favorite = currentFavorite,
             repeatMode = player?.repeatMode ?: Player.REPEAT_MODE_OFF,
         )

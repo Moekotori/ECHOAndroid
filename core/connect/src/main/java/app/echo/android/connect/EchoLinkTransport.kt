@@ -62,6 +62,7 @@ internal data class EchoLinkFolderPage(
 internal data class EchoLinkStreamResponse(
     val streamUrl: String,
     val track: EchoRemoteTrack?,
+    val expiresAtEpochMs: Long? = null,
 )
 
 internal interface EchoLinkTransport {
@@ -342,13 +343,7 @@ internal class OkHttpEchoLinkTransport(
                 .post(JSONObject().put("target", "phone").toString().toRequestBody(JsonMediaType))
                 .build(),
         )
-        val streamUrl = json.optText("streamUrl")
-            ?: json.optText("url")
-            ?: throw EchoLinkHttpException("PC ECHO did not return a stream URL")
-        return EchoLinkStreamResponse(
-            streamUrl = streamUrl,
-            track = json.optJSONObject("track")?.toRemoteTrack(endpoint),
-        )
+        return json.toStreamResponse(endpoint)
     }
 
     override suspend fun fetchLyrics(
@@ -394,7 +389,7 @@ internal class OkHttpEchoLinkTransport(
                     response.use {
                         val body = it.body?.string().orEmpty()
                         if (!it.isSuccessful) {
-                            throw EchoLinkHttpException("PC ECHO request failed (${it.code}): ${body.take(180).ifBlank { it.message }}", it.code)
+                            throw EchoLinkHttpException(echoLinkErrorUserMessage(it.code, body), it.code)
                         }
                         body
                     }
@@ -441,6 +436,26 @@ private fun JSONObject.toStatusResponse(endpoint: EchoRemoteEndpoint): EchoLinkS
         deviceName = device?.optText("name") ?: optText("deviceName"),
         playback = playbackJson.toPlaybackSnapshot(endpoint),
     )
+}
+
+internal fun JSONObject.toStreamResponse(endpoint: EchoRemoteEndpoint): EchoLinkStreamResponse {
+    val streamUrl = optText("streamUrl")
+        ?: optText("url")
+        ?: throw EchoLinkHttpException("PC ECHO did not return a stream URL")
+    return EchoLinkStreamResponse(
+        streamUrl = streamUrl,
+        track = optJSONObject("track")?.toRemoteTrack(endpoint),
+        expiresAtEpochMs = optLong("expiresAtEpochMs").takeIf { it > 0L },
+    )
+}
+
+internal fun echoLinkErrorUserMessage(statusCode: Int, body: String): String {
+    val parsed = body.trim().takeIf { it.startsWith("{") }?.let { json ->
+        runCatching { JSONObject(json) }.getOrNull()
+    }
+    val message = parsed?.optText("message") ?: parsed?.optText("error")
+    if (!message.isNullOrBlank()) return message
+    return "PC ECHO request failed ($statusCode): ${body.take(180).ifBlank { "error" }}"
 }
 
 internal fun JSONObject.toRemoteTrack(endpoint: EchoRemoteEndpoint): EchoRemoteTrack? {

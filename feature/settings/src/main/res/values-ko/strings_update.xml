@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_check">업데이트 확인</string>
+    <string name="update_source">열 때 GitHub Releases를 12시간마다 자동 확인합니다</string>
+    <string name="update_title">ECHO 업데이트</string>
+    <string name="update_error">업데이트를 완료하지 못했습니다. 연결, 설치 권한, APK 서명 호환성을 확인한 뒤 다시 시도하세요.</string>
+    <string name="update_downloading">업데이트를 다운로드하는 중…</string>
+    <string name="update_checking">GitHub를 확인하는 중…</string>
+    <string name="update_ready">다운로드를 확인했습니다. 시스템 설치를 계속하세요.</string>
+    <string name="update_available">새 버전이 있습니다</string>
+    <string name="update_current">더 새로운 버전이 없습니다</string>
+    <string name="update_install">설치</string>
+    <string name="update_download">다운로드</string>
+    <string name="update_later">나중에</string>
+    <string name="update_version_current">현재 버전: %1$s</string>
+    <string name="update_package_size">다운로드 크기: %1$s</string>
+    <string name="update_error_check">GitHub를 확인하지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.</string>
+    <string name="update_error_download">다운로드가 중단되었습니다. 연결과 저장공간을 확인한 뒤 다시 시도하세요.</string>
+    <string name="update_error_verification">이 APK는 검증에 실패했거나 서명이 호환되지 않습니다. 현재 앱을 유지하고 배포자에게 문의하세요.</string>
+    <string name="update_error_permission">시스템 설정에서 ECHO의 앱 설치를 허용한 뒤 설치를 다시 누르세요.</string>
+    <string name="update_error_install">설치 프로그램을 열지 못했습니다. 설치를 눌러 다시 시도하세요.</string>
+    <string name="update_verifying">패키지를 확인하는 중…</string>
+    <string name="update_install_hint">다운로드에는 승인이 필요합니다. Android가 설치 확인을 요청합니다.</string>
+    <string name="update_percent">%1$d%%</string>
+    <string name="update_cancel_download">다운로드 취소</string>
+    <string name="update_notes">새로운 내용</string>
+    <string name="update_retry">다시 시도</string>
+    <string name="update_done">완료</string>
+    <string name="update_hide_download">다운로드 숨기기</string>
+</resources>

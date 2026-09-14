@@ -14,12 +14,14 @@ object EchoAppLanguage {
     const val Chinese = "zh"
     const val English = "en"
     const val Japanese = "ja"
+    const val Korean = "ko"
 
     // Add supported languages here; checkLocalization verifies the Android locale declaration.
     val supported: List<EchoLanguage> = listOf(
         EchoLanguage("zh", "zh-CN", "简体中文"),
         EchoLanguage("en", "en", "English"),
         EchoLanguage("ja", "ja", "日本語"),
+        EchoLanguage("ko", "ko", "한국어"),
     )
 
     fun fromId(value: String?): String {

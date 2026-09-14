@@ -1,12 +1,13 @@
 package app.echo.android.library
 
+import android.content.Context
 import app.echo.android.data.EchoLibraryDatabase
 import app.echo.android.data.LibraryFavoriteEntity
 import app.echo.android.data.LibraryFavoritePolicy
 import app.echo.android.data.LibraryFavoriteSnapshot
 import app.echo.android.data.LibrarySmartPlaylistPolicy
 import app.echo.android.data.LibraryTrackEntity
-import app.echo.android.model.i18n.echoText
+import app.echo.android.feature.library.R as LibraryR
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.library.EchoPlaylist
@@ -23,6 +24,7 @@ import kotlinx.coroutines.withContext
 
 class EchoLibraryPlaybackCatalog(
     private val database: EchoLibraryDatabase,
+    private val context: Context,
 ) : EchoPlaybackCatalog {
     override suspend fun root(): EchoPlaybackBrowseItem = categoryItem(
         mediaId = EchoPlaybackLibraryIds.ROOT,
@@ -45,7 +47,7 @@ class EchoLibraryPlaybackCatalog(
             EchoPlaybackLibraryIds.ALBUMS ->
                 database.trackDao().listAlbumsForBrowse(limit, offset).map { it.toBrowseItem() }
             EchoPlaybackLibraryIds.ARTISTS ->
-                database.trackDao().listArtistsForBrowse(limit, offset).map { it.toBrowseItem() }
+                database.trackDao().listArtistsForBrowse(limit, offset).map { it.toBrowseItem(context) }
             EchoPlaybackLibraryIds.PLAYLISTS -> playlistBrowsePage(limit, offset)
             EchoPlaybackLibraryIds.FAVORITES ->
                 database.playlistDao().listFavoriteTracksForBrowse(limit, offset).map { it.toBrowseItem() }
@@ -89,7 +91,7 @@ class EchoLibraryPlaybackCatalog(
                     return@withContext database.trackDao().getAlbumSummary(key)?.toBrowseItem()
                 }
                 EchoPlaybackLibraryIds.artistKey(mediaId)?.let { key ->
-                    return@withContext database.trackDao().getArtistSummary(key)?.toBrowseItem()
+                    return@withContext database.trackDao().getArtistSummary(key)?.toBrowseItem(context)
                 }
                 EchoPlaybackLibraryIds.playlistId(mediaId)?.let { id ->
                     virtualPlaylistItem(id)?.let { return@withContext it }
@@ -97,11 +99,7 @@ class EchoLibraryPlaybackCatalog(
                     return@withContext EchoPlaybackBrowseItem(
                         mediaId = EchoPlaybackLibraryIds.playlist(playlist.id),
                         title = playlist.name,
-                        subtitle = echoText(
-                            en = "${playlist.trackCount} tracks",
-                            zh = "${playlist.trackCount} 首",
-                            ja = "${playlist.trackCount} 曲",
-                        ),
+                        subtitle = playlistCountSubtitle(playlist.trackCount),
                         artworkUri = playlist.artworkUri,
                         browsable = true,
                         playable = playlist.trackCount > 0,
@@ -126,7 +124,7 @@ class EchoLibraryPlaybackCatalog(
         val combined = buildList {
             addAll(dao.searchTracks(trimmed, perType).map { it.toBrowseItem() })
             addAll(dao.searchAlbums(trimmed, perType).map { it.toBrowseItem() })
-            addAll(dao.searchArtists(trimmed, perType).map { it.toBrowseItem() })
+            addAll(dao.searchArtists(trimmed, perType).map { it.toBrowseItem(context) })
         }
         val from = offset.coerceAtMost(combined.size)
         combined.subList(from, (from + limit).coerceAtMost(combined.size))
@@ -238,7 +236,7 @@ class EchoLibraryPlaybackCatalog(
         val favoriteArt = database.playlistDao().observeFavoriteAlbums(1).first().firstOrNull()?.artworkUri
         val liked = EchoPlaybackBrowseItem(
             mediaId = EchoPlaybackLibraryIds.playlist(EchoPlaylist.LikedSongsId),
-            title = echoText(en = "Liked songs", zh = "喜欢的歌曲", ja = "好きな曲"),
+            title = context.getString(LibraryR.string.feature_library_liked_songs_8d6245),
             subtitle = playlistCountSubtitle(favoriteCount),
             artworkUri = favoriteArt,
             browsable = true,
@@ -295,41 +293,41 @@ class EchoLibraryPlaybackCatalog(
     }
 
     private fun smartPlaylistTitle(kind: LibrarySmartPlaylistKind?): String = when (kind) {
-        LibrarySmartPlaylistKind.Recent -> echoText(en = "Recently played", zh = "最近在听", ja = "最近再生した曲")
-        LibrarySmartPlaylistKind.Frequent -> echoText(en = "Most played", zh = "常听", ja = "よく聴く曲")
-        LibrarySmartPlaylistKind.Never -> echoText(en = "Never played", zh = "从未播放", ja = "未再生")
-        LibrarySmartPlaylistKind.Added -> echoText(en = "Recently added", zh = "最近加入", ja = "最近追加")
+        LibrarySmartPlaylistKind.Recent -> context.getString(LibraryR.string.feature_library_smart_recent)
+        LibrarySmartPlaylistKind.Frequent -> context.getString(LibraryR.string.feature_library_smart_frequent)
+        LibrarySmartPlaylistKind.Never -> context.getString(LibraryR.string.feature_library_smart_never)
+        LibrarySmartPlaylistKind.Added -> context.getString(LibraryR.string.feature_library_smart_added)
         null -> ""
     }
 
     private fun playlistCountSubtitle(count: Int): String =
-        echoText(en = "$count tracks", zh = "${count} 首", ja = "${count} 曲")
+        context.getString(LibraryR.string.library_track_count, count)
 
     private fun rootChildren(): List<EchoPlaybackBrowseItem> = listOf(
         categoryItem(
             mediaId = EchoPlaybackLibraryIds.ALBUMS,
-            title = echoText(en = "Albums", zh = "专辑", ja = "アルバム"),
+            title = context.getString(LibraryR.string.feature_library_albums_e68c2b),
             kind = EchoPlaybackBrowseKind.Albums,
         ),
         categoryItem(
             mediaId = EchoPlaybackLibraryIds.ARTISTS,
-            title = echoText(en = "Artists", zh = "艺术家", ja = "アーティスト"),
+            title = context.getString(LibraryR.string.feature_library_artists_1e19fb),
             kind = EchoPlaybackBrowseKind.Artists,
         ),
         categoryItem(
             mediaId = EchoPlaybackLibraryIds.PLAYLISTS,
-            title = echoText(en = "Playlists", zh = "播放列表", ja = "プレイリスト"),
+            title = context.getString(LibraryR.string.feature_library_playlists_56bf76),
             kind = EchoPlaybackBrowseKind.Playlists,
         ),
         categoryItem(
             mediaId = EchoPlaybackLibraryIds.FAVORITES,
-            title = echoText(en = "Favorites", zh = "喜欢", ja = "お気に入り"),
+            title = context.getString(LibraryR.string.feature_library_liked_c8ac9d),
             kind = EchoPlaybackBrowseKind.Favorites,
             playable = true,
         ),
         categoryItem(
             mediaId = EchoPlaybackLibraryIds.TRACKS,
-            title = echoText(en = "Songs", zh = "歌曲", ja = "曲"),
+            title = context.getString(LibraryR.string.feature_library_songs_107b60),
             kind = EchoPlaybackBrowseKind.Tracks,
             playable = true,
         ),
@@ -375,15 +373,11 @@ private fun AlbumSummary.toBrowseItem(): EchoPlaybackBrowseItem =
         kind = EchoPlaybackBrowseKind.Album,
     )
 
-private fun ArtistSummary.toBrowseItem(): EchoPlaybackBrowseItem =
+private fun ArtistSummary.toBrowseItem(context: Context): EchoPlaybackBrowseItem =
     EchoPlaybackBrowseItem(
         mediaId = EchoPlaybackLibraryIds.artist(artistKey),
         title = name,
-        subtitle = echoText(
-            en = "$trackCount tracks",
-            zh = "$trackCount 首",
-            ja = "$trackCount 曲",
-        ),
+        subtitle = context.getString(LibraryR.string.library_track_count, trackCount),
         artworkUri = artworkUri,
         browsable = true,
         playable = trackCount > 0,

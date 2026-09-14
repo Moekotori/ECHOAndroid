@@ -28,7 +28,7 @@ data class EchoStartupThemeSnapshot(
 }
 
 fun Context.readEchoStartupThemeSnapshot(): EchoStartupThemeSnapshot {
-    val preferences = applicationContext.getSharedPreferences(
+    val preferences = getSharedPreferences(
         StartupThemePreferencesName,
         Context.MODE_PRIVATE,
     )

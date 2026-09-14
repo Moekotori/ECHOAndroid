@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playback_command_favorite">お気に入り</string>
+    <string name="playback_command_unfavorite">お気に入り解除</string>
+    <string name="playback_command_repeat_all">全曲リピート</string>
+    <string name="playback_command_repeat_one">1曲リピート</string>
+    <string name="playback_command_repeat_off">リピートオフ</string>
+    <string name="playback_command_lyrics">歌詞</string>
+</resources>

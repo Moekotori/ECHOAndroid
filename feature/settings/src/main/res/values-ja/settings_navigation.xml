@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_category_appearance">外観</string>
+    <string name="settings_category_interface">インターフェースと言語</string>
+    <string name="settings_category_playback">再生と歌詞</string>
+    <string name="settings_category_services">接続とサービス</string>
+    <string name="settings_category_appearance_detail">テーマ、背景、フォントを調整して、ECHO を自分向けにします。</string>
+    <string name="settings_category_interface_detail">言語、レイアウト、パフォーマンスの設定。</string>
+    <string name="settings_category_playback_detail">曲間、歌詞、USB 出力の設定。</string>
+    <string name="settings_category_services_detail">パソコンと再生履歴サービスを接続します。</string>
+    <string name="settings_category_library_detail">ローカル楽曲とライブラリの表示を管理します。</string>
+    <string name="settings_category_about_detail">アプリのバージョンとエラーログ。</string>
+    <string name="settings_home_detail">少しの調整で、自分の ECHO に。</string>
+    <string name="settings_back">設定に戻る</string>
+    <string name="settings_group_personal">パーソナライズ</string>
+    <string name="settings_group_music">音楽と接続</string>
+    <string name="settings_group_app">アプリ</string>
+    <string name="settings_library_summary">%1$d 曲 · %2$d アルバム · %3$d アーティスト</string>
+</resources>

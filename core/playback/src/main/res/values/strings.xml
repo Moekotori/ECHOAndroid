@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playback_command_favorite">Favorite</string>
+    <string name="playback_command_unfavorite">Remove favorite</string>
+    <string name="playback_command_repeat_all">Repeat all</string>
+    <string name="playback_command_repeat_one">Repeat one</string>
+    <string name="playback_command_repeat_off">Repeat off</string>
+    <string name="playback_command_lyrics">Lyrics</string>
+</resources>

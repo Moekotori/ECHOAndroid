@@ -1,7 +1,9 @@
 package app.echo.android.tile
 
 import android.content.ComponentName
+import android.content.Context
 import android.os.Build
+import app.echo.android.i18n.wrapEchoAppLocaleToMatchApplication
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import androidx.core.content.ContextCompat
@@ -18,6 +20,10 @@ import app.echo.android.widget.EchoPlaybackRemote
 @UnstableApi
 class EchoPlaybackTileService : TileService() {
     private var controller: MediaController? = null
+
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(base.wrapEchoAppLocaleToMatchApplication())
+    }
     private var controllerFuture: com.google.common.util.concurrent.ListenableFuture<MediaController>? = null
 
     private val playerListener = object : Player.Listener {

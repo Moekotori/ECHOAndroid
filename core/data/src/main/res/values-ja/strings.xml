@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_scan_partial">スキャンは一部完了しました。読み取れないストレージがあります。既存の曲は保持しました。確認して再試行してください。</string>
+    <string name="library_scan_partial_count">スキャンは一部完了：%1$d 件の読み取りに失敗しました。既存の曲は保持しました。ストレージを確認して再試行してください。</string>
+    <string name="library_scan_failed">ライブラリのスキャンに失敗しました</string>
+    <string name="library_remote_reading_index">リモートライブラリの索引を読み込み中</string>
+    <string name="library_remote_connecting_subsonic">Navidrome/Subsonic に接続中</string>
+    <string name="library_remote_found_albums">リモートアルバム %1$d 枚を検出</string>
+    <string name="library_remote_read_tracks">リモート曲 %1$d 曲を一括読み込み済み</string>
+    <string name="library_remote_skipped_albums">変更のないアルバム %1$d 枚をスキップ</string>
+    <string name="library_remote_sync_failed">リモートライブラリの同期に失敗しました</string>
+    <string name="library_webdav_reading_index">WebDAV 索引を読み込み中</string>
+    <string name="library_webdav_scanning">WebDAV フォルダーをスキャン中</string>
+    <string name="library_webdav_sync_failed">WebDAV ライブラリの同期に失敗しました</string>
+    <string name="library_jellyfin_connecting">Jellyfin / Emby に接続中</string>
+    <string name="library_jellyfin_sync_failed">Jellyfin / Emby ライブラリの同期に失敗しました</string>
+    <string name="subsonic_unreachable">Navidrome/Subsonic サーバーに接続できません。</string>
+    <string name="subsonic_certificate">この HTTPS 証明書は信頼されていません。システムが信頼する証明書を使うか、LAN では HTTP で接続してください。</string>
+    <string name="subsonic_timeout">Navidrome/Subsonic サーバーがタイムアウトしました。</string>
+    <string name="subsonic_unknown_host">サーバーアドレスを解決できません。URL とネットワークを確認してください。</string>
+    <string name="subsonic_connection_refused">サーバーが接続を拒否しました。アドレスと Navidrome の起動を確認してください。</string>
+    <string name="subsonic_cleartext_blocked">このアドレスでは HTTP（非 HTTPS）が許可されていません。</string>
+    <string name="subsonic_http_status">サーバーが HTTP %1$d を返しました。</string>
+    <string name="subsonic_response_too_large">サーバーの応答が大きすぎて読み取れません。</string>
+    <string name="subsonic_invalid_json">サーバーが解析できないデータを返しました。</string>
+    <string name="subsonic_incompatible">Subsonic 互換の応答ではありません。サーバー URL を確認してください。</string>
+    <string name="subsonic_request_failed">Subsonic の認証またはリクエストに失敗しました。</string>
+</resources>

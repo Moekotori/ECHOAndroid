@@ -114,9 +114,22 @@ internal fun EchoLibraryPage(
         }
     }
 
+    val savedRadioStations by viewModel.radioController.stations.collectAsStateWithLifecycle()
+    val radioLoadFailed by viewModel.radioController.loadFailed.collectAsStateWithLifecycle()
+    val radioStations by produceState(savedRadioStations, savedRadioStations, libraryQuery) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            savedRadioStations.filter { it.name.contains(libraryQuery.trim(), ignoreCase = true) }
+        }
+    }
     val application = androidx.compose.ui.platform.LocalContext.current.applicationContext as app.echo.android.EchoApplication
     app.echo.android.feature.library.AlbumOnlineInfoProvider(application.albumOnlineInfo) {
         LibraryScreen(
+            radioStations = radioStations,
+            radioLoadFailed = radioLoadFailed,
+            onRetryRadio = viewModel.radioController::reload,
+            onPlayRadio = { viewModel.play(it.toTrack()) },
+            onSaveRadio = viewModel.radioController::save,
+            onDeleteRadio = viewModel.radioController::delete,
             hasPermission = hasAudioPermission,
             scanState = scanState,
             libraryQuery = libraryQuery,

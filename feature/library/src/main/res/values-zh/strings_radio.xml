@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="radio_title">电台</string>
+    <string name="radio_hint">保存电台后，点按即可收听。</string>
+    <string name="radio_add">添加电台</string>
+    <string name="radio_edit">编辑电台</string>
+    <string name="radio_delete">删除电台</string>
+    <string name="radio_play">播放电台</string>
+    <string name="radio_empty">暂无电台，请添加电台或清空搜索。</string>
+    <string name="radio_name">电台名称</string>
+    <string name="radio_url">播放地址</string>
+    <string name="radio_url_hint">输入 HTTP/HTTPS 音频直链或 HLS（.m3u8），不是电台网页。</string>
+    <string name="radio_save">保存</string>
+    <string name="radio_cancel">取消</string>
+    <string name="radio_retry">重试</string>
+    <string name="radio_load_error">无法读取已保存的电台，请重试。</string>
+    <string name="radio_save_error">保存失败，请检查地址是否重复、电台是否达到 500 个上限或存储是否异常。</string>
+    <string name="radio_write_error">无法保存更改，请重试。</string>
+    <string name="radio_delete_prompt">从电台列表删除“%1$s”？</string>
+    <string name="radio_search">搜索电台</string>
+</resources>

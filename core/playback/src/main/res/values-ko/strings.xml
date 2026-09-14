@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playback_command_favorite">좋아요</string>
+    <string name="playback_command_unfavorite">좋아요 해제</string>
+    <string name="playback_command_repeat_all">전체 반복</string>
+    <string name="playback_command_repeat_one">한 곡 반복</string>
+    <string name="playback_command_repeat_off">반복 끄기</string>
+    <string name="playback_command_lyrics">가사</string>
+</resources>

@@ -1,5 +1,7 @@
 package app.echo.android
 
+import app.echo.android.model.radio.EchoRadioStation
+
 import android.app.Application
 import android.content.ComponentName
 import androidx.core.content.ContextCompat
@@ -424,6 +426,7 @@ internal class PlaybackController(
 
     fun seekTo(positionMs: Long) {
         withController {
+            if (EchoRadioStation.isRadio(currentMediaItem?.mediaId)) return@withController
             val recover = PlaybackSessionPolicy.shouldPrepareBeforePlay(
                 hasPlayerError = playerError != null,
                 playbackStateIdle = playbackState == Player.STATE_IDLE,
@@ -1093,14 +1096,14 @@ internal class PlaybackController(
             mediaController.setMediaItems(
                 restoredQueue.map { it.toMediaItem() },
                 session.currentIndex,
-                session.positionMs,
+                if (EchoRadioStation.isRadio(restoredQueue[session.currentIndex].id)) androidx.media3.common.C.TIME_UNSET else session.positionMs,
             )
             mediaController.shuffleModeEnabled = session.shuffleEnabled
             mediaController.repeatMode = session.repeatMode.toPlayerRepeatMode()
             mediaController.setPlaybackParameters(
                 PlaybackParameters(session.playbackSpeed, session.playbackPitch),
             )
-            val queueUris = listOf(restoredQueue[session.currentIndex].uri)
+            val queueUris = restoredQueue[session.currentIndex].let { if (EchoRadioStation.isRadio(it.id)) emptyList() else listOf(it.uri) }
             val unresolvedEchoLink = queueHasUnresolvedEchoLinkUris(queueUris)
             val requiresWebDavAuth = queueRequiresWebDavAuth(queueUris)
             val webDavAuthReady = EchoRemotePlaybackAuthRegistry.isWebDavAuthReadyForUris(queueUris)
@@ -1169,7 +1172,7 @@ internal class PlaybackController(
             playbackSpeed = mediaController.playbackParameters.speed,
             playbackPitch = mediaController.playbackParameters.pitch,
         )
-        val positionMs = mediaController.currentPosition.coerceAtLeast(0L)
+        val positionMs = if (EchoRadioStation.isRadio(mediaController.currentMediaItem?.mediaId)) 0L else mediaController.currentPosition.coerceAtLeast(0L)
         val positionBucket = positionMs / PERSIST_POSITION_BUCKET_MS
         if (
             PlaybackSessionPolicy.shouldSkipUnchangedSessionPersist(
@@ -1266,8 +1269,9 @@ internal class PlaybackController(
 
     private fun currentQueueUris(): List<String> {
         val mediaController = controller ?: return emptyList()
-        return (0 until mediaController.mediaItemCount).map { index ->
-            mediaController.getMediaItemAt(index).localConfiguration?.uri?.toString().orEmpty()
+        return (0 until mediaController.mediaItemCount).mapNotNull { index ->
+            mediaController.getMediaItemAt(index).takeUnless { EchoRadioStation.isRadio(it.mediaId) }
+                ?.localConfiguration?.uri?.toString()
         }
     }
 

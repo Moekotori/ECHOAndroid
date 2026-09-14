@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_scan_partial">스캔이 일부만 완료되었습니다. 일부 저장소를 끝까지 읽지 못했고, 기존 곡은 유지했습니다. 저장소를 확인한 뒤 다시 시도하세요.</string>
+    <string name="library_scan_partial_count">스캔이 일부만 완료되었습니다. 파일 또는 폴더 %1$d개를 읽지 못했습니다. 기존 곡은 유지했습니다. 저장소를 확인한 뒤 다시 시도하세요.</string>
+    <string name="library_scan_failed">라이브러리 스캔에 실패했습니다</string>
+    <string name="library_remote_reading_index">원격 라이브러리 색인을 읽는 중</string>
+    <string name="library_remote_connecting_subsonic">Navidrome/Subsonic에 연결 중</string>
+    <string name="library_remote_found_albums">원격 앨범 %1$d장을 찾았습니다</string>
+    <string name="library_remote_read_tracks">원격 곡 %1$d곡을 일괄 읽었습니다</string>
+    <string name="library_remote_skipped_albums">변경되지 않은 앨범 %1$d장을 건너뛰었습니다</string>
+    <string name="library_remote_sync_failed">원격 라이브러리 동기화에 실패했습니다</string>
+    <string name="library_webdav_reading_index">WebDAV 색인을 읽는 중</string>
+    <string name="library_webdav_scanning">WebDAV 폴더를 스캔하는 중</string>
+    <string name="library_webdav_sync_failed">WebDAV 라이브러리 동기화에 실패했습니다</string>
+    <string name="library_jellyfin_connecting">Jellyfin / Emby에 연결 중</string>
+    <string name="library_jellyfin_sync_failed">Jellyfin / Emby 라이브러리 동기화에 실패했습니다</string>
+    <string name="subsonic_unreachable">Navidrome/Subsonic 서버에 연결할 수 없습니다.</string>
+    <string name="subsonic_certificate">이 HTTPS 인증서를 신뢰할 수 없습니다. 시스템이 신뢰하는 인증서를 쓰거나 LAN에서는 HTTP로 연결하세요.</string>
+    <string name="subsonic_timeout">Navidrome/Subsonic 서버가 시간 초과되었습니다.</string>
+    <string name="subsonic_unknown_host">서버 주소를 확인할 수 없습니다. URL과 네트워크를 확인하세요.</string>
+    <string name="subsonic_connection_refused">서버가 연결을 거부했습니다. 주소와 Navidrome 실행 여부를 확인하세요.</string>
+    <string name="subsonic_cleartext_blocked">이 주소에서는 HTTP(비 HTTPS)가 차단되어 있습니다.</string>
+    <string name="subsonic_http_status">서버가 HTTP %1$d을(를) 반환했습니다.</string>
+    <string name="subsonic_response_too_large">서버 응답이 너무 커서 읽을 수 없습니다.</string>
+    <string name="subsonic_invalid_json">서버가 올바른 JSON이 아닌 데이터를 반환했습니다.</string>
+    <string name="subsonic_incompatible">Subsonic 호환 응답이 아닙니다. 서버 URL을 확인하세요.</string>
+    <string name="subsonic_request_failed">Subsonic 인증 또는 요청에 실패했습니다.</string>
+</resources>

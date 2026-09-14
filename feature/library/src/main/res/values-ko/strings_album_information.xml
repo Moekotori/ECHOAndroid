@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="album_information_title">앨범 정보</string>
+    <string name="album_information_artist">앨범 아티스트</string>
+    <string name="album_information_year">발매 연도</string>
+    <string name="album_information_duration">총 길이</string>
+    <string name="album_information_added">라이브러리에 추가됨</string>
+    <string name="album_information_discs">디스크</string>
+    <string name="album_information_track_artists">트랙 아티스트</string>
+    <string name="album_information_audio">오디오 정보</string>
+    <string name="album_information_partial">불러온 %2$d곡 중 %1$d곡 기준</string>
+    <string name="album_information_sample_rate">샘플 레이트</string>
+    <string name="album_information_size">총 파일 크기</string>
+    <string name="album_information_known_size">확인된 파일 크기</string>
+    <string name="album_information_missing_specs">일부 파일에 샘플 레이트 또는 크기 메타데이터가 없습니다.</string>
+    <string name="album_information_file_specs">파일 메타데이터이며, 재생 출력과 다를 수 있습니다.</string>
+</resources>

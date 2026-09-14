@@ -1,18 +1,20 @@
 package app.echo.android.lyrics
 
 import android.content.ContentResolver
+import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import app.echo.android.data.LibraryTrackEntity
-import app.echo.android.model.i18n.echoText
+import app.echo.android.R
 import app.echo.android.model.lyrics.EchoLyrics
 import java.io.File
 
 class LocalLyricsResolver(
-    private val contentResolver: ContentResolver,
+    private val context: Context,
 ) {
+    private val contentResolver: ContentResolver = context.contentResolver
     fun loadForTrack(track: LibraryTrackEntity): EchoLyrics? {
         val candidates = buildCandidateNames(track)
         return loadEmbeddedLyrics(track.contentUri)
@@ -30,33 +32,17 @@ class LocalLyricsResolver(
     fun importFromUri(uri: Uri): EchoLyrics {
         val sourceLabel = displayName(uri) ?: uri.lastPathSegment
         val text = readText(uri)
-            ?: throw IllegalArgumentException(
-                echoText(
-                    en = "Could not read the lyrics file. Check permissions or encoding",
-                    zh = "无法读取歌词文件，请确认文件权限或编码",
-                    ja = "歌詞ファイルを読み込めません。権限または文字コードを確認してください",
-                ),
-            )
+            ?: throw IllegalArgumentException(context.getString(R.string.lyrics_read_failed))
         val lyrics = runCatching { EchoLyricsParser.parse(text, sourceLabel = sourceLabel) }
             .getOrElse { error ->
                 throw IllegalArgumentException(
-                    echoText(
-                        en = "Lyrics parsing failed: ${error.readableMessage()}",
-                        zh = "歌词解析失败：${error.readableMessage()}",
-                        ja = "歌詞の解析に失敗しました：${error.readableMessage()}",
-                    ),
+                    context.getString(R.string.lyrics_parse_failed, error.readableMessage()),
                     error,
                 )
             }
         return lyrics
             .takeIf { it.lines.isNotEmpty() }
-            ?: throw IllegalArgumentException(
-                echoText(
-                    en = "The lyrics file is empty or is not a supported text lyrics format",
-                    zh = "歌词文件为空，或不是支持的文本歌词格式",
-                    ja = "歌詞ファイルが空か、対応していないテキスト歌詞形式です",
-                ),
-            )
+            ?: throw IllegalArgumentException(context.getString(R.string.lyrics_file_empty))
     }
 
     private fun loadFromFileUri(contentUri: String, candidates: List<String>): EchoLyrics? {
@@ -155,11 +141,7 @@ class LocalLyricsResolver(
             root.message?.takeIf { it.isNotBlank() }
                 ?: root.javaClass.simpleName.takeIf { it.isNotBlank() }
         }
-            ?: echoText(
-                en = "Unknown error",
-                zh = "未知错误",
-                ja = "不明なエラー",
-            )
+            ?: context.getString(R.string.unknown_error)
 
     private tailrec fun Throwable.rootCause(): Throwable =
         cause?.takeIf { it !== this }?.rootCause() ?: this

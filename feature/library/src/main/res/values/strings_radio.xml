@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="radio_title">Radio</string>
+    <string name="radio_hint">Save a station, then tap it to listen.</string>
+    <string name="radio_add">Add station</string>
+    <string name="radio_edit">Edit station</string>
+    <string name="radio_delete">Delete station</string>
+    <string name="radio_play">Play station</string>
+    <string name="radio_empty">No stations to show. Add a station or clear your search.</string>
+    <string name="radio_name">Station name</string>
+    <string name="radio_url">Stream URL</string>
+    <string name="radio_url_hint">HTTP/HTTPS audio stream or HLS (.m3u8), not a webpage.</string>
+    <string name="radio_save">Save</string>
+    <string name="radio_cancel">Cancel</string>
+    <string name="radio_retry">Retry</string>
+    <string name="radio_load_error">Could not load saved stations. Please retry.</string>
+    <string name="radio_save_error">Could not save. Check for a duplicate URL, the 500-station limit, or a storage error.</string>
+    <string name="radio_write_error">Could not save the change. Please retry.</string>
+    <string name="radio_delete_prompt">Delete “%1$s” from your stations?</string>
+    <string name="radio_search">Search stations</string>
+</resources>

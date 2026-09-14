@@ -2,11 +2,15 @@ package app.echo.android
 
 import android.app.Application
 import android.content.ComponentCallbacks2
+import android.content.Context
 import androidx.media3.common.util.UnstableApi
 import app.echo.android.data.EchoErrorCrashFile
 import app.echo.android.data.EchoErrorLogRepository
 import app.echo.android.data.EchoLibraryDatabase
 import app.echo.android.data.EchoSettingsStore
+import app.echo.android.data.readEchoStartupThemeSnapshot
+import app.echo.android.i18n.initializeEchoAppLocale
+import app.echo.android.i18n.wrapEchoAppLocale
 import app.echo.android.model.error.EchoErrorLog
 import app.echo.android.model.error.EchoErrorProcessInfo
 import app.echo.android.design.EchoArtworkImageLoader
@@ -29,8 +33,13 @@ class EchoApplication : Application(), ImageLoaderFactory {
     }
     val echoLinkSession by lazy { EchoLinkSession(this) }
 
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(base.wrapEchoAppLocale(base.readEchoStartupThemeSnapshot().appLanguage))
+    }
+
     override fun onCreate() {
         super.onCreate()
+        initializeEchoAppLocale(readEchoStartupThemeSnapshot().appLanguage)
         EchoErrorLog.setProcessInfo(
             EchoErrorProcessInfo("${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"),
         )
@@ -48,7 +57,7 @@ class EchoApplication : Application(), ImageLoaderFactory {
             )
         }
         EchoPlaybackProcessRuntime.setCatalog(
-            EchoLibraryPlaybackCatalog(EchoLibraryDatabase.create(this)),
+            EchoLibraryPlaybackCatalog(EchoLibraryDatabase.create(this), this),
         )
         val settingsStore = EchoSettingsStore(this)
         bindPlaybackDspSettings(settingsStore)

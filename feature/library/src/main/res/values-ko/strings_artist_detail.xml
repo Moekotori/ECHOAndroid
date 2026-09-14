@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="artist_search_tracks">곡 또는 앨범 검색</string>
+    <string name="artist_sort_album">앨범 순서</string>
+    <string name="artist_sort_title">제목</string>
+    <string name="artist_sort_duration">길이</string>
+    <string name="artist_albums">앨범</string>
+    <string name="artist_no_albums">라이브러리에 아직 앨범이 없습니다</string>
+    <string name="artist_no_matches">일치하는 곡이 없습니다</string>
+    <string name="artist_load_failed">이 콘텐츠를 불러올 수 없습니다</string>
+    <string name="artist_retry">다시 시도</string>
+    <string name="artist_total_time">라이브러리 %1$d시간 %2$d분</string>
+    <string name="artist_total_minutes">라이브러리 %1$d분</string>
+    <string name="artist_tracks">수록곡</string>
+    <string name="artist_clear_search">검색 지우기</string>
+    <plurals name="artist_album_count">
+        <item quantity="one">앨범 %1$d장</item>
+        <item quantity="other">앨범 %1$d장</item>
+    </plurals>
+    <plurals name="artist_track_count">
+        <item quantity="one">%1$d곡</item>
+        <item quantity="other">%1$d곡</item>
+    </plurals>
+</resources>

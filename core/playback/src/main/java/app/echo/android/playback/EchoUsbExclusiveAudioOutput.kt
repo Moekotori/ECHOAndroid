@@ -50,6 +50,7 @@ internal class EchoUsbExclusiveAudioOutput(
 
     override fun play() {
         playing = true
+        if (!session.openResult.isReady) return
         session.setKeepAlive(false)
         runCatching { drainPending() }
         EchoPlaybackProcessRuntime.setUsbExclusiveSinkStatus(
@@ -69,7 +70,7 @@ internal class EchoUsbExclusiveAudioOutput(
     }
 
     override fun write(buffer: ByteBuffer, encodedAccessUnitCount: Int, presentationTimeUs: Long): Boolean {
-        if (released) {
+        if (released || !session.openResult.isReady) {
             throw AudioOutput.WriteException(-1, false)
         }
         val frameBytes = UsbPcmPacker.sourceBytesPerFrame(sourceEncoding, channelCount)

@@ -48,7 +48,6 @@ import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.TextButton
-import app.echo.android.model.i18n.echoText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -2221,7 +2220,7 @@ private fun LyricsLineList(
                     val wordHighlightEnabled = lyricsWordHighlightEnabled &&
                         !LocalEchoEffectivePerformanceMode.current.isLightweight
                     if (line.speaker != null || line.isBackground) {
-                        Text(text = if (line.isBackground) echoText("Backing vocals", "和声", "コーラス") else line.speaker.orEmpty(),
+                        Text(text = if (line.isBackground) stringResource(L10nR.string.lyrics_backing_vocals) else line.speaker.orEmpty(),
                             color = lyricAccent.copy(alpha = 0.6f), style = MaterialTheme.typography.labelSmall)
                     }
                     KaraokeLyricText(
@@ -2293,21 +2292,21 @@ private fun LyricsLineList(
                 val seconds by remember(timeline) { derivedStateOf {
                     timeline.nextStart(positionMsState.value)?.let { ((it - positionMsState.value + 999) / 1000).coerceAtLeast(0) }
                 } }
-                seconds?.let { Text(echoText("Vocals in ${it}s", "距下一句 ${it} 秒", "次の歌詞まで ${it} 秒"), color = lyricAccent) }
+                seconds?.let { Text(stringResource(L10nR.string.lyrics_vocals_in, it), color = lyricAccent) }
             }
             if (!following && synced) {
                 TextButton(
                     onClick = { following = true; calibrationIndex = null },
                     colors = ButtonDefaults.textButtonColors(containerColor = Color.Black),
                 ) {
-                    Text(echoText("Back to current line", "回到当前句", "現在の歌詞に戻る"), color = lyricAccent)
+                    Text(stringResource(L10nR.string.lyrics_back_to_current), color = lyricAccent)
                 }
             }
             calibrationIndex?.let { index ->
                 TextButton(onClick = {
                     onAdjustOffset(positionMsState.value - lyrics.lines[index].startMs)
                     calibrationIndex = null; following = true
-                }) { Text(echoText("This line starts now", "这句现在开始", "この行を今に合わせる"), color = lyricAccent) }
+                }) { Text(stringResource(L10nR.string.lyrics_line_starts_now), color = lyricAccent) }
             }
         }
     }
@@ -2754,6 +2753,10 @@ private fun NowPlayingScrubber(
     durationMsState: State<Long>,
     onSeek: (Long) -> Unit,
 ) {
+    if (app.echo.android.model.radio.EchoRadioStation.isRadio(trackKey)) {
+        RadioPlaybackProgress()
+        return
+    }
     // 进度 State 只在此叶子读取,tick 只重组 scrubber 本身
     val positionMs = positionMsState.value
     val durationMs = durationMsState.value

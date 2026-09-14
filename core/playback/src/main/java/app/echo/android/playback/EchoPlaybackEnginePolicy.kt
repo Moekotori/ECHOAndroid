@@ -52,6 +52,7 @@ class EchoPlaybackEnginePolicy(
     private val echoLinkRefreshAttempts = mutableMapOf<String, Int>()
     private val echoLinkRefreshAttemptAtMs = mutableMapOf<String, Long>()
     private val echoLinkRefreshInFlight = mutableSetOf<String>()
+    private var echoLinkPrefetchJob: Job? = null
 
     fun attachTo(player: Player) {
         if (attachedPlayer === player) return
@@ -84,6 +85,8 @@ class EchoPlaybackEnginePolicy(
         attachedPlayer = null
         usbTransitionJob?.cancel()
         usbMuteInProgress = false
+        echoLinkPrefetchJob?.cancel()
+        echoLinkPrefetchJob = null
         cancelReplayGainJobs()
     }
 
@@ -93,6 +96,8 @@ class EchoPlaybackEnginePolicy(
         replayGainTagsByMediaId.clear()
         cancelReplayGainJobs()
         subsonicTranscodeFallbackAttempts.clear()
+        echoLinkPrefetchJob?.cancel()
+        echoLinkPrefetchJob = null
         resetEchoLinkStreamRefresh()
         tracks.forEach(::mergeQueueLookups)
     }
@@ -225,6 +230,7 @@ class EchoPlaybackEnginePolicy(
         loadReplayGainForTrack(mediaId)
         loadReplayGainForTrack(nextReplayGainPrefetchId(mediaId, nextMediaId()))
         applyReplayGain()
+        attachedPlayer?.let(::prefetchNextEchoLinkStream)
     }
 
     override fun onEvents(player: Player, events: Player.Events) {
@@ -238,6 +244,7 @@ class EchoPlaybackEnginePolicy(
         ) {
             consecutiveErrorSkips = 0
             player.currentMediaItem?.mediaId?.takeIf { it.isNotBlank() }?.let(::resetEchoLinkStreamRefresh)
+            prefetchNextEchoLinkStream(player)
         }
         if (
             events.containsAny(
@@ -376,6 +383,26 @@ class EchoPlaybackEnginePolicy(
         val index = player.nextMediaItemIndex
         if (index == C.INDEX_UNSET || index < 0 || index >= player.mediaItemCount) return null
         return player.getMediaItemAt(index).mediaId.takeIf { it.isNotBlank() }
+    }
+
+    private fun prefetchNextEchoLinkStream(player: Player) {
+        val index = player.nextMediaItemIndex
+        if (index == C.INDEX_UNSET || index < 0 || index >= player.mediaItemCount) return
+        val item = player.getMediaItemAt(index)
+        val uri = item.localConfiguration?.uri?.toString().orEmpty()
+        if (
+            !EchoLinkStreamRefreshPolicy.shouldPrefetchNext(
+                nextMediaId = item.mediaId,
+                nextUri = uri,
+                currentMediaId = player.currentMediaItem?.mediaId,
+            )
+        ) {
+            return
+        }
+        echoLinkPrefetchJob?.cancel()
+        echoLinkPrefetchJob = EchoPlaybackProcessRuntime.scope.launch {
+            runCatching { EchoPlaybackProcessRuntime.resolvePlayUri(item.mediaId, uri) }
+        }
     }
 
     private fun cancelReplayGainJobs() {

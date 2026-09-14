@@ -1,6 +1,7 @@
 package app.echo.android.data
 
-
+import android.content.Context
+import androidx.annotation.StringRes
 import androidx.room.withTransaction
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
@@ -8,7 +9,6 @@ import androidx.paging.PagingData
 import androidx.sqlite.db.SimpleSQLiteQuery
 import app.echo.android.model.error.EchoErrorLog
 import app.echo.android.model.error.EchoErrorSource
-import app.echo.android.model.i18n.echoText
 import app.echo.android.model.library.AlbumSortMode
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSortMode
@@ -50,7 +50,10 @@ class EchoLibraryRepository(
     private val scanner: MediaStoreTrackScanner,
     private val documentTreeScanner: DocumentTreeTrackScanner,
     private val tagWriter: EmbeddedTagWriter? = null,
+    private val appContext: Context,
 ) {
+    private fun text(@StringRes id: Int, vararg args: Any): String =
+        if (args.isEmpty()) appContext.getString(id) else appContext.getString(id, *args)
     private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     init {
@@ -1053,11 +1056,7 @@ class EchoLibraryRepository(
             }
             emitProgress(
                 phase = if (scanOutcome.querySucceeded) LibraryScanPhase.Completed else LibraryScanPhase.Error,
-                error = if (scanOutcome.querySucceeded) null else echoText(
-                    en = "Scan partially completed. Some storage volumes could not be fully read; existing songs were kept. Check the storage and retry.",
-                    zh = "扫描部分完成：部分存储卷未能完整读取，已保留原有曲目。请检查存储设备后重试。",
-                    ja = "スキャンは一部完了しました。読み取れないストレージがあります。既存の曲は保持しました。確認して再試行してください。",
-                ),
+                error = if (scanOutcome.querySucceeded) null else text(R.string.library_scan_partial),
                 currentTitle = null,
                 deletedCount = deletion.deletedCount,
                 isCompleted = true,
@@ -1073,11 +1072,7 @@ class EchoLibraryRepository(
             emitProgress(
                 phase = LibraryScanPhase.Error,
                 currentTitle = null,
-                error = error.message ?: echoText(
-                    en = "Library scan failed",
-                    zh = "曲库扫描失败",
-                    ja = "ライブラリのスキャンに失敗しました",
-                ),
+                error = error.message ?: text(R.string.library_scan_failed),
                 isCompleted = true,
             )
         } finally {
@@ -1251,10 +1246,9 @@ class EchoLibraryRepository(
             }
             emitProgress(
                 phase = if (scanOutcome.querySucceeded) LibraryScanPhase.Completed else LibraryScanPhase.Error,
-                error = if (scanOutcome.querySucceeded) null else echoText(
-                    en = "Scan partially completed: ${scanOutcome.failedReadCount} files or folders could not be read. Existing songs were kept; check the storage and retry.",
-                    zh = "扫描部分完成：${scanOutcome.failedReadCount} 个文件或目录读取失败。已保留原有曲目，请检查存储设备后重试。",
-                    ja = "スキャンは一部完了：${scanOutcome.failedReadCount} 件の読み取りに失敗しました。既存の曲は保持しました。ストレージを確認して再試行してください。",
+                error = if (scanOutcome.querySucceeded) null else text(
+                    R.string.library_scan_partial_count,
+                    scanOutcome.failedReadCount,
                 ),
                 currentTitle = null,
                 isCompleted = true,
@@ -1282,7 +1276,7 @@ class EchoLibraryRepository(
         endpoint: SubsonicEndpoint,
         batchSize: Int = SCAN_BATCH_SIZE,
     ): Flow<LibraryScanProgress> = flow {
-        val client = SubsonicClient(endpoint)
+        val client = SubsonicClient(endpoint, appContext = appContext)
         val dao = database.trackDao()
         val source = endpoint.sourceId
         val scanRunId = System.currentTimeMillis()
@@ -1320,11 +1314,7 @@ class EchoLibraryRepository(
 
             emitProgress(
                 phase = LibraryScanPhase.Diffing,
-                currentTitle = echoText(
-                    en = "Reading the remote library index",
-                    zh = "读取远程曲库索引",
-                    ja = "リモートライブラリの索引を読み込み中",
-                ),
+                currentTitle = text(R.string.library_remote_reading_index),
             )
             val existingFingerprints = dao.getExistingMediaStoreFingerprints(source)
                 .associateBy(TrackFingerprint::id)
@@ -1333,11 +1323,7 @@ class EchoLibraryRepository(
 
             emitProgress(
                 phase = LibraryScanPhase.QueryingMediaStore,
-                currentTitle = echoText(
-                    en = "Connecting to Navidrome/Subsonic",
-                    zh = "连接 Navidrome/Subsonic",
-                    ja = "Navidrome/Subsonic に接続中",
-                ),
+                currentTitle = text(R.string.library_remote_connecting_subsonic),
             )
             withContext(LibraryScanDispatchers.Remote) {
                 client.ping()
@@ -1359,11 +1345,7 @@ class EchoLibraryRepository(
             totalCount = expectedSongCount.takeIf { it > 0 } ?: albums.size
             emitProgress(
                 phase = LibraryScanPhase.QueryingMediaStore,
-                currentTitle = echoText(
-                    en = "Found ${albums.size} remote albums",
-                    zh = "发现 ${albums.size} 张远程专辑",
-                    ja = "リモートアルバム ${albums.size} 枚を検出",
-                ),
+                currentTitle = text(R.string.library_remote_found_albums, albums.size),
             )
 
             val pending = ArrayList<LibraryTrackEntity>(batchSize)
@@ -1395,11 +1377,7 @@ class EchoLibraryRepository(
             if (usedSearch3) {
                 emitProgress(
                     phase = LibraryScanPhase.QueryingMediaStore,
-                    currentTitle = echoText(
-                        en = "Read ${bulkSongs.size} remote tracks in bulk",
-                        zh = "已批量读取 ${bulkSongs.size} 首远程歌曲",
-                        ja = "リモート曲 ${bulkSongs.size} 曲を一括読み込み済み",
-                    ),
+                    currentTitle = text(R.string.library_remote_read_tracks, bulkSongs.size),
                 )
                 ingestSongs(bulkSongs, title = "search3")
             } else {
@@ -1417,11 +1395,7 @@ class EchoLibraryRepository(
                     scannedCount += fallbackPlan.skippedTrackCount
                     emitProgress(
                         phase = LibraryScanPhase.QueryingMediaStore,
-                        currentTitle = echoText(
-                            en = "Skipped ${fallbackPlan.skippedAlbumCount} unchanged albums",
-                            zh = "已跳过 ${fallbackPlan.skippedAlbumCount} 张未变专辑",
-                            ja = "変更のないアルバム ${fallbackPlan.skippedAlbumCount} 枚をスキップ",
-                        ),
+                        currentTitle = text(R.string.library_remote_skipped_albums, fallbackPlan.skippedAlbumCount),
                     )
                 }
                 for (chunk in fallbackPlan.albumsToFetch.chunked(SubsonicSyncPolicy.AlbumFetchConcurrency)) {
@@ -1491,11 +1465,7 @@ class EchoLibraryRepository(
             emitProgress(
                 phase = LibraryScanPhase.Error,
                 currentTitle = null,
-                error = error.message ?: echoText(
-                    en = "Remote library sync failed",
-                    zh = "远程曲库同步失败",
-                    ja = "リモートライブラリの同期に失敗しました",
-                ),
+                error = error.message ?: text(R.string.library_remote_sync_failed),
                 isCompleted = true,
             )
         }
@@ -1543,11 +1513,7 @@ class EchoLibraryRepository(
             coroutineContext.ensureActive()
             emitProgress(
                 phase = LibraryScanPhase.Diffing,
-                currentTitle = echoText(
-                    en = "Reading the WebDAV index",
-                    zh = "读取 WebDAV 索引",
-                    ja = "WebDAV 索引を読み込み中",
-                ),
+                currentTitle = text(R.string.library_webdav_reading_index),
             )
             val existingFingerprints = dao.getExistingMediaStoreFingerprints(source)
                 .associateBy(TrackFingerprint::id)
@@ -1556,11 +1522,7 @@ class EchoLibraryRepository(
 
             emitProgress(
                 phase = LibraryScanPhase.QueryingMediaStore,
-                currentTitle = echoText(
-                    en = "Scanning WebDAV folders",
-                    zh = "扫描 WebDAV 目录",
-                    ja = "WebDAV フォルダーをスキャン中",
-                ),
+                currentTitle = text(R.string.library_webdav_scanning),
             )
             val visit = client.scanAudioFiles { file ->
                 coroutineContext.ensureActive()
@@ -1622,11 +1584,7 @@ class EchoLibraryRepository(
             emitProgress(
                 phase = LibraryScanPhase.Error,
                 currentTitle = null,
-                error = error.message ?: echoText(
-                    en = "WebDAV library sync failed",
-                    zh = "WebDAV 曲库同步失败",
-                    ja = "WebDAV ライブラリの同期に失敗しました",
-                ),
+                error = error.message ?: text(R.string.library_webdav_sync_failed),
                 isCompleted = true,
             )
         }
@@ -1685,11 +1643,7 @@ class EchoLibraryRepository(
             val seenIds = HashSet<String>(existingFingerprints.size)
             emitProgress(
                 phase = LibraryScanPhase.QueryingMediaStore,
-                currentTitle = echoText(
-                    en = "Connecting to Jellyfin / Emby",
-                    zh = "连接 Jellyfin / Emby",
-                    ja = "Jellyfin / Emby に接続中",
-                ),
+                currentTitle = text(R.string.library_jellyfin_connecting),
             )
             val session = withContext(LibraryScanDispatchers.Remote) {
                 if (endpoint.password.isNotBlank()) {
@@ -1767,11 +1721,7 @@ class EchoLibraryRepository(
             emitProgress(
                 phase = LibraryScanPhase.Error,
                 currentTitle = null,
-                error = error.message ?: echoText(
-                    en = "Jellyfin / Emby library sync failed",
-                    zh = "Jellyfin / Emby 曲库同步失败",
-                    ja = "Jellyfin / Emby ライブラリの同期に失敗しました",
-                ),
+                error = error.message ?: text(R.string.library_jellyfin_sync_failed),
                 isCompleted = true,
             )
         }

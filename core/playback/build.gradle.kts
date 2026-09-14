@@ -70,6 +70,7 @@ tasks.configureEach {
 }
 
 dependencies {
+    implementation(project(":core:i18n"))
     implementation(project(":core:model"))
     implementation(project(":core:usb-audio"))
 
@@ -78,6 +79,7 @@ dependencies {
     implementation(libs.androidx.media3.decoder)
     implementation(libs.androidx.media3.datasource)
     implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.exoplayer.hls)
     implementation(libs.androidx.media3.session)
     implementation(libs.kotlinx.coroutines.android)
     compileOnly("org.checkerframework:checker-qual:3.49.5")

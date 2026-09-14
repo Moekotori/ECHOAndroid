@@ -1,6 +1,7 @@
 package app.echo.android
 
 import app.echo.android.i18n.refreshEchoAppLocale
+import androidx.compose.ui.res.stringResource
 
 import app.echo.android.model.library.LibraryScanOptions
 import app.echo.android.model.playback.EchoOutputDeviceKind
@@ -1151,14 +1152,18 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 lastFmApiKey = lastFmApiKey,
                                 lastFmSharedSecret = lastFmSharedSecret,
                                 lastFmSessionKey = appSettings.lastFmSessionKey,
-                                lastFmStatusLabel = lastFmState.lastMessage,
+                                lastFmStatusLabel = lastFmState.lastMessageArg?.let {
+                                    stringResource(lastFmState.lastMessageRes, it)
+                                } ?: stringResource(lastFmState.lastMessageRes),
                                 lastFmErrorLabel = lastFmState.lastError,
                                 lastFmWebAuthPending = lastFmState.webAuthPending,
                                 lastFmApiKeyLocked = LastFmApiConfig.HAS_API_KEY,
                                 lastFmSharedSecretLocked = LastFmApiConfig.HAS_SHARED_SECRET,
                                 listenBrainzEnabled = appSettings.listenBrainzEnabled,
                                 listenBrainzToken = appSettings.listenBrainzToken,
-                                listenBrainzStatusLabel = listenBrainzState.lastMessage,
+                                listenBrainzStatusLabel = listenBrainzState.lastMessageArg?.let {
+                                    stringResource(listenBrainzState.lastMessageRes, it)
+                                } ?: stringResource(listenBrainzState.lastMessageRes),
                                 listenBrainzErrorLabel = listenBrainzState.lastError,
                                 onDynamicArtworkEnabledChange = viewModel::setDynamicArtworkEnabled,
                                 onCompactModeEnabledChange = viewModel::setCompactModeEnabled,

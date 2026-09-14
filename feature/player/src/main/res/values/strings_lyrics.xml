@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_manager_title">Lyrics · %1$s</string>
+    <string name="lyrics_manager_hint">Choose a result to preview. Selected lyrics are saved offline.</string>
+    <string name="lyrics_manager_search">Search / refresh online</string>
+    <string name="lyrics_manager_import">Import lyrics file</string>
+    <string name="lyrics_manager_clear">Clear selection and use automatic lyrics</string>
+    <string name="lyrics_manager_align_hint">Long-press a lyric line to align it to the current position.</string>
+    <string name="lyrics_manager_empty">No candidates available. Check the connection or import a file.</string>
+    <string name="lyrics_manager_word_timed">Word timed</string>
+    <string name="lyrics_manager_saved">Saved and selected</string>
+    <string name="lyrics_manager_use">Use and save offline</string>
+    <string name="lyrics_manager_done">Done</string>
+    <string name="lyrics_backing_vocals">Backing vocals</string>
+    <string name="lyrics_vocals_in">Vocals in %1$d s</string>
+    <string name="lyrics_back_to_current">Back to current line</string>
+    <string name="lyrics_line_starts_now">This line starts now</string>
+</resources>

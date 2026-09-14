@@ -1,84 +1,84 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Module-owned translations. English values are the fallback for missing translations. -->
 <resources>
-    <string name="feature_library_add_to_playlist_0f8338" formatted="false">"プレイリストに追加"</string>
-    <string name="feature_library_add_to_queue_1775d3" formatted="false">"キューに追加"</string>
-    <string name="feature_library_added_155093" formatted="false">"追加"</string>
-    <string name="feature_library_album_724bef" formatted="false">"アルバム"</string>
-    <string name="feature_library_album_artist_6defa0" formatted="false">"アルバムアーティスト"</string>
-    <string name="feature_library_album_artist_8a1c9e" formatted="false">"アルバムアーティスト"</string>
-    <string name="feature_library_album_eb13be" formatted="false">"アルバム"</string>
-    <string name="feature_library_albums_e68c2b" formatted="false">"アルバム"</string>
-    <string name="feature_library_allow_30c6b5" formatted="false">"許可"</string>
-    <string name="feature_library_allow_music_access_a30185" formatted="false">"音楽へのアクセスを許可"</string>
-    <string name="feature_library_artist_37d883" formatted="false">"アーティスト"</string>
-    <string name="feature_library_artist_b6e7ad" formatted="false">"アーティスト"</string>
-    <string name="feature_library_artist_c15fae" formatted="false">"アーティスト"</string>
-    <string name="feature_library_artists_1e19fb" formatted="false">"アーティスト"</string>
-    <string name="feature_library_genres_8c2a11" formatted="false">"ジャンル"</string>
-    <string name="feature_library_loading_genres_4e91aa" formatted="false">"ジャンルを読み込み中"</string>
-    <string name="feature_library_failed_to_load_genres_b7c102" formatted="false">"ジャンルを読み込めません"</string>
-    <string name="feature_library_this_library_has_no_genres_to_show_yet_11a90e" formatted="false">"表示できるジャンルがありません"</string>
-    <string name="feature_library_artists_e168aa" formatted="false">"アーティスト"</string>
-    <string name="feature_library_back_49093c" formatted="false">"戻る"</string>
-    <string name="feature_library_back_to_pc_echo_playlists_499312" formatted="false">"PC ECHO のプレイリストに戻る"</string>
-    <string name="feature_library_best_after_copying_in_new_music_updates_only_a75783" formatted="false">"新しくコピーした音楽向け。選択したフォルダーだけ更新します"</string>
-    <string name="feature_library_cancel_4c5fa5" formatted="false">"キャンセル"</string>
-    <string name="feature_library_cancel_library_scan_4033b9" formatted="false">"ライブラリのスキャンをキャンセル"</string>
-    <string name="feature_library_cancel_scan_dcb52d" formatted="false">"スキャンをキャンセル"</string>
-    <string name="feature_library_change_artwork_d37180" formatted="false">"カバーを変更"</string>
-    <string name="feature_library_choose_the_indexing_range_for_this_scan_58c0af" formatted="false">"今回の索引範囲を選択"</string>
-    <string name="feature_library_cleaning_removed_music_40b12d" formatted="false">"削除された音楽を整理中"</string>
-    <string name="feature_library_close_473a69" formatted="false">"閉じる"</string>
-    <string name="feature_library_close_search_50a720" formatted="false">"検索を閉じる"</string>
-    <string name="feature_library_cloud_466e60" formatted="false">"クラウド"</string>
-    <string name="feature_library_comparing_library_90f3c1" formatted="false">"ライブラリを照合中"</string>
-    <string name="feature_library_connect_pc_echo_in_link_first_then_you_31fc3e" formatted="false">"先に「連携」で PC ECHO を接続すると、ここで PC ライブラリを閲覧できます。"</string>
+    <string name="feature_library_add_to_playlist_0f8338">"プレイリストに追加"</string>
+    <string name="feature_library_add_to_queue_1775d3">"キューに追加"</string>
+    <string name="feature_library_added_155093">"追加"</string>
+    <string name="feature_library_album_724bef">"アルバム"</string>
+    <string name="feature_library_album_artist_6defa0">"アルバムアーティスト"</string>
+    <string name="feature_library_album_artist_8a1c9e">"アルバムアーティスト"</string>
+    <string name="feature_library_album_eb13be">"アルバム"</string>
+    <string name="feature_library_albums_e68c2b">"アルバム"</string>
+    <string name="feature_library_allow_30c6b5">"許可"</string>
+    <string name="feature_library_allow_music_access_a30185">"音楽へのアクセスを許可"</string>
+    <string name="feature_library_artist_37d883">"アーティスト"</string>
+    <string name="feature_library_artist_b6e7ad">"アーティスト"</string>
+    <string name="feature_library_artist_c15fae">"アーティスト"</string>
+    <string name="feature_library_artists_1e19fb">"アーティスト"</string>
+    <string name="feature_library_genres_8c2a11">"ジャンル"</string>
+    <string name="feature_library_loading_genres_4e91aa">"ジャンルを読み込み中"</string>
+    <string name="feature_library_failed_to_load_genres_b7c102">"ジャンルを読み込めません"</string>
+    <string name="feature_library_this_library_has_no_genres_to_show_yet_11a90e">"表示できるジャンルがありません"</string>
+    <string name="feature_library_artists_e168aa">"アーティスト"</string>
+    <string name="feature_library_back_49093c">"戻る"</string>
+    <string name="feature_library_back_to_pc_echo_playlists_499312">"PC ECHO のプレイリストに戻る"</string>
+    <string name="feature_library_best_after_copying_in_new_music_updates_only_a75783">"新しくコピーした音楽向け。選択したフォルダーだけ更新します"</string>
+    <string name="feature_library_cancel_4c5fa5">"キャンセル"</string>
+    <string name="feature_library_cancel_library_scan_4033b9">"ライブラリのスキャンをキャンセル"</string>
+    <string name="feature_library_cancel_scan_dcb52d">"スキャンをキャンセル"</string>
+    <string name="feature_library_change_artwork_d37180">"カバーを変更"</string>
+    <string name="feature_library_choose_the_indexing_range_for_this_scan_58c0af">"今回の索引範囲を選択"</string>
+    <string name="feature_library_cleaning_removed_music_40b12d">"削除された音楽を整理中"</string>
+    <string name="feature_library_close_473a69">"閉じる"</string>
+    <string name="feature_library_close_search_50a720">"検索を閉じる"</string>
+    <string name="feature_library_cloud_466e60">"クラウド"</string>
+    <string name="feature_library_comparing_library_90f3c1">"ライブラリを照合中"</string>
+    <string name="feature_library_connect_pc_echo_in_link_first_then_you_31fc3e">"先に「連携」で PC ECHO を接続すると、ここで PC ライブラリを閲覧できます。"</string>
     <string name="feature_library_count_albums_554048">"アルバム %1$s 枚"</string>
     <string name="feature_library_count_tracks_73b21a">"%1$s 曲"</string>
     <string name="feature_library_count_tracks_liked_songs_e36fb7">"%1$s 曲 · お気に入り"</string>
     <string name="feature_library_count_tracks_local_playlist_352a0d">"%1$s 曲 · ローカルプレイリスト"</string>
     <string name="feature_library_count_tracks_navidrome_294a65">"%1$s 曲 · Navidrome"</string>
-    <string name="feature_library_create_7b4bc9" formatted="false">"作成"</string>
-    <string name="feature_library_currently_saved_only_to_the_echoandroid_library_index_6c327c" formatted="false">"Android が書き込みを許可すれば、MP3 / FLAC / WAV タグを音声ファイルに書き込みます。できない場合は ECHOAndroid のライブラリ索引にだけ保存します。"</string>
-    <string name="feature_library_currently_saved_to_the_echoandroid_library_index_imported_e15a70" formatted="false">"Android が書き込みを許可すれば、MP3 / FLAC / WAV タグと、インポートした歌詞・カバーを音声ファイルに書き込みます。"</string>
-    <string name="feature_library_custom_artwork_c8c999" formatted="false">"カスタムカバー"</string>
-    <string name="feature_library_delete_138ccf" formatted="false">"削除"</string>
-    <string name="feature_library_delete_playlist_4d9753" formatted="false">"プレイリストを削除"</string>
+    <string name="feature_library_create_7b4bc9">"作成"</string>
+    <string name="feature_library_currently_saved_only_to_the_echoandroid_library_index_6c327c">"Android が書き込みを許可すれば、MP3 / FLAC / WAV タグを音声ファイルに書き込みます。できない場合は ECHOAndroid のライブラリ索引にだけ保存します。"</string>
+    <string name="feature_library_currently_saved_to_the_echoandroid_library_index_imported_e15a70">"Android が書き込みを許可すれば、MP3 / FLAC / WAV タグと、インポートした歌詞・カバーを音声ファイルに書き込みます。"</string>
+    <string name="feature_library_custom_artwork_c8c999">"カスタムカバー"</string>
+    <string name="feature_library_delete_138ccf">"削除"</string>
+    <string name="feature_library_delete_playlist_4d9753">"プレイリストを削除"</string>
     <string name="feature_library_delete_playlist_name_songs_in_the_library_will_3541db">"「%1$s」を削除しますか？ライブラリの曲は削除されません。"</string>
-    <string name="feature_library_disc_3128c0" formatted="false">"ディスク"</string>
+    <string name="feature_library_disc_3128c0">"ディスク"</string>
     <string name="feature_library_discs_discs_902194">"%1$s 枚"</string>
-    <string name="feature_library_done_a5e659" formatted="false">"完了"</string>
-    <string name="feature_library_duration_573e08" formatted="false">"再生時間"</string>
-    <string name="feature_library_duration_e1c56c" formatted="false">"再生時間"</string>
-    <string name="feature_library_edit_tags_c8ec75" formatted="false">"タグを編集"</string>
-    <string name="feature_library_failed_to_load_albums_8a8685" formatted="false">"アルバムの読み込みに失敗しました。"</string>
-    <string name="feature_library_failed_to_load_artists_da82a6" formatted="false">"アーティストの読み込みに失敗しました。"</string>
-    <string name="feature_library_failed_to_load_folder_tracks_0966ba" formatted="false">"フォルダーの曲の読み込みに失敗しました。"</string>
-    <string name="feature_library_failed_to_load_folders_d4887b" formatted="false">"フォルダーの読み込みに失敗しました。"</string>
-    <string name="feature_library_failed_to_load_playlist_tracks_9130da" formatted="false">"プレイリストの曲の読み込みに失敗しました。"</string>
-    <string name="feature_library_failed_to_load_tracks_f65c9b" formatted="false">"曲の読み込みに失敗しました。"</string>
+    <string name="feature_library_done_a5e659">"完了"</string>
+    <string name="feature_library_duration_573e08">"再生時間"</string>
+    <string name="feature_library_duration_e1c56c">"再生時間"</string>
+    <string name="feature_library_edit_tags_c8ec75">"タグを編集"</string>
+    <string name="feature_library_failed_to_load_albums_8a8685">"アルバムの読み込みに失敗しました。"</string>
+    <string name="feature_library_failed_to_load_artists_da82a6">"アーティストの読み込みに失敗しました。"</string>
+    <string name="feature_library_failed_to_load_folder_tracks_0966ba">"フォルダーの曲の読み込みに失敗しました。"</string>
+    <string name="feature_library_failed_to_load_folders_d4887b">"フォルダーの読み込みに失敗しました。"</string>
+    <string name="feature_library_failed_to_load_playlist_tracks_9130da">"プレイリストの曲の読み込みに失敗しました。"</string>
+    <string name="feature_library_failed_to_load_tracks_f65c9b">"曲の読み込みに失敗しました。"</string>
     <string name="feature_library_folder_albumcount_albums_3c43c1">"%1$s 枚"</string>
     <string name="feature_library_folder_artistcount_artists_6d0d7e">"アーティスト %1$s 人"</string>
-    <string name="feature_library_folder_tracks_859f02" formatted="false">"フォルダーの曲"</string>
-    <string name="feature_library_folder_view_2b3c84" formatted="false">"フォルダー表示"</string>
-    <string name="feature_library_folders_cc514a" formatted="false">"フォルダー"</string>
-    <string name="feature_library_format_a7775b" formatted="false">"フォーマット"</string>
-    <string name="feature_library_format_pending_ce16a1" formatted="false">"フォーマット未解析"</string>
-    <string name="feature_library_frequently_played_9d6932" formatted="false">"よく聴く曲"</string>
-    <string name="feature_library_full_scan_8f63a2" formatted="false">"全体スキャン"</string>
-    <string name="feature_library_grant_access_to_index_local_music_cloud_libraries_568ef2" formatted="false">"許可するとローカル音楽を索引できます。クラウドライブラリは「クラウド」から直接開けます。"</string>
-    <string name="feature_library_import_lrc_lyrics_8e2810" formatted="false">"LRC 歌詞をインポート"</string>
-    <string name="feature_library_import_lyrics_744b75" formatted="false">"歌詞をインポート"</string>
-    <string name="feature_library_incrementally_indexing_local_music_3fc64d" formatted="false">"ローカル音楽を増分インデックス中"</string>
-    <string name="feature_library_info_41ae25" formatted="false">"情報"</string>
+    <string name="feature_library_folder_tracks_859f02">"フォルダーの曲"</string>
+    <string name="feature_library_folder_view_2b3c84">"フォルダー表示"</string>
+    <string name="feature_library_folders_cc514a">"フォルダー"</string>
+    <string name="feature_library_format_a7775b">"フォーマット"</string>
+    <string name="feature_library_format_pending_ce16a1">"フォーマット未解析"</string>
+    <string name="feature_library_frequently_played_9d6932">"よく聴く曲"</string>
+    <string name="feature_library_full_scan_8f63a2">"全体スキャン"</string>
+    <string name="feature_library_grant_access_to_index_local_music_cloud_libraries_568ef2">"許可するとローカル音楽を索引できます。クラウドライブラリは「クラウド」から直接開けます。"</string>
+    <string name="feature_library_import_lrc_lyrics_8e2810">"LRC 歌詞をインポート"</string>
+    <string name="feature_library_import_lyrics_744b75">"歌詞をインポート"</string>
+    <string name="feature_library_incrementally_indexing_local_music_3fc64d">"ローカル音楽を増分インデックス中"</string>
+    <string name="feature_library_info_41ae25">"情報"</string>
     <string name="feature_library_it_albums_3c43c1">"%1$s 枚"</string>
-    <string name="feature_library_kind_2dcbb1" formatted="false">"種類"</string>
-    <string name="feature_library_library_848e9b" formatted="false">"ライブラリ"</string>
-    <string name="feature_library_library_query_failed_f9c538" formatted="false">"ライブラリの照会に失敗しました。"</string>
-    <string name="feature_library_library_scan_failed_94b709" formatted="false">"ライブラリのスキャンに失敗しました。"</string>
-    <string name="feature_library_liked_c8ac9d" formatted="false">"お気に入り"</string>
-    <string name="feature_library_liked_songs_8d6245" formatted="false">"お気に入り"</string>
+    <string name="feature_library_kind_2dcbb1">"種類"</string>
+    <string name="feature_library_library_848e9b">"ライブラリ"</string>
+    <string name="feature_library_library_query_failed_f9c538">"ライブラリの照会に失敗しました。"</string>
+    <string name="feature_library_library_scan_failed_94b709">"ライブラリのスキャンに失敗しました。"</string>
+    <string name="feature_library_liked_c8ac9d">"お気に入り"</string>
+    <string name="feature_library_liked_songs_8d6245">"お気に入り"</string>
     <string name="feature_library_smart_recent">最近再生した曲</string>
     <string name="feature_library_smart_frequent">よく聴く曲</string>
     <string name="feature_library_smart_never">未再生</string>
@@ -89,123 +89,123 @@
     <string name="feature_library_smart_empty_never">すべての曲が再生済みです</string>
     <string name="feature_library_smart_empty_added">ライブラリをスキャンすると表示されます</string>
     <string name="feature_library_count_tracks_smart">%1$s 曲 · スマートプレイリスト</string>
-    <string name="feature_library_linked_5d42a7" formatted="false">"リンク"</string>
-    <string name="feature_library_loading_albums_75c4f3" formatted="false">"アルバムを読み込み中..."</string>
-    <string name="feature_library_loading_artists_e9b16d" formatted="false">"アーティストを読み込み中..."</string>
-    <string name="feature_library_loading_folder_tracks_83d4ec" formatted="false">"フォルダーの曲を読み込み中..."</string>
-    <string name="feature_library_loading_folders_54c760" formatted="false">"フォルダーを読み込み中..."</string>
-    <string name="feature_library_loading_library_a77123" formatted="false">"ライブラリを読み込み中..."</string>
+    <string name="feature_library_linked_5d42a7">"リンク"</string>
+    <string name="feature_library_loading_albums_75c4f3">"アルバムを読み込み中..."</string>
+    <string name="feature_library_loading_artists_e9b16d">"アーティストを読み込み中..."</string>
+    <string name="feature_library_loading_folder_tracks_83d4ec">"フォルダーの曲を読み込み中..."</string>
+    <string name="feature_library_loading_folders_54c760">"フォルダーを読み込み中..."</string>
+    <string name="feature_library_loading_library_a77123">"ライブラリを読み込み中..."</string>
     <string name="feature_library_loading_more_from_pc_echo_tracks_size_state_e85d63">"PC ECHO ライブラリを継続読み込み中(%1$s/%2$s)..."</string>
-    <string name="feature_library_loading_playlist_eb6248" formatted="false">"プレイリストを読み込み中..."</string>
-    <string name="feature_library_loading_tracks_8e2147" formatted="false">"曲を読み込み中..."</string>
-    <string name="feature_library_local_9b5178" formatted="false">"ローカル"</string>
-    <string name="feature_library_local_audio_7fc2a6" formatted="false">"ローカル音源"</string>
-    <string name="feature_library_local_library_ddf4b1" formatted="false">"ローカルライブラリ"</string>
-    <string name="feature_library_local_playlists_cea002" formatted="false">"ローカルプレイリスト"</string>
-    <string name="feature_library_mediastore_did_not_provide_a_path_53b27e" formatted="false">"MediaStore はパスを提供していません"</string>
+    <string name="feature_library_loading_playlist_eb6248">"プレイリストを読み込み中..."</string>
+    <string name="feature_library_loading_tracks_8e2147">"曲を読み込み中..."</string>
+    <string name="feature_library_local_9b5178">"ローカル"</string>
+    <string name="feature_library_local_audio_7fc2a6">"ローカル音源"</string>
+    <string name="feature_library_local_library_ddf4b1">"ローカルライブラリ"</string>
+    <string name="feature_library_local_playlists_cea002">"ローカルプレイリスト"</string>
+    <string name="feature_library_mediastore_did_not_provide_a_path_53b27e">"MediaStore はパスを提供していません"</string>
     <string name="feature_library_minutes_min_777a53">"%1$s 分"</string>
-    <string name="feature_library_move_down_cf81ae" formatted="false">"下へ"</string>
-    <string name="feature_library_move_up_e6d961" formatted="false">"上へ"</string>
-    <string name="feature_library_multiple_sources_0f53d5" formatted="false">"複数のソース"</string>
-    <string name="feature_library_name_57335e" formatted="false">"名前"</string>
-    <string name="feature_library_new_cc6582" formatted="false">"新規"</string>
-    <string name="feature_library_new_playlist_22cdbd" formatted="false">"プレイリストを作成"</string>
-    <string name="feature_library_import_m3u_2b9c10" formatted="false">"M3U を読み込む"</string>
-    <string name="feature_library_export_m3u_6f18a4" formatted="false">"M3U を書き出す"</string>
-    <string name="feature_library_new_playlist_and_add_314ff2" formatted="false">"プレイリストを作成して追加"</string>
-    <string name="feature_library_no_liked_songs_yet_heart_a_track_from_ba96cc" formatted="false">"お気に入りはまだありません。再生画面か曲メニューから追加してください。"</string>
-    <string name="feature_library_no_local_playlists_yet_create_one_from_the_e13a98" formatted="false">"ローカルのプレイリストはまだありません。右上から作成するか、曲メニューから追加してください。"</string>
-    <string name="feature_library_no_local_songs_yet_fa3b6a" formatted="false">"ローカルの曲はまだありません"</string>
-    <string name="feature_library_no_playlists_yet_create_one_first_6af586" formatted="false">"プレイリストはまだありません。先に作成してください。"</string>
-    <string name="feature_library_no_tracks_yet_c4614a" formatted="false">"曲はまだありません。"</string>
-    <string name="feature_library_not_available_7d3220" formatted="false">"未提供"</string>
-    <string name="feature_library_not_connected_c4d337" formatted="false">"未接続"</string>
-    <string name="feature_library_open_folder_ab1708" formatted="false">"フォルダーを開く"</string>
-    <string name="feature_library_pc_echo_e0a2d4" formatted="false">"PC ECHO"</string>
-    <string name="feature_library_pc_echo_has_no_albums_to_show_2784be" formatted="false">"PC ECHO に表示できるアルバムはありません。"</string>
-    <string name="feature_library_pc_echo_has_no_artists_to_show_b6975c" formatted="false">"PC ECHO に表示できるアーティストはありません。"</string>
-    <string name="feature_library_pc_echo_has_no_matching_albums_c433fb" formatted="false">"PC ECHO に一致するアルバムはありません。"</string>
-    <string name="feature_library_pc_echo_has_no_matching_artists_2dbc79" formatted="false">"PC ECHO に一致するアーティストはありません。"</string>
-    <string name="feature_library_pc_echo_has_no_matching_playlists_846ad7" formatted="false">"PC ECHO に一致するプレイリストはありません。"</string>
-    <string name="feature_library_pc_echo_has_no_matching_songs_40afe3" formatted="false">"PC ECHO に一致する曲はありません。"</string>
-    <string name="feature_library_pc_echo_has_no_folders_to_show_9e12b8" formatted="false">"PC ECHO に表示できるフォルダはありません。"</string>
-    <string name="feature_library_pc_echo_has_no_matching_folders_4c90d1" formatted="false">"PC ECHO に一致するフォルダはありません。"</string>
-    <string name="feature_library_pc_echo_has_no_playlists_to_show_8e8438" formatted="false">"PC ECHO に表示できるプレイリストはありません。"</string>
-    <string name="feature_library_pc_echo_has_no_songs_to_show_a46ba6" formatted="false">"PC ECHO に表示できる曲はありません。"</string>
-    <string name="feature_library_open_parent_folder_2a11c0" formatted="false">"上のフォルダを開く"</string>
-    <string name="feature_library_pick_an_album_artist_folder_or_playlist_e517b7" formatted="false">"アルバム、アーティスト、フォルダー、またはプレイリストを選んでください。"</string>
-    <string name="feature_library_play_38419a" formatted="false">"再生"</string>
-    <string name="feature_library_play_all_55c80e" formatted="false">"すべて再生"</string>
-    <string name="feature_library_play_on_pc_7c21a4" formatted="false">"PC で再生"</string>
-    <string name="feature_library_play_next_a1f73e" formatted="false">"次に再生"</string>
-    <string name="feature_library_play_this_folder_77afdc" formatted="false">"このフォルダーを再生"</string>
-    <string name="feature_library_playlist_actions_044945" formatted="false">"プレイリスト操作"</string>
+    <string name="feature_library_move_down_cf81ae">"下へ"</string>
+    <string name="feature_library_move_up_e6d961">"上へ"</string>
+    <string name="feature_library_multiple_sources_0f53d5">"複数のソース"</string>
+    <string name="feature_library_name_57335e">"名前"</string>
+    <string name="feature_library_new_cc6582">"新規"</string>
+    <string name="feature_library_new_playlist_22cdbd">"プレイリストを作成"</string>
+    <string name="feature_library_import_m3u_2b9c10">"M3U を読み込む"</string>
+    <string name="feature_library_export_m3u_6f18a4">"M3U を書き出す"</string>
+    <string name="feature_library_new_playlist_and_add_314ff2">"プレイリストを作成して追加"</string>
+    <string name="feature_library_no_liked_songs_yet_heart_a_track_from_ba96cc">"お気に入りはまだありません。再生画面か曲メニューから追加してください。"</string>
+    <string name="feature_library_no_local_playlists_yet_create_one_from_the_e13a98">"ローカルのプレイリストはまだありません。右上から作成するか、曲メニューから追加してください。"</string>
+    <string name="feature_library_no_local_songs_yet_fa3b6a">"ローカルの曲はまだありません"</string>
+    <string name="feature_library_no_playlists_yet_create_one_first_6af586">"プレイリストはまだありません。先に作成してください。"</string>
+    <string name="feature_library_no_tracks_yet_c4614a">"曲はまだありません。"</string>
+    <string name="feature_library_not_available_7d3220">"未提供"</string>
+    <string name="feature_library_not_connected_c4d337">"未接続"</string>
+    <string name="feature_library_open_folder_ab1708">"フォルダーを開く"</string>
+    <string name="feature_library_pc_echo_e0a2d4">"PC ECHO"</string>
+    <string name="feature_library_pc_echo_has_no_albums_to_show_2784be">"PC ECHO に表示できるアルバムはありません。"</string>
+    <string name="feature_library_pc_echo_has_no_artists_to_show_b6975c">"PC ECHO に表示できるアーティストはありません。"</string>
+    <string name="feature_library_pc_echo_has_no_matching_albums_c433fb">"PC ECHO に一致するアルバムはありません。"</string>
+    <string name="feature_library_pc_echo_has_no_matching_artists_2dbc79">"PC ECHO に一致するアーティストはありません。"</string>
+    <string name="feature_library_pc_echo_has_no_matching_playlists_846ad7">"PC ECHO に一致するプレイリストはありません。"</string>
+    <string name="feature_library_pc_echo_has_no_matching_songs_40afe3">"PC ECHO に一致する曲はありません。"</string>
+    <string name="feature_library_pc_echo_has_no_folders_to_show_9e12b8">"PC ECHO に表示できるフォルダはありません。"</string>
+    <string name="feature_library_pc_echo_has_no_matching_folders_4c90d1">"PC ECHO に一致するフォルダはありません。"</string>
+    <string name="feature_library_pc_echo_has_no_playlists_to_show_8e8438">"PC ECHO に表示できるプレイリストはありません。"</string>
+    <string name="feature_library_pc_echo_has_no_songs_to_show_a46ba6">"PC ECHO に表示できる曲はありません。"</string>
+    <string name="feature_library_open_parent_folder_2a11c0">"上のフォルダを開く"</string>
+    <string name="feature_library_pick_an_album_artist_folder_or_playlist_e517b7">"アルバム、アーティスト、フォルダー、またはプレイリストを選んでください。"</string>
+    <string name="feature_library_play_38419a">"再生"</string>
+    <string name="feature_library_play_all_55c80e">"すべて再生"</string>
+    <string name="feature_library_play_on_pc_7c21a4">"PC で再生"</string>
+    <string name="feature_library_play_next_a1f73e">"次に再生"</string>
+    <string name="feature_library_play_this_folder_77afdc">"このフォルダーを再生"</string>
+    <string name="feature_library_playlist_actions_044945">"プレイリスト操作"</string>
     <string name="feature_library_playlist_trackcount_tracks_source_3431c6">"%1$s 曲 · %2$s"</string>
     <string name="feature_library_playlistcount_playlists_220ceb">"プレイリスト %1$s 件"</string>
     <string name="feature_library_playlistdisplayname_playlist_playlist_trackcount_tracks_2afcb8">"%1$s · %2$s 曲"</string>
-    <string name="feature_library_playlists_56bf76" formatted="false">"プレイリスト"</string>
-    <string name="feature_library_preparing_scan_7e7bcf" formatted="false">"スキャンを準備中"</string>
-    <string name="feature_library_reading_mediastore_87cd18" formatted="false">"MediaStore を読み込み中"</string>
-    <string name="feature_library_reading_pc_echo_library_fccbe4" formatted="false">"PC ECHO ライブラリを読み込み中..."</string>
-    <string name="feature_library_reading_pc_echo_playlist_1ba678" formatted="false">"PC ECHO のプレイリストを読み込み中..."</string>
-    <string name="feature_library_recently_added_b4e8c1" formatted="false">"最近追加"</string>
-    <string name="feature_library_recently_played_ce4d5f" formatted="false">"最近再生した曲"</string>
-    <string name="feature_library_recently_updated_781ab0" formatted="false">"最近の更新"</string>
-    <string name="feature_library_refresh_pc_echo_library_5b6275" formatted="false">"PC ECHO ライブラリを更新"</string>
-    <string name="feature_library_remove_from_playlist_f07718" formatted="false">"プレイリストから削除"</string>
-    <string name="feature_library_removed_7be2fd" formatted="false">"削除"</string>
-    <string name="feature_library_rename_d1a28e" formatted="false">"名前を変更"</string>
-    <string name="feature_library_rename_playlist_757bb7" formatted="false">"プレイリスト名を変更"</string>
-    <string name="feature_library_resync_all_local_music_and_clean_up_deleted_f1b337" formatted="false">"端末内の音楽を再同期し、削除済み項目を整理します"</string>
-    <string name="feature_library_sample_rate_f6382c" formatted="false">"サンプリングレート"</string>
-    <string name="feature_library_sample_rate_pending_bd6e6d" formatted="false">"サンプリングレート未解析"</string>
-    <string name="feature_library_save_68ae20" formatted="false">"保存"</string>
-    <string name="feature_library_saving_9f2a14" formatted="false">"保存中…"</string>
-    <string name="feature_library_scan_a_single_folder_17bf3e" formatted="false">"フォルダーをスキャン"</string>
-    <string name="feature_library_scan_cancelled_1eefcb" formatted="false">"スキャンをキャンセルしました"</string>
-    <string name="feature_library_scan_cancelled_the_existing_library_was_kept_266734" formatted="false">"スキャンをキャンセルしました。既存のライブラリは保持されています。"</string>
-    <string name="feature_library_scan_complete_fbdf16" formatted="false">"スキャン完了"</string>
+    <string name="feature_library_playlists_56bf76">"プレイリスト"</string>
+    <string name="feature_library_preparing_scan_7e7bcf">"スキャンを準備中"</string>
+    <string name="feature_library_reading_mediastore_87cd18">"MediaStore を読み込み中"</string>
+    <string name="feature_library_reading_pc_echo_library_fccbe4">"PC ECHO ライブラリを読み込み中..."</string>
+    <string name="feature_library_reading_pc_echo_playlist_1ba678">"PC ECHO のプレイリストを読み込み中..."</string>
+    <string name="feature_library_recently_added_b4e8c1">"最近追加"</string>
+    <string name="feature_library_recently_played_ce4d5f">"最近再生した曲"</string>
+    <string name="feature_library_recently_updated_781ab0">"最近の更新"</string>
+    <string name="feature_library_refresh_pc_echo_library_5b6275">"PC ECHO ライブラリを更新"</string>
+    <string name="feature_library_remove_from_playlist_f07718">"プレイリストから削除"</string>
+    <string name="feature_library_removed_7be2fd">"削除"</string>
+    <string name="feature_library_rename_d1a28e">"名前を変更"</string>
+    <string name="feature_library_rename_playlist_757bb7">"プレイリスト名を変更"</string>
+    <string name="feature_library_resync_all_local_music_and_clean_up_deleted_f1b337">"端末内の音楽を再同期し、削除済み項目を整理します"</string>
+    <string name="feature_library_sample_rate_f6382c">"サンプリングレート"</string>
+    <string name="feature_library_sample_rate_pending_bd6e6d">"サンプリングレート未解析"</string>
+    <string name="feature_library_save_68ae20">"保存"</string>
+    <string name="feature_library_saving_9f2a14">"保存中…"</string>
+    <string name="feature_library_scan_a_single_folder_17bf3e">"フォルダーをスキャン"</string>
+    <string name="feature_library_scan_cancelled_1eefcb">"スキャンをキャンセルしました"</string>
+    <string name="feature_library_scan_cancelled_the_existing_library_was_kept_266734">"スキャンをキャンセルしました。既存のライブラリは保持されています。"</string>
+    <string name="feature_library_scan_complete_fbdf16">"スキャン完了"</string>
     <string name="feature_library_scan_complete_scanstate_scannedcount_tracks_added_scanstate_inse_bf2d9e">"スキャン完了：%1$s 曲、追加 %2$s、更新 %3$s、削除 %4$s"</string>
-    <string name="feature_library_scan_failed_f4c0ae" formatted="false">"スキャンに失敗しました"</string>
-    <string name="feature_library_scan_fe69d2" formatted="false">"スキャン"</string>
-    <string name="feature_library_scan_library_3d1814" formatted="false">"ライブラリをスキャン"</string>
-    <string name="feature_library_scan_local_music_from_the_top_right_corner_584da2" formatted="false">"右上からローカル音楽をスキャンしてください。"</string>
-    <string name="feature_library_scanned_862bfd" formatted="false">"スキャン済み"</string>
-    <string name="feature_library_search_library_80ef90" formatted="false">"ライブラリを検索"</string>
-    <string name="feature_library_search_songs_artists_albums_14dc2c" formatted="false">"曲、アーティスト、アルバムを検索"</string>
-    <string name="feature_library_set_album_sort_order_7c2d91" formatted="false">"アルバムの並び順を設定"</string>
-    <string name="feature_library_set_artist_sort_order_e15a06" formatted="false">"アーティストの並び順を設定"</string>
-    <string name="feature_library_set_folder_sort_order_9a4f33" formatted="false">"フォルダーの並び順を設定"</string>
-    <string name="feature_library_set_track_sort_order_4053c0" formatted="false">"曲の並び順を設定"</string>
-    <string name="feature_library_shuffle_34e7ce" formatted="false">"シャッフル"</string>
-    <string name="feature_library_shuffle_f8e15b" formatted="false">"ランダム"</string>
-    <string name="feature_library_size_49c9f8" formatted="false">"容量"</string>
-    <string name="feature_library_size_f63a75" formatted="false">"サイズ"</string>
-    <string name="feature_library_song_title_fedd5e" formatted="false">"曲名"</string>
-    <string name="feature_library_songs_107b60" formatted="false">"曲"</string>
-    <string name="feature_library_source_4aff16" formatted="false">"ソース"</string>
-    <string name="feature_library_stop_739d16" formatted="false">"停止"</string>
-    <string name="feature_library_switch_library_source_long_press_to_scan_tracks_2d8c87" formatted="false">"ライブラリのソースを切り替え。長押しで曲をスキャン"</string>
-    <string name="feature_library_switch_library_view_f99a55" formatted="false">"ライブラリの表示方法を切り替え"</string>
-    <string name="feature_library_text_e9396c" formatted="false">"—"</string>
-    <string name="feature_library_this_folder_has_no_tracks_yet_f1a6e0" formatted="false">"このフォルダーには曲がありません。"</string>
-    <string name="feature_library_this_library_has_no_albums_to_show_yet_925b12" formatted="false">"このライブラリには表示できるアルバムがまだありません。"</string>
-    <string name="feature_library_this_library_has_no_artists_to_show_yet_d95101" formatted="false">"このライブラリには表示できるアーティストがまだありません。"</string>
-    <string name="feature_library_this_library_has_no_browsable_storage_paths_yet_fb0395" formatted="false">"このライブラリには閲覧できる保存先がまだありません。"</string>
-    <string name="feature_library_this_pc_echo_playlist_has_no_playable_tracks_b480ec" formatted="false">"この PC ECHO のプレイリストには再生できる曲がありません。"</string>
-    <string name="feature_library_this_playlist_is_empty_add_songs_from_a_bebd89" formatted="false">"このプレイリストは空です。曲メニューから追加してください。"</string>
-    <string name="feature_library_title_af1111" formatted="false">"タイトル"</string>
-    <string name="feature_library_track_000e4d" formatted="false">"トラック"</string>
-    <string name="feature_library_track_info_36a07b" formatted="false">"曲情報"</string>
-    <string name="feature_library_tracks_2d80e8" formatted="false">"曲"</string>
-    <string name="feature_library_unknown_album_8831c3" formatted="false">"不明なアルバム"</string>
-    <string name="feature_library_unknown_artist_9acb98" formatted="false">"不明なアーティスト"</string>
-    <string name="feature_library_unknown_path_e282e8" formatted="false">"不明なパス"</string>
-    <string name="feature_library_unknown_source_d8c291" formatted="false">"不明なソース"</string>
-    <string name="feature_library_unknown_track_6cae0d" formatted="false">"不明な曲"</string>
-    <string name="feature_library_updated_c440c1" formatted="false">"更新"</string>
-    <string name="feature_library_waiting_for_track_info_f2add7" formatted="false">"曲情報を待っています"</string>
-    <string name="feature_library_waiting_to_scan_a5c343" formatted="false">"スキャン待ち"</string>
-    <string name="feature_library_writing_library_f9ac03" formatted="false">"ライブラリに書き込み中"</string>
-    <string name="feature_library_year_fe373f" formatted="false">"年"</string>
+    <string name="feature_library_scan_failed_f4c0ae">"スキャンに失敗しました"</string>
+    <string name="feature_library_scan_fe69d2">"スキャン"</string>
+    <string name="feature_library_scan_library_3d1814">"ライブラリをスキャン"</string>
+    <string name="feature_library_scan_local_music_from_the_top_right_corner_584da2">"右上からローカル音楽をスキャンしてください。"</string>
+    <string name="feature_library_scanned_862bfd">"スキャン済み"</string>
+    <string name="feature_library_search_library_80ef90">"ライブラリを検索"</string>
+    <string name="feature_library_search_songs_artists_albums_14dc2c">"曲、アーティスト、アルバムを検索"</string>
+    <string name="feature_library_set_album_sort_order_7c2d91">"アルバムの並び順を設定"</string>
+    <string name="feature_library_set_artist_sort_order_e15a06">"アーティストの並び順を設定"</string>
+    <string name="feature_library_set_folder_sort_order_9a4f33">"フォルダーの並び順を設定"</string>
+    <string name="feature_library_set_track_sort_order_4053c0">"曲の並び順を設定"</string>
+    <string name="feature_library_shuffle_34e7ce">"シャッフル"</string>
+    <string name="feature_library_shuffle_f8e15b">"ランダム"</string>
+    <string name="feature_library_size_49c9f8">"容量"</string>
+    <string name="feature_library_size_f63a75">"サイズ"</string>
+    <string name="feature_library_song_title_fedd5e">"曲名"</string>
+    <string name="feature_library_songs_107b60">"曲"</string>
+    <string name="feature_library_source_4aff16">"ソース"</string>
+    <string name="feature_library_stop_739d16">"停止"</string>
+    <string name="feature_library_switch_library_source_long_press_to_scan_tracks_2d8c87">"ライブラリのソースを切り替え。長押しで曲をスキャン"</string>
+    <string name="feature_library_switch_library_view_f99a55">"ライブラリの表示方法を切り替え"</string>
+    <string name="feature_library_text_e9396c">"—"</string>
+    <string name="feature_library_this_folder_has_no_tracks_yet_f1a6e0">"このフォルダーには曲がありません。"</string>
+    <string name="feature_library_this_library_has_no_albums_to_show_yet_925b12">"このライブラリには表示できるアルバムがまだありません。"</string>
+    <string name="feature_library_this_library_has_no_artists_to_show_yet_d95101">"このライブラリには表示できるアーティストがまだありません。"</string>
+    <string name="feature_library_this_library_has_no_browsable_storage_paths_yet_fb0395">"このライブラリには閲覧できる保存先がまだありません。"</string>
+    <string name="feature_library_this_pc_echo_playlist_has_no_playable_tracks_b480ec">"この PC ECHO のプレイリストには再生できる曲がありません。"</string>
+    <string name="feature_library_this_playlist_is_empty_add_songs_from_a_bebd89">"このプレイリストは空です。曲メニューから追加してください。"</string>
+    <string name="feature_library_title_af1111">"タイトル"</string>
+    <string name="feature_library_track_000e4d">"トラック"</string>
+    <string name="feature_library_track_info_36a07b">"曲情報"</string>
+    <string name="feature_library_tracks_2d80e8">"曲"</string>
+    <string name="feature_library_unknown_album_8831c3">"不明なアルバム"</string>
+    <string name="feature_library_unknown_artist_9acb98">"不明なアーティスト"</string>
+    <string name="feature_library_unknown_path_e282e8">"不明なパス"</string>
+    <string name="feature_library_unknown_source_d8c291">"不明なソース"</string>
+    <string name="feature_library_unknown_track_6cae0d">"不明な曲"</string>
+    <string name="feature_library_updated_c440c1">"更新"</string>
+    <string name="feature_library_waiting_for_track_info_f2add7">"曲情報を待っています"</string>
+    <string name="feature_library_waiting_to_scan_a5c343">"スキャン待ち"</string>
+    <string name="feature_library_writing_library_f9ac03">"ライブラリに書き込み中"</string>
+    <string name="feature_library_year_fe373f">"年"</string>
 </resources>

@@ -1,5 +1,6 @@
 package app.echo.android
 
+import android.content.Context
 import app.echo.android.data.OpraHeadphoneCorrectionRepository
 import app.echo.android.model.error.EchoErrorLog
 import app.echo.android.model.error.EchoErrorSource
@@ -16,7 +17,7 @@ import kotlinx.coroutines.launch
 internal class OpraSearchController(
     private val scope: CoroutineScope,
     private val repository: OpraHeadphoneCorrectionRepository,
-    private val text: (String, String, String) -> String,
+    private val context: Context,
 ) {
     private val mutableState = MutableStateFlow(OpraHeadphoneCorrectionState())
     val state = mutableState.asStateFlow()
@@ -33,7 +34,7 @@ internal class OpraSearchController(
     fun search(refresh: Boolean) {
         val query = state.value.query.trim()
         if (query.isBlank() && !refresh) {
-            message(text("Enter a headphone model", "请输入耳机型号", "ヘッドホンの機種を入力してください"))
+            message(context.getString(R.string.opra_enter_model))
             return
         }
         searchJob?.cancel()
@@ -48,17 +49,13 @@ internal class OpraSearchController(
                     selectedEqId = selected?.eqId,
                     previewCurve = selected?.let { preset -> EchoEqualizerEngine.responseCurve(preset.bands, preset.preampDb) }.orEmpty(),
                     message = when {
-                        found.status.source == "cache-fallback" -> text("Update failed; using the saved database", "更新失败，正在使用已缓存的数据库", "更新できないため保存済みデータを使用しています")
-                        query.isBlank() -> text("Database ready. Enter a model to search.", "数据库已就绪，请输入型号搜索", "データを準備しました。機種を検索してください")
-                        found.products.isEmpty() -> text("No matching model", "未找到匹配型号", "一致する機種がありません")
+                        found.status.source == "cache-fallback" -> context.getString(R.string.opra_cache_fallback)
+                        query.isBlank() -> context.getString(R.string.opra_database_ready)
+                        found.products.isEmpty() -> context.getString(R.string.opra_no_match)
                         else -> null
                     }) }
             }.onFailure { error ->
-                val message = text(
-                    "Could not load OPRA. Check the connection and retry.",
-                    "无法读取 OPRA，请检查网络后重试",
-                    "OPRA を読み込めません。接続を確認して再試行してください",
-                )
+                val message = context.getString(R.string.opra_load_failed)
                 mutableState.update { state -> state.copy(loading = false, message = message) }
                 EchoErrorLog.record(EchoErrorSource.Network, message, throwable = error)
             }

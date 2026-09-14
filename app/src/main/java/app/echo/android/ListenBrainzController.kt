@@ -1,9 +1,9 @@
 package app.echo.android
 
+import androidx.annotation.StringRes
 import app.echo.android.data.EchoAppSettings
 import app.echo.android.model.error.EchoErrorLog
 import app.echo.android.model.error.EchoErrorSource
-import app.echo.android.model.i18n.echoText
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.PlaybackPositionState
 import java.io.IOException
@@ -26,11 +26,8 @@ import org.json.JSONObject
 
 data class ListenBrainzUiState(
     val isConnecting: Boolean = false,
-    val lastMessage: String = echoText(
-        en = "ListenBrainz is not connected",
-        zh = "ListenBrainz 未连接",
-        ja = "ListenBrainz 未接続",
-    ),
+    @get:StringRes val lastMessageRes: Int = R.string.listenbrainz_disconnected,
+    val lastMessageArg: String? = null,
     val lastError: String? = null,
     val userName: String? = null,
 )
@@ -102,11 +99,7 @@ internal class ListenBrainzScrobbleController(
     fun setConnecting() {
         _uiState.value = ListenBrainzUiState(
             isConnecting = true,
-            lastMessage = echoText(
-                en = "ListenBrainz is connecting",
-                zh = "ListenBrainz 正在连接",
-                ja = "ListenBrainz に接続中",
-            ),
+            lastMessageRes = R.string.listenbrainz_connecting,
         )
     }
 
@@ -114,19 +107,12 @@ internal class ListenBrainzScrobbleController(
         val current = _uiState.value
         _uiState.value = current.copy(
             isConnecting = false,
-            lastMessage = if (userName.isNullOrBlank()) {
-                echoText(
-                    en = "ListenBrainz connected",
-                    zh = "ListenBrainz 已连接",
-                    ja = "ListenBrainz 接続済み",
-                )
+            lastMessageRes = if (userName.isNullOrBlank()) {
+                R.string.listenbrainz_connected
             } else {
-                echoText(
-                    en = "ListenBrainz connected: $userName",
-                    zh = "ListenBrainz 已连接：$userName",
-                    ja = "ListenBrainz 接続済み：$userName",
-                )
+                R.string.listenbrainz_connected_user
             },
+            lastMessageArg = userName?.takeIf { it.isNotBlank() },
             lastError = null,
             userName = userName?.takeIf { it.isNotBlank() } ?: current.userName,
         )
@@ -135,21 +121,13 @@ internal class ListenBrainzScrobbleController(
     fun setDisconnected() {
         active = null
         _uiState.value = ListenBrainzUiState(
-            lastMessage = echoText(
-                en = "ListenBrainz disconnected",
-                zh = "ListenBrainz 已断开",
-                ja = "ListenBrainz を切断しました",
-            ),
+            lastMessageRes = R.string.listenbrainz_disconnected_done,
         )
     }
 
     fun setError(message: String) {
         _uiState.value = ListenBrainzUiState(
-            lastMessage = echoText(
-                en = "ListenBrainz connection failed",
-                zh = "ListenBrainz 连接失败",
-                ja = "ListenBrainz の接続に失敗しました",
-            ),
+            lastMessageRes = R.string.listenbrainz_connect_failed,
             lastError = message,
         )
         EchoErrorLog.record(EchoErrorSource.Network, message)
@@ -274,11 +252,8 @@ internal class ListenBrainzScrobbleController(
                 client.submitListen(token, listenTrack, startedAt)
                     .onSuccess {
                         _uiState.value = ListenBrainzUiState(
-                            lastMessage = echoText(
-                                en = "ListenBrainz recorded: ${listenTrack.title}",
-                                zh = "ListenBrainz 已记录：${listenTrack.title}",
-                                ja = "ListenBrainz に記録：${listenTrack.title}",
-                            ),
+                            lastMessageRes = R.string.listenbrainz_recorded,
+                            lastMessageArg = listenTrack.title,
                             userName = _uiState.value.userName,
                         )
                     }
@@ -290,11 +265,7 @@ internal class ListenBrainzScrobbleController(
                         }
                         val message = error.message ?: "ListenBrainz submit failed"
                         _uiState.value = ListenBrainzUiState(
-                            lastMessage = echoText(
-                                en = "ListenBrainz listen was not submitted",
-                                zh = "ListenBrainz 听歌记录未提交",
-                                ja = "ListenBrainz の listen を送信できませんでした",
-                            ),
+                            lastMessageRes = R.string.listenbrainz_submit_failed,
                             lastError = message,
                             userName = _uiState.value.userName,
                         )
@@ -320,11 +291,8 @@ internal class ListenBrainzScrobbleController(
                 client.submitPlayingNow(token, nowPlayingTrack)
                     .onSuccess {
                         _uiState.value = ListenBrainzUiState(
-                            lastMessage = echoText(
-                                en = "ListenBrainz now playing: ${nowPlayingTrack.title}",
-                                zh = "ListenBrainz 正在显示：${nowPlayingTrack.title}",
-                                ja = "ListenBrainz で再生中：${nowPlayingTrack.title}",
-                            ),
+                            lastMessageRes = R.string.listenbrainz_now_playing,
+                            lastMessageArg = nowPlayingTrack.title,
                             userName = _uiState.value.userName,
                         )
                     }
@@ -336,11 +304,7 @@ internal class ListenBrainzScrobbleController(
                         }
                         val message = error.message ?: "ListenBrainz now playing failed"
                         _uiState.value = ListenBrainzUiState(
-                            lastMessage = echoText(
-                                en = "ListenBrainz now playing was not submitted",
-                                zh = "ListenBrainz 当前播放未提交",
-                                ja = "ListenBrainz の Now Playing を送信できませんでした",
-                            ),
+                            lastMessageRes = R.string.listenbrainz_now_playing_failed,
                             lastError = message,
                             userName = _uiState.value.userName,
                         )
@@ -369,22 +333,15 @@ internal class ListenBrainzScrobbleController(
             client.submitListen(token, listenTrack, startedAt)
                 .onSuccess {
                     _uiState.value = ListenBrainzUiState(
-                        lastMessage = echoText(
-                            en = "ListenBrainz recorded: ${listenTrack.title}",
-                            zh = "ListenBrainz 已记录：${listenTrack.title}",
-                            ja = "ListenBrainz に記録：${listenTrack.title}",
-                        ),
+                        lastMessageRes = R.string.listenbrainz_recorded,
+                        lastMessageArg = listenTrack.title,
                         userName = _uiState.value.userName,
                     )
                 }
                 .onFailure { error ->
                     val message = error.message ?: "ListenBrainz submit failed"
                     _uiState.value = ListenBrainzUiState(
-                        lastMessage = echoText(
-                            en = "ListenBrainz listen was not submitted",
-                            zh = "ListenBrainz 听歌记录未提交",
-                            ja = "ListenBrainz の listen を送信できませんでした",
-                        ),
+                        lastMessageRes = R.string.listenbrainz_submit_failed,
                         lastError = message,
                         userName = _uiState.value.userName,
                     )

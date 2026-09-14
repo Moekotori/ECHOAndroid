@@ -1,0 +1,5 @@
+<resources>
+    <string name="dsp_output_ceiling">출력 천장</string>
+    <string name="dsp_mix_amount">믹스 양</string>
+    <string name="dsp_scan_short">트랙 음량을 분석하고 저장</string>
+</resources>

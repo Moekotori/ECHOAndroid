@@ -1,5 +1,7 @@
 package app.echo.android.playback
 
+import app.echo.android.model.radio.EchoRadioStation
+import androidx.media3.common.C
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -44,7 +46,7 @@ fun Player.toPlaybackSessionSnapshot(): EchoPlaybackSessionSnapshot? {
     return EchoPlaybackSessionSnapshot(
         queue = queue,
         currentIndex = currentIndex,
-        positionMs = currentPosition.coerceAtLeast(0L),
+        positionMs = if (EchoRadioStation.isRadio(currentMediaItem?.mediaId)) 0L else currentPosition.coerceAtLeast(0L),
         playWhenReady = playWhenReady,
         shuffleEnabled = shuffleModeEnabled,
         repeatMode = repeatMode.toEchoRepeatMode(),
@@ -62,7 +64,7 @@ fun Player.applyPlaybackSessionSnapshot(
     setMediaItems(
         snapshot.queue.map { it.toMediaItem() },
         snapshot.currentIndex,
-        snapshot.positionMs.coerceAtLeast(0L),
+        if (EchoRadioStation.isRadio(snapshot.queue[snapshot.currentIndex].id)) C.TIME_UNSET else snapshot.positionMs.coerceAtLeast(0L),
     )
     shuffleModeEnabled = snapshot.shuffleEnabled
     repeatMode = snapshot.repeatMode.toPlayerRepeatMode()

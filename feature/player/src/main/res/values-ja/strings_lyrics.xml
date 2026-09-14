@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_manager_title">歌詞 · %1$s</string>
+    <string name="lyrics_manager_hint">候補をプレビューし、選択するとオフライン保存されます。</string>
+    <string name="lyrics_manager_search">オンライン検索 / 更新</string>
+    <string name="lyrics_manager_import">歌詞ファイルを読み込む</string>
+    <string name="lyrics_manager_clear">選択を解除して自動歌詞に戻す</string>
+    <string name="lyrics_manager_align_hint">歌詞行を長押しすると現在の再生位置に合わせられます。</string>
+    <string name="lyrics_manager_empty">候補がありません。接続を確認するかファイルを読み込んでください。</string>
+    <string name="lyrics_manager_word_timed">単語同期</string>
+    <string name="lyrics_manager_saved">保存・選択済み</string>
+    <string name="lyrics_manager_use">選択してオフライン保存</string>
+    <string name="lyrics_manager_done">完了</string>
+    <string name="lyrics_backing_vocals">コーラス</string>
+    <string name="lyrics_vocals_in">次の歌詞まで %1$d 秒</string>
+    <string name="lyrics_back_to_current">現在の歌詞に戻る</string>
+    <string name="lyrics_line_starts_now">この行を今に合わせる</string>
+</resources>

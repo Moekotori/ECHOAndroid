@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_listening_journal">청취 기록</string>
+    <string name="home_listening_play_count">재생 · %1$s</string>
+    <string name="home_listening_empty_title">음악이 기다리고 있습니다</string>
+    <string name="home_listening_empty_detail">좋아하는 곡을 골라 듣기를 시작하세요.</string>
+    <string name="home_listening_open_library">라이브러리 둘러보기</string>
+    <plurals name="home_listening_days">
+        <item quantity="one">지난 12주 동안 %1$d일 음악이 함께했습니다.</item>
+        <item quantity="other">지난 12주 동안 %1$d일 음악이 함께했습니다.</item>
+    </plurals>
+</resources>

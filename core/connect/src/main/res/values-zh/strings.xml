@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connect_invalid_pairing">PC 地址或配对 Token 无效</string>
+    <string name="connect_not_connected">还没有连接 PC ECHO</string>
+    <string name="connect_library_partial">已加载 %1$d/%2$d 首；请搜索以缩小曲库范围。</string>
+    <string name="connect_playlist_missing_id">PC 歌单缺少 playlistId，不能打开</string>
+    <string name="connect_album_missing_id">PC 专辑缺少 albumId，不能打开</string>
+    <string name="connect_queue_no_ids">这个 PC 队列没有可播放的 trackId</string>
+    <string name="connect_track_missing_id_handoff">PC 曲目缺少 trackId，不能交接播放</string>
+    <string name="connect_no_local_cast_file">没有可投送到电脑的本机文件</string>
+    <string name="connect_track_missing_id_remote">PC 曲目缺少 trackId，不能远程播放</string>
+    <string name="connect_stream_unavailable">这首歌暂时不能串流到手机</string>
+    <string name="connect_cast_unsupported">这台电脑的 ECHOSteam 还不支持接收手机串流，请升级后再投送。</string>
+    <string name="connect_auth_expired">PC 授权已失效或被撤销，请重新配对。</string>
+    <string name="connect_failed">PC ECHO 连接失败</string>
+</resources>

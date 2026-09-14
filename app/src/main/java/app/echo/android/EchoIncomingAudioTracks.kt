@@ -9,7 +9,6 @@ import android.provider.OpenableColumns
 import app.echo.android.data.EchoLibraryRepository
 import app.echo.android.data.readLocalAudioTags
 import app.echo.android.data.toEchoTrack
-import app.echo.android.model.i18n.echoText
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.LibrarySource
 
@@ -42,7 +41,7 @@ private fun readStandaloneIncomingTrack(context: Context, uri: Uri): EchoTrack {
         ?.substringBeforeLast('.')
         ?.takeIf { it.isNotBlank() }
         ?: uri.lastPathSegment?.substringBeforeLast('.')
-        ?: echoText(en = "Unknown Track", zh = "未知曲目", ja = "不明な曲")
+        ?: context.getString(R.string.unknown_track)
     val fileTags = runCatching {
         context.contentResolver.openInputStream(uri)?.use(::readLocalAudioTags)
     }.getOrNull()
@@ -70,7 +69,7 @@ private fun readStandaloneIncomingTrack(context: Context, uri: Uri): EchoTrack {
             artist = fileTags?.artist?.takeIf { it.isNotBlank() }
                 ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
                     ?.takeIf { it.isNotBlank() }
-                ?: echoText(en = "Unknown Artist", zh = "未知艺术家", ja = "不明なアーティスト"),
+                ?: context.getString(R.string.unknown_artist),
             album = fileTags?.album?.takeIf { it.isNotBlank() }
                 ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
                     ?.takeIf { it.isNotBlank() },
@@ -84,7 +83,7 @@ private fun readStandaloneIncomingTrack(context: Context, uri: Uri): EchoTrack {
             id = EchoIncomingAudio.incomingTrackId(uri),
             uri = uri.toString(),
             title = fallbackTitle,
-            artist = echoText(en = "Unknown Artist", zh = "未知艺术家", ja = "不明なアーティスト"),
+            artist = context.getString(R.string.unknown_artist),
             source = LibrarySource.Unknown,
         )
     } finally {

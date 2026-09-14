@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_add_music">음악 추가</string>
+    <string name="library_access_title">여기서 음악이 시작됩니다</string>
+    <string name="library_access_detail">오디오 접근을 허용하면 이 휴대전화의 음악을 볼 수 있습니다.</string>
+    <string name="library_retry">다시 시도</string>
+    <string name="library_no_matches">일치하는 음악이 없습니다</string>
+    <string name="library_search_hint">다른 제목, 아티스트 또는 앨범을 검색해 보세요.</string>
+    <string name="library_start_collection">컬렉션을 만들어 보세요</string>
+    <string name="library_import_hint">이 휴대전화를 스캔하거나 음악 추가로 음악 폴더를 넣으세요.</string>
+    <string name="library_cloud_empty_title">클라우드 라이브러리를 가져오세요</string>
+    <string name="library_cloud_empty_detail">연결에서 WebDAV, Subsonic 또는 Jellyfin을 설정한 뒤 동기화하세요. 앨범이 여기에 나타납니다.</string>
+    <string name="library_cloud_empty_configured_title">아직 클라우드 앨범이 없습니다</string>
+    <string name="library_cloud_empty_configured_detail">연결에서 다시 동기화하거나 클라우드 폴더에 음악이 있는지 확인하세요.</string>
+    <string name="library_open_connect">연결 열기</string>
+    <string name="library_clear_search">검색 지우기</string>
+    <string name="library_track_actions">곡 작업</string>
+    <string name="library_playlist_actions">플레이리스트 작업</string>
+    <string name="library_track_count">%1$d곡</string>
+</resources>

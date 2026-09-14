@@ -16,4 +16,5 @@
     <string name="library_clear_search">Clear search</string>
     <string name="library_track_actions">Track actions</string>
     <string name="library_playlist_actions">Playlist actions</string>
+    <string name="library_track_count">%1$d tracks</string>
 </resources>

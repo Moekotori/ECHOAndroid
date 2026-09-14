@@ -1,6 +1,7 @@
 package app.echo.android.data
 
-import app.echo.android.model.i18n.echoText
+import android.content.Context
+import androidx.annotation.StringRes
 import app.echo.android.model.library.LibrarySource
 import java.io.InterruptedIOException
 import java.net.ConnectException
@@ -75,9 +76,11 @@ internal data class SubsonicSong(
 
 internal class SubsonicClient(
     private val endpoint: SubsonicEndpoint,
-    private val httpGet: (String) -> String? = ::defaultHttpGet,
+    httpGet: ((String) -> String?)? = null,
     private val saltFactory: () -> String = ::randomTokenSalt,
+    private val appContext: Context? = null,
 ) {
+    private val httpGet: (String) -> String? = httpGet ?: { defaultHttpGet(it, appContext) }
     fun ping() {
         request("ping.view")
     }
@@ -287,9 +290,9 @@ internal class SubsonicClient(
         } catch (error: IllegalStateException) {
             throw error
         } catch (error: Throwable) {
-            error(subsonicTransportFailureMessage(error))
-        } ?: error(subsonicUnreachableMessage())
-        return parseSubsonicResponse(body)
+            error(subsonicTransportFailureMessage(error, appContext))
+        } ?: error(subsonicUnreachableMessage(appContext))
+        return parseSubsonicResponse(body, appContext)
     }
 
     private fun buildUrl(path: String, params: List<Pair<String, String>>): String {
@@ -361,10 +364,10 @@ internal fun SubsonicSong.toLibraryTrackEntity(
     ).withScanMetadata(scanRunId)
 }
 
-internal fun parseSubsonicResponse(body: String): JSONObject {
+internal fun parseSubsonicResponse(body: String, context: Context? = null): JSONObject {
     val json = runCatching { JSONObject(body) }
-        .getOrElse { error(subsonicInvalidJsonMessage()) }
-    return json.subsonicRoot()
+        .getOrElse { error(subsonicInvalidJsonMessage(context)) }
+    return json.subsonicRoot(context)
 }
 
 internal fun subsonicHttpBody(responseCode: Int, successBody: String?, errorBody: String?): String? {
@@ -372,13 +375,13 @@ internal fun subsonicHttpBody(responseCode: Int, successBody: String?, errorBody
     return body?.takeIf { it.isNotBlank() }
 }
 
-private fun JSONObject.subsonicRoot(): JSONObject {
-    val root = optJSONObject("subsonic-response") ?: error(subsonicIncompatibleResponseMessage())
+private fun JSONObject.subsonicRoot(context: Context? = null): JSONObject {
+    val root = optJSONObject("subsonic-response") ?: error(subsonicIncompatibleResponseMessage(context))
     val status = root.optString("status")
     if (!status.equals("ok", ignoreCase = true)) {
         val message = root.optJSONObject("error")?.optString("message")
             ?.takeIf { it.isNotBlank() }
-            ?: subsonicRequestFailedMessage()
+            ?: subsonicRequestFailedMessage(context)
         error(message)
     }
     return root
@@ -437,7 +440,7 @@ private val SharedSubsonicHttpClient: OkHttpClient =
         )
         .build()
 
-private fun defaultHttpGet(url: String): String {
+private fun defaultHttpGet(url: String, context: Context? = null): String {
     val request = Request.Builder()
         .url(url)
         .header("User-Agent", "ECHOAndroid/0.1")
@@ -445,123 +448,100 @@ private fun defaultHttpGet(url: String): String {
         .build()
     return try {
         SharedSubsonicHttpClient.newCall(request).execute().use { response ->
-            val body = response.body ?: error(subsonicHttpStatusMessage(response.code))
+            val body = response.body ?: error(subsonicHttpStatusMessage(response.code, context))
             val declaredLength = body.contentLength()
             if (declaredLength > SubsonicClient.MaxResponseBytes) {
-                error(subsonicResponseTooLargeMessage())
+                error(subsonicResponseTooLargeMessage(context))
             }
             val bytes = body.bytes()
             if (bytes.size > SubsonicClient.MaxResponseBytes) {
-                error(subsonicResponseTooLargeMessage())
+                error(subsonicResponseTooLargeMessage(context))
             }
             val text = String(bytes, StandardCharsets.UTF_8)
             val successBody = if (response.isSuccessful) text else null
             val errorBody = if (!response.isSuccessful) text else null
             subsonicHttpBody(response.code, successBody, errorBody)
-                ?: error(subsonicHttpStatusMessage(response.code))
+                ?: error(subsonicHttpStatusMessage(response.code, context))
         }
     } catch (cancelled: CancellationException) {
         throw cancelled
     } catch (error: IllegalStateException) {
         throw error
     } catch (error: Throwable) {
-        error(subsonicTransportFailureMessage(error))
+        error(subsonicTransportFailureMessage(error, context))
     }
 }
 
-internal fun subsonicTransportFailureMessage(cause: Throwable): String {
+private fun Context?.subsonicString(@StringRes id: Int, fallback: String, vararg args: Any): String {
+    if (this == null) return fallback
+    return try {
+        if (args.isEmpty()) getString(id) else getString(id, *args)
+    } catch (_: Throwable) {
+        fallback
+    }
+}
+
+internal fun subsonicTransportFailureMessage(cause: Throwable, context: Context? = null): String {
     val chain = ArrayList<Throwable>()
     var current: Throwable? = cause
     while (current != null && chain.add(current)) {
         val next = current.cause
         current = if (next != null && next in chain) null else next
     }
-    if (chain.any(::isSubsonicCertificateFailure)) return subsonicCertificateTrustMessage()
-    if (chain.any { it is UnknownHostException }) return subsonicUnknownHostMessage()
-    if (chain.any(::isSubsonicTimeoutFailure)) return subsonicTimeoutMessage()
+    if (chain.any(::isSubsonicCertificateFailure)) return subsonicCertificateTrustMessage(context)
+    if (chain.any { it is UnknownHostException }) return subsonicUnknownHostMessage(context)
+    if (chain.any(::isSubsonicTimeoutFailure)) return subsonicTimeoutMessage(context)
     if (chain.any { it is ConnectException || it is NoRouteToHostException }) {
-        return subsonicConnectionRefusedMessage()
+        return subsonicConnectionRefusedMessage(context)
     }
-    if (chain.any(::isSubsonicCleartextBlocked)) return subsonicCleartextBlockedMessage()
-    return subsonicUnreachableMessage()
+    if (chain.any(::isSubsonicCleartextBlocked)) return subsonicCleartextBlockedMessage(context)
+    return subsonicUnreachableMessage(context)
 }
 
-internal fun subsonicUnreachableMessage(): String =
-    echoText(
-        en = "Can't reach the Navidrome/Subsonic server.",
-        zh = "无法连接到 Navidrome/Subsonic 服务器。",
-        ja = "Navidrome/Subsonic サーバーに接続できません。",
+internal fun subsonicUnreachableMessage(context: Context? = null): String =
+    context.subsonicString(R.string.subsonic_unreachable, "Can't reach the Navidrome/Subsonic server.")
+
+internal fun subsonicCertificateTrustMessage(context: Context? = null): String =
+    context.subsonicString(
+        R.string.subsonic_certificate,
+        "This HTTPS certificate isn't trusted. Use a certificate the system trusts, or HTTP on your LAN.",
     )
 
-internal fun subsonicCertificateTrustMessage(): String =
-    echoText(
-        en = "This HTTPS certificate isn't trusted. Use a certificate the system trusts, or HTTP on your LAN.",
-        zh = "HTTPS 证书不受信任。请改用系统信任的证书，或在局域网使用 HTTP。",
-        ja = "この HTTPS 証明書は信頼されていません。システムが信頼する証明書を使うか、LAN では HTTP で接続してください。",
+internal fun subsonicTimeoutMessage(context: Context? = null): String =
+    context.subsonicString(R.string.subsonic_timeout, "The Navidrome/Subsonic server timed out.")
+
+internal fun subsonicUnknownHostMessage(context: Context? = null): String =
+    context.subsonicString(
+        R.string.subsonic_unknown_host,
+        "Can't resolve the server address. Check the URL and your network.",
     )
 
-internal fun subsonicTimeoutMessage(): String =
-    echoText(
-        en = "The Navidrome/Subsonic server timed out.",
-        zh = "连接 Navidrome/Subsonic 超时。",
-        ja = "Navidrome/Subsonic サーバーがタイムアウトしました。",
+internal fun subsonicConnectionRefusedMessage(context: Context? = null): String =
+    context.subsonicString(
+        R.string.subsonic_connection_refused,
+        "The server refused the connection. Check the address and that Navidrome is running.",
     )
 
-internal fun subsonicUnknownHostMessage(): String =
-    echoText(
-        en = "Can't resolve the server address. Check the URL and your network.",
-        zh = "无法解析服务器地址，请检查网址和网络。",
-        ja = "サーバーアドレスを解決できません。URL とネットワークを確認してください。",
+internal fun subsonicCleartextBlockedMessage(context: Context? = null): String =
+    context.subsonicString(R.string.subsonic_cleartext_blocked, "HTTP (not HTTPS) is blocked for this address.")
+
+internal fun subsonicHttpStatusMessage(code: Int, context: Context? = null): String =
+    context.subsonicString(R.string.subsonic_http_status, "The server returned HTTP $code.", code)
+
+internal fun subsonicResponseTooLargeMessage(context: Context? = null): String =
+    context.subsonicString(R.string.subsonic_response_too_large, "The server response was too large to read.")
+
+internal fun subsonicInvalidJsonMessage(context: Context? = null): String =
+    context.subsonicString(R.string.subsonic_invalid_json, "The server returned data that isn't valid JSON.")
+
+internal fun subsonicIncompatibleResponseMessage(context: Context? = null): String =
+    context.subsonicString(
+        R.string.subsonic_incompatible,
+        "This is not a Subsonic-compatible response. Check the server URL.",
     )
 
-internal fun subsonicConnectionRefusedMessage(): String =
-    echoText(
-        en = "The server refused the connection. Check the address and that Navidrome is running.",
-        zh = "服务器拒绝连接。请确认地址正确，且 Navidrome 正在运行。",
-        ja = "サーバーが接続を拒否しました。アドレスと Navidrome の起動を確認してください。",
-    )
-
-internal fun subsonicCleartextBlockedMessage(): String =
-    echoText(
-        en = "HTTP (not HTTPS) is blocked for this address.",
-        zh = "此地址不允许使用 HTTP（非 HTTPS）。",
-        ja = "このアドレスでは HTTP（非 HTTPS）が許可されていません。",
-    )
-
-internal fun subsonicHttpStatusMessage(code: Int): String =
-    echoText(
-        en = "The server returned HTTP $code.",
-        zh = "服务器返回了 HTTP $code。",
-        ja = "サーバーが HTTP $code を返しました。",
-    )
-
-internal fun subsonicResponseTooLargeMessage(): String =
-    echoText(
-        en = "The server response was too large to read.",
-        zh = "服务器返回的数据过大，无法读取。",
-        ja = "サーバーの応答が大きすぎて読み取れません。",
-    )
-
-internal fun subsonicInvalidJsonMessage(): String =
-    echoText(
-        en = "The server returned data that isn't valid JSON.",
-        zh = "服务器返回了无法解析的数据。",
-        ja = "サーバーが解析できないデータを返しました。",
-    )
-
-internal fun subsonicIncompatibleResponseMessage(): String =
-    echoText(
-        en = "This is not a Subsonic-compatible response. Check the server URL.",
-        zh = "这不是 Subsonic 兼容响应，请检查服务器地址。",
-        ja = "Subsonic 互換の応答ではありません。サーバー URL を確認してください。",
-    )
-
-internal fun subsonicRequestFailedMessage(): String =
-    echoText(
-        en = "Subsonic authentication or request failed.",
-        zh = "Subsonic 认证或请求失败。",
-        ja = "Subsonic の認証またはリクエストに失敗しました。",
-    )
+internal fun subsonicRequestFailedMessage(context: Context? = null): String =
+    context.subsonicString(R.string.subsonic_request_failed, "Subsonic authentication or request failed.")
 
 private fun isSubsonicCertificateFailure(error: Throwable): Boolean {
     if (error is SSLHandshakeException ||

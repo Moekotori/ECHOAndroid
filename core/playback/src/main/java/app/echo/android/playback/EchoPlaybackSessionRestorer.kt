@@ -1,5 +1,6 @@
 package app.echo.android.playback
 
+import app.echo.android.model.radio.EchoRadioStation
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import app.echo.android.model.error.EchoErrorLog
@@ -72,7 +73,7 @@ internal class EchoPlaybackSessionRestorer(
                 if (playUri == track.uri) track else track.copy(uri = playUri)
             }
             val resolved = snapshot.copy(queue = resolvedQueue)
-            val queueUris = listOf(resolved.queue[resolved.currentIndex].uri)
+            val queueUris = resolved.queue[resolved.currentIndex].let { if (EchoRadioStation.isRadio(it.id)) emptyList() else listOf(it.uri) }
             val unresolvedEchoLink = queueHasUnresolvedEchoLinkUris(queueUris)
             val requiresWebDavAuth = queueRequiresWebDavAuth(queueUris)
             val webDavAuthReady = EchoRemotePlaybackAuthRegistry.isWebDavAuthReadyForUris(queueUris)
@@ -132,7 +133,7 @@ internal class EchoPlaybackSessionRestorer(
                 val current = player() ?: return@withLock null
                 val uri = current.currentMediaItem?.localConfiguration?.uri?.toString().orEmpty()
                 if (uri.isBlank()) return@withLock null
-                val uris = listOf(uri)
+                val uris = if (EchoRadioStation.isRadio(current.currentMediaItem?.mediaId)) emptyList() else listOf(uri)
                 if (
                     !shouldResumePendingRemoteAuthPlay(
                         pendingPlayUntilRemoteAuth = pendingPlayUntilRemoteAuth,

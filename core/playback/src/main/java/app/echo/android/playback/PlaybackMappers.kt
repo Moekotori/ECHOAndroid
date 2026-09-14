@@ -1,5 +1,6 @@
 package app.echo.android.playback
 
+import app.echo.android.model.radio.EchoRadioStation
 import android.net.Uri
 import android.os.Bundle
 import androidx.media3.common.C
@@ -39,7 +40,7 @@ fun MediaItem.toEchoTrackRef(durationMs: Long = 0L): EchoTrackRef {
         artist = metadata.artist?.toString().orEmpty().ifBlank { "Unknown Artist" },
         album = metadata.albumTitle?.toString(),
         artworkUri = metadata.artworkUri?.toString(),
-        durationMs = durationMs.takeIf { it > 0L } ?: metadataDurationMs,
+        durationMs = if (EchoRadioStation.isRadio(mediaId)) 0L else durationMs.takeIf { it > 0L } ?: metadataDurationMs,
         sampleRateHz = extrasSampleRate,
         trackNumber = extrasTrackNumber,
         discNumber = extrasDiscNumber,
@@ -146,7 +147,7 @@ fun Player.toEchoPlaybackStatus(
 
 fun Player.toPlaybackMetadataState(): PlaybackMetadataState {
     val item = currentMediaItem
-    val safeDuration = duration.takeIf { it > 0L } ?: 0L
+    val safeDuration = if (EchoRadioStation.isRadio(currentMediaItem?.mediaId)) 0L else duration.takeIf { it > 0L } ?: 0L
     val track = item?.toEchoTrackRef(durationMs = safeDuration)
     return PlaybackMetadataState(
         track = track,
@@ -160,7 +161,7 @@ fun Player.toPlaybackMetadataState(): PlaybackMetadataState {
 }
 
 fun Player.toPlaybackPositionState(): PlaybackPositionState {
-    val safeDuration = duration.takeIf { it > 0L } ?: 0L
+    val safeDuration = if (EchoRadioStation.isRadio(currentMediaItem?.mediaId)) 0L else duration.takeIf { it > 0L } ?: 0L
     return PlaybackPositionState(
         positionMs = currentPosition.coerceAtLeast(0L),
         durationMs = safeDuration.coerceAtLeast(0L),
@@ -233,7 +234,7 @@ fun Player.toPlaybackControlsState(): PlaybackControlsState =
         playbackPitch = playbackParameters.pitch,
         canSkipNext = hasNextMediaItem(),
         canSkipPrevious = hasPreviousMediaItem(),
-        canSeek = isCurrentMediaItemSeekable,
+        canSeek = !EchoRadioStation.isRadio(currentMediaItem?.mediaId) && isCurrentMediaItemSeekable,
     )
 
 fun Player.toPlaybackDiagnosticsState(

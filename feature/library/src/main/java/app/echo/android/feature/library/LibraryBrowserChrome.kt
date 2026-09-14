@@ -31,6 +31,7 @@ internal fun LibraryBrowserFrame(
     onQueryChange: (String) -> Unit,
     sources: @Composable () -> Unit,
     actions: @Composable RowScope.() -> Unit = {},
+    searchPlaceholder: String = stringResource(R.string.feature_library_search_songs_artists_albums_14dc2c),
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -42,7 +43,7 @@ internal fun LibraryBrowserFrame(
                     actions()
                 }
                 sources()
-                LibraryInlineSearch(query, onQueryChange, Modifier.padding(vertical = 10.dp))
+                LibraryInlineSearch(query, onQueryChange, Modifier.padding(vertical = 10.dp), searchPlaceholder)
                 content()
             }
         }
@@ -50,14 +51,19 @@ internal fun LibraryBrowserFrame(
 }
 
 @Composable
-internal fun LibraryInlineSearch(query: String, onQueryChange: (String) -> Unit, modifier: Modifier = Modifier) {
+internal fun LibraryInlineSearch(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    placeholder: String = stringResource(R.string.feature_library_search_songs_artists_albums_14dc2c),
+) {
     val keyboard = LocalSoftwareKeyboardController.current
     TextField(
         value = query, onValueChange = onQueryChange,
         modifier = modifier.fillMaxWidth(), singleLine = true,
         textStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Normal),
         shape = RoundedCornerShape(4.dp),
-        placeholder = { Text(stringResource(R.string.feature_library_search_songs_artists_albums_14dc2c), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Normal) },
+        placeholder = { Text(placeholder, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Normal) },
         leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, Modifier.size(20.dp)) },
         trailingIcon = if (query.isNotEmpty()) { {
             IconButton(onClick = { onQueryChange("") }) { Icon(Icons.Rounded.Close, stringResource(R.string.library_clear_search)) }

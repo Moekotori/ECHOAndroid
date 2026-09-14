@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_scan_partial">扫描部分完成：部分存储卷未能完整读取，已保留原有曲目。请检查存储设备后重试。</string>
+    <string name="library_scan_partial_count">扫描部分完成：%1$d 个文件或目录读取失败。已保留原有曲目，请检查存储设备后重试。</string>
+    <string name="library_scan_failed">曲库扫描失败</string>
+    <string name="library_remote_reading_index">读取远程曲库索引</string>
+    <string name="library_remote_connecting_subsonic">连接 Navidrome/Subsonic</string>
+    <string name="library_remote_found_albums">发现 %1$d 张远程专辑</string>
+    <string name="library_remote_read_tracks">已批量读取 %1$d 首远程歌曲</string>
+    <string name="library_remote_skipped_albums">已跳过 %1$d 张未变专辑</string>
+    <string name="library_remote_sync_failed">远程曲库同步失败</string>
+    <string name="library_webdav_reading_index">读取 WebDAV 索引</string>
+    <string name="library_webdav_scanning">扫描 WebDAV 目录</string>
+    <string name="library_webdav_sync_failed">WebDAV 曲库同步失败</string>
+    <string name="library_jellyfin_connecting">连接 Jellyfin / Emby</string>
+    <string name="library_jellyfin_sync_failed">Jellyfin / Emby 曲库同步失败</string>
+    <string name="subsonic_unreachable">无法连接到 Navidrome/Subsonic 服务器。</string>
+    <string name="subsonic_certificate">HTTPS 证书不受信任。请改用系统信任的证书，或在局域网使用 HTTP。</string>
+    <string name="subsonic_timeout">连接 Navidrome/Subsonic 超时。</string>
+    <string name="subsonic_unknown_host">无法解析服务器地址，请检查网址和网络。</string>
+    <string name="subsonic_connection_refused">服务器拒绝连接。请确认地址正确，且 Navidrome 正在运行。</string>
+    <string name="subsonic_cleartext_blocked">此地址不允许使用 HTTP（非 HTTPS）。</string>
+    <string name="subsonic_http_status">服务器返回了 HTTP %1$d。</string>
+    <string name="subsonic_response_too_large">服务器返回的数据过大，无法读取。</string>
+    <string name="subsonic_invalid_json">服务器返回了无法解析的数据。</string>
+    <string name="subsonic_incompatible">这不是 Subsonic 兼容响应，请检查服务器地址。</string>
+    <string name="subsonic_request_failed">Subsonic 认证或请求失败。</string>
+</resources>

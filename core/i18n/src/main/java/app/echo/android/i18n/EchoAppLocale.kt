@@ -35,6 +35,19 @@ fun Context.wrapEchoAppLocale(languageId: String): Context {
     return createConfigurationContext(config)
 }
 
+/** Copy the wrapped Application locales onto a Service/Receiver Context on Android 8–12. */
+fun Context.wrapEchoAppLocaleToMatchApplication(): Context {
+    if (Build.VERSION.SDK_INT >= 33) return this
+    val app = applicationContext
+    if (app === this) return this
+    val locales = app.resources.configuration.locales
+    if (locales.isEmpty) return this
+    val config = Configuration(resources.configuration)
+    config.setLocales(locales)
+    config.setLayoutDirection(locales[0])
+    return createConfigurationContext(config)
+}
+
 /** Refresh the existing window on Android 8–12; Android 13+ dispatches this itself. */
 @Suppress("DEPRECATION")
 fun Activity.refreshEchoAppLocale(languageId: String) {

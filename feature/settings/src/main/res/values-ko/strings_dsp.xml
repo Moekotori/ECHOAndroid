@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dsp_title">DSP</string>
+    <string name="dsp_limiter">피크 리미터</string>
+    <string name="dsp_limiter_detail">부드러운 릴리즈의 링크드 스테레오 피크 보호입니다. 트루 피크 리미터는 아닙니다.</string>
+    <string name="dsp_ceiling">천장 · %1$.1f dBFS</string>
+    <string name="dsp_loudness">음량 정규화</string>
+    <string name="dsp_loudness_detail">ReplayGain 태그로 재생 음량을 맞춥니다. 앨범 모드는 트랙 간 상대 음량을 유지합니다.</string>
+    <string name="dsp_auto">자동</string>
+    <string name="dsp_track">트랙</string>
+    <string name="dsp_album">앨범</string>
+    <string name="dsp_gain">게인 · %1$.1f dB</string>
+    <string name="dsp_missing_tags">음량 값이 없습니다. 로컬 트랙을 스캔해 만드세요.</string>
+    <string name="dsp_scan">현재 로컬 트랙을 분석하고 태그를 저장</string>
+    <string name="dsp_scanned">저장됨 · %1$.1f dB</string>
+    <string name="dsp_scan_failed">분석 또는 태그 쓰기에 실패했습니다. 이 로컬 파일이 지원되고 쓸 수 있는지 확인하세요.</string>
+    <string name="dsp_crossfeed">헤드폰 크로스피드</string>
+    <string name="dsp_crossfeed_detail">필터링되고 약간 지연된 신호를 반대 채널에 섞습니다. 스테레오 전용.</string>
+    <string name="dsp_gentle">부드럽게</string>
+    <string name="dsp_natural">자연스럽게</string>
+    <string name="dsp_strong">강하게</string>
+    <string name="dsp_peq">파라메트릭 EQ 편집</string>
+    <string name="dsp_peq_detail">필터는 최대 12개입니다. 각 편집을 적용하면 응답이 갱신되고 저장됩니다. 편집하면 수동 구성이 만들어지고 헤드룸이 다시 계산됩니다.</string>
+    <string name="dsp_add_band">필터 추가</string>
+    <string name="dsp_band">필터 %1$d</string>
+    <string name="dsp_peak">피크 / 딥</string>
+    <string name="dsp_low_shelf">로우 셸프</string>
+    <string name="dsp_high_shelf">하이 셸프</string>
+    <string name="dsp_low_pass">로우 패스</string>
+    <string name="dsp_high_pass">하이 패스</string>
+    <string name="dsp_notch">노치</string>
+    <string name="dsp_band_pass">밴드 패스</string>
+    <string name="dsp_frequency">주파수 · Hz</string>
+    <string name="dsp_band_gain">게인 · dB</string>
+    <string name="dsp_peq_range">20–20000 Hz · −12 ~ +12 dB · Q 0.1–10</string>
+    <string name="dsp_apply">적용하고 저장</string>
+    <string name="dsp_remove">제거</string>
+</resources>

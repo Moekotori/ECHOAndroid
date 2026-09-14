@@ -14,6 +14,7 @@ class EchoAppLanguageTest {
         assertEquals(EchoAppLanguage.Chinese, EchoAppLanguage.fromId("zh"))
         assertEquals(EchoAppLanguage.English, EchoAppLanguage.fromId("en"))
         assertEquals(EchoAppLanguage.Japanese, EchoAppLanguage.fromId("ja"))
+        assertEquals(EchoAppLanguage.Korean, EchoAppLanguage.fromId("ko"))
     }
 
     @Test
@@ -28,6 +29,7 @@ class EchoAppLanguageTest {
         assertEquals(Locale.SIMPLIFIED_CHINESE, EchoAppLanguage.localeOrNull(EchoAppLanguage.Chinese))
         assertEquals(Locale.ENGLISH, EchoAppLanguage.localeOrNull(EchoAppLanguage.English))
         assertEquals(Locale.JAPANESE, EchoAppLanguage.localeOrNull(EchoAppLanguage.Japanese))
+        assertEquals(Locale.KOREAN, EchoAppLanguage.localeOrNull(EchoAppLanguage.Korean))
         assertNull(EchoAppLanguage.localeOrNull(EchoAppLanguage.System))
     }
 
@@ -37,6 +39,7 @@ class EchoAppLanguageTest {
         assertEquals("zh", EchoAppLanguage.fromId("zh_Hans_CN"))
         assertEquals("en", EchoAppLanguage.fromId("EN-us"))
         assertEquals("ja", EchoAppLanguage.fromId("ja-JP"))
+        assertEquals("ko", EchoAppLanguage.fromId("ko-KR"))
         assertEquals(EchoAppLanguage.supported.size, EchoAppLanguage.supported.map { it.id }.distinct().size)
         EchoAppLanguage.supported.forEach {
             assertEquals(it.id, EchoAppLanguage.fromId(it.localeTag))
@@ -45,6 +48,7 @@ class EchoAppLanguageTest {
     }
 
     @Test
+    @Suppress("DEPRECATION")
     fun echoTextFollowsDefaultLocale() {
         val original = Locale.getDefault()
         try {

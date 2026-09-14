@@ -44,7 +44,6 @@ import app.echo.android.data.WebDavEndpoint
 import app.echo.android.lyrics.ImportedLyricsStore
 import app.echo.android.lyrics.LocalLyricsResolver
 import app.echo.android.lyrics.OnlineLyricsResolver
-import app.echo.android.model.i18n.echoText
 import app.echo.android.model.library.AlbumSortMode
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSortMode
@@ -100,12 +99,16 @@ import kotlin.coroutines.cancellation.CancellationException
 @androidx.annotation.OptIn(UnstableApi::class)
 @Suppress("SpellCheckingInspection", "ConstPropertyName", "unused")
 class EchoAndroidViewModel(application: Application) : AndroidViewModel(application) {
+    val radioController = app.echo.android.radio.EchoRadioController(
+        app.echo.android.data.EchoRadioStore(application), viewModelScope,
+    )
     private val database = EchoLibraryDatabase.create(application)
     private val repository = EchoLibraryRepository(
         database = database,
         scanner = MediaStoreTrackScanner(application),
         documentTreeScanner = DocumentTreeTrackScanner(application.contentResolver),
         tagWriter = EmbeddedTagWriter(application),
+        appContext = application,
     )
     private val errorLog = EchoErrorLogRepository.create(application)
     private val settingsStore = EchoSettingsStore(application)
@@ -123,10 +126,11 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         scope = viewModelScope,
         settingsStore = settingsStore,
         resolver = application.contentResolver,
+        appContext = application,
     )
     private val lyricsController = LyricsController(
         repository = repository,
-        lyricsResolver = LocalLyricsResolver(application.contentResolver),
+        lyricsResolver = LocalLyricsResolver(application),
         onlineLyricsResolver = OnlineLyricsResolver(),
         importedLyricsStore = ImportedLyricsStore(application),
         scope = viewModelScope,
@@ -252,7 +256,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         application.getString(R.string.usb_test_idle),
     )
     val usbExclusiveTestResult: StateFlow<String> = _usbExclusiveTestResult.asStateFlow()
-    private val opraSearch = OpraSearchController(viewModelScope, opraRepository) { en, zh, ja -> echoText(en = en, zh = zh, ja = ja) }
+    private val opraSearch = OpraSearchController(viewModelScope, opraRepository, application)
     val opraState: StateFlow<OpraHeadphoneCorrectionState> = opraSearch.state
 
     private val albumPlaybackCounts = mutableMapOf<String, Int>()
@@ -1164,11 +1168,13 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         updateSettings {
             setEqualizerParametricConfig(equalizer.gainsDb, equalizer.preampDb, equalizer.filters, equalizer.sourceLabel)
         }
-        opraSearch.message(if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled) echoText(
-            en = "Saved. Bit-perfect mode currently bypasses EQ.",
-            zh = "已保存；bit-perfect 模式当前旁路 EQ。", ja = "保存しました。bit-perfect モードでは EQ はバイパスされます。",
-        ) else echoText(en = "Saved ${preset.displayName}. EQ enabled.",
-            zh = "已保存 ${preset.displayName}，均衡器已启用。", ja = "${preset.displayName} を保存し、EQ を有効にしました。"))
+        opraSearch.message(
+            if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled) {
+                getApplication<Application>().getString(R.string.opra_saved_bypassed)
+            } else {
+                getApplication<Application>().getString(R.string.opra_saved_eq, preset.displayName)
+            },
+        )
     }
 
     fun testUsbExclusiveDriver() {

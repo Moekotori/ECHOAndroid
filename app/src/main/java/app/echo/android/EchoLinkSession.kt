@@ -38,7 +38,7 @@ class EchoLinkSession(private val application: Application) {
             EchoErrorLog.recordUncaught(error)
         },
     )
-    val client = EchoRemoteClient(scope).apply { setForeground(false) }
+    val client = EchoRemoteClient(scope, application).apply { setForeground(false) }
     private val castPeerHost = AtomicReference<String?>(null)
     val castServer = EchoLinkCastServer(
         openBody = EchoLinkCastMediaOpener(application.contentResolver),

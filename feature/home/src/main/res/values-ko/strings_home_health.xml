@@ -1,0 +1,5 @@
+<resources>
+    <string name="home_missing_file_title">오디오 파일을 사용할 수 없음</string>
+    <string name="home_missing_file_detail">라이브러리를 열어 다시 스캔하거나 다른 곡을 선택하세요.</string>
+    <string name="home_search_no_results">일치하는 음악을 찾지 못했습니다</string>
+</resources>

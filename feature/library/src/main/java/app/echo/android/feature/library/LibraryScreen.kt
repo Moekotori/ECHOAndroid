@@ -36,6 +36,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
@@ -129,10 +130,12 @@ internal enum class LibraryViewMode(
     Genres(Icons.Rounded.LibraryMusic),
     Cloud(Icons.Rounded.CloudQueue),
     Playlists(Icons.Rounded.LibraryMusic),
+    Radio(Icons.Rounded.Radio),
 }
 
 @Composable
 internal fun LibraryViewMode.label(): String = when (this) {
+    LibraryViewMode.Radio -> stringResource(L10nR.string.radio_title)
     LibraryViewMode.Songs -> stringResource(L10nR.string.feature_library_songs_107b60)
     LibraryViewMode.Folders -> stringResource(L10nR.string.feature_library_folders_cc514a)
     LibraryViewMode.Albums -> stringResource(L10nR.string.feature_library_albums_e68c2b)
@@ -383,6 +386,12 @@ fun LibraryScreen(
     cloudLibraryConfigured: Boolean = false,
     onImportM3uPlaylist: () -> Unit = {},
     onExportM3uPlaylist: (EchoPlaylist) -> Unit = {},
+    radioStations: List<app.echo.android.model.radio.EchoRadioStation> = emptyList(),
+    radioLoadFailed: Boolean = false,
+    onRetryRadio: () -> Unit = {},
+    onPlayRadio: (app.echo.android.model.radio.EchoRadioStation) -> Unit = {},
+    onSaveRadio: suspend (String?, String, String) -> Unit = { _, _, _ -> },
+    onDeleteRadio: suspend (String) -> Unit = {},
 ) {
     val artistListState = rememberSaveable(selectedArtist?.artistKey, saver = androidx.compose.foundation.lazy.LazyListState.Saver) {
         androidx.compose.foundation.lazy.LazyListState()
@@ -539,9 +548,13 @@ fun LibraryScreen(
         LibraryBrowserFrame(
             query = libraryQuery,
             onQueryChange = onLibraryQueryChange,
+            searchPlaceholder = stringResource(
+                if (selectedMode == LibraryViewMode.Radio) L10nR.string.radio_search
+                else L10nR.string.feature_library_search_songs_artists_albums_14dc2c,
+            ),
             sources = { LibrarySourceStrip(selectedSource, linkedLibraryAvailable, ::selectSource) },
             actions = {
-                if (selectedSource == LibrarySourceMode.Local) LibrarySourceScanButton(
+                if (selectedSource == LibrarySourceMode.Local && selectedMode != LibraryViewMode.Radio) LibrarySourceScanButton(
                     selectedSource, linkedLibraryAvailable, ::selectSource,
                     hasPermission, scanState, onRequestPermission, onScanFolder, onScanAll, onCancelScan,
                     initialScanOptions = initialScanOptions,
@@ -585,6 +598,11 @@ fun LibraryScreen(
                             modifier = Modifier.fillMaxSize(),
                         ) { mode ->
                         when (mode) {
+                            LibraryViewMode.Radio -> RadioLibraryPanel(
+                                stations = radioStations, loadFailed = radioLoadFailed,
+                                onRetry = onRetryRadio, onPlay = onPlayRadio,
+                                onSave = onSaveRadio, onDelete = onDeleteRadio,
+                            )
                             LibraryViewMode.Songs -> {
                                 val trackItems = tracks.collectAsLazyPagingItems()
                                 val showInitialTrackLoading =
@@ -1965,7 +1983,7 @@ private fun LibraryBrowserHeader(
                 LibraryAlbumSortMenu(albumSortMode, onAlbumSortModeChange)
             LibraryViewMode.Artists -> LibraryArtistSortMenu(artistSortMode, onArtistSortModeChange)
             LibraryViewMode.Folders -> LibraryFolderSortMenu(folderSortMode, onFolderSortModeChange)
-            LibraryViewMode.Genres, LibraryViewMode.Playlists -> Unit
+            LibraryViewMode.Genres, LibraryViewMode.Playlists, LibraryViewMode.Radio -> Unit
         }
     }
 }

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connect_invalid_pairing">PC アドレスまたはペアリングトークンが無効です</string>
+    <string name="connect_not_connected">まだ PC ECHO に接続していません</string>
+    <string name="connect_library_partial">%2$d 曲中 %1$d 曲を表示中。検索で絞り込んでください。</string>
+    <string name="connect_playlist_missing_id">この PC プレイリストには playlistId がないため開けません</string>
+    <string name="connect_album_missing_id">この PC アルバムには albumId がないため開けません</string>
+    <string name="connect_queue_no_ids">この PC キューには再生できる trackId がありません</string>
+    <string name="connect_track_missing_id_handoff">この PC トラックには trackId がないため引き継ぎできません</string>
+    <string name="connect_no_local_cast_file">PC に送れるローカルファイルがありません</string>
+    <string name="connect_track_missing_id_remote">この PC トラックには trackId がないためリモート再生できません</string>
+    <string name="connect_stream_unavailable">この曲は今スマホへストリーミングできません</string>
+    <string name="connect_cast_unsupported">この PC の ECHOSteam はスマホからのキャストに未対応です。アップデートしてください。</string>
+    <string name="connect_auth_expired">PC の認証が失効しました。再ペアリングしてください。</string>
+    <string name="connect_failed">PC ECHO の接続に失敗しました</string>
+</resources>

@@ -3,13 +3,13 @@ package app.echo.android.playback
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import app.echo.android.i18n.wrapEchoAppLocaleToMatchApplication
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSourceBitmapLoader
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
@@ -30,6 +30,10 @@ class EchoPlaybackService : MediaLibraryService() {
     private var sessionCallback: EchoPlaybackLibrarySessionCallback? = null
     private var sessionRestorer: EchoPlaybackSessionRestorer? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(base.wrapEchoAppLocaleToMatchApplication())
+    }
 
     private val playerListener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
@@ -91,10 +95,7 @@ class EchoPlaybackService : MediaLibraryService() {
             )
             .setLoadControl(EchoPlaybackLoadControl())
             .setMediaSourceFactory(
-                DefaultMediaSourceFactory(
-                    echoPlaybackDataSourceFactory(this),
-                    EchoExtractorsFactory(),
-                ),
+                EchoRadioMediaSourceFactory(this),
             )
             .setAudioAttributes(
                 AudioAttributes.Builder()
@@ -112,6 +113,7 @@ class EchoPlaybackService : MediaLibraryService() {
             .also {
                 EchoPlaybackProcessRuntime.enginePolicy(this).attachTo(it)
                 it.setSkipSilenceEnabled(EchoPlaybackRuntimeOptionsStore.options.value.skipSilenceEnabled)
+                it.addListener(EchoRadioPlaybackBinding(it))
                 it.addListener(playerListener)
             }
 

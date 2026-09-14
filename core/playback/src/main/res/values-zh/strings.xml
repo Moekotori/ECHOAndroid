@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playback_command_favorite">喜欢</string>
+    <string name="playback_command_unfavorite">取消喜欢</string>
+    <string name="playback_command_repeat_all">列表循环</string>
+    <string name="playback_command_repeat_one">单曲循环</string>
+    <string name="playback_command_repeat_off">循环关闭</string>
+    <string name="playback_command_lyrics">歌词</string>
+</resources>

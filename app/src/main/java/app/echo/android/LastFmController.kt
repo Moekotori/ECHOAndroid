@@ -1,9 +1,9 @@
 package app.echo.android
 
+import androidx.annotation.StringRes
 import app.echo.android.data.EchoAppSettings
 import app.echo.android.model.error.EchoErrorLog
 import app.echo.android.model.error.EchoErrorSource
-import app.echo.android.model.i18n.echoText
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.PlaybackPositionState
 import java.io.IOException
@@ -27,11 +27,8 @@ import org.json.JSONObject
 
 data class LastFmUiState(
     val isConnecting: Boolean = false,
-    val lastMessage: String = echoText(
-        en = "Last.fm is not connected",
-        zh = "Last.fm 未连接",
-        ja = "Last.fm 未接続",
-    ),
+    @get:StringRes val lastMessageRes: Int = R.string.lastfm_disconnected,
+    val lastMessageArg: String? = null,
     val lastError: String? = null,
     val lastSubmittedTrackId: String? = null,
     val webAuthPending: Boolean = false,
@@ -120,11 +117,7 @@ internal class LastFmScrobbleController(
     fun setConnecting() {
         _uiState.value = LastFmUiState(
             isConnecting = true,
-            lastMessage = echoText(
-                en = "Last.fm is connecting",
-                zh = "Last.fm 正在连接",
-                ja = "Last.fm に接続中",
-            ),
+            lastMessageRes = R.string.lastfm_connecting,
         )
     }
 
@@ -132,11 +125,8 @@ internal class LastFmScrobbleController(
         val current = _uiState.value
         _uiState.value = current.copy(
             isConnecting = false,
-            lastMessage = echoText(
-                en = "Last.fm connected: $username",
-                zh = "Last.fm 已连接：$username",
-                ja = "Last.fm 接続済み：$username",
-            ),
+            lastMessageRes = R.string.lastfm_connected,
+            lastMessageArg = username,
             lastError = null,
             webAuthPending = false,
         )
@@ -145,11 +135,7 @@ internal class LastFmScrobbleController(
     fun setWebAuthPending() {
         active = null
         _uiState.value = LastFmUiState(
-            lastMessage = echoText(
-                en = "Last.fm authorization is open. Allow access, then return to ECHOAndroid to finish",
-                zh = "Last.fm 授权页已打开，允许后回到 ECHOAndroid 完成授权",
-                ja = "Last.fm の承認ページを開きました。許可したら ECHOAndroid に戻って完了してください",
-            ),
+            lastMessageRes = R.string.lastfm_auth_opened,
             webAuthPending = true,
         )
     }
@@ -157,21 +143,13 @@ internal class LastFmScrobbleController(
     fun setDisconnected() {
         active = null
         _uiState.value = LastFmUiState(
-            lastMessage = echoText(
-                en = "Last.fm disconnected",
-                zh = "Last.fm 已断开",
-                ja = "Last.fm を切断しました",
-            ),
+            lastMessageRes = R.string.lastfm_disconnected_done,
         )
     }
 
     fun setError(message: String) {
         _uiState.value = LastFmUiState(
-            lastMessage = echoText(
-                en = "Last.fm connection failed",
-                zh = "Last.fm 连接失败",
-                ja = "Last.fm の接続に失敗しました",
-            ),
+            lastMessageRes = R.string.lastfm_connect_failed,
             lastError = message,
         )
         EchoErrorLog.record(EchoErrorSource.Network, message)
@@ -179,11 +157,7 @@ internal class LastFmScrobbleController(
 
     fun setWebAuthError(message: String) {
         _uiState.value = LastFmUiState(
-            lastMessage = echoText(
-                en = "Last.fm authorization is not finished",
-                zh = "Last.fm 授权未完成",
-                ja = "Last.fm の承認が完了していません",
-            ),
+            lastMessageRes = R.string.lastfm_auth_incomplete,
             lastError = message,
             webAuthPending = true,
         )
@@ -310,11 +284,8 @@ internal class LastFmScrobbleController(
                 client.scrobble(credentials, scrobbleTrack, startedAt)
                     .onSuccess {
                         _uiState.value = LastFmUiState(
-                            lastMessage = echoText(
-                                en = "Last.fm scrobbled: ${scrobbleTrack.title}",
-                                zh = "Last.fm 已记录：${scrobbleTrack.title}",
-                                ja = "Last.fm に記録：${scrobbleTrack.title}",
-                            ),
+                            lastMessageRes = R.string.lastfm_scrobbled,
+                            lastMessageArg = scrobbleTrack.title,
                             lastSubmittedTrackId = scrobbleTrack.id,
                         )
                     }
@@ -326,11 +297,7 @@ internal class LastFmScrobbleController(
                         }
                         val message = error.message ?: "Scrobble failed"
                         _uiState.value = LastFmUiState(
-                            lastMessage = echoText(
-                                en = "Last.fm scrobble failed",
-                                zh = "Last.fm scrobble 失败",
-                                ja = "Last.fm の scrobble に失敗しました",
-                            ),
+                            lastMessageRes = R.string.lastfm_scrobble_failed,
                             lastError = message,
                         )
                         EchoErrorLog.record(EchoErrorSource.Network, message, throwable = error)
@@ -355,11 +322,8 @@ internal class LastFmScrobbleController(
                 client.updateNowPlaying(credentials, nowPlayingTrack)
                     .onSuccess {
                         _uiState.value = LastFmUiState(
-                            lastMessage = echoText(
-                                en = "Last.fm now playing: ${nowPlayingTrack.title}",
-                                zh = "Last.fm 正在显示：${nowPlayingTrack.title}",
-                                ja = "Last.fm で再生中：${nowPlayingTrack.title}",
-                            ),
+                            lastMessageRes = R.string.lastfm_now_playing,
+                            lastMessageArg = nowPlayingTrack.title,
                         )
                     }
                     .onFailure { error ->
@@ -370,11 +334,7 @@ internal class LastFmScrobbleController(
                         }
                         val message = error.message ?: "Now playing failed"
                         _uiState.value = LastFmUiState(
-                            lastMessage = echoText(
-                                en = "Last.fm now playing was not submitted",
-                                zh = "Last.fm 当前播放未提交",
-                                ja = "Last.fm の Now Playing を送信できませんでした",
-                            ),
+                            lastMessageRes = R.string.lastfm_now_playing_failed,
                             lastError = message,
                         )
                         EchoErrorLog.record(EchoErrorSource.Network, message, throwable = error)
@@ -402,22 +362,15 @@ internal class LastFmScrobbleController(
             client.scrobble(credentials, scrobbleTrack, startedAt)
                 .onSuccess {
                     _uiState.value = LastFmUiState(
-                        lastMessage = echoText(
-                            en = "Last.fm scrobbled: ${scrobbleTrack.title}",
-                            zh = "Last.fm 已记录：${scrobbleTrack.title}",
-                            ja = "Last.fm に記録：${scrobbleTrack.title}",
-                        ),
+                        lastMessageRes = R.string.lastfm_scrobbled,
+                        lastMessageArg = scrobbleTrack.title,
                         lastSubmittedTrackId = scrobbleTrack.id,
                     )
                 }
                 .onFailure { error ->
                     val message = error.message ?: "Scrobble failed"
                     _uiState.value = LastFmUiState(
-                        lastMessage = echoText(
-                            en = "Last.fm scrobble failed",
-                            zh = "Last.fm scrobble 失败",
-                            ja = "Last.fm の scrobble に失敗しました",
-                        ),
+                        lastMessageRes = R.string.lastfm_scrobble_failed,
                         lastError = message,
                     )
                     EchoErrorLog.record(EchoErrorSource.Network, message, throwable = error)

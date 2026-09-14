@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="album_online_title">이 앨범 정보</string>
+    <string name="album_online_refresh">새로고침</string>
+    <string name="album_online_loading">MusicBrainz와 Wikipedia를 조회하는 중…</string>
+    <string name="album_online_error">온라인 정보를 불러오지 못했습니다. 새로고침을 눌러 다시 시도하세요.</string>
+    <string name="album_online_no_match">신뢰할 수 있는 앨범 일치를 찾지 못했습니다. 앨범 제목과 아티스트 태그를 확인하세요.</string>
+    <string name="album_online_stale">저장된 정보를 표시합니다. 지금은 새로고침할 수 없습니다.</string>
+    <string name="album_online_partial">발매 정보를 불러왔습니다. Wikipedia는 잠시 사용할 수 없습니다.</string>
+    <string name="album_online_less">간략히</string>
+    <string name="album_online_more">더 보기</string>
+    <string name="album_online_attribution">Wikipedia 기여자 발췌, ECHO가 짧게 정리했습니다.</string>
+    <string name="album_online_no_wiki">연결된 Wikipedia 소개가 없습니다.</string>
+    <string name="album_online_release">일치한 발매</string>
+    <string name="album_online_release_note">MusicBrainz의 참고 에디션입니다. 보유한 파일은 다른 에디션일 수 있습니다.</string>
+    <string name="album_online_date">발매일</string>
+    <string name="album_online_country">지역</string>
+    <string name="album_online_label">레이블</string>
+    <string name="album_online_catalog">카탈로그 번호</string>
+    <string name="album_online_credits">크레딧</string>
+    <string name="album_online_composer">작곡</string>
+    <string name="album_online_lyricist">작사</string>
+    <string name="album_online_producer">프로듀서</string>
+    <string name="album_online_arranger">편곡</string>
+    <string name="album_online_vocal">보컬</string>
+    <string name="album_online_performer">연주</string>
+    <string name="album_online_mb_source">MusicBrainz · 출처 및 전체 크레딧</string>
+    <string name="album_online_link_error">이 링크를 열 수 없습니다.</string>
+    <string name="album_page_tracks">수록곡</string>
+    <string name="album_page_information">앨범 정보</string>
+</resources>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_scan_partial">Scan partially completed. Some storage volumes could not be fully read; existing songs were kept. Check the storage and retry.</string>
+    <string name="library_scan_partial_count">Scan partially completed: %1$d files or folders could not be read. Existing songs were kept; check the storage and retry.</string>
+    <string name="library_scan_failed">Library scan failed</string>
+    <string name="library_remote_reading_index">Reading the remote library index</string>
+    <string name="library_remote_connecting_subsonic">Connecting to Navidrome/Subsonic</string>
+    <string name="library_remote_found_albums">Found %1$d remote albums</string>
+    <string name="library_remote_read_tracks">Read %1$d remote tracks in bulk</string>
+    <string name="library_remote_skipped_albums">Skipped %1$d unchanged albums</string>
+    <string name="library_remote_sync_failed">Remote library sync failed</string>
+    <string name="library_webdav_reading_index">Reading the WebDAV index</string>
+    <string name="library_webdav_scanning">Scanning WebDAV folders</string>
+    <string name="library_webdav_sync_failed">WebDAV library sync failed</string>
+    <string name="library_jellyfin_connecting">Connecting to Jellyfin / Emby</string>
+    <string name="library_jellyfin_sync_failed">Jellyfin / Emby library sync failed</string>
+    <string name="subsonic_unreachable">Can\'t reach the Navidrome/Subsonic server.</string>
+    <string name="subsonic_certificate">This HTTPS certificate isn\'t trusted. Use a certificate the system trusts, or HTTP on your LAN.</string>
+    <string name="subsonic_timeout">The Navidrome/Subsonic server timed out.</string>
+    <string name="subsonic_unknown_host">Can\'t resolve the server address. Check the URL and your network.</string>
+    <string name="subsonic_connection_refused">The server refused the connection. Check the address and that Navidrome is running.</string>
+    <string name="subsonic_cleartext_blocked">HTTP (not HTTPS) is blocked for this address.</string>
+    <string name="subsonic_http_status">The server returned HTTP %1$d.</string>
+    <string name="subsonic_response_too_large">The server response was too large to read.</string>
+    <string name="subsonic_invalid_json">The server returned data that isn\'t valid JSON.</string>
+    <string name="subsonic_incompatible">This is not a Subsonic-compatible response. Check the server URL.</string>
+    <string name="subsonic_request_failed">Subsonic authentication or request failed.</string>
+</resources>

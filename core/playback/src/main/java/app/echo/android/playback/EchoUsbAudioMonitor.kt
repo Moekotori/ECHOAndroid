@@ -25,11 +25,35 @@ import app.echo.android.usbaudio.UsbAudioDeviceSnapshot
 import app.echo.android.usbaudio.UsbAudioProbe
 import app.echo.android.usbaudio.UsbEndpointSyncType
 import app.echo.android.usbaudio.UsbEndpointTransferType
+import app.echo.android.usbaudio.UsbExclusiveOutputState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 object EchoUsbExclusiveApplyPolicy {
+    fun shouldFallBackToMixer(
+        connected: Boolean,
+        permissionGranted: Boolean,
+        openState: UsbExclusiveOutputState,
+    ): Boolean {
+        if (!connected || !permissionGranted) return true
+        return when (openState) {
+            UsbExclusiveOutputState.DeviceUnavailable,
+            UsbExclusiveOutputState.PermissionDenied,
+            -> true
+            UsbExclusiveOutputState.FormatUnavailable,
+            UsbExclusiveOutputState.OpenFailed,
+            UsbExclusiveOutputState.UnsupportedTransport,
+            UsbExclusiveOutputState.Closed,
+            -> false
+            UsbExclusiveOutputState.Idle,
+            UsbExclusiveOutputState.Opening,
+            UsbExclusiveOutputState.Ready,
+            UsbExclusiveOutputState.Streaming,
+            -> true
+        }
+    }
+
     fun shouldReapplyAfterHostPermissionGranted(
         exclusiveEnabled: Boolean,
         previouslyGranted: Boolean,

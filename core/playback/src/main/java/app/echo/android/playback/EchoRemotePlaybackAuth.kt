@@ -25,6 +25,7 @@ import java.security.SecureRandom
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 data class EchoWebDavPlaybackCredential(
     val baseUrl: String,
@@ -262,7 +263,9 @@ private fun echoRemoteAuthResolver(): ResolvingDataSource.Resolver =
         val trackId = EchoLinkPlaybackUri.trackIdFromPersistUri(raw)
         val resolved = if (trackId != null) {
             val uri = kotlinx.coroutines.runBlocking {
-                EchoPlaybackProcessRuntime.resolvePlayUri(EchoLinkPlaybackUri.mediaId(trackId), raw)
+                withTimeoutOrNull(EchoLinkStreamRefreshPolicy.ResolveTimeoutMs) {
+                    EchoPlaybackProcessRuntime.resolvePlayUri(EchoLinkPlaybackUri.mediaId(trackId), raw)
+                } ?: throw IOException("PC ECHO stream timed out")
             }
             if (EchoLinkPlaybackUri.trackIdFromPersistUri(uri) != null) {
                 throw IOException("PC ECHO stream is unavailable")

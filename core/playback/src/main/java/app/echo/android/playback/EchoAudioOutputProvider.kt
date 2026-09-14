@@ -65,8 +65,11 @@ internal class EchoAudioOutputProvider(
             channelCount = channelCount,
             bitDepth = requestedBitDepth,
         )
-        val usbFormat = UsbPcmFormatSelector.chooseClosestFormat(snapshot.descriptor, spec) ?: return null
-        val destBytes = UsbPcmPacker.bytesPerSample(usbFormat.bitResolution ?: requestedBitDepth, usbFormat.subslotSize)
+        val usbFormat = UsbPcmFormatSelector.chooseClosestFormat(snapshot.descriptor, spec)
+        val destBytes = UsbPcmPacker.bytesPerSample(
+            usbFormat?.bitResolution ?: requestedBitDepth,
+            usbFormat?.subslotSize,
+        )
         val encoding = outputEncoding(sourceEncoding)
         val channelMask = if (channelCount <= 1) AudioFormat.CHANNEL_OUT_MONO else AudioFormat.CHANNEL_OUT_STEREO
         val outputConfig = AudioOutputProvider.OutputConfig.Builder()
@@ -80,7 +83,10 @@ internal class EchoAudioOutputProvider(
             .setUsePlaybackParameters(true)
             .setUseOffloadGapless(false)
             .build()
-        return ExclusivePlan(spec = spec.copy(bitDepth = usbFormat.bitResolution ?: requestedBitDepth), outputConfig = outputConfig)
+        return ExclusivePlan(
+            spec = spec.copy(bitDepth = usbFormat?.bitResolution ?: requestedBitDepth),
+            outputConfig = outputConfig,
+        )
     }
 
     private fun exclusiveOutputOrNull(outputConfig: AudioOutputProvider.OutputConfig): AudioOutput? {
@@ -95,14 +101,23 @@ internal class EchoAudioOutputProvider(
         val session = usbOutput.open(spec)
         if (!session.openResult.isReady) {
             recordUsbOpenFailure(session.openResult.state, session.openResult.message)
-            session.close()
-            return null
+            val snapshot = probe.snapshot()
+            if (
+                EchoUsbExclusiveApplyPolicy.shouldFallBackToMixer(
+                    connected = snapshot.connected,
+                    permissionGranted = snapshot.permissionGranted,
+                    openState = session.openResult.state,
+                )
+            ) {
+                session.close()
+                return null
+            }
         }
         return EchoUsbExclusiveAudioOutput(
             session = session,
             outputConfig = outputConfig,
             sourceEncoding = sourceEncoding,
-            destBytesPerSample = session.bytesPerSample,
+            destBytesPerSample = session.bytesPerSample.coerceAtLeast(1),
         )
     }
 

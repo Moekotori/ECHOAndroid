@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="path_unverified">출력 미확인</string>
+    <string name="path_verified">bit-perfect 확인됨</string>
+    <string name="path_processing">DSP 처리 중</string>
+    <string name="path_unverified_detail">기기 클럭과 최종 샘플이 확인되지 않았습니다. 시스템 경로가 무손실 출력을 보장하지는 않습니다.</string>
+    <string name="path_pending_detail">재생을 시작하면 활성 경로를 검사합니다. 저장된 트랙 정보는 활성 출력을 확인하지 않습니다.</string>
+    <string name="path_error_detail">재생에 실패했습니다. 이 단계는 동작 중인 오디오 경로를 확인하지 않습니다.</string>
+    <string name="path_format_change">보고된 레이트 변경</string>
+    <string name="path_format_pair">소스 %1$s → 디코드 %2$s</string>
+    <string name="path_eq_detail">프리앰프 %1$s · 처리 레이트 %2$s</string>
+    <string name="path_channel_detail">L %1$s · R %2$s</string>
+    <string name="path_source_format">소스 형식</string>
+    <string name="path_device_clock">보고된 기기 클럭: %1$s</string>
+</resources>

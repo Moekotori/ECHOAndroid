@@ -13,7 +13,6 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
-import androidx.glance.LocalContext
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
@@ -42,6 +41,7 @@ import androidx.glance.unit.ColorProvider
 import androidx.media3.common.util.UnstableApi
 import app.echo.android.MainActivity
 import app.echo.android.R
+import app.echo.android.i18n.wrapEchoAppLocaleToMatchApplication
 import app.echo.android.design.EchoArtworkUrlRewriteRegistry
 import app.echo.android.playback.EchoPlaybackArtwork
 import app.echo.android.playback.EchoPlaybackProcessRuntime
@@ -53,12 +53,13 @@ import java.net.URL
 
 class EchoPlaybackWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val localized = context.wrapEchoAppLocaleToMatchApplication()
         val snapshot = EchoPlaybackProcessRuntime.surfaceSnapshot
         val artwork = withContext(Dispatchers.IO) {
-            loadWidgetArtwork(context, snapshot)
+            loadWidgetArtwork(localized, snapshot)
         }
         provideContent {
-            EchoPlaybackWidgetContent(snapshot, artwork)
+            EchoPlaybackWidgetContent(localized, snapshot, artwork)
         }
     }
 }
@@ -69,10 +70,10 @@ class EchoPlaybackWidgetReceiver : GlanceAppWidgetReceiver() {
 
 @Composable
 private fun EchoPlaybackWidgetContent(
+    context: Context,
     snapshot: EchoPlaybackSurfaceSnapshot,
     artwork: Bitmap?,
 ) {
-    val context = LocalContext.current
     val title = snapshot.title.ifBlank { context.getString(R.string.app_name) }
     val artist = snapshot.artist.ifBlank {
         if (snapshot.hasTrack) "" else context.getString(R.string.playback_widget_idle)
@@ -129,19 +130,21 @@ private fun EchoPlaybackWidgetContent(
         Spacer(modifier = GlanceModifier.width(8.dp))
         WidgetIconButton(
             resId = R.drawable.echo_ic_skip_previous,
-            contentDescription = "Previous",
+            contentDescription = context.getString(R.string.playback_widget_previous),
             action = EchoPlaybackWidgetPreviousAction::class.java,
         )
         Spacer(modifier = GlanceModifier.width(4.dp))
         WidgetIconButton(
             resId = if (snapshot.isPlaying) R.drawable.echo_ic_pause else R.drawable.echo_ic_play,
-            contentDescription = if (snapshot.isPlaying) "Pause" else "Play",
+            contentDescription = context.getString(
+                if (snapshot.isPlaying) R.string.playback_widget_pause else R.string.playback_widget_play,
+            ),
             action = EchoPlaybackWidgetPlayPauseAction::class.java,
         )
         Spacer(modifier = GlanceModifier.width(4.dp))
         WidgetIconButton(
             resId = R.drawable.echo_ic_skip_next,
-            contentDescription = "Next",
+            contentDescription = context.getString(R.string.playback_widget_next),
             action = EchoPlaybackWidgetNextAction::class.java,
         )
     }

@@ -1,5 +1,7 @@
 package app.echo.android.connect
 
+import android.content.Context
+import androidx.annotation.StringRes
 import app.echo.android.model.connect.EchoRemoteAlbum
 import app.echo.android.model.connect.EchoRemoteCommand
 import app.echo.android.model.connect.EchoRemoteConnectionState
@@ -12,7 +14,6 @@ import app.echo.android.model.connect.EchoRemotePlaylist
 import app.echo.android.model.connect.EchoRemoteStatus
 import app.echo.android.model.connect.EchoRemoteStreamItem
 import app.echo.android.model.connect.EchoRemoteTrack
-import app.echo.android.model.i18n.echoText
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.LibrarySource
 import app.echo.android.model.playback.EchoLinkPlaybackUri
@@ -32,8 +33,15 @@ class EchoRemoteClient internal constructor(
     private val transport: EchoLinkTransport = OkHttpEchoLinkTransport(),
     private val connectRetryDelayMs: Long = 500L,
     private val statusPollIntervalMs: Long = StatusPollIntervalMs,
+    private val appContext: Context? = null,
 ) {
     constructor(scope: CoroutineScope) : this(scope, OkHttpEchoLinkTransport())
+    constructor(scope: CoroutineScope, context: Context) : this(scope, OkHttpEchoLinkTransport(), appContext = context)
+
+    private fun text(@StringRes id: Int, vararg args: Any): String {
+        val ctx = appContext ?: return "error"
+        return if (args.isEmpty()) ctx.getString(id) else ctx.getString(id, *args)
+    }
 
     private val _status = MutableStateFlow(EchoRemoteStatus())
     val status: StateFlow<EchoRemoteStatus> = _status.asStateFlow()
@@ -78,6 +86,15 @@ class EchoRemoteClient internal constructor(
     private var phonePlaybackJob: Job? = null
     private var playOnPhoneGeneration = 0L
     private var connectGeneration = 0L
+    private val streamCacheLock = Any()
+    private val streamCache = object : LinkedHashMap<String, CachedEchoLinkStream>(
+        EchoLinkStreamCachePolicy.MaxEntries,
+        0.75f,
+        true,
+    ) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CachedEchoLinkStream>?): Boolean =
+            size > EchoLinkStreamCachePolicy.MaxEntries
+    }
     private var statusRefreshGeneration = 0L
     private var libraryRefreshGeneration = 0L
     private var playlistRefreshGeneration = 0L
@@ -96,11 +113,7 @@ class EchoRemoteClient internal constructor(
             _status.update {
                 it.copy(
                     connectionState = EchoRemoteConnectionState.Error,
-                    error = echoText(
-                        en = "Invalid PC address or pairing token",
-                        zh = "PC 地址或配对 Token 无效",
-                        ja = "PC アドレスまたはペアリングトークンが無効です",
-                    ),
+                    error = text(R.string.connect_invalid_pairing),
                 )
             }
             return
@@ -116,7 +129,10 @@ class EchoRemoteClient internal constructor(
         authRejected = false
         refreshOnForeground = false
         pollFailures = 0
-        if (!EchoLinkRequestPolicy.isSameEndpoint(endpoint, nextEndpoint)) _library.value = EchoRemoteLibraryState()
+        if (!EchoLinkRequestPolicy.isSameEndpoint(endpoint, nextEndpoint)) {
+            _library.value = EchoRemoteLibraryState()
+            clearStreamCache()
+        }
         val generation = ++connectGeneration
         connectJob?.cancel()
         endpoint = nextEndpoint
@@ -234,6 +250,7 @@ class EchoRemoteClient internal constructor(
         phonePlaybackJob?.cancel()
         phonePlaybackJob = null
         endpoint = null
+        clearStreamCache()
         _status.value = EchoRemoteStatus()
         _library.value = EchoRemoteLibraryState()
     }
@@ -264,11 +281,7 @@ class EchoRemoteClient internal constructor(
             _status.update {
                 it.copy(
                     connectionState = EchoRemoteConnectionState.Error,
-                    error = echoText(
-                        en = "PC ECHO is not connected yet",
-                        zh = "还没有连接 PC ECHO",
-                        ja = "まだ PC ECHO に接続していません",
-                    ),
+                    error = text(R.string.connect_not_connected),
                 )
             }
             return
@@ -283,11 +296,7 @@ class EchoRemoteClient internal constructor(
             _library.update {
                 it.copy(
                     isLoading = false,
-                    error = echoText(
-                        en = "PC ECHO is not connected yet",
-                        zh = "还没有连接 PC ECHO",
-                        ja = "まだ PC ECHO に接続していません",
-                    ),
+                    error = text(R.string.connect_not_connected),
                 )
             }
             return
@@ -421,11 +430,14 @@ class EchoRemoteClient internal constructor(
                 page += 1
             }
             if (isCurrentRefresh()) {
-                publish(isLoadingMore = false, error = if (loadedTracks.size < totalCount) echoText(
-                    en = "Loaded ${loadedTracks.size} of $totalCount tracks. Search to narrow the library.",
-                    zh = "已加载 ${loadedTracks.size}/$totalCount 首；请搜索以缩小曲库范围。",
-                    ja = "$totalCount 曲中 ${loadedTracks.size} 曲を表示中。検索で絞り込んでください。",
-                ) else null)
+                publish(
+                    isLoadingMore = false,
+                    error = if (loadedTracks.size < totalCount) {
+                        text(R.string.connect_library_partial, loadedTracks.size, totalCount)
+                    } else {
+                        null
+                    },
+                )
             }
         }
     }
@@ -437,11 +449,7 @@ class EchoRemoteClient internal constructor(
         val target = endpoint ?: run {
             _library.update {
                 it.copy(
-                    error = echoText(
-                        en = "PC ECHO is not connected yet",
-                        zh = "还没有连接 PC ECHO",
-                        ja = "まだ PC ECHO に接続していません",
-                    ),
+                    error = text(R.string.connect_not_connected),
                 )
             }
             return
@@ -449,11 +457,7 @@ class EchoRemoteClient internal constructor(
         if (playlist.id.isBlank()) {
             _library.update {
                 it.copy(
-                    error = echoText(
-                        en = "This PC playlist is missing a playlistId and cannot be opened",
-                        zh = "PC 歌单缺少 playlistId，不能打开",
-                        ja = "この PC プレイリストには playlistId がないため開けません",
-                    ),
+                    error = text(R.string.connect_playlist_missing_id),
                 )
             }
             return
@@ -511,11 +515,7 @@ class EchoRemoteClient internal constructor(
         val target = endpoint ?: run {
             _library.update {
                 it.copy(
-                    error = echoText(
-                        en = "PC ECHO is not connected yet",
-                        zh = "还没有连接 PC ECHO",
-                        ja = "まだ PC ECHO に接続していません",
-                    ),
+                    error = text(R.string.connect_not_connected),
                 )
             }
             return
@@ -523,11 +523,7 @@ class EchoRemoteClient internal constructor(
         if (album.id.isBlank()) {
             _library.update {
                 it.copy(
-                    error = echoText(
-                        en = "This PC album is missing an albumId and cannot be opened",
-                        zh = "PC 专辑缺少 albumId，不能打开",
-                        ja = "この PC アルバムには albumId がないため開けません",
-                    ),
+                    error = text(R.string.connect_album_missing_id),
                 )
             }
             return
@@ -579,11 +575,7 @@ class EchoRemoteClient internal constructor(
         val target = endpoint ?: run {
             _library.update {
                 it.copy(
-                    error = echoText(
-                        en = "PC ECHO is not connected yet",
-                        zh = "还没有连接 PC ECHO",
-                        ja = "まだ PC ECHO に接続していません",
-                    ),
+                    error = text(R.string.connect_not_connected),
                 )
             }
             return
@@ -645,11 +637,7 @@ class EchoRemoteClient internal constructor(
         if (ids.isEmpty() || startId == null) {
             _library.update {
                 it.copy(
-                    error = echoText(
-                        en = "This PC queue has no playable track IDs",
-                        zh = "这个 PC 队列没有可播放的 trackId",
-                        ja = "この PC キューには再生できる trackId がありません",
-                    ),
+                    error = text(R.string.connect_queue_no_ids),
                 )
             }
             return
@@ -668,11 +656,7 @@ class EchoRemoteClient internal constructor(
         val trackId = startTrack?.id?.takeIf { it.isNotBlank() } ?: run {
             _library.update {
                 it.copy(
-                    error = echoText(
-                        en = "This PC track is missing a trackId and cannot be handed off",
-                        zh = "PC 曲目缺少 trackId，不能交接播放",
-                        ja = "この PC トラックには trackId がないため引き継ぎできません",
-                    ),
+                    error = text(R.string.connect_track_missing_id_handoff),
                 )
             }
             onFailure(null)
@@ -682,11 +666,7 @@ class EchoRemoteClient internal constructor(
             _status.update {
                 it.copy(
                     connectionState = EchoRemoteConnectionState.Error,
-                    error = echoText(
-                        en = "PC ECHO is not connected yet",
-                        zh = "还没有连接 PC ECHO",
-                        ja = "まだ PC ECHO に接続していません",
-                    ),
+                    error = text(R.string.connect_not_connected),
                 )
             }
             onFailure(null)
@@ -722,11 +702,7 @@ class EchoRemoteClient internal constructor(
     ) {
         val startItem = items.getOrNull(startIndex) ?: items.firstOrNull()
         if (startItem == null || startItem.streamUrl.isBlank()) {
-            val message = echoText(
-                en = "There is no local file that can be sent to PC",
-                zh = "没有可投送到电脑的本机文件",
-                ja = "PC に送れるローカルファイルがありません",
-            )
+            val message = text(R.string.connect_no_local_cast_file)
             _library.update { it.copy(error = message) }
             _status.update { it.copy(error = message) }
             onFailure(null)
@@ -736,11 +712,7 @@ class EchoRemoteClient internal constructor(
             _status.update {
                 it.copy(
                     connectionState = EchoRemoteConnectionState.Error,
-                    error = echoText(
-                        en = "PC ECHO is not connected yet",
-                        zh = "还没有连接 PC ECHO",
-                        ja = "まだ PC ECHO に接続していません",
-                    ),
+                    error = text(R.string.connect_not_connected),
                 )
             }
             onFailure(null)
@@ -782,11 +754,7 @@ class EchoRemoteClient internal constructor(
         val trackId = track.id ?: run {
             _library.update {
                 it.copy(
-                    error = echoText(
-                        en = "This PC track is missing a trackId and cannot be played remotely",
-                        zh = "PC 曲目缺少 trackId，不能远程播放",
-                        ja = "この PC トラックには trackId がないためリモート再生できません",
-                    ),
+                    error = text(R.string.connect_track_missing_id_remote),
                 )
             }
             return
@@ -798,11 +766,7 @@ class EchoRemoteClient internal constructor(
         val trackId = track.id ?: run {
             _library.update {
                 it.copy(
-                    error = echoText(
-                        en = "This PC track is missing a trackId and cannot be handed off",
-                        zh = "PC 曲目缺少 trackId，不能交接播放",
-                        ja = "この PC トラックには trackId がないため引き継ぎできません",
-                    ),
+                    error = text(R.string.connect_track_missing_id_handoff),
                 )
             }
             return
@@ -834,11 +798,7 @@ class EchoRemoteClient internal constructor(
         val target = endpoint ?: run {
             _library.update {
                 it.copy(
-                    error = echoText(
-                        en = "PC ECHO is not connected yet",
-                        zh = "还没有连接 PC ECHO",
-                        ja = "まだ PC ECHO に接続していません",
-                    ),
+                    error = text(R.string.connect_not_connected),
                 )
             }
             return
@@ -850,11 +810,7 @@ class EchoRemoteClient internal constructor(
         if (requested?.id.isNullOrBlank() || !requested.canPlayOnPhone) {
             _library.update {
                 it.copy(
-                    error = echoText(
-                        en = "This track cannot be streamed to the phone right now",
-                        zh = "这首歌暂时不能串流到手机",
-                        ja = "この曲は今スマホへストリーミングできません",
-                    ),
+                    error = text(R.string.connect_stream_unavailable),
                 )
             }
             return
@@ -863,7 +819,7 @@ class EchoRemoteClient internal constructor(
         val requestedId = requireNotNull(requested.id)
         phonePlaybackJob = scope.launch {
             val resolved = runSuspendCatching {
-                val stream = transport.resolveStream(target, requestedId)
+                val stream = resolveCachedStream(target, requestedId)
                 playable.map { track ->
                     track.toPhonePlaybackTrack(
                         if (track.id == requestedId) stream.streamUrl
@@ -881,11 +837,7 @@ class EchoRemoteClient internal constructor(
                 if (queue.isEmpty()) {
                     _library.update {
                         it.copy(
-                            error = echoText(
-                                en = "This track cannot be streamed to the phone right now",
-                                zh = "这首歌暂时不能串流到手机",
-                                ja = "この曲は今スマホへストリーミングできません",
-                            ),
+                            error = text(R.string.connect_stream_unavailable),
                         )
                     }
                     return@onSuccess
@@ -1007,11 +959,7 @@ class EchoRemoteClient internal constructor(
 
     private fun applyCastFailure(error: Throwable) {
         val message = if (EchoLinkCastPolicy.isUnsupportedRemoteStreamCommand(error)) {
-            echoText(
-                en = "This PC ECHO build cannot receive a phone stream yet. Update ECHOSteam.",
-                zh = "这台电脑的 ECHOSteam 还不支持接收手机串流，请升级后再投送。",
-                ja = "この PC の ECHOSteam はスマホからのキャストに未対応です。アップデートしてください。",
-            )
+            text(R.string.connect_cast_unsupported)
         } else {
             error.userMessage()
         }
@@ -1110,11 +1058,8 @@ class EchoRemoteClient internal constructor(
     private fun rejectAuthentication(target: EchoRemoteEndpoint, error: Throwable?): Boolean {
         if ((error as? EchoLinkHttpException)?.statusCode !in listOf(401, 403)) return false
         authRejected = true
-        markConnectionError(target, EchoLinkHttpException(echoText(
-            en = "PC authorization expired or was revoked. Pair again.",
-            zh = "PC 授权已失效或被撤销，请重新配对。",
-            ja = "PC の認証が失効しました。再ペアリングしてください。",
-        )))
+        markConnectionError(target, EchoLinkHttpException(text(R.string.connect_auth_expired)))
+        clearStreamCache()
         return true
     }
 
@@ -1161,10 +1106,49 @@ class EchoRemoteClient internal constructor(
 
     suspend fun resolvePhoneStreamUrl(trackId: String): String? {
         val target = endpoint ?: return null
-        return runSuspendCatching { transport.resolveStream(target, trackId) }
+        if (trackId.isBlank()) return null
+        return runSuspendCatching { resolveCachedStream(target, trackId) }
             .getOrNull()
             ?.streamUrl
             ?.takeIf { it.isNotBlank() }
+    }
+
+    private suspend fun resolveCachedStream(
+        target: EchoRemoteEndpoint,
+        trackId: String,
+    ): EchoLinkStreamResponse {
+        val key = EchoLinkStreamCachePolicy.cacheKey(
+            EchoLinkRequestPolicy.endpointIdentity(target),
+            trackId,
+        )
+        val now = System.currentTimeMillis()
+        val cached = synchronized(streamCacheLock) { streamCache[key] }
+        if (cached != null && EchoLinkStreamCachePolicy.isFresh(cached.expiresAtEpochMs, now)) {
+            return EchoLinkStreamResponse(
+                streamUrl = cached.streamUrl,
+                track = null,
+                expiresAtEpochMs = cached.expiresAtEpochMs,
+            )
+        }
+        val stream = transport.resolveStream(target, trackId)
+        rememberStream(key, stream)
+        return stream
+    }
+
+    private fun rememberStream(key: String, stream: EchoLinkStreamResponse) {
+        val url = stream.streamUrl.takeIf { it.isNotBlank() } ?: return
+        val expiresAt = stream.expiresAtEpochMs
+        if (!EchoLinkStreamCachePolicy.shouldCache(expiresAt)) return
+        synchronized(streamCacheLock) {
+            streamCache[key] = CachedEchoLinkStream(
+                streamUrl = url,
+                expiresAtEpochMs = requireNotNull(expiresAt),
+            )
+        }
+    }
+
+    private fun clearStreamCache() {
+        synchronized(streamCacheLock) { streamCache.clear() }
     }
 
     suspend fun fetchLyrics(trackId: String): EchoRemoteLyrics? {
@@ -1174,11 +1158,7 @@ class EchoRemoteClient internal constructor(
     }
 
     private fun Throwable.userMessage(): String =
-        message?.takeIf { it.isNotBlank() } ?: echoText(
-            en = "PC ECHO connection failed",
-            zh = "PC ECHO 连接失败",
-            ja = "PC ECHO の接続に失敗しました",
-        )
+        message?.takeIf { it.isNotBlank() } ?: text(R.string.connect_failed)
 
     private companion object {
         const val StatusPollIntervalMs = 5_000L
@@ -1191,6 +1171,11 @@ class EchoRemoteClient internal constructor(
         const val PublishEveryPages = 2
     }
 }
+
+private data class CachedEchoLinkStream(
+    val streamUrl: String,
+    val expiresAtEpochMs: Long,
+)
 
 internal fun EchoRemoteTrack.toPhonePlaybackTrack(streamUrl: String): EchoTrack {
     val trackId = id?.takeIf { it.isNotBlank() } ?: streamUrl.hashCode().toString()

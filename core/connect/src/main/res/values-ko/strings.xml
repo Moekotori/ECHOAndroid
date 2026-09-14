@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connect_invalid_pairing">PC 주소 또는 페어링 토큰이 올바르지 않습니다</string>
+    <string name="connect_not_connected">아직 PC ECHO에 연결되어 있지 않습니다</string>
+    <string name="connect_library_partial">%2$d곡 중 %1$d곡을 불러왔습니다. 검색으로 라이브러리를 좁히세요.</string>
+    <string name="connect_playlist_missing_id">이 PC 플레이리스트에는 playlistId가 없어 열 수 없습니다</string>
+    <string name="connect_album_missing_id">이 PC 앨범에는 albumId가 없어 열 수 없습니다</string>
+    <string name="connect_queue_no_ids">이 PC 대기열에는 재생할 수 있는 trackId가 없습니다</string>
+    <string name="connect_track_missing_id_handoff">이 PC 트랙에는 trackId가 없어 인계할 수 없습니다</string>
+    <string name="connect_no_local_cast_file">PC로 보낼 수 있는 로컬 파일이 없습니다</string>
+    <string name="connect_track_missing_id_remote">이 PC 트랙에는 trackId가 없어 원격 재생할 수 없습니다</string>
+    <string name="connect_stream_unavailable">이 곡은 지금 휴대전화로 스트리밍할 수 없습니다</string>
+    <string name="connect_cast_unsupported">이 PC의 ECHOSteam은 아직 휴대전화 스트림을 받을 수 없습니다. ECHOSteam을 업데이트하세요.</string>
+    <string name="connect_auth_expired">PC 승인이 만료되었거나 취소되었습니다. 다시 페어링하세요.</string>
+    <string name="connect_failed">PC ECHO 연결에 실패했습니다</string>
+</resources>

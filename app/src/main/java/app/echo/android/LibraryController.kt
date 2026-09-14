@@ -2,6 +2,7 @@ package app.echo.android
 
 import app.echo.android.model.library.LibraryScanOptions
 import android.content.ContentResolver
+import android.content.Context
 import android.net.Uri
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
@@ -37,7 +38,6 @@ import app.echo.android.model.error.EchoErrorSource
 import app.echo.android.model.library.LibraryScanPhase
 import app.echo.android.model.library.LibraryScanProgress
 import app.echo.android.model.library.LibraryStats
-import app.echo.android.model.i18n.echoText
 import app.echo.android.model.library.LibraryTrackSortMode
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
 import kotlinx.coroutines.CoroutineScope
@@ -73,6 +73,7 @@ internal class LibraryController(
     private val scope: CoroutineScope,
     private val settingsStore: EchoSettingsStore,
     private val resolver: ContentResolver,
+    private val appContext: Context,
 ) {
     private val listSharingStarted = SharingStarted.WhileSubscribed(5_000L)
     private val _libraryQuery = MutableStateFlow("")
@@ -542,11 +543,7 @@ internal class LibraryController(
 
     fun refreshSubsonic(endpoint: SubsonicEndpoint, onSucceeded: (() -> Unit)? = null) {
         startRemoteSync(
-            fallbackError = echoText(
-                en = "Subsonic / Navidrome sync failed",
-                zh = "Subsonic / Navidrome 同步失败",
-                ja = "Subsonic / Navidrome の同期に失敗しました",
-            ),
+            fallbackError = appContext.getString(R.string.remote_sync_subsonic_failed),
             onSucceeded = onSucceeded,
         ) {
             repository.refreshSubsonicSnapshot(endpoint)
@@ -561,11 +558,7 @@ internal class LibraryController(
 
     fun refreshWebDav(endpoint: WebDavEndpoint) {
         startRemoteSync(
-            fallbackError = echoText(
-                en = "WebDAV sync failed",
-                zh = "WebDAV 同步失败",
-                ja = "WebDAV の同期に失敗しました",
-            ),
+            fallbackError = appContext.getString(R.string.remote_sync_webdav_failed),
         ) {
             repository.refreshWebDavSnapshot(endpoint)
         }
@@ -578,11 +571,7 @@ internal class LibraryController(
         var accessToken: String? = null
         var userId: String? = null
         startRemoteSync(
-            fallbackError = echoText(
-                en = "Jellyfin / Emby sync failed",
-                zh = "Jellyfin / Emby 同步失败",
-                ja = "Jellyfin / Emby の同期に失敗しました",
-            ),
+            fallbackError = appContext.getString(R.string.remote_sync_jellyfin_failed),
             onSucceeded = {
                 val token = accessToken
                 val id = userId
@@ -620,16 +609,8 @@ internal class LibraryController(
     ) {
         if (remoteScanJob?.isActive == true) {
             _remoteScanState.value = _remoteScanState.value.copy(
-                currentTitle = echoText(
-                    en = "A remote library sync is already running. Cancel it or wait for it to finish",
-                    zh = "已有远程曲库同步正在进行，请先取消或等待完成",
-                    ja = "リモートライブラリの同期が実行中です。キャンセルするか完了を待ってください",
-                ),
-                error = echoText(
-                    en = "A remote library sync is already running. Cancel it or wait for it to finish",
-                    zh = "已有远程曲库同步正在进行，请先取消或等待完成",
-                    ja = "リモートライブラリの同期が実行中です。キャンセルするか完了を待ってください",
-                ),
+                currentTitle = appContext.getString(R.string.remote_sync_already_running),
+                error = appContext.getString(R.string.remote_sync_already_running),
             )
             return
         }

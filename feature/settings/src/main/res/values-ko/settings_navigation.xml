@@ -1,0 +1,18 @@
+<resources>
+    <string name="settings_category_appearance">외관</string>
+    <string name="settings_category_interface">인터페이스와 언어</string>
+    <string name="settings_category_playback">재생과 가사</string>
+    <string name="settings_category_services">연결과 서비스</string>
+    <string name="settings_category_appearance_detail">테마, 배경, 글꼴을 조정해 ECHO를 나답게 만드세요.</string>
+    <string name="settings_category_interface_detail">언어, 레이아웃, 성능 설정.</string>
+    <string name="settings_category_playback_detail">곡 전환, 가사, USB 출력 설정.</string>
+    <string name="settings_category_services_detail">컴퓨터와 청취 기록 서비스를 연결합니다.</string>
+    <string name="settings_category_library_detail">로컬 음악과 라이브러리에 표시되는 정보를 관리합니다.</string>
+    <string name="settings_category_about_detail">앱 버전과 오류 로그.</string>
+    <string name="settings_home_detail">조금만 다듬으면, 나만의 ECHO.</string>
+    <string name="settings_back">설정으로 돌아가기</string>
+    <string name="settings_group_personal">개인화</string>
+    <string name="settings_group_music">음악과 연결</string>
+    <string name="settings_group_app">앱</string>
+    <string name="settings_library_summary">%1$d곡 · 앨범 %2$d장 · 아티스트 %3$d명</string>
+</resources>

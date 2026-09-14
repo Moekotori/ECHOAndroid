@@ -1,11 +1,11 @@
 package app.echo.android.playback
 
+import android.content.Context
 import android.os.Bundle
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.CommandButton
 import androidx.media3.session.SessionCommand
-import app.echo.android.model.i18n.echoText
 
 object EchoPlaybackIntents {
     const val ACTION_OPEN_LYRICS = "app.echo.android.playback.OPEN_LYRICS"
@@ -37,6 +37,7 @@ fun nextPlayerRepeatMode(current: Int): Int = when (current) {
 
 @UnstableApi
 fun echoPlaybackCommandButtons(
+    context: Context,
     favorite: Boolean,
     repeatMode: Int,
 ): List<CommandButton> = listOf(
@@ -45,11 +46,9 @@ fun echoPlaybackCommandButtons(
     )
         .setSessionCommand(EchoPlaybackSessionCommands.toggleFavorite)
         .setDisplayName(
-            if (favorite) {
-                echoText(en = "Remove favorite", zh = "取消喜欢", ja = "お気に入り解除")
-            } else {
-                echoText(en = "Favorite", zh = "喜欢", ja = "お気に入り")
-            },
+            context.getString(
+                if (favorite) R.string.playback_command_unfavorite else R.string.playback_command_favorite,
+            ),
         )
         .setSlots(CommandButton.SLOT_OVERFLOW)
         .setEnabled(true)
@@ -63,18 +62,20 @@ fun echoPlaybackCommandButtons(
     )
         .setSessionCommand(EchoPlaybackSessionCommands.cycleRepeat)
         .setDisplayName(
-            when (repeatMode) {
-                Player.REPEAT_MODE_ALL -> echoText(en = "Repeat all", zh = "列表循环", ja = "全曲リピート")
-                Player.REPEAT_MODE_ONE -> echoText(en = "Repeat one", zh = "单曲循环", ja = "1曲リピート")
-                else -> echoText(en = "Repeat off", zh = "循环关闭", ja = "リピートオフ")
-            },
+            context.getString(
+                when (repeatMode) {
+                    Player.REPEAT_MODE_ALL -> R.string.playback_command_repeat_all
+                    Player.REPEAT_MODE_ONE -> R.string.playback_command_repeat_one
+                    else -> R.string.playback_command_repeat_off
+                },
+            ),
         )
         .setSlots(CommandButton.SLOT_OVERFLOW)
         .setEnabled(true)
         .build(),
     CommandButton.Builder(CommandButton.ICON_SUBTITLES)
         .setSessionCommand(EchoPlaybackSessionCommands.openLyrics)
-        .setDisplayName(echoText(en = "Lyrics", zh = "歌词", ja = "歌詞"))
+        .setDisplayName(context.getString(R.string.playback_command_lyrics))
         .setSlots(CommandButton.SLOT_OVERFLOW)
         .setEnabled(true)
         .build(),

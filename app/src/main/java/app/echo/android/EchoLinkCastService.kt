@@ -11,12 +11,17 @@ import android.content.pm.ServiceInfo
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.IBinder
+import app.echo.android.i18n.wrapEchoAppLocaleToMatchApplication
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 
 class EchoLinkCastService : Service() {
     private var wifiLock: WifiManager.WifiLock? = null
+
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(base.wrapEchoAppLocaleToMatchApplication())
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 

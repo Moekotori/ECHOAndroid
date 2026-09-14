@@ -1,168 +1,168 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Module-owned translations. English values are the fallback for missing translations. -->
 <resources>
-    <string name="feature_connect_after_connecting_read_pc_echo_automatically_without_merging_d0f676" formatted="false">"After connecting, read PC ECHO automatically without merging into the local scan library"</string>
-    <string name="feature_connect_auto_reconnect_5259cc" formatted="false">"Auto reconnect"</string>
-    <string name="feature_connect_available_after_a_successful_saved_connection_f08f11" formatted="false">"Available after a successful saved connection"</string>
-    <string name="feature_connect_become_a_remote_after_pairing_77ae56" formatted="false">"Become a remote after pairing"</string>
-    <string name="feature_connect_cancel_4c5fa5" formatted="false">"Cancel"</string>
-    <string name="feature_connect_cancelled_4ab41f" formatted="false">"Cancelled"</string>
-    <string name="feature_connect_cleaning_old_index_2c0185" formatted="false">"Cleaning old index"</string>
-    <string name="feature_connect_clear_ec6a55" formatted="false">"Clear"</string>
-    <string name="feature_connect_collapse_970e1a" formatted="false">"Collapse"</string>
-    <string name="feature_connect_collapse_remote_libraries_61a9c7" formatted="false">"Collapse remote libraries"</string>
-    <string name="feature_connect_comparing_index_7c03bf" formatted="false">"Comparing index"</string>
-    <string name="feature_connect_connect_c7c091" formatted="false">"Connect"</string>
-    <string name="feature_connect_connect_pc_724ba0" formatted="false">"Connect PC"</string>
-    <string name="feature_connect_connect_your_library_sources_2ae5a5" formatted="false">"Connect your library sources"</string>
-    <string name="feature_connect_connected_6b85ee" formatted="false">"Connected"</string>
-    <string name="feature_connect_connecting_5a83dc" formatted="false">"Connecting"</string>
-    <string name="feature_connect_control_on_phone_output_on_pc_fe2fbb" formatted="false">"Control on phone, output on PC"</string>
-    <string name="feature_connect_copy_from_the_pc_echo_link_page_ce2ca6" formatted="false">"Copy from the PC ECHO link page"</string>
-    <string name="feature_connect_desktop_5966da" formatted="false">"Desktop"</string>
-    <string name="feature_connect_device_d46471" formatted="false">"Device"</string>
-    <string name="feature_connect_device_link_e4f412" formatted="false">"Device link"</string>
-    <string name="feature_connect_disconnect_b0144f" formatted="false">"Disconnect"</string>
-    <string name="feature_connect_enter_the_server_username_and_password_b90327" formatted="false">"Enter the server, username, and password"</string>
-    <string name="feature_connect_error_ad4bd6" formatted="false">"Error"</string>
-    <string name="feature_connect_estimate_40b38b" formatted="false">"Estimate"</string>
-    <string name="feature_connect_expand_6a79dd" formatted="false">"Expand"</string>
-    <string name="feature_connect_expand_remote_libraries_a8df3f" formatted="false">"Expand remote libraries"</string>
-    <string name="feature_connect_forget_30df50" formatted="false">"Forget"</string>
-    <string name="feature_connect_forward_phone_playback_through_pc_echo_ca17b2" formatted="false">"Forward phone playback through PC ECHO"</string>
-    <string name="feature_connect_handoff_console_d5905c" formatted="false">"Handoff console"</string>
-    <string name="feature_connect_incomplete_4522f2" formatted="false">"Incomplete"</string>
-    <string name="feature_connect_latency_fa1715" formatted="false">"Latency"</string>
-    <string name="feature_connect_latency_monitoring_and_volume_mapping_are_ready_2f0b1f" formatted="false">"Latency monitoring and volume mapping are ready"</string>
-    <string name="feature_connect_latency_output_device_and_queue_appear_after_pairing_b8e65f" formatted="false">"Latency, output device, and queue appear after pairing"</string>
-    <string name="feature_connect_library_sources_pc_link_b81eae" formatted="false">"Library sources · PC link"</string>
-    <string name="feature_connect_link_f7ada1" formatted="false">"Link"</string>
-    <string name="feature_connect_local_audio_files_already_scanned_619627" formatted="false">"Local audio files already scanned"</string>
-    <string name="feature_connect_local_library_579638" formatted="false">"Local library"</string>
-    <string name="feature_connect_mapping_65a632" formatted="false">"Mapping"</string>
-    <string name="feature_connect_music_services_c8d7d1" formatted="false">"Music services"</string>
-    <string name="feature_connect_nearby_pcs_then_address_and_pairing_token_d5b4e2" formatted="false">"Nearby PCs, then address and pairing token"</string>
-    <string name="feature_connect_next_on_pc_303358" formatted="false">"Next on PC"</string>
-    <string name="feature_connect_no_lan_pcs_yet_scan_a_qr_code_0b3f56" formatted="false">No computers found. Check that Echo Link is enabled on the same Wi-Fi, then try again.</string>
-    <string name="feature_connect_none_836573" formatted="false">"None"</string>
-    <string name="feature_connect_not_connected_c4d337" formatted="false">"Not connected"</string>
-    <string name="feature_connect_not_set_up_287510" formatted="false">"Not set up"</string>
-    <string name="feature_connect_off_d48859" formatted="false">"Off"</string>
-    <string name="feature_connect_output_bb8fcf" formatted="false">"Output"</string>
-    <string name="feature_connect_paired_8c3083" formatted="false">"Paired"</string>
-    <string name="feature_connect_pairing_1a1d00" formatted="false">"Pairing"</string>
-    <string name="feature_connect_pairing_token_2e95dd" formatted="false">"Pairing token"</string>
-    <string name="feature_connect_password_2eaf7d" formatted="false">"Password"</string>
-    <string name="feature_connect_password_or_app_password_cf402d" formatted="false">"Password or app password"</string>
-    <string name="feature_connect_pc_address_4be94c" formatted="false">"PC address"</string>
-    <string name="feature_connect_pc_output_e48933" formatted="false">"PC output"</string>
-    <string name="feature_connect_pc_queue_and_output_device_appear_after_pairing_7fd247" formatted="false">"PC queue and output device appear after pairing"</string>
-    <string name="feature_connect_phone_and_pc_queues_stay_in_sync_64e284" formatted="false">"Phone and PC queues stay in sync"</string>
-    <string name="feature_connect_phone_control_91825f" formatted="false">"Phone control"</string>
-    <string name="feature_connect_play_or_pause_pc_35a4a9" formatted="false">"Play or pause PC"</string>
+    <string name="feature_connect_after_connecting_read_pc_echo_automatically_without_merging_d0f676">"After connecting, read PC ECHO automatically without merging into the local scan library"</string>
+    <string name="feature_connect_auto_reconnect_5259cc">"Auto reconnect"</string>
+    <string name="feature_connect_available_after_a_successful_saved_connection_f08f11">"Available after a successful saved connection"</string>
+    <string name="feature_connect_become_a_remote_after_pairing_77ae56">"Become a remote after pairing"</string>
+    <string name="feature_connect_cancel_4c5fa5">"Cancel"</string>
+    <string name="feature_connect_cancelled_4ab41f">"Cancelled"</string>
+    <string name="feature_connect_cleaning_old_index_2c0185">"Cleaning old index"</string>
+    <string name="feature_connect_clear_ec6a55">"Clear"</string>
+    <string name="feature_connect_collapse_970e1a">"Collapse"</string>
+    <string name="feature_connect_collapse_remote_libraries_61a9c7">"Collapse remote libraries"</string>
+    <string name="feature_connect_comparing_index_7c03bf">"Comparing index"</string>
+    <string name="feature_connect_connect_c7c091">"Connect"</string>
+    <string name="feature_connect_connect_pc_724ba0">"Connect PC"</string>
+    <string name="feature_connect_connect_your_library_sources_2ae5a5">"Connect your library sources"</string>
+    <string name="feature_connect_connected_6b85ee">"Connected"</string>
+    <string name="feature_connect_connecting_5a83dc">"Connecting"</string>
+    <string name="feature_connect_control_on_phone_output_on_pc_fe2fbb">"Control on phone, output on PC"</string>
+    <string name="feature_connect_copy_from_the_pc_echo_link_page_ce2ca6">"Copy from the PC ECHO link page"</string>
+    <string name="feature_connect_desktop_5966da">"Desktop"</string>
+    <string name="feature_connect_device_d46471">"Device"</string>
+    <string name="feature_connect_device_link_e4f412">"Device link"</string>
+    <string name="feature_connect_disconnect_b0144f">"Disconnect"</string>
+    <string name="feature_connect_enter_the_server_username_and_password_b90327">"Enter the server, username, and password"</string>
+    <string name="feature_connect_error_ad4bd6">"Error"</string>
+    <string name="feature_connect_estimate_40b38b">"Estimate"</string>
+    <string name="feature_connect_expand_6a79dd">"Expand"</string>
+    <string name="feature_connect_expand_remote_libraries_a8df3f">"Expand remote libraries"</string>
+    <string name="feature_connect_forget_30df50">"Forget"</string>
+    <string name="feature_connect_forward_phone_playback_through_pc_echo_ca17b2">"Forward phone playback through PC ECHO"</string>
+    <string name="feature_connect_handoff_console_d5905c">"Handoff console"</string>
+    <string name="feature_connect_incomplete_4522f2">"Incomplete"</string>
+    <string name="feature_connect_latency_fa1715">"Latency"</string>
+    <string name="feature_connect_latency_monitoring_and_volume_mapping_are_ready_2f0b1f">"Latency monitoring and volume mapping are ready"</string>
+    <string name="feature_connect_latency_output_device_and_queue_appear_after_pairing_b8e65f">"Latency, output device, and queue appear after pairing"</string>
+    <string name="feature_connect_library_sources_pc_link_b81eae">"Library sources · PC link"</string>
+    <string name="feature_connect_link_f7ada1">"Link"</string>
+    <string name="feature_connect_local_audio_files_already_scanned_619627">"Local audio files already scanned"</string>
+    <string name="feature_connect_local_library_579638">"Local library"</string>
+    <string name="feature_connect_mapping_65a632">"Mapping"</string>
+    <string name="feature_connect_music_services_c8d7d1">"Music services"</string>
+    <string name="feature_connect_nearby_pcs_then_address_and_pairing_token_d5b4e2">"Nearby PCs, then address and pairing token"</string>
+    <string name="feature_connect_next_on_pc_303358">"Next on PC"</string>
+    <string name="feature_connect_no_lan_pcs_yet_scan_a_qr_code_0b3f56">No computers found. Check that Echo Link is enabled on the same Wi-Fi, then try again.</string>
+    <string name="feature_connect_none_836573">"None"</string>
+    <string name="feature_connect_not_connected_c4d337">"Not connected"</string>
+    <string name="feature_connect_not_set_up_287510">"Not set up"</string>
+    <string name="feature_connect_off_d48859">"Off"</string>
+    <string name="feature_connect_output_bb8fcf">"Output"</string>
+    <string name="feature_connect_paired_8c3083">"Paired"</string>
+    <string name="feature_connect_pairing_1a1d00">"Pairing"</string>
+    <string name="feature_connect_pairing_token_2e95dd">"Pairing token"</string>
+    <string name="feature_connect_password_2eaf7d">"Password"</string>
+    <string name="feature_connect_password_or_app_password_cf402d">"Password or app password"</string>
+    <string name="feature_connect_pc_address_4be94c">"PC address"</string>
+    <string name="feature_connect_pc_output_e48933">"PC output"</string>
+    <string name="feature_connect_pc_queue_and_output_device_appear_after_pairing_7fd247">"PC queue and output device appear after pairing"</string>
+    <string name="feature_connect_phone_and_pc_queues_stay_in_sync_64e284">"Phone and PC queues stay in sync"</string>
+    <string name="feature_connect_phone_control_91825f">"Phone control"</string>
+    <string name="feature_connect_play_or_pause_pc_35a4a9">"Play or pause PC"</string>
     <string name="feature_connect_playing_on_phone_it_a1815e">"Playing on phone: %1$s"</string>
-    <string name="feature_connect_preparing_sync_f64e14" formatted="false">"Preparing sync"</string>
-    <string name="feature_connect_previous_on_pc_a0f0a7" formatted="false">"Previous on PC"</string>
-    <string name="feature_connect_queue_sync_ac9c36" formatted="false">"Queue sync"</string>
-    <string name="feature_connect_queue_volume_and_next_track_will_use_the_0aa197" formatted="false">"Queue, volume, and next track will use the link channel"</string>
-    <string name="feature_connect_reading_remote_library_06fcd1" formatted="false">"Reading remote library"</string>
-    <string name="feature_connect_ready_to_send_832298" formatted="false">"Ready to send"</string>
-    <string name="feature_connect_ready_to_sync_47b40c" formatted="false">"Ready to sync"</string>
-    <string name="feature_connect_ready_to_sync_to_the_cloud_album_wall_20a1e5" formatted="false">"Ready to sync to the cloud album wall"</string>
+    <string name="feature_connect_preparing_sync_f64e14">"Preparing sync"</string>
+    <string name="feature_connect_previous_on_pc_a0f0a7">"Previous on PC"</string>
+    <string name="feature_connect_queue_sync_ac9c36">"Queue sync"</string>
+    <string name="feature_connect_queue_volume_and_next_track_will_use_the_0aa197">"Queue, volume, and next track will use the link channel"</string>
+    <string name="feature_connect_reading_remote_library_06fcd1">"Reading remote library"</string>
+    <string name="feature_connect_ready_to_send_832298">"Ready to send"</string>
+    <string name="feature_connect_ready_to_sync_47b40c">"Ready to sync"</string>
+    <string name="feature_connect_ready_to_sync_to_the_cloud_album_wall_20a1e5">"Ready to sync to the cloud album wall"</string>
     <string name="feature_connect_readycount_ready_ad163c">"%1$s ready"</string>
-    <string name="feature_connect_reconnect_to_the_last_pc_when_connect_opens_e13dd4" formatted="false">"Reconnect to the last PC when Connect opens"</string>
-    <string name="feature_connect_reconnecting_6c545f" formatted="false">"Reconnecting"</string>
-    <string name="feature_connect_refresh_828c69" formatted="false">"Refresh"</string>
-    <string name="feature_connect_remote_libraries_520815" formatted="false">"Remote libraries"</string>
-    <string name="feature_connect_remote_library_sync_failed_e55eb1" formatted="false">"Remote library sync failed"</string>
-    <string name="feature_connect_save_68ae20" formatted="false">"Save"</string>
-    <string name="feature_connect_server_address_ec245e" formatted="false">"Server address"</string>
-    <string name="feature_connect_standby_751331" formatted="false">"Standby"</string>
-    <string name="feature_connect_supports_192_168_1_12_26789_or_a_7d7e27" formatted="false">"Supports 192.168.1.12:26789 or a full http / https URL"</string>
-    <string name="feature_connect_sync_a_nas_or_cloud_music_folder_9fa330" formatted="false">"Sync a NAS or cloud music folder"</string>
-    <string name="feature_connect_sync_b57352" formatted="false">"Sync"</string>
-    <string name="feature_connect_sync_complete_9ac5cf" formatted="false">"Sync complete"</string>
+    <string name="feature_connect_reconnect_to_the_last_pc_when_connect_opens_e13dd4">"Reconnect to the last PC when Connect opens"</string>
+    <string name="feature_connect_reconnecting_6c545f">"Reconnecting"</string>
+    <string name="feature_connect_refresh_828c69">"Refresh"</string>
+    <string name="feature_connect_remote_libraries_520815">"Remote libraries"</string>
+    <string name="feature_connect_remote_library_sync_failed_e55eb1">"Remote library sync failed"</string>
+    <string name="feature_connect_save_68ae20">"Save"</string>
+    <string name="feature_connect_server_address_ec245e">"Server address"</string>
+    <string name="feature_connect_standby_751331">"Standby"</string>
+    <string name="feature_connect_supports_192_168_1_12_26789_or_a_7d7e27">"Supports 192.168.1.12:26789 or a full http / https URL"</string>
+    <string name="feature_connect_sync_a_nas_or_cloud_music_folder_9fa330">"Sync a NAS or cloud music folder"</string>
+    <string name="feature_connect_sync_b57352">"Sync"</string>
+    <string name="feature_connect_sync_complete_9ac5cf">"Sync complete"</string>
     <string name="feature_connect_sync_complete_scanstate_scannedcount_tracks_scanstate_insertedco_41ae3e">"Sync complete: %1$s tracks, %2$s added, %3$s updated, %4$s removed"</string>
-    <string name="feature_connect_sync_failed_8cc151" formatted="false">"Sync failed"</string>
-    <string name="feature_connect_sync_the_server_library_artwork_and_playback_urls_cad58c" formatted="false">"Sync the server library, artwork, and playback URLs"</string>
-    <string name="feature_connect_synced_0e5a04" formatted="false">"Synced"</string>
-    <string name="feature_connect_syncing_ac4e35" formatted="false">"Syncing"</string>
-    <string name="feature_connect_take_over_pc_echo_playback_after_pairing_b11731" formatted="false">"Take over PC ECHO playback after pairing"</string>
-    <string name="feature_connect_tap_to_expand_subsonic_webdav_fold_separately_a293a2" formatted="false">"Tap to expand · Subsonic / WebDAV fold separately"</string>
-    <string name="feature_connect_tap_to_set_up_subsonic_webdav_cloud_drive_6f2e97" formatted="false">"Tap to set up Subsonic · WebDAV / cloud drive"</string>
-    <string name="feature_connect_the_linked_echo_library_is_shown_separately_with_89ff2b" formatted="false">"The linked ECHO library is shown separately, with PC ECHO as the current source"</string>
-    <string name="feature_connect_the_local_library_stays_default_refresh_the_linked_6c5cd0" formatted="false">"The local library stays default; refresh the linked library manually"</string>
-    <string name="feature_connect_the_next_track_will_sync_to_pc_echo_970d49" formatted="false">"The next track will sync to PC ECHO"</string>
-    <string name="feature_connect_unpaired_89e494" formatted="false">"Unpaired"</string>
-    <string name="feature_connect_use_linked_library_by_default_a9eb0f" formatted="false">"Use linked library by default"</string>
-    <string name="feature_connect_username_dfb030" formatted="false">"Username"</string>
-    <string name="feature_connect_volume_6d5238" formatted="false">"Volume"</string>
-    <string name="feature_connect_volume_latency_and_output_device_linking_are_reserved_04bcb1" formatted="false">"Volume, latency, and output device linking are reserved"</string>
-    <string name="feature_connect_waiting_for_pc_66972e" formatted="false">"Waiting for PC"</string>
-    <string name="feature_connect_waiting_for_pc_echo_pairing_e5e462" formatted="false">"Waiting for PC ECHO pairing"</string>
-    <string name="feature_connect_waiting_to_sync_21ad43" formatted="false">"Waiting to sync"</string>
-    <string name="feature_connect_webdav_address_a59b28" formatted="false">"WebDAV address"</string>
-    <string name="feature_connect_webdav_cloud_drive_3aa8bf" formatted="false">"WebDAV / cloud drive"</string>
-    <string name="feature_connect_webdav_password_4443d4" formatted="false">"WebDAV password"</string>
-    <string name="feature_connect_webdav_username_946873" formatted="false">"WebDAV username"</string>
-    <string name="feature_connect_writing_library_a8f4bd" formatted="false">"Writing library"</string>
-    <string name="feature_connect_a_nas_or_cloud_music_folder_5525c7" formatted="false">"A NAS or cloud music folder"</string>
-    <string name="feature_connect_add_a_music_server_or_a_nas_folder_7b39d3" formatted="false">"Add a music server or a NAS folder to listen on your phone."</string>
-    <string name="feature_connect_cancel_sync_8888f1" formatted="false">"Cancel sync"</string>
-    <string name="feature_connect_configuration_saved_a7628f" formatted="false">"Configuration saved"</string>
-    <string name="feature_connect_enter_a_full_http_or_https_address_3c7370" formatted="false">"Enter a full http:// or https:// address"</string>
-    <string name="feature_connect_hide_password_3ea7f9" formatted="false">"Hide password"</string>
-    <string name="feature_connect_library_sources_09e6db" formatted="false">"Library sources"</string>
-    <string name="feature_connect_local_files_are_managed_in_library_no_server_c5274c" formatted="false">"Local files are managed in Library. No server connection is needed."</string>
-    <string name="feature_connect_music_on_this_phone_8611a5" formatted="false">"Music on this phone"</string>
-    <string name="feature_connect_not_configured_29b98a" formatted="false">"Not configured"</string>
-    <string name="feature_connect_pc_link_4ca6bd" formatted="false">"PC link"</string>
-    <string name="feature_connect_remove_acf88e" formatted="false">"Remove"</string>
-    <string name="feature_connect_remove_configuration_26bffc" formatted="false">"Remove configuration"</string>
+    <string name="feature_connect_sync_failed_8cc151">"Sync failed"</string>
+    <string name="feature_connect_sync_the_server_library_artwork_and_playback_urls_cad58c">"Sync the server library, artwork, and playback URLs"</string>
+    <string name="feature_connect_synced_0e5a04">"Synced"</string>
+    <string name="feature_connect_syncing_ac4e35">"Syncing"</string>
+    <string name="feature_connect_take_over_pc_echo_playback_after_pairing_b11731">"Take over PC ECHO playback after pairing"</string>
+    <string name="feature_connect_tap_to_expand_subsonic_webdav_fold_separately_a293a2">"Tap to expand · Subsonic / WebDAV fold separately"</string>
+    <string name="feature_connect_tap_to_set_up_subsonic_webdav_cloud_drive_6f2e97">"Tap to set up Subsonic · WebDAV / cloud drive"</string>
+    <string name="feature_connect_the_linked_echo_library_is_shown_separately_with_89ff2b">"The linked ECHO library is shown separately, with PC ECHO as the current source"</string>
+    <string name="feature_connect_the_local_library_stays_default_refresh_the_linked_6c5cd0">"The local library stays default; refresh the linked library manually"</string>
+    <string name="feature_connect_the_next_track_will_sync_to_pc_echo_970d49">"The next track will sync to PC ECHO"</string>
+    <string name="feature_connect_unpaired_89e494">"Unpaired"</string>
+    <string name="feature_connect_use_linked_library_by_default_a9eb0f">"Use linked library by default"</string>
+    <string name="feature_connect_username_dfb030">"Username"</string>
+    <string name="feature_connect_volume_6d5238">"Volume"</string>
+    <string name="feature_connect_volume_latency_and_output_device_linking_are_reserved_04bcb1">"Volume, latency, and output device linking are reserved"</string>
+    <string name="feature_connect_waiting_for_pc_66972e">"Waiting for PC"</string>
+    <string name="feature_connect_waiting_for_pc_echo_pairing_e5e462">"Waiting for PC ECHO pairing"</string>
+    <string name="feature_connect_waiting_to_sync_21ad43">"Waiting to sync"</string>
+    <string name="feature_connect_webdav_address_a59b28">"WebDAV address"</string>
+    <string name="feature_connect_webdav_cloud_drive_3aa8bf">"WebDAV / cloud drive"</string>
+    <string name="feature_connect_webdav_password_4443d4">"WebDAV password"</string>
+    <string name="feature_connect_webdav_username_946873">"WebDAV username"</string>
+    <string name="feature_connect_writing_library_a8f4bd">"Writing library"</string>
+    <string name="feature_connect_a_nas_or_cloud_music_folder_5525c7">"A NAS or cloud music folder"</string>
+    <string name="feature_connect_add_a_music_server_or_a_nas_folder_7b39d3">"Add a music server or a NAS folder to listen on your phone."</string>
+    <string name="feature_connect_cancel_sync_8888f1">"Cancel sync"</string>
+    <string name="feature_connect_configuration_saved_a7628f">"Configuration saved"</string>
+    <string name="feature_connect_enter_a_full_http_or_https_address_3c7370">"Enter a full http:// or https:// address"</string>
+    <string name="feature_connect_hide_password_3ea7f9">"Hide password"</string>
+    <string name="feature_connect_library_sources_09e6db">"Library sources"</string>
+    <string name="feature_connect_local_files_are_managed_in_library_no_server_c5274c">"Local files are managed in Library. No server connection is needed."</string>
+    <string name="feature_connect_music_on_this_phone_8611a5">"Music on this phone"</string>
+    <string name="feature_connect_not_configured_29b98a">"Not configured"</string>
+    <string name="feature_connect_pc_link_4ca6bd">"PC link"</string>
+    <string name="feature_connect_remove_acf88e">"Remove"</string>
+    <string name="feature_connect_remove_configuration_26bffc">"Remove configuration"</string>
     <string name="feature_connect_remove_title_323067">"Remove %1$s?"</string>
-    <string name="feature_connect_save_and_sync_957e87" formatted="false">"Save and sync"</string>
-    <string name="feature_connect_save_only_831a4d" formatted="false">"Save only"</string>
-    <string name="feature_connect_saved_connection_details_will_be_removed_you_can_dc4b49" formatted="false">"Saved connection details will be removed. You can configure them again later."</string>
-    <string name="feature_connect_saved_credentials_have_not_necessarily_been_verified_sync_b71597" formatted="false">"Saved credentials have not necessarily been verified. Sync to check the connection."</string>
-    <string name="feature_connect_show_password_211a6d" formatted="false">"Show password"</string>
-    <string name="feature_connect_sync_library_03a0c6" formatted="false">"Sync library"</string>
-    <string name="feature_connect_unsaved_changes_1ab4c9" formatted="false">"Unsaved changes"</string>
-    <string name="feature_connect_your_music_server_dd7eb8" formatted="false">"Your music server"</string>
-    <string name="feature_connect_your_music_wherever_it_lives_e9713c" formatted="false">"Your music, wherever it lives"</string>
-    <string name="feature_connect_a_saved_pc_is_available_reconnect_or_pair_69fbf8" formatted="false">"A saved PC is available. Reconnect or pair a different device."</string>
-    <string name="feature_connect_available_after_your_first_saved_connection_7136ab" formatted="false">"Available after your first saved connection"</string>
-    <string name="feature_connect_cancel_connection_fd085f" formatted="false">"Cancel connection"</string>
-    <string name="feature_connect_connection_failed_321409" formatted="false">"Connection failed"</string>
-    <string name="feature_connect_control_pc_playback_from_your_phone_or_browse_20f8b5" formatted="false">"Control PC playback from your phone, or browse its linked library."</string>
-    <string name="feature_connect_copy_the_address_and_token_from_pc_echo_5d25bc" formatted="false">"Copy the address and token from PC ECHO\'s link page, or paste a complete pairing link."</string>
-    <string name="feature_connect_copy_the_complete_token_from_pc_echo_7d737c" formatted="false">"Copy the complete token from PC ECHO"</string>
-    <string name="feature_connect_disconnect_pc_fd446c" formatted="false">"Disconnect PC"</string>
-    <string name="feature_connect_enter_address_manually_ec2890" formatted="false">"Enter address manually"</string>
-    <string name="feature_connect_forget_saved_pc_80b440" formatted="false">"Forget saved PC?"</string>
-    <string name="feature_connect_forget_saved_pc_8860a3" formatted="false">"Forget saved PC"</string>
-    <string name="feature_connect_keep_pc_echo_running_and_both_devices_on_7986ec" formatted="false">"Keep PC ECHO running and both devices on the same network."</string>
-    <string name="feature_connect_link_preferences_f81ffb" formatted="false">"Link preferences"</string>
-    <string name="feature_connect_listen_together_with_pc_41d068" formatted="false">"Listen together with PC"</string>
-    <string name="feature_connect_nearby_pcs_b9b12a" formatted="false">"Nearby PCs"</string>
-    <string name="feature_connect_no_pc_found_use_the_same_wi_fi_ce621e" formatted="false">No computers found. Check that Echo Link is enabled on the same Wi-Fi, then try again.</string>
-    <string name="feature_connect_no_track_selected_258d56" formatted="false">"No track selected"</string>
-    <string name="feature_connect_open_the_echo_link_page_on_your_pc_d07a0b" formatted="false">Open Echo Link in ECHOSteam on your computer and keep both devices on the same Wi-Fi. Select a nearby computer to connect.</string>
-    <string name="feature_connect_pause_pc_003bcf" formatted="false">"Pause PC"</string>
-    <string name="feature_connect_pc_address_or_pairing_link_a3e680" formatted="false">"PC address or pairing link"</string>
-    <string name="feature_connect_play_on_pc_aa41d1" formatted="false">"Play on PC"</string>
-    <string name="feature_connect_playing_on_pc_580a8a" formatted="false">"Playing on PC"</string>
-    <string name="feature_connect_read_the_pc_library_after_connecting_local_music_d1da04" formatted="false">"Read the PC library after connecting. Local music stays separate."</string>
-    <string name="feature_connect_reconnect_pc_ea8c5f" formatted="false">"Reconnect PC"</string>
-    <string name="feature_connect_select_21bce2" formatted="false">"Select"</string>
-    <string name="feature_connect_try_the_saved_pc_when_opening_connect_38be4d" formatted="false">"Try the saved PC when opening Connect"</string>
-    <string name="feature_connect_volume_8f3a19" formatted="false">"Volume"</string>
-    <string name="feature_connect_pc_queue_2e91c4" formatted="false">"PC queue"</string>
-    <string name="feature_connect_waiting_for_pc_echo_to_become_available_a74ad2" formatted="false">"Waiting for PC ECHO to become available"</string>
-    <string name="feature_connect_check_the_pc_address_or_paste_a_complete_0f216a" formatted="false">"Check the PC address or paste a complete pairing link"</string>
-    <string name="feature_connect_pair_another_pc_23df07" formatted="false">"Pair another PC"</string>
+    <string name="feature_connect_save_and_sync_957e87">"Save and sync"</string>
+    <string name="feature_connect_save_only_831a4d">"Save only"</string>
+    <string name="feature_connect_saved_connection_details_will_be_removed_you_can_dc4b49">"Saved connection details will be removed. You can configure them again later."</string>
+    <string name="feature_connect_saved_credentials_have_not_necessarily_been_verified_sync_b71597">"Saved credentials have not necessarily been verified. Sync to check the connection."</string>
+    <string name="feature_connect_show_password_211a6d">"Show password"</string>
+    <string name="feature_connect_sync_library_03a0c6">"Sync library"</string>
+    <string name="feature_connect_unsaved_changes_1ab4c9">"Unsaved changes"</string>
+    <string name="feature_connect_your_music_server_dd7eb8">"Your music server"</string>
+    <string name="feature_connect_your_music_wherever_it_lives_e9713c">"Your music, wherever it lives"</string>
+    <string name="feature_connect_a_saved_pc_is_available_reconnect_or_pair_69fbf8">"A saved PC is available. Reconnect or pair a different device."</string>
+    <string name="feature_connect_available_after_your_first_saved_connection_7136ab">"Available after your first saved connection"</string>
+    <string name="feature_connect_cancel_connection_fd085f">"Cancel connection"</string>
+    <string name="feature_connect_connection_failed_321409">"Connection failed"</string>
+    <string name="feature_connect_control_pc_playback_from_your_phone_or_browse_20f8b5">"Control PC playback from your phone, or browse its linked library."</string>
+    <string name="feature_connect_copy_the_address_and_token_from_pc_echo_5d25bc">"Copy the address and token from PC ECHO\'s link page, or paste a complete pairing link."</string>
+    <string name="feature_connect_copy_the_complete_token_from_pc_echo_7d737c">"Copy the complete token from PC ECHO"</string>
+    <string name="feature_connect_disconnect_pc_fd446c">"Disconnect PC"</string>
+    <string name="feature_connect_enter_address_manually_ec2890">"Enter address manually"</string>
+    <string name="feature_connect_forget_saved_pc_80b440">"Forget saved PC?"</string>
+    <string name="feature_connect_forget_saved_pc_8860a3">"Forget saved PC"</string>
+    <string name="feature_connect_keep_pc_echo_running_and_both_devices_on_7986ec">"Keep PC ECHO running and both devices on the same network."</string>
+    <string name="feature_connect_link_preferences_f81ffb">"Link preferences"</string>
+    <string name="feature_connect_listen_together_with_pc_41d068">"Listen together with PC"</string>
+    <string name="feature_connect_nearby_pcs_b9b12a">"Nearby PCs"</string>
+    <string name="feature_connect_no_pc_found_use_the_same_wi_fi_ce621e">No computers found. Check that Echo Link is enabled on the same Wi-Fi, then try again.</string>
+    <string name="feature_connect_no_track_selected_258d56">"No track selected"</string>
+    <string name="feature_connect_open_the_echo_link_page_on_your_pc_d07a0b">Open Echo Link in ECHOSteam on your computer and keep both devices on the same Wi-Fi. Select a nearby computer to connect.</string>
+    <string name="feature_connect_pause_pc_003bcf">"Pause PC"</string>
+    <string name="feature_connect_pc_address_or_pairing_link_a3e680">"PC address or pairing link"</string>
+    <string name="feature_connect_play_on_pc_aa41d1">"Play on PC"</string>
+    <string name="feature_connect_playing_on_pc_580a8a">"Playing on PC"</string>
+    <string name="feature_connect_read_the_pc_library_after_connecting_local_music_d1da04">"Read the PC library after connecting. Local music stays separate."</string>
+    <string name="feature_connect_reconnect_pc_ea8c5f">"Reconnect PC"</string>
+    <string name="feature_connect_select_21bce2">"Select"</string>
+    <string name="feature_connect_try_the_saved_pc_when_opening_connect_38be4d">"Try the saved PC when opening Connect"</string>
+    <string name="feature_connect_volume_8f3a19">"Volume"</string>
+    <string name="feature_connect_pc_queue_2e91c4">"PC queue"</string>
+    <string name="feature_connect_waiting_for_pc_echo_to_become_available_a74ad2">"Waiting for PC ECHO to become available"</string>
+    <string name="feature_connect_check_the_pc_address_or_paste_a_complete_0f216a">"Check the PC address or paste a complete pairing link"</string>
+    <string name="feature_connect_pair_another_pc_23df07">"Pair another PC"</string>
     <string name="echo_link_handoff_phone">Continue the phone song on PC</string>
-    <string name="feature_connect_jellyfin_or_emby_independent_of_echo_link_a8f3c1" formatted="false">"Jellyfin or Emby. Independent of Echo Link."</string>
-    <string name="feature_connect_saved_pcs_4d2e91" formatted="false">"Saved PCs"</string>
+    <string name="feature_connect_jellyfin_or_emby_independent_of_echo_link_a8f3c1">"Jellyfin or Emby. Independent of Echo Link."</string>
+    <string name="feature_connect_saved_pcs_4d2e91">"Saved PCs"</string>
     <string name="echo_link_lan_searching">Looking for nearby computers…</string>
     <string name="echo_link_lan_failed">Could not start local network discovery. Check Wi-Fi and try again.</string>
     <string name="echo_link_cast_tab">Cast</string>
