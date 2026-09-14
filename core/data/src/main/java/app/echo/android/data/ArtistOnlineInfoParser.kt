@@ -3,6 +3,7 @@ package app.echo.android.data
 import app.echo.android.model.library.ArtistOnlineInfo
 import app.echo.android.model.library.ArtistOnlineQuery
 import org.json.JSONObject
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.text.Normalizer
 import java.util.Locale
 
@@ -32,6 +33,28 @@ internal object ArtistOnlineInfoParser {
         .filter { normalize(it.optString("title")) == normalize(album) }
         .flatMap { it.objects("artist-credit") }
         .mapNotNull { it.optJSONObject("artist")?.text("id") }.toSet()
+
+    /** An exact Wiki title alone cannot disambiguate musicians. Require a shared external identity. */
+    fun matchesWikiEntity(artist: JSONObject, entity: JSONObject): Boolean {
+        val claims = entity.optJSONObject("claims") ?: return false
+        fun values(property: String) = claims.objects(property).mapNotNull {
+            it.optJSONObject("mainsnak")?.optJSONObject("datavalue")?.text("value")
+        }
+        val ids = values("P434")
+        if (ids.isNotEmpty()) return artist.text("id") in ids
+        val links = artist.objects("relations").mapNotNull { it.optJSONObject("url")?.text("resource")?.toHttpUrlOrNull() }
+        return links.any { link ->
+            when (link.host.removePrefix("www.")) {
+                "twitter.com", "x.com" -> values("P2002").any { it.equals(link.pathSegments.firstOrNull(), ignoreCase = true) }
+                "open.spotify.com" -> link.pathSegments.firstOrNull() == "artist" && link.pathSegments.getOrNull(1) in values("P1902")
+                "music.apple.com" -> link.pathSegments.lastOrNull() in values("P2850")
+                else -> values("P856").any { value ->
+                    val official = value.toHttpUrlOrNull()
+                    official?.host == link.host && official.encodedPath.trimEnd('/') == link.encodedPath.trimEnd('/')
+                }
+            }
+        }
+    }
 
     fun profile(json: JSONObject): ArtistOnlineInfo = ArtistOnlineInfo(
         musicBrainzId = json.getString("id"), name = json.getString("name"), kind = json.text("type"),

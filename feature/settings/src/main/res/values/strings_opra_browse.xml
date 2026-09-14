@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="opra_choose_brand">Choose a brand</string>
+    <string name="opra_all_brands">All brands</string>
+    <string name="opra_browse_workflow">Choose a brand and model, preview the curve, then apply correction.</string>
+</resources>

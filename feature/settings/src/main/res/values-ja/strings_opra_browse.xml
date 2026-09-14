@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="opra_choose_brand">ブランドを選択</string>
+    <string name="opra_all_brands">すべてのブランド</string>
+    <string name="opra_browse_workflow">ブランドと機種を選び、カーブを確認してから補正を適用します。</string>
+</resources>

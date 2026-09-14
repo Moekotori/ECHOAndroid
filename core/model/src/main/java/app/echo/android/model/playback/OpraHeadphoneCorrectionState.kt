@@ -40,8 +40,12 @@ data class OpraDatabaseStatus(
     val eqCount: Int = 0,
 )
 
+data class OpraHeadphoneBrand(val id: String, val name: String, val productCount: Int)
+
 data class OpraHeadphoneCorrectionState(
     val query: String = "",
+    val brands: List<OpraHeadphoneBrand> = emptyList(),
+    val selectedBrandId: String? = null,
     val loading: Boolean = false,
     val results: List<OpraHeadphoneCorrectionProduct> = emptyList(),
     val status: OpraDatabaseStatus = OpraDatabaseStatus(),

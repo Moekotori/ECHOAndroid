@@ -42,4 +42,13 @@ class ArtistOnlineInfoParserTest {
     @Test fun searchTermsRemainQuoted() {
         assertEquals("\"A\\\" OR artist:* \\\\\"", ArtistOnlineInfoParser.quote("A\" OR artist:* \\"))
     }
+
+    @Test fun wikiFallbackNeedsSharedIdentityAndRejectsConflictingMbid() {
+        val artist = JSONObject("""{"id":"$first","relations":[{"url":{"resource":"https://twitter.com/BDP_yumemita"}}]}""")
+        val wiki = JSONObject("""{"claims":{"P2002":[{"mainsnak":{"datavalue":{"value":"BDP_yumemita"}}}]}}""")
+        assertTrue(ArtistOnlineInfoParser.matchesWikiEntity(artist, wiki))
+        assertFalse(ArtistOnlineInfoParser.matchesWikiEntity(artist, JSONObject("""{"claims":{}}""")))
+        wiki.getJSONObject("claims").put("P434", org.json.JSONArray("""[{"mainsnak":{"datavalue":{"value":"$second"}}}]"""))
+        assertFalse(ArtistOnlineInfoParser.matchesWikiEntity(artist, wiki))
+    }
 }

@@ -6,6 +6,22 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class OpraDatabaseParserTest {
+    @Test
+    fun brandBrowseIncludesOnlyCorrectableModelsAndDoesNotTruncate() {
+        val original = OpraDatabaseParser.parse(SampleDatabase, "fixture")
+        val product = original.products.getValue("sennheiser::hd650")
+        val eq = original.eqsByProductId.getValue(product.id)
+        val products = (1..25).associate { index -> "model-$index" to product.copy(id = "model-$index", name = "Model $index") }
+        val database = original.copy(products = original.products + products,
+            eqsByProductId = original.eqsByProductId + products.mapValues { eq })
+        val brands = OpraDatabaseParser.brands(database)
+        assertEquals(26, brands.single().productCount)
+        assertEquals(26, OpraDatabaseParser.browse(database, brands.single().id).size)
+        assertEquals("HD 650", OpraDatabaseParser.browse(database, "sennheiser", "hd650").single().productName)
+        assertTrue(OpraDatabaseParser.browse(database, "missing").isEmpty())
+        assertTrue(OpraDatabaseParser.browse(database, "sennheiser", "HD 800").isEmpty())
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun refusesEmptyDatabase() { OpraDatabaseParser.parse("", "fixture") }
 

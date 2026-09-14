@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="opra_choose_brand">브랜드 선택</string>
+    <string name="opra_all_brands">모든 브랜드</string>
+    <string name="opra_browse_workflow">브랜드와 모델을 선택하고 곡선을 확인한 후 보정을 적용하세요.</string>
+</resources>

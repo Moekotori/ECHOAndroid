@@ -29,11 +29,13 @@ class OpraHeadphoneCorrectionRepository(
     private var cachedDatabase: OpraDatabase? = null
     private var cachedAt = 0L
 
-    suspend fun search(query: String, refresh: Boolean = false, limit: Int = 16): Result<OpraSearchResult> =
+    suspend fun search(query: String, refresh: Boolean = false, limit: Int = 16, vendorId: String? = null): Result<OpraSearchResult> =
         withContext(Dispatchers.IO) {
             try {
                 val database = mutex.withLock { loadDatabase(refresh) }
-                Result.success(OpraSearchResult(OpraDatabaseParser.search(database, query, limit), database.status))
+                val products = if (vendorId != null) OpraDatabaseParser.browse(database, vendorId, query)
+                    else OpraDatabaseParser.search(database, query, limit)
+                Result.success(OpraSearchResult(products, database.status, OpraDatabaseParser.brands(database)))
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
@@ -131,4 +133,5 @@ class OpraHeadphoneCorrectionRepository(
 }
 
 data class OpraSearchResult(val products: List<OpraHeadphoneCorrectionProduct>,
-    val status: app.echo.android.model.playback.OpraDatabaseStatus)
+    val status: app.echo.android.model.playback.OpraDatabaseStatus,
+    val brands: List<app.echo.android.model.playback.OpraHeadphoneBrand> = emptyList())

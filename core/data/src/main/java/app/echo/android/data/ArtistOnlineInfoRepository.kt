@@ -19,7 +19,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
@@ -41,7 +40,7 @@ class ArtistOnlineInfoRepository(
     override suspend fun loadProfile(query: ArtistOnlineQuery, language: String, refresh: Boolean): ArtistOnlineInfo? =
         withContext(Dispatchers.IO) { gate.withLock {
             val lang = language.takeIf { it in listOf("zh", "ja", "ko", "en") } ?: "en"
-            val key = "profile-v1:$lang:${queryKey(query)}"
+            val key = "profile-v2:$lang:${queryKey(query)}"
             val entry = cache.read(key)
             val cached = entry?.value?.let { runCatching { ArtistOnlineInfoParser.profile(it) }.getOrNull() }
             val ttl = when { cached?.partial == true -> 15 * 60_000L; cached == null -> 6 * 3600_000L; else -> 7 * 86400_000L }
@@ -50,7 +49,10 @@ class ArtistOnlineInfoRepository(
                 val artist = identity(query, refresh) ?: run { cache.write(key, null); return@withLock null }
                 val result = JSONObject(artist.toString())
                 try {
-                    wikipedia(result, lang)
+                    withTimeout(28_000L) { ArtistWikipediaClient(transport).enrich(result, lang) }
+                } catch (_: TimeoutCancellationException) {
+                    currentCoroutineContext().ensureActive()
+                    result.put("partial", true)
                 } catch (cancelled: CancellationException) { throw cancelled
                 } catch (_: Exception) { result.put("partial", true) }
                 cache.write(key, result)
@@ -153,32 +155,6 @@ class ArtistOnlineInfoRepository(
         val artist = id?.let { musicBrainz("artist/$it", mapOf("inc" to "aliases+genres+artist-rels+url-rels")) }
         cache.write(key, artist)
         return artist
-    }
-
-    private suspend fun wikipedia(artist: JSONObject, language: String) {
-        val links = artist.objects("relations").mapNotNull { it.optJSONObject("url")?.text("resource")?.toHttpUrlOrNull() }
-        val languages = listOf(language, "en", "ja", "zh", "ko").distinct()
-        val titles = linkedMapOf<String, String>()
-        links.forEach { link ->
-            languages.firstOrNull { link.host == "$it.wikipedia.org" && link.encodedPath.startsWith("/wiki/") }
-                ?.let { titles[it] = link.pathSegments.drop(1).joinToString("/") }
-        }
-        val entity = links.firstOrNull { it.host in setOf("www.wikidata.org", "wikidata.org") }
-            ?.pathSegments?.lastOrNull()?.takeIf { it.matches(Regex("Q[0-9]+")) }
-        if (entity != null) {
-            val json = transport.json(url("https://www.wikidata.org/w/api.php", mapOf("action" to "wbgetentities",
-                "format" to "json", "ids" to entity, "props" to "sitelinks", "sitefilter" to languages.joinToString("|") { "${it}wiki" })))
-            val sites = json.optJSONObject("entities")?.optJSONObject(entity)?.optJSONObject("sitelinks")
-            languages.forEach { lang -> sites?.optJSONObject("${lang}wiki")?.text("title")?.let { titles[lang] = it } }
-        }
-        val lang = languages.firstOrNull { titles.containsKey(it) } ?: return
-        val json = transport.json(url("https://$lang.wikipedia.org/w/api.php", mapOf(
-            "action" to "query", "format" to "json", "formatversion" to "2", "prop" to "extracts|info|pageprops",
-            "explaintext" to "1", "exintro" to "1", "exchars" to "5000", "inprop" to "url", "redirects" to "1", "titles" to titles.getValue(lang))))
-        val page = json.optJSONObject("query")?.objects("pages")?.firstOrNull() ?: return
-        if (page.has("missing") || page.optJSONObject("pageprops")?.has("disambiguation") == true) return
-        val link = page.text("fullurl")?.toHttpUrlOrNull()?.takeIf { it.isHttps && it.host == "$lang.wikipedia.org" } ?: return
-        artist.put("wikiExtract", page.text("extract")?.take(5000)).put("wikiUrl", link.toString()).put("wikiLanguage", lang)
     }
 
     private fun url(base: String, parameters: Map<String, String>): HttpUrl = base.toHttpUrl().newBuilder().apply {

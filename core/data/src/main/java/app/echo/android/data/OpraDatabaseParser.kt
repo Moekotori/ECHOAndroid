@@ -106,6 +106,24 @@ internal object OpraDatabaseParser {
         )
     }
 
+    fun brands(database: OpraDatabase): List<app.echo.android.model.playback.OpraHeadphoneBrand> =
+        database.products.values.asSequence()
+            .filter { !database.eqsByProductId[it.id].isNullOrEmpty() }
+            .groupingBy { it.vendorId }.eachCount()
+            .map { (id, count) -> app.echo.android.model.playback.OpraHeadphoneBrand(
+                id, database.vendors[id]?.name ?: id, count) }
+            .sortedWith(compareBy<app.echo.android.model.playback.OpraHeadphoneBrand> { it.name.lowercase(java.util.Locale.ROOT) }.thenBy { it.id })
+
+    fun browse(database: OpraDatabase, vendorId: String, query: String = ""): List<OpraHeadphoneCorrectionProduct> {
+        val tokens = normalizeSearchText(query).split(' ').filter { it.isNotBlank() }
+        val vendor = database.vendors[vendorId] ?: OpraVendor(vendorId, vendorId)
+        return database.products.values.asSequence()
+            .filter { it.vendorId == vendorId && !database.eqsByProductId[it.id].isNullOrEmpty() }
+            .filter { tokens.isEmpty() || scoreProduct(tokens, it, vendor) >= 0 }
+            .sortedWith(compareBy<OpraProduct> { it.name.lowercase(java.util.Locale.ROOT) }.thenBy { it.id })
+            .map { createProductResult(database, it, vendor) }.toList()
+    }
+
     fun search(
         database: OpraDatabase,
         query: String,

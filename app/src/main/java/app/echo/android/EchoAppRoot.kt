@@ -1424,6 +1424,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                     onEqualizerPreampChange = viewModel::setEqualizerPreamp,
                                     onChannelBalanceChange = viewModel::setChannelBalance,
                                     onChannelBalanceReset = viewModel::resetChannelBalance,
+                                    onOpraBrandSelected = viewModel::browseOpraBrand,
                                     onOpraQueryChange = viewModel::updateOpraQuery,
                                     onOpraSearch = { viewModel.searchOpraHeadphoneCorrections(refresh = false) },
                                     onOpraRefresh = { viewModel.searchOpraHeadphoneCorrections(refresh = true) },

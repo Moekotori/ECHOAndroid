@@ -39,26 +39,30 @@ internal class OpraSearchController(
         }
     }
 
+    fun browse(brandId: String?) {
+        mutableState.update { it.copy(selectedBrandId = brandId) }
+        setQuery("")
+        search(false)
+    }
+
     fun search(refresh: Boolean) {
         val query = state.value.query.trim()
-        if (query.isBlank() && !refresh) {
-            message(context.getString(R.string.opra_enter_model))
-            return
-        }
+        val brandId = state.value.selectedBrandId
         searchJob?.cancel()
         val request = ++generation
         mutableState.update { it.copy(loading = true, message = null) }
         searchJob = scope.launch {
-            val result = repository.search(query, refresh)
+            val result = repository.search(query, refresh, vendorId = brandId)
             if (request != generation) return@launch
             result.onSuccess { found ->
-                val selected = found.products.firstOrNull()?.presets?.firstOrNull()
-                mutableState.update { it.copy(loading = false, results = found.products, status = found.status,
+                val selected = found.products.asSequence().flatMap { it.presets.asSequence() }
+                    .firstOrNull { it.eqId == state.value.selectedEqId }
+                mutableState.update { it.copy(loading = false, results = found.products, status = found.status, brands = found.brands,
                     selectedEqId = selected?.eqId,
                     previewCurve = selected?.let { preset -> EchoEqualizerEngine.responseCurve(preset.bands, preset.preampDb) }.orEmpty(),
                     message = when {
                         found.status.source == "cache-fallback" -> context.getString(R.string.opra_cache_fallback)
-                        query.isBlank() -> context.getString(R.string.opra_database_ready)
+                        query.isBlank() && brandId == null -> null
                         found.products.isEmpty() -> context.getString(R.string.opra_no_match)
                         else -> null
                     }) }

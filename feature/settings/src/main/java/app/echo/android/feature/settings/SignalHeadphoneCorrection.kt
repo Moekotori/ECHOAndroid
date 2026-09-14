@@ -34,6 +34,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,6 +70,7 @@ internal fun SignalHeadphoneCorrection(
     bypassed: Boolean,
     userPresets: List<app.echo.android.model.playback.EchoEqualizerUserPreset>,
     lastQuery: String,
+    onBrandSelected: (String?) -> Unit,
     onQueryChange: (String) -> Unit,
     onSearch: () -> Unit,
     onRefresh: () -> Unit,
@@ -75,13 +79,16 @@ internal fun SignalHeadphoneCorrection(
     onToggleFavorite: () -> Unit,
     onApplyUserPreset: (String) -> Unit,
 ) {
+    LaunchedEffect(Unit) {
+        if (state.status.source == "empty" && !state.loading) onBrandSelected(null)
+    }
     val keyboard = LocalSoftwareKeyboardController.current
     val uriHandler = LocalUriHandler.current
     val scheme = MaterialTheme.colorScheme
     val search = { if (!state.loading && state.query.isNotBlank()) { keyboard?.hide(); onSearch() } }
     val favorites = remember(userPresets) { EchoEqualizerUserPresets.opraFavorites(userPresets) }
     val starredEqId = state.selectedEqId?.let { eqId -> favorites.firstOrNull { it.opraEqId == eqId }?.opraEqId }
-    var expandedProduct by remember(state.results) { mutableStateOf(state.results.firstOrNull()?.productId) }
+    var expandedProduct by remember(state.results) { mutableStateOf<String?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             SignalLiveDot(active = equalizer.parametric && equalizer.enabled && !bypassed)
@@ -95,15 +102,16 @@ internal fun SignalHeadphoneCorrection(
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold,
                 )
-                SignalNote(stringResource(L10nR.string.opra_workflow))
+                SignalNote(stringResource(L10nR.string.opra_browse_workflow))
                 if (bypassed) SignalNote(stringResource(L10nR.string.eq_bypassed), error = true)
             }
         }
+        OpraBrandBrowser(state, onBrandSelected)
         SignalEqWell(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = state.query,
-                    onValueChange = onQueryChange,
+                    onValueChange = { onQueryChange(it); if (it.isBlank()) onSearch() },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     enabled = !state.loading,
@@ -211,8 +219,8 @@ internal fun SignalHeadphoneCorrection(
         }
         if (state.results.isNotEmpty()) {
             SignalEqWell(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(8.dp).selectableGroup(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    state.results.forEach { product ->
+                LazyColumn(Modifier.height(360.dp).padding(8.dp).selectableGroup(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    items(state.results, key = { it.productId }) { product ->
                         val expanded = expandedProduct == product.productId
                         Column {
                             Row(

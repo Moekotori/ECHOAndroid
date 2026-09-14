@@ -1168,6 +1168,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         playbackController.refreshOutputRoute()
     }
 
+    fun browseOpraBrand(brandId: String?) = opraSearch.browse(brandId)
+
     fun updateOpraQuery(query: String) = opraSearch.setQuery(query)
 
     fun searchOpraHeadphoneCorrections(refresh: Boolean = false) {
