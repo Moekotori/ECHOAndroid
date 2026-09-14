@@ -27,6 +27,7 @@ import app.echo.android.model.library.LibraryStats
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -56,13 +57,17 @@ class EchoLibraryRepository(
         if (args.isEmpty()) appContext.getString(id) else appContext.getString(id, *args)
     private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    init {
-        repositoryScope.launch {
-            delay(PINYIN_BACKFILL_START_DELAY_MS)
-            refreshLegacyLibrarySearchIndex()
-            backfillWavTags()
-            backfillAggregationKeys()
-        }
+    private val maintenanceJob = repositoryScope.launch {
+        delay(PINYIN_BACKFILL_START_DELAY_MS)
+        refreshLegacyLibrarySearchIndex()
+        backfillWavTags()
+        backfillAggregationKeys()
+    }
+
+    suspend fun clearLocalLibraryIndex() = withContext(Dispatchers.IO) {
+        // Backfills can hold pre-clear entities; wait until they can no longer upsert them.
+        maintenanceJob.cancelAndJoin()
+        database.trackDao().clearLocalLibraryIndex()
     }
 
     fun pagedTracks(
@@ -1167,6 +1172,7 @@ class EchoLibraryRepository(
                 options = options,
                 rejectedFiles = rejectedFiles,
                 onSkipped = { skippedCount++ },
+                onUnchangedIds = { ids -> seenIds.addAll(ids) },
                 onDuplicate = { oldId, targetId ->
                     if (oldId in existingFingerprints) duplicateAliases[oldId] = targetId
                 },

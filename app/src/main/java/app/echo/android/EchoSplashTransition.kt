@@ -49,8 +49,10 @@ internal fun SplashScreen.installEchoExitTransition(activity: ComponentActivity,
         val surface = provider.view
         val icon = provider.iconView
         val lightweight = mode.isLightweight
-        val duration = if (lightweight) 180L else 620L
-        val easing = PathInterpolator(0.22f, 1f, 0.36f, 1f)
+        // Keep the hand-off rhythm independent of whether settings finished loading.
+        // Zero slope at both ends avoids a sudden kick from the stationary system icon.
+        val duration = 420L
+        val easing = PathInterpolator(0.4f, 0f, 0.2f, 1f)
         var removed = false
         lateinit var observer: DefaultLifecycleObserver
         fun finish() {
@@ -71,19 +73,20 @@ internal fun SplashScreen.installEchoExitTransition(activity: ComponentActivity,
         // View properties avoid per-frame layout, Compose recomposition and bitmap decoding.
         if (!lightweight) {
             icon.animate()
-                .scaleX(1.08f)
-                .scaleY(1.08f)
-                .translationY(-8f * activity.resources.displayMetrics.density)
+                .scaleX(1.025f)
+                .scaleY(1.025f)
+                .setStartDelay(0L)
                 .setDuration(duration)
                 .setInterpolator(easing)
                 .start()
         }
-        // The already rendered home screen appears underneath as the launch surface dissolves.
+        // Reveal the first frame immediately, with the same easing as the icon so
+        // motion and opacity settle together instead of feeling like two transitions.
         surface.animate()
             .alpha(0f)
-            .setStartDelay(if (lightweight) 0L else 80L)
-            .setDuration(if (lightweight) duration else duration - 80L)
-            .setInterpolator(PathInterpolator(0.4f, 0f, 0.2f, 1f))
+            .setStartDelay(0L)
+            .setDuration(duration)
+            .setInterpolator(easing)
             .setListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) = finish()
                 override fun onAnimationCancel(animation: Animator) = finish()

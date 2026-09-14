@@ -1,15 +1,16 @@
 package app.echo.android.feature.library
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.automirrored.rounded.Sort
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
@@ -45,29 +46,11 @@ internal fun ArtistDetailPage(
     modifier: Modifier = Modifier,
 ) {
     val palette = rememberArtworkPalette(artist.artworkUri, seedKey = artist.artistKey)
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(440.dp)
-                .background(
-                    Brush.verticalGradient(
-                        0f to palette.vibrant.copy(alpha = 0.12f),
-                        0.45f to palette.deep.copy(alpha = 0.06f),
-                        1f to Color.Transparent,
-                    ),
-                ),
-        )
-
+    val onlineQuery = ArtistOnlineQuery(artist.name, albums?.itemSnapshotList?.items?.take(3)?.map { it.title }.orEmpty())
+    ArtistDetailPager(artist, onlineQuery, onBack, modifier) {
         LazyColumn(
             state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding(),
+            modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = AlbumDetailBottomPadding),
         ) {
             item(key = "hero") {
@@ -75,10 +58,8 @@ internal fun ArtistDetailPage(
                     modifier = Modifier
                         .fillMaxWidth()
                         .widthIn(max = EchoContentMaxWidth)
-                        .padding(horizontal = 20.dp),
+                        .padding(horizontal = 24.dp),
                 ) {
-                    AlbumDetailTopBar(onBack = onBack)
-                    Spacer(Modifier.height(8.dp))
                     ArtistProfileHeader(artist, palette)
                     Spacer(Modifier.height(20.dp))
                     ArtistPlaybackActions(artist.trackCount > 0, onPlayAll, onShuffle)
@@ -87,26 +68,7 @@ internal fun ArtistDetailPage(
                     Spacer(Modifier.height(22.dp))
                     ArtistTracksHeading(count = artist.trackCount)
                     Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = query, onValueChange = onQueryChange,
-                        label = { Text(stringResource(L10nR.string.artist_search_tracks)) },
-                        singleLine = true, modifier = Modifier.fillMaxWidth(),
-                        trailingIcon = {
-                            if (query.isNotEmpty()) IconButton(onClick = { onQueryChange("") }) {
-                                Icon(Icons.Rounded.Close, contentDescription = stringResource(L10nR.string.artist_clear_search))
-                            }
-                        },
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(LibraryTrackSortMode.Album, LibraryTrackSortMode.Title, LibraryTrackSortMode.Duration).forEach { mode ->
-                            FilterChip(selected = sort == mode, onClick = { onSortChange(mode) },
-                                label = { Text(stringResource(when (mode) {
-                                    LibraryTrackSortMode.Title -> L10nR.string.artist_sort_title
-                                    LibraryTrackSortMode.Duration -> L10nR.string.artist_sort_duration
-                                    else -> L10nR.string.artist_sort_album
-                                })) })
-                        }
-                    }
+                    ArtistTrackTools(query, sort, onQueryChange, onSortChange)
                     Spacer(Modifier.height(10.dp))
                 }
             }
@@ -130,7 +92,7 @@ internal fun ArtistDetailPage(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .widthIn(max = EchoContentMaxWidth)
-                                .padding(horizontal = 20.dp),
+                                .padding(horizontal = 24.dp),
                         ) {
                             AlbumTrackRow(
                                 index = index,
@@ -176,28 +138,12 @@ internal fun ArtistDetailListPage(
     modifier: Modifier = Modifier,
 ) {
     val palette = rememberArtworkPalette(artist.artworkUri, seedKey = artist.artistKey)
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(440.dp)
-                .background(
-                    Brush.verticalGradient(
-                        0f to palette.vibrant.copy(alpha = 0.12f),
-                        0.45f to palette.deep.copy(alpha = 0.06f),
-                        1f to Color.Transparent,
-                    ),
-                ),
-        )
-
+    val onlineQuery = remember(artist.artistKey, artist.name, tracks) {
+        ArtistOnlineQuery(artist.name, tracks.take(24).mapNotNull { it.album }.distinct().take(3))
+    }
+    ArtistDetailPager(artist, onlineQuery, onBack, modifier) {
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding(),
+            modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = AlbumDetailBottomPadding),
         ) {
             item(key = "hero") {
@@ -205,15 +151,12 @@ internal fun ArtistDetailListPage(
                     modifier = Modifier
                         .fillMaxWidth()
                         .widthIn(max = EchoContentMaxWidth)
-                        .padding(horizontal = 20.dp),
+                        .padding(horizontal = 24.dp),
                 ) {
-                    AlbumDetailTopBar(onBack = onBack)
-                    Spacer(Modifier.height(8.dp))
                     ArtistProfileHeader(artist, palette)
                     Spacer(Modifier.height(18.dp))
-                    AlbumActionBar(onPlayAll = onPlayAll, onShuffle = onShuffle, onPlayOnPc = onPlayOnPc)
-                    Spacer(Modifier.height(18.dp))
-                    Spacer(Modifier.height(22.dp))
+                    ArtistPlaybackActions(tracks.isNotEmpty(), onPlayAll, onShuffle, onPlayOnPc)
+                    Spacer(Modifier.height(24.dp))
                     ArtistTracksHeading(count = artist.trackCount)
                     Spacer(Modifier.height(10.dp))
                 }
@@ -232,7 +175,7 @@ internal fun ArtistDetailListPage(
                         modifier = Modifier
                             .fillMaxWidth()
                             .widthIn(max = EchoContentMaxWidth)
-                            .padding(horizontal = 20.dp),
+                            .padding(horizontal = 24.dp),
                     ) {
                         AlbumTrackRow(
                             index = index,
@@ -245,6 +188,34 @@ internal fun ArtistDetailListPage(
                             onMatchNeteaseMetadata = onMatchNeteaseMetadata,
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ArtistTrackTools(query: String, sort: LibraryTrackSortMode, onQueryChange: (String) -> Unit, onSortChange: (LibraryTrackSortMode) -> Unit) {
+    var showSort by remember { mutableStateOf(false) }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(value = query, onValueChange = onQueryChange,
+            placeholder = { Text(stringResource(L10nR.string.artist_search_tracks), style = MaterialTheme.typography.bodyMedium) },
+            leadingIcon = { Icon(Icons.Rounded.Search, null, modifier = Modifier.size(20.dp)) },
+            trailingIcon = { if (query.isNotEmpty()) IconButton(onClick = { onQueryChange("") }) {
+                Icon(Icons.Rounded.Close, stringResource(L10nR.string.artist_clear_search))
+            } },
+            singleLine = true, shape = RoundedCornerShape(18.dp), modifier = Modifier.weight(1f),
+            colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .4f)))
+        Box {
+            IconButton(onClick = { showSort = true }) { Icon(Icons.AutoMirrored.Rounded.Sort, stringResource(L10nR.string.artist_sort_tracks)) }
+            DropdownMenu(expanded = showSort, onDismissRequest = { showSort = false }) {
+                listOf(LibraryTrackSortMode.Album, LibraryTrackSortMode.Title, LibraryTrackSortMode.Duration).forEach { mode ->
+                    DropdownMenuItem(text = { Text(stringResource(when (mode) {
+                        LibraryTrackSortMode.Title -> L10nR.string.artist_sort_title
+                        LibraryTrackSortMode.Duration -> L10nR.string.artist_sort_duration
+                        else -> L10nR.string.artist_sort_album
+                    }), color = if (mode == sort) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface) },
+                        onClick = { onSortChange(mode); showSort = false })
                 }
             }
         }

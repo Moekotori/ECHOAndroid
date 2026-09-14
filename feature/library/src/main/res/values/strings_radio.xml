@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="radio_title">Radio</string>
-    <string name="radio_hint">Save a station, then tap it to listen.</string>
+    <string name="radio_hint">Search the public directory, or add a stream URL yourself.</string>
     <string name="radio_add">Add station</string>
     <string name="radio_edit">Edit station</string>
     <string name="radio_delete">Delete station</string>
     <string name="radio_play">Play station</string>
-    <string name="radio_empty">No stations to show. Add a station or clear your search.</string>
+    <string name="radio_empty">No saved stations yet. Search above or add one.</string>
     <string name="radio_name">Station name</string>
     <string name="radio_url">Stream URL</string>
     <string name="radio_url_hint">HTTP/HTTPS audio stream or HLS (.m3u8), not a webpage.</string>
@@ -18,4 +18,10 @@
     <string name="radio_write_error">Could not save the change. Please retry.</string>
     <string name="radio_delete_prompt">Delete “%1$s” from your stations?</string>
     <string name="radio_search">Search stations</string>
+    <string name="radio_directory_title">Directory</string>
+    <string name="radio_directory_empty">No stations found in the directory.</string>
+    <string name="radio_directory_error">Could not reach the radio directory.</string>
+    <string name="radio_directory_source">Station list from radio-browser.info</string>
+    <string name="radio_directory_save">Save station</string>
+    <string name="radio_directory_bitrate">%1$d kbps</string>
 </resources>

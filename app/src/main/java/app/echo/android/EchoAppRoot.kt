@@ -109,6 +109,7 @@ import app.echo.android.ui.shell.dockTab
 import app.echo.android.ui.shell.motionDuration
 import app.echo.android.ui.shell.pagerPage
 import app.echo.android.ui.shell.routeMotionSpec
+import app.echo.android.ui.shell.dockNavigationMotionSpec
 import app.echo.android.data.EchoBackgroundMode
 import app.echo.android.data.EchoFontFamilyMode
 import app.echo.android.data.toEchoTrack
@@ -664,6 +665,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     var searchVisible by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var errorLogVisible by rememberSaveable { mutableStateOf(false) }
+    var soundSettingsDestination by remember { mutableStateOf<app.echo.android.feature.settings.SoundSettingsDestination?>(null) }
+    var soundSettingsRequestId by remember { mutableIntStateOf(0) }
     var selectedTab by remember { mutableIntStateOf(EchoTab.Now.ordinal) }
     var bottomDockExpanded by remember { mutableStateOf(true) }
     var bottomDockHeightPx by remember { mutableIntStateOf(0) }
@@ -781,13 +784,14 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             tabPagerState.currentPageOffsetFraction.absoluteValue > 0.001f
     fun navigateToPage(page: EchoPagerPage) {
         val targetPage = page.ordinal
+        if (routeNavigationJob[0]?.isActive == true && tabPagerState.targetPage == targetPage) return
         page.dockTab?.let { selectedTab = it.ordinal }
         routeNavigationJob[0]?.cancel()
         routeNavigationJob[0] = appScope.launch {
             if (needsPagerSettle(targetPage)) {
                 tabPagerState.animateScrollToPage(
                     page = targetPage,
-                    animationSpec = routeMotionSpec(tabPagerState.currentPage, targetPage, effectivePerformanceMode),
+                    animationSpec = dockNavigationMotionSpec(tabPagerState.currentPage, targetPage, effectivePerformanceMode),
                 )
             }
         }
@@ -848,7 +852,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         }
         returnPage.dockTab?.let { selectedTab = it.ordinal }
         routeNavigationJob[0]?.cancel()
-        appScope.launch {
+        routeNavigationJob[0] = appScope.launch {
             try {
                 val targetPage = returnPage.ordinal
                 if (needsPagerSettle(targetPage)) {
@@ -868,7 +872,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         }
     }
     LaunchedEffect(tabPagerState.isScrollInProgress, tabPagerState.currentPage) {
-        if (!tabPagerState.isScrollInProgress && tabPagerState.currentPageOffsetFraction.absoluteValue > 0.001f) {
+        if (routeNavigationJob[0]?.isActive != true &&
+            !tabPagerState.isScrollInProgress &&
+            tabPagerState.currentPageOffsetFraction.absoluteValue > 0.001f
+        ) {
             tabPagerState.animateScrollToPage(
                 page = tabPagerState.currentPage,
                 animationSpec = routeMotionSpec(
@@ -1251,6 +1258,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 },
                                 onOpenLibrary = { selectDockTab(EchoTab.Library) },
                                 onOpenConnect = { selectDockTab(EchoTab.Connect) },
+                                onClearLocalLibraryIndex = viewModel::clearLocalLibraryIndex,
                                 errorLogCount = errorLogCount,
                                 onOpenErrorLog = { errorLogVisible = true },
                                 backupNotice = backupNotice,
@@ -1394,6 +1402,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 val opraState by viewModel.opraState.collectAsStateWithLifecycle()
                                 val replayGainScan by viewModel.replayGainScanState.collectAsStateWithLifecycle()
                                 DiagnosticsScreen(
+                                    openDestination = soundSettingsDestination,
+                                    openRequestId = soundSettingsRequestId,
+                                    onOpenRequestConsumed = { soundSettingsDestination = null },
                                     status = playbackStatus,
                                     positionFlow = viewModel.playbackPosition,
                                     equalizerState = equalizerState,
@@ -1425,6 +1436,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                     onApplyUserPreset = viewModel::applyEqualizerUserPreset,
                                     onRenameUserPreset = viewModel::renameEqualizerUserPreset,
                                     onDeleteUserPreset = viewModel::deleteEqualizerUserPreset,
+                                    onImportShareCode = viewModel::importEqualizerShareCode,
                                     onToggleOpraFavorite = viewModel::toggleStarredOpraPreset,
                                     bluetoothCodecNeedsPermission = !hasBluetoothConnectPermission &&
                                         playbackStatus.diagnostics.outputDeviceKind == EchoOutputDeviceKind.Bluetooth.id,
@@ -1485,6 +1497,17 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     predictiveBackProgress = { nowPlayingBackProgress },
                     presentationExpanded = nowPlayingExpanded,
                     onDragProgress = { nowPlayingDragProgress = it },
+                    onOpenSoundSettings = { destination ->
+                        soundSettingsDestination = when (destination) {
+                            app.echo.android.feature.player.PlaybackSoundDestination.Equalizer -> app.echo.android.feature.settings.SoundSettingsDestination.Equalizer
+                            app.echo.android.feature.player.PlaybackSoundDestination.Headphones -> app.echo.android.feature.settings.SoundSettingsDestination.Headphones
+                            app.echo.android.feature.player.PlaybackSoundDestination.Balance -> app.echo.android.feature.settings.SoundSettingsDestination.Balance
+                            app.echo.android.feature.player.PlaybackSoundDestination.Output -> app.echo.android.feature.settings.SoundSettingsDestination.Output
+                        }
+                        soundSettingsRequestId++
+                        nowPlayingExpanded = false
+                        navigateToPage(EchoPagerPage.Diagnostics)
+                    },
                     onOpenQueue = { queueSheetVisible = true },
                     onCast = ::onNowPlayingCast,
                     castActive = castSessionActive,

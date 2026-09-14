@@ -35,6 +35,7 @@ import app.echo.android.design.EchoExpand
 import app.echo.android.design.EchoTextButton
 import app.echo.android.model.playback.EchoEqualizerPreset
 import app.echo.android.model.playback.EchoEqualizerState
+import app.echo.android.model.playback.EchoEqualizerUserPresets
 
 @Composable
 internal fun SignalEqualizer(
@@ -53,6 +54,7 @@ internal fun SignalEqualizer(
     onApplyUserPreset: (String) -> Unit,
     onRenameUserPreset: (String, String) -> Unit,
     onDeleteUserPreset: (String) -> Unit,
+    onImportShareCode: (String) -> Unit,
 ) {
     var showEditor by remember { mutableStateOf(false) }
     var showFilters by remember(state.filters) { mutableStateOf(false) }
@@ -203,17 +205,27 @@ internal fun SignalEqualizer(
 
         val defaultSaveName = state.sourceLabel?.takeIf { it.isNotBlank() }
             ?: if (state.parametric) stringResource(L10nR.string.eq_user_preset_parametric) else eqPresetLabel(state.presetId)
+        val currentShare = remember(state, defaultSaveName) {
+            EchoEqualizerUserPresets.capture(
+                id = "current",
+                name = defaultSaveName,
+                state = state,
+                updatedAtEpochMs = 0L,
+            )
+        }
         SignalEqWell(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
                 SignalEqUserPresets(
                     presets = userPresets,
                     activeId = activeUserPresetId,
                     defaultSaveName = defaultSaveName,
+                    currentShare = currentShare,
                     enabled = true,
                     onSave = onSaveUserPreset,
                     onApply = onApplyUserPreset,
                     onRename = onRenameUserPreset,
                     onDelete = onDeleteUserPreset,
+                    onImportShareCode = onImportShareCode,
                 )
             }
         }

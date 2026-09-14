@@ -5,7 +5,6 @@ import app.echo.android.model.library.AlbumOnlineInfoLoader
 import app.echo.android.model.library.AlbumSummary
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -27,10 +26,13 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /** One application-owned instance serializes lookups and the MusicBrainz rate budget. */
-class AlbumOnlineInfoRepository(private val cacheDirectory: File, appVersion: String = "development") : AlbumOnlineInfoLoader {
+class AlbumOnlineInfoRepository(
+    private val cacheDirectory: File,
+    appVersion: String = "development",
+    private val musicBrainzGate: MusicBrainzRequestGate = MusicBrainzRequestGate(),
+) : AlbumOnlineInfoLoader {
     private val userAgent = "ECHOAndroid/$appVersion (https://github.com/moekotori/echo)"
     private val gate = Mutex()
-    private var nextMusicBrainzAt = 0L
     private val client = OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS).callTimeout(25, TimeUnit.SECONDS)
         .followRedirects(false).retryOnConnectionFailure(false).build()
@@ -133,13 +135,10 @@ class AlbumOnlineInfoRepository(private val cacheDirectory: File, appVersion: St
         return null
     }
 
-    private suspend fun musicBrainz(path: String, parameters: Map<String, String>): JSONObject {
-        val wait = nextMusicBrainzAt - TimeUnit.NANOSECONDS.toMillis(System.nanoTime())
-        if (wait > 0) delay(wait)
-        nextMusicBrainzAt = TimeUnit.NANOSECONDS.toMillis(System.nanoTime()) + 1100L
+    private suspend fun musicBrainz(path: String, parameters: Map<String, String>): JSONObject = musicBrainzGate.run {
         val url = "https://musicbrainz.org/ws/2/$path".toHttpUrl().newBuilder().addQueryParameter("fmt", "json")
         parameters.forEach { (key, value) -> url.addQueryParameter(key, value) }
-        return json(url.build())
+        json(url.build())
     }
 
     private suspend fun json(url: HttpUrl): JSONObject {

@@ -112,7 +112,7 @@ internal fun SettingsNavigation(
                                 }
                             }
                         } else {
-                            Text(
+                            if (category != SettingsCategory.About) Text(
                                 stringResource(category.description),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,

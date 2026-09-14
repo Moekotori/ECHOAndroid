@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_about_beta_version">%1$s · Beta</string>
+    <string name="settings_about_author">개발자</string>
+    <string name="settings_about_qq_group">QQ 그룹 참여</string>
+    <string name="settings_about_website">공식 웹사이트</string>
+    <string name="settings_about_bug_report">버그 신고</string>
+    <string name="settings_about_link_error">이 링크를 열 수 있는 앱이 없습니다</string>
+</resources>

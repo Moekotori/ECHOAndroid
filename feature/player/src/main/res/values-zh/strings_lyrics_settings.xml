@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_setting_reset">重置</string>
+    <string name="lyrics_setting_typography">字体与排版</string>
+    <string name="lyrics_setting_replace_font">更换导入字体</string>
+    <string name="lyrics_setting_color_background">颜色与背景</string>
+    <string name="lyrics_setting_motion">动效与高亮</string>
+    <string name="lyrics_setting_highlight_strength">高亮强度</string>
+    <string name="lyrics_setting_content">内容与工具</string>
+    <string name="lyrics_setting_content_summary">翻译、音译与歌词来源</string>
+    <string name="lyrics_setting_no_content">本首暂无此内容，仍会保留你对其他歌曲的显示偏好。</string>
+    <string name="lyrics_setting_word_highlight">逐字高亮</string>
+</resources>

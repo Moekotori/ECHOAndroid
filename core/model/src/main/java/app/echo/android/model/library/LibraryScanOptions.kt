@@ -8,4 +8,6 @@ data class LibraryScanOptions(
     val excludeHiddenFolders: Boolean = true,
     /** Storage-relative directory paths; includes descendants, never deletes imported tracks. */
     val excludedRelativePaths: Set<String> = emptySet(),
+    /** Allowed filename extensions without a dot; empty means all supported formats. */
+    val allowedExtensions: Set<String> = emptySet(),
 ) : java.io.Serializable

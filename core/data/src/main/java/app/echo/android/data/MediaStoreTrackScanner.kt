@@ -69,6 +69,11 @@ class MediaStoreTrackScanner(
                         scannedCount++
                         onProgress(scannedCount, null)
                         null
+                    } else if (!options.acceptsFileFormat(row.fileName, "mediastore:${row.mediaId}" in existingTracks)) {
+                        scannedCount++
+                        onSkipped()
+                        onProgress(scannedCount, null)
+                        null
                     } else if (existingTracks["mediastore:${row.mediaId}"] == null && !options.accepts(row.durationMs, row.sizeBytes, null)) {
                         rejectedFiles?.remember(row.contentUri, row.sizeBytes, row.dateModifiedSeconds, row.durationMs)
                         scannedCount++
@@ -227,7 +232,7 @@ class MediaStoreTrackScanner(
                 try {
                     val args = chunk.map { it.contentUri.substringAfterLast('/') }.toTypedArray()
                     val cursor = contentResolver.query(
-                        collection.uri, projection().filterNot { it == SampleRateColumn }.toTypedArray() + MediaStore.Audio.Media.DISPLAY_NAME,
+                        collection.uri, projection().filterNot { it == SampleRateColumn }.toTypedArray(),
                         "${MediaStore.Audio.Media._ID} IN (${args.joinToString(",") { "?" }})",
                         args, null,
                     )
@@ -274,6 +279,7 @@ class MediaStoreTrackScanner(
         return MediaStoreAudioRow(
             mediaId = mediaId,
             contentUri = Uri.withAppendedPath(collection.uri, mediaId.toString()).toString(),
+            fileName = columns.fileNameIndex?.let { getStringOrNull(it) },
             title = getStringOrNull(columns.titleIndex).takeUnlessUnknownMetadata() ?: UnknownTrackTitle,
             artist = getStringOrNull(columns.artistIndex).takeUnlessUnknownMetadata() ?: canonicalUnknownArtist(),
             album = getStringOrNull(columns.albumIndex).takeUnlessUnknownMetadata(),
@@ -448,6 +454,7 @@ class MediaStoreTrackScanner(
     private data class MediaStoreColumns(
         val idIndex: Int,
         val titleIndex: Int,
+        val fileNameIndex: Int?,
         val artistIndex: Int,
         val albumIndex: Int,
         val albumArtistIndex: Int?,
@@ -469,6 +476,7 @@ class MediaStoreTrackScanner(
                 MediaStoreColumns(
                     idIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID),
                     titleIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE),
+                    fileNameIndex = cursor.getColumnIndex(MediaStore.Audio.Media.DISPLAY_NAME).takeIf { it >= 0 },
                     artistIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST),
                     albumIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM),
                     // API 30 之前不在投影里;个别 OEM provider 也可能不返回,统一容错
@@ -673,6 +681,7 @@ class MediaStoreTrackScanner(
         val BaseProjection = arrayOf(
             MediaStore.Audio.Media._ID,
             MediaStore.Audio.Media.TITLE,
+            MediaStore.Audio.Media.DISPLAY_NAME,
             MediaStore.Audio.Media.ARTIST,
             MediaStore.Audio.Media.ALBUM,
             MediaStore.Audio.Media.ALBUM_ID,
@@ -702,6 +711,7 @@ private data class MediaStoreCollection(
 
 private data class MediaStoreAudioRow(
     val mediaId: Long,
+    val fileName: String?,
     val contentUri: String,
     val title: String,
     val artist: String,

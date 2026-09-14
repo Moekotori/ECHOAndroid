@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="artist_page_artist">Artist</string>
+    <string name="artist_page_music">Music</string>
+    <string name="artist_page_information">About</string>
+    <string name="artist_page_concerts">Live</string>
+    <string name="artist_about">About the artist</string>
+    <string name="artist_online_loading">Looking up artist information…</string>
+    <string name="artist_online_error">Unable to connect. Please try again.</string>
+    <string name="artist_info_no_match">No unambiguous artist match found.</string>
+    <string name="artist_no_biography">No Wikipedia biography is available yet.</string>
+    <string name="artist_online_stale">Showing saved information. Refresh to try again.</string>
+    <string name="artist_online_partial">Some information could not be loaded.</string>
+    <string name="artist_fact_area">From</string>
+    <string name="artist_fact_type">Type</string>
+    <string name="artist_fact_begin">Born / formed</string>
+    <string name="artist_fact_end">Ended</string>
+    <string name="artist_fact_genres">Genres</string>
+    <string name="artist_fact_members">Members</string>
+    <string name="artist_kind_person">Solo artist</string>
+    <string name="artist_kind_group">Group</string>
+    <string name="artist_upcoming_concerts">Upcoming live events</string>
+    <string name="artist_no_concerts">No upcoming events found.</string>
+    <string name="artist_concerts_incomplete">No events returned yet; some sources are unavailable.</string>
+    <string name="artist_concerts_partial">Unavailable sources: %1$s</string>
+    <string name="artist_concert_local_time">%1$s · venue local time</string>
+    <string name="artist_concert_tickets">%1$s · Tickets</string>
+    <string name="artist_concert_details">%1$s · Event details</string>
+    <string name="artist_sort_tracks">Sort tracks</string>
+    <string name="artist_play_on_pc">Play on PC</string>
+</resources>

@@ -22,9 +22,14 @@ import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.model.playback.*
 import kotlinx.coroutines.flow.StateFlow
 
+enum class SoundSettingsDestination { Equalizer, Headphones, Balance, Output }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DiagnosticsScreen(
+    openDestination: SoundSettingsDestination? = null,
+    openRequestId: Int = 0,
+    onOpenRequestConsumed: () -> Unit = {},
     status: EchoPlaybackStatus,
     positionFlow: StateFlow<PlaybackPositionState>,
     equalizerState: EchoEqualizerState,
@@ -49,6 +54,7 @@ fun DiagnosticsScreen(
     onApplyUserPreset: (String) -> Unit = {},
     onRenameUserPreset: (String, String) -> Unit = { _, _ -> },
     onDeleteUserPreset: (String) -> Unit = {},
+    onImportShareCode: (String) -> Unit = {},
     onToggleOpraFavorite: () -> Unit = {},
     dspSettings: EchoDspSettings,
     replayGainScan: EchoReplayGainScanState,
@@ -62,6 +68,18 @@ fun DiagnosticsScreen(
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var soundPanel by rememberSaveable { mutableIntStateOf(0) }
+    LaunchedEffect(openRequestId, openDestination) {
+        openDestination?.let { destination ->
+            selectedTab = if (destination == SoundSettingsDestination.Output) 2 else 1
+            soundPanel = when (destination) {
+                SoundSettingsDestination.Equalizer -> 0
+                SoundSettingsDestination.Headphones -> 1
+                SoundSettingsDestination.Balance -> 2
+                SoundSettingsDestination.Output -> soundPanel
+            }
+            onOpenRequestConsumed()
+        }
+    }
     val scrollStates = listOf(rememberScrollState(), rememberScrollState(), rememberScrollState())
     val labels = listOf(
         stringResource(L10nR.string.feature_settings_signal_path_2fed34),
@@ -149,6 +167,7 @@ fun DiagnosticsScreen(
                                         onApplyUserPreset = onApplyUserPreset,
                                         onRenameUserPreset = onRenameUserPreset,
                                         onDeleteUserPreset = onDeleteUserPreset,
+                                        onImportShareCode = onImportShareCode,
                                     )
                                     else if (panel == 1) SignalHeadphoneCorrection(
                                         state = opraState,

@@ -3,6 +3,7 @@ package app.echo.android.ui.shell
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import app.echo.android.EchoTab
 import app.echo.android.design.EchoMotion
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
@@ -37,6 +38,20 @@ internal val EchoPagerPage.dockTab: EchoTab?
 private const val ROUTE_MOTION_BASE_DURATION_MS = 420
 private const val ROUTE_MOTION_DISTANCE_DURATION_MS = 48
 private const val ROUTE_MOTION_MAX_DURATION_MS = 560
+
+// Point navigation has a bounded finish; keep the spring below for touch flings.
+internal fun dockNavigationMotionSpec(
+    fromPage: Int,
+    toPage: Int,
+    effectivePerformanceMode: EchoEffectivePerformanceMode,
+): AnimationSpec<Float> {
+    val distance = (toPage - fromPage).absoluteValue.coerceAtLeast(1)
+    val duration = when {
+        effectivePerformanceMode.isLightweight -> 100
+        else -> (340 + (distance - 1) * 35).coerceAtMost(440)
+    }
+    return tween(durationMillis = duration, easing = EchoMotion.Silk)
+}
 
 internal fun routeMotionSpec(
     fromPage: Int,

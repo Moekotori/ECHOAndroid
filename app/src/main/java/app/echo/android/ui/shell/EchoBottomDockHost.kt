@@ -134,6 +134,7 @@ internal fun EchoBottomDockHost(
         ) {
             BottomDock(
                 selectedTab = selectedTab,
+                gestureModifier = rememberDockSwipeModifier(pagerState, effectivePerformanceMode),
                 selectedTabProgress = dockTabProgress,
                 progressLive = pagerState.isScrollInProgress,
                 onLightSurface = !darkTheme,

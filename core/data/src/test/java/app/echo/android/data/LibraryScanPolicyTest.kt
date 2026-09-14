@@ -391,6 +391,56 @@ class LibraryScanPolicyTest {
     }
 
     @Test
+    fun unchangedDocumentTrackSkipsMetadataWhenFingerprintIsComplete() {
+        val existing = TrackFingerprint(
+            id = "saf:one",
+            contentUri = "content://doc/1",
+            sampleRateHz = 44_100,
+            fingerprint = "fp",
+            sizeBytes = 1_024L,
+            dateModifiedSeconds = 99L,
+            relativePath = "Music/",
+            durationMs = 120_000L,
+        )
+        assertTrue(
+            LibraryScanPolicy.shouldReuseUnchangedDocumentTrack(
+                existing = existing,
+                incomingContentUri = "content://doc/1",
+                incomingSizeBytes = 1_024L,
+                incomingDateModifiedSeconds = 99L,
+                incomingRelativePath = "Music/",
+            ),
+        )
+        assertFalse(
+            LibraryScanPolicy.shouldReuseUnchangedDocumentTrack(
+                existing = existing.copy(durationMs = 0L),
+                incomingContentUri = "content://doc/1",
+                incomingSizeBytes = 1_024L,
+                incomingDateModifiedSeconds = 99L,
+                incomingRelativePath = "Music/",
+            ),
+        )
+        assertFalse(
+            LibraryScanPolicy.shouldReuseUnchangedDocumentTrack(
+                existing = existing.copy(fingerprint = LibraryScanPolicy.PendingDocumentMetadataFingerprint),
+                incomingContentUri = "content://doc/1",
+                incomingSizeBytes = 1_024L,
+                incomingDateModifiedSeconds = 99L,
+                incomingRelativePath = "Music/",
+            ),
+        )
+        assertFalse(
+            LibraryScanPolicy.shouldReuseUnchangedDocumentTrack(
+                existing = existing,
+                incomingContentUri = "content://doc/1",
+                incomingSizeBytes = 1_024L,
+                incomingDateModifiedSeconds = 100L,
+                incomingRelativePath = "Music/",
+            ),
+        )
+    }
+
+    @Test
     fun sizeAndMtimeMatchWithNewDocumentUriIsUpdateNotRememberSeen() {
         assertFalse(
             LibraryScanPolicy.shouldReuseUnchangedDocumentFingerprint(

@@ -28,8 +28,12 @@ import kotlinx.coroutines.launch
 
 @UnstableApi
 class EchoApplication : Application(), ImageLoaderFactory {
+    private val musicBrainzGate by lazy { app.echo.android.data.MusicBrainzRequestGate() }
+    val artistOnlineInfo by lazy {
+        app.echo.android.data.ArtistOnlineInfoRepository(java.io.File(cacheDir, "artist-online-info"), BuildConfig.VERSION_NAME, musicBrainzGate)
+    }
     val albumOnlineInfo by lazy {
-        app.echo.android.data.AlbumOnlineInfoRepository(java.io.File(cacheDir, "album-online-info"), BuildConfig.VERSION_NAME)
+        app.echo.android.data.AlbumOnlineInfoRepository(java.io.File(cacheDir, "album-online-info"), BuildConfig.VERSION_NAME, musicBrainzGate)
     }
     val echoLinkSession by lazy { EchoLinkSession(this) }
 

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_clear_index_title">Clear library index</string>
+    <string name="settings_clear_index_detail">Remove the local music index without deleting audio files.</string>
+    <string name="settings_clear_index_busy">Clearing…</string>
+    <string name="settings_clear_index_confirm">Clear the local song and search indexes? Music files, favorites, playlists, and listening history will be kept. Automatic scanning will pause until you scan manually. Remote libraries are unaffected.</string>
+    <string name="settings_clear_index_action">Clear</string>
+    <string name="settings_clear_index_success">Local library index cleared. Scan manually to rebuild it.</string>
+    <string name="settings_clear_index_failure">Could not clear the library index. Please try again.</string>
+</resources>

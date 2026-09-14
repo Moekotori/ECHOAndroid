@@ -3,6 +3,7 @@ package app.echo.android.feature.home
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -45,18 +46,27 @@ internal fun HomeDailyAlbumSection(
         } else {
             Crossfade(album, animationSpec = tween(if (lightweight) 0 else 200), label = "daily-album") { shown ->
                 if (shown != null) {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        ArtworkTile(
-                            artworkUri = shown.artworkUri,
-                            modifier = Modifier.fillMaxWidth().aspectRatio(1f).echoClickable { onOpen(shown) },
-                            accent = MaterialTheme.colorScheme.primary,
-                            cornerRadius = 24.dp,
-                            elevation = if (lightweight) 0.dp else 4.dp,
-                        )
-                        Text(shown.title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Text(shown.albumArtist ?: shown.artist ?: stringResource(R.string.feature_home_unknown_artist_85ee30),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Surface(shape = RoundedCornerShape(24.dp), color = homePanelColor()) {
+                        Row(Modifier.fillMaxWidth().padding(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            ArtworkTile(
+                                artworkUri = shown.artworkUri,
+                                modifier = Modifier.widthIn(max = 144.dp).weight(0.44f).aspectRatio(1f)
+                                    .echoClickable { onOpen(shown) },
+                                accent = MaterialTheme.colorScheme.primary,
+                                cornerRadius = 16.dp, elevation = 0.dp,
+                            )
+                            Column(Modifier.weight(0.56f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(shown.title, style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold,
+                                    maxLines = 3, overflow = TextOverflow.Ellipsis)
+                                Text(shown.albumArtist ?: shown.artist ?: stringResource(R.string.feature_home_unknown_artist_85ee30),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
                     }
                 }
             }

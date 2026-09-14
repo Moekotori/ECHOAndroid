@@ -19,6 +19,18 @@ class LibraryScanFilterTest {
         assertFalse(defaults.accepts(0, 500, "Music/"))
     }
 
+    @Test fun excludedFoldersMatchRegardlessOfCase() {
+        val options = defaults.copy(
+            excludeNonMusicFolders = false,
+            excludeHiddenFolders = false,
+            excludedRelativePaths = setOf("Music/Private"),
+        )
+        assertFalse(options.includesDirectory("music/private"))
+        assertFalse(options.includesDirectory("MUSIC/PRIVATE/Calls/"))
+        assertTrue(options.includesDirectory("Music/Private Live/"))
+        assertTrue(options.includesDirectory("Other/Music/Private/"))
+    }
+
     @Test fun folderRulesMatchComponentsNotSubstrings() {
         assertFalse(defaults.accepts(60_000, 200_000, "Removable/abcd/Recordings/2026/"))
         assertFalse(defaults.accepts(60_000, 200_000, "Notifications/"))

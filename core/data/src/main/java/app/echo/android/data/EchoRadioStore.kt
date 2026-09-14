@@ -17,7 +17,7 @@ class EchoRadioStore(context: Context) {
     private val mutex = Mutex()
 
     suspend fun load(): List<EchoRadioStation> = withContext(Dispatchers.IO) {
-        mutex.withLock { read() }
+        mutex.withLock { readInitialized() }
     }
 
     suspend fun save(station: EchoRadioStation): List<EchoRadioStation> = update { stations ->
@@ -37,26 +37,26 @@ class EchoRadioStore(context: Context) {
     private suspend fun update(transform: (List<EchoRadioStation>) -> List<EchoRadioStation>): List<EchoRadioStation> =
         withContext(Dispatchers.IO) {
             mutex.withLock {
-                val next = transform(read())
-                val json = JSONArray()
-                next.forEach { station ->
-                    json.put(JSONObject().put("id", station.id).put("name", station.name).put("url", station.url))
-                }
-                val bytes = json.toString().toByteArray(Charsets.UTF_8)
-                require(bytes.size <= 4 * 1024 * 1024)
-                val output = file.startWrite()
-                try {
-                    output.write(bytes)
-                    file.finishWrite(output)
-                } catch (error: Throwable) {
-                    file.failWrite(output)
-                    throw error
-                }
+                val next = transform(readInitialized())
+                write(next)
                 next
             }
         }
 
-    private fun read(): List<EchoRadioStation> {
+    private fun write(stations: List<EchoRadioStation>) {
+        val bytes = EchoRadioDefaults.encode(stations).toByteArray(Charsets.UTF_8)
+        require(bytes.size <= 4 * 1024 * 1024)
+        val output = file.startWrite()
+        try {
+            output.write(bytes)
+            file.finishWrite(output)
+        } catch (error: Throwable) {
+            file.failWrite(output)
+            throw error
+        }
+    }
+
+    private fun readInitialized(): List<EchoRadioStation> {
         val bytes = try {
             file.openRead().use { input ->
                 val output = java.io.ByteArrayOutputStream()
@@ -70,15 +70,18 @@ class EchoRadioStore(context: Context) {
                 output.toByteArray()
             }
         } catch (_: java.io.FileNotFoundException) {
-            return emptyList()
+            return EchoRadioDefaults.initialize(emptyList()).also(::write)
         }
-        val json = JSONArray(String(bytes, Charsets.UTF_8))
+        val text = String(bytes, Charsets.UTF_8)
+        val legacy = text.trimStart().startsWith("[")
+        val json = if (legacy) JSONArray(text) else JSONObject(text).getJSONArray("stations")
         require(json.length() <= EchoRadioStation.MaxStations)
-        return List(json.length()) { index ->
+        val stations = List(json.length()) { index ->
             val item = json.getJSONObject(index)
             EchoRadioStation(item.getString("id"), item.getString("name"), item.getString("url")).also {
                 require(it.id.isNotBlank() && it.name.isNotBlank() && EchoRadioStation.validUrl(it.url))
             }
         }.also { require(it.map(EchoRadioStation::id).distinct().size == it.size) }
+        return if (legacy) EchoRadioDefaults.initialize(stations).also(::write) else stations
     }
 }

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_clear_index_title">清空曲库索引</string>
+    <string name="settings_clear_index_detail">清空本地音乐索引，不删除音乐文件。</string>
+    <string name="settings_clear_index_busy">正在清空…</string>
+    <string name="settings_clear_index_confirm">清空本地歌曲和搜索索引？音乐文件、收藏、歌单和播放历史将保留。自动扫描将暂停，直到你手动重新扫描。远程曲库不受影响。</string>
+    <string name="settings_clear_index_action">清空</string>
+    <string name="settings_clear_index_success">已清空本地曲库索引，可手动扫描重新建立。</string>
+    <string name="settings_clear_index_failure">清空曲库索引失败，请重试。</string>
+</resources>

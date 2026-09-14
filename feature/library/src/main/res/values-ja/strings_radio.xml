@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="radio_title">ラジオ</string>
-    <string name="radio_hint">放送局を保存してタップすると再生できます。</string>
+    <string name="radio_hint">公開ディレクトリを検索するか、ストリーム URL を追加できます。</string>
     <string name="radio_add">放送局を追加</string>
     <string name="radio_edit">放送局を編集</string>
     <string name="radio_delete">放送局を削除</string>
     <string name="radio_play">放送局を再生</string>
-    <string name="radio_empty">放送局がありません。追加するか検索をクリアしてください。</string>
+    <string name="radio_empty">保存した放送局はまだありません。検索するか追加してください。</string>
     <string name="radio_name">放送局名</string>
     <string name="radio_url">ストリームURL</string>
     <string name="radio_url_hint">HTTP/HTTPS音声ストリームまたはHLS（.m3u8）。Webページは使用できません。</string>
@@ -18,4 +18,10 @@
     <string name="radio_write_error">変更を保存できません。再試行してください。</string>
     <string name="radio_delete_prompt">放送局「%1$s」を削除しますか？</string>
     <string name="radio_search">放送局を検索</string>
+    <string name="radio_directory_title">ディレクトリ</string>
+    <string name="radio_directory_empty">ディレクトリに一致する放送局がありません。</string>
+    <string name="radio_directory_error">ラジオディレクトリに接続できません。</string>
+    <string name="radio_directory_source">放送局リストは radio-browser.info 提供</string>
+    <string name="radio_directory_save">放送局を保存</string>
+    <string name="radio_directory_bitrate">%1$d kbps</string>
 </resources>

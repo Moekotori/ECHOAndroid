@@ -167,6 +167,8 @@ internal fun LibraryScanOptionsDialog(
     var minSize by rememberSaveable { mutableStateOf(initialOptions.minSizeBytes) }
     var excludeNonMusic by rememberSaveable { mutableStateOf(initialOptions.excludeNonMusicFolders) }
     var excludeHidden by rememberSaveable { mutableStateOf(initialOptions.excludeHiddenFolders) }
+    var allowedExtensions by rememberSaveable { mutableStateOf(initialOptions.allowedExtensions.toList()) }
+    val selectedExtensions = remember(allowedExtensions) { allowedExtensions.toSet() }
     var excludedPaths by rememberSaveable { mutableStateOf(initialOptions.excludedRelativePaths.joinToString("\n")) }
     val excludedDirectories = remember(excludedPaths) { excludedPaths.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.toSet() }
     var filtersEnabled by rememberSaveable { mutableStateOf(
@@ -174,10 +176,11 @@ internal fun LibraryScanOptionsDialog(
             initialOptions.excludeNonMusicFolders || initialOptions.excludeHiddenFolders
     ) }
     var showDetails by rememberSaveable { mutableStateOf(false) }
+    var showAdvanced by rememberSaveable { mutableStateOf(false) }
     val options = if (filtersEnabled) {
-        LibraryScanOptions(minDuration, minSize, excludeNonMusic, excludeHidden, excludedDirectories)
+        LibraryScanOptions(minDuration, minSize, excludeNonMusic, excludeHidden, excludedDirectories, selectedExtensions)
     } else {
-        LibraryScanOptions(0L, 0L, false, false, excludedDirectories)
+        LibraryScanOptions(0L, 0L, false, false, excludedDirectories, selectedExtensions)
     }
     val colors = rememberScanGlassColors()
     Dialog(onDismissRequest = onDismiss) {
@@ -222,15 +225,32 @@ internal fun LibraryScanOptionsDialog(
                                 contentDescription = null, modifier = Modifier.size(18.dp))
                         }
                     }
-                    androidx.compose.material3.OutlinedTextField(
-                        value = excludedPaths,
-                        onValueChange = { excludedPaths = it },
-                        label = { Text(stringResource(L10nR.string.scan_excluded_folders)) },
-                        supportingText = { Text(stringResource(L10nR.string.scan_excluded_folders_hint)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 2,
-                        maxLines = 4,
-                    )
+                    TextButton(onClick = { showAdvanced = !showAdvanced }) {
+                        Text(stringResource(L10nR.string.scan_advanced_options))
+                        Spacer(Modifier.width(4.dp))
+                        Icon(
+                            if (showAdvanced) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                    AnimatedVisibility(visible = showAdvanced) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            LibraryScanFormatOptions(
+                                selectedExtensions = selectedExtensions,
+                                onSelectionChange = { allowedExtensions = it.toList() },
+                            )
+                            androidx.compose.material3.OutlinedTextField(
+                                value = excludedPaths,
+                                onValueChange = { excludedPaths = it },
+                                label = { Text(stringResource(L10nR.string.scan_excluded_folders)) },
+                                supportingText = { Text(stringResource(L10nR.string.scan_excluded_folders_hint)) },
+                                modifier = Modifier.fillMaxWidth(),
+                                minLines = 2,
+                                maxLines = 4,
+                            )
+                        }
+                    }
                     AnimatedVisibility(visible = filtersEnabled && showDetails) {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             HorizontalDivider(color = colors.border)

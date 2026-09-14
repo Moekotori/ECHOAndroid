@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="artist_page_artist">アーティスト</string>
+    <string name="artist_page_music">音楽</string>
+    <string name="artist_page_information">プロフィール</string>
+    <string name="artist_page_concerts">ライブ</string>
+    <string name="artist_about">アーティストについて</string>
+    <string name="artist_online_loading">アーティスト情報を取得中…</string>
+    <string name="artist_online_error">接続できません。再試行してください。</string>
+    <string name="artist_info_no_match">一致するアーティストを特定できませんでした。</string>
+    <string name="artist_no_biography">Wikipedia の紹介文はまだありません。</string>
+    <string name="artist_online_stale">保存済みの情報です。更新して再試行できます。</string>
+    <string name="artist_online_partial">一部の情報を取得できませんでした。</string>
+    <string name="artist_fact_area">出身地</string>
+    <string name="artist_fact_type">種別</string>
+    <string name="artist_fact_begin">誕生・結成</string>
+    <string name="artist_fact_end">終了日</string>
+    <string name="artist_fact_genres">ジャンル</string>
+    <string name="artist_fact_members">メンバー</string>
+    <string name="artist_kind_person">ソロアーティスト</string>
+    <string name="artist_kind_group">グループ</string>
+    <string name="artist_upcoming_concerts">今後のライブ・イベント</string>
+    <string name="artist_no_concerts">今後の公演は見つかりませんでした。</string>
+    <string name="artist_concerts_incomplete">公演は未取得です。一部の情報源に接続できません。</string>
+    <string name="artist_concerts_partial">取得できない情報源：%1$s</string>
+    <string name="artist_concert_local_time">%1$s · 会場の現地時間</string>
+    <string name="artist_concert_tickets">%1$s · チケット</string>
+    <string name="artist_concert_details">%1$s · 公演詳細</string>
+    <string name="artist_sort_tracks">曲の並び順</string>
+    <string name="artist_play_on_pc">PC で再生</string>
+</resources>

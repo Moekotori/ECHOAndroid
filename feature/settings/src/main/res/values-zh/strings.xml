@@ -395,6 +395,17 @@
     <string name="eq_user_preset_empty">把当前曲线存下来，以后可以直接套用。</string>
     <string name="eq_user_preset_parametric">参数 EQ</string>
     <string name="eq_user_preset_bands">%1$d 段</string>
+    <string name="eq_share">分享</string>
+    <string name="eq_share_code">分享码</string>
+    <string name="eq_share_copy">复制</string>
+    <string name="eq_share_copied">已复制</string>
+    <string name="eq_share_paste">粘贴</string>
+    <string name="eq_share_import">导入分享码</string>
+    <string name="eq_share_import_title">导入 EQ</string>
+    <string name="eq_share_import_hint">粘贴 ECHOEQ 分享码</string>
+    <string name="eq_share_import_invalid">这不是有效的 EQ 分享码</string>
+    <string name="eq_share_current">分享当前曲线</string>
+    <string name="eq_share_detail">复制或发给别人。Echo 可以用这条码导入曲线。</string>
     <string name="opra_favorite">收藏此校正</string>
     <string name="opra_unfavorite">取消收藏</string>
     <string name="opra_favorites">已收藏的校正</string>

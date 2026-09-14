@@ -236,6 +236,28 @@ object LibraryScanPolicy {
         return "${dir.length}:$dir${name.length}:$name|$sizeBytes|$dateModifiedSeconds"
     }
 
+    fun shouldReuseUnchangedDocumentTrack(
+        existing: TrackFingerprint?,
+        incomingContentUri: String,
+        incomingSizeBytes: Long,
+        incomingDateModifiedSeconds: Long,
+        incomingRelativePath: String?,
+    ): Boolean {
+        val fingerprint = existing?.fingerprint
+        if (existing == null || existing.durationMs <= 0L) return false
+        if (fingerprint.isNullOrEmpty() || fingerprint == PendingDocumentMetadataFingerprint) return false
+        return shouldReuseUnchangedDocumentFingerprint(
+            existingContentUri = existing.contentUri,
+            incomingContentUri = incomingContentUri,
+            existingSizeBytes = existing.sizeBytes,
+            incomingSizeBytes = incomingSizeBytes,
+            existingDateModifiedSeconds = existing.dateModifiedSeconds,
+            incomingDateModifiedSeconds = incomingDateModifiedSeconds,
+            existingRelativePath = existing.relativePath,
+            incomingRelativePath = incomingRelativePath,
+        )
+    }
+
     fun shouldReuseUnchangedDocumentFingerprint(
         existingContentUri: String,
         incomingContentUri: String,

@@ -80,25 +80,6 @@ internal fun LibraryInlineSearch(
 }
 
 @Composable
-internal fun LibraryTextTabs(labels: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit, compact: Boolean = false) {
-    val scheme = MaterialTheme.colorScheme
-    val keyboard = LocalSoftwareKeyboardController.current
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).selectableGroup(), horizontalArrangement = Arrangement.spacedBy(if (compact) 24.dp else 20.dp)) {
-        labels.forEachIndexed { index, label ->
-            val selected = index == selectedIndex
-            Column(Modifier.selectable(selected, role = Role.Tab, onClick = { keyboard?.hide(); onSelect(index) })
-                .heightIn(min = 48.dp).padding(top = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(label, style = if (compact) MaterialTheme.typography.labelLarge else MaterialTheme.typography.titleSmall,
-                    color = if (selected) scheme.primary else scheme.onSurfaceVariant,
-                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
-                Spacer(Modifier.height(10.dp))
-                Box(Modifier.height(2.dp).width(if (compact) 16.dp else 24.dp).background(if (selected) scheme.primary else androidx.compose.ui.graphics.Color.Transparent))
-            }
-        }
-    }
-}
-
-@Composable
 internal fun LibraryCollectionEmpty(title: String, detail: String? = null, actionLabel: String? = null, onAction: (() -> Unit)? = null) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 40.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Icon(Icons.Rounded.LibraryMusic, contentDescription = null, Modifier.size(36.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))

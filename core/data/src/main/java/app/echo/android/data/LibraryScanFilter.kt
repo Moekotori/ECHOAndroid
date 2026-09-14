@@ -11,7 +11,13 @@ internal fun LibraryScanOptions.accepts(durationMs: Long, sizeBytes: Long, relat
 
 internal fun LibraryScanOptions.includesDirectory(relativePath: String?): Boolean {
     val path = relativePath.orEmpty().replace('\\', '/').trim('/')
-    if (excludedRelativePaths.any { path == it || path.startsWith("$it/") }) return false
+    val pathKey = path.lowercase(java.util.Locale.ROOT)
+    if (excludedRelativePaths.any { excluded ->
+        val excludedKey = excluded.lowercase(java.util.Locale.ROOT)
+        pathKey == excludedKey || pathKey.startsWith("$excludedKey/")
+    }) {
+        return false
+    }
     val folders = relativePath.orEmpty().replace('\\', '/').split('/')
     if (excludeHiddenFolders && folders.any { it.startsWith('.') }) return false
     if (excludeNonMusicFolders && folders.any { it.lowercase(java.util.Locale.ROOT) in NonMusicFolderNames }) return false

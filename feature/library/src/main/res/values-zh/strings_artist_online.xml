@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="artist_page_artist">艺术家</string>
+    <string name="artist_page_music">音乐</string>
+    <string name="artist_page_information">资料</string>
+    <string name="artist_page_concerts">演出</string>
+    <string name="artist_about">关于艺术家</string>
+    <string name="artist_online_loading">正在查询艺术家信息…</string>
+    <string name="artist_online_error">暂时无法连接，请重试</string>
+    <string name="artist_info_no_match">暂未找到能准确匹配的艺术家资料</string>
+    <string name="artist_no_biography">暂无 Wikipedia 简介</string>
+    <string name="artist_online_stale">当前显示已缓存的信息，可刷新重试</string>
+    <string name="artist_online_partial">部分资料暂时未能加载</string>
+    <string name="artist_fact_area">地区</string>
+    <string name="artist_fact_type">类型</string>
+    <string name="artist_fact_begin">出生 / 成立</string>
+    <string name="artist_fact_end">结束日期</string>
+    <string name="artist_fact_genres">音乐风格</string>
+    <string name="artist_fact_members">成员</string>
+    <string name="artist_kind_person">个人艺术家</string>
+    <string name="artist_kind_group">团体</string>
+    <string name="artist_upcoming_concerts">近期演出</string>
+    <string name="artist_no_concerts">暂未查到近期演出</string>
+    <string name="artist_concerts_incomplete">暂未返回演出，部分来源仍不可用</string>
+    <string name="artist_concerts_partial">暂不可用的来源：%1$s</string>
+    <string name="artist_concert_local_time">%1$s · 场馆当地时间</string>
+    <string name="artist_concert_tickets">%1$s · 购票详情</string>
+    <string name="artist_concert_details">%1$s · 演出详情</string>
+    <string name="artist_sort_tracks">曲目排序</string>
+    <string name="artist_play_on_pc">在 PC 上播放</string>
+</resources>

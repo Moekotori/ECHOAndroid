@@ -28,6 +28,7 @@ class DocumentTreeTrackScanner(
         onDuplicate: suspend (oldId: String, targetId: String) -> Unit = { _, _ -> },
         rejectedFiles: LocalScanFilterCache? = null,
         onSkipped: suspend () -> Unit = {},
+        onUnchangedIds: suspend (List<String>) -> Unit = {},
         onBatch: suspend (List<LibraryTrackEntity>) -> Unit,
         onProgress: suspend (scannedCount: Int, currentTrack: LibraryTrackEntity?) -> Unit,
     ): MediaStoreScanOutcome {
@@ -76,10 +77,15 @@ class DocumentTreeTrackScanner(
                     val mimeType = listing.getStringOrNull(columns.mimeTypeIndex)
 
                     if (mimeType == DocumentsContract.Document.MIME_TYPE_DIR) {
+                        val childRelativePath = appendRelativePath(directory.relativePath, name)
+                        if (!options.includesDirectory(combineRelativePath(relativePathPrefix, childRelativePath))) {
+                            excludedDirectories++
+                            continue
+                        }
                         pendingDirectories.add(
                             DocumentTreeDirectory(
                                 documentId = documentId,
-                                relativePath = appendRelativePath(directory.relativePath, name),
+                                relativePath = childRelativePath,
                             ),
                         )
                         continue
@@ -97,6 +103,7 @@ class DocumentTreeTrackScanner(
                     )
                 }
             }
+            val unchangedIds = ArrayList<String>()
             for (row in audioRows) {
                 coroutineContext.ensureActive()
                 val duplicateKey = LibraryScanPolicy.localFileDuplicateKey(
@@ -119,7 +126,27 @@ class DocumentTreeTrackScanner(
                     continue
                 }
                 val trackId = "saf:${Uri.encode(row.documentId)}"
-                if (trackId !in existingTracks && (
+                val existingTrack = existingTracks[trackId]
+                if (
+                    LibraryScanPolicy.shouldReuseUnchangedDocumentTrack(
+                        existing = existingTrack,
+                        incomingContentUri = row.documentUri.toString(),
+                        incomingSizeBytes = row.sizeBytes,
+                        incomingDateModifiedSeconds = row.lastModifiedMs.toEpochSeconds(),
+                        incomingRelativePath = row.relativePath,
+                    )
+                ) {
+                    unchangedIds += trackId
+                    scannedCount += 1
+                    continue
+                }
+                if (!options.acceptsFileFormat(row.displayName, existingTrack != null)) {
+                    scannedCount++
+                    onSkipped()
+                    onProgress(scannedCount, null)
+                    continue
+                }
+                if (existingTrack == null && (
                         (row.sizeBytes > 0L && row.sizeBytes < options.minSizeBytes) ||
                             rejectedFiles?.shouldSkip(row.documentUri.toString(), row.sizeBytes, row.lastModifiedMs.toEpochSeconds(), options) == true
                     )) {
@@ -136,7 +163,7 @@ class DocumentTreeTrackScanner(
                         sizeBytes = row.sizeBytes,
                         lastModifiedMs = row.lastModifiedMs,
                         relativePath = row.relativePath,
-                        existingTrack = existingTracks["saf:${Uri.encode(row.documentId)}"],
+                        existingTrack = existingTrack,
                         readSampleRate = readSampleRate,
                     )
                 }.onSuccess { track ->
@@ -167,6 +194,10 @@ class DocumentTreeTrackScanner(
                     Log.w(TAG, "Skipping unreadable document tree audio file.", error)
                 }
             }
+            if (unchangedIds.isNotEmpty()) {
+                onUnchangedIds(unchangedIds)
+                onProgress(scannedCount, null)
+            }
         }
 
         if (batch.isNotEmpty()) {
@@ -191,17 +222,11 @@ class DocumentTreeTrackScanner(
         val dateModifiedSeconds = lastModifiedMs.toEpochSeconds()
         if (
             existingTrack != null &&
-            existingTrack.durationMs > 0L &&
-            existingTrack.fingerprint != null &&
-            existingTrack.fingerprint != LibraryScanPolicy.PendingDocumentMetadataFingerprint &&
-            LibraryScanPolicy.shouldReuseUnchangedDocumentFingerprint(
-                existingContentUri = existingTrack.contentUri,
+            LibraryScanPolicy.shouldReuseUnchangedDocumentTrack(
+                existing = existingTrack,
                 incomingContentUri = toString(),
-                existingSizeBytes = existingTrack.sizeBytes,
                 incomingSizeBytes = sizeBytes,
-                existingDateModifiedSeconds = existingTrack.dateModifiedSeconds,
                 incomingDateModifiedSeconds = dateModifiedSeconds,
-                existingRelativePath = existingTrack.relativePath,
                 incomingRelativePath = relativePath,
             )
         ) {

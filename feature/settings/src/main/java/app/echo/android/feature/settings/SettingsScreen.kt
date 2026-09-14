@@ -110,6 +110,7 @@ fun SettingsScreen(
     onDisconnectListenBrainz: () -> Unit,
     onOpenLibrary: () -> Unit,
     onOpenConnect: () -> Unit,
+    onClearLocalLibraryIndex: suspend () -> Boolean,
     errorLogCount: Int = 0,
     onOpenErrorLog: () -> Unit = {},
     backupNotice: app.echo.android.model.backup.EchoBackupNotice? = null,
@@ -248,6 +249,7 @@ fun SettingsScreen(
                     onTrackAudioInfoTagsVisibleChange = onTrackAudioInfoTagsVisibleChange,
                     onWatchedFolderRescanEnabledChange = onWatchedFolderRescanEnabledChange,
                     onOpenLibrary = onOpenLibrary,
+                    onClearLocalLibraryIndex = onClearLocalLibraryIndex,
                 )
                 SettingsCategory.About -> SettingsAboutContent(
                     appVersionLabel = appVersionLabel,

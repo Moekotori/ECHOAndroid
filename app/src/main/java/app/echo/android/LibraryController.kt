@@ -45,6 +45,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import app.echo.android.ui.home.rediscoverHomeAlbums
@@ -203,6 +205,35 @@ internal class LibraryController(
         playbackOccupiesStorage = check
     }
 
+    private var clearingLocalIndex = false
+    private val localScanJobs = mutableSetOf<Job>()
+
+    suspend fun clearLocalLibraryIndex(): Boolean = scope.async {
+        if (clearingLocalIndex) return@async false
+        clearingLocalIndex = true
+        try {
+            foregroundWatchJob?.cancelAndJoin()
+            pendingAutoWatch = false
+            pendingMediaStoreRefresh = false
+            val scans = localScanJobs.toList()
+            scans.forEach { it.cancel() }
+            scans.forEach { it.join() }
+            sampleRateBackfillJob?.cancelAndJoin()
+            // Persist before deletion: even an app restart must not silently repopulate the index.
+            settingsStore.setLocalLibraryIndexCleared(true)
+            repository.clearLocalLibraryIndex()
+            _scanState.value = LibraryScanProgress()
+            true
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            EchoErrorLog.record(EchoErrorSource.Library, "Failed to clear local library index", throwable = error)
+            false
+        } finally {
+            clearingLocalIndex = false
+        }
+    }.await()
+
     private var scanJob: Job? = null
     private var remoteScanJob: Job? = null
     private var sampleRateBackfillJob: Job? = null
@@ -286,9 +317,9 @@ internal class LibraryController(
             scope = scope,
             onChanged = {
                 when {
-                    playbackOccupiesStorage() -> Unit
+                    clearingLocalIndex || playbackOccupiesStorage() -> Unit
                     scanJob?.isActive == true -> pendingMediaStoreRefresh = true
-                    else -> refreshLibrary()
+                    else -> refreshLibrary(relativePathPrefix = null, options = null, auto = true)
                 }
             },
         ).also { it.start() }
@@ -311,7 +342,7 @@ internal class LibraryController(
     }
 
     fun refreshLibraryIfEmpty() {
-        if (scanJob?.isActive == true) return
+        if (clearingLocalIndex || scanJob?.isActive == true) return
         scope.launch {
             val localMediaStoreCount = withContext(Dispatchers.IO) {
                 repository.countTracksFromSource(LibrarySource.MediaStore.id)
@@ -319,7 +350,7 @@ internal class LibraryController(
             if (!LibraryScanPolicy.shouldRefreshLocalLibraryAfterPermissionGrant(localMediaStoreCount)) {
                 return@launch
             }
-            refreshLibrary()
+            refreshLibrary(relativePathPrefix = null, options = null, auto = true)
         }
     }
 
@@ -345,8 +376,8 @@ internal class LibraryController(
         }
     }
 
-    private fun refreshLibrary(relativePathPrefix: String?, options: LibraryScanOptions?) {
-        startScanJob(auto = false) {
+    private fun refreshLibrary(relativePathPrefix: String?, options: LibraryScanOptions?, auto: Boolean = false) {
+        startScanJob(auto = auto) {
             try {
                 if (options != null) settingsStore.setLibraryScanOptions(options)
                 val effectiveOptions = settingsStore.libraryScanOptions()
@@ -371,6 +402,7 @@ internal class LibraryController(
     }
 
     private fun startScanJob(auto: Boolean, block: suspend () -> Unit) {
+        if (clearingLocalIndex) return
         val current = scanJob
         if (current?.isActive == true) {
             if (auto) {
@@ -386,14 +418,18 @@ internal class LibraryController(
         val job = scope.launch {
             autoWatchRunning = auto
             try {
+                if (auto && settingsStore.localLibraryIndexCleared()) return@launch
+                if (!auto) settingsStore.setLocalLibraryIndexCleared(false)
                 block()
             } finally {
                 autoWatchRunning = false
             }
         }
         scanJob = job
+        localScanJobs += job
         job.invokeOnCompletion {
             scope.launch {
+                localScanJobs -= job
                 if (scanJob === job) scanJob = null
                 drainPendingScans()
             }
@@ -401,7 +437,7 @@ internal class LibraryController(
     }
 
     private fun drainPendingScans() {
-        if (scanJob?.isActive == true) return
+        if (clearingLocalIndex || scanJob?.isActive == true) return
         if (pendingAutoWatch) {
             pendingAutoWatch = false
             refreshWatchedTreesIfDue()
@@ -409,7 +445,7 @@ internal class LibraryController(
         }
         if (pendingMediaStoreRefresh) {
             pendingMediaStoreRefresh = false
-            if (!playbackOccupiesStorage()) refreshLibrary()
+            if (!playbackOccupiesStorage()) refreshLibrary(relativePathPrefix = null, options = null, auto = true)
         }
     }
 
@@ -806,6 +842,7 @@ internal class LibraryController(
     }
 
     private fun startMissingSampleRateBackfill() {
+        if (clearingLocalIndex) return
         if (scanJob?.isActive == true) return
         if (sampleRateBackfillJob?.isActive == true) return
         if (playbackOccupiesStorage()) return

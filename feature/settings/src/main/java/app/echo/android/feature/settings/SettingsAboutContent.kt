@@ -1,6 +1,9 @@
 package app.echo.android.feature.settings
 
+import android.widget.Toast
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import app.echo.android.model.backup.EchoBackupNotice
 
@@ -14,11 +17,21 @@ internal fun SettingsAboutContent(
     onExportBackup: () -> Unit = {},
     onImportBackup: () -> Unit = {},
 ) {
-    SettingsSectionCard(title = stringResource(R.string.settings_section_about)) {
-        SettingsInfoRow(
-            title = stringResource(R.string.settings_version),
-            detail = appVersionLabel,
-        )
+    val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
+    val linkError = stringResource(R.string.settings_about_link_error)
+    val openLink: (String) -> Unit = { url ->
+        try {
+            uriHandler.openUri(url)
+        } catch (_: android.content.ActivityNotFoundException) {
+            Toast.makeText(context, linkError, Toast.LENGTH_SHORT).show()
+        } catch (_: IllegalArgumentException) {
+            Toast.makeText(context, linkError, Toast.LENGTH_SHORT).show()
+        }
+    }
+    SettingsAboutIdentity(appVersionLabel)
+    SettingsAboutLinks(openLink)
+    SettingsAboutPanel {
         updateContent()
         SettingsActionRow(
             title = stringResource(R.string.settings_backup_export),

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="artist_page_artist">아티스트</string>
+    <string name="artist_page_music">음악</string>
+    <string name="artist_page_information">소개</string>
+    <string name="artist_page_concerts">공연</string>
+    <string name="artist_about">아티스트 소개</string>
+    <string name="artist_online_loading">아티스트 정보를 불러오는 중…</string>
+    <string name="artist_online_error">연결할 수 없습니다. 다시 시도해 주세요.</string>
+    <string name="artist_info_no_match">정확히 일치하는 아티스트를 찾지 못했습니다.</string>
+    <string name="artist_no_biography">아직 Wikipedia 소개가 없습니다.</string>
+    <string name="artist_online_stale">저장된 정보입니다. 새로고침하여 다시 시도하세요.</string>
+    <string name="artist_online_partial">일부 정보를 불러오지 못했습니다.</string>
+    <string name="artist_fact_area">지역</string>
+    <string name="artist_fact_type">유형</string>
+    <string name="artist_fact_begin">출생 / 결성</string>
+    <string name="artist_fact_end">종료일</string>
+    <string name="artist_fact_genres">장르</string>
+    <string name="artist_fact_members">멤버</string>
+    <string name="artist_kind_person">솔로 아티스트</string>
+    <string name="artist_kind_group">그룹</string>
+    <string name="artist_upcoming_concerts">예정된 공연</string>
+    <string name="artist_no_concerts">예정된 공연을 찾지 못했습니다.</string>
+    <string name="artist_concerts_incomplete">아직 공연이 없습니다. 일부 출처에 연결할 수 없습니다.</string>
+    <string name="artist_concerts_partial">사용할 수 없는 출처: %1$s</string>
+    <string name="artist_concert_local_time">%1$s · 공연장 현지 시간</string>
+    <string name="artist_concert_tickets">%1$s · 티켓</string>
+    <string name="artist_concert_details">%1$s · 공연 상세</string>
+    <string name="artist_sort_tracks">곡 정렬</string>
+    <string name="artist_play_on_pc">PC에서 재생</string>
+</resources>

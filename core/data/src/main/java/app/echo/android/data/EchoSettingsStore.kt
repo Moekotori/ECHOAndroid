@@ -934,6 +934,13 @@ class EchoSettingsStore(
     suspend fun watchedFolderRescanEnabled(): Boolean =
         context.echoSettings.data.first()[Keys.WatchedFolderRescanEnabled] ?: false
 
+    suspend fun localLibraryIndexCleared(): Boolean =
+        context.echoSettings.data.first()[Keys.LocalLibraryIndexCleared] ?: false
+
+    suspend fun setLocalLibraryIndexCleared(cleared: Boolean) {
+        context.echoSettings.edit { it[Keys.LocalLibraryIndexCleared] = cleared }
+    }
+
     suspend fun watchedLibraryTrees(): List<WatchedLibraryTree> =
         parseWatchedLibraryTrees(context.echoSettings.data.first()[Keys.WatchedLibraryTrees])
 
@@ -1237,6 +1244,7 @@ class EchoSettingsStore(
     }
 
     private object Keys {
+        val LocalLibraryIndexCleared = booleanPreferencesKey("local_library_index_cleared")
         val LibraryScanOptions = stringPreferencesKey("library_scan_options")
         val PreferOffload = booleanPreferencesKey("prefer_offload")
         val LastOutputRoute = stringPreferencesKey("last_output_route")

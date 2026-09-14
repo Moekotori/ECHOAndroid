@@ -5,6 +5,18 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class LibraryScanOptionsStorageTest {
+    @Test fun formatSelectionRoundTripsAndNormalizes() {
+        val options = LibraryScanOptions(allowedExtensions = setOf(" FLAC ", ".WAV", "flac", ""))
+        val restored = decodeLibraryScanOptions(encodeLibraryScanOptions(options))
+        assertEquals(setOf("flac", "wav"), restored.allowedExtensions)
+        assertTrue(restored.acceptsFileFormat("song.WAV", false))
+        assertFalse(restored.acceptsFileFormat("song.mp3", false))
+        assertTrue(decodeLibraryScanOptions(encodeLibraryScanOptions(
+            restored.copy(allowedExtensions = emptySet()),
+        )).allowedExtensions.isEmpty())
+    }
+
+
     @Test fun persistedRulesSurviveReloadAndCanBeRemoved() {
         val original = LibraryScanOptions(60_000, 1_048_576, false, false,
             setOf("Recordings/Call", "Music/Private"))
@@ -22,7 +34,7 @@ class LibraryScanOptionsStorageTest {
         )))
         assertEquals(setOf("Music/Private"), options.excludedRelativePaths)
         assertFalse(options.includesDirectory("Music/Private"))
-        assertFalse(options.includesDirectory("Music/Private/Calls/"))
+        assertFalse(options.includesDirectory("music/private/Calls/"))
         assertTrue(options.includesDirectory("Music/Private Live/"))
         assertTrue(options.includesDirectory("Other/Music/Private/"))
         assertTrue(options.includesDirectory(null))

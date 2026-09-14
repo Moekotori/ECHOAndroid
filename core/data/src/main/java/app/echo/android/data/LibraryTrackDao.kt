@@ -1265,6 +1265,20 @@ interface LibraryTrackDao {
     @Query("DELETE FROM library_tracks WHERE source = :source AND lastSeenScanRunId != :scanRunId")
     suspend fun deleteMissingFromSource(source: String, scanRunId: Long): Int
 
+    @Query("DELETE FROM library_tracks_fts WHERE trackId IN (SELECT id FROM library_tracks WHERE source IN ('mediastore', 'saf'))")
+    suspend fun clearLocalTrackFts()
+
+    @Query("DELETE FROM library_tracks WHERE source IN ('mediastore', 'saf')")
+    suspend fun clearLocalTracks()
+
+    /** Keep user-owned references so a later scan can reconnect the same track IDs. */
+    @Transaction
+    suspend fun clearLocalLibraryIndex() {
+        clearLocalTrackFts()
+        clearLocalTracks()
+        rebuildLibrarySummaries()
+    }
+
     @Query("DELETE FROM library_tracks WHERE id IN (:trackIds)")
     suspend fun deleteTracksByIds(trackIds: List<String>): Int
 

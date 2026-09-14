@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playback_keep_pitch">音程を維持</string>
+    <string name="playback_reset_speed">1× に戻す</string>
+    <string name="playback_lyrics_earlier">← 早める</string>
+    <string name="playback_lyrics_later">遅らせる →</string>
+    <string name="playback_expand">展開</string>
+    <string name="playback_collapse">折りたたむ</string>
+    <string name="playback_sound_tools">サウンドと出力</string>
+    <string name="playback_equalizer">イコライザー</string>
+    <string name="playback_headphones">ヘッドホン補正</string>
+    <string name="playback_balance">チャンネルバランス</string>
+    <string name="playback_output">出力と診断</string>
+    <string name="playback_sound_bypassed">USB ビットパーフェクトでバイパス中</string>
+    <string name="playback_sound_unavailable">現在利用できません</string>
+    <string name="playback_headphones_hint">ヘッドホンの補正プリセットを検索・適用</string>
+    <string name="playback_cancel_timer">解除</string>
+</resources>

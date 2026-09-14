@@ -111,6 +111,10 @@ fun HomeScreen(
                 )
             }
         }
+        item(key = "daily-album") {
+            Spacer(Modifier.height(blockGap))
+            HomeDailyAlbumSection(dailyAlbums, onPlayAlbum, onOpenAlbum, onOpenLibrary)
+        }
         if (distinctRecommendations.isNotEmpty()) {
             item(key = "recommended") {
                 Spacer(Modifier.height(blockGap))
@@ -138,10 +142,6 @@ fun HomeScreen(
                 onOpenAlbum = onOpenAlbum,
                 onOpenLibrary = onOpenLibrary,
             )
-        }
-        item(key = "daily-album") {
-            Spacer(Modifier.height(blockGap))
-            HomeDailyAlbumSection(dailyAlbums, onPlayAlbum, onOpenAlbum, onOpenLibrary)
         }
         item(key = "rediscover") {
             Spacer(Modifier.height(blockGap))

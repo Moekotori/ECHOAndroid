@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_clear_index_title">ライブラリのインデックスを消去</string>
+    <string name="settings_clear_index_detail">音楽ファイルを削除せずに、ローカル音楽のインデックスを消去します。</string>
+    <string name="settings_clear_index_busy">消去中…</string>
+    <string name="settings_clear_index_confirm">ローカルの楽曲と検索インデックスを消去しますか？音楽ファイル、お気に入り、プレイリスト、再生履歴は保持されます。手動でスキャンするまで自動スキャンは停止します。リモートライブラリには影響しません。</string>
+    <string name="settings_clear_index_action">消去</string>
+    <string name="settings_clear_index_success">ローカルライブラリのインデックスを消去しました。手動スキャンで再構築できます。</string>
+    <string name="settings_clear_index_failure">ライブラリのインデックスを消去できませんでした。もう一度お試しください。</string>
+</resources>

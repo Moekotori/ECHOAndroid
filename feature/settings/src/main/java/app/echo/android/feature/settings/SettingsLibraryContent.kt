@@ -10,6 +10,7 @@ internal fun SettingsLibraryContent(
     onTrackAudioInfoTagsVisibleChange: (Boolean) -> Unit,
     onWatchedFolderRescanEnabledChange: (Boolean) -> Unit,
     onOpenLibrary: () -> Unit,
+    onClearLocalLibraryIndex: suspend () -> Boolean,
 ) {
     SettingsSectionCard(
         title = stringResource(R.string.settings_section_library),
@@ -31,5 +32,6 @@ internal fun SettingsLibraryContent(
             detail = stringResource(R.string.settings_local_music_detail),
             onClick = onOpenLibrary,
         )
+        SettingsClearLibraryIndexRow(onClearLocalLibraryIndex)
     }
 }

@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="radio_title">라디오</string>
-    <string name="radio_hint">방송국을 저장한 뒤 탭하여 들으세요.</string>
+    <string name="radio_hint">공개 디렉터리를 검색하거나 스트림 URL을 직접 추가하세요.</string>
     <string name="radio_add">방송국 추가</string>
     <string name="radio_edit">방송국 수정</string>
     <string name="radio_delete">방송국 삭제</string>
     <string name="radio_play">방송국 재생</string>
-    <string name="radio_empty">표시할 방송국이 없습니다. 방송국을 추가하거나 검색을 지우세요.</string>
+    <string name="radio_empty">저장한 방송국이 없습니다. 검색하거나 추가하세요.</string>
     <string name="radio_name">방송국 이름</string>
     <string name="radio_url">스트림 URL</string>
     <string name="radio_url_hint">웹페이지가 아닌 HTTP/HTTPS 오디오 스트림 또는 HLS(.m3u8).</string>
@@ -18,4 +18,10 @@
     <string name="radio_write_error">변경을 저장하지 못했습니다. 다시 시도하세요.</string>
     <string name="radio_delete_prompt">“%1$s”을(를) 방송국에서 삭제할까요?</string>
     <string name="radio_search">방송국 검색</string>
+    <string name="radio_directory_title">디렉터리</string>
+    <string name="radio_directory_empty">디렉터리에서 일치하는 방송국이 없습니다.</string>
+    <string name="radio_directory_error">라디오 디렉터리에 연결하지 못했습니다.</string>
+    <string name="radio_directory_source">방송국 목록 제공: radio-browser.info</string>
+    <string name="radio_directory_save">방송국 저장</string>
+    <string name="radio_directory_bitrate">%1$d kbps</string>
 </resources>

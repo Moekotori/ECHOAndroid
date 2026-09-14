@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_setting_reset">초기화</string>
+    <string name="lyrics_setting_typography">글꼴 및 배치</string>
+    <string name="lyrics_setting_replace_font">가져온 글꼴 바꾸기</string>
+    <string name="lyrics_setting_color_background">색상 및 배경</string>
+    <string name="lyrics_setting_motion">동작 및 강조</string>
+    <string name="lyrics_setting_highlight_strength">강조 강도</string>
+    <string name="lyrics_setting_content">내용 및 도구</string>
+    <string name="lyrics_setting_content_summary">번역, 발음 표기 및 가사 출처</string>
+    <string name="lyrics_setting_no_content">이 곡에는 해당 내용이 없습니다. 다른 곡에 대한 표시 설정은 유지됩니다.</string>
+    <string name="lyrics_setting_word_highlight">단어별 강조</string>
+</resources>

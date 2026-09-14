@@ -11,7 +11,6 @@ import androidx.compose.foundation.background
 import app.echo.android.design.echoFrostedGlass
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.echoClickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -54,7 +53,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -63,7 +61,6 @@ import androidx.compose.ui.unit.dp
 import app.echo.android.design.echoTheme
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoDarkTheme
-import kotlin.math.abs
 import kotlinx.coroutines.flow.collectLatest
 
 private val DockItemMotionEasing = EchoMotion.Silk
@@ -99,6 +96,7 @@ fun BottomDock(
     modifier: Modifier = Modifier,
     selectedTabProgress: () -> Float = { selectedTab.toFloat() },
     progressLive: Boolean = false,
+    gestureModifier: Modifier = Modifier,
 ) {
     val dark = LocalEchoDarkTheme.current
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
@@ -106,8 +104,6 @@ fun BottomDock(
     val scheme = MaterialTheme.colorScheme
     val theme = echoTheme()
     val tabCount = EchoTab.entries.size
-    val swipeThresholdPx = with(density) { 46.dp.toPx() }
-    var dragOffsetX by remember { mutableStateOf(0f) }
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -118,29 +114,7 @@ fun BottomDock(
                 .fillMaxWidth()
                 .padding(horizontal = 10.dp, vertical = 5.dp)
                 .echoFrostedGlass(shape = DockGlassShape, elevation = 6.dp)
-                .pointerInput(selectedTab, swipeThresholdPx) {
-                    detectHorizontalDragGestures(
-                        onDragStart = { dragOffsetX = 0f },
-                        onHorizontalDrag = { change, dragAmount ->
-                            change.consume()
-                            dragOffsetX += dragAmount
-                        },
-                        onDragCancel = { dragOffsetX = 0f },
-                        onDragEnd = {
-                            if (abs(dragOffsetX) >= swipeThresholdPx) {
-                                val targetTab = if (dragOffsetX < 0f) {
-                                    (selectedTab + 1).coerceAtMost(EchoTab.entries.lastIndex)
-                                } else {
-                                    (selectedTab - 1).coerceAtLeast(0)
-                                }
-                                if (targetTab != selectedTab) {
-                                    onSelectTab(targetTab)
-                                }
-                            }
-                            dragOffsetX = 0f
-                        },
-                    )
-                }
+                .then(gestureModifier)
                 .padding(horizontal = 4.dp, vertical = 5.dp),
         ) {
             if (dark) {
@@ -170,10 +144,9 @@ fun BottomDock(
             // 避免弹簧追赶连续目标带来的滞后感。
             LaunchedEffect(tabWidthPx, lightweight) {
                 snapshotFlow {
-                    val dragProgress = (-dragOffsetX / tabWidthPx).coerceIn(-1f, 1f)
-                    val target = (selectedTabProgressState.value() + dragProgress)
+                    val target = selectedTabProgressState.value()
                         .coerceIn(0f, maxIndicatorIndex)
-                    target to (progressLiveState.value || dragOffsetX != 0f)
+                    target to (progressLiveState.value)
                 }.collectLatest { (target, live) ->
                     if (live || lightweight) {
                         indicatorAnim.snapTo(target)
@@ -208,7 +181,12 @@ fun BottomDock(
             val itemBounds = remember { mutableStateMapOf<Int, Rect>() }
             Box(Modifier.fillMaxWidth()) {
                 Canvas(Modifier.matchParentSize()) {
-                    val progress = indicatorAnim.value.coerceIn(0f, maxIndicatorIndex)
+                    // Read live position in the draw phase, without a coroutine/frame of lag.
+                    val progress = if (progressLiveState.value) {
+                        selectedTabProgressState.value()
+                    } else {
+                        indicatorAnim.value
+                    }.coerceIn(0f, maxIndicatorIndex)
                     val from = progress.toInt()
                     val to = (from + 1).coerceAtMost(EchoTab.entries.lastIndex)
                     val fromBounds = itemBounds[from] ?: return@Canvas

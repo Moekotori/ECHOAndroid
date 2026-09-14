@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_setting_reset">Reset</string>
+    <string name="lyrics_setting_typography">Type &amp; layout</string>
+    <string name="lyrics_setting_replace_font">Replace imported font</string>
+    <string name="lyrics_setting_color_background">Color &amp; background</string>
+    <string name="lyrics_setting_motion">Motion &amp; highlighting</string>
+    <string name="lyrics_setting_highlight_strength">Highlight intensity</string>
+    <string name="lyrics_setting_content">Content &amp; tools</string>
+    <string name="lyrics_setting_content_summary">Translation, romanization and lyric sources</string>
+    <string name="lyrics_setting_no_content">This track has no matching content. Your preference still applies to other tracks.</string>
+    <string name="lyrics_setting_word_highlight">Word highlighting</string>
+</resources>

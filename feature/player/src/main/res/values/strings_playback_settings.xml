@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playback_keep_pitch">Keep pitch</string>
+    <string name="playback_reset_speed">Reset to 1×</string>
+    <string name="playback_lyrics_earlier">← Earlier</string>
+    <string name="playback_lyrics_later">Later →</string>
+    <string name="playback_expand">Expand</string>
+    <string name="playback_collapse">Collapse</string>
+    <string name="playback_sound_tools">Sound &amp; output</string>
+    <string name="playback_equalizer">Equalizer</string>
+    <string name="playback_headphones">Headphone correction</string>
+    <string name="playback_balance">Channel balance</string>
+    <string name="playback_output">Output &amp; diagnostics</string>
+    <string name="playback_sound_bypassed">Bypassed by USB bit-perfect</string>
+    <string name="playback_sound_unavailable">Currently unavailable</string>
+    <string name="playback_headphones_hint">Find and apply a headphone profile</string>
+    <string name="playback_cancel_timer">Cancel</string>
+</resources>

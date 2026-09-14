@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_about_beta_version">%1$s · Beta</string>
+    <string name="settings_about_author">作者</string>
+    <string name="settings_about_qq_group">QQ グループに参加</string>
+    <string name="settings_about_website">公式サイト</string>
+    <string name="settings_about_bug_report">不具合を報告</string>
+    <string name="settings_about_link_error">このリンクを開けるアプリがありません</string>
+</resources>

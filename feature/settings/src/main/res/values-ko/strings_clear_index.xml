@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_clear_index_title">라이브러리 색인 지우기</string>
+    <string name="settings_clear_index_detail">음악 파일을 삭제하지 않고 로컬 음악 색인을 지웁니다.</string>
+    <string name="settings_clear_index_busy">지우는 중…</string>
+    <string name="settings_clear_index_confirm">로컬 곡과 검색 색인을 지울까요? 음악 파일, 즐겨찾기, 재생목록, 재생 기록은 유지됩니다. 수동으로 스캔할 때까지 자동 스캔이 일시 중지됩니다. 원격 라이브러리는 영향을 받지 않습니다.</string>
+    <string name="settings_clear_index_action">지우기</string>
+    <string name="settings_clear_index_success">로컬 라이브러리 색인을 지웠습니다. 수동으로 스캔하여 다시 만들 수 있습니다.</string>
+    <string name="settings_clear_index_failure">라이브러리 색인을 지우지 못했습니다. 다시 시도해 주세요.</string>
+</resources>

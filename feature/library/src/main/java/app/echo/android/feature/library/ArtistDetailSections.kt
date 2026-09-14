@@ -4,7 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.rounded.Computer
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -30,63 +32,82 @@ import app.echo.android.model.library.ArtistSummary
 
 @Composable
 internal fun ArtistProfileHeader(artist: ArtistSummary, palette: ArtworkPalette) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-        if (artist.artworkUri.isNullOrBlank()) {
-            Box(Modifier.size(100.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.Person, contentDescription = null, modifier = Modifier.size(44.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    Column(Modifier.fillMaxWidth().padding(top = 22.dp, bottom = 4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            if (artist.artworkUri.isNullOrBlank()) {
+                Box(Modifier.size(64.dp).clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.surfaceContainerHigh), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.Person, contentDescription = null, modifier = Modifier.size(30.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            } else {
+                ArtworkTile(artworkUri = artist.artworkUri, modifier = Modifier.size(64.dp),
+                    accent = palette.vibrant, showSignal = false, cornerRadius = 18.dp, elevation = 0.dp)
             }
-        } else {
-            ArtworkTile(artworkUri = artist.artworkUri, modifier = Modifier.size(100.dp).clip(CircleShape),
-                accent = palette.vibrant, showSignal = false, cornerRadius = 50.dp, elevation = 0.dp)
-        }
-        Column(Modifier.weight(1f)) {
-            Text(displayMetadataOrUnknown(artist.name, unknownArtistLabel()), style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-            Spacer(Modifier.height(10.dp))
-            Text(pluralStringResource(R.plurals.artist_album_count, artist.albumCount, artist.albumCount) + " · " + artistTrackCountLabel(artist.trackCount),
-                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (artist.durationMs > 0) {
-                Spacer(Modifier.height(4.dp))
-                val minutes = artist.durationMs / 60_000
-                Text(if (minutes < 60) stringResource(R.string.artist_total_minutes, minutes)
-                    else stringResource(R.string.artist_total_time, minutes / 60, minutes % 60),
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(pluralStringResource(R.plurals.artist_album_count, artist.albumCount, artist.albumCount) + " · " + artistTrackCountLabel(artist.trackCount),
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (artist.durationMs > 0) {
+                    val minutes = artist.durationMs / 60_000
+                    Text(if (minutes < 60) stringResource(R.string.artist_total_minutes, minutes)
+                        else stringResource(R.string.artist_total_time, minutes / 60, minutes % 60),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
+        Spacer(Modifier.height(18.dp))
+        Text(displayMetadataOrUnknown(artist.name, unknownArtistLabel()), style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 
 @Composable
-internal fun ArtistPlaybackActions(enabled: Boolean, onPlayAll: () -> Unit, onShuffle: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Button(onClick = onPlayAll, enabled = enabled, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
-            Icon(Icons.Rounded.PlayArrow, null)
-            Spacer(Modifier.width(6.dp))
+internal fun ArtistPlaybackActions(enabled: Boolean, onPlayAll: () -> Unit, onShuffle: () -> Unit, onPlayOnPc: (() -> Unit)? = null) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Button(onClick = onPlayAll, enabled = enabled, contentPadding = PaddingValues(horizontal = 22.dp), modifier = Modifier.heightIn(min = 46.dp)) {
+            Icon(Icons.Rounded.PlayArrow, null, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
             Text(stringResource(R.string.feature_library_play_all_55c80e))
         }
-        FilledTonalButton(onClick = onShuffle, enabled = enabled, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
-            Icon(Icons.Rounded.Shuffle, null)
-            Spacer(Modifier.width(6.dp))
-            Text(stringResource(R.string.feature_library_shuffle_34e7ce))
+        FilledTonalIconButton(onClick = onShuffle, enabled = enabled, modifier = Modifier.size(46.dp)) {
+            Icon(Icons.Rounded.Shuffle, stringResource(R.string.feature_library_shuffle_34e7ce), modifier = Modifier.size(21.dp))
+        }
+        if (onPlayOnPc != null) FilledTonalIconButton(onClick = onPlayOnPc, enabled = enabled, modifier = Modifier.size(46.dp)) {
+            Icon(Icons.Rounded.Computer, stringResource(R.string.artist_play_on_pc), modifier = Modifier.size(21.dp))
         }
     }
 }
 
 @Composable
 internal fun ArtistAlbums(albums: LazyPagingItems<AlbumSummary>, palette: ArtworkPalette, state: LazyListState, onOpen: (AlbumSummary) -> Unit) {
-    Text(stringResource(R.string.artist_albums), color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+    Text(stringResource(R.string.artist_albums), color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
     Spacer(Modifier.height(12.dp))
     when {
         albums.loadState.refresh is LoadState.Loading && albums.itemCount == 0 -> LinearProgressIndicator(Modifier.fillMaxWidth())
         albums.loadState.refresh is LoadState.Error -> ArtistRetry(albums::retry)
         albums.itemCount == 0 -> Text(stringResource(R.string.artist_no_albums), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        albums.itemCount == 1 && albums.loadState.append.endOfPaginationReached -> {
+            albums[0]?.let { album ->
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                    .echoClickable { onOpen(album) }.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    ArtworkTile(artworkUri = album.artworkUri, modifier = Modifier.size(76.dp), accent = palette.vibrant,
+                        showSignal = album.artworkUri == null, cornerRadius = 12.dp, elevation = 0.dp)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(displayMetadataOrUnknown(album.title, unknownAlbumLabel()), style = MaterialTheme.typography.titleSmall,
+                            maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurface)
+                        Text(listOfNotNull(album.year?.takeIf { it > 0 }?.toString(), artistTrackCountLabel(album.trackCount)).joinToString(" · "),
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
         else -> LazyRow(state = state, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             items(albums.itemCount, key = { albums.peek(it)?.albumKey ?: "album-placeholder-$it" }) { index ->
                 val album = albums[index]
                 if (album != null) {
-                    Column(Modifier.width(128.dp).echoClickable { onOpen(album) }) {
-                        ArtworkTile(artworkUri = album.artworkUri, modifier = Modifier.size(128.dp), accent = palette.vibrant,
+                    Column(Modifier.width(116.dp).echoClickable { onOpen(album) }) {
+                        ArtworkTile(artworkUri = album.artworkUri, modifier = Modifier.size(116.dp), accent = palette.vibrant,
                             showSignal = album.artworkUri == null, cornerRadius = 12.dp, elevation = 0.dp)
                         Spacer(Modifier.height(8.dp))
                         Text(displayMetadataOrUnknown(album.title, unknownAlbumLabel()), maxLines = 2, overflow = TextOverflow.Ellipsis,
@@ -120,7 +141,7 @@ internal fun ArtistRetry(onRetry: () -> Unit) {
 internal fun ArtistTracksHeading(count: Int) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
         Text(stringResource(R.string.artist_tracks), color = MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         Text(artistTrackCountLabel(count), color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.labelLarge)
     }

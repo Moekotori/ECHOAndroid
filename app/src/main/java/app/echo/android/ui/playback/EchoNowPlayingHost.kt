@@ -19,6 +19,7 @@ internal fun EchoNowPlayingHost(
     appSettings: EchoAppSettings,
     lyricsFontFamily: FontFamily?,
     onDismiss: () -> Unit,
+    onOpenSoundSettings: (app.echo.android.feature.player.PlaybackSoundDestination) -> Unit,
     onOpenQueue: () -> Unit,
     onCast: (() -> Unit)? = null,
     castActive: Boolean = false,
@@ -88,6 +89,15 @@ internal fun EchoNowPlayingHost(
         onOpenQueue = onOpenQueue,
         onCast = onCast,
         castActive = castActive,
+        onSetRepeatMode = viewModel::setRepeatMode,
+        playbackSoundSettings = { dismiss ->
+            val equalizer by viewModel.equalizerState.collectAsStateWithLifecycle()
+            val balance by viewModel.channelBalanceState.collectAsStateWithLifecycle()
+            app.echo.android.feature.player.PlaybackSoundSettings(playbackStatus, equalizer, balance) { destination ->
+                dismiss()
+                onOpenSoundSettings(destination)
+            }
+        },
         onCycleRepeatMode = viewModel::cycleRepeatMode,
         onToggleShuffle = viewModel::toggleShuffle,
         onSetPlaybackSpeed = viewModel::setPlaybackSpeed,

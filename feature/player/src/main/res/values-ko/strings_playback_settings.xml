@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playback_keep_pitch">음높이 유지</string>
+    <string name="playback_reset_speed">1×로 복원</string>
+    <string name="playback_lyrics_earlier">← 앞당기기</string>
+    <string name="playback_lyrics_later">늦추기 →</string>
+    <string name="playback_expand">펼치기</string>
+    <string name="playback_collapse">접기</string>
+    <string name="playback_sound_tools">사운드 및 출력</string>
+    <string name="playback_equalizer">이퀄라이저</string>
+    <string name="playback_headphones">헤드폰 보정</string>
+    <string name="playback_balance">채널 밸런스</string>
+    <string name="playback_output">출력 및 진단</string>
+    <string name="playback_sound_bypassed">USB 비트 퍼펙트 모드에서 우회</string>
+    <string name="playback_sound_unavailable">현재 사용할 수 없음</string>
+    <string name="playback_headphones_hint">헤드폰 보정 프리셋 검색 및 적용</string>
+    <string name="playback_cancel_timer">취소</string>
+</resources>

@@ -401,6 +401,17 @@
     <string name="eq_user_preset_empty">지금 곡선을 저장해 두면 나중에 다시 쓸 수 있습니다.</string>
     <string name="eq_user_preset_parametric">파라메트릭 EQ</string>
     <string name="eq_user_preset_bands">%1$d밴드</string>
+    <string name="eq_share">공유</string>
+    <string name="eq_share_code">공유 코드</string>
+    <string name="eq_share_copy">복사</string>
+    <string name="eq_share_copied">복사됨</string>
+    <string name="eq_share_paste">붙여넣기</string>
+    <string name="eq_share_import">코드 가져오기</string>
+    <string name="eq_share_import_title">EQ 가져오기</string>
+    <string name="eq_share_import_hint">ECHOEQ 공유 코드를 붙여넣으세요</string>
+    <string name="eq_share_import_invalid">유효한 EQ 공유 코드가 아닙니다</string>
+    <string name="eq_share_current">현재 곡선 공유</string>
+    <string name="eq_share_detail">복사하거나 보내세요. Echo가 이 코드로 곡선을 불러옵니다.</string>
     <string name="opra_favorite">이 보정 저장</string>
     <string name="opra_unfavorite">저장 해제</string>
     <string name="opra_favorites">저장한 보정</string>

@@ -512,6 +512,17 @@ internal class PlaybackController(
         }
     }
 
+    fun setRepeatMode(mode: EchoRepeatMode) {
+        withController {
+            repeatMode = when (mode) {
+                EchoRepeatMode.Off -> Player.REPEAT_MODE_OFF
+                EchoRepeatMode.All -> Player.REPEAT_MODE_ALL
+                EchoRepeatMode.One -> Player.REPEAT_MODE_ONE
+            }
+            updatePlaybackCore(this, remapQueue = false)
+        }
+    }
+
     fun cycleRepeatMode() {
         withController {
             repeatMode = nextPlayerRepeatMode(repeatMode)

@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="radio_title">电台</string>
-    <string name="radio_hint">保存电台后，点按即可收听。</string>
+    <string name="radio_hint">可搜索公共电台目录，或手动添加播放地址。</string>
     <string name="radio_add">添加电台</string>
     <string name="radio_edit">编辑电台</string>
     <string name="radio_delete">删除电台</string>
     <string name="radio_play">播放电台</string>
-    <string name="radio_empty">暂无电台，请添加电台或清空搜索。</string>
+    <string name="radio_empty">还没有保存的电台。可搜索目录或手动添加。</string>
     <string name="radio_name">电台名称</string>
     <string name="radio_url">播放地址</string>
     <string name="radio_url_hint">输入 HTTP/HTTPS 音频直链或 HLS（.m3u8），不是电台网页。</string>
@@ -18,4 +18,10 @@
     <string name="radio_write_error">无法保存更改，请重试。</string>
     <string name="radio_delete_prompt">从电台列表删除“%1$s”？</string>
     <string name="radio_search">搜索电台</string>
+    <string name="radio_directory_title">电台目录</string>
+    <string name="radio_directory_empty">目录里没有找到匹配的电台。</string>
+    <string name="radio_directory_error">无法连接电台目录。</string>
+    <string name="radio_directory_source">目录来自 radio-browser.info</string>
+    <string name="radio_directory_save">保存电台</string>
+    <string name="radio_directory_bitrate">%1$d kbps</string>
 </resources>

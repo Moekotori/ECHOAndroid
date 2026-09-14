@@ -65,6 +65,7 @@ import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoTrackRef
 import app.echo.android.model.playback.EchoChannelBalanceState
 import app.echo.android.model.playback.EchoEqualizerState
+import app.echo.android.model.playback.EchoEqualizerShareCodec
 import app.echo.android.model.playback.EchoEqualizerUserPresets
 import app.echo.android.model.playback.PlaybackControlsState
 import app.echo.android.model.playback.PlaybackDiagnosticsState
@@ -102,7 +103,9 @@ import kotlin.coroutines.cancellation.CancellationException
 @Suppress("SpellCheckingInspection", "ConstPropertyName", "unused")
 class EchoAndroidViewModel(application: Application) : AndroidViewModel(application) {
     val radioController = app.echo.android.radio.EchoRadioController(
-        app.echo.android.data.EchoRadioStore(application), viewModelScope,
+        app.echo.android.data.EchoRadioStore(application),
+        app.echo.android.data.RadioBrowserClient(BuildConfig.VERSION_NAME),
+        viewModelScope,
     )
     private val database = EchoLibraryDatabase.create(application)
     private val repository = EchoLibraryRepository(
@@ -347,6 +350,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun playlistTrackPaging(playlistId: String): Flow<PagingData<EchoTrack>> =
         libraryController.playlistTrackPaging(playlistId)
+
+    suspend fun clearLocalLibraryIndex(): Boolean = libraryController.clearLocalLibraryIndex()
 
     fun refreshLibrary(options: LibraryScanOptions? = null) {
         libraryController.refreshLibrary(options)
@@ -828,6 +833,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         playbackController.clearQueue()
     }
 
+    fun setRepeatMode(mode: app.echo.android.model.playback.EchoRepeatMode) {
+        playbackController.setRepeatMode(mode)
+    }
+
     fun cycleRepeatMode() {
         playbackController.cycleRepeatMode()
     }
@@ -1226,6 +1235,16 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun deleteEqualizerUserPreset(id: String) {
         updateSettings { deleteEqualizerUserPreset(id) }
+    }
+
+    fun importEqualizerShareCode(code: String) {
+        val parsed = EchoEqualizerShareCodec.decode(code, UUID.randomUUID().toString()) ?: return
+        viewModelScope.launch {
+            val saved = withContext(Dispatchers.IO) { settingsStore.upsertEqualizerUserPreset(parsed) }
+            if (!saved) return@launch
+            if (!playbackController.applyEqualizerUserPreset(parsed)) return@launch
+            withContext(Dispatchers.IO) { settingsStore.applyEqualizerUserPreset(parsed) }
+        }
     }
 
     fun toggleStarredOpraPreset() {

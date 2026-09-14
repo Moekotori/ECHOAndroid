@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_about_beta_version">%1$s · Beta</string>
+    <string name="settings_about_author">作者</string>
+    <string name="settings_about_qq_group">加入 QQ 群聊</string>
+    <string name="settings_about_website">官网</string>
+    <string name="settings_about_bug_report">Bug 反馈</string>
+    <string name="settings_about_link_error">没有可打开此链接的应用</string>
+</resources>

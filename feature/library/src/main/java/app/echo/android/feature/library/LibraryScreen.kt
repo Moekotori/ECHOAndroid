@@ -59,6 +59,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -392,6 +393,9 @@ fun LibraryScreen(
     onPlayRadio: (app.echo.android.model.radio.EchoRadioStation) -> Unit = {},
     onSaveRadio: suspend (String?, String, String) -> Unit = { _, _, _ -> },
     onDeleteRadio: suspend (String) -> Unit = {},
+    radioDirectorySearch: app.echo.android.model.radio.EchoRadioDirectorySearch =
+        app.echo.android.model.radio.EchoRadioDirectorySearch(),
+    onRadioDirectoryQuery: (String) -> Unit = {},
 ) {
     val artistListState = rememberSaveable(selectedArtist?.artistKey, saver = androidx.compose.foundation.lazy.LazyListState.Saver) {
         androidx.compose.foundation.lazy.LazyListState()
@@ -467,14 +471,21 @@ fun LibraryScreen(
         }
     }
 
-    if (selectedSource == LibrarySourceMode.PcEcho && linkedLibraryAvailable) {
+    val sourceMotion = rememberEchoContentMotion()
+    AnimatedContent(
+        targetState = selectedSource,
+        transitionSpec = { sourceMotion.tabSwitch(targetState.ordinal > initialState.ordinal) },
+        modifier = Modifier.fillMaxSize(),
+        label = "library-source-transition",
+    ) { displayedSource ->
+    if (displayedSource == LibrarySourceMode.PcEcho && linkedLibraryAvailable) {
         val linkedState by linkedLibraryState.collectAsState()
         LinkedEchoLibraryPage(
             state = linkedState,
             query = libraryQuery,
             selectedMode = linkedMode,
             selectedAlbumKey = selectedLinkedAlbumKey,
-            selectedSource = selectedSource,
+            selectedSource = displayedSource,
             selectedSortMode = trackSortMode,
             albumSortMode = albumSortMode,
             artistSortMode = artistSortMode,
@@ -516,13 +527,13 @@ fun LibraryScreen(
             onPlayLinkedQueueOnPc = onPlayLinkedQueueOnPc,
             modifier = Modifier.fillMaxSize(),
         )
-        return
+        return@AnimatedContent
     }
 
-    if (selectedSource == LibrarySourceMode.PcEcho) {
+    if (displayedSource == LibrarySourceMode.PcEcho) {
         LibraryBrowserFrame(
             query = libraryQuery, onQueryChange = onLibraryQueryChange,
-            sources = { LibrarySourceStrip(selectedSource, linkedLibraryAvailable, ::selectSource) },
+            sources = { LibrarySourceStrip(displayedSource, linkedLibraryAvailable, ::selectSource) },
         ) {
             LibraryCollectionEmpty(
                 title = stringResource(L10nR.string.feature_library_not_connected_c4d337),
@@ -531,7 +542,7 @@ fun LibraryScreen(
                 onAction = onOpenConnect,
             )
         }
-        return
+        return@AnimatedContent
     }
 
     val prefersSplit = LocalEchoWidthSizeClass.current.prefersLibrarySplit
@@ -552,10 +563,10 @@ fun LibraryScreen(
                 if (selectedMode == LibraryViewMode.Radio) L10nR.string.radio_search
                 else L10nR.string.feature_library_search_songs_artists_albums_14dc2c,
             ),
-            sources = { LibrarySourceStrip(selectedSource, linkedLibraryAvailable, ::selectSource) },
+            sources = { LibrarySourceStrip(displayedSource, linkedLibraryAvailable, ::selectSource) },
             actions = {
-                if (selectedSource == LibrarySourceMode.Local && selectedMode != LibraryViewMode.Radio) LibrarySourceScanButton(
-                    selectedSource, linkedLibraryAvailable, ::selectSource,
+                if (displayedSource == LibrarySourceMode.Local && selectedMode != LibraryViewMode.Radio) LibrarySourceScanButton(
+                    displayedSource, linkedLibraryAvailable, ::selectSource,
                     hasPermission, scanState, onRequestPermission, onScanFolder, onScanAll, onCancelScan,
                     initialScanOptions = initialScanOptions,
                 )
@@ -567,7 +578,7 @@ fun LibraryScreen(
                     LibraryBrowserHeader(
                         scanState = scanState,
                         showScanResultBanner = showScanResultBanner,
-                        selectedSource = selectedSource,
+                        selectedSource = displayedSource,
                         linkedLibraryAvailable = linkedLibraryAvailable,
                         onSelectSource = ::selectSource,
                         selectedMode = selectedMode,
@@ -577,7 +588,7 @@ fun LibraryScreen(
                         folderSortMode = folderSortMode,
                         onSelectMode = { mode ->
                             selectedModeIndex = mode.ordinal
-                            if (selectedSource == LibrarySourceMode.Cloud && mode != LibraryViewMode.Albums) {
+                            if (displayedSource == LibrarySourceMode.Cloud && mode != LibraryViewMode.Albums) {
                                 selectedSource = LibrarySourceMode.Local
                                 onLibrarySourceChange(LibrarySourceMode.Local.id)
                             }
@@ -598,11 +609,20 @@ fun LibraryScreen(
                             modifier = Modifier.fillMaxSize(),
                         ) { mode ->
                         when (mode) {
-                            LibraryViewMode.Radio -> RadioLibraryPanel(
-                                stations = radioStations, loadFailed = radioLoadFailed,
-                                onRetry = onRetryRadio, onPlay = onPlayRadio,
-                                onSave = onSaveRadio, onDelete = onDeleteRadio,
-                            )
+                            LibraryViewMode.Radio -> {
+                                LaunchedEffect(libraryQuery) { onRadioDirectoryQuery(libraryQuery) }
+                                DisposableEffect(Unit) { onDispose { onRadioDirectoryQuery("") } }
+                                RadioLibraryPanel(
+                                    stations = radioStations,
+                                    loadFailed = radioLoadFailed,
+                                    directory = radioDirectorySearch,
+                                    onRetry = onRetryRadio,
+                                    onRetryDirectory = { onRadioDirectoryQuery(radioDirectorySearch.query) },
+                                    onPlay = onPlayRadio,
+                                    onSave = onSaveRadio,
+                                    onDelete = onDeleteRadio,
+                                )
+                            }
                             LibraryViewMode.Songs -> {
                                 val trackItems = tracks.collectAsLazyPagingItems()
                                 val showInitialTrackLoading =
@@ -650,7 +670,7 @@ fun LibraryScreen(
                             )
 
                             LibraryViewMode.Albums -> {
-                                val albumItems = if (selectedSource == LibrarySourceMode.Cloud) {
+                                val albumItems = if (displayedSource == LibrarySourceMode.Cloud) {
                                     remoteAlbums.collectAsLazyPagingItems()
                                 } else {
                                     albums.collectAsLazyPagingItems()
@@ -658,7 +678,7 @@ fun LibraryScreen(
                                 GuidedAlbumWall(
                                     albums = albumItems,
                                     onOpenAlbum = onOpenAlbum,
-                                    isCloud = selectedSource == LibrarySourceMode.Cloud,
+                                    isCloud = displayedSource == LibrarySourceMode.Cloud,
                                     cloudConfigured = cloudLibraryConfigured,
                                     query = libraryQuery,
                                     onClearSearch = { onLibraryQueryChange("") },
@@ -971,6 +991,8 @@ fun LibraryScreen(
             LibraryDetailTransitionTarget.Browser -> LocalBrowserPane()
         }
     }
+    }
+
     }
 
     addToPlaylistTrack?.let { track ->
