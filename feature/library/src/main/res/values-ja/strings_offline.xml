@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_offline_download">ダウンロード</string>
+    <string name="library_offline_queued">ダウンロード待ち</string>
+    <string name="library_offline_downloading">ダウンロード中 %1$d/%2$d</string>
+    <string name="library_offline_ready">オフラインで利用可能</string>
+    <string name="library_offline_partial">一部オフライン %1$d/%2$d</string>
+    <string name="library_offline_failed">ダウンロード失敗</string>
+</resources>

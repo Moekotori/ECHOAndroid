@@ -1,6 +1,5 @@
 package app.echo.android.playback
 
-import android.net.Uri
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
 
@@ -16,6 +15,6 @@ object EchoOfflinePlaybackIndex {
         val path = files.get()[trackId] ?: return null
         val file = File(path)
         if (!file.isFile || file.length() <= 0L) return null
-        return Uri.fromFile(file).toString()
+        return file.toURI().toString()
     }
 }

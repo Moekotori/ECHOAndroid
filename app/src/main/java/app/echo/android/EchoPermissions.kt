@@ -4,32 +4,29 @@ import android.Manifest
 import android.os.Build
 import app.echo.android.model.platform.EchoPlatformCapabilities
 
-private fun platformCapabilities(): EchoPlatformCapabilities =
-    EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT)
-
 fun audioPermissionName(): String =
-    if (platformCapabilities().granularMediaAudioPermission) {
+    if (Build.VERSION.SDK_INT >= EchoPlatformCapabilities.GranularMediaAudioPermissionSdk) {
         Manifest.permission.READ_MEDIA_AUDIO
     } else {
         Manifest.permission.READ_EXTERNAL_STORAGE
     }
 
 fun writeStoragePermissionName(): String? =
-    if (platformCapabilities().legacyWriteExternalStorage) {
+    if (Build.VERSION.SDK_INT <= EchoPlatformCapabilities.LegacyWriteExternalStorageMaxSdk) {
         Manifest.permission.WRITE_EXTERNAL_STORAGE
     } else {
         null
     }
 
 fun notificationPermissionName(): String? =
-    if (platformCapabilities().notificationRuntimePermission) {
+    if (Build.VERSION.SDK_INT >= EchoPlatformCapabilities.NotificationRuntimePermissionSdk) {
         Manifest.permission.POST_NOTIFICATIONS
     } else {
         null
     }
 
 fun bluetoothConnectPermissionName(): String =
-    if (platformCapabilities().bluetoothConnectRuntimePermission) {
+    if (Build.VERSION.SDK_INT >= EchoPlatformCapabilities.BluetoothConnectPermissionSdk) {
         Manifest.permission.BLUETOOTH_CONNECT
     } else {
         Manifest.permission.BLUETOOTH

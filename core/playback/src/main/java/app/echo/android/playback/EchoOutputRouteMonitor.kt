@@ -111,7 +111,7 @@ class EchoOutputRouteMonitor(context: Context) {
     }
 
     private fun outputDevices(): List<AudioDeviceInfo> {
-        if (EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT).audioDevicesForAttributes) {
+        if (Build.VERSION.SDK_INT >= EchoPlatformCapabilities.AudioDevicesForAttributesSdk) {
             val routed = runCatching {
                 audioManager.getAudioDevicesForAttributes(mediaAttributes())
             }.getOrNull().orEmpty()
@@ -136,7 +136,7 @@ class EchoOutputRouteMonitor(context: Context) {
         appContext.getSystemService(BluetoothManager::class.java)?.adapter
 
     private fun hasBluetoothConnectPermission(): Boolean {
-        val permission = if (EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT).bluetoothConnectRuntimePermission) {
+        val permission = if (Build.VERSION.SDK_INT >= EchoPlatformCapabilities.BluetoothConnectPermissionSdk) {
             Manifest.permission.BLUETOOTH_CONNECT
         } else {
             Manifest.permission.BLUETOOTH
@@ -184,7 +184,7 @@ class EchoOutputRouteMonitor(context: Context) {
         }.getOrNull()
 
     private fun deviceAddress(device: AudioDeviceInfo): String? {
-        if (!EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT).audioDeviceAddress) return null
+        if (Build.VERSION.SDK_INT < EchoPlatformCapabilities.AudioDeviceAddressSdk) return null
         val value = device.address.trim()
         return value.takeIf { it.isNotEmpty() }
     }

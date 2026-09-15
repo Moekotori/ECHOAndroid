@@ -21,8 +21,7 @@ val LocalEchoHapticsEnabled = staticCompositionLocalOf { true }
 fun Context.performEchoHaptic(kind: EchoHapticKind) {
     val vibrator = currentVibrator() ?: return
     if (!vibrator.hasVibrator()) return
-    val capabilities = EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT)
-    if (capabilities.hapticPrimitives) {
+    if (Build.VERSION.SDK_INT >= EchoPlatformCapabilities.HapticPrimitivesSdk) {
         val primitive = when (kind) {
             EchoHapticKind.Confirm -> VibrationEffect.Composition.PRIMITIVE_CLICK
             EchoHapticKind.Tick -> VibrationEffect.Composition.PRIMITIVE_TICK
@@ -62,7 +61,7 @@ fun rememberEchoHapticPerformer(): EchoHapticPerformer {
 }
 
 private fun Context.currentVibrator(): Vibrator? =
-    if (EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT).hapticPrimitives) {
+    if (Build.VERSION.SDK_INT >= EchoPlatformCapabilities.HapticPrimitivesSdk) {
         getSystemService(VibratorManager::class.java)?.defaultVibrator
     } else {
         @Suppress("DEPRECATION")

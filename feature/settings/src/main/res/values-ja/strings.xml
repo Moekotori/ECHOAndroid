@@ -86,6 +86,10 @@
     <string name="settings_local_music_detail">曲、アルバム、アーティスト、スキャンを開く</string>
     <string name="settings_pin_queue_offline">現在のキューをオフライン用に保存</string>
     <string name="settings_pin_queue_offline_detail">現在のキューにあるリモート曲と PC の曲をキャッシュし、オフラインでも再生できます</string>
+    <string name="settings_offline_wifi_only">オフラインダウンロードは Wi-Fi のみ</string>
+    <string name="settings_offline_wifi_only_detail">ピン留めしたアルバムとプレイリストは Wi-Fi または有線でダウンロードします。オフにするとモバイルデータも使います</string>
+    <string name="settings_offline_storage">オフライン容量</string>
+    <string name="settings_offline_storage_detail">ピン留めしたリモート曲で %2$s 中 %1$s を使用中</string>
     <string name="settings_library_cleanup">欠損と重複を整理</string>
     <string name="settings_library_cleanup_detail">ファイルがない曲を外し、同一曲の余分なコピーをまとめます</string>
     <string name="settings_library_cleanup_confirm">ライブラリ索引から欠損ファイルと重複コピーを外します。ディスク上のファイルは削除しません。</string>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_offline_download">下載</string>
+    <string name="library_offline_queued">等待下載</string>
+    <string name="library_offline_downloading">正在下載 %1$d/%2$d</string>
+    <string name="library_offline_ready">已離線</string>
+    <string name="library_offline_partial">部分離線 %1$d/%2$d</string>
+    <string name="library_offline_failed">下載失敗</string>
+</resources>

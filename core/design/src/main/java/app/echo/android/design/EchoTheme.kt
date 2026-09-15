@@ -192,7 +192,8 @@ fun EchoMobileTheme(
     }
     val colorScheme = remember(tokens, darkTheme, dynamicColor, context, platformCapabilities) {
         val base = echoColorScheme(tokens)
-        val useDynamic = dynamicColor && platformCapabilities.dynamicColor
+        val useDynamic = dynamicColor &&
+            Build.VERSION.SDK_INT >= EchoPlatformCapabilities.DynamicColorSdk
         if (!useDynamic) {
             base
         } else {

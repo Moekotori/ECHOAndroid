@@ -107,6 +107,7 @@ import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackMetadataUpdate
 import app.echo.android.model.library.FolderSummary
+import app.echo.android.model.library.LibraryOfflinePin
 import app.echo.android.model.library.LibraryPlaybackOrigin
 import app.echo.android.model.library.LibraryScanPhase
 import app.echo.android.model.library.LibraryScanProgress
@@ -385,6 +386,11 @@ fun LibraryScreen(
     radioDirectorySearch: app.echo.android.model.radio.EchoRadioDirectorySearch =
         app.echo.android.model.radio.EchoRadioDirectorySearch(),
     onRadioDirectoryQuery: (String) -> Unit = {},
+    albumOfflinePin: LibraryOfflinePin? = null,
+    playlistOfflinePin: LibraryOfflinePin? = null,
+    onPinAlbumOffline: (AlbumSummary) -> Unit = {},
+    onPinPlaylistOffline: (EchoPlaylist) -> Unit = {},
+    onUnpinOffline: (String) -> Unit = {},
 ) {
     val artistListState = rememberSaveable(selectedArtist?.artistKey, saver = androidx.compose.foundation.lazy.LazyListState.Saver) {
         androidx.compose.foundation.lazy.LazyListState()
@@ -769,6 +775,8 @@ fun LibraryScreen(
                         onEnqueue = enqueueTrack,
                         onOpenArtist = onOpenAlbumArtist,
                         onOpenTrackArtist = onOpenTrackArtist,
+                        offlinePin = albumOfflinePin,
+                        onToggleOffline = albumOfflineToggle(selectedAlbum, albumOfflinePin, onPinAlbumOffline, onUnpinOffline),
                         modifier = Modifier.fillMaxSize(),
                     )
                     selectedGenre != null && genreDetailTracks != null -> GenreTrackDetailPage(
@@ -865,6 +873,14 @@ fun LibraryScreen(
                         onEnqueue = enqueueTrack,
                         onOpenArtist = onOpenTrackArtist,
                         onOpenAlbum = onOpenTrackAlbum,
+                        offlinePin = playlistOfflinePin,
+                        onToggleOffline = playlistOfflineToggle(
+                            livePlaylist,
+                            playlistDetailTracks.itemSnapshotList.items,
+                            playlistOfflinePin,
+                            onPinPlaylistOffline,
+                            onUnpinOffline,
+                        ),
                         modifier = Modifier.fillMaxSize(),
                     )
                     else -> LibrarySplitPlaceholder()
@@ -949,6 +965,8 @@ fun LibraryScreen(
                 onEnqueue = enqueueTrack,
                 onOpenArtist = onOpenAlbumArtist,
                 onOpenTrackArtist = onOpenTrackArtist,
+                offlinePin = albumOfflinePin,
+                onToggleOffline = albumOfflineToggle(target.album, albumOfflinePin, onPinAlbumOffline, onUnpinOffline),
                 modifier = Modifier.fillMaxSize(),
             )
             is LibraryDetailTransitionTarget.ArtistDetail -> ArtistDetailPage(
@@ -1020,6 +1038,14 @@ fun LibraryScreen(
                 onEnqueue = enqueueTrack,
                 onOpenArtist = onOpenTrackArtist,
                 onOpenAlbum = onOpenTrackAlbum,
+                offlinePin = playlistOfflinePin,
+                onToggleOffline = playlistOfflineToggle(
+                    target.playlist,
+                    target.tracks.itemSnapshotList.items,
+                    playlistOfflinePin,
+                    onPinPlaylistOffline,
+                    onUnpinOffline,
+                ),
                 modifier = Modifier.fillMaxSize(),
             )
             is LibraryDetailTransitionTarget.LinkedAlbum -> {
@@ -2052,3 +2078,28 @@ private fun LibraryScanProgress.hasResultBannerMessage(): Boolean =
         LibraryScanPhase.WritingDatabase,
         LibraryScanPhase.CleaningRemoved -> false
     }
+
+private fun albumOfflineToggle(
+    album: AlbumSummary,
+    pin: LibraryOfflinePin?,
+    onPinAlbumOffline: (AlbumSummary) -> Unit,
+    onUnpinOffline: (String) -> Unit,
+): (() -> Unit)? {
+    if (!canShowAlbumOffline(album.albumKey, pin)) return null
+    return {
+        if (pin != null) onUnpinOffline(pin.id) else onPinAlbumOffline(album)
+    }
+}
+
+private fun playlistOfflineToggle(
+    playlist: EchoPlaylist,
+    tracks: List<EchoTrack>,
+    pin: LibraryOfflinePin?,
+    onPinPlaylistOffline: (EchoPlaylist) -> Unit,
+    onUnpinOffline: (String) -> Unit,
+): (() -> Unit)? {
+    if (!canShowPlaylistOffline(playlist.source, tracks, pin)) return null
+    return {
+        if (pin != null) onUnpinOffline(pin.id) else onPinPlaylistOffline(playlist)
+    }
+}

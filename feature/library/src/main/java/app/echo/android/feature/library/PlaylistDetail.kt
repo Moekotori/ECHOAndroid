@@ -77,6 +77,7 @@ import app.echo.android.design.echoTheme
 import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackMetadataUpdate
+import app.echo.android.model.library.LibraryOfflinePin
 import app.echo.android.model.library.LibrarySmartPlaylistKind
 import app.echo.android.model.library.LibrarySource
 
@@ -133,6 +134,8 @@ internal fun PlaylistDetailPage(
     onEnqueue: ((EchoTrack) -> Unit)? = null,
     onOpenArtist: ((EchoTrack) -> Unit)? = null,
     onOpenAlbum: ((EchoTrack) -> Unit)? = null,
+    offlinePin: LibraryOfflinePin? = null,
+    onToggleOffline: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val loadedTracks = tracks.itemSnapshotList.items
@@ -186,6 +189,8 @@ internal fun PlaylistDetailPage(
                         durationMs = durationMs,
                         onPlayAll = onPlayAll,
                         onShuffle = onShuffle,
+                        offlinePin = offlinePin,
+                        onToggleOffline = onToggleOffline,
                     )
                     Spacer(Modifier.height(16.dp))
                     PlaylistInsightRow(
@@ -445,6 +450,8 @@ private fun PlaylistHero(
     durationMs: Long,
     onPlayAll: () -> Unit,
     onShuffle: () -> Unit,
+    offlinePin: LibraryOfflinePin? = null,
+    onToggleOffline: (() -> Unit)? = null,
 ) {
     val colors = rememberPlaylistDetailColors()
     val dark = LocalEchoDarkTheme.current
@@ -495,6 +502,16 @@ private fun PlaylistHero(
                 filled = false,
                 onClick = onShuffle,
                 modifier = Modifier.weight(1f),
+            )
+        }
+        if (onToggleOffline != null) {
+            Spacer(Modifier.height(12.dp))
+            PlaylistActionButton(
+                icon = libraryOfflinePinIcon(offlinePin),
+                label = libraryOfflinePinLabel(offlinePin),
+                filled = false,
+                onClick = onToggleOffline,
+                modifier = Modifier.fillMaxWidth(),
             )
         }
     }

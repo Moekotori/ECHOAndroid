@@ -11,19 +11,18 @@ import app.echo.android.model.platform.EchoPlatformCapabilities
 import app.echo.android.model.settings.EchoAppLanguage
 import java.util.Locale
 
-private fun platformCapabilities(): EchoPlatformCapabilities =
-    EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT)
-
 /** Android 13+ owns the selected language; never overwrite a system-settings change on launch. */
 fun Context.echoAppLanguage(savedLanguage: String): String {
-    if (!platformCapabilities().systemAppLocales) return EchoAppLanguage.fromId(savedLanguage)
+    if (Build.VERSION.SDK_INT < EchoPlatformCapabilities.SystemAppLocalesSdk) {
+        return EchoAppLanguage.fromId(savedLanguage)
+    }
     val locales = getSystemService(LocaleManager::class.java)?.applicationLocales
         ?: return EchoAppLanguage.fromId(savedLanguage)
     return if (locales.isEmpty) EchoAppLanguage.System else EchoAppLanguage.fromId(locales[0].toLanguageTag())
 }
 
 private fun Context.systemLocales(): LocaleList =
-    if (platformCapabilities().systemAppLocales) {
+    if (Build.VERSION.SDK_INT >= EchoPlatformCapabilities.SystemAppLocalesSdk) {
         getSystemService(LocaleManager::class.java)?.systemLocales ?: Resources.getSystem().configuration.locales
     } else {
         Resources.getSystem().configuration.locales
@@ -31,7 +30,7 @@ private fun Context.systemLocales(): LocaleList =
 
 /** Context wrapping is needed only before Android 13. Does not mutate the incoming Configuration. */
 fun Context.wrapEchoAppLocale(languageId: String): Context {
-    if (platformCapabilities().systemAppLocales) return this
+    if (Build.VERSION.SDK_INT >= EchoPlatformCapabilities.SystemAppLocalesSdk) return this
     val locales = EchoAppLanguage.localeOrNull(languageId)?.let { LocaleList(it) } ?: systemLocales()
     val config = Configuration(resources.configuration)
     config.setLocales(locales)
@@ -41,7 +40,7 @@ fun Context.wrapEchoAppLocale(languageId: String): Context {
 
 /** Copy the wrapped Application locales onto a Service/Receiver Context on Android 8–12. */
 fun Context.wrapEchoAppLocaleToMatchApplication(): Context {
-    if (platformCapabilities().systemAppLocales) return this
+    if (Build.VERSION.SDK_INT >= EchoPlatformCapabilities.SystemAppLocalesSdk) return this
     val app = applicationContext
     if (app === this) return this
     val locales = app.resources.configuration.locales
@@ -55,7 +54,7 @@ fun Context.wrapEchoAppLocaleToMatchApplication(): Context {
 /** Refresh the existing window on Android 8–12; Android 13+ dispatches this itself. */
 @Suppress("DEPRECATION")
 fun Activity.refreshEchoAppLocale(languageId: String) {
-    if (platformCapabilities().systemAppLocales) return
+    if (Build.VERSION.SDK_INT >= EchoPlatformCapabilities.SystemAppLocalesSdk) return
     val config = wrapEchoAppLocale(languageId).resources.configuration
     // This Activity owns a configuration Context on these versions. Updating its resources
     // keeps Activity lookup, dialogs and stringResource on the same localized Context.
@@ -67,7 +66,7 @@ fun Activity.refreshEchoAppLocale(languageId: String) {
 /** Called only for an explicit user selection (or the one-time legacy preference migration). */
 fun Context.applyEchoAppLocale(languageId: String) {
     val locale = EchoAppLanguage.localeOrNull(languageId)
-    if (platformCapabilities().systemAppLocales) {
+    if (Build.VERSION.SDK_INT >= EchoPlatformCapabilities.SystemAppLocalesSdk) {
         val manager = getSystemService(LocaleManager::class.java) ?: return
         val desired = locale?.let { LocaleList(it) } ?: LocaleList.getEmptyLocaleList()
         if (manager.applicationLocales != desired) manager.applicationLocales = desired
@@ -78,7 +77,7 @@ fun Context.applyEchoAppLocale(languageId: String) {
 
 /** Migrate old stored IDs once, then treat the platform setting as authoritative. */
 fun Context.initializeEchoAppLocale(savedLanguage: String) {
-    if (platformCapabilities().systemAppLocales) {
+    if (Build.VERSION.SDK_INT >= EchoPlatformCapabilities.SystemAppLocalesSdk) {
         val preferences = getSharedPreferences("echo_locale_migration", Context.MODE_PRIVATE)
         if (!preferences.getBoolean("platform_locale_initialized", false)) {
             val manager = getSystemService(LocaleManager::class.java)

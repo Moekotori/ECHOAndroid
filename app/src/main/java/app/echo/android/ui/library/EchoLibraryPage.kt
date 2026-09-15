@@ -29,6 +29,7 @@ import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackMetadataUpdate
 import app.echo.android.model.library.FolderSummary
+import app.echo.android.model.library.LibraryOfflinePolicy
 
 @Composable
 internal fun EchoLibraryPage(
@@ -102,6 +103,16 @@ internal fun EchoLibraryPage(
     }
     val playlistDetailTracks = selectedPlaylistId?.let { playlistId ->
         remember(playlistId) { viewModel.playlistTrackPaging(playlistId) }.collectAsLazyPagingItems()
+    }
+    val albumOfflinePin = selectedAlbumKey?.let { albumKey ->
+        remember(albumKey) {
+            viewModel.observeOfflinePin(LibraryOfflinePolicy.albumPinId(albumKey))
+        }.collectAsStateWithLifecycle(initialValue = null).value
+    }
+    val playlistOfflinePin = selectedPlaylistId?.let { playlistId ->
+        remember(playlistId) {
+            viewModel.observeOfflinePin(LibraryOfflinePolicy.playlistPinId(playlistId))
+        }.collectAsStateWithLifecycle(initialValue = null).value
     }
     var pendingM3uExportPlaylist by remember { mutableStateOf<EchoPlaylist?>(null) }
     val importM3uLauncher = rememberLauncherForActivityResult(
@@ -309,6 +320,11 @@ internal fun EchoLibraryPage(
                 val fileName = playlist.name.trim().ifBlank { "playlist" }.replace('/', '-')
                 exportM3uLauncher.launch("$fileName.m3u")
             },
+            albumOfflinePin = albumOfflinePin,
+            playlistOfflinePin = playlistOfflinePin,
+            onPinAlbumOffline = { album -> viewModel.pinAlbumOffline(album.albumKey, album.title) },
+            onPinPlaylistOffline = { playlist -> viewModel.pinPlaylistOffline(playlist.id, playlist.name) },
+            onUnpinOffline = viewModel::unpinOffline,
         )
     }
     }

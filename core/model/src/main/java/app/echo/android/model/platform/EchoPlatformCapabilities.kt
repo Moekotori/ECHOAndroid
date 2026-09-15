@@ -2,7 +2,8 @@ package app.echo.android.model.platform
 
 /**
  * What this Android release can do. Built from [sdkInt] only.
- * Call sites keep their existing implementations and switch behavior from these flags.
+ * UI and policy read [fromSdk]. Framework calls must still branch on
+ * `Build.VERSION.SDK_INT >= XxxSdk` so NewApi lint can see the guard.
  */
 data class EchoPlatformCapabilities(
     val sdkInt: Int,

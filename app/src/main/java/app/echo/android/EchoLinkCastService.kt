@@ -62,7 +62,7 @@ class EchoLinkCastService : Service() {
             this,
             NotificationId,
             notification,
-            if (EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT).foregroundServiceType) {
+            if (Build.VERSION.SDK_INT >= EchoPlatformCapabilities.ForegroundServiceTypeSdk) {
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
             } else {
                 0

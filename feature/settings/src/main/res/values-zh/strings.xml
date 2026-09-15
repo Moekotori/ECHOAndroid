@@ -85,6 +85,10 @@
     <string name="settings_local_music">本地音乐</string>
     <string name="settings_pin_queue_offline">缓存当前队列以便离线听</string>
     <string name="settings_pin_queue_offline_detail">把当前队列里的远程和电脑曲目缓存下来，断网也能播</string>
+    <string name="settings_offline_wifi_only">仅 Wi-Fi 下载离线曲目</string>
+    <string name="settings_offline_wifi_only_detail">钉选专辑和播放列表时只用 Wi-Fi 或以太网。关闭后允许移动数据</string>
+    <string name="settings_offline_storage">离线占用</string>
+    <string name="settings_offline_storage_detail">已用 %1$s / %2$s（钉选的远程音乐）</string>
     <string name="settings_library_cleanup">清理缺失和重复文件</string>
     <string name="settings_library_cleanup_detail">去掉文件已不存在的曲目，并合并完全相同的副本</string>
     <string name="settings_library_cleanup_confirm">从曲库索引中移除缺失文件和重复副本。不会删除磁盘上的文件。</string>

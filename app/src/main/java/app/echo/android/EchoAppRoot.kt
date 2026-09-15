@@ -1097,6 +1097,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             val usbExclusiveTestResult by viewModel.usbExclusiveTestResult.collectAsStateWithLifecycle()
                             val errorLogCount by viewModel.errorLogCount.collectAsStateWithLifecycle(0)
                             val backupNotice by viewModel.backupNotice.collectAsStateWithLifecycle()
+                            val offlineUsedBytes by remember(viewModel) { viewModel.observeOfflineUsedBytes() }
+                                .collectAsStateWithLifecycle(0L)
                             SettingsScreen(
                                 importedFontFamily = importedFontFamily,
                                 isActive = tabPagerState.currentPage == EchoPagerPage.Settings.ordinal &&
@@ -1119,6 +1121,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 effectivePerformanceMode = effectivePerformanceMode.id,
                                 trackAudioInfoTagsVisible = appSettings.trackAudioInfoTagsVisible,
                                 watchedFolderRescanEnabled = appSettings.watchedFolderRescanEnabled,
+                                offlineWifiOnly = appSettings.offlineWifiOnly,
+                                offlineUsedBytes = offlineUsedBytes,
                                 pcHandoffEnabled = appSettings.pcHandoffEnabled,
                                 showLyricsControlDeck = appSettings.showLyricsControlDeck,
                                 onlineLyricsEnabled = appSettings.onlineLyricsEnabled,
@@ -1169,6 +1173,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onPerformanceModeChange = viewModel::setPerformanceMode,
                                 onTrackAudioInfoTagsVisibleChange = viewModel::setTrackAudioInfoTagsVisible,
                                 onWatchedFolderRescanEnabledChange = viewModel::setWatchedFolderRescanEnabled,
+                                onOfflineWifiOnlyChange = viewModel::setOfflineWifiOnly,
                                 onPcHandoffEnabledChange = viewModel::setPcHandoffEnabled,
                                 onShowLyricsControlDeckChange = viewModel::setShowLyricsControlDeck,
                                 onOnlineLyricsEnabledChange = viewModel::setOnlineLyricsEnabled,

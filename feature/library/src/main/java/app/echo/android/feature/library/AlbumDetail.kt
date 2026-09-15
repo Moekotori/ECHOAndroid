@@ -69,6 +69,7 @@ import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackMetadataUpdate
+import app.echo.android.model.library.LibraryOfflinePin
 
 internal val AlbumDetailBottomPadding = 168.dp
 private val LocalAlbumDetail = staticCompositionLocalOf { false }
@@ -120,6 +121,8 @@ internal fun AlbumDetailPage(
     onEnqueue: ((EchoTrack) -> Unit)? = null,
     onOpenArtist: (() -> Unit)? = null,
     onOpenTrackArtist: ((EchoTrack) -> Unit)? = null,
+    offlinePin: LibraryOfflinePin? = null,
+    onToggleOffline: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val palette = rememberArtworkPalette(album.artworkUri, seedKey = album.albumKey)
@@ -151,7 +154,12 @@ internal fun AlbumDetailPage(
                         Spacer(Modifier.height(8.dp))
                         AlbumHero(album = album, onOpenArtist = onOpenArtist)
                         Spacer(Modifier.height(18.dp))
-                        AlbumActionBar(onPlayAll = onPlayAll, onShuffle = onShuffle)
+                        AlbumActionBar(
+                            onPlayAll = onPlayAll,
+                            onShuffle = onShuffle,
+                            offlinePin = offlinePin,
+                            onToggleOffline = onToggleOffline,
+                        )
                         Spacer(Modifier.height(28.dp))
                         AlbumTracksHeader(
                             count = album.trackCount,
@@ -584,6 +592,8 @@ internal fun AlbumActionBar(
     onPlayAll: () -> Unit,
     onShuffle: () -> Unit,
     onPlayOnPc: (() -> Unit)? = null,
+    offlinePin: LibraryOfflinePin? = null,
+    onToggleOffline: (() -> Unit)? = null,
 ) {
     val refined = LocalAlbumDetail.current
     val colors = rememberDetailGlassColors()
@@ -626,6 +636,18 @@ internal fun AlbumActionBar(
             containerColor = colors.elevatedSurface,
             borderColor = if (refined) colors.border else actionBorder,
             onClick = onPlayOnPc,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+    if (onToggleOffline != null) {
+        AlbumDetailActionButton(
+            icon = libraryOfflinePinIcon(offlinePin),
+            label = libraryOfflinePinLabel(offlinePin),
+            iconSize = 22.dp,
+            contentColor = if (refined) colors.content else actionContent,
+            containerColor = colors.elevatedSurface,
+            borderColor = if (refined) colors.border else actionBorder,
+            onClick = onToggleOffline,
             modifier = Modifier.fillMaxWidth(),
         )
     }

@@ -53,7 +53,7 @@ private fun readStandaloneIncomingTrack(context: Context, uri: Uri): EchoTrack {
             ?.toLongOrNull()
             ?.takeIf { it > 0L }
             ?: 0L
-        val sampleRateHz = if (EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT).mediaMetadataSampleRate) {
+        val sampleRateHz = if (Build.VERSION.SDK_INT >= EchoPlatformCapabilities.MediaMetadataSampleRateSdk) {
             retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)
                 ?.toIntOrNull()
                 ?.takeIf { it > 0 }

@@ -86,6 +86,10 @@
     <string name="settings_local_music_detail">檢視歌曲、專輯、藝人和掃描入口</string>
     <string name="settings_pin_queue_offline">快取目前佇列以便離線聽</string>
     <string name="settings_pin_queue_offline_detail">把目前佇列裡的遠端和電腦曲目快取下來，斷網也能播</string>
+    <string name="settings_offline_wifi_only">僅 Wi-Fi 下載離線曲目</string>
+    <string name="settings_offline_wifi_only_detail">釘選專輯和播放清單時只用 Wi-Fi 或乙太網路。關閉後允許行動數據</string>
+    <string name="settings_offline_storage">離線占用</string>
+    <string name="settings_offline_storage_detail">已用 %1$s / %2$s（釘選的遠端音樂）</string>
     <string name="settings_library_cleanup">清理缺失和重複檔案</string>
     <string name="settings_library_cleanup_detail">去掉檔案已不存在的曲目，並合併完全相同的副本</string>
     <string name="settings_library_cleanup_confirm">從音樂庫索引中移除缺失檔案和重複副本。不會刪除磁碟上的檔案。</string>

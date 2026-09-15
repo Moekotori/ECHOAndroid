@@ -92,6 +92,10 @@
     <string name="settings_local_music_detail">Browse tracks, albums, artists, and scanning</string>
     <string name="settings_pin_queue_offline">Keep current queue offline</string>
     <string name="settings_pin_queue_offline_detail">Cache remote and PC tracks from the current queue for offline playback</string>
+    <string name="settings_offline_wifi_only">Wi-Fi only for offline downloads</string>
+    <string name="settings_offline_wifi_only_detail">Download pinned albums and playlists on Wi-Fi or Ethernet. Turn off to allow mobile data</string>
+    <string name="settings_offline_storage">Offline storage</string>
+    <string name="settings_offline_storage_detail">%1$s of %2$s used for pinned remote music</string>
     <string name="settings_library_cleanup">Clean missing and duplicate files</string>
     <string name="settings_library_cleanup_detail">Remove tracks whose files are gone, and merge exact duplicates</string>
     <string name="settings_library_cleanup_confirm">Remove missing files and extra copies of the same song from the library index. Files on disk are not deleted.</string>
