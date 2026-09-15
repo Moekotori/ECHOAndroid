@@ -235,8 +235,6 @@ fun NowPlayingScreen(
     onImportLyrics: () -> Unit,
     onAdjustLyricsOffset: (Long) -> Unit,
     onResetLyricsOffset: () -> Unit,
-    onOpenArtist: () -> Unit,
-    onOpenAlbum: () -> Unit,
     modifier: Modifier = Modifier,
     positionState: State<PlaybackPositionState>? = null,
     lyricsFontFamily: FontFamily? = null,
@@ -466,8 +464,6 @@ fun NowPlayingScreen(
                         isCurrentTrackFavorite = isCurrentTrackFavorite,
                         onToggleFavorite = onToggleFavorite,
                         onOpenLyrics = {},
-                        onOpenArtist = onOpenArtist,
-                        onOpenAlbum = onOpenAlbum,
                         modifier = Modifier.weight(1f).fillMaxHeight(),
                     )
                     NowPlayingLyricsPage(
@@ -557,8 +553,6 @@ fun NowPlayingScreen(
                                 pagerState.animateScrollToPage(NowPlayingPage.Lyrics.ordinal)
                             }
                         },
-                        onOpenArtist = onOpenArtist,
-                        onOpenAlbum = onOpenAlbum,
                         modifier = Modifier.fillMaxSize(),
                     )
                     NowPlayingPage.Lyrics -> NowPlayingLyricsPage(
@@ -714,8 +708,6 @@ private fun NowPlayingCoverPage(
     isCurrentTrackFavorite: Boolean,
     onToggleFavorite: () -> Unit,
     onOpenLyrics: () -> Unit,
-    onOpenArtist: () -> Unit,
-    onOpenAlbum: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val track = status.track
@@ -793,8 +785,6 @@ private fun NowPlayingCoverPage(
                         artist = displayedTrack?.artist ?: stringResource(L10nR.string.feature_player_pick_a_song_to_start_68b6af),
                         album = displayedTrack?.album,
                         currentLyricLine = currentLyricLine.takeIf { displayedTrack?.id == track?.id },
-                        onOpenArtist = { if (displayedTrack?.id == track?.id) onOpenArtist() },
-                        onOpenAlbum = { if (displayedTrack?.id == track?.id) onOpenAlbum() },
                         onOpenLyrics = { if (displayedTrack?.id == track?.id) onOpenLyrics() },
                         playbackSettingsExpanded = playbackSettingsExpanded,
                         onOpenPlaybackSettings = { if (displayedTrack?.id == track?.id) onOpenPlaybackSettings() },
@@ -1777,8 +1767,6 @@ private fun NowPlayingTrackInfo(
     artist: String,
     album: String?,
     currentLyricLine: String?,
-    onOpenArtist: () -> Unit,
-    onOpenAlbum: () -> Unit,
     onOpenLyrics: () -> Unit,
     playbackSettingsExpanded: Boolean,
     onOpenPlaybackSettings: () -> Unit,
@@ -1840,7 +1828,6 @@ private fun NowPlayingTrackInfo(
             ) {
                 Text(
                     artist,
-                    modifier = Modifier.clickable(onClick = onOpenArtist),
                     color = OnArtMuted,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
@@ -1850,7 +1837,6 @@ private fun NowPlayingTrackInfo(
                 album?.takeIf { it.isNotBlank() }?.let { value ->
                     Text(
                         value,
-                        modifier = Modifier.clickable(onClick = onOpenAlbum),
                         color = OnArt.copy(alpha = 0.78f),
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.SemiBold,

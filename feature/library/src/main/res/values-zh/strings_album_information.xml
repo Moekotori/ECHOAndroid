@@ -6,6 +6,7 @@
     <string name="album_information_duration">总时长</string>
     <string name="album_information_added">入库日期</string>
     <string name="album_information_discs">碟数</string>
+    <string name="album_disc_number">第 %1$d 碟</string>
     <string name="album_information_track_artists">曲目艺人</string>
     <string name="album_information_audio">音频信息</string>
     <string name="album_information_partial">基于已加载的 %1$d / %2$d 首曲目</string>

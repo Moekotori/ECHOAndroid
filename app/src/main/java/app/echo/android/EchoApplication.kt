@@ -7,6 +7,7 @@ import androidx.media3.common.util.UnstableApi
 import app.echo.android.data.EchoErrorCrashFile
 import app.echo.android.data.EchoErrorLogRepository
 import app.echo.android.data.EchoLibraryDatabase
+import app.echo.android.data.EchoRadioStore
 import app.echo.android.data.EchoSettingsStore
 import app.echo.android.data.readEchoStartupThemeSnapshot
 import app.echo.android.i18n.initializeEchoAppLocale
@@ -36,6 +37,7 @@ class EchoApplication : Application(), ImageLoaderFactory {
         app.echo.android.data.AlbumOnlineInfoRepository(java.io.File(cacheDir, "album-online-info"), BuildConfig.VERSION_NAME, musicBrainzGate)
     }
     val echoLinkSession by lazy { EchoLinkSession(this) }
+    internal val lyricsSession: EchoNowPlayingLyricsSession by lazy { EchoNowPlayingLyricsSession(this) }
 
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base.wrapEchoAppLocale(base.readEchoStartupThemeSnapshot().appLanguage))
@@ -61,11 +63,16 @@ class EchoApplication : Application(), ImageLoaderFactory {
             )
         }
         EchoPlaybackProcessRuntime.setCatalog(
-            EchoLibraryPlaybackCatalog(EchoLibraryDatabase.create(this), this),
+            EchoLibraryPlaybackCatalog(
+                database = EchoLibraryDatabase.create(this),
+                context = this,
+                loadRadioStations = EchoRadioStore(this)::load,
+            ),
         )
         val settingsStore = EchoSettingsStore(this)
         bindPlaybackDspSettings(settingsStore)
         EchoPlaybackProcessRuntime.setSessionStore(EchoSettingsPlaybackSessionStore(settingsStore))
+        lyricsSession.start(settingsStore)
         // Playback preferences and remote stream signing remain live when only the
         // service/media buttons are running (no ViewModel).
         EchoPlaybackProcessRuntime.scope.launch {

@@ -1,7 +1,6 @@
 package app.echo.android
 
 import android.net.Uri
-import app.echo.android.data.EchoLibraryRepository
 import app.echo.android.data.LibraryTrackEntity
 import app.echo.android.data.parseNeteaseSongId
 import app.echo.android.lyrics.EchoLyricsSearchRequest
@@ -36,7 +35,7 @@ import kotlin.coroutines.cancellation.CancellationException
 
 @Suppress("SpellCheckingInspection", "ConstPropertyName")
 internal class LyricsController(
-    private val repository: EchoLibraryRepository,
+    private val trackForLyrics: suspend (String) -> LibraryTrackEntity?,
     private val lyricsResolver: LocalLyricsResolver,
     private val onlineLyricsResolver: OnlineLyricsResolver,
     private val importedLyricsStore: ImportedLyricsStore,
@@ -61,6 +60,7 @@ internal class LyricsController(
     private val onlineCacheLock = Any()
     private val offsetWriteMutex = Mutex()
     private var lastLyricsTrackId: String? = null
+    val currentTrackId: String? get() = lastLyricsTrackId
     private var currentLyricsUserOffsetMs: Long = 0L
     @Volatile
     private var onlineLyricsEnabled: Boolean = false
@@ -136,7 +136,7 @@ internal class LyricsController(
         searchJob = scope.launch {
             try {
                 val results = withContext(Dispatchers.IO) {
-                    val track = repository.trackForLyrics(trackId) ?: return@withContext emptyList()
+                    val track = trackForLyrics(trackId) ?: return@withContext emptyList()
                     val context = coroutineContext
                     onlineLyricsResolver.search(track.toLyricsSearchRequest()) { context.ensureActive() }
                 }
@@ -226,7 +226,7 @@ internal class LyricsController(
                             userOffsetMs = userOffsetMs,
                         )
                     } else {
-                        val track = repository.trackForLyrics(trackId)
+                        val track = trackForLyrics(trackId)
                         if (track == null) {
                             LyricsLoadResult(EchoLyricsLoadState.Missing)
                         } else {

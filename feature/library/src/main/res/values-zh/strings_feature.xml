@@ -16,6 +16,7 @@
     <string name="feature_library_artist_c15fae">"艺术家"</string>
     <string name="feature_library_artists_1e19fb">"艺术家"</string>
     <string name="feature_library_genres_8c2a11">"曲风"</string>
+    <string name="feature_library_composers_4a91c2">"作曲"</string>
     <string name="feature_library_loading_genres_4e91aa">"正在加载曲风"</string>
     <string name="feature_library_failed_to_load_genres_b7c102">"无法加载曲风"</string>
     <string name="feature_library_this_library_has_no_genres_to_show_yet_11a90e">"这个曲库还没有曲风"</string>
@@ -196,6 +197,8 @@
     <string name="feature_library_this_playlist_is_empty_add_songs_from_a_bebd89">"这个歌单还是空的。从歌曲菜单加入曲目。"</string>
     <string name="feature_library_title_af1111">"标题"</string>
     <string name="feature_library_track_000e4d">"音轨"</string>
+    <string name="feature_library_go_to_album">查看专辑</string>
+    <string name="feature_library_go_to_artist">查看艺术家</string>
     <string name="feature_library_track_info_36a07b">"歌曲信息"</string>
     <string name="feature_library_tracks_2d80e8">"曲目"</string>
     <string name="feature_library_unknown_album_8831c3">"未知专辑"</string>

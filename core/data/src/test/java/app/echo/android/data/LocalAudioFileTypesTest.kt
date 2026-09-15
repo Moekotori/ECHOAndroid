@@ -18,8 +18,29 @@ class LocalAudioFileTypesTest {
     @Test
     fun audioMimeIsAcceptedEvenWithoutKnownExtension() {
         assertTrue(LocalAudioFileTypes.isSupported("song.bin", "audio/flac"))
+        assertTrue(LocalAudioFileTypes.isSupported("track", "application/ogg"))
+        assertTrue(LocalAudioFileTypes.isSupported("track", "application/x-flac"))
         assertFalse(LocalAudioFileTypes.isSupported("notes.txt", "text/plain"))
         assertFalse(LocalAudioFileTypes.isSupported("track.wv", null))
+    }
+
+    @Test
+    fun ffmpegBackedContainersAreImportedByExtension() {
+        assertEquals("audio/ac3", LocalAudioFileTypes.mimeTypeForFileName("surround.ac3"))
+        assertEquals("audio/eac3", LocalAudioFileTypes.mimeTypeForFileName("atmos.eac3"))
+        assertEquals("audio/eac3", LocalAudioFileTypes.mimeTypeForFileName("atmos.ec3"))
+        assertEquals("audio/vnd.dts", LocalAudioFileTypes.mimeTypeForFileName("film.dts"))
+        assertEquals("audio/amr", LocalAudioFileTypes.mimeTypeForFileName("memo.amr"))
+        assertTrue(LocalAudioFileTypes.isSupported("surround.ac3", null))
+        assertTrue(LocalAudioFileTypes.isSupported("film.dts", null))
+        assertTrue(LocalAudioFileTypes.isSupported("memo.amr", null))
+    }
+
+    @Test
+    fun apeIsNotImportedBecauseTheDecoderIsNotBuilt() {
+        assertFalse(LocalAudioFileTypes.isSupported("album.ape", null))
+        assertFalse(LocalAudioFileTypes.isSupported("album.ape", "audio/ape"))
+        assertEquals(null, LocalAudioFileTypes.mimeTypeForFileName("album.ape"))
     }
 
     @Test
@@ -27,8 +48,9 @@ class LocalAudioFileTypesTest {
         assertFalse(LocalAudioFileTypes.isSupported("clip.mp4", "video/mp4"))
         assertFalse(LocalAudioFileTypes.isSupported("clip.m4a", "video/mp4"))
         assertTrue(LocalAudioFileTypes.isSupported("song.mp4", "audio/mp4"))
-        assertTrue(LocalAudioFileTypes.isSupported("song.mp4", null))
+        assertFalse(LocalAudioFileTypes.isSupported("song.mp4", null))
         assertTrue(LocalAudioFileTypes.isSupported("song.m4a", "audio/mp4"))
+        assertTrue(LocalAudioFileTypes.isSupported("song.m4a", null))
     }
 
     @Test

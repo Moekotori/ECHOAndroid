@@ -365,6 +365,9 @@ internal fun SubsonicSong.toLibraryTrackEntity(
 }
 
 internal fun parseSubsonicResponse(body: String, context: Context? = null): JSONObject {
+    if (looksLikeHtml(body)) {
+        error(subsonicIncompatibleResponseMessage(context))
+    }
     val json = runCatching { JSONObject(body) }
         .getOrElse { error(subsonicInvalidJsonMessage(context)) }
     return json.subsonicRoot(context)
@@ -373,6 +376,35 @@ internal fun parseSubsonicResponse(body: String, context: Context? = null): JSON
 internal fun subsonicHttpBody(responseCode: Int, successBody: String?, errorBody: String?): String? {
     val body = if (responseCode in 200..299) successBody else (errorBody ?: successBody)
     return body?.takeIf { it.isNotBlank() }
+}
+
+internal fun subsonicHttpGetResult(
+    requestUrl: String,
+    responseCode: Int,
+    isRedirect: Boolean,
+    location: String?,
+    body: String?,
+    context: Context? = null,
+): String {
+    if (isRedirect || responseCode in 300..399) {
+        error(subsonicRedirectFailureMessage(requestUrl, location, context))
+    }
+    val text = body?.takeIf { it.isNotBlank() }
+        ?: error(subsonicHttpStatusMessage(responseCode, context))
+    if (looksLikeHtml(text)) {
+        error(subsonicIncompatibleResponseMessage(context))
+    }
+    return subsonicHttpBody(
+        responseCode = responseCode,
+        successBody = if (responseCode in 200..299) text else null,
+        errorBody = if (responseCode !in 200..299) text else null,
+    ) ?: error(subsonicHttpStatusMessage(responseCode, context))
+}
+
+internal fun looksLikeHtml(body: String): Boolean {
+    val trimmed = body.trimStart()
+    return trimmed.startsWith("<!DOCTYPE html", ignoreCase = true) ||
+        trimmed.startsWith("<html", ignoreCase = true)
 }
 
 private fun JSONObject.subsonicRoot(context: Context? = null): JSONObject {
@@ -458,10 +490,14 @@ private fun defaultHttpGet(url: String, context: Context? = null): String {
                 error(subsonicResponseTooLargeMessage(context))
             }
             val text = String(bytes, StandardCharsets.UTF_8)
-            val successBody = if (response.isSuccessful) text else null
-            val errorBody = if (!response.isSuccessful) text else null
-            subsonicHttpBody(response.code, successBody, errorBody)
-                ?: error(subsonicHttpStatusMessage(response.code, context))
+            subsonicHttpGetResult(
+                requestUrl = url,
+                responseCode = response.code,
+                isRedirect = response.isRedirect,
+                location = response.header("Location"),
+                body = text,
+                context = context,
+            )
         }
     } catch (cancelled: CancellationException) {
         throw cancelled
@@ -539,6 +575,32 @@ internal fun subsonicIncompatibleResponseMessage(context: Context? = null): Stri
         R.string.subsonic_incompatible,
         "This is not a Subsonic-compatible response. Check the server URL.",
     )
+
+internal fun subsonicRedirectFailureMessage(
+    requestUrl: String,
+    location: String?,
+    context: Context? = null,
+): String {
+    val host = redirectTargetHost(requestUrl, location)
+    return if (host.isNullOrBlank()) {
+        context.subsonicString(
+            R.string.subsonic_redirected_unknown,
+            "The server redirected to a different site. This address isn't serving Navidrome/Subsonic. If you use NAS remote access, make sure the NAS is online.",
+        )
+    } else {
+        context.subsonicString(
+            R.string.subsonic_redirected,
+            "The server redirected to $host. This address isn't serving Navidrome/Subsonic. If you use NAS remote access, make sure the NAS is online.",
+            host,
+        )
+    }
+}
+
+internal fun redirectTargetHost(requestUrl: String, location: String?): String? {
+    if (location.isNullOrBlank()) return null
+    val resolved = runCatching { URI(requestUrl).resolve(location.trim()) }.getOrNull() ?: return null
+    return resolved.host?.takeIf { it.isNotBlank() }
+}
 
 internal fun subsonicRequestFailedMessage(context: Context? = null): String =
     context.subsonicString(R.string.subsonic_request_failed, "Subsonic authentication or request failed.")

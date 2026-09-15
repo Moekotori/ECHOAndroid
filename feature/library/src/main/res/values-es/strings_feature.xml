@@ -196,6 +196,8 @@
     <string name="feature_library_this_playlist_is_empty_add_songs_from_a_bebd89">"Esta lista está vacía. Agrega canciones desde el menú de una canción."</string>
     <string name="feature_library_title_af1111">"Título"</string>
     <string name="feature_library_track_000e4d">"Canción"</string>
+    <string name="feature_library_go_to_album">Ir al álbum</string>
+    <string name="feature_library_go_to_artist">Ir al artista</string>
     <string name="feature_library_track_info_36a07b">"Info de la canción"</string>
     <string name="feature_library_tracks_2d80e8">"Canciones"</string>
     <string name="feature_library_unknown_album_8831c3">"Álbum desconocido"</string>

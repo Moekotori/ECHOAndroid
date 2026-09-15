@@ -27,6 +27,7 @@ internal fun EchoHomePage(
     val recentPlaybackArtists by viewModel.recentPlaybackArtists.collectAsStateWithLifecycle()
     val recentPlaybackHeatmap by viewModel.recentPlaybackHeatmap.collectAsStateWithLifecycle()
     val recentlyAddedAlbums by viewModel.recentlyAddedAlbums.collectAsStateWithLifecycle()
+    val recentlyPlayedTracks by viewModel.recentlyPlayedTracks.collectAsStateWithLifecycle()
     val favoriteAlbums by viewModel.favoriteAlbums.collectAsStateWithLifecycle()
     val homeRecommendedAlbums by viewModel.recommendedAlbums.collectAsStateWithLifecycle()
     val rediscoveredAlbums by viewModel.rediscoveredAlbums.collectAsStateWithLifecycle()
@@ -60,5 +61,7 @@ internal fun EchoHomePage(
         onOpenLibrary = onOpenLibrary,
         onOpenConnect = onOpenConnect,
         onOpenSearch = onOpenSearch,
+        recentPlayedTracks = recentlyPlayedTracks,
+        onPlayTrack = viewModel::play,
     )
 }

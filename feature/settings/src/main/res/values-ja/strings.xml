@@ -65,6 +65,7 @@
     <string name="settings_notification_permission">メディア通知の権限</string>
     <string name="settings_notification_granted">許可済み。再生コントロール通知を表示できます</string>
     <string name="settings_notification_denied">未許可だとロック画面通知やフォアグラウンドサービスが使えないことがあります</string>
+    <string name="settings_notification_not_required">この Android バージョンでは通知の権限は不要です</string>
     <string name="settings_on">オン</string>
     <string name="settings_allow">許可</string>
     <string name="settings_test_usb">USB 独占ドライバーをテスト</string>
@@ -83,6 +84,12 @@
     <string name="settings_watched_folder_rescan_detail">ECHO に戻ったとき、以前スキャンしたフォルダーを差分更新します。初期状態はオフです</string>
     <string name="settings_local_music">端末内の音楽</string>
     <string name="settings_local_music_detail">曲、アルバム、アーティスト、スキャンを開く</string>
+    <string name="settings_library_cleanup">欠損と重複を整理</string>
+    <string name="settings_library_cleanup_detail">ファイルがない曲を外し、同一曲の余分なコピーをまとめます</string>
+    <string name="settings_library_cleanup_confirm">ライブラリ索引から欠損ファイルと重複コピーを外します。ディスク上のファイルは削除しません。</string>
+    <string name="settings_library_cleanup_action">整理</string>
+    <string name="settings_library_cleanup_busy">整理中…</string>
+    <string name="settings_library_cleanup_result">欠損 %1$d 曲、重複 %2$d 件を削除しました。</string>
     <string name="settings_section_about">情報</string>
     <string name="settings_backup_export">バックアップを書き出す</string>
     <string name="settings_backup_export_detail">設定、EQ、プレイリスト、お気に入り。秘密情報は含みません。</string>

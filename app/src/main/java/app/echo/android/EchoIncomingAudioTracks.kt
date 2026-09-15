@@ -11,6 +11,7 @@ import app.echo.android.data.readLocalAudioTags
 import app.echo.android.data.toEchoTrack
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.LibrarySource
+import app.echo.android.model.platform.EchoPlatformCapabilities
 
 fun tryTakePersistableReadPermission(context: Context, uri: Uri) {
     if (uri.scheme != "content") return
@@ -52,7 +53,7 @@ private fun readStandaloneIncomingTrack(context: Context, uri: Uri): EchoTrack {
             ?.toLongOrNull()
             ?.takeIf { it > 0L }
             ?: 0L
-        val sampleRateHz = if (Build.VERSION.SDK_INT >= 31) {
+        val sampleRateHz = if (EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT).mediaMetadataSampleRate) {
             retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)
                 ?.toIntOrNull()
                 ?.takeIf { it > 0 }

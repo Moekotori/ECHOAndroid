@@ -709,7 +709,9 @@ fun BlurredArtworkBackground(
                     .fillMaxSize()
                     .scale(artworkScale)
                     .then(
-                        if (effectiveArtworkBlur > 0.dp) {
+                        if (LocalEchoPlatformCapabilities.current.renderEffectBlur &&
+                            effectiveArtworkBlur > 0.dp
+                        ) {
                             Modifier.blur(effectiveArtworkBlur)
                         } else {
                             Modifier

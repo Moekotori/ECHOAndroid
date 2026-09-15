@@ -456,7 +456,7 @@ internal fun playbackItemExtras(
     return extras.takeIf { !it.isEmpty }
 }
 
-private fun MediaItem.Builder.applyClip(startMs: Long, endMs: Long): MediaItem.Builder {
+internal fun MediaItem.Builder.applyClip(startMs: Long, endMs: Long): MediaItem.Builder {
     if (startMs <= 0L && endMs <= 0L) return this
     val clipping = MediaItem.ClippingConfiguration.Builder()
         .setStartPositionMs(startMs.coerceAtLeast(0L))

@@ -108,6 +108,7 @@ import app.echo.android.ui.shell.EchoPagerPage
 import app.echo.android.ui.shell.dockTab
 import app.echo.android.ui.shell.motionDuration
 import app.echo.android.ui.shell.pagerPage
+import app.echo.android.ui.shell.rememberTabPagerNestedScrollConnection
 import app.echo.android.ui.shell.routeMotionSpec
 import app.echo.android.ui.shell.dockNavigationMotionSpec
 import app.echo.android.data.EchoBackgroundMode
@@ -816,21 +817,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     }
     fun selectDockTab(tab: EchoTab) = navigateToPage(tab.pagerPage)
     fun onNowPlayingCast() {
+        if (echoLinkSession.castActive.value) return
         val connected = remoteClient.status.value.connectionState == EchoRemoteConnectionState.Connected
         val canCast = phoneCastPlan !is EchoLinkCastPlan.Blocked && playbackStatus.track != null
-        when {
-            echoLinkSession.castActive.value -> {
-                nowPlayingExpanded = false
-                openCastTabNonce += 1
-                selectDockTab(EchoTab.Connect)
-            }
-            connected && canCast -> performPhoneCast()
-            else -> {
-                nowPlayingExpanded = false
-                openCastTabNonce += 1
-                selectDockTab(EchoTab.Connect)
-            }
-        }
+        if (connected && canCast) performPhoneCast()
     }
     LaunchedEffect(openCastRequest) {
         if (openCastRequest) {
@@ -887,21 +877,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     LaunchedEffect(tabPagerState.settledPage) {
         EchoPagerPage.entries[tabPagerState.settledPage].dockTab?.let { settledTab ->
             if (settledTab.ordinal != selectedTab) selectedTab = settledTab.ordinal
-        }
-    }
-    LaunchedEffect(tabPagerState.isScrollInProgress, tabPagerState.currentPage) {
-        if (routeNavigationJob[0]?.isActive != true &&
-            !tabPagerState.isScrollInProgress &&
-            tabPagerState.currentPageOffsetFraction.absoluteValue > 0.001f
-        ) {
-            tabPagerState.animateScrollToPage(
-                page = tabPagerState.currentPage,
-                animationSpec = routeMotionSpec(
-                    tabPagerState.settledPage,
-                    tabPagerState.currentPage,
-                    effectivePerformanceMode,
-                ),
-            )
         }
     }
 
@@ -1000,12 +975,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     beyondViewportPageCount = if (effectivePerformanceMode.isLightweight) 0 else 1,
                     flingBehavior = PagerDefaults.flingBehavior(
                         state = tabPagerState,
-                        snapAnimationSpec = routeMotionSpec(
-                            fromPage = tabPagerState.currentPage,
-                            toPage = tabPagerState.currentPage,
-                            effectivePerformanceMode = effectivePerformanceMode,
-                        ),
+                        snapAnimationSpec = remember(effectivePerformanceMode) {
+                            routeMotionSpec(0, 1, effectivePerformanceMode)
+                        },
                     ),
+                    pageNestedScrollConnection = rememberTabPagerNestedScrollConnection(tabPagerState),
                     modifier = Modifier.fillMaxSize(),
                 ) { page ->
                     Box(modifier = Modifier.fillMaxSize()) {
@@ -1204,6 +1178,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onTrackTransitionsChange = viewModel::setTrackTransitions,
                                 onUsbExclusiveAutoRequestOnStartupChange = viewModel::setUsbExclusiveAutoRequestOnStartup,
                                 onTestUsbExclusiveDriver = viewModel::testUsbExclusiveDriver,
+                                onPinQueueOffline = viewModel::pinCurrentQueueOffline,
                                 onPickImageBackground = { backgroundImageLauncher.launch(arrayOf("image/*")) },
                                 onPickVideoBackground = { backgroundVideoLauncher.launch(arrayOf("video/*")) },
                                 onClearCustomBackground = {
@@ -1277,6 +1252,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onOpenLibrary = { selectDockTab(EchoTab.Library) },
                                 onOpenConnect = { selectDockTab(EchoTab.Connect) },
                                 onClearLocalLibraryIndex = viewModel::clearLocalLibraryIndex,
+                                onCleanupLocalLibrary = {
+                                    val result = viewModel.cleanupLocalLibrary()
+                                    result.missingRemoved to result.duplicatesRemoved
+                                },
                                 errorLogCount = errorLogCount,
                                 onOpenErrorLog = { errorLogVisible = true },
                                 backupNotice = backupNotice,
@@ -1534,28 +1513,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                         lyricsImportTrackId = playbackStatus.track?.id
                         lyricsImportLauncher.launch(LyricsDocumentMimeTypes)
                     },
-                    onOpenArtist = {
-                        viewModel.openCurrentPlaybackArtist { artist ->
-                            detailReturnPage = EchoTab.entries[selectedTab].pagerPage
-                            selectedAlbum = null
-                            selectedFolder = null
-                            selectedPlaylist = null
-                            selectedArtist = artist
-                            selectDockTab(EchoTab.Library)
-                            nowPlayingExpanded = false
-                        }
-                    },
-                    onOpenAlbum = {
-                        viewModel.openCurrentPlaybackAlbum { album ->
-                            detailReturnPage = EchoTab.entries[selectedTab].pagerPage
-                            selectedArtist = null
-                            selectedFolder = null
-                            selectedPlaylist = null
-                            selectedAlbum = album
-                            selectDockTab(EchoTab.Library)
-                            nowPlayingExpanded = false
-                        }
-                    },
                     onImportLyricsFont = {
                         fontImportTarget = FontImportTarget.Lyrics
                         fontImportLauncher.launch(FontDocumentMimeTypes)
@@ -1584,11 +1541,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     onClearQueue = viewModel::clearQueue,
                     onCycleRepeatMode = viewModel::cycleRepeatMode,
                     onToggleShuffle = viewModel::toggleShuffle,
-                    onOpenLibrary = {
-                        queueSheetVisible = false
-                        nowPlayingExpanded = false
-                        selectDockTab(EchoTab.Library)
-                    },
                     modifier = Modifier.fillMaxSize(),
             )
             AnimatedVisibility(

@@ -20,7 +20,7 @@
     <string name="dsp_natural">自然</string>
     <string name="dsp_strong">明顯</string>
     <string name="dsp_peq">編輯參數均衡器</string>
-    <string name="dsp_peq_detail">最多 12 段。套用後更新頻響並儲存；編輯會轉為手動設定，並重新計算防削波預增益。</string>
+    <string name="dsp_peq_detail">最多 32 段。套用後更新頻響並儲存；高通/低通會保留斜率，並重新計算防削波預增益。</string>
     <string name="dsp_add_band">新增濾波段</string>
     <string name="dsp_band">濾波段 %1$d</string>
     <string name="dsp_peak">峰值 / 凹陷</string>
@@ -32,7 +32,9 @@
     <string name="dsp_band_pass">帶通濾波</string>
     <string name="dsp_frequency">頻率 · Hz</string>
     <string name="dsp_band_gain">增益 · dB</string>
-    <string name="dsp_peq_range">20–20000 Hz · −12 至 +12 dB · Q 0.1–10</string>
+    <string name="dsp_peq_range">20–20000 Hz · −24 至 +18 dB · Q 0.1–100</string>
+    <string name="dsp_slope">斜率</string>
+    <string name="dsp_slope_oct">%1$s dB/oct</string>
     <string name="dsp_apply">套用並儲存</string>
     <string name="dsp_remove">移除</string>
 </resources>

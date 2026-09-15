@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
+import app.echo.android.model.library.CueSheetPolicy
 import app.echo.android.model.playback.EchoLinkPlaybackUri
 
 enum class EchoPlaybackBrowseKind {
@@ -13,9 +14,15 @@ enum class EchoPlaybackBrowseKind {
     Playlists,
     Favorites,
     Tracks,
+    Folders,
+    Genres,
+    Radio,
     Album,
     Artist,
     Playlist,
+    Folder,
+    Genre,
+    RadioStation,
     Track,
 }
 
@@ -30,6 +37,8 @@ data class EchoPlaybackBrowseItem(
     val playable: Boolean,
     val durationMs: Long = 0L,
     val kind: EchoPlaybackBrowseKind = EchoPlaybackBrowseKind.Track,
+    val clipStartMs: Long = 0L,
+    val clipEndMs: Long = 0L,
 )
 
 interface EchoPlaybackCatalog {
@@ -103,6 +112,8 @@ fun EchoPlaybackBrowseItem.toMediaItem(): MediaItem {
                     playUri = uri,
                     persistUri = persistUri ?: EchoLinkPlaybackUri.persistableUri(mediaId, uri),
                     artworkUri = artworkUri,
+                    clipStartMs = clipStartMs,
+                    clipEndMs = clipEndMs,
                 )
             },
         )
@@ -111,7 +122,10 @@ fun EchoPlaybackBrowseItem.toMediaItem(): MediaItem {
         .setMediaId(mediaId)
         .setMediaMetadata(metadata)
     if (playable) {
-        playUri?.takeIf { it.isNotBlank() }?.let { builder.setUri(it) }
+        playUri?.takeIf { it.isNotBlank() }?.let { uri ->
+            builder.setUri(CueSheetPolicy.playbackUri(uri))
+            builder.applyClip(clipStartMs, clipEndMs)
+        }
     }
     return builder.build()
 }
@@ -121,12 +135,18 @@ private fun EchoPlaybackBrowseKind.toMediaType(): Int = when (this) {
     EchoPlaybackBrowseKind.Root,
     EchoPlaybackBrowseKind.Favorites,
     EchoPlaybackBrowseKind.Tracks,
+    EchoPlaybackBrowseKind.Folders,
+    EchoPlaybackBrowseKind.Folder,
     -> MediaMetadata.MEDIA_TYPE_FOLDER_MIXED
     EchoPlaybackBrowseKind.Albums -> MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS
     EchoPlaybackBrowseKind.Artists -> MediaMetadata.MEDIA_TYPE_FOLDER_ARTISTS
     EchoPlaybackBrowseKind.Playlists -> MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS
+    EchoPlaybackBrowseKind.Genres -> MediaMetadata.MEDIA_TYPE_FOLDER_GENRES
+    EchoPlaybackBrowseKind.Radio -> MediaMetadata.MEDIA_TYPE_FOLDER_RADIO_STATIONS
     EchoPlaybackBrowseKind.Album -> MediaMetadata.MEDIA_TYPE_ALBUM
     EchoPlaybackBrowseKind.Artist -> MediaMetadata.MEDIA_TYPE_ARTIST
     EchoPlaybackBrowseKind.Playlist -> MediaMetadata.MEDIA_TYPE_PLAYLIST
+    EchoPlaybackBrowseKind.Genre -> MediaMetadata.MEDIA_TYPE_GENRE
+    EchoPlaybackBrowseKind.RadioStation -> MediaMetadata.MEDIA_TYPE_RADIO_STATION
     EchoPlaybackBrowseKind.Track -> MediaMetadata.MEDIA_TYPE_MUSIC
 }

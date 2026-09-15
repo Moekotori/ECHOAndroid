@@ -3,6 +3,7 @@
 <resources>
     <string name="feature_home_add_to_queue_1775d3">"대기열에 추가"</string>
     <string name="feature_home_added_930006">"추가일"</string>
+    <string name="feature_home_tracks_9c2e11">"트랙"</string>
     <string name="feature_home_adjust_the_local_queue_f4499e">"로컬 대기열 조정"</string>
     <string name="feature_home_albums_e68c2b">"앨범"</string>
     <string name="feature_home_albums_you_like_95a2b9">"좋아하는 앨범"</string>

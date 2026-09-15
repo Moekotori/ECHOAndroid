@@ -20,7 +20,7 @@
     <string name="dsp_natural">Naturel</string>
     <string name="dsp_strong">Fort</string>
     <string name="dsp_peq">Modifier l\'égaliseur paramétrique</string>
-    <string name="dsp_peq_detail">Jusqu\'à 12 filtres. Appliquez chaque modification pour mettre à jour la réponse et l\'enregistrer. L\'édition crée une configuration manuelle et recalcule la marge.</string>
+    <string name="dsp_peq_detail">Jusqu\'à 32 filtres. Appliquez chaque modification pour mettre à jour la réponse et l\'enregistrer. Les passe-haut/passe-bas conservent leur pente. La marge est recalculée.</string>
     <string name="dsp_add_band">Ajouter un filtre</string>
     <string name="dsp_band">Filtre %1$d</string>
     <string name="dsp_peak">Crête / creux</string>
@@ -32,7 +32,9 @@
     <string name="dsp_band_pass">Passe-bande</string>
     <string name="dsp_frequency">Fréquence · Hz</string>
     <string name="dsp_band_gain">Gain · dB</string>
-    <string name="dsp_peq_range">20–20000 Hz · −12 à +12 dB · Q 0,1–10</string>
+    <string name="dsp_peq_range">20–20000 Hz · −24 à +18 dB · Q 0,1–100</string>
+    <string name="dsp_slope">Pente</string>
+    <string name="dsp_slope_oct">%1$s dB/oct</string>
     <string name="dsp_apply">Appliquer et enregistrer</string>
     <string name="dsp_remove">Supprimer</string>
 </resources>

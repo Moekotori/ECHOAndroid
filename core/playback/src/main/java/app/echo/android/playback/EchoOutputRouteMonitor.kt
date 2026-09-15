@@ -15,6 +15,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import androidx.core.content.ContextCompat
+import app.echo.android.model.platform.EchoPlatformCapabilities
 import app.echo.android.model.playback.EchoOutputDeviceKind
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -110,7 +111,7 @@ class EchoOutputRouteMonitor(context: Context) {
     }
 
     private fun outputDevices(): List<AudioDeviceInfo> {
-        if (Build.VERSION.SDK_INT >= 33) {
+        if (EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT).audioDevicesForAttributes) {
             val routed = runCatching {
                 audioManager.getAudioDevicesForAttributes(mediaAttributes())
             }.getOrNull().orEmpty()
@@ -135,7 +136,7 @@ class EchoOutputRouteMonitor(context: Context) {
         appContext.getSystemService(BluetoothManager::class.java)?.adapter
 
     private fun hasBluetoothConnectPermission(): Boolean {
-        val permission = if (Build.VERSION.SDK_INT >= 31) {
+        val permission = if (EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT).bluetoothConnectRuntimePermission) {
             Manifest.permission.BLUETOOTH_CONNECT
         } else {
             Manifest.permission.BLUETOOTH
@@ -183,7 +184,7 @@ class EchoOutputRouteMonitor(context: Context) {
         }.getOrNull()
 
     private fun deviceAddress(device: AudioDeviceInfo): String? {
-        if (Build.VERSION.SDK_INT < 28) return null
+        if (!EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT).audioDeviceAddress) return null
         val value = device.address.trim()
         return value.takeIf { it.isNotEmpty() }
     }

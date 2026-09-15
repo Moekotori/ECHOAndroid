@@ -264,6 +264,9 @@ class EchoLinkSession(private val application: Application) {
                 runCatching { chromecastClient.play(renderer, current, positionMs) }
             }
             result.onSuccess {
+                dlnaItems = items
+                dlnaIndex = index
+                dlnaPaused = false
                 markCastStarted(renderer.name)
                 onSuccess()
             }.onFailure { error ->
@@ -278,6 +281,12 @@ class EchoLinkSession(private val application: Application) {
     }
 
     fun dlnaPlayPause() {
+        if (chromecastClient.isActive()) {
+            scope.launch(Dispatchers.IO) {
+                runCatching { chromecastClient.togglePause() }
+            }
+            return
+        }
         val renderer = _dlnaRenderer.value ?: return
         val pause = !dlnaPaused
         scope.launch {
@@ -291,10 +300,20 @@ class EchoLinkSession(private val application: Application) {
     }
 
     fun dlnaSkip(delta: Int) {
-        val renderer = _dlnaRenderer.value ?: return
         val nextIndex = dlnaIndex + delta
         val items = dlnaItems
         val item = items.getOrNull(nextIndex) ?: return
+        if (chromecastClient.isActive()) {
+            scope.launch(Dispatchers.IO) {
+                runCatching { chromecastClient.playNext(item) }
+                    .onSuccess {
+                        dlnaIndex = nextIndex
+                        dlnaPaused = false
+                    }
+            }
+            return
+        }
+        val renderer = _dlnaRenderer.value ?: return
         scope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
@@ -316,6 +335,7 @@ class EchoLinkSession(private val application: Application) {
     }
 
     fun stopLocalCast() {
+        runCatching { chromecastClient.close() }
         _dlnaRenderer.value = null
         dlnaItems = emptyList()
         dlnaIndex = 0
@@ -328,6 +348,13 @@ class EchoLinkSession(private val application: Application) {
     }
 
     fun stopCastPlayback() {
+        if (chromecastClient.isActive()) {
+            scope.launch {
+                withContext(Dispatchers.IO) { runCatching { chromecastClient.stop() } }
+                stopLocalCast()
+            }
+            return
+        }
         val renderer = _dlnaRenderer.value
         if (renderer != null) {
             scope.launch {

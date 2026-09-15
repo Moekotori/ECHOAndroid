@@ -5,22 +5,28 @@ import app.echo.android.connect.EchoLinkCastBlockReason
 import app.echo.android.connect.EchoLinkDiscoveryState
 import androidx.compose.ui.res.stringResource
 
-import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerDefaults
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoContentMaxWidth
+import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import kotlinx.coroutines.launch
 import app.echo.android.model.connect.EchoLanRenderer
 import app.echo.android.model.connect.EchoLinkLanDevice
 import app.echo.android.model.connect.EchoRemoteConnectionState
@@ -104,13 +110,26 @@ fun ConnectScreen(
     activeRendererId: String? = null,
     onCastToRenderer: (EchoLanRenderer) -> Unit = {},
 ) {
-    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    val pagerState = rememberPagerState { 3 }
     val scrollStates = listOf(rememberScrollState(), rememberScrollState(), rememberScrollState())
     val savedTabs = rememberSaveableStateHolder()
     val keyboard = LocalSoftwareKeyboardController.current
     val scheme = MaterialTheme.colorScheme
+    val scope = rememberCoroutineScope()
+    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    val innerPagerNestedScroll = rememberPassThroughPagerNestedScroll(pagerState)
+    fun selectTab(index: Int) {
+        keyboard?.hide()
+        scope.launch {
+            if (lightweight) pagerState.scrollToPage(index)
+            else pagerState.animateScrollToPage(index)
+        }
+    }
     LaunchedEffect(openCastTabNonce) {
-        if (openCastTabNonce > 0) selectedTab = 2
+        if (openCastTabNonce > 0) {
+            if (lightweight) pagerState.scrollToPage(2)
+            else pagerState.animateScrollToPage(2)
+        }
     }
     val tabs = listOf(
         stringResource(L10nR.string.feature_connect_library_sources_09e6db),
@@ -123,20 +142,20 @@ fun ConnectScreen(
                 Text(stringResource(L10nR.string.feature_connect_connect_c7c091),
                     Modifier.padding(horizontal = 24.dp, vertical = 20.dp),
                     style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-                SecondaryTabRow(selectedTabIndex = selectedTab, containerColor = scheme.background) {
+                SecondaryTabRow(selectedTabIndex = pagerState.currentPage, containerColor = scheme.background) {
                     tabs.forEachIndexed { index, label ->
-                        Tab(selected = selectedTab == index, onClick = { keyboard?.hide(); selectedTab = index },
+                        Tab(selected = pagerState.currentPage == index, onClick = { selectTab(index) },
                             unselectedContentColor = scheme.onSurfaceVariant,
-                            text = { Text(label, fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.SemiBold) })
+                            text = { Text(label, fontWeight = if (pagerState.currentPage == index) FontWeight.Bold else FontWeight.SemiBold) })
                     }
                 }
             }
-            AnimatedContent(
-                targetState = selectedTab,
+            HorizontalPager(
+                state = pagerState,
                 modifier = Modifier.widthIn(max = LocalEchoContentMaxWidth.current)
-                    .fillMaxWidth().weight(1f).clipToBounds(),
-                transitionSpec = { EchoMotion.tabSwitch(targetState > initialState) },
-                label = "ConnectTabs",
+                    .fillMaxWidth().weight(1f),
+                beyondViewportPageCount = 0,
+                pageNestedScrollConnection = innerPagerNestedScroll,
             ) { tab ->
                 savedTabs.SaveableStateProvider(tab) {
                     Column(
@@ -232,7 +251,7 @@ fun ConnectScreen(
                                 activeRendererId = activeRendererId,
                                 onCastToRenderer = onCastToRenderer,
                                 onRequestPairing = {
-                                    selectedTab = 1
+                                    selectTab(1)
                                     onRequestPairing()
                                 },
                                 onRefreshLanDevices = onRefreshLanDevices,

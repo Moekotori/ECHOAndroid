@@ -543,8 +543,95 @@ class SubsonicRemoteSourceTest {
 
     @Test
     fun invalidJsonUsesParseMessage() {
-        val thrown = runCatching { parseSubsonicResponse("<html>502</html>") }.exceptionOrNull()
+        val thrown = runCatching { parseSubsonicResponse("{not-json") }.exceptionOrNull()
         assertEquals(subsonicInvalidJsonMessage(), thrown?.message)
+    }
+
+    @Test
+    fun htmlBodyUsesIncompatibleMessage() {
+        val thrown = runCatching { parseSubsonicResponse("<html>302 Found</html>") }.exceptionOrNull()
+        assertEquals(subsonicIncompatibleResponseMessage(), thrown?.message)
+        assertTrue(looksLikeHtml("<!DOCTYPE html><html></html>"))
+        assertFalse(looksLikeHtml("""{"subsonic-response":{"status":"ok"}}"""))
+    }
+
+    @Test
+    fun pingHtmlUsesIncompatibleMessage() {
+        val client = SubsonicClient(
+            endpoint = SubsonicEndpoint(
+                baseUrl = "https://navidrome.example",
+                username = "user",
+                password = "pass",
+            ),
+            httpGet = { "<html><head><title>302 Found</title></head></html>" },
+        )
+        val thrown = runCatching { client.ping() }.exceptionOrNull()
+        assertEquals(subsonicIncompatibleResponseMessage(), thrown?.message)
+    }
+
+    @Test
+    fun offsiteRedirectUsesRedirectMessage() {
+        val requestUrl = "https://tunnel.example/rest/ping.view"
+        val location = "https://www.vendor.example/"
+        val thrown = runCatching {
+            subsonicHttpGetResult(
+                requestUrl = requestUrl,
+                responseCode = 302,
+                isRedirect = true,
+                location = location,
+                body = "<html>302 Found</html>",
+            )
+        }.exceptionOrNull()
+        assertEquals(subsonicRedirectFailureMessage(requestUrl, location), thrown?.message)
+        assertTrue(thrown?.message.orEmpty().contains("www.vendor.example"))
+        assertEquals("www.vendor.example", redirectTargetHost(requestUrl, location))
+        assertFalse(shouldFollowSameHostRedirect(requestUrl, location))
+    }
+
+    @Test
+    fun redirectWithoutLocationUsesUnknownRedirectMessage() {
+        val thrown = runCatching {
+            subsonicHttpGetResult(
+                requestUrl = "https://tunnel.example/rest/ping.view",
+                responseCode = 302,
+                isRedirect = true,
+                location = null,
+                body = "<html>302 Found</html>",
+            )
+        }.exceptionOrNull()
+        assertEquals(
+            subsonicRedirectFailureMessage("https://tunnel.example/rest/ping.view", null),
+            thrown?.message,
+        )
+    }
+
+    @Test
+    fun htmlHttpSuccessUsesIncompatibleMessage() {
+        val thrown = runCatching {
+            subsonicHttpGetResult(
+                requestUrl = "https://navidrome.example/rest/ping.view",
+                responseCode = 200,
+                isRedirect = false,
+                location = null,
+                body = "<!DOCTYPE html><html><body>login</body></html>",
+            )
+        }.exceptionOrNull()
+        assertEquals(subsonicIncompatibleResponseMessage(), thrown?.message)
+    }
+
+    @Test
+    fun failedJsonThroughHttpResultStillSurfacesServerError() {
+        val failedJson =
+            """{"subsonic-response":{"status":"failed","error":{"code":40,"message":"Wrong username or password"}}}"""
+        val body = subsonicHttpGetResult(
+            requestUrl = "https://navidrome.example/rest/ping.view",
+            responseCode = 401,
+            isRedirect = false,
+            location = null,
+            body = failedJson,
+        )
+        val thrown = runCatching { parseSubsonicResponse(body) }.exceptionOrNull()
+        assertEquals("Wrong username or password", thrown?.message)
     }
 
     @Test

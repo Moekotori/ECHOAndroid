@@ -24,5 +24,7 @@
     <string name="subsonic_response_too_large">Ответ сервера слишком большой для чтения.</string>
     <string name="subsonic_invalid_json">Сервер вернул данные, которые не являются корректным JSON.</string>
     <string name="subsonic_incompatible">Это не ответ, совместимый с Subsonic. Проверьте URL сервера.</string>
+    <string name="subsonic_redirected">Сервер перенаправил на %1$s. Этот адрес не отдаёт Navidrome/Subsonic. Если вы используете удалённый доступ NAS, убедитесь, что NAS в сети.</string>
+    <string name="subsonic_redirected_unknown">Сервер перенаправил на другой сайт. Этот адрес не отдаёт Navidrome/Subsonic. Если вы используете удалённый доступ NAS, убедитесь, что NAS в сети.</string>
     <string name="subsonic_request_failed">Ошибка аутентификации или запроса Subsonic.</string>
 </resources>

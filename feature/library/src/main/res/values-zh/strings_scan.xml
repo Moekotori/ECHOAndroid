@@ -10,7 +10,7 @@
     <string name="scan_1_mb">1 MB</string>
     <string name="scan_skip_non_music">跳过录音、铃声和通知音目录</string>
     <string name="scan_skip_hidden">跳过隐藏目录</string>
-    <string name="scan_filter_hint">保留时长或大小未知的文件。时长、大小和格式不会删除已入库歌曲；隐藏目录、非音乐目录和忽略文件夹会在下次扫描时从曲库移除。</string>
+    <string name="scan_filter_hint">保留时长或大小未知的文件。时长、大小和格式不会删除已入库歌曲；隐藏目录、非音乐目录和忽略文件夹会在你下次主动扫描时从曲库移除。</string>
     <string name="scan_choose_folder">选择文件夹并扫描</string>
     <string name="scan_folder_hint">推荐 · 包含子文件夹，无需授予整机音乐权限</string>
     <string name="scan_device">扫描整机</string>

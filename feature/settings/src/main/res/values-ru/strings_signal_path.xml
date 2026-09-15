@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="path_unverified">Вывод не проверен</string>
+    <string name="path_verified">Бит-перфект подтверждён</string>
+    <string name="path_processing">Обработка DSP</string>
+    <string name="path_unverified_detail">Тактовая частота устройства и итоговые сэмплы не проверены. Системный маршрут не подтверждает lossless-вывод.</string>
+    <string name="path_pending_detail">Начните воспроизведение, чтобы проверить активный путь. Сохранённые сведения о треке не подтверждают активный вывод.</string>
+    <string name="path_error_detail">Воспроизведение не удалось. Эти этапы не подтверждают рабочий аудиопуть.</string>
+    <string name="path_format_change">Сообщённое изменение частоты</string>
+    <string name="path_format_pair">Источник %1$s → декодировано %2$s</string>
+    <string name="path_eq_detail">Преамп %1$s · частота обработки %2$s</string>
+    <string name="path_channel_detail">Л %1$s · П %2$s</string>
+    <string name="path_source_format">Формат источника</string>
+    <string name="path_source_pc">PC ECHO · %1$s</string>
+    <string name="path_source_pc_detail">Исходный файл из связанной библиотеки ПК</string>
+    <string name="path_device_clock">Сообщённая тактовая частота устройства: %1$s</string>
+</resources>

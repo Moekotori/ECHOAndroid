@@ -27,19 +27,23 @@ import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.echoAccentColor
 import app.echo.android.design.echoClickable
 import app.echo.android.model.library.AlbumSummary
+import app.echo.android.model.library.EchoTrack
 import app.echo.android.feature.home.R as L10nR
 
 @Composable
 internal fun RoonRecentActivitySection(
     recentPlayedAlbums: List<AlbumSummary>,
     recentlyAddedAlbums: List<AlbumSummary>,
+    recentPlayedTracks: List<EchoTrack> = emptyList(),
     onOpenAlbum: (AlbumSummary) -> Unit,
     onOpenLibrary: () -> Unit,
+    onPlayTrack: (EchoTrack) -> Unit = {},
 ) {
     var selectedMode by rememberSaveable { mutableStateOf(RecentActivityMode.Played) }
     val albums = when (selectedMode) {
         RecentActivityMode.Played -> recentPlayedAlbums
         RecentActivityMode.Added -> recentlyAddedAlbums
+        RecentActivityMode.Tracks -> emptyList()
     }
     val displayAlbums = if (albums.isEmpty() && selectedMode == RecentActivityMode.Played) {
         recentlyAddedAlbums
@@ -73,7 +77,24 @@ internal fun RoonRecentActivitySection(
                 onSelect = { selectedMode = it },
             )
         }
-        if (displayAlbums.isEmpty()) {
+        if (selectedMode == RecentActivityMode.Tracks) {
+            if (recentPlayedTracks.isEmpty()) {
+                HomeLibraryNotice(
+                    title = stringResource(L10nR.string.feature_home_nothing_played_yet_988bfc),
+                    subtitle = stringResource(L10nR.string.feature_home_appears_after_you_play_an_album_26effb),
+                    onClick = onOpenLibrary,
+                )
+            } else {
+                LazyRow(
+                    contentPadding = PaddingValues(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    items(recentPlayedTracks, key = { it.id }) { track ->
+                        RecentTrackCard(track = track, onClick = { onPlayTrack(track) })
+                    }
+                }
+            }
+        } else if (displayAlbums.isEmpty()) {
             HomeLibraryNotice(
                 title = stringResource(
                     if (selectedMode == RecentActivityMode.Played) L10nR.string.feature_home_nothing_played_yet_988bfc
@@ -112,6 +133,7 @@ internal fun RoonRecentActivitySection(
 internal enum class RecentActivityMode {
     Played,
     Added,
+    Tracks,
 }
 
 internal val RecentActivityAlbumCardHeight = 202.dp
@@ -141,6 +163,11 @@ internal fun RecentActivityTabs(
                 label = stringResource(L10nR.string.feature_home_added_930006),
                 selected = selectedMode == RecentActivityMode.Added,
                 onClick = { onSelect(RecentActivityMode.Added) },
+            )
+            RecentActivityModeTab(
+                label = stringResource(L10nR.string.feature_home_tracks_9c2e11),
+                selected = selectedMode == RecentActivityMode.Tracks,
+                onClick = { onSelect(RecentActivityMode.Tracks) },
             )
         }
     }
@@ -195,5 +222,36 @@ private fun SingleRecentAlbum(album: AlbumSummary, onOpen: (AlbumSummary) -> Uni
                 style = MaterialTheme.typography.bodyMedium, color = homeBodyColor(),
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
+    }
+}
+
+@Composable
+private fun RecentTrackCard(track: EchoTrack, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier.width(126.dp).echoClickable(onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        ArtworkTile(
+            track.artworkUri,
+            modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+            accent = echoAccentColor(),
+            cornerRadius = 16.dp,
+            elevation = 0.dp,
+        )
+        Text(
+            track.title,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            track.artist,
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            color = homeBodyColor(),
+        )
     }
 }

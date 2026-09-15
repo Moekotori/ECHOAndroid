@@ -173,14 +173,15 @@ internal fun LibraryScanOptionsDialog(
     val excludedDirectories = remember(excludedPaths) { excludedPaths.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.toSet() }
     var filtersEnabled by rememberSaveable { mutableStateOf(
         initialOptions.minDurationMs > 0 || initialOptions.minSizeBytes > 0 ||
-            initialOptions.excludeNonMusicFolders || initialOptions.excludeHiddenFolders
+            initialOptions.excludeNonMusicFolders || initialOptions.excludeHiddenFolders ||
+            initialOptions.allowedExtensions.isNotEmpty()
     ) }
     var showDetails by rememberSaveable { mutableStateOf(false) }
     var showAdvanced by rememberSaveable { mutableStateOf(false) }
     val options = if (filtersEnabled) {
         LibraryScanOptions(minDuration, minSize, excludeNonMusic, excludeHidden, excludedDirectories, selectedExtensions)
     } else {
-        LibraryScanOptions(0L, 0L, false, false, excludedDirectories, selectedExtensions)
+        LibraryScanOptions(0L, 0L, false, false, excludedDirectories, emptySet())
     }
     val colors = rememberScanGlassColors()
     Dialog(onDismissRequest = onDismiss) {

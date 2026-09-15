@@ -6,6 +6,7 @@ import app.echo.android.model.playback.EchoEqualizerPresets
 import app.echo.android.model.playback.EchoEqualizerState
 import app.echo.android.model.playback.EchoEqualizerUserPreset
 import app.echo.android.model.playback.EchoEqualizerUserPresets
+import app.echo.android.model.playback.EchoParametricEq
 import app.echo.android.model.playback.OpraEqBand
 import app.echo.android.model.playback.OpraHeadphoneCorrectionPreset
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -86,12 +87,10 @@ class EchoEqualizerController {
     }
 
     fun setParametricFilters(filters: List<OpraEqBand>) {
-        val allowed = setOf("peak_dip", "low_shelf", "high_shelf", "low_pass", "high_pass", "band_stop", "band_pass")
-        if (filters.size !in 1..12 || filters.any { it.type !in allowed || !it.frequencyHz.isFinite() || !it.gainDb.isFinite() || it.q?.isFinite() == false }) return
+        val sanitized = EchoParametricEq.sanitize(filters) ?: return
         desiredParametric = true
         desiredPresetId = EchoEqualizerPreset.Custom
-        desiredSourceLabel = null
-        desiredFilters = filters.map { it.copy(frequencyHz = it.frequencyHz.coerceIn(20f, 20000f), gainDb = it.gainDb.coerceIn(-12f, 12f), q = (it.q ?: 0.707f).coerceIn(0.1f, 10f)) }
+        desiredFilters = sanitized
         desiredGainsDb = EchoEqualizerEngine.visualizationGainsDb(desiredFilters)
         publish(applySuggestedPreamp = true)
     }

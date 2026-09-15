@@ -10,7 +10,6 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSourceBitmapLoader
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import kotlinx.coroutines.CoroutineScope
@@ -29,6 +28,7 @@ class EchoPlaybackService : MediaLibraryService() {
     private var smartTransitions: EchoSmartTransitionController? = null
     private var sessionCallback: EchoPlaybackLibrarySessionCallback? = null
     private var sessionRestorer: EchoPlaybackSessionRestorer? = null
+    private var notificationLyrics: EchoNotificationLyricController? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     override fun attachBaseContext(base: Context) {
@@ -173,9 +173,17 @@ class EchoPlaybackService : MediaLibraryService() {
             }
             .build()
         EchoPlaybackProcessRuntime.publishSurface(exoPlayer.toPlaybackSurfaceSnapshot())
-        setMediaNotificationProvider(
-            DefaultMediaNotificationProvider.Builder(this).build(),
-        )
+        setMediaNotificationProvider(EchoMediaNotificationProvider(this))
+        notificationLyrics = EchoNotificationLyricController(exoPlayer, serviceScope) { line ->
+            if (EchoPlaybackProcessRuntime.setNotificationLyricLine(line)) {
+                mediaSession?.let { session -> onUpdateNotification(session, false) }
+            }
+        }
+        serviceScope.launch {
+            EchoPlaybackProcessRuntime.notificationLyrics.collect { document ->
+                notificationLyrics?.setDocument(document)
+            }
+        }
         serviceScope.launch {
             restorer.restore(userRequestedPlay = false)
             player?.let { live ->
@@ -199,6 +207,9 @@ class EchoPlaybackService : MediaLibraryService() {
         trackTransitions = null
         smartTransitions?.close()
         smartTransitions = null
+        notificationLyrics?.close()
+        notificationLyrics = null
+        EchoPlaybackProcessRuntime.setNotificationLyrics(null)
         EchoPlaybackProcessRuntime.setRemoteAuthReadyListener(null)
         sessionRestorer?.persistFromPlayer(force = true)
         player?.removeListener(playerListener)

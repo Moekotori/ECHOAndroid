@@ -1,0 +1,5 @@
+<resources>
+    <string name="dsp_output_ceiling">Потолок вывода</string>
+    <string name="dsp_mix_amount">Доля смешивания</string>
+    <string name="dsp_scan_short">Анализировать и сохранить громкость трека</string>
+</resources>

@@ -39,5 +39,7 @@ internal fun filterLocalScanBatch(
 
 private val NonMusicFolderNames = setOf(
     "ringtones", "notifications", "alarms", "recordings", "recorder", "voicerecorder",
-    "voice recorder", "callrecordings", "call recordings", "录音", "通话录音", "铃声", "通知音",
+    "voice recorder", "callrecordings", "call recordings", "voicenotes", "voice notes",
+    "sound recordings", "whatsapp audio", "whatsapp voice notes", "telegram audio",
+    "wechat", "weixin", "micromsg", "录音", "通话录音", "铃声", "通知音",
 )

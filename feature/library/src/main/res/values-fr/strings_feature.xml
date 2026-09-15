@@ -196,6 +196,8 @@
     <string name="feature_library_this_playlist_is_empty_add_songs_from_a_bebd89">"Cette playlist est vide. Ajoutez des morceaux depuis un menu de titre."</string>
     <string name="feature_library_title_af1111">"Titre"</string>
     <string name="feature_library_track_000e4d">"Titre"</string>
+    <string name="feature_library_go_to_album">Voir l’album</string>
+    <string name="feature_library_go_to_artist">Voir l’artiste</string>
     <string name="feature_library_track_info_36a07b">"Infos du titre"</string>
     <string name="feature_library_tracks_2d80e8">"Titres"</string>
     <string name="feature_library_unknown_album_8831c3">"Album inconnu"</string>

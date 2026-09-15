@@ -78,6 +78,7 @@ fun SettingsScreen(
     onTrackTransitionsChange: (app.echo.android.model.playback.EchoTrackTransitionOptions) -> Unit,
     onUsbExclusiveAutoRequestOnStartupChange: (Boolean) -> Unit,
     onTestUsbExclusiveDriver: () -> Unit,
+    onPinQueueOffline: () -> Unit = {},
     onPickImageBackground: () -> Unit,
     onPickVideoBackground: () -> Unit,
     onClearCustomBackground: () -> Unit,
@@ -111,6 +112,7 @@ fun SettingsScreen(
     onOpenLibrary: () -> Unit,
     onOpenConnect: () -> Unit,
     onClearLocalLibraryIndex: suspend () -> Boolean,
+    onCleanupLocalLibrary: suspend () -> Pair<Int, Int> = { 0 to 0 },
     errorLogCount: Int = 0,
     onOpenErrorLog: () -> Unit = {},
     backupNotice: app.echo.android.model.backup.EchoBackupNotice? = null,
@@ -214,6 +216,7 @@ fun SettingsScreen(
                     onTrackTransitionsChange = onTrackTransitionsChange,
                     onUsbExclusiveAutoRequestOnStartupChange = onUsbExclusiveAutoRequestOnStartupChange,
                     onTestUsbExclusiveDriver = onTestUsbExclusiveDriver,
+                    onPinQueueOffline = onPinQueueOffline,
                     notificationPermissionGranted = notificationPermissionGranted,
                     onRequestNotificationPermission = onRequestNotificationPermission,
                 )
@@ -250,6 +253,7 @@ fun SettingsScreen(
                     onWatchedFolderRescanEnabledChange = onWatchedFolderRescanEnabledChange,
                     onOpenLibrary = onOpenLibrary,
                     onClearLocalLibraryIndex = onClearLocalLibraryIndex,
+                    onCleanupLocalLibrary = onCleanupLocalLibrary,
                 )
                 SettingsCategory.About -> SettingsAboutContent(
                     appVersionLabel = appVersionLabel,

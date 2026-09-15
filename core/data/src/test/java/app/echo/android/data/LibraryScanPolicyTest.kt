@@ -93,6 +93,50 @@ class LibraryScanPolicyTest {
     }
 
     @Test
+    fun backgroundScanKeepsExcludedImportedTracksUntilAManualScan() {
+        val existing = fingerprint()
+        val options = LibraryScanOptions(excludedRelativePaths = setOf("Recordings"))
+        assertEquals(
+            MediaStoreProbeAction.RememberSeen,
+            LibraryScanPolicy.classifyMediaStoreProbeRow(
+                existing = existing,
+                relativePath = "Recordings/Call/",
+                dateModifiedSeconds = 1_700_000_000L,
+                sizeBytes = 1_024L,
+                options = options,
+                rejectedByCache = false,
+                removeExcludedFromLibrary = false,
+            ),
+        )
+        assertEquals(
+            MediaStoreProbeAction.SkipRejected,
+            LibraryScanPolicy.classifyMediaStoreProbeRow(
+                existing = null,
+                relativePath = "Recordings/Call/",
+                dateModifiedSeconds = 1_700_000_000L,
+                sizeBytes = 1_024L,
+                options = options,
+                rejectedByCache = false,
+                removeExcludedFromLibrary = false,
+            ),
+        )
+        assertFalse(
+            LibraryScanPolicy.isDirectoryCleanupCandidate(
+                relativePath = "Recordings/Call/",
+                options = options,
+                removeExcludedFromLibrary = false,
+            ),
+        )
+        assertTrue(
+            LibraryScanPolicy.isDirectoryCleanupCandidate(
+                relativePath = "Recordings/Call/",
+                options = options,
+                removeExcludedFromLibrary = true,
+            ),
+        )
+    }
+
+    @Test
     fun probeSkipsNewFilesOutsideAllowedExtensions() {
         val options = LibraryScanOptions(allowedExtensions = setOf("flac", "wav"))
         assertEquals(

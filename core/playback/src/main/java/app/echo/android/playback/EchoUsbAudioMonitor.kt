@@ -17,6 +17,7 @@ import android.os.Handler
 import android.os.Looper
 import androidx.core.content.ContextCompat
 import androidx.media3.common.util.UnstableApi
+import app.echo.android.model.platform.EchoPlatformCapabilities
 import app.echo.android.model.playback.EchoAudioErrorKind
 import app.echo.android.model.playback.EchoOutputDeviceKind
 import app.echo.android.model.playback.EchoPlaybackDiagnostics
@@ -242,12 +243,13 @@ class EchoUsbAudioMonitor(context: Context) {
             )
         }
 
-        val supportedAttributes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        val mixerBitPerfect = EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT).usbSystemMixerBitPerfect
+        val supportedAttributes = if (mixerBitPerfect) {
             runCatching { audioManager.getSupportedMixerAttributes(device) }.getOrDefault(emptyList())
         } else {
             emptyList()
         }
-        val preferredAttributes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        val preferredAttributes = if (mixerBitPerfect) {
             runCatching { audioManager.getPreferredMixerAttributes(androidMusicAttributes(), device) }.getOrNull()
         } else {
             null
@@ -278,7 +280,7 @@ class EchoUsbAudioMonitor(context: Context) {
     }
 
     private fun clearPreferredMixerAttributes() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
+        if (!EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT).usbSystemMixerBitPerfect) return
         val device = findUsbOutputDevice() ?: return
         runCatching {
             audioManager.clearPreferredMixerAttributes(androidMusicAttributes(), device)
@@ -308,7 +310,12 @@ class EchoUsbAudioMonitor(context: Context) {
 
         permissionRequestPendingDeviceName = device.deviceName
         val intent = Intent(ACTION_USB_PERMISSION).setPackage(appContext.packageName)
-        val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+            if (EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT).explicitPendingIntentMutability) {
+                PendingIntent.FLAG_MUTABLE
+            } else {
+                0
+            }
         val permissionIntent = PendingIntent.getBroadcast(appContext, 0, intent, flags)
         runCatching {
             usbManager.requestPermission(device, permissionIntent)
@@ -338,7 +345,7 @@ class EchoUsbAudioMonitor(context: Context) {
         device: AudioDeviceInfo,
         sampleRateHz: Int,
     ): AudioMixerAttributes? {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return null
+        if (!EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT).usbSystemMixerBitPerfect) return null
         return runCatching { audioManager.getSupportedMixerAttributes(device) }
             .getOrDefault(emptyList())
             .filter { it.isBitPerfect() }
@@ -401,7 +408,7 @@ class EchoUsbAudioMonitor(context: Context) {
         }
 
     private fun AudioMixerAttributes.isBitPerfect(): Boolean =
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+        EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT).usbSystemMixerBitPerfect &&
             mixerBehavior == AudioMixerAttributes.MIXER_BEHAVIOR_BIT_PERFECT
 
     private fun androidMusicAttributes(): android.media.AudioAttributes =
@@ -412,7 +419,7 @@ class EchoUsbAudioMonitor(context: Context) {
 }
 
 private inline fun <reified T> Intent.getParcelableExtraCompat(name: String): T? =
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+    if (EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT).typedParcelableExtras) {
         getParcelableExtra(name, T::class.java)
     } else {
         @Suppress("DEPRECATION")

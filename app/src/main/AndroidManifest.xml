@@ -60,6 +60,7 @@
                 <data android:scheme="file" />
                 <data android:mimeType="audio/*" />
                 <data android:mimeType="application/ogg" />
+                <data android:mimeType="application/x-ogg" />
                 <data android:mimeType="application/flac" />
                 <data android:mimeType="application/x-flac" />
             </intent-filter>
@@ -69,6 +70,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="audio/*" />
                 <data android:mimeType="application/ogg" />
+                <data android:mimeType="application/x-ogg" />
                 <data android:mimeType="application/flac" />
                 <data android:mimeType="application/x-flac" />
             </intent-filter>

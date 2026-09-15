@@ -2,6 +2,7 @@ package app.echo.android.feature.settings
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
+import app.echo.android.design.LocalEchoPlatformCapabilities
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
 import kotlin.math.roundToInt
@@ -28,6 +29,7 @@ internal fun SettingsPlaybackContent(
     onTestUsbExclusiveDriver: () -> Unit,
     notificationPermissionGranted: Boolean = true,
     onRequestNotificationPermission: () -> Unit = {},
+    onPinQueueOffline: () -> Unit = {},
 ) {
     SettingsSectionCard(
         title = stringResource(R.string.settings_section_playback),
@@ -105,19 +107,23 @@ internal fun SettingsPlaybackContent(
             checked = usbExclusiveAutoRequestOnStartup,
             onCheckedChange = onUsbExclusiveAutoRequestOnStartupChange,
         )
+        val notificationRuntimePermission =
+            LocalEchoPlatformCapabilities.current.notificationRuntimePermission
         SettingsActionRow(
             title = stringResource(R.string.settings_notification_permission),
-            detail = if (notificationPermissionGranted) {
-                stringResource(R.string.settings_notification_granted)
-            } else {
-                stringResource(R.string.settings_notification_denied)
+            detail = when {
+                !notificationRuntimePermission ->
+                    stringResource(R.string.settings_notification_not_required)
+                notificationPermissionGranted ->
+                    stringResource(R.string.settings_notification_granted)
+                else -> stringResource(R.string.settings_notification_denied)
             },
-            actionLabel = if (notificationPermissionGranted) {
+            actionLabel = if (!notificationRuntimePermission || notificationPermissionGranted) {
                 stringResource(R.string.settings_on)
             } else {
                 stringResource(R.string.settings_allow)
             },
-            enabled = !notificationPermissionGranted,
+            enabled = notificationRuntimePermission && !notificationPermissionGranted,
             onClick = onRequestNotificationPermission,
         )
         SettingsActionRow(
@@ -126,6 +132,11 @@ internal fun SettingsPlaybackContent(
             enabled = status.diagnostics.usbConnected,
             actionLabel = stringResource(R.string.settings_test),
             onClick = onTestUsbExclusiveDriver,
+        )
+        SettingsActionRow(
+            title = stringResource(R.string.settings_pin_queue_offline),
+            detail = stringResource(R.string.settings_pin_queue_offline_detail),
+            onClick = onPinQueueOffline,
         )
     }
 }

@@ -1,0 +1,12 @@
+<resources>
+    <string name="settings_bg_style">Стиль отображения</string>
+    <string name="settings_bg_style_custom">Своя настройка</string>
+    <string name="settings_bg_style_natural">Естественный</string>
+    <string name="settings_bg_style_soft">Мягкий</string>
+    <string name="settings_bg_style_airy">Воздушный</string>
+    <string name="settings_bg_style_dreamy">Мечтательный</string>
+    <string name="settings_bg_style_cinematic">Кинематографичный</string>
+    <string name="settings_bg_style_focus">Фокус</string>
+    <string name="settings_bg_style_detail">Применяет размытие, яркость, наложение и масштаб вместе. Размытие следует текущему лимиту производительности. Ниже можно подправить.</string>
+    <string name="settings_bg_style_video_detail">Стили видео меняют яркость, наложение и масштаб; размытие видео не применяется. Ниже можно подправить.</string>
+</resources>

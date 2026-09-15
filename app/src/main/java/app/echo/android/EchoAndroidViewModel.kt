@@ -33,17 +33,11 @@ import app.echo.android.data.LocalLibrarySearchResults
 import app.echo.android.data.OpraHeadphoneCorrectionRepository
 import app.echo.android.data.JellyfinEndpoint
 import app.echo.android.data.SubsonicEndpoint
-import app.echo.android.data.fetchSubsonicLyricsText
-import app.echo.android.data.subsonicSongIdFromTrack
-import app.echo.android.lyrics.EchoLyricsParser
 import app.echo.android.lyrics.EchoLrcFormatter
 import android.content.IntentSender
 import java.util.concurrent.atomic.AtomicLong
 
 import app.echo.android.data.WebDavEndpoint
-import app.echo.android.lyrics.ImportedLyricsStore
-import app.echo.android.lyrics.LocalLyricsResolver
-import app.echo.android.lyrics.OnlineLyricsResolver
 import app.echo.android.model.library.AlbumSortMode
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSortMode
@@ -97,7 +91,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.coroutines.cancellation.CancellationException
+
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Suppress("SpellCheckingInspection", "ConstPropertyName", "unused")
@@ -120,7 +114,6 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     private val echoLinkLanBrowser = EchoLinkLanBrowser(application)
     private val lanRendererBrowser = EchoLanRendererBrowser(application)
     private val opraRepository = OpraHeadphoneCorrectionRepository(application)
-    private val subsonicEndpointRef = EchoSubsonicEndpointRef
     val initialAppSettings: EchoAppSettings = settingsStore.startupAppSettingsSnapshot()
 
     // 远程播放凭据由 Application 在进程内常驻收集,ViewModel 再应用一次以便 UI 会话
@@ -133,25 +126,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         resolver = application.contentResolver,
         appContext = application,
     )
-    private val lyricsController = LyricsController(
-        repository = repository,
-        lyricsResolver = LocalLyricsResolver(application),
-        onlineLyricsResolver = OnlineLyricsResolver(),
-        importedLyricsStore = ImportedLyricsStore(application),
-        scope = viewModelScope,
-        subsonicLyricsLoader = { track ->
-            val endpoint = subsonicEndpointRef.get() ?: return@LyricsController null
-            val songId = subsonicSongIdFromTrack(track.id, track.source) ?: return@LyricsController null
-            val text = try {
-                fetchSubsonicLyricsText(endpoint, songId, track.artist, track.title)
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (_: Throwable) {
-                null
-            }?.takeIf { it.isNotBlank() } ?: return@LyricsController null
-            EchoLyricsParser.parse(text, sourceLabel = "Navidrome").takeIf { it.lines.isNotEmpty() }
-        },
-    )
+    private val lyricsController = (application as EchoApplication).lyricsSession.controller
     private val playbackController = PlaybackController(
         application = application,
         settingsStore = settingsStore,
@@ -192,6 +167,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     val remoteAlbums: Flow<PagingData<AlbumSummary>> = libraryController.remoteAlbums
     val artists: Flow<PagingData<ArtistSummary>> = libraryController.artists
     val genres: Flow<PagingData<app.echo.android.model.library.GenreSummary>> = libraryController.genres
+    val composers: Flow<PagingData<app.echo.android.model.library.GenreSummary>> = libraryController.composers
     val folders: Flow<PagingData<FolderSummary>> = libraryController.folders
     val localPlaylists: StateFlow<List<EchoPlaylist>> = libraryController.localPlaylists
     val favoriteTrackIds: StateFlow<Set<String>> = libraryController.favoriteTrackIds
@@ -199,6 +175,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     val libraryStats: StateFlow<LibraryStats> = libraryController.libraryStats
     val recommendedTracks: StateFlow<List<EchoTrack>> = libraryController.recommendedTracks
     val recentlyAddedAlbums: StateFlow<List<AlbumSummary>> = libraryController.recentlyAddedAlbums
+    val recentlyPlayedTracks: StateFlow<List<EchoTrack>> = libraryController.recentlyPlayedTracks
     val recommendedAlbums: StateFlow<List<AlbumSummary>> = libraryController.recommendedAlbums
     val rediscoveredAlbums: StateFlow<List<AlbumSummary>> = libraryController.rediscoveredAlbums
     val scanState: StateFlow<LibraryScanProgress> = libraryController.scanState
@@ -351,7 +328,19 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun playlistTrackPaging(playlistId: String): Flow<PagingData<EchoTrack>> =
         libraryController.playlistTrackPaging(playlistId)
 
+    fun artistNavigationTarget(name: String, artworkUri: String? = null): ArtistSummary? =
+        libraryController.artistNavigationTarget(name, artworkUri)
+
+    suspend fun albumForTrack(trackId: String): AlbumSummary? =
+        libraryController.albumSummaryForTrack(trackId)
+
+    suspend fun artistForTrack(trackId: String): ArtistSummary? =
+        libraryController.artistSummaryForTrack(trackId)
+
     suspend fun clearLocalLibraryIndex(): Boolean = libraryController.clearLocalLibraryIndex()
+
+    suspend fun cleanupLocalLibrary(): app.echo.android.data.LibraryHygieneResult =
+        libraryController.cleanupLocalLibrary()
 
     fun refreshLibrary(options: LibraryScanOptions? = null) {
         libraryController.refreshLibrary(options)
@@ -403,6 +392,32 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun play(track: EchoTrack) {
         playbackController.play(track)
+    }
+
+    fun pinCurrentQueueOffline() {
+        viewModelScope.launch {
+            val items = playbackController.playbackQueue.value.items
+            val pinnable = items.filter {
+                app.echo.android.model.playback.EchoRemotePinPolicy.canPin(it.sourceId, it.id, it.uri)
+            }
+            if (pinnable.isEmpty()) return@launch
+            val store = app.echo.android.data.EchoRemotePinStore(getApplication())
+            val ids = app.echo.android.model.playback.EchoRemotePinPolicy.merge(
+                store.load(),
+                pinnable.map { it.id },
+            )
+            store.save(ids)
+            app.echo.android.playback.pinRemotePlaybackKeys(
+                pinnable.map {
+                    app.echo.android.model.playback.EchoRemotePinPolicy.resourceKey(it.id, it.uri)
+                }.toSet(),
+            )
+            pinnable.forEach { item ->
+                runCatching {
+                    app.echo.android.playback.prefetchRemotePlayback(getApplication(), item.uri, item.id)
+                }
+            }
+        }
     }
 
     fun playIncomingAudio(uris: List<String>) {
@@ -565,20 +580,6 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    fun openCurrentPlaybackAlbum(onFound: (AlbumSummary) -> Unit) {
-        val trackId = playbackController.currentTrackId ?: return
-        viewModelScope.launch {
-            libraryController.albumSummaryForTrack(trackId)?.let(onFound)
-        }
-    }
-
-    fun openCurrentPlaybackArtist(onFound: (ArtistSummary) -> Unit) {
-        val trackId = playbackController.currentTrackId ?: return
-        viewModelScope.launch {
-            libraryController.artistSummaryForTrack(trackId)?.let(onFound)
-        }
-    }
-
     fun playAlbum(albumKey: String) {
         viewModelScope.launch {
             val queue = libraryController.albumTracksForPlayback(albumKey)
@@ -612,6 +613,16 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             if (queue.isNotEmpty()) playbackController.playQueue(queue, 0)
         }
     }
+
+    fun playComposer(composerKey: String) {
+        viewModelScope.launch {
+            val queue = libraryController.composerTracksForPlayback(composerKey)
+            if (queue.isNotEmpty()) playbackController.playQueue(queue, 0)
+        }
+    }
+
+    fun composerTrackPaging(composerKey: String): Flow<PagingData<EchoTrack>> =
+        libraryController.composerTrackPaging(composerKey)
 
     fun playFolder(folderKey: String) {
         viewModelScope.launch {

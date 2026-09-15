@@ -20,7 +20,7 @@
     <string name="dsp_natural">Natural</string>
     <string name="dsp_strong">Fuerte</string>
     <string name="dsp_peq">Editar EQ paramétrico</string>
-    <string name="dsp_peq_detail">Hasta 12 filtros. Aplica cada edición para actualizar la respuesta y guardarla. Editar crea una configuración manual y recalcula el margen.</string>
+    <string name="dsp_peq_detail">Hasta 32 filtros. Aplica cada edición para actualizar la respuesta y guardarla. El paso alto y el paso bajo conservan la pendiente. Se recalcula el margen.</string>
     <string name="dsp_add_band">Agregar filtro</string>
     <string name="dsp_band">Filtro %1$d</string>
     <string name="dsp_peak">Pico / valle</string>
@@ -32,7 +32,9 @@
     <string name="dsp_band_pass">Pasa banda</string>
     <string name="dsp_frequency">Frecuencia · Hz</string>
     <string name="dsp_band_gain">Ganancia · dB</string>
-    <string name="dsp_peq_range">20–20000 Hz · −12 a +12 dB · Q 0.1–10</string>
+    <string name="dsp_peq_range">20–20000 Hz · −24 a +18 dB · Q 0.1–100</string>
+    <string name="dsp_slope">Pendiente</string>
+    <string name="dsp_slope_oct">%1$s dB/oct</string>
     <string name="dsp_apply">Aplicar y guardar</string>
     <string name="dsp_remove">Quitar</string>
 </resources>

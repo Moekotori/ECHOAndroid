@@ -88,7 +88,7 @@
     <string name="feature_connect_synced_0e5a04">"Synchronisé"</string>
     <string name="feature_connect_syncing_ac4e35">"Synchronisation"</string>
     <string name="feature_connect_take_over_pc_echo_playback_after_pairing_b11731">"Prendre le contrôle de la lecture PC ECHO après l'appairage"</string>
-    <string name="feature_connect_tap_to_expand_subsonic_webdav_fold_separately_a293a2">"Appuyez pour développer · Subsonic / WebDAV se plient séparément"</string>
+    <string name="feature_connect_tap_to_expand_subsonic_webdav_fold_separately_a293a2">"Appuyez pour développer · Subsonic / WebDAV se réduisent séparément"</string>
     <string name="feature_connect_tap_to_set_up_subsonic_webdav_cloud_drive_6f2e97">"Appuyez pour configurer Subsonic · WebDAV / lecteur cloud"</string>
     <string name="feature_connect_the_linked_echo_library_is_shown_separately_with_89ff2b">"La bibliothèque ECHO liée est affichée séparément, avec PC ECHO comme source actuelle"</string>
     <string name="feature_connect_the_local_library_stays_default_refresh_the_linked_6c5cd0">"La bibliothèque locale reste par défaut ; actualisez la bibliothèque liée manuellement"</string>
@@ -129,7 +129,7 @@
     <string name="feature_connect_unsaved_changes_1ab4c9">"Modifications non enregistrées"</string>
     <string name="feature_connect_your_music_server_dd7eb8">"Votre serveur de musique"</string>
     <string name="feature_connect_your_music_wherever_it_lives_e9713c">"Votre musique, où qu'elle se trouve"</string>
-    <string name="feature_connect_a_saved_pc_is_available_reconnect_or_pair_69fbf8">"Un PC enregistré est disponible. Reconnectez-vous ou appairer un autre appareil."</string>
+    <string name="feature_connect_a_saved_pc_is_available_reconnect_or_pair_69fbf8">"Un PC enregistré est disponible. Reconnectez-vous ou appairez un autre appareil."</string>
     <string name="feature_connect_available_after_your_first_saved_connection_7136ab">"Disponible après votre première connexion enregistrée"</string>
     <string name="feature_connect_cancel_connection_fd085f">"Annuler la connexion"</string>
     <string name="feature_connect_connection_failed_321409">"Échec de la connexion"</string>

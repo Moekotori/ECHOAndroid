@@ -88,9 +88,12 @@ internal fun EchoLibraryPage(
     val artistDetailAlbums = selectedArtistKey?.let { artistKey ->
         remember(artistKey) { viewModel.artistAlbumPaging(artistKey) }.collectAsLazyPagingItems()
     }
+    var composerBrowse by remember { mutableStateOf(false) }
     val selectedGenreKey = selectedGenre?.genreKey
     val genreDetailTracks = selectedGenreKey?.let { genreKey ->
-        remember(genreKey) { viewModel.genreTrackPaging(genreKey) }.collectAsLazyPagingItems()
+        remember(genreKey, composerBrowse) {
+            if (composerBrowse) viewModel.composerTrackPaging(genreKey) else viewModel.genreTrackPaging(genreKey)
+        }.collectAsLazyPagingItems()
     }
     val folderDetailTracks = selectedFolderKey?.let { folderKey ->
         remember(folderKey) { viewModel.folderTrackPaging(folderKey) }.collectAsLazyPagingItems()
@@ -151,6 +154,7 @@ internal fun EchoLibraryPage(
             selectedLibrarySourceId = appSettings.librarySelectedSource,
             artists = viewModel.artists,
             genres = viewModel.genres,
+            composers = viewModel.composers,
             folders = viewModel.folders,
             playlists = localPlaylists,
             showTrackAudioInfoTags = appSettings.trackAudioInfoTagsVisible,
@@ -213,8 +217,18 @@ internal fun EchoLibraryPage(
             onShuffleAlbum = { album -> viewModel.shuffleAlbum(album.albumKey) },
             onPlayArtist = { artist -> viewModel.playArtist(artist.artistKey) },
             onShuffleArtist = { artist -> viewModel.shuffleArtist(artist.artistKey) },
-            onOpenGenre = onOpenGenre,
-            onPlayGenre = { genre -> viewModel.playGenre(genre.genreKey) },
+            onOpenGenre = { genre ->
+                composerBrowse = false
+                onOpenGenre(genre)
+            },
+            onPlayGenre = { genre ->
+                if (composerBrowse) viewModel.playComposer(genre.genreKey) else viewModel.playGenre(genre.genreKey)
+            },
+            onOpenComposer = { composer ->
+                composerBrowse = true
+                onOpenGenre(composer)
+            },
+            onPlayComposer = { composer -> viewModel.playComposer(composer.genreKey) },
             onPlayFolder = { folder -> viewModel.playFolder(folder.folderKey) },
             onShuffleFolder = { folder -> viewModel.shuffleFolder(folder.folderKey) },
             onPlayPlaylist = { playlist -> viewModel.playPlaylist(playlist.id) },

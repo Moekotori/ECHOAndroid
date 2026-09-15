@@ -51,6 +51,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -117,10 +118,13 @@ internal fun AlbumDetailPage(
     onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
     onPlayNext: ((EchoTrack) -> Unit)? = null,
     onEnqueue: ((EchoTrack) -> Unit)? = null,
+    onOpenArtist: (() -> Unit)? = null,
+    onOpenTrackArtist: ((EchoTrack) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val palette = rememberArtworkPalette(album.artworkUri, seedKey = album.albumKey)
     val loadedTracks = tracks.itemSnapshotList.items
+    val multiDisc = remember(loadedTracks) { albumHasMultipleDiscs(loadedTracks) }
     CompositionLocalProvider(LocalAlbumDetail provides true) {
         Box(
             modifier = modifier
@@ -135,6 +139,7 @@ internal fun AlbumDetailPage(
                 album = album,
                 tracks = loadedTracks,
                 onBack = onBack,
+                onOpenArtist = onOpenArtist,
             ) {
                 item(key = "hero") {
                     Column(
@@ -144,7 +149,7 @@ internal fun AlbumDetailPage(
                             .padding(horizontal = 24.dp),
                     ) {
                         Spacer(Modifier.height(8.dp))
-                        AlbumHero(album = album)
+                        AlbumHero(album = album, onOpenArtist = onOpenArtist)
                         Spacer(Modifier.height(18.dp))
                         AlbumActionBar(onPlayAll = onPlayAll, onShuffle = onShuffle)
                         Spacer(Modifier.height(28.dp))
@@ -176,9 +181,12 @@ internal fun AlbumDetailPage(
                                     .widthIn(max = EchoContentMaxWidth)
                                     .padding(horizontal = 24.dp),
                             ) {
-                                AlbumTrackRow(
+                                AlbumDiscTrackRow(
                                     index = index,
                                     track = track,
+                                    previous = if (index > 0) tracks.peek(index - 1) else null,
+                                    isFirst = index == 0,
+                                    multiDisc = multiDisc,
                                     accent = palette.vibrant,
                                     onClick = { onPlayTrack(track) },
                                     onUpdateTrackMetadata = onUpdateTrackMetadata,
@@ -188,6 +196,7 @@ internal fun AlbumDetailPage(
                                     onAddToPlaylist = onAddToPlaylist,
                                     onPlayNext = onPlayNext,
                                     onEnqueue = onEnqueue,
+                                    onOpenArtist = onOpenTrackArtist,
                                 )
                             }
                         }
@@ -212,9 +221,12 @@ internal fun AlbumDetailListPage(
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
+    onOpenArtist: (() -> Unit)? = null,
+    onOpenTrackArtist: ((EchoTrack) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val palette = rememberArtworkPalette(album.artworkUri, seedKey = album.albumKey)
+    val multiDisc = remember(tracks) { albumHasMultipleDiscs(tracks) }
     CompositionLocalProvider(LocalAlbumDetail provides true) {
         Box(
             modifier = modifier
@@ -229,6 +241,7 @@ internal fun AlbumDetailListPage(
                 album = album,
                 tracks = tracks,
                 onBack = onBack,
+                onOpenArtist = onOpenArtist,
             ) {
                 item(key = "hero") {
                     Column(
@@ -238,7 +251,7 @@ internal fun AlbumDetailListPage(
                             .padding(horizontal = 24.dp),
                     ) {
                         Spacer(Modifier.height(8.dp))
-                        AlbumHero(album = album)
+                        AlbumHero(album = album, onOpenArtist = onOpenArtist)
                         Spacer(Modifier.height(18.dp))
                         AlbumActionBar(onPlayAll = onPlayAll, onShuffle = onShuffle, onPlayOnPc = onPlayOnPc)
                         Spacer(Modifier.height(28.dp))
@@ -264,15 +277,19 @@ internal fun AlbumDetailListPage(
                                 .widthIn(max = EchoContentMaxWidth)
                                 .padding(horizontal = 24.dp),
                         ) {
-                            AlbumTrackRow(
+                            AlbumDiscTrackRow(
                                 index = index,
                                 track = track,
+                                previous = tracks.getOrNull(index - 1),
+                                isFirst = index == 0,
+                                multiDisc = multiDisc,
                                 accent = palette.vibrant,
                                 onClick = { onPlayTrack(track) },
                                 onUpdateTrackMetadata = onUpdateTrackMetadata,
                                 onImportLyrics = onImportLyrics,
                                 onPickArtwork = onPickArtwork,
                                 onMatchNeteaseMetadata = onMatchNeteaseMetadata,
+                                onOpenArtist = onOpenTrackArtist,
                             )
                         }
                     }
@@ -298,6 +315,8 @@ internal fun GenreTrackDetailPage(
     onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
     onPlayNext: ((EchoTrack) -> Unit)? = null,
     onEnqueue: ((EchoTrack) -> Unit)? = null,
+    onOpenArtist: ((EchoTrack) -> Unit)? = null,
+    onOpenAlbum: ((EchoTrack) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val palette = rememberArtworkPalette(artist.artworkUri, seedKey = artist.artistKey)
@@ -383,6 +402,8 @@ internal fun GenreTrackDetailPage(
                                 onAddToPlaylist = onAddToPlaylist,
                                 onPlayNext = onPlayNext,
                                 onEnqueue = onEnqueue,
+                                onOpenArtist = onOpenArtist,
+                                onOpenAlbum = onOpenAlbum,
                             )
                         }
                     }
@@ -498,6 +519,7 @@ internal fun AlbumDetailTopBar(onBack: () -> Unit) {
 @Composable
 private fun AlbumHero(
     album: AlbumSummary,
+    onOpenArtist: (() -> Unit)? = null,
 ) {
     val colors = rememberDetailGlassColors()
     val titleColor = colors.content
@@ -537,6 +559,15 @@ private fun AlbumHero(
             textAlign = TextAlign.Start,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+            modifier = if (onOpenArtist != null) {
+                Modifier.echoClickable(
+                    onClickLabel = stringResource(L10nR.string.feature_library_go_to_artist),
+                    role = Role.Button,
+                    onClick = onOpenArtist,
+                )
+            } else {
+                Modifier
+            },
         )
         Spacer(Modifier.height(4.dp))
         Text(
@@ -643,7 +674,11 @@ private fun AlbumDetailActionButton(
 
 /** Facts describe the catalog files, not the active audio output route. */
 @Composable
-internal fun AlbumInformation(album: AlbumSummary, tracks: List<EchoTrack>) {
+internal fun AlbumInformation(
+    album: AlbumSummary,
+    tracks: List<EchoTrack>,
+    onOpenArtist: (() -> Unit)? = null,
+) {
     val context = LocalContext.current
     val colors = rememberDetailGlassColors()
     val facts = remember(album, tracks) {
@@ -670,8 +705,12 @@ internal fun AlbumInformation(album: AlbumSummary, tracks: List<EchoTrack>) {
             Text(stringResource(L10nR.string.album_information_partial, tracks.size, album.trackCount),
                 color = colors.muted, style = MaterialTheme.typography.bodySmall)
         }
-        AlbumInformationRow(stringResource(L10nR.string.album_information_artist),
-            displayMetadataOrUnknown(album.albumArtist ?: album.artist, unknownArtistLabel()))
+        AlbumInformationRow(
+            stringResource(L10nR.string.album_information_artist),
+            displayMetadataOrUnknown(album.albumArtist ?: album.artist, unknownArtistLabel()),
+            onClick = onOpenArtist,
+            onClickLabel = stringResource(L10nR.string.feature_library_go_to_artist),
+        )
         album.year?.takeIf { it > 0 }?.let {
             AlbumInformationRow(stringResource(L10nR.string.album_information_year), it.toString())
         }
@@ -722,12 +761,34 @@ private data class AlbumFileFacts(
 )
 
 @Composable
-private fun AlbumInformationRow(label: String, value: String) {
+private fun AlbumInformationRow(
+    label: String,
+    value: String,
+    onClick: (() -> Unit)? = null,
+    onClickLabel: String? = null,
+) {
     val colors = rememberDetailGlassColors()
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
         Text(label, modifier = Modifier.weight(0.36f), color = colors.muted, style = MaterialTheme.typography.bodyMedium)
-        Text(value, modifier = Modifier.weight(0.64f), color = colors.content,
-            style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.End)
+        Text(
+            value,
+            modifier = Modifier
+                .weight(0.64f)
+                .then(
+                    if (onClick != null) {
+                        Modifier.echoClickable(
+                            onClickLabel = onClickLabel,
+                            role = Role.Button,
+                            onClick = onClick,
+                        )
+                    } else {
+                        Modifier
+                    },
+                ),
+            color = colors.content,
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.End,
+        )
     }
 }
 
@@ -1040,6 +1101,8 @@ internal fun AlbumTrackRow(
     onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
     onPlayNext: ((EchoTrack) -> Unit)? = null,
     onEnqueue: ((EchoTrack) -> Unit)? = null,
+    onOpenArtist: ((EchoTrack) -> Unit)? = null,
+    onOpenAlbum: ((EchoTrack) -> Unit)? = null,
 ) {
     val colors = rememberDetailGlassColors()
     TrackContextMenu(
@@ -1052,6 +1115,8 @@ internal fun AlbumTrackRow(
         onAddToPlaylist = onAddToPlaylist,
         onPlayNext = onPlayNext,
         onEnqueue = onEnqueue,
+        onOpenArtist = onOpenArtist?.let { open -> { open(track) } },
+        onOpenAlbum = onOpenAlbum?.let { open -> { open(track) } },
         modifier = Modifier.fillMaxWidth(),
     ) { pressModifier ->
         val dark = LocalEchoDarkTheme.current

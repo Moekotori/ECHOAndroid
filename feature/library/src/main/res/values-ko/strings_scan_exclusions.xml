@@ -4,5 +4,5 @@
     <string name="scan_all_formats">모든 형식</string>
     <string name="scan_advanced_options">고급 옵션</string>
     <string name="scan_excluded_folders">제외 폴더</string>
-    <string name="scan_excluded_folders_hint">저장소 기준 상대 경로를 한 줄에 하나씩 입력하세요. 예: Recordings/Call. 하위 폴더가 포함됩니다. 규칙은 스캔 시 저장되며 다른 필터를 꺼도 유지됩니다. 다음 스캔에서 해당 폴더의 곡이 라이브러리에서 제거됩니다. 줄을 지우면 다시 스캔할 수 있습니다.</string>
+    <string name="scan_excluded_folders_hint">저장소 기준 상대 경로를 한 줄에 하나씩 입력하세요. 예: Recordings/Call. 하위 폴더가 포함됩니다. 규칙은 스캔 시 저장되며 다른 필터를 꺼도 유지됩니다. 직접 스캔을 시작할 때 해당 폴더의 곡이 라이브러리에서 제거됩니다. 줄을 지우면 다시 스캔할 수 있습니다.</string>
 </resources>

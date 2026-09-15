@@ -17,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import app.echo.android.model.playback.EchoEqFilterType
+import app.echo.android.model.playback.EchoParametricEq
 import app.echo.android.model.playback.OpraEqBand
 
 @Composable
@@ -32,7 +34,10 @@ internal fun SignalPeqEditor(filters: List<OpraEqBand>, enabled: Boolean, onChan
                     onDelete = { onChange(filters.filterIndexed { i, _ -> i != index }) })
             }
         }
-        OutlinedButton(onClick = { openBand = filters.size; onChange(filters + OpraEqBand("peak_dip", 1000f, 0f, 1f, null)) }, enabled = enabled && filters.size < 12) { Text(stringResource(R.string.dsp_add_band)) }
+        OutlinedButton(
+            onClick = { openBand = filters.size; onChange(filters + OpraEqBand(EchoEqFilterType.PeakDip, 1000f, 0f, 1f, null)) },
+            enabled = enabled && filters.size < EchoParametricEq.MaxBands,
+        ) { Text(stringResource(R.string.dsp_add_band)) }
     }
 }
 
@@ -42,19 +47,39 @@ private fun PeqBandEditor(index: Int, band: OpraEqBand, enabled: Boolean, canDel
     var gain by remember { mutableStateOf(band.gainDb.toString()) }
     var q by remember { mutableStateOf((band.q ?: 0.707f).toString()) }
     var type by remember { mutableStateOf(band.type) }
+    var slope by remember { mutableFloatStateOf(EchoParametricEq.snapSlope(band.slope)) }
     var expanded by remember { mutableStateOf(false) }
-    val types = listOf("peak_dip" to R.string.dsp_peak, "low_shelf" to R.string.dsp_low_shelf, "high_shelf" to R.string.dsp_high_shelf, "low_pass" to R.string.dsp_low_pass, "high_pass" to R.string.dsp_high_pass, "band_stop" to R.string.dsp_notch, "band_pass" to R.string.dsp_band_pass)
+    val types = listOf(
+        EchoEqFilterType.PeakDip to R.string.dsp_peak,
+        EchoEqFilterType.LowShelf to R.string.dsp_low_shelf,
+        EchoEqFilterType.HighShelf to R.string.dsp_high_shelf,
+        EchoEqFilterType.LowPass to R.string.dsp_low_pass,
+        EchoEqFilterType.HighPass to R.string.dsp_high_pass,
+        EchoEqFilterType.BandStop to R.string.dsp_notch,
+        EchoEqFilterType.BandPass to R.string.dsp_band_pass,
+    )
+    val pass = EchoParametricEq.isPass(type)
     val f = frequency.toFloatOrNull()
     val g = gain.toFloatOrNull()
     val quality = q.toFloatOrNull()
-    val valid = f != null && f in 20f..20000f && g != null && g in -12f..12f && quality != null && quality in 0.1f..10f
+    val valid = f != null && f in EchoParametricEq.MinFrequencyHz..EchoParametricEq.MaxFrequencyHz &&
+        g != null && g in EchoParametricEq.MinGainDb..EchoParametricEq.MaxGainDb &&
+        (pass || (quality != null && quality in EchoParametricEq.MinQ..EchoParametricEq.MaxQ))
     Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceContainerLow) {
         Column {
             Row(Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text((index + 1).toString().padStart(2, '0'), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(stringResource(types.firstOrNull { it.first == band.type }?.second ?: R.string.dsp_peak), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("${formatEqFrequency(band.frequencyHz.toInt())} · Q ${band.q ?: 0.707f}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        if (EchoParametricEq.isPass(band.type)) {
+                            "${formatEqFrequency(band.frequencyHz.toInt())} · ${stringResource(R.string.dsp_slope_oct, EchoParametricEq.snapSlope(band.slope).toInt().toString())}"
+                        } else {
+                            "${formatEqFrequency(band.frequencyHz.toInt())} · Q ${band.q ?: 0.707f}"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
                 Text(formatEqGain(band.gainDb), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
                 Icon(if (expandedRow) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -75,12 +100,46 @@ private fun PeqBandEditor(index: Int, band: OpraEqBand, enabled: Boolean, canDel
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(frequency, { frequency = it }, label = { Text("Hz") }, modifier = Modifier.weight(1.2f), textStyle = MaterialTheme.typography.bodyMedium, singleLine = true, enabled = enabled, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
                         OutlinedTextField(gain, { gain = it }, label = { Text("dB") }, modifier = Modifier.weight(1f), textStyle = MaterialTheme.typography.bodyMedium, singleLine = true, enabled = enabled, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
-                        OutlinedTextField(q, { q = it }, label = { Text("Q") }, modifier = Modifier.weight(1f), textStyle = MaterialTheme.typography.bodyMedium, singleLine = true, enabled = enabled, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+                        if (!pass) {
+                            OutlinedTextField(q, { q = it }, label = { Text("Q") }, modifier = Modifier.weight(1f), textStyle = MaterialTheme.typography.bodyMedium, singleLine = true, enabled = enabled, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+                        }
+                    }
+                    if (pass) {
+                        var slopeMenu by remember { mutableStateOf(false) }
+                        Box {
+                            TextButton(onClick = { slopeMenu = true }, enabled = enabled, contentPadding = PaddingValues(0.dp)) {
+                                Text(stringResource(R.string.dsp_slope_oct, slope.toInt().toString()))
+                                Spacer(Modifier.width(6.dp))
+                                Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(18.dp))
+                            }
+                            DropdownMenu(slopeMenu, { slopeMenu = false }) {
+                                EchoParametricEq.PassSlopesDb.forEach { option ->
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.dsp_slope_oct, option.toInt().toString())) },
+                                        onClick = { slope = option; slopeMenu = false },
+                                    )
+                                }
+                            }
+                        }
                     }
                     if (!valid) Text(stringResource(R.string.dsp_peq_range), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         TextButton(onClick = onDelete, enabled = enabled && canDelete) { Text(stringResource(R.string.dsp_remove), color = if (enabled && canDelete) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant) }
-                        FilledTonalButton(onClick = { onSave(band.copy(type = type, frequencyHz = f!!, gainDb = g!!, q = quality!!, slope = null)) }, enabled = enabled && valid, shape = RoundedCornerShape(10.dp)) { Text(stringResource(R.string.dsp_apply)) }
+                        FilledTonalButton(
+                            onClick = {
+                                onSave(
+                                    band.copy(
+                                        type = type,
+                                        frequencyHz = f!!,
+                                        gainDb = g!!,
+                                        q = if (pass) null else quality,
+                                        slope = if (pass) slope else null,
+                                    ),
+                                )
+                            },
+                            enabled = enabled && valid,
+                            shape = RoundedCornerShape(10.dp),
+                        ) { Text(stringResource(R.string.dsp_apply)) }
                     }
                 }
             }

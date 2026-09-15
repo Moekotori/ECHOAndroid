@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dsp_title">DSP</string>
+    <string name="dsp_limiter">Пиковый лимитер</string>
+    <string name="dsp_limiter_detail">Связанная стереозащита пиков с плавным отпусканием. Это не true-peak лимитер.</string>
+    <string name="dsp_ceiling">Потолок · %1$.1f dBFS</string>
+    <string name="dsp_loudness">Нормализация громкости</string>
+    <string name="dsp_loudness_detail">Теги ReplayGain выравнивают уровень воспроизведения. Режим альбома сохраняет относительную громкость треков.</string>
+    <string name="dsp_auto">Авто</string>
+    <string name="dsp_track">Трек</string>
+    <string name="dsp_album">Альбом</string>
+    <string name="dsp_gain">Усиление · %1$.1f дБ</string>
+    <string name="dsp_missing_tags">Значение громкости недоступно. Просканируйте локальный трек, чтобы создать его.</string>
+    <string name="dsp_scan">Анализировать текущий локальный трек и сохранить тег</string>
+    <string name="dsp_scanned">Сохранено · %1$.1f дБ</string>
+    <string name="dsp_scan_failed">Анализ или запись тега не удались. Проверьте, что этот локальный файл поддерживается и доступен для записи.</string>
+    <string name="dsp_crossfeed">Кроссфид для наушников</string>
+    <string name="dsp_crossfeed_detail">Подмешивает отфильтрованный, слегка задержанный сигнал в противоположный канал. Только стерео.</string>
+    <string name="dsp_gentle">Мягкий</string>
+    <string name="dsp_natural">Естественный</string>
+    <string name="dsp_strong">Сильный</string>
+    <string name="dsp_peq">Правка параметрического эквалайзера</string>
+    <string name="dsp_peq_detail">До 32 фильтров. Применяйте каждое изменение, чтобы обновить характеристику и сохранить её. ФВЧ/ФНЧ сохраняют крутизну. Запас по уровню пересчитывается.</string>
+    <string name="dsp_add_band">Добавить фильтр</string>
+    <string name="dsp_band">Фильтр %1$d</string>
+    <string name="dsp_peak">Пик / провал</string>
+    <string name="dsp_low_shelf">Низкая полка</string>
+    <string name="dsp_high_shelf">Высокая полка</string>
+    <string name="dsp_low_pass">ФНЧ</string>
+    <string name="dsp_high_pass">ФВЧ</string>
+    <string name="dsp_notch">Режекторный</string>
+    <string name="dsp_band_pass">Полосовой</string>
+    <string name="dsp_frequency">Частота · Гц</string>
+    <string name="dsp_band_gain">Усиление · дБ</string>
+    <string name="dsp_peq_range">20–20000 Гц · −24 до +18 дБ · Q 0.1–100</string>
+    <string name="dsp_slope">Крутизна</string>
+    <string name="dsp_slope_oct">%1$s дБ/окт</string>
+    <string name="dsp_apply">Применить и сохранить</string>
+    <string name="dsp_remove">Удалить</string>
+</resources>

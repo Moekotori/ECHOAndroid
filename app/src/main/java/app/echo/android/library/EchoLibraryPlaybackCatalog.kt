@@ -8,12 +8,16 @@ import app.echo.android.data.LibraryFavoriteSnapshot
 import app.echo.android.data.LibrarySmartPlaylistPolicy
 import app.echo.android.data.LibraryTrackEntity
 import app.echo.android.feature.library.R as LibraryR
+import app.echo.android.R as AppR
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.library.EchoPlaylist
+import app.echo.android.model.library.FolderSummary
+import app.echo.android.model.library.GenreSummary
 import app.echo.android.model.library.LibrarySmartPlaylistKind
 import app.echo.android.model.library.LibrarySource
 import app.echo.android.model.playback.EchoLinkPlaybackUri
+import app.echo.android.model.radio.EchoRadioStation
 import app.echo.android.playback.EchoPlaybackBrowseItem
 import app.echo.android.playback.EchoPlaybackBrowseKind
 import app.echo.android.playback.EchoPlaybackCatalog
@@ -25,10 +29,11 @@ import kotlinx.coroutines.withContext
 class EchoLibraryPlaybackCatalog(
     private val database: EchoLibraryDatabase,
     private val context: Context,
+    private val loadRadioStations: suspend () -> List<EchoRadioStation> = { emptyList() },
 ) : EchoPlaybackCatalog {
     override suspend fun root(): EchoPlaybackBrowseItem = categoryItem(
         mediaId = EchoPlaybackLibraryIds.ROOT,
-        title = "ECHO",
+        title = context.getString(AppR.string.app_name),
         kind = EchoPlaybackBrowseKind.Root,
     )
 
@@ -53,6 +58,11 @@ class EchoLibraryPlaybackCatalog(
                 database.playlistDao().listFavoriteTracksForBrowse(limit, offset).map { it.toBrowseItem() }
             EchoPlaybackLibraryIds.TRACKS ->
                 database.trackDao().listRecentTracksForBrowse(limit, offset).map { it.toBrowseItem() }
+            EchoPlaybackLibraryIds.FOLDERS ->
+                database.trackDao().listFoldersForBrowse(limit, offset).map { it.toBrowseItem(context) }
+            EchoPlaybackLibraryIds.GENRES ->
+                database.trackDao().listGenresForBrowse(limit, offset).map { it.toBrowseItem(context) }
+            EchoPlaybackLibraryIds.RADIO -> radioBrowsePage(limit, offset)
             else -> {
                 val albumKey = EchoPlaybackLibraryIds.albumKey(parentId)
                 if (albumKey != null) {
@@ -73,6 +83,18 @@ class EchoLibraryPlaybackCatalog(
                             .listPlaylistTracksForBrowse(playlistId, limit, offset)
                             .map { it.toBrowseItem() }
                 }
+                val folderKey = EchoPlaybackLibraryIds.folderKey(parentId)
+                if (folderKey != null) {
+                    return@withContext database.trackDao()
+                        .listTracksByFolderForBrowse(folderKey, limit, offset)
+                        .map { it.toBrowseItem() }
+                }
+                val genreKey = EchoPlaybackLibraryIds.genreKey(parentId)
+                if (genreKey != null) {
+                    return@withContext database.trackDao()
+                        .listTracksByGenreForBrowse(genreKey, limit, offset)
+                        .map { it.toBrowseItem() }
+                }
                 emptyList()
             }
         }
@@ -81,11 +103,15 @@ class EchoLibraryPlaybackCatalog(
     override suspend fun item(mediaId: String): EchoPlaybackBrowseItem? = withContext(Dispatchers.IO) {
         when (mediaId) {
             EchoPlaybackLibraryIds.ROOT -> root()
-            EchoPlaybackLibraryIds.ALBUMS -> rootChildren()[0]
-            EchoPlaybackLibraryIds.ARTISTS -> rootChildren()[1]
-            EchoPlaybackLibraryIds.PLAYLISTS -> rootChildren()[2]
-            EchoPlaybackLibraryIds.FAVORITES -> rootChildren()[3]
-            EchoPlaybackLibraryIds.TRACKS -> rootChildren()[4]
+            EchoPlaybackLibraryIds.ALBUMS,
+            EchoPlaybackLibraryIds.ARTISTS,
+            EchoPlaybackLibraryIds.PLAYLISTS,
+            EchoPlaybackLibraryIds.FAVORITES,
+            EchoPlaybackLibraryIds.TRACKS,
+            EchoPlaybackLibraryIds.FOLDERS,
+            EchoPlaybackLibraryIds.GENRES,
+            EchoPlaybackLibraryIds.RADIO,
+            -> rootChildren().firstOrNull { it.mediaId == mediaId }
             else -> {
                 EchoPlaybackLibraryIds.albumKey(mediaId)?.let { key ->
                     return@withContext database.trackDao().getAlbumSummary(key)?.toBrowseItem()
@@ -106,6 +132,15 @@ class EchoLibraryPlaybackCatalog(
                         kind = EchoPlaybackBrowseKind.Playlist,
                     )
                 }
+                EchoPlaybackLibraryIds.folderKey(mediaId)?.let { key ->
+                    return@withContext database.trackDao().getFolderSummary(key)?.toBrowseItem(context)
+                }
+                EchoPlaybackLibraryIds.genreKey(mediaId)?.let { key ->
+                    return@withContext database.trackDao().getGenreSummary(key)?.toBrowseItem(context)
+                }
+                if (EchoRadioStation.isRadio(mediaId)) {
+                    return@withContext radioStationItem(mediaId)
+                }
                 database.trackDao().getTrackById(mediaId)?.toBrowseItem()
             }
         }
@@ -125,6 +160,15 @@ class EchoLibraryPlaybackCatalog(
             addAll(dao.searchTracks(trimmed, perType).map { it.toBrowseItem() })
             addAll(dao.searchAlbums(trimmed, perType).map { it.toBrowseItem() })
             addAll(dao.searchArtists(trimmed, perType).map { it.toBrowseItem(context) })
+            addAll(searchPlaylists(trimmed, perType))
+            addAll(
+                loadRadioStations()
+                    .asSequence()
+                    .filter { it.name.contains(trimmed, ignoreCase = true) }
+                    .take(perType)
+                    .map { it.toBrowseItem() }
+                    .toList(),
+            )
         }
         val from = offset.coerceAtMost(combined.size)
         combined.subList(from, (from + limit).coerceAtMost(combined.size))
@@ -138,6 +182,8 @@ class EchoLibraryPlaybackCatalog(
                     database.playlistDao().listFavoriteTracksForBrowse(limit, 0).map { it.toBrowseItem() }
                 EchoPlaybackLibraryIds.TRACKS ->
                     database.trackDao().listRecentTracksForBrowse(limit, 0).map { it.toBrowseItem() }
+                EchoPlaybackLibraryIds.RADIO ->
+                    loadRadioStations().take(limit).map { it.toBrowseItem() }
                 else -> {
                     EchoPlaybackLibraryIds.albumKey(mediaId)?.let { key ->
                         return@withContext database.trackDao()
@@ -154,6 +200,19 @@ class EchoLibraryPlaybackCatalog(
                             ?: database.playlistDao()
                                 .listPlaylistTracksForBrowse(id, limit, 0)
                                 .map { it.toBrowseItem() }
+                    }
+                    EchoPlaybackLibraryIds.folderKey(mediaId)?.let { key ->
+                        return@withContext database.trackDao()
+                            .listTracksByFolderForBrowse(key, limit, 0)
+                            .map { it.toBrowseItem() }
+                    }
+                    EchoPlaybackLibraryIds.genreKey(mediaId)?.let { key ->
+                        return@withContext database.trackDao()
+                            .listTracksByGenreForBrowse(key, limit, 0)
+                            .map { it.toBrowseItem() }
+                    }
+                    if (EchoRadioStation.isRadio(mediaId)) {
+                        return@withContext listOfNotNull(radioStationItem(mediaId))
                     }
                     if (EchoPlaybackLibraryIds.isTrackMediaId(mediaId)) {
                         val track = database.trackDao().getTrackById(mediaId) ?: return@withContext emptyList()
@@ -331,7 +390,50 @@ class EchoLibraryPlaybackCatalog(
             kind = EchoPlaybackBrowseKind.Tracks,
             playable = true,
         ),
+        categoryItem(
+            mediaId = EchoPlaybackLibraryIds.FOLDERS,
+            title = context.getString(LibraryR.string.feature_library_folders_cc514a),
+            kind = EchoPlaybackBrowseKind.Folders,
+        ),
+        categoryItem(
+            mediaId = EchoPlaybackLibraryIds.GENRES,
+            title = context.getString(LibraryR.string.feature_library_genres_8c2a11),
+            kind = EchoPlaybackBrowseKind.Genres,
+        ),
+        categoryItem(
+            mediaId = EchoPlaybackLibraryIds.RADIO,
+            title = context.getString(LibraryR.string.radio_title),
+            kind = EchoPlaybackBrowseKind.Radio,
+            playable = true,
+        ),
     )
+
+    private suspend fun radioBrowsePage(limit: Int, offset: Int): List<EchoPlaybackBrowseItem> {
+        val stations = loadRadioStations()
+        val from = offset.coerceAtMost(stations.size)
+        return stations.subList(from, (from + limit).coerceAtMost(stations.size)).map { it.toBrowseItem() }
+    }
+
+    private suspend fun radioStationItem(mediaId: String): EchoPlaybackBrowseItem? =
+        loadRadioStations().firstOrNull { EchoRadioStation.MediaIdPrefix + it.id == mediaId }?.toBrowseItem()
+
+    private suspend fun searchPlaylists(query: String, limit: Int): List<EchoPlaybackBrowseItem> {
+        val pinned = pinnedPlaylistItems().filter { it.title.contains(query, ignoreCase = true) }
+        val user = database.playlistDao()
+            .searchPlaylistsForBrowse(LibrarySource.MediaStore.id, query, limit)
+            .map { row ->
+                EchoPlaybackBrowseItem(
+                    mediaId = EchoPlaybackLibraryIds.playlist(row.id),
+                    title = row.name,
+                    subtitle = playlistCountSubtitle(row.trackCount),
+                    artworkUri = row.artworkUri,
+                    browsable = true,
+                    playable = row.trackCount > 0,
+                    kind = EchoPlaybackBrowseKind.Playlist,
+                )
+            }
+        return (pinned + user).distinctBy { it.mediaId }.take(limit)
+    }
 
     private fun categoryItem(
         mediaId: String,
@@ -359,7 +461,47 @@ private fun LibraryTrackEntity.toBrowseItem(): EchoPlaybackBrowseItem =
         playable = true,
         durationMs = durationMs,
         kind = EchoPlaybackBrowseKind.Track,
+        clipStartMs = clipStartMs,
+        clipEndMs = clipEndMs,
     )
+
+private fun FolderSummary.toBrowseItem(context: Context): EchoPlaybackBrowseItem =
+    EchoPlaybackBrowseItem(
+        mediaId = EchoPlaybackLibraryIds.folder(folderKey),
+        title = browseTitle(context.getString(LibraryR.string.feature_library_unknown_path_e282e8)),
+        subtitle = context.getString(LibraryR.string.library_track_count, trackCount),
+        artworkUri = artworkUri,
+        browsable = true,
+        playable = trackCount > 0,
+        durationMs = durationMs,
+        kind = EchoPlaybackBrowseKind.Folder,
+    )
+
+private fun GenreSummary.toBrowseItem(context: Context): EchoPlaybackBrowseItem =
+    EchoPlaybackBrowseItem(
+        mediaId = EchoPlaybackLibraryIds.genre(genreKey),
+        title = name,
+        subtitle = context.getString(LibraryR.string.library_track_count, trackCount),
+        artworkUri = artworkUri,
+        browsable = true,
+        playable = trackCount > 0,
+        durationMs = durationMs,
+        kind = EchoPlaybackBrowseKind.Genre,
+    )
+
+private fun EchoRadioStation.toBrowseItem(): EchoPlaybackBrowseItem {
+    val track = toTrack()
+    return EchoPlaybackBrowseItem(
+        mediaId = track.id,
+        title = track.title,
+        subtitle = track.artist.takeIf { it.isNotBlank() },
+        playUri = track.uri,
+        persistUri = track.uri,
+        browsable = false,
+        playable = true,
+        kind = EchoPlaybackBrowseKind.RadioStation,
+    )
+}
 
 private fun AlbumSummary.toBrowseItem(): EchoPlaybackBrowseItem =
     EchoPlaybackBrowseItem(

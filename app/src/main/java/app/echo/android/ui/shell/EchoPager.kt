@@ -4,6 +4,15 @@ import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.pager.PagerDefaults
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.unit.Velocity
 import app.echo.android.EchoTab
 import app.echo.android.design.EchoMotion
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
@@ -76,3 +85,51 @@ internal fun motionDuration(defaultMs: Int, effectivePerformanceMode: EchoEffect
         effectivePerformanceMode.isHighPerformance -> defaultMs
         else -> (defaultMs * 0.72f).roundToInt().coerceIn(minOf(110, defaultMs), defaultMs)
     }
+
+private fun PagerState.ownsInnerHorizontalTabs(): Boolean {
+    val page = currentPage
+    return page == EchoPagerPage.Connect.ordinal || page == EchoPagerPage.Diagnostics.ordinal
+}
+
+/**
+ * Connect / Signal keep their own inner pagers. Leftover horizontal nested scroll at those
+ * inner edges is the only path that should still move the dock pager.
+ */
+@Composable
+internal fun rememberTabPagerNestedScrollConnection(state: PagerState): NestedScrollConnection {
+    val default = PagerDefaults.pageNestedScrollConnection(state, Orientation.Horizontal)
+    return remember(state, default) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset =
+                default.onPreScroll(available, source)
+
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                if (source == NestedScrollSource.UserInput &&
+                    state.ownsInnerHorizontalTabs() &&
+                    available.x != 0f
+                ) {
+                    val consumedX = -state.dispatchRawDelta(-available.x)
+                    return Offset(consumedX, 0f)
+                }
+                return default.onPostScroll(consumed, available, source)
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity =
+                default.onPreFling(available)
+
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                if (state.ownsInnerHorizontalTabs() &&
+                    state.currentPageOffsetFraction.absoluteValue > 0.001f
+                ) {
+                    state.animateScrollToPage(state.currentPage)
+                    return available.copy(y = 0f)
+                }
+                return default.onPostFling(consumed, available)
+            }
+        }
+    }
+}

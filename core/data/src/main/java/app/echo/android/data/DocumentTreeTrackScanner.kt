@@ -33,6 +33,7 @@ class DocumentTreeTrackScanner(
         onSkipped: suspend () -> Unit = {},
         onUnchangedIds: suspend (List<String>) -> Unit = {},
         listings: DocumentTreeListingCache? = null,
+        reuseDirectoryListings: Boolean = true,
         onBatch: suspend (List<LibraryTrackEntity>) -> Unit,
         onProgress: suspend (scannedCount: Int, currentTrack: LibraryTrackEntity?) -> Unit,
     ): MediaStoreScanOutcome {
@@ -55,12 +56,15 @@ class DocumentTreeTrackScanner(
                 continue
             }
             val isTreeRoot = directory.relativePath.isEmpty()
-            val children = listings?.listing(
-                treeUri = treeKey,
-                documentId = directory.documentId,
-                lastModifiedMs = directory.lastModifiedMs,
-                isTreeRoot = isTreeRoot,
-            ) ?: queryDirectoryChildren(treeUri, directory.documentId)?.also { rows ->
+            val children = listings
+                ?.takeIf { reuseDirectoryListings }
+                ?.listing(
+                    treeUri = treeKey,
+                    documentId = directory.documentId,
+                    lastModifiedMs = directory.lastModifiedMs,
+                    isTreeRoot = isTreeRoot,
+                )
+                ?: queryDirectoryChildren(treeUri, directory.documentId)?.also { rows ->
                 listings?.remember(
                     treeUri = treeKey,
                     documentId = directory.documentId,

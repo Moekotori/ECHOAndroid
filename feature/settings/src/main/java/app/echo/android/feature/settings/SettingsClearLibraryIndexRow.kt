@@ -67,3 +67,54 @@ internal fun SettingsClearLibraryIndexRow(onClear: suspend () -> Boolean) {
         )
     }
 }
+
+@Composable
+internal fun SettingsLibraryCleanupRow(onCleanup: suspend () -> Pair<Int, Int>) {
+    var confirming by rememberSaveable { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    var result by rememberSaveable { mutableStateOf<Pair<Int, Int>?>(null) }
+    val scope = rememberCoroutineScope()
+    SettingsActionRow(
+        title = stringResource(R.string.settings_library_cleanup),
+        detail = stringResource(R.string.settings_library_cleanup_detail),
+        enabled = !busy,
+        disabledLabel = stringResource(R.string.settings_library_cleanup_busy),
+        onClick = { confirming = true },
+    )
+    if (confirming) {
+        AlertDialog(
+            onDismissRequest = { confirming = false },
+            title = { Text(stringResource(R.string.settings_library_cleanup)) },
+            text = { Text(stringResource(R.string.settings_library_cleanup_confirm)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirming = false
+                    busy = true
+                    scope.launch {
+                        try {
+                            result = onCleanup()
+                        } finally {
+                            busy = false
+                        }
+                    }
+                }) { Text(stringResource(R.string.settings_library_cleanup_action)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirming = false }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            },
+        )
+    }
+    result?.let { (missing, duplicates) ->
+        AlertDialog(
+            onDismissRequest = { result = null },
+            text = {
+                Text(stringResource(R.string.settings_library_cleanup_result, missing, duplicates))
+            },
+            confirmButton = {
+                TextButton(onClick = { result = null }) { Text(stringResource(android.R.string.ok)) }
+            },
+        )
+    }
+}

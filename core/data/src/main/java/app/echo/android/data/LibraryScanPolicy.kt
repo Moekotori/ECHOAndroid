@@ -2,6 +2,7 @@ package app.echo.android.data
 
 import app.echo.android.model.library.LibraryScanOptions
 import app.echo.android.model.library.LibrarySource
+import app.echo.android.model.platform.EchoPlatformCapabilities
 
 data class LibraryScanCompleteness(
     val querySucceeded: Boolean,
@@ -70,7 +71,8 @@ object LibraryScanPolicy {
             existing.sizeBytes == sizeBytes
 
     /**
-     * 增量探针行的下一步:排除目录不拉全列,也不记 seen,完整扫描后从曲库删除。
+     * 增量探针行的下一步:排除目录不拉全列。
+     * 主动扫描不记 seen,完整扫描后从曲库删除;后台自动扫描仍保留已入库行。
      * 时长/大小/格式仍只拦新文件。路径未知时不按目录剪枝,避免 RELATIVE_PATH 缺失时把整卷当成排除根。
      */
     fun classifyMediaStoreProbeRow(
@@ -81,9 +83,14 @@ object LibraryScanPolicy {
         options: LibraryScanOptions,
         rejectedByCache: Boolean,
         fileName: String? = null,
+        removeExcludedFromLibrary: Boolean = true,
     ): MediaStoreProbeAction {
         if (!options.includesDirectory(relativePath)) {
-            return MediaStoreProbeAction.SkipRejected
+            return if (existing != null && !removeExcludedFromLibrary) {
+                MediaStoreProbeAction.RememberSeen
+            } else {
+                MediaStoreProbeAction.SkipRejected
+            }
         }
         if (existing == null && fileName != null && !options.acceptsFileFormat(fileName, alreadyImported = false)) {
             return MediaStoreProbeAction.SkipRejected
@@ -97,6 +104,13 @@ object LibraryScanPolicy {
 
     fun unseenIds(existingIds: Collection<String>, seenIds: Set<String>): List<String> =
         existingIds.distinct().filterNot(seenIds::contains)
+
+    /** 后台扫描只清磁盘上消失的歌;排除目录里已入库的行要等用户主动扫描。 */
+    fun isDirectoryCleanupCandidate(
+        relativePath: String?,
+        options: LibraryScanOptions,
+        removeExcludedFromLibrary: Boolean,
+    ): Boolean = removeExcludedFromLibrary || options.includesDirectory(relativePath)
 
     fun shouldRefreshLocalLibraryAfterPermissionGrant(localMediaStoreCount: Int): Boolean =
         localMediaStoreCount <= 0
@@ -196,7 +210,8 @@ object LibraryScanPolicy {
     }
 
     fun shouldScanAllMediaStoreVolumes(sdkInt: Int, relativePathPrefix: String?): Boolean =
-        sdkInt >= 29 && relativePathPrefix.isNullOrBlank()
+        EchoPlatformCapabilities.fromSdk(sdkInt).mediaStoreRelativePath &&
+            relativePathPrefix.isNullOrBlank()
 
     /** 一个 MediaStore 集合(卷)对应的库内行范围,用于把删除限定在本次真正扫过的卷。 */
     fun mediaStoreVolumeScope(volumeName: String?): MediaStoreVolumeScope {
@@ -296,7 +311,7 @@ object LibraryScanPolicy {
             existingRelativePath == incomingRelativePath
 
     fun mediaStoreSampleRateColumnAvailable(sdkInt: Int): Boolean =
-        sdkInt >= MediaStoreSampleRateSdkInt
+        EchoPlatformCapabilities.fromSdk(sdkInt).mediaStoreSampleRateColumn
 
     /**
      * ALBUM_ARTIST 是 API 30 才正式进入 MediaStore 音频列的;
@@ -304,7 +319,7 @@ object LibraryScanPolicy {
      * 旧设备不放进投影,专辑归组回退到 artist。
      */
     fun mediaStoreAlbumArtistColumnAvailable(sdkInt: Int): Boolean =
-        sdkInt >= MediaStoreAlbumArtistSdkInt
+        EchoPlatformCapabilities.fromSdk(sdkInt).mediaStoreAlbumArtistColumn
 
     fun isUnsupportedMediaStoreSampleRateColumn(error: Throwable): Boolean {
         if (error !is IllegalArgumentException) return false
@@ -356,8 +371,8 @@ object LibraryScanPolicy {
     }
 
     const val SafSourceId = "saf"
-    const val MediaStoreSampleRateSdkInt = 31
-    const val MediaStoreAlbumArtistSdkInt = 30
+    const val MediaStoreSampleRateSdkInt = EchoPlatformCapabilities.MediaStoreSampleRateColumnSdk
+    const val MediaStoreAlbumArtistSdkInt = EchoPlatformCapabilities.MediaStoreAlbumArtistColumnSdk
     const val MediaStorePrimaryVolume = "external_primary"
     const val MediaStoreExternalVolume = "external"
     const val RemovableVolumeFallback = "removable"

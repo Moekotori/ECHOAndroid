@@ -71,6 +71,7 @@
     <string name="settings_notification_permission">Permiso de notificación de medios</string>
     <string name="settings_notification_granted">Concedido; los controles de reproducción pueden aparecer en las notificaciones</string>
     <string name="settings_notification_denied">Sin este permiso, las notificaciones de bloqueo y el servicio en primer plano pueden no estar disponibles</string>
+    <string name="settings_notification_not_required">Esta versión de Android no requiere permiso de notificaciones</string>
     <string name="settings_on">Activado</string>
     <string name="settings_allow">Permitir</string>
     <string name="settings_test_usb">Probar controlador exclusivo USB</string>
@@ -399,6 +400,8 @@
     <string name="eq_user_preset_delete">Eliminar</string>
     <string name="eq_user_preset_full">Elimina primero un EQ guardado. Máximo 24.</string>
     <string name="eq_user_preset_empty">Guarda la curva actual para reutilizarla después.</string>
+    <string name="eq_bind_output">Usar para %1$s</string>
+    <string name="eq_bound_output">Usando para %1$s</string>
     <string name="eq_user_preset_parametric">EQ paramétrico</string>
     <string name="eq_user_preset_bands">%1$d bandas</string>
     <string name="eq_share">Compartir</string>

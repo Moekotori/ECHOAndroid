@@ -181,8 +181,27 @@ object EchoPlaybackProcessRuntime {
     private val _surface = MutableStateFlow(EchoPlaybackSurfaceSnapshot())
     val surface: StateFlow<EchoPlaybackSurfaceSnapshot> = _surface.asStateFlow()
 
+    private val _notificationLyrics = MutableStateFlow<EchoNotificationLyricDocument?>(null)
+    val notificationLyrics: StateFlow<EchoNotificationLyricDocument?> = _notificationLyrics.asStateFlow()
+
+    @Volatile
+    var notificationLyricLine: String? = null
+        private set
+
     @Volatile
     private var surfaceListener: ((EchoPlaybackSurfaceSnapshot) -> Unit)? = null
+
+    fun setNotificationLyrics(document: EchoNotificationLyricDocument?) {
+        _notificationLyrics.value = document
+        if (document == null) setNotificationLyricLine(null)
+    }
+
+    fun setNotificationLyricLine(line: String?): Boolean {
+        val next = line?.takeIf { it.isNotBlank() }
+        if (notificationLyricLine == next) return false
+        notificationLyricLine = next
+        return true
+    }
 
     private var progressJob: Job? = null
     private var sleepJob: Job? = null

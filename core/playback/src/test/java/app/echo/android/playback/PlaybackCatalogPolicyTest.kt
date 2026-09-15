@@ -42,6 +42,30 @@ class PlaybackCatalogPolicyTest {
                 hasPlayUri = false,
             ),
         )
+        assertTrue(
+            PlaybackCatalogPolicy.shouldExpandCatalogQueue(
+                mediaId = EchoPlaybackLibraryIds.folder("Music/A"),
+                hasPlayUri = false,
+            ),
+        )
+        assertTrue(
+            PlaybackCatalogPolicy.shouldExpandCatalogQueue(
+                mediaId = EchoPlaybackLibraryIds.genre("jazz"),
+                hasPlayUri = false,
+            ),
+        )
+        assertTrue(
+            PlaybackCatalogPolicy.shouldExpandCatalogQueue(
+                mediaId = EchoPlaybackLibraryIds.RADIO,
+                hasPlayUri = false,
+            ),
+        )
+        assertFalse(
+            PlaybackCatalogPolicy.shouldExpandCatalogQueue(
+                mediaId = "radio:station-1",
+                hasPlayUri = true,
+            ),
+        )
     }
 
     @Test

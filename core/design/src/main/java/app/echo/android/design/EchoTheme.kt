@@ -14,6 +14,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
+import app.echo.android.model.platform.EchoPlatformCapabilities
 import app.echo.android.model.settings.EchoColorTheme
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -109,6 +110,9 @@ val LocalEchoDensityScale = staticCompositionLocalOf { 1f }
 val LocalEchoDarkTheme = staticCompositionLocalOf { true }
 val LocalEchoTheme = staticCompositionLocalOf { echoThemeTokens(EchoColorTheme.Echo, dark = true) }
 val LocalEchoEffectivePerformanceMode = staticCompositionLocalOf { EchoEffectivePerformanceMode.Balanced }
+val LocalEchoPlatformCapabilities = staticCompositionLocalOf {
+    EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT)
+}
 
 @Composable
 fun echoTheme(): EchoThemeTokens = LocalEchoTheme.current
@@ -183,9 +187,12 @@ fun EchoMobileTheme(
     val context = LocalContext.current
     val widthClass = rememberEchoWidthSizeClass()
     val tokens = remember(colorTheme, darkTheme) { echoThemeTokens(colorTheme, darkTheme) }
-    val colorScheme = remember(tokens, darkTheme, dynamicColor, context) {
+    val platformCapabilities = remember {
+        EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT)
+    }
+    val colorScheme = remember(tokens, darkTheme, dynamicColor, context, platformCapabilities) {
         val base = echoColorScheme(tokens)
-        val useDynamic = dynamicColor && Build.VERSION.SDK_INT >= 31
+        val useDynamic = dynamicColor && platformCapabilities.dynamicColor
         if (!useDynamic) {
             base
         } else {
@@ -209,6 +216,7 @@ fun EchoMobileTheme(
         LocalEchoDarkTheme provides darkTheme,
         LocalEchoTheme provides tokens,
         LocalEchoEffectivePerformanceMode provides effectivePerformanceMode,
+        LocalEchoPlatformCapabilities provides platformCapabilities,
         LocalEchoWidthSizeClass provides widthClass,
         LocalEchoContentMaxWidth provides widthClass.contentMaxWidth(),
         LocalEchoHapticsEnabled provides playbackHapticsEnabled,

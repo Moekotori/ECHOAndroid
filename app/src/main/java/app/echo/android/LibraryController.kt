@@ -133,6 +133,11 @@ internal class LibraryController(
             .flatMapLatest { query -> repository.pagedGenres(query) }
             .cachedIn(scope)
 
+    val composers: Flow<PagingData<app.echo.android.model.library.GenreSummary>> =
+        debouncedLibraryQuery
+            .flatMapLatest { query -> repository.pagedComposers(query) }
+            .cachedIn(scope)
+
     val folders: Flow<PagingData<FolderSummary>> =
         combine(debouncedLibraryQuery, _folderSortMode) { query, sort -> query to sort }
             .flatMapLatest { (query, sort) -> repository.pagedFolders(query, sort) }
@@ -165,6 +170,11 @@ internal class LibraryController(
 
     val recentlyAddedAlbums: StateFlow<List<AlbumSummary>> =
         repository.observeRecentlyAddedAlbums()
+            .stateIn(scope, listSharingStarted, emptyList())
+
+    val recentlyPlayedTracks: StateFlow<List<EchoTrack>> =
+        repository.observeRecentlyPlayedTracks()
+            .map { tracks -> tracks.map { it.toEchoTrack() } }
             .stateIn(scope, listSharingStarted, emptyList())
 
     private val recommendationSalt = MutableStateFlow(0)
@@ -207,6 +217,9 @@ internal class LibraryController(
 
     private var clearingLocalIndex = false
     private val localScanJobs = mutableSetOf<Job>()
+
+    suspend fun cleanupLocalLibrary(): app.echo.android.data.LibraryHygieneResult =
+        withContext(Dispatchers.IO) { repository.cleanupLocalLibrary() }
 
     suspend fun clearLocalLibraryIndex(): Boolean = scope.async {
         if (clearingLocalIndex) return@async false
@@ -262,6 +275,10 @@ internal class LibraryController(
 
     fun genreTrackPaging(genreKey: String): Flow<PagingData<EchoTrack>> =
         repository.pagedGenreTracks(genreKey)
+            .map { pagingData -> pagingData.map { it.toEchoTrack() } }
+
+    fun composerTrackPaging(composerKey: String): Flow<PagingData<EchoTrack>> =
+        repository.pagedComposerTracks(composerKey)
             .map { pagingData -> pagingData.map { it.toEchoTrack() } }
 
     fun folderTrackPaging(folderKey: String): Flow<PagingData<EchoTrack>> =
@@ -385,6 +402,7 @@ internal class LibraryController(
                     relativePathPrefix = relativePathPrefix,
                     skipSampleRateRead = skipSampleRateRead(),
                     options = effectiveOptions,
+                    removeExcludedFromLibrary = !auto,
                 )
                     .collect { progress -> publishScanProgress(_scanState, progress, "Library scan failed") }
             } catch (error: CancellationException) {
@@ -521,6 +539,8 @@ internal class LibraryController(
                 relativePathPrefix = folder.relativePathPrefix,
                 skipSampleRateRead = skipSampleRateRead(),
                 options = effectiveOptions,
+                removeExcludedFromLibrary = !quiet,
+                reuseDirectoryListings = quiet,
             ).collect { progress ->
                 if (!quiet) {
                     publishScanProgress(_scanState, progress, "Document tree scan failed")
@@ -700,6 +720,9 @@ internal class LibraryController(
             ).map { it.toEchoTrack() }
         }
 
+    fun artistNavigationTarget(name: String, artworkUri: String? = null): ArtistSummary? =
+        app.echo.android.data.artistNavigationTarget(name, artworkUri)
+
     suspend fun albumSummaryForTrack(trackId: String): AlbumSummary? =
         withContext(Dispatchers.IO) {
             repository.albumSummaryForTrack(trackId)
@@ -723,6 +746,11 @@ internal class LibraryController(
     suspend fun genreTracksForPlayback(genreKey: String): List<EchoTrack> =
         withContext(Dispatchers.IO) {
             repository.genreTracksForPlayback(genreKey).map { it.toEchoTrack() }
+        }
+
+    suspend fun composerTracksForPlayback(composerKey: String): List<EchoTrack> =
+        withContext(Dispatchers.IO) {
+            repository.composerTracksForPlayback(composerKey).map { it.toEchoTrack() }
         }
 
     suspend fun folderTracksForPlayback(folderKey: String): List<EchoTrack> =

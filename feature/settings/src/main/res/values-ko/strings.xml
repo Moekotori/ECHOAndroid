@@ -71,6 +71,7 @@
     <string name="settings_notification_permission">미디어 알림 권한</string>
     <string name="settings_notification_granted">허용됨. 알림에 재생 컨트롤을 표시할 수 있습니다</string>
     <string name="settings_notification_denied">이 권한이 없으면 잠금 화면 알림과 포그라운드 서비스를 사용하지 못할 수 있습니다</string>
+    <string name="settings_notification_not_required">이 Android 버전에서는 알림 권한이 필요하지 않습니다</string>
     <string name="settings_on">켜짐</string>
     <string name="settings_allow">허용</string>
     <string name="settings_test_usb">USB 전용 드라이버 테스트</string>
@@ -89,6 +90,12 @@
     <string name="settings_watched_folder_rescan_detail">ECHO로 돌아오면 이전에 스캔한 폴더를 증분 스캔합니다. 기본값은 꺼짐입니다</string>
     <string name="settings_local_music">로컬 음악</string>
     <string name="settings_local_music_detail">곡, 앨범, 아티스트, 스캔을 둘러봅니다</string>
+    <string name="settings_library_cleanup">없는 파일과 중복 정리</string>
+    <string name="settings_library_cleanup_detail">사라진 파일을 목록에서 빼고, 같은 곡의 여분 복사본을 합칩니다</string>
+    <string name="settings_library_cleanup_confirm">라이브러리 색인에서 없는 파일과 중복 복사본을 제거합니다. 디스크의 파일은 지우지 않습니다.</string>
+    <string name="settings_library_cleanup_action">정리</string>
+    <string name="settings_library_cleanup_busy">정리 중…</string>
+    <string name="settings_library_cleanup_result">없는 곡 %1$d개, 중복 %2$d개를 제거했습니다.</string>
     <string name="settings_section_about">정보</string>
     <string name="settings_backup_export">백업 내보내기</string>
     <string name="settings_backup_export_detail">설정, EQ, 플레이리스트, 좋아요. 비밀 정보는 포함되지 않습니다.</string>

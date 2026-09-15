@@ -12,6 +12,7 @@ import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.IBinder
 import app.echo.android.i18n.wrapEchoAppLocaleToMatchApplication
+import app.echo.android.model.platform.EchoPlatformCapabilities
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -61,7 +62,7 @@ class EchoLinkCastService : Service() {
             this,
             NotificationId,
             notification,
-            if (Build.VERSION.SDK_INT >= 29) {
+            if (EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT).foregroundServiceType) {
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
             } else {
                 0

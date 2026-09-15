@@ -196,6 +196,8 @@
     <string name="feature_library_this_playlist_is_empty_add_songs_from_a_bebd89">"Этот плейлист пуст. Добавляйте композиции из меню трека."</string>
     <string name="feature_library_title_af1111">"Название"</string>
     <string name="feature_library_track_000e4d">"Трек"</string>
+    <string name="feature_library_go_to_album">К альбому</string>
+    <string name="feature_library_go_to_artist">К исполнителю</string>
     <string name="feature_library_track_info_36a07b">"Сведения о треке"</string>
     <string name="feature_library_tracks_2d80e8">"Треки"</string>
     <string name="feature_library_unknown_album_8831c3">"Неизвестный альбом"</string>

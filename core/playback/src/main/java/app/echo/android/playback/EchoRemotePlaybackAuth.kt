@@ -3,6 +3,7 @@ package app.echo.android.playback
 import android.content.Context
 import android.net.Uri
 import android.util.Base64
+import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
@@ -25,6 +26,7 @@ import java.security.SecureRandom
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 data class EchoWebDavPlaybackCredential(
@@ -361,6 +363,34 @@ private object EchoRemotePlaybackCache {
             }
         }
     }
+
+    fun setPinnedResourceKeys(keys: Set<String>) {
+        evictor.pinnedResourceKeys = keys
+    }
+}
+
+@UnstableApi
+suspend fun prefetchRemotePlayback(context: Context, uri: String, mediaId: String) {
+    withContext(Dispatchers.IO) {
+        EchoRemotePlaybackCache.get(context)
+        val dataSource = EchoPlaybackDataSourceFactory(context).createDataSource()
+        val spec = DataSpec.Builder().setUri(Uri.parse(uri)).setKey(mediaId).build()
+        try {
+            dataSource.open(spec)
+            val buffer = ByteArray(64 * 1024)
+            while (true) {
+                val read = dataSource.read(buffer, 0, buffer.size)
+                if (read == C.RESULT_END_OF_INPUT || read < 0) break
+            }
+        } finally {
+            runCatching { dataSource.close() }
+        }
+    }
+}
+
+@UnstableApi
+fun pinRemotePlaybackKeys(keys: Set<String>) {
+    EchoRemotePlaybackCache.setPinnedResourceKeys(keys)
 }
 
 @UnstableApi

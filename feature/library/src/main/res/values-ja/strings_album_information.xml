@@ -6,6 +6,7 @@
     <string name="album_information_duration">合計再生時間</string>
     <string name="album_information_added">追加日</string>
     <string name="album_information_discs">ディスク数</string>
+    <string name="album_disc_number">ディスク %1$d</string>
     <string name="album_information_track_artists">曲のアーティスト</string>
     <string name="album_information_audio">オーディオ情報</string>
     <string name="album_information_partial">読み込み済み %1$d / %2$d 曲に基づく情報</string>

@@ -53,6 +53,8 @@ fun HomeScreen(
     positionState: State<PlaybackPositionState>? = null,
     onPlayAlbum: (AlbumSummary) -> Unit = onOpenAlbum,
     onResumePlayback: () -> Unit = onPlayPause,
+    recentPlayedTracks: List<app.echo.android.model.library.EchoTrack> = emptyList(),
+    onPlayTrack: (app.echo.android.model.library.EchoTrack) -> Unit = {},
 ) {
     val configuration = LocalConfiguration.current
     val compactViewport = configuration.screenHeightDp < 620 ||
@@ -95,8 +97,10 @@ fun HomeScreen(
             RoonRecentActivitySection(
                 recentPlayedAlbums = recentPlayedAlbums,
                 recentlyAddedAlbums = recentlyAddedAlbums,
+                recentPlayedTracks = recentPlayedTracks,
                 onOpenAlbum = onOpenAlbum,
                 onOpenLibrary = onOpenLibrary,
+                onPlayTrack = onPlayTrack,
             )
         }
         item(key = "overview") {

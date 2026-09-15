@@ -71,6 +71,7 @@
     <string name="settings_notification_permission">Media notification permission</string>
     <string name="settings_notification_granted">Granted; playback controls can appear in notifications</string>
     <string name="settings_notification_denied">Lock-screen notifications and the foreground service may be unavailable without this permission</string>
+    <string name="settings_notification_not_required">This Android version does not require a notification permission</string>
     <string name="settings_on">On</string>
     <string name="settings_allow">Allow</string>
     <string name="settings_test_usb">Test USB exclusive driver</string>
@@ -89,6 +90,14 @@
     <string name="settings_watched_folder_rescan_detail">When you return to ECHO, incrementally rescan folders you previously scanned. Off by default</string>
     <string name="settings_local_music">Local music</string>
     <string name="settings_local_music_detail">Browse tracks, albums, artists, and scanning</string>
+    <string name="settings_pin_queue_offline">Keep current queue offline</string>
+    <string name="settings_pin_queue_offline_detail">Cache remote and PC tracks from the current queue for offline playback</string>
+    <string name="settings_library_cleanup">Clean missing and duplicate files</string>
+    <string name="settings_library_cleanup_detail">Remove tracks whose files are gone, and merge exact duplicates</string>
+    <string name="settings_library_cleanup_confirm">Remove missing files and extra copies of the same song from the library index. Files on disk are not deleted.</string>
+    <string name="settings_library_cleanup_action">Clean</string>
+    <string name="settings_library_cleanup_busy">Cleaning…</string>
+    <string name="settings_library_cleanup_result">Removed %1$d missing tracks and %2$d duplicates.</string>
     <string name="settings_section_about">About</string>
     <string name="settings_backup_export">Export backup</string>
     <string name="settings_backup_export_detail">Settings, EQ, playlists, and likes. Secrets are not included.</string>

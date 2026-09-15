@@ -10,7 +10,10 @@ data class FolderSummary(
     val durationMs: Long,
     val totalSizeBytes: Long,
     val latestModifiedSeconds: Long,
-)
+) {
+    fun browseTitle(unknown: String): String =
+        path?.trim('/')?.substringAfterLast('/')?.takeIf { it.isNotBlank() } ?: unknown
+}
 
 enum class FolderSortMode {
     Path,

@@ -11,6 +11,7 @@ data class AudioTagFields(
     val trackNumber: Int?,
     val discNumber: Int?,
     val year: Int?,
+    val composer: String? = null,
     val lyrics: String? = null,
     val artworkBytes: ByteArray? = null,
     val artworkMime: String? = null,
@@ -40,6 +41,7 @@ internal fun LibraryTrackEntity.toAudioTagFields(): AudioTagFields =
         trackNumber = trackNumber,
         discNumber = discNumber,
         year = year,
+        composer = composer,
     )
 
 internal fun AudioTagFields.isBlank(): Boolean =
@@ -49,7 +51,8 @@ internal fun AudioTagFields.isBlank(): Boolean =
         albumArtist.isNullOrBlank() &&
         trackNumber == null &&
         discNumber == null &&
-        year == null
+        year == null &&
+        composer.isNullOrBlank()
 
 internal fun mergeAudioTags(preferred: AudioTagFields?, fallback: AudioTagFields?): AudioTagFields? {
     if (preferred == null || preferred.isBlank()) return fallback?.takeUnless { it.isBlank() }
@@ -62,6 +65,7 @@ internal fun mergeAudioTags(preferred: AudioTagFields?, fallback: AudioTagFields
         trackNumber = preferred.trackNumber ?: fallback.trackNumber,
         discNumber = preferred.discNumber ?: fallback.discNumber,
         year = preferred.year ?: fallback.year,
+        composer = preferred.composer?.takeIf { it.isNotBlank() } ?: fallback.composer,
         lyrics = preferred.lyrics?.takeIf { it.isNotBlank() } ?: fallback.lyrics,
         artworkBytes = preferred.artworkBytes ?: fallback.artworkBytes,
         artworkMime = preferred.artworkMime ?: fallback.artworkMime,
@@ -80,7 +84,8 @@ internal fun LibraryTrackEntity.withAudioTags(tags: AudioTagFields?): LibraryTra
         next.albumArtist == albumArtist &&
         next.trackNumber == trackNumber &&
         next.discNumber == discNumber &&
-        next.year == year
+        next.year == year &&
+        next.composer == composer
     ) {
         return this
     }
@@ -92,6 +97,7 @@ internal fun LibraryTrackEntity.withAudioTags(tags: AudioTagFields?): LibraryTra
         trackNumber = next.trackNumber,
         discNumber = next.discNumber,
         year = next.year,
+        composer = next.composer ?: composer,
     )
 }
 

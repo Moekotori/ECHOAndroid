@@ -4,5 +4,5 @@
     <string name="scan_all_formats">All formats</string>
     <string name="scan_advanced_options">Advanced options</string>
     <string name="scan_excluded_folders">Excluded folders</string>
-    <string name="scan_excluded_folders_hint">One storage-relative path per line, e.g. Recordings/Call. Subfolders are included. Rules are saved when scanning and remain active when other filters are off. Matching songs are removed from the library on the next scan. Remove a line to allow scanning again.</string>
+    <string name="scan_excluded_folders_hint">One storage-relative path per line, e.g. Recordings/Call. Subfolders are included. Rules are saved when scanning and remain active when other filters are off. Matching songs are removed the next time you start a scan. Remove a line to allow scanning again.</string>
 </resources>

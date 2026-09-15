@@ -12,10 +12,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import android.os.Build
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.LocalEchoPlatformCapabilities
 import app.echo.android.model.settings.EchoBackgroundStyle
 import kotlin.math.roundToInt
 
@@ -76,16 +76,16 @@ internal fun SettingsAppearanceContent(
             selectedId = colorTheme,
             onSelect = onColorThemeChange,
         )
+        val dynamicColorAvailable = LocalEchoPlatformCapabilities.current.dynamicColor
         SettingsSwitchRow(
             title = stringResource(R.string.settings_dynamic_color),
-            detail = if (Build.VERSION.SDK_INT >= 31) {
-                stringResource(R.string.settings_dynamic_color_detail)
-            } else {
-                stringResource(R.string.settings_dynamic_color_unavailable)
-            },
-            checked = dynamicColorEnabled && Build.VERSION.SDK_INT >= 31,
+            detail = stringResource(
+                if (dynamicColorAvailable) R.string.settings_dynamic_color_detail
+                else R.string.settings_dynamic_color_unavailable,
+            ),
+            checked = dynamicColorEnabled && dynamicColorAvailable,
             onCheckedChange = onDynamicColorEnabledChange,
-            enabled = Build.VERSION.SDK_INT >= 31,
+            enabled = dynamicColorAvailable,
         )
         SettingsDisclosureRow(
             title = stringResource(R.string.settings_advanced),

@@ -65,6 +65,7 @@
     <string name="settings_notification_permission">媒體通知權限</string>
     <string name="settings_notification_granted">已允許，可顯示播放控制通知</string>
     <string name="settings_notification_denied">未允許時鎖定螢幕通知和前景服務可能不可用</string>
+    <string name="settings_notification_not_required">目前系統版本不需要通知權限</string>
     <string name="settings_on">已開啟</string>
     <string name="settings_allow">允許</string>
     <string name="settings_test_usb">測試 USB 獨佔驅動程式</string>
@@ -393,6 +394,8 @@
     <string name="eq_user_preset_delete">刪除</string>
     <string name="eq_user_preset_full">請先刪除一條。最多儲存 24 條。</string>
     <string name="eq_user_preset_empty">把目前曲線存下來，以後可以直接套用。</string>
+    <string name="eq_bind_output">用於 %1$s</string>
+    <string name="eq_bound_output">正在用於 %1$s</string>
     <string name="eq_user_preset_parametric">參數 EQ</string>
     <string name="eq_user_preset_bands">%1$d 段</string>
     <string name="eq_share">分享</string>

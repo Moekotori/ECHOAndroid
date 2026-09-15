@@ -196,6 +196,8 @@
     <string name="feature_library_this_playlist_is_empty_add_songs_from_a_bebd89">"這個歌單還是空的。從歌曲選單加入曲目。"</string>
     <string name="feature_library_title_af1111">"標題"</string>
     <string name="feature_library_track_000e4d">"音軌"</string>
+    <string name="feature_library_go_to_album">查看專輯</string>
+    <string name="feature_library_go_to_artist">查看藝術家</string>
     <string name="feature_library_track_info_36a07b">"歌曲資訊"</string>
     <string name="feature_library_tracks_2d80e8">"曲目"</string>
     <string name="feature_library_unknown_album_8831c3">"未知專輯"</string>

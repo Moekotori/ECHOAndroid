@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_clear_index_title">Очистить индекс библиотеки</string>
+    <string name="settings_clear_index_detail">Удалить локальный индекс музыки, не удаляя аудиофайлы.</string>
+    <string name="settings_clear_index_busy">Очистка…</string>
+    <string name="settings_clear_index_confirm">Очистить локальные индексы композиций и поиска? Музыкальные файлы, избранное, плейлисты и история прослушивания сохранятся. Автоматическое сканирование приостановится, пока вы не просканируете вручную. Удалённые библиотеки не затронуты.</string>
+    <string name="settings_clear_index_action">Очистить</string>
+    <string name="settings_clear_index_success">Локальный индекс библиотеки очищен. Просканируйте вручную, чтобы восстановить его.</string>
+    <string name="settings_clear_index_failure">Не удалось очистить индекс библиотеки. Повторите попытку.</string>
+</resources>

@@ -26,6 +26,12 @@ internal object EchoCastProtocol {
     fun pingJson(): String = """{"type":"PING"}"""
     fun launchJson(requestId: Int, appId: String): String =
         """{"type":"LAUNCH","appId":${jsonString(appId)},"requestId":$requestId}"""
+    fun pauseJson(requestId: Int, mediaSessionId: Int): String =
+        """{"type":"PAUSE","requestId":$requestId,"mediaSessionId":$mediaSessionId}"""
+    fun resumeJson(requestId: Int, mediaSessionId: Int): String =
+        """{"type":"PLAY","requestId":$requestId,"mediaSessionId":$mediaSessionId}"""
+    fun stopJson(requestId: Int, mediaSessionId: Int): String =
+        """{"type":"STOP","requestId":$requestId,"mediaSessionId":$mediaSessionId}"""
 
     fun loadJson(
         requestId: Int,
@@ -116,8 +122,20 @@ internal object EchoCastProtocol {
         append('"')
     }
 
-    fun transportId(payload: String): String? {
-        val key = "\"transportId\""
+    fun transportId(payload: String): String? = jsonStringField(payload, "transportId")
+
+    fun mediaSessionId(payload: String): Int? {
+        val key = "\"mediaSessionId\""
+        val start = payload.indexOf(key)
+        if (start < 0) return null
+        val colon = payload.indexOf(':', start + key.length)
+        if (colon < 0) return null
+        val digits = payload.substring(colon + 1).trimStart().takeWhile { it.isDigit() }
+        return digits.toIntOrNull()
+    }
+
+    private fun jsonStringField(payload: String, name: String): String? {
+        val key = "\"$name\""
         val start = payload.indexOf(key)
         if (start < 0) return null
         val colon = payload.indexOf(':', start + key.length)

@@ -2,30 +2,34 @@ package app.echo.android
 
 import android.Manifest
 import android.os.Build
+import app.echo.android.model.platform.EchoPlatformCapabilities
+
+private fun platformCapabilities(): EchoPlatformCapabilities =
+    EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT)
 
 fun audioPermissionName(): String =
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+    if (platformCapabilities().granularMediaAudioPermission) {
         Manifest.permission.READ_MEDIA_AUDIO
     } else {
         Manifest.permission.READ_EXTERNAL_STORAGE
     }
 
 fun writeStoragePermissionName(): String? =
-    if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+    if (platformCapabilities().legacyWriteExternalStorage) {
         Manifest.permission.WRITE_EXTERNAL_STORAGE
     } else {
         null
     }
 
 fun notificationPermissionName(): String? =
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+    if (platformCapabilities().notificationRuntimePermission) {
         Manifest.permission.POST_NOTIFICATIONS
     } else {
         null
     }
 
 fun bluetoothConnectPermissionName(): String =
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+    if (platformCapabilities().bluetoothConnectRuntimePermission) {
         Manifest.permission.BLUETOOTH_CONNECT
     } else {
         Manifest.permission.BLUETOOTH

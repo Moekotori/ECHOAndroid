@@ -1,7 +1,6 @@
 package app.echo.android
 
 import android.graphics.Bitmap
-import android.os.Build
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,6 +44,7 @@ import app.echo.android.data.EchoBackgroundMode
 import app.echo.android.design.EchoGlassBackground
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.LocalEchoPlatformCapabilities
 import app.echo.android.design.echoTheme
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -117,7 +117,8 @@ private fun EchoImageWallpaper(
 ) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
-    val legacyBlur = if (Build.VERSION.SDK_INT < 31) blur.value else 0f
+    val renderEffectBlur = LocalEchoPlatformCapabilities.current.renderEffectBlur
+    val legacyBlur = if (!renderEffectBlur) blur.value else 0f
     val widthDp = configuration.screenWidthDp.coerceAtLeast(1)
     val heightDp = configuration.screenHeightDp.coerceAtLeast(1)
     val imageRequest = remember(context, uri, maxPixelSize, highQuality, legacyBlur, widthDp, heightDp) {
@@ -146,7 +147,7 @@ private fun EchoImageWallpaper(
             modifier = Modifier
                 .fillMaxSize()
                 .scale(backgroundScale)
-                .then(if (Build.VERSION.SDK_INT >= 31 && blur > 0.dp) Modifier.blur(blur) else Modifier)
+                .then(if (renderEffectBlur && blur > 0.dp) Modifier.blur(blur) else Modifier)
                 .alpha(brightness.coerceIn(0.35f, 1.15f)),
         )
         EchoBrightnessOverlay(brightness)

@@ -25,6 +25,11 @@ class EchoCastProtocolTest {
     }
 
     @Test
+    fun extractsMediaSessionId() {
+        assertEquals(7, EchoCastProtocol.mediaSessionId("""{"type":"MEDIA_STATUS","status":[{"mediaSessionId":7}]}"""))
+    }
+
+    @Test
     fun loadJsonContainsStreamUrlAndDoesNotBreakQuotes() {
         val json = EchoCastProtocol.loadJson(
             requestId = 2,

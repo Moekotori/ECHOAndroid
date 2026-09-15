@@ -24,5 +24,7 @@
     <string name="subsonic_response_too_large">서버 응답이 너무 커서 읽을 수 없습니다.</string>
     <string name="subsonic_invalid_json">서버가 올바른 JSON이 아닌 데이터를 반환했습니다.</string>
     <string name="subsonic_incompatible">Subsonic 호환 응답이 아닙니다. 서버 URL을 확인하세요.</string>
+    <string name="subsonic_redirected">서버가 %1$s(으)로 리디렉션했습니다. 이 주소는 Navidrome/Subsonic을 제공하지 않습니다. NAS 원격 액세스를 쓰는 경우 NAS가 온라인인지 확인하세요.</string>
+    <string name="subsonic_redirected_unknown">서버가 다른 사이트로 리디렉션했습니다. 이 주소는 Navidrome/Subsonic을 제공하지 않습니다. NAS 원격 액세스를 쓰는 경우 NAS가 온라인인지 확인하세요.</string>
     <string name="subsonic_request_failed">Subsonic 인증 또는 요청에 실패했습니다.</string>
 </resources>

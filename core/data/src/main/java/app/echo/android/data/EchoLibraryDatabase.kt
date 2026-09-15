@@ -20,7 +20,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LibraryFolderSummaryEntity::class,
         LibraryGenreSummaryEntity::class,
     ],
-    version = 15,
+    version = 16,
     exportSchema = true,
 )
 abstract class EchoLibraryDatabase : RoomDatabase() {
@@ -54,6 +54,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                         Migration12To13,
                         Migration13To14,
                         Migration14To15,
+                        Migration15To16,
                     )
                     .build()
                     .also { instance = it }
@@ -342,6 +343,14 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                     ON library_favorites(favoritedAtEpochMs)
                     """.trimIndent(),
                 )
+            }
+        }
+
+        internal val Migration15To16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE library_tracks ADD COLUMN composer TEXT")
+                db.execSQL("ALTER TABLE library_tracks ADD COLUMN composerKey TEXT NOT NULL DEFAULT ''")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_library_tracks_composerKey ON library_tracks(composerKey)")
             }
         }
 

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_check">Проверить обновления</string>
+    <string name="update_source">При открытии автоматически проверяет GitHub Releases каждые 12 часов</string>
+    <string name="update_title">Обновления ECHO</string>
+    <string name="update_error">Не удалось завершить обновление. Проверьте соединение, разрешение на установку и совместимость подписи APK, затем повторите попытку.</string>
+    <string name="update_downloading">Загрузка обновления…</string>
+    <string name="update_checking">Проверка GitHub…</string>
+    <string name="update_ready">Загрузка проверена. Продолжите системным установщиком.</string>
+    <string name="update_available">Доступна новая версия</string>
+    <string name="update_current">Более новой версии нет</string>
+    <string name="update_install">Установить</string>
+    <string name="update_download">Скачать</string>
+    <string name="update_later">Позже</string>
+    <string name="update_version_current">Текущая версия: %1$s</string>
+    <string name="update_package_size">Размер загрузки: %1$s</string>
+    <string name="update_error_check">Не удалось проверить GitHub. Проверьте соединение и повторите попытку.</string>
+    <string name="update_error_download">Загрузка прервана. Проверьте соединение и свободное место, затем повторите попытку.</string>
+    <string name="update_error_verification">Этот APK не прошёл проверку или имеет несовместимую подпись. Оставьте текущее приложение и свяжитесь с автором выпуска.</string>
+    <string name="update_error_permission">Разрешите ECHO устанавливать приложения в системных настройках, затем снова нажмите «Установить».</string>
+    <string name="update_error_install">Не удалось открыть установщик. Нажмите «Установить», чтобы повторить.</string>
+    <string name="update_verifying">Проверка пакета…</string>
+    <string name="update_install_hint">Для загрузки нужно ваше согласие. Android попросит подтвердить установку.</string>
+    <string name="update_percent">%1$d%%</string>
+    <string name="update_cancel_download">Отменить загрузку</string>
+    <string name="update_notes">Что нового</string>
+    <string name="update_retry">Повторить</string>
+    <string name="update_done">Готово</string>
+    <string name="update_hide_download">Скрыть загрузку</string>
+</resources>

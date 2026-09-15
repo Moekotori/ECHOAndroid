@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="opra_choose_brand">Выберите бренд</string>
+    <string name="opra_all_brands">Все бренды</string>
+    <string name="opra_browse_workflow">Выберите бренд и модель, просмотрите кривую, затем примените коррекцию.</string>
+</resources>

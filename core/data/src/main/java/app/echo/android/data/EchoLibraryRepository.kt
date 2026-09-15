@@ -73,6 +73,36 @@ class EchoLibraryRepository(
         database.trackDao().clearLocalLibraryIndex()
     }
 
+    suspend fun cleanupLocalLibrary(): LibraryHygieneResult = withContext(Dispatchers.IO) {
+        val dao = database.trackDao()
+        val missing = LibraryHygienePolicy.missingIds(
+            dao.localTrackLocations().map { row ->
+                row.id to app.echo.android.model.library.CueSheetPolicy.playbackUri(row.contentUri)
+            },
+            exists = ::localUriExists,
+        )
+        val duplicates = LibraryHygienePolicy.duplicateGroups(
+            dao.localTrackFingerprints().mapNotNull { row ->
+                val fingerprint = row.fingerprint?.trim().orEmpty()
+                if (fingerprint.isEmpty()) null else row.id to fingerprint
+            },
+        )
+        val ids = LibraryHygienePolicy.idsToDelete(missing, duplicates)
+        if (ids.isNotEmpty()) dao.deleteScanBatch(ids)
+        LibraryHygieneResult(missingRemoved = missing.size, duplicatesRemoved = duplicates.sumOf { it.removeIds.size })
+    }
+
+    private fun localUriExists(uri: String): Boolean {
+        if (uri.isBlank()) return false
+        return runCatching {
+            val parsed = android.net.Uri.parse(uri)
+            when (parsed.scheme) {
+                "file" -> java.io.File(parsed.path.orEmpty()).exists()
+                else -> appContext.contentResolver.openAssetFileDescriptor(parsed, "r")?.use { true } ?: false
+            }
+        }.getOrDefault(false)
+    }
+
     fun pagedTracks(
         query: String? = null,
         sort: LibraryTrackSortMode = LibraryTrackSortMode.Title,
@@ -112,6 +142,10 @@ class EchoLibraryRepository(
 
     fun observeRecentlyAddedAlbums(limit: Int = RECENT_ALBUM_LIMIT): Flow<List<AlbumSummary>> =
         database.trackDao().observeRecentlyAddedAlbums(limit)
+            .flowOn(Dispatchers.IO)
+
+    fun observeRecentlyPlayedTracks(limit: Int = 16): Flow<List<LibraryTrackEntity>> =
+        database.trackDao().observeRecentlyPlayedTracks(limit.coerceAtLeast(1))
             .flowOn(Dispatchers.IO)
 
     fun observeAlbumListenStats(limit: Int = LISTEN_STATS_SEED_LIMIT): Flow<List<LibraryAlbumListenStatsRow>> =
@@ -162,6 +196,23 @@ class EchoLibraryRepository(
             pagingSourceFactory = {
                 database.trackDao().pageGenres(query?.trim()?.takeIf { it.isNotBlank() }, sort.name)
             },
+        ).flow
+
+    fun pagedComposers(
+        query: String? = null,
+        sort: app.echo.android.model.library.GenreSortMode = app.echo.android.model.library.GenreSortMode.Name,
+    ): Flow<PagingData<app.echo.android.model.library.GenreSummary>> =
+        Pager(
+            config = defaultPagingConfig(),
+            pagingSourceFactory = {
+                database.trackDao().pageComposers(query?.trim()?.takeIf { it.isNotBlank() }, sort.name)
+            },
+        ).flow
+
+    fun pagedComposerTracks(composerKey: String): Flow<PagingData<LibraryTrackEntity>> =
+        Pager(
+            config = defaultPagingConfig(),
+            pagingSourceFactory = { database.trackDao().pageTracksByComposer(composerKey) },
         ).flow
 
     fun pagedGenreTracks(genreKey: String): Flow<PagingData<LibraryTrackEntity>> =
@@ -850,6 +901,12 @@ class EchoLibraryRepository(
     ): List<LibraryTrackEntity> =
         database.trackDao().getTracksByGenre(genreKey, limit.coerceAtLeast(1))
 
+    suspend fun composerTracksForPlayback(
+        composerKey: String,
+        limit: Int = AGGREGATION_QUEUE_LIMIT,
+    ): List<LibraryTrackEntity> =
+        database.trackDao().getTracksByComposer(composerKey, limit.coerceAtLeast(1))
+
     suspend fun folderTracksForPlayback(
         folderKey: String,
         limit: Int = AGGREGATION_QUEUE_LIMIT,
@@ -904,6 +961,7 @@ class EchoLibraryRepository(
         batchSize: Int = SCAN_BATCH_SIZE,
         skipSampleRateRead: Boolean = false,
         options: LibraryScanOptions = LibraryScanOptions(),
+        removeExcludedFromLibrary: Boolean = true,
     ): Flow<LibraryScanProgress> = flow {
         val dao = database.trackDao()
         val rejectedFiles = scanner.rejectedFileCache
@@ -971,6 +1029,7 @@ class EchoLibraryRepository(
                 readSampleRate = !skipSampleRateRead,
                 options = options,
                 rejectedFiles = rejectedFiles,
+                removeExcludedFromLibrary = removeExcludedFromLibrary,
                 onSkipped = { skippedCount++ },
                 onTotalCount = { count ->
                     totalCount = count
@@ -1049,6 +1108,13 @@ class EchoLibraryRepository(
                     val candidateIds = existingRows
                         .filter { LibraryScanPolicy.isMediaStoreNativeId(it.id) }
                         .filter {
+                            LibraryScanPolicy.isDirectoryCleanupCandidate(
+                                relativePath = it.relativePath,
+                                options = options,
+                                removeExcludedFromLibrary = removeExcludedFromLibrary,
+                            )
+                        }
+                        .filter {
                             LibraryScanPolicy.mediaStoreRowWithinVolumeScopes(
                                 relativePath = it.relativePath,
                                 scopes = scanOutcome.completeVolumeScopes,
@@ -1101,6 +1167,8 @@ class EchoLibraryRepository(
         batchSize: Int = DOCUMENT_TREE_SCAN_BATCH_SIZE,
         skipSampleRateRead: Boolean = false,
         options: LibraryScanOptions = LibraryScanOptions(),
+        removeExcludedFromLibrary: Boolean = true,
+        reuseDirectoryListings: Boolean = false,
     ): Flow<LibraryScanProgress> = flow {
         val dao = database.trackDao()
         val rejectedFiles = scanner.rejectedFileCache
@@ -1185,6 +1253,7 @@ class EchoLibraryRepository(
                 onSkipped = { skippedCount++ },
                 onUnchangedIds = { ids -> seenIds.addAll(ids) },
                 listings = documentListings,
+                reuseDirectoryListings = reuseDirectoryListings,
                 onDuplicate = { oldId, targetId ->
                     if (oldId in existingFingerprints) duplicateAliases[oldId] = targetId
                 },
@@ -1254,7 +1323,12 @@ class EchoLibraryRepository(
                         existingFingerprints.keys.filter {
                             (LibraryScanPolicy.isSafTrackId(it) || LibraryScanPolicy.isMediaStoreNativeId(it)) &&
                                 // A fully listed empty tree proves absence; otherwise unknown identities stay safe.
-                                (scannedCount == 0 || it !in unresolvedMediaStoreIds)
+                                (scannedCount == 0 || it !in unresolvedMediaStoreIds) &&
+                                LibraryScanPolicy.isDirectoryCleanupCandidate(
+                                    relativePath = existingFingerprints[it]?.relativePath,
+                                    options = options,
+                                    removeExcludedFromLibrary = removeExcludedFromLibrary,
+                                )
                         },
                         seenIds,
                     )

@@ -106,7 +106,6 @@ fun PlaybackQueueSheet(
     onClearQueue: () -> Unit,
     onCycleRepeatMode: () -> Unit,
     onToggleShuffle: () -> Unit,
-    onOpenLibrary: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     AnimatedVisibility(
@@ -193,7 +192,6 @@ fun PlaybackQueueSheet(
                 onClearQueue = onClearQueue,
                 onCycleRepeatMode = onCycleRepeatMode,
                 onToggleShuffle = onToggleShuffle,
-                onOpenLibrary = onOpenLibrary,
                 onHandleDrag = { delta ->
                     dragScope.launch {
                         dragOffset.snapTo((dragOffset.value + delta).coerceAtLeast(0f))
@@ -232,7 +230,6 @@ private fun QueueSheetSurface(
     onClearQueue: () -> Unit,
     onCycleRepeatMode: () -> Unit,
     onToggleShuffle: () -> Unit,
-    onOpenLibrary: () -> Unit,
     motionProgress: Float,
     onHandleDrag: (Float) -> Unit,
     onHandleDragEnd: () -> Unit,
@@ -327,7 +324,7 @@ private fun QueueSheetSurface(
             )
             Spacer(Modifier.height(12.dp))
             if (queueState.items.isEmpty()) {
-                QueueEmptyState(onOpenLibrary = onOpenLibrary)
+                QueueEmptyState()
             } else {
                 LazyColumn(
                     state = listState,
@@ -557,7 +554,7 @@ private fun Modifier.queueSheetHandleDrag(
 }
 
 @Composable
-private fun QueueEmptyState(onOpenLibrary: () -> Unit) {
+private fun QueueEmptyState() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -590,13 +587,6 @@ private fun QueueEmptyState(onOpenLibrary: () -> Unit) {
             stringResource(L10nR.string.feature_player_after_you_pick_songs_from_the_library_the_1b16d7),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodyMedium,
-        )
-        Spacer(Modifier.height(18.dp))
-        QueuePillButton(
-            icon = Icons.Rounded.LibraryMusic,
-            title = stringResource(L10nR.string.feature_player_go_to_library_32fd32),
-            selected = true,
-            onClick = onOpenLibrary,
         )
     }
 }

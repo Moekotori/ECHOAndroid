@@ -145,6 +145,9 @@ class EchoContentMotion internal constructor(private val lightweight: Boolean) {
     fun pagePop() = if (lightweight) EchoMotion.stateChange() else EchoMotion.pagePop()
     fun tabSwitch(forward: Boolean) =
         if (lightweight) EchoMotion.stateChange() else EchoMotion.tabSwitch(forward)
+
+    /** Same-page body swap. Surrounding chrome must stay mounted. */
+    fun sourceSwitch() = EchoMotion.stateChange()
 }
 
 /** Apply to a downward chevron so direction changes are continuous when interrupted. */

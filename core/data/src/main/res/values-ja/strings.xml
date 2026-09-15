@@ -24,5 +24,7 @@
     <string name="subsonic_response_too_large">サーバーの応答が大きすぎて読み取れません。</string>
     <string name="subsonic_invalid_json">サーバーが解析できないデータを返しました。</string>
     <string name="subsonic_incompatible">Subsonic 互換の応答ではありません。サーバー URL を確認してください。</string>
+    <string name="subsonic_redirected">サーバーは %1$s にリダイレクトしました。このアドレスは Navidrome/Subsonic を提供していません。NAS のリモートアクセスを使っている場合は、NAS がオンラインか確認してください。</string>
+    <string name="subsonic_redirected_unknown">サーバーは別のサイトにリダイレクトしました。このアドレスは Navidrome/Subsonic を提供していません。NAS のリモートアクセスを使っている場合は、NAS がオンラインか確認してください。</string>
     <string name="subsonic_request_failed">Subsonic の認証またはリクエストに失敗しました。</string>
 </resources>

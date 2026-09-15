@@ -16,6 +16,7 @@
     <string name="feature_library_artist_c15fae">"artist"</string>
     <string name="feature_library_artists_1e19fb">"Artists"</string>
     <string name="feature_library_genres_8c2a11">"Genres"</string>
+    <string name="feature_library_composers_4a91c2">"Composers"</string>
     <string name="feature_library_loading_genres_4e91aa">"Loading genres"</string>
     <string name="feature_library_failed_to_load_genres_b7c102">"Failed to load genres"</string>
     <string name="feature_library_this_library_has_no_genres_to_show_yet_11a90e">"This library has no genres to show yet"</string>
@@ -196,6 +197,8 @@
     <string name="feature_library_this_playlist_is_empty_add_songs_from_a_bebd89">"This playlist is empty. Add songs from a track menu."</string>
     <string name="feature_library_title_af1111">"Title"</string>
     <string name="feature_library_track_000e4d">"Track"</string>
+    <string name="feature_library_go_to_album">Go to album</string>
+    <string name="feature_library_go_to_artist">Go to artist</string>
     <string name="feature_library_track_info_36a07b">"Track info"</string>
     <string name="feature_library_tracks_2d80e8">"Tracks"</string>
     <string name="feature_library_unknown_album_8831c3">"Unknown album"</string>

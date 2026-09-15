@@ -65,6 +65,7 @@
     <string name="settings_notification_permission">媒体通知权限</string>
     <string name="settings_notification_granted">已授权，可显示播放控制通知</string>
     <string name="settings_notification_denied">未授权时锁屏通知和前台服务可能不可用</string>
+    <string name="settings_notification_not_required">当前系统版本不需要通知权限</string>
     <string name="settings_on">已开启</string>
     <string name="settings_allow">授权</string>
     <string name="settings_test_usb">测试 USB 独占驱动</string>
@@ -82,6 +83,14 @@
     <string name="settings_watched_folder_rescan">监视已扫描文件夹</string>
     <string name="settings_watched_folder_rescan_detail">回到 ECHO 时增量再扫你选过的文件夹。默认关闭</string>
     <string name="settings_local_music">本地音乐</string>
+    <string name="settings_pin_queue_offline">缓存当前队列以便离线听</string>
+    <string name="settings_pin_queue_offline_detail">把当前队列里的远程和电脑曲目缓存下来，断网也能播</string>
+    <string name="settings_library_cleanup">清理缺失和重复文件</string>
+    <string name="settings_library_cleanup_detail">去掉文件已不存在的曲目，并合并完全相同的副本</string>
+    <string name="settings_library_cleanup_confirm">从曲库索引中移除缺失文件和重复副本。不会删除磁盘上的文件。</string>
+    <string name="settings_library_cleanup_action">清理</string>
+    <string name="settings_library_cleanup_busy">正在清理…</string>
+    <string name="settings_library_cleanup_result">已移除 %1$d 首缺失曲目和 %2$d 个重复项。</string>
     <string name="settings_local_music_detail">查看歌曲、专辑、艺术家和扫描入口</string>
     <string name="settings_section_about">关于</string>
     <string name="settings_backup_export">导出备份</string>

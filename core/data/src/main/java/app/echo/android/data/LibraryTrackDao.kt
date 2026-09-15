@@ -31,6 +31,16 @@ data class TrackAlbumKeyRow(
     val albumKey: String,
 )
 
+data class TrackIdUriRow(
+    val id: String,
+    val contentUri: String,
+)
+
+data class TrackIdFingerprintRow(
+    val id: String,
+    val fingerprint: String?,
+)
+
 /** 删除候选的轻量投影:只取归属卷判定需要的列,避免大曲库时拉全指纹 */
 data class TrackIdPathRow(
     val id: String,
@@ -325,6 +335,33 @@ interface LibraryTrackDao {
 
     @Query(
         """
+        SELECT composerKey AS genreKey, composer AS name, MAX(artworkUri) AS artworkUri,
+               COUNT(DISTINCT albumKey) AS albumCount, COUNT(*) AS trackCount,
+               COALESCE(SUM(durationMs), 0) AS durationMs
+        FROM library_tracks
+        WHERE (source = 'mediastore' OR source = 'saf')
+          AND composerKey IS NOT NULL AND trim(composerKey) != ''
+          AND (:query IS NULL OR composer LIKE '%' || :query || '%' OR composerKey LIKE '%' || :query || '%')
+        GROUP BY composerKey
+        ORDER BY
+            CASE WHEN :sort = 'AlbumCount' THEN COUNT(DISTINCT albumKey) END DESC,
+            CASE WHEN :sort = 'TrackCount' THEN COUNT(*) END DESC,
+            composer COLLATE NOCASE ASC
+        """,
+    )
+    fun pageComposers(query: String?, sort: String): PagingSource<Int, app.echo.android.model.library.GenreSummary>
+
+    @Query(
+        """
+        SELECT * FROM library_tracks
+        WHERE composerKey = :composerKey AND (source = 'mediastore' OR source = 'saf')
+        ORDER BY album COLLATE NOCASE ASC, discNumber ASC, trackNumber ASC, title COLLATE NOCASE ASC
+        """,
+    )
+    fun pageTracksByComposer(composerKey: String): PagingSource<Int, LibraryTrackEntity>
+
+    @Query(
+        """
         SELECT folderKey, path, artworkUri, trackCount, albumCount, artistCount,
                durationMs, totalSizeBytes, latestModifiedSeconds
         FROM library_folder_summaries
@@ -372,6 +409,27 @@ interface LibraryTrackDao {
         """,
     )
     suspend fun getArtistSummary(artistKey: String): ArtistSummary?
+
+    @Query(
+        """
+        SELECT genreKey, name, artworkUri, albumCount, trackCount, durationMs
+        FROM library_genre_summaries
+        WHERE genreKey = :genreKey
+        LIMIT 1
+        """,
+    )
+    suspend fun getGenreSummary(genreKey: String): app.echo.android.model.library.GenreSummary?
+
+    @Query(
+        """
+        SELECT folderKey, path, artworkUri, trackCount, albumCount, artistCount,
+               durationMs, totalSizeBytes, latestModifiedSeconds
+        FROM library_folder_summaries
+        WHERE folderKey = :folderKey
+        LIMIT 1
+        """,
+    )
+    suspend fun getFolderSummary(folderKey: String): FolderSummary?
 
     @Query(
         """
@@ -549,6 +607,68 @@ interface LibraryTrackDao {
 
     @Query(
         """
+        SELECT genreKey, name, artworkUri, albumCount, trackCount, durationMs
+        FROM library_genre_summaries
+        ORDER BY name COLLATE NOCASE ASC
+        LIMIT :limit OFFSET :offset
+        """,
+    )
+    suspend fun listGenresForBrowse(limit: Int, offset: Int): List<app.echo.android.model.library.GenreSummary>
+
+    @Query(
+        """
+        SELECT folderKey, path, artworkUri, trackCount, albumCount, artistCount,
+               durationMs, totalSizeBytes, latestModifiedSeconds
+        FROM library_folder_summaries
+        ORDER BY CASE WHEN folderKey = '' THEN 1 ELSE 0 END, path COLLATE NOCASE ASC
+        LIMIT :limit OFFSET :offset
+        """,
+    )
+    suspend fun listFoldersForBrowse(limit: Int, offset: Int): List<FolderSummary>
+
+    @Query(
+        """
+        SELECT * FROM library_tracks
+        WHERE (source = 'mediastore' OR source = 'saf')
+          AND genreKey = :genreKey
+        ORDER BY
+            album COLLATE NOCASE ASC,
+            CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
+            CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
+            title COLLATE NOCASE ASC
+        LIMIT :limit OFFSET :offset
+        """,
+    )
+    suspend fun listTracksByGenreForBrowse(
+        genreKey: String,
+        limit: Int,
+        offset: Int,
+    ): List<LibraryTrackEntity>
+
+    @Query(
+        """
+        SELECT * FROM library_tracks
+        WHERE (source = 'mediastore' OR source = 'saf')
+          AND (
+            (:folderKey = '' AND (relativePath IS NULL OR trim(relativePath) = ''))
+            OR relativePath = :folderKey
+          )
+        ORDER BY
+            album COLLATE NOCASE ASC,
+            CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
+            CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
+            title COLLATE NOCASE ASC
+        LIMIT :limit OFFSET :offset
+        """,
+    )
+    suspend fun listTracksByFolderForBrowse(
+        folderKey: String,
+        limit: Int,
+        offset: Int,
+    ): List<LibraryTrackEntity>
+
+    @Query(
+        """
         SELECT * FROM library_tracks
         WHERE source = :source
           AND albumKey = :albumKey
@@ -591,6 +711,21 @@ interface LibraryTrackDao {
         """,
     )
     suspend fun getTracksByGenre(genreKey: String, limit: Int): List<LibraryTrackEntity>
+
+    @Query(
+        """
+        SELECT * FROM library_tracks
+        WHERE (source = 'mediastore' OR source = 'saf')
+          AND composerKey = :composerKey
+        ORDER BY
+            album COLLATE NOCASE ASC,
+            CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
+            CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
+            title COLLATE NOCASE ASC
+        LIMIT :limit
+        """,
+    )
+    suspend fun getTracksByComposer(composerKey: String, limit: Int): List<LibraryTrackEntity>
 
     @Query(
         """
@@ -695,6 +830,17 @@ interface LibraryTrackDao {
         """,
     )
     fun pageRecentlyAddedTracks(): PagingSource<Int, LibraryTrackEntity>
+
+    @Query(
+        """
+        SELECT t.* FROM library_tracks t
+        INNER JOIN library_playback_stats s ON s.trackId = t.id
+        WHERE (t.source = 'mediastore' OR t.source = 'saf') AND s.lastPlayedAtEpochMs > 0
+        ORDER BY s.lastPlayedAtEpochMs DESC, t.title COLLATE NOCASE ASC
+        LIMIT :limit
+        """,
+    )
+    fun observeRecentlyPlayedTracks(limit: Int): Flow<List<LibraryTrackEntity>>
 
     @Query(
         """
@@ -1281,6 +1427,18 @@ interface LibraryTrackDao {
         clearLocalTracks()
         rebuildLibrarySummaries()
     }
+
+    @Query("SELECT id, contentUri FROM library_tracks WHERE source = 'mediastore' OR source = 'saf'")
+    suspend fun localTrackLocations(): List<TrackIdUriRow>
+
+    @Query(
+        """
+        SELECT id, fingerprint FROM library_tracks
+        WHERE (source = 'mediastore' OR source = 'saf')
+          AND fingerprint IS NOT NULL AND trim(fingerprint) != ''
+        """,
+    )
+    suspend fun localTrackFingerprints(): List<TrackIdFingerprintRow>
 
     @Query("DELETE FROM library_tracks WHERE id IN (:trackIds)")
     suspend fun deleteTracksByIds(trackIds: List<String>): Int

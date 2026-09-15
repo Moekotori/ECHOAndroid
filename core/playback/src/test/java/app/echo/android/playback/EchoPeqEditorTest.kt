@@ -25,16 +25,33 @@ class EchoPeqEditorTest {
         val band = OpraEqBand("peak_dip", 1000f, 2f, 1f, null)
         c.setParametricFilters(listOf(band))
         val valid = c.state.value
-        c.setParametricFilters(List(13) { band })
+        c.setParametricFilters(List(EchoParametricEq.MaxBands + 1) { band })
         assertEquals(valid, c.state.value)
         c.setParametricFilters(listOf(band.copy(gainDb = Float.NaN)))
         assertEquals(valid, c.state.value)
         c.setParametricFilters(listOf(band.copy(type = "unsupported")))
         assertEquals(valid, c.state.value)
         c.setParametricFilters(listOf(band.copy(frequencyHz = 50000f, gainDb = 25f, q = 30f)))
-        assertEquals(band.copy(frequencyHz = 20000f, gainDb = 12f, q = 10f), c.state.value.filters.single())
+        assertEquals(
+            band.copy(frequencyHz = 20000f, gainDb = EchoParametricEq.MaxGainDb, q = 30f),
+            c.state.value.filters.single(),
+        )
         c.setPreset(EchoEqualizerPreset.Flat)
         assertFalse(c.state.value.parametric)
         assertTrue(c.state.value.filters.isEmpty())
+    }
+
+    @Test fun editingKeepsWideOpraChainSlopeAndSource() {
+        val c = EchoEqualizerController()
+        val filters = List(12) { OpraEqBand("peak_dip", 80f * (it + 1), if (it == 0) 4f else -1f, 1.1f, null) } +
+            OpraEqBand("high_pass", 20f, 0f, null, 24f)
+        c.setConfig(true, EchoEqualizerPreset.Custom, emptyList(), -6f, filters, "HD 650 / oratory1990")
+        val edited = filters.toMutableList().also { it[0] = it[0].copy(gainDb = 3.5f) }
+        c.setParametricFilters(edited)
+        assertEquals(13, c.state.value.filters.size)
+        assertEquals(24f, c.state.value.filters.last().slope)
+        assertEquals(null, c.state.value.filters.last().q)
+        assertEquals("HD 650 / oratory1990", c.state.value.sourceLabel)
+        assertEquals(3.5f, c.state.value.filters.first().gainDb, 0.01f)
     }
 }

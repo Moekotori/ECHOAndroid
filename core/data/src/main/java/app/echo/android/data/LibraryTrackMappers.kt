@@ -82,6 +82,7 @@ internal fun LibraryTrackEntity.withComputedSearchMetadata(): LibraryTrackEntity
         ),
         artistKey = libraryArtistKey(nextNormalizedArtist),
         genreKey = libraryGenreKey(genre?.normalizedForSearch()),
+        composerKey = libraryGenreKey(composer?.normalizedForSearch()),
     )
 }
 

@@ -465,6 +465,7 @@ internal object AudioFileTagRewriter {
             trackNumber = text("TRCK")?.substringBefore('/')?.toIntOrNull()?.takeIf { it > 0 },
             discNumber = text("TPOS")?.substringBefore('/')?.toIntOrNull()?.takeIf { it > 0 },
             year = yearText?.take(4)?.toIntOrNull()?.takeIf { it > 0 },
+            composer = text("TCOM")?.takeIf { it.isNotBlank() },
             lyrics = frames.firstOrNull { it.id == "USLT" }?.payload?.let(::decodeUslt),
         )
     }

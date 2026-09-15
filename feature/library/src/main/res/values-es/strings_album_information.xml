@@ -6,6 +6,7 @@
     <string name="album_information_duration">Duración total</string>
     <string name="album_information_added">Agregado a la biblioteca</string>
     <string name="album_information_discs">Discos</string>
+    <string name="album_disc_number">Disco %1$d</string>
     <string name="album_information_track_artists">Artistas de las canciones</string>
     <string name="album_information_audio">Información de audio</string>
     <string name="album_information_partial">Según %1$d de %2$d canciones cargadas</string>

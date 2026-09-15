@@ -3,6 +3,7 @@
 <resources>
     <string name="feature_home_add_to_queue_1775d3">"Add to queue"</string>
     <string name="feature_home_added_930006">"Added"</string>
+    <string name="feature_home_tracks_9c2e11">"Tracks"</string>
     <string name="feature_home_adjust_the_local_queue_f4499e">"Adjust the local queue"</string>
     <string name="feature_home_albums_e68c2b">"Albums"</string>
     <string name="feature_home_albums_you_like_95a2b9">"Albums you like"</string>

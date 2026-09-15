@@ -6,6 +6,7 @@
     <string name="album_information_duration">Общая длительность</string>
     <string name="album_information_added">Добавлено в библиотеку</string>
     <string name="album_information_discs">Диски</string>
+    <string name="album_disc_number">Диск %1$d</string>
     <string name="album_information_track_artists">Исполнители треков</string>
     <string name="album_information_audio">Сведения об аудио</string>
     <string name="album_information_partial">На основе %1$d из %2$d загруженных треков</string>

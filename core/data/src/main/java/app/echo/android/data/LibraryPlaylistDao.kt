@@ -129,6 +129,24 @@ interface LibraryPlaylistDao {
 
     @Query(
         """
+        SELECT id, name, source, trackCount, artworkUri, updatedAtEpochMs
+        FROM library_playlists
+        WHERE source = :source
+          AND name LIKE '%' || :query || '%'
+        ORDER BY
+            CASE WHEN name LIKE :query || '%' THEN 0 ELSE 1 END,
+            name COLLATE NOCASE ASC
+        LIMIT :limit
+        """,
+    )
+    suspend fun searchPlaylistsForBrowse(
+        source: String,
+        query: String,
+        limit: Int,
+    ): List<PlaylistSummaryRow>
+
+    @Query(
+        """
         SELECT library_tracks.* FROM library_tracks
         JOIN library_playlist_tracks ON library_tracks.id = library_playlist_tracks.trackId
         WHERE library_playlist_tracks.playlistId = :playlistId

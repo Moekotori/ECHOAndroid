@@ -6,6 +6,7 @@
     <string name="album_information_duration">총 길이</string>
     <string name="album_information_added">라이브러리에 추가됨</string>
     <string name="album_information_discs">디스크</string>
+    <string name="album_disc_number">디스크 %1$d</string>
     <string name="album_information_track_artists">트랙 아티스트</string>
     <string name="album_information_audio">오디오 정보</string>
     <string name="album_information_partial">불러온 %2$d곡 중 %1$d곡 기준</string>

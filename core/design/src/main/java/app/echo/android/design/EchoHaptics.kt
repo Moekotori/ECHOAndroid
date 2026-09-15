@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
+import app.echo.android.model.platform.EchoPlatformCapabilities
 
 enum class EchoHapticKind {
     Confirm,
@@ -20,7 +21,8 @@ val LocalEchoHapticsEnabled = staticCompositionLocalOf { true }
 fun Context.performEchoHaptic(kind: EchoHapticKind) {
     val vibrator = currentVibrator() ?: return
     if (!vibrator.hasVibrator()) return
-    if (Build.VERSION.SDK_INT >= 31) {
+    val capabilities = EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT)
+    if (capabilities.hapticPrimitives) {
         val primitive = when (kind) {
             EchoHapticKind.Confirm -> VibrationEffect.Composition.PRIMITIVE_CLICK
             EchoHapticKind.Tick -> VibrationEffect.Composition.PRIMITIVE_TICK
@@ -60,7 +62,7 @@ fun rememberEchoHapticPerformer(): EchoHapticPerformer {
 }
 
 private fun Context.currentVibrator(): Vibrator? =
-    if (Build.VERSION.SDK_INT >= 31) {
+    if (EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT).hapticPrimitives) {
         getSystemService(VibratorManager::class.java)?.defaultVibrator
     } else {
         @Suppress("DEPRECATION")

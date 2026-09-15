@@ -11,6 +11,7 @@ internal fun SettingsLibraryContent(
     onWatchedFolderRescanEnabledChange: (Boolean) -> Unit,
     onOpenLibrary: () -> Unit,
     onClearLocalLibraryIndex: suspend () -> Boolean,
+    onCleanupLocalLibrary: suspend () -> Pair<Int, Int> = { 0 to 0 },
 ) {
     SettingsSectionCard(
         title = stringResource(R.string.settings_section_library),
@@ -32,6 +33,7 @@ internal fun SettingsLibraryContent(
             detail = stringResource(R.string.settings_local_music_detail),
             onClick = onOpenLibrary,
         )
+        SettingsLibraryCleanupRow(onCleanupLocalLibrary)
         SettingsClearLibraryIndexRow(onClearLocalLibraryIndex)
     }
 }

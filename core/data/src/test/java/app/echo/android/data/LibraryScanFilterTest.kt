@@ -38,6 +38,9 @@ class LibraryScanFilterTest {
         assertTrue(defaults.accepts(60_000, 200_000, "Music/Live Recordings/"))
         assertTrue(defaults.copy(excludeNonMusicFolders = false, excludeHiddenFolders = false)
             .accepts(60_000, 200_000, ".hidden/Recordings/"))
+        assertFalse(defaults.accepts(60_000, 200_000, "Android/media/WhatsApp Audio/"))
+        assertFalse(defaults.accepts(60_000, 200_000, "Android/media/Telegram Audio/"))
+        assertTrue(defaults.accepts(60_000, 200_000, "Music/Telegram Covers/"))
     }
 
     @Test fun filteredRescanPreservesExistingSongsWhileRejectingNewNoise() {
