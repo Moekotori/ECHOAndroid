@@ -359,8 +359,14 @@ class EchoUsbAudioMonitor(context: Context) {
 
     private fun AudioDeviceInfo.getDisplayName(): String =
         productName?.toString()?.takeIf { it.isNotBlank() }
-            ?: address.takeIf { it.isNotBlank() }
+            ?: deviceAddressOrNull()
             ?: "USB audio"
+
+    private fun AudioDeviceInfo.deviceAddressOrNull(): String? {
+        if (Build.VERSION.SDK_INT < EchoPlatformCapabilities.AudioDeviceAddressSdk) return null
+        val value = address.trim()
+        return value.takeIf { it.isNotEmpty() }
+    }
 
     private fun UsbDevice.isUsbAudioDevice(): Boolean =
         deviceClass == UsbConstants.USB_CLASS_AUDIO ||

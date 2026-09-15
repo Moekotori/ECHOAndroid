@@ -27,6 +27,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
@@ -89,6 +90,8 @@ import app.echo.android.design.echoStartupWindowColor
 import app.echo.android.model.settings.EchoColorTheme
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoWidthSizeClass
+import app.echo.android.design.echoLocaleSwitchLayer
+import app.echo.android.design.runEchoLocaleSwitch
 import app.echo.android.feature.connect.ConnectScreen
 import app.echo.android.feature.home.SearchScreen
 import app.echo.android.feature.player.PlaybackQueueSheet
@@ -138,6 +141,7 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlin.coroutines.cancellation.CancellationException
@@ -685,7 +689,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     var detailReturnPage by remember { mutableStateOf<EchoPagerPage?>(null) }
     var searchVisible by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
-    var errorLogVisible by rememberSaveable { mutableStateOf(false) }
+    var errorLogVisible by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableIntStateOf(EchoTab.Now.ordinal) }
     var bottomDockExpanded by remember { mutableStateOf(true) }
     var bottomDockHeightPx by remember { mutableIntStateOf(0) }
@@ -797,6 +801,24 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     )
     val appScope = rememberCoroutineScope()
     val routeNavigationJob = remember { arrayOfNulls<Job>(1) }
+    val localeSwitchProgress = remember { Animatable(1f) }
+    var pendingAppLanguage by remember { mutableStateOf<String?>(null) }
+    val localeSwitchLayer = pendingAppLanguage != null
+    fun changeAppLanguage(language: String) {
+        if (language == appSettings.appLanguage && pendingAppLanguage == null) return
+        pendingAppLanguage = language
+    }
+    LaunchedEffect(pendingAppLanguage) {
+        val language = pendingAppLanguage ?: return@LaunchedEffect
+        localeSwitchProgress.runEchoLocaleSwitch(effectivePerformanceMode.isLightweight) {
+            viewModel.setAppLanguage(language)
+            permissionActivity?.refreshEchoAppLocale(language)
+        }
+        if (pendingAppLanguage == language) {
+            pendingAppLanguage = null
+            localeSwitchProgress.snapTo(1f)
+        }
+    }
     fun needsPagerSettle(targetPage: Int): Boolean =
         tabPagerState.settledPage != targetPage ||
             tabPagerState.currentPage != targetPage ||
@@ -929,11 +951,14 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         },
         onDismiss = { nowPlayingExpanded = false },
     )
-    EchoOverlayBackHandler(enabled = !nowPlayingExpanded && libraryDetailOpen) {
+    val shellOverlayOpen = searchVisible || errorLogVisible || queueSheetVisible || nowPlayingExpanded
+    EchoOverlayBackHandler(enabled = !shellOverlayOpen && libraryDetailOpen) {
         closeLibraryDetail()
     }
     EchoOverlayBackHandler(
-        enabled = !nowPlayingExpanded && tabPagerState.currentPage == EchoPagerPage.Settings.ordinal,
+        enabled = !shellOverlayOpen &&
+            !libraryDetailOpen &&
+            tabPagerState.currentPage == EchoPagerPage.Settings.ordinal,
     ) {
         selectDockTab(EchoTab.Now)
     }
@@ -948,7 +973,15 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         densityScale = appSettings.uiDensityScale,
         effectivePerformanceMode = effectivePerformanceMode,
     ) {
-        Box(Modifier.fillMaxSize()) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .echoLocaleSwitchLayer(
+                    progress = localeSwitchProgress,
+                    lightweight = effectivePerformanceMode.isLightweight,
+                    active = localeSwitchLayer,
+                ),
+        ) {
             EchoCustomBackground(
                 settings = appSettings,
                 modifier = Modifier.fillMaxSize(),
@@ -1211,10 +1244,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 },
                                 onThemeModeChange = viewModel::setThemeMode,
                                 onColorThemeChange = viewModel::setColorTheme,
-                                onAppLanguageChange = { language ->
-                                    viewModel.setAppLanguage(language)
-                                    permissionActivity?.refreshEchoAppLocale(language)
-                                },
+                                onAppLanguageChange = ::changeAppLanguage,
                                 onScheduledDarkModeEnabledChange = viewModel::setScheduledDarkModeEnabled,
                                 onScheduledDarkStartMinuteChange = viewModel::setScheduledDarkStartMinute,
                                 onScheduledDarkEndMinuteChange = viewModel::setScheduledDarkEndMinute,
@@ -1648,7 +1678,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     key1 = errorLogVisible,
                 ) {
                     if (errorLogVisible) {
-                        viewModel.errorLogRecords.collect { value = it }
+                        viewModel.errorLogRecords
+                            .catch { emit(emptyList()) }
+                            .collect { value = it }
                     }
                 }
                 ErrorLogScreen(

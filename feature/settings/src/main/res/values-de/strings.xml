@@ -71,6 +71,7 @@
     <string name="settings_notification_permission">Berechtigung für Medienbenachrichtigungen</string>
     <string name="settings_notification_granted">Erteilt; Wiedergabesteuerung kann in Benachrichtigungen erscheinen</string>
     <string name="settings_notification_denied">Sperrbildschirm-Benachrichtigungen und der Vordergrunddienst können ohne diese Berechtigung nicht verfügbar sein</string>
+    <string name="settings_notification_not_required">Diese Android-Version benötigt keine Benachrichtigungsberechtigung</string>
     <string name="settings_on">Ein</string>
     <string name="settings_allow">Erlauben</string>
     <string name="settings_test_usb">USB-Exklusivtreiber testen</string>

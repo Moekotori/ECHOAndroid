@@ -1,5 +1,7 @@
 package app.echo.android.feature.settings
 
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import app.echo.android.design.echoPressFeedback
 
 @Composable
 internal fun SettingsLanguageRow(selected: String, onSelect: (String) -> Unit) {
@@ -32,12 +35,20 @@ internal fun SettingsLanguageRow(selected: String, onSelect: (String) -> Unit) {
             text = {
                 LazyColumn(Modifier.heightIn(max = 400.dp).selectableGroup(), state = scroll) {
                     items(options, key = { it.value }) { option ->
+                        val source = remember(option.value) { MutableInteractionSource() }
                         Row(
-                            Modifier.fillMaxWidth().selectable(
-                                selected = selected == option.value,
-                                role = Role.RadioButton,
-                                onClick = { open = false; onSelect(option.value) },
-                            ).padding(vertical = 8.dp).heightIn(min = 48.dp),
+                            Modifier
+                                .fillMaxWidth()
+                                .echoPressFeedback(source)
+                                .selectable(
+                                    selected = selected == option.value,
+                                    role = Role.RadioButton,
+                                    interactionSource = source,
+                                    indication = LocalIndication.current,
+                                    onClick = { open = false; onSelect(option.value) },
+                                )
+                                .padding(vertical = 8.dp)
+                                .heightIn(min = 48.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {

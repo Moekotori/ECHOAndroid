@@ -3,6 +3,7 @@ package app.echo.android.data
 import app.echo.android.model.library.CueSheet
 import app.echo.android.model.library.CueSheetPolicy
 import app.echo.android.model.library.LibraryScanOptions
+import app.echo.android.model.platform.EchoPlatformCapabilities
 import android.content.ContentResolver
 import android.content.Context
 import android.database.Cursor
@@ -483,6 +484,7 @@ class MediaStoreTrackScanner(
 
     internal fun readSampleRateHz(contentUri: String): Int? =
         runCatching {
+            if (Build.VERSION.SDK_INT < EchoPlatformCapabilities.MediaMetadataSampleRateSdk) return@runCatching null
             val uri = Uri.parse(contentUri)
             val retriever = MediaMetadataRetriever()
             try {

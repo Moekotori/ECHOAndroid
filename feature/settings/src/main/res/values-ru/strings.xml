@@ -71,6 +71,7 @@
     <string name="settings_notification_permission">Разрешение медиауведомлений</string>
     <string name="settings_notification_granted">Разрешено; элементы управления воспроизведением могут появляться в уведомлениях</string>
     <string name="settings_notification_denied">Без этого разрешения уведомления на экране блокировки и служба переднего плана могут быть недоступны</string>
+    <string name="settings_notification_not_required">Эта версия Android не требует разрешения на уведомления</string>
     <string name="settings_on">Вкл.</string>
     <string name="settings_allow">Разрешить</string>
     <string name="settings_test_usb">Проверить эксклюзивный USB-драйвер</string>

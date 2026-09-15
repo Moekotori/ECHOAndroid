@@ -380,23 +380,32 @@ private fun errorLogSourceFilters(): List<ErrorLogSourceFilter> = listOf(
 
 private fun copyErrorLog(context: Context, records: List<EchoErrorRecord>) {
     val text = diagnosticDump(records) ?: return
-    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    clipboard.setPrimaryClip(ClipData.newPlainText("ECHO errors", text))
+    runCatching {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("ECHO errors", text))
+    }
 }
 
 private fun shareErrorLog(context: Context, records: List<EchoErrorRecord>) {
     val text = diagnosticDump(records) ?: return
-    val intent = Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.error_log_title))
-        putExtra(Intent.EXTRA_TEXT, text)
-    }
     runCatching {
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.error_log_title))
+            putExtra(Intent.EXTRA_TEXT, text)
+        }
         context.startActivity(Intent.createChooser(intent, context.getString(R.string.error_log_share)))
     }
 }
 
 private fun diagnosticDump(records: List<EchoErrorRecord>): String? {
     if (records.isEmpty()) return null
-    return records.joinToString("\n\n") { it.toDiagnosticText() }
+    val text = records.joinToString("\n\n") { it.toDiagnosticText() }
+    return if (text.length <= MaxErrorLogShareChars) {
+        text
+    } else {
+        text.take(MaxErrorLogShareChars - 1) + "…"
+    }
 }
+
+private const val MaxErrorLogShareChars = 200_000

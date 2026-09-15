@@ -3,12 +3,14 @@ package app.echo.android.data
 import app.echo.android.model.library.CueSheet
 import app.echo.android.model.library.CueSheetPolicy
 import app.echo.android.model.library.LibraryScanOptions
+import app.echo.android.model.platform.EchoPlatformCapabilities
 import kotlinx.coroutines.CancellationException
 import android.content.ContentResolver
 import java.io.ByteArrayOutputStream
 import android.database.Cursor
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.os.Build
 import android.provider.DocumentsContract
 import android.util.Log
 import androidx.core.database.getLongOrNull
@@ -437,7 +439,10 @@ class DocumentTreeTrackScanner(
                             ?.take(4)
                             ?.toIntOrNull()
                             ?.takeIf { it > 0 },
-                    sampleRateHz = if (readSampleRate) {
+                    sampleRateHz = if (
+                        readSampleRate &&
+                        Build.VERSION.SDK_INT >= EchoPlatformCapabilities.MediaMetadataSampleRateSdk
+                    ) {
                         retriever.metadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)
                             ?.toIntOrNull()
                             ?.takeIf { it > 0 }

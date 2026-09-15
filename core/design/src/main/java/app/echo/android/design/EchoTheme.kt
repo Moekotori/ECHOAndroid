@@ -1,6 +1,8 @@
 package app.echo.android.design
 
 import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
@@ -192,24 +194,10 @@ fun EchoMobileTheme(
     }
     val colorScheme = remember(tokens, darkTheme, dynamicColor, context, platformCapabilities) {
         val base = echoColorScheme(tokens)
-        val useDynamic = dynamicColor &&
-            Build.VERSION.SDK_INT >= EchoPlatformCapabilities.DynamicColorSdk
-        if (!useDynamic) {
-            base
+        if (dynamicColor && Build.VERSION.SDK_INT >= EchoPlatformCapabilities.DynamicColorSdk) {
+            echoDynamicColorScheme(context, darkTheme, base)
         } else {
-            val dynamic = if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-            base.copy(
-                primary = dynamic.primary,
-                onPrimary = dynamic.onPrimary,
-                primaryContainer = dynamic.primaryContainer,
-                onPrimaryContainer = dynamic.onPrimaryContainer,
-                secondary = dynamic.secondary,
-                onSecondary = dynamic.onSecondary,
-                tertiary = dynamic.tertiary,
-                onTertiary = dynamic.onTertiary,
-                inversePrimary = dynamic.inversePrimary,
-                surfaceTint = dynamic.primary,
-            )
+            base
         }
     }
     CompositionLocalProvider(
@@ -231,6 +219,27 @@ fun EchoMobileTheme(
             content = content,
         )
     }
+}
+
+@RequiresApi(EchoPlatformCapabilities.DynamicColorSdk)
+private fun echoDynamicColorScheme(
+    context: android.content.Context,
+    darkTheme: Boolean,
+    base: ColorScheme,
+): ColorScheme {
+    val dynamic = if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    return base.copy(
+        primary = dynamic.primary,
+        onPrimary = dynamic.onPrimary,
+        primaryContainer = dynamic.primaryContainer,
+        onPrimaryContainer = dynamic.onPrimaryContainer,
+        secondary = dynamic.secondary,
+        onSecondary = dynamic.onSecondary,
+        tertiary = dynamic.tertiary,
+        onTertiary = dynamic.onTertiary,
+        inversePrimary = dynamic.inversePrimary,
+        surfaceTint = dynamic.primary,
+    )
 }
 
 internal fun echoColorScheme(tokens: EchoThemeTokens) =

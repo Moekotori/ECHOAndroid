@@ -58,6 +58,7 @@ class EchoApplication : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
         initializeEchoAppLocale(readEchoStartupThemeSnapshot().appLanguage)
+        installUncaughtExceptionHandler()
         EchoErrorLog.setProcessInfo(
             EchoErrorProcessInfo("${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"),
         )
@@ -69,7 +70,6 @@ class EchoApplication : Application(), ImageLoaderFactory {
                 app.echo.android.model.playback.EchoRemotePinPolicy.pinTokens(ids),
             )
         }
-        installUncaughtExceptionHandler()
         EchoPlaybackProcessRuntime.setStreamResolver { mediaId, uri ->
             val id = app.echo.android.model.playback.EchoLinkPlaybackUri.trackId(mediaId, uri)
             if (id == null) uri else echoLinkSession.client.resolvePhoneStreamUrl(id) ?: uri

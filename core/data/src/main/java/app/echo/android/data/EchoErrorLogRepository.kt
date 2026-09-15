@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -24,10 +25,14 @@ class EchoErrorLogRepository internal constructor(
     private val mutex = Mutex()
 
     val records: Flow<List<EchoErrorRecord>> =
-        dao.observeAll().map { rows -> rows.map { it.toRecord() } }
+        dao.observeAll()
+            .map { rows -> rows.map { it.toRecord() } }
+            .catch { emit(emptyList()) }
 
     val count: Flow<Int> =
-        dao.observeCount().distinctUntilChanged()
+        dao.observeCount()
+            .distinctUntilChanged()
+            .catch { emit(0) }
 
     override fun record(draft: EchoErrorDraft) {
         ioScope.launch {

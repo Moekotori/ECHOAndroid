@@ -30,11 +30,24 @@ object EchoMotion {
     const val FadeExitMs = 120
     const val CollapseMs = 260
     const val PressedScale = 0.97f
+    const val LocaleOutMs = 180
+    const val LocaleInMs = 260
+    const val LocaleLightweightMs = 90
 
     fun stateChange(): ContentTransform = ContentTransform(
         targetContentEnter = fadeIn(tween(FadeMs, easing = Silk)),
         initialContentExit = fadeOut(tween(FadeExitMs, easing = SilkExit)),
         sizeTransform = null,
+    )
+
+    fun localeFadeOut(lightweight: Boolean) = tween<Float>(
+        durationMillis = if (lightweight) LocaleLightweightMs else LocaleOutMs,
+        easing = SilkExit,
+    )
+
+    fun localeFadeIn(lightweight: Boolean) = tween<Float>(
+        durationMillis = if (lightweight) LocaleLightweightMs else LocaleInMs,
+        easing = Silk,
     )
 
     val Silk: Easing = CubicBezierEasing(0.22f, 1.00f, 0.36f, 1.00f)

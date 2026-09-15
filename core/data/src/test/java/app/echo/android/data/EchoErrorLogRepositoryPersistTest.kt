@@ -1,10 +1,13 @@
 package app.echo.android.data
 
 import app.echo.android.model.error.EchoErrorDraft
+import app.echo.android.model.error.EchoErrorRecord
 import app.echo.android.model.error.EchoErrorSource
 import java.io.File
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -69,9 +72,27 @@ class EchoErrorLogRepositoryPersistTest {
             dao.rows.maxBy { it.occurredAtEpochMs }.summary,
         )
     }
+
+    @Test
+    fun recordsFlowSurvivesObserveFailure() = runBlocking {
+        val dao = object : FakeEchoErrorLogDao() {
+            override fun observeAll(): Flow<List<EchoErrorLogEntity>> =
+                flow { error("cursor window") }
+
+            override fun observeCount(): Flow<Int> =
+                flow { error("cursor window") }
+        }
+        val repository = EchoErrorLogRepository(
+            dao = dao,
+            pendingCrashFile = File.createTempFile("echo-error", ".json"),
+            ioScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined),
+        )
+        assertEquals(emptyList<EchoErrorRecord>(), repository.records.first())
+        assertEquals(0, repository.count.first())
+    }
 }
 
-private class FakeEchoErrorLogDao : EchoErrorLogDao {
+private open class FakeEchoErrorLogDao : EchoErrorLogDao {
     val rows = mutableListOf<EchoErrorLogEntity>()
     private var nextId = 1L
 
