@@ -4,6 +4,7 @@ import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.Spring
@@ -80,6 +81,13 @@ object EchoMotion {
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = silkStiffness(ms),
             visibilityThreshold = IntSize.VisibilityThreshold,
+        )
+
+    fun silkPagerSnapSpec(lightweight: Boolean): AnimationSpec<Float> =
+        spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = silkStiffness(if (lightweight) 100 else 300),
+            visibilityThreshold = 0.5f,
         )
 
     fun overlayEnter(

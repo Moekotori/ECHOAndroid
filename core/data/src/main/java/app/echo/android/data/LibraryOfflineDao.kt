@@ -27,6 +27,12 @@ interface LibraryOfflineDao {
     @Query("SELECT * FROM library_offline_files WHERE pinId = :pinId")
     suspend fun filesForPin(pinId: String): List<LibraryOfflineFileEntity>
 
+    @Query("SELECT * FROM library_offline_files WHERE pinId = :pinId")
+    fun observeFilesForPin(pinId: String): Flow<List<LibraryOfflineFileEntity>>
+
+    @Query("SELECT * FROM library_offline_files")
+    fun observeFiles(): Flow<List<LibraryOfflineFileEntity>>
+
     @Query("SELECT * FROM library_offline_files WHERE status = :status LIMIT :limit")
     suspend fun filesWithStatus(status: String, limit: Int): List<LibraryOfflineFileEntity>
 

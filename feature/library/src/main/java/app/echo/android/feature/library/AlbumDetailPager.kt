@@ -28,6 +28,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.animateSilkToPage
+import app.echo.android.design.rememberSilkPagerFlingBehavior
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.EchoTrack
 import kotlinx.coroutines.launch
@@ -58,10 +60,7 @@ internal fun AlbumDetailPager(
                 Tab(
                     selected = pager.currentPage == index,
                     onClick = {
-                        scope.launch {
-                            if (lightweight) pager.scrollToPage(index)
-                            else pager.animateScrollToPage(index)
-                        }
+                        scope.launch { pager.animateSilkToPage(index, lightweight) }
                     },
                     text = { Text(stringResource(label)) },
                 )
@@ -71,6 +70,7 @@ internal fun AlbumDetailPager(
             state = pager,
             modifier = Modifier.weight(1f).fillMaxWidth(),
             beyondViewportPageCount = 1,
+            flingBehavior = rememberSilkPagerFlingBehavior(pager),
         ) { page ->
             if (page == 0) {
                 LazyColumn(

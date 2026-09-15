@@ -6,9 +6,9 @@ import app.echo.android.model.library.LibraryOfflinePinKind
 import app.echo.android.model.library.LibraryOfflinePinStatus
 import app.echo.android.model.library.LibraryOfflinePolicy
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import java.io.File
-import java.security.MessageDigest
 
 class LibraryOfflineStore(
     private val database: EchoLibraryDatabase,
@@ -16,15 +16,27 @@ class LibraryOfflineStore(
 ) {
     private val dao get() = database.offlineDao()
 
-    fun observePin(pinId: String): Flow<LibraryOfflinePin?> = flow {
-        dao.observePin(pinId).collect { pin -> emit(pin?.let { loadPin(it) }) }
-    }
+    fun observePin(pinId: String): Flow<LibraryOfflinePin?> =
+        combine(dao.observePin(pinId), dao.observeFilesForPin(pinId)) { pin, files ->
+            pin?.toPin(files)
+        }
 
-    fun observePins(): Flow<List<LibraryOfflinePin>> = flow {
-        dao.observePins().collect { rows -> emit(rows.map { loadPin(it) }) }
-    }
+    fun observePins(): Flow<List<LibraryOfflinePin>> =
+        combine(dao.observePins(), dao.observeFiles()) { pins, files ->
+            val byPin = files.groupBy { it.pinId }
+            pins.map { pin -> pin.toPin(byPin[pin.id].orEmpty()) }
+        }
+
+    fun observeUsedBytes(): Flow<Long> =
+        dao.observeFiles().map { files ->
+            files.asSequence()
+                .filter { it.status == LibraryOfflineFileStatus.Ready.id }
+                .sumOf { it.bytes.coerceAtLeast(0L) }
+        }
 
     suspend fun usedBytes(): Long = dao.readyBytes()
+
+    suspend fun isTracked(trackId: String): Boolean = dao.pinIdForTrack(trackId) != null
 
     suspend fun readyPathMap(): Map<String, String> =
         dao.readyFiles().mapNotNull { row ->
@@ -69,7 +81,10 @@ class LibraryOfflineStore(
         val paths = dao.localPathsForPin(pinId)
         dao.deleteFilesForPin(pinId)
         dao.deletePin(pinId)
-        paths.forEach { path -> runCatching { File(path).delete() } }
+        paths.forEach { path ->
+            runCatching { File(path).delete() }
+            runCatching { File("$path.part").delete() }
+        }
     }
 
     suspend fun markDownloading(trackId: String) {
@@ -94,13 +109,11 @@ class LibraryOfflineStore(
 
     suspend fun destinationFile(trackId: String): File {
         directory.mkdirs()
-        val digest = MessageDigest.getInstance("SHA-256").digest(trackId.toByteArray())
-            .joinToString("") { "%02x".format(it) }
-        return File(directory, digest)
+        return File(directory, LibraryOfflinePolicy.fileNameForTrack(trackId))
     }
 
     private suspend fun albumTracks(albumKey: String): List<LibraryTrackEntity> {
-        val remote = parseRemoteAlbumKey(albumKey)
+        val remote = LibraryOfflinePolicy.remoteAlbumParts(albumKey)
         return if (remote != null) {
             database.trackDao().getTracksByRemoteAlbum(remote.first, remote.second)
         } else {
@@ -155,12 +168,7 @@ class LibraryOfflineStore(
     }
 
     private suspend fun loadPin(pin: LibraryOfflinePinEntity): LibraryOfflinePin =
-        pin.toPin(
-            readyCount = dao.readyCount(pin.id),
-            bytes = dao.readyBytesForPin(pin.id),
-            failedCount = dao.failedCount(pin.id),
-            downloading = dao.downloadingCount(pin.id) > 0,
-        )
+        pin.toPin(dao.filesForPin(pin.id))
 
     private suspend fun refreshPin(pinId: String) {
         val pin = dao.getPin(pinId) ?: return
@@ -169,9 +177,4 @@ class LibraryOfflineStore(
     }
 }
 
-internal fun parseRemoteAlbumKey(value: String): Pair<String, String>? {
-    if (!value.startsWith("remote||")) return null
-    val parts = value.split("||", limit = 3)
-    if (parts.size != 3 || parts[1].isBlank() || parts[2].isBlank()) return null
-    return parts[1] to parts[2]
-}
+

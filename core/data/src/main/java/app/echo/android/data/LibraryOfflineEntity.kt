@@ -64,3 +64,21 @@ fun LibraryOfflinePinEntity.toPin(
         createdAtEpochMs = createdAtEpochMs,
         error = error,
     )
+
+fun LibraryOfflinePinEntity.toPin(files: List<LibraryOfflineFileEntity>): LibraryOfflinePin {
+    var readyCount = 0
+    var failedCount = 0
+    var downloading = false
+    var bytes = 0L
+    for (file in files) {
+        when (file.status) {
+            LibraryOfflineFileStatus.Ready.id -> {
+                readyCount += 1
+                bytes += file.bytes.coerceAtLeast(0L)
+            }
+            LibraryOfflineFileStatus.Failed.id -> failedCount += 1
+            LibraryOfflineFileStatus.Downloading.id -> downloading = true
+        }
+    }
+    return toPin(readyCount, bytes, failedCount, downloading)
+}

@@ -41,7 +41,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -108,6 +107,7 @@ import app.echo.android.ui.shell.EchoPagerPage
 import app.echo.android.ui.shell.dockTab
 import app.echo.android.ui.shell.motionDuration
 import app.echo.android.ui.shell.pagerPage
+import app.echo.android.design.rememberSilkPagerFlingBehavior
 import app.echo.android.ui.shell.rememberTabPagerNestedScrollConnection
 import app.echo.android.ui.shell.routeMotionSpec
 import app.echo.android.ui.shell.dockNavigationMotionSpec
@@ -968,18 +968,17 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                 modifier = Modifier.fillMaxSize()
                     .echoPlayerDepth(nowPlayingExpanded) { maxOf(nowPlayingBackProgress, nowPlayingDragProgress) },
             ) {
+                val tabPagerFling = rememberSilkPagerFlingBehavior(tabPagerState)
                 HorizontalPager(
                     state = tabPagerState,
                     userScrollEnabled = !libraryDetailOpen ||
                         LocalEchoWidthSizeClass.current.prefersLibrarySplit,
                     beyondViewportPageCount = if (effectivePerformanceMode.isLightweight) 0 else 1,
-                    flingBehavior = PagerDefaults.flingBehavior(
-                        state = tabPagerState,
-                        snapAnimationSpec = remember(effectivePerformanceMode) {
-                            routeMotionSpec(0, 1, effectivePerformanceMode)
-                        },
+                    flingBehavior = tabPagerFling,
+                    pageNestedScrollConnection = rememberTabPagerNestedScrollConnection(
+                        tabPagerState,
+                        tabPagerFling,
                     ),
-                    pageNestedScrollConnection = rememberTabPagerNestedScrollConnection(tabPagerState),
                     modifier = Modifier.fillMaxSize(),
                 ) { page ->
                     Box(modifier = Modifier.fillMaxSize()) {

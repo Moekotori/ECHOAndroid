@@ -5,6 +5,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.TargetedFlingBehavior
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
@@ -96,9 +97,12 @@ private fun PagerState.ownsInnerHorizontalTabs(): Boolean {
  * inner edges is the only path that should still move the dock pager.
  */
 @Composable
-internal fun rememberTabPagerNestedScrollConnection(state: PagerState): NestedScrollConnection {
+internal fun rememberTabPagerNestedScrollConnection(
+    state: PagerState,
+    flingBehavior: TargetedFlingBehavior,
+): NestedScrollConnection {
     val default = PagerDefaults.pageNestedScrollConnection(state, Orientation.Horizontal)
-    return remember(state, default) {
+    return remember(state, default, flingBehavior) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset =
                 default.onPreScroll(available, source)
@@ -125,17 +129,14 @@ internal fun rememberTabPagerNestedScrollConnection(state: PagerState): NestedSc
                 if (!state.ownsInnerHorizontalTabs()) {
                     return default.onPostFling(consumed, available)
                 }
-                val offset = state.currentPageOffsetFraction
-                if (offset.absoluteValue <= 0.001f && available.x.absoluteValue < 800f) {
+                if (state.currentPageOffsetFraction.absoluteValue <= 0.001f &&
+                    available.x.absoluteValue < 40f
+                ) {
                     return default.onPostFling(consumed, available)
                 }
-                val position = state.currentPage + offset
-                val target = when {
-                    available.x > 800f -> (position - 0.51f).roundToInt()
-                    available.x < -800f -> (position + 0.51f).roundToInt()
-                    else -> position.roundToInt()
-                }.coerceIn(0, (state.pageCount - 1).coerceAtLeast(0))
-                state.animateScrollToPage(target)
+                state.scroll {
+                    with(flingBehavior) { performFling(-available.x) }
+                }
                 return available.copy(y = 0f)
             }
         }

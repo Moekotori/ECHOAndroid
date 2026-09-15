@@ -267,6 +267,10 @@ object EchoPlaybackProcessRuntime {
 
     suspend fun resolvePlayUri(mediaId: String, uri: String): String {
         EchoOfflinePlaybackIndex.uriFor(mediaId)?.let { return it }
+        return resolveRemoteStreamUri(mediaId, uri)
+    }
+
+    suspend fun resolveRemoteStreamUri(mediaId: String, uri: String): String {
         if (
             EchoLinkPlaybackUri.trackIdFromPersistUri(uri) == null &&
             !EchoLinkPlaybackUri.isOneShotStreamUri(uri) &&

@@ -14,6 +14,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.animateSilkToPage
+import app.echo.android.design.rememberSilkPagerFlingBehavior
 import app.echo.android.model.library.ArtistOnlineQuery
 import app.echo.android.model.library.ArtistSummary
 import kotlinx.coroutines.launch
@@ -43,10 +45,15 @@ internal fun ArtistDetailPager(
         Box(Modifier.padding(horizontal = 24.dp)) {
             LibraryTextTabs(listOf(stringResource(R.string.artist_page_music), stringResource(R.string.artist_page_information),
                 stringResource(R.string.artist_page_concerts)), pager.currentPage, onSelect = { page ->
-                scope.launch { if (lightweight) pager.scrollToPage(page) else pager.animateScrollToPage(page) }
+                scope.launch { pager.animateSilkToPage(page, lightweight) }
             })
         }
-        HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth(), beyondViewportPageCount = 1) { page ->
+        HorizontalPager(
+            state = pager,
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            beyondViewportPageCount = 1,
+            flingBehavior = rememberSilkPagerFlingBehavior(pager),
+        ) { page ->
             when (page) {
                 0 -> music()
                 1 -> ArtistInformationPage(query, active = pager.settledPage == 1 && !pager.isScrollInProgress)

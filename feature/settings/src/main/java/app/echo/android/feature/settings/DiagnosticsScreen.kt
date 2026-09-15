@@ -21,7 +21,9 @@ import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.animateSilkToPage
 import app.echo.android.design.rememberPassThroughPagerNestedScroll
+import app.echo.android.design.rememberSilkPagerFlingBehavior
 import app.echo.android.model.playback.*
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -75,11 +77,9 @@ fun DiagnosticsScreen(
     val scope = rememberCoroutineScope()
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val innerPagerNestedScroll = rememberPassThroughPagerNestedScroll(pagerState)
+    val innerFling = rememberSilkPagerFlingBehavior(pagerState)
     fun selectTab(index: Int) {
-        scope.launch {
-            if (lightweight) pagerState.scrollToPage(index)
-            else pagerState.animateScrollToPage(index)
-        }
+        scope.launch { pagerState.animateSilkToPage(index, lightweight) }
     }
     val labels = listOf(
         stringResource(L10nR.string.feature_settings_signal_path_2fed34),
@@ -104,14 +104,21 @@ fun DiagnosticsScreen(
                     }
                 }
                 Box(Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) {
-                    SignalSoundModeRow(selectedIndex = pagerState.currentPage, labels = labels, onSelect = ::selectTab)
+                    SignalSoundModeRow(
+                        selectedIndex = pagerState.currentPage,
+                        labels = labels,
+                        onSelect = ::selectTab,
+                        selectedProgress = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
+                    )
                 }
             }
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.widthIn(max = LocalEchoContentMaxWidth.current)
                     .fillMaxWidth().weight(1f),
-                beyondViewportPageCount = 0,
+                beyondViewportPageCount = if (lightweight) 0 else 1,
+                flingBehavior = innerFling,
+                overscrollEffect = null,
                 pageNestedScrollConnection = innerPagerNestedScroll,
             ) { tab ->
                 Column(

@@ -147,6 +147,7 @@ import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.LocalEchoWidthSizeClass
 import app.echo.android.design.rememberEchoHapticPerformer
+import app.echo.android.design.rememberSilkPagerFlingBehavior
 import app.echo.android.design.echoDarkGlassBorder
 import app.echo.android.design.formatDuration
 import app.echo.android.design.progressFraction
@@ -524,6 +525,7 @@ fun NowPlayingScreen(
                 state = pagerState,
                 beyondViewportPageCount = 0,
                 userScrollEnabled = pagerScrollEnabled,
+                flingBehavior = rememberSilkPagerFlingBehavior(pagerState),
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),

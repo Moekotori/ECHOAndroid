@@ -30,6 +30,7 @@ import app.echo.android.EchoTab
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.design.echoTheme
+import app.echo.android.design.rememberSilkPagerFlingBehavior
 import app.echo.android.feature.player.MiniPlayer
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
@@ -134,7 +135,10 @@ internal fun EchoBottomDockHost(
         ) {
             BottomDock(
                 selectedTab = selectedTab,
-                gestureModifier = rememberDockSwipeModifier(pagerState, effectivePerformanceMode),
+                gestureModifier = rememberDockSwipeModifier(
+                    pagerState,
+                    rememberSilkPagerFlingBehavior(pagerState),
+                ),
                 selectedTabProgress = dockTabProgress,
                 progressLive = pagerState.isScrollInProgress,
                 onLightSurface = !darkTheme,

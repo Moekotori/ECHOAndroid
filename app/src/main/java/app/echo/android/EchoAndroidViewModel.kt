@@ -48,6 +48,7 @@ import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackMetadataUpdate
 import app.echo.android.model.library.LibraryPlaybackOrigin
 import app.echo.android.model.library.FolderSummary
+import app.echo.android.model.library.LibraryOfflinePin
 import app.echo.android.model.library.LibraryScanProgress
 import app.echo.android.model.library.LibrarySource
 import app.echo.android.model.library.LibraryStats
@@ -392,6 +393,34 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun play(track: EchoTrack) {
         playbackController.play(track)
+    }
+
+    private val offlineDownloads get() = (getApplication() as EchoApplication).offlineDownloads
+
+    fun observeOfflinePin(pinId: String): Flow<LibraryOfflinePin?> = offlineDownloads.observePin(pinId)
+
+    fun observeOfflineUsedBytes(): Flow<Long> = offlineDownloads.observeUsedBytes()
+
+    fun pinAlbumOffline(albumKey: String, title: String) {
+        viewModelScope.launch {
+            offlineDownloads.pinAlbum(albumKey, title)
+        }
+    }
+
+    fun pinPlaylistOffline(playlistId: String, title: String) {
+        viewModelScope.launch {
+            offlineDownloads.pinPlaylist(playlistId, title)
+        }
+    }
+
+    fun unpinOffline(pinId: String) {
+        viewModelScope.launch {
+            offlineDownloads.unpin(pinId)
+        }
+    }
+
+    fun setOfflineWifiOnly(enabled: Boolean) {
+        updateSettings { setOfflineWifiOnly(enabled) }
     }
 
     fun pinCurrentQueueOffline() {

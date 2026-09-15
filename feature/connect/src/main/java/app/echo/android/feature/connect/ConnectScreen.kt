@@ -7,6 +7,7 @@ import androidx.compose.ui.res.stringResource
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -17,10 +18,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.animateSilkToPage
 import app.echo.android.design.rememberPassThroughPagerNestedScroll
+import app.echo.android.design.rememberSilkPagerFlingBehavior
 import kotlinx.coroutines.launch
 import app.echo.android.model.connect.EchoLanRenderer
 import app.echo.android.model.connect.EchoLinkLanDevice
@@ -113,18 +118,13 @@ fun ConnectScreen(
     val scope = rememberCoroutineScope()
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val innerPagerNestedScroll = rememberPassThroughPagerNestedScroll(pagerState)
+    val innerFling = rememberSilkPagerFlingBehavior(pagerState)
     fun selectTab(index: Int) {
         keyboard?.hide()
-        scope.launch {
-            if (lightweight) pagerState.scrollToPage(index)
-            else pagerState.animateScrollToPage(index)
-        }
+        scope.launch { pagerState.animateSilkToPage(index, lightweight) }
     }
     LaunchedEffect(openCastTabNonce) {
-        if (openCastTabNonce > 0) {
-            if (lightweight) pagerState.scrollToPage(2)
-            else pagerState.animateScrollToPage(2)
-        }
+        if (openCastTabNonce > 0) pagerState.animateSilkToPage(2, lightweight)
     }
     val tabs = listOf(
         stringResource(L10nR.string.feature_connect_library_sources_09e6db),
@@ -137,7 +137,11 @@ fun ConnectScreen(
                 Text(stringResource(L10nR.string.feature_connect_connect_c7c091),
                     Modifier.padding(horizontal = 24.dp, vertical = 20.dp),
                     style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-                SecondaryTabRow(selectedTabIndex = pagerState.currentPage, containerColor = scheme.background) {
+                SecondaryTabRow(
+                    selectedTabIndex = pagerState.currentPage,
+                    containerColor = scheme.background,
+                    indicator = { ConnectPagerIndicator(pagerState) },
+                ) {
                     tabs.forEachIndexed { index, label ->
                         Tab(selected = pagerState.currentPage == index, onClick = { selectTab(index) },
                             unselectedContentColor = scheme.onSurfaceVariant,
@@ -149,7 +153,9 @@ fun ConnectScreen(
                 state = pagerState,
                 modifier = Modifier.widthIn(max = LocalEchoContentMaxWidth.current)
                     .fillMaxWidth().weight(1f),
-                beyondViewportPageCount = 0,
+                beyondViewportPageCount = if (lightweight) 0 else 1,
+                flingBehavior = innerFling,
+                overscrollEffect = null,
                 pageNestedScrollConnection = innerPagerNestedScroll,
             ) { tab ->
                 savedTabs.SaveableStateProvider(tab) {
@@ -257,4 +263,30 @@ fun ConnectScreen(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TabIndicatorScope.ConnectPagerIndicator(pagerState: PagerState) {
+    TabRowDefaults.SecondaryIndicator(
+        modifier = Modifier.tabIndicatorLayout { measurable, constraints, positions ->
+            if (positions.isEmpty()) {
+                return@tabIndicatorLayout layout(0, 0) {}
+            }
+            val last = positions.lastIndex.toFloat()
+            val progress = (pagerState.currentPage + pagerState.currentPageOffsetFraction)
+                .coerceIn(0f, last)
+            val from = progress.toInt().coerceIn(0, positions.lastIndex)
+            val to = (from + 1).coerceAtMost(positions.lastIndex)
+            val fraction = progress - from
+            val left = lerp(positions[from].left, positions[to].left, fraction)
+            val width = lerp(positions[from].width, positions[to].width, fraction)
+            val placeable = measurable.measure(
+                Constraints.fixed(width.roundToPx().coerceAtLeast(0), 3.dp.roundToPx()),
+            )
+            layout(constraints.maxWidth, constraints.maxHeight) {
+                placeable.placeRelative(left.roundToPx(), constraints.maxHeight - placeable.height)
+            }
+        },
+    )
 }

@@ -16,6 +16,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.gestures.TargetedFlingBehavior
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
@@ -155,6 +156,18 @@ class EchoContentMotion internal constructor(private val lightweight: Boolean) {
 
     /** Same-page body swap. Surrounding chrome must stay mounted. */
     fun sourceSwitch() = EchoMotion.stateChange()
+}
+
+@Composable
+fun rememberSilkPagerFlingBehavior(state: PagerState): TargetedFlingBehavior {
+    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    val snap = remember(lightweight) { EchoMotion.silkPagerSnapSpec(lightweight) }
+    return PagerDefaults.flingBehavior(state = state, snapAnimationSpec = snap)
+}
+
+suspend fun PagerState.animateSilkToPage(page: Int, lightweight: Boolean) {
+    if (lightweight) scrollToPage(page)
+    else animateScrollToPage(page, animationSpec = EchoMotion.silkPagerSnapSpec(lightweight = false))
 }
 
 /**

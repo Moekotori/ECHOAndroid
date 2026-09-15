@@ -182,11 +182,7 @@ fun BottomDock(
             Box(Modifier.fillMaxWidth()) {
                 Canvas(Modifier.matchParentSize()) {
                     // Read live position in the draw phase, without a coroutine/frame of lag.
-                    val progress = if (progressLiveState.value) {
-                        selectedTabProgressState.value()
-                    } else {
-                        indicatorAnim.value
-                    }.coerceIn(0f, maxIndicatorIndex)
+                    val progress = selectedTabProgressState.value().coerceIn(0f, maxIndicatorIndex)
                     val from = progress.toInt()
                     val to = (from + 1).coerceAtMost(EchoTab.entries.lastIndex)
                     val fromBounds = itemBounds[from] ?: return@Canvas

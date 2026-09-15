@@ -1,5 +1,7 @@
 package app.echo.android.model.library
 
+import java.security.MessageDigest
+
 enum class LibraryOfflinePinKind(val id: String) {
     Album("album"),
     Playlist("playlist"),
@@ -65,6 +67,20 @@ object LibraryOfflinePolicy {
             id == LibrarySource.Jellyfin.id ||
             id == LibrarySource.WebDav.id ||
             id == LibrarySource.EchoLink.id
+    }
+
+    fun remoteAlbumParts(albumKey: String): Pair<String, String>? {
+        if (!albumKey.startsWith("remote||")) return null
+        val parts = albumKey.split("||", limit = 3)
+        if (parts.size != 3 || parts[1].isBlank() || parts[2].isBlank()) return null
+        return parts[1] to parts[2]
+    }
+
+    fun canPinAlbumKey(albumKey: String): Boolean = canPinSource(remoteAlbumParts(albumKey)?.first)
+
+    fun fileNameForTrack(trackId: String): String {
+        val digest = MessageDigest.getInstance("SHA-256").digest(trackId.toByteArray())
+        return digest.joinToString("") { "%02x".format(it) }
     }
 
     fun pinId(kind: LibraryOfflinePinKind, targetKey: String): String =

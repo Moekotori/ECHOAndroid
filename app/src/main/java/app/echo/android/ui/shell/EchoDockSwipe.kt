@@ -4,6 +4,7 @@ import androidx.compose.foundation.MutatePriority
 import androidx.compose.foundation.gestures.DragScope
 import androidx.compose.foundation.gestures.DraggableState
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.TargetedFlingBehavior
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
@@ -13,14 +14,12 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import app.echo.android.EchoTab
-import app.echo.android.model.settings.EchoEffectivePerformanceMode
-import kotlin.math.roundToInt
 
 /** Share the pager's scroll ownership so taps and page gestures can interrupt dock drags. */
 @Composable
 internal fun rememberDockSwipeModifier(
     pager: PagerState,
-    performanceMode: EchoEffectivePerformanceMode,
+    flingBehavior: TargetedFlingBehavior,
 ): Modifier {
     val tabWidth = remember { floatArrayOf(1f) }
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
@@ -63,16 +62,11 @@ internal fun rememberDockSwipeModifier(
             orientation = Orientation.Horizontal,
             reverseDirection = rtl,
             onDragStopped = { velocity ->
-                val position = pager.currentPage + pager.currentPageOffsetFraction
-                val projected = position - (velocity * 0.12f / tabWidth[0]).coerceIn(-1f, 1f)
-                val target = projected.roundToInt().coerceIn(
-                    EchoPagerPage.Now.ordinal,
-                    EchoPagerPage.Diagnostics.ordinal,
-                )
-                pager.animateScrollToPage(
-                    page = target,
-                    animationSpec = dockNavigationMotionSpec(pager.currentPage, target, performanceMode),
-                )
+                val pageSize = pager.layoutInfo.pageSize.toFloat().coerceAtLeast(1f)
+                val pageVelocity = -velocity * pageSize / tabWidth[0]
+                pager.scroll {
+                    with(flingBehavior) { performFling(pageVelocity) }
+                }
             },
         )
 }
