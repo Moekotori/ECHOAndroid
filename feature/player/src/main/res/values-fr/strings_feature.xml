@@ -129,9 +129,9 @@
     <string name="feature_player_replay_gain_scanning">Analyse…</string>
     <string name="feature_player_replay_gain_scanned">%1$s écrit</string>
     <string name="feature_player_replay_gain_scan_not_local">Seuls les fichiers MP3/FLAC locaux peuvent être écrits</string>
-    <string name="feature_player_replay_gain_scan_unsupported">Ce format ne peut pas stocker d'étiquettes ReplayGain</string>
+    <string name="feature_player_replay_gain_scan_unsupported">Ce format ne peut pas stocker d\'étiquettes ReplayGain</string>
     <string name="feature_player_replay_gain_scan_decode">Impossible de mesurer le volume</string>
-    <string name="feature_player_replay_gain_scan_write">Impossible d'écrire les étiquettes</string>
+    <string name="feature_player_replay_gain_scan_write">Impossible d\'écrire les étiquettes</string>
     <string name="feature_player_lyrics_offset">Décalage des paroles</string>
     <string name="feature_player_nightcore">Nightcore</string>
     <string name="feature_player_playback_mode">Mode de lecture</string>
