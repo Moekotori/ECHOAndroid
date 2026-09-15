@@ -15,6 +15,9 @@ object EchoRemotePinPolicy {
         return mediaId
     }
 
+    fun pinTokens(ids: List<String>, urisById: Map<String, String> = emptyMap()): Set<String> =
+        ids.map { resourceKey(it, urisById[it].orEmpty()) }.filter { it.isNotBlank() }.toSet()
+
     fun merge(current: List<String>, incoming: List<String>): List<String> =
         (incoming + current).distinct().take(MaxTracks)
 }

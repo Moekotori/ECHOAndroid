@@ -13,14 +13,21 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.pager.PagerDefaults
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.Velocity
 
 /** Share the click source with Material controls; never intercept pointer input for feedback. */
 fun Modifier.echoPressFeedback(
@@ -148,6 +155,33 @@ class EchoContentMotion internal constructor(private val lightweight: Boolean) {
 
     /** Same-page body swap. Surrounding chrome must stay mounted. */
     fun sourceSwitch() = EchoMotion.stateChange()
+}
+
+/**
+ * Inner tab pagers must not swallow leftover horizontal fling; the parent dock pager
+ * needs that velocity at the first/last inner tab.
+ */
+@Composable
+fun rememberPassThroughPagerNestedScroll(state: PagerState): NestedScrollConnection {
+    val default = PagerDefaults.pageNestedScrollConnection(state, Orientation.Horizontal)
+    return remember(state, default) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset =
+                default.onPreScroll(available, source)
+
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset = default.onPostScroll(consumed, available, source)
+
+            override suspend fun onPreFling(available: Velocity): Velocity =
+                default.onPreFling(available)
+
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity =
+                Velocity.Zero
+        }
+    }
 }
 
 /** Apply to a downward chevron so direction changes are continuous when interrupted. */

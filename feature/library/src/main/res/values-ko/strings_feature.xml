@@ -17,6 +17,9 @@
     <string name="feature_library_artists_1e19fb">"아티스트"</string>
     <string name="feature_library_genres_8c2a11">"장르"</string>
     <string name="feature_library_composers_4a91c2">"작곡가"</string>
+    <string name="feature_library_loading_composers_c81e2a">"작곡가를 불러오는 중"</string>
+    <string name="feature_library_failed_to_load_composers_9b4d01">"작곡가를 불러오지 못했습니다"</string>
+    <string name="feature_library_this_library_has_no_composers_to_show_yet_2e8c17">"이 라이브러리에 표시할 작곡가가 아직 없습니다"</string>
     <string name="feature_library_loading_genres_4e91aa">"장르를 불러오는 중"</string>
     <string name="feature_library_failed_to_load_genres_b7c102">"장르를 불러오지 못했습니다"</string>
     <string name="feature_library_this_library_has_no_genres_to_show_yet_11a90e">"이 라이브러리에 표시할 장르가 아직 없습니다"</string>

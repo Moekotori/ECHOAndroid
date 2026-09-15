@@ -3,6 +3,8 @@
 <resources>
     <string name="feature_home_add_to_queue_1775d3">"加入佇列"</string>
     <string name="feature_home_added_930006">"新增於"</string>
+    <string name="feature_home_tracks_9c2e11">"歌曲"</string>
+    <string name="feature_home_appears_after_you_play_a_track_7f2c1a">"播放歌曲後顯示"</string>
     <string name="feature_home_adjust_the_local_queue_f4499e">"調整本機佇列"</string>
     <string name="feature_home_albums_e68c2b">"專輯"</string>
     <string name="feature_home_albums_you_like_95a2b9">"你喜歡的專輯"</string>

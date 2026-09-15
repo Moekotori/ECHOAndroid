@@ -41,6 +41,7 @@ internal fun ArtistDetailPage(
     onQueryChange: (String) -> Unit = {},
     onSortChange: (LibraryTrackSortMode) -> Unit = {},
     onOpenAlbum: (AlbumSummary) -> Unit = {},
+    onOpenTrackAlbum: ((EchoTrack) -> Unit)? = null,
     listState: LazyListState = rememberLazyListState(),
     albumListState: LazyListState = rememberLazyListState(),
     modifier: Modifier = Modifier,
@@ -106,6 +107,7 @@ internal fun ArtistDetailPage(
                                 onAddToPlaylist = onAddToPlaylist,
                                 onPlayNext = onPlayNext,
                                 onEnqueue = onEnqueue,
+                                onOpenAlbum = onOpenTrackAlbum,
                             )
                         }
                     }
@@ -135,6 +137,7 @@ internal fun ArtistDetailListPage(
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
+    onOpenTrackAlbum: ((EchoTrack) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val palette = rememberArtworkPalette(artist.artworkUri, seedKey = artist.artistKey)
@@ -186,6 +189,7 @@ internal fun ArtistDetailListPage(
                             onImportLyrics = onImportLyrics,
                             onPickArtwork = onPickArtwork,
                             onMatchNeteaseMetadata = onMatchNeteaseMetadata,
+                            onOpenAlbum = onOpenTrackAlbum,
                         )
                     }
                 }

@@ -6,6 +6,8 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -13,14 +15,16 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoContentMaxWidth
+import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.rememberPassThroughPagerNestedScroll
 import app.echo.android.model.playback.*
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,9 +69,18 @@ fun DiagnosticsScreen(
     bluetoothCodecNeedsPermission: Boolean = false,
     onRequestBluetoothCodecPermission: () -> Unit = {},
 ) {
-    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    val pagerState = rememberPagerState { 3 }
     var soundPanel by rememberSaveable { mutableIntStateOf(0) }
     val scrollStates = listOf(rememberScrollState(), rememberScrollState(), rememberScrollState())
+    val scope = rememberCoroutineScope()
+    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    val innerPagerNestedScroll = rememberPassThroughPagerNestedScroll(pagerState)
+    fun selectTab(index: Int) {
+        scope.launch {
+            if (lightweight) pagerState.scrollToPage(index)
+            else pagerState.animateScrollToPage(index)
+        }
+    }
     val labels = listOf(
         stringResource(L10nR.string.feature_settings_signal_path_2fed34),
         stringResource(L10nR.string.feature_settings_sound_3f2864),
@@ -91,15 +104,15 @@ fun DiagnosticsScreen(
                     }
                 }
                 Box(Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) {
-                    SignalSoundModeRow(selectedIndex = selectedTab, labels = labels, onSelect = { selectedTab = it })
+                    SignalSoundModeRow(selectedIndex = pagerState.currentPage, labels = labels, onSelect = ::selectTab)
                 }
             }
-            AnimatedContent(
-                targetState = selectedTab,
+            HorizontalPager(
+                state = pagerState,
                 modifier = Modifier.widthIn(max = LocalEchoContentMaxWidth.current)
-                    .fillMaxWidth().weight(1f).clipToBounds(),
-                transitionSpec = { EchoMotion.tabSwitch(targetState > initialState) },
-                label = "SignalTabs",
+                    .fillMaxWidth().weight(1f),
+                beyondViewportPageCount = 0,
+                pageNestedScrollConnection = innerPagerNestedScroll,
             ) { tab ->
                 Column(
                     Modifier.fillMaxSize()
@@ -115,11 +128,11 @@ fun DiagnosticsScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             Text(error, Modifier.weight(1f), color = scheme.error, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal)
-                            TextButton(onClick = { selectedTab = 2 }) { Text(labels[2], color = scheme.error) }
+                            TextButton(onClick = { selectTab(2) }) { Text(labels[2], color = scheme.error) }
                         }
                     }
                     when (tab) {
-                        0 -> SignalOverview(status, equalizerState, channelBalanceState, onAdjust = { selectedTab = 1 }, onDiagnostics = { selectedTab = 2 })
+                        0 -> SignalOverview(status, equalizerState, channelBalanceState, onAdjust = { selectTab(1) }, onDiagnostics = { selectTab(2) })
                         1 -> {
                             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                                 SignalSoundTabs(

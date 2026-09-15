@@ -90,6 +90,14 @@
     <string name="settings_watched_folder_rescan_detail">Al volver a ECHO, vuelve a escanear de forma incremental las carpetas que ya escaneaste. Desactivado de forma predeterminada</string>
     <string name="settings_local_music">Música local</string>
     <string name="settings_local_music_detail">Explorar canciones, álbumes, artistas y el escaneo</string>
+    <string name="settings_pin_queue_offline">Mantener la cola actual sin conexión</string>
+    <string name="settings_pin_queue_offline_detail">Guardar en caché las canciones remotas y de PC de la cola actual para reproducirlas sin conexión</string>
+    <string name="settings_library_cleanup">Limpiar archivos faltantes y duplicados</string>
+    <string name="settings_library_cleanup_detail">Quitar canciones cuyos archivos ya no existen y fusionar duplicados exactos</string>
+    <string name="settings_library_cleanup_confirm">Quitar del índice de la biblioteca los archivos faltantes y las copias extra de la misma canción. No se eliminan archivos del disco.</string>
+    <string name="settings_library_cleanup_action">Limpiar</string>
+    <string name="settings_library_cleanup_busy">Limpiando…</string>
+    <string name="settings_library_cleanup_result">Se quitaron %1$d canciones faltantes y %2$d duplicados.</string>
     <string name="settings_section_about">Acerca de</string>
     <string name="settings_backup_export">Exportar copia de seguridad</string>
     <string name="settings_backup_export_detail">Ajustes, EQ, listas y me gusta. No se incluyen secretos.</string>

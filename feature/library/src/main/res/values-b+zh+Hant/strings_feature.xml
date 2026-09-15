@@ -16,6 +16,10 @@
     <string name="feature_library_artist_c15fae">"藝人"</string>
     <string name="feature_library_artists_1e19fb">"藝人"</string>
     <string name="feature_library_genres_8c2a11">"曲風"</string>
+    <string name="feature_library_composers_4a91c2">"作曲"</string>
+    <string name="feature_library_loading_composers_c81e2a">"正在載入作曲"</string>
+    <string name="feature_library_failed_to_load_composers_9b4d01">"無法載入作曲"</string>
+    <string name="feature_library_this_library_has_no_composers_to_show_yet_2e8c17">"這個音樂庫還沒有作曲資訊"</string>
     <string name="feature_library_loading_genres_4e91aa">"正在載入曲風"</string>
     <string name="feature_library_failed_to_load_genres_b7c102">"無法載入曲風"</string>
     <string name="feature_library_this_library_has_no_genres_to_show_yet_11a90e">"這個音樂庫還沒有曲風"</string>

@@ -1179,6 +1179,59 @@ internal fun AlbumTrackRow(
 }
 
 @Composable
+private fun AlbumDiscTrackRow(
+    index: Int,
+    track: EchoTrack,
+    previous: EchoTrack?,
+    isFirst: Boolean,
+    multiDisc: Boolean,
+    accent: Color,
+    onClick: () -> Unit,
+    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
+    onImportLyrics: ((EchoTrack) -> Unit)? = null,
+    onPickArtwork: ((EchoTrack) -> Unit)? = null,
+    onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
+    onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
+    onPlayNext: ((EchoTrack) -> Unit)? = null,
+    onEnqueue: ((EchoTrack) -> Unit)? = null,
+    onOpenArtist: ((EchoTrack) -> Unit)? = null,
+    onOpenAlbum: ((EchoTrack) -> Unit)? = null,
+) {
+    Column(Modifier.fillMaxWidth()) {
+        if (shouldShowAlbumDiscHeader(track, previous, isFirst, multiDisc)) {
+            AlbumDiscHeader(discNumber = track.albumDiscNumber(), isFirst = isFirst)
+        }
+        AlbumTrackRow(
+            index = index,
+            track = track,
+            accent = accent,
+            onClick = onClick,
+            onUpdateTrackMetadata = onUpdateTrackMetadata,
+            onImportLyrics = onImportLyrics,
+            onPickArtwork = onPickArtwork,
+            onMatchNeteaseMetadata = onMatchNeteaseMetadata,
+            onAddToPlaylist = onAddToPlaylist,
+            onPlayNext = onPlayNext,
+            onEnqueue = onEnqueue,
+            onOpenArtist = onOpenArtist,
+            onOpenAlbum = onOpenAlbum,
+        )
+    }
+}
+
+@Composable
+private fun AlbumDiscHeader(discNumber: Int, isFirst: Boolean) {
+    val colors = rememberDetailGlassColors()
+    Text(
+        stringResource(L10nR.string.album_disc_number, discNumber),
+        color = colors.muted,
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(start = 4.dp, top = if (isFirst) 4.dp else 16.dp, bottom = 4.dp),
+    )
+}
+
+@Composable
 internal fun AlbumDetailNotice(message: String) {
     val colors = rememberDetailGlassColors()
     Box(

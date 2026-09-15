@@ -84,6 +84,8 @@
     <string name="settings_watched_folder_rescan_detail">ECHO に戻ったとき、以前スキャンしたフォルダーを差分更新します。初期状態はオフです</string>
     <string name="settings_local_music">端末内の音楽</string>
     <string name="settings_local_music_detail">曲、アルバム、アーティスト、スキャンを開く</string>
+    <string name="settings_pin_queue_offline">現在のキューをオフライン用に保存</string>
+    <string name="settings_pin_queue_offline_detail">現在のキューにあるリモート曲と PC の曲をキャッシュし、オフラインでも再生できます</string>
     <string name="settings_library_cleanup">欠損と重複を整理</string>
     <string name="settings_library_cleanup_detail">ファイルがない曲を外し、同一曲の余分なコピーをまとめます</string>
     <string name="settings_library_cleanup_confirm">ライブラリ索引から欠損ファイルと重複コピーを外します。ディスク上のファイルは削除しません。</string>

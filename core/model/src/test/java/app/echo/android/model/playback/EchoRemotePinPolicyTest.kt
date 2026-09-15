@@ -18,4 +18,15 @@ class EchoRemotePinPolicyTest {
         val many = List(EchoRemotePinPolicy.MaxTracks + 5) { "id$it" }
         assertEquals(EchoRemotePinPolicy.MaxTracks, EchoRemotePinPolicy.merge(emptyList(), many).size)
     }
+
+    @Test
+    fun pinTokensKeepEchoLinkAndRemoteIds() {
+        assertEquals(
+            setOf("echo-link-track:1", "jellyfin:2"),
+            EchoRemotePinPolicy.pinTokens(
+                listOf("echo-link:1", "jellyfin:2"),
+                mapOf("echo-link:1" to "echo-link://track/1"),
+            ),
+        )
+    }
 }

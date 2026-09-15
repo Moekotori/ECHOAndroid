@@ -16,6 +16,10 @@
     <string name="feature_library_artist_c15fae">"исполнитель"</string>
     <string name="feature_library_artists_1e19fb">"Исполнители"</string>
     <string name="feature_library_genres_8c2a11">"Жанры"</string>
+    <string name="feature_library_composers_4a91c2">"Композиторы"</string>
+    <string name="feature_library_loading_composers_c81e2a">"Загрузка композиторов"</string>
+    <string name="feature_library_failed_to_load_composers_9b4d01">"Не удалось загрузить композиторов"</string>
+    <string name="feature_library_this_library_has_no_composers_to_show_yet_2e8c17">"В этой библиотеке пока нет композиторов"</string>
     <string name="feature_library_loading_genres_4e91aa">"Загрузка жанров"</string>
     <string name="feature_library_failed_to_load_genres_b7c102">"Не удалось загрузить жанры"</string>
     <string name="feature_library_this_library_has_no_genres_to_show_yet_11a90e">"В этой библиотеке пока нет жанров"</string>

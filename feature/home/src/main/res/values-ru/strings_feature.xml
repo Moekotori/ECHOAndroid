@@ -3,6 +3,8 @@
 <resources>
     <string name="feature_home_add_to_queue_1775d3">"Добавить в очередь"</string>
     <string name="feature_home_added_930006">"Добавлено"</string>
+    <string name="feature_home_tracks_9c2e11">"Треки"</string>
+    <string name="feature_home_appears_after_you_play_a_track_7f2c1a">"Появится после воспроизведения трека"</string>
     <string name="feature_home_adjust_the_local_queue_f4499e">"Настроить локальную очередь"</string>
     <string name="feature_home_albums_e68c2b">"Альбомы"</string>
     <string name="feature_home_albums_you_like_95a2b9">"Альбомы, которые вам нравятся"</string>

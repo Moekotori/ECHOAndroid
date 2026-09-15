@@ -3,6 +3,8 @@
 <resources>
     <string name="feature_home_add_to_queue_1775d3">"Zur Warteschlange"</string>
     <string name="feature_home_added_930006">"Hinzugefügt"</string>
+    <string name="feature_home_tracks_9c2e11">"Titel"</string>
+    <string name="feature_home_appears_after_you_play_a_track_7f2c1a">"Erscheint, nachdem Sie einen Titel wiedergeben"</string>
     <string name="feature_home_adjust_the_local_queue_f4499e">"Lokale Warteschlange anpassen"</string>
     <string name="feature_home_albums_e68c2b">"Alben"</string>
     <string name="feature_home_albums_you_like_95a2b9">"Alben, die Sie mögen"</string>

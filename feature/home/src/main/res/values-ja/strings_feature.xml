@@ -4,6 +4,7 @@
     <string name="feature_home_add_to_queue_1775d3">"キューに追加"</string>
     <string name="feature_home_added_930006">"追加日"</string>
     <string name="feature_home_tracks_9c2e11">"曲"</string>
+    <string name="feature_home_appears_after_you_play_a_track_7f2c1a">"曲を再生すると表示されます"</string>
     <string name="feature_home_adjust_the_local_queue_f4499e">"ローカルキューを調整"</string>
     <string name="feature_home_albums_e68c2b">"アルバム"</string>
     <string name="feature_home_albums_you_like_95a2b9">"お気に入りのアルバム"</string>

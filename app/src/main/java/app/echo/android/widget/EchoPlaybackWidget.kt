@@ -7,16 +7,20 @@ import android.content.Intent
 import android.graphics.Bitmap
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.LocalSize
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
@@ -50,16 +54,42 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.concurrent.atomic.AtomicReference
+import kotlin.math.roundToInt
 
 class EchoPlaybackWidget : GlanceAppWidget() {
+    override val sizeMode = SizeMode.Responsive(
+        setOf(
+            DpSize(
+                EchoPlaybackWidgetLayout.CompactWidthDp.dp,
+                EchoPlaybackWidgetLayout.CompactHeightDp.dp,
+            ),
+            DpSize(
+                EchoPlaybackWidgetLayout.ExpandedWidthDp.dp,
+                EchoPlaybackWidgetLayout.ExpandedHeightDp.dp,
+            ),
+        ),
+    )
+
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val localized = context.wrapEchoAppLocaleToMatchApplication()
         val snapshot = EchoPlaybackProcessRuntime.surfaceSnapshot
+        val lyricLine = EchoPlaybackProcessRuntime.notificationLyricLine.value
         val artwork = withContext(Dispatchers.IO) {
             loadWidgetArtwork(localized, snapshot)
         }
         provideContent {
-            EchoPlaybackWidgetContent(localized, snapshot, artwork)
+            val size = LocalSize.current
+            EchoPlaybackWidgetContent(
+                context = localized,
+                snapshot = snapshot,
+                artwork = artwork,
+                lyricLine = lyricLine,
+                expanded = EchoPlaybackWidgetLayout.isExpanded(
+                    size.width.value.roundToInt(),
+                    size.height.value.roundToInt(),
+                ),
+            )
         }
     }
 }
@@ -73,6 +103,8 @@ private fun EchoPlaybackWidgetContent(
     context: Context,
     snapshot: EchoPlaybackSurfaceSnapshot,
     artwork: Bitmap?,
+    lyricLine: String?,
+    expanded: Boolean,
 ) {
     val title = snapshot.title.ifBlank { context.getString(R.string.app_name) }
     val artist = snapshot.artist.ifBlank {
@@ -83,71 +115,168 @@ private fun EchoPlaybackWidgetContent(
         addCategory(Intent.CATEGORY_LAUNCHER)
         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
     }
+    val root = GlanceModifier
+        .fillMaxSize()
+        .background(Color(0xE619191D))
+        .cornerRadius(20.dp)
+        .clickable(actionStartActivity(launchIntent))
+    if (expanded) {
+        ExpandedWidgetBody(context, title, artist, lyricLine, snapshot.isPlaying, artwork, root)
+    } else {
+        CompactWidgetBody(context, title, artist, snapshot.isPlaying, artwork, root)
+    }
+}
+
+@Composable
+private fun CompactWidgetBody(
+    context: Context,
+    title: String,
+    artist: String,
+    isPlaying: Boolean,
+    artwork: Bitmap?,
+    modifier: GlanceModifier,
+) {
     Row(
-        modifier = GlanceModifier
-            .fillMaxSize()
-            .background(Color(0xE619191D))
-            .cornerRadius(20.dp)
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-            .clickable(actionStartActivity(launchIntent)),
+        modifier = modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Image(
-            provider = if (artwork != null) {
-                ImageProvider(artwork)
-            } else {
-                ImageProvider(R.drawable.media3_notification_small_icon)
-            },
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = GlanceModifier
-                .size(48.dp)
-                .cornerRadius(10.dp),
-        )
+        WidgetArtwork(artwork, 48.dp)
         Spacer(modifier = GlanceModifier.width(12.dp))
-        Column(modifier = GlanceModifier.defaultWeight().fillMaxWidth()) {
+        WidgetTrackText(
+            title = title,
+            artist = artist,
+            lyricLine = null,
+            modifier = GlanceModifier.defaultWeight().fillMaxWidth(),
+            titleSize = 15,
+            secondarySize = 12,
+        )
+        Spacer(modifier = GlanceModifier.width(8.dp))
+        WidgetTransport(context, isPlaying, iconSize = 36.dp)
+    }
+}
+
+@Composable
+private fun ExpandedWidgetBody(
+    context: Context,
+    title: String,
+    artist: String,
+    lyricLine: String?,
+    isPlaying: Boolean,
+    artwork: Bitmap?,
+    modifier: GlanceModifier,
+) {
+    Column(
+        modifier = modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            WidgetArtwork(artwork, 52.dp)
+            Spacer(modifier = GlanceModifier.width(12.dp))
+            WidgetTrackText(
+                title = title,
+                artist = artist,
+                lyricLine = lyricLine,
+                modifier = GlanceModifier.defaultWeight().fillMaxWidth(),
+                titleSize = 16,
+                secondarySize = 12,
+            )
+        }
+        Spacer(modifier = GlanceModifier.height(6.dp))
+        Row(
+            modifier = GlanceModifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            WidgetTransport(context, isPlaying, iconSize = 36.dp)
+        }
+    }
+}
+
+@Composable
+private fun WidgetArtwork(artwork: Bitmap?, size: Dp) {
+    Image(
+        provider = if (artwork != null) {
+            ImageProvider(artwork)
+        } else {
+            ImageProvider(R.drawable.media3_notification_small_icon)
+        },
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        modifier = GlanceModifier.size(size).cornerRadius(10.dp),
+    )
+}
+
+@Composable
+private fun WidgetTrackText(
+    title: String,
+    artist: String,
+    lyricLine: String?,
+    modifier: GlanceModifier,
+    titleSize: Int,
+    secondarySize: Int,
+) {
+    Column(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = title,
+            maxLines = 1,
+            style = TextStyle(
+                color = ColorProvider(Color.White),
+                fontSize = titleSize.sp,
+                fontWeight = FontWeight.Medium,
+            ),
+        )
+        if (artist.isNotBlank()) {
+            Spacer(modifier = GlanceModifier.height(2.dp))
             Text(
-                text = title,
+                text = artist,
                 maxLines = 1,
                 style = TextStyle(
-                    color = ColorProvider(Color.White),
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium,
+                    color = ColorProvider(Color(0xB3FFFFFF)),
+                    fontSize = secondarySize.sp,
                 ),
             )
-            if (artist.isNotBlank()) {
-                Spacer(modifier = GlanceModifier.height(2.dp))
-                Text(
-                    text = artist,
-                    maxLines = 1,
-                    style = TextStyle(
-                        color = ColorProvider(Color(0xB3FFFFFF)),
-                        fontSize = 12.sp,
-                    ),
-                )
-            }
         }
-        Spacer(modifier = GlanceModifier.width(8.dp))
-        WidgetIconButton(
-            resId = R.drawable.echo_ic_skip_previous,
-            contentDescription = context.getString(R.string.playback_widget_previous),
-            action = EchoPlaybackWidgetPreviousAction::class.java,
-        )
-        Spacer(modifier = GlanceModifier.width(4.dp))
-        WidgetIconButton(
-            resId = if (snapshot.isPlaying) R.drawable.echo_ic_pause else R.drawable.echo_ic_play,
-            contentDescription = context.getString(
-                if (snapshot.isPlaying) R.string.playback_widget_pause else R.string.playback_widget_play,
-            ),
-            action = EchoPlaybackWidgetPlayPauseAction::class.java,
-        )
-        Spacer(modifier = GlanceModifier.width(4.dp))
-        WidgetIconButton(
-            resId = R.drawable.echo_ic_skip_next,
-            contentDescription = context.getString(R.string.playback_widget_next),
-            action = EchoPlaybackWidgetNextAction::class.java,
-        )
+        if (!lyricLine.isNullOrBlank()) {
+            Spacer(modifier = GlanceModifier.height(2.dp))
+            Text(
+                text = lyricLine,
+                maxLines = 1,
+                style = TextStyle(
+                    color = ColorProvider(Color(0xE6FFFFFF)),
+                    fontSize = secondarySize.sp,
+                ),
+            )
+        }
     }
+}
+
+@Composable
+private fun WidgetTransport(context: Context, isPlaying: Boolean, iconSize: Dp) {
+    WidgetIconButton(
+        resId = R.drawable.echo_ic_skip_previous,
+        contentDescription = context.getString(R.string.playback_widget_previous),
+        action = EchoPlaybackWidgetPreviousAction::class.java,
+        size = iconSize,
+    )
+    Spacer(modifier = GlanceModifier.width(4.dp))
+    WidgetIconButton(
+        resId = if (isPlaying) R.drawable.echo_ic_pause else R.drawable.echo_ic_play,
+        contentDescription = context.getString(
+            if (isPlaying) R.string.playback_widget_pause else R.string.playback_widget_play,
+        ),
+        action = EchoPlaybackWidgetPlayPauseAction::class.java,
+        size = iconSize,
+    )
+    Spacer(modifier = GlanceModifier.width(4.dp))
+    WidgetIconButton(
+        resId = R.drawable.echo_ic_skip_next,
+        contentDescription = context.getString(R.string.playback_widget_next),
+        action = EchoPlaybackWidgetNextAction::class.java,
+        size = iconSize,
+    )
 }
 
 @Composable
@@ -155,12 +284,13 @@ private fun WidgetIconButton(
     resId: Int,
     contentDescription: String,
     action: Class<out ActionCallback>,
+    size: androidx.compose.ui.unit.Dp,
 ) {
     Image(
         provider = ImageProvider(resId),
         contentDescription = contentDescription,
         modifier = GlanceModifier
-            .size(36.dp)
+            .size(size)
             .clickable(actionRunCallback(action)),
     )
 }
@@ -198,7 +328,22 @@ class EchoPlaybackWidgetNextAction : ActionCallback {
     }
 }
 
+private data class CachedWidgetArtwork(val key: String, val bitmap: Bitmap?)
+
+private val cachedWidgetArtwork = AtomicReference<CachedWidgetArtwork?>(null)
+
 private fun loadWidgetArtwork(
+    context: Context,
+    snapshot: EchoPlaybackSurfaceSnapshot,
+): Bitmap? {
+    val key = "${snapshot.artworkUri.orEmpty()}|${snapshot.playUri.orEmpty()}"
+    cachedWidgetArtwork.get()?.takeIf { it.key == key }?.let { return it.bitmap }
+    val loaded = loadWidgetArtworkUncached(context, snapshot)
+    cachedWidgetArtwork.set(CachedWidgetArtwork(key, loaded))
+    return loaded
+}
+
+private fun loadWidgetArtworkUncached(
     context: Context,
     snapshot: EchoPlaybackSurfaceSnapshot,
 ): Bitmap? {
@@ -217,7 +362,6 @@ private fun loadWidgetArtwork(
         connection.readTimeout = 2_500
         connection.instanceFollowRedirects = true
         connection.inputStream.use { input ->
-            // 限长下载 + 按 widget 尺寸降采样,避免大图整包进堆再全分辨率解码
             EchoPlaybackArtwork.decodeCapped(
                 input = input,
                 maxEdgePx = EchoPlaybackArtwork.WidgetMaxEdgePx,

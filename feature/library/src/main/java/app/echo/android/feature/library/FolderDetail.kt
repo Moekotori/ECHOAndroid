@@ -60,6 +60,8 @@ internal fun FolderDetailPage(
     onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
     onPlayNext: ((EchoTrack) -> Unit)? = null,
     onEnqueue: ((EchoTrack) -> Unit)? = null,
+    onOpenArtist: ((EchoTrack) -> Unit)? = null,
+    onOpenAlbum: ((EchoTrack) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val heroArtworkUri = folder.artworkUri?.takeIf { it.isNotBlank() }
@@ -149,6 +151,8 @@ internal fun FolderDetailPage(
                                 onAddToPlaylist = onAddToPlaylist,
                                 onPlayNext = onPlayNext,
                                 onEnqueue = onEnqueue,
+                                onOpenArtist = onOpenArtist,
+                                onOpenAlbum = onOpenAlbum,
                             )
                         }
                     }

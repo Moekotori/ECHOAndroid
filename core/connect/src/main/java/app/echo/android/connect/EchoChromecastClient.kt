@@ -69,22 +69,8 @@ class EchoChromecastClient {
             throw EchoDlnaException(415, reason.code)
         }
         synchronized(lock) {
-            val output = socket?.outputStream ?: return
-            val transport = transportId ?: return
-            write(
-                output,
-                transport,
-                EchoCastProtocol.MediaNamespace,
-                EchoCastProtocol.loadJson(
-                    requestId = nextRequestId(),
-                    contentId = item.streamUrl,
-                    contentType = EchoDlnaCastPolicy.offeredMime(item),
-                    positionMs = 0L,
-                    title = item.title,
-                    artist = item.artist,
-                ),
-            )
-            paused = false
+            val opened = socket ?: throw EchoDlnaException(500, "chromecast_closed")
+            loadLocked(item, 0L, BufferedInputStream(opened.inputStream), opened.outputStream)
         }
     }
 
@@ -126,11 +112,19 @@ class EchoChromecastClient {
     }
 
     private fun heartbeatLoop() {
-        while (socket?.isClosed == false) {
+        while (true) {
             try {
                 Thread.sleep(5_000)
-                val output = socket?.outputStream ?: break
-                write(output, EchoCastProtocol.ReceiverId, EchoCastProtocol.HeartbeatNamespace, EchoCastProtocol.pingJson())
+                synchronized(lock) {
+                    val current = socket ?: return
+                    if (current.isClosed) return
+                    write(
+                        current.outputStream,
+                        EchoCastProtocol.ReceiverId,
+                        EchoCastProtocol.HeartbeatNamespace,
+                        EchoCastProtocol.pingJson(),
+                    )
+                }
             } catch (_: Exception) {
                 break
             }

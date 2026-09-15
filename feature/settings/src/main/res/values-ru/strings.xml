@@ -89,6 +89,14 @@
     <string name="settings_watched_folder_rescan_detail">При возврате в ECHO инкрементно повторно сканировать ранее просканированные папки. По умолчанию выкл.</string>
     <string name="settings_local_music">Локальная музыка</string>
     <string name="settings_local_music_detail">Просмотр треков, альбомов, исполнителей и сканирование</string>
+    <string name="settings_pin_queue_offline">Сохранить текущую очередь офлайн</string>
+    <string name="settings_pin_queue_offline_detail">Кэшировать удалённые и компьютерные треки из текущей очереди для офлайн-прослушивания</string>
+    <string name="settings_library_cleanup">Очистить отсутствующие и дубликаты</string>
+    <string name="settings_library_cleanup_detail">Убрать треки, чьи файлы исчезли, и объединить точные копии</string>
+    <string name="settings_library_cleanup_confirm">Удалить из индекса библиотеки отсутствующие файлы и лишние копии одной и той же песни. Файлы на диске не удаляются.</string>
+    <string name="settings_library_cleanup_action">Очистить</string>
+    <string name="settings_library_cleanup_busy">Очистка…</string>
+    <string name="settings_library_cleanup_result">Удалено отсутствующих треков: %1$d, дубликатов: %2$d.</string>
     <string name="settings_section_about">О приложении</string>
     <string name="settings_backup_export">Экспорт резервной копии</string>
     <string name="settings_backup_export_detail">Настройки, эквалайзер, плейлисты и понравившиеся. Секреты не включаются.</string>

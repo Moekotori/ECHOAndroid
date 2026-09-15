@@ -131,6 +131,8 @@ internal fun PlaylistDetailPage(
     onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
     onPlayNext: ((EchoTrack) -> Unit)? = null,
     onEnqueue: ((EchoTrack) -> Unit)? = null,
+    onOpenArtist: ((EchoTrack) -> Unit)? = null,
+    onOpenAlbum: ((EchoTrack) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val loadedTracks = tracks.itemSnapshotList.items
@@ -258,6 +260,8 @@ internal fun PlaylistDetailPage(
                                 onMoveDown = onMoveTrack.takeIf { playlist.canEdit && index < tracks.itemCount - 1 }?.let { move ->
                                     { move(index, index + 1) }
                                 },
+                                onOpenArtist = onOpenArtist,
+                                onOpenAlbum = onOpenAlbum,
                             )
                         }
                     }
@@ -755,6 +759,8 @@ private fun PlaylistTrackRow(
     onRemoveFromPlaylist: ((EchoTrack) -> Unit)?,
     onMoveUp: (() -> Unit)?,
     onMoveDown: (() -> Unit)?,
+    onOpenArtist: ((EchoTrack) -> Unit)? = null,
+    onOpenAlbum: ((EchoTrack) -> Unit)? = null,
 ) {
     val colors = rememberPlaylistDetailColors()
     TrackContextMenu(
@@ -770,6 +776,8 @@ private fun PlaylistTrackRow(
         onRemoveFromPlaylist = onRemoveFromPlaylist,
         onMoveUp = onMoveUp,
         onMoveDown = onMoveDown,
+        onOpenArtist = onOpenArtist?.let { open -> { open(track) } },
+        onOpenAlbum = onOpenAlbum?.let { open -> { open(track) } },
         modifier = Modifier.fillMaxWidth(),
     ) { pressModifier ->
         Row(

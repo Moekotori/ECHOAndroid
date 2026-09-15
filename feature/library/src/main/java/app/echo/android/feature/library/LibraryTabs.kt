@@ -538,19 +538,20 @@ internal fun GenreWall(
     genres: LazyPagingItems<app.echo.android.model.library.GenreSummary>,
     onOpenGenre: (app.echo.android.model.library.GenreSummary) -> Unit,
     modifier: Modifier = Modifier,
+    loadingLabel: String = stringResource(L10nR.string.feature_library_loading_genres_4e91aa),
+    errorLabel: String = stringResource(L10nR.string.feature_library_failed_to_load_genres_b7c102),
+    emptyLabel: String = stringResource(L10nR.string.feature_library_this_library_has_no_genres_to_show_yet_11a90e),
 ) {
     if (genres.loadState.refresh is LoadState.Loading) {
-        LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_loading_genres_4e91aa))
+        LibraryCollectionEmpty(loadingLabel)
         return
     }
     if (genres.loadState.refresh is LoadState.Error) {
-        LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_failed_to_load_genres_b7c102))
+        LibraryCollectionEmpty(errorLabel)
         return
     }
     if (genres.itemCount == 0) {
-        LibraryCollectionEmpty(
-            stringResource(L10nR.string.feature_library_this_library_has_no_genres_to_show_yet_11a90e),
-        )
+        LibraryCollectionEmpty(emptyLabel)
         return
     }
     LazyVerticalGrid(

@@ -16,6 +16,10 @@
     <string name="feature_library_artist_c15fae">"artista"</string>
     <string name="feature_library_artists_1e19fb">"Artistas"</string>
     <string name="feature_library_genres_8c2a11">"Géneros"</string>
+    <string name="feature_library_composers_4a91c2">"Compositores"</string>
+    <string name="feature_library_loading_composers_c81e2a">"Cargando compositores"</string>
+    <string name="feature_library_failed_to_load_composers_9b4d01">"No se pudieron cargar los compositores"</string>
+    <string name="feature_library_this_library_has_no_composers_to_show_yet_2e8c17">"Esta biblioteca aún no tiene compositores para mostrar"</string>
     <string name="feature_library_loading_genres_4e91aa">"Cargando géneros"</string>
     <string name="feature_library_failed_to_load_genres_b7c102">"No se pudieron cargar los géneros"</string>
     <string name="feature_library_this_library_has_no_genres_to_show_yet_11a90e">"Esta biblioteca aún no tiene géneros para mostrar"</string>

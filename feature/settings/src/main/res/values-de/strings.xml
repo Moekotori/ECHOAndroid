@@ -89,6 +89,14 @@
     <string name="settings_watched_folder_rescan_detail">Beim Zurückkehren zu ECHO zuvor gescannte Ordner inkrementell erneut scannen. Standardmäßig aus</string>
     <string name="settings_local_music">Lokale Musik</string>
     <string name="settings_local_music_detail">Titel, Alben, Interpreten und Scan durchsuchen</string>
+    <string name="settings_pin_queue_offline">Aktuelle Warteschlange offline halten</string>
+    <string name="settings_pin_queue_offline_detail">Remote- und PC-Titel der aktuellen Warteschlange für die Offline-Wiedergabe zwischenspeichern</string>
+    <string name="settings_library_cleanup">Fehlende und doppelte Dateien bereinigen</string>
+    <string name="settings_library_cleanup_detail">Titel ohne Datei entfernen und exakte Duplikate zusammenführen</string>
+    <string name="settings_library_cleanup_confirm">Fehlende Dateien und zusätzliche Kopien desselben Titels aus dem Bibliotheksindex entfernen. Dateien auf dem Speicher werden nicht gelöscht.</string>
+    <string name="settings_library_cleanup_action">Bereinigen</string>
+    <string name="settings_library_cleanup_busy">Bereinigen…</string>
+    <string name="settings_library_cleanup_result">%1$d fehlende Titel und %2$d Duplikate entfernt.</string>
     <string name="settings_section_about">Info</string>
     <string name="settings_backup_export">Backup exportieren</string>
     <string name="settings_backup_export_detail">Einstellungen, EQ, Playlists und Favoriten. Geheimnisse sind nicht enthalten.</string>

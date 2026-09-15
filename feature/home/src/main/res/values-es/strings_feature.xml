@@ -3,6 +3,8 @@
 <resources>
     <string name="feature_home_add_to_queue_1775d3">"Agregar a la cola"</string>
     <string name="feature_home_added_930006">"Agregado"</string>
+    <string name="feature_home_tracks_9c2e11">"Canciones"</string>
+    <string name="feature_home_appears_after_you_play_a_track_7f2c1a">"Aparece después de reproducir una canción"</string>
     <string name="feature_home_adjust_the_local_queue_f4499e">"Ajustar la cola local"</string>
     <string name="feature_home_albums_e68c2b">"Álbumes"</string>
     <string name="feature_home_albums_you_like_95a2b9">"Álbumes que te gustan"</string>

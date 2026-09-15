@@ -3,6 +3,8 @@
 <resources>
     <string name="feature_home_add_to_queue_1775d3">"Ajouter à la file d'attente"</string>
     <string name="feature_home_added_930006">"Ajouté"</string>
+    <string name="feature_home_tracks_9c2e11">"Titres"</string>
+    <string name="feature_home_appears_after_you_play_a_track_7f2c1a">"Apparaît après la lecture d'un titre"</string>
     <string name="feature_home_adjust_the_local_queue_f4499e">"Ajuster la file d'attente locale"</string>
     <string name="feature_home_albums_e68c2b">"Albums"</string>
     <string name="feature_home_albums_you_like_95a2b9">"Albums que vous aimez"</string>

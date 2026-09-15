@@ -5,10 +5,8 @@ import app.echo.android.connect.EchoLinkCastBlockReason
 import app.echo.android.connect.EchoLinkDiscoveryState
 import androidx.compose.ui.res.stringResource
 
-import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -17,15 +15,12 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.rememberPassThroughPagerNestedScroll
 import kotlinx.coroutines.launch
 import app.echo.android.model.connect.EchoLanRenderer
 import app.echo.android.model.connect.EchoLinkLanDevice

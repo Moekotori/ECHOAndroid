@@ -122,13 +122,21 @@ internal fun rememberTabPagerNestedScrollConnection(state: PagerState): NestedSc
                 default.onPreFling(available)
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                if (state.ownsInnerHorizontalTabs() &&
-                    state.currentPageOffsetFraction.absoluteValue > 0.001f
-                ) {
-                    state.animateScrollToPage(state.currentPage)
-                    return available.copy(y = 0f)
+                if (!state.ownsInnerHorizontalTabs()) {
+                    return default.onPostFling(consumed, available)
                 }
-                return default.onPostFling(consumed, available)
+                val offset = state.currentPageOffsetFraction
+                if (offset.absoluteValue <= 0.001f && available.x.absoluteValue < 800f) {
+                    return default.onPostFling(consumed, available)
+                }
+                val position = state.currentPage + offset
+                val target = when {
+                    available.x > 800f -> (position - 0.51f).roundToInt()
+                    available.x < -800f -> (position + 0.51f).roundToInt()
+                    else -> position.roundToInt()
+                }.coerceIn(0, (state.pageCount - 1).coerceAtLeast(0))
+                state.animateScrollToPage(target)
+                return available.copy(y = 0f)
             }
         }
     }

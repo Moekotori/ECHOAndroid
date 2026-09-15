@@ -81,7 +81,7 @@ internal fun RoonRecentActivitySection(
             if (recentPlayedTracks.isEmpty()) {
                 HomeLibraryNotice(
                     title = stringResource(L10nR.string.feature_home_nothing_played_yet_988bfc),
-                    subtitle = stringResource(L10nR.string.feature_home_appears_after_you_play_an_album_26effb),
+                    subtitle = stringResource(L10nR.string.feature_home_appears_after_you_play_a_track_7f2c1a),
                     onClick = onOpenLibrary,
                 )
             } else {

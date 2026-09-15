@@ -89,6 +89,14 @@
     <string name="settings_watched_folder_rescan_detail">Lorsque vous revenez à ECHO, réanalyse incrémentielle des dossiers déjà analysés. Désactivé par défaut</string>
     <string name="settings_local_music">Musique locale</string>
     <string name="settings_local_music_detail">Parcourir les titres, albums, artistes et l\'analyse</string>
+    <string name="settings_pin_queue_offline">Garder la file actuelle hors ligne</string>
+    <string name="settings_pin_queue_offline_detail">Mettre en cache les titres distants et PC de la file actuelle pour la lecture hors ligne</string>
+    <string name="settings_library_cleanup">Nettoyer les fichiers manquants et les doublons</string>
+    <string name="settings_library_cleanup_detail">Retirer les titres dont le fichier a disparu et fusionner les copies identiques</string>
+    <string name="settings_library_cleanup_confirm">Retirer de l\'index de la bibliothèque les fichiers manquants et les copies supplémentaires du même titre. Les fichiers sur le disque ne sont pas supprimés.</string>
+    <string name="settings_library_cleanup_action">Nettoyer</string>
+    <string name="settings_library_cleanup_busy">Nettoyage…</string>
+    <string name="settings_library_cleanup_result">%1$d titres manquants et %2$d doublons retirés.</string>
     <string name="settings_section_about">À propos</string>
     <string name="settings_backup_export">Exporter une sauvegarde</string>
     <string name="settings_backup_export_detail">Réglages, égaliseur, playlists et favoris. Les secrets ne sont pas inclus.</string>

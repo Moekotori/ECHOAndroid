@@ -41,6 +41,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.automirrored.rounded.Sort
+import androidx.compose.material.icons.rounded.Audiotrack
 import androidx.compose.material.icons.rounded.CloudQueue
 import androidx.compose.material.icons.rounded.Devices
 import androidx.compose.material.icons.rounded.FolderOpen
@@ -129,7 +130,7 @@ internal enum class LibraryViewMode(
     Albums(Icons.Rounded.LibraryMusic),
     Artists(Icons.Rounded.Person),
     Genres(Icons.Rounded.LibraryMusic),
-    Composers(Icons.Rounded.Person),
+    Composers(Icons.Rounded.Audiotrack),
     Cloud(Icons.Rounded.CloudQueue),
     Playlists(Icons.Rounded.LibraryMusic),
     Radio(Icons.Rounded.Radio),
@@ -365,6 +366,9 @@ fun LibraryScreen(
     onReorderPlaylistTracks: (EchoPlaylist, Int, Int) -> Unit,
     onOpenAlbum: (AlbumSummary) -> Unit,
     onOpenArtist: (ArtistSummary) -> Unit,
+    onOpenAlbumArtist: (() -> Unit)? = null,
+    onOpenTrackArtist: ((EchoTrack) -> Unit)? = null,
+    onOpenTrackAlbum: ((EchoTrack) -> Unit)? = null,
     onOpenFolder: (FolderSummary) -> Unit,
     onOpenPlaylist: (EchoPlaylist) -> Unit,
     onCloseDetail: () -> Unit,
@@ -551,6 +555,8 @@ fun LibraryScreen(
                                         onAddToPlaylist = { track -> addToPlaylistTrack = track },
                                         onPlayNext = playNext,
                                         onEnqueue = enqueueTrack,
+                                        onOpenArtist = onOpenTrackArtist,
+                                        onOpenAlbum = onOpenTrackAlbum,
                                         showAudioInfoTags = showTrackAudioInfoTags,
                                         listState = songListState,
                                         modifier = Modifier.fillMaxSize(),
@@ -599,6 +605,9 @@ fun LibraryScreen(
                                 genres = composers.collectAsLazyPagingItems(),
                                 onOpenGenre = onOpenComposer,
                                 modifier = Modifier.fillMaxSize(),
+                                loadingLabel = stringResource(L10nR.string.feature_library_loading_composers_c81e2a),
+                                errorLabel = stringResource(L10nR.string.feature_library_failed_to_load_composers_9b4d01),
+                                emptyLabel = stringResource(L10nR.string.feature_library_this_library_has_no_composers_to_show_yet_2e8c17),
                             )
 
                             LibraryViewMode.Cloud -> GuidedAlbumWall(
@@ -758,6 +767,8 @@ fun LibraryScreen(
                         onAddToPlaylist = { track -> addToPlaylistTrack = track },
                         onPlayNext = playNext,
                         onEnqueue = enqueueTrack,
+                        onOpenArtist = onOpenAlbumArtist,
+                        onOpenTrackArtist = onOpenTrackArtist,
                         modifier = Modifier.fillMaxSize(),
                     )
                     selectedGenre != null && genreDetailTracks != null -> GenreTrackDetailPage(
@@ -782,6 +793,8 @@ fun LibraryScreen(
                         onAddToPlaylist = { track -> addToPlaylistTrack = track },
                         onPlayNext = playNext,
                         onEnqueue = enqueueTrack,
+                        onOpenArtist = onOpenTrackArtist,
+                        onOpenAlbum = onOpenTrackAlbum,
                     )
                     selectedArtist != null && artistDetailTracks != null -> ArtistDetailPage(
                         artist = selectedArtist,
@@ -806,6 +819,7 @@ fun LibraryScreen(
                         onAddToPlaylist = { track -> addToPlaylistTrack = track },
                         onPlayNext = playNext,
                         onEnqueue = enqueueTrack,
+                        onOpenTrackAlbum = onOpenTrackAlbum,
                         modifier = Modifier.fillMaxSize(),
                     )
                     selectedFolder != null && folderDetailTracks != null -> FolderDetailPage(
@@ -823,6 +837,8 @@ fun LibraryScreen(
                         onAddToPlaylist = { track -> addToPlaylistTrack = track },
                         onPlayNext = playNext,
                         onEnqueue = enqueueTrack,
+                        onOpenArtist = onOpenTrackArtist,
+                        onOpenAlbum = onOpenTrackAlbum,
                         modifier = Modifier.fillMaxSize(),
                     )
                     livePlaylist != null && playlistDetailTracks != null -> PlaylistDetailPage(
@@ -847,6 +863,8 @@ fun LibraryScreen(
                         onAddToPlaylist = { track -> addToPlaylistTrack = track },
                         onPlayNext = playNext,
                         onEnqueue = enqueueTrack,
+                        onOpenArtist = onOpenTrackArtist,
+                        onOpenAlbum = onOpenTrackAlbum,
                         modifier = Modifier.fillMaxSize(),
                     )
                     else -> LibrarySplitPlaceholder()
@@ -929,6 +947,8 @@ fun LibraryScreen(
                 onAddToPlaylist = { track -> addToPlaylistTrack = track },
                 onPlayNext = playNext,
                 onEnqueue = enqueueTrack,
+                onOpenArtist = onOpenAlbumArtist,
+                onOpenTrackArtist = onOpenTrackArtist,
                 modifier = Modifier.fillMaxSize(),
             )
             is LibraryDetailTransitionTarget.ArtistDetail -> ArtistDetailPage(
@@ -954,6 +974,7 @@ fun LibraryScreen(
                 onAddToPlaylist = { track -> addToPlaylistTrack = track },
                 onPlayNext = playNext,
                 onEnqueue = enqueueTrack,
+                onOpenTrackAlbum = onOpenTrackAlbum,
                 modifier = Modifier.fillMaxSize(),
             )
             is LibraryDetailTransitionTarget.FolderDetail -> FolderDetailPage(
@@ -971,6 +992,8 @@ fun LibraryScreen(
                 onAddToPlaylist = { track -> addToPlaylistTrack = track },
                 onPlayNext = playNext,
                 onEnqueue = enqueueTrack,
+                onOpenArtist = onOpenTrackArtist,
+                onOpenAlbum = onOpenTrackAlbum,
                 modifier = Modifier.fillMaxSize(),
             )
             is LibraryDetailTransitionTarget.PlaylistDetail -> PlaylistDetailPage(
@@ -995,6 +1018,8 @@ fun LibraryScreen(
                 onAddToPlaylist = { track -> addToPlaylistTrack = track },
                 onPlayNext = playNext,
                 onEnqueue = enqueueTrack,
+                onOpenArtist = onOpenTrackArtist,
+                onOpenAlbum = onOpenTrackAlbum,
                 modifier = Modifier.fillMaxSize(),
             )
             is LibraryDetailTransitionTarget.LinkedAlbum -> {
@@ -1013,6 +1038,15 @@ fun LibraryScreen(
                     onPlayLinkedTrack = onPlayLinkedTrack,
                     onPlayLinkedQueue = onPlayLinkedQueue,
                     onPlayLinkedQueueOnPc = onPlayLinkedQueueOnPc,
+                    onOpenArtist = {
+                        val name = target.album.albumArtist ?: target.album.artist ?: return@LinkedAlbumTracksPage
+                        selectedLinkedAlbum = null
+                        selectedLinkedArtist = linkedArtistSummary(name, target.album.artworkUri)
+                    },
+                    onOpenRemoteArtist = { remote ->
+                        selectedLinkedAlbum = null
+                        selectedLinkedArtist = remote.toLinkedArtistSummary()
+                    },
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -1025,6 +1059,9 @@ fun LibraryScreen(
                     onPlayLinkedTrack = onPlayLinkedTrack,
                     onPlayLinkedQueue = onPlayLinkedQueue,
                     onPlayLinkedQueueOnPc = onPlayLinkedQueueOnPc,
+                    onOpenRemoteAlbum = { remote ->
+                        selectedLinkedAlbum = remote.toLinkedAlbumSummary()
+                    },
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -1657,6 +1694,8 @@ private fun LinkedAlbumTracksPage(
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
     onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
     onPlayLinkedQueueOnPc: (List<EchoRemoteTrack>, Int) -> Unit,
+    onOpenArtist: (() -> Unit)? = null,
+    onOpenRemoteArtist: ((EchoRemoteTrack) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val albumTracks = remember(tracks) { tracks.map { it.toEchoTrack() } }
@@ -1694,6 +1733,11 @@ private fun LinkedAlbumTracksPage(
             val index = tracks.indexOfFirst { it.id == remote.id }.coerceAtLeast(0)
             onPlayLinkedQueue(tracks, index)
         },
+        onOpenArtist = onOpenArtist,
+        onOpenTrackArtist = { track ->
+            val remote = remoteTracksByUiId[track.id] ?: return@AlbumDetailListPage
+            onOpenRemoteArtist?.invoke(remote)
+        },
         modifier = modifier,
     )
 }
@@ -1706,6 +1750,7 @@ private fun LinkedArtistTracksPage(
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
     onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
     onPlayLinkedQueueOnPc: (List<EchoRemoteTrack>, Int) -> Unit,
+    onOpenRemoteAlbum: ((EchoRemoteTrack) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val artistTracks = remember(tracks) { tracks.map { it.toEchoTrack() } }
@@ -1725,6 +1770,10 @@ private fun LinkedArtistTracksPage(
             val remote = remoteTracksByUiId[track.id] ?: return@ArtistDetailListPage
             val index = tracks.indexOfFirst { it.id == remote.id }.coerceAtLeast(0)
             onPlayLinkedQueue(tracks, index)
+        },
+        onOpenTrackAlbum = { track ->
+            val remote = remoteTracksByUiId[track.id] ?: return@ArtistDetailListPage
+            onOpenRemoteAlbum?.invoke(remote)
         },
         modifier = modifier,
     )
@@ -1806,6 +1855,33 @@ private fun EchoRemoteTrack.toEchoTrack(): EchoTrack =
         durationMs = durationMs,
         source = LibrarySource.EchoLink,
     )
+
+private fun EchoRemoteTrack.toLinkedArtistSummary(): ArtistSummary =
+    linkedArtistSummary(artist, artworkUrl)
+
+private fun EchoRemoteTrack.toLinkedAlbumSummary(): AlbumSummary =
+    AlbumSummary(
+        albumKey = linkedAlbumKey(),
+        title = album.orEmpty(),
+        albumArtist = artist.takeIf { it.isNotBlank() },
+        artist = artist.takeIf { it.isNotBlank() },
+        artworkUri = artworkUrl,
+        trackCount = 0,
+        durationMs = durationMs.coerceAtLeast(0L),
+        year = null,
+    )
+
+private fun linkedArtistSummary(name: String, artworkUri: String?): ArtistSummary {
+    val trimmed = name.trim().ifBlank { "PC ECHO" }
+    return ArtistSummary(
+        artistKey = "echo-link:${trimmed.lowercase()}",
+        name = trimmed,
+        artworkUri = artworkUri,
+        albumCount = 0,
+        trackCount = 0,
+        durationMs = 0L,
+    )
+}
 
 @Composable
 private fun linkedPlaylistSubtitle(playlist: EchoRemotePlaylist): String {

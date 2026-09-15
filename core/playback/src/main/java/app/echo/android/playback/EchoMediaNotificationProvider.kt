@@ -8,5 +8,5 @@ import androidx.media3.session.DefaultMediaNotificationProvider
 @UnstableApi
 internal class EchoMediaNotificationProvider(context: Context) : DefaultMediaNotificationProvider(context) {
     override fun getNotificationContentText(metadata: MediaMetadata): CharSequence? =
-        EchoPlaybackProcessRuntime.notificationLyricLine ?: metadata.artist
+        EchoPlaybackProcessRuntime.notificationLyricLine.value ?: metadata.artist
 }

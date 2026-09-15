@@ -38,6 +38,7 @@ internal fun AlbumDetailPager(
     album: AlbumSummary,
     tracks: List<EchoTrack>,
     onBack: () -> Unit,
+    onOpenArtist: (() -> Unit)? = null,
     trackContent: LazyListScope.() -> Unit,
 ) = key(album.albumKey) {
     val pager = rememberPagerState { 2 }
@@ -99,7 +100,7 @@ internal fun AlbumDetailPager(
                     item(key = "album-details") {
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
                         Column(Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
-                            AlbumInformation(album, tracks)
+                            AlbumInformation(album, tracks, onOpenArtist = onOpenArtist)
                         }
                     }
                 }

@@ -38,8 +38,8 @@ class AlbumDiscSectionsTest {
         assertEquals(2, third.albumDiscNumber())
     }
 
-    private fun track(disc: Int?): EchoTrack = EchoTrack(
-        id = "track-${disc ?: "none"}-${System.identityHashCode(disc)}",
+    private fun track(disc: Int?, id: String = "track-${disc ?: "none"}"): EchoTrack = EchoTrack(
+        id = id,
         uri = "content://track",
         title = "Track",
         artist = "Artist",

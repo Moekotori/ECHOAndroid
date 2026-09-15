@@ -51,6 +51,12 @@ class EchoApplication : Application(), ImageLoaderFactory {
         )
         EchoErrorLogRepository.create(this)
         EchoPlaybackCachePolicy.bindDeviceConstraints(this)
+        EchoPlaybackProcessRuntime.scope.launch {
+            val ids = app.echo.android.data.EchoRemotePinStore(this@EchoApplication).load()
+            app.echo.android.playback.pinRemotePlaybackKeys(
+                app.echo.android.model.playback.EchoRemotePinPolicy.pinTokens(ids),
+            )
+        }
         installUncaughtExceptionHandler()
         EchoPlaybackProcessRuntime.setStreamResolver { mediaId, uri ->
             val id = app.echo.android.model.playback.EchoLinkPlaybackUri.trackId(mediaId, uri)

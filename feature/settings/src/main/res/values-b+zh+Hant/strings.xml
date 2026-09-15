@@ -84,6 +84,14 @@
     <string name="settings_watched_folder_rescan_detail">回到 ECHO 時增量再掃你選過的資料夾。預設關閉</string>
     <string name="settings_local_music">本機音樂</string>
     <string name="settings_local_music_detail">檢視歌曲、專輯、藝人和掃描入口</string>
+    <string name="settings_pin_queue_offline">快取目前佇列以便離線聽</string>
+    <string name="settings_pin_queue_offline_detail">把目前佇列裡的遠端和電腦曲目快取下來，斷網也能播</string>
+    <string name="settings_library_cleanup">清理缺失和重複檔案</string>
+    <string name="settings_library_cleanup_detail">去掉檔案已不存在的曲目，並合併完全相同的副本</string>
+    <string name="settings_library_cleanup_confirm">從音樂庫索引中移除缺失檔案和重複副本。不會刪除磁碟上的檔案。</string>
+    <string name="settings_library_cleanup_action">清理</string>
+    <string name="settings_library_cleanup_busy">正在清理…</string>
+    <string name="settings_library_cleanup_result">已移除 %1$d 首缺失曲目和 %2$d 個重複項。</string>
     <string name="settings_section_about">關於</string>
     <string name="settings_backup_export">匯出備份</string>
     <string name="settings_backup_export_detail">設定、EQ、播放清單和喜歡。不含密碼和令牌。</string>

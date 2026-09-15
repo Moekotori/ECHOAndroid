@@ -11,7 +11,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.collectAsLazyPagingItems
 import app.echo.android.EchoAndroidViewModel
@@ -123,6 +125,31 @@ internal fun EchoLibraryPage(
     val radioStations by produceState(savedRadioStations, savedRadioStations, libraryQuery) {
         value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
             savedRadioStations.filter { it.name.contains(libraryQuery.trim(), ignoreCase = true) }
+        }
+    }
+    val detailScope = rememberCoroutineScope()
+    val openAlbumArtist = remember(selectedAlbum, onOpenArtist) {
+        val album = selectedAlbum
+        val target = album?.let {
+            viewModel.artistNavigationTarget(it.albumArtist ?: it.artist.orEmpty(), it.artworkUri)
+        }
+        if (album != null && target != null) {
+            { onOpenArtist(target) }
+        } else {
+            null
+        }
+    }
+    val openTrackArtist: (EchoTrack) -> Unit = { track ->
+        detailScope.launch {
+            val artist = viewModel.artistForTrack(track.id)
+                ?: viewModel.artistNavigationTarget(track.artist, track.artworkUri)
+                ?: return@launch
+            onOpenArtist(artist)
+        }
+    }
+    val openTrackAlbum: (EchoTrack) -> Unit = { track ->
+        detailScope.launch {
+            viewModel.albumForTrack(track.id)?.let(onOpenAlbum)
         }
     }
     val application = androidx.compose.ui.platform.LocalContext.current.applicationContext as app.echo.android.EchoApplication
@@ -255,6 +282,9 @@ internal fun EchoLibraryPage(
             },
             onOpenAlbum = onOpenAlbum,
             onOpenArtist = onOpenArtist,
+            onOpenAlbumArtist = openAlbumArtist,
+            onOpenTrackArtist = openTrackArtist,
+            onOpenTrackAlbum = openTrackAlbum,
             onOpenFolder = onOpenFolder,
             onOpenPlaylist = onOpenPlaylist,
             onCloseDetail = onCloseDetail,

@@ -3,11 +3,9 @@ package app.echo.android.feature.settings
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.drag
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -306,24 +304,41 @@ internal fun SignalEqFader(
                 .fillMaxWidth()
                 .height(140.dp)
                 .pointerInput(enabled, minGainDb, maxGainDb) {
-                    awaitEachGesture {
-                        val down = awaitFirstDown()
-                        if (!enabled) return@awaitEachGesture
-                        // Consume immediately so the parent Signal page does not steal the vertical drag.
-                        down.consume()
-                        dragging = true
+                    detectTapGestures { offset ->
+                        if (!enabled) return@detectTapGestures
                         val inset = 8.dp.toPx()
-                        val next = snapEqGain(eqLinearValue(down.position.y, size.height.toFloat(), maxGainDb, minGainDb, inset))
+                        val next = snapEqGain(
+                            eqLinearValue(offset.y, size.height.toFloat(), maxGainDb, minGainDb, inset),
+                        )
                         localGain = next
                         onGainChange(next)
-                        drag(down.id) { change ->
+                    }
+                }
+                .pointerInput(enabled, minGainDb, maxGainDb) {
+                    detectVerticalDragGestures(
+                        onDragStart = { offset ->
+                            if (!enabled) return@detectVerticalDragGestures
+                            dragging = true
+                            val inset = 8.dp.toPx()
+                            val next = snapEqGain(
+                                eqLinearValue(offset.y, size.height.toFloat(), maxGainDb, minGainDb, inset),
+                            )
+                            localGain = next
+                            onGainChange(next)
+                        },
+                        onVerticalDrag = { change, _ ->
+                            if (!enabled) return@detectVerticalDragGestures
                             change.consume()
-                            val dragged = snapEqGain(eqLinearValue(change.position.y, size.height.toFloat(), maxGainDb, minGainDb, inset))
+                            val inset = 8.dp.toPx()
+                            val dragged = snapEqGain(
+                                eqLinearValue(change.position.y, size.height.toFloat(), maxGainDb, minGainDb, inset),
+                            )
                             localGain = dragged
                             onGainChange(dragged)
-                        }
-                        dragging = false
-                    }
+                        },
+                        onDragEnd = { dragging = false },
+                        onDragCancel = { dragging = false },
+                    )
                 },
         ) {
             Canvas(Modifier.fillMaxSize().padding(horizontal = 4.dp)) {

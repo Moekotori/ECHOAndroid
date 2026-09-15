@@ -408,9 +408,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             )
             store.save(ids)
             app.echo.android.playback.pinRemotePlaybackKeys(
-                pinnable.map {
-                    app.echo.android.model.playback.EchoRemotePinPolicy.resourceKey(it.id, it.uri)
-                }.toSet(),
+                app.echo.android.model.playback.EchoRemotePinPolicy.pinTokens(
+                    ids,
+                    pinnable.associate { it.id to it.uri },
+                ),
             )
             pinnable.forEach { item ->
                 runCatching {

@@ -31,6 +31,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Info
@@ -98,6 +99,8 @@ internal fun TrackList(
     onEnqueue: ((EchoTrack) -> Unit)? = null,
     onRemoveFromPlaylist: ((EchoTrack) -> Unit)? = null,
     onMoveTrack: ((fromIndex: Int, toIndex: Int) -> Unit)? = null,
+    onOpenArtist: ((EchoTrack) -> Unit)? = null,
+    onOpenAlbum: ((EchoTrack) -> Unit)? = null,
     showAudioInfoTags: Boolean = true,
     listState: LazyListState = rememberLazyListState(),
     modifier: Modifier = Modifier,
@@ -118,6 +121,8 @@ internal fun TrackList(
                     track = track,
                     onClick = { onPlayTrack(track) },
                     onUpdateTrackMetadata = onUpdateTrackMetadata,
+                    onOpenArtist = onOpenArtist,
+                    onOpenAlbum = onOpenAlbum,
                     onImportLyrics = onImportLyrics,
                     onPickArtwork = onPickArtwork,
                     onMatchNeteaseMetadata = onMatchNeteaseMetadata,
@@ -151,6 +156,8 @@ internal fun TrackList(
     onEnqueue: ((EchoTrack) -> Unit)? = null,
     onRemoveFromPlaylist: ((EchoTrack) -> Unit)? = null,
     onMoveTrack: ((fromIndex: Int, toIndex: Int) -> Unit)? = null,
+    onOpenArtist: ((EchoTrack) -> Unit)? = null,
+    onOpenAlbum: ((EchoTrack) -> Unit)? = null,
     showAudioInfoTags: Boolean = true,
     listState: LazyListState = rememberLazyListState(),
     modifier: Modifier = Modifier,
@@ -171,6 +178,8 @@ internal fun TrackList(
                 track = track,
                 onClick = { onPlayTrack(track) },
                 onUpdateTrackMetadata = onUpdateTrackMetadata,
+                onOpenArtist = onOpenArtist,
+                onOpenAlbum = onOpenAlbum,
                 onImportLyrics = onImportLyrics,
                 onPickArtwork = onPickArtwork,
                 onMatchNeteaseMetadata = onMatchNeteaseMetadata,
@@ -204,6 +213,8 @@ internal fun TrackRow(
     onRemoveFromPlaylist: ((EchoTrack) -> Unit)? = null,
     onMoveUp: (() -> Unit)? = null,
     onMoveDown: (() -> Unit)? = null,
+    onOpenArtist: ((EchoTrack) -> Unit)? = null,
+    onOpenAlbum: ((EchoTrack) -> Unit)? = null,
     showAudioInfoTags: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
@@ -232,6 +243,8 @@ internal fun TrackRow(
         onRemoveFromPlaylist = onRemoveFromPlaylist,
         onMoveUp = onMoveUp,
         onMoveDown = onMoveDown,
+        onOpenArtist = onOpenArtist?.let { open -> { open(track) } },
+        onOpenAlbum = onOpenAlbum?.let { open -> { open(track) } },
         showMoreAction = true,
         modifier = modifier
             .fillMaxWidth()
@@ -344,6 +357,8 @@ internal fun TrackContextMenu(
     onRemoveFromPlaylist: ((EchoTrack) -> Unit)? = null,
     onMoveUp: (() -> Unit)? = null,
     onMoveDown: (() -> Unit)? = null,
+    onOpenArtist: (() -> Unit)? = null,
+    onOpenAlbum: (() -> Unit)? = null,
     showMoreAction: Boolean = false,
     modifier: Modifier = Modifier,
     content: @Composable (Modifier) -> Unit,
@@ -448,9 +463,19 @@ internal fun TrackContextMenu(
                     canRemoveFromPlaylist = onRemoveFromPlaylist != null,
                     canMoveUp = onMoveUp != null,
                     canMoveDown = onMoveDown != null,
+                    canOpenArtist = onOpenArtist != null,
+                    canOpenAlbum = onOpenAlbum != null,
                     onPlay = {
                         sheetMode = null
                         onPlay()
+                    },
+                    onOpenArtist = {
+                        sheetMode = null
+                        onOpenArtist?.invoke()
+                    },
+                    onOpenAlbum = {
+                        sheetMode = null
+                        onOpenAlbum?.invoke()
                     },
                     onEdit = { sheetMode = TrackSheetMode.Editor },
                     onImportLyrics = {
@@ -533,7 +558,11 @@ private fun TrackActionSheet(
     canRemoveFromPlaylist: Boolean,
     canMoveUp: Boolean,
     canMoveDown: Boolean,
+    canOpenArtist: Boolean,
+    canOpenAlbum: Boolean,
     onPlay: () -> Unit,
+    onOpenArtist: () -> Unit,
+    onOpenAlbum: () -> Unit,
     onEdit: () -> Unit,
     onImportLyrics: () -> Unit,
     onPickArtwork: () -> Unit,
@@ -554,6 +583,22 @@ private fun TrackActionSheet(
     ) {
         TrackSheetHeader(track)
         TrackActionRow(stringResource(L10nR.string.feature_library_play_38419a), Icons.Rounded.PlayArrow, enabled = true, onClick = onPlay)
+        if (canOpenArtist) {
+            TrackActionRow(
+                stringResource(L10nR.string.feature_library_go_to_artist),
+                Icons.Rounded.Person,
+                enabled = true,
+                onClick = onOpenArtist,
+            )
+        }
+        if (canOpenAlbum) {
+            TrackActionRow(
+                stringResource(L10nR.string.feature_library_go_to_album),
+                Icons.Rounded.Album,
+                enabled = true,
+                onClick = onOpenAlbum,
+            )
+        }
         if (canPlayNext) {
             TrackActionRow(
                 stringResource(L10nR.string.feature_library_play_next_a1f73e),
