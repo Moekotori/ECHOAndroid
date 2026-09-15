@@ -362,6 +362,17 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     }
     val remoteStatus by remoteClient.status.collectAsStateWithLifecycle()
     val playbackStatus by viewModel.playbackStatus.collectAsStateWithLifecycle()
+    LaunchedEffect(
+        playbackStatus.diagnostics.outputDeviceKind,
+        playbackStatus.diagnostics.outputDeviceName,
+        playbackStatus.diagnostics.usbDeviceName,
+        playbackStatus.diagnostics.usbExclusiveStreaming,
+    ) {
+        viewModel.applyOutputDspIfNeeded(
+            playbackStatus.diagnostics.outputDeviceKind,
+            playbackStatus.diagnostics.usbDeviceName ?: playbackStatus.diagnostics.outputDeviceName,
+        )
+    }
     val playbackQueue by viewModel.playbackQueue.collectAsStateWithLifecycle()
     var castingToPc by remember { mutableStateOf(false) }
     var pendingCast by remember { mutableStateOf<Pair<String, String>?>(null) }
@@ -508,10 +519,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
 
     fun performDlnaCast(renderer: EchoLanRenderer) {
         if (castingToPc) return
-        if (renderer.kind == EchoLanRendererKind.Chromecast) {
-            castSetupError = context.getString(R.string.echo_link_cast_chromecast_unsupported)
-            return
-        }
         sendingCastAddress = renderer.host
         castSetupError = null
         val queue = viewModel.playbackQueue.value
@@ -536,24 +543,37 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             }
             is EchoLinkCastPlan.LocalHttp -> {
                 castingToPc = true
-                echoLinkSession.startDlnaCast(
-                    renderer = renderer,
-                    tracks = plan.tracks,
-                    startIndex = plan.startIndex,
-                    positionMs = positionMs,
-                    onFailure = { error ->
-                        castingToPc = false
-                        sendingCastAddress = null
-                        castSetupError = dlnaErrorMessage(error)
-                    },
-                    onSuccess = {
-                        castingToPc = false
-                        if (phoneId != null) {
-                            val live = viewModel.playbackStatus.value
-                            if (live.track?.id == phoneId && live.isPlaying) viewModel.pause()
-                        }
-                    },
-                )
+                val onFailure: (Throwable) -> Unit = { error ->
+                    castingToPc = false
+                    sendingCastAddress = null
+                    castSetupError = dlnaErrorMessage(error)
+                }
+                val onSuccess: () -> Unit = {
+                    castingToPc = false
+                    if (phoneId != null) {
+                        val live = viewModel.playbackStatus.value
+                        if (live.track?.id == phoneId && live.isPlaying) viewModel.pause()
+                    }
+                }
+                if (renderer.kind == EchoLanRendererKind.Chromecast) {
+                    echoLinkSession.startChromecastCast(
+                        renderer = renderer,
+                        tracks = plan.tracks,
+                        startIndex = plan.startIndex,
+                        positionMs = positionMs,
+                        onFailure = onFailure,
+                        onSuccess = onSuccess,
+                    )
+                } else {
+                    echoLinkSession.startDlnaCast(
+                        renderer = renderer,
+                        tracks = plan.tracks,
+                        startIndex = plan.startIndex,
+                        positionMs = positionMs,
+                        onFailure = onFailure,
+                        onSuccess = onSuccess,
+                    )
+                }
             }
         }
     }
@@ -665,8 +685,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     var searchVisible by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var errorLogVisible by rememberSaveable { mutableStateOf(false) }
-    var soundSettingsDestination by remember { mutableStateOf<app.echo.android.feature.settings.SoundSettingsDestination?>(null) }
-    var soundSettingsRequestId by remember { mutableIntStateOf(0) }
     var selectedTab by remember { mutableIntStateOf(EchoTab.Now.ordinal) }
     var bottomDockExpanded by remember { mutableStateOf(true) }
     var bottomDockHeightPx by remember { mutableIntStateOf(0) }
@@ -1402,9 +1420,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 val opraState by viewModel.opraState.collectAsStateWithLifecycle()
                                 val replayGainScan by viewModel.replayGainScanState.collectAsStateWithLifecycle()
                                 DiagnosticsScreen(
-                                    openDestination = soundSettingsDestination,
-                                    openRequestId = soundSettingsRequestId,
-                                    onOpenRequestConsumed = { soundSettingsDestination = null },
                                     status = playbackStatus,
                                     positionFlow = viewModel.playbackPosition,
                                     equalizerState = equalizerState,
@@ -1438,6 +1453,16 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                     onRenameUserPreset = viewModel::renameEqualizerUserPreset,
                                     onDeleteUserPreset = viewModel::deleteEqualizerUserPreset,
                                     onImportShareCode = viewModel::importEqualizerShareCode,
+                                    onBindPresetToOutput = viewModel::bindActiveEqualizerPresetToOutput,
+                                    outputDeviceLabel = playbackStatus.diagnostics.usbDeviceName
+                                        ?: playbackStatus.diagnostics.outputDeviceName,
+                                    outputPresetBound = appSettings.equalizerDevicePresetIds[
+                                        app.echo.android.model.playback.EchoOutputDspPolicy.deviceKey(
+                                            EchoOutputDeviceKind.fromId(playbackStatus.diagnostics.outputDeviceKind),
+                                            playbackStatus.diagnostics.usbDeviceName
+                                                ?: playbackStatus.diagnostics.outputDeviceName,
+                                        )
+                                    ] == appSettings.equalizerActiveUserPresetId,
                                     onToggleOpraFavorite = viewModel::toggleStarredOpraPreset,
                                     bluetoothCodecNeedsPermission = !hasBluetoothConnectPermission &&
                                         playbackStatus.diagnostics.outputDeviceKind == EchoOutputDeviceKind.Bluetooth.id,
@@ -1498,17 +1523,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     predictiveBackProgress = { nowPlayingBackProgress },
                     presentationExpanded = nowPlayingExpanded,
                     onDragProgress = { nowPlayingDragProgress = it },
-                    onOpenSoundSettings = { destination ->
-                        soundSettingsDestination = when (destination) {
-                            app.echo.android.feature.player.PlaybackSoundDestination.Equalizer -> app.echo.android.feature.settings.SoundSettingsDestination.Equalizer
-                            app.echo.android.feature.player.PlaybackSoundDestination.Headphones -> app.echo.android.feature.settings.SoundSettingsDestination.Headphones
-                            app.echo.android.feature.player.PlaybackSoundDestination.Balance -> app.echo.android.feature.settings.SoundSettingsDestination.Balance
-                            app.echo.android.feature.player.PlaybackSoundDestination.Output -> app.echo.android.feature.settings.SoundSettingsDestination.Output
-                        }
-                        soundSettingsRequestId++
-                        nowPlayingExpanded = false
-                        navigateToPage(EchoPagerPage.Diagnostics)
-                    },
                     onOpenQueue = { queueSheetVisible = true },
                     onCast = ::onNowPlayingCast,
                     castActive = castSessionActive,

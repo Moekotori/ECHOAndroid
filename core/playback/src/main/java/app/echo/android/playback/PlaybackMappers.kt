@@ -7,6 +7,7 @@ import androidx.media3.common.C
 import androidx.media3.common.Format
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import app.echo.android.model.library.CueSheetPolicy
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.LibraryPlaybackSupport
 import app.echo.android.model.playback.EchoDsdRates
@@ -45,13 +46,16 @@ fun MediaItem.toEchoTrackRef(durationMs: Long = 0L): EchoTrackRef {
         trackNumber = extrasTrackNumber,
         discNumber = extrasDiscNumber,
         sourceId = metadata.extras?.getString(EchoPlaybackSourceExtra)?.takeIf { it.isNotBlank() },
+        clipStartMs = metadata.extras?.getLong(EchoPlaybackClipStartExtra, 0L) ?: 0L,
+        clipEndMs = metadata.extras?.getLong(EchoPlaybackClipEndExtra, 0L) ?: 0L,
     )
 }
 
 fun EchoTrackRef.toMediaItem(): MediaItem =
     MediaItem.Builder()
         .setMediaId(id)
-        .setUri(Uri.parse(uri))
+        .setUri(Uri.parse(CueSheetPolicy.playbackUri(uri)))
+        .apply { applyClip(clipStartMs, clipEndMs) }
         .setMediaMetadata(
             androidx.media3.common.MediaMetadata.Builder()
                 .setTitle(title)
@@ -72,6 +76,8 @@ fun EchoTrackRef.toMediaItem(): MediaItem =
                         trackNumber = trackNumber,
                         discNumber = discNumber,
                         sourceId = sourceId,
+                        clipStartMs = clipStartMs,
+                        clipEndMs = clipEndMs,
                     ),
                 )
                 .build(),
@@ -91,13 +97,16 @@ fun EchoTrack.toEchoTrackRef(): EchoTrackRef =
         trackNumber = trackNumber,
         discNumber = discNumber,
         sourceId = source.id,
+        clipStartMs = clipStartMs,
+        clipEndMs = clipEndMs,
     )
 
 fun EchoTrack.toMediaItem(): MediaItem {
     val persistUri = EchoLinkPlaybackUri.persistableUri(id, uri)
     return MediaItem.Builder()
         .setMediaId(id)
-        .setUri(Uri.parse(uri))
+        .setUri(Uri.parse(CueSheetPolicy.playbackUri(uri)))
+        .apply { applyClip(clipStartMs, clipEndMs) }
         .setMediaMetadata(
             androidx.media3.common.MediaMetadata.Builder()
                 .setTitle(title)
@@ -118,6 +127,8 @@ fun EchoTrack.toMediaItem(): MediaItem {
                         trackNumber = trackNumber,
                         discNumber = discNumber,
                         sourceId = source.id,
+                        clipStartMs = clipStartMs,
+                        clipEndMs = clipEndMs,
                     ),
                 )
                 .build(),
@@ -426,6 +437,8 @@ internal fun playbackItemExtras(
     trackNumber: Int? = null,
     discNumber: Int? = null,
     sourceId: String? = null,
+    clipStartMs: Long = 0L,
+    clipEndMs: Long = 0L,
 ): Bundle? {
     val extras = Bundle()
     if (persistUri.isNotBlank() && persistUri != playUri) {
@@ -438,7 +451,17 @@ internal fun playbackItemExtras(
     trackNumber?.takeIf { it > 0 }?.let { extras.putInt(EchoPlaybackTrackNumberExtra, it) }
     discNumber?.takeIf { it > 0 }?.let { extras.putInt(EchoPlaybackDiscNumberExtra, it) }
     sourceId?.takeIf { it.isNotBlank() }?.let { extras.putString(EchoPlaybackSourceExtra, it) }
+    if (clipStartMs > 0L) extras.putLong(EchoPlaybackClipStartExtra, clipStartMs)
+    if (clipEndMs > clipStartMs) extras.putLong(EchoPlaybackClipEndExtra, clipEndMs)
     return extras.takeIf { !it.isEmpty }
+}
+
+private fun MediaItem.Builder.applyClip(startMs: Long, endMs: Long): MediaItem.Builder {
+    if (startMs <= 0L && endMs <= 0L) return this
+    val clipping = MediaItem.ClippingConfiguration.Builder()
+        .setStartPositionMs(startMs.coerceAtLeast(0L))
+    if (endMs > startMs) clipping.setEndPositionMs(endMs)
+    return setClippingConfiguration(clipping.build())
 }
 
 internal const val EchoPlaybackPersistUriExtra = "app.echo.android.playback.PERSIST_URI"
@@ -446,3 +469,5 @@ internal const val EchoPlaybackSampleRateExtra = "app.echo.android.playback.SAMP
 internal const val EchoPlaybackTrackNumberExtra = "app.echo.android.playback.TRACK_NUMBER"
 internal const val EchoPlaybackDiscNumberExtra = "app.echo.android.playback.DISC_NUMBER"
 internal const val EchoPlaybackSourceExtra = "app.echo.android.playback.SOURCE"
+internal const val EchoPlaybackClipStartExtra = "app.echo.android.playback.CLIP_START_MS"
+internal const val EchoPlaybackClipEndExtra = "app.echo.android.playback.CLIP_END_MS"

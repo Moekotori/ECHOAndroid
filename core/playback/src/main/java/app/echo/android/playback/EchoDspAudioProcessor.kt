@@ -53,6 +53,7 @@ internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>) 
 
     override fun queueInput(input: ByteBuffer) {
         if (!input.hasRemaining()) return
+        syncSmartMixer()
         val channels = inputAudioFormat.channelCount
         val frames = minOf(1024, input.remaining() / (channels * bytesPerSample))
         check(frames > 0) { "Incomplete PCM frame" }
@@ -100,6 +101,20 @@ internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>) 
             }
         }
         output.flip()
+    }
+
+    private fun syncSmartMixer() {
+        val format = inputAudioFormat
+        if (format == AudioProcessor.AudioFormat.NOT_SET) return
+        val internalFormat = AudioProcessor.AudioFormat(format.sampleRate, format.channelCount, C.ENCODING_PCM_FLOAT)
+        for (stage in stages) {
+            if (stage !is EchoSmartTransitionMixer) continue
+            if (stage.enabled == stage.isActive) continue
+            runCatching {
+                stage.configure(internalFormat)
+                if (stage.isActive) stage.flush(AudioProcessor.StreamMetadata.DEFAULT)
+            }
+        }
     }
 
     private fun readSample(input: ByteBuffer): Float = when {

@@ -6,13 +6,5 @@
     <string name="playback_lyrics_later">延后 →</string>
     <string name="playback_expand">展开</string>
     <string name="playback_collapse">收起</string>
-    <string name="playback_sound_tools">声音与输出</string>
-    <string name="playback_equalizer">均衡器</string>
-    <string name="playback_headphones">耳机校正</string>
-    <string name="playback_balance">声道平衡</string>
-    <string name="playback_output">输出与诊断</string>
-    <string name="playback_sound_bypassed">USB 位完美模式下旁路</string>
-    <string name="playback_sound_unavailable">当前不可用</string>
-    <string name="playback_headphones_hint">查找并应用耳机校正预设</string>
     <string name="playback_cancel_timer">取消定时</string>
 </resources>

@@ -4,5 +4,5 @@
     <string name="scan_all_formats">全部格式</string>
     <string name="scan_advanced_options">高级选项</string>
     <string name="scan_excluded_folders">忽略文件夹</string>
-    <string name="scan_excluded_folders_hint">每行填写一个存储空间内的相对路径，例如 Recordings/Call，包含其子文件夹。开始扫描时保存，关闭其他筛选后仍生效；删除对应行可恢复扫描。已入库歌曲会保留。</string>
+    <string name="scan_excluded_folders_hint">每行填写一个存储空间内的相对路径，例如 Recordings/Call，包含其子文件夹。开始扫描时保存，关闭其他筛选后仍生效。下次扫描会从曲库移除这些文件夹里的歌曲；删除对应行可恢复扫描。</string>
 </resources>

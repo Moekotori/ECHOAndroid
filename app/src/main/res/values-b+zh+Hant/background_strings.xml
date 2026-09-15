@@ -1,0 +1,4 @@
+<resources>
+    <string name="background_permission_error">無法保留此檔案的存取權限，請重新選擇檔案。</string>
+    <string name="background_load_error">無法載入此背景，已恢復預設背景。</string>
+</resources>

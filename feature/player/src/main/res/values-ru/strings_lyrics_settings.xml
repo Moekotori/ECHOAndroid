@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_setting_reset">Сбросить</string>
+    <string name="lyrics_setting_typography">Шрифт и вёрстка</string>
+    <string name="lyrics_setting_replace_font">Заменить импортированный шрифт</string>
+    <string name="lyrics_setting_color_background">Цвет и фон</string>
+    <string name="lyrics_setting_motion">Движение и подсветка</string>
+    <string name="lyrics_setting_highlight_strength">Интенсивность подсветки</string>
+    <string name="lyrics_setting_content">Содержимое и инструменты</string>
+    <string name="lyrics_setting_content_summary">Перевод, романизация и источники текста</string>
+    <string name="lyrics_setting_no_content">У этого трека нет подходящего содержимого. Настройка всё равно действует для других треков.</string>
+    <string name="lyrics_setting_word_highlight">Подсветка слов</string>
+</resources>

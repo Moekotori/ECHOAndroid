@@ -1,0 +1,5 @@
+<resources>
+    <string name="home_missing_file_title">音訊檔案已失效</string>
+    <string name="home_missing_file_detail">點這裡進入音樂庫，重新掃描或選擇其他歌曲。</string>
+    <string name="home_search_no_results">找不到相符的音樂</string>
+</resources>

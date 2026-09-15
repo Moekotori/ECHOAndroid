@@ -56,6 +56,9 @@ class EchoLibraryRepository(
     private fun text(@StringRes id: Int, vararg args: Any): String =
         if (args.isEmpty()) appContext.getString(id) else appContext.getString(id, *args)
     private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val documentListings by lazy {
+        DocumentTreeListingCache(java.io.File(appContext.cacheDir, "scan-saf-listings-v1.json"))
+    }
 
     private val maintenanceJob = repositoryScope.launch {
         delay(PINYIN_BACKFILL_START_DELAY_MS)
@@ -916,6 +919,7 @@ class EchoLibraryRepository(
         var totalCount: Int? = null
         var lastProgressEmitCount = 0
         var lastProgressEmitAtMs = 0L
+        val changedGroupingFolders = HashSet<String>()
 
         suspend fun emitProgress(
             phase: LibraryScanPhase = progress.phase,
@@ -1012,6 +1016,9 @@ class EchoLibraryRepository(
                     }
                     insertedCount += classified.inserts.size
                     updatedCount += classified.updates.size
+                    changedGroupingFolders += LibraryAlbumGrouping.groupingFolders(
+                        (classified.inserts + classified.updates).map { it.relativePath },
+                    )
                     lastProgressEmitCount = scannedCount
                     lastProgressEmitAtMs = System.currentTimeMillis()
                     emitProgress(phase = LibraryScanPhase.QueryingMediaStore)
@@ -1041,7 +1048,6 @@ class EchoLibraryRepository(
                     // 其曲目保持原样,防止整卷误删(连带用户元数据编辑丢失)
                     val candidateIds = existingRows
                         .filter { LibraryScanPolicy.isMediaStoreNativeId(it.id) }
-                        .filter { options.includesDirectory(it.relativePath) }
                         .filter {
                             LibraryScanPolicy.mediaStoreRowWithinVolumeScopes(
                                 relativePath = it.relativePath,
@@ -1049,7 +1055,11 @@ class EchoLibraryRepository(
                             )
                         }
                         .map { it.id }
-                    LibraryScanPolicy.unseenIds(candidateIds, seenIds)
+                    val missing = LibraryScanPolicy.unseenIds(candidateIds, seenIds)
+                    changedGroupingFolders += LibraryAlbumGrouping.groupingFolders(
+                        missing.map { id -> existingFingerprints[id]?.relativePath },
+                    )
+                    missing
                 },
             )
             if (scanOutcome.querySucceeded) {
@@ -1057,7 +1067,7 @@ class EchoLibraryRepository(
                     existingFingerprints.values.asSequence().filter { it.id in seenIds && it.id !in changedFingerprints } +
                         changedFingerprints.values.asSequence(),
                 )
-                reconcileLocalAlbumGrouping(dao, dao.getLocalLibraryTracks())
+                reconcileChangedAlbumGrouping(dao, changedGroupingFolders)
             }
             emitProgress(
                 phase = if (scanOutcome.querySucceeded) LibraryScanPhase.Completed else LibraryScanPhase.Error,
@@ -1107,6 +1117,7 @@ class EchoLibraryRepository(
         var deletedCount = 0
         var lastProgressEmitCount = 0
         var lastProgressEmitAtMs = 0L
+        val changedGroupingFolders = HashSet<String>()
 
         suspend fun emitProgress(
             phase: LibraryScanPhase = progress.phase,
@@ -1173,6 +1184,7 @@ class EchoLibraryRepository(
                 rejectedFiles = rejectedFiles,
                 onSkipped = { skippedCount++ },
                 onUnchangedIds = { ids -> seenIds.addAll(ids) },
+                listings = documentListings,
                 onDuplicate = { oldId, targetId ->
                     if (oldId in existingFingerprints) duplicateAliases[oldId] = targetId
                 },
@@ -1216,6 +1228,9 @@ class EchoLibraryRepository(
                     duplicateAliases.clear()
                     insertedCount += classified.inserts.size
                     updatedCount += classified.updates.size
+                    changedGroupingFolders += LibraryAlbumGrouping.groupingFolders(
+                        (classified.inserts + classified.updates).map { it.relativePath },
+                    )
                     lastProgressEmitCount = scannedCount
                     lastProgressEmitAtMs = System.currentTimeMillis()
                     emitProgress(phase = LibraryScanPhase.QueryingMediaStore)
@@ -1235,20 +1250,23 @@ class EchoLibraryRepository(
                     confirmedEmpty = scanOutcome.querySucceeded,
                 ),
                 missingIds = {
-                    LibraryScanPolicy.unseenIds(
+                    val missing = LibraryScanPolicy.unseenIds(
                         existingFingerprints.keys.filter {
                             (LibraryScanPolicy.isSafTrackId(it) || LibraryScanPolicy.isMediaStoreNativeId(it)) &&
                                 // A fully listed empty tree proves absence; otherwise unknown identities stay safe.
-                                (scannedCount == 0 || it !in unresolvedMediaStoreIds) &&
-                                options.includesDirectory(existingFingerprints[it]?.relativePath)
+                                (scannedCount == 0 || it !in unresolvedMediaStoreIds)
                         },
                         seenIds,
                     )
+                    changedGroupingFolders += LibraryAlbumGrouping.groupingFolders(
+                        missing.map { id -> existingFingerprints[id]?.relativePath },
+                    )
+                    missing
                 },
             )
             deletedCount = deletion.deletedCount
             if (scanOutcome.querySucceeded) {
-                reconcileLocalAlbumGrouping(dao, dao.getLocalLibraryTracks())
+                reconcileChangedAlbumGrouping(dao, changedGroupingFolders)
             }
             emitProgress(
                 phase = if (scanOutcome.querySucceeded) LibraryScanPhase.Completed else LibraryScanPhase.Error,
@@ -1275,6 +1293,7 @@ class EchoLibraryRepository(
             )
         } finally {
             rejectedFiles.flush()
+            documentListings.flush()
         }
     }.flowOn(LibraryScanDispatchers.Limited)
 
@@ -1945,6 +1964,35 @@ class EchoLibraryRepository(
         val regrouped = reconcileLocalAlbumGrouping(dao, dao.getLocalLibraryTracks())
         if (changed || regrouped.isNotEmpty()) dao.rebuildLibrarySummaries()
         scanner.markAggregationKeyBackfillComplete()
+    }
+
+    private suspend fun reconcileChangedAlbumGrouping(
+        dao: LibraryTrackDao,
+        groupingFolders: Set<String>,
+    ) {
+        if (groupingFolders.isEmpty()) return
+        val tracks = if (
+            LibraryScanPolicy.shouldRebuildLibrarySummariesIncrementally(
+                changedKeyCount = groupingFolders.size,
+                existingAlbumSummaryCount = dao.countAlbumSummaries(),
+            )
+        ) {
+            val ids = LibraryAlbumGrouping.trackIdsInGroupingFolders(
+                rows = dao.getLocalIdPaths(),
+                folders = groupingFolders,
+            )
+            if (ids.isEmpty()) return
+            val loaded = ArrayList<LibraryTrackEntity>(ids.size)
+            ids.chunked(DATABASE_BATCH_SIZE).forEach { chunk ->
+                coroutineContext.ensureActive()
+                loaded += dao.getTracksByIds(chunk)
+                yield()
+            }
+            loaded
+        } else {
+            dao.getLocalLibraryTracks()
+        }
+        reconcileLocalAlbumGrouping(dao, tracks)
     }
 
     private suspend fun reconcileLocalAlbumGrouping(

@@ -33,6 +33,20 @@ internal object LibraryAlbumGrouping {
         return folders.joinToString("/").lowercase()
     }
 
+    fun groupingFolders(relativePaths: Iterable<String?>): Set<String> =
+        relativePaths.mapNotNullTo(linkedSetOf(), ::groupingFolder)
+
+    fun trackIdsInGroupingFolders(
+        rows: Iterable<TrackIdPathRow>,
+        folders: Set<String>,
+    ): List<String> {
+        if (folders.isEmpty()) return emptyList()
+        return rows.mapNotNull { row ->
+            val folder = groupingFolder(row.relativePath)
+            if (folder != null && folder in folders) row.id else null
+        }
+    }
+
     private fun groupingIdentity(track: LibraryTrackEntity): GroupIdentity {
         val album = albumNameForKey(track.normalizedAlbum ?: track.album?.normalizedForSearch())
             .orEmpty()

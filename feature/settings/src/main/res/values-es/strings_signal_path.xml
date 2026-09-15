@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="path_unverified">Salida no verificada</string>
+    <string name="path_verified">Bit-perfect confirmado</string>
+    <string name="path_processing">Procesamiento DSP</string>
+    <string name="path_unverified_detail">El reloj del dispositivo y las muestras finales no están verificados. Una ruta del sistema no confirma una salida sin pérdidas.</string>
+    <string name="path_pending_detail">Inicia la reproducción para inspeccionar la ruta activa. La información guardada de la canción no confirma una salida activa.</string>
+    <string name="path_error_detail">Falló la reproducción. Estas etapas no confirman una ruta de audio en funcionamiento.</string>
+    <string name="path_format_change">Cambio de frecuencia informado</string>
+    <string name="path_format_pair">Origen %1$s → decodificado %2$s</string>
+    <string name="path_eq_detail">Preamplificador %1$s · frecuencia de procesamiento %2$s</string>
+    <string name="path_channel_detail">Izq. %1$s · Der. %2$s</string>
+    <string name="path_source_format">Formato de origen</string>
+    <string name="path_source_pc">PC ECHO · %1$s</string>
+    <string name="path_source_pc_detail">Archivo original de la biblioteca del PC enlazado</string>
+    <string name="path_device_clock">Reloj del dispositivo informado: %1$s</string>
+</resources>

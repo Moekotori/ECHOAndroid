@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_check">Buscar actualizaciones</string>
+    <string name="update_source">Comprueba automáticamente GitHub Releases cada 12 horas al abrirla</string>
+    <string name="update_title">Actualizaciones de ECHO</string>
+    <string name="update_error">No se pudo completar la actualización. Comprueba la conexión, el permiso de instalación y la compatibilidad de firma del APK, e inténtalo de nuevo.</string>
+    <string name="update_downloading">Descargando actualización…</string>
+    <string name="update_checking">Consultando GitHub…</string>
+    <string name="update_ready">Descarga verificada. Continúa con el instalador del sistema.</string>
+    <string name="update_available">Hay una versión nueva disponible</string>
+    <string name="update_current">No hay una versión más reciente</string>
+    <string name="update_install">Instalar</string>
+    <string name="update_download">Descargar</string>
+    <string name="update_later">Más tarde</string>
+    <string name="update_version_current">Versión actual: %1$s</string>
+    <string name="update_package_size">Tamaño de descarga: %1$s</string>
+    <string name="update_error_check">No se pudo consultar GitHub. Comprueba la conexión e inténtalo de nuevo.</string>
+    <string name="update_error_download">Descarga interrumpida. Comprueba la conexión y el almacenamiento disponible, e inténtalo de nuevo.</string>
+    <string name="update_error_verification">Este APK no superó la verificación o tiene una firma incompatible. Conserva la app actual y contacta al responsable de la versión.</string>
+    <string name="update_error_permission">Permite que ECHO instale apps en los ajustes del sistema y vuelve a tocar Instalar.</string>
+    <string name="update_error_install">No se pudo abrir el instalador. Toca Instalar para reintentar.</string>
+    <string name="update_verifying">Verificando paquete…</string>
+    <string name="update_install_hint">La descarga requiere tu aprobación. Android te pedirá confirmar la instalación.</string>
+    <string name="update_percent">%1$d%%</string>
+    <string name="update_cancel_download">Cancelar descarga</string>
+    <string name="update_notes">Novedades</string>
+    <string name="update_retry">Reintentar</string>
+    <string name="update_done">Listo</string>
+    <string name="update_hide_download">Ocultar descarga</string>
+</resources>

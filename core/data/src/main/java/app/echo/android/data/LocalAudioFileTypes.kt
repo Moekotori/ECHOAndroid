@@ -23,7 +23,15 @@ internal object LocalAudioFileTypes {
         }
     }
 
+    fun isCueSheet(name: String, mimeType: String?): Boolean {
+        val lower = name.lowercase(Locale.ROOT)
+        if (lower.endsWith(".cue")) return true
+        val mime = mimeType?.lowercase(Locale.ROOT) ?: return false
+        return mime == "application/x-cue" || mime == "text/x-cue"
+    }
+
     fun isSupported(name: String, mimeType: String?): Boolean {
+        if (isCueSheet(name, mimeType)) return false
         if (mimeType.isVideoMime()) return false
         return mimeType.isAudioMime() || mimeTypeForFileName(name) != null
     }

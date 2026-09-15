@@ -22,11 +22,12 @@ internal object EchoSmartTransitionPolicy {
     const val FrameMs = 100
     const val MemoryCacheLimit = 32
     const val DiskCacheMaxBytes = 2L * 1024 * 1024
-    const val PredecodeLeadMs = 1_000
+    const val PredecodeLeadMs = 8_000
+    const val ProcessorLeadMs = 250L
     const val MinRemainingAfterMixMs = 300
     const val MinTrackDurationMs = 4_000
     const val MaxSilenceSkipMs = 3_000
-    const val DecodeTimeoutMs = 2_500L
+    const val DecodeTimeoutMs = 5_000L
 
     enum class BypassReason {
         Disabled,
@@ -97,9 +98,6 @@ internal object EchoSmartTransitionPolicy {
             candidate.nextDurationMs < MinTrackDurationMs
         ) {
             return BypassReason.ShortTrack
-        }
-        if (!ratesCompatible(candidate.outputSampleRateHz, candidate.currentSampleRateHz, candidate.nextSampleRateHz)) {
-            return BypassReason.SampleRateMismatch
         }
         if (candidate.outputChannelCount > 2) return BypassReason.SampleRateMismatch
         return null

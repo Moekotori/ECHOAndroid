@@ -10,7 +10,7 @@
     <string name="scan_1_mb">1 MB</string>
     <string name="scan_skip_non_music">録音・着信音・通知音フォルダを除外</string>
     <string name="scan_skip_hidden">隠しフォルダを除外</string>
-    <string name="scan_filter_hint">長さやサイズが不明なファイルは保持します。登録済みの曲は削除しません。</string>
+    <string name="scan_filter_hint">長さやサイズが不明なファイルは保持します。長さ・サイズ・形式では登録済みの曲を削除しません。隠しフォルダ、非音楽フォルダ、除外フォルダは次回スキャンでライブラリから削除されます。</string>
     <string name="scan_choose_folder">フォルダを選んでスキャン</string>
     <string name="scan_folder_hint">おすすめ · サブフォルダを含む。端末全体への権限は不要</string>
     <string name="scan_device">端末をスキャン</string>

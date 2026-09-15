@@ -19,6 +19,7 @@ import app.echo.android.model.playback.EchoEqualizerPreset
 import app.echo.android.model.playback.EchoEqualizerPresets
 import app.echo.android.model.playback.EchoEqualizerUserPreset
 import app.echo.android.model.playback.EchoEqualizerUserPresets
+import app.echo.android.model.playback.EchoOutputDspPolicy
 import app.echo.android.model.playback.OpraEqBand
 import app.echo.android.model.playback.EchoRepeatMode
 import app.echo.android.model.playback.EchoReplayGainMode
@@ -65,6 +66,7 @@ data class EchoAppSettings(
     val equalizerFilters: List<OpraEqBand> = emptyList(),
     val equalizerUserPresets: List<EchoEqualizerUserPreset> = emptyList(),
     val equalizerActiveUserPresetId: String? = null,
+    val equalizerDevicePresetIds: Map<String, String> = emptyMap(),
     val opraLastQuery: String = "",
     val channelBalance: EchoChannelBalanceState = EchoChannelBalanceState(),
     val customBackgroundMode: String = EchoBackgroundMode.Default,
@@ -247,6 +249,7 @@ class EchoSettingsStore(
                 equalizerFilters = parseEqualizerFilters(preferences[Keys.EqualizerFilters]),
                 equalizerUserPresets = EchoEqualizerUserPresetCodec.decode(preferences[Keys.EqualizerUserPresets]),
                 equalizerActiveUserPresetId = preferences[Keys.EqualizerActiveUserPresetId]?.trim()?.takeIf { it.isNotEmpty() },
+                equalizerDevicePresetIds = EchoOutputDspCodec.decode(preferences[Keys.EqualizerDevicePresetIds]),
                 opraLastQuery = preferences[Keys.OpraLastQuery]?.trim().orEmpty(),
                 channelBalance = EchoChannelBalanceState(
                     enabled = preferences[Keys.ChannelBalanceEnabled] ?: false,
@@ -555,6 +558,15 @@ class EchoSettingsStore(
             if (it[Keys.EqualizerActiveUserPresetId] == id) {
                 it.remove(Keys.EqualizerActiveUserPresetId)
             }
+        }
+    }
+
+    suspend fun bindEqualizerPresetToDevice(key: String, presetId: String) {
+        context.echoSettings.edit {
+            val current = EchoOutputDspCodec.decode(it[Keys.EqualizerDevicePresetIds])
+            it[Keys.EqualizerDevicePresetIds] = EchoOutputDspCodec.encode(
+                EchoOutputDspPolicy.bind(current, key, presetId),
+            )
         }
     }
 
@@ -1206,6 +1218,9 @@ class EchoSettingsStore(
             backup.equalizerActiveUserPresetId?.let { id ->
                 if (id.isBlank()) prefs.remove(Keys.EqualizerActiveUserPresetId) else prefs[Keys.EqualizerActiveUserPresetId] = id
             }
+            backup.equalizerDevicePresetIds?.let { bindings ->
+                prefs[Keys.EqualizerDevicePresetIds] = EchoOutputDspCodec.encode(bindings)
+            }
             backup.opraLastQuery?.let { query ->
                 if (query.isBlank()) prefs.remove(Keys.OpraLastQuery) else prefs[Keys.OpraLastQuery] = query
             }
@@ -1276,6 +1291,7 @@ class EchoSettingsStore(
         val EqualizerFilters = stringPreferencesKey("equalizer_filters")
         val EqualizerUserPresets = stringPreferencesKey("equalizer_user_presets")
         val EqualizerActiveUserPresetId = stringPreferencesKey("equalizer_active_user_preset_id")
+        val EqualizerDevicePresetIds = stringPreferencesKey("equalizer_device_preset_ids")
         val OpraLastQuery = stringPreferencesKey("opra_last_query")
         val ChannelBalanceEnabled = booleanPreferencesKey("channel_balance_enabled")
         val ChannelBalance = floatPreferencesKey("channel_balance")
@@ -1494,6 +1510,7 @@ fun EchoAppSettings.toBackupSettings(): app.echo.android.model.backup.EchoBackup
         equalizerFilters = equalizerFilters,
         equalizerUserPresets = equalizerUserPresets,
         equalizerActiveUserPresetId = equalizerActiveUserPresetId,
+        equalizerDevicePresetIds = equalizerDevicePresetIds.takeIf { it.isNotEmpty() },
         opraLastQuery = opraLastQuery.takeIf { it.isNotBlank() },
         channelBalance = channelBalance,
         lyricsFontFamily = lyricsFontFamily,

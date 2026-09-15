@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_add_music">新增音樂</string>
+    <string name="library_access_title">從你的音樂開始</string>
+    <string name="library_access_detail">允許存取音訊，即可瀏覽手機裡的音樂。</string>
+    <string name="library_retry">重試</string>
+    <string name="library_no_matches">找不到相符的音樂</string>
+    <string name="library_search_hint">試試其他歌名、藝人或專輯。</string>
+    <string name="library_start_collection">把喜歡的音樂收進來</string>
+    <string name="library_import_hint">掃描手機音樂，或從右上角新增音樂資料夾。</string>
+    <string name="library_cloud_empty_title">把雲端硬碟音樂接進來</string>
+    <string name="library_cloud_empty_detail">到「連線」設定 WebDAV、Subsonic 或 Jellyfin，同步後專輯會顯示在這裡。</string>
+    <string name="library_cloud_empty_configured_title">雲端硬碟裡還沒有專輯</string>
+    <string name="library_cloud_empty_configured_detail">到「連線」再同步一次，或確認雲端硬碟目錄裡有音樂。</string>
+    <string name="library_open_connect">去連線</string>
+    <string name="library_clear_search">清除搜尋</string>
+    <string name="library_track_actions">歌曲操作</string>
+    <string name="library_playlist_actions">歌單操作</string>
+    <string name="library_track_count">%1$d 首</string>
+</resources>

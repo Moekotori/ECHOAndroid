@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_clear_index_title">Effacer l\'index de la bibliothèque</string>
+    <string name="settings_clear_index_detail">Retirer l\'index de musique locale sans supprimer les fichiers audio.</string>
+    <string name="settings_clear_index_busy">Effacement…</string>
+    <string name="settings_clear_index_confirm">Effacer les index locaux de morceaux et de recherche ? Les fichiers musicaux, favoris, playlists et l\'historique d\'écoute seront conservés. L\'analyse automatique sera en pause jusqu\'à une analyse manuelle. Les bibliothèques distantes ne sont pas concernées.</string>
+    <string name="settings_clear_index_action">Effacer</string>
+    <string name="settings_clear_index_success">Index de la bibliothèque locale effacé. Analysez manuellement pour le reconstruire.</string>
+    <string name="settings_clear_index_failure">Impossible d\'effacer l\'index de la bibliothèque. Veuillez réessayer.</string>
+</resources>

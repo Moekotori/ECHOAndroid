@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_daily_album">Альбом на сегодня</string>
+    <string name="home_daily_album_detail">Немного вдохновения из вашей библиотеки.</string>
+    <string name="home_daily_album_empty">Добавьте альбомы, чтобы найти, что послушать дальше.</string>
+    <string name="home_daily_album_play">Играть альбом</string>
+    <string name="home_daily_album_another">Другой вариант</string>
+    <string name="home_rediscover">Откройте заново</string>
+    <string name="home_rediscover_detail">Альбомы, которые вы слушали не менее 30 дней назад.</string>
+    <string name="home_rediscover_empty">Пока здесь пусто. История прослушивания вернёт старые любимые записи.</string>
+    <string name="home_resume">Продолжить с того места</string>
+    <string name="home_resume_detail">Вернитесь к альбому там, где поставили паузу.</string>
+    <string name="home_resume_empty">Выберите композицию, чтобы начать следующее прослушивание.</string>
+    <string name="home_resume_open_player">Открыть плеер</string>
+    <string name="home_resume_play">Продолжить</string>
+    <string name="home_resume_position">%1$s / %2$s</string>
+</resources>

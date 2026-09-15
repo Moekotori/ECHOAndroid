@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connect_direct_unavailable">電腦拒絕了直接連線。請開啟 Echo Link 並更新 ECHOSteam；舊版電腦可貼上完整配對連結。</string>
+</resources>

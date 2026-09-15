@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_daily_album">今天聽這張</string>
+    <string name="home_daily_album_detail">從本機音樂庫，找一點今天的靈感。</string>
+    <string name="home_daily_album_empty">先把喜歡的專輯加入音樂庫吧。</string>
+    <string name="home_daily_album_play">播放專輯</string>
+    <string name="home_daily_album_another">換一張</string>
+    <string name="home_rediscover">好久沒聽</string>
+    <string name="home_rediscover_detail">找回至少 30 天沒聽過的專輯。</string>
+    <string name="home_rediscover_empty">暫時還沒有，聽歌記錄會幫你找回老朋友。</string>
+    <string name="home_resume">接著聽</string>
+    <string name="home_resume_detail">回到那張專輯，從停下的地方繼續。</string>
+    <string name="home_resume_empty">先選一首歌，開啟下一段聽歌時光。</string>
+    <string name="home_resume_open_player">開啟播放頁</string>
+    <string name="home_resume_play">繼續播放</string>
+    <string name="home_resume_position">%1$s / %2$s</string>
+</resources>

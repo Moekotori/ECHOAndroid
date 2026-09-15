@@ -65,8 +65,8 @@ class MediaStoreTrackScanner(
                 val track = runCatching {
                     val row = listing.toAudioRow(collection, columns)
                     if (!options.includesDirectory(row.relativePath)) {
-                        onUnchangedIds(listOf("mediastore:${row.mediaId}"))
                         scannedCount++
+                        onSkipped()
                         onProgress(scannedCount, null)
                         null
                     } else if (!options.acceptsFileFormat(row.fileName, "mediastore:${row.mediaId}" in existingTracks)) {
@@ -141,6 +141,7 @@ class MediaStoreTrackScanner(
                 } else {
                     -1
                 }
+                val displayNameIndex = listing.getColumnIndex(MediaStore.Audio.Media.DISPLAY_NAME)
                 val unchangedIds = ArrayList<String>()
                 while (listing.moveToNext()) {
                     coroutineContext.ensureActive()
@@ -165,6 +166,7 @@ class MediaStoreTrackScanner(
                             sizeBytes = sizeBytes,
                             options = options,
                             rejectedByCache = rejectedByCache,
+                            fileName = if (displayNameIndex >= 0) listing.getStringOrNull(displayNameIndex) else null,
                         )
                     ) {
                         MediaStoreProbeAction.SkipRejected -> {
@@ -676,6 +678,7 @@ class MediaStoreTrackScanner(
             MediaStore.Audio.Media._ID,
             MediaStore.Audio.Media.DATE_MODIFIED,
             MediaStore.Audio.Media.SIZE,
+            MediaStore.Audio.Media.DISPLAY_NAME,
         )
 
         val BaseProjection = arrayOf(

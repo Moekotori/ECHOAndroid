@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playback_command_favorite">Favorito</string>
+    <string name="playback_command_unfavorite">Quitar de favoritos</string>
+    <string name="playback_command_repeat_all">Repetir todo</string>
+    <string name="playback_command_repeat_one">Repetir una</string>
+    <string name="playback_command_repeat_off">No repetir</string>
+    <string name="playback_command_lyrics">Letra</string>
+</resources>

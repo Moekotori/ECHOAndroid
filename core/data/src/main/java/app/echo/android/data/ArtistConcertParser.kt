@@ -36,7 +36,11 @@ internal object ArtistConcertParser {
 
     fun actorPage(html: String, names: List<String>): String? {
         if (!html.contains("/actors/search")) throw IOException("Unrecognized Eventernote search page")
-        return anchors.findAll(html).filter { sameName(text(it.groupValues[2]), names) }
+        return anchors.findAll(html).filter {
+            // Mobile results put pronunciation and a count inside the artist anchor.
+            val label = text(it.groupValues[2].replace(Regex("<span\\b[^>]*class=[\"']count[^\"']*[\"'][^>]*>.*?</span>", htmlOptions), ""))
+            sameName(label, names) || sameName(label.replace(Regex("\\s*[（(][^（）()]*[）)]\\s*$"), ""), names)
+        }
             .mapNotNull { match ->
                 "https://www.eventernote.com".toHttpUrl().resolve(match.groupValues[1])?.takeIf {
                     it.host == "www.eventernote.com" && it.encodedPath.matches(Regex("/actors/[^/]+/[0-9]+"))
@@ -45,6 +49,7 @@ internal object ArtistConcertParser {
     }
 
     fun eventernote(html: String, names: List<String>, today: LocalDate): List<ArtistConcert> {
+        if (html.contains("gb_listevent")) return eventernoteMobile(html, names, today)
         if (!html.contains("gb_event_list") && !html.contains("イベントがありません")) throw IOException("Unrecognized Eventernote event page")
         val blocks = Regex("<li\\b[^>]*class=[\"']clearfix[^\"']*[\"'][^>]*>(.*?)(?=<li\\b[^>]*class=[\"']clearfix|</ul>)", htmlOptions)
         return blocks.findAll(html).mapNotNull { match ->
@@ -60,6 +65,24 @@ internal object ArtistConcertParser {
             ArtistConcert("eventernote:${event.groupValues[1].substringAfterLast('/')}", title, date,
                 time(Regex("開演\\s*([0-9]{1,2}:[0-9]{2})").find(text(block))?.groupValues?.get(1)?.padStart(5, '0')),
                 venue, null, "Eventernote", "https://www.eventernote.com${event.groupValues[1]}")
+        }.distinctBy { it.id }.sortedBy { it.date + it.time.orEmpty() }.take(40).toList()
+    }
+
+    private fun eventernoteMobile(html: String, names: List<String>, today: LocalDate): List<ArtistConcert> {
+        val blocks = Regex("<li\\b[^>]*class=[\"']\\s*day[0-9]+[^\"']*[\"'][^>]*>(.*?)</li>", htmlOptions)
+        return blocks.findAll(html).mapNotNull { match ->
+            val block = match.groupValues[1]
+            fun field(name: String): String? = Regex("<div\\b[^>]*class=[\"']$name[\"'][^>]*>(.*?)</div>", htmlOptions)
+                .find(block)?.groupValues?.get(1)?.let(::text)
+            val title = field("event") ?: return@mapNotNull null
+            // A member's solo show tagged with the band must not become a band performance.
+            if (!containsName(title, names) && !sameName(field("actor").orEmpty(), names)) return@mapNotNull null
+            val date = date(field("date")?.take(10)) ?: return@mapNotNull null
+            if (date < today.toString()) return@mapNotNull null
+            val id = Regex("href=[\"']/events/([0-9]+)[\"']").find(block)?.groupValues?.get(1) ?: return@mapNotNull null
+            ArtistConcert("eventernote:$id", title, date,
+                time(Regex("開演\\s*([0-9]{1,2}:[0-9]{2})").find(field("time").orEmpty())?.groupValues?.get(1)?.padStart(5, '0')),
+                field("place"), null, "Eventernote", "https://www.eventernote.com/events/$id")
         }.distinctBy { it.id }.sortedBy { it.date + it.time.orEmpty() }.take(40).toList()
     }
 
@@ -100,6 +123,10 @@ internal object ArtistConcertParser {
 
     fun merge(events: List<ArtistConcert>): List<ArtistConcert> = events.sortedBy { if (it.ticketUrl != null) 0 else 1 }
         .distinctBy { listOf(it.date, it.time.orEmpty(), ArtistOnlineInfoParser.normalize(it.title)).joinToString("|") }
+        .distinctBy {
+            if (it.time != null && !it.venue.isNullOrBlank()) listOf(it.date, it.time, ArtistOnlineInfoParser.normalize(it.venue.orEmpty())).joinToString("|")
+            else it.id
+        }
         .sortedWith(compareBy({ it.date }, { it.time.orEmpty() }, { it.title })).take(60)
 
     fun encode(result: ArtistConcerts): JSONObject = JSONObject().put("failed", JSONArray(result.failedSources))

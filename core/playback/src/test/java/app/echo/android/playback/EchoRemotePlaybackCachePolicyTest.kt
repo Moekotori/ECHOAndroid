@@ -48,4 +48,19 @@ class EchoRemotePlaybackCachePolicyTest {
             ),
         )
     }
+
+    @Test
+    fun persistEchoLinkUrisAreCacheableAndShareATrackKey() {
+        assertTrue(EchoRemotePlaybackCachePolicy.isCacheablePlaybackUri("echo-link://track/pc-42"))
+        assertTrue(EchoRemotePlaybackCachePolicy.isCacheablePlaybackUri("https://nas.example/rest/stream.view?id=1"))
+        assertFalse(EchoRemotePlaybackCachePolicy.isCacheablePlaybackUri("content://media/external/audio/media/1"))
+        assertEquals(
+            "echo-link-track:pc-42",
+            EchoRemotePlaybackCachePolicy.resourceKey("echo-link://track/pc-42", explicitKey = null),
+        )
+        assertEquals(
+            EchoRemotePlaybackCachePolicy.resourceKey("echo-link://track/pc-42", null),
+            EchoRemotePlaybackCachePolicy.resourceKey("http://192.168.1.20:26789/echo-link/media/token", "echo-link:pc-42"),
+        )
+    }
 }

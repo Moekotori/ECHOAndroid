@@ -65,7 +65,7 @@ class ArtistOnlineInfoRepository(
 
     override suspend fun loadConcerts(query: ArtistOnlineQuery, refresh: Boolean): ArtistConcerts =
         withContext(Dispatchers.IO) { gate.withLock {
-            val key = "concerts-v1:${queryKey(query)}"
+            val key = "concerts-v2:${queryKey(query)}"
             val entry = cache.read(key)
             val cached = entry?.value?.let { runCatching { ArtistConcertParser.decode(it) }.getOrNull() }
             val today = LocalDate.now(ZoneId.of("Asia/Tokyo"))

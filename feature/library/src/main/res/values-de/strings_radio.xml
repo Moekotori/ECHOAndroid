@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="radio_title">Radio</string>
+    <string name="radio_hint">Durchsuchen Sie das öffentliche Verzeichnis, oder fügen Sie selbst eine Stream-URL hinzu.</string>
+    <string name="radio_add">Sender hinzufügen</string>
+    <string name="radio_edit">Sender bearbeiten</string>
+    <string name="radio_delete">Sender löschen</string>
+    <string name="radio_play">Sender wiedergeben</string>
+    <string name="radio_empty">Noch keine gespeicherten Sender. Suchen Sie oben oder fügen Sie einen hinzu.</string>
+    <string name="radio_name">Sendername</string>
+    <string name="radio_url">Stream-URL</string>
+    <string name="radio_url_hint">HTTP/HTTPS-Audiostream oder HLS (.m3u8), keine Webseite.</string>
+    <string name="radio_save">Speichern</string>
+    <string name="radio_cancel">Abbrechen</string>
+    <string name="radio_retry">Erneut versuchen</string>
+    <string name="radio_load_error">Gespeicherte Sender konnten nicht geladen werden. Bitte erneut versuchen.</string>
+    <string name="radio_save_error">Speichern nicht möglich. Prüfen Sie auf eine doppelte URL, das Limit von 500 Sendern oder einen Speicherfehler.</string>
+    <string name="radio_write_error">Die Änderung konnte nicht gespeichert werden. Bitte erneut versuchen.</string>
+    <string name="radio_delete_prompt">„%1$s“ aus Ihren Sendern löschen?</string>
+    <string name="radio_search">Sender suchen</string>
+    <string name="radio_directory_title">Verzeichnis</string>
+    <string name="radio_directory_empty">Keine Sender im Verzeichnis gefunden.</string>
+    <string name="radio_directory_error">Das Radioverzeichnis konnte nicht erreicht werden.</string>
+    <string name="radio_directory_source">Senderliste von radio-browser.info</string>
+    <string name="radio_directory_save">Sender speichern</string>
+    <string name="radio_directory_bitrate">%1$d kbit/s</string>
+</resources>

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,6 +41,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoTextButton
 import app.echo.android.design.echoClickable
+import app.echo.android.model.playback.EchoEqResponsePoint
+import app.echo.android.model.playback.EchoEqualizerApoCodec
 import app.echo.android.model.playback.EchoEqualizerShareCodec
 import app.echo.android.model.playback.EchoEqualizerUserPreset
 import app.echo.android.model.playback.EchoEqualizerUserPresets
@@ -50,15 +53,20 @@ internal fun SignalEqUserPresets(
     activeId: String?,
     defaultSaveName: String,
     currentShare: EchoEqualizerUserPreset?,
+    currentCurve: List<EchoEqResponsePoint> = emptyList(),
     enabled: Boolean,
     onSave: (String) -> Unit,
     onApply: (String) -> Unit,
     onRename: (String, String) -> Unit,
     onDelete: (String) -> Unit,
     onImportShareCode: (String) -> Unit,
+    outputDeviceLabel: String? = null,
+    outputBound: Boolean = false,
+    onBindToOutput: () -> Unit = {},
 ) {
     var editor by remember { mutableStateOf<EqUserPresetEditor?>(null) }
     var sharePreset by remember { mutableStateOf<EchoEqualizerUserPreset?>(null) }
+    var shareCurve by remember { mutableStateOf<List<EchoEqResponsePoint>>(emptyList()) }
     var showImport by remember { mutableStateOf(false) }
     val canSave = presets.size < EchoEqualizerUserPresets.MaxCount
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -75,12 +83,26 @@ internal fun SignalEqUserPresets(
                 enabled = enabled && canSave,
             )
         }
+        if (!outputDeviceLabel.isNullOrBlank() && activeId != null) {
+            EchoTextButton(
+                text = if (outputBound) {
+                    stringResource(R.string.eq_bound_output, outputDeviceLabel)
+                } else {
+                    stringResource(R.string.eq_bind_output, outputDeviceLabel)
+                },
+                onClick = onBindToOutput,
+                enabled = enabled && !outputBound,
+            )
+        }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = { showImport = true }, enabled = enabled && canSave, contentPadding = PaddingValues(horizontal = 0.dp)) {
                 Text(stringResource(R.string.eq_share_import))
             }
             TextButton(
-                onClick = { sharePreset = currentShare },
+                onClick = {
+                    sharePreset = currentShare
+                    shareCurve = currentCurve
+                },
                 enabled = enabled && currentShare != null,
                 contentPadding = PaddingValues(horizontal = 0.dp),
             ) {
@@ -100,7 +122,10 @@ internal fun SignalEqUserPresets(
                 onApply = { onApply(preset.id) },
                 onRename = { editor = EqUserPresetEditor.Rename(preset.id, preset.name) },
                 onDelete = { onDelete(preset.id) },
-                onShare = { sharePreset = preset },
+                onShare = {
+                    sharePreset = preset
+                    shareCurve = emptyList()
+                },
                 showActions = true,
             )
         }
@@ -122,7 +147,7 @@ internal fun SignalEqUserPresets(
         )
     }
     sharePreset?.let { preset ->
-        EqShareCodeDialog(preset = preset, onDismiss = { sharePreset = null })
+        EqShareCodeDialog(preset = preset, curve = shareCurve, onDismiss = { sharePreset = null })
     }
     if (showImport) {
         EqImportShareCodeDialog(
@@ -145,6 +170,7 @@ internal fun SignalEqUserPresetRow(
     onDelete: () -> Unit = {},
     onShare: () -> Unit = {},
     showActions: Boolean = false,
+    showEditDelete: Boolean = true,
 ) {
     val scheme = MaterialTheme.colorScheme
     val renameLabel = stringResource(R.string.eq_user_preset_rename)
@@ -180,11 +206,13 @@ internal fun SignalEqUserPresetRow(
             IconButton(onClick = onShare, enabled = enabled, modifier = Modifier.semantics { contentDescription = shareLabel }) {
                 Icon(Icons.Outlined.Share, contentDescription = null)
             }
-            IconButton(onClick = onRename, enabled = enabled, modifier = Modifier.semantics { contentDescription = renameLabel }) {
-                Icon(Icons.Outlined.Edit, contentDescription = null)
-            }
-            IconButton(onClick = onDelete, enabled = enabled, modifier = Modifier.semantics { contentDescription = deleteLabel }) {
-                Icon(Icons.Outlined.Delete, contentDescription = null, tint = if (enabled) scheme.error else scheme.onSurfaceVariant)
+            if (showEditDelete) {
+                IconButton(onClick = onRename, enabled = enabled, modifier = Modifier.semantics { contentDescription = renameLabel }) {
+                    Icon(Icons.Outlined.Edit, contentDescription = null)
+                }
+                IconButton(onClick = onDelete, enabled = enabled, modifier = Modifier.semantics { contentDescription = deleteLabel }) {
+                    Icon(Icons.Outlined.Delete, contentDescription = null, tint = if (enabled) scheme.error else scheme.onSurfaceVariant)
+                }
             }
         }
     }
@@ -224,15 +252,30 @@ private fun EqUserPresetNameDialog(
 }
 
 @Composable
-private fun EqShareCodeDialog(preset: EchoEqualizerUserPreset, onDismiss: () -> Unit) {
+internal fun EqShareCodeDialog(
+    preset: EchoEqualizerUserPreset,
+    curve: List<EchoEqResponsePoint> = emptyList(),
+    onDismiss: () -> Unit,
+) {
     val context = LocalContext.current
     val code = remember(preset) { EchoEqualizerShareCodec.encode(preset) }
-    var copied by remember { mutableStateOf(false) }
+    val apo = remember(preset) { EchoEqualizerApoCodec.encode(preset) }
+    var copied by remember { mutableStateOf<String?>(null) }
+    val bandCount = if (preset.parametric) preset.filters.size else preset.gainsDb.size
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.eq_share_code)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                SignalNote(stringResource(R.string.eq_share_preview, preset.name, bandCount, formatEqGain(preset.preampDb)))
+                if (curve.size > 1) {
+                    SignalEqPlot(
+                        points = curve,
+                        modifier = Modifier.fillMaxWidth().height(96.dp),
+                        live = true,
+                        showFrequencyLabels = false,
+                    )
+                }
                 SignalNote(stringResource(R.string.eq_share_detail))
                 if (code == null) {
                     SignalNote(stringResource(R.string.eq_share_import_invalid), error = true)
@@ -240,17 +283,25 @@ private fun EqShareCodeDialog(preset: EchoEqualizerUserPreset, onDismiss: () -> 
                     SelectionContainer {
                         Text(code, style = MaterialTheme.typography.bodySmall)
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = { copied = if (copyEqShareCode(context, preset.name, code)) "code" else null },
+                        contentPadding = PaddingValues(horizontal = 0.dp),
+                    ) { Text(stringResource(R.string.eq_share_copy)) }
+                    if (apo != null) {
                         TextButton(
-                            onClick = { copied = copyEqShareCode(context, preset.name, code) },
+                            onClick = {
+                                copyPlain(context, preset.name, apo)
+                                copied = "apo"
+                            },
                             contentPadding = PaddingValues(horizontal = 0.dp),
-                        ) { Text(stringResource(R.string.eq_share_copy)) }
-                        TextButton(
-                            onClick = { shareEqShareCode(context, preset.name, code) },
-                            contentPadding = PaddingValues(horizontal = 0.dp),
-                        ) { Text(stringResource(R.string.eq_share)) }
+                        ) { Text(stringResource(R.string.eq_share_copy_apo)) }
                     }
-                    if (copied) SignalNote(stringResource(R.string.eq_share_copied))
+                    TextButton(
+                        onClick = { shareEqShareCode(context, preset.name, code) },
+                        contentPadding = PaddingValues(horizontal = 0.dp),
+                    ) { Text(stringResource(R.string.eq_share)) }
+                    if (copied == "code") SignalNote(stringResource(R.string.eq_share_copied))
+                    if (copied == "apo") SignalNote(stringResource(R.string.eq_share_apo_copied))
                 }
             }
         },
@@ -284,7 +335,10 @@ private fun EqImportShareCodeDialog(onDismiss: () -> Unit, onImport: (String) ->
                 if (raw.isNotBlank() && parsed == null) {
                     SignalNote(stringResource(R.string.eq_share_import_invalid), error = true)
                 } else {
-                    parsed?.let { SignalNote(it.name) }
+                    parsed?.let { preset ->
+                        val bandCount = if (preset.parametric) preset.filters.size else preset.gainsDb.size
+                        SignalNote(stringResource(R.string.eq_share_preview, preset.name, bandCount, formatEqGain(preset.preampDb)))
+                    }
                 }
             }
         },
@@ -300,10 +354,13 @@ private fun EqImportShareCodeDialog(onDismiss: () -> Unit, onImport: (String) ->
 }
 
 private fun copyEqShareCode(context: Context, name: String, code: String): Boolean {
-    val text = "$name\n$code"
-    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    clipboard.setPrimaryClip(ClipData.newPlainText(name, text))
+    copyPlain(context, name, "$name\n$code")
     return true
+}
+
+private fun copyPlain(context: Context, label: String, text: String) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(ClipData.newPlainText(label, text))
 }
 
 private fun shareEqShareCode(context: Context, name: String, code: String) {

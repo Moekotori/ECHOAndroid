@@ -49,6 +49,7 @@ data class EchoBackupSettings(
     val equalizerFilters: List<OpraEqBand>? = null,
     val equalizerUserPresets: List<EchoEqualizerUserPreset>? = null,
     val equalizerActiveUserPresetId: String? = null,
+    val equalizerDevicePresetIds: Map<String, String>? = null,
     val opraLastQuery: String? = null,
     val channelBalance: EchoChannelBalanceState? = null,
     val lyricsFontFamily: String? = null,

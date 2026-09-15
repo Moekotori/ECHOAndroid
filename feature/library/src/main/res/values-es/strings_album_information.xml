@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="album_information_title">Detalles del álbum</string>
+    <string name="album_information_artist">Artista del álbum</string>
+    <string name="album_information_year">Año de lanzamiento</string>
+    <string name="album_information_duration">Duración total</string>
+    <string name="album_information_added">Agregado a la biblioteca</string>
+    <string name="album_information_discs">Discos</string>
+    <string name="album_information_track_artists">Artistas de las canciones</string>
+    <string name="album_information_audio">Información de audio</string>
+    <string name="album_information_partial">Según %1$d de %2$d canciones cargadas</string>
+    <string name="album_information_sample_rate">Frecuencia de muestreo</string>
+    <string name="album_information_size">Tamaño total de archivos</string>
+    <string name="album_information_known_size">Tamaño de archivo conocido</string>
+    <string name="album_information_missing_specs">Algunos archivos no tienen metadatos de frecuencia de muestreo o tamaño.</string>
+    <string name="album_information_file_specs">Metadatos del archivo; la salida de reproducción puede ser distinta.</string>
+</resources>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_listening_journal">Дневник прослушивания</string>
+    <string name="home_listening_play_count">Прослушиваний · %1$s</string>
+    <string name="home_listening_empty_title">Музыка ждёт</string>
+    <string name="home_listening_empty_detail">Выберите то, что любите, и начните слушать.</string>
+    <string name="home_listening_open_library">Открыть библиотеку</string>
+    <plurals name="home_listening_days">
+        <item quantity="one">Музыка составляла вам компанию %1$d день за последние 12 недель.</item>
+        <item quantity="few">Музыка составляла вам компанию %1$d дня за последние 12 недель.</item>
+        <item quantity="many">Музыка составляла вам компанию %1$d дней за последние 12 недель.</item>
+        <item quantity="other">Музыка составляла вам компанию %1$d дня за последние 12 недель.</item>
+    </plurals>
+</resources>

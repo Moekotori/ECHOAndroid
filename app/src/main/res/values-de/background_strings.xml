@@ -1,0 +1,4 @@
+<resources>
+    <string name="background_permission_error">Der Zugriff auf diese Datei konnte nicht beibehalten werden. Bitte wählen Sie eine andere Datei.</string>
+    <string name="background_load_error">Dieser Hintergrund konnte nicht geladen werden. Der Standardhintergrund wurde wiederhergestellt.</string>
+</resources>

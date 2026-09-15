@@ -222,15 +222,17 @@ internal fun CastDevicesPanel(
                     },
                 )
                 val dlnaReady = renderer.kind == EchoLanRendererKind.Dlna && renderer.avTransport != null
+                val castReady = renderer.kind == EchoLanRendererKind.Chromecast
+                val rendererReady = dlnaReady || castReady
                 CastDeviceRow(
                     name = renderer.name,
                     address = "$kindLabel · ${renderer.host}",
                     sessionHere = activeRendererId == renderer.id,
                     sending = casting && EchoLinkDiscoveryPolicy.sameLanEndpoint(sendingAddress, renderer.host),
-                    canCast = dlnaReady && blockedReason == null && !phoneTrackTitle.isNullOrBlank(),
+                    canCast = rendererReady && blockedReason == null && !phoneTrackTitle.isNullOrBlank(),
                     casting = casting,
                     onCast = { onCastToRenderer(renderer) },
-                    unavailableLabel = if (dlnaReady) {
+                    unavailableLabel = if (rendererReady) {
                         null
                     } else {
                         stringResource(L10nR.string.echo_link_cast_tv_unavailable)

@@ -18,4 +18,6 @@ data class EchoTrack(
     val dateModifiedSeconds: Long = 0L,
     val source: LibrarySource = LibrarySource.MediaStore,
     val genre: String? = null,
+    val clipStartMs: Long = 0L,
+    val clipEndMs: Long = 0L,
 )

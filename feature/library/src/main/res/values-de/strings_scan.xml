@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="scan_scope_hint">Wählen Sie Filter und dann den Scanbereich.</string>
+    <string name="scan_min_duration">Mindestdauer</string>
+    <string name="scan_any">Beliebig</string>
+    <string name="scan_30_seconds">30 Sek.</string>
+    <string name="scan_60_seconds">60 Sek.</string>
+    <string name="scan_min_size">Mindestgröße der Datei</string>
+    <string name="scan_100_kb">100 KB</string>
+    <string name="scan_1_mb">1 MB</string>
+    <string name="scan_skip_non_music">Aufnahmen-, Klingelton- und Benachrichtigungsordner überspringen</string>
+    <string name="scan_skip_hidden">Versteckte Ordner überspringen</string>
+    <string name="scan_filter_hint">Unbekannte Dauer oder Größe bleibt erhalten. Dauer, Größe und Format entfernen importierte Songs nicht. Versteckte, nicht musikalische und ausgeschlossene Ordner werden beim nächsten Scan aus der Bibliothek entfernt.</string>
+    <string name="scan_choose_folder">Ordner wählen und scannen</string>
+    <string name="scan_folder_hint">Empfohlen · Enthält Unterordner; keine geräteweite Berechtigung nötig</string>
+    <string name="scan_device">Gerät scannen</string>
+    <string name="scan_device_hint">Scannt die System-Musikbibliothek mit diesen Filtern</string>
+    <string name="scan_skipped_count">%1$d Dateien übersprungen</string>
+    <string name="scan_simple_hint">Wählen Sie den Ordner mit Ihrer Musik.</string>
+    <string name="scan_enable_filters">Nicht-Musik-Audio filtern</string>
+    <string name="scan_filters_hint">Nach Dauer, Größe und Ordner filtern</string>
+    <string name="scan_edit_filters">Filter anpassen</string>
+    <string name="scan_hide_details">Details ausblenden</string>
+    <string name="scan_device_instead">Oder dieses Gerät scannen</string>
+</resources>

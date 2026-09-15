@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_clear_index_title">Bibliotheksindex leeren</string>
+    <string name="settings_clear_index_detail">Den lokalen Musikindex entfernen, ohne Audiodateien zu löschen.</string>
+    <string name="settings_clear_index_busy">Wird geleert…</string>
+    <string name="settings_clear_index_confirm">Lokale Song- und Suchindizes leeren? Musikdateien, Favoriten, Playlists und die Hörhistorie bleiben erhalten. Das automatische Scannen pausiert, bis Sie manuell scannen. Remote-Bibliotheken bleiben unberührt.</string>
+    <string name="settings_clear_index_action">Leeren</string>
+    <string name="settings_clear_index_success">Lokaler Bibliotheksindex geleert. Scannen Sie manuell, um ihn neu aufzubauen.</string>
+    <string name="settings_clear_index_failure">Der Bibliotheksindex konnte nicht geleert werden. Bitte versuchen Sie es erneut.</string>
+</resources>

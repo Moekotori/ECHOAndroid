@@ -1,0 +1,12 @@
+<resources>
+    <string name="settings_bg_style">顯示效果</string>
+    <string name="settings_bg_style_custom">自訂調節</string>
+    <string name="settings_bg_style_natural">清晰自然</string>
+    <string name="settings_bg_style_soft">柔和</string>
+    <string name="settings_bg_style_airy">通透</string>
+    <string name="settings_bg_style_dreamy">夢境柔光</string>
+    <string name="settings_bg_style_cinematic">氛圍</string>
+    <string name="settings_bg_style_focus">專注</string>
+    <string name="settings_bg_style_detail">一鍵搭配模糊、亮度、覆蓋與縮放。模糊遵循目前效能檔位上限，也可在下方繼續微調。</string>
+    <string name="settings_bg_style_video_detail">影片樣式調整亮度、覆蓋與縮放，不套用模糊；也可在下方繼續微調。</string>
+</resources>

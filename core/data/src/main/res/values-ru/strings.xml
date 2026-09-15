@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_scan_partial">Сканирование завершено частично. Некоторые тома хранилища не удалось полностью прочитать; существующие композиции сохранены. Проверьте хранилище и повторите попытку.</string>
+    <string name="library_scan_partial_count">Сканирование завершено частично: не удалось прочитать %1$d файлов или папок. Существующие композиции сохранены; проверьте хранилище и повторите попытку.</string>
+    <string name="library_scan_failed">Сканирование библиотеки не удалось</string>
+    <string name="library_remote_reading_index">Чтение индекса удалённой библиотеки</string>
+    <string name="library_remote_connecting_subsonic">Подключение к Navidrome/Subsonic</string>
+    <string name="library_remote_found_albums">Найдено удалённых альбомов: %1$d</string>
+    <string name="library_remote_read_tracks">Пакетно прочитано удалённых треков: %1$d</string>
+    <string name="library_remote_skipped_albums">Пропущено неизменённых альбомов: %1$d</string>
+    <string name="library_remote_sync_failed">Синхронизация удалённой библиотеки не удалась</string>
+    <string name="library_webdav_reading_index">Чтение индекса WebDAV</string>
+    <string name="library_webdav_scanning">Сканирование папок WebDAV</string>
+    <string name="library_webdav_sync_failed">Синхронизация библиотеки WebDAV не удалась</string>
+    <string name="library_jellyfin_connecting">Подключение к Jellyfin / Emby</string>
+    <string name="library_jellyfin_sync_failed">Синхронизация библиотеки Jellyfin / Emby не удалась</string>
+    <string name="subsonic_unreachable">Не удаётся связаться с сервером Navidrome/Subsonic.</string>
+    <string name="subsonic_certificate">Этот сертификат HTTPS не является доверенным. Используйте сертификат, которому доверяет система, или HTTP в локальной сети.</string>
+    <string name="subsonic_timeout">Превышено время ожидания сервера Navidrome/Subsonic.</string>
+    <string name="subsonic_unknown_host">Не удаётся разрешить адрес сервера. Проверьте URL и сеть.</string>
+    <string name="subsonic_connection_refused">Сервер отклонил соединение. Проверьте адрес и убедитесь, что Navidrome запущен.</string>
+    <string name="subsonic_cleartext_blocked">HTTP (не HTTPS) для этого адреса заблокирован.</string>
+    <string name="subsonic_http_status">Сервер вернул HTTP %1$d.</string>
+    <string name="subsonic_response_too_large">Ответ сервера слишком большой для чтения.</string>
+    <string name="subsonic_invalid_json">Сервер вернул данные, которые не являются корректным JSON.</string>
+    <string name="subsonic_incompatible">Это не ответ, совместимый с Subsonic. Проверьте URL сервера.</string>
+    <string name="subsonic_request_failed">Ошибка аутентификации или запроса Subsonic.</string>
+</resources>

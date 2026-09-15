@@ -12,4 +12,6 @@ data class EchoTrackRef(
     val trackNumber: Int? = null,
     val discNumber: Int? = null,
     val sourceId: String? = null,
+    val clipStartMs: Long = 0L,
+    val clipEndMs: Long = 0L,
 )

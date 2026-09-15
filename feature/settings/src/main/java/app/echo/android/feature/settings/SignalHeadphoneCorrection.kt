@@ -89,6 +89,7 @@ internal fun SignalHeadphoneCorrection(
     val favorites = remember(userPresets) { EchoEqualizerUserPresets.opraFavorites(userPresets) }
     val starredEqId = state.selectedEqId?.let { eqId -> favorites.firstOrNull { it.opraEqId == eqId }?.opraEqId }
     var expandedProduct by remember(state.results) { mutableStateOf<String?>(null) }
+    var shareFavorite by remember { mutableStateOf<app.echo.android.model.playback.EchoEqualizerUserPreset?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             SignalLiveDot(active = equalizer.parametric && equalizer.enabled && !bypassed)
@@ -162,10 +163,16 @@ internal fun SignalHeadphoneCorrection(
                             active = equalizer.sourceLabel == preset.sourceLabel && equalizer.parametric,
                             enabled = !state.loading,
                             onApply = { onApplyUserPreset(preset.id) },
+                            onShare = { shareFavorite = preset },
+                            showActions = true,
+                            showEditDelete = false,
                         )
                     }
                 }
             }
+        }
+        shareFavorite?.let { preset ->
+            EqShareCodeDialog(preset = preset, onDismiss = { shareFavorite = null })
         }
         // Keep the selected curve and apply action above the potentially long result list.
         state.selectedPreset?.let { preset ->

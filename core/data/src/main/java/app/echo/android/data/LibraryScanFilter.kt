@@ -24,13 +24,17 @@ internal fun LibraryScanOptions.includesDirectory(relativePath: String?): Boolea
     return true
 }
 
-/** Existing songs remain eligible for metadata refresh, regardless of new import filters. */
+/**
+ * Directory exclusion drops imported rows so the cleanup pass can delete them.
+ * Duration, size and format still refresh existing songs.
+ */
 internal fun filterLocalScanBatch(
     batch: List<LibraryTrackEntity>,
     existingIds: Set<String>,
     options: LibraryScanOptions,
 ): List<LibraryTrackEntity> = batch.filter {
-    it.id in existingIds || options.accepts(it.durationMs, it.sizeBytes, it.relativePath)
+    options.includesDirectory(it.relativePath) &&
+        (it.id in existingIds || options.accepts(it.durationMs, it.sizeBytes, null))
 }
 
 private val NonMusicFolderNames = setOf(

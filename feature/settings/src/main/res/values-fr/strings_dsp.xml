@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dsp_title">DSP</string>
+    <string name="dsp_limiter">Limiteur de crête</string>
+    <string name="dsp_limiter_detail">Protection de crête stéréo liée avec relâchement progressif. Ce n\'est pas un limiteur true-peak.</string>
+    <string name="dsp_ceiling">Plafond · %1$.1f dBFS</string>
+    <string name="dsp_loudness">Normalisation du volume</string>
+    <string name="dsp_loudness_detail">Les étiquettes ReplayGain maintiennent des niveaux de lecture cohérents. Le mode album préserve les niveaux relatifs des titres.</string>
+    <string name="dsp_auto">Auto</string>
+    <string name="dsp_track">Titre</string>
+    <string name="dsp_album">Album</string>
+    <string name="dsp_gain">Gain · %1$.1f dB</string>
+    <string name="dsp_missing_tags">Aucune valeur de volume disponible. Analysez un titre local pour en créer une.</string>
+    <string name="dsp_scan">Analyser le titre local actuel et enregistrer l\'étiquette</string>
+    <string name="dsp_scanned">Enregistré · %1$.1f dB</string>
+    <string name="dsp_scan_failed">Échec de l\'analyse ou de l\'écriture d\'étiquette. Vérifiez que ce fichier local est pris en charge et accessible en écriture.</string>
+    <string name="dsp_crossfeed">Crossfeed casque</string>
+    <string name="dsp_crossfeed_detail">Mélange un signal filtré et légèrement retardé dans le canal opposé. Stéréo uniquement.</string>
+    <string name="dsp_gentle">Doux</string>
+    <string name="dsp_natural">Naturel</string>
+    <string name="dsp_strong">Fort</string>
+    <string name="dsp_peq">Modifier l\'égaliseur paramétrique</string>
+    <string name="dsp_peq_detail">Jusqu\'à 12 filtres. Appliquez chaque modification pour mettre à jour la réponse et l\'enregistrer. L\'édition crée une configuration manuelle et recalcule la marge.</string>
+    <string name="dsp_add_band">Ajouter un filtre</string>
+    <string name="dsp_band">Filtre %1$d</string>
+    <string name="dsp_peak">Crête / creux</string>
+    <string name="dsp_low_shelf">Plateau bas</string>
+    <string name="dsp_high_shelf">Plateau haut</string>
+    <string name="dsp_low_pass">Passe-bas</string>
+    <string name="dsp_high_pass">Passe-haut</string>
+    <string name="dsp_notch">Notch</string>
+    <string name="dsp_band_pass">Passe-bande</string>
+    <string name="dsp_frequency">Fréquence · Hz</string>
+    <string name="dsp_band_gain">Gain · dB</string>
+    <string name="dsp_peq_range">20–20000 Hz · −12 à +12 dB · Q 0,1–10</string>
+    <string name="dsp_apply">Appliquer et enregistrer</string>
+    <string name="dsp_remove">Supprimer</string>
+</resources>

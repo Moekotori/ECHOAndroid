@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="scan_scope_hint">Elige los filtros y luego selecciona dónde escanear.</string>
+    <string name="scan_min_duration">Duración mínima</string>
+    <string name="scan_any">Cualquiera</string>
+    <string name="scan_30_seconds">30 s</string>
+    <string name="scan_60_seconds">60 s</string>
+    <string name="scan_min_size">Tamaño mínimo de archivo</string>
+    <string name="scan_100_kb">100 KB</string>
+    <string name="scan_1_mb">1 MB</string>
+    <string name="scan_skip_non_music">Omitir carpetas de grabaciones, tonos y notificaciones</string>
+    <string name="scan_skip_hidden">Omitir carpetas ocultas</string>
+    <string name="scan_filter_hint">Se conservan los archivos con duración o tamaño desconocidos. La duración, el tamaño y el formato no quitan las canciones importadas. Las carpetas ocultas, las que no son de música y las excluidas se quitan de la biblioteca en el siguiente escaneo.</string>
+    <string name="scan_choose_folder">Elegir carpeta y escanear</string>
+    <string name="scan_folder_hint">Recomendado · Incluye subcarpetas; no se necesita permiso de todo el dispositivo</string>
+    <string name="scan_device">Escanear dispositivo</string>
+    <string name="scan_device_hint">Escanea la biblioteca de música del sistema con estos filtros</string>
+    <string name="scan_skipped_count">Se omitieron %1$d archivos</string>
+    <string name="scan_simple_hint">Elige la carpeta que contiene tu música.</string>
+    <string name="scan_enable_filters">Filtrar audio que no es música</string>
+    <string name="scan_filters_hint">Filtrar por duración, tamaño y carpeta</string>
+    <string name="scan_edit_filters">Ajustar filtros</string>
+    <string name="scan_hide_details">Ocultar detalles</string>
+    <string name="scan_device_instead">O escanear este dispositivo</string>
+</resources>

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="echo_link_direct_address_hint">Выберите ближайший компьютер или введите его адрес для подключения. Токен не нужен. Старые ПК по-прежнему могут использовать полную ссылку сопряжения.</string>
+</resources>

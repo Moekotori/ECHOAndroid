@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="album_information_title">專輯資料</string>
+    <string name="album_information_artist">專輯藝人</string>
+    <string name="album_information_year">發行年份</string>
+    <string name="album_information_duration">總時長</string>
+    <string name="album_information_added">加入日期</string>
+    <string name="album_information_discs">碟數</string>
+    <string name="album_information_track_artists">曲目藝人</string>
+    <string name="album_information_audio">音訊資訊</string>
+    <string name="album_information_partial">基於已載入的 %1$d / %2$d 首曲目</string>
+    <string name="album_information_sample_rate">取樣率</string>
+    <string name="album_information_size">檔案總大小</string>
+    <string name="album_information_known_size">已知檔案大小</string>
+    <string name="album_information_missing_specs">部分檔案尚未提供取樣率或大小。</string>
+    <string name="album_information_file_specs">以上為檔案資訊，實際播放輸出以播放鏈路為準。</string>
+</resources>

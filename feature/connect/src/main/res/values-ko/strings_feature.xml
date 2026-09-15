@@ -179,7 +179,7 @@
     <string name="echo_link_cast_queue_count">%1$d곡을 보냅니다</string>
     <string name="echo_link_cast_dsd_warning">DSD는 원본 파일 그대로 보냅니다. PC에서 재생되지 않을 수 있습니다.</string>
     <string name="echo_link_cast_tvs">TV와 스피커</string>
-    <string name="echo_link_cast_tvs_note">DLNA TV와 스트리머에는 원본 파일을 보냅니다. Chromecast는 목록만 표시됩니다.</string>
+    <string name="echo_link_cast_tvs_note">DLNA TV와 스트리머에는 원본 파일을 보냅니다. Chromecast는 이 휴대폰의 MP3, AAC, WAV를 재생합니다.</string>
     <string name="echo_link_cast_tvs_searching">TV와 스피커를 찾는 중…</string>
     <string name="echo_link_cast_tvs_empty">이 Wi-Fi에서 TV나 스피커를 찾지 못했습니다.</string>
     <string name="echo_link_cast_tv_unavailable">미지원</string>

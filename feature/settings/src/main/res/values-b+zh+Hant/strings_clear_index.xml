@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_clear_index_title">清空音樂庫索引</string>
+    <string name="settings_clear_index_detail">清空本機音樂索引，不刪除音樂檔案。</string>
+    <string name="settings_clear_index_busy">正在清空…</string>
+    <string name="settings_clear_index_confirm">清空本機歌曲和搜尋索引？音樂檔案、收藏、歌單和播放歷史將保留。自動掃描將暫停，直到你手動重新掃描。遠端音樂庫不受影響。</string>
+    <string name="settings_clear_index_action">清空</string>
+    <string name="settings_clear_index_success">已清空本機音樂庫索引，可手動掃描重新建立。</string>
+    <string name="settings_clear_index_failure">清空音樂庫索引失敗，請重試。</string>
+</resources>

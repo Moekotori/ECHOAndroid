@@ -1,0 +1,18 @@
+<resources>
+    <string name="settings_category_appearance">Erscheinungsbild</string>
+    <string name="settings_category_interface">Oberfläche &amp; Sprache</string>
+    <string name="settings_category_playback">Wiedergabe &amp; Liedtext</string>
+    <string name="settings_category_services">Verbindungen &amp; Dienste</string>
+    <string name="settings_category_appearance_detail">Machen Sie ECHO mit Themen, Hintergründen und Schriften zu Ihrem.</string>
+    <string name="settings_category_interface_detail">Einstellungen für Sprache, Layout und Leistung.</string>
+    <string name="settings_category_playback_detail">Einstellungen für Übergänge, Liedtext und USB-Ausgabe.</string>
+    <string name="settings_category_services_detail">Verbinden Sie Ihren Computer und Dienste für die Hörhistorie.</string>
+    <string name="settings_category_library_detail">Lokale Musik und die in der Bibliothek angezeigten Informationen verwalten.</string>
+    <string name="settings_category_about_detail">App-Version und Fehlerprotokolle.</string>
+    <string name="settings_home_detail">Ein wenig Feinschliff. Ihr eigenes ECHO.</string>
+    <string name="settings_back">Zurück zu den Einstellungen</string>
+    <string name="settings_group_personal">PERSONALISIERUNG</string>
+    <string name="settings_group_music">MUSIK &amp; VERBINDUNGEN</string>
+    <string name="settings_group_app">ANWENDUNG</string>
+    <string name="settings_library_summary">%1$d Titel · %2$d Alben · %3$d Interpreten</string>
+</resources>

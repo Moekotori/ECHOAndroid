@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_add_music">Добавить музыку</string>
+    <string name="library_access_title">Ваша музыка начинается здесь</string>
+    <string name="library_access_detail">Разрешите доступ к аудио, чтобы просматривать музыку на этом телефоне.</string>
+    <string name="library_retry">Повторить</string>
+    <string name="library_no_matches">Подходящей музыки нет</string>
+    <string name="library_search_hint">Попробуйте другое название, исполнителя или альбом.</string>
+    <string name="library_start_collection">Соберите коллекцию</string>
+    <string name="library_import_hint">Просканируйте этот телефон или добавьте папку музыки через «Добавить музыку».</string>
+    <string name="library_cloud_empty_title">Подключите облачную библиотеку</string>
+    <string name="library_cloud_empty_detail">Настройте WebDAV, Subsonic или Jellyfin во вкладке Связь и синхронизируйте. Альбомы появятся здесь.</string>
+    <string name="library_cloud_empty_configured_title">Облачных альбомов пока нет</string>
+    <string name="library_cloud_empty_configured_detail">Синхронизируйте снова во вкладке Связь или проверьте, что в облачной папке есть музыка.</string>
+    <string name="library_open_connect">Открыть Связь</string>
+    <string name="library_clear_search">Очистить поиск</string>
+    <string name="library_track_actions">Действия с треком</string>
+    <string name="library_playlist_actions">Действия с плейлистом</string>
+    <string name="library_track_count">%1$d треков</string>
+</resources>

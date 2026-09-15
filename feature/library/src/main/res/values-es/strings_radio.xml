@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="radio_title">Radio</string>
+    <string name="radio_hint">Busca en el directorio público o agrega tú mismo una URL de transmisión.</string>
+    <string name="radio_add">Agregar estación</string>
+    <string name="radio_edit">Editar estación</string>
+    <string name="radio_delete">Eliminar estación</string>
+    <string name="radio_play">Reproducir estación</string>
+    <string name="radio_empty">Aún no hay estaciones guardadas. Busca arriba o agrega una.</string>
+    <string name="radio_name">Nombre de la estación</string>
+    <string name="radio_url">URL de transmisión</string>
+    <string name="radio_url_hint">Transmisión de audio HTTP/HTTPS o HLS (.m3u8), no una página web.</string>
+    <string name="radio_save">Guardar</string>
+    <string name="radio_cancel">Cancelar</string>
+    <string name="radio_retry">Reintentar</string>
+    <string name="radio_load_error">No se pudieron cargar las estaciones guardadas. Inténtalo de nuevo.</string>
+    <string name="radio_save_error">No se pudo guardar. Revisa si hay una URL duplicada, el límite de 500 estaciones o un error de almacenamiento.</string>
+    <string name="radio_write_error">No se pudo guardar el cambio. Inténtalo de nuevo.</string>
+    <string name="radio_delete_prompt">¿Eliminar “%1$s” de tus estaciones?</string>
+    <string name="radio_search">Buscar estaciones</string>
+    <string name="radio_directory_title">Directorio</string>
+    <string name="radio_directory_empty">No se encontraron estaciones en el directorio.</string>
+    <string name="radio_directory_error">No se pudo acceder al directorio de radio.</string>
+    <string name="radio_directory_source">Lista de estaciones de radio-browser.info</string>
+    <string name="radio_directory_save">Guardar estación</string>
+    <string name="radio_directory_bitrate">%1$d kbps</string>
+</resources>

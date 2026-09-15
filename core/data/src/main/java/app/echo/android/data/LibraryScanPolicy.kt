@@ -70,8 +70,8 @@ object LibraryScanPolicy {
             existing.sizeBytes == sizeBytes
 
     /**
-     * 增量探针行的下一步:排除目录不拉全列,已入库行仍记为 seen。
-     * 路径未知时不按目录剪枝,避免 RELATIVE_PATH 缺失时把整卷当成排除根。
+     * 增量探针行的下一步:排除目录不拉全列,也不记 seen,完整扫描后从曲库删除。
+     * 时长/大小/格式仍只拦新文件。路径未知时不按目录剪枝,避免 RELATIVE_PATH 缺失时把整卷当成排除根。
      */
     fun classifyMediaStoreProbeRow(
         existing: TrackFingerprint?,
@@ -80,8 +80,14 @@ object LibraryScanPolicy {
         sizeBytes: Long,
         options: LibraryScanOptions,
         rejectedByCache: Boolean,
+        fileName: String? = null,
     ): MediaStoreProbeAction {
-        if (!options.includesDirectory(relativePath)) return MediaStoreProbeAction.RememberSeen
+        if (!options.includesDirectory(relativePath)) {
+            return MediaStoreProbeAction.SkipRejected
+        }
+        if (existing == null && fileName != null && !options.acceptsFileFormat(fileName, alreadyImported = false)) {
+            return MediaStoreProbeAction.SkipRejected
+        }
         if (existing == null && rejectedByCache) return MediaStoreProbeAction.SkipRejected
         if (isMediaStoreRowUnchanged(existing, dateModifiedSeconds, sizeBytes)) {
             return MediaStoreProbeAction.RememberSeen
@@ -235,6 +241,20 @@ object LibraryScanPolicy {
         // 保留路径和文件名大小写，避免在区分大小写的 provider 上误合并。
         return "${dir.length}:$dir${name.length}:$name|$sizeBytes|$dateModifiedSeconds"
     }
+
+    /**
+     * SAF 嵌套目录在 lastModified 可信且未变时复用上次子项列表,跳过 ContentResolver 列举。
+     * 根目录、mtime 为 0 或提供者不更新目录 mtime 时必须重列;文件内容变更若不碰目录 mtime,要等到下次完整列举。
+     */
+    fun shouldReuseCachedDocumentListing(
+        cachedLastModifiedMs: Long,
+        incomingLastModifiedMs: Long,
+        isTreeRoot: Boolean,
+    ): Boolean =
+        !isTreeRoot &&
+            cachedLastModifiedMs > 0L &&
+            incomingLastModifiedMs > 0L &&
+            cachedLastModifiedMs == incomingLastModifiedMs
 
     fun shouldReuseUnchangedDocumentTrack(
         existing: TrackFingerprint?,

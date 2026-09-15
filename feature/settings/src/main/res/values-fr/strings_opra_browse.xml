@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="opra_choose_brand">Choisir une marque</string>
+    <string name="opra_all_brands">Toutes les marques</string>
+    <string name="opra_browse_workflow">Choisissez une marque et un modèle, prévisualisez la courbe, puis appliquez la correction.</string>
+</resources>

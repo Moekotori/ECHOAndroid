@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="artist_page_artist">Исполнитель</string>
+    <string name="artist_page_music">Музыка</string>
+    <string name="artist_page_information">Сведения</string>
+    <string name="artist_page_concerts">Концерты</string>
+    <string name="artist_about">Об исполнителе</string>
+    <string name="artist_online_loading">Поиск сведений об исполнителе…</string>
+    <string name="artist_online_error">Не удалось подключиться. Повторите попытку.</string>
+    <string name="artist_info_no_match">Однозначное совпадение исполнителя не найдено.</string>
+    <string name="artist_no_biography">Биографии Wikipedia пока нет.</string>
+    <string name="artist_online_stale">Показаны сохранённые сведения. Обновите, чтобы повторить попытку.</string>
+    <string name="artist_online_partial">Некоторые сведения не удалось загрузить.</string>
+    <string name="artist_fact_area">Откуда</string>
+    <string name="artist_fact_type">Тип</string>
+    <string name="artist_fact_begin">Рождение / основание</string>
+    <string name="artist_fact_end">Окончание</string>
+    <string name="artist_fact_genres">Жанры</string>
+    <string name="artist_fact_members">Участники</string>
+    <string name="artist_kind_person">Сольный исполнитель</string>
+    <string name="artist_kind_group">Группа</string>
+    <string name="artist_upcoming_concerts">Ближайшие концерты</string>
+    <string name="artist_no_concerts">Ближайших событий не найдено.</string>
+    <string name="artist_concerts_incomplete">События ещё не получены; некоторые источники недоступны.</string>
+    <string name="artist_concerts_partial">Недоступные источники: %1$s</string>
+    <string name="artist_concert_local_time">%1$s · местное время площадки</string>
+    <string name="artist_concert_tickets">%1$s · Билеты</string>
+    <string name="artist_concert_details">%1$s · Сведения о событии</string>
+    <string name="artist_sort_tracks">Сортировка треков</string>
+    <string name="artist_play_on_pc">Играть на ПК</string>
+</resources>

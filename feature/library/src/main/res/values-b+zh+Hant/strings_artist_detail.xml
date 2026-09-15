@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="artist_search_tracks">搜尋歌曲或專輯</string>
+    <string name="artist_sort_album">專輯順序</string>
+    <string name="artist_sort_title">歌曲名</string>
+    <string name="artist_sort_duration">時長</string>
+    <string name="artist_albums">專輯</string>
+    <string name="artist_no_albums">音樂庫中還沒有專輯</string>
+    <string name="artist_no_matches">沒有相符的歌曲</string>
+    <string name="artist_load_failed">內容載入失敗</string>
+    <string name="artist_retry">重試</string>
+    <string name="artist_total_time">音樂庫中共 %1$d 小時 %2$d 分鐘</string>
+    <string name="artist_total_minutes">音樂庫中共 %1$d 分鐘</string>
+    <string name="artist_tracks">曲目</string>
+    <string name="artist_clear_search">清空搜尋</string>
+    <plurals name="artist_album_count">
+        <item quantity="one">%1$d 張專輯</item>
+        <item quantity="other">%1$d 張專輯</item>
+    </plurals>
+    <plurals name="artist_track_count">
+        <item quantity="one">%1$d 首</item>
+        <item quantity="other">%1$d 首</item>
+    </plurals>
+</resources>

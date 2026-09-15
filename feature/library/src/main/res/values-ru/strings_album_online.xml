@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="album_online_title">Об этом альбоме</string>
+    <string name="album_online_refresh">Обновить</string>
+    <string name="album_online_loading">Поиск в MusicBrainz и Wikipedia…</string>
+    <string name="album_online_error">Не удалось загрузить онлайн-сведения. Нажмите «Обновить», чтобы повторить.</string>
+    <string name="album_online_no_match">Надёжное совпадение альбома не найдено. Проверьте теги названия альбома и исполнителя.</string>
+    <string name="album_online_stale">Показаны сохранённые сведения; обновление сейчас недоступно.</string>
+    <string name="album_online_partial">Сведения о релизе загружены; Wikipedia временно недоступна.</string>
+    <string name="album_online_less">Свернуть</string>
+    <string name="album_online_more">Показать больше</string>
+    <string name="album_online_attribution">Отрывок от авторов Wikipedia, сокращённый ECHO.</string>
+    <string name="album_online_no_wiki">Связанного введения Wikipedia нет.</string>
+    <string name="album_online_release">Совпавший релиз</string>
+    <string name="album_online_release_note">Справочное издание из MusicBrainz; ваши файлы могут относиться к другому изданию.</string>
+    <string name="album_online_date">Дата выпуска</string>
+    <string name="album_online_country">Регион</string>
+    <string name="album_online_label">Лейбл</string>
+    <string name="album_online_catalog">Каталожный номер</string>
+    <string name="album_online_credits">Участники</string>
+    <string name="album_online_composer">Композитор</string>
+    <string name="album_online_lyricist">Текст / авторство</string>
+    <string name="album_online_producer">Продюсер</string>
+    <string name="album_online_arranger">Аранжировка</string>
+    <string name="album_online_vocal">Вокал</string>
+    <string name="album_online_performer">Исполнение</string>
+    <string name="album_online_mb_source">MusicBrainz · источник и полные кредиты</string>
+    <string name="album_online_link_error">Не удалось открыть эту ссылку.</string>
+    <string name="album_page_tracks">Треки</string>
+    <string name="album_page_information">Об альбоме</string>
+</resources>

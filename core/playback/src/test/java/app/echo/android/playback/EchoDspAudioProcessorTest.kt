@@ -94,6 +94,33 @@ class EchoDspAudioProcessorTest {
         }
     }
 
+    @Test fun enablingSmartMixerAfterConfigureMixesWithoutSeek() {
+        clear()
+        val mixer = EchoSmartTransitionMixer()
+        val processor = EchoDspAudioProcessor(arrayOf(mixer))
+        val format = AudioProcessor.AudioFormat(48_000, 1, C.ENCODING_PCM_FLOAT)
+        processor.configure(format)
+        processor.flush(AudioProcessor.StreamMetadata.DEFAULT)
+        assertFalse(mixer.isActive)
+
+        val passthrough = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder())
+        passthrough.putFloat(0.25f).flip()
+        processor.queueInput(passthrough)
+        assertEquals(0.25f, processor.output.order(ByteOrder.nativeOrder()).float, 0.0001f)
+
+        mixer.setEnabled(true)
+        mixer.arm(floatArrayOf(1f, 1f), frames = 2, channels = 1)
+        val input = ByteBuffer.allocateDirect(8).order(ByteOrder.nativeOrder())
+        input.putFloat(0.5f).putFloat(0.5f).flip()
+        processor.queueInput(input)
+        val output = processor.output.order(ByteOrder.nativeOrder())
+        assertTrue(mixer.isActive)
+        assertEquals(0.5f, output.float, 0.05f)
+        assertEquals(1f, output.float, 0.05f)
+        assertEquals(2, mixer.mixedIncomingFrames)
+        processor.reset()
+    }
+
     @Test fun crossfeedIsDelayedAndDoesNotProcessMono() {
         val kernel = EchoDspKernel()
         kernel.configure(48000)

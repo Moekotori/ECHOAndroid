@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="artist_page_artist">Artista</string>
+    <string name="artist_page_music">Música</string>
+    <string name="artist_page_information">Acerca de</string>
+    <string name="artist_page_concerts">En vivo</string>
+    <string name="artist_about">Acerca del artista</string>
+    <string name="artist_online_loading">Buscando información del artista…</string>
+    <string name="artist_online_error">No se pudo conectar. Inténtalo de nuevo.</string>
+    <string name="artist_info_no_match">No se encontró una coincidencia inequívoca del artista.</string>
+    <string name="artist_no_biography">Aún no hay una biografía de Wikipedia.</string>
+    <string name="artist_online_stale">Se muestra la información guardada. Actualiza para intentarlo de nuevo.</string>
+    <string name="artist_online_partial">No se pudo cargar parte de la información.</string>
+    <string name="artist_fact_area">De</string>
+    <string name="artist_fact_type">Tipo</string>
+    <string name="artist_fact_begin">Nacimiento / formación</string>
+    <string name="artist_fact_end">Fin</string>
+    <string name="artist_fact_genres">Géneros</string>
+    <string name="artist_fact_members">Integrantes</string>
+    <string name="artist_kind_person">Artista solista</string>
+    <string name="artist_kind_group">Grupo</string>
+    <string name="artist_upcoming_concerts">Próximos eventos en vivo</string>
+    <string name="artist_no_concerts">No se encontraron eventos próximos.</string>
+    <string name="artist_concerts_incomplete">Aún no hay eventos; algunas fuentes no están disponibles.</string>
+    <string name="artist_concerts_partial">Fuentes no disponibles: %1$s</string>
+    <string name="artist_concert_local_time">%1$s · hora local del recinto</string>
+    <string name="artist_concert_tickets">%1$s · Entradas</string>
+    <string name="artist_concert_details">%1$s · Detalles del evento</string>
+    <string name="artist_sort_tracks">Ordenar canciones</string>
+    <string name="artist_play_on_pc">Reproducir en la PC</string>
+</resources>

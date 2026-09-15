@@ -1,8 +1,11 @@
 package app.echo.android.data
 
+import app.echo.android.model.library.CueSheet
+import app.echo.android.model.library.CueSheetPolicy
 import app.echo.android.model.library.LibraryScanOptions
 import kotlinx.coroutines.CancellationException
 import android.content.ContentResolver
+import java.io.ByteArrayOutputStream
 import android.database.Cursor
 import android.media.MediaMetadataRetriever
 import android.net.Uri
@@ -29,6 +32,7 @@ class DocumentTreeTrackScanner(
         rejectedFiles: LocalScanFilterCache? = null,
         onSkipped: suspend () -> Unit = {},
         onUnchangedIds: suspend (List<String>) -> Unit = {},
+        listings: DocumentTreeListingCache? = null,
         onBatch: suspend (List<LibraryTrackEntity>) -> Unit,
         onProgress: suspend (scannedCount: Int, currentTrack: LibraryTrackEntity?) -> Unit,
     ): MediaStoreScanOutcome {
@@ -41,7 +45,8 @@ class DocumentTreeTrackScanner(
         var failedReads = 0
         var excludedDirectories = 0
 
-        pendingDirectories.add(DocumentTreeDirectory(rootDocumentId, relativePath = ""))
+        pendingDirectories.add(DocumentTreeDirectory(rootDocumentId, relativePath = "", lastModifiedMs = 0L))
+        val treeKey = treeUri.toString()
         while (!pendingDirectories.isEmpty()) {
             coroutineContext.ensureActive()
             val directory = pendingDirectories.removeFirst()
@@ -49,60 +54,71 @@ class DocumentTreeTrackScanner(
                 excludedDirectories++
                 continue
             }
-            val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, directory.documentId)
-            val cursor = try {
-                contentResolver.query(childrenUri, Projection, null, null, null)
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: RuntimeException) {
-                Log.w(TAG, "Document tree directory listing failed.", error)
-                querySucceeded = false
-                failedReads++
-                continue
+            val isTreeRoot = directory.relativePath.isEmpty()
+            val children = listings?.listing(
+                treeUri = treeKey,
+                documentId = directory.documentId,
+                lastModifiedMs = directory.lastModifiedMs,
+                isTreeRoot = isTreeRoot,
+            ) ?: queryDirectoryChildren(treeUri, directory.documentId)?.also { rows ->
+                listings?.remember(
+                    treeUri = treeKey,
+                    documentId = directory.documentId,
+                    lastModifiedMs = directory.lastModifiedMs,
+                    isTreeRoot = isTreeRoot,
+                    children = rows,
+                )
             }
-            if (cursor == null) {
+            if (children == null) {
                 querySucceeded = false
                 failedReads++
                 continue
             }
             val audioRows = ArrayList<DocumentAudioRow>()
-            cursor.use { listing ->
-                val columns = DocumentColumns.from(listing)
-                while (listing.moveToNext()) {
-                    coroutineContext.ensureActive()
-                    val documentId = listing.getStringOrNull(columns.documentIdIndex) ?: continue
-                    val name = listing.getStringOrNull(columns.nameIndex)
-                        ?.takeIf { it.isNotBlank() }
-                        ?: documentId.substringAfterLast('/')
-                    val mimeType = listing.getStringOrNull(columns.mimeTypeIndex)
-
-                    if (mimeType == DocumentsContract.Document.MIME_TYPE_DIR) {
-                        val childRelativePath = appendRelativePath(directory.relativePath, name)
-                        if (!options.includesDirectory(combineRelativePath(relativePathPrefix, childRelativePath))) {
-                            excludedDirectories++
-                            continue
-                        }
-                        pendingDirectories.add(
-                            DocumentTreeDirectory(
-                                documentId = documentId,
-                                relativePath = childRelativePath,
-                            ),
-                        )
+            val cueRows = ArrayList<DocumentAudioRow>()
+            for (child in children) {
+                coroutineContext.ensureActive()
+                if (child.mimeType == DocumentsContract.Document.MIME_TYPE_DIR) {
+                    val childRelativePath = appendRelativePath(directory.relativePath, child.name)
+                    if (!options.includesDirectory(combineRelativePath(relativePathPrefix, childRelativePath))) {
+                        excludedDirectories++
                         continue
                     }
-
-                    if (!isSupportedAudio(name, mimeType)) continue
-                    audioRows += DocumentAudioRow(
-                        documentId = documentId,
-                        documentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId),
-                        displayName = name,
-                        mimeType = resolvedAudioMimeType(name, mimeType),
-                        sizeBytes = listing.getOptionalLong(columns.sizeIndex) ?: 0L,
-                        lastModifiedMs = listing.getOptionalLong(columns.lastModifiedIndex) ?: 0L,
-                        relativePath = combineRelativePath(relativePathPrefix, directory.relativePath),
+                    pendingDirectories.add(
+                        DocumentTreeDirectory(
+                            documentId = child.documentId,
+                            relativePath = childRelativePath,
+                            lastModifiedMs = child.lastModifiedMs,
+                        ),
                     )
+                    continue
                 }
+                val childUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, child.documentId)
+                val childRelative = combineRelativePath(relativePathPrefix, directory.relativePath)
+                if (LocalAudioFileTypes.isCueSheet(child.name, child.mimeType)) {
+                    cueRows += DocumentAudioRow(
+                        documentId = child.documentId,
+                        documentUri = childUri,
+                        displayName = child.name,
+                        mimeType = child.mimeType,
+                        sizeBytes = child.sizeBytes,
+                        lastModifiedMs = child.lastModifiedMs,
+                        relativePath = childRelative,
+                    )
+                    continue
+                }
+                if (!isSupportedAudio(child.name, child.mimeType)) continue
+                audioRows += DocumentAudioRow(
+                    documentId = child.documentId,
+                    documentUri = childUri,
+                    displayName = child.name,
+                    mimeType = resolvedAudioMimeType(child.name, child.mimeType),
+                    sizeBytes = child.sizeBytes,
+                    lastModifiedMs = child.lastModifiedMs,
+                    relativePath = childRelative,
+                )
             }
+            val cueByAudioName = cueSheetsByAudioName(cueRows, audioRows.map { it.displayName })
             val unchangedIds = ArrayList<String>()
             for (row in audioRows) {
                 coroutineContext.ensureActive()
@@ -126,18 +142,28 @@ class DocumentTreeTrackScanner(
                     continue
                 }
                 val trackId = "saf:${Uri.encode(row.documentId)}"
-                val existingTrack = existingTracks[trackId]
+                val existingCueIds = existingTracks.keys.filter { id ->
+                    CueSheetPolicy.isCueTrackId(id) && CueSheetPolicy.baseTrackId(id) == trackId
+                }
+                val existingTrack = existingTracks[trackId] ?: existingCueIds.firstOrNull()?.let(existingTracks::get)
                 if (
                     LibraryScanPolicy.shouldReuseUnchangedDocumentTrack(
-                        existing = existingTrack,
+                        existing = existingTrack?.copy(
+                            contentUri = CueSheetPolicy.playbackUri(existingTrack.contentUri),
+                        ),
                         incomingContentUri = row.documentUri.toString(),
                         incomingSizeBytes = row.sizeBytes,
                         incomingDateModifiedSeconds = row.lastModifiedMs.toEpochSeconds(),
                         incomingRelativePath = row.relativePath,
                     )
                 ) {
-                    unchangedIds += trackId
-                    scannedCount += 1
+                    if (existingCueIds.isNotEmpty()) {
+                        unchangedIds += existingCueIds
+                        scannedCount += existingCueIds.size
+                    } else {
+                        unchangedIds += trackId
+                        scannedCount += 1
+                    }
                     continue
                 }
                 if (!options.acceptsFileFormat(row.displayName, existingTrack != null)) {
@@ -180,12 +206,15 @@ class DocumentTreeTrackScanner(
                         onProgress(scannedCount, null)
                         return@onSuccess
                     }
-                    batch += track
-                    scannedCount += 1
-                    onProgress(scannedCount, track)
-                    if (batch.size >= safeBatchSize) {
-                        onBatch(batch.toList())
-                        batch.clear()
+                    val expanded = cueByAudioName[row.displayName]?.let(track::splitByCue) ?: listOf(track)
+                    expanded.forEach { item ->
+                        batch += item
+                        scannedCount += 1
+                        onProgress(scannedCount, item)
+                        if (batch.size >= safeBatchSize) {
+                            onBatch(batch.toList())
+                            batch.clear()
+                        }
                     }
                 }.onFailure { error ->
                     if (error is CancellationException) throw error
@@ -207,6 +236,76 @@ class DocumentTreeTrackScanner(
         onProgress(scannedCount, null)
         return MediaStoreScanOutcome(scannedCount = scannedCount, querySucceeded = querySucceeded,
             failedReadCount = failedReads, excludedDirectoryCount = excludedDirectories)
+    }
+
+    private fun cueSheetsByAudioName(
+        cueRows: List<DocumentAudioRow>,
+        audioNames: List<String>,
+    ): Map<String, CueSheet> {
+        if (cueRows.isEmpty() || audioNames.isEmpty()) return emptyMap()
+        val matched = LinkedHashMap<String, CueSheet>()
+        for (row in cueRows) {
+            if (row.sizeBytes > CueSheetPolicy.MaxCueBytes) continue
+            val sheet = readCueSheet(row.documentUri) ?: continue
+            val audioName = CueSheetPolicy.matchAudioName(sheet.fileName, audioNames)
+                ?: CueSheetPolicy.matchAudioName(row.displayName, audioNames)
+                ?: continue
+            matched.putIfAbsent(audioName, sheet)
+        }
+        return matched
+    }
+
+    private fun readCueSheet(uri: Uri): CueSheet? {
+        return try {
+            contentResolver.openInputStream(uri)?.use { input ->
+                val output = ByteArrayOutputStream()
+                val buffer = ByteArray(8192)
+                var total = 0
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    total += count
+                    if (total > CueSheetPolicy.MaxCueBytes) return null
+                    output.write(buffer, 0, count)
+                }
+                CueSheetParser.parse(output.toByteArray())
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private suspend fun queryDirectoryChildren(treeUri: Uri, documentId: String): List<DocumentTreeCachedChild>? {
+        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, documentId)
+        val cursor = try {
+            contentResolver.query(childrenUri, Projection, null, null, null)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: RuntimeException) {
+            Log.w(TAG, "Document tree directory listing failed.", error)
+            return null
+        } ?: return null
+        return cursor.use { listing ->
+            val columns = DocumentColumns.from(listing)
+            val rows = ArrayList<DocumentTreeCachedChild>()
+            while (listing.moveToNext()) {
+                coroutineContext.ensureActive()
+                val childDocumentId = listing.getStringOrNull(columns.documentIdIndex) ?: continue
+                val name = listing.getStringOrNull(columns.nameIndex)
+                    ?.takeIf { it.isNotBlank() }
+                    ?: childDocumentId.substringAfterLast('/')
+                rows += DocumentTreeCachedChild(
+                    documentId = childDocumentId,
+                    name = name,
+                    mimeType = listing.getStringOrNull(columns.mimeTypeIndex),
+                    sizeBytes = listing.getOptionalLong(columns.sizeIndex) ?: 0L,
+                    lastModifiedMs = listing.getOptionalLong(columns.lastModifiedIndex) ?: 0L,
+                )
+            }
+            rows
+        }
     }
 
     private fun Uri.toTrackEntity(
@@ -368,6 +467,7 @@ class DocumentTreeTrackScanner(
     private data class DocumentTreeDirectory(
         val documentId: String,
         val relativePath: String,
+        val lastModifiedMs: Long = 0L,
     )
 
     private data class DocumentAudioRow(

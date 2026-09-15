@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connect_invalid_pairing">PC 地址或配對 Token 無效</string>
+    <string name="connect_not_connected">還沒有連線 PC ECHO</string>
+    <string name="connect_library_partial">已載入 %1$d/%2$d 首；請搜尋以縮小音樂庫範圍。</string>
+    <string name="connect_playlist_missing_id">PC 歌單缺少 playlistId，不能開啟</string>
+    <string name="connect_album_missing_id">PC 專輯缺少 albumId，不能開啟</string>
+    <string name="connect_queue_no_ids">這個 PC 佇列沒有可播放的 trackId</string>
+    <string name="connect_track_missing_id_handoff">PC 曲目缺少 trackId，不能交接播放</string>
+    <string name="connect_no_local_cast_file">沒有可投送到電腦的本機檔案</string>
+    <string name="connect_track_missing_id_remote">PC 曲目缺少 trackId，不能遠端播放</string>
+    <string name="connect_stream_unavailable">這首歌暫時不能串流到手機</string>
+    <string name="connect_cast_unsupported">這台電腦的 ECHOSteam 還不支援接收手機串流，請升級後再投送。</string>
+    <string name="connect_auth_expired">PC 授權已失效或已取消，請重新配對。</string>
+    <string name="connect_failed">PC ECHO 連線失敗</string>
+</resources>

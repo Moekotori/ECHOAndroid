@@ -50,6 +50,19 @@ class ArtistConcertParserTest {
         assertTrue(ArtistConcertParser.eplus(html, listOf("Air"), today).isEmpty())
     }
 
+    @Test fun mobileEventernoteParsesPronunciationAndRejectsMemberSoloTag() {
+        val search = """<form action="/actors/search"></form><a href="/actors/Band/12">Band (ばんど)<span class="count color1">287</span></a>"""
+        assertEquals("https://www.eventernote.com/actors/Band/12/events", ArtistConcertParser.actorPage(search, listOf("Band")))
+        val html = """<div class="gb_listevent"><ul>
+          <li class=" day4"><a href="/events/1"><div class="event"><p>Free Live</p></div><div class="date">2026-09-25(金)</div>
+            <div class="actor">Band</div><div class="time">開演 19:30</div><div class="place">Hall</div></a></li>
+          <li class=" day4"><a href="/events/2"><div class="event">Member Solo</div><div class="date">2026-09-25</div>
+            <div class="actor">Member Band</div></a></li></ul></div>"""
+        val event = ArtistConcertParser.eventernote(html, listOf("Band"), today).single()
+        assertEquals("19:30", event.time)
+        assertEquals("Hall", event.venue)
+    }
+
     @Test(expected = IOException::class) fun markupChangeIsFailureInsteadOfNoConcerts() {
         ArtistConcertParser.eplus("<html>Service maintenance</html>", listOf("Band"), today)
     }
@@ -68,7 +81,7 @@ class ArtistConcertParserTest {
         val one = ArtistConcert("1", "Band Live", "2026-09-25", "13:00", "Hall", "Tokyo", "Eventernote", "https://www.eventernote.com/events/1")
         val two = one.copy(id = "2", source = "eplus", url = "https://eplus.jp/sf/detail/1", ticketUrl = "https://eplus.jp/sf/detail/1")
         val three = two.copy(id = "3", time = "19:00")
-        val result = ArtistConcerts(ArtistConcertParser.merge(listOf(one, two, three)), listOf("MusicBrainz"))
+        val result = ArtistConcerts(ArtistConcertParser.merge(listOf(one.copy(title = "Band Live · Different listing title"), two, three)), listOf("MusicBrainz"))
         assertEquals(listOf("2", "3"), result.events.map { it.id })
         assertEquals(result, ArtistConcertParser.decode(ArtistConcertParser.encode(result)))
     }

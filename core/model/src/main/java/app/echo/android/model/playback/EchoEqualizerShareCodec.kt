@@ -39,7 +39,10 @@ object EchoEqualizerShareCodec {
     }
 
     fun decode(code: String, id: String): EchoEqualizerUserPreset? {
-        val payload = extractPayload(code) ?: return null
+        if (extractEncoded(code) == null) {
+            return EchoEqualizerApoCodec.parse(code, id)
+        }
+        val payload = extractPayload(code) ?: return EchoEqualizerApoCodec.parse(code, id)
         if (payload.size > MaxDecodedBytes) return null
         val parts = String(payload, StandardCharsets.UTF_8).split('|')
         if (parts.size < 5 || parts[0].toIntOrNull() != Version) return null

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connect_invalid_pairing">Неверный адрес ПК или токен сопряжения</string>
+    <string name="connect_not_connected">PC ECHO ещё не подключён</string>
+    <string name="connect_library_partial">Загружено %1$d из %2$d треков. Используйте поиск, чтобы сузить библиотеку.</string>
+    <string name="connect_playlist_missing_id">У этого плейлиста ПК нет playlistId, его нельзя открыть</string>
+    <string name="connect_album_missing_id">У этого альбома ПК нет albumId, его нельзя открыть</string>
+    <string name="connect_queue_no_ids">В этой очереди ПК нет идентификаторов воспроизводимых треков</string>
+    <string name="connect_track_missing_id_handoff">У этого трека ПК нет trackId, его нельзя передать</string>
+    <string name="connect_no_local_cast_file">Нет локального файла, который можно отправить на ПК</string>
+    <string name="connect_track_missing_id_remote">У этого трека ПК нет trackId, его нельзя воспроизвести удалённо</string>
+    <string name="connect_stream_unavailable">Этот трек сейчас нельзя транслировать на телефон</string>
+    <string name="connect_cast_unsupported">Эта сборка PC ECHO ещё не принимает поток с телефона. Обновите ECHOSteam.</string>
+    <string name="connect_auth_expired">Авторизация ПК истекла или отозвана. Выполните сопряжение снова.</string>
+    <string name="connect_failed">Не удалось подключиться к PC ECHO</string>
+</resources>

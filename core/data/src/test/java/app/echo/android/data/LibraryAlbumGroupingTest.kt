@@ -130,6 +130,24 @@ class LibraryAlbumGroupingTest {
         )
     }
 
+    @Test
+    fun incrementalGroupingLoadsSiblingsInTheSameAlbumFolderOnly() {
+        val folders = LibraryAlbumGrouping.groupingFolders(
+            listOf("Music/Radiohead/OK Computer/CD1", "Music/Radiohead/OK Computer/"),
+        )
+        assertEquals(setOf("music/radiohead/ok computer"), folders)
+        val rows = listOf(
+            TrackIdPathRow("keep-disc", "Music/Radiohead/OK Computer/CD2"),
+            TrackIdPathRow("keep-root", "Music/Radiohead/OK Computer/"),
+            TrackIdPathRow("other", "Music/Radiohead/Pablo Honey/"),
+        )
+        assertEquals(
+            listOf("keep-disc", "keep-root"),
+            LibraryAlbumGrouping.trackIdsInGroupingFolders(rows, folders),
+        )
+        assertTrue(LibraryAlbumGrouping.trackIdsInGroupingFolders(rows, emptySet()).isEmpty())
+    }
+
     private fun track(
         id: String,
         album: String?,

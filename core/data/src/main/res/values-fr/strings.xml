@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_scan_partial">Analyse partiellement terminée. Certains volumes de stockage n\'ont pas pu être lus entièrement ; les morceaux existants ont été conservés. Vérifiez le stockage et réessayez.</string>
+    <string name="library_scan_partial_count">Analyse partiellement terminée : %1$d fichiers ou dossiers n\'ont pas pu être lus. Les morceaux existants ont été conservés ; vérifiez le stockage et réessayez.</string>
+    <string name="library_scan_failed">Échec de l\'analyse de la bibliothèque</string>
+    <string name="library_remote_reading_index">Lecture de l\'index de la bibliothèque distante</string>
+    <string name="library_remote_connecting_subsonic">Connexion à Navidrome/Subsonic</string>
+    <string name="library_remote_found_albums">%1$d albums distants trouvés</string>
+    <string name="library_remote_read_tracks">%1$d titres distants lus en lot</string>
+    <string name="library_remote_skipped_albums">%1$d albums inchangés ignorés</string>
+    <string name="library_remote_sync_failed">Échec de la synchronisation de la bibliothèque distante</string>
+    <string name="library_webdav_reading_index">Lecture de l\'index WebDAV</string>
+    <string name="library_webdav_scanning">Analyse des dossiers WebDAV</string>
+    <string name="library_webdav_sync_failed">Échec de la synchronisation de la bibliothèque WebDAV</string>
+    <string name="library_jellyfin_connecting">Connexion à Jellyfin / Emby</string>
+    <string name="library_jellyfin_sync_failed">Échec de la synchronisation de la bibliothèque Jellyfin / Emby</string>
+    <string name="subsonic_unreachable">Impossible d\'atteindre le serveur Navidrome/Subsonic.</string>
+    <string name="subsonic_certificate">Ce certificat HTTPS n\'est pas approuvé. Utilisez un certificat de confiance du système, ou HTTP sur votre réseau local.</string>
+    <string name="subsonic_timeout">Le serveur Navidrome/Subsonic a expiré.</string>
+    <string name="subsonic_unknown_host">Impossible de résoudre l\'adresse du serveur. Vérifiez l\'URL et votre réseau.</string>
+    <string name="subsonic_connection_refused">Le serveur a refusé la connexion. Vérifiez l\'adresse et que Navidrome est en cours d\'exécution.</string>
+    <string name="subsonic_cleartext_blocked">HTTP (et non HTTPS) est bloqué pour cette adresse.</string>
+    <string name="subsonic_http_status">Le serveur a renvoyé HTTP %1$d.</string>
+    <string name="subsonic_response_too_large">La réponse du serveur était trop volumineuse pour être lue.</string>
+    <string name="subsonic_invalid_json">Le serveur a renvoyé des données qui ne sont pas du JSON valide.</string>
+    <string name="subsonic_incompatible">Ceci n\'est pas une réponse compatible Subsonic. Vérifiez l\'URL du serveur.</string>
+    <string name="subsonic_request_failed">Échec de l\'authentification ou de la requête Subsonic.</string>
+</resources>

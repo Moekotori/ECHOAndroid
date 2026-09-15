@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="artist_page_artist">Interpret</string>
+    <string name="artist_page_music">Musik</string>
+    <string name="artist_page_information">Info</string>
+    <string name="artist_page_concerts">Live</string>
+    <string name="artist_about">Über den Interpreten</string>
+    <string name="artist_online_loading">Interpreteninformationen werden gesucht…</string>
+    <string name="artist_online_error">Verbindung nicht möglich. Bitte versuchen Sie es erneut.</string>
+    <string name="artist_info_no_match">Kein eindeutiger Interpretentreffer gefunden.</string>
+    <string name="artist_no_biography">Noch keine Wikipedia-Biografie verfügbar.</string>
+    <string name="artist_online_stale">Gespeicherte Informationen werden angezeigt. Aktualisieren, um es erneut zu versuchen.</string>
+    <string name="artist_online_partial">Einige Informationen konnten nicht geladen werden.</string>
+    <string name="artist_fact_area">Herkunft</string>
+    <string name="artist_fact_type">Typ</string>
+    <string name="artist_fact_begin">Geboren / gegründet</string>
+    <string name="artist_fact_end">Beendet</string>
+    <string name="artist_fact_genres">Genres</string>
+    <string name="artist_fact_members">Mitglieder</string>
+    <string name="artist_kind_person">Solointerpret</string>
+    <string name="artist_kind_group">Gruppe</string>
+    <string name="artist_upcoming_concerts">Kommende Live-Events</string>
+    <string name="artist_no_concerts">Keine kommenden Events gefunden.</string>
+    <string name="artist_concerts_incomplete">Noch keine Events zurückgegeben; einige Quellen sind nicht verfügbar.</string>
+    <string name="artist_concerts_partial">Nicht verfügbare Quellen: %1$s</string>
+    <string name="artist_concert_local_time">%1$s · Ortszeit der Location</string>
+    <string name="artist_concert_tickets">%1$s · Tickets</string>
+    <string name="artist_concert_details">%1$s · Eventdetails</string>
+    <string name="artist_sort_tracks">Titel sortieren</string>
+    <string name="artist_play_on_pc">Auf dem PC wiedergeben</string>
+</resources>

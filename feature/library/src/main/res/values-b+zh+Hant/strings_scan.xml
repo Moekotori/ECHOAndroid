@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="scan_scope_hint">先設定篩選條件，再選擇掃描範圍。</string>
+    <string name="scan_min_duration">最短時長</string>
+    <string name="scan_any">不限</string>
+    <string name="scan_30_seconds">30 秒</string>
+    <string name="scan_60_seconds">60 秒</string>
+    <string name="scan_min_size">最小檔案大小</string>
+    <string name="scan_100_kb">100 KB</string>
+    <string name="scan_1_mb">1 MB</string>
+    <string name="scan_skip_non_music">跳過錄音、鈴聲和通知音目錄</string>
+    <string name="scan_skip_hidden">跳過隱藏目錄</string>
+    <string name="scan_filter_hint">保留時長或大小未知的檔案。時長、大小和格式不會刪除已加入音樂庫的歌曲；隱藏目錄、非音樂目錄和忽略資料夾會在下次掃描時從音樂庫移除。</string>
+    <string name="scan_choose_folder">選擇資料夾並掃描</string>
+    <string name="scan_folder_hint">推薦 · 包含子資料夾，不必允許整部裝置的音樂權限</string>
+    <string name="scan_device">掃描整部裝置</string>
+    <string name="scan_device_hint">按以上條件掃描系統音樂庫</string>
+    <string name="scan_skipped_count">已跳過 %1$d 個檔案</string>
+    <string name="scan_simple_hint">選擇音樂所在的資料夾。</string>
+    <string name="scan_enable_filters">篩選非音樂內容</string>
+    <string name="scan_filters_hint">按時長、大小和目錄篩選</string>
+    <string name="scan_edit_filters">調整篩選條件</string>
+    <string name="scan_hide_details">收起詳細設定</string>
+    <string name="scan_device_instead">或掃描整台裝置</string>
+</resources>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="scan_scope_hint">Выберите фильтры, затем укажите, что сканировать.</string>
+    <string name="scan_min_duration">Минимальная длительность</string>
+    <string name="scan_any">Любая</string>
+    <string name="scan_30_seconds">30 с</string>
+    <string name="scan_60_seconds">60 с</string>
+    <string name="scan_min_size">Минимальный размер файла</string>
+    <string name="scan_100_kb">100 КБ</string>
+    <string name="scan_1_mb">1 МБ</string>
+    <string name="scan_skip_non_music">Пропускать папки записей, рингтонов и уведомлений</string>
+    <string name="scan_skip_hidden">Пропускать скрытые папки</string>
+    <string name="scan_filter_hint">Неизвестная длительность или размер сохраняются. Длительность, размер и формат не удаляют импортированные композиции. Скрытые, немузыкальные и исключённые папки удаляются из библиотеки при следующем сканировании.</string>
+    <string name="scan_choose_folder">Выбрать папку и сканировать</string>
+    <string name="scan_folder_hint">Рекомендуется · Включает вложенные папки; полное разрешение на устройство не нужно</string>
+    <string name="scan_device">Сканировать устройство</string>
+    <string name="scan_device_hint">Сканирует системную музыкальную библиотеку с этими фильтрами</string>
+    <string name="scan_skipped_count">Пропущено файлов: %1$d</string>
+    <string name="scan_simple_hint">Выберите папку с музыкой.</string>
+    <string name="scan_enable_filters">Фильтровать немузыкальное аудио</string>
+    <string name="scan_filters_hint">Фильтр по длительности, размеру и папке</string>
+    <string name="scan_edit_filters">Настроить фильтры</string>
+    <string name="scan_hide_details">Скрыть подробности</string>
+    <string name="scan_device_instead">Или сканировать это устройство</string>
+</resources>

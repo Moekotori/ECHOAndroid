@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module-owned translations. English values are the fallback for missing translations. -->
+<resources>
+    <string name="feature_settings_adjust_sound_f8940e">"Ajustar sonido"</string>
+    <string name="feature_settings_choose_a_preset_then_enable_eq_to_hear_76c79b">"Elige un preajuste y luego activa el EQ para oír los cambios."</string>
+    <string name="feature_settings_diagnostics_b6e487">"Diagnóstico"</string>
+    <string name="feature_settings_eq_is_not_changing_the_signal_da1f47">"El EQ no está cambiando la señal"</string>
+    <string name="feature_settings_equalizer_7ccb03">"Ecualizador"</string>
+    <string name="feature_settings_equalizer_is_not_changing_the_signal_7cf73b">"El ecualizador no está cambiando la señal"</string>
+    <string name="feature_settings_find_your_model_choose_a_curve_then_apply_0d8456">"Encuentra tu modelo, elige una curva y aplícala a la reproducción."</string>
+    <string name="feature_settings_headphone_correction_491ce5">"Corrección de auriculares"</string>
+    <string name="feature_settings_output_details_f242d2">"Detalles de salida"</string>
+    <string name="feature_settings_reset_1106f5">"Restablecer"</string>
+    <string name="feature_settings_signal_path_2fed34">"Ruta de señal"</string>
+    <string name="feature_settings_sound_3f2864">"Sonido"</string>
+    <string name="feature_settings_view_diagnostics_31fcec">"Ver diagnóstico"</string>
+</resources>

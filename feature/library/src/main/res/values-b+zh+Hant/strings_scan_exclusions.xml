@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="scan_audio_formats">音訊格式</string>
+    <string name="scan_all_formats">全部格式</string>
+    <string name="scan_advanced_options">進階選項</string>
+    <string name="scan_excluded_folders">忽略資料夾</string>
+    <string name="scan_excluded_folders_hint">每行填寫一個儲存空間內的相對路徑，例如 Recordings/Call，包含其子資料夾。開始掃描時儲存，關閉其他篩選後仍生效。下次掃描會從音樂庫移除這些資料夾裡的歌曲；刪除對應行可恢復掃描。</string>
+</resources>

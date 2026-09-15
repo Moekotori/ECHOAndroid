@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_category_appearance">外觀</string>
+    <string name="settings_category_interface">介面與語言</string>
+    <string name="settings_category_playback">播放與歌詞</string>
+    <string name="settings_category_services">連線與服務</string>
+    <string name="settings_category_appearance_detail">調整主題、背景與字型，讓 ECHO 更合你的習慣。</string>
+    <string name="settings_category_interface_detail">設定語言、介面密度與效能偏好。</string>
+    <string name="settings_category_playback_detail">調整歌曲轉場、歌詞與 USB 輸出偏好。</string>
+    <string name="settings_category_services_detail">連線電腦，管理聽歌記錄服務。</string>
+    <string name="settings_category_library_detail">管理本機音樂與音樂庫中的資訊展示。</string>
+    <string name="settings_category_about_detail">檢視應用程式版本與錯誤記錄。</string>
+    <string name="settings_home_detail">按你的習慣，調整 ECHO。</string>
+    <string name="settings_back">返回設定首頁</string>
+    <string name="settings_group_personal">個人化</string>
+    <string name="settings_group_music">音樂與連線</string>
+    <string name="settings_group_app">應用程式</string>
+    <string name="settings_library_summary">%1$d 首歌曲 · %2$d 張專輯 · %3$d 位藝人</string>
+</resources>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_setting_reset">Réinitialiser</string>
+    <string name="lyrics_setting_typography">Typo &amp; mise en page</string>
+    <string name="lyrics_setting_replace_font">Remplacer la police importée</string>
+    <string name="lyrics_setting_color_background">Couleur &amp; arrière-plan</string>
+    <string name="lyrics_setting_motion">Mouvement &amp; surbrillance</string>
+    <string name="lyrics_setting_highlight_strength">Intensité de la surbrillance</string>
+    <string name="lyrics_setting_content">Contenu &amp; outils</string>
+    <string name="lyrics_setting_content_summary">Traduction, romanisation et sources de paroles</string>
+    <string name="lyrics_setting_no_content">Ce titre n\'a pas de contenu correspondant. Votre préférence s\'applique toujours aux autres titres.</string>
+    <string name="lyrics_setting_word_highlight">Surbrillance des mots</string>
+</resources>

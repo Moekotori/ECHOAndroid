@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_setting_reset">Zurücksetzen</string>
+    <string name="lyrics_setting_typography">Schrift &amp; Layout</string>
+    <string name="lyrics_setting_replace_font">Importierte Schrift ersetzen</string>
+    <string name="lyrics_setting_color_background">Farbe &amp; Hintergrund</string>
+    <string name="lyrics_setting_motion">Bewegung &amp; Hervorhebung</string>
+    <string name="lyrics_setting_highlight_strength">Hervorhebungsstärke</string>
+    <string name="lyrics_setting_content">Inhalt &amp; Werkzeuge</string>
+    <string name="lyrics_setting_content_summary">Übersetzung, Romanisierung und Liedtextquellen</string>
+    <string name="lyrics_setting_no_content">Dieser Titel hat keinen passenden Inhalt. Ihre Einstellung gilt weiterhin für andere Titel.</string>
+    <string name="lyrics_setting_word_highlight">Worthervorhebung</string>
+</resources>

@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
+import app.echo.android.design.EchoSwitch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -55,6 +55,9 @@ internal fun SignalEqualizer(
     onRenameUserPreset: (String, String) -> Unit,
     onDeleteUserPreset: (String) -> Unit,
     onImportShareCode: (String) -> Unit,
+    outputDeviceLabel: String? = null,
+    outputBound: Boolean = false,
+    onBindToOutput: () -> Unit = {},
 ) {
     var showEditor by remember { mutableStateOf(false) }
     var showFilters by remember(state.filters) { mutableStateOf(false) }
@@ -106,7 +109,7 @@ internal fun SignalEqualizer(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Switch(checked = state.enabled, onCheckedChange = onEnabledChange, modifier = Modifier.semantics { contentDescription = title })
+            EchoSwitch(checked = state.enabled, onCheckedChange = onEnabledChange, modifier = Modifier.semantics { contentDescription = title })
         }
         TextButton(onClick = {
             if (!state.parametric) onParametricChange(state.bands.map { app.echo.android.model.playback.OpraEqBand("peak_dip", it.frequencyHz.toFloat(), it.gainDb, 1f, null) })
@@ -220,12 +223,16 @@ internal fun SignalEqualizer(
                     activeId = activeUserPresetId,
                     defaultSaveName = defaultSaveName,
                     currentShare = currentShare,
+                    currentCurve = state.responseCurve,
                     enabled = true,
                     onSave = onSaveUserPreset,
                     onApply = onApplyUserPreset,
                     onRename = onRenameUserPreset,
                     onDelete = onDeleteUserPreset,
                     onImportShareCode = onImportShareCode,
+                    outputDeviceLabel = outputDeviceLabel,
+                    outputBound = outputBound,
+                    onBindToOutput = onBindToOutput,
                 )
             }
         }

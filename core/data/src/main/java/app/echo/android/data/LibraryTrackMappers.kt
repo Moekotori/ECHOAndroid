@@ -23,6 +23,8 @@ fun LibraryTrackEntity.toEchoTrack(): EchoTrack =
         dateModifiedSeconds = dateModifiedSeconds,
         source = LibrarySource(source),
         genre = genre,
+        clipStartMs = clipStartMs,
+        clipEndMs = clipEndMs,
     )
 
 fun EchoTrack.toLibraryTrackEntity(): LibraryTrackEntity =
@@ -47,6 +49,8 @@ fun EchoTrack.toLibraryTrackEntity(): LibraryTrackEntity =
         metadataEditedAtEpochMs = null,
         lastSeenScanRunId = 0L,
         fingerprint = buildTrackFingerprint(this),
+        clipStartMs = clipStartMs,
+        clipEndMs = clipEndMs,
     ).withComputedSearchMetadata()
 
 internal fun LibraryTrackEntity.withFingerprint(): LibraryTrackEntity =
@@ -167,6 +171,30 @@ internal fun buildTrackFingerprint(track: LibraryTrackEntity): String =
         relativePath = track.relativePath,
         remote = LibraryScanPolicy.isRemoteLibrarySource(track.source),
     )
+
+internal fun LibraryTrackEntity.splitByCue(sheet: app.echo.android.model.library.CueSheet): List<LibraryTrackEntity> {
+    val ended = app.echo.android.model.library.CueSheetPolicy.withEndTimes(sheet.tracks, durationMs)
+    if (ended.size < 2) return listOf(this)
+    return ended.map { cue ->
+        val start = cue.startMs.coerceAtLeast(0L)
+        val end = cue.endMs.takeIf { it > start } ?: 0L
+        val length = if (end > start) end - start else (durationMs - start).coerceAtLeast(0L)
+        copy(
+            id = app.echo.android.model.library.CueSheetPolicy.cueTrackId(id, cue.number),
+            contentUri = app.echo.android.model.library.CueSheetPolicy.contentUri(contentUri, cue.number),
+            title = cue.title,
+            artist = cue.performer ?: sheet.performer ?: artist,
+            album = sheet.album ?: album,
+            albumArtist = sheet.performer ?: albumArtist,
+            durationMs = length,
+            trackNumber = cue.number,
+            year = sheet.year ?: year,
+            genre = sheet.genre ?: genre,
+            clipStartMs = start,
+            clipEndMs = end,
+        ).withComputedSearchMetadata().withFingerprint()
+    }
+}
 
 internal fun String.normalizedForSearch(): String {
     val collapsed = java.text.Normalizer.normalize(trim(), java.text.Normalizer.Form.NFKC)

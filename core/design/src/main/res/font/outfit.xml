@@ -3,18 +3,13 @@
     <font
         android:font="@font/outfit_variable"
         android:fontStyle="normal"
-        android:fontWeight="300"
-        android:fontVariationSettings="'wght' 300" />
-    <font
-        android:font="@font/outfit_variable"
-        android:fontStyle="normal"
         android:fontWeight="400"
-        android:fontVariationSettings="'wght' 400" />
+        android:fontVariationSettings="'wght' 600" />
     <font
         android:font="@font/outfit_variable"
         android:fontStyle="normal"
         android:fontWeight="500"
-        android:fontVariationSettings="'wght' 500" />
+        android:fontVariationSettings="'wght' 600" />
     <font
         android:font="@font/outfit_variable"
         android:fontStyle="normal"
@@ -25,4 +20,14 @@
         android:fontStyle="normal"
         android:fontWeight="700"
         android:fontVariationSettings="'wght' 700" />
+    <font
+        android:font="@font/outfit_variable"
+        android:fontStyle="normal"
+        android:fontWeight="800"
+        android:fontVariationSettings="'wght' 900" />
+    <font
+        android:font="@font/outfit_variable"
+        android:fontStyle="normal"
+        android:fontWeight="900"
+        android:fontVariationSettings="'wght' 900" />
 </font-family>

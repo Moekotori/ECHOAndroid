@@ -14,6 +14,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoExpand
+import app.echo.android.design.EchoSwitch
 import app.echo.android.model.playback.*
 import java.util.Locale
 
@@ -68,7 +69,7 @@ private fun DspSection(title: String, detail: String, checked: Boolean, enabled:
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
             IconButton(onClick = { help = !help }) { Icon(Icons.Outlined.Info, contentDescription = detail, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant) }
-            Switch(checked = checked, onCheckedChange = onChecked, enabled = enabled, modifier = Modifier.semantics { contentDescription = title })
+            EchoSwitch(checked = checked, onCheckedChange = onChecked, enabled = enabled, modifier = Modifier.semantics { contentDescription = title })
         }
         EchoExpand(help) { Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         content()

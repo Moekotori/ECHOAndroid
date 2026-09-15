@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playback_command_favorite">В избранное</string>
+    <string name="playback_command_unfavorite">Убрать из избранного</string>
+    <string name="playback_command_repeat_all">Повтор всех</string>
+    <string name="playback_command_repeat_one">Повтор одного</string>
+    <string name="playback_command_repeat_off">Повтор выкл.</string>
+    <string name="playback_command_lyrics">Текст песни</string>
+</resources>

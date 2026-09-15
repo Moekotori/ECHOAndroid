@@ -399,6 +399,8 @@
     <string name="eq_user_preset_delete">Delete</string>
     <string name="eq_user_preset_full">Delete a saved EQ first. 24 maximum.</string>
     <string name="eq_user_preset_empty">Save the current curve to reuse it later.</string>
+    <string name="eq_bind_output">Use for %1$s</string>
+    <string name="eq_bound_output">Using for %1$s</string>
     <string name="eq_user_preset_parametric">Parametric EQ</string>
     <string name="eq_user_preset_bands">%1$d bands</string>
     <string name="eq_share">Share</string>
@@ -408,10 +410,13 @@
     <string name="eq_share_paste">Paste</string>
     <string name="eq_share_import">Import code</string>
     <string name="eq_share_import_title">Import EQ</string>
-    <string name="eq_share_import_hint">Paste an ECHOEQ share code</string>
-    <string name="eq_share_import_invalid">That is not a valid EQ share code</string>
+    <string name="eq_share_import_hint">Paste an ECHOEQ code, or Equalizer APO / AutoEQ text</string>
+    <string name="eq_share_import_invalid">That is not a valid EQ share code or Equalizer APO curve</string>
     <string name="eq_share_current">Share current</string>
-    <string name="eq_share_detail">Copy or send this code. Echo can import the curve from it.</string>
+    <string name="eq_share_detail">Copy the Echo code, Equalizer APO text, or send it. Echo can import any of these.</string>
+    <string name="eq_share_copy_apo">Copy Equalizer APO</string>
+    <string name="eq_share_apo_copied">Copied Equalizer APO text</string>
+    <string name="eq_share_preview">%1$s · %2$d bands · preamp %3$s</string>
     <string name="opra_favorite">Save this correction</string>
     <string name="opra_unfavorite">Remove saved correction</string>
     <string name="opra_favorites">Saved corrections</string>

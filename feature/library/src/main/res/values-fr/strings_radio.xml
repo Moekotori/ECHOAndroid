@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="radio_title">Radio</string>
+    <string name="radio_hint">Recherchez dans l\'annuaire public, ou ajoutez vous-même une URL de flux.</string>
+    <string name="radio_add">Ajouter une station</string>
+    <string name="radio_edit">Modifier la station</string>
+    <string name="radio_delete">Supprimer la station</string>
+    <string name="radio_play">Lire la station</string>
+    <string name="radio_empty">Aucune station enregistrée. Recherchez ci-dessus ou ajoutez-en une.</string>
+    <string name="radio_name">Nom de la station</string>
+    <string name="radio_url">URL du flux</string>
+    <string name="radio_url_hint">Flux audio HTTP/HTTPS ou HLS (.m3u8), pas une page web.</string>
+    <string name="radio_save">Enregistrer</string>
+    <string name="radio_cancel">Annuler</string>
+    <string name="radio_retry">Réessayer</string>
+    <string name="radio_load_error">Impossible de charger les stations enregistrées. Veuillez réessayer.</string>
+    <string name="radio_save_error">Impossible d\'enregistrer. Vérifiez une URL en double, la limite de 500 stations, ou une erreur de stockage.</string>
+    <string name="radio_write_error">Impossible d\'enregistrer la modification. Veuillez réessayer.</string>
+    <string name="radio_delete_prompt">Supprimer « %1$s » de vos stations ?</string>
+    <string name="radio_search">Rechercher des stations</string>
+    <string name="radio_directory_title">Annuaire</string>
+    <string name="radio_directory_empty">Aucune station trouvée dans l\'annuaire.</string>
+    <string name="radio_directory_error">Impossible d\'atteindre l\'annuaire radio.</string>
+    <string name="radio_directory_source">Liste des stations depuis radio-browser.info</string>
+    <string name="radio_directory_save">Enregistrer la station</string>
+    <string name="radio_directory_bitrate">%1$d kbps</string>
+</resources>

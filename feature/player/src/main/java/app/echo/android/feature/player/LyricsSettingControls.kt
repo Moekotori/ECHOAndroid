@@ -14,6 +14,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import app.echo.android.design.EchoSwitch
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.echoTheme
 import kotlin.math.abs
@@ -79,7 +80,7 @@ internal fun LyricsSettingToggle(
             if (hint != null) Text(hint, style = MaterialTheme.typography.bodySmall,
                 color = if (LocalEchoDarkTheme.current) androidx.compose.ui.graphics.Color.White.copy(alpha = 0.65f) else echoTheme().muted)
         }
-        Switch(checked, onCheckedChange = null)
+        EchoSwitch(checked, onCheckedChange = null)
     }
 }
 

@@ -52,13 +52,13 @@ class LibraryScanPolicyTest {
     }
 
     @Test
-    fun probeSkipsFullFetchForExcludedDirectoriesWithoutDeletingImportedRows() {
+    fun probeSkipsExcludedDirectoriesIncludingImportedTracks() {
         val existing = fingerprint()
         val options = LibraryScanOptions(
             excludedRelativePaths = setOf("Recordings"),
         )
         assertEquals(
-            MediaStoreProbeAction.RememberSeen,
+            MediaStoreProbeAction.SkipRejected,
             LibraryScanPolicy.classifyMediaStoreProbeRow(
                 existing = existing,
                 relativePath = "Recordings/Call/",
@@ -69,7 +69,7 @@ class LibraryScanPolicyTest {
             ),
         )
         assertEquals(
-            MediaStoreProbeAction.RememberSeen,
+            MediaStoreProbeAction.SkipRejected,
             LibraryScanPolicy.classifyMediaStoreProbeRow(
                 existing = null,
                 relativePath = "Recordings/Call/",
@@ -88,6 +88,59 @@ class LibraryScanPolicyTest {
                 sizeBytes = 1_024L,
                 options = options,
                 rejectedByCache = false,
+            ),
+        )
+    }
+
+    @Test
+    fun probeSkipsNewFilesOutsideAllowedExtensions() {
+        val options = LibraryScanOptions(allowedExtensions = setOf("flac", "wav"))
+        assertEquals(
+            MediaStoreProbeAction.SkipRejected,
+            LibraryScanPolicy.classifyMediaStoreProbeRow(
+                existing = null,
+                relativePath = "Music/",
+                dateModifiedSeconds = 1_700_000_000L,
+                sizeBytes = 1_024L,
+                options = options,
+                rejectedByCache = false,
+                fileName = "song.mp3",
+            ),
+        )
+        assertEquals(
+            MediaStoreProbeAction.RememberSeen,
+            LibraryScanPolicy.classifyMediaStoreProbeRow(
+                existing = fingerprint(),
+                relativePath = "Music/",
+                dateModifiedSeconds = 1_700_000_000L,
+                sizeBytes = 1_024L,
+                options = options,
+                rejectedByCache = false,
+                fileName = "song.mp3",
+            ),
+        )
+        assertEquals(
+            MediaStoreProbeAction.FetchFull,
+            LibraryScanPolicy.classifyMediaStoreProbeRow(
+                existing = null,
+                relativePath = "Music/",
+                dateModifiedSeconds = 1_700_000_000L,
+                sizeBytes = 1_024L,
+                options = options,
+                rejectedByCache = false,
+                fileName = "song.flac",
+            ),
+        )
+        assertEquals(
+            MediaStoreProbeAction.FetchFull,
+            LibraryScanPolicy.classifyMediaStoreProbeRow(
+                existing = null,
+                relativePath = "Music/",
+                dateModifiedSeconds = 1_700_000_000L,
+                sizeBytes = 1_024L,
+                options = options,
+                rejectedByCache = false,
+                fileName = null,
             ),
         )
     }
@@ -386,6 +439,38 @@ class LibraryScanPolicyTest {
                     scannedCount = 20,
                     existingCount = 40,
                 ),
+            ),
+        )
+    }
+
+    @Test
+    fun safDirectoryListingCacheRequiresTrustedNonRootMtime() {
+        assertFalse(
+            LibraryScanPolicy.shouldReuseCachedDocumentListing(
+                cachedLastModifiedMs = 50L,
+                incomingLastModifiedMs = 50L,
+                isTreeRoot = true,
+            ),
+        )
+        assertFalse(
+            LibraryScanPolicy.shouldReuseCachedDocumentListing(
+                cachedLastModifiedMs = 50L,
+                incomingLastModifiedMs = 0L,
+                isTreeRoot = false,
+            ),
+        )
+        assertFalse(
+            LibraryScanPolicy.shouldReuseCachedDocumentListing(
+                cachedLastModifiedMs = 50L,
+                incomingLastModifiedMs = 51L,
+                isTreeRoot = false,
+            ),
+        )
+        assertTrue(
+            LibraryScanPolicy.shouldReuseCachedDocumentListing(
+                cachedLastModifiedMs = 50L,
+                incomingLastModifiedMs = 50L,
+                isTreeRoot = false,
             ),
         )
     }

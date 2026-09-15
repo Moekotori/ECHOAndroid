@@ -43,7 +43,7 @@ internal fun SettingsFontPreview(
                 stringResource(if (lyrics) R.string.settings_font_preview_lyrics else R.string.settings_font_preview_ui),
                 style = TextStyle(
                     fontFamily = family,
-                    fontWeight = if (lyrics) FontWeight.Bold else FontWeight.Medium,
+                    fontWeight = if (lyrics) FontWeight.Bold else FontWeight.SemiBold,
                     fontSize = ((if (lyrics) 22f else 16f) * scale).sp,
                     lineHeight = ((if (lyrics) 30f else 24f) * scale).sp,
                 ),
@@ -51,7 +51,12 @@ internal fun SettingsFontPreview(
             Text(
                 stringResource(R.string.settings_font_preview_characters),
                 color = scheme.onSurfaceVariant,
-                style = TextStyle(fontFamily = family, fontSize = (12f * scale).sp, lineHeight = (18f * scale).sp),
+                style = TextStyle(
+                    fontFamily = family,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = (12f * scale).sp,
+                    lineHeight = (18f * scale).sp,
+                ),
             )
         }
     }

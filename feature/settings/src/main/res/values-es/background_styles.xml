@@ -1,0 +1,12 @@
+<resources>
+    <string name="settings_bg_style">Estilo de visualización</string>
+    <string name="settings_bg_style_custom">Ajuste personalizado</string>
+    <string name="settings_bg_style_natural">Natural</string>
+    <string name="settings_bg_style_soft">Suave</string>
+    <string name="settings_bg_style_airy">Aéreo</string>
+    <string name="settings_bg_style_dreamy">Soñador</string>
+    <string name="settings_bg_style_cinematic">Cinemático</string>
+    <string name="settings_bg_style_focus">Enfoque</string>
+    <string name="settings_bg_style_detail">Aplica desenfoque, brillo, superposición y escala juntos. El desenfoque sigue el límite de rendimiento actual. Puedes afinar abajo.</string>
+    <string name="settings_bg_style_video_detail">Los estilos de video ajustan brillo, superposición y escala; no se aplica desenfoque de video. Puedes afinar abajo.</string>
+</resources>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="artist_search_tracks">Поиск композиций или альбомов</string>
+    <string name="artist_sort_album">Порядок альбома</string>
+    <string name="artist_sort_title">Название</string>
+    <string name="artist_sort_duration">Длительность</string>
+    <string name="artist_albums">Альбомы</string>
+    <string name="artist_no_albums">В библиотеке пока нет альбомов</string>
+    <string name="artist_no_matches">Подходящих композиций нет</string>
+    <string name="artist_load_failed">Не удалось загрузить это содержимое</string>
+    <string name="artist_retry">Повторить</string>
+    <string name="artist_total_time">%1$d ч %2$d мин в вашей библиотеке</string>
+    <string name="artist_total_minutes">%1$d мин в вашей библиотеке</string>
+    <string name="artist_tracks">Треки</string>
+    <string name="artist_clear_search">Очистить поиск</string>
+    <plurals name="artist_album_count">
+        <item quantity="one">%1$d альбом</item>
+        <item quantity="few">%1$d альбома</item>
+        <item quantity="many">%1$d альбомов</item>
+        <item quantity="other">%1$d альбома</item>
+    </plurals>
+    <plurals name="artist_track_count">
+        <item quantity="one">%1$d трек</item>
+        <item quantity="few">%1$d трека</item>
+        <item quantity="many">%1$d треков</item>
+        <item quantity="other">%1$d трека</item>
+    </plurals>
+</resources>

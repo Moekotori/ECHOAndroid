@@ -10,7 +10,7 @@
     <string name="scan_1_mb">1 MB</string>
     <string name="scan_skip_non_music">녹음, 벨소리, 알림 폴더 건너뛰기</string>
     <string name="scan_skip_hidden">숨김 폴더 건너뛰기</string>
-    <string name="scan_filter_hint">길이나 크기를 알 수 없는 파일은 유지됩니다. 필터는 이미 라이브러리에 있는 곡을 삭제하지 않습니다.</string>
+    <string name="scan_filter_hint">길이나 크기를 알 수 없는 파일은 유지됩니다. 길이, 크기, 형식은 이미 있는 곡을 삭제하지 않습니다. 숨김 폴더, 비음악 폴더, 제외 폴더는 다음 스캔에서 라이브러리에서 제거됩니다.</string>
     <string name="scan_choose_folder">폴더를 선택하고 스캔</string>
     <string name="scan_folder_hint">권장 · 하위 폴더 포함, 기기 전체 권한 불필요</string>
     <string name="scan_device">기기 스캔</string>

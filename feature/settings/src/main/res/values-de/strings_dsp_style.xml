@@ -1,0 +1,5 @@
+<resources>
+    <string name="dsp_output_ceiling">Ausgabe-Ceiling</string>
+    <string name="dsp_mix_amount">Mischanteil</string>
+    <string name="dsp_scan_short">Titellautheit analysieren und speichern</string>
+</resources>

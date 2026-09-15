@@ -1221,6 +1221,40 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         updateSettings { upsertEqualizerUserPreset(captured) }
     }
 
+    private var lastOutputDspKey: String? = null
+
+    fun bindActiveEqualizerPresetToOutput() {
+        viewModelScope.launch {
+            val presetId = withContext(Dispatchers.IO) {
+                settingsStore.appSettings.first().equalizerActiveUserPresetId
+            } ?: return@launch
+            val diagnostics = playbackController.playbackStatus.value.diagnostics
+            val key = app.echo.android.model.playback.EchoOutputDspPolicy.deviceKey(
+                app.echo.android.model.playback.EchoOutputDeviceKind.fromId(diagnostics.outputDeviceKind),
+                diagnostics.usbDeviceName ?: diagnostics.outputDeviceName,
+            )
+            updateSettings { bindEqualizerPresetToDevice(key, presetId) }
+        }
+    }
+
+    fun applyOutputDspIfNeeded(kindId: String, deviceName: String?) {
+        if (playbackController.playbackStatus.value.diagnostics.usbBitPerfectEnabled) return
+        val key = app.echo.android.model.playback.EchoOutputDspPolicy.deviceKey(
+            app.echo.android.model.playback.EchoOutputDeviceKind.fromId(kindId),
+            deviceName,
+        )
+        if (key == lastOutputDspKey) return
+        lastOutputDspKey = key
+        viewModelScope.launch {
+            val settings = withContext(Dispatchers.IO) { settingsStore.appSettings.first() }
+            val presetId = app.echo.android.model.playback.EchoOutputDspPolicy.resolvePresetId(
+                settings.equalizerDevicePresetIds,
+                key,
+            ) ?: return@launch
+            applyEqualizerUserPreset(presetId)
+        }
+    }
+
     fun applyEqualizerUserPreset(id: String) {
         viewModelScope.launch {
             val preset = withContext(Dispatchers.IO) {

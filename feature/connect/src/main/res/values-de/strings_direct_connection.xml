@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="echo_link_direct_address_hint">Wählen Sie einen Computer in der Nähe oder geben Sie seine Adresse ein, um zu verbinden. Kein Token erforderlich. Ältere PCs können weiterhin einen vollständigen Kopplungslink verwenden.</string>
+</resources>

@@ -1,6 +1,8 @@
 package app.echo.android
 
 import android.app.Application
+import app.echo.android.connect.EchoChromecastCastPolicy
+import app.echo.android.connect.EchoChromecastClient
 import app.echo.android.connect.EchoDlnaCastPolicy
 import app.echo.android.connect.EchoDlnaClient
 import app.echo.android.connect.EchoDlnaException
@@ -45,6 +47,7 @@ class EchoLinkSession(private val application: Application) {
         allowedPeerHost = { castPeerHost.get() ?: client.status.value.endpoint?.host },
     )
     private val dlnaClient = EchoDlnaClient()
+    private val chromecastClient = EchoChromecastClient()
     private val settings = EchoSettingsStore(application)
     private var persistedKey: Pair<String?, String>? = null
     private var attemptedKey: Pair<String?, String>? = null
@@ -219,6 +222,48 @@ class EchoLinkSession(private val application: Application) {
                 dlnaIndex = index
                 dlnaPaused = false
                 _dlnaRenderer.value = renderer
+                markCastStarted(renderer.name)
+                onSuccess()
+            }.onFailure { error ->
+                EchoErrorLog.record(
+                    EchoErrorSource.Connect,
+                    error.message ?: error.javaClass.simpleName,
+                )
+                stopLocalCast()
+                onFailure(error)
+            }
+        }
+    }
+
+    fun startChromecastCast(
+        renderer: EchoLanRenderer,
+        tracks: List<EchoLinkCastSourceTrack>,
+        startIndex: Int,
+        positionMs: Long,
+        onFailure: (Throwable) -> Unit,
+        onSuccess: () -> Unit,
+    ) {
+        if (client.status.value.connectionState == EchoRemoteConnectionState.Connected) {
+            client.send(EchoRemoteCommand.Stop)
+        }
+        scope.launch {
+            val items = publishLocalCast(tracks, peerHost = renderer.host)
+            if (items == null) {
+                onFailure(EchoDlnaException(500, "no_lan"))
+                return@launch
+            }
+            val index = startIndex.coerceIn(0, items.lastIndex)
+            val current = items[index]
+            val rejected = EchoChromecastCastPolicy.rejectReason(renderer, current)
+            if (rejected != null) {
+                stopLocalCast()
+                onFailure(EchoDlnaException(415, rejected.code))
+                return@launch
+            }
+            val result = withContext(Dispatchers.IO) {
+                runCatching { chromecastClient.play(renderer, current, positionMs) }
+            }
+            result.onSuccess {
                 markCastStarted(renderer.name)
                 onSuccess()
             }.onFailure { error ->

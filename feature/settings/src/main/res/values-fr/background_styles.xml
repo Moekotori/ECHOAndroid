@@ -1,0 +1,12 @@
+<resources>
+    <string name="settings_bg_style">Style d\'affichage</string>
+    <string name="settings_bg_style_custom">Ajustement personnalisé</string>
+    <string name="settings_bg_style_natural">Naturel</string>
+    <string name="settings_bg_style_soft">Doux</string>
+    <string name="settings_bg_style_airy">Aéré</string>
+    <string name="settings_bg_style_dreamy">Onirique</string>
+    <string name="settings_bg_style_cinematic">Cinématique</string>
+    <string name="settings_bg_style_focus">Focus</string>
+    <string name="settings_bg_style_detail">Appliquez ensemble le flou, la luminosité, la superposition et l\'échelle. Le flou suit la limite de performance actuelle. Vous pouvez affiner ci-dessous.</string>
+    <string name="settings_bg_style_video_detail">Les styles vidéo ajustent la luminosité, la superposition et l\'échelle ; le flou vidéo n\'est pas appliqué. Vous pouvez affiner ci-dessous.</string>
+</resources>

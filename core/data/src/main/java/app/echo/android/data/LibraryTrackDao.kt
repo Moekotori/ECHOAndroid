@@ -890,6 +890,9 @@ interface LibraryTrackDao {
     @Query("SELECT * FROM library_tracks WHERE source = 'mediastore' OR source = 'saf'")
     suspend fun getLocalLibraryTracks(): List<LibraryTrackEntity>
 
+    @Query("SELECT id, relativePath FROM library_tracks WHERE source = 'mediastore' OR source = 'saf'")
+    suspend fun getLocalIdPaths(): List<TrackIdPathRow>
+
     @Query(
         """
         SELECT * FROM library_tracks

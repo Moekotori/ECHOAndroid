@@ -141,6 +141,9 @@ object EchoBackupCodec {
             put("equalizerUserPresets", JSONArray(EchoEqualizerUserPresetCodec.encode(presets)))
         }
         putOpt("equalizerActiveUserPresetId", settings.equalizerActiveUserPresetId)
+        settings.equalizerDevicePresetIds?.takeIf { it.isNotEmpty() }?.let { bindings ->
+            put("equalizerDevicePresetIds", JSONObject(EchoOutputDspCodec.encode(bindings)))
+        }
         putOpt("opraLastQuery", settings.opraLastQuery)
         settings.channelBalance?.let { put("channelBalance", encodeBalance(it)) }
         putOpt("lyricsFontFamily", settings.lyricsFontFamily)
@@ -214,6 +217,9 @@ object EchoBackupCodec {
             equalizerFilters = filters,
             equalizerUserPresets = userPresets,
             equalizerActiveUserPresetId = json.optionalString("equalizerActiveUserPresetId"),
+            equalizerDevicePresetIds = json.optJSONObject("equalizerDevicePresetIds")?.let { item ->
+                EchoOutputDspCodec.decode(item.toString())
+            },
             opraLastQuery = json.optionalString("opraLastQuery"),
             channelBalance = json.optJSONObject("channelBalance")?.let(::decodeBalance),
             lyricsFontFamily = json.optionalString("lyricsFontFamily"),

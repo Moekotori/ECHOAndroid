@@ -399,6 +399,8 @@
     <string name="eq_user_preset_delete">삭제</string>
     <string name="eq_user_preset_full">먼저 하나를 지우세요. 최대 24개입니다.</string>
     <string name="eq_user_preset_empty">지금 곡선을 저장해 두면 나중에 다시 쓸 수 있습니다.</string>
+    <string name="eq_bind_output">%1$s에 사용</string>
+    <string name="eq_bound_output">%1$s에 적용 중</string>
     <string name="eq_user_preset_parametric">파라메트릭 EQ</string>
     <string name="eq_user_preset_bands">%1$d밴드</string>
     <string name="eq_share">공유</string>
@@ -408,10 +410,13 @@
     <string name="eq_share_paste">붙여넣기</string>
     <string name="eq_share_import">코드 가져오기</string>
     <string name="eq_share_import_title">EQ 가져오기</string>
-    <string name="eq_share_import_hint">ECHOEQ 공유 코드를 붙여넣으세요</string>
-    <string name="eq_share_import_invalid">유효한 EQ 공유 코드가 아닙니다</string>
+    <string name="eq_share_import_hint">ECHOEQ 코드 또는 Equalizer APO / AutoEQ 텍스트를 붙여넣으세요</string>
+    <string name="eq_share_import_invalid">유효한 EQ 공유 코드 또는 Equalizer APO 곡선이 아닙니다</string>
     <string name="eq_share_current">현재 곡선 공유</string>
-    <string name="eq_share_detail">복사하거나 보내세요. Echo가 이 코드로 곡선을 불러옵니다.</string>
+    <string name="eq_share_detail">Echo 코드, Equalizer APO 텍스트를 복사하거나 보낼 수 있습니다. Echo는 모두 가져올 수 있습니다.</string>
+    <string name="eq_share_copy_apo">Equalizer APO 복사</string>
+    <string name="eq_share_apo_copied">Equalizer APO 텍스트를 복사했습니다</string>
+    <string name="eq_share_preview">%1$s · %2$d밴드 · 프리앰프 %3$s</string>
     <string name="opra_favorite">이 보정 저장</string>
     <string name="opra_unfavorite">저장 해제</string>
     <string name="opra_favorites">저장한 보정</string>

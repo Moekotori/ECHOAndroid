@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connect_direct_unavailable">Этот ПК отклонил прямое подключение. Включите Echo Link и обновите ECHOSteam либо вставьте полную ссылку сопряжения для старой версии.</string>
+</resources>

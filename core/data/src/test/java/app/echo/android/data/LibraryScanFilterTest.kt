@@ -47,6 +47,14 @@ class LibraryScanFilterTest {
         assertEquals(listOf(existing, song), filterLocalScanBatch(listOf(existing, noise, song), setOf(existing.id), defaults))
     }
 
+    @Test fun directoryExclusionAppliesToImportedAndNewRows() {
+        val options = defaults.copy(excludedRelativePaths = setOf("Recordings"))
+        assertFalse(options.includesDirectory("Recordings/Call/"))
+        assertTrue(options.includesDirectory("Music/"))
+        val existing = track("existing", 60_000).copy(relativePath = "Recordings/Call/")
+        assertTrue(filterLocalScanBatch(listOf(existing), setOf(existing.id), options).isEmpty())
+    }
+
     private fun track(id: String, duration: Long) = LibraryTrackEntity(
         id = id, contentUri = "content://test/$id", title = id, artist = "Artist", album = null,
         albumArtist = null, artworkUri = null, durationMs = duration, trackNumber = null,

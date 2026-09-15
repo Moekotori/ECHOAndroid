@@ -179,7 +179,7 @@
     <string name="echo_link_cast_queue_count">将投送 %1$d 首</string>
     <string name="echo_link_cast_dsd_warning">DSD 按原文件发送，电脑端可能还不能播放。</string>
     <string name="echo_link_cast_tvs">电视和音箱</string>
-    <string name="echo_link_cast_tvs_note">DLNA 电视和数播按原文件直传。Chromecast 仍只显示、不投送。</string>
+    <string name="echo_link_cast_tvs_note">DLNA 电视和数播按原文件直传。Chromecast 可播放本机的 MP3、AAC 或 WAV。</string>
     <string name="echo_link_cast_tvs_searching">正在搜索电视和音箱…</string>
     <string name="echo_link_cast_tvs_empty">这台 Wi-Fi 上还没扫到电视或音箱。</string>
     <string name="echo_link_cast_tv_unavailable">暂不支持</string>

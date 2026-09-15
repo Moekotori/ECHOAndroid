@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_listening_journal">Hörjournal</string>
+    <string name="home_listening_play_count">Wiedergaben · %1$s</string>
+    <string name="home_listening_empty_title">Musik wartet</string>
+    <string name="home_listening_empty_detail">Wähle etwas, das du liebst, und starte das Hören.</string>
+    <string name="home_listening_open_library">Bibliothek durchsuchen</string>
+    <plurals name="home_listening_days">
+        <item quantity="one">Musik hat Sie an %1$d Tag in den letzten 12 Wochen begleitet.</item>
+        <item quantity="other">Musik hat Sie an %1$d Tagen in den letzten 12 Wochen begleitet.</item>
+    </plurals>
+</resources>

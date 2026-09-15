@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_daily_album">Ein Album für heute</string>
+    <string name="home_daily_album_detail">Ein wenig Inspiration aus Ihrer Bibliothek.</string>
+    <string name="home_daily_album_empty">Fügen Sie Alben hinzu, um den nächsten Hörtipp zu finden.</string>
+    <string name="home_daily_album_play">Album wiedergeben</string>
+    <string name="home_daily_album_another">Ein anderes versuchen</string>
+    <string name="home_rediscover">Wiederentdecken</string>
+    <string name="home_rediscover_detail">Alben, die Sie zuletzt vor mindestens 30 Tagen gehört haben.</string>
+    <string name="home_rediscover_empty">Noch nichts hier. Ihre Hörhistorie holt alte Favoriten zurück.</string>
+    <string name="home_resume">Dort weitermachen, wo Sie aufgehört haben</string>
+    <string name="home_resume_detail">Zurück zu Ihrem Album, genau dort, wo Sie pausiert haben.</string>
+    <string name="home_resume_empty">Wählen Sie einen Song, um die nächste Hörsession zu starten.</string>
+    <string name="home_resume_open_player">Player öffnen</string>
+    <string name="home_resume_play">Fortsetzen</string>
+    <string name="home_resume_position">%1$s / %2$s</string>
+</resources>

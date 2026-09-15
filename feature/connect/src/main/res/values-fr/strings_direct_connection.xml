@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="echo_link_direct_address_hint">Sélectionnez un ordinateur à proximité ou saisissez son adresse pour vous connecter. Aucun jeton n\'est nécessaire. Les PC plus anciens peuvent encore utiliser un lien d\'appairage complet.</string>
+</resources>

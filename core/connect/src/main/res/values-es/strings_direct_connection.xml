@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connect_direct_unavailable">Este PC rechazó la conexión directa. Activa Echo Link y actualiza ECHOSteam, o pega un enlace de emparejamiento completo de una versión anterior.</string>
+</resources>

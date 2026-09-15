@@ -179,7 +179,7 @@
     <string name="echo_link_cast_queue_count">Will send %1$d tracks</string>
     <string name="echo_link_cast_dsd_warning">DSD is sent as the original file. The computer may not play it yet.</string>
     <string name="echo_link_cast_tvs">TVs and speakers</string>
-    <string name="echo_link_cast_tvs_note">DLNA TVs and streamers play the original file from this phone. Chromecast is listed only.</string>
+    <string name="echo_link_cast_tvs_note">DLNA TVs and streamers play the original file. Chromecast plays MP3, AAC, or WAV from this phone.</string>
     <string name="echo_link_cast_tvs_searching">Looking for TVs and speakers…</string>
     <string name="echo_link_cast_tvs_empty">No TVs or speakers found on this Wi-Fi yet.</string>
     <string name="echo_link_cast_tv_unavailable">Not yet</string>

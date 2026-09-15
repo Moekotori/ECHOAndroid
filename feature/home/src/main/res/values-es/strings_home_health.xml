@@ -1,0 +1,5 @@
+<resources>
+    <string name="home_missing_file_title">Archivo de audio no disponible</string>
+    <string name="home_missing_file_detail">Abre tu biblioteca para volver a escanear o elige otra canción.</string>
+    <string name="home_search_no_results">No se encontró música coincidente</string>
+</resources>

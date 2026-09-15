@@ -94,4 +94,19 @@ class EchoSmartTransitionMixerTest {
         mixer.cancel()
         assertFalse(mixer.mixing)
     }
+
+    @Test
+    fun mixedIncomingFramesCountOnlyAfterHold() {
+        val mixer = EchoSmartTransitionMixer()
+        mixer.setEnabled(true)
+        mixer.configure(AudioProcessor.AudioFormat(48_000, 1, C.ENCODING_PCM_FLOAT))
+        mixer.flush(AudioProcessor.StreamMetadata.DEFAULT)
+        mixer.arm(floatArrayOf(0.9f, 0.8f), frames = 2, channels = 1, holdFrames = 1)
+        assertEquals(0, mixer.mixedIncomingFrames)
+        val input = ByteBuffer.allocateDirect(12).order(ByteOrder.nativeOrder())
+        input.putFloat(0.2f).putFloat(0.3f).putFloat(0.4f).flip()
+        mixer.queueInput(input)
+        assertEquals(2, mixer.mixedIncomingFrames)
+        assertFalse(mixer.mixing)
+    }
 }

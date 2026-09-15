@@ -1,0 +1,5 @@
+<resources>
+    <string name="dsp_output_ceiling">Techo de salida</string>
+    <string name="dsp_mix_amount">Cantidad de mezcla</string>
+    <string name="dsp_scan_short">Analizar y guardar el volumen de la canción</string>
+</resources>

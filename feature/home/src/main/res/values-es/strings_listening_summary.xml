@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_listening_journal">Diario de escucha</string>
+    <string name="home_listening_play_count">Reproducciones · %1$s</string>
+    <string name="home_listening_empty_title">La música te espera</string>
+    <string name="home_listening_empty_detail">Elige algo que te guste y empieza a escuchar.</string>
+    <string name="home_listening_open_library">Explorar biblioteca</string>
+    <plurals name="home_listening_days">
+        <item quantity="one">La música te acompañó %1$d día en las últimas 12 semanas.</item>
+        <item quantity="other">La música te acompañó %1$d días en las últimas 12 semanas.</item>
+    </plurals>
+</resources>

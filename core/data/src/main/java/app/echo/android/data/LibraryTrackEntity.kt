@@ -56,4 +56,6 @@ data class LibraryTrackEntity(
     val artistKey: String = "",
     val genre: String? = null,
     val genreKey: String = "",
+    val clipStartMs: Long = 0L,
+    val clipEndMs: Long = 0L,
 )

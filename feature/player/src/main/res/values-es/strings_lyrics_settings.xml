@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_setting_reset">Restablecer</string>
+    <string name="lyrics_setting_typography">Tipo y diseño</string>
+    <string name="lyrics_setting_replace_font">Reemplazar fuente importada</string>
+    <string name="lyrics_setting_color_background">Color y fondo</string>
+    <string name="lyrics_setting_motion">Movimiento y resaltado</string>
+    <string name="lyrics_setting_highlight_strength">Intensidad del resaltado</string>
+    <string name="lyrics_setting_content">Contenido y herramientas</string>
+    <string name="lyrics_setting_content_summary">Traducción, romanización y fuentes de letra</string>
+    <string name="lyrics_setting_no_content">Esta pista no tiene contenido coincidente. Tu preferencia se sigue aplicando a otras pistas.</string>
+    <string name="lyrics_setting_word_highlight">Resaltado de palabras</string>
+</resources>

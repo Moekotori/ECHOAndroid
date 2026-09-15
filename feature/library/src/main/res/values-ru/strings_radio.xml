@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="radio_title">Радио</string>
+    <string name="radio_hint">Ищите в открытом каталоге или добавьте URL потока сами.</string>
+    <string name="radio_add">Добавить станцию</string>
+    <string name="radio_edit">Изменить станцию</string>
+    <string name="radio_delete">Удалить станцию</string>
+    <string name="radio_play">Играть станцию</string>
+    <string name="radio_empty">Сохранённых станций пока нет. Ищите выше или добавьте свою.</string>
+    <string name="radio_name">Название станции</string>
+    <string name="radio_url">URL потока</string>
+    <string name="radio_url_hint">Аудиопоток HTTP/HTTPS или HLS (.m3u8), не веб-страница.</string>
+    <string name="radio_save">Сохранить</string>
+    <string name="radio_cancel">Отмена</string>
+    <string name="radio_retry">Повторить</string>
+    <string name="radio_load_error">Не удалось загрузить сохранённые станции. Повторите попытку.</string>
+    <string name="radio_save_error">Не удалось сохранить. Проверьте дубликат URL, лимит в 500 станций или ошибку хранилища.</string>
+    <string name="radio_write_error">Не удалось сохранить изменение. Повторите попытку.</string>
+    <string name="radio_delete_prompt">Удалить «%1$s» из станций?</string>
+    <string name="radio_search">Поиск станций</string>
+    <string name="radio_directory_title">Каталог</string>
+    <string name="radio_directory_empty">В каталоге станции не найдены.</string>
+    <string name="radio_directory_error">Не удалось связаться с каталогом радио.</string>
+    <string name="radio_directory_source">Список станций с radio-browser.info</string>
+    <string name="radio_directory_save">Сохранить станцию</string>
+    <string name="radio_directory_bitrate">%1$d кбит/с</string>
+</resources>

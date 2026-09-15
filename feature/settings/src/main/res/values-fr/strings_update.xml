@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_check">Rechercher des mises à jour</string>
+    <string name="update_source">Vérifie automatiquement GitHub Releases toutes les 12 heures à l\'ouverture</string>
+    <string name="update_title">Mises à jour ECHO</string>
+    <string name="update_error">Impossible de terminer la mise à jour. Vérifiez votre connexion, l\'autorisation d\'installation et la compatibilité de signature de l\'APK, puis réessayez.</string>
+    <string name="update_downloading">Téléchargement de la mise à jour…</string>
+    <string name="update_checking">Vérification de GitHub…</string>
+    <string name="update_ready">Téléchargement vérifié. Poursuivez avec l\'installateur système.</string>
+    <string name="update_available">Une nouvelle version est disponible</string>
+    <string name="update_current">Aucune version plus récente n\'est disponible</string>
+    <string name="update_install">Installer</string>
+    <string name="update_download">Télécharger</string>
+    <string name="update_later">Plus tard</string>
+    <string name="update_version_current">Version actuelle : %1$s</string>
+    <string name="update_package_size">Taille du téléchargement : %1$s</string>
+    <string name="update_error_check">Impossible de vérifier GitHub. Vérifiez votre connexion et réessayez.</string>
+    <string name="update_error_download">Téléchargement interrompu. Vérifiez votre connexion et l\'espace de stockage, puis réessayez.</string>
+    <string name="update_error_verification">Cet APK a échoué à la vérification ou a une signature incompatible. Conservez l\'application actuelle et contactez le responsable de la version.</string>
+    <string name="update_error_permission">Autorisez ECHO à installer des applications dans les réglages système, puis appuyez à nouveau sur Installer.</string>
+    <string name="update_error_install">Impossible d\'ouvrir l\'installateur. Appuyez sur Installer pour réessayer.</string>
+    <string name="update_verifying">Vérification du paquet…</string>
+    <string name="update_install_hint">Le téléchargement nécessite votre accord. Android vous demandera de confirmer l\'installation.</string>
+    <string name="update_percent">%1$d%%</string>
+    <string name="update_cancel_download">Annuler le téléchargement</string>
+    <string name="update_notes">Nouveautés</string>
+    <string name="update_retry">Réessayer</string>
+    <string name="update_done">Terminé</string>
+    <string name="update_hide_download">Masquer le téléchargement</string>
+</resources>

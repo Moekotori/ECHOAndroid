@@ -16,7 +16,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.material3.Switch
+import app.echo.android.design.EchoSwitch
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -374,7 +374,7 @@ internal fun SettingsSwitchRow(
         modifier = Modifier.toggleable(value = checked, enabled = enabled, role = Role.Switch,
             onValueChange = onCheckedChange).alpha(if (enabled) 1f else 0.5f),
     ) {
-        Switch(checked = checked, onCheckedChange = null, enabled = enabled)
+        EchoSwitch(checked = checked, onCheckedChange = null, enabled = enabled)
     }
 }
 

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="album_online_title">Über dieses Album</string>
+    <string name="album_online_refresh">Aktualisieren</string>
+    <string name="album_online_loading">MusicBrainz und Wikipedia werden abgefragt…</string>
+    <string name="album_online_error">Online-Informationen konnten nicht geladen werden. Tippen Sie auf Aktualisieren, um es erneut zu versuchen.</string>
+    <string name="album_online_no_match">Kein zuverlässiger Albumtreffer gefunden. Prüfen Sie Albumtitel und Interpreten-Tags.</string>
+    <string name="album_online_stale">Gespeicherte Informationen werden angezeigt; Aktualisieren ist derzeit nicht verfügbar.</string>
+    <string name="album_online_partial">Release-Informationen geladen; Wikipedia ist vorübergehend nicht verfügbar.</string>
+    <string name="album_online_less">Weniger anzeigen</string>
+    <string name="album_online_more">Mehr anzeigen</string>
+    <string name="album_online_attribution">Auszug von Wikipedia-Mitwirkenden, von ECHO gekürzt.</string>
+    <string name="album_online_no_wiki">Keine verknüpfte Wikipedia-Einleitung verfügbar.</string>
+    <string name="album_online_release">Zugeordnetes Release</string>
+    <string name="album_online_release_note">Referenzausgabe von MusicBrainz; Ihre Dateien können zu einer anderen Ausgabe gehören.</string>
+    <string name="album_online_date">Erscheinungsdatum</string>
+    <string name="album_online_country">Region</string>
+    <string name="album_online_label">Label</string>
+    <string name="album_online_catalog">Katalognummer</string>
+    <string name="album_online_credits">Mitwirkende</string>
+    <string name="album_online_composer">Komponist</string>
+    <string name="album_online_lyricist">Liedtext / Schreiben</string>
+    <string name="album_online_producer">Produzent</string>
+    <string name="album_online_arranger">Arrangement</string>
+    <string name="album_online_vocal">Gesang</string>
+    <string name="album_online_performer">Aufführung</string>
+    <string name="album_online_mb_source">MusicBrainz · Quelle und vollständige Credits</string>
+    <string name="album_online_link_error">Dieser Link konnte nicht geöffnet werden.</string>
+    <string name="album_page_tracks">Titel</string>
+    <string name="album_page_information">Albuminfo</string>
+</resources>

@@ -30,4 +30,11 @@ class LocalAudioFileTypesTest {
         assertTrue(LocalAudioFileTypes.isSupported("song.mp4", null))
         assertTrue(LocalAudioFileTypes.isSupported("song.m4a", "audio/mp4"))
     }
+
+    @Test
+    fun cueSheetsAreNotAudioFiles() {
+        assertTrue(LocalAudioFileTypes.isCueSheet("album.cue", null))
+        assertFalse(LocalAudioFileTypes.isSupported("album.cue", "text/plain"))
+        assertTrue(LocalAudioFileTypes.isSupported("album.flac", null))
+    }
 }

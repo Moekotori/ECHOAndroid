@@ -393,6 +393,8 @@
     <string name="eq_user_preset_delete">削除</string>
     <string name="eq_user_preset_full">先に1件削除してください。最大 24 件です。</string>
     <string name="eq_user_preset_empty">今のカーブを保存すると、あとから呼び出せます。</string>
+    <string name="eq_bind_output">%1$s に使う</string>
+    <string name="eq_bound_output">%1$s に適用中</string>
     <string name="eq_user_preset_parametric">パラメトリック EQ</string>
     <string name="eq_user_preset_bands">%1$d バンド</string>
     <string name="eq_share">共有</string>
@@ -402,10 +404,13 @@
     <string name="eq_share_paste">貼り付け</string>
     <string name="eq_share_import">コードを読み込む</string>
     <string name="eq_share_import_title">EQ を読み込む</string>
-    <string name="eq_share_import_hint">ECHOEQ 共有コードを貼り付け</string>
-    <string name="eq_share_import_invalid">有効な EQ 共有コードではありません</string>
+    <string name="eq_share_import_hint">ECHOEQ コード、または Equalizer APO / AutoEQ のテキストを貼り付け</string>
+    <string name="eq_share_import_invalid">有効な EQ 共有コードまたは Equalizer APO カーブではありません</string>
     <string name="eq_share_current">現在のカーブを共有</string>
-    <string name="eq_share_detail">コピーするか送信してください。Echo はこのコードからカーブを読み込めます。</string>
+    <string name="eq_share_detail">Echo コード、Equalizer APO テキストをコピーするか送信できます。いずれも Echo で読み込めます。</string>
+    <string name="eq_share_copy_apo">Equalizer APO をコピー</string>
+    <string name="eq_share_apo_copied">Equalizer APO テキストをコピーしました</string>
+    <string name="eq_share_preview">%1$s · %2$d バンド · プリアンプ %3$s</string>
     <string name="opra_favorite">この補正を保存</string>
     <string name="opra_unfavorite">保存を解除</string>
     <string name="opra_favorites">保存した補正</string>

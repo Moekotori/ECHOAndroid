@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_clear_index_title">Borrar índice de la biblioteca</string>
+    <string name="settings_clear_index_detail">Quita el índice de música local sin borrar los archivos de audio.</string>
+    <string name="settings_clear_index_busy">Borrando…</string>
+    <string name="settings_clear_index_confirm">¿Borrar los índices locales de canciones y búsqueda? Se conservarán los archivos de música, favoritos, listas e historial de escucha. El escaneo automático se pausará hasta que escanees de forma manual. Las bibliotecas remotas no se ven afectadas.</string>
+    <string name="settings_clear_index_action">Borrar</string>
+    <string name="settings_clear_index_success">Se borró el índice de la biblioteca local. Escanéalo de forma manual para reconstruirlo.</string>
+    <string name="settings_clear_index_failure">No se pudo borrar el índice de la biblioteca. Inténtalo de nuevo.</string>
+</resources>

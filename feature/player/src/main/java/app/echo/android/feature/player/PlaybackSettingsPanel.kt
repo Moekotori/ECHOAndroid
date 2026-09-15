@@ -68,6 +68,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoExpand
+import app.echo.android.design.EchoSwitch
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.echoAccentColor
@@ -185,7 +186,6 @@ internal fun PlaybackSettingsDrawer(
     lyricsOffsetMs: Long,
     onAdjustLyricsOffset: (Long) -> Unit,
     onResetLyricsOffset: () -> Unit,
-    soundSettings: @Composable (() -> Unit) -> Unit,
     onOpenQueue: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
@@ -234,7 +234,6 @@ internal fun PlaybackSettingsDrawer(
                     lyricsOffsetMs = lyricsOffsetMs,
                     onAdjustLyricsOffset = onAdjustLyricsOffset,
                     onResetLyricsOffset = onResetLyricsOffset,
-                    soundSettings = soundSettings,
                     onOpenQueue = {
                         onDismiss()
                         onOpenQueue()
@@ -264,7 +263,6 @@ private fun PlaybackSettingsSheet(
     lyricsOffsetMs: Long,
     onAdjustLyricsOffset: (Long) -> Unit,
     onResetLyricsOffset: () -> Unit,
-    soundSettings: @Composable (() -> Unit) -> Unit,
     onOpenQueue: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -575,7 +573,7 @@ private fun PlaybackSettingsSheet(
                         stringResource(L10nR.string.feature_player_disabled_3bd0d0)
                     },
                     trailing = {
-                        androidx.compose.material3.Switch(
+                        EchoSwitch(
                             checked = status.replayGainEnabled,
                             onCheckedChange = { enabled ->
                                 haptics.confirm()
@@ -654,8 +652,6 @@ private fun PlaybackSettingsSheet(
                         onSetSkipSilenceEnabled(enabled)
                     },
                 )
-
-                soundSettings(onDismiss)
 
                 PlaybackSettingsSection(
                     icon = Icons.Rounded.Lyrics,

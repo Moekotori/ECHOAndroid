@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="scan_audio_formats">Formats audio</string>
+    <string name="scan_all_formats">Tous les formats</string>
+    <string name="scan_advanced_options">Options avancées</string>
+    <string name="scan_excluded_folders">Dossiers exclus</string>
+    <string name="scan_excluded_folders_hint">Un chemin relatif au stockage par ligne, p. ex. Recordings/Call. Les sous-dossiers sont inclus. Les règles sont enregistrées lors de l\'analyse et restent actives lorsque les autres filtres sont désactivés. Les morceaux correspondants sont retirés de la bibliothèque à la prochaine analyse. Supprimez une ligne pour autoriser à nouveau l\'analyse.</string>
+</resources>

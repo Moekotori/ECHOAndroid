@@ -310,7 +310,7 @@ private class EchoSchemeRoutingDataSource(
     override fun open(dataSpec: DataSpec): Long {
         val uri = dataSpec.uri.toString()
         activeDataSource = when {
-            !dataSpec.uri.isRemotePlaybackUri() -> localDataSource
+            !EchoRemotePlaybackCachePolicy.isCacheablePlaybackUri(uri) -> localDataSource
             EchoRemotePlaybackCachePolicy.shouldBypassCache(
                 uri = uri,
                 usbBitPerfectEnabled = EchoPlaybackProcessRuntime.usbBitPerfectEnabled,
@@ -367,10 +367,20 @@ private object EchoRemotePlaybackCache {
 private object EchoRemotePlaybackCacheKeyFactory : CacheKeyFactory {
     override fun buildCacheKey(dataSpec: DataSpec): String =
         buildString {
-            append("echo-remote-v2:")
+            append(EchoRemotePlaybackCachePolicy.CacheKeyPrefix)
             append(EchoRemotePlaybackAuthRegistry.cacheIdentity(dataSpec.uri, dataSpec.httpRequestHeaders))
             append(':')
-            append(dataSpec.key ?: dataSpec.uri.toRemotePlaybackCacheKey())
+            val resource = EchoRemotePlaybackCachePolicy.resourceKey(
+                uri = dataSpec.uri.toString(),
+                explicitKey = dataSpec.key,
+            )
+            append(
+                if (resource.startsWith("echo-link-track:")) {
+                    resource
+                } else {
+                    dataSpec.key ?: dataSpec.uri.toRemotePlaybackCacheKey()
+                },
+            )
         }
 }
 
@@ -603,9 +613,6 @@ private fun Uri.withoutUserInfo(): Uri {
         .build()
 }
 
-private fun Uri.isRemotePlaybackUri(): Boolean =
-    scheme.equals("http", ignoreCase = true) || scheme.equals("https", ignoreCase = true)
-
 private fun Uri.toRemotePlaybackCacheKey(): String {
     val cleanUri = withoutUserInfo()
     if (!cleanUri.isHierarchical || cleanUri.encodedQuery.isNullOrBlank()) {
@@ -635,9 +642,27 @@ private fun sha256(value: String): String =
         }
 
 internal object EchoRemotePlaybackCachePolicy {
+    const val CacheKeyPrefix = "echo-remote-v3:"
+
     fun shouldBypassCache(uri: String, usbBitPerfectEnabled: Boolean): Boolean {
         if (!usbBitPerfectEnabled) return false
         return EchoLinkPlaybackUri.isOneShotStreamUri(uri)
+    }
+
+    fun isCacheablePlaybackUri(uri: String): Boolean {
+        val trimmed = uri.trim()
+        if (trimmed.startsWith("http://", ignoreCase = true) || trimmed.startsWith("https://", ignoreCase = true)) {
+            return true
+        }
+        return EchoLinkPlaybackUri.trackIdFromPersistUri(trimmed) != null
+    }
+
+    fun resourceKey(uri: String, explicitKey: String?): String {
+        val trackId = EchoLinkPlaybackUri.trackIdFromPersistUri(uri)
+            ?: explicitKey?.let(EchoLinkPlaybackUri::trackIdFromMediaId)
+            ?: EchoLinkPlaybackUri.trackIdFromMediaId(uri)
+        if (trackId != null) return "echo-link-track:$trackId"
+        return explicitKey?.takeIf { it.isNotBlank() } ?: uri
     }
 }
 

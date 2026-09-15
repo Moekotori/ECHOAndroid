@@ -60,6 +60,15 @@ class EchoSmartTransitionPolicyTest {
         assertEquals(
             EchoSmartTransitionPolicy.BypassReason.SampleRateMismatch,
             EchoSmartTransitionPolicy.bypassReason(
+                candidate(options = enabled(), outputChannelCount = 6),
+            ),
+        )
+    }
+
+    @Test
+    fun mixedSampleRatesStayEligibleForResampledMix() {
+        assertNull(
+            EchoSmartTransitionPolicy.bypassReason(
                 candidate(options = enabled(), currentSampleRateHz = 44_100, nextSampleRateHz = 48_000),
             ),
         )
@@ -163,6 +172,7 @@ class EchoSmartTransitionPolicyTest {
         nextTrackNumber: Int? = 1,
         currentSampleRateHz: Int? = 48_000,
         nextSampleRateHz: Int? = 48_000,
+        outputChannelCount: Int = 2,
     ) = EchoSmartTransitionPolicy.Candidate(
         options = options,
         performanceMode = mode,
@@ -187,7 +197,7 @@ class EchoSmartTransitionPolicyTest {
         currentSampleRateHz = currentSampleRateHz,
         nextSampleRateHz = nextSampleRateHz,
         outputSampleRateHz = currentSampleRateHz,
-        outputChannelCount = 2,
+        outputChannelCount = outputChannelCount,
         hasNext = true,
         isPlaying = true,
     )

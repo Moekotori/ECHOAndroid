@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playback_keep_pitch">Tonhöhe beibehalten</string>
+    <string name="playback_reset_speed">Auf 1× zurücksetzen</string>
+    <string name="playback_lyrics_earlier">← Früher</string>
+    <string name="playback_lyrics_later">Später →</string>
+    <string name="playback_expand">Erweitern</string>
+    <string name="playback_collapse">Einklappen</string>
+    <string name="playback_cancel_timer">Abbrechen</string>
+</resources>

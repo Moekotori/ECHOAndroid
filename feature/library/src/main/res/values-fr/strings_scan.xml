@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="scan_scope_hint">Choisissez les filtres, puis sélectionnez où analyser.</string>
+    <string name="scan_min_duration">Durée minimale</string>
+    <string name="scan_any">Tous</string>
+    <string name="scan_30_seconds">30 s</string>
+    <string name="scan_60_seconds">60 s</string>
+    <string name="scan_min_size">Taille minimale de fichier</string>
+    <string name="scan_100_kb">100 KB</string>
+    <string name="scan_1_mb">1 MB</string>
+    <string name="scan_skip_non_music">Ignorer les dossiers d\'enregistrements, sonneries et notifications</string>
+    <string name="scan_skip_hidden">Ignorer les dossiers cachés</string>
+    <string name="scan_filter_hint">Les fichiers de durée ou de taille inconnue sont conservés. La durée, la taille et le format ne retirent pas les morceaux importés. Les dossiers cachés, non musicaux et exclus sont retirés de la bibliothèque à la prochaine analyse.</string>
+    <string name="scan_choose_folder">Choisir un dossier et analyser</string>
+    <string name="scan_folder_hint">Recommandé · Inclut les sous-dossiers ; aucune autorisation de tout l\'appareil n\'est nécessaire</string>
+    <string name="scan_device">Analyser l\'appareil</string>
+    <string name="scan_device_hint">Analyse la bibliothèque musicale du système avec ces filtres</string>
+    <string name="scan_skipped_count">%1$d fichiers ignorés</string>
+    <string name="scan_simple_hint">Choisissez le dossier contenant votre musique.</string>
+    <string name="scan_enable_filters">Filtrer l\'audio non musical</string>
+    <string name="scan_filters_hint">Filtrer par durée, taille et dossier</string>
+    <string name="scan_edit_filters">Ajuster les filtres</string>
+    <string name="scan_hide_details">Masquer les détails</string>
+    <string name="scan_device_instead">Ou analyser cet appareil</string>
+</resources>

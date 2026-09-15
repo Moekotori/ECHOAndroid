@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playback_keep_pitch">Сохранять высоту</string>
+    <string name="playback_reset_speed">Сбросить до 1×</string>
+    <string name="playback_lyrics_earlier">← Раньше</string>
+    <string name="playback_lyrics_later">Позже →</string>
+    <string name="playback_expand">Развернуть</string>
+    <string name="playback_collapse">Свернуть</string>
+    <string name="playback_cancel_timer">Отмена</string>
+</resources>

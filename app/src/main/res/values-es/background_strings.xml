@@ -1,0 +1,4 @@
+<resources>
+    <string name="background_permission_error">No se pudo conservar el acceso a este archivo. Elige otro archivo.</string>
+    <string name="background_load_error">No se pudo cargar este fondo. Se restauró el fondo predeterminado.</string>
+</resources>

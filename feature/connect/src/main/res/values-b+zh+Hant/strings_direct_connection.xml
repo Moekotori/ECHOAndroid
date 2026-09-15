@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="echo_link_direct_address_hint">選擇附近電腦或輸入地址即可連線，不必填寫 token。舊版電腦仍可貼上完整配對連結。</string>
+</resources>

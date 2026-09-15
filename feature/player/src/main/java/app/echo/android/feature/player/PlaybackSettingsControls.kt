@@ -46,6 +46,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoExpand
+import app.echo.android.design.EchoSwitch
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.echoAccentColor
 import app.echo.android.design.echoClickable
@@ -286,7 +287,7 @@ internal fun PlaybackToggleRow(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        androidx.compose.material3.Switch(checked = checked, onCheckedChange = null)
+        EchoSwitch(checked = checked, onCheckedChange = null)
 
     }
 }

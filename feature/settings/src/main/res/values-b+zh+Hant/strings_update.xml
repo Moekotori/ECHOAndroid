@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_check">檢查更新</string>
+    <string name="update_source">開啟應用程式時自動檢查 GitHub Releases，間隔 12 小時</string>
+    <string name="update_title">ECHO 更新</string>
+    <string name="update_error">更新未完成，請檢查網路、安裝權限和 APK 簽名相容性後重試。</string>
+    <string name="update_downloading">正在下載更新…</string>
+    <string name="update_checking">正在檢查 GitHub…</string>
+    <string name="update_ready">下載驗證完成，請繼續系統安裝。</string>
+    <string name="update_available">有新版本</string>
+    <string name="update_current">目前沒有更新版本</string>
+    <string name="update_install">安裝</string>
+    <string name="update_download">下載</string>
+    <string name="update_later">稍後</string>
+    <string name="update_version_current">目前版本：%1$s</string>
+    <string name="update_package_size">下載大小：%1$s</string>
+    <string name="update_error_check">無法檢查 GitHub，請檢查網路後重試。</string>
+    <string name="update_error_download">下載中斷，請檢查網路和可用儲存空間後重試。</string>
+    <string name="update_error_verification">安裝檔驗證未通過或簽名不相容，請保留目前應用程式並聯絡版本發行者。</string>
+    <string name="update_error_permission">請在系統設定中允許 ECHO 安裝應用程式，然後再次點一下安裝。</string>
+    <string name="update_error_install">無法開啟安裝器，請點一下安裝重試。</string>
+    <string name="update_verifying">正在驗證安裝檔…</string>
+    <string name="update_install_hint">確認後才會下載，安裝時還需要你在系統介面確認。</string>
+    <string name="update_percent">%1$d%%</string>
+    <string name="update_cancel_download">取消下載</string>
+    <string name="update_notes">更新內容</string>
+    <string name="update_retry">重試</string>
+    <string name="update_done">完成</string>
+    <string name="update_hide_download">收起下載</string>
+</resources>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_add_music">Ajouter de la musique</string>
+    <string name="library_access_title">Votre musique commence ici</string>
+    <string name="library_access_detail">Autorisez l\'accès audio pour parcourir la musique sur ce téléphone.</string>
+    <string name="library_retry">Réessayer</string>
+    <string name="library_no_matches">Aucune musique correspondante</string>
+    <string name="library_search_hint">Essayez un autre titre, artiste ou album.</string>
+    <string name="library_start_collection">Constituez votre collection</string>
+    <string name="library_import_hint">Analysez ce téléphone ou ajoutez un dossier musical via Ajouter de la musique.</string>
+    <string name="library_cloud_empty_title">Importez votre bibliothèque cloud</string>
+    <string name="library_cloud_empty_detail">Configurez WebDAV, Subsonic ou Jellyfin dans Liaison, puis synchronisez. Les albums apparaîtront ici.</string>
+    <string name="library_cloud_empty_configured_title">Aucun album cloud pour le moment</string>
+    <string name="library_cloud_empty_configured_detail">Synchronisez à nouveau dans Liaison, ou vérifiez que le dossier cloud contient de la musique.</string>
+    <string name="library_open_connect">Ouvrir Liaison</string>
+    <string name="library_clear_search">Effacer la recherche</string>
+    <string name="library_track_actions">Actions du titre</string>
+    <string name="library_playlist_actions">Actions de la playlist</string>
+    <string name="library_track_count">%1$d titres</string>
+</resources>

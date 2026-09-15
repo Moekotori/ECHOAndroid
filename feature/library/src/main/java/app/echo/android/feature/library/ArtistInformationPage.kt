@@ -43,7 +43,7 @@ internal fun ArtistInformationPage(query: ArtistOnlineQuery, active: Boolean) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text(info.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
                         Text(info.description ?: stringResource(R.string.artist_no_biography),
-                            style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Normal, color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = if (expanded) Int.MAX_VALUE else 9, overflow = TextOverflow.Ellipsis)
                         if (info.description != null) {
                             TextButton(onClick = { expanded = !expanded }, contentPadding = PaddingValues(0.dp)) {
@@ -78,7 +78,7 @@ internal fun ArtistInformationPage(query: ArtistOnlineQuery, active: Boolean) {
 private fun ArtistFact(label: String, value: String) {
     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.bodyLarge)
+        Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Normal)
     }
 }
 

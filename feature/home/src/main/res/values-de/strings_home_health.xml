@@ -1,0 +1,5 @@
+<resources>
+    <string name="home_missing_file_title">Audiodatei nicht verfügbar</string>
+    <string name="home_missing_file_detail">Öffnen Sie Ihre Bibliothek, um erneut zu scannen oder einen anderen Titel zu wählen.</string>
+    <string name="home_search_no_results">Keine passende Musik gefunden</string>
+</resources>

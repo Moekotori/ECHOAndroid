@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_manager_title">Paroles · %1$s</string>
+    <string name="lyrics_manager_hint">Choisissez un résultat pour l\'aperçu. Les paroles sélectionnées sont enregistrées hors ligne.</string>
+    <string name="lyrics_manager_search">Rechercher / actualiser en ligne</string>
+    <string name="lyrics_manager_import">Importer un fichier de paroles</string>
+    <string name="lyrics_manager_clear">Effacer la sélection et utiliser les paroles automatiques</string>
+    <string name="lyrics_manager_align_hint">Appui long sur une ligne de paroles pour l\'aligner sur la position actuelle.</string>
+    <string name="lyrics_manager_empty">Aucun candidat disponible. Vérifiez la connexion ou importez un fichier.</string>
+    <string name="lyrics_manager_word_timed">Synchronisé au mot</string>
+    <string name="lyrics_manager_saved">Enregistré et sélectionné</string>
+    <string name="lyrics_manager_use">Utiliser et enregistrer hors ligne</string>
+    <string name="lyrics_manager_done">Terminé</string>
+    <string name="lyrics_backing_vocals">Chœurs</string>
+    <string name="lyrics_vocals_in">Voix dans %1$d s</string>
+    <string name="lyrics_back_to_current">Retour à la ligne actuelle</string>
+    <string name="lyrics_line_starts_now">Cette ligne commence maintenant</string>
+</resources>

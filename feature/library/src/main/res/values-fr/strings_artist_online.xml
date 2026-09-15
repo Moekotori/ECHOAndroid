@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="artist_page_artist">Artiste</string>
+    <string name="artist_page_music">Musique</string>
+    <string name="artist_page_information">À propos</string>
+    <string name="artist_page_concerts">Live</string>
+    <string name="artist_about">À propos de l\'artiste</string>
+    <string name="artist_online_loading">Recherche d\'informations sur l\'artiste…</string>
+    <string name="artist_online_error">Impossible de se connecter. Veuillez réessayer.</string>
+    <string name="artist_info_no_match">Aucune correspondance d\'artiste univoque.</string>
+    <string name="artist_no_biography">Aucune biographie Wikipedia n\'est encore disponible.</string>
+    <string name="artist_online_stale">Affichage des informations enregistrées. Actualisez pour réessayer.</string>
+    <string name="artist_online_partial">Certaines informations n\'ont pas pu être chargées.</string>
+    <string name="artist_fact_area">Origine</string>
+    <string name="artist_fact_type">Type</string>
+    <string name="artist_fact_begin">Né / formé</string>
+    <string name="artist_fact_end">Fin</string>
+    <string name="artist_fact_genres">Genres</string>
+    <string name="artist_fact_members">Membres</string>
+    <string name="artist_kind_person">Artiste solo</string>
+    <string name="artist_kind_group">Groupe</string>
+    <string name="artist_upcoming_concerts">Événements live à venir</string>
+    <string name="artist_no_concerts">Aucun événement à venir trouvé.</string>
+    <string name="artist_concerts_incomplete">Aucun événement renvoyé pour le moment ; certaines sources sont indisponibles.</string>
+    <string name="artist_concerts_partial">Sources indisponibles : %1$s</string>
+    <string name="artist_concert_local_time">%1$s · heure locale du lieu</string>
+    <string name="artist_concert_tickets">%1$s · Billets</string>
+    <string name="artist_concert_details">%1$s · Détails de l\'événement</string>
+    <string name="artist_sort_tracks">Trier les titres</string>
+    <string name="artist_play_on_pc">Lire sur le PC</string>
+</resources>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="radio_title">電台</string>
+    <string name="radio_hint">可搜尋公共電台目錄，或手動新增播放地址。</string>
+    <string name="radio_add">新增電台</string>
+    <string name="radio_edit">編輯電台</string>
+    <string name="radio_delete">刪除電台</string>
+    <string name="radio_play">播放電台</string>
+    <string name="radio_empty">還沒有儲存的電台。可搜尋目錄或手動新增。</string>
+    <string name="radio_name">電台名稱</string>
+    <string name="radio_url">播放地址</string>
+    <string name="radio_url_hint">輸入 HTTP/HTTPS 音訊直鏈或 HLS（.m3u8），不是電台網頁。</string>
+    <string name="radio_save">儲存</string>
+    <string name="radio_cancel">取消</string>
+    <string name="radio_retry">重試</string>
+    <string name="radio_load_error">無法讀取已儲存的電台，請重試。</string>
+    <string name="radio_save_error">儲存失敗，請檢查地址是否重複、電台是否達到 500 個上限或儲存是否異常。</string>
+    <string name="radio_write_error">無法儲存更改，請重試。</string>
+    <string name="radio_delete_prompt">從電台清單刪除「%1$s」？</string>
+    <string name="radio_search">搜尋電台</string>
+    <string name="radio_directory_title">電台目錄</string>
+    <string name="radio_directory_empty">目錄裡找不到相符的電台。</string>
+    <string name="radio_directory_error">無法連線電台目錄。</string>
+    <string name="radio_directory_source">目錄來自 radio-browser.info</string>
+    <string name="radio_directory_save">儲存電台</string>
+    <string name="radio_directory_bitrate">%1$d kbps</string>
+</resources>

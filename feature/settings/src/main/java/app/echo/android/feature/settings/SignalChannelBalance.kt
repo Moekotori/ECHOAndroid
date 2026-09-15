@@ -23,7 +23,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
+import app.echo.android.design.EchoSwitch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -99,7 +99,7 @@ internal fun SignalChannelBalance(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Switch(
+            EchoSwitch(
                 checked = state.enabled,
                 onCheckedChange = { onStateChange(state.copy(enabled = it)) },
                 modifier = Modifier.semantics { contentDescription = title },
@@ -359,7 +359,7 @@ private fun ChannelToggleChip(
         ) {
             Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
                 color = scheme.onSurface.copy(alpha = if (enabled) 1f else 0.38f))
-            Switch(checked = selected, onCheckedChange = null, enabled = enabled)
+            EchoSwitch(checked = selected, onCheckedChange = null, enabled = enabled)
         }
         return
     }

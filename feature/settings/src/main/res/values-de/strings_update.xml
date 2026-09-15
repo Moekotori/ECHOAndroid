@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_check">Nach Updates suchen</string>
+    <string name="update_source">Prüft GitHub Releases automatisch alle 12 Stunden beim Öffnen</string>
+    <string name="update_title">ECHO-Updates</string>
+    <string name="update_error">Das Update konnte nicht abgeschlossen werden. Prüfen Sie Verbindung, Installationsberechtigung und APK-Signaturkompatibilität und versuchen Sie es erneut.</string>
+    <string name="update_downloading">Update wird heruntergeladen…</string>
+    <string name="update_checking">GitHub wird geprüft…</string>
+    <string name="update_ready">Download verifiziert. Fahren Sie mit dem Systeminstaller fort.</string>
+    <string name="update_available">Eine neue Version ist verfügbar</string>
+    <string name="update_current">Kein neueres Release verfügbar</string>
+    <string name="update_install">Installieren</string>
+    <string name="update_download">Herunterladen</string>
+    <string name="update_later">Später</string>
+    <string name="update_version_current">Aktuelle Version: %1$s</string>
+    <string name="update_package_size">Downloadgröße: %1$s</string>
+    <string name="update_error_check">GitHub konnte nicht geprüft werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.</string>
+    <string name="update_error_download">Download unterbrochen. Prüfen Sie Verbindung und verfügbaren Speicher und versuchen Sie es erneut.</string>
+    <string name="update_error_verification">Diese APK hat die Prüfung nicht bestanden oder hat eine inkompatible Signatur. Behalten Sie die aktuelle App und kontaktieren Sie den Release-Betreuer.</string>
+    <string name="update_error_permission">Erlauben Sie ECHO in den Systemeinstellungen, Apps zu installieren, und tippen Sie erneut auf Installieren.</string>
+    <string name="update_error_install">Der Installer konnte nicht geöffnet werden. Tippen Sie auf Installieren, um es erneut zu versuchen.</string>
+    <string name="update_verifying">Paket wird geprüft…</string>
+    <string name="update_install_hint">Das Herunterladen erfordert Ihre Zustimmung. Android fordert Sie zur Bestätigung der Installation auf.</string>
+    <string name="update_percent">%1$d%%</string>
+    <string name="update_cancel_download">Download abbrechen</string>
+    <string name="update_notes">Was ist neu</string>
+    <string name="update_retry">Erneut versuchen</string>
+    <string name="update_done">Fertig</string>
+    <string name="update_hide_download">Download ausblenden</string>
+</resources>

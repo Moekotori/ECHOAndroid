@@ -179,7 +179,7 @@
     <string name="echo_link_cast_queue_count">%1$d 曲を送信します</string>
     <string name="echo_link_cast_dsd_warning">DSD は原ファイルのまま送ります。PC では再生できない場合があります。</string>
     <string name="echo_link_cast_tvs">テレビとスピーカー</string>
-    <string name="echo_link_cast_tvs_note">DLNA テレビとストリーマーには原ファイルを送ります。Chromecast は一覧のみです。</string>
+    <string name="echo_link_cast_tvs_note">DLNA テレビとストリーマーには原ファイルを送ります。Chromecast はこの端末の MP3 / AAC / WAV を再生できます。</string>
     <string name="echo_link_cast_tvs_searching">テレビとスピーカーを検索中…</string>
     <string name="echo_link_cast_tvs_empty">この Wi-Fi ではテレビやスピーカーが見つかりません。</string>
     <string name="echo_link_cast_tv_unavailable">未対応</string>

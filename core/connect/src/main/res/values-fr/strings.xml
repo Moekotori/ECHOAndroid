@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connect_invalid_pairing">Adresse PC ou jeton d\'appairage invalide</string>
+    <string name="connect_not_connected">PC ECHO n\'est pas encore connecté</string>
+    <string name="connect_library_partial">%1$d titres chargés sur %2$d. Recherchez pour affiner la bibliothèque.</string>
+    <string name="connect_playlist_missing_id">Cette playlist PC n\'a pas de playlistId et ne peut pas être ouverte</string>
+    <string name="connect_album_missing_id">Cet album PC n\'a pas d\'albumId et ne peut pas être ouvert</string>
+    <string name="connect_queue_no_ids">Cette file d\'attente PC n\'a aucun identifiant de titre lisible</string>
+    <string name="connect_track_missing_id_handoff">Ce titre PC n\'a pas de trackId et ne peut pas être transféré</string>
+    <string name="connect_no_local_cast_file">Aucun fichier local ne peut être envoyé au PC</string>
+    <string name="connect_track_missing_id_remote">Ce titre PC n\'a pas de trackId et ne peut pas être lu à distance</string>
+    <string name="connect_stream_unavailable">Ce titre ne peut pas être diffusé vers le téléphone pour le moment</string>
+    <string name="connect_cast_unsupported">Cette version de PC ECHO ne peut pas encore recevoir un flux du téléphone. Mettez ECHOSteam à jour.</string>
+    <string name="connect_auth_expired">L\'autorisation PC a expiré ou a été révoquée. Appairez à nouveau.</string>
+    <string name="connect_failed">Échec de la connexion PC ECHO</string>
+</resources>

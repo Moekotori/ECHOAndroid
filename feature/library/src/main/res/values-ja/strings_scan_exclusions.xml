@@ -4,5 +4,5 @@
     <string name="scan_all_formats">すべての形式</string>
     <string name="scan_advanced_options">詳細オプション</string>
     <string name="scan_excluded_folders">スキャンしないフォルダー</string>
-    <string name="scan_excluded_folders_hint">Recordings/Call のようにストレージ内の相対パスを1行に1つ入力します。サブフォルダーも対象です。スキャン開始時に保存され、他のフィルターをオフにしても有効です。行を削除すると再びスキャンできます。登録済みの曲は保持されます。</string>
+    <string name="scan_excluded_folders_hint">Recordings/Call のようにストレージ内の相対パスを1行に1つ入力します。サブフォルダーも対象です。スキャン開始時に保存され、他のフィルターをオフにしても有効です。次回スキャンで該当フォルダの曲をライブラリから削除します。行を削除すると再びスキャンできます。</string>
 </resources>

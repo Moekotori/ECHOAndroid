@@ -35,6 +35,10 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
     @Volatile
     private var session: MixSession? = null
 
+    @Volatile
+    var mixedIncomingFrames: Int = 0
+        private set
+
     val mixing: Boolean
         get() = session != null
 
@@ -63,6 +67,7 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
             cancel()
             return
         }
+        mixedIncomingFrames = 0
         val rate = outputSampleRateHz ?: 48_000
         val lowPass = (1.0 - kotlin.math.exp(-2.0 * Math.PI * 250.0 / rate.coerceAtLeast(8_000))).toFloat()
         session = MixSession(
@@ -248,6 +253,7 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
             if (channels > 1) outgoing(1, current1 * outGain + incoming1 * inGain)
         }
         mix.readFrame = read + 1
+        mixedIncomingFrames = mix.readFrame
         return mix.readFrame < mix.frames
     }
 

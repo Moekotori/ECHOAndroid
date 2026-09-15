@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_about_beta_version">%1$s · Beta</string>
+    <string name="settings_about_author">Auteur</string>
+    <string name="settings_about_qq_group">Rejoindre le groupe QQ</string>
+    <string name="settings_about_website">Site officiel</string>
+    <string name="settings_about_bug_report">Signaler un bug</string>
+    <string name="settings_about_link_error">Aucune application disponible pour ouvrir ce lien</string>
+</resources>

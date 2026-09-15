@@ -1,0 +1,12 @@
+<resources>
+    <string name="settings_bg_style">Anzeigestil</string>
+    <string name="settings_bg_style_custom">Eigene Anpassung</string>
+    <string name="settings_bg_style_natural">Natürlich</string>
+    <string name="settings_bg_style_soft">Sanft</string>
+    <string name="settings_bg_style_airy">Luftig</string>
+    <string name="settings_bg_style_dreamy">Verträumt</string>
+    <string name="settings_bg_style_cinematic">Filmisch</string>
+    <string name="settings_bg_style_focus">Fokus</string>
+    <string name="settings_bg_style_detail">Wendet Unschärfe, Helligkeit, Overlay und Skalierung gemeinsam an. Die Unschärfe folgt dem aktuellen Leistungslimit. Sie können unten nachjustieren.</string>
+    <string name="settings_bg_style_video_detail">Videostile passen Helligkeit, Overlay und Skalierung an; Video-Unschärfe wird nicht angewendet. Sie können unten nachjustieren.</string>
+</resources>

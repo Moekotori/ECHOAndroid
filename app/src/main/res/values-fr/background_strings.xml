@@ -1,0 +1,4 @@
+<resources>
+    <string name="background_permission_error">Impossible de conserver l\'accès à ce fichier. Veuillez en choisir un autre.</string>
+    <string name="background_load_error">Impossible de charger cet arrière-plan. L\'arrière-plan par défaut a été rétabli.</string>
+</resources>

@@ -114,6 +114,23 @@ class DocumentTreeTrackScannerAndroidTest {
         assertEquals(1, tracks.size)
     }
 
+    @Test
+    fun nestedDirectoryListingIsReusedUntilItsTimestampChanges() = runBlocking {
+        val provider = NestedListingProvider()
+        val scanner = DocumentTreeTrackScanner(ContentResolver.wrap(provider))
+        val cache = DocumentTreeListingCache()
+        suspend fun scan() = scanner.scanAudioTree(
+            tree, "Music/", listings = cache, onBatch = {}, onProgress = { _, _ -> },
+        )
+        assertTrue(scan().querySucceeded)
+        assertEquals(2, provider.queries)
+        assertTrue(scan().querySucceeded)
+        assertEquals(3, provider.queries)
+        provider.albumModified += 1_000L
+        assertTrue(scan().querySucceeded)
+        assertEquals(5, provider.queries)
+    }
+
     private fun indexedTrack() = LibraryTrackEntity(
         id = "mediastore:1", contentUri = "content://media/external/audio/media/1",
         title = "first", artist = "Artist", album = null, albumArtist = null, artworkUri = null,
@@ -164,5 +181,65 @@ class DocumentTreeTrackScannerAndroidTest {
         override fun insert(uri: Uri, values: ContentValues?): Uri? = null
         override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?): Int = 0
         override fun update(uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<out String>?): Int = 0
+    }
+
+    private class NestedListingProvider : ContentProvider() {
+        var queries = 0
+        var albumModified = 1_700_000_000_000L
+        override fun onCreate() = true
+        override fun query(
+            uri: Uri,
+            projection: Array<out String>?,
+            selection: String?,
+            selectionArgs: Array<out String>?,
+            sortOrder: String?,
+        ): Cursor {
+            queries++
+            val documentId = documentIdOf(uri)
+            return MatrixCursor(projection!!).apply {
+                if (documentId == "primary:Music") {
+                    addRow(projection.toRow("primary:Music/Album", "Album", DocumentsContract.Document.MIME_TYPE_DIR, albumModified))
+                } else if (documentId == "primary:Music/Album") {
+                    addRow(projection.toRow("primary:Music/Album/track.wav", "track.wav", "audio/wav", 1_700_000_000_000L))
+                }
+            }
+        }
+        override fun getType(uri: Uri): String = "audio/wav"
+        override fun insert(uri: Uri, values: ContentValues?): Uri? = null
+        override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?): Int = 0
+        override fun update(uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<out String>?): Int = 0
+        override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor {
+            val wav = File.createTempFile(
+                "scan-nested",
+                ".wav",
+                InstrumentationRegistry.getInstrumentation().targetContext.cacheDir,
+            ).apply {
+                val header = ByteBuffer.allocate(44).order(ByteOrder.LITTLE_ENDIAN)
+                    .put("RIFF".toByteArray()).putInt(16036).put("WAVEfmt ".toByteArray())
+                    .putInt(16).putShort(1).putShort(1).putInt(8000).putInt(16000)
+                    .putShort(2).putShort(16).put("data".toByteArray()).putInt(16000).array()
+                writeBytes(header + ByteArray(16000))
+            }
+            return ParcelFileDescriptor.open(wav, ParcelFileDescriptor.MODE_READ_ONLY)
+        }
+
+        private fun Array<out String>.toRow(id: String, name: String, mime: String, modified: Long): Array<Any?> =
+            map { column ->
+                when (column) {
+                    DocumentsContract.Document.COLUMN_DOCUMENT_ID -> id
+                    DocumentsContract.Document.COLUMN_DISPLAY_NAME -> name
+                    DocumentsContract.Document.COLUMN_MIME_TYPE -> mime
+                    DocumentsContract.Document.COLUMN_SIZE -> 1024L
+                    DocumentsContract.Document.COLUMN_LAST_MODIFIED -> modified
+                    else -> null
+                }
+            }.toTypedArray()
+
+        private fun documentIdOf(uri: Uri): String {
+            val segments = uri.pathSegments
+            val documentIndex = segments.indexOf("document")
+            if (documentIndex >= 0 && documentIndex + 1 < segments.size) return segments[documentIndex + 1]
+            return "primary:Music"
+        }
     }
 }

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="opra_choose_brand">選擇品牌</string>
+    <string name="opra_all_brands">全部品牌</string>
+    <string name="opra_browse_workflow">選擇品牌和型號，預覽曲線，再套用校正。</string>
+</resources>

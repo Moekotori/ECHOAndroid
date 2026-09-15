@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="album_information_title">Сведения об альбоме</string>
+    <string name="album_information_artist">Исполнитель альбома</string>
+    <string name="album_information_year">Год выпуска</string>
+    <string name="album_information_duration">Общая длительность</string>
+    <string name="album_information_added">Добавлено в библиотеку</string>
+    <string name="album_information_discs">Диски</string>
+    <string name="album_information_track_artists">Исполнители треков</string>
+    <string name="album_information_audio">Сведения об аудио</string>
+    <string name="album_information_partial">На основе %1$d из %2$d загруженных треков</string>
+    <string name="album_information_sample_rate">Частота дискретизации</string>
+    <string name="album_information_size">Общий размер файлов</string>
+    <string name="album_information_known_size">Известный размер файлов</string>
+    <string name="album_information_missing_specs">У некоторых файлов нет метаданных частоты дискретизации или размера.</string>
+    <string name="album_information_file_specs">Метаданные файла; вывод при воспроизведении может отличаться.</string>
+</resources>

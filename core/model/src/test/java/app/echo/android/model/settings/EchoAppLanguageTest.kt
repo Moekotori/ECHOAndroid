@@ -1,0 +1,64 @@
+package app.echo.android.model.settings
+
+import java.util.Locale
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Test
+
+class EchoAppLanguageTest {
+    @Test
+    fun fromIdKeepsSupportedValues() {
+        assertEquals(EchoAppLanguage.System, EchoAppLanguage.fromId("system"))
+        assertEquals(EchoAppLanguage.Chinese, EchoAppLanguage.fromId("zh"))
+        assertEquals(EchoAppLanguage.TraditionalChinese, EchoAppLanguage.fromId("zh-Hant"))
+        assertEquals(EchoAppLanguage.English, EchoAppLanguage.fromId("en"))
+        assertEquals(EchoAppLanguage.Japanese, EchoAppLanguage.fromId("ja"))
+        assertEquals(EchoAppLanguage.Korean, EchoAppLanguage.fromId("ko"))
+        assertEquals(EchoAppLanguage.Spanish, EchoAppLanguage.fromId("es"))
+        assertEquals(EchoAppLanguage.German, EchoAppLanguage.fromId("de"))
+        assertEquals(EchoAppLanguage.French, EchoAppLanguage.fromId("fr"))
+        assertEquals(EchoAppLanguage.Russian, EchoAppLanguage.fromId("ru"))
+    }
+
+    @Test
+    fun fromIdFallsBackToSystem() {
+        assertEquals(EchoAppLanguage.System, EchoAppLanguage.fromId(null))
+        assertEquals(EchoAppLanguage.System, EchoAppLanguage.fromId(""))
+        assertEquals(EchoAppLanguage.System, EchoAppLanguage.fromId("unsupported-language"))
+    }
+
+    @Test
+    fun localeOrNullMapsExplicitLanguages() {
+        assertEquals(Locale.SIMPLIFIED_CHINESE, EchoAppLanguage.localeOrNull(EchoAppLanguage.Chinese))
+        assertEquals(Locale.forLanguageTag("zh-Hant"), EchoAppLanguage.localeOrNull(EchoAppLanguage.TraditionalChinese))
+        assertEquals(Locale.ENGLISH, EchoAppLanguage.localeOrNull(EchoAppLanguage.English))
+        assertEquals(Locale.JAPANESE, EchoAppLanguage.localeOrNull(EchoAppLanguage.Japanese))
+        assertEquals(Locale.KOREAN, EchoAppLanguage.localeOrNull(EchoAppLanguage.Korean))
+        assertEquals(Locale.forLanguageTag("es"), EchoAppLanguage.localeOrNull(EchoAppLanguage.Spanish))
+        assertEquals(Locale.GERMAN, EchoAppLanguage.localeOrNull(EchoAppLanguage.German))
+        assertEquals(Locale.FRENCH, EchoAppLanguage.localeOrNull(EchoAppLanguage.French))
+        assertEquals(Locale.forLanguageTag("ru"), EchoAppLanguage.localeOrNull(EchoAppLanguage.Russian))
+        assertNull(EchoAppLanguage.localeOrNull(EchoAppLanguage.System))
+    }
+
+    @Test
+    fun registryNormalizesPlatformTags() {
+        assertEquals("zh", EchoAppLanguage.fromId("zh-CN"))
+        assertEquals("zh", EchoAppLanguage.fromId("zh_Hans_CN"))
+        assertEquals("zh-Hant", EchoAppLanguage.fromId("zh-TW"))
+        assertEquals("zh-Hant", EchoAppLanguage.fromId("zh-HK"))
+        assertEquals("zh-Hant", EchoAppLanguage.fromId("zh-Hant-TW"))
+        assertEquals("en", EchoAppLanguage.fromId("EN-us"))
+        assertEquals("ja", EchoAppLanguage.fromId("ja-JP"))
+        assertEquals("ko", EchoAppLanguage.fromId("ko-KR"))
+        assertEquals("es", EchoAppLanguage.fromId("es-MX"))
+        assertEquals("de", EchoAppLanguage.fromId("de-DE"))
+        assertEquals("fr", EchoAppLanguage.fromId("fr-FR"))
+        assertEquals("ru", EchoAppLanguage.fromId("ru-RU"))
+        assertEquals(EchoAppLanguage.supported.size, EchoAppLanguage.supported.map { it.id }.distinct().size)
+        EchoAppLanguage.supported.forEach {
+            assertEquals(it.id, EchoAppLanguage.fromId(it.localeTag))
+            assertEquals(it.nativeName, EchoAppLanguage.languageOrNull(it.id)?.nativeName)
+        }
+    }
+}

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connect_invalid_pairing">Dirección del PC o token de emparejamiento no válidos</string>
+    <string name="connect_not_connected">PC ECHO aún no está conectado</string>
+    <string name="connect_library_partial">Se cargaron %1$d de %2$d canciones. Busca para acotar la biblioteca.</string>
+    <string name="connect_playlist_missing_id">Esta lista del PC no tiene playlistId y no se puede abrir</string>
+    <string name="connect_album_missing_id">Este álbum del PC no tiene albumId y no se puede abrir</string>
+    <string name="connect_queue_no_ids">Esta cola del PC no tiene IDs de canciones reproducibles</string>
+    <string name="connect_track_missing_id_handoff">Esta canción del PC no tiene trackId y no se puede transferir</string>
+    <string name="connect_no_local_cast_file">No hay un archivo local que se pueda enviar al PC</string>
+    <string name="connect_track_missing_id_remote">Esta canción del PC no tiene trackId y no se puede reproducir de forma remota</string>
+    <string name="connect_stream_unavailable">Esta canción no se puede transmitir al teléfono en este momento</string>
+    <string name="connect_cast_unsupported">Esta versión de PC ECHO aún no puede recibir un flujo del teléfono. Actualiza ECHOSteam.</string>
+    <string name="connect_auth_expired">La autorización del PC caducó o se revocó. Vuelve a emparejar.</string>
+    <string name="connect_failed">Falló la conexión con PC ECHO</string>
+</resources>

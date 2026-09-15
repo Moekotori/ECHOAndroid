@@ -1,0 +1,4 @@
+<resources>
+    <string name="background_permission_error">Не удалось сохранить доступ к этому файлу. Выберите другой файл.</string>
+    <string name="background_load_error">Не удалось загрузить этот фон. Восстановлен фон по умолчанию.</string>
+</resources>

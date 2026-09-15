@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="artist_page_artist">藝人</string>
+    <string name="artist_page_music">音樂</string>
+    <string name="artist_page_information">資料</string>
+    <string name="artist_page_concerts">演出</string>
+    <string name="artist_about">關於藝人</string>
+    <string name="artist_online_loading">正在查詢藝人資訊…</string>
+    <string name="artist_online_error">暫時無法連線，請重試</string>
+    <string name="artist_info_no_match">還沒找到能準確對應的藝人資料</string>
+    <string name="artist_no_biography">還沒有 Wikipedia 簡介</string>
+    <string name="artist_online_stale">目前顯示已快取的資訊，可重新整理重試</string>
+    <string name="artist_online_partial">部分資料暫時未能載入</string>
+    <string name="artist_fact_area">地區</string>
+    <string name="artist_fact_type">類型</string>
+    <string name="artist_fact_begin">出生 / 成立</string>
+    <string name="artist_fact_end">結束日期</string>
+    <string name="artist_fact_genres">音樂風格</string>
+    <string name="artist_fact_members">成員</string>
+    <string name="artist_kind_person">個人藝人</string>
+    <string name="artist_kind_group">團體</string>
+    <string name="artist_upcoming_concerts">近期演出</string>
+    <string name="artist_no_concerts">還沒查到近期演出</string>
+    <string name="artist_concerts_incomplete">還沒傳回演出，部分來源仍不可用</string>
+    <string name="artist_concerts_partial">目前無法使用的來源：%1$s</string>
+    <string name="artist_concert_local_time">%1$s · 場館當地時間</string>
+    <string name="artist_concert_tickets">%1$s · 購票詳情</string>
+    <string name="artist_concert_details">%1$s · 演出詳情</string>
+    <string name="artist_sort_tracks">曲目排序</string>
+    <string name="artist_play_on_pc">在 PC 上播放</string>
+</resources>

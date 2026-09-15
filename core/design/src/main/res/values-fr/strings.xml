@@ -1,0 +1,8 @@
+<resources>
+    <string name="chrome_badge_mobile">Mobile</string>
+    <string name="chrome_brand">ECHO Mobile</string>
+    <string name="metadata_unknown_artist">Artiste inconnu</string>
+    <string name="metadata_unknown_album">Album inconnu</string>
+    <string name="metadata_unknown_track">Titre inconnu</string>
+    <string name="metadata_not_provided">Non renseigné</string>
+</resources>

@@ -8,7 +8,6 @@ import android.media.MediaFormat
 import android.os.SystemClock
 import androidx.core.net.toUri
 import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
 internal class EchoSmartTransitionDecoder(context: Context) {
     private val appContext = context.applicationContext
@@ -65,32 +64,20 @@ internal class EchoSmartTransitionDecoder(context: Context) {
         expectedRateHz: Int,
         expectedChannels: Int,
     ): FloatArray? {
-        val decoded = decode(uri, startMs, durationMs, expectedRateHz, expectedChannels) ?: return null
-        if (decoded.sampleRateHz != expectedRateHz) return null
+        val decoded = decode(uri, startMs, durationMs) ?: return null
         val channels = expectedChannels.coerceIn(1, 2)
+        val resampled = EchoSmartTransitionPcm.resampleInterleaved(
+            input = decoded.pcm,
+            inputRateHz = decoded.sampleRateHz,
+            inputChannels = decoded.channels,
+            outputRateHz = expectedRateHz,
+            outputChannels = channels,
+        )
+        if (resampled.isEmpty() || expectedRateHz <= 0) return null
         val maxFrames = EchoSmartTransitionPolicy.MaxMixBytes / (channels * 4)
-        val frames = minOf(decoded.pcm.size / decoded.channels, maxFrames)
-        if (decoded.channels == channels) {
-            return decoded.pcm.copyOf(frames * channels)
-        }
-        val output = FloatArray(frames * channels)
-        for (frame in 0 until frames) {
-            if (decoded.channels == 1) {
-                val sample = decoded.pcm[frame]
-                output[frame * channels] = sample
-                if (channels == 2) output[frame * channels + 1] = sample
-            } else {
-                val left = decoded.pcm[frame * decoded.channels]
-                val right = decoded.pcm[frame * decoded.channels + 1]
-                if (channels == 1) {
-                    output[frame] = (left + right) * 0.5f
-                } else {
-                    output[frame * 2] = left
-                    output[frame * 2 + 1] = right
-                }
-            }
-        }
-        return output
+        val frames = minOf(resampled.size / channels, maxFrames)
+        if (frames <= 0) return null
+        return resampled.copyOf(frames * channels)
     }
 
     private data class DecodedPcm(
@@ -103,8 +90,6 @@ internal class EchoSmartTransitionDecoder(context: Context) {
         uri: String,
         startMs: Long,
         durationMs: Long,
-        expectedRateHz: Int?,
-        expectedChannels: Int?,
     ): DecodedPcm? {
         val parsed = runCatching { uri.toUri() }.getOrNull() ?: return null
         if (!EchoSmartTransitionPolicy.isLocalUri(uri, null)) return null
@@ -118,8 +103,6 @@ internal class EchoSmartTransitionDecoder(context: Context) {
             val mime = format.getString(MediaFormat.KEY_MIME) ?: return null
             val sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
             val channels = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT).coerceAtLeast(1)
-            if (expectedRateHz != null && expectedRateHz != sampleRate) return null
-            if (expectedChannels != null && channels > 2) return null
             extractor.seekTo(startMs.coerceAtLeast(0L) * 1_000L, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
             val codec = MediaCodec.createDecoderByType(mime)
             codec.configure(format, null, null, 0)
@@ -156,6 +139,7 @@ internal class EchoSmartTransitionDecoder(context: Context) {
         val pcm = FloatArray(maxFrames * channels)
         var written = 0
         val info = MediaCodec.BufferInfo()
+        var encoding = AudioFormat.ENCODING_PCM_16BIT
         var inputDone = false
         var outputDone = false
         try {
@@ -180,18 +164,11 @@ internal class EchoSmartTransitionDecoder(context: Context) {
                 }
                 val outputIndex = codec.dequeueOutputBuffer(info, 10_000)
                 if (outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                    val encoding = codec.outputFormat.let { format ->
-                        if (format.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
-                            format.getInteger(MediaFormat.KEY_PCM_ENCODING)
-                        } else {
-                            AudioFormat.ENCODING_PCM_16BIT
-                        }
-                    }
-                    if (encoding != AudioFormat.ENCODING_PCM_16BIT) return null
+                    encoding = pcmEncodingOf(codec.outputFormat)
                 } else if (outputIndex >= 0) {
                     val output = codec.getOutputBuffer(outputIndex)
                     if (output != null && info.size > 0 && info.presentationTimeUs >= startMs * 1_000L - 20_000L) {
-                        written += appendPcm16(output, info, pcm, written, channels)
+                        written += appendPcm(output, info, encoding, pcm, written, channels)
                         if (info.presentationTimeUs >= endUs || written >= pcm.size - channels) {
                             outputDone = true
                         }
@@ -210,22 +187,21 @@ internal class EchoSmartTransitionDecoder(context: Context) {
         return DecodedPcm(pcm.copyOf(written), sampleRate, channels)
     }
 
-    private fun appendPcm16(
+    private fun appendPcm(
         buffer: ByteBuffer,
         info: MediaCodec.BufferInfo,
+        encoding: Int,
         pcm: FloatArray,
         offset: Int,
         channels: Int,
     ): Int {
-        buffer.position(info.offset)
-        buffer.limit(info.offset + info.size)
-        buffer.order(ByteOrder.LITTLE_ENDIAN)
-        val shorts = info.size / 2
-        val available = (pcm.size - offset).coerceAtLeast(0)
-        val count = minOf(shorts, available)
+        EchoSmartTransitionPcm.prepareBuffer(buffer, info.offset, info.size)
+        val bytes = EchoSmartTransitionPcm.bytesPerSample(encoding).coerceAtLeast(1)
+        val samples = info.size / bytes
+        val count = minOf(samples, (pcm.size - offset).coerceAtLeast(0))
         var written = 0
         repeat(count) {
-            pcm[offset + written] = buffer.short / 32768f
+            pcm[offset + written] = EchoSmartTransitionPcm.readSample(buffer, encoding)
             written += 1
         }
         return written - (written % channels)
@@ -243,6 +219,7 @@ internal class EchoSmartTransitionDecoder(context: Context) {
     ) {
         val endUs = (startMs + durationMs).coerceAtLeast(startMs) * 1_000L
         val info = MediaCodec.BufferInfo()
+        var encoding = AudioFormat.ENCODING_PCM_16BIT
         var inputDone = false
         var outputDone = false
         try {
@@ -265,26 +242,19 @@ internal class EchoSmartTransitionDecoder(context: Context) {
                 }
                 val outputIndex = codec.dequeueOutputBuffer(info, 10_000)
                 if (outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                    val encoding = codec.outputFormat.let { format ->
-                        if (format.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
-                            format.getInteger(MediaFormat.KEY_PCM_ENCODING)
-                        } else {
-                            AudioFormat.ENCODING_PCM_16BIT
-                        }
-                    }
-                    if (encoding != AudioFormat.ENCODING_PCM_16BIT) return
+                    encoding = pcmEncodingOf(codec.outputFormat)
                 } else if (outputIndex >= 0) {
                     val output = codec.getOutputBuffer(outputIndex)
                     if (output != null && info.size > 0 && info.presentationTimeUs >= startMs * 1_000L - 20_000L) {
-                        output.position(info.offset)
-                        output.limit(info.offset + info.size)
-                        output.order(ByteOrder.LITTLE_ENDIAN)
-                        val frames = (info.size / 2) / channels
-                        val pcm = output.asShortBuffer()
+                        EchoSmartTransitionPcm.prepareBuffer(output, info.offset, info.size)
+                        val bytes = EchoSmartTransitionPcm.bytesPerSample(encoding).coerceAtLeast(1)
+                        val frames = (info.size / bytes) / channels.coerceAtLeast(1)
                         repeat(frames) {
-                            if (pcm.remaining() < channels) return@repeat
-                            val left = pcm.get() / 32768f
-                            val right = if (channels > 1) pcm.get() / 32768f else left
+                            val left = EchoSmartTransitionPcm.readSample(output, encoding)
+                            val right = if (channels > 1) EchoSmartTransitionPcm.readSample(output, encoding) else left
+                            if (channels > 2) {
+                                repeat(channels - 2) { EchoSmartTransitionPcm.readSample(output, encoding) }
+                            }
                             writer.pushStereoFrame(left, right)
                             vocal.pushPcm16(left, right)
                         }
@@ -304,4 +274,11 @@ internal class EchoSmartTransitionDecoder(context: Context) {
             }
         }
     }
+
+    private fun pcmEncodingOf(format: MediaFormat): Int =
+        if (format.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
+            format.getInteger(MediaFormat.KEY_PCM_ENCODING)
+        } else {
+            AudioFormat.ENCODING_PCM_16BIT
+        }
 }

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playback_keep_pitch">保持音高</string>
+    <string name="playback_reset_speed">恢復 1×</string>
+    <string name="playback_lyrics_earlier">← 提前</string>
+    <string name="playback_lyrics_later">延後 →</string>
+    <string name="playback_expand">展開</string>
+    <string name="playback_collapse">收起</string>
+    <string name="playback_cancel_timer">取消定時</string>
+</resources>

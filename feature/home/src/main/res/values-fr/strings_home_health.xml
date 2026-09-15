@@ -1,0 +1,5 @@
+<resources>
+    <string name="home_missing_file_title">Fichier audio indisponible</string>
+    <string name="home_missing_file_detail">Ouvrez votre bibliothèque pour réanalyser ou choisir un autre titre.</string>
+    <string name="home_search_no_results">Aucune musique correspondante</string>
+</resources>

@@ -71,4 +71,45 @@ class EchoEqualizerShareCodecTest {
         assertNull(EchoEqualizerShareCodec.decode(EchoEqualizerShareCodec.Prefix + "@@@@", "x"))
         assertNull(EchoEqualizerShareCodec.extract("hello"))
     }
+
+    @Test
+    fun importsEqualizerApoAndAutoEqText() {
+        val apo = """
+            # Sennheiser HD 650
+            # https://github.com/jaakkopasanen/AutoEq
+            Preamp: -6.1 dB
+            Filter 1: ON LSC Fc 105 Hz Gain -1.4 dB Q 0.7
+            Filter 2: ON PK Fc 7619 Hz Gain 3.3 dB Q 4.48
+            Filter 3: ON HP Fc 20 Hz
+        """.trimIndent()
+        val imported = EchoEqualizerShareCodec.decode(apo, "apo-1")
+        assertNotNull(imported)
+        assertEquals("Sennheiser HD 650", imported!!.name)
+        assertTrue(imported.parametric)
+        assertEquals(-6.1f, imported.preampDb, 0.01f)
+        assertEquals(3, imported.filters.size)
+        assertEquals(EchoEqFilterType.LowShelf, imported.filters[0].type)
+        assertEquals(EchoEqFilterType.PeakDip, imported.filters[1].type)
+        assertEquals(EchoEqFilterType.HighPass, imported.filters[2].type)
+        assertEquals(12f, imported.filters[2].slope!!, 0.01f)
+
+        val exported = EchoEqualizerApoCodec.encode(imported)
+        assertNotNull(exported)
+        val roundTrip = EchoEqualizerApoCodec.parse(exported!!, "apo-2")
+        assertEquals(imported.filters.size, roundTrip!!.filters.size)
+        assertEquals(imported.preampDb, roundTrip.preampDb, 0.01f)
+    }
+
+    @Test
+    fun importsGraphicEqLine() {
+        val imported = EchoEqualizerShareCodec.decode(
+            "Preamp: -2.5 dB\nGraphicEQ: 60 4.0; 230 2.8; 910 0.4; 3600 -0.8; 14000 -1.2",
+            "g",
+        )
+        assertNotNull(imported)
+        assertEquals(5, imported!!.filters.size)
+        assertEquals(60f, imported.filters[0].frequencyHz, 0.01f)
+        assertEquals(4f, imported.filters[0].gainDb, 0.01f)
+        assertEquals(-2.5f, imported.preampDb, 0.01f)
+    }
 }

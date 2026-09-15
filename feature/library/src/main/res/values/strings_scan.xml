@@ -10,7 +10,7 @@
     <string name="scan_1_mb">1 MB</string>
     <string name="scan_skip_non_music">Skip recordings, ringtones and notification folders</string>
     <string name="scan_skip_hidden">Skip hidden folders</string>
-    <string name="scan_filter_hint">Unknown duration or size is kept. Filters do not remove songs already in your library.</string>
+    <string name="scan_filter_hint">Unknown duration or size is kept. Duration, size and format do not remove imported songs. Hidden, non-music and excluded folders are removed from the library on the next scan.</string>
     <string name="scan_choose_folder">Choose folder and scan</string>
     <string name="scan_folder_hint">Recommended · Includes subfolders; no full-device permission needed</string>
     <string name="scan_device">Scan device</string>

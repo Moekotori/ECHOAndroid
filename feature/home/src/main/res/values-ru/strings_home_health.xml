@@ -1,0 +1,5 @@
+<resources>
+    <string name="home_missing_file_title">Аудиофайл недоступен</string>
+    <string name="home_missing_file_detail">Откройте библиотеку, чтобы просканировать заново или выбрать другой трек.</string>
+    <string name="home_search_no_results">Подходящая музыка не найдена</string>
+</resources>

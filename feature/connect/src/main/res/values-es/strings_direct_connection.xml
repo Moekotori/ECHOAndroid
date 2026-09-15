@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="echo_link_direct_address_hint">Selecciona una computadora cercana o ingresa su dirección para enlazar. No se necesita token. Las PCs más antiguas aún pueden usar un enlace de emparejamiento completo.</string>
+</resources>
