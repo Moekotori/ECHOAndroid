@@ -19,13 +19,16 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LibraryArtistSummaryEntity::class,
         LibraryFolderSummaryEntity::class,
         LibraryGenreSummaryEntity::class,
+        LibraryOfflinePinEntity::class,
+        LibraryOfflineFileEntity::class,
     ],
-    version = 16,
+    version = 17,
     exportSchema = true,
 )
 abstract class EchoLibraryDatabase : RoomDatabase() {
     abstract fun trackDao(): LibraryTrackDao
     abstract fun playlistDao(): LibraryPlaylistDao
+    abstract fun offlineDao(): LibraryOfflineDao
 
     companion object {
         @Volatile
@@ -55,6 +58,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                         Migration13To14,
                         Migration14To15,
                         Migration15To16,
+                        Migration16To17,
                     )
                     .build()
                     .also { instance = it }
@@ -351,6 +355,42 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE library_tracks ADD COLUMN composer TEXT")
                 db.execSQL("ALTER TABLE library_tracks ADD COLUMN composerKey TEXT NOT NULL DEFAULT ''")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_library_tracks_composerKey ON library_tracks(composerKey)")
+            }
+        }
+
+        internal val Migration16To17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS library_offline_pins (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        kind TEXT NOT NULL,
+                        source TEXT NOT NULL,
+                        title TEXT NOT NULL,
+                        trackCount INTEGER NOT NULL,
+                        createdAtEpochMs INTEGER NOT NULL,
+                        status TEXT NOT NULL,
+                        error TEXT
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_library_offline_pins_status ON library_offline_pins(status)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_library_offline_pins_createdAtEpochMs ON library_offline_pins(createdAtEpochMs)")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS library_offline_files (
+                        trackId TEXT NOT NULL PRIMARY KEY,
+                        pinId TEXT NOT NULL,
+                        remoteUri TEXT NOT NULL,
+                        localPath TEXT,
+                        bytes INTEGER NOT NULL,
+                        status TEXT NOT NULL,
+                        error TEXT
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_library_offline_files_pinId ON library_offline_files(pinId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_library_offline_files_status ON library_offline_files(status)")
             }
         }
 

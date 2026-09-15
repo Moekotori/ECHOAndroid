@@ -114,6 +114,7 @@ data class EchoAppSettings(
     val replayGainPreampDb: Float = 0f,
     val librarySelectedSource: String = EchoLibrarySelectedSource.Local,
     val watchedFolderRescanEnabled: Boolean = false,
+    val offlineWifiOnly: Boolean = true,
     val subsonicServerUrl: String? = null,
     val subsonicUsername: String? = null,
     val subsonicPassword: String? = null,
@@ -332,6 +333,7 @@ class EchoSettingsStore(
                 librarySelectedSource = normalizeLibrarySelectedSource(preferences[Keys.LibrarySelectedSource]),
                 libraryScanOptions = decodeLibraryScanOptions(preferences[Keys.LibraryScanOptions]),
                 watchedFolderRescanEnabled = preferences[Keys.WatchedFolderRescanEnabled] ?: false,
+                offlineWifiOnly = preferences[Keys.OfflineWifiOnly] ?: true,
                 subsonicServerUrl = preferences[Keys.SubsonicServerUrl]
                     ?.let(::normalizeSubsonicBaseUrl)
                     ?.takeIf { it.isNotBlank() },
@@ -943,6 +945,10 @@ class EchoSettingsStore(
         context.echoSettings.edit { it[Keys.WatchedFolderRescanEnabled] = enabled }
     }
 
+    suspend fun setOfflineWifiOnly(enabled: Boolean) {
+        context.echoSettings.edit { it[Keys.OfflineWifiOnly] = enabled }
+    }
+
     suspend fun watchedFolderRescanEnabled(): Boolean =
         context.echoSettings.data.first()[Keys.WatchedFolderRescanEnabled] ?: false
 
@@ -1350,6 +1356,7 @@ class EchoSettingsStore(
         val EchoLinkPreferLinkedLibrary = booleanPreferencesKey("echo_link_prefer_linked_library")
         val LibrarySelectedSource = stringPreferencesKey("library_selected_source")
         val WatchedFolderRescanEnabled = booleanPreferencesKey("watched_folder_rescan_enabled")
+        val OfflineWifiOnly = booleanPreferencesKey("offline_wifi_only")
         val WatchedLibraryTrees = stringPreferencesKey("watched_library_trees")
         val LastPlaybackSession = stringPreferencesKey("last_playback_session")
         val SubsonicServerUrl = stringPreferencesKey("subsonic_server_url")
