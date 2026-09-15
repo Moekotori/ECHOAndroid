@@ -25,10 +25,21 @@ internal class OpraSearchController(
     private var generation = 0L
 
     fun setQuery(query: String) {
-        searchJob?.cancel()
-        generation++
-        mutableState.update { it.copy(query = query, loading = false, results = emptyList(),
-            selectedEqId = null, previewCurve = emptyList(), message = null) }
+        val keepBrandResults = state.value.selectedBrandId != null
+        if (!keepBrandResults) {
+            searchJob?.cancel()
+            generation++
+        }
+        mutableState.update { current ->
+            current.copy(
+                query = query,
+                loading = if (keepBrandResults) current.loading else false,
+                results = if (keepBrandResults) current.results else emptyList(),
+                selectedEqId = if (keepBrandResults) current.selectedEqId else null,
+                previewCurve = if (keepBrandResults) current.previewCurve else emptyList(),
+                message = if (keepBrandResults) current.message else null,
+            )
+        }
     }
 
     fun restoreQuery(query: String) {
@@ -40,8 +51,19 @@ internal class OpraSearchController(
     }
 
     fun browse(brandId: String?) {
-        mutableState.update { it.copy(selectedBrandId = brandId) }
-        setQuery("")
+        searchJob?.cancel()
+        generation++
+        mutableState.update {
+            it.copy(
+                selectedBrandId = brandId,
+                query = "",
+                loading = false,
+                results = emptyList(),
+                selectedEqId = null,
+                previewCurve = emptyList(),
+                message = null,
+            )
+        }
         search(false)
     }
 

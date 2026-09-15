@@ -11,6 +11,7 @@ import org.json.JSONObject
 internal data class OpraVendor(
     val id: String,
     val name: String,
+    val logoPath: String? = null,
 )
 
 internal data class OpraProduct(
@@ -57,6 +58,7 @@ internal object OpraDatabaseParser {
                         vendors[id] = OpraVendor(
                             id = id,
                             name = data.optTrimmedString("name") ?: id,
+                            logoPath = OpraAssetUrls.path(data.optTrimmedString("logo")),
                         )
                     }
                     "product" -> {
@@ -110,8 +112,15 @@ internal object OpraDatabaseParser {
         database.products.values.asSequence()
             .filter { !database.eqsByProductId[it.id].isNullOrEmpty() }
             .groupingBy { it.vendorId }.eachCount()
-            .map { (id, count) -> app.echo.android.model.playback.OpraHeadphoneBrand(
-                id, database.vendors[id]?.name ?: id, count) }
+            .map { (id, count) ->
+                val vendor = database.vendors[id]
+                app.echo.android.model.playback.OpraHeadphoneBrand(
+                    id = id,
+                    name = vendor?.name ?: id,
+                    productCount = count,
+                    logoUrl = OpraAssetUrls.url(vendor?.logoPath),
+                )
+            }
             .sortedWith(compareBy<app.echo.android.model.playback.OpraHeadphoneBrand> { it.name.lowercase(java.util.Locale.ROOT) }.thenBy { it.id })
 
     fun browse(database: OpraDatabase, vendorId: String, query: String = ""): List<OpraHeadphoneCorrectionProduct> {
@@ -231,6 +240,21 @@ internal object OpraDatabaseParser {
             .lowercase()
             .replace(Regex("[^a-z0-9\\u4e00-\\u9fff]+"), " ")
             .trim()
+}
+
+internal object OpraAssetUrls {
+    const val BaseUrl = "https://opra.roonlabs.net/"
+    private val AssetPath = Regex(
+        "^assets/[0-9a-f]{2}/[0-9a-f]{2}/[0-9a-f]{64}\\.(png|jpe?g|webp)$",
+        RegexOption.IGNORE_CASE,
+    )
+
+    fun path(raw: String?): String? {
+        val value = raw?.trim()?.trimStart('/') ?: return null
+        return value.takeIf { AssetPath.matches(it) }
+    }
+
+    fun url(raw: String?): String? = path(raw)?.let { BaseUrl + it }
 }
 
 internal fun JSONObject.optTrimmedString(name: String): String? =

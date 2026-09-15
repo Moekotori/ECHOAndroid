@@ -157,6 +157,8 @@
     <string name="feature_connect_try_the_saved_pc_when_opening_connect_38be4d">"Try the saved PC when opening Connect"</string>
     <string name="feature_connect_volume_8f3a19">"Volume"</string>
     <string name="feature_connect_pc_queue_2e91c4">"PC queue"</string>
+    <string name="feature_connect_stop_pc_7f3c91">"Stop PC"</string>
+    <string name="feature_connect_pc_output_mode_e2a6b1">"Output · %1$s"</string>
     <string name="feature_connect_waiting_for_pc_echo_to_become_available_a74ad2">"Waiting for PC ECHO to become available"</string>
     <string name="feature_connect_check_the_pc_address_or_paste_a_complete_0f216a">"Check the PC address or paste a complete pairing link"</string>
     <string name="feature_connect_pair_another_pc_23df07">"Pair another PC"</string>

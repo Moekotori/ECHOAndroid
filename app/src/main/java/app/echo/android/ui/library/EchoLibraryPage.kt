@@ -291,6 +291,9 @@ internal fun EchoLibraryPage(
             onReorderPlaylistTracks = { playlist, fromIndex, toIndex ->
                 viewModel.reorderLocalPlaylistTracks(playlist.id, fromIndex, toIndex)
             },
+            onReorderAlbumTracks = { album, fromIndex, toIndex ->
+                viewModel.reorderAlbumTracks(album.albumKey, fromIndex, toIndex)
+            },
             onOpenAlbum = onOpenAlbum,
             onOpenArtist = onOpenArtist,
             onOpenAlbumArtist = openAlbumArtist,

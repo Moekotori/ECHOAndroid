@@ -65,6 +65,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -598,12 +599,16 @@ internal class LibraryController(
         }
     }
 
-    fun refreshSubsonic(endpoint: SubsonicEndpoint, onSucceeded: (() -> Unit)? = null) {
+    fun refreshSubsonic(
+        endpoint: SubsonicEndpoint,
+        onSucceeded: ((SubsonicEndpoint) -> Unit)? = null,
+    ) {
+        val used = AtomicReference(endpoint)
         startRemoteSync(
             fallbackError = appContext.getString(R.string.remote_sync_subsonic_failed),
-            onSucceeded = onSucceeded,
+            onSucceeded = { onSucceeded?.invoke(used.get()) },
         ) {
-            repository.refreshSubsonicSnapshot(endpoint)
+            repository.refreshSubsonicSnapshot(endpoint, onResolved = { used.set(it) })
         }
     }
 
@@ -822,6 +827,15 @@ internal class LibraryController(
     ): Boolean =
         withContext(Dispatchers.IO) {
             repository.reorderLocalPlaylistTracks(playlistId, fromIndex, toIndex)
+        }
+
+    suspend fun reorderAlbumTracks(
+        albumKey: String,
+        fromIndex: Int,
+        toIndex: Int,
+    ): Boolean =
+        withContext(Dispatchers.IO) {
+            repository.reorderAlbumTracks(albumKey, fromIndex, toIndex)
         }
 
     suspend fun searchLocalLibrary(query: String): LocalLibrarySearchResults =

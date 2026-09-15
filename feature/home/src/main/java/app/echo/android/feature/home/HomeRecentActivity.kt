@@ -86,6 +86,7 @@ internal fun RoonRecentActivitySection(
                 )
             } else {
                 LazyRow(
+                    modifier = Modifier.homeCarouselScroll(),
                     contentPadding = PaddingValues(vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
@@ -116,7 +117,9 @@ internal fun RoonRecentActivitySection(
                     SingleRecentAlbum(visibleAlbums.first(), onOpenAlbum)
                 } else {
                     LazyRow(
-                        modifier = Modifier.heightIn(min = RecentActivityAlbumCardHeight),
+                        modifier = Modifier
+                            .heightIn(min = RecentActivityAlbumCardHeight)
+                            .homeCarouselScroll(),
                         contentPadding = PaddingValues(vertical = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
@@ -208,7 +211,8 @@ private fun RecentActivityModeTab(
 private fun SingleRecentAlbum(album: AlbumSummary, onOpen: (AlbumSummary) -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-            .echoClickable { onOpen(album) }.padding(vertical = 6.dp),
+            .echoClickable(role = Role.Button, onClick = { onOpen(album) })
+            .padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -228,7 +232,10 @@ private fun SingleRecentAlbum(album: AlbumSummary, onOpen: (AlbumSummary) -> Uni
 @Composable
 private fun RecentTrackCard(track: EchoTrack, onClick: () -> Unit) {
     Column(
-        modifier = Modifier.width(126.dp).echoClickable(onClick = onClick),
+        modifier = Modifier
+            .width(126.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .echoClickable(role = Role.Button, onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         ArtworkTile(

@@ -365,6 +365,7 @@ fun LibraryScreen(
     onCreatePlaylistAndAddTrack: (String, EchoTrack) -> Unit,
     onRemoveTrackFromPlaylist: (EchoPlaylist, EchoTrack) -> Unit,
     onReorderPlaylistTracks: (EchoPlaylist, Int, Int) -> Unit,
+    onReorderAlbumTracks: (AlbumSummary, Int, Int) -> Unit = { _, _, _ -> },
     onOpenAlbum: (AlbumSummary) -> Unit,
     onOpenArtist: (ArtistSummary) -> Unit,
     onOpenAlbumArtist: (() -> Unit)? = null,
@@ -767,6 +768,11 @@ fun LibraryScreen(
                         onPlayTrack = { track ->
                             onPlayTrack(track, LibraryPlaybackOrigin.Album(selectedAlbum.albumKey))
                         },
+                        onMoveTrack = if (selectedSource == LibrarySourceMode.Local) {
+                            { from, to -> onReorderAlbumTracks(selectedAlbum, from, to) }
+                        } else {
+                            null
+                        },
                         onUpdateTrackMetadata = onUpdateTrackMetadata,
                         onImportLyrics = onImportLyricsForTrack,
                         onPickArtwork = onPickTrackArtwork,
@@ -956,6 +962,11 @@ fun LibraryScreen(
                 onShuffle = { onShuffleAlbum(target.album) },
                 onPlayTrack = { track ->
                     onPlayTrack(track, LibraryPlaybackOrigin.Album(target.album.albumKey))
+                },
+                onMoveTrack = if (selectedSource == LibrarySourceMode.Local) {
+                    { from, to -> onReorderAlbumTracks(target.album, from, to) }
+                } else {
+                    null
                 },
                 onUpdateTrackMetadata = onUpdateTrackMetadata,
                 onImportLyrics = onImportLyricsForTrack,
@@ -1416,6 +1427,7 @@ private fun LinkedEchoLibraryPage(
             mode == LinkedLibraryMode.Songs -> LinkedTrackList(
                 tracks = sortedTracks,
                 onPlayLinkedTrack = onPlayLinkedTrack,
+                onPlayOnPc = { track -> onPlayLinkedQueueOnPc(listOf(track), 0) },
                 showAudioInfoTags = showTrackAudioInfoTags,
                 modifier = Modifier.fillMaxSize(),
             )
@@ -1492,6 +1504,7 @@ private fun LinkedLibraryHeader(
 private fun LinkedTrackList(
     tracks: List<EchoRemoteTrack>,
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
+    onPlayOnPc: ((EchoRemoteTrack) -> Unit)? = null,
     showAudioInfoTags: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -1507,6 +1520,7 @@ private fun LinkedTrackList(
             TrackRow(
                 track = track.toEchoTrack(),
                 onClick = { onPlayLinkedTrack(track) },
+                onPlayOnPc = onPlayOnPc?.let { playOnPc -> { playOnPc(track) } },
                 showAudioInfoTags = showAudioInfoTags,
             )
         }
@@ -1676,6 +1690,10 @@ private fun LinkedPlaylistTracksPage(
                     onPlayLinkedTrack = { track ->
                         val index = tracks.indexOfFirst { it.id == track.id }.coerceAtLeast(0)
                         onPlayLinkedQueue(tracks, index)
+                    },
+                    onPlayOnPc = { track ->
+                        val index = tracks.indexOfFirst { it.id == track.id }.coerceAtLeast(0)
+                        onPlayLinkedQueueOnPc(tracks, index)
                     },
                     showAudioInfoTags = false,
                     modifier = Modifier.weight(1f),
@@ -1861,6 +1879,10 @@ private fun LinkedFolderBrowser(
                     onClick = {
                         val index = tracks.indexOfFirst { it.id == track.id }.coerceAtLeast(0)
                         onPlayLinkedQueue(tracks, index)
+                    },
+                    onPlayOnPc = {
+                        val index = tracks.indexOfFirst { it.id == track.id }.coerceAtLeast(0)
+                        onPlayLinkedQueueOnPc(tracks, index)
                     },
                     showAudioInfoTags = false,
                 )

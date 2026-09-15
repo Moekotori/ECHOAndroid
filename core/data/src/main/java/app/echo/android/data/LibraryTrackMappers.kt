@@ -173,8 +173,31 @@ internal fun buildTrackFingerprint(track: LibraryTrackEntity): String =
         remote = LibraryScanPolicy.isRemoteLibrarySource(track.source),
     )
 
-internal fun LibraryTrackEntity.splitByCue(sheet: app.echo.android.model.library.CueSheet): List<LibraryTrackEntity> {
-    val ended = app.echo.android.model.library.CueSheetPolicy.withEndTimes(sheet.tracks, durationMs)
+internal fun LibraryTrackEntity.splitByCue(
+    sheet: app.echo.android.model.library.CueSheet,
+    audioFileName: String? = null,
+): List<LibraryTrackEntity> {
+    val tracks = app.echo.android.model.library.CueSheetPolicy.tracksForAudio(sheet, audioFileName)
+        .ifEmpty { sheet.tracks }
+    val ended = app.echo.android.model.library.CueSheetPolicy.withEndTimes(tracks, durationMs)
+    if (ended.size == 1) {
+        val cue = ended.single()
+        val startsAtZero = cue.startMs <= 0L
+        val endsAtFile = cue.endMs <= 0L || cue.endMs >= durationMs
+        if (startsAtZero && endsAtFile) {
+            return listOf(
+                copy(
+                    title = cue.title,
+                    artist = cue.performer ?: sheet.performer ?: artist,
+                    album = sheet.album ?: album,
+                    albumArtist = sheet.performer ?: albumArtist,
+                    trackNumber = cue.number,
+                    year = sheet.year ?: year,
+                    genre = sheet.genre ?: genre,
+                ).withComputedSearchMetadata().withFingerprint(),
+            )
+        }
+    }
     if (ended.size < 2) return listOf(this)
     return ended.map { cue ->
         val start = cue.startMs.coerceAtLeast(0L)

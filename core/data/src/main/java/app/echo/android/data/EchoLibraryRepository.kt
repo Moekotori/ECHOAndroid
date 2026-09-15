@@ -702,6 +702,31 @@ class EchoLibraryRepository(
             database.trackDao().getTracksByRemoteAlbum(remoteAlbum.source, remoteAlbum.albumKey)
         } ?: database.trackDao().getTracksByAlbum(albumKey)
 
+    suspend fun reorderAlbumTracks(albumKey: String, fromIndex: Int, toIndex: Int): Boolean {
+        if (RemoteAlbumKey.parse(albumKey) != null) return false
+        val dao = database.trackDao()
+        val tracks = dao.getTracksByAlbum(albumKey)
+        val rows = tracks.map { AlbumTrackOrderRow(it.id, it.discNumber, it.trackNumber) }
+        val next = LibraryAlbumTrackOrderPolicy.reorder(rows, fromIndex, toIndex)
+        if (next == rows) return false
+        val now = System.currentTimeMillis()
+        val byId = tracks.associateBy { it.id }
+        val updates = next.mapNotNull { row ->
+            val current = byId[row.id] ?: return@mapNotNull null
+            if (current.trackNumber == row.trackNumber) return@mapNotNull null
+            current.copy(
+                trackNumber = row.trackNumber,
+                metadataEditedAtEpochMs = now,
+            ).withScanMetadata()
+        }
+        if (updates.isEmpty()) return false
+        updates.chunked(DATABASE_BATCH_SIZE).forEach { chunk ->
+            dao.upsertBatchWithFts(chunk)
+            yield()
+        }
+        return true
+    }
+
     suspend fun artistTracks(artistKey: String): List<LibraryTrackEntity> =
         database.trackDao().getTracksByArtist(artistKey)
 
@@ -1374,10 +1399,23 @@ class EchoLibraryRepository(
     fun refreshSubsonicSnapshot(
         endpoint: SubsonicEndpoint,
         batchSize: Int = SCAN_BATCH_SIZE,
+        onResolved: ((SubsonicEndpoint) -> Unit)? = null,
     ): Flow<LibraryScanProgress> = flow {
-        val client = SubsonicClient(endpoint, appContext = appContext)
+        val resolved = when {
+            zspaceMappedPort(endpoint) != null ->
+                resolveSubsonicEndpoint(endpoint, appContext)
+            isSubsonicLoopbackTunnel(endpoint) ->
+                resolveSubsonicEndpoint(
+                    endpoint,
+                    appContext,
+                    fallbacks = nearbyLoopbackTunnelEndpoints(endpoint),
+                )
+            else -> endpoint
+        }
+        onResolved?.invoke(resolved)
+        val client = SubsonicClient(resolved, appContext = appContext)
         val dao = database.trackDao()
-        val source = endpoint.sourceId
+        val source = resolved.sourceId
         val scanRunId = System.currentTimeMillis()
         var progress = LibraryScanProgress(phase = LibraryScanPhase.Preparing)
         var insertedCount = 0
@@ -1465,7 +1503,7 @@ class EchoLibraryRepository(
                     coroutineContext.ensureActive()
                     if (song.id.isBlank()) continue
                     scannedCount += 1
-                    pending += song.toLibraryTrackEntity(endpoint, scanRunId)
+                    pending += song.toLibraryTrackEntity(resolved, scanRunId)
                     if (pending.size >= batchSize) {
                         flushPending(title)
                     }
@@ -1532,7 +1570,7 @@ class EchoLibraryRepository(
                 }
             }
             flushPending(title = null)
-            syncSubsonicPlaylists(endpoint, client, source)
+            syncSubsonicPlaylists(resolved, client, source)
 
             emitProgress(phase = LibraryScanPhase.CleaningRemoved, currentTitle = null)
             val hitVisitCap = albums.size >= SubsonicClient.MaxAlbumsPerSync ||

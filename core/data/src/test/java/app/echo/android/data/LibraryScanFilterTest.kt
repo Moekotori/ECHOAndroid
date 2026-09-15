@@ -50,6 +50,12 @@ class LibraryScanFilterTest {
         assertEquals(listOf(existing, song), filterLocalScanBatch(listOf(existing, noise, song), setOf(existing.id), defaults))
     }
 
+    @Test fun cueMovementsSkipTheMinimumDurationGate() {
+        val intro = track("mediastore:1#cue:1", 8_000)
+        val noise = track("new-noise", 8_000)
+        assertEquals(listOf(intro), filterLocalScanBatch(listOf(intro, noise), emptySet(), defaults))
+    }
+
     @Test fun directoryExclusionAppliesToImportedAndNewRows() {
         val options = defaults.copy(excludedRelativePaths = setOf("Recordings"))
         assertFalse(options.includesDirectory("Recordings/Call/"))

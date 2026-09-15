@@ -60,6 +60,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -167,9 +168,24 @@ internal fun LibraryOverview(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                LibraryMetric(stringResource(L10nR.string.feature_home_songs_107b60), trackCount.toString(), Modifier.weight(1f))
-                LibraryMetric(stringResource(L10nR.string.feature_home_albums_e68c2b), albumCount.toString(), Modifier.weight(1f))
-                LibraryMetric(stringResource(L10nR.string.feature_home_artists_e168aa), artistCount.toString(), Modifier.weight(1f))
+                LibraryMetric(
+                    stringResource(L10nR.string.feature_home_songs_107b60),
+                    trackCount.toString(),
+                    Modifier.weight(1f),
+                    onClick = onOpenLibrary,
+                )
+                LibraryMetric(
+                    stringResource(L10nR.string.feature_home_albums_e68c2b),
+                    albumCount.toString(),
+                    Modifier.weight(1f),
+                    onClick = onOpenLibrary,
+                )
+                LibraryMetric(
+                    stringResource(L10nR.string.feature_home_artists_e168aa),
+                    artistCount.toString(),
+                    Modifier.weight(1f),
+                    onClick = onOpenLibrary,
+                )
             }
             if (scanState.isScanning) {
                 HomeLibraryScanHint(scanState = scanState, onOpenLibrary = onOpenLibrary)
@@ -224,8 +240,22 @@ internal fun LibraryMetric(
     label: String,
     value: String,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
 ) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Column(
+        modifier = modifier
+            .then(
+                if (onClick != null) {
+                    Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .echoClickable(role = Role.Button, onClick = onClick)
+                        .padding(vertical = 4.dp)
+                } else {
+                    Modifier
+                },
+            ),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
         Text(value, color = homeTitleColor(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
         Text(label, color = homeBodyColor(), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Normal)
     }
@@ -251,10 +281,10 @@ internal fun RoonHomeHeader(
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             val shape = RoundedCornerShape(28.dp)
             Surface(
+                onClick = onOpenSearch,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .defaultMinSize(minHeight = 48.dp)
-                    .echoClickable { onOpenSearch() },
+                    .defaultMinSize(minHeight = 48.dp),
                 shape = shape,
                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.64f),
                 border = null,
@@ -380,7 +410,8 @@ internal fun RecentAlbumCard(
         modifier = Modifier
             .width(cardWidth)
             .heightIn(min = RecentActivityAlbumCardHeight)
-            .echoClickable(onClick = onClick),
+            .clip(RoundedCornerShape(14.dp))
+            .echoClickable(role = Role.Button, onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         ArtworkTile(
@@ -623,10 +654,9 @@ internal fun HomeAlbumRecommendationsSection(
                 fontWeight = FontWeight.SemiBold,
             )
             Surface(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .echoClickable(enabled = albums.isNotEmpty(), onClick = onRefresh)
-                    .alpha(if (albums.isEmpty()) 0.42f else 1f),
+                onClick = onRefresh,
+                enabled = albums.isNotEmpty(),
+                modifier = Modifier.alpha(if (albums.isEmpty()) 0.42f else 1f),
                 shape = RoundedCornerShape(16.dp),
                 color = homePanelColor(0.94f),
                 border = homePanelBorder(0.84f),
@@ -647,6 +677,7 @@ internal fun HomeAlbumRecommendationsSection(
             }
         }
         LazyRow(
+            modifier = Modifier.homeCarouselScroll(),
             contentPadding = PaddingValues(vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(18.dp),
         ) {
@@ -679,7 +710,8 @@ internal fun RecommendedAlbumCard(
     Column(
         modifier = Modifier
             .width(136.dp)
-            .echoClickable(onClick = onClick),
+            .clip(RoundedCornerShape(14.dp))
+            .echoClickable(role = Role.Button, onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         ArtworkTile(
@@ -765,7 +797,7 @@ private fun ArtistRankRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .echoClickable(onClick = onClick)
+            .echoClickable(role = Role.Button, onClick = onClick)
             .background(
                 if (rank == 1) {
                     Brush.horizontalGradient(
@@ -876,6 +908,7 @@ internal fun HomeFavoriteAlbumsSection(
                 )
         } else {
             LazyRow(
+                modifier = Modifier.homeCarouselScroll(),
                 contentPadding = PaddingValues(vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {

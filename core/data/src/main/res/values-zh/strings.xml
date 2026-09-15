@@ -25,6 +25,7 @@
     <string name="subsonic_invalid_json">服务器返回了无法解析的数据。</string>
     <string name="subsonic_incompatible">这不是 Subsonic 兼容响应，请检查服务器地址。</string>
     <string name="subsonic_redirected">服务器跳转到了 %1$s，当前地址没有提供 Navidrome/Subsonic。若使用 NAS 远程访问，请确认 NAS 在线且映射有效。</string>
+    <string name="subsonic_zspace_remote_access">极空间远程访问的公网地址不能给播放器直连。Navidrome 在 NAS 上的端口是 %1$d，请改用 http://极空间局域网IP:%1$d。若在模拟器里测且极空间远程访问窗口已打开，请改用 http://10.0.2.2:10000。</string>
     <string name="subsonic_redirected_unknown">服务器跳转到了其他网站，当前地址没有提供 Navidrome/Subsonic。若使用 NAS 远程访问，请确认 NAS 在线且映射有效。</string>
     <string name="subsonic_request_failed">Subsonic 认证或请求失败。</string>
 </resources>

@@ -14,6 +14,7 @@ data class LibraryScanCompleteness(
 
 object LibraryScanPolicy {
     const val MediaStoreNativeIdPrefix = "mediastore:"
+    const val MediaStoreFileIdPrefix = "mediastore:file:"
     const val PendingDocumentMetadataFingerprint = "saf:metadata-pending"
     const val SafTrackIdPrefix = "saf:"
     const val LocalSourceSql = "(source = 'mediastore' OR source = 'saf')"
@@ -32,6 +33,8 @@ object LibraryScanPolicy {
     fun isRemoteLibrarySource(source: String): Boolean = !isLocalLibrarySource(source)
 
     fun isMediaStoreNativeId(trackId: String): Boolean = trackId.startsWith(MediaStoreNativeIdPrefix)
+
+    fun isMediaStoreFileId(trackId: String): Boolean = trackId.startsWith(MediaStoreFileIdPrefix)
 
     fun isSafTrackId(trackId: String): Boolean = trackId.startsWith(SafTrackIdPrefix)
 

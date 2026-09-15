@@ -13,7 +13,8 @@ internal object LocalAudioFileTypes {
             lower.endsWith(".aac") -> "audio/aac"
             lower.endsWith(".ogg") || lower.endsWith(".oga") -> "audio/ogg"
             lower.endsWith(".opus") -> "audio/opus"
-            lower.endsWith(".wav") -> "audio/wav"
+            lower.endsWith(".wav") || lower.endsWith(".wave") -> "audio/wav"
+            lower.endsWith(".adts") -> "audio/aac"
             lower.endsWith(".aiff") || lower.endsWith(".aif") || lower.endsWith(".aifc") -> "audio/aiff"
             lower.endsWith(".dsf") -> "audio/dsf"
             lower.endsWith(".dff") -> "audio/dff"
@@ -42,7 +43,20 @@ internal object LocalAudioFileTypes {
 
     fun resolvedMimeType(name: String, mimeType: String?): String? =
         mimeType?.takeIf { it.isAudioMime() } ?: mimeTypeForFileName(name)
+
+    /**
+     * Android often leaves DSD/surround in MediaStore.Files with IS_MUSIC=0.
+     * Device scan still picks them up by filename.
+     */
+    fun mediaStoreFallbackNameClause(column: String): Pair<String, Array<String>> {
+        val clause = MediaStoreFallbackExtensions.joinToString(" OR ") { "$column LIKE ?" }
+        return "($clause)" to MediaStoreFallbackExtensions.map { "%.$it" }.toTypedArray()
+    }
 }
+
+internal val MediaStoreFallbackExtensions = listOf(
+    "dsf", "dff", "ac3", "eac3", "ec3", "dts", "amr", "aiff", "aif", "aifc",
+)
 
 internal fun String?.isAudioMime(): Boolean {
     val mime = this?.lowercase(Locale.ROOT) ?: return false

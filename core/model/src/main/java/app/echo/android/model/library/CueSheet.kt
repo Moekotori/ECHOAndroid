@@ -15,4 +15,5 @@ data class CueSheetTrack(
     val performer: String? = null,
     val startMs: Long,
     val endMs: Long = 0L,
+    val fileName: String? = null,
 )

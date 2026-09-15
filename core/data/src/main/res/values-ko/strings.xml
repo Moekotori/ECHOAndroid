@@ -25,6 +25,7 @@
     <string name="subsonic_invalid_json">서버가 올바른 JSON이 아닌 데이터를 반환했습니다.</string>
     <string name="subsonic_incompatible">Subsonic 호환 응답이 아닙니다. 서버 URL을 확인하세요.</string>
     <string name="subsonic_redirected">서버가 %1$s(으)로 리디렉션했습니다. 이 주소는 Navidrome/Subsonic을 제공하지 않습니다. NAS 원격 액세스를 쓰는 경우 NAS가 온라인인지 확인하세요.</string>
+    <string name="subsonic_zspace_remote_access">Zspace 원격 액세스 공인 URL은 플레이어에서 직접 쓸 수 없습니다. NAS의 Navidrome 포트는 %1$d입니다. http://NAS_LAN_IP:%1$d 을(를) 사용하세요. 에뮬레이터에서 Zspace 원격 액세스 창이 열려 있으면 http://10.0.2.2:10000 을(를) 시도하세요.</string>
     <string name="subsonic_redirected_unknown">서버가 다른 사이트로 리디렉션했습니다. 이 주소는 Navidrome/Subsonic을 제공하지 않습니다. NAS 원격 액세스를 쓰는 경우 NAS가 온라인인지 확인하세요.</string>
     <string name="subsonic_request_failed">Subsonic 인증 또는 요청에 실패했습니다.</string>
 </resources>

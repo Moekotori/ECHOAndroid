@@ -112,6 +112,7 @@ internal fun AlbumDetailPage(
     onPlayAll: () -> Unit,
     onShuffle: () -> Unit,
     onPlayTrack: (EchoTrack) -> Unit,
+    onMoveTrack: ((fromIndex: Int, toIndex: Int) -> Unit)? = null,
     onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
@@ -197,6 +198,8 @@ internal fun AlbumDetailPage(
                                     multiDisc = multiDisc,
                                     accent = palette.vibrant,
                                     onClick = { onPlayTrack(track) },
+                                    onMoveUp = onMoveTrack.albumMoveAction(index, index - 1, track, tracks.peek(index - 1)),
+                                    onMoveDown = onMoveTrack.albumMoveAction(index, index + 1, track, tracks.peek(index + 1)),
                                     onUpdateTrackMetadata = onUpdateTrackMetadata,
                                     onImportLyrics = onImportLyrics,
                                     onPickArtwork = onPickArtwork,
@@ -225,6 +228,7 @@ internal fun AlbumDetailListPage(
     onShuffle: () -> Unit,
     onPlayOnPc: (() -> Unit)? = null,
     onPlayTrack: (EchoTrack) -> Unit,
+    onMoveTrack: ((fromIndex: Int, toIndex: Int) -> Unit)? = null,
     onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
@@ -293,6 +297,8 @@ internal fun AlbumDetailListPage(
                                 multiDisc = multiDisc,
                                 accent = palette.vibrant,
                                 onClick = { onPlayTrack(track) },
+                                onMoveUp = onMoveTrack.albumMoveAction(index, index - 1, track, tracks.getOrNull(index - 1)),
+                                onMoveDown = onMoveTrack.albumMoveAction(index, index + 1, track, tracks.getOrNull(index + 1)),
                                 onUpdateTrackMetadata = onUpdateTrackMetadata,
                                 onImportLyrics = onImportLyrics,
                                 onPickArtwork = onPickArtwork,
@@ -1116,6 +1122,8 @@ internal fun AlbumTrackRow(
     accent: Color,
     palette: ArtworkPalette? = null,
     onClick: () -> Unit,
+    onMoveUp: (() -> Unit)? = null,
+    onMoveDown: (() -> Unit)? = null,
     onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
@@ -1130,6 +1138,8 @@ internal fun AlbumTrackRow(
     TrackContextMenu(
         track = track,
         onPlay = onClick,
+        onMoveUp = onMoveUp,
+        onMoveDown = onMoveDown,
         onUpdateTrackMetadata = onUpdateTrackMetadata,
         onImportLyrics = onImportLyrics,
         onPickArtwork = onPickArtwork,
@@ -1209,6 +1219,8 @@ private fun AlbumDiscTrackRow(
     multiDisc: Boolean,
     accent: Color,
     onClick: () -> Unit,
+    onMoveUp: (() -> Unit)? = null,
+    onMoveDown: (() -> Unit)? = null,
     onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
@@ -1228,6 +1240,8 @@ private fun AlbumDiscTrackRow(
             track = track,
             accent = accent,
             onClick = onClick,
+            onMoveUp = onMoveUp,
+            onMoveDown = onMoveDown,
             onUpdateTrackMetadata = onUpdateTrackMetadata,
             onImportLyrics = onImportLyrics,
             onPickArtwork = onPickArtwork,
@@ -1251,6 +1265,18 @@ private fun AlbumDiscHeader(discNumber: Int, isFirst: Boolean) {
         fontWeight = FontWeight.SemiBold,
         modifier = Modifier.padding(start = 4.dp, top = if (isFirst) 4.dp else 16.dp, bottom = 4.dp),
     )
+}
+
+private fun ((fromIndex: Int, toIndex: Int) -> Unit)?.albumMoveAction(
+    fromIndex: Int,
+    toIndex: Int,
+    track: EchoTrack,
+    neighbor: EchoTrack?,
+): (() -> Unit)? {
+    val move = this ?: return null
+    if (neighbor == null) return null
+    if (track.albumDiscNumber() != neighbor.albumDiscNumber()) return null
+    return { move(fromIndex, toIndex) }
 }
 
 @Composable

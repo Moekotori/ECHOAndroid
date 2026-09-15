@@ -111,7 +111,8 @@ import app.echo.android.ui.shell.dockTab
 import app.echo.android.ui.shell.motionDuration
 import app.echo.android.ui.shell.pagerPage
 import app.echo.android.design.rememberSilkPagerFlingBehavior
-import app.echo.android.ui.shell.rememberTabPagerNestedScrollConnection
+import app.echo.android.ui.shell.outerPagerUserScrollEnabled
+import app.echo.android.ui.shell.rememberHomeSafePagerNestedScroll
 import app.echo.android.ui.shell.routeMotionSpec
 import app.echo.android.ui.shell.dockNavigationMotionSpec
 import app.echo.android.data.EchoBackgroundMode
@@ -1002,16 +1003,23 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     .echoPlayerDepth(nowPlayingExpanded) { maxOf(nowPlayingBackProgress, nowPlayingDragProgress) },
             ) {
                 val tabPagerFling = rememberSilkPagerFlingBehavior(tabPagerState)
+                val innerTabPageSettled =
+                    tabPagerState.settledPage == EchoPagerPage.Connect.ordinal ||
+                        tabPagerState.settledPage == EchoPagerPage.Diagnostics.ordinal
+                val tabPagerNestedScroll = rememberHomeSafePagerNestedScroll(tabPagerState)
                 HorizontalPager(
                     state = tabPagerState,
-                    userScrollEnabled = !libraryDetailOpen ||
-                        LocalEchoWidthSizeClass.current.prefersLibrarySplit,
+                    userScrollEnabled = outerPagerUserScrollEnabled(
+                        libraryDetailOpen = libraryDetailOpen,
+                        prefersLibrarySplit = LocalEchoWidthSizeClass.current.prefersLibrarySplit,
+                        settledPage = tabPagerState.settledPage,
+                        targetPage = tabPagerState.targetPage,
+                        scrollInProgress = tabPagerState.isScrollInProgress,
+                        innerTabPageSettled = innerTabPageSettled,
+                    ),
                     beyondViewportPageCount = if (effectivePerformanceMode.isLightweight) 0 else 1,
                     flingBehavior = tabPagerFling,
-                    pageNestedScrollConnection = rememberTabPagerNestedScrollConnection(
-                        tabPagerState,
-                        tabPagerFling,
-                    ),
+                    pageNestedScrollConnection = tabPagerNestedScroll,
                     modifier = Modifier.fillMaxSize(),
                 ) { page ->
                     Box(modifier = Modifier.fillMaxSize()) {
@@ -1332,7 +1340,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 positionMs = remoteStatus.playback.positionMs,
                                 durationMs = remoteStatus.playback.durationMs,
                                 volume = remoteStatus.playback.volume,
-                                queueTitles = remoteStatus.playback.queue.items.map { it.title },
+                                outputMode = remoteStatus.playback.outputMode,
+                                currentTrackId = remoteStatus.playback.queue.currentTrackId
+                                    ?: remoteStatus.playback.track?.id,
+                                queueItems = remoteStatus.playback.queue.items,
                                 subsonicServerUrl = appSettings.subsonicServerUrl,
                                 subsonicUsername = appSettings.subsonicUsername,
                                 subsonicPassword = appSettings.subsonicPassword,
@@ -1348,8 +1359,12 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onPlayPause = { remoteClient.send(EchoRemoteCommand.PlayPause) },
                                 onPrevious = { remoteClient.send(EchoRemoteCommand.Previous) },
                                 onNext = { remoteClient.send(EchoRemoteCommand.Next) },
+                                onStop = { remoteClient.send(EchoRemoteCommand.Stop) },
                                 onSeek = { positionMs -> remoteClient.send(EchoRemoteCommand.SeekTo(positionMs)) },
                                 onVolume = { volume -> remoteClient.send(EchoRemoteCommand.SetVolume(volume)) },
+                                onPlayQueueItem = { trackId ->
+                                    remoteClient.send(EchoRemoteCommand.PlayTrackOnPc(trackId))
+                                },
                                 onHandoffPhoneToPc = if (appSettings.pcHandoffEnabled &&
                                     playbackStatus.track != null &&
                                     phoneCastPlan !is EchoLinkCastPlan.Blocked

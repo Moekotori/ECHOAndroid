@@ -3,4 +3,10 @@
     <string name="opra_choose_brand">브랜드 선택</string>
     <string name="opra_all_brands">모든 브랜드</string>
     <string name="opra_browse_workflow">브랜드와 모델을 선택하고 곡선을 확인한 후 보정을 적용하세요.</string>
+    <string name="opra_search_examples">Sony / HD 650 / AirPods Max</string>
+    <string name="opra_search_in_brand">%1$s 검색</string>
+    <string name="opra_no_matching_models">일치하는 모델이 없습니다</string>
+    <plurals name="opra_brand_models">
+        <item quantity="other">모델 %1$d개</item>
+    </plurals>
 </resources>

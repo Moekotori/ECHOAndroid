@@ -45,27 +45,28 @@ internal fun HomeDailyAlbumSection(
             DiscoveryEmpty(R.string.home_daily_album_empty, onOpenLibrary)
         } else {
             Crossfade(album, animationSpec = tween(if (lightweight) 0 else 200), label = "daily-album") { shown ->
-                if (shown != null) {
-                    Surface(shape = RoundedCornerShape(24.dp), color = homePanelColor()) {
-                        Row(Modifier.fillMaxWidth().padding(16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            verticalAlignment = Alignment.CenterVertically) {
-                            ArtworkTile(
-                                artworkUri = shown.artworkUri,
-                                modifier = Modifier.widthIn(max = 144.dp).weight(0.44f).aspectRatio(1f)
-                                    .echoClickable { onOpen(shown) },
-                                accent = MaterialTheme.colorScheme.primary,
-                                cornerRadius = 16.dp, elevation = 0.dp,
-                            )
-                            Column(Modifier.weight(0.56f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text(shown.title, style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold,
-                                    maxLines = 3, overflow = TextOverflow.Ellipsis)
-                                Text(shown.albumArtist ?: shown.artist ?: stringResource(R.string.feature_home_unknown_artist_85ee30),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            }
+                Surface(
+                    onClick = { onOpen(shown) },
+                    shape = RoundedCornerShape(24.dp),
+                    color = homePanelColor(),
+                ) {
+                    Row(Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        ArtworkTile(
+                            artworkUri = shown.artworkUri,
+                            modifier = Modifier.widthIn(max = 144.dp).weight(0.44f).aspectRatio(1f),
+                            accent = MaterialTheme.colorScheme.primary,
+                            cornerRadius = 16.dp, elevation = 0.dp,
+                        )
+                        Column(Modifier.weight(0.56f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(shown.title, style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold,
+                                maxLines = 3, overflow = TextOverflow.Ellipsis)
+                            Text(shown.albumArtist ?: shown.artist ?: stringResource(R.string.feature_home_unknown_artist_85ee30),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
                     }
                 }
@@ -94,7 +95,11 @@ internal fun HomeRediscoverySection(albums: List<AlbumSummary>, onOpen: (AlbumSu
         if (albums.isEmpty()) {
             DiscoveryEmpty(R.string.home_rediscover_empty, onOpenLibrary)
         } else {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(vertical = 4.dp)) {
+            LazyRow(
+                modifier = Modifier.homeCarouselScroll(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(vertical = 4.dp),
+            ) {
                 items(albums, key = { it.albumKey }) { album ->
                     RecommendedAlbumCard(album, onClick = { onOpen(album) })
                 }
@@ -115,7 +120,14 @@ internal fun HomeResumeSection(
         if (track == null || status.state == EchoPlaybackState.Error) {
             DiscoveryEmpty(R.string.home_resume_empty, onOpenLibrary)
         } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .echoClickable(onClick = onResume)
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 ArtworkTile(track.artworkUri, modifier = Modifier.size(88.dp), accent = MaterialTheme.colorScheme.primary, cornerRadius = 18.dp)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     Text(track.album?.takeIf { it.isNotBlank() } ?: track.title,

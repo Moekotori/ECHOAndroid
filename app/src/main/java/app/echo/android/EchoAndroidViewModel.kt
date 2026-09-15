@@ -813,6 +813,12 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun reorderAlbumTracks(albumKey: String, fromIndex: Int, toIndex: Int) {
+        viewModelScope.launch {
+            libraryController.reorderAlbumTracks(albumKey, fromIndex, toIndex)
+        }
+    }
+
     fun shuffleArtist(artistKey: String) {
         viewModelScope.launch {
             val queue = libraryController.artistTracksForPlayback(artistKey)
@@ -1613,8 +1619,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             username = username,
             password = password,
         )
-        libraryController.refreshSubsonic(endpoint) {
-            saveSubsonicCredentials(serverUrl, username, password)
+        libraryController.refreshSubsonic(endpoint) { resolved ->
+            saveSubsonicCredentials(resolved.normalizedBaseUrl, resolved.username, resolved.password)
         }
     }
 

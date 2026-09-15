@@ -16,6 +16,10 @@ import androidx.compose.ui.res.stringResource
 import app.echo.android.model.playback.EchoAudioErrorKind
 import app.echo.android.model.playback.EchoPlaybackState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import app.echo.android.model.library.AlbumSummary
@@ -160,4 +164,21 @@ fun HomeScreen(
         }
     }
 }
+
+private object HomeCarouselNestedScroll : NestedScrollConnection {
+    override fun onPostScroll(
+        consumed: Offset,
+        available: Offset,
+        source: NestedScrollSource,
+    ): Offset {
+        return if (source == NestedScrollSource.UserInput && available.x != 0f) {
+            Offset(available.x, 0f)
+        } else {
+            Offset.Zero
+        }
+    }
+}
+
+/** Keep leftover horizontal drags on album rows instead of turning them into tab swipes. */
+internal fun Modifier.homeCarouselScroll(): Modifier = nestedScroll(HomeCarouselNestedScroll)
 

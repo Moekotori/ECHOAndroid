@@ -123,6 +123,11 @@ internal fun SettingsPlaybackContent(
             } else {
                 stringResource(R.string.settings_allow)
             },
+            disabledLabel = if (!notificationRuntimePermission) {
+                stringResource(R.string.settings_on)
+            } else {
+                null
+            },
             enabled = notificationRuntimePermission && !notificationPermissionGranted,
             onClick = onRequestNotificationPermission,
         )

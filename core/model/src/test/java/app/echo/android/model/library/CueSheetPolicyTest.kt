@@ -42,4 +42,26 @@ class CueSheetPolicyTest {
         assertEquals("Album.flac", CueSheetPolicy.matchAudioName("Album.wav", listOf("Album.flac")))
         assertNull(CueSheetPolicy.matchAudioName("other.flac", listOf("Album.flac", "B.flac")))
     }
+
+    @Test
+    fun tracksForAudioUsesPerFileNamesThenTheSheetFile() {
+        val sheet = CueSheet(
+            fileName = "Album.flac",
+            tracks = listOf(
+                CueSheetTrack(1, "A", startMs = 0L, fileName = "t1.wav"),
+                CueSheetTrack(2, "B", startMs = 0L, fileName = "t2.wav"),
+            ),
+        )
+        assertEquals("A", CueSheetPolicy.tracksForAudio(sheet, "t1.wav").single().title)
+        assertEquals("B", CueSheetPolicy.tracksForAudio(sheet, "t2.wav").single().title)
+        assertTrue(CueSheetPolicy.tracksForAudio(sheet, "Album.flac").isEmpty())
+        val image = CueSheet(
+            fileName = "Album.wav",
+            tracks = listOf(
+                CueSheetTrack(1, "A", startMs = 0L),
+                CueSheetTrack(2, "B", startMs = 60_000L),
+            ),
+        )
+        assertEquals(2, CueSheetPolicy.tracksForAudio(image, "Album.flac").size)
+    }
 }

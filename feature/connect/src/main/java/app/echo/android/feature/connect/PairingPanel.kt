@@ -25,6 +25,7 @@ import app.echo.android.design.echoClickable
 import app.echo.android.design.echoExpandIndicator
 import app.echo.android.model.connect.EchoLinkLanDevice
 import app.echo.android.model.connect.EchoRemoteConnectionState
+import app.echo.android.model.connect.EchoRemoteTrack
 import app.echo.android.model.connect.EchoSavedPcEndpoint
 
 @Composable
@@ -44,13 +45,17 @@ internal fun PcLinkPanel(
     positionMs: Long,
     durationMs: Long,
     volume: Float,
-    queueTitles: List<String> = emptyList(),
+    outputMode: String = "",
+    currentTrackId: String? = null,
+    queueItems: List<EchoRemoteTrack> = emptyList(),
     onConnectPc: (String, String) -> Unit,
     onPlayPause: () -> Unit,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
+    onStop: () -> Unit = {},
     onSeek: (Long) -> Unit,
     onVolume: (Float) -> Unit,
+    onPlayQueueItem: (String) -> Unit = {},
     onDisconnect: () -> Unit,
     onForgetPc: () -> Unit,
     onForgetSavedPc: (EchoSavedPcEndpoint) -> Unit = {},
@@ -101,9 +106,13 @@ internal fun PcLinkPanel(
                     onPlayPause = onPlayPause,
                     onPrevious = onPrevious,
                     onNext = onNext,
+                    onStop = onStop,
                     onSeek = onSeek,
                     onVolume = onVolume,
-                    queueTitles = queueTitles,
+                    onPlayQueueItem = onPlayQueueItem,
+                    outputMode = outputMode,
+                    currentTrackId = currentTrackId,
+                    queueItems = queueItems,
                 )
                 if (onHandoffPhoneToPc != null) {
                     OutlinedButton(onClick = onHandoffPhoneToPc, modifier = Modifier.fillMaxWidth()) {

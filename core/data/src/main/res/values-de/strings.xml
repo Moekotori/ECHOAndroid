@@ -25,6 +25,7 @@
     <string name="subsonic_invalid_json">Der Server hat Daten zurückgegeben, die kein gültiges JSON sind.</string>
     <string name="subsonic_incompatible">Dies ist keine Subsonic-kompatible Antwort. Prüfen Sie die Server-URL.</string>
     <string name="subsonic_redirected">Der Server hat nach %1$s umgeleitet. Diese Adresse liefert kein Navidrome/Subsonic. Wenn Sie NAS-Fernzugriff nutzen, prüfen Sie, ob das NAS online ist.</string>
+    <string name="subsonic_zspace_remote_access">Diese Zspace-Fernzugriffs-URL ist kein Subsonic-Server. Navidrome liegt auf dem NAS auf Port %1$d, z. B. http://192.168.1.x:%1$d. Im Android-Emulator versuchen Sie http://10.0.2.2:10000, solange das Zspace-Fernzugriffsfenster offen ist.</string>
     <string name="subsonic_redirected_unknown">Der Server hat auf eine andere Website umgeleitet. Diese Adresse liefert kein Navidrome/Subsonic. Wenn Sie NAS-Fernzugriff nutzen, prüfen Sie, ob das NAS online ist.</string>
     <string name="subsonic_request_failed">Subsonic-Authentifizierung oder -Anfrage fehlgeschlagen.</string>
 </resources>

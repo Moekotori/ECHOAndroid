@@ -646,6 +646,118 @@ class SubsonicRemoteSourceTest {
         assertEquals(normalizeSubsonicBaseUrl(entered), SubsonicEndpoint(entered, "user", "pass").normalizedBaseUrl)
         assertEquals("http://host:4533", SubsonicEndpoint(entered, "user", "pass").normalizedBaseUrl)
     }
+
+    @Test
+    fun zspaceRemoteAccessHostMapsDockerPortAndLocalTunnels() {
+        val endpoint = SubsonicEndpoint(
+            baseUrl = "https://remote-access-32769.zconnect.cn/",
+            username = "user",
+            password = "pass",
+        )
+        assertEquals(32769, zspaceMappedPort(endpoint))
+        val fallbacks = zspaceLocalFallbackEndpoints(
+            endpoint,
+            loopbackHosts = listOf("10.0.2.2"),
+            tunnelPorts = 10000..10001,
+        )
+        assertEquals(
+            listOf(
+                "http://10.0.2.2:10000",
+                "http://10.0.2.2:10001",
+                "http://10.0.2.2:32769",
+            ),
+            fallbacks.map { it.normalizedBaseUrl },
+        )
+        assertTrue(zspaceLocalFallbackEndpoints(SubsonicEndpoint("https://navidrome.example", "user", "pass")).isEmpty())
+    }
+
+    @Test
+    fun zspacePublicUrlFallsBackToLocalTunnel() {
+        val publicEndpoint = SubsonicEndpoint(
+            baseUrl = "https://remote-access-32769.zconnect.cn/",
+            username = "user",
+            password = "pass",
+        )
+        val resolved = resolveSubsonicEndpoint(
+            endpoint = publicEndpoint,
+            httpGet = { url ->
+                when {
+                    "remote-access-32769.zconnect.cn" in url ->
+                        error(
+                            subsonicRedirectFailureMessage(
+                                url,
+                                "https://www.zconnect.cn/",
+                            ),
+                        )
+                    "10.0.2.2:10000" in url ->
+                        """{"subsonic-response":{"status":"ok","version":"1.16.1"}}"""
+                    else -> error("unexpected $url")
+                }
+            },
+            fallbacks = zspaceLocalFallbackEndpoints(
+                publicEndpoint,
+                loopbackHosts = listOf("10.0.2.2"),
+                tunnelPorts = 10000..10000,
+            ),
+        )
+        assertEquals("http://10.0.2.2:10000", resolved.normalizedBaseUrl)
+    }
+
+    @Test
+    fun zspacePublicUrlWithoutLocalTunnelUsesSpecificMessage() {
+        val publicEndpoint = SubsonicEndpoint(
+            baseUrl = "https://remote-access-32769.zconnect.cn/",
+            username = "user",
+            password = "pass",
+        )
+        val thrown = runCatching {
+            resolveSubsonicEndpoint(
+                endpoint = publicEndpoint,
+                httpGet = {
+                    error(subsonicRedirectFailureMessage(it, "https://www.zconnect.cn/"))
+                },
+                fallbacks = zspaceLocalFallbackEndpoints(
+                    publicEndpoint,
+                    loopbackHosts = listOf("127.0.0.1"),
+                    tunnelPorts = 10000..10000,
+                ),
+            )
+        }.exceptionOrNull()
+        assertEquals(zspaceRemoteAccessFailureMessage(32769), thrown?.message)
+        assertTrue(thrown?.message.orEmpty().contains("32769"))
+    }
+
+    @Test
+    fun loopbackTunnelMovesToANearbyPort() {
+        val saved = SubsonicEndpoint("http://10.0.2.2:10000", "user", "pass")
+        assertTrue(isSubsonicLoopbackTunnel(saved))
+        val resolved = resolveSubsonicEndpoint(
+            endpoint = saved,
+            httpGet = { url ->
+                when {
+                    ":10000/" in url || url.contains(":10000?") -> error("closed")
+                    ":10001/" in url || url.contains(":10001?") ->
+                        """{"subsonic-response":{"status":"ok","version":"1.16.1"}}"""
+                    else -> error("unexpected $url")
+                }
+            },
+            fallbacks = nearbyLoopbackTunnelEndpoints(saved, tunnelPorts = 10000..10001),
+        )
+        assertEquals("http://10.0.2.2:10001", resolved.normalizedBaseUrl)
+    }
+
+    @Test
+    fun ordinarySubsonicFailureDoesNotRewriteHost() {
+        val endpoint = SubsonicEndpoint("https://navidrome.example", "user", "wrong")
+        val thrown = runCatching {
+            resolveSubsonicEndpoint(
+                endpoint = endpoint,
+                httpGet = { error("Wrong username or password") },
+            )
+        }.exceptionOrNull()
+        assertEquals("Wrong username or password", thrown?.message)
+        assertEquals("https://navidrome.example", endpoint.normalizedBaseUrl)
+    }
 }
 
 private fun pingUrl(base: String): String {

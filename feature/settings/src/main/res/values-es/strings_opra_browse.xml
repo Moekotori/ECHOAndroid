@@ -3,4 +3,11 @@
     <string name="opra_choose_brand">Elige una marca</string>
     <string name="opra_all_brands">Todas las marcas</string>
     <string name="opra_browse_workflow">Elige una marca y un modelo, previsualiza la curva y aplica la corrección.</string>
+    <string name="opra_search_examples">Sony / HD 650 / AirPods Max</string>
+    <string name="opra_search_in_brand">Buscar en %1$s</string>
+    <string name="opra_no_matching_models">Ningún modelo coincide</string>
+    <plurals name="opra_brand_models">
+        <item quantity="one">%1$d modelo</item>
+        <item quantity="other">%1$d modelos</item>
+    </plurals>
 </resources>

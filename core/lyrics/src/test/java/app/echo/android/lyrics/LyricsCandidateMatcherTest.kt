@@ -8,7 +8,11 @@ class LyricsCandidateMatcherTest {
         val match = requireNotNull(LyricsCandidateMatcher(EchoLyricsSearchRequest("光", "歌手甲", durationMs = 180000))
             .match("光年之外", "歌手甲", null, 180000))
         assertFalse(match.automatic)
-        assertNull(LyricsCandidateMatcher(EchoLyricsSearchRequest("Hello", "Ann", durationMs = 180000))
+        val similarName = requireNotNull(LyricsCandidateMatcher(EchoLyricsSearchRequest("Hello", "Ann", durationMs = 180000))
+            .match("Hello", "Joanne", null, 180000))
+        assertFalse(similarName.automatic)
+        assertFalse(similarName.sameArtists)
+        assertNull(LyricsCandidateMatcher(EchoLyricsSearchRequest("Hello", "Ann"))
             .match("Hello", "Joanne", null, 180000))
     }
 
@@ -22,8 +26,10 @@ class LyricsCandidateMatcherTest {
     @Test fun normalizesWidthAndCollaborationOrderWithoutSplittingNamesAtSpaces() {
         val matcher = LyricsCandidateMatcher(EchoLyricsSearchRequest("Ｓｏｎｇ", "Alice / Bob", durationMs = 180000))
         assertTrue(requireNotNull(matcher.match("Song", "Bob & Alice", null, 180000)).fast)
-        assertNull(LyricsCandidateMatcher(EchoLyricsSearchRequest("Song", "Ann", durationMs = 180000))
+        val nestedName = requireNotNull(LyricsCandidateMatcher(EchoLyricsSearchRequest("Song", "Ann", durationMs = 180000))
             .match("Song", "Mary Ann", null, 180000))
+        assertFalse(nestedName.automatic)
+        assertFalse(nestedName.sameArtists)
     }
 
     @Test fun keepsDifferentVersionsOutEvenWithMatchingDuration() {
@@ -90,12 +96,36 @@ class LyricsCandidateMatcherTest {
 
     @Test fun nativeVersionLabelsCannotBecomeBilingualAliases() {
         val matcher = LyricsCandidateMatcher(EchoLyricsSearchRequest("曲", "歌手", "Album", 180000))
-        listOf("カラオケ", "ライブ", "ライヴ", "라이브", "리믹스", "어쿠스틱", "데모", "TVサイズ", "Off Vocal", "Cover")
+        listOf("カラオケ", "ライブ", "ライヴ", "라이브", "리믹스", "어쿠스틱", "데모", "TVサイズ", "Off Vocal")
             .forEach { assertNull(it, matcher.match("曲 ($it)", "歌手", "Album", 180000)) }
+        assertFalse(requireNotNull(matcher.match("曲 (Cover)", "歌手", "Album", 180000)).automatic)
         assertFalse(requireNotNull(matcher.match("曲 (Something)", "歌手", "Album", 195000)).automatic)
         val ordinaryTitle = LyricsCandidateMatcher(EchoLyricsSearchRequest("デモクラシー", "歌手", "Album", 180000))
         assertTrue(requireNotNull(ordinaryTitle.match("Democracy", "歌手", "Album", 180000,
             titleAliases = listOf("デモクラシー"))).automatic)
     }
 
+    @Test fun labeledCoverCanUseOriginalLyricsAutomatically() {
+        val matcher = LyricsCandidateMatcher(EchoLyricsSearchRequest("Song (翻唱)", "Cover Artist", durationMs = 180000))
+        val match = requireNotNull(matcher.match("Song", "Original Artist", "Album", 181000))
+        assertTrue(match.automatic)
+        assertFalse(match.sameArtists)
+        assertNull(matcher.match("Song (Live)", "Original Artist", null, 180000))
+        assertNull(matcher.match("Song", "Original Artist", "Album", 196000))
+    }
+
+    @Test fun unlabeledCoverStaysManualWhenTheSingerDiffers() {
+        val matcher = LyricsCandidateMatcher(EchoLyricsSearchRequest("Song", "Cover Artist", "Album", 180000))
+        val match = requireNotNull(matcher.match("Song", "Original Artist", "Album", 180000))
+        assertFalse(match.automatic)
+        assertFalse(match.sameArtists)
+        assertNull(LyricsCandidateMatcher(EchoLyricsSearchRequest("Song", "Cover Artist", "Album"))
+            .match("Song", "Original Artist", "Album", 0))
+    }
+
+    @Test fun originalRecordingDoesNotAutomaticallyUseACoverUpload() {
+        val matcher = LyricsCandidateMatcher(EchoLyricsSearchRequest("夜に駆ける", "YOASOBI", "Album", 260000))
+        val match = requireNotNull(matcher.match("夜に駆ける (カバー)", "Someone", "Album", 260000))
+        assertFalse(match.automatic)
+    }
 }

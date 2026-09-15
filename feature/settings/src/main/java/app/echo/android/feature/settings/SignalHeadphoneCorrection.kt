@@ -2,6 +2,7 @@ package app.echo.android.feature.settings
 
 import app.echo.android.feature.settings.R as L10nR
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -20,7 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
@@ -57,7 +57,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoExpand
+import app.echo.android.design.EchoMotion
 import app.echo.android.design.echoClickable
+import app.echo.android.design.echoExpandIndicator
+import app.echo.android.design.echoItemMotion
 import app.echo.android.model.playback.EchoEqualizerState
 import app.echo.android.model.playback.EchoEqualizerUserPresets
 import app.echo.android.model.playback.OpraHeadphoneCorrectionState
@@ -90,6 +93,24 @@ internal fun SignalHeadphoneCorrection(
     val starredEqId = state.selectedEqId?.let { eqId -> favorites.firstOrNull { it.opraEqId == eqId }?.opraEqId }
     var expandedProduct by remember(state.results) { mutableStateOf<String?>(null) }
     var shareFavorite by remember { mutableStateOf<app.echo.android.model.playback.EchoEqualizerUserPreset?>(null) }
+    val selectedBrandName = state.brands.firstOrNull { it.id == state.selectedBrandId }?.name
+    val searchPlaceholder = if (selectedBrandName != null) {
+        stringResource(L10nR.string.opra_search_in_brand, selectedBrandName)
+    } else {
+        stringResource(L10nR.string.opra_search_examples)
+    }
+    val logosByVendorName = remember(state.brands) { state.brands.associate { it.name to it.logoUrl } }
+    val visibleResults = remember(state.results, state.query, state.selectedBrandId) {
+        val needle = state.query.trim()
+        if (state.selectedBrandId == null || needle.isEmpty()) {
+            state.results
+        } else {
+            state.results.filter { product ->
+                product.productName.contains(needle, ignoreCase = true) ||
+                    product.productId.contains(needle, ignoreCase = true)
+            }
+        }
+    }
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             SignalLiveDot(active = equalizer.parametric && equalizer.enabled && !bypassed)
@@ -107,7 +128,6 @@ internal fun SignalHeadphoneCorrection(
                 if (bypassed) SignalNote(stringResource(L10nR.string.eq_bypassed), error = true)
             }
         }
-        OpraBrandBrowser(state, onBrandSelected)
         SignalEqWell(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
@@ -117,7 +137,7 @@ internal fun SignalHeadphoneCorrection(
                     singleLine = true,
                     enabled = !state.loading,
                     label = { Text(stringResource(L10nR.string.diag_headphone_model)) },
-                    placeholder = { Text("HD 650 / IER-M9 / AirPods Max") },
+                    placeholder = { Text(searchPlaceholder) },
                     shape = RoundedCornerShape(16.dp),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = { search() }),
@@ -136,7 +156,7 @@ internal fun SignalHeadphoneCorrection(
                     }
                     TextButton(onClick = onRefresh, enabled = !state.loading) { Text(stringResource(L10nR.string.diag_refresh_library)) }
                 }
-                if (lastQuery.isNotBlank()) {
+                if (lastQuery.isNotBlank() && state.selectedBrandId == null) {
                     TextButton(
                         onClick = {
                             if (state.query != lastQuery) onQueryChange(lastQuery)
@@ -153,6 +173,7 @@ internal fun SignalHeadphoneCorrection(
                 state.message?.let { SignalNote(it) }
             }
         }
+        OpraBrandBrowser(state, onBrandSelected)
         if (favorites.isNotEmpty()) {
             SignalEqWell(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -175,16 +196,33 @@ internal fun SignalHeadphoneCorrection(
             EqShareCodeDialog(preset = preset, onDismiss = { shareFavorite = null })
         }
         // Keep the selected curve and apply action above the potentially long result list.
-        state.selectedPreset?.let { preset ->
+        AnimatedContent(
+            targetState = state.selectedPreset,
+            transitionSpec = { EchoMotion.stateChange() },
+            contentKey = { it?.eqId },
+            label = "opra-preset",
+        ) { preset ->
+            if (preset != null) {
             val current = equalizer.parametric && equalizer.enabled && equalizer.sourceLabel == preset.displayName &&
                 equalizer.filters == preset.bands && abs(equalizer.preampDb - preset.preampDb) < 0.05f
             SignalEqWell(Modifier.fillMaxWidth()) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(preset.productName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        Text(preset.author, style = MaterialTheme.typography.titleSmall, color = scheme.onSurfaceVariant)
-                        preset.details?.let { SignalNote(it) }
-                        SignalNote(stringResource(L10nR.string.opra_filter_summary, preset.bands.size, formatEqGain(preset.preampDb)))
+                    Row(
+                        Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        OpraBrandLogo(
+                            name = preset.vendorName,
+                            logoUrl = logosByVendorName[preset.vendorName],
+                            size = 44.dp,
+                        )
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(preset.productName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text(preset.author, style = MaterialTheme.typography.titleSmall, color = scheme.onSurfaceVariant)
+                            preset.details?.let { SignalNote(it) }
+                            SignalNote(stringResource(L10nR.string.opra_filter_summary, preset.bands.size, formatEqGain(preset.preampDb)))
+                        }
                     }
                     SignalEqCurve(state.previewCurve, live = !bypassed, showFrequencyLabels = true)
                     Row(
@@ -223,13 +261,14 @@ internal fun SignalHeadphoneCorrection(
                     }
                 }
             }
+            }
         }
-        if (state.results.isNotEmpty()) {
+        if (visibleResults.isNotEmpty()) {
             SignalEqWell(Modifier.fillMaxWidth()) {
                 LazyColumn(Modifier.height(360.dp).padding(8.dp).selectableGroup(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    items(state.results, key = { it.productId }) { product ->
+                    items(visibleResults, key = { it.productId }) { product ->
                         val expanded = expandedProduct == product.productId
-                        Column {
+                        Column(echoItemMotion()) {
                             Row(
                                 Modifier
                                     .fillMaxWidth()
@@ -238,14 +277,21 @@ internal fun SignalHeadphoneCorrection(
                                     .echoClickable { expandedProduct = if (expanded) null else product.productId }
                                     .padding(horizontal = 8.dp, vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
                             ) {
+                                OpraBrandLogo(
+                                    name = product.vendorName,
+                                    logoUrl = logosByVendorName[product.vendorName],
+                                    size = 36.dp,
+                                )
                                 Column(Modifier.weight(1f)) {
                                     Text(product.productName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                                     SignalNote("${product.vendorName} · ${product.presets.size}")
                                 }
                                 Icon(
-                                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                    Icons.Default.ExpandMore,
                                     contentDescription = null,
+                                    modifier = Modifier.echoExpandIndicator(expanded),
                                     tint = scheme.onSurfaceVariant,
                                 )
                             }
@@ -293,6 +339,8 @@ internal fun SignalHeadphoneCorrection(
                     }
                 }
             }
+        } else if (state.results.isNotEmpty() && state.query.isNotBlank()) {
+            SignalNote(stringResource(L10nR.string.opra_no_matching_models))
         }
         HorizontalDivider(color = scheme.outlineVariant)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

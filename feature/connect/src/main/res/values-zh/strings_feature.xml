@@ -157,6 +157,8 @@
     <string name="feature_connect_try_the_saved_pc_when_opening_connect_38be4d">"打开连接页时尝试连接已保存的 PC"</string>
     <string name="feature_connect_volume_8f3a19">"音量"</string>
     <string name="feature_connect_pc_queue_2e91c4">"电脑队列"</string>
+    <string name="feature_connect_stop_pc_7f3c91">"停止 PC"</string>
+    <string name="feature_connect_pc_output_mode_e2a6b1">"输出 · %1$s"</string>
     <string name="feature_connect_waiting_for_pc_echo_to_become_available_a74ad2">"等待 PC ECHO 就绪"</string>
     <string name="feature_connect_check_the_pc_address_or_paste_a_complete_0f216a">"请检查 PC 地址，或粘贴完整配对链接"</string>
     <string name="feature_connect_pair_another_pc_23df07">"扫码配对其他 PC"</string>

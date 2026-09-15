@@ -37,6 +37,7 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.Computer
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Queue
 import androidx.compose.material.icons.rounded.SkipNext
@@ -215,6 +216,7 @@ internal fun TrackRow(
     onMoveDown: (() -> Unit)? = null,
     onOpenArtist: ((EchoTrack) -> Unit)? = null,
     onOpenAlbum: ((EchoTrack) -> Unit)? = null,
+    onPlayOnPc: (() -> Unit)? = null,
     showAudioInfoTags: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
@@ -245,6 +247,7 @@ internal fun TrackRow(
         onMoveDown = onMoveDown,
         onOpenArtist = onOpenArtist?.let { open -> { open(track) } },
         onOpenAlbum = onOpenAlbum?.let { open -> { open(track) } },
+        onPlayOnPc = onPlayOnPc,
         showMoreAction = true,
         modifier = modifier
             .fillMaxWidth()
@@ -359,6 +362,7 @@ internal fun TrackContextMenu(
     onMoveDown: (() -> Unit)? = null,
     onOpenArtist: (() -> Unit)? = null,
     onOpenAlbum: (() -> Unit)? = null,
+    onPlayOnPc: (() -> Unit)? = null,
     showMoreAction: Boolean = false,
     modifier: Modifier = Modifier,
     content: @Composable (Modifier) -> Unit,
@@ -380,6 +384,13 @@ internal fun TrackContextMenu(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) {
                 content(Modifier.echoCombinedClickable(onClick = onPlay, onLongClick = { sheetMode = TrackSheetMode.Actions }))
+            }
+            if (onPlayOnPc != null) IconButton(onClick = onPlayOnPc) {
+                Icon(
+                    Icons.Rounded.Computer,
+                    contentDescription = stringResource(L10nR.string.feature_library_play_on_pc_7c21a4),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
             }
             if (showMoreAction) IconButton(onClick = { sheetMode = TrackSheetMode.Actions }) {
                 Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(L10nR.string.library_track_actions),
@@ -465,9 +476,14 @@ internal fun TrackContextMenu(
                     canMoveDown = onMoveDown != null,
                     canOpenArtist = onOpenArtist != null,
                     canOpenAlbum = onOpenAlbum != null,
+                    canPlayOnPc = onPlayOnPc != null,
                     onPlay = {
                         sheetMode = null
                         onPlay()
+                    },
+                    onPlayOnPc = {
+                        sheetMode = null
+                        onPlayOnPc?.invoke()
                     },
                     onOpenArtist = {
                         sheetMode = null
@@ -560,7 +576,9 @@ private fun TrackActionSheet(
     canMoveDown: Boolean,
     canOpenArtist: Boolean,
     canOpenAlbum: Boolean,
+    canPlayOnPc: Boolean = false,
     onPlay: () -> Unit,
+    onPlayOnPc: () -> Unit = {},
     onOpenArtist: () -> Unit,
     onOpenAlbum: () -> Unit,
     onEdit: () -> Unit,
@@ -583,6 +601,14 @@ private fun TrackActionSheet(
     ) {
         TrackSheetHeader(track)
         TrackActionRow(stringResource(L10nR.string.feature_library_play_38419a), Icons.Rounded.PlayArrow, enabled = true, onClick = onPlay)
+        if (canPlayOnPc) {
+            TrackActionRow(
+                stringResource(L10nR.string.feature_library_play_on_pc_7c21a4),
+                Icons.Rounded.Computer,
+                enabled = true,
+                onClick = onPlayOnPc,
+            )
+        }
         if (canOpenArtist) {
             TrackActionRow(
                 stringResource(L10nR.string.feature_library_go_to_artist),

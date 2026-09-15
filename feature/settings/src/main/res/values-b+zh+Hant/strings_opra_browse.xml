@@ -3,4 +3,10 @@
     <string name="opra_choose_brand">選擇品牌</string>
     <string name="opra_all_brands">全部品牌</string>
     <string name="opra_browse_workflow">選擇品牌和型號，預覽曲線，再套用校正。</string>
+    <string name="opra_search_examples">Sony / HD 650 / AirPods Max</string>
+    <string name="opra_search_in_brand">搜尋 %1$s</string>
+    <string name="opra_no_matching_models">找不到相符的型號</string>
+    <plurals name="opra_brand_models">
+        <item quantity="other">%1$d 個型號</item>
+    </plurals>
 </resources>

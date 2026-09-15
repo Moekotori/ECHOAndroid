@@ -9,6 +9,7 @@ import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -20,13 +21,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.connect.EchoLinkRemoteControlHold
 import app.echo.android.design.EchoArtworkImage
 import app.echo.android.design.EchoArtworkSize
+import app.echo.android.design.echoClickable
 import app.echo.android.design.formatDuration
 import app.echo.android.model.connect.EchoRemoteConnectionState
+import app.echo.android.model.connect.EchoRemoteTrack
 import kotlinx.coroutines.delay
 
 @Composable
@@ -42,9 +47,13 @@ internal fun RemoteNowPlaying(
     onPlayPause: () -> Unit,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
+    onStop: () -> Unit = {},
     onSeek: (Long) -> Unit,
     onVolume: (Float) -> Unit,
-    queueTitles: List<String> = emptyList(),
+    onPlayQueueItem: (String) -> Unit = {},
+    outputMode: String = "",
+    currentTrackId: String? = null,
+    queueItems: List<EchoRemoteTrack> = emptyList(),
 ) {
     var anchoredAtMs by remember { mutableLongStateOf(android.os.SystemClock.elapsedRealtime()) }
     var tickMs by remember { mutableLongStateOf(android.os.SystemClock.elapsedRealtime()) }
@@ -122,6 +131,9 @@ internal fun RemoteNowPlaying(
                 Text(title.ifBlank { stringResource(L10nR.string.feature_connect_no_track_selected_258d56) },
                     style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 if (artist.isNotBlank()) ConnectNote(artist)
+                if (outputMode.isNotBlank()) {
+                    ConnectNote(stringResource(L10nR.string.feature_connect_pc_output_mode_e2a6b1, outputMode))
+                }
             }
         }
         if (safeDuration > 0L) {
@@ -160,6 +172,9 @@ internal fun RemoteNowPlaying(
             IconButton(onClick = onNext, enabled = controlsEnabled, modifier = Modifier.size(56.dp)) {
                 Icon(Icons.Rounded.SkipNext, stringResource(L10nR.string.feature_connect_next_on_pc_303358))
             }
+            IconButton(onClick = onStop, enabled = controlsEnabled, modifier = Modifier.size(56.dp)) {
+                Icon(Icons.Rounded.Stop, stringResource(L10nR.string.feature_connect_stop_pc_7f3c91))
+            }
         }
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             ConnectNote(stringResource(L10nR.string.feature_connect_volume_8f3a19))
@@ -179,15 +194,51 @@ internal fun RemoteNowPlaying(
                 enabled = controlsEnabled,
             )
         }
-        if (queueTitles.isNotEmpty()) {
+        if (queueItems.isNotEmpty()) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 ConnectNote(stringResource(L10nR.string.feature_connect_pc_queue_2e91c4))
-                queueTitles.take(12).forEachIndexed { index, title ->
-                    Text(
-                        "${index + 1}. $title",
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                    )
+                queueItems.take(12).forEachIndexed { index, item ->
+                    val trackId = item.id?.takeIf { it.isNotBlank() }
+                    val current = trackId != null && trackId == currentTrackId
+                    val playable = controlsEnabled && trackId != null
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .then(
+                                if (playable) {
+                                    Modifier.echoClickable(role = Role.Button) {
+                                        onPlayQueueItem(trackId)
+                                    }
+                                } else {
+                                    Modifier
+                                },
+                            )
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text(
+                            "${index + 1}. ${item.title}",
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (current) FontWeight.Bold else FontWeight.Normal,
+                            color = if (current) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        if (playable) {
+                            Text(
+                                stringResource(L10nR.string.feature_connect_play_on_pc_aa41d1),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
                 }
             }
         }

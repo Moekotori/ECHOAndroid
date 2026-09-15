@@ -14,9 +14,9 @@ import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.TargetedFlingBehavior
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.gestures.TargetedFlingBehavior
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
@@ -29,6 +29,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Velocity
+import kotlin.math.absoluteValue
 
 /** Share the click source with Material controls; never intercept pointer input for feedback. */
 fun Modifier.echoPressFeedback(
@@ -141,6 +142,15 @@ fun androidx.compose.foundation.lazy.LazyItemScope.echoItemMotion(): Modifier =
         fadeOutSpec = tween(EchoMotion.FadeExitMs),
     )
 
+@Composable
+fun androidx.compose.foundation.lazy.grid.LazyGridItemScope.echoItemMotion(): Modifier =
+    if (LocalEchoEffectivePerformanceMode.current.isLightweight) Modifier
+    else Modifier.animateItem(
+        fadeInSpec = null,
+        placementSpec = EchoMotion.silkOffset(EchoMotion.ExpandMs),
+        fadeOutSpec = tween(EchoMotion.FadeExitMs),
+    )
+
 /** Resolve preferences in composition, before entering AnimatedContent's transition lambda. */
 @Composable
 fun rememberEchoContentMotion(): EchoContentMotion {
@@ -171,13 +181,16 @@ suspend fun PagerState.animateSilkToPage(page: Int, lightweight: Boolean) {
 }
 
 /**
- * Inner tab pagers must not swallow leftover horizontal fling; the parent dock pager
- * needs that velocity at the first/last inner tab.
+ * Vertical page content wins the pointer, so leftover horizontal nested scroll must
+ * drive this pager directly. Otherwise inner tabs do not follow the finger.
  */
 @Composable
-fun rememberPassThroughPagerNestedScroll(state: PagerState): NestedScrollConnection {
+fun rememberContentPagerNestedScroll(
+    state: PagerState,
+    flingBehavior: TargetedFlingBehavior,
+): NestedScrollConnection {
     val default = PagerDefaults.pageNestedScrollConnection(state, Orientation.Horizontal)
-    return remember(state, default) {
+    return remember(state, default, flingBehavior) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset =
                 default.onPreScroll(available, source)
@@ -186,13 +199,31 @@ fun rememberPassThroughPagerNestedScroll(state: PagerState): NestedScrollConnect
                 consumed: Offset,
                 available: Offset,
                 source: NestedScrollSource,
-            ): Offset = default.onPostScroll(consumed, available, source)
+            ): Offset {
+                if (source == NestedScrollSource.UserInput && available.x != 0f) {
+                    val consumedX = -state.dispatchRawDelta(-available.x)
+                    return Offset(x = consumedX, y = 0f)
+                }
+                return default.onPostScroll(consumed, available, source)
+            }
 
             override suspend fun onPreFling(available: Velocity): Velocity =
                 default.onPreFling(available)
 
-            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity =
-                Velocity.Zero
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                if (available.x.absoluteValue < 40f &&
+                    state.currentPageOffsetFraction.absoluteValue <= 0.001f
+                ) {
+                    return Velocity.Zero
+                }
+                if (available.x != 0f || state.currentPageOffsetFraction.absoluteValue > 0.001f) {
+                    state.scroll {
+                        with(flingBehavior) { performFling(-available.x) }
+                    }
+                    return available.copy(y = 0f)
+                }
+                return Velocity.Zero
+            }
         }
     }
 }

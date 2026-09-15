@@ -1,6 +1,7 @@
 package app.echo.android.data
 
 import android.content.Context
+import android.os.Build
 import androidx.annotation.StringRes
 import app.echo.android.model.library.LibrarySource
 import java.io.InterruptedIOException
@@ -472,14 +473,28 @@ private val SharedSubsonicHttpClient: OkHttpClient =
         )
         .build()
 
-private fun defaultHttpGet(url: String, context: Context? = null): String {
+private val ProbeSubsonicHttpClient: OkHttpClient =
+    SharedSubsonicHttpClient.newBuilder()
+        .connectTimeout(1500, TimeUnit.MILLISECONDS)
+        .readTimeout(4, TimeUnit.SECONDS)
+        .callTimeout(5, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(false)
+        .build()
+
+private fun defaultHttpGet(url: String, context: Context? = null): String =
+    httpGetWithClient(SharedSubsonicHttpClient, url, context)
+
+private fun probeHttpGet(url: String, context: Context? = null): String =
+    httpGetWithClient(ProbeSubsonicHttpClient, url, context)
+
+private fun httpGetWithClient(client: OkHttpClient, url: String, context: Context?): String {
     val request = Request.Builder()
         .url(url)
         .header("User-Agent", "ECHOAndroid/0.1")
         .get()
         .build()
     return try {
-        SharedSubsonicHttpClient.newCall(request).execute().use { response ->
+        client.newCall(request).execute().use { response ->
             val body = response.body ?: error(subsonicHttpStatusMessage(response.code, context))
             val declaredLength = body.contentLength()
             if (declaredLength > SubsonicClient.MaxResponseBytes) {
@@ -601,6 +616,128 @@ internal fun redirectTargetHost(requestUrl: String, location: String?): String? 
     val resolved = runCatching { URI(requestUrl).resolve(location.trim()) }.getOrNull() ?: return null
     return resolved.host?.takeIf { it.isNotBlank() }
 }
+
+internal val ZspaceRemoteAccessHost =
+    Regex("""^remote-access-(\d+)\.zconnect\.cn$""", RegexOption.IGNORE_CASE)
+
+internal fun zspaceMappedPort(endpoint: SubsonicEndpoint): Int? {
+    val host = runCatching { URI(endpoint.normalizedBaseUrl) }.getOrNull()?.host ?: return null
+    val match = ZspaceRemoteAccessHost.matchEntire(host.trim()) ?: return null
+    return match.groupValues[1].toIntOrNull()?.takeIf { it in 1..65535 }
+}
+
+internal fun subsonicLoopbackHosts(): List<String> =
+    if (isAndroidEmulator()) listOf("10.0.2.2", "127.0.0.1") else listOf("127.0.0.1")
+
+internal fun isAndroidEmulator(): Boolean {
+    val fingerprint = Build.FINGERPRINT.orEmpty()
+    val model = Build.MODEL.orEmpty()
+    val product = Build.PRODUCT.orEmpty()
+    val hardware = Build.HARDWARE.orEmpty()
+    val manufacturer = Build.MANUFACTURER.orEmpty()
+    val brand = Build.BRAND.orEmpty()
+    val device = Build.DEVICE.orEmpty()
+    return fingerprint.startsWith("generic") ||
+        fingerprint.startsWith("unknown") ||
+        model.contains("google_sdk", ignoreCase = true) ||
+        model.contains("Emulator", ignoreCase = true) ||
+        model.contains("Android SDK built for", ignoreCase = true) ||
+        manufacturer.contains("Genymotion", ignoreCase = true) ||
+        (brand.startsWith("generic") && device.startsWith("generic")) ||
+        product.contains("sdk", ignoreCase = true) ||
+        product.contains("emulator", ignoreCase = true) ||
+        product.contains("simulator", ignoreCase = true) ||
+        hardware.contains("goldfish", ignoreCase = true) ||
+        hardware.contains("ranchu", ignoreCase = true)
+}
+
+internal fun isSubsonicLoopbackTunnel(endpoint: SubsonicEndpoint): Boolean {
+    val uri = runCatching { URI(endpoint.normalizedBaseUrl) }.getOrNull() ?: return false
+    val host = uri.host?.lowercase(Locale.ROOT) ?: return false
+    val port = uri.port
+    return host in setOf("127.0.0.1", "localhost", "10.0.2.2") && port in 10000..10020
+}
+
+internal fun nearbyLoopbackTunnelEndpoints(
+    endpoint: SubsonicEndpoint,
+    tunnelPorts: IntRange = 10000..10007,
+): List<SubsonicEndpoint> {
+    val uri = runCatching { URI(endpoint.normalizedBaseUrl) }.getOrNull() ?: return emptyList()
+    val host = uri.host?.takeIf { it.isNotBlank() } ?: return emptyList()
+    return tunnelPorts.map { port ->
+        SubsonicEndpoint(
+            baseUrl = "http://$host:$port",
+            username = endpoint.username,
+            password = endpoint.password,
+        )
+    }
+}
+
+internal fun zspaceLocalFallbackEndpoints(
+    endpoint: SubsonicEndpoint,
+    loopbackHosts: List<String> = subsonicLoopbackHosts(),
+    tunnelPorts: IntRange = 10000..10007,
+): List<SubsonicEndpoint> {
+    val mappedPort = zspaceMappedPort(endpoint) ?: return emptyList()
+    val ports = LinkedHashSet<Int>()
+    ports.addAll(tunnelPorts)
+    ports += mappedPort
+    val out = ArrayList<SubsonicEndpoint>(loopbackHosts.size * ports.size)
+    for (loopback in loopbackHosts) {
+        if (loopback.isBlank()) continue
+        for (port in ports) {
+            out += SubsonicEndpoint(
+                baseUrl = "http://$loopback:$port",
+                username = endpoint.username,
+                password = endpoint.password,
+            )
+        }
+    }
+    return out
+}
+
+internal fun resolveSubsonicEndpoint(
+    endpoint: SubsonicEndpoint,
+    context: Context? = null,
+    httpGet: ((String) -> String?)? = null,
+    fallbacks: List<SubsonicEndpoint> = zspaceLocalFallbackEndpoints(endpoint),
+): SubsonicEndpoint {
+    val getter = httpGet ?: { probeHttpGet(it, context) }
+    fun ping(target: SubsonicEndpoint) {
+        SubsonicClient(target, httpGet = getter, appContext = context).ping()
+    }
+    try {
+        ping(endpoint)
+        return endpoint
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (first: Throwable) {
+        if (fallbacks.isEmpty()) throw first
+        for (candidate in fallbacks) {
+            if (candidate.normalizedBaseUrl == endpoint.normalizedBaseUrl) continue
+            try {
+                ping(candidate)
+                return candidate
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Throwable) {
+                continue
+            }
+        }
+        val mappedPort = zspaceMappedPort(endpoint)
+        if (mappedPort != null) {
+            error(zspaceRemoteAccessFailureMessage(mappedPort, context))
+        }
+        throw first
+    }
+}
+
+internal fun zspaceRemoteAccessFailureMessage(mappedPort: Int, context: Context? = null): String =
+    context.subsonicString(
+        R.string.subsonic_zspace_remote_access,
+        "This Zspace remote-access URL isn't a Subsonic server. Use the Navidrome address on the NAS (port $mappedPort), e.g. http://192.168.1.x:$mappedPort. In the Android emulator, try http://10.0.2.2:10000 while the Zspace remote-access window is open.",
+        mappedPort,
+    )
 
 internal fun subsonicRequestFailedMessage(context: Context? = null): String =
     context.subsonicString(R.string.subsonic_request_failed, "Subsonic authentication or request failed.")

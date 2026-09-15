@@ -26,10 +26,16 @@ private fun bilingualNames(value: String): List<String> {
     return if (differentScripts) listOf(base.trim(), suffix.trim(), normalized) else listOf(normalized)
 }
 
-internal fun lyricsTitleKeys(title: String, aliases: List<String> = emptyList()): Set<String> =
-    (bilingualNames(title) + aliases.take(12).filter {
+internal fun lyricsTitleKeys(title: String, aliases: List<String> = emptyList()): Set<String> {
+    val stripped = lyricsStripCoverLabel(title)
+    val names = bilingualNames(title) + bilingualNames(stripped) + aliases.take(12).filter {
         lyricsVersionKeys(it).isEmpty() && lyricsLanguageVersions(it, null).isEmpty()
-    }.flatMap(::bilingualNames)).map { it.lyricsMatchKey() }.filter(String::isNotBlank).toSet()
+    }.flatMap(::bilingualNames)
+    return names.flatMap { name ->
+        val withoutCover = lyricsStripCoverLabel(name)
+        if (withoutCover == name) listOf(name) else listOf(name, withoutCover)
+    }.map { it.lyricsMatchKey() }.filter(String::isNotBlank).toSet()
+}
 
 internal fun lyricsArtistGroups(artist: String, providerGroups: List<List<String>> = emptyList()): List<Set<String>> {
     val groups = providerGroups.ifEmpty { ArtistSeparators.split(artist.lyricsNormalized()).map(::listOf) }
@@ -52,7 +58,7 @@ internal fun lyricsArtistsMatch(target: List<Set<String>>, candidate: List<Set<S
 
 /** At most one extra search, only when explicit bilingual metadata supplies a cleaner query. */
 internal fun lyricsSearchFallback(request: EchoLyricsSearchRequest): EchoLyricsSearchRequest? {
-    val titleNames = bilingualNames(request.title)
+    val titleNames = bilingualNames(lyricsStripCoverLabel(request.title))
     val artistNames = ArtistSeparators.split(request.artist.lyricsNormalized()).map(::bilingualNames)
     if (titleNames.size == 1 && artistNames.all { it.size == 1 }) return null
     val title = titleNames.first()
@@ -60,13 +66,30 @@ internal fun lyricsSearchFallback(request: EchoLyricsSearchRequest): EchoLyricsS
     return request.copy(title = title, artist = artist).takeIf { it.title != request.title || it.artist != request.artist }
 }
 
-private val VersionPatterns = listOf(
+internal fun lyricsSearchTitle(request: EchoLyricsSearchRequest): String =
+    lyricsStripCoverLabel(request.title).ifBlank { request.title }
+
+internal fun lyricsCoverTitleOnlyQuery(request: EchoLyricsSearchRequest): String? {
+    if (!lyricsCoverTagged(request.title)) return null
+    return lyricsSearchTitle(request).takeIf { it.isNotBlank() }
+}
+
+private val CoverToken = """cover|カバー|커버|翻唱|歌ってみた"""
+private val CoverPattern = Regex(
+    """(?<![a-z])cover(?![a-z])|(?<![\p{L}\p{N}])(?:カバー|커버|翻唱|歌ってみた)(?![\p{L}\p{N}])""",
+    RegexOption.IGNORE_CASE,
+)
+private val CoverLabelSuffix = Regex(
+    """(?:\s*[\(\[（【][^()\[\]（）【】]*?(?:$CoverToken)[^()\[\]（）【】]*[\)\]）】]|\s+(?:$CoverToken))\s*$""",
+    RegexOption.IGNORE_CASE,
+)
+
+private val ArrangementPatterns = listOf(
     """(?<![a-z])live(?![a-z])|(?<![\p{L}\p{N}])(?:ライブ|ライヴ|라이브|现场|現場)(?:版|バージョン)?(?![\p{L}\p{N}])""",
     """(?<![a-z])remix(?![a-z])|(?<![\p{L}\p{N}])(?:リミックス|리믹스)(?![\p{L}\p{N}])""",
     """(?<![a-z])(?:instrumental|karaoke|off[\s-]*vocal)(?![a-z])|(?<![\p{L}\p{N}])(?:カラオケ|インスト(?:ゥルメンタル)?|인스트루멘탈|伴奏|纯音乐|純音樂)(?:版)?(?![\p{L}\p{N}])""",
     """(?<![a-z])(?:acoustic|unplugged)(?![a-z])|(?<![\p{L}\p{N}])(?:アコースティック|어쿠스틱|不插电|不插電)(?![\p{L}\p{N}])""",
     """(?<![a-z])demo(?![a-z])|(?<![\p{L}\p{N}])(?:デモ|데모)(?![\p{L}\p{N}])""",
-    """(?<![a-z])cover(?![a-z])|(?<![\p{L}\p{N}])(?:カバー|커버|翻唱)(?![\p{L}\p{N}])""",
     """(?<![a-z])radio[\s-]*edit(?![a-z])|ラジオエディット""",
     """(?<![a-z])tv[\s-]*(?:size|edit|version)(?![a-z])|テレビサイズ|TVサイズ|TV판""",
     """(?<![a-z])short[\s-]*(?:ver(?:sion)?|edit)(?![a-z])|ショート(?:バージョン|版)""",
@@ -76,7 +99,22 @@ private val VersionPatterns = listOf(
     """(?<![a-z])mono(?![a-z])|モノラル""", """(?<![a-z])stereo(?![a-z])|ステレオ""",
 ).map { Regex(it, RegexOption.IGNORE_CASE) }
 
+private val VersionPatterns = ArrangementPatterns + CoverPattern
+
 internal fun lyricsVersionKeys(value: String): Set<Int> {
     val normalized = value.lyricsNormalized()
     return VersionPatterns.indices.filterTo(mutableSetOf()) { VersionPatterns[it].containsMatchIn(normalized) }
+}
+
+internal fun lyricsArrangementKeys(value: String): Set<Int> {
+    val normalized = value.lyricsNormalized()
+    return ArrangementPatterns.indices.filterTo(mutableSetOf()) { ArrangementPatterns[it].containsMatchIn(normalized) }
+}
+
+internal fun lyricsCoverTagged(value: String): Boolean =
+    CoverPattern.containsMatchIn(value.lyricsNormalized())
+
+internal fun lyricsStripCoverLabel(value: String): String {
+    val normalized = value.lyricsNormalized().trim()
+    return normalized.replace(CoverLabelSuffix, "").trim().ifBlank { normalized }
 }

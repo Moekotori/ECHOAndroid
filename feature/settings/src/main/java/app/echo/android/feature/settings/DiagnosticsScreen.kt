@@ -22,7 +22,7 @@ import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.animateSilkToPage
-import app.echo.android.design.rememberPassThroughPagerNestedScroll
+import app.echo.android.design.rememberContentPagerNestedScroll
 import app.echo.android.design.rememberSilkPagerFlingBehavior
 import app.echo.android.model.playback.*
 import kotlinx.coroutines.flow.StateFlow
@@ -76,8 +76,8 @@ fun DiagnosticsScreen(
     val scrollStates = listOf(rememberScrollState(), rememberScrollState(), rememberScrollState())
     val scope = rememberCoroutineScope()
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
-    val innerPagerNestedScroll = rememberPassThroughPagerNestedScroll(pagerState)
     val innerFling = rememberSilkPagerFlingBehavior(pagerState)
+    val innerNestedScroll = rememberContentPagerNestedScroll(pagerState, innerFling)
     fun selectTab(index: Int) {
         scope.launch { pagerState.animateSilkToPage(index, lightweight) }
     }
@@ -114,12 +114,10 @@ fun DiagnosticsScreen(
             }
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.widthIn(max = LocalEchoContentMaxWidth.current)
-                    .fillMaxWidth().weight(1f),
+                modifier = Modifier.fillMaxWidth().weight(1f),
                 beyondViewportPageCount = if (lightweight) 0 else 1,
                 flingBehavior = innerFling,
-                overscrollEffect = null,
-                pageNestedScrollConnection = innerPagerNestedScroll,
+                pageNestedScrollConnection = innerNestedScroll,
             ) { tab ->
                 Column(
                     Modifier.fillMaxSize()

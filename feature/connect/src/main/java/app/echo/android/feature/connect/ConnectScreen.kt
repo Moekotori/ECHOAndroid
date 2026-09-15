@@ -24,12 +24,13 @@ import androidx.compose.ui.unit.lerp
 import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.animateSilkToPage
-import app.echo.android.design.rememberPassThroughPagerNestedScroll
+import app.echo.android.design.rememberContentPagerNestedScroll
 import app.echo.android.design.rememberSilkPagerFlingBehavior
 import kotlinx.coroutines.launch
 import app.echo.android.model.connect.EchoLanRenderer
 import app.echo.android.model.connect.EchoLinkLanDevice
 import app.echo.android.model.connect.EchoRemoteConnectionState
+import app.echo.android.model.connect.EchoRemoteTrack
 import app.echo.android.model.library.LibraryScanProgress
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,7 +50,9 @@ fun ConnectScreen(
     positionMs: Long = 0L,
     durationMs: Long = 0L,
     volume: Float = 1f,
-    queueTitles: List<String> = emptyList(),
+    outputMode: String = "",
+    currentTrackId: String? = null,
+    queueItems: List<EchoRemoteTrack> = emptyList(),
     subsonicServerUrl: String?,
     subsonicUsername: String?,
     subsonicPassword: String?,
@@ -65,8 +68,10 @@ fun ConnectScreen(
     onPlayPause: () -> Unit,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
+    onStop: () -> Unit = {},
     onSeek: (Long) -> Unit = {},
     onVolume: (Float) -> Unit = {},
+    onPlayQueueItem: (String) -> Unit = {},
     onDisconnect: () -> Unit,
     onForgetPc: () -> Unit,
     onAutoReconnectChange: (Boolean) -> Unit,
@@ -117,8 +122,8 @@ fun ConnectScreen(
     val scheme = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
-    val innerPagerNestedScroll = rememberPassThroughPagerNestedScroll(pagerState)
     val innerFling = rememberSilkPagerFlingBehavior(pagerState)
+    val innerNestedScroll = rememberContentPagerNestedScroll(pagerState, innerFling)
     fun selectTab(index: Int) {
         keyboard?.hide()
         scope.launch { pagerState.animateSilkToPage(index, lightweight) }
@@ -151,12 +156,10 @@ fun ConnectScreen(
             }
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.widthIn(max = LocalEchoContentMaxWidth.current)
-                    .fillMaxWidth().weight(1f),
+                modifier = Modifier.fillMaxWidth().weight(1f),
                 beyondViewportPageCount = if (lightweight) 0 else 1,
                 flingBehavior = innerFling,
-                overscrollEffect = null,
-                pageNestedScrollConnection = innerPagerNestedScroll,
+                pageNestedScrollConnection = innerNestedScroll,
             ) { tab ->
                 savedTabs.SaveableStateProvider(tab) {
                     Column(
@@ -204,13 +207,17 @@ fun ConnectScreen(
                                 positionMs = positionMs,
                                 durationMs = durationMs,
                                 volume = volume,
-                                queueTitles = queueTitles,
+                                outputMode = outputMode,
+                                currentTrackId = currentTrackId,
+                                queueItems = queueItems,
                                 onConnectPc = onConnectPc,
                                 onPlayPause = onPlayPause,
                                 onPrevious = onPrevious,
                                 onNext = onNext,
+                                onStop = onStop,
                                 onSeek = onSeek,
                                 onVolume = onVolume,
+                                onPlayQueueItem = onPlayQueueItem,
                                 onHandoffPhoneToPc = onHandoffPhoneToPc,
                                 onDisconnect = onDisconnect,
                                 onForgetPc = onForgetPc,

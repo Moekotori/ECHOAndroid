@@ -6,6 +6,9 @@ import app.echo.android.model.library.CueSheetTrack
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 
+private val CueFallbackCharsets: List<Charset> = listOf("GB18030", "Shift_JIS", "ISO-8859-1")
+    .mapNotNull { name -> runCatching { Charset.forName(name) }.getOrNull() }
+
 object CueSheetParser {
     private val IndexTime = Regex("""^(\d{1,3}):(\d{2}):(\d{2})$""")
     private val TrackHeader = Regex("""^(\d{1,2})\s+AUDIO$""", RegexOption.IGNORE_CASE)
@@ -18,6 +21,7 @@ object CueSheetParser {
 
     fun parseText(text: String): CueSheet? {
         var fileName: String? = null
+        var currentFile: String? = null
         var album: String? = null
         var performer: String? = null
         var year: Int? = null
@@ -38,6 +42,7 @@ object CueSheetParser {
                 title = name.take(200),
                 performer = trackPerformer,
                 startMs = start,
+                fileName = currentFile,
             )
             inTrack = false
             title = null
@@ -50,8 +55,10 @@ object CueSheetParser {
             if (line.isEmpty()) continue
             val (command, argument) = splitCommand(line) ?: continue
             when (command) {
-                "FILE" -> if (!inTrack && fileName == null) {
-                    fileName = unquote(argument.substringBeforeLast(' ', argument)).takeIf { it.isNotEmpty() }
+                "FILE" -> {
+                    commit()
+                    currentFile = unquote(argument.substringBeforeLast(' ', argument)).takeIf { it.isNotEmpty() }
+                    if (fileName == null) fileName = currentFile
                 }
                 "TITLE" -> {
                     val value = unquote(argument).takeIf { it.isNotEmpty() }
@@ -76,10 +83,14 @@ object CueSheetParser {
                         inTrack = true
                     }
                 }
-                "INDEX" -> if (inTrack && startMs == null) {
+                "INDEX" -> if (inTrack) {
                     val parts = argument.trim().split(Regex("\\s+"), limit = 2)
-                    if (parts.size == 2 && parts[0] == "01") {
-                        startMs = parseIndex(parts[1])
+                    if (parts.size == 2) {
+                        val index = parts[0].trimStart('0').ifEmpty { "0" }
+                        when {
+                            index == "1" -> startMs = parseIndex(parts[1])
+                            index == "0" && startMs == null -> startMs = parseIndex(parts[1])
+                        }
                     }
                 }
             }
@@ -127,11 +138,30 @@ object CueSheetParser {
         }
     }
 
-    private fun decode(bytes: ByteArray): String {
+    internal fun decode(bytes: ByteArray): String {
+        if (bytes.size >= 2) {
+            when {
+                bytes[0] == 0xFF.toByte() && bytes[1] == 0xFE.toByte() ->
+                    return String(bytes, StandardCharsets.UTF_16LE)
+                bytes[0] == 0xFE.toByte() && bytes[1] == 0xFF.toByte() ->
+                    return String(bytes, StandardCharsets.UTF_16BE)
+            }
+        }
         if (bytes.size >= 3 && bytes[0] == 0xEF.toByte() && bytes[1] == 0xBB.toByte() && bytes[2] == 0xBF.toByte()) {
             return String(bytes, 3, bytes.size - 3, StandardCharsets.UTF_8)
         }
         val utf8 = String(bytes, StandardCharsets.UTF_8)
-        return if (utf8.contains('\uFFFD')) String(bytes, Charset.forName("ISO-8859-1")) else utf8
+        if (!utf8.contains('\uFFFD')) return utf8
+        val decoded = CueFallbackCharsets.mapNotNull { charset ->
+            runCatching { String(bytes, charset) }.getOrNull()
+        }
+        val valid = decoded.filterNot { it.contains('\uFFFD') }.ifEmpty { decoded }
+        val withCjk = valid.filter { cjkCount(it) > 0 }
+        return withCjk.maxByOrNull(::cjkCount) ?: valid.lastOrNull() ?: utf8
     }
+
+    private fun cjkCount(text: String): Int =
+        text.count { ch ->
+            ch in '\u4e00'..'\u9fff' || ch in '\u3040'..'\u30ff' || ch in '\uac00'..'\ud7af'
+        }
 }

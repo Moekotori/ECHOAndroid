@@ -3,4 +3,13 @@
     <string name="opra_choose_brand">Выберите бренд</string>
     <string name="opra_all_brands">Все бренды</string>
     <string name="opra_browse_workflow">Выберите бренд и модель, просмотрите кривую, затем примените коррекцию.</string>
+    <string name="opra_search_examples">Sony / HD 650 / AirPods Max</string>
+    <string name="opra_search_in_brand">Искать в %1$s</string>
+    <string name="opra_no_matching_models">Подходящая модель не найдена</string>
+    <plurals name="opra_brand_models">
+        <item quantity="one">%1$d модель</item>
+        <item quantity="few">%1$d модели</item>
+        <item quantity="many">%1$d моделей</item>
+        <item quantity="other">%1$d модели</item>
+    </plurals>
 </resources>

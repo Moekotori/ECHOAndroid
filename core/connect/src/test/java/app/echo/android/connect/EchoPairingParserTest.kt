@@ -90,6 +90,12 @@ class EchoPairingParserTest {
     }
 
     @Test
+    fun stopCommandUsesStop() {
+        val json = EchoRemoteCommand.Stop.toJson()
+        assertEquals("stop", json.getString("command"))
+    }
+
+    @Test
     fun queueReplaceCommandIncludesTrackIdsAndStart() {
         val json = EchoRemoteCommand.QueueReplace(listOf("a", "b"), "b").toJson()
         assertEquals("queueReplace", json.getString("command"))

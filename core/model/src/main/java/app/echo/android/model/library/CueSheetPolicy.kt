@@ -36,6 +36,15 @@ object CueSheetPolicy {
         }
     }
 
+    fun tracksForAudio(sheet: CueSheet, audioName: String?): List<CueSheetTrack> {
+        val name = audioName?.substringAfterLast('/')?.trim().orEmpty()
+        if (name.isEmpty()) return emptyList()
+        if (sheet.tracks.any { !it.fileName.isNullOrBlank() }) {
+            return sheet.tracks.filter { matchAudioName(it.fileName, listOf(name)) != null }
+        }
+        return if (matchAudioName(sheet.fileName, listOf(name)) != null) sheet.tracks else emptyList()
+    }
+
     fun matchAudioName(fileName: String?, audioNames: Collection<String>): String? {
         val wanted = fileName?.substringAfterLast('/')?.trim().orEmpty()
         if (wanted.isNotEmpty()) {

@@ -152,7 +152,10 @@ class DocumentTreeTrackScanner(
                     CueSheetPolicy.isCueTrackId(id) && CueSheetPolicy.baseTrackId(id) == trackId
                 }
                 val existingTrack = existingTracks[trackId] ?: existingCueIds.firstOrNull()?.let(existingTracks::get)
+                val cueSheet = cueByAudioName[row.displayName]
                 if (
+                    cueSheet == null &&
+                    existingCueIds.isEmpty() &&
                     LibraryScanPolicy.shouldReuseUnchangedDocumentTrack(
                         existing = existingTrack?.copy(
                             contentUri = CueSheetPolicy.playbackUri(existingTrack.contentUri),
@@ -163,13 +166,8 @@ class DocumentTreeTrackScanner(
                         incomingRelativePath = row.relativePath,
                     )
                 ) {
-                    if (existingCueIds.isNotEmpty()) {
-                        unchangedIds += existingCueIds
-                        scannedCount += existingCueIds.size
-                    } else {
-                        unchangedIds += trackId
-                        scannedCount += 1
-                    }
+                    unchangedIds += trackId
+                    scannedCount += 1
                     continue
                 }
                 if (!options.acceptsFileFormat(row.displayName, existingTrack != null)) {
@@ -212,7 +210,7 @@ class DocumentTreeTrackScanner(
                         onProgress(scannedCount, null)
                         return@onSuccess
                     }
-                    val expanded = cueByAudioName[row.displayName]?.let(track::splitByCue) ?: listOf(track)
+                    val expanded = cueSheet?.let { track.splitByCue(it, row.displayName) } ?: listOf(track)
                     expanded.forEach { item ->
                         batch += item
                         scannedCount += 1
@@ -253,10 +251,15 @@ class DocumentTreeTrackScanner(
         for (row in cueRows) {
             if (row.sizeBytes > CueSheetPolicy.MaxCueBytes) continue
             val sheet = readCueSheet(row.documentUri) ?: continue
-            val audioName = CueSheetPolicy.matchAudioName(sheet.fileName, audioNames)
-                ?: CueSheetPolicy.matchAudioName(row.displayName, audioNames)
-                ?: continue
-            matched.putIfAbsent(audioName, sheet)
+            val wantedNames = buildList {
+                add(row.displayName)
+                sheet.fileName?.let(::add)
+                sheet.tracks.forEach { track -> track.fileName?.let(::add) }
+            }
+            wantedNames.forEach { wanted ->
+                val audioName = CueSheetPolicy.matchAudioName(wanted, audioNames) ?: return@forEach
+                matched.putIfAbsent(audioName, sheet)
+            }
         }
         return matched
     }

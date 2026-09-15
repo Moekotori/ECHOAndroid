@@ -55,11 +55,30 @@ class OpraDatabaseParserTest {
         val matches = OpraDatabaseParser.search(database, "hd650")
         assertEquals("HD 650", matches.single().productName)
     }
+
+    @Test
+    fun vendorLogoUrlUsesContentAddressedOpraAssetsAndIgnoresUnsafePaths() {
+        val database = OpraDatabaseParser.parse(SampleDatabaseWithLogo, "fixture")
+        assertEquals(
+            "https://opra.roonlabs.net/assets/8c/c5/8cc5dcc3248e4e9578656cca184e7cbbbad84a97a83132bfc22ed59e8f4d86b6.png",
+            OpraDatabaseParser.brands(database).single().logoUrl,
+        )
+        assertEquals(null, OpraAssetUrls.url("https://evil.example/logo.png"))
+        assertEquals(null, OpraAssetUrls.url("assets/../secret.png"))
+        assertEquals(null, OpraAssetUrls.url("assets/8c/c5/not-a-hash.png"))
+        assertEquals(null, OpraDatabaseParser.parse(SampleDatabase, "fixture").let { OpraDatabaseParser.brands(it).single().logoUrl })
+    }
 }
 
 private const val SampleDatabase = """
 {"type":"vendor","id":"sennheiser","data":{"name":"Sennheiser"}}
 {"type":"product","id":"sennheiser::hd650","data":{"name":"HD 650","vendor_id":"sennheiser","subtype":"over_the_ear"}}
 {"type":"product","id":"sennheiser::hd800","data":{"name":"HD 800","vendor_id":"sennheiser","subtype":"over_the_ear"}}
+{"type":"eq","id":"sennheiser:hd650::autoeq_oratory","data":{"author":"AutoEQ","details":"oratory1990","type":"parametric_eq","product_id":"sennheiser::hd650","parameters":{"gain_db":-6.4,"bands":[{"type":"low_shelf","frequency":105,"gain_db":6.2,"q":0.7},{"type":"peak_dip","frequency":21,"gain_db":-8.8,"q":0.44},{"type":"high_shelf","frequency":10000,"gain_db":-1.2,"q":0.7}]}}}
+"""
+
+private const val SampleDatabaseWithLogo = """
+{"type":"vendor","id":"sennheiser","data":{"name":"Sennheiser","logo":"assets/8c/c5/8cc5dcc3248e4e9578656cca184e7cbbbad84a97a83132bfc22ed59e8f4d86b6.png"}}
+{"type":"product","id":"sennheiser::hd650","data":{"name":"HD 650","vendor_id":"sennheiser","subtype":"over_the_ear"}}
 {"type":"eq","id":"sennheiser:hd650::autoeq_oratory","data":{"author":"AutoEQ","details":"oratory1990","type":"parametric_eq","product_id":"sennheiser::hd650","parameters":{"gain_db":-6.4,"bands":[{"type":"low_shelf","frequency":105,"gain_db":6.2,"q":0.7},{"type":"peak_dip","frequency":21,"gain_db":-8.8,"q":0.44},{"type":"high_shelf","frequency":10000,"gain_db":-1.2,"q":0.7}]}}}
 """

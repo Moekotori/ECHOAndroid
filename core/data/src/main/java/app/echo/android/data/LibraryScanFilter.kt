@@ -1,5 +1,6 @@
 package app.echo.android.data
 
+import app.echo.android.model.library.CueSheetPolicy
 import app.echo.android.model.library.LibraryScanOptions
 
 internal fun LibraryScanOptions.accepts(durationMs: Long, sizeBytes: Long, relativePath: String?): Boolean {
@@ -33,8 +34,11 @@ internal fun filterLocalScanBatch(
     existingIds: Set<String>,
     options: LibraryScanOptions,
 ): List<LibraryTrackEntity> = batch.filter {
-    options.includesDirectory(it.relativePath) &&
-        (it.id in existingIds || options.accepts(it.durationMs, it.sizeBytes, null))
+    if (!options.includesDirectory(it.relativePath)) return@filter false
+    if (it.id in existingIds) return@filter true
+    // Cue titles inherit the image file's import; short movements must not hit min duration.
+    if (CueSheetPolicy.isCueTrackId(it.id)) return@filter true
+    options.accepts(it.durationMs, it.sizeBytes, null)
 }
 
 private val NonMusicFolderNames = setOf(

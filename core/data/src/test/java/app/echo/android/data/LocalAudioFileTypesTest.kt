@@ -37,6 +37,25 @@ class LocalAudioFileTypesTest {
     }
 
     @Test
+    fun wavAndAacAliasesAreRecognized() {
+        assertEquals("audio/wav", LocalAudioFileTypes.mimeTypeForFileName("live.wave"))
+        assertEquals("audio/aac", LocalAudioFileTypes.mimeTypeForFileName("radio.adts"))
+        assertTrue(LocalAudioFileTypes.isSupported("live.wave", null))
+    }
+
+    @Test
+    fun mediaStoreFallbackClauseCoversDsdAndSurround() {
+        val (sql, args) = LocalAudioFileTypes.mediaStoreFallbackNameClause("display_name")
+        assertTrue(sql.contains("display_name LIKE ?"))
+        assertTrue("%.dsf" in args)
+        assertTrue("%.dff" in args)
+        assertTrue("%.ac3" in args)
+        assertTrue("%.dts" in args)
+        assertTrue("%.amr" in args)
+        assertFalse("%.mp3" in args)
+    }
+
+    @Test
     fun apeIsNotImportedBecauseTheDecoderIsNotBuilt() {
         assertFalse(LocalAudioFileTypes.isSupported("album.ape", null))
         assertFalse(LocalAudioFileTypes.isSupported("album.ape", "audio/ape"))

@@ -107,7 +107,7 @@ class OnlineLyricsResolverTest {
     @Test fun rejectsSameTitleByDifferentArtistEvenWithoutDuration() {
         var fetchedLyrics = false
         val resolver = OnlineLyricsResolver { url, _ -> when {
-            url.contains("api/search") -> """{"result":{"songs":[{"id":42,"name":"Hello","artists":[{"name":"Wrong artist"}]}]}}"""
+            url.contains("music.163.com/api/search") -> """{"result":{"songs":[{"id":42,"name":"Hello","artists":[{"name":"Wrong artist"}]}]}}"""
             url.contains("song/lyric") -> { fetchedLyrics = true; null }
             else -> "[]"
         } }

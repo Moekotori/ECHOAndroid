@@ -3,4 +3,10 @@
     <string name="opra_choose_brand">ブランドを選択</string>
     <string name="opra_all_brands">すべてのブランド</string>
     <string name="opra_browse_workflow">ブランドと機種を選び、カーブを確認してから補正を適用します。</string>
+    <string name="opra_search_examples">Sony / HD 650 / AirPods Max</string>
+    <string name="opra_search_in_brand">%1$s を検索</string>
+    <string name="opra_no_matching_models">一致する機種がありません</string>
+    <plurals name="opra_brand_models">
+        <item quantity="other">%1$d 機種</item>
+    </plurals>
 </resources>
