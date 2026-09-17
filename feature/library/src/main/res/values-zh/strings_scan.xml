@@ -22,4 +22,5 @@
     <string name="scan_edit_filters">调整筛选条件</string>
     <string name="scan_hide_details">收起详细设置</string>
     <string name="scan_device_instead">或扫描整台设备</string>
+    <string name="scan_unmatched_cue">有 %1$d 个 CUE 未找到同名音频</string>
 </resources>

@@ -61,17 +61,28 @@
     <string name="settings_clear_font_detail">L\'interface et les paroles reviendront à la police système</string>
     <string name="settings_section_playback">Lecture</string>
     <string name="settings_lyrics_sync_tools">Outils de synchro des paroles</string>
-    <string name="settings_lyrics_sync_tools_detail">Afficher les commandes d\'import, de format et de décalage sur la page des paroles</string>
+    <string name="settings_lyrics_sync_tools_detail">Import, format et décalage sur la page des paroles</string>
     <string name="settings_online_lyrics">Paroles en ligne</string>
-    <string name="settings_online_lyrics_detail">Essayer NetEase Cloud Music et LRCLIB lorsque les paroles intégrées ou locales manquent</string>
+    <string name="settings_online_lyrics_detail">Sans paroles locales, essayer NetEase et LRCLIB</string>
+    <string name="settings_lock_lyrics">Paroles sur le verrouillage</string>
+    <string name="settings_lock_lyrics_detail">Grandes paroles si ECHO est verrouillé ou ouvert depuis la notification. Écran de veille en charge : Réglages d’affichage → Écran de veille → ECHO</string>
+    <string name="settings_pause_on_disconnect">Pause à la déconnexion</string>
+    <string name="settings_pause_on_disconnect_detail">Met en pause si casque, Bluetooth ou DAC USB se déconnecte</string>
+    <string name="settings_resume_on_reconnect">Reprendre à la reconnexion</string>
+    <string name="settings_resume_on_reconnect_detail">Reprend seulement après une pause due à une déconnexion</string>
+    <string name="settings_replay_gain">ReplayGain</string>
+    <string name="settings_replay_gain_detail">Uniformiser le volume avec les balises ReplayGain</string>
+    <string name="settings_replay_gain_bypass">Enregistré, inutilisé en bit-perfect</string>
+    <string name="settings_replay_gain_mode">Mode ReplayGain</string>
+    <string name="settings_replay_gain_mode_detail">Album conserve les niveaux relatifs d\'un même album</string>
     <string name="settings_usb_exclusive">Sortie exclusive USB</string>
     <string name="settings_usb_auto_request">Demander l\'exclusif au démarrage</string>
-    <string name="settings_usb_auto_request_on">Si l\'exclusif est resté activé, le prochain lancement demandera le DAC USB</string>
-    <string name="settings_usb_auto_request_off">Le prochain lancement ne demandera pas automatiquement l\'autorisation USB ; le réglage reste activé</string>
+    <string name="settings_usb_auto_request_on">Le prochain lancement demandera le DAC USB</string>
+    <string name="settings_usb_auto_request_off">Le prochain lancement ne demandera pas l\'autorisation USB</string>
     <string name="settings_notification_permission">Autorisation de notification multimédia</string>
-    <string name="settings_notification_granted">Accordée ; les commandes de lecture peuvent apparaître dans les notifications</string>
-    <string name="settings_notification_denied">Sans cette autorisation, les notifications de verrouillage et le service au premier plan peuvent être indisponibles</string>
-    <string name="settings_notification_not_required">Cette version d’Android n’exige pas d’autorisation de notification</string>
+    <string name="settings_notification_granted">Accordée</string>
+    <string name="settings_notification_denied">Nécessaire pour les commandes sur l\'écran de verrouillage</string>
+    <string name="settings_notification_not_required">Inutile sur cette version</string>
     <string name="settings_on">Activé</string>
     <string name="settings_allow">Autoriser</string>
     <string name="settings_test_usb">Tester le pilote exclusif USB</string>
@@ -360,7 +371,7 @@
     <string name="diag_eq_off">Désactivé · %1$d bandes</string>
 
     <string name="settings_usb_bitperfect">Mode USB bit-perfect</string>
-    <string name="settings_usb_bitperfect_detail">Active la sortie exclusive USB. Contourne l\'égaliseur, la correction, le gain, la vitesse et le saut des silences. Le volume numérique est fixé à 100 % ; réglez le volume sur le DAC avant d\'activer. Le DSD est envoyé en DoP lorsque le DAC dispose de PCM 176,4/352,8 kHz 24 bits. Les titres ou formats DAC non pris en charge arrêtent la lecture.</string>
+    <string name="settings_usb_bitperfect_detail">USB exclusif ; contourne EQ et gain. Volume à 100 %. Les formats non pris en charge s\'arrêtent.</string>
     <string name="bitperfect_off">Mode strict désactivé</string>
     <string name="bitperfect_waiting">En attente de lecture USB stricte</string>
     <string name="bitperfect_direct">Chemin entier direct actif</string>
@@ -410,6 +421,9 @@
     <string name="eq_user_preset_empty">Enregistrez la courbe actuelle pour la réutiliser plus tard.</string>
     <string name="eq_bind_output">Utiliser pour %1$s</string>
     <string name="eq_bound_output">Utilisé pour %1$s</string>
+    <string name="eq_unbind_output">Ne plus utiliser pour %1$s</string>
+    <string name="eq_user_preset_update">Mettre à jour l\'actuel</string>
+    <string name="eq_user_preset_active">Modification de « %1$s »</string>
     <string name="eq_user_preset_parametric">Égaliseur paramétrique</string>
     <string name="eq_user_preset_bands">%1$d bandes</string>
     <string name="eq_share">Partager</string>
@@ -481,15 +495,15 @@
     <string name="eq_show_filters">Afficher les paramètres de filtre</string>
     <string name="eq_hide_filters">Masquer les paramètres de filtre</string>
     <string name="settings_gapless">Lecture sans blanc</string>
-    <string name="settings_gapless_detail">Activé par défaut : précharge le titre suivant et conserve les sessions de sortie compatibles. Le fondu d\'entrée/sortie, le saut des silences, les changements de fréquence d\'échantillonnage ou des données réseau manquantes peuvent encore interrompre la lecture.</string>
+    <string name="settings_gapless_detail">Activé par défaut. Un fondu, un changement de fréquence ou un réseau faible peut encore laisser un blanc.</string>
     <string name="settings_track_fade">Fondu d\'entrée / sortie</string>
-    <string name="settings_track_fade_detail">Monte progressivement le début et baisse la fin. Les titres ne se chevauchent pas, cela remplace donc le sans blanc à la jonction. L\'audio en direct contourne les fondus ; les titres de durée inconnue n\'ont qu\'un fondu d\'entrée.</string>
-    <string name="settings_track_fade_bypass">Enregistré, mais contourné en mode bit-perfect strict.</string>
+    <string name="settings_track_fade_detail">Fondu d\'entrée et de sortie sans chevauchement</string>
+    <string name="settings_track_fade_bypass">Enregistré, inutilisé en bit-perfect</string>
     <string name="settings_track_fade_duration">Durée du fondu</string>
     <string name="settings_track_fade_seconds">%.1f s</string>
     <string name="settings_smart_transition">Transitions intelligentes</string>
-    <string name="settings_smart_transition_detail">Bêta. Entre sur un temps lorsque c\'est possible, raccourcit si les voix se chevauchent, et sépare les basses sur les paires énergiques. Revient au sans blanc ou au fondu lorsqu\'elle ne peut pas s\'exécuter.</string>
-    <string name="settings_smart_transition_bypass">Enregistré, mais non utilisé en mode Léger, exclusif USB ou sortie bit-perfect.</string>
+    <string name="settings_smart_transition_detail">Bêta. Coupure sur le temps ; sinon sans blanc ou fondu</string>
+    <string name="settings_smart_transition_bypass">Enregistré, inutilisé en mode Léger ou USB exclusif</string>
     <string name="settings_bg_video_disabled">Les arrière-plans vidéo sont en pause en mode Léger. L\'arrière-plan par défaut est affiché ; votre sélection est conservée.</string>
     <string name="settings_import_font">Importer un fichier de police</string>
     <string name="settings_clear_action">Effacer</string>
@@ -502,4 +516,9 @@
     <string name="settings_font_preview_characters">ECHO · Aa Bb · 0123456789</string>
     <string name="settings_font_outfit" translatable="false">Outfit</string>
     <string name="settings_font_detail_outfit">Outfit intégré ; les autres écritures utilisent le repli système</string>
+    <string name="settings_setlistfm">Clé API setlist.fm</string>
+    <string name="settings_setlistfm_placeholder">Clé API setlist.fm</string>
+    <string name="settings_setlistfm_save">Enregistrer la clé setlist.fm</string>
+    <string name="settings_setlistfm_detail">Requise pour les setlists de concert. Obtenez une clé sur api.setlist.fm. Les dates à venir n’ont souvent pas encore de setlist officielle.</string>
+    <string name="settings_setlistfm_builtin">Intégrée ; vous n\'avez pas besoin de la saisir</string>
 </resources>

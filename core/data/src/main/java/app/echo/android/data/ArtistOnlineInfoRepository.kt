@@ -5,6 +5,7 @@ import app.echo.android.model.library.ArtistConcerts
 import app.echo.android.model.library.ArtistOnlineInfo
 import app.echo.android.model.library.ArtistOnlineInfoLoader
 import app.echo.android.model.library.ArtistOnlineQuery
+import app.echo.android.model.library.ArtistSetlist
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -29,9 +30,11 @@ class ArtistOnlineInfoRepository(
     cacheDirectory: File,
     appVersion: String,
     private val musicBrainzGate: MusicBrainzRequestGate,
+    private val setlistApiKey: () -> String? = { null },
 ) : ArtistOnlineInfoLoader {
     private val gate = Mutex()
     private val transport = ArtistOnlineTransport(appVersion)
+    private val setlistClient = SetlistFmClient(appVersion)
     private val cache = ArtistOnlineCache(cacheDirectory)
 
     private fun queryKey(query: ArtistOnlineQuery): String =
@@ -135,6 +138,66 @@ class ArtistOnlineInfoRepository(
             cache.write(key, ArtistConcertParser.encode(result))
             result
         } }
+
+    override suspend fun loadSetlist(
+        query: ArtistOnlineQuery,
+        concert: ArtistConcert,
+        refresh: Boolean,
+    ): ArtistSetlist = withContext(Dispatchers.IO) {
+        gate.withLock {
+            val key = "setlist-v1:${queryKey(query)}\u0000${concert.date}\u0000${concert.venue.orEmpty()}"
+            val entry = cache.read(key)
+            val cached = entry?.value?.let { runCatching { SetlistFmParser.decode(it) }.getOrNull() }
+            if (!refresh && cached != null && entry.age < 6 * 3600_000L) return@withLock cached
+            val apiKey = setlistApiKey()?.trim()?.takeIf { it.isNotEmpty() }
+            if (apiKey == null) {
+                return@withLock ArtistSetlist(
+                    id = concert.id,
+                    artistName = query.name,
+                    eventDate = concert.date,
+                    venue = concert.venue,
+                    city = concert.city,
+                    url = null,
+                    songs = emptyList(),
+                    exactDate = false,
+                    missingApiKey = true,
+                )
+            }
+            try {
+                val exactDate = SetlistFmParser.toApiDate(concert.date)
+                val exactJson = setlistClient.searchSetlists(apiKey, query.name, exactDate)
+                val exact = SetlistFmParser.parseSetlists(exactJson, query.name, concert.date)
+                    .firstOrNull { it.eventDate == concert.date && it.songs.isNotEmpty() }
+                val setlist = exact ?: run {
+                    val recent = SetlistFmParser.parseSetlists(
+                        setlistClient.searchSetlists(apiKey, query.name, null),
+                        query.name,
+                        null,
+                    ).firstOrNull { it.songs.isNotEmpty() }
+                    recent?.copy(exactDate = false)
+                } ?: ArtistSetlist(
+                    id = concert.id,
+                    artistName = query.name,
+                    eventDate = concert.date,
+                    venue = concert.venue,
+                    city = concert.city,
+                    url = concert.url,
+                    songs = emptyList(),
+                    exactDate = false,
+                )
+                cache.write(key, SetlistFmParser.encode(setlist))
+                setlist
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                if (cached != null && entry != null && entry.age < 30 * 86400_000L) {
+                    cached.copy(stale = true)
+                } else {
+                    throw failure
+                }
+            }
+        }
+    }
 
     private suspend fun identity(query: ArtistOnlineQuery, refresh: Boolean): JSONObject? {
         if (query.name.isBlank()) return null

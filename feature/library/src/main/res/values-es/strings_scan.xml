@@ -22,4 +22,5 @@
     <string name="scan_edit_filters">Ajustar filtros</string>
     <string name="scan_hide_details">Ocultar detalles</string>
     <string name="scan_device_instead">O escanear este dispositivo</string>
+    <string name="scan_unmatched_cue">%1$d hojas CUE no encontraron audio coincidente</string>
 </resources>

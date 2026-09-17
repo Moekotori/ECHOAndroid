@@ -91,9 +91,6 @@
     <string name="feature_player_show_bottom_bar_bf2549">"ドックを表示"</string>
     <string name="feature_player_shuffle_on_c7c5c4">"シャッフルオン"</string>
     <string name="feature_player_size_tracks_now_playing_current_7d4647">"%1$s 曲 · 現在 %2$s 曲目"</string>
-    <string name="feature_player_skip_silence_d27e03">"無音スキップ"</string>
-    <string name="feature_player_skip_silence_off_8f8ae6">"無音スキップ オフ"</string>
-    <string name="feature_player_skip_silence_on_159990">"無音スキップ オン"</string>
     <string name="feature_player_skipped_an_unplayable_track_dcd77d">"再生できない曲をスキップしました"</string>
     <string name="feature_player_sleep_timer_108738">"スリープタイマー"</string>
     <string name="feature_player_sleep_timer_remaining_4b8c3f">"スリープタイマー · %1$s"</string>

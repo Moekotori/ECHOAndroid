@@ -143,6 +143,36 @@ internal fun ListenBrainzSettingsPanel(
 }
 
 @Composable
+internal fun SetlistFmSettingsPanel(
+    apiKey: String,
+    locked: Boolean,
+    onApiKeyChange: (String) -> Unit,
+    onSave: () -> Unit,
+) {
+    if (locked) {
+        SettingsActionRow(
+            title = stringResource(R.string.settings_setlistfm),
+            detail = stringResource(R.string.settings_setlistfm_builtin),
+            enabled = false,
+            onClick = {},
+        )
+        return
+    }
+    SettingsTextInputRow(
+        title = stringResource(R.string.settings_setlistfm),
+        value = apiKey,
+        placeholder = stringResource(R.string.settings_setlistfm_placeholder),
+        secret = true,
+        onValueChange = onApiKeyChange,
+    )
+    SettingsActionRow(
+        title = stringResource(R.string.settings_setlistfm_save),
+        detail = stringResource(R.string.settings_setlistfm_detail),
+        onClick = onSave,
+    )
+}
+
+@Composable
 internal fun settingsPanelColor(): Color {
     val scheme = MaterialTheme.colorScheme
     return if (LocalEchoDarkTheme.current) {

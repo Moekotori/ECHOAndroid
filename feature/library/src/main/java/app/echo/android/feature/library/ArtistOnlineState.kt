@@ -2,13 +2,26 @@ package app.echo.android.feature.library
 
 import androidx.compose.runtime.*
 import app.echo.android.model.library.ArtistOnlineInfoLoader
+import app.echo.android.model.library.ArtistSetlistMatcher
 import kotlinx.coroutines.CancellationException
 
 internal val LocalArtistOnlineInfoLoader = staticCompositionLocalOf<ArtistOnlineInfoLoader?> { null }
+internal val LocalArtistSetlistMatcher = staticCompositionLocalOf<ArtistSetlistMatcher?> { null }
+internal val LocalArtistSetlistPlayer = staticCompositionLocalOf<((List<String>) -> Unit)?> { null }
 
 @Composable
-fun ArtistOnlineInfoProvider(loader: ArtistOnlineInfoLoader, content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalArtistOnlineInfoLoader provides loader, content = content)
+fun ArtistOnlineInfoProvider(
+    loader: ArtistOnlineInfoLoader,
+    matcher: ArtistSetlistMatcher? = null,
+    onPlayMatched: ((List<String>) -> Unit)? = null,
+    content: @Composable () -> Unit,
+) {
+    CompositionLocalProvider(
+        LocalArtistOnlineInfoLoader provides loader,
+        LocalArtistSetlistMatcher provides matcher,
+        LocalArtistSetlistPlayer provides onPlayMatched,
+        content = content,
+    )
 }
 
 internal class ArtistOnlineState<T> {

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="metadata_composer">작곡</string>
+    <string name="metadata_lyrics">가사</string>
+    <string name="metadata_choose_artwork">커버 선택</string>
+    <string name="album_cue_banner">통곡 CUE · 악장별 재생</string>
+</resources>

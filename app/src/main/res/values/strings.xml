@@ -4,6 +4,7 @@
     <string name="tab_library">Library</string>
     <string name="tab_connect">Link</string>
     <string name="tab_diagnostics">Signal</string>
+    <string name="permission_welcome">Welcome to ECHO</string>
     <string name="permission_title">Permissions</string>
     <string name="permission_subtitle">ECHO needs these permissions for the full listening experience</string>
     <string name="permission_continue">Continue</string>
@@ -41,6 +42,16 @@
     <string name="qs_tile_playing">Playing</string>
     <string name="qs_tile_paused">Paused</string>
     <string name="qs_tile_idle">Idle</string>
+    <string name="lock_lyrics_dream_name">ECHO lyrics</string>
+    <string name="qs_tile_sleep">ECHO sleep timer</string>
+    <string name="qs_tile_sleep_off">Off</string>
+    <string name="qs_tile_sleep_end">End of track</string>
+    <string name="qs_tile_sleep_minutes">%1$d min left</string>
+    <string name="qs_tile_usb">ECHO USB exclusive</string>
+    <string name="qs_tile_usb_on">On</string>
+    <string name="qs_tile_usb_off">Off</string>
+    <string name="qs_tile_favorite">ECHO favorite</string>
+    <string name="qs_tile_next">ECHO next</string>
     <string name="playback_widget_idle">Not playing</string>
     <string name="playback_widget_play">Play</string>
     <string name="playback_widget_pause">Pause</string>

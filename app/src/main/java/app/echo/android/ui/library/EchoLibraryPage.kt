@@ -164,7 +164,14 @@ internal fun EchoLibraryPage(
         }
     }
     val application = androidx.compose.ui.platform.LocalContext.current.applicationContext as app.echo.android.EchoApplication
-    app.echo.android.feature.library.ArtistOnlineInfoProvider(application.artistOnlineInfo) {
+    app.echo.android.feature.library.ArtistOnlineInfoProvider(
+        loader = application.artistOnlineInfo,
+        matcher = app.echo.android.model.library.ArtistSetlistMatcher { viewModel.matchSetlist(it) },
+        onPlayMatched = viewModel::playSetlistTracks,
+    ) {
+    app.echo.android.feature.library.EmbeddedLyricsLoaderProvider(
+        loader = app.echo.android.feature.library.EmbeddedLyricsLoader { viewModel.loadEmbeddedLyrics(it) },
+    ) {
     app.echo.android.feature.library.AlbumOnlineInfoProvider(application.albumOnlineInfo) {
         LibraryScreen(
             radioStations = radioStations,
@@ -329,6 +336,7 @@ internal fun EchoLibraryPage(
             onPinPlaylistOffline = { playlist -> viewModel.pinPlaylistOffline(playlist.id, playlist.name) },
             onUnpinOffline = viewModel::unpinOffline,
         )
+    }
     }
     }
 }

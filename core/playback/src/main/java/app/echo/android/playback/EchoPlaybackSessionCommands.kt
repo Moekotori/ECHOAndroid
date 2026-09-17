@@ -9,6 +9,7 @@ import androidx.media3.session.SessionCommand
 
 object EchoPlaybackIntents {
     const val ACTION_OPEN_LYRICS = "app.echo.android.playback.OPEN_LYRICS"
+    const val ACTION_OPEN_LOCK_LYRICS = "app.echo.android.playback.OPEN_LOCK_LYRICS"
     const val EXTRA_OPEN_LYRICS = "app.echo.android.playback.EXTRA_OPEN_LYRICS"
     const val ACTION_PLAY_LAST = "app.echo.android.action.PLAY_LAST"
     const val ACTION_OPEN_LIBRARY = "app.echo.android.action.OPEN_LIBRARY"
@@ -23,10 +24,12 @@ object EchoPlaybackSessionCommands {
     const val TOGGLE_FAVORITE = "app.echo.android.playback.TOGGLE_FAVORITE"
     const val CYCLE_REPEAT = "app.echo.android.playback.CYCLE_REPEAT"
     const val OPEN_LYRICS = "app.echo.android.playback.OPEN_LYRICS"
+    const val OPEN_LOCK_LYRICS = "app.echo.android.playback.OPEN_LOCK_LYRICS"
 
     val toggleFavorite = SessionCommand(TOGGLE_FAVORITE, Bundle.EMPTY)
     val cycleRepeat = SessionCommand(CYCLE_REPEAT, Bundle.EMPTY)
     val openLyrics = SessionCommand(OPEN_LYRICS, Bundle.EMPTY)
+    val openLockLyrics = SessionCommand(OPEN_LOCK_LYRICS, Bundle.EMPTY)
 }
 
 fun nextPlayerRepeatMode(current: Int): Int = when (current) {
@@ -76,6 +79,12 @@ fun echoPlaybackCommandButtons(
     CommandButton.Builder(CommandButton.ICON_SUBTITLES)
         .setSessionCommand(EchoPlaybackSessionCommands.openLyrics)
         .setDisplayName(context.getString(R.string.playback_command_lyrics))
+        .setSlots(CommandButton.SLOT_OVERFLOW)
+        .setEnabled(true)
+        .build(),
+    CommandButton.Builder(CommandButton.ICON_SUBTITLES)
+        .setSessionCommand(EchoPlaybackSessionCommands.openLockLyrics)
+        .setDisplayName(context.getString(R.string.playback_command_lock_lyrics))
         .setSlots(CommandButton.SLOT_OVERFLOW)
         .setEnabled(true)
         .build(),

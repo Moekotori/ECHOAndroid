@@ -23,6 +23,8 @@ internal fun SettingsServicesContent(
     listenBrainzToken: String?,
     listenBrainzStatusLabel: String,
     listenBrainzErrorLabel: String?,
+    setlistFmApiKey: String?,
+    setlistFmApiKeyLocked: Boolean,
     onPcHandoffEnabledChange: (Boolean) -> Unit,
     onLastFmEnabledChange: (Boolean) -> Unit,
     onStartLastFmWebAuth: () -> Unit,
@@ -32,11 +34,13 @@ internal fun SettingsServicesContent(
     onListenBrainzEnabledChange: (Boolean) -> Unit,
     onSaveListenBrainzToken: (String) -> Unit,
     onDisconnectListenBrainz: () -> Unit,
+    onSaveSetlistFmApiKey: (String?) -> Unit,
     onOpenConnect: () -> Unit,
 ) {
     var lastFmApiKeyInput by rememberSaveable(lastFmApiKey) { mutableStateOf(lastFmApiKey.orEmpty()) }
     var lastFmSecretInput by rememberSaveable(lastFmSharedSecret) { mutableStateOf(lastFmSharedSecret.orEmpty()) }
     var listenBrainzTokenInput by rememberSaveable(listenBrainzToken) { mutableStateOf(listenBrainzToken.orEmpty()) }
+    var setlistFmApiKeyInput by rememberSaveable(setlistFmApiKey) { mutableStateOf(setlistFmApiKey.orEmpty()) }
     SettingsSectionCard(
         title = stringResource(R.string.settings_section_connect),
     ) {
@@ -68,6 +72,12 @@ internal fun SettingsServicesContent(
             onTokenChange = { listenBrainzTokenInput = it },
             onSaveToken = { onSaveListenBrainzToken(listenBrainzTokenInput) },
             onDisconnect = onDisconnectListenBrainz,
+        )
+        SetlistFmSettingsPanel(
+            apiKey = setlistFmApiKeyInput,
+            locked = setlistFmApiKeyLocked,
+            onApiKeyChange = { setlistFmApiKeyInput = it },
+            onSave = { onSaveSetlistFmApiKey(setlistFmApiKeyInput) },
         )
         SettingsSwitchRow(
             title = stringResource(R.string.settings_pc_handoff),

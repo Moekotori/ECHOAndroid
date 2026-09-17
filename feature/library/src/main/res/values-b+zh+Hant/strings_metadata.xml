@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="metadata_composer">作曲</string>
+    <string name="metadata_lyrics">歌詞</string>
+    <string name="metadata_choose_artwork">選擇封面</string>
+    <string name="album_cue_banner">整軌 CUE · 按樂章播放</string>
+</resources>

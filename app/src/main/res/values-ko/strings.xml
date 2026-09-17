@@ -4,6 +4,7 @@
     <string name="tab_library">라이브러리</string>
     <string name="tab_connect">연결</string>
     <string name="tab_diagnostics">신호</string>
+    <string name="permission_welcome">ECHO에 오신 것을 환영합니다</string>
     <string name="permission_title">권한</string>
     <string name="permission_subtitle">ECHO의 전체 청취 경험을 위해 다음 권한이 필요합니다</string>
     <string name="permission_continue">계속</string>

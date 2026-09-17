@@ -6,7 +6,7 @@
     <string name="settings_category_services">接続とサービス</string>
     <string name="settings_category_appearance_detail">テーマ、背景、フォントを調整して、ECHO を自分向けにします。</string>
     <string name="settings_category_interface_detail">言語、レイアウト、パフォーマンスの設定。</string>
-    <string name="settings_category_playback_detail">曲間、歌詞、USB 出力の設定。</string>
+    <string name="settings_category_playback_detail">つなぎ、歌詞、USB 出力。</string>
     <string name="settings_category_services_detail">パソコンと再生履歴サービスを接続します。</string>
     <string name="settings_category_library_detail">ローカル楽曲とライブラリの表示を管理します。</string>
     <string name="settings_category_about_detail">アプリのバージョンとエラーログ。</string>

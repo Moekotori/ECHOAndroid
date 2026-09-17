@@ -773,6 +773,21 @@ internal class LibraryController(
             repository.trackById(trackId)?.toEchoTrack()
         }
 
+    suspend fun matchSetlist(setlist: app.echo.android.model.library.ArtistSetlist) =
+        withContext(Dispatchers.IO) {
+            repository.matchSetlist(setlist)
+        }
+
+    suspend fun tracksByIds(ids: List<String>): List<EchoTrack> =
+        withContext(Dispatchers.IO) {
+            repository.tracksByIds(ids)
+        }
+
+    suspend fun readEmbeddedLyrics(trackId: String): String? =
+        withContext(Dispatchers.IO) {
+            repository.readEmbeddedLyrics(trackId)
+        }
+
     suspend fun toggleFavorite(trackId: String): Boolean =
         withContext(Dispatchers.IO) {
             repository.toggleFavorite(trackId)

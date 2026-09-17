@@ -5,7 +5,7 @@
     <string name="settings_category_services">연결과 서비스</string>
     <string name="settings_category_appearance_detail">테마, 배경, 글꼴을 조정해 ECHO를 나답게 만드세요.</string>
     <string name="settings_category_interface_detail">언어, 레이아웃, 성능 설정.</string>
-    <string name="settings_category_playback_detail">곡 전환, 가사, USB 출력 설정.</string>
+    <string name="settings_category_playback_detail">전환, 가사, USB 출력.</string>
     <string name="settings_category_services_detail">컴퓨터와 청취 기록 서비스를 연결합니다.</string>
     <string name="settings_category_library_detail">로컬 음악과 라이브러리에 표시되는 정보를 관리합니다.</string>
     <string name="settings_category_about_detail">앱 버전과 오류 로그.</string>

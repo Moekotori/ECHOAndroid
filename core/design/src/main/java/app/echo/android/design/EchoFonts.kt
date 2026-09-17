@@ -10,10 +10,10 @@ import androidx.compose.ui.text.font.FontWeight
 /**
  * Outfit is a geometric Latin face that reads lighter than system UI fonts,
  * and the bundled variable font's default instance is Thin. Never render
- * below SemiBold; theme styles request heavier weights for CJK fallback.
+ * below Bold; theme styles request heavier weights for CJK fallback.
  */
 internal fun outfitRenderedWeight(requested: Int): Int =
-    requested.coerceIn(600, 900)
+    requested.coerceIn(700, 900)
 
 // All weights share the existing variable font resource; no duplicate font binaries.
 @OptIn(ExperimentalTextApi::class)

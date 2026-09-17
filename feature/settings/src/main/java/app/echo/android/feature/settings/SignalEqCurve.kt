@@ -1,34 +1,33 @@
 package app.echo.android.feature.settings
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -55,39 +54,20 @@ import app.echo.android.design.echoTheme
 import app.echo.android.model.playback.EchoEqResponsePoint
 import kotlin.math.abs
 import kotlin.math.ceil
+import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.roundToInt
 
 private const val EqMinHz = 20f
 private const val EqMaxHz = 20_000f
 
+/** Open instrument bed — no framed card. Signal layout uses rules + whitespace instead. */
 @Composable
 internal fun SignalEqWell(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val scheme = MaterialTheme.colorScheme
-    val theme = echoTheme()
-    val shape = RoundedCornerShape(24.dp)
-    Column(
-        modifier
-            .clip(shape)
-            .background(
-                if (theme.dark) {
-                    Brush.verticalGradient(listOf(theme.ink.copy(alpha = 0.96f), theme.night))
-                } else {
-                    Brush.verticalGradient(
-                        listOf(Color.White.copy(alpha = 0.96f), scheme.surfaceVariant.copy(alpha = 0.42f)),
-                    )
-                },
-            )
-            .border(
-                width = 1.dp,
-                color = if (theme.dark) theme.glassBorder else scheme.outlineVariant.copy(alpha = 0.70f),
-                shape = shape,
-            ),
-        content = content,
-    )
+    Column(modifier = modifier.fillMaxWidth(), content = content)
 }
 
 @Composable
@@ -112,8 +92,13 @@ internal fun SignalEqPlot(
     points: List<EchoEqResponsePoint>,
     modifier: Modifier = Modifier,
     markerFrequenciesHz: List<Int> = emptyList(),
+    markerGainsDb: List<Float> = emptyList(),
     live: Boolean = true,
     showFrequencyLabels: Boolean = true,
+    lockMarkerFrequency: Boolean = true,
+    minGainDb: Float = -12f,
+    maxGainDb: Float = 12f,
+    onMarkerDrag: ((index: Int, frequencyHz: Float, gainDb: Float) -> Unit)? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
     val theme = echoTheme()
@@ -123,8 +108,84 @@ internal fun SignalEqPlot(
     val zero = scheme.onSurface.copy(alpha = 0.42f)
     val description = stringResource(R.string.eq_curve_reference)
     val range = maxOf(12f, ceil((points.maxOfOrNull { abs(it.gainDb) } ?: 0f) / 6f) * 6f).coerceAtMost(48f)
+    val interactive = onMarkerDrag != null &&
+        markerFrequenciesHz.isNotEmpty() &&
+        markerGainsDb.size == markerFrequenciesHz.size
+    val dragCallback = rememberUpdatedState(onMarkerDrag)
+    var dragIndex by remember { mutableIntStateOf(-1) }
+    var localFreq by remember { mutableFloatStateOf(0f) }
+    var localGain by remember { mutableFloatStateOf(0f) }
     Box(modifier.semantics { contentDescription = description }) {
-        Canvas(Modifier.fillMaxSize().padding(start = 10.dp, end = 10.dp, top = 22.dp, bottom = if (showFrequencyLabels) 22.dp else 10.dp)) {
+        val bottomPad = if (showFrequencyLabels) 22.dp else 10.dp
+        Canvas(
+            Modifier
+                .fillMaxSize()
+                .padding(start = 10.dp, end = 10.dp, top = 22.dp, bottom = bottomPad)
+                .then(
+                    if (!interactive) {
+                        Modifier
+                    } else {
+                        Modifier.pointerInput(
+                            markerFrequenciesHz,
+                            markerGainsDb,
+                            lockMarkerFrequency,
+                            minGainDb,
+                            maxGainDb,
+                            range,
+                        ) {
+                            val hit = 28.dp.toPx()
+                            fun nearest(offset: Offset): Int {
+                                var best = -1
+                                var bestDist = hit
+                                val width = size.width.toFloat()
+                                val height = size.height.toFloat()
+                                markerFrequenciesHz.forEachIndexed { index, frequencyHz ->
+                                    val gain = if (dragIndex == index) localGain else markerGainsDb[index]
+                                    val freq = if (dragIndex == index) localFreq else frequencyHz.toFloat()
+                                    val x = eqLogX(freq, width)
+                                    val y = eqGainY(gain, height, range)
+                                    val dist = (offset - Offset(x, y)).getDistance()
+                                    if (dist <= bestDist) {
+                                        bestDist = dist
+                                        best = index
+                                    }
+                                }
+                                return best
+                            }
+                            detectDragGestures(
+                                onDragStart = { offset ->
+                                    val index = nearest(offset)
+                                    if (index < 0) return@detectDragGestures
+                                    dragIndex = index
+                                    localFreq = markerFrequenciesHz[index].toFloat()
+                                    localGain = markerGainsDb[index]
+                                },
+                                onDragEnd = { dragIndex = -1 },
+                                onDragCancel = { dragIndex = -1 },
+                                onDrag = { change, _ ->
+                                    val index = dragIndex
+                                    if (index < 0) return@detectDragGestures
+                                    change.consume()
+                                    val width = size.width.toFloat()
+                                    val height = size.height.toFloat()
+                                    val nextFreq = if (lockMarkerFrequency) {
+                                        markerFrequenciesHz[index].toFloat()
+                                    } else {
+                                        eqFreqFromX(change.position.x, width)
+                                    }
+                                    val nextGain = snapEqGain(
+                                        eqGainFromY(change.position.y, height, range)
+                                            .coerceIn(minGainDb, maxGainDb),
+                                    )
+                                    localFreq = nextFreq
+                                    localGain = nextGain
+                                    dragCallback.value?.invoke(index, nextFreq, nextGain)
+                                },
+                            )
+                        }
+                    },
+                ),
+        ) {
             val zeroY = eqGainY(0f, size.height, range)
             if (!lightweight && live) {
                 drawRect(
@@ -191,6 +252,16 @@ internal fun SignalEqPlot(
                     stroke,
                     style = Stroke(width = 2.8.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round),
                 )
+            }
+            if (markerGainsDb.size == markerFrequenciesHz.size) {
+                markerFrequenciesHz.forEachIndexed { index, frequencyHz ->
+                    val freq = if (dragIndex == index) localFreq else frequencyHz.toFloat()
+                    val gain = if (dragIndex == index) localGain else markerGainsDb[index]
+                    val center = Offset(eqLogX(freq, size.width), eqGainY(gain, size.height, range))
+                    drawCircle(color = stroke.copy(alpha = 0.22f), radius = 10.dp.toPx(), center = center)
+                    drawCircle(color = stroke, radius = 5.dp.toPx(), center = center)
+                    drawCircle(color = scheme.surface, radius = 2.dp.toPx(), center = center)
+                }
             }
         }
         Text(
@@ -500,6 +571,19 @@ internal fun eqLogX(frequencyHz: Float, width: Float): Float {
 internal fun eqGainY(gainDb: Float, height: Float, range: Float): Float {
     if (height <= 0f || range <= 0f) return 0f
     return height * (1f - gainDb.coerceIn(-range, range) / range) / 2f
+}
+
+internal fun eqGainFromY(y: Float, height: Float, range: Float): Float {
+    if (height <= 0f || range <= 0f) return 0f
+    return (range * (1f - 2f * y / height)).coerceIn(-range, range)
+}
+
+internal fun eqFreqFromX(x: Float, width: Float): Float {
+    if (width <= 0f) return EqMinHz
+    val min = ln(EqMinHz)
+    val span = ln(EqMaxHz) - min
+    val t = (x / width).coerceIn(0f, 1f)
+    return exp(min + t * span).coerceIn(EqMinHz, EqMaxHz)
 }
 
 internal fun eqLinearValue(position: Float, size: Float, start: Float, end: Float, inset: Float = 0f): Float {

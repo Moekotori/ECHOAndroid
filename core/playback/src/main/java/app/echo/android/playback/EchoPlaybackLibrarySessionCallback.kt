@@ -67,6 +67,7 @@ internal class EchoPlaybackLibrarySessionCallback(
             .add(EchoPlaybackSessionCommands.toggleFavorite)
             .add(EchoPlaybackSessionCommands.cycleRepeat)
             .add(EchoPlaybackSessionCommands.openLyrics)
+            .add(EchoPlaybackSessionCommands.openLockLyrics)
             .build()
         val buttons = currentButtons(session.player)
         return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
@@ -249,6 +250,28 @@ internal class EchoPlaybackLibrarySessionCallback(
                 current.repeatMode = nextPlayerRepeatMode(current.repeatMode)
                 applyButtons(current)
                 Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+            }
+            EchoPlaybackSessionCommands.OPEN_LOCK_LYRICS -> {
+                val launched = runCatching {
+                    val lockIntent = Intent().setClassName(
+                        context.packageName,
+                        "app.echo.android.lock.EchoLockLyricsActivity",
+                    ).apply {
+                        action = EchoPlaybackIntents.ACTION_OPEN_LOCK_LYRICS
+                        addFlags(
+                            Intent.FLAG_ACTIVITY_NEW_TASK or
+                                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                                Intent.FLAG_ACTIVITY_SINGLE_TOP,
+                        )
+                    }
+                    context.startActivity(lockIntent)
+                    true
+                }.getOrDefault(false)
+                Futures.immediateFuture(
+                    SessionResult(
+                        if (launched) SessionResult.RESULT_SUCCESS else SessionResult.RESULT_ERROR_UNKNOWN,
+                    ),
+                )
             }
             EchoPlaybackSessionCommands.OPEN_LYRICS -> {
                 val launched = runCatching {

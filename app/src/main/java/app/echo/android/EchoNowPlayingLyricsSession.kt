@@ -66,13 +66,14 @@ internal class EchoNowPlayingLyricsSession(private val application: Application)
         EchoPlaybackProcessRuntime.scope.launch {
             controller.lyricsState.collect { state ->
                 val trackId = controller.currentTrackId
-                val document = (state as? EchoLyricsLoadState.Ready)?.lyrics
-                    ?.let { lyrics ->
-                        EchoNotificationLyricPolicy.document(
-                            trackId,
-                            LyricsLineAtPosition.notificationLines(lyrics),
-                        )
-                    }
+                val lyrics = (state as? EchoLyricsLoadState.Ready)?.lyrics
+                val document = lyrics?.let {
+                    EchoNotificationLyricPolicy.document(
+                        trackId,
+                        LyricsLineAtPosition.notificationLines(it),
+                    )
+                }
+                EchoPlaybackProcessRuntime.setDisplayLyrics(lyrics)
                 EchoPlaybackProcessRuntime.setNotificationLyrics(document)
             }
         }

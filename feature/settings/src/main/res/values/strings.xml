@@ -61,17 +61,28 @@
     <string name="settings_clear_font_detail">Interface and lyrics will fall back to the system font</string>
     <string name="settings_section_playback">Playback</string>
     <string name="settings_lyrics_sync_tools">Lyrics sync tools</string>
-    <string name="settings_lyrics_sync_tools_detail">Show import, format, and offset controls on the lyrics page</string>
+    <string name="settings_lyrics_sync_tools_detail">Import, format, and offset on the lyrics page</string>
     <string name="settings_online_lyrics">Online lyrics</string>
-    <string name="settings_online_lyrics_detail">Try NetEase Cloud Music and LRCLIB when embedded or local lyrics are missing</string>
+    <string name="settings_online_lyrics_detail">If local lyrics are missing, try NetEase and LRCLIB</string>
+    <string name="settings_lock_lyrics">Lock screen lyrics</string>
+    <string name="settings_lock_lyrics_detail">Large lyrics when this app is locked or opened from the notification. Charging screensaver: system Display settings → Screen saver → ECHO</string>
+    <string name="settings_pause_on_disconnect">Pause when unplugged</string>
+    <string name="settings_pause_on_disconnect_detail">Pause if headphones, Bluetooth, or a USB DAC disconnect</string>
+    <string name="settings_resume_on_reconnect">Resume when reconnected</string>
+    <string name="settings_resume_on_reconnect_detail">Continue only after a disconnect pause</string>
+    <string name="settings_replay_gain">ReplayGain</string>
+    <string name="settings_replay_gain_detail">Match volume with ReplayGain tags</string>
+    <string name="settings_replay_gain_bypass">Saved, unused in bit-perfect</string>
+    <string name="settings_replay_gain_mode">ReplayGain mode</string>
+    <string name="settings_replay_gain_mode_detail">Album keeps relative levels in one album</string>
     <string name="settings_usb_exclusive">USB exclusive output</string>
     <string name="settings_usb_auto_request">Auto-request exclusive on startup</string>
-    <string name="settings_usb_auto_request_on">If exclusive was left on, the next launch will request the USB DAC</string>
-    <string name="settings_usb_auto_request_off">The next launch will not request USB permission automatically; the setting stays on</string>
+    <string name="settings_usb_auto_request_on">Next launch will request the USB DAC</string>
+    <string name="settings_usb_auto_request_off">Next launch will not request USB permission</string>
     <string name="settings_notification_permission">Media notification permission</string>
-    <string name="settings_notification_granted">Granted; playback controls can appear in notifications</string>
-    <string name="settings_notification_denied">Lock-screen notifications and the foreground service may be unavailable without this permission</string>
-    <string name="settings_notification_not_required">This Android version does not require a notification permission</string>
+    <string name="settings_notification_granted">Granted</string>
+    <string name="settings_notification_denied">Needed for lock-screen controls</string>
+    <string name="settings_notification_not_required">Not required on this Android version</string>
     <string name="settings_on">On</string>
     <string name="settings_allow">Allow</string>
     <string name="settings_test_usb">Test USB exclusive driver</string>
@@ -364,7 +375,7 @@
     <string name="diag_eq_off">Off · %1$d bands</string>
 
     <string name="settings_usb_bitperfect">USB bit-perfect mode</string>
-    <string name="settings_usb_bitperfect_detail">Enables USB exclusive output. Bypasses EQ, correction, gain, speed and silence skipping. Digital volume is fixed at 100%; adjust volume on the DAC before enabling. DSD is sent as DoP when the DAC has 176.4/352.8 kHz 24-bit PCM. Unsupported tracks or DAC formats stop playback.</string>
+    <string name="settings_usb_bitperfect_detail">USB exclusive; bypasses EQ and gain. Volume stays at 100%. Unsupported formats stop playback.</string>
     <string name="bitperfect_off">Strict mode off</string>
     <string name="bitperfect_waiting">Waiting for strict USB playback</string>
     <string name="bitperfect_direct">Integer direct path active</string>
@@ -414,6 +425,9 @@
     <string name="eq_user_preset_empty">Save the current curve to reuse it later.</string>
     <string name="eq_bind_output">Use for %1$s</string>
     <string name="eq_bound_output">Using for %1$s</string>
+    <string name="eq_unbind_output">Stop using for %1$s</string>
+    <string name="eq_user_preset_update">Update current</string>
+    <string name="eq_user_preset_active">Editing “%1$s”</string>
     <string name="eq_user_preset_parametric">Parametric EQ</string>
     <string name="eq_user_preset_bands">%1$d bands</string>
     <string name="eq_share">Share</string>
@@ -485,15 +499,15 @@
     <string name="eq_show_filters">Show filter parameters</string>
     <string name="eq_hide_filters">Hide filter parameters</string>
     <string name="settings_gapless">Gapless playback</string>
-    <string name="settings_gapless_detail">Enabled by default: preloads the next track and keeps compatible output sessions. Track fade in/out, skip silence, sample-rate changes, or missing network data can still interrupt playback.</string>
+    <string name="settings_gapless_detail">On by default. Fades, sample-rate changes, or a thin network can still gap.</string>
     <string name="settings_track_fade">Track fade in / out</string>
-    <string name="settings_track_fade_detail">Gradually raises the opening and lowers the ending. Tracks do not overlap, so this replaces gapless at the boundary. Live audio bypasses fades; unknown-duration tracks only fade in.</string>
-    <string name="settings_track_fade_bypass">Saved, but bypassed in strict bit-perfect mode.</string>
+    <string name="settings_track_fade_detail">Fades in and out without overlapping tracks</string>
+    <string name="settings_track_fade_bypass">Saved, unused in bit-perfect</string>
     <string name="settings_track_fade_duration">Fade duration</string>
     <string name="settings_track_fade_seconds">%.1f s</string>
     <string name="settings_smart_transition">Smart transitions</string>
-    <string name="settings_smart_transition_detail">Beta. Enters on a beat when it can, shortens if vocals collide, and splits bass on energetic pairs. Falls back to gapless or fade when it cannot run.</string>
-    <string name="settings_smart_transition_bypass">Saved, but not used in Lightweight mode, USB exclusive, or bit-perfect output.</string>
+    <string name="settings_smart_transition_detail">Beta. Beat-aware handoff; otherwise gapless or fade</string>
+    <string name="settings_smart_transition_bypass">Saved, unused in Lightweight or USB exclusive</string>
     <string name="settings_bg_video_disabled">Video backgrounds are paused in Lightweight mode. The default background is shown; your selection is retained.</string>
     <string name="settings_import_font">Import font file</string>
     <string name="settings_clear_action">Clear</string>
@@ -506,4 +520,9 @@
     <string name="settings_font_preview_characters">ECHO · Aa Bb · 0123456789</string>
     <string name="settings_font_outfit" translatable="false">Outfit</string>
     <string name="settings_font_detail_outfit">Built-in Outfit; other scripts use system fallback</string>
+    <string name="settings_setlistfm">setlist.fm API key</string>
+    <string name="settings_setlistfm_placeholder">setlist.fm API key</string>
+    <string name="settings_setlistfm_save">Save setlist.fm key</string>
+    <string name="settings_setlistfm_detail">Needed for concert setlists. Get a key at api.setlist.fm. Upcoming dates often have no official setlist yet.</string>
+    <string name="settings_setlistfm_builtin">Built in; you do not need to enter this</string>
 </resources>

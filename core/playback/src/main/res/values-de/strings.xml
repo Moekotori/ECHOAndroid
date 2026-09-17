@@ -6,4 +6,5 @@
     <string name="playback_command_repeat_one">Einen wiederholen</string>
     <string name="playback_command_repeat_off">Wiederholen aus</string>
     <string name="playback_command_lyrics">Liedtext</string>
+    <string name="playback_command_lock_lyrics">Liedtext im Vollbild</string>
 </resources>

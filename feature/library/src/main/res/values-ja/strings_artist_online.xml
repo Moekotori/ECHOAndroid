@@ -28,4 +28,13 @@
     <string name="artist_concert_details">%1$s · 公演詳細</string>
     <string name="artist_sort_tracks">曲の並び順</string>
     <string name="artist_play_on_pc">PC で再生</string>
+    <string name="artist_setlist_show">セットリスト</string>
+    <string name="artist_setlist_hide">セットリストを隠す</string>
+    <string name="artist_setlist_need_key">セットリストを読み込むには、設定 → サービスの setlist.fm API キーが必要です。</string>
+    <string name="artist_setlist_empty">この日付の公式セットリストはありません。</string>
+    <string name="artist_setlist_recent">直近公演の参考であり、本公演の公式ではありません</string>
+    <string name="artist_setlist_failed">このセットリストを読み込めませんでした。</string>
+    <string name="artist_setlist_play_matched">ライブラリにある %1$d / %2$d 曲を再生</string>
+    <string name="artist_setlist_tape">%1$s（テープ）</string>
+    <string name="artist_setlist_refresh">セットリストを更新</string>
 </resources>

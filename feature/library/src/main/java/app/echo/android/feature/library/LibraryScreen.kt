@@ -421,6 +421,7 @@ fun LibraryScreen(
         scanState.insertedCount,
         scanState.updatedCount,
         scanState.deletedCount,
+        scanState.unmatchedCueCount,
         scanState.error,
     ) {
         if (scanState.isScanning) {

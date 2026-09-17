@@ -6,4 +6,5 @@
     <string name="playback_command_repeat_one">Repeat one</string>
     <string name="playback_command_repeat_off">Repeat off</string>
     <string name="playback_command_lyrics">Lyrics</string>
+    <string name="playback_command_lock_lyrics">Full-screen lyrics</string>
 </resources>

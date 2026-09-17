@@ -28,4 +28,13 @@
     <string name="artist_concert_details">%1$s · Détails de l\'événement</string>
     <string name="artist_sort_tracks">Trier les titres</string>
     <string name="artist_play_on_pc">Lire sur le PC</string>
+    <string name="artist_setlist_show">Setlist</string>
+    <string name="artist_setlist_hide">Masquer la setlist</string>
+    <string name="artist_setlist_need_key">Ajoutez une clé API setlist.fm dans Réglages → Services pour charger les setlists.</string>
+    <string name="artist_setlist_empty">Aucune setlist publiée pour cette date.</string>
+    <string name="artist_setlist_recent">Référence du concert le plus récent, pas celle de cette date</string>
+    <string name="artist_setlist_failed">Impossible de charger cette setlist.</string>
+    <string name="artist_setlist_play_matched">Lire %1$d chanson(s) sur %2$d déjà dans la bibliothèque</string>
+    <string name="artist_setlist_tape">%1$s (bande)</string>
+    <string name="artist_setlist_refresh">Actualiser la setlist</string>
 </resources>

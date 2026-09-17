@@ -55,17 +55,28 @@
     <string name="settings_clear_font_detail">UI と歌詞はシステムフォントに戻ります</string>
     <string name="settings_section_playback">再生</string>
     <string name="settings_lyrics_sync_tools">歌詞同期ツール</string>
-    <string name="settings_lyrics_sync_tools_detail">歌詞ページに読み込み、形式、オフセット調整パネルを表示します</string>
+    <string name="settings_lyrics_sync_tools_detail">歌詞ページで読み込み、形式、オフセットを表示</string>
     <string name="settings_online_lyrics">オンライン歌詞</string>
-    <string name="settings_online_lyrics_detail">埋め込みやローカル歌詞がないときは NetEase と LRCLIB を試します</string>
+    <string name="settings_online_lyrics_detail">ローカル歌詞がないときは NetEase と LRCLIB を試す</string>
+    <string name="settings_lock_lyrics">ロック画面の歌詞</string>
+    <string name="settings_lock_lyrics_detail">ECHO をロックしたとき、または通知から全画面歌詞を開いたときに大きく表示します。充電中のスクリーンセーバーはシステムの画面設定で ECHO を選んでください</string>
+    <string name="settings_pause_on_disconnect">取り外したら一時停止</string>
+    <string name="settings_pause_on_disconnect_detail">ヘッドホン、Bluetooth、USB DAC が切れたら一時停止</string>
+    <string name="settings_resume_on_reconnect">再接続で再開</string>
+    <string name="settings_resume_on_reconnect_detail">切断で止まったときだけ、接続し直したら続きから再生</string>
+    <string name="settings_replay_gain">ReplayGain</string>
+    <string name="settings_replay_gain_detail">タグで音量を揃える</string>
+    <string name="settings_replay_gain_bypass">保存済み。bit-perfect では無効</string>
+    <string name="settings_replay_gain_mode">ReplayGain モード</string>
+    <string name="settings_replay_gain_mode_detail">アルバムは同一アルバム内の相対音量を保つ</string>
     <string name="settings_usb_exclusive">USB 独占出力</string>
     <string name="settings_usb_auto_request">起動時に独占を自動リクエスト</string>
-    <string name="settings_usb_auto_request_on">前回独占をオフにしていなければ、次回起動時に USB DAC を要求します</string>
-    <string name="settings_usb_auto_request_off">次回起動時は USB 権限を自動では求めません。設定はオンのままです</string>
+    <string name="settings_usb_auto_request_on">次回起動時に USB DAC を要求する</string>
+    <string name="settings_usb_auto_request_off">次回起動時は USB 権限を自動では求めない</string>
     <string name="settings_notification_permission">メディア通知の権限</string>
-    <string name="settings_notification_granted">許可済み。再生コントロール通知を表示できます</string>
-    <string name="settings_notification_denied">未許可だとロック画面通知やフォアグラウンドサービスが使えないことがあります</string>
-    <string name="settings_notification_not_required">この Android バージョンでは通知の権限は不要です</string>
+    <string name="settings_notification_granted">許可済み</string>
+    <string name="settings_notification_denied">ロック画面の操作に必要</string>
+    <string name="settings_notification_not_required">このバージョンでは不要</string>
     <string name="settings_on">オン</string>
     <string name="settings_allow">許可</string>
     <string name="settings_test_usb">USB 独占ドライバーをテスト</string>
@@ -358,7 +369,7 @@
     <string name="diag_eq_off">オフ · %1$d bands</string>
 
     <string name="settings_usb_bitperfect">USB bit-perfect モード</string>
-    <string name="settings_usb_bitperfect_detail">USB 排他出力を有効にし、EQ・補正・ゲイン・速度変更・無音スキップをバイパスします。デジタル音量は 100% 固定です。先に DAC の音量を下げてください。DAC が 176.4/352.8 kHz 24-bit PCM に対応していれば DSD は DoP で送ります。非対応の曲や形式では再生を停止します。</string>
+    <string name="settings_usb_bitperfect_detail">USB 独占。EQ とゲインをバイパス。音量は 100%。非対応形式は停止。</string>
     <string name="bitperfect_off">厳密モードはオフ</string>
     <string name="bitperfect_waiting">USB 直接再生を待機中</string>
     <string name="bitperfect_direct">整数の直接出力が有効</string>
@@ -408,6 +419,9 @@
     <string name="eq_user_preset_empty">今のカーブを保存すると、あとから呼び出せます。</string>
     <string name="eq_bind_output">%1$s に使う</string>
     <string name="eq_bound_output">%1$s に適用中</string>
+    <string name="eq_unbind_output">%1$s への適用を解除</string>
+    <string name="eq_user_preset_update">現在の設定を更新</string>
+    <string name="eq_user_preset_active">「%1$s」を編集中</string>
     <string name="eq_user_preset_parametric">パラメトリック EQ</string>
     <string name="eq_user_preset_bands">%1$d バンド</string>
     <string name="eq_share">共有</string>
@@ -479,15 +493,15 @@
     <string name="eq_show_filters">フィルターの詳細を表示</string>
     <string name="eq_hide_filters">フィルターの詳細を閉じる</string>
     <string name="settings_gapless">ギャップレス再生</string>
-    <string name="settings_gapless_detail">次の曲を先読みし、互換性のある出力を維持します。フェード、無音スキップ、サンプルレート変更、通信不足では途切れる場合があります。</string>
+    <string name="settings_gapless_detail">デフォルトでオン。フェードやサンプリング周波数の変更、通信不足では隙間が出ることがある。</string>
     <string name="settings_track_fade">曲のフェードイン／アウト</string>
-    <string name="settings_track_fade_detail">曲の始めと終わりの音量を滑らかに変えます。曲は重ねないため、切替点ではギャップレスになりません。ライブは対象外で、長さ不明の曲はフェードインのみです。</string>
-    <string name="settings_track_fade_bypass">設定は保存されますが、厳密な bit-perfect モードでは適用しません。</string>
+    <string name="settings_track_fade_detail">重ねずにフェードイン／アウトする</string>
+    <string name="settings_track_fade_bypass">保存済み。bit-perfect では無効</string>
     <string name="settings_track_fade_duration">フェード時間</string>
     <string name="settings_track_fade_seconds">%.1f 秒</string>
     <string name="settings_smart_transition">スマートトランジション</string>
-    <string name="settings_smart_transition_detail">Beta。拍に乗れるときは拍から入り、ボーカルが重なると短くし、エネルギーが高いときは低域を交差します。できない場合はギャップレスまたはフェードに戻します。</string>
-    <string name="settings_smart_transition_bypass">設定は保存されますが、軽量モード、USB 独占、bit-perfect では使いません。</string>
+    <string name="settings_smart_transition_detail">Beta。拍に合わせられれば切替。できなければギャップレスかフェード</string>
+    <string name="settings_smart_transition_bypass">保存済み。軽量モードまたは USB 独占では無効</string>
     <string name="settings_bg_video_disabled">軽量モードでは動画背景を停止し、デフォルトの背景を表示します。選択した動画は保持されます。</string>
     <string name="settings_import_font">フォントファイルを読み込む</string>
     <string name="settings_clear_action">削除</string>
@@ -500,4 +514,9 @@
     <string name="settings_font_preview_characters">ECHO · Aa Bb · 0123456789</string>
     <string name="settings_font_outfit" translatable="false">Outfit</string>
     <string name="settings_font_detail_outfit">内蔵の Outfit。日本語などはシステムフォントで表示</string>
+    <string name="settings_setlistfm">setlist.fm API キー</string>
+    <string name="settings_setlistfm_placeholder">setlist.fm API キー</string>
+    <string name="settings_setlistfm_save">setlist.fm キーを保存</string>
+    <string name="settings_setlistfm_detail">コンサートのセットリストに必要です。api.setlist.fm で取得します。開催前の公演には公式セットリストがないことがよくあります。</string>
+    <string name="settings_setlistfm_builtin">内蔵済み。入力は不要です</string>
 </resources>

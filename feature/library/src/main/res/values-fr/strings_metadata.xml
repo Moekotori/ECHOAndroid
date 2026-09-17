@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="metadata_composer">Compositeur</string>
+    <string name="metadata_lyrics">Paroles</string>
+    <string name="metadata_choose_artwork">Choisir une pochette</string>
+    <string name="album_cue_banner">CUE d\'album entier · lecture par mouvements</string>
+</resources>

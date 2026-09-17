@@ -26,14 +26,14 @@ class EchoOutputDspPolicyTest {
     }
 
     @Test
-    fun bindCapsAndReplaces() {
-        var map = emptyMap<String, String>()
-        repeat(EchoOutputDspPolicy.MaxBindings + 2) { index ->
-            map = EchoOutputDspPolicy.bind(map, "bluetooth:dev$index", "p$index")
-        }
-        assertEquals(EchoOutputDspPolicy.MaxBindings, map.size)
-        val first = map.keys.first()
-        map = EchoOutputDspPolicy.bind(map, first, "replaced")
-        assertEquals("replaced", map[first])
+    fun unbindRemovesExactKeyOnly() {
+        val map = mapOf(
+            "bluetooth:WH-1000XM5" to "xm5",
+            "bluetooth" to "kind-preset",
+        )
+        assertEquals(
+            mapOf("bluetooth" to "kind-preset"),
+            EchoOutputDspPolicy.unbind(map, "bluetooth:WH-1000XM5"),
+        )
     }
 }

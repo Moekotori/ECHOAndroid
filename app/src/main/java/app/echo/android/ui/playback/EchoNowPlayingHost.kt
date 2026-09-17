@@ -98,7 +98,6 @@ internal fun EchoNowPlayingHost(
         onAdjustReplayGainPreamp = viewModel::adjustReplayGainPreamp,
         replayGainScanState = viewModel.replayGainScanState.collectAsStateWithLifecycle().value,
         onScanReplayGain = viewModel::scanReplayGainForCurrentTrack,
-        onSetSkipSilenceEnabled = viewModel::setSkipSilenceEnabled,
         onImportLyrics = { showLyricsManager = true },
         onAdjustLyricsOffset = viewModel::adjustLyricsOffset,
         onResetLyricsOffset = viewModel::resetLyricsOffset,

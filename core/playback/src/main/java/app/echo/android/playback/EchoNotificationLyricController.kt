@@ -2,6 +2,8 @@ package app.echo.android.playback
 
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import app.echo.android.model.lyrics.EchoLyricDisplaySnapshot
+import app.echo.android.model.lyrics.EchoLyrics
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -15,22 +17,28 @@ internal class EchoNotificationLyricController(
     private val player: Player,
     private val scope: CoroutineScope,
     private val onLine: (String?) -> Unit,
+    private val onSnapshot: (EchoLyricDisplaySnapshot) -> Unit,
 ) : Player.Listener, AutoCloseable {
     private var document: EchoNotificationLyricDocument? = null
+    private var lyrics: EchoLyrics? = null
     private var job: Job? = null
     private var lastText: String? = null
+    private var lastSnapshotKey: String? = null
     private var lastPublishElapsedRealtime = 0L
 
     init {
         player.addListener(this)
     }
 
-    fun setDocument(document: EchoNotificationLyricDocument?) {
+    fun setDocument(document: EchoNotificationLyricDocument?, lyrics: EchoLyrics? = null) {
         val trackChanged = this.document?.trackId != document?.trackId
         this.document = document
+        this.lyrics = lyrics
         if (trackChanged) {
             lastPublishElapsedRealtime = 0L
+            lastSnapshotKey = null
             publish(null)
+            publishSnapshot(EchoLyricDisplaySnapshot())
         }
         refresh()
     }
@@ -56,6 +64,8 @@ internal class EchoNotificationLyricController(
         val lines = document?.takeIf { it.trackId == mediaId }?.lines.orEmpty()
         if (mediaId.isNullOrBlank() || lines.isEmpty()) {
             publish(null)
+            lastSnapshotKey = null
+            publishSnapshot(EchoLyricDisplaySnapshot(trackId = mediaId))
             return
         }
         job = scope.launch {
@@ -66,6 +76,7 @@ internal class EchoNotificationLyricController(
                 val elapsed = SystemClock.elapsedRealtime() - lastPublishElapsedRealtime
                 if (EchoNotificationLyricPolicy.shouldPublish(lastText, text, elapsed)) {
                     publish(text)
+                    publishCurrentSnapshot()
                 } else if (lastText != text) {
                     val wait = (EchoNotificationLyricPolicy.MinUpdateIntervalMs - elapsed)
                         .coerceAtLeast(EchoNotificationLyricPolicy.MinScheduleDelayMs)
@@ -74,6 +85,9 @@ internal class EchoNotificationLyricController(
                     val later = EchoNotificationLyricPolicy.primaryText(lines, player.currentPosition.coerceAtLeast(0L))
                         ?.let(EchoNotificationLyricPolicy::clampText)
                     publish(later)
+                    publishCurrentSnapshot()
+                } else {
+                    publishCurrentSnapshot()
                 }
                 if (!player.isPlaying) break
                 val nextStart = EchoNotificationLyricPolicy.nextStartMs(lines, player.currentPosition.coerceAtLeast(0L))
@@ -96,6 +110,33 @@ internal class EchoNotificationLyricController(
         onLine(text)
     }
 
+    private fun publishCurrentSnapshot() {
+        val mediaId = player.currentMediaItem?.mediaId
+        val snapshot = EchoNotificationLyricPolicy.snapshot(
+            trackId = mediaId,
+            lyrics = lyrics,
+            lines = document?.takeIf { it.trackId == mediaId }?.lines.orEmpty(),
+            positionMs = player.currentPosition.coerceAtLeast(0L),
+            isPlaying = player.isPlaying,
+            speed = player.playbackParameters.speed,
+            publishedAtElapsedRealtimeMs = SystemClock.elapsedRealtime(),
+        )
+        val key = listOf(
+            snapshot.trackId.orEmpty(),
+            snapshot.currentStartMs.toString(),
+            snapshot.current?.text.orEmpty(),
+            snapshot.isPlaying.toString(),
+            snapshot.speed.toString(),
+        ).joinToString("\u0000")
+        if (lastSnapshotKey == key) return
+        lastSnapshotKey = key
+        publishSnapshot(snapshot)
+    }
+
+    private fun publishSnapshot(snapshot: EchoLyricDisplaySnapshot) {
+        onSnapshot(snapshot)
+    }
+
     override fun close() {
         job?.cancel()
         job = null
@@ -104,5 +145,7 @@ internal class EchoNotificationLyricController(
             lastText = null
             onLine(null)
         }
+        lastSnapshotKey = null
+        onSnapshot(EchoLyricDisplaySnapshot())
     }
 }

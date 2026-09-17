@@ -91,9 +91,6 @@
     <string name="feature_player_show_bottom_bar_bf2549">"Untere Leiste anzeigen"</string>
     <string name="feature_player_shuffle_on_c7c5c4">"Zufall an"</string>
     <string name="feature_player_size_tracks_now_playing_current_7d4647">"%1$s Titel · jetzt läuft %2$s"</string>
-    <string name="feature_player_skip_silence_d27e03">"Stille überspringen"</string>
-    <string name="feature_player_skip_silence_off_8f8ae6">"Stille überspringen aus"</string>
-    <string name="feature_player_skip_silence_on_159990">"Stille überspringen an"</string>
     <string name="feature_player_skipped_an_unplayable_track_dcd77d">"Nicht abspielbarer Titel übersprungen"</string>
     <string name="feature_player_sleep_timer_108738">"Schlaf-Timer"</string>
     <string name="feature_player_sleep_timer_remaining_4b8c3f">"Schlaf-Timer · %1$s"</string>

@@ -53,9 +53,12 @@ data class EchoAppSettings(
     val pcHandoffEnabled: Boolean = true,
     val showLyricsControlDeck: Boolean = false,
     val onlineLyricsEnabled: Boolean = false,
+    val lockScreenLyricsEnabled: Boolean = true,
     val usbExclusiveEnabled: Boolean = false,
     val usbBitPerfectEnabled: Boolean = false,
     val usbExclusiveAutoRequestOnStartup: Boolean = true,
+    val pauseOnAudioDisconnect: Boolean = true,
+    val resumeOnAudioReconnect: Boolean = false,
     val dsp: app.echo.android.model.playback.EchoDspSettings = app.echo.android.model.playback.EchoDspSettings(),
     val equalizerEnabled: Boolean = false,
     val equalizerPreset: String = EchoEqualizerPreset.Flat,
@@ -103,6 +106,7 @@ data class EchoAppSettings(
     val lastFmSharedSecret: String? = null,
     val lastFmUsername: String? = null,
     val lastFmSessionKey: String? = null,
+    val setlistFmApiKey: String? = null,
     val echoLinkPcAddress: String? = null,
     val echoLinkPcToken: String? = null,
     val echoLinkV2Events: Boolean = false,
@@ -224,6 +228,7 @@ class EchoSettingsStore(
                 pcHandoffEnabled = preferences[Keys.PcHandoffEnabled] ?: true,
                 showLyricsControlDeck = preferences[Keys.ShowLyricsControlDeck] ?: false,
                 onlineLyricsEnabled = preferences[Keys.OnlineLyricsEnabled] ?: false,
+                lockScreenLyricsEnabled = preferences[Keys.LockScreenLyricsEnabled] ?: true,
                 usbExclusiveEnabled = preferences[Keys.UsbExclusiveEnabled] ?: false,
                 usbBitPerfectEnabled = preferences[Keys.UsbBitPerfectEnabled] ?: false,
                 trackTransitions = app.echo.android.model.playback.EchoTrackTransitionOptions(
@@ -232,6 +237,8 @@ class EchoSettingsStore(
                     smartEnabled = preferences[Keys.TrackSmartTransitionEnabled] ?: false,
                 ).normalized(),
                 usbExclusiveAutoRequestOnStartup = preferences[Keys.UsbExclusiveAutoRequestOnStartup] ?: true,
+                pauseOnAudioDisconnect = preferences[Keys.PauseOnAudioDisconnect] ?: true,
+                resumeOnAudioReconnect = preferences[Keys.ResumeOnAudioReconnect] ?: false,
                 dsp = app.echo.android.model.playback.EchoDspSettings(
                     preferences[Keys.DspLimiterEnabled] ?: false,
                     preferences[Keys.DspLimiterCeiling] ?: -1f,
@@ -307,6 +314,7 @@ class EchoSettingsStore(
                     EchoSecretKeys.LastFmSessionKey,
                     preferences[Keys.LastFmSessionKey],
                 ),
+                setlistFmApiKey = preferences[Keys.SetlistFmApiKey],
                 echoLinkPcAddress = preferences[Keys.EchoLinkPcAddress],
                 echoLinkPcToken = secrets.takeIfMigrated(
                     EchoSecretKeys.EchoLinkToken,
@@ -422,6 +430,10 @@ class EchoSettingsStore(
         context.echoSettings.edit { it[Keys.OnlineLyricsEnabled] = enabled }
     }
 
+    suspend fun setLockScreenLyricsEnabled(enabled: Boolean) {
+        context.echoSettings.edit { it[Keys.LockScreenLyricsEnabled] = enabled }
+    }
+
     suspend fun setUsbExclusiveEnabled(enabled: Boolean) {
         context.echoSettings.edit {
             it[Keys.UsbExclusiveEnabled] = enabled
@@ -485,7 +497,7 @@ class EchoSettingsStore(
             val preamp = it[Keys.EqualizerPreampDb]
             clearEqualizerParametric(it)
             if (preamp != null) it[Keys.EqualizerPreampDb] = preamp
-            it.remove(Keys.EqualizerActiveUserPresetId)
+            // Keep active user preset id so "update current" / device binding still work while editing.
         }
     }
 
@@ -493,7 +505,6 @@ class EchoSettingsStore(
         if (!gainDb.isFinite()) return
         context.echoSettings.edit {
             it[Keys.EqualizerPreampDb] = gainDb.coerceIn(-24f, 12f)
-            it.remove(Keys.EqualizerActiveUserPresetId)
         }
     }
 
@@ -516,7 +527,6 @@ class EchoSettingsStore(
             } else {
                 it[Keys.EqualizerSourceLabel] = sourceLabel
             }
-            it.remove(Keys.EqualizerActiveUserPresetId)
         }
     }
 
@@ -568,6 +578,15 @@ class EchoSettingsStore(
             val current = EchoOutputDspCodec.decode(it[Keys.EqualizerDevicePresetIds])
             it[Keys.EqualizerDevicePresetIds] = EchoOutputDspCodec.encode(
                 EchoOutputDspPolicy.bind(current, key, presetId),
+            )
+        }
+    }
+
+    suspend fun unbindEqualizerPresetFromDevice(key: String) {
+        context.echoSettings.edit {
+            val current = EchoOutputDspCodec.decode(it[Keys.EqualizerDevicePresetIds])
+            it[Keys.EqualizerDevicePresetIds] = EchoOutputDspCodec.encode(
+                EchoOutputDspPolicy.unbind(current, key),
             )
         }
     }
@@ -847,6 +866,13 @@ class EchoSettingsStore(
         }
     }
 
+    suspend fun setSetlistFmApiKey(apiKey: String?) {
+        context.echoSettings.edit {
+            val trimmed = apiKey?.trim().orEmpty()
+            if (trimmed.isEmpty()) it.remove(Keys.SetlistFmApiKey) else it[Keys.SetlistFmApiKey] = trimmed
+        }
+    }
+
     suspend fun clearLastFmCredentials() {
         secrets.set(EchoSecretKeys.LastFmSessionKey, null)
         secrets.set(EchoSecretKeys.LastFmSharedSecret, null)
@@ -918,6 +944,14 @@ class EchoSettingsStore(
             it[Keys.ReplayGainEnabled] = enabled
             it[Keys.ReplayGainPreampDb] = app.echo.android.model.playback.normalizeReplayGainPreampDb(preampDb)
         }
+    }
+
+    suspend fun setPauseOnAudioDisconnect(enabled: Boolean) {
+        context.echoSettings.edit { it[Keys.PauseOnAudioDisconnect] = enabled }
+    }
+
+    suspend fun setResumeOnAudioReconnect(enabled: Boolean) {
+        context.echoSettings.edit { it[Keys.ResumeOnAudioReconnect] = enabled }
     }
 
     suspend fun setEchoLinkAutoReconnectEnabled(enabled: Boolean) {
@@ -1197,9 +1231,12 @@ class EchoSettingsStore(
             backup.pcHandoffEnabled?.let { prefs[Keys.PcHandoffEnabled] = it }
             backup.showLyricsControlDeck?.let { prefs[Keys.ShowLyricsControlDeck] = it }
             backup.onlineLyricsEnabled?.let { prefs[Keys.OnlineLyricsEnabled] = it }
+            backup.lockScreenLyricsEnabled?.let { prefs[Keys.LockScreenLyricsEnabled] = it }
             backup.usbExclusiveEnabled?.let { prefs[Keys.UsbExclusiveEnabled] = it }
             backup.usbBitPerfectEnabled?.let { prefs[Keys.UsbBitPerfectEnabled] = it }
             backup.usbExclusiveAutoRequestOnStartup?.let { prefs[Keys.UsbExclusiveAutoRequestOnStartup] = it }
+            backup.pauseOnAudioDisconnect?.let { prefs[Keys.PauseOnAudioDisconnect] = it }
+            backup.resumeOnAudioReconnect?.let { prefs[Keys.ResumeOnAudioReconnect] = it }
             backup.trackAudioInfoTagsVisible?.let { prefs[Keys.TrackAudioInfoTagsVisible] = it }
             backup.replayGainEnabled?.let { prefs[Keys.ReplayGainEnabled] = it }
             backup.replayGainMode?.let { prefs[Keys.ReplayGainMode] = it }
@@ -1278,12 +1315,15 @@ class EchoSettingsStore(
         val PcHandoffEnabled = booleanPreferencesKey("pc_handoff_enabled")
         val ShowLyricsControlDeck = booleanPreferencesKey("show_lyrics_control_deck")
         val OnlineLyricsEnabled = booleanPreferencesKey("online_lyrics_enabled")
+        val LockScreenLyricsEnabled = booleanPreferencesKey("lock_screen_lyrics_enabled")
         val UsbExclusiveEnabled = booleanPreferencesKey("usb_exclusive_enabled")
         val UsbBitPerfectEnabled = booleanPreferencesKey("usb_bit_perfect_enabled")
         val TrackFadeEnabled = booleanPreferencesKey("track_fade_enabled")
         val TrackFadeDurationMs = intPreferencesKey("track_fade_duration_ms")
         val TrackSmartTransitionEnabled = booleanPreferencesKey("track_smart_transition")
         val UsbExclusiveAutoRequestOnStartup = booleanPreferencesKey("usb_exclusive_auto_request_on_startup")
+        val PauseOnAudioDisconnect = booleanPreferencesKey("pause_on_audio_disconnect")
+        val ResumeOnAudioReconnect = booleanPreferencesKey("resume_on_audio_reconnect")
         val DspLimiterEnabled = booleanPreferencesKey("dsp_limiter_enabled")
         val DspLimiterCeiling = floatPreferencesKey("dsp_limiter_ceiling")
         val DspCrossfeedEnabled = booleanPreferencesKey("dsp_crossfeed_enabled")
@@ -1343,6 +1383,7 @@ class EchoSettingsStore(
         val ScheduledDarkEndMinute = intPreferencesKey("scheduled_dark_end_minute")
         val LastFmEnabled = booleanPreferencesKey("lastfm_enabled")
         val LastFmApiKey = stringPreferencesKey("lastfm_api_key")
+        val SetlistFmApiKey = stringPreferencesKey("setlistfm_api_key")
         val LastFmSharedSecret = stringPreferencesKey("lastfm_shared_secret")
         val LastFmUsername = stringPreferencesKey("lastfm_username")
         val LastFmSessionKey = stringPreferencesKey("lastfm_session_key")
@@ -1500,9 +1541,12 @@ fun EchoAppSettings.toBackupSettings(): app.echo.android.model.backup.EchoBackup
         pcHandoffEnabled = pcHandoffEnabled,
         showLyricsControlDeck = showLyricsControlDeck,
         onlineLyricsEnabled = onlineLyricsEnabled,
+        lockScreenLyricsEnabled = lockScreenLyricsEnabled,
         usbExclusiveEnabled = usbExclusiveEnabled,
         usbBitPerfectEnabled = usbBitPerfectEnabled,
         usbExclusiveAutoRequestOnStartup = usbExclusiveAutoRequestOnStartup,
+        pauseOnAudioDisconnect = pauseOnAudioDisconnect,
+        resumeOnAudioReconnect = resumeOnAudioReconnect,
         trackAudioInfoTagsVisible = trackAudioInfoTagsVisible,
         replayGainEnabled = replayGainEnabled,
         replayGainMode = replayGainMode,

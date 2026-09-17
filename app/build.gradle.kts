@@ -77,6 +77,11 @@ android {
             "LASTFM_SHARED_SECRET",
             "\"${lastFmBuildValue("LASTFM_SHARED_SECRET")}\"",
         )
+        buildConfigField(
+            "String",
+            "SETLISTFM_API_KEY",
+            "\"${lastFmBuildValue("SETLISTFM_API_KEY")}\"",
+        )
     }
 
     buildFeatures {

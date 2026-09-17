@@ -50,11 +50,19 @@ class MediaStoreTrackScanner(
         }
         val (selection, selectionArgs) = audioSelection(normalizedRelativePath)
         val safeBatchSize = batchSize.coerceAtLeast(1)
-        val cueSheets = loadCueSheets()
+        val cueCatalog = loadCueSheets()
+        val cueSheets = cueCatalog.byKey
+        val audioNamesByFolder = HashMap<String, HashSet<String>>()
         val batch = ArrayList<LibraryTrackEntity>(safeBatchSize)
         var scannedCount = 0
         var estimatedTotal = 0
         var querySucceeded = false
+
+        fun rememberAudio(relativePath: String?, fileName: String?) {
+            val name = fileName?.takeIf { it.isNotBlank() } ?: return
+            val folder = relativePath.orEmpty().replace('\\', '/').trim('/').lowercase()
+            audioNamesByFolder.getOrPut(folder) { HashSet() }.add(name)
+        }
 
         suspend fun flushBatch() {
             if (batch.isEmpty()) return
@@ -98,6 +106,7 @@ class MediaStoreTrackScanner(
                     Log.w(TAG, "Skipping unreadable MediaStore audio row.", error)
                 }.getOrNull() ?: continue
                 val (track, fileName) = parsed
+                rememberAudio(track.relativePath, fileName)
                 val expanded = expandCueTracks(track, fileName, cueSheets)
                 expanded.forEach { item ->
                     batch += item
@@ -213,6 +222,7 @@ class MediaStoreTrackScanner(
                     }.onFailure { error ->
                         Log.w(TAG, "Skipping unreadable MediaStore file audio row.", error)
                     }.getOrNull() ?: continue
+                    rememberAudio(parsed.relativePath, row.fileName)
                     batch += parsed
                     scannedCount += 1
                     onProgress(scannedCount, parsed)
@@ -290,6 +300,7 @@ class MediaStoreTrackScanner(
                         volumeNameIndex = volumeNameIndex,
                         dataIndex = dataIndex,
                     )
+                    rememberAudio(relativePath, fileName)
                     val cueChanged = cueIds.isNotEmpty() || hasCueSheet(relativePath, fileName, cueSheets)
                     when (
                         LibraryScanPolicy.classifyMediaStoreProbeRow(
@@ -350,11 +361,19 @@ class MediaStoreTrackScanner(
         }
         flushBatch()
         onProgress(scannedCount, null)
+        val unmatchedCueCount = cueCatalog.files.count { file ->
+            !CueSheetPolicy.isMatchedToAudio(
+                sheet = file.sheet,
+                cueFileName = file.fileName,
+                audioNames = audioNamesByFolder[file.folder].orEmpty(),
+            )
+        }
         return MediaStoreScanOutcome(
             scannedCount = scannedCount,
             querySucceeded = completeVolumeScopes.size == collections.size,
             completeVolumeScopes = completeVolumeScopes,
             failedReadCount = collections.size - completeVolumeScopes.size,
+            unmatchedCueCount = unmatchedCueCount,
         )
     }
 
@@ -519,7 +538,18 @@ class MediaStoreTrackScanner(
     private fun cueFolderKey(folder: String, name: String): String =
         "${folder.lowercase()}\u0000${name.lowercase()}"
 
-    private fun loadCueSheets(): Map<String, CueSheet> {
+    private data class IndexedCueFile(
+        val folder: String,
+        val fileName: String,
+        val sheet: CueSheet,
+    )
+
+    private data class CueSheetCatalog(
+        val byKey: Map<String, CueSheet>,
+        val files: List<IndexedCueFile>,
+    )
+
+    private fun loadCueSheets(): CueSheetCatalog {
         val projection = arrayOf(
             MediaStore.Files.FileColumns._ID,
             MediaStore.Files.FileColumns.DISPLAY_NAME,
@@ -542,8 +572,9 @@ class MediaStoreTrackScanner(
                 arrayOf("%.cue"),
                 null,
             )
-        }.getOrNull() ?: return emptyMap()
+        }.getOrNull() ?: return CueSheetCatalog(emptyMap(), emptyList())
         val sheets = LinkedHashMap<String, CueSheet>()
+        val files = ArrayList<IndexedCueFile>()
         cursor.use { listing ->
             val idIndex = listing.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
             val nameIndex = listing.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
@@ -567,6 +598,7 @@ class MediaStoreTrackScanner(
                         if (bytes.size > CueSheetPolicy.MaxCueBytes) null else CueSheetParser.parse(bytes)
                     }
                 }.getOrNull() ?: continue
+                files += IndexedCueFile(folder.lowercase(), name, sheet)
                 val indexNames = buildList {
                     add(name)
                     add(name.substringBeforeLast('.', name))
@@ -581,7 +613,7 @@ class MediaStoreTrackScanner(
                 }
             }
         }
-        return sheets
+        return CueSheetCatalog(sheets, files)
     }
 
     internal fun readAudioTagsFromUri(contentUri: String): AudioTagFields? =

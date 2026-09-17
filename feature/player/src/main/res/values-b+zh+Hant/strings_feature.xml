@@ -91,9 +91,6 @@
     <string name="feature_player_show_bottom_bar_bf2549">"顯示底欄"</string>
     <string name="feature_player_shuffle_on_c7c5c4">"隨機開啟"</string>
     <string name="feature_player_size_tracks_now_playing_current_7d4647">"%1$s 首 · 目前第 %2$s 首"</string>
-    <string name="feature_player_skip_silence_d27e03">"跳過靜音"</string>
-    <string name="feature_player_skip_silence_off_8f8ae6">"跳過靜音關"</string>
-    <string name="feature_player_skip_silence_on_159990">"跳過靜音開"</string>
     <string name="feature_player_skipped_an_unplayable_track_dcd77d">"已跳過無法播放的曲目"</string>
     <string name="feature_player_sleep_timer_108738">"睡眠定時"</string>
     <string name="feature_player_sleep_timer_remaining_4b8c3f">"睡眠定時 · %1$s"</string>

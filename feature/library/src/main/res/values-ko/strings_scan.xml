@@ -22,4 +22,5 @@
     <string name="scan_edit_filters">필터 조정</string>
     <string name="scan_hide_details">세부정보 숨기기</string>
     <string name="scan_device_instead">또는 이 기기 스캔</string>
+    <string name="scan_unmatched_cue">일치하는 오디오가 없는 CUE %1$d개</string>
 </resources>

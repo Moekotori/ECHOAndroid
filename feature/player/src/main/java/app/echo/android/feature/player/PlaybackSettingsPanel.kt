@@ -24,12 +24,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
-import androidx.compose.material.icons.automirrored.rounded.VolumeOff
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Close
@@ -60,7 +58,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -167,6 +164,14 @@ internal fun canLowerReplayGainPreamp(preampDb: Float): Boolean =
 internal fun canRaiseReplayGainPreamp(preampDb: Float): Boolean =
     preampDb + ReplayGainPreampStepDb <= EchoReplayGainPreampMaxDb + 0.01f
 
+internal fun playbackSettingsHeadline(formatChips: List<String>, outputLabel: String): String {
+    val format = formatChips.joinToString(" · ")
+    return if (format.isBlank()) outputLabel else "$format · $outputLabel"
+}
+
+internal fun playModeDetail(repeatLabel: String, shuffleEnabled: Boolean, shuffleOnLabel: String): String =
+    if (shuffleEnabled) "$repeatLabel · $shuffleOnLabel" else repeatLabel
+
 @Composable
 internal fun PlaybackSettingsDrawer(
     visible: Boolean,
@@ -182,7 +187,6 @@ internal fun PlaybackSettingsDrawer(
     onAdjustReplayGainPreamp: (Float) -> Unit,
     replayGainScanState: EchoReplayGainScanState = EchoReplayGainScanState.Idle,
     onScanReplayGain: () -> Unit = {},
-    onSetSkipSilenceEnabled: (Boolean) -> Unit,
     lyricsOffsetMs: Long,
     onAdjustLyricsOffset: (Long) -> Unit,
     onResetLyricsOffset: () -> Unit,
@@ -226,11 +230,9 @@ internal fun PlaybackSettingsDrawer(
                     onSetSleepTimerEndOfTrack = onSetSleepTimerEndOfTrack,
                     onCancelSleepTimer = onCancelSleepTimer,
                     onSetReplayGain = onSetReplayGain,
-                    onSetReplayGainMode = onSetReplayGainMode,
                     onAdjustReplayGainPreamp = onAdjustReplayGainPreamp,
                     replayGainScanState = replayGainScanState,
                     onScanReplayGain = onScanReplayGain,
-                    onSetSkipSilenceEnabled = onSetSkipSilenceEnabled,
                     lyricsOffsetMs = lyricsOffsetMs,
                     onAdjustLyricsOffset = onAdjustLyricsOffset,
                     onResetLyricsOffset = onResetLyricsOffset,
@@ -255,11 +257,9 @@ private fun PlaybackSettingsSheet(
     onSetSleepTimerEndOfTrack: () -> Unit,
     onCancelSleepTimer: () -> Unit,
     onSetReplayGain: (Boolean, Float) -> Unit,
-    onSetReplayGainMode: (EchoReplayGainMode) -> Unit,
     onAdjustReplayGainPreamp: (Float) -> Unit,
     replayGainScanState: EchoReplayGainScanState = EchoReplayGainScanState.Idle,
     onScanReplayGain: () -> Unit = {},
-    onSetSkipSilenceEnabled: (Boolean) -> Unit,
     lyricsOffsetMs: Long,
     onAdjustLyricsOffset: (Long) -> Unit,
     onResetLyricsOffset: () -> Unit,
@@ -278,59 +278,35 @@ private fun PlaybackSettingsSheet(
     }
     val panelShape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
     val titleColor = if (dark) Color.White else echoTheme().heading
-    val mutedColor = if (dark) Color.White.copy(alpha = 0.76f) else echoTheme().muted
-    val accentColor = echoAccentColor()
+    val mutedColor = if (dark) Color.White.copy(alpha = 0.65f) else echoTheme().muted
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = maxHeight * 0.88f)
                 .clip(panelShape)
-                .background(
-                    if (dark) {
-                        Brush.verticalGradient(
-                            listOf(
-                                echoTheme().panel,
-                                echoTheme().ink,
-                                echoTheme().night,
-                            ),
-                        )
-                    } else {
-                        Brush.verticalGradient(
-                            listOf(
-                                Color(0xFFF7F5F6),
-                                Color(0xFFEFECEE),
-                            ),
-                        )
-                    },
-                )
+                .background(if (dark) echoTheme().panel else Color(0xFFF4F1F3))
                 .navigationBarsPadding(),
         ) {
             Column(
-                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 PlaybackSheetHandle(onDismiss = onDismiss)
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(accentColor.copy(alpha = 0.18f)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            Icons.Rounded.Settings,
-                            contentDescription = null,
-                            tint = accentColor,
-                            modifier = Modifier.size(22.dp),
-                        )
-                    }
-                    Column(Modifier.weight(1f)) {
+                    Icon(
+                        Icons.Rounded.Settings,
+                        contentDescription = null,
+                        tint = echoAccentColor(),
+                        modifier = Modifier.size(28.dp),
+                    )
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
                             stringResource(L10nR.string.feature_player_playback_settings_651436),
                             color = titleColor,
@@ -341,8 +317,7 @@ private fun PlaybackSettingsSheet(
                             playbackSettingsSummary(status),
                             color = mutedColor,
                             style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 3,
+                            maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
@@ -368,7 +343,11 @@ private fun PlaybackSettingsSheet(
                 PlaybackSettingsSection(
                     icon = Icons.Rounded.Repeat,
                     title = stringResource(L10nR.string.feature_player_playback_mode),
-                    detail = "",
+                    detail = playModeDetail(
+                        repeatLabel = repeatModeLabel(status.repeatMode),
+                        shuffleEnabled = status.shuffleEnabled,
+                        shuffleOnLabel = stringResource(L10nR.string.feature_player_shuffle_on_c7c5c4),
+                    ),
                 ) {
                     Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         listOf(EchoRepeatMode.Off, EchoRepeatMode.All, EchoRepeatMode.One).forEach { mode ->
@@ -378,21 +357,19 @@ private fun PlaybackSettingsSheet(
                             )
                         }
                     }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        PlaybackToggleRow(
-                            icon = Icons.Rounded.Shuffle,
-                            title = stringResource(L10nR.string.feature_player_shuffle),
-                            checked = status.shuffleEnabled,
-                            modifier = Modifier.weight(1f),
-                            onCheckedChange = { onToggleShuffle() },
-                        )
-                        PlaybackActionRow(
-                            icon = Icons.AutoMirrored.Rounded.QueueMusic,
-                            text = stringResource(L10nR.string.feature_player_queue_37fa6a),
-                            onClick = onOpenQueue,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
+                    PlaybackToggleRow(
+                        icon = Icons.Rounded.Shuffle,
+                        title = stringResource(L10nR.string.feature_player_shuffle),
+                        checked = status.shuffleEnabled,
+                        framed = false,
+                        onCheckedChange = { onToggleShuffle() },
+                    )
+                    PlaybackActionRow(
+                        icon = Icons.AutoMirrored.Rounded.QueueMusic,
+                        text = stringResource(L10nR.string.feature_player_queue_37fa6a),
+                        framed = false,
+                        onClick = onOpenQueue,
+                    )
                 }
 
                 PlaybackSettingsSection(
@@ -585,19 +562,6 @@ private fun PlaybackSettingsSheet(
                 ) {
                     EchoExpand(expanded = status.replayGainEnabled) {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                EchoReplayGainMode.entries.forEach { mode ->
-                                    PlaybackChoiceChip(
-                                        text = replayGainModeLabel(mode),
-                                        selected = status.replayGainMode == mode,
-                                        onClick = { onSetReplayGainMode(mode) },
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                }
-                            }
                             PlaybackStepper(
                                 valueLabel = "${stringResource(L10nR.string.feature_player_replay_gain_preamp)} ${formatReplayGainDb(status.replayGainPreampDb)}",
                                 decrementEnabled = canLowerReplayGainPreamp(status.replayGainPreampDb),
@@ -643,16 +607,6 @@ private fun PlaybackSettingsSheet(
                     }
                 }
 
-                PlaybackToggleRow(
-                    icon = Icons.AutoMirrored.Rounded.VolumeOff,
-                    title = stringResource(L10nR.string.feature_player_skip_silence_d27e03),
-                    checked = status.skipSilenceEnabled,
-                    onCheckedChange = { enabled ->
-                        haptics.confirm()
-                        onSetSkipSilenceEnabled(enabled)
-                    },
-                )
-
                 PlaybackSettingsSection(
                     icon = Icons.Rounded.Lyrics,
                     title = stringResource(L10nR.string.feature_player_lyrics_offset),
@@ -671,10 +625,6 @@ private fun PlaybackSettingsSheet(
                         decrementIcon = Icons.Rounded.FastRewind,
                         incrementIcon = Icons.Rounded.FastForward,
                     )
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(stringResource(L10nR.string.playback_lyrics_earlier), style = MaterialTheme.typography.labelSmall)
-                        Text(stringResource(L10nR.string.playback_lyrics_later), style = MaterialTheme.typography.labelSmall)
-                    }
                     TextButton(onClick = onResetLyricsOffset, enabled = lyricsOffsetMs != 0L) {
                         Text(stringResource(L10nR.string.feature_player_reset_lyrics_offset_df9dcc))
                     }
@@ -687,18 +637,18 @@ private fun PlaybackSettingsSheet(
 @Composable
 private fun playbackSettingsSummary(status: EchoPlaybackStatus): String {
     val diagnostics = status.diagnostics
-    val format = playbackFormatChips(
-        diagnostics = diagnostics,
-        pcmRateLabel = ::formatSampleRate,
-    ).joinToString(" · ").ifBlank {
-        stringResource(L10nR.string.feature_player_waiting_for_audio_info_a869fd)
-    }
     val output = if (diagnostics.usbDeviceName != null) {
         stringResource(L10nR.string.feature_player_usb_output_c6800e)
     } else {
         stringResource(L10nR.string.feature_player_system_output_856789)
     }
-    return "$format\n$output"
+    return playbackSettingsHeadline(
+        formatChips = playbackFormatChips(
+            diagnostics = diagnostics,
+            pcmRateLabel = ::formatSampleRate,
+        ),
+        outputLabel = output,
+    )
 }
 
 @Composable

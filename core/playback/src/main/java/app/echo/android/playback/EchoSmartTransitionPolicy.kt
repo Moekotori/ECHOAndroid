@@ -37,7 +37,6 @@ internal object EchoSmartTransitionPolicy {
         Live,
         UnknownDuration,
         PlaybackSpeed,
-        SkipSilence,
         RepeatOne,
         SleepEndOfTrack,
         Remote,
@@ -58,7 +57,6 @@ internal object EchoSmartTransitionPolicy {
         val currentPositionMs: Long,
         val nextDurationMs: Long,
         val playbackSpeed: Float,
-        val skipSilence: Boolean,
         val repeatOne: Boolean,
         val sleepEndOfTrack: Boolean,
         val currentLocal: Boolean,
@@ -87,7 +85,6 @@ internal object EchoSmartTransitionPolicy {
         if (candidate.live) return BypassReason.Live
         if (candidate.currentDurationMs <= 0L || candidate.nextDurationMs <= 0L) return BypassReason.UnknownDuration
         if (kotlin.math.abs(candidate.playbackSpeed - 1f) > 0.0001f) return BypassReason.PlaybackSpeed
-        if (candidate.skipSilence) return BypassReason.SkipSilence
         if (candidate.repeatOne) return BypassReason.RepeatOne
         if (candidate.sleepEndOfTrack) return BypassReason.SleepEndOfTrack
         if (!candidate.currentLocal || !candidate.nextLocal) return BypassReason.Remote

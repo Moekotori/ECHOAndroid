@@ -136,10 +136,10 @@ private fun echoTypography(
 ): Typography = Typography().let { typography ->
     val outfit = fontFamily === EchoOutfitFontFamily
     // Outfit has no CJK glyphs. Heavier requested weights make the system
-    // fallback match Medium/Bold instead of Regular/Thin.
+    // fallback match Bold/ExtraBold instead of Regular/Medium.
     val display = if (outfit) FontWeight.Black else FontWeight.ExtraBold
     val title = if (outfit) FontWeight.ExtraBold else FontWeight.Bold
-    val body = if (outfit) FontWeight.Bold else FontWeight.SemiBold
+    val body = if (outfit) FontWeight.ExtraBold else FontWeight.Bold
     val label = if (outfit) FontWeight.ExtraBold else FontWeight.Bold
     typography.copy(
         displayLarge = typography.displayLarge.echoFont(fontFamily, display, fontScale),

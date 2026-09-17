@@ -29,7 +29,7 @@ internal val ConnectControlShape = RoundedCornerShape(4.dp)
 
 @Composable
 internal fun ConnectNote(text: String, error: Boolean = false) {
-    Text(text, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold,
+    Text(text, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold,
         color = if (error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
 }
 

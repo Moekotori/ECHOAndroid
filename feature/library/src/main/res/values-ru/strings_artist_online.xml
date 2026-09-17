@@ -28,4 +28,13 @@
     <string name="artist_concert_details">%1$s · Сведения о событии</string>
     <string name="artist_sort_tracks">Сортировка треков</string>
     <string name="artist_play_on_pc">Играть на ПК</string>
+    <string name="artist_setlist_show">Сетлист</string>
+    <string name="artist_setlist_hide">Скрыть сетлист</string>
+    <string name="artist_setlist_need_key">Добавьте ключ API setlist.fm в Настройки → Сервисы, чтобы загружать сетлисты.</string>
+    <string name="artist_setlist_empty">Официального сетлиста на эту дату нет.</string>
+    <string name="artist_setlist_recent">Ориентир по последнему концерту, не официальный сетлист этой даты</string>
+    <string name="artist_setlist_failed">Не удалось загрузить этот сетлист.</string>
+    <string name="artist_setlist_play_matched">Играть %1$d из %2$d уже есть в библиотеке</string>
+    <string name="artist_setlist_tape">%1$s (плёнка)</string>
+    <string name="artist_setlist_refresh">Обновить сетлист</string>
 </resources>

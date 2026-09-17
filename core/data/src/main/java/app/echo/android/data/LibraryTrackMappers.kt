@@ -23,6 +23,7 @@ fun LibraryTrackEntity.toEchoTrack(): EchoTrack =
         dateModifiedSeconds = dateModifiedSeconds,
         source = LibrarySource(source),
         genre = genre,
+        composer = composer,
         clipStartMs = clipStartMs,
         clipEndMs = clipEndMs,
     )
@@ -45,6 +46,7 @@ fun EchoTrack.toLibraryTrackEntity(): LibraryTrackEntity =
         sampleRateHz = sampleRateHz,
         dateModifiedSeconds = dateModifiedSeconds,
         source = source.id,
+        composer = composer,
         relativePath = null,
         metadataEditedAtEpochMs = null,
         lastSeenScanRunId = 0L,
@@ -99,6 +101,7 @@ internal fun LibraryTrackEntity.withUserMetadata(
         trackNumber = update.trackNumber?.takeIf { it > 0 },
         discNumber = update.discNumber?.takeIf { it > 0 },
         year = update.year?.takeIf { it > 0 },
+        composer = update.composer.normalizedNullableMetadata(),
         metadataEditedAtEpochMs = editedAtEpochMs,
     ).withScanMetadata()
 
@@ -115,6 +118,7 @@ internal fun LibraryTrackEntity.withPreservedUserMetadata(
         trackNumber = editedTrack.trackNumber,
         discNumber = editedTrack.discNumber,
         year = editedTrack.year,
+        composer = editedTrack.composer,
         metadataEditedAtEpochMs = editedTrack.metadataEditedAtEpochMs,
     )
 }

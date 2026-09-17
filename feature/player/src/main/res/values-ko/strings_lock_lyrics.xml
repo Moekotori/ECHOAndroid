@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lock_lyrics_idle_title">ECHO</string>
+    <string name="lock_lyrics_waiting">가사를 기다리는 중</string>
+    <string name="lock_lyrics_hint">잠금 화면 가사</string>
+</resources>

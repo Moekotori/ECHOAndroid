@@ -79,6 +79,28 @@
                 android:resource="@xml/shortcuts" />
         </activity>
 
+        <activity
+            android:name=".lock.EchoLockLyricsActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:showWhenLocked="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.EchoAndroid"
+            android:turnScreenOn="false" />
+
+        <service
+            android:name=".lock.EchoLyricsDreamService"
+            android:exported="true"
+            android:icon="@drawable/media3_notification_small_icon"
+            android:label="@string/lock_lyrics_dream_name"
+            android:permission="android.permission.BIND_DREAM_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.dreams.DreamService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </service>
+
         <service
             android:name=".EchoLinkCastService"
             android:exported="false"
@@ -113,6 +135,46 @@
             android:exported="true"
             android:icon="@drawable/media3_notification_small_icon"
             android:label="@string/qs_tile_play_pause"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".tile.EchoSleepTimerTileService"
+            android:exported="true"
+            android:icon="@drawable/media3_notification_small_icon"
+            android:label="@string/qs_tile_sleep"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".tile.EchoUsbExclusiveTileService"
+            android:exported="true"
+            android:icon="@drawable/media3_notification_small_icon"
+            android:label="@string/qs_tile_usb"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".tile.EchoFavoriteTileService"
+            android:exported="true"
+            android:icon="@drawable/media3_notification_small_icon"
+            android:label="@string/qs_tile_favorite"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".tile.EchoSkipNextTileService"
+            android:exported="true"
+            android:icon="@drawable/media3_notification_small_icon"
+            android:label="@string/qs_tile_next"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />

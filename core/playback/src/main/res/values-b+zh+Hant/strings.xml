@@ -6,4 +6,5 @@
     <string name="playback_command_repeat_one">單曲循環</string>
     <string name="playback_command_repeat_off">關閉循環</string>
     <string name="playback_command_lyrics">歌詞</string>
+    <string name="playback_command_lock_lyrics">全螢幕歌詞</string>
 </resources>

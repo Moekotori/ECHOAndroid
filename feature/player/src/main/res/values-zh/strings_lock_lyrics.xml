@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lock_lyrics_idle_title">ECHO</string>
+    <string name="lock_lyrics_waiting">等待歌词</string>
+    <string name="lock_lyrics_hint">锁屏歌词</string>
+</resources>

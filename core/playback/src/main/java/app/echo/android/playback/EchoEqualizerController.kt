@@ -86,13 +86,14 @@ class EchoEqualizerController {
         publish(applySuggestedPreamp = true)
     }
 
-    fun setParametricFilters(filters: List<OpraEqBand>) {
+    fun setParametricFilters(filters: List<OpraEqBand>, applySuggestedPreamp: Boolean = false) {
         val sanitized = EchoParametricEq.sanitize(filters) ?: return
         desiredParametric = true
         desiredPresetId = EchoEqualizerPreset.Custom
         desiredFilters = sanitized
         desiredGainsDb = EchoEqualizerEngine.visualizationGainsDb(desiredFilters)
-        publish(applySuggestedPreamp = true)
+        // Live edits keep the user's preamp; preset/OPRA entry points still request headroom.
+        publish(applySuggestedPreamp = applySuggestedPreamp)
     }
 
     fun setBandGain(index: Int, gainDb: Float) {

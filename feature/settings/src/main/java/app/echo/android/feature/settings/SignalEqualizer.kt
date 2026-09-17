@@ -6,15 +6,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import app.echo.android.design.EchoSwitch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -32,10 +32,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoExpand
+import app.echo.android.design.EchoSwitch
 import app.echo.android.design.EchoTextButton
 import app.echo.android.model.playback.EchoEqualizerPreset
 import app.echo.android.model.playback.EchoEqualizerState
 import app.echo.android.model.playback.EchoEqualizerUserPresets
+import kotlin.math.roundToInt
 
 @Composable
 internal fun SignalEqualizer(
@@ -51,6 +53,7 @@ internal fun SignalEqualizer(
     onReset: () -> Unit,
     onParametricChange: (List<app.echo.android.model.playback.OpraEqBand>) -> Unit,
     onSaveUserPreset: (String) -> Unit,
+    onUpdateUserPreset: () -> Unit = {},
     onApplyUserPreset: (String) -> Unit,
     onRenameUserPreset: (String, String) -> Unit,
     onDeleteUserPreset: (String) -> Unit,
@@ -58,6 +61,7 @@ internal fun SignalEqualizer(
     outputDeviceLabel: String? = null,
     outputBound: Boolean = false,
     onBindToOutput: () -> Unit = {},
+    onUnbindFromOutput: () -> Unit = {},
 ) {
     var showEditor by remember { mutableStateOf(false) }
     var showFilters by remember(state.filters) { mutableStateOf(false) }
@@ -121,17 +125,37 @@ internal fun SignalEqualizer(
             SignalEqPresetPicker(state.presetId, onPresetSelected)
         }
 
-        SignalEqWell(Modifier.fillMaxWidth()) {
-            if (state.parametric) {
-                SignalEqPlot(
-                    points = state.responseCurve,
-                    live = live,
-                    showFrequencyLabels = true,
-                    modifier = Modifier.fillMaxWidth().height(if (showEditor) 128.dp else 168.dp),
-                )
-                if (!showEditor) Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (state.parametric) {
+            SignalEqPlot(
+                points = state.responseCurve,
+                markerFrequenciesHz = state.filters.map { it.frequencyHz.roundToInt() },
+                markerGainsDb = state.filters.map { it.gainDb },
+                live = live,
+                showFrequencyLabels = true,
+                lockMarkerFrequency = false,
+                minGainDb = app.echo.android.model.playback.EchoParametricEq.MinGainDb,
+                maxGainDb = app.echo.android.model.playback.EchoParametricEq.MaxGainDb,
+                onMarkerDrag = if (!bypassed && state.enabled) {
+                    { index, frequencyHz, gainDb ->
+                        onParametricChange(
+                            state.filters.toMutableList().also { bands ->
+                                val current = bands.getOrNull(index) ?: return@also
+                                bands[index] = current.copy(frequencyHz = frequencyHz, gainDb = gainDb)
+                            },
+                        )
+                    }
+                } else {
+                    null
+                },
+                modifier = Modifier.fillMaxWidth().height(if (showEditor) 128.dp else 168.dp),
+            )
+            if (!showEditor) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SignalNote(stringResource(L10nR.string.eq_parametric_kept, state.filters.size))
-                    TextButton(onClick = { showFilters = !showFilters }) {
+                    TextButton(
+                        onClick = { showFilters = !showFilters },
+                        contentPadding = PaddingValues(horizontal = 0.dp),
+                    ) {
                         Text(stringResource(if (showFilters) L10nR.string.eq_hide_filters else L10nR.string.eq_show_filters))
                     }
                     EchoExpand(showFilters) {
@@ -144,33 +168,45 @@ internal fun SignalEqualizer(
                             }
                         }
                     }
-                    TextButton(onClick = { onPresetSelected(EchoEqualizerPreset.Flat) }) {
+                    TextButton(
+                        onClick = { onPresetSelected(EchoEqualizerPreset.Flat) },
+                        contentPadding = PaddingValues(horizontal = 0.dp),
+                    ) {
                         Text(stringResource(L10nR.string.eq_use_graphic))
                     }
                 }
-            } else {
-                SignalEqPlot(
-                    points = state.responseCurve,
-                    markerFrequenciesHz = state.bands.map { it.frequencyHz },
-                    live = live,
-                    showFrequencyLabels = false,
-                    modifier = Modifier.fillMaxWidth().height(112.dp),
-                )
-                Row(
-                    Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, bottom = 12.dp).heightIn(min = 184.dp),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    state.bands.forEach { band ->
-                        SignalEqFader(
-                            frequencyHz = band.frequencyHz,
-                            gainDb = band.gainDb,
-                            minGainDb = band.minGainDb,
-                            maxGainDb = band.maxGainDb,
-                            enabled = fadersEnabled,
-                            onGainChange = { onBandGainChange(band.index, it) },
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
+            }
+        } else {
+            SignalEqPlot(
+                points = state.responseCurve,
+                markerFrequenciesHz = state.bands.map { it.frequencyHz },
+                markerGainsDb = state.bands.map { it.gainDb },
+                live = live,
+                showFrequencyLabels = false,
+                lockMarkerFrequency = true,
+                minGainDb = state.bands.firstOrNull()?.minGainDb ?: -12f,
+                maxGainDb = state.bands.firstOrNull()?.maxGainDb ?: 12f,
+                onMarkerDrag = if (fadersEnabled) {
+                    { index, _, gainDb -> onBandGainChange(index, gainDb) }
+                } else {
+                    null
+                },
+                modifier = Modifier.fillMaxWidth().height(112.dp),
+            )
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 184.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                state.bands.forEach { band ->
+                    SignalEqFader(
+                        frequencyHz = band.frequencyHz,
+                        gainDb = band.gainDb,
+                        minGainDb = band.minGainDb,
+                        maxGainDb = band.maxGainDb,
+                        enabled = fadersEnabled,
+                        onGainChange = { onBandGainChange(band.index, it) },
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             }
         }
@@ -179,29 +215,38 @@ internal fun SignalEqualizer(
             SignalPeqEditor(state.filters, !bypassed, onParametricChange)
         }
 
-
-        SignalEqWell(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(L10nR.string.eq_preamp), style = MaterialTheme.typography.titleSmall)
-                        Text(formatEqGain(state.preampDb), style = MaterialTheme.typography.labelLarge, color = scheme.primary)
-                    }
-                    EchoTextButton(text = stringResource(L10nR.string.feature_settings_reset_1106f5), onClick = onReset)
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            HorizontalDivider(color = scheme.outlineVariant)
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(L10nR.string.eq_preamp),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(formatEqGain(state.preampDb), style = MaterialTheme.typography.labelLarge, color = scheme.primary)
                 }
-                val preampLabel = stringResource(L10nR.string.eq_preamp)
-                SignalGainStrip(
-                    value = state.preampDb.coerceIn(-24f, 12f),
-                    valueRange = -24f..12f,
-                    enabled = true,
-                    contentDescription = preampLabel,
-                    onValueChange = onPreampChange,
-                )
-                if (state.preampDb > state.suggestedPreampDb + 0.1f) {
-                    SignalNote(stringResource(L10nR.string.eq_headroom_warning, formatEqGain(state.suggestedPreampDb)), error = true)
-                    TextButton(onClick = { onPreampChange(state.suggestedPreampDb) }) {
-                        Text(stringResource(L10nR.string.eq_apply_headroom))
-                    }
+                EchoTextButton(text = stringResource(L10nR.string.feature_settings_reset_1106f5), onClick = onReset)
+            }
+            val preampLabel = stringResource(L10nR.string.eq_preamp)
+            SignalGainStrip(
+                value = state.preampDb.coerceIn(-24f, 12f),
+                valueRange = -24f..12f,
+                enabled = true,
+                contentDescription = preampLabel,
+                onValueChange = onPreampChange,
+            )
+            if (state.preampDb > state.suggestedPreampDb + 0.1f) {
+                SignalNote(stringResource(L10nR.string.eq_headroom_warning, formatEqGain(state.suggestedPreampDb)), error = true)
+                TextButton(
+                    onClick = { onPreampChange(state.suggestedPreampDb) },
+                    contentPadding = PaddingValues(horizontal = 0.dp),
+                ) {
+                    Text(stringResource(L10nR.string.eq_apply_headroom))
                 }
             }
         }
@@ -216,26 +261,25 @@ internal fun SignalEqualizer(
                 updatedAtEpochMs = 0L,
             )
         }
-        SignalEqWell(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-                SignalEqUserPresets(
-                    presets = userPresets,
-                    activeId = activeUserPresetId,
-                    defaultSaveName = defaultSaveName,
-                    currentShare = currentShare,
-                    currentCurve = state.responseCurve,
-                    enabled = true,
-                    onSave = onSaveUserPreset,
-                    onApply = onApplyUserPreset,
-                    onRename = onRenameUserPreset,
-                    onDelete = onDeleteUserPreset,
-                    onImportShareCode = onImportShareCode,
-                    outputDeviceLabel = outputDeviceLabel,
-                    outputBound = outputBound,
-                    onBindToOutput = onBindToOutput,
-                )
-            }
-        }
+        HorizontalDivider(color = scheme.outlineVariant)
+        SignalEqUserPresets(
+            presets = userPresets,
+            activeId = activeUserPresetId,
+            defaultSaveName = defaultSaveName,
+            currentShare = currentShare,
+            currentCurve = state.responseCurve,
+            enabled = true,
+            onSave = onSaveUserPreset,
+            onUpdate = onUpdateUserPreset,
+            onApply = onApplyUserPreset,
+            onRename = onRenameUserPreset,
+            onDelete = onDeleteUserPreset,
+            onImportShareCode = onImportShareCode,
+            outputDeviceLabel = outputDeviceLabel,
+            outputBound = outputBound,
+            onBindToOutput = onBindToOutput,
+            onUnbindFromOutput = onUnbindFromOutput,
+        )
     }
 }
 

@@ -995,10 +995,6 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch { settingsStore.setReplayGain(enabled = true, preampDb = status.replayGainPreampDb) }
     }
 
-    fun setSkipSilenceEnabled(enabled: Boolean) {
-        playbackController.setSkipSilenceEnabled(enabled)
-    }
-
     fun cyclePlayMode() {
         playbackController.cyclePlayMode()
     }
@@ -1131,6 +1127,31 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun setLockScreenLyricsEnabled(enabled: Boolean) {
+        updateSettings {
+            setLockScreenLyricsEnabled(enabled)
+        }
+    }
+
+    fun setSetlistFmApiKey(apiKey: String?) {
+        updateSettings {
+            setSetlistFmApiKey(apiKey)
+        }
+    }
+
+    suspend fun matchSetlist(setlist: app.echo.android.model.library.ArtistSetlist) =
+        libraryController.matchSetlist(setlist)
+
+    fun playSetlistTracks(trackIds: List<String>) {
+        viewModelScope.launch {
+            val tracks = libraryController.tracksByIds(trackIds)
+            if (tracks.isNotEmpty()) playbackController.playQueue(tracks, 0)
+        }
+    }
+
+    suspend fun loadEmbeddedLyrics(trackId: String): String? =
+        libraryController.readEmbeddedLyrics(trackId)
+
     fun setUsbExclusiveEnabled(enabled: Boolean) {
         playbackController.setUsbExclusiveEnabled(enabled)
         updateSettings {
@@ -1140,6 +1161,22 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun setTrackTransitions(options: app.echo.android.model.playback.EchoTrackTransitionOptions) {
         updateSettings { setTrackTransitions(options) }
+    }
+
+    fun setPauseOnAudioDisconnect(enabled: Boolean) {
+        EchoPlaybackProcessRuntime.setAudioRoutePlaybackPolicy(
+            enabled,
+            EchoPlaybackProcessRuntime.resumeOnAudioReconnect,
+        )
+        updateSettings { setPauseOnAudioDisconnect(enabled) }
+    }
+
+    fun setResumeOnAudioReconnect(enabled: Boolean) {
+        EchoPlaybackProcessRuntime.setAudioRoutePlaybackPolicy(
+            EchoPlaybackProcessRuntime.pauseOnAudioDisconnect,
+            enabled,
+        )
+        updateSettings { setResumeOnAudioReconnect(enabled) }
     }
 
     fun setUsbBitPerfectEnabled(enabled: Boolean) {
@@ -1265,7 +1302,31 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             state = playbackController.equalizerState.value,
             updatedAtEpochMs = System.currentTimeMillis(),
         ) ?: return
-        updateSettings { upsertEqualizerUserPreset(captured) }
+        updateSettings {
+            if (upsertEqualizerUserPreset(captured)) {
+                setEqualizerActiveUserPresetId(captured.id)
+            }
+        }
+    }
+
+    fun updateCurrentEqualizerUserPreset() {
+        viewModelScope.launch {
+            val settings = withContext(Dispatchers.IO) { settingsStore.appSettings.first() }
+            val activeId = settings.equalizerActiveUserPresetId ?: return@launch
+            val existing = settings.equalizerUserPresets.firstOrNull { it.id == activeId } ?: return@launch
+            val captured = EchoEqualizerUserPresets.capture(
+                id = existing.id,
+                name = existing.name,
+                state = playbackController.equalizerState.value,
+                updatedAtEpochMs = System.currentTimeMillis(),
+                opraEqId = existing.opraEqId,
+            ) ?: return@launch
+            withContext(Dispatchers.IO) {
+                if (settingsStore.upsertEqualizerUserPreset(captured)) {
+                    settingsStore.setEqualizerActiveUserPresetId(captured.id)
+                }
+            }
+        }
     }
 
     private var lastOutputDspKey: String? = null
@@ -1282,6 +1343,15 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             )
             updateSettings { bindEqualizerPresetToDevice(key, presetId) }
         }
+    }
+
+    fun unbindEqualizerPresetFromOutput() {
+        val diagnostics = playbackController.playbackStatus.value.diagnostics
+        val key = app.echo.android.model.playback.EchoOutputDspPolicy.deviceKey(
+            app.echo.android.model.playback.EchoOutputDeviceKind.fromId(diagnostics.outputDeviceKind),
+            diagnostics.usbDeviceName ?: diagnostics.outputDeviceName,
+        )
+        updateSettings { unbindEqualizerPresetFromDevice(key) }
     }
 
     fun applyOutputDspIfNeeded(kindId: String, deviceName: String?) {

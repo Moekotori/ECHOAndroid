@@ -5,7 +5,7 @@
     <string name="settings_category_services">Подключения и сервисы</string>
     <string name="settings_category_appearance_detail">Сделайте ECHO своим: темы, фоны и шрифты.</string>
     <string name="settings_category_interface_detail">Язык, макет и параметры производительности.</string>
-    <string name="settings_category_playback_detail">Переходы, текст песни и параметры вывода USB.</string>
+    <string name="settings_category_playback_detail">Переходы, текст и вывод USB.</string>
     <string name="settings_category_services_detail">Подключите компьютер и сервисы истории прослушивания.</string>
     <string name="settings_category_library_detail">Управляйте локальной музыкой и сведениями в библиотеке.</string>
     <string name="settings_category_about_detail">Версия приложения и журналы ошибок.</string>

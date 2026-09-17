@@ -5,7 +5,7 @@
     <string name="settings_category_services">Verbindungen &amp; Dienste</string>
     <string name="settings_category_appearance_detail">Machen Sie ECHO mit Themen, Hintergründen und Schriften zu Ihrem.</string>
     <string name="settings_category_interface_detail">Einstellungen für Sprache, Layout und Leistung.</string>
-    <string name="settings_category_playback_detail">Einstellungen für Übergänge, Liedtext und USB-Ausgabe.</string>
+    <string name="settings_category_playback_detail">Übergänge, Liedtext und USB-Ausgabe.</string>
     <string name="settings_category_services_detail">Verbinden Sie Ihren Computer und Dienste für die Hörhistorie.</string>
     <string name="settings_category_library_detail">Lokale Musik und die in der Bibliothek angezeigten Informationen verwalten.</string>
     <string name="settings_category_about_detail">App-Version und Fehlerprotokolle.</string>

@@ -9,5 +9,7 @@ data class EchoTrackMetadataUpdate(
     val trackNumber: Int?,
     val discNumber: Int?,
     val year: Int?,
+    val composer: String? = null,
     val artworkUri: String? = null,
+    val lyrics: String? = null,
 )

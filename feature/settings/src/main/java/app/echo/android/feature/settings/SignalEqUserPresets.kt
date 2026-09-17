@@ -56,6 +56,7 @@ internal fun SignalEqUserPresets(
     currentCurve: List<EchoEqResponsePoint> = emptyList(),
     enabled: Boolean,
     onSave: (String) -> Unit,
+    onUpdate: () -> Unit = {},
     onApply: (String) -> Unit,
     onRename: (String, String) -> Unit,
     onDelete: (String) -> Unit,
@@ -63,12 +64,14 @@ internal fun SignalEqUserPresets(
     outputDeviceLabel: String? = null,
     outputBound: Boolean = false,
     onBindToOutput: () -> Unit = {},
+    onUnbindFromOutput: () -> Unit = {},
 ) {
     var editor by remember { mutableStateOf<EqUserPresetEditor?>(null) }
     var sharePreset by remember { mutableStateOf<EchoEqualizerUserPreset?>(null) }
     var shareCurve by remember { mutableStateOf<List<EchoEqResponsePoint>>(emptyList()) }
     var showImport by remember { mutableStateOf(false) }
     val canSave = presets.size < EchoEqualizerUserPresets.MaxCount
+    val activeName = presets.firstOrNull { it.id == activeId }?.name
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -77,22 +80,35 @@ internal fun SignalEqUserPresets(
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
             )
+            if (activeId != null) {
+                EchoTextButton(
+                    text = stringResource(R.string.eq_user_preset_update),
+                    onClick = onUpdate,
+                    enabled = enabled,
+                )
+            }
             EchoTextButton(
                 text = stringResource(R.string.eq_user_preset_save),
                 onClick = { editor = EqUserPresetEditor.Save(defaultSaveName) },
                 enabled = enabled && canSave,
             )
         }
-        if (!outputDeviceLabel.isNullOrBlank() && activeId != null) {
-            EchoTextButton(
-                text = if (outputBound) {
-                    stringResource(R.string.eq_bound_output, outputDeviceLabel)
-                } else {
-                    stringResource(R.string.eq_bind_output, outputDeviceLabel)
-                },
-                onClick = onBindToOutput,
-                enabled = enabled && !outputBound,
-            )
+        if (!outputDeviceLabel.isNullOrBlank()) {
+            when {
+                outputBound -> EchoTextButton(
+                    text = stringResource(R.string.eq_unbind_output, outputDeviceLabel),
+                    onClick = onUnbindFromOutput,
+                    enabled = enabled,
+                )
+                activeId != null -> EchoTextButton(
+                    text = stringResource(R.string.eq_bind_output, outputDeviceLabel),
+                    onClick = onBindToOutput,
+                    enabled = enabled,
+                )
+            }
+        }
+        if (activeName != null) {
+            SignalNote(stringResource(R.string.eq_user_preset_active, activeName))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = { showImport = true }, enabled = enabled && canSave, contentPadding = PaddingValues(horizontal = 0.dp)) {

@@ -18,6 +18,5 @@ data class EchoPlaybackStatus(
     val replayGainPreampDb: Float = 0f,
     val replayGainTrackGainDb: Float? = null,
     val replayGainTagsLoaded: Boolean = false,
-    val skipSilenceEnabled: Boolean = false,
     val diagnostics: EchoPlaybackDiagnostics = EchoPlaybackDiagnostics(),
 )

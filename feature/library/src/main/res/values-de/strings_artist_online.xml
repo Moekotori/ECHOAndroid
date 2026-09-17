@@ -28,4 +28,13 @@
     <string name="artist_concert_details">%1$s · Eventdetails</string>
     <string name="artist_sort_tracks">Titel sortieren</string>
     <string name="artist_play_on_pc">Auf dem PC wiedergeben</string>
+    <string name="artist_setlist_show">Setlist</string>
+    <string name="artist_setlist_hide">Setlist ausblenden</string>
+    <string name="artist_setlist_need_key">Fügen Sie unter Einstellungen → Dienste einen setlist.fm-API-Schlüssel hinzu, um Setlists zu laden.</string>
+    <string name="artist_setlist_empty">Für dieses Datum gibt es keine veröffentlichte Setlist.</string>
+    <string name="artist_setlist_recent">Referenz der letzten Show, nicht diese offizielle Setlist</string>
+    <string name="artist_setlist_failed">Diese Setlist konnte nicht geladen werden.</string>
+    <string name="artist_setlist_play_matched">%1$d von %2$d bereits vorhandenen Titeln abspielen</string>
+    <string name="artist_setlist_tape">%1$s (Tape)</string>
+    <string name="artist_setlist_refresh">Setlist aktualisieren</string>
 </resources>

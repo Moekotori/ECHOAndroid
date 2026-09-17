@@ -4,6 +4,7 @@
     <string name="tab_library">Bibliothèque</string>
     <string name="tab_connect">Liaison</string>
     <string name="tab_diagnostics">Signal</string>
+    <string name="permission_welcome">Bienvenue dans ECHO</string>
     <string name="permission_title">Autorisations</string>
     <string name="permission_subtitle">ECHO a besoin de ces autorisations pour une écoute complète</string>
     <string name="permission_continue">Continuer</string>

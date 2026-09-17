@@ -232,7 +232,6 @@ fun NowPlayingScreen(
     replayGainScanState: app.echo.android.model.playback.EchoReplayGainScanState =
         app.echo.android.model.playback.EchoReplayGainScanState.Idle,
     onScanReplayGain: () -> Unit = {},
-    onSetSkipSilenceEnabled: (Boolean) -> Unit,
     onImportLyrics: () -> Unit,
     onAdjustLyricsOffset: (Long) -> Unit,
     onResetLyricsOffset: () -> Unit,
@@ -678,7 +677,6 @@ fun NowPlayingScreen(
             onAdjustReplayGainPreamp = onAdjustReplayGainPreamp,
             replayGainScanState = replayGainScanState,
             onScanReplayGain = onScanReplayGain,
-            onSetSkipSilenceEnabled = onSetSkipSilenceEnabled,
             lyricsOffsetMs = readyLyrics?.metadata?.get("user_offset_ms")?.toLongOrNull() ?: 0L,
             onAdjustLyricsOffset = onAdjustLyricsOffset,
             onResetLyricsOffset = onResetLyricsOffset,
@@ -740,6 +738,7 @@ private fun NowPlayingCoverPage(
                 palette = palette,
                 expanded = presentationExpanded,
                 gestureStrength = lightStrength,
+                enabled = !track?.artworkUri.isNullOrBlank(),
                 modifier = Modifier.size(tileSize).graphicsLayer {
                     scaleX = playingScale
                     scaleY = playingScale

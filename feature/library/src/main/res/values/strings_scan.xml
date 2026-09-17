@@ -22,4 +22,5 @@
     <string name="scan_edit_filters">Adjust filters</string>
     <string name="scan_hide_details">Hide details</string>
     <string name="scan_device_instead">Or scan this device</string>
+    <string name="scan_unmatched_cue">%1$d CUE sheets had no matching audio</string>
 </resources>

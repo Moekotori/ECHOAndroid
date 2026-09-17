@@ -4,6 +4,7 @@
     <string name="tab_library">音樂庫</string>
     <string name="tab_connect">連線</string>
     <string name="tab_diagnostics">訊號</string>
+    <string name="permission_welcome">歡迎使用 ECHO</string>
     <string name="permission_title">權限</string>
     <string name="permission_subtitle">ECHO 需要以下權限以提供完整的聆聽體驗</string>
     <string name="permission_continue">繼續</string>

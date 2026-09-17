@@ -39,8 +39,33 @@ data class ArtistConcerts(
     val stale: Boolean = false,
 )
 
+data class ArtistSetlistSong(
+    val title: String,
+    val artist: String? = null,
+    val tape: Boolean = false,
+    val trackId: String? = null,
+)
+
+data class ArtistSetlist(
+    val id: String,
+    val artistName: String,
+    val eventDate: String,
+    val venue: String?,
+    val city: String?,
+    val url: String?,
+    val songs: List<ArtistSetlistSong>,
+    val exactDate: Boolean,
+    val missingApiKey: Boolean = false,
+    val stale: Boolean = false,
+)
+
+fun interface ArtistSetlistMatcher {
+    suspend fun match(setlist: ArtistSetlist): ArtistSetlist
+}
+
 interface ArtistOnlineInfoLoader {
     /** Null means no unambiguous match. Network and parse failures throw. */
     suspend fun loadProfile(query: ArtistOnlineQuery, language: String, refresh: Boolean): ArtistOnlineInfo?
     suspend fun loadConcerts(query: ArtistOnlineQuery, refresh: Boolean): ArtistConcerts
+    suspend fun loadSetlist(query: ArtistOnlineQuery, concert: ArtistConcert, refresh: Boolean): ArtistSetlist
 }

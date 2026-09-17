@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="metadata_composer">Композитор</string>
+    <string name="metadata_lyrics">Текст</string>
+    <string name="metadata_choose_artwork">Выбрать обложку</string>
+    <string name="album_cue_banner">CUE целого альбома · воспроизведение по частям</string>
+</resources>

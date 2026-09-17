@@ -61,17 +61,28 @@
     <string name="settings_clear_font_detail">Интерфейс и текст песни вернутся к системному шрифту</string>
     <string name="settings_section_playback">Воспроизведение</string>
     <string name="settings_lyrics_sync_tools">Инструменты синхронизации текста</string>
-    <string name="settings_lyrics_sync_tools_detail">Показывать импорт, формат и смещение на странице текста песни</string>
+    <string name="settings_lyrics_sync_tools_detail">Импорт, формат и смещение на странице текста</string>
     <string name="settings_online_lyrics">Онлайн-текст песни</string>
-    <string name="settings_online_lyrics_detail">Пробовать NetEase Cloud Music и LRCLIB, если встроенного или локального текста нет</string>
+    <string name="settings_online_lyrics_detail">Если нет локального текста, пробовать NetEase и LRCLIB</string>
+    <string name="settings_lock_lyrics">Текст на блокировке</string>
+    <string name="settings_lock_lyrics_detail">Крупный текст при блокировке ECHO или из уведомления. Заставка при зарядке: настройки экрана → заставка → ECHO</string>
+    <string name="settings_pause_on_disconnect">Пауза при отключении</string>
+    <string name="settings_pause_on_disconnect_detail">Пауза, если отключились наушники, Bluetooth или USB DAC</string>
+    <string name="settings_resume_on_reconnect">Продолжить при подключении</string>
+    <string name="settings_resume_on_reconnect_detail">Только после паузы из‑за отключения</string>
+    <string name="settings_replay_gain">ReplayGain</string>
+    <string name="settings_replay_gain_detail">Выровнять громкость по тегам ReplayGain</string>
+    <string name="settings_replay_gain_bypass">Сохранено, не используется в bit-perfect</string>
+    <string name="settings_replay_gain_mode">Режим ReplayGain</string>
+    <string name="settings_replay_gain_mode_detail">Альбом сохраняет относительную громкость внутри альбома</string>
     <string name="settings_usb_exclusive">Эксклюзивный вывод USB</string>
     <string name="settings_usb_auto_request">Автозапрос эксклюзивного режима при запуске</string>
-    <string name="settings_usb_auto_request_on">Если эксклюзивный режим был включён, при следующем запуске будет запрошен USB DAC</string>
-    <string name="settings_usb_auto_request_off">Следующий запуск не запросит разрешение USB автоматически; настройка останется включённой</string>
+    <string name="settings_usb_auto_request_on">Следующий запуск запросит USB DAC</string>
+    <string name="settings_usb_auto_request_off">Следующий запуск не запросит разрешение USB</string>
     <string name="settings_notification_permission">Разрешение медиауведомлений</string>
-    <string name="settings_notification_granted">Разрешено; элементы управления воспроизведением могут появляться в уведомлениях</string>
-    <string name="settings_notification_denied">Без этого разрешения уведомления на экране блокировки и служба переднего плана могут быть недоступны</string>
-    <string name="settings_notification_not_required">Эта версия Android не требует разрешения на уведомления</string>
+    <string name="settings_notification_granted">Разрешено</string>
+    <string name="settings_notification_denied">Нужно для управления на экране блокировки</string>
+    <string name="settings_notification_not_required">На этой версии не требуется</string>
     <string name="settings_on">Вкл.</string>
     <string name="settings_allow">Разрешить</string>
     <string name="settings_test_usb">Проверить эксклюзивный USB-драйвер</string>
@@ -360,7 +371,7 @@
     <string name="diag_eq_off">Выкл. · %1$d полос</string>
 
     <string name="settings_usb_bitperfect">Режим USB bit-perfect</string>
-    <string name="settings_usb_bitperfect_detail">Включает эксклюзивный вывод USB. Обходит эквалайзер, коррекцию, усиление, скорость и пропуск тишины. Цифровая громкость фиксируется на 100%; перед включением регулируйте громкость на DAC. DSD отправляется как DoP, если у DAC есть PCM 176.4/352.8 кГц 24 бит. Неподдерживаемые треки или форматы DAC останавливают воспроизведение.</string>
+    <string name="settings_usb_bitperfect_detail">Эксклюзивный USB; обходит EQ и усиление. Громкость 100%. Неподдерживаемые форматы останавливаются.</string>
     <string name="bitperfect_off">Строгий режим выкл.</string>
     <string name="bitperfect_waiting">Ожидание строгого воспроизведения USB</string>
     <string name="bitperfect_direct">Активен целочисленный прямой путь</string>
@@ -410,6 +421,9 @@
     <string name="eq_user_preset_empty">Сохраните текущую кривую, чтобы использовать её позже.</string>
     <string name="eq_bind_output">Использовать для %1$s</string>
     <string name="eq_bound_output">Используется для %1$s</string>
+    <string name="eq_unbind_output">Не использовать для %1$s</string>
+    <string name="eq_user_preset_update">Обновить текущий</string>
+    <string name="eq_user_preset_active">Редактируется «%1$s»</string>
     <string name="eq_user_preset_parametric">Параметрический эквалайзер</string>
     <string name="eq_user_preset_bands">%1$d полос</string>
     <string name="eq_share">Поделиться</string>
@@ -481,15 +495,15 @@
     <string name="eq_show_filters">Показать параметры фильтров</string>
     <string name="eq_hide_filters">Скрыть параметры фильтров</string>
     <string name="settings_gapless">Воспроизведение без пауз</string>
-    <string name="settings_gapless_detail">Включено по умолчанию: предзагружает следующий трек и сохраняет совместимые сессии вывода. Затухание трека, пропуск тишины, смена частоты дискретизации или отсутствие сетевых данных всё ещё могут прервать воспроизведение.</string>
+    <string name="settings_gapless_detail">Включено по умолчанию. Затухание, смена частоты или слабая сеть всё ещё могут оставить паузу.</string>
     <string name="settings_track_fade">Затухание входа / выхода трека</string>
-    <string name="settings_track_fade_detail">Плавно поднимает начало и опускает конец. Треки не перекрываются, поэтому это заменяет бесшовность на границе. Живое аудио обходит затухания; треки с неизвестной длительностью только нарастают.</string>
-    <string name="settings_track_fade_bypass">Сохранено, но обойдено в строгом режиме bit-perfect.</string>
+    <string name="settings_track_fade_detail">Плавный вход и выход без перекрытия треков</string>
+    <string name="settings_track_fade_bypass">Сохранено, не используется в bit-perfect</string>
     <string name="settings_track_fade_duration">Длительность затухания</string>
     <string name="settings_track_fade_seconds">%.1f с</string>
     <string name="settings_smart_transition">Умные переходы</string>
-    <string name="settings_smart_transition_detail">Бета. По возможности входит на доле, сокращает при столкновении вокала и разделяет бас на энергичных парах. Если не может сработать, возвращается к бесшовности или затуханию.</string>
-    <string name="settings_smart_transition_bypass">Сохранено, но не используется в лёгком режиме, эксклюзивном USB или выводе bit-perfect.</string>
+    <string name="settings_smart_transition_detail">Бета. Смена по доле; иначе без паузы или затухание</string>
+    <string name="settings_smart_transition_bypass">Сохранено, не используется в лёгком режиме или USB exclusive</string>
     <string name="settings_bg_video_disabled">Видеофоны приостановлены в лёгком режиме. Показан фон по умолчанию; ваш выбор сохранён.</string>
     <string name="settings_import_font">Импортировать файл шрифта</string>
     <string name="settings_clear_action">Очистить</string>
@@ -502,4 +516,9 @@
     <string name="settings_font_preview_characters">ECHO · Aa Bb · 0123456789</string>
     <string name="settings_font_outfit" translatable="false">Outfit</string>
     <string name="settings_font_detail_outfit">Встроенный Outfit; другие письменности используют системный запасной шрифт</string>
+    <string name="settings_setlistfm">Ключ API setlist.fm</string>
+    <string name="settings_setlistfm_placeholder">Ключ API setlist.fm</string>
+    <string name="settings_setlistfm_save">Сохранить ключ setlist.fm</string>
+    <string name="settings_setlistfm_detail">Нужен для концертных сетлистов. Ключ — на api.setlist.fm. У предстоящих дат часто ещё нет официального сетлиста.</string>
+    <string name="settings_setlistfm_builtin">Встроено; вводить не нужно</string>
 </resources>

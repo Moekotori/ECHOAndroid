@@ -30,6 +30,8 @@ internal fun EchoTrackMetadataUpdate.toAudioTagFields(): AudioTagFields =
         trackNumber = trackNumber?.takeIf { it > 0 },
         discNumber = discNumber?.takeIf { it > 0 },
         year = year?.takeIf { it > 0 },
+        composer = composer?.trim()?.takeIf { it.isNotBlank() },
+        lyrics = lyrics,
     )
 
 internal fun LibraryTrackEntity.toAudioTagFields(): AudioTagFields =

@@ -67,10 +67,10 @@ internal fun PlaybackSettingsSection(
 ) {
     val dark = LocalEchoDarkTheme.current
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-            .background(if (dark) Color.White.copy(alpha = 0.035f) else Color.White.copy(alpha = 0.52f))
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
+            .background(if (dark) Color.White.copy(alpha = 0.05f) else Color.White.copy(alpha = 0.62f))
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(
             Modifier.fillMaxWidth().then(if (onToggleExpanded != null)
@@ -242,12 +242,16 @@ internal fun PlaybackToggleRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    framed: Boolean = true,
+    enabled: Boolean = true,
 ) {
     val dark = LocalEchoDarkTheme.current
     val accent = echoAccentColor()
     val interactionSource = remember { MutableInteractionSource() }
     val containerColor by animateColorAsState(
-        targetValue = if (checked) {
+        targetValue = if (!framed) {
+            Color.Transparent
+        } else if (checked) {
             accent.copy(alpha = if (dark) 0.22f else 0.16f)
         } else {
             if (dark) echoTheme().panel.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.48f)
@@ -261,34 +265,48 @@ internal fun PlaybackToggleRow(
             .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(containerColor)
-            .border(
-                BorderStroke(1.dp, if (checked) accent.copy(alpha = 0.62f) else if (dark) echoTheme().glassBorder else Color.Transparent),
-                RoundedCornerShape(14.dp),
+            .then(
+                if (framed) {
+                    Modifier.border(
+                        BorderStroke(
+                            1.dp,
+                            if (checked) accent.copy(alpha = 0.62f) else if (dark) echoTheme().glassBorder else Color.Transparent,
+                        ),
+                        RoundedCornerShape(14.dp),
+                    )
+                } else {
+                    Modifier
+                },
             )
             .echoPressFeedback(interactionSource)
             .toggleable(
                 value = checked,
+                enabled = enabled,
                 interactionSource = interactionSource,
                 indication = LocalIndication.current,
                 role = Role.Switch,
                 onValueChange = onCheckedChange,
             )
-            .padding(horizontal = 14.dp),
+            .padding(horizontal = if (framed) 14.dp else 2.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Icon(icon, contentDescription = null, tint = if (dark) Color.White else echoTheme().heading, modifier = Modifier.size(18.dp))
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = (if (dark) Color.White else echoTheme().heading).copy(alpha = if (enabled) 1f else 0.38f),
+            modifier = Modifier.size(18.dp),
+        )
         Text(
             title,
             modifier = Modifier.weight(1f),
-            color = if (dark) Color.White else echoTheme().heading,
+            color = (if (dark) Color.White else echoTheme().heading).copy(alpha = if (enabled) 1f else 0.38f),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        EchoSwitch(checked = checked, onCheckedChange = null)
-
+        EchoSwitch(checked = checked, onCheckedChange = null, enabled = enabled)
     }
 }
 
@@ -299,6 +317,7 @@ internal fun PlaybackActionRow(
     onClick: () -> Unit,
     detail: String? = null,
     modifier: Modifier = Modifier,
+    framed: Boolean = true,
 ) {
     val dark = LocalEchoDarkTheme.current
     Row(
@@ -306,13 +325,23 @@ internal fun PlaybackActionRow(
             .fillMaxWidth()
             .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(if (dark) echoTheme().panel.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.48f))
-            .border(
-                if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, Color.Transparent),
-                RoundedCornerShape(14.dp),
+            .background(
+                if (!framed) Color.Transparent
+                else if (dark) echoTheme().panel.copy(alpha = 0.50f)
+                else Color.White.copy(alpha = 0.48f),
+            )
+            .then(
+                if (framed) {
+                    Modifier.border(
+                        if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, Color.Transparent),
+                        RoundedCornerShape(14.dp),
+                    )
+                } else {
+                    Modifier
+                },
             )
             .echoClickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = 14.dp),
+            .padding(horizontal = if (framed) 14.dp else 2.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {

@@ -61,17 +61,28 @@
     <string name="settings_clear_font_detail">La interfaz y la letra volverán a la fuente del sistema</string>
     <string name="settings_section_playback">Reproducción</string>
     <string name="settings_lyrics_sync_tools">Herramientas de sincronización de letra</string>
-    <string name="settings_lyrics_sync_tools_detail">Mostrar controles de importación, formato y desfase en la página de letra</string>
+    <string name="settings_lyrics_sync_tools_detail">Importar, formato y desfase en la página de letra</string>
     <string name="settings_online_lyrics">Letra en línea</string>
-    <string name="settings_online_lyrics_detail">Probar NetEase Cloud Music y LRCLIB cuando falte letra incrustada o local</string>
+    <string name="settings_online_lyrics_detail">Si no hay letra local, probar NetEase y LRCLIB</string>
+    <string name="settings_lock_lyrics">Letra en bloqueo</string>
+    <string name="settings_lock_lyrics_detail">Letra grande al bloquear ECHO o al abrirla desde la notificación. Protector al cargar: Ajustes de pantalla → Protector → ECHO</string>
+    <string name="settings_pause_on_disconnect">Pausar al desconectar</string>
+    <string name="settings_pause_on_disconnect_detail">Pausa si se desconectan auriculares, Bluetooth o un DAC USB</string>
+    <string name="settings_resume_on_reconnect">Reanudar al reconectar</string>
+    <string name="settings_resume_on_reconnect_detail">Solo continúa tras una pausa por desconexión</string>
+    <string name="settings_replay_gain">ReplayGain</string>
+    <string name="settings_replay_gain_detail">Igualar el volumen con etiquetas ReplayGain</string>
+    <string name="settings_replay_gain_bypass">Guardado, sin uso en bit-perfect</string>
+    <string name="settings_replay_gain_mode">Modo ReplayGain</string>
+    <string name="settings_replay_gain_mode_detail">Álbum mantiene los niveles relativos del mismo álbum</string>
     <string name="settings_usb_exclusive">Salida exclusiva USB</string>
     <string name="settings_usb_auto_request">Solicitar exclusivo al iniciar</string>
-    <string name="settings_usb_auto_request_on">Si el exclusivo quedó activado, el próximo inicio solicitará el DAC USB</string>
-    <string name="settings_usb_auto_request_off">El próximo inicio no solicitará el permiso USB de forma automática; el ajuste permanece activado</string>
+    <string name="settings_usb_auto_request_on">El próximo inicio pedirá el DAC USB</string>
+    <string name="settings_usb_auto_request_off">El próximo inicio no pedirá permiso USB</string>
     <string name="settings_notification_permission">Permiso de notificación de medios</string>
-    <string name="settings_notification_granted">Concedido; los controles de reproducción pueden aparecer en las notificaciones</string>
-    <string name="settings_notification_denied">Sin este permiso, las notificaciones de bloqueo y el servicio en primer plano pueden no estar disponibles</string>
-    <string name="settings_notification_not_required">Esta versión de Android no requiere permiso de notificaciones</string>
+    <string name="settings_notification_granted">Concedido</string>
+    <string name="settings_notification_denied">Necesario para controles en bloqueo</string>
+    <string name="settings_notification_not_required">No hace falta en esta versión</string>
     <string name="settings_on">Activado</string>
     <string name="settings_allow">Permitir</string>
     <string name="settings_test_usb">Probar controlador exclusivo USB</string>
@@ -360,7 +371,7 @@
     <string name="diag_eq_off">Desactivado · %1$d bandas</string>
 
     <string name="settings_usb_bitperfect">Modo bit-perfect USB</string>
-    <string name="settings_usb_bitperfect_detail">Activa la salida exclusiva USB. Omite EQ, corrección, ganancia, velocidad y salto de silencios. El volumen digital queda fijo en 100%; ajusta el volumen en el DAC antes de activarlo. DSD se envía como DoP cuando el DAC tiene PCM de 24 bits a 176.4/352.8 kHz. Las canciones o formatos de DAC no compatibles detienen la reproducción.</string>
+    <string name="settings_usb_bitperfect_detail">USB exclusivo; omite EQ y ganancia. Volumen al 100%. Los formatos no compatibles se detienen.</string>
     <string name="bitperfect_off">Modo estricto desactivado</string>
     <string name="bitperfect_waiting">Esperando reproducción USB estricta</string>
     <string name="bitperfect_direct">Ruta directa de enteros activa</string>
@@ -410,6 +421,9 @@
     <string name="eq_user_preset_empty">Guarda la curva actual para reutilizarla después.</string>
     <string name="eq_bind_output">Usar para %1$s</string>
     <string name="eq_bound_output">Usando para %1$s</string>
+    <string name="eq_unbind_output">Dejar de usar para %1$s</string>
+    <string name="eq_user_preset_update">Actualizar actual</string>
+    <string name="eq_user_preset_active">Editando “%1$s”</string>
     <string name="eq_user_preset_parametric">EQ paramétrico</string>
     <string name="eq_user_preset_bands">%1$d bandas</string>
     <string name="eq_share">Compartir</string>
@@ -481,15 +495,15 @@
     <string name="eq_show_filters">Mostrar parámetros de filtro</string>
     <string name="eq_hide_filters">Ocultar parámetros de filtro</string>
     <string name="settings_gapless">Reproducción sin pausas</string>
-    <string name="settings_gapless_detail">Activado de forma predeterminada: precarga la siguiente canción y mantiene sesiones de salida compatibles. El fundido de entrada/salida, el salto de silencios, los cambios de frecuencia de muestreo o datos de red faltantes aún pueden interrumpir la reproducción.</string>
+    <string name="settings_gapless_detail">Activado por defecto. Un fundido, cambio de muestreo o red débil aún puede dejar un hueco.</string>
     <string name="settings_track_fade">Fundido de entrada / salida</string>
-    <string name="settings_track_fade_detail">Sube de forma gradual el inicio y baja el final. Las canciones no se superponen, así que esto reemplaza el gapless en el límite. El audio en vivo omite los fundidos; las canciones de duración desconocida solo hacen fundido de entrada.</string>
-    <string name="settings_track_fade_bypass">Guardado, pero omitido en el modo bit-perfect estricto.</string>
+    <string name="settings_track_fade_detail">Fundido de entrada y salida sin solapar canciones</string>
+    <string name="settings_track_fade_bypass">Guardado, sin uso en bit-perfect</string>
     <string name="settings_track_fade_duration">Duración del fundido</string>
     <string name="settings_track_fade_seconds">%.1f s</string>
     <string name="settings_smart_transition">Transiciones inteligentes</string>
-    <string name="settings_smart_transition_detail">Beta. Entra en un pulso cuando puede, acorta si chocan las voces y separa los graves en pares enérgicos. Vuelve a gapless o fundido cuando no puede ejecutarse.</string>
-    <string name="settings_smart_transition_bypass">Guardado, pero no se usa en modo Ligero, USB exclusivo ni salida bit-perfect.</string>
+    <string name="settings_smart_transition_detail">Beta. Cambio al ritmo; si no, gapless o fundido</string>
+    <string name="settings_smart_transition_bypass">Guardado, sin uso en Ligero o USB exclusivo</string>
     <string name="settings_bg_video_disabled">Los fondos de video se pausan en modo Ligero. Se muestra el fondo predeterminado; tu selección se conserva.</string>
     <string name="settings_import_font">Importar archivo de fuente</string>
     <string name="settings_clear_action">Borrar</string>
@@ -502,4 +516,9 @@
     <string name="settings_font_preview_characters">ECHO · Aa Bb · 0123456789</string>
     <string name="settings_font_outfit" translatable="false">Outfit</string>
     <string name="settings_font_detail_outfit">Outfit integrado; otros alfabetos usan el respaldo del sistema</string>
+    <string name="settings_setlistfm">Clave API de setlist.fm</string>
+    <string name="settings_setlistfm_placeholder">Clave API de setlist.fm</string>
+    <string name="settings_setlistfm_save">Guardar clave de setlist.fm</string>
+    <string name="settings_setlistfm_detail">Necesaria para las setlists de conciertos. Consíguela en api.setlist.fm. Las fechas futuras a menudo no tienen setlist oficial.</string>
+    <string name="settings_setlistfm_builtin">Integrada; no hace falta introducirla</string>
 </resources>

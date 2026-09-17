@@ -5,6 +5,7 @@ build/
 
 # Local machine / secrets
 local.properties
+local.properties.winbak
 keystore.properties
 *.jks
 *.keystore

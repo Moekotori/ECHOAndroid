@@ -10,6 +10,7 @@ data class LibraryScanProgress(
     val totalCount: Int? = null,
     val currentTitle: String? = null,
     val error: String? = null,
+    val unmatchedCueCount: Int = 0,
     val isCompleted: Boolean = false,
 ) {
     val isScanning: Boolean

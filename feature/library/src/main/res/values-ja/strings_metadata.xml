@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="metadata_composer">作曲者</string>
+    <string name="metadata_lyrics">歌詞</string>
+    <string name="metadata_choose_artwork">アートワークを選ぶ</string>
+    <string name="album_cue_banner">一枚通し CUE · 楽章ごとに再生</string>
+</resources>

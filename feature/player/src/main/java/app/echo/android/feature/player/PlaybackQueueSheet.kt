@@ -8,6 +8,7 @@ import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
@@ -36,6 +37,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -46,7 +48,6 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
-import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Repeat
@@ -73,12 +74,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.echoAccentColor
 import app.echo.android.design.LocalEchoDarkTheme
+import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.formatDuration
 import app.echo.android.design.echoTheme
 import app.echo.android.model.playback.EchoPlaybackStatus
@@ -235,8 +239,9 @@ private fun QueueSheetSurface(
     onHandleDragEnd: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
+    val empty = queueState.items.isEmpty()
+    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
     val currentIndex = queueState.currentIndex
     val safeCurrentIndex = remember(currentIndex, queueState.items.size) {
@@ -265,37 +270,25 @@ private fun QueueSheetSurface(
             .fillMaxWidth()
             .statusBarsPadding()
             .widthIn(max = 560.dp)
-            .fillMaxHeight(0.74f)
+            .then(if (empty) Modifier.wrapContentHeight() else Modifier.fillMaxHeight(0.74f))
+            .then(if (lightweight) Modifier else Modifier.animateContentSize(EchoMotion.silkSize(360)))
             .clip(shape)
-            .background(
-                if (dark) {
-                    Brush.verticalGradient(
-                        listOf(
-                            echoTheme().night.copy(alpha = 0.94f),
-                            echoTheme().ink.copy(alpha = 0.91f),
-                            echoTheme().panel.copy(alpha = 0.88f),
-                        ),
-                    )
-                } else {
-                    Brush.verticalGradient(
-                        listOf(Color.White.copy(alpha = 0.98f), Color(0xFFF6F3F4).copy(alpha = 0.98f))
-                    )
-                },
-            )
+            .background(if (dark) echoTheme().panel else Color(0xFFF4F1F3))
             .border(
-                if (dark) BorderStroke(1.dp, Color.White.copy(alpha = 0.34f)) else BorderStroke(1.dp, Color.White.copy(alpha = 0.72f)),
+                BorderStroke(1.dp, if (dark) Color.White.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.72f)),
                 shape,
             )
             .navigationBarsPadding(),
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
+                .then(if (empty) Modifier else Modifier.fillMaxSize())
                 .graphicsLayer {
                     alpha = 0.86f + 0.14f * motionProgress
                     translationY = contentLiftPx * (1f - motionProgress)
                 }
-                .padding(horizontal = 18.dp, vertical = 12.dp),
+                .padding(horizontal = 20.dp, vertical = 8.dp),
         ) {
             Box(
                 modifier = Modifier
@@ -306,7 +299,7 @@ private fun QueueSheetSurface(
                         onDrag = onHandleDrag,
                         onDragEnd = onHandleDragEnd,
                     )
-                    .background(if (dark) Color.White.copy(alpha = 0.34f) else scheme.onSurfaceVariant.copy(alpha = 0.28f)),
+                    .background(echoTheme().muted.copy(alpha = 0.35f)),
             )
             Spacer(Modifier.height(14.dp))
             QueueSheetHeader(
@@ -360,36 +353,49 @@ private fun QueueSheetHeader(
     onDismiss: () -> Unit,
     onClearQueue: () -> Unit,
 ) {
+    val dark = LocalEchoDarkTheme.current
+    val titleColor = if (dark) Color.White else echoTheme().heading
+    val mutedColor = if (dark) Color.White.copy(alpha = 0.65f) else echoTheme().muted
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
                 text = stringResource(L10nR.string.feature_player_queue_37fa6a),
-                color = MaterialTheme.colorScheme.onSurface,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Black,
+                color = titleColor,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.15.sp,
             )
             Text(
                 text = queueSubtitle(queueState, status),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodyMedium,
+                color = mutedColor,
+                style = MaterialTheme.typography.bodySmall,
+                letterSpacing = 0.1.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
         if (queueState.items.isNotEmpty()) {
-            QueueIconButton(
+            GlyphButton(
                 icon = Icons.Rounded.DeleteOutline,
                 description = stringResource(L10nR.string.feature_player_clear_queue_eae952),
+                touchSize = 44.dp,
+                iconSize = 22.dp,
+                tint = titleColor,
+                background = Color.Transparent,
                 onClick = onClearQueue,
             )
         }
-        QueueIconButton(
+        GlyphButton(
             icon = Icons.Rounded.Close,
             description = stringResource(L10nR.string.feature_player_close_queue_a65caf),
+            touchSize = 44.dp,
+            iconSize = 22.dp,
+            tint = titleColor,
+            background = Color.Transparent,
             onClick = onDismiss,
         )
     }
@@ -555,38 +561,43 @@ private fun Modifier.queueSheetHandleDrag(
 
 @Composable
 private fun QueueEmptyState() {
+    val dark = LocalEchoDarkTheme.current
+    val titleColor = if (dark) Color.White else echoTheme().heading
+    val mutedColor = if (dark) Color.White.copy(alpha = 0.68f) else echoTheme().muted
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 240.dp)
-            .padding(horizontal = 10.dp),
+            .padding(top = 20.dp, bottom = 28.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
     ) {
-        Box(
-            modifier = Modifier
-                .size(72.dp)
-                .clip(CircleShape)
-                .background(Brush.linearGradient(listOf(echoAccentColor().copy(alpha = 0.20f), echoTheme().accentDeep.copy(alpha = 0.18f)))),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.LibraryMusic,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(34.dp),
-            )
-        }
+        Icon(
+            imageVector = Icons.Rounded.MusicNote,
+            contentDescription = null,
+            tint = echoAccentColor(),
+            modifier = Modifier.size(28.dp),
+        )
         Spacer(Modifier.height(14.dp))
         Text(
-            stringResource(L10nR.string.feature_player_queue_is_empty_1b4178),
-            fontWeight = FontWeight.Black,
-            style = MaterialTheme.typography.titleLarge,
+            text = stringResource(L10nR.string.feature_player_queue_is_empty_1b4178),
+            color = titleColor,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 0.2.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
         )
+        Spacer(Modifier.height(8.dp))
         Text(
-            stringResource(L10nR.string.feature_player_after_you_pick_songs_from_the_library_the_1b16d7),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            text = stringResource(L10nR.string.feature_player_after_you_pick_songs_from_the_library_the_1b16d7),
+            color = mutedColor,
             style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            letterSpacing = 0.2.sp,
+            lineHeight = 22.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp),
         )
     }
 }
@@ -599,27 +610,36 @@ private fun QueuePillButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val scheme = MaterialTheme.colorScheme
+    val dark = LocalEchoDarkTheme.current
+    val accent = echoAccentColor()
+    val titleColor = if (dark) Color.White else echoTheme().heading
+    val mutedColor = if (dark) Color.White.copy(alpha = 0.72f) else echoTheme().muted
     val containerColor by animateColorAsState(
         targetValue = if (selected) {
-            scheme.primary.copy(alpha = if (LocalEchoDarkTheme.current) 0.28f else 0.16f)
+            accent.copy(alpha = if (dark) 0.22f else 0.16f)
         } else {
-            if (LocalEchoDarkTheme.current) echoTheme().panel.copy(alpha = 0.62f) else scheme.surface.copy(alpha = 0.50f)
+            if (dark) Color.White.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.72f)
         },
         animationSpec = tween(durationMillis = 220, easing = QueueSheetMotionEasing),
         label = "queue-pill-container",
     )
     Row(
         modifier = modifier
-            .height(42.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .heightIn(min = 46.dp)
+            .clip(RoundedCornerShape(14.dp))
             .background(containerColor)
             .border(
                 BorderStroke(
                     1.dp,
-                    if (selected) scheme.primary.copy(alpha = 0.30f) else if (LocalEchoDarkTheme.current) echoTheme().glassBorder else scheme.outlineVariant.copy(alpha = 0.22f),
+                    if (selected) {
+                        accent.copy(alpha = 0.55f)
+                    } else if (dark) {
+                        Color.White.copy(alpha = 0.08f)
+                    } else {
+                        Color.Transparent
+                    },
                 ),
-                RoundedCornerShape(18.dp),
+                RoundedCornerShape(14.dp),
             )
             .echoClickable(onClick = onClick)
             .padding(horizontal = 12.dp),
@@ -629,15 +649,16 @@ private fun QueuePillButton(
         Icon(
             imageVector = icon,
             contentDescription = title,
-            tint = if (selected) scheme.primary else scheme.onSurfaceVariant,
-            modifier = Modifier.size(19.dp),
+            tint = if (selected) accent else mutedColor,
+            modifier = Modifier.size(18.dp),
         )
-        Spacer(Modifier.size(7.dp))
+        Spacer(Modifier.size(8.dp))
         Text(
             text = title,
-            color = if (selected) scheme.primary else scheme.onSurfaceVariant,
+            color = if (selected) titleColor else mutedColor,
             style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 0.15.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )

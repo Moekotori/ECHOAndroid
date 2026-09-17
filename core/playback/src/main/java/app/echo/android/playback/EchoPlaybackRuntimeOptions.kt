@@ -7,6 +7,8 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import app.echo.android.model.error.EchoErrorLog
+import app.echo.android.model.lyrics.EchoLyricDisplaySnapshot
+import app.echo.android.model.lyrics.EchoLyrics
 import app.echo.android.model.playback.EchoLinkPlaybackUri
 import app.echo.android.model.playback.EchoSleepTimerMode
 import java.util.concurrent.atomic.AtomicReference
@@ -25,17 +27,12 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 data class EchoPlaybackRuntimeOptions(
-    val skipSilenceEnabled: Boolean = false,
     val trackTransitions: app.echo.android.model.playback.EchoTrackTransitionOptions = app.echo.android.model.playback.EchoTrackTransitionOptions(),
 )
 
 object EchoPlaybackRuntimeOptionsStore {
     private val _options = MutableStateFlow(EchoPlaybackRuntimeOptions())
     val options: StateFlow<EchoPlaybackRuntimeOptions> = _options.asStateFlow()
-
-    fun setSkipSilenceEnabled(enabled: Boolean) {
-        _options.value = _options.value.copy(skipSilenceEnabled = enabled)
-    }
 
     fun setTrackTransitions(options: app.echo.android.model.playback.EchoTrackTransitionOptions) {
         _options.value = _options.value.copy(trackTransitions = options.normalized())
@@ -114,6 +111,14 @@ object EchoPlaybackProcessRuntime {
         private set
 
     @Volatile
+    var pauseOnAudioDisconnect: Boolean = true
+        private set
+
+    @Volatile
+    var resumeOnAudioReconnect: Boolean = false
+        private set
+
+    @Volatile
     var replayGainEnabled: Boolean = false
         private set
 
@@ -187,6 +192,12 @@ object EchoPlaybackProcessRuntime {
     private val _notificationLyricLine = MutableStateFlow<String?>(null)
     val notificationLyricLine: StateFlow<String?> = _notificationLyricLine.asStateFlow()
 
+    private val _displayLyrics = MutableStateFlow<EchoLyrics?>(null)
+    val displayLyrics: StateFlow<EchoLyrics?> = _displayLyrics.asStateFlow()
+
+    private val _lyricDisplaySnapshot = MutableStateFlow(EchoLyricDisplaySnapshot())
+    val lyricDisplaySnapshot: StateFlow<EchoLyricDisplaySnapshot> = _lyricDisplaySnapshot.asStateFlow()
+
     @Volatile
     private var surfaceListener: ((EchoPlaybackSurfaceSnapshot) -> Unit)? = null
 
@@ -195,10 +206,20 @@ object EchoPlaybackProcessRuntime {
         if (document == null) setNotificationLyricLine(null)
     }
 
+    fun setDisplayLyrics(lyrics: EchoLyrics?) {
+        _displayLyrics.value = lyrics
+    }
+
     fun setNotificationLyricLine(line: String?): Boolean {
         val next = line?.takeIf { it.isNotBlank() }
         if (_notificationLyricLine.value == next) return false
         _notificationLyricLine.value = next
+        return true
+    }
+
+    fun setLyricDisplaySnapshot(snapshot: EchoLyricDisplaySnapshot): Boolean {
+        if (_lyricDisplaySnapshot.value == snapshot) return false
+        _lyricDisplaySnapshot.value = snapshot
         return true
     }
 
@@ -430,6 +451,16 @@ object EchoPlaybackProcessRuntime {
         (mediaController as? ExoPlayer)?.pauseAtEndOfMediaItems = true
         enginePolicy?.setPauseAtEndOfMediaItems(true)
         ensureSleepTimer()
+    }
+
+    fun audioRoutePlaybackOptions() = app.echo.android.model.playback.EchoAudioRoutePlaybackOptions(
+        pauseOnDisconnect = pauseOnAudioDisconnect,
+        resumeOnReconnect = resumeOnAudioReconnect,
+    )
+
+    fun setAudioRoutePlaybackPolicy(pauseOnDisconnect: Boolean, resumeOnReconnect: Boolean) {
+        pauseOnAudioDisconnect = pauseOnDisconnect
+        resumeOnAudioReconnect = resumeOnReconnect
     }
 
     fun setReplayGain(enabled: Boolean, preampDb: Float) {

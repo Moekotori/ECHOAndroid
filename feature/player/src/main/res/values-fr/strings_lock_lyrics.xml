@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lock_lyrics_idle_title">ECHO</string>
+    <string name="lock_lyrics_waiting">En attente des paroles</string>
+    <string name="lock_lyrics_hint">Paroles sur l’écran de verrouillage</string>
+</resources>

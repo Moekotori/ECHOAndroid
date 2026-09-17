@@ -43,6 +43,8 @@ class EchoBackupCodecTest {
                 trackTransitions = EchoTrackTransitionOptions(fadeEnabled = true, fadeDurationMs = 1500),
                 replayGainEnabled = true,
                 replayGainMode = "album",
+                pauseOnAudioDisconnect = false,
+                resumeOnAudioReconnect = true,
             ),
             playlists = listOf(
                 EchoBackupPlaylist(
@@ -61,6 +63,8 @@ class EchoBackupCodecTest {
         assertEquals("Evening", decoded.settings.equalizerUserPresets?.single()?.name)
         assertEquals("g1", decoded.settings.equalizerActiveUserPresetId)
         assertEquals("HD 650", decoded.settings.opraLastQuery)
+        assertEquals(false, decoded.settings.pauseOnAudioDisconnect)
+        assertEquals(true, decoded.settings.resumeOnAudioReconnect)
         assertEquals(-0.25f, decoded.settings.channelBalance?.balance)
         assertEquals("Late night", decoded.playlists.single().name)
         assertEquals("Music/Album/song.flac", decoded.playlists.single().tracks.single().relativePath)

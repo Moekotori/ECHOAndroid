@@ -1,26 +1,34 @@
 package app.echo.android.feature.settings
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.echoTheme
 
 /** Signal sections use whitespace and one rule; nested information never gets its own card. */
 @Composable
@@ -80,58 +88,46 @@ internal fun SignalSoundModeRow(
     selectedProgress: () -> Float = { selectedIndex.toFloat() },
 ) {
     val scheme = MaterialTheme.colorScheme
-    val theme = echoTheme()
-    val shape = RoundedCornerShape(20.dp)
-    val pill = scheme.primary.copy(alpha = if (theme.dark) 0.22f else 0.16f)
     val progressState = rememberUpdatedState(selectedProgress)
-    BoxWithConstraints(
-        Modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .background(if (theme.dark) Color.Black.copy(alpha = 0.28f) else scheme.surfaceVariant.copy(alpha = 0.48f))
-            .border(
-                width = 1.dp,
-                color = if (theme.dark) theme.glassBorder else scheme.outlineVariant.copy(alpha = 0.70f),
-                shape = shape,
-            )
-            .padding(4.dp),
-    ) {
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
         val tabCount = labels.size.coerceAtLeast(1)
         val tabWidthPx = with(LocalDensity.current) { maxWidth.toPx() } / tabCount
-        Box(Modifier.matchParentSize()) {
-            Box(
-                Modifier
-                    .align(Alignment.CenterStart)
-                    .fillMaxHeight()
-                    .fillMaxWidth(1f / tabCount)
-                    .graphicsLayer {
-                        val progress = progressState.value().coerceIn(0f, (tabCount - 1).toFloat())
-                        translationX = progress * tabWidthPx
+        Column(Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth().selectableGroup()) {
+                labels.forEachIndexed { index, label ->
+                    val selected = index == selectedIndex
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .heightIn(min = 44.dp)
+                            .selectable(selected = selected, role = Role.RadioButton, onClick = { onSelect(index) })
+                            .padding(horizontal = 8.dp, vertical = 10.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            label,
+                            color = if (selected) scheme.primary else scheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                            textAlign = TextAlign.Center,
+                            maxLines = 2,
+                        )
                     }
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(pill),
-            )
-        }
-        Row(Modifier.fillMaxWidth().selectableGroup()) {
-            labels.forEachIndexed { index, label ->
-                val selected = index == selectedIndex
+                }
+            }
+            Box(Modifier.fillMaxWidth().height(2.dp)) {
+                Box(Modifier.fillMaxSize().background(scheme.outlineVariant.copy(alpha = 0.55f)))
                 Box(
                     Modifier
-                        .weight(1f)
-                        .heightIn(min = 44.dp)
-                        .selectable(selected = selected, role = Role.RadioButton, onClick = { onSelect(index) })
-                        .padding(horizontal = 10.dp, vertical = 10.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        label,
-                        color = if (selected) scheme.primary else scheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                        textAlign = TextAlign.Center,
-                        maxLines = 2,
-                    )
-                }
+                        .align(Alignment.CenterStart)
+                        .fillMaxHeight()
+                        .fillMaxWidth(1f / tabCount)
+                        .graphicsLayer {
+                            val progress = progressState.value().coerceIn(0f, (tabCount - 1).toFloat())
+                            translationX = progress * tabWidthPx
+                        }
+                        .background(scheme.primary),
+                )
             }
         }
     }

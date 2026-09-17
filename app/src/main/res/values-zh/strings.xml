@@ -4,6 +4,7 @@
     <string name="tab_library">曲库</string>
     <string name="tab_connect">互联</string>
     <string name="tab_diagnostics">信号</string>
+    <string name="permission_welcome">欢迎使用 ECHO</string>
     <string name="permission_title">权限申请</string>
     <string name="permission_subtitle">ECHO 需要以下权限以提供完整的音乐体验</string>
     <string name="permission_continue">继续</string>
@@ -41,6 +42,16 @@
     <string name="qs_tile_playing">播放中</string>
     <string name="qs_tile_paused">已暂停</string>
     <string name="qs_tile_idle">空闲</string>
+    <string name="lock_lyrics_dream_name">ECHO 歌词</string>
+    <string name="qs_tile_sleep">ECHO 睡眠定时</string>
+    <string name="qs_tile_sleep_off">关闭</string>
+    <string name="qs_tile_sleep_end">播完本首</string>
+    <string name="qs_tile_sleep_minutes">剩余 %1$d 分钟</string>
+    <string name="qs_tile_usb">ECHO USB 独占</string>
+    <string name="qs_tile_usb_on">已开</string>
+    <string name="qs_tile_usb_off">已关</string>
+    <string name="qs_tile_favorite">ECHO 收藏</string>
+    <string name="qs_tile_next">ECHO 下一首</string>
     <string name="playback_widget_idle">未在播放</string>
     <string name="playback_widget_play">播放</string>
     <string name="playback_widget_pause">暂停</string>

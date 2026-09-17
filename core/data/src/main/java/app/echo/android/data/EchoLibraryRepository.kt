@@ -367,6 +367,19 @@ class EchoLibraryRepository(
         }
     }
 
+    suspend fun matchSetlist(setlist: app.echo.android.model.library.ArtistSetlist): app.echo.android.model.library.ArtistSetlist {
+        val rows = database.trackDao().getLocalM3uMatchRows().map { row ->
+            SetlistMatchRow(
+                id = row.id,
+                title = row.title,
+                artist = row.artist,
+                normalizedTitle = row.title.normalizedSetlistTitle(),
+                normalizedArtist = row.artist.normalizedSetlistTitle(),
+            )
+        }
+        return SetlistMatchPolicy.match(setlist, rows)
+    }
+
     suspend fun exportBackupFavorites(): List<app.echo.android.model.backup.EchoBackupTrackRef> {
         val ids = database.playlistDao().getFavoriteTrackIds()
         if (ids.isEmpty()) return emptyList()
@@ -780,6 +793,24 @@ class EchoLibraryRepository(
     suspend fun trackById(trackId: String): LibraryTrackEntity? =
         database.trackDao().getTrackById(trackId)
 
+    suspend fun tracksByIds(ids: List<String>): List<app.echo.android.model.library.EchoTrack> {
+        if (ids.isEmpty()) return emptyList()
+        val found = database.trackDao().getTracksByIds(ids.distinct()).associateBy { it.id }
+        return ids.mapNotNull { found[it]?.toEchoTrack() }
+    }
+
+    suspend fun readEmbeddedLyrics(trackId: String): String? {
+        val track = database.trackDao().getTrackById(trackId) ?: return null
+        val uri = android.net.Uri.parse(
+            app.echo.android.model.library.CueSheetPolicy.playbackUri(track.contentUri),
+        )
+        return runCatching {
+            appContext.contentResolver.openInputStream(uri)?.use { input ->
+                readLocalAudioTags(input)?.lyrics?.takeIf { it.isNotBlank() }
+            }
+        }.getOrNull()
+    }
+
     suspend fun trackByContentUri(contentUri: String): LibraryTrackEntity? =
         database.trackDao().getTrackByContentUri(contentUri)
 
@@ -1002,6 +1033,7 @@ class EchoLibraryRepository(
         var totalCount: Int? = null
         var lastProgressEmitCount = 0
         var lastProgressEmitAtMs = 0L
+        var unmatchedCueCount = 0
         val changedGroupingFolders = HashSet<String>()
 
         suspend fun emitProgress(
@@ -1021,6 +1053,7 @@ class EchoLibraryRepository(
                 totalCount = totalCount,
                 currentTitle = currentTitle,
                 error = error,
+                unmatchedCueCount = unmatchedCueCount,
                 isCompleted = isCompleted,
             )
             emit(progress)
@@ -1110,6 +1143,7 @@ class EchoLibraryRepository(
                 },
             )
             scannedCount = scanOutcome.scannedCount
+            unmatchedCueCount = scanOutcome.unmatchedCueCount
 
             coroutineContext.ensureActive()
             emitProgress(phase = LibraryScanPhase.CleaningRemoved)
@@ -1210,6 +1244,7 @@ class EchoLibraryRepository(
         var deletedCount = 0
         var lastProgressEmitCount = 0
         var lastProgressEmitAtMs = 0L
+        var unmatchedCueCount = 0
         val changedGroupingFolders = HashSet<String>()
 
         suspend fun emitProgress(
@@ -1228,6 +1263,7 @@ class EchoLibraryRepository(
                 totalCount = null,
                 currentTitle = currentTitle,
                 error = error,
+                unmatchedCueCount = unmatchedCueCount,
                 isCompleted = isCompleted,
             )
             emit(progress)
@@ -1332,6 +1368,7 @@ class EchoLibraryRepository(
                 },
             )
             scannedCount = scanOutcome.scannedCount
+            unmatchedCueCount = scanOutcome.unmatchedCueCount
 
             coroutineContext.ensureActive()
             emitProgress(phase = LibraryScanPhase.CleaningRemoved, currentTitle = null)
@@ -2332,7 +2369,8 @@ private fun LibraryTrackEntity.hasSameUserMetadata(other: LibraryTrackEntity): B
         artworkUri == other.artworkUri &&
         trackNumber == other.trackNumber &&
         discNumber == other.discNumber &&
-        year == other.year
+        year == other.year &&
+        composer == other.composer
 
 private data class RemoteAlbumKey(
     val source: String,

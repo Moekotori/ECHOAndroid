@@ -302,7 +302,7 @@ private fun DockItem(
                 text = tab.label(),
                 color = labelColor,
                 style = MaterialTheme.typography.labelSmall,
-                fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

@@ -443,6 +443,7 @@ data class MediaStoreScanOutcome(
     val completeVolumeScopes: List<MediaStoreVolumeScope> = emptyList(),
     val failedReadCount: Int = 0,
     val excludedDirectoryCount: Int = 0,
+    val unmatchedCueCount: Int = 0,
 )
 
 data class RemoteSyncVisit(

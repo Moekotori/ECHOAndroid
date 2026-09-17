@@ -91,9 +91,6 @@
     <string name="feature_player_show_bottom_bar_bf2549">"Показать нижнюю панель"</string>
     <string name="feature_player_shuffle_on_c7c5c4">"Перемешивание вкл."</string>
     <string name="feature_player_size_tracks_now_playing_current_7d4647">"%1$s треков · сейчас играет %2$s"</string>
-    <string name="feature_player_skip_silence_d27e03">"Пропускать тишину"</string>
-    <string name="feature_player_skip_silence_off_8f8ae6">"Пропуск тишины выкл."</string>
-    <string name="feature_player_skip_silence_on_159990">"Пропуск тишины вкл."</string>
     <string name="feature_player_skipped_an_unplayable_track_dcd77d">"Пропущен невоспроизводимый трек"</string>
     <string name="feature_player_sleep_timer_108738">"Таймер сна"</string>
     <string name="feature_player_sleep_timer_remaining_4b8c3f">"Таймер сна · %1$s"</string>

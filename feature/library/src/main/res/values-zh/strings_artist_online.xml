@@ -28,4 +28,13 @@
     <string name="artist_concert_details">%1$s · 演出详情</string>
     <string name="artist_sort_tracks">曲目排序</string>
     <string name="artist_play_on_pc">在 PC 上播放</string>
+    <string name="artist_setlist_show">歌单</string>
+    <string name="artist_setlist_hide">收起歌单</string>
+    <string name="artist_setlist_need_key">请在设置 → 服务中填写 setlist.fm API key，才能加载演唱会歌单。</string>
+    <string name="artist_setlist_empty">这一天还没有公布歌单。</string>
+    <string name="artist_setlist_recent">参考最近一场，不是本场已公布</string>
+    <string name="artist_setlist_failed">暂时无法加载这场歌单。</string>
+    <string name="artist_setlist_play_matched">播放曲库已有的 %1$d / %2$d 首</string>
+    <string name="artist_setlist_tape">%1$s（录音带）</string>
+    <string name="artist_setlist_refresh">刷新歌单</string>
 </resources>

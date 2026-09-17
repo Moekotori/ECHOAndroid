@@ -730,7 +730,25 @@ private fun scanPhaseLabel(phase: LibraryScanPhase): String =
 internal fun LibraryScanResultBanner(scanState: LibraryScanProgress) {
     val colors = rememberLibraryGlassColors()
     val message = when (scanState.phase) {
-        LibraryScanPhase.Completed -> stringResource(L10nR.string.feature_library_scan_complete_scanstate_scannedcount_tracks_added_scanstate_inse_bf2d9e, (scanState.scannedCount).toString(), (scanState.insertedCount).toString(), (scanState.updatedCount).toString(), (scanState.deletedCount).toString()) + if (scanState.skippedCount > 0) " · " + stringResource(L10nR.string.scan_skipped_count, scanState.skippedCount) else ""
+        LibraryScanPhase.Completed -> buildString {
+            append(
+                stringResource(
+                    L10nR.string.feature_library_scan_complete_scanstate_scannedcount_tracks_added_scanstate_inse_bf2d9e,
+                    scanState.scannedCount.toString(),
+                    scanState.insertedCount.toString(),
+                    scanState.updatedCount.toString(),
+                    scanState.deletedCount.toString(),
+                ),
+            )
+            if (scanState.skippedCount > 0) {
+                append(" · ")
+                append(stringResource(L10nR.string.scan_skipped_count, scanState.skippedCount))
+            }
+            if (scanState.unmatchedCueCount > 0) {
+                append(" · ")
+                append(stringResource(L10nR.string.scan_unmatched_cue, scanState.unmatchedCueCount))
+            }
+        }
         LibraryScanPhase.Cancelled -> stringResource(L10nR.string.feature_library_scan_cancelled_the_existing_library_was_kept_266734)
         LibraryScanPhase.Error -> scanState.error ?: stringResource(L10nR.string.feature_library_library_scan_failed_94b709)
         else -> null

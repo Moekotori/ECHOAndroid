@@ -4,6 +4,7 @@
     <string name="tab_library">Библиотека</string>
     <string name="tab_connect">Связь</string>
     <string name="tab_diagnostics">Сигнал</string>
+    <string name="permission_welcome">Добро пожаловать в ECHO</string>
     <string name="permission_title">Разрешения</string>
     <string name="permission_subtitle">ECHO нужны эти разрешения для полноценного прослушивания</string>
     <string name="permission_continue">Продолжить</string>

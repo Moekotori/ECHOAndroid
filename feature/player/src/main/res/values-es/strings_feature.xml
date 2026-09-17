@@ -91,9 +91,6 @@
     <string name="feature_player_show_bottom_bar_bf2549">"Mostrar barra inferior"</string>
     <string name="feature_player_shuffle_on_c7c5c4">"Aleatorio activado"</string>
     <string name="feature_player_size_tracks_now_playing_current_7d4647">"%1$s pistas · en reproducción %2$s"</string>
-    <string name="feature_player_skip_silence_d27e03">"Omitir silencios"</string>
-    <string name="feature_player_skip_silence_off_8f8ae6">"Omitir silencios desactivado"</string>
-    <string name="feature_player_skip_silence_on_159990">"Omitir silencios activado"</string>
     <string name="feature_player_skipped_an_unplayable_track_dcd77d">"Se omitió una pista que no se puede reproducir"</string>
     <string name="feature_player_sleep_timer_108738">"Temporizador de apagado"</string>
     <string name="feature_player_sleep_timer_remaining_4b8c3f">"Temporizador de apagado · %1$s"</string>

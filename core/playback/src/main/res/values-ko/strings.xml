@@ -6,4 +6,5 @@
     <string name="playback_command_repeat_one">한 곡 반복</string>
     <string name="playback_command_repeat_off">반복 끄기</string>
     <string name="playback_command_lyrics">가사</string>
+    <string name="playback_command_lock_lyrics">전체 화면 가사</string>
 </resources>

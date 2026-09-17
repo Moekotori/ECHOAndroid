@@ -1,5 +1,9 @@
 package app.echo.android.playback
 
+import app.echo.android.model.lyrics.EchoLyricDisplaySnapshot
+import app.echo.android.model.lyrics.EchoLyricLine
+import app.echo.android.model.lyrics.EchoLyrics
+
 data class EchoNotificationLyricLine(
     val startMs: Long,
     val text: String,
@@ -62,13 +66,66 @@ object EchoNotificationLyricPolicy {
         return elapsedSincePublishMs >= minIntervalMs
     }
 
-    private fun lastStartedIndex(lines: List<EchoNotificationLyricLine>, positionMs: Long): Int {
+    fun snapshot(
+        trackId: String?,
+        lyrics: EchoLyrics?,
+        lines: List<EchoNotificationLyricLine>,
+        positionMs: Long,
+        isPlaying: Boolean,
+        speed: Float,
+        publishedAtElapsedRealtimeMs: Long,
+    ): EchoLyricDisplaySnapshot {
+        val synced = lyrics?.takeIf { it.isSynced }?.lines?.filter { it.startMs >= 0L && it.text.isNotBlank() }
+        return if (!synced.isNullOrEmpty()) {
+            snapshotFromLines(trackId, synced, positionMs, isPlaying, speed, publishedAtElapsedRealtimeMs)
+        } else {
+            snapshotFromLines(
+                trackId,
+                lines.map { EchoLyricLine(startMs = it.startMs, text = it.text) },
+                positionMs,
+                isPlaying,
+                speed,
+                publishedAtElapsedRealtimeMs,
+            )
+        }
+    }
+
+    fun snapshotFromLines(
+        trackId: String?,
+        lines: List<EchoLyricLine>,
+        positionMs: Long,
+        isPlaying: Boolean,
+        speed: Float,
+        publishedAtElapsedRealtimeMs: Long,
+    ): EchoLyricDisplaySnapshot {
+        val index = lastStartedLyricIndex(lines, positionMs)
+        val current = lines.getOrNull(index)
+        return EchoLyricDisplaySnapshot(
+            trackId = trackId,
+            previous = lines.getOrNull(index - 1),
+            current = current,
+            next = lines.getOrNull(index + 1),
+            currentStartMs = current?.startMs ?: 0L,
+            positionMs = positionMs.coerceAtLeast(0L),
+            publishedAtElapsedRealtimeMs = publishedAtElapsedRealtimeMs,
+            isPlaying = isPlaying,
+            speed = speed.takeIf { it.isFinite() && it > 0f } ?: 1f,
+        )
+    }
+
+    fun lastStartedIndex(lines: List<EchoNotificationLyricLine>, positionMs: Long): Int =
+        lastStartedByStartMs(lines.size, positionMs) { lines[it].startMs }
+
+    fun lastStartedLyricIndex(lines: List<EchoLyricLine>, positionMs: Long): Int =
+        lastStartedByStartMs(lines.size, positionMs) { lines[it].startMs }
+
+    private fun lastStartedByStartMs(size: Int, positionMs: Long, startMsAt: (Int) -> Long): Int {
         var low = 0
-        var high = lines.lastIndex
+        var high = size - 1
         var result = -1
         while (low <= high) {
             val mid = (low + high) ushr 1
-            if (lines[mid].startMs <= positionMs) {
+            if (startMsAt(mid) <= positionMs) {
                 result = mid
                 low = mid + 1
             } else {

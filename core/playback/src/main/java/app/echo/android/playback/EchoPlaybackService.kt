@@ -12,12 +12,12 @@ import androidx.media3.datasource.DataSourceBitmapLoader
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
+import app.echo.android.model.lyrics.EchoLyricDisplaySnapshot
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 @UnstableApi
@@ -29,6 +29,7 @@ class EchoPlaybackService : MediaLibraryService() {
     private var sessionCallback: EchoPlaybackLibrarySessionCallback? = null
     private var sessionRestorer: EchoPlaybackSessionRestorer? = null
     private var notificationLyrics: EchoNotificationLyricController? = null
+    private var audioRoutePlayback: EchoAudioRoutePlaybackController? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     override fun attachBaseContext(base: Context) {
@@ -104,7 +105,7 @@ class EchoPlaybackService : MediaLibraryService() {
                     .build(),
                 true,
             )
-            .setHandleAudioBecomingNoisy(true)
+            .setHandleAudioBecomingNoisy(false)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .setSeekBackIncrementMs(PREVIOUS_RESTART_THRESHOLD_MS)
             .setSeekForwardIncrementMs(SEEK_FORWARD_INCREMENT_MS)
@@ -112,12 +113,12 @@ class EchoPlaybackService : MediaLibraryService() {
             .build()
             .also {
                 EchoPlaybackProcessRuntime.enginePolicy(this).attachTo(it)
-                it.setSkipSilenceEnabled(EchoPlaybackRuntimeOptionsStore.options.value.skipSilenceEnabled)
                 it.addListener(EchoRadioPlaybackBinding(it))
                 it.addListener(playerListener)
             }
 
         player = exoPlayer
+        audioRoutePlayback = EchoAudioRoutePlaybackController(this, exoPlayer, serviceScope).also { it.start() }
         trackTransitions = EchoTrackTransitionController(exoPlayer, serviceScope, EchoPlaybackProcessRuntime::setTrackFadeGain)
         val decoder = EchoSmartTransitionDecoder(this)
         smartTransitions = EchoSmartTransitionController(
@@ -130,14 +131,6 @@ class EchoPlaybackService : MediaLibraryService() {
             ),
             decoder = decoder,
         )
-        serviceScope.launch {
-            EchoPlaybackRuntimeOptionsStore.options
-                .map { it.skipSilenceEnabled }
-                .distinctUntilChanged()
-                .collect { enabled ->
-                    player?.setSkipSilenceEnabled(enabled)
-                }
-        }
         val restorer = EchoPlaybackSessionRestorer(
             scope = serviceScope,
             store = EchoPlaybackProcessRuntime::sessionStore,
@@ -174,15 +167,26 @@ class EchoPlaybackService : MediaLibraryService() {
             .build()
         EchoPlaybackProcessRuntime.publishSurface(exoPlayer.toPlaybackSurfaceSnapshot())
         setMediaNotificationProvider(EchoMediaNotificationProvider(this))
-        notificationLyrics = EchoNotificationLyricController(exoPlayer, serviceScope) { line ->
-            if (EchoPlaybackProcessRuntime.setNotificationLyricLine(line)) {
-                mediaSession?.let { session -> onUpdateNotification(session, false) }
-            }
-        }
+        notificationLyrics = EchoNotificationLyricController(
+            player = exoPlayer,
+            scope = serviceScope,
+            onLine = { line ->
+                if (EchoPlaybackProcessRuntime.setNotificationLyricLine(line)) {
+                    mediaSession?.let { session -> onUpdateNotification(session, false) }
+                }
+            },
+            onSnapshot = { snapshot ->
+                EchoPlaybackProcessRuntime.setLyricDisplaySnapshot(snapshot)
+            },
+        )
         serviceScope.launch {
-            EchoPlaybackProcessRuntime.notificationLyrics.collect { document ->
-                notificationLyrics?.setDocument(document)
-            }
+            combine(
+                EchoPlaybackProcessRuntime.notificationLyrics,
+                EchoPlaybackProcessRuntime.displayLyrics,
+            ) { document, lyrics -> document to lyrics }
+                .collect { (document, lyrics) ->
+                    notificationLyrics?.setDocument(document, lyrics)
+                }
         }
         serviceScope.launch {
             restorer.restore(userRequestedPlay = false)
@@ -209,7 +213,11 @@ class EchoPlaybackService : MediaLibraryService() {
         smartTransitions = null
         notificationLyrics?.close()
         notificationLyrics = null
+        audioRoutePlayback?.stop()
+        audioRoutePlayback = null
         EchoPlaybackProcessRuntime.setNotificationLyrics(null)
+        EchoPlaybackProcessRuntime.setDisplayLyrics(null)
+        EchoPlaybackProcessRuntime.setLyricDisplaySnapshot(EchoLyricDisplaySnapshot())
         EchoPlaybackProcessRuntime.setRemoteAuthReadyListener(null)
         sessionRestorer?.persistFromPlayer(force = true)
         player?.removeListener(playerListener)

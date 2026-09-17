@@ -5,7 +5,7 @@
     <string name="settings_category_services">Connexions et services</string>
     <string name="settings_category_appearance_detail">Personnalisez ECHO avec les thèmes, arrière-plans et polices.</string>
     <string name="settings_category_interface_detail">Préférences de langue, de mise en page et de performance.</string>
-    <string name="settings_category_playback_detail">Préférences de transitions, de paroles et de sortie USB.</string>
+    <string name="settings_category_playback_detail">Transitions, paroles et sortie USB.</string>
     <string name="settings_category_services_detail">Connectez votre ordinateur et vos services d\'historique d\'écoute.</string>
     <string name="settings_category_library_detail">Gérez la musique locale et les informations affichées dans votre bibliothèque.</string>
     <string name="settings_category_about_detail">Version de l\'application et journaux d\'erreurs.</string>

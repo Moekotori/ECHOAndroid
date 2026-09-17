@@ -5,7 +5,7 @@
     <string name="settings_category_services">Conexiones y servicios</string>
     <string name="settings_category_appearance_detail">Haz ECHO a tu medida con temas, fondos y fuentes.</string>
     <string name="settings_category_interface_detail">Preferencias de idioma, diseño y rendimiento.</string>
-    <string name="settings_category_playback_detail">Preferencias de transiciones, letra y salida USB.</string>
+    <string name="settings_category_playback_detail">Transiciones, letra y salida USB.</string>
     <string name="settings_category_services_detail">Conecta tu computadora y los servicios de historial de escucha.</string>
     <string name="settings_category_library_detail">Administra la música local y la información que se muestra en tu biblioteca.</string>
     <string name="settings_category_about_detail">Versión de la app y registros de errores.</string>

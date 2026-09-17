@@ -55,17 +55,28 @@
     <string name="settings_clear_font_detail">介面和歌詞會回退到系統字型</string>
     <string name="settings_section_playback">播放</string>
     <string name="settings_lyrics_sync_tools">歌詞同步工具</string>
-    <string name="settings_lyrics_sync_tools_detail">在歌詞頁顯示匯入、格式和偏移微調面板</string>
+    <string name="settings_lyrics_sync_tools_detail">在歌詞頁顯示匯入、格式和偏移</string>
     <string name="settings_online_lyrics">網路歌詞</string>
-    <string name="settings_online_lyrics_detail">無內嵌或本機歌詞時自動嘗試網易雲和 LRCLIB</string>
+    <string name="settings_online_lyrics_detail">沒有本機歌詞時嘗試網易雲和 LRCLIB</string>
+    <string name="settings_lock_lyrics">鎖屏歌詞</string>
+    <string name="settings_lock_lyrics_detail">從 Echo 鎖定或點通知「全螢幕歌詞」時顯示大字歌詞。充電螢幕保護：系統顯示設定 → 螢幕保護程式 → ECHO</string>
+    <string name="settings_pause_on_disconnect">拔出後暫停</string>
+    <string name="settings_pause_on_disconnect_detail">耳機、藍牙或 USB DAC 斷開時暫停</string>
+    <string name="settings_resume_on_reconnect">重連後繼續</string>
+    <string name="settings_resume_on_reconnect_detail">僅在因斷開而暫停後，接回耳機、藍牙或車載時續播</string>
+    <string name="settings_replay_gain">ReplayGain</string>
+    <string name="settings_replay_gain_detail">依標籤統一音量</string>
+    <string name="settings_replay_gain_bypass">已儲存，bit-perfect 下不生效</string>
+    <string name="settings_replay_gain_mode">ReplayGain 模式</string>
+    <string name="settings_replay_gain_mode_detail">專輯模式保留同一專輯內的相對音量</string>
     <string name="settings_usb_exclusive">USB 獨佔輸出</string>
     <string name="settings_usb_auto_request">啟動時自動請求獨佔</string>
-    <string name="settings_usb_auto_request_on">上次未關閉獨佔時，下次啟動會自動請求 USB DAC</string>
-    <string name="settings_usb_auto_request_off">下次啟動不自動要求 USB 權限，設定會保持開啟</string>
+    <string name="settings_usb_auto_request_on">下次啟動會向 USB DAC 申請獨佔</string>
+    <string name="settings_usb_auto_request_off">下次啟動不自動申請 USB 權限</string>
     <string name="settings_notification_permission">媒體通知權限</string>
-    <string name="settings_notification_granted">已允許，可顯示播放控制通知</string>
-    <string name="settings_notification_denied">未允許時鎖定螢幕通知和前景服務可能不可用</string>
-    <string name="settings_notification_not_required">目前系統版本不需要通知權限</string>
+    <string name="settings_notification_granted">已允許</string>
+    <string name="settings_notification_denied">鎖定畫面控制需要此權限</string>
+    <string name="settings_notification_not_required">此系統版本不需要通知權限</string>
     <string name="settings_on">已開啟</string>
     <string name="settings_allow">允許</string>
     <string name="settings_test_usb">測試 USB 獨佔驅動程式</string>
@@ -358,7 +369,7 @@
     <string name="diag_eq_off">關閉 · %1$d bands</string>
 
     <string name="settings_usb_bitperfect">USB bit-perfect 模式</string>
-    <string name="settings_usb_bitperfect_detail">開啟 USB 獨佔，旁路 EQ、耳機校正、增益、變速與跳過靜音。數位音量固定 100%，請先調低 DAC 音量。DSD 在 DAC 支援 176.4/352.8 kHz 24-bit PCM 時以 DoP 送出。不支援的曲目或裝置格式將停止播放。</string>
+    <string name="settings_usb_bitperfect_detail">USB 獨佔，旁路 EQ 與增益。數位音量鎖定 100%。不支援的格式會停播。</string>
     <string name="bitperfect_off">未開啟嚴格直通</string>
     <string name="bitperfect_waiting">等待嚴格 USB 播放</string>
     <string name="bitperfect_direct">整數直通已生效</string>
@@ -408,6 +419,9 @@
     <string name="eq_user_preset_empty">把目前曲線存下來，以後可以直接套用。</string>
     <string name="eq_bind_output">用於 %1$s</string>
     <string name="eq_bound_output">正在用於 %1$s</string>
+    <string name="eq_unbind_output">取消用於 %1$s</string>
+    <string name="eq_user_preset_update">更新目前</string>
+    <string name="eq_user_preset_active">正在編輯「%1$s」</string>
     <string name="eq_user_preset_parametric">參數 EQ</string>
     <string name="eq_user_preset_bands">%1$d 段</string>
     <string name="eq_share">分享</string>
@@ -479,15 +493,15 @@
     <string name="eq_show_filters">檢視濾波器參數</string>
     <string name="eq_hide_filters">收起濾波器參數</string>
     <string name="settings_gapless">無縫播放</string>
-    <string name="settings_gapless_detail">預設開啟：預先載入下一首並保留相容的輸出工作階段。曲首淡入/曲尾淡出、跳過靜音、切換取樣率或網路資料不足時仍可能中斷。</string>
+    <string name="settings_gapless_detail">預設開啟。淡化、改取樣率或網路不足時仍可能有縫。</string>
     <string name="settings_track_fade">曲首淡入 / 曲尾淡出</string>
-    <string name="settings_track_fade_detail">漸強曲首、漸弱曲尾，兩首歌不重疊，因此切歌處不再無縫。直播不淡化，未知長度的曲目只淡入。</string>
-    <string name="settings_track_fade_bypass">設定會儲存，嚴格 bit-perfect 模式下不進行淡化。</string>
+    <string name="settings_track_fade_detail">曲首漸強、曲尾漸弱，兩曲不重疊</string>
+    <string name="settings_track_fade_bypass">已儲存，bit-perfect 下不生效</string>
     <string name="settings_track_fade_duration">淡化時長</string>
     <string name="settings_track_fade_seconds">%.1f 秒</string>
     <string name="settings_smart_transition">智慧轉場</string>
-    <string name="settings_smart_transition_detail">Beta。能對上拍就從拍點進，人聲衝突會縮短，能量高時低頻錯峰；做不到就回到無縫播放或淡化。</string>
-    <string name="settings_smart_transition_bypass">設定會儲存，輕量檔、USB 獨佔或嚴格 bit-perfect 下不套用。</string>
+    <string name="settings_smart_transition_detail">Beta。能對拍就切；否則回退無縫或淡化</string>
+    <string name="settings_smart_transition_bypass">已儲存，輕量檔或 USB 獨佔下不生效</string>
     <string name="settings_bg_video_disabled">輕量模式暫停影片背景，目前顯示預設背景；已保留你的影片選擇。</string>
     <string name="settings_import_font">匯入字型檔案</string>
     <string name="settings_clear_action">清除</string>
@@ -500,4 +514,9 @@
     <string name="settings_font_preview_characters">ECHO · Aa Bb · 0123456789</string>
     <string name="settings_font_outfit" translatable="false">Outfit</string>
     <string name="settings_font_detail_outfit">內建 Outfit，中文等字形由系統補齊</string>
+    <string name="settings_setlistfm">setlist.fm API key</string>
+    <string name="settings_setlistfm_placeholder">setlist.fm API key</string>
+    <string name="settings_setlistfm_save">儲存 setlist.fm 金鑰</string>
+    <string name="settings_setlistfm_detail">演唱會歌單需要此金鑰，請到 api.setlist.fm 申請。未上場次常常還沒有官方歌單。</string>
+    <string name="settings_setlistfm_builtin">已內建，使用者不必填寫</string>
 </resources>

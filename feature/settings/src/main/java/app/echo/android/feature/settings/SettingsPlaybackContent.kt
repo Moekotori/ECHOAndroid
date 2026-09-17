@@ -4,6 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import app.echo.android.design.LocalEchoPlatformCapabilities
 import app.echo.android.model.playback.EchoPlaybackStatus
+import app.echo.android.model.playback.EchoReplayGainMode
+import app.echo.android.model.playback.EchoReplayGainPreampMaxDb
+import app.echo.android.model.playback.EchoReplayGainPreampMinDb
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
 import kotlin.math.roundToInt
 
@@ -14,18 +17,29 @@ internal fun SettingsPlaybackContent(
     effectivePerformanceMode: String,
     showLyricsControlDeck: Boolean,
     onlineLyricsEnabled: Boolean,
+    lockScreenLyricsEnabled: Boolean,
     usbExclusiveEnabled: Boolean,
     usbBitPerfectEnabled: Boolean,
     trackTransitions: app.echo.android.model.playback.EchoTrackTransitionOptions,
     usbExclusiveAutoRequestOnStartup: Boolean,
+    pauseOnAudioDisconnect: Boolean,
+    resumeOnAudioReconnect: Boolean,
+    replayGainEnabled: Boolean,
+    replayGainMode: String,
+    replayGainPreampDb: Float,
     usbExclusiveTestResult: String,
     onPlaybackHapticsEnabledChange: (Boolean) -> Unit,
     onShowLyricsControlDeckChange: (Boolean) -> Unit,
     onOnlineLyricsEnabledChange: (Boolean) -> Unit,
+    onLockScreenLyricsEnabledChange: (Boolean) -> Unit,
     onUsbExclusiveEnabledChange: (Boolean) -> Unit,
     onUsbBitPerfectEnabledChange: (Boolean) -> Unit,
     onTrackTransitionsChange: (app.echo.android.model.playback.EchoTrackTransitionOptions) -> Unit,
     onUsbExclusiveAutoRequestOnStartupChange: (Boolean) -> Unit,
+    onPauseOnAudioDisconnectChange: (Boolean) -> Unit,
+    onResumeOnAudioReconnectChange: (Boolean) -> Unit,
+    onReplayGainChange: (Boolean, Float) -> Unit,
+    onReplayGainModeChange: (EchoReplayGainMode) -> Unit,
     onTestUsbExclusiveDriver: () -> Unit,
     notificationPermissionGranted: Boolean = true,
     onRequestNotificationPermission: () -> Unit = {},
@@ -68,6 +82,49 @@ internal fun SettingsPlaybackContent(
             onCheckedChange = { onTrackTransitionsChange(trackTransitions.copy(smartEnabled = it)) },
         )
         SettingsSwitchRow(
+            title = stringResource(R.string.settings_pause_on_disconnect),
+            detail = stringResource(R.string.settings_pause_on_disconnect_detail),
+            checked = pauseOnAudioDisconnect,
+            onCheckedChange = onPauseOnAudioDisconnectChange,
+        )
+        SettingsSwitchRow(
+            title = stringResource(R.string.settings_resume_on_reconnect),
+            detail = stringResource(R.string.settings_resume_on_reconnect_detail),
+            checked = resumeOnAudioReconnect,
+            onCheckedChange = onResumeOnAudioReconnectChange,
+            enabled = pauseOnAudioDisconnect,
+        )
+        SettingsSwitchRow(
+            title = stringResource(R.string.settings_replay_gain),
+            detail = stringResource(
+                if (usbBitPerfectEnabled) R.string.settings_replay_gain_bypass
+                else R.string.settings_replay_gain_detail,
+            ),
+            checked = replayGainEnabled,
+            onCheckedChange = { onReplayGainChange(it, replayGainPreampDb) },
+        )
+        if (replayGainEnabled) {
+            SettingsChoiceGroupRow(
+                title = stringResource(R.string.settings_replay_gain_mode),
+                detail = stringResource(R.string.settings_replay_gain_mode_detail),
+                options = listOf(
+                    SettingsChoiceOption(EchoReplayGainMode.Auto.id, stringResource(R.string.dsp_auto)),
+                    SettingsChoiceOption(EchoReplayGainMode.Track.id, stringResource(R.string.dsp_track)),
+                    SettingsChoiceOption(EchoReplayGainMode.Album.id, stringResource(R.string.dsp_album)),
+                ),
+                selectedValue = EchoReplayGainMode.fromId(replayGainMode).id,
+                onOptionSelected = { onReplayGainModeChange(EchoReplayGainMode.fromId(it)) },
+            )
+            SettingsSliderRow(
+                title = stringResource(R.string.eq_preamp),
+                valueLabel = { formatEqGain(it) },
+                value = replayGainPreampDb.coerceIn(EchoReplayGainPreampMinDb, EchoReplayGainPreampMaxDb),
+                valueRange = EchoReplayGainPreampMinDb..EchoReplayGainPreampMaxDb,
+                steps = 18,
+                onValueChange = { onReplayGainChange(true, it) },
+            )
+        }
+        SettingsSwitchRow(
             title = stringResource(R.string.settings_lyrics_sync_tools),
             detail = stringResource(R.string.settings_lyrics_sync_tools_detail),
             checked = showLyricsControlDeck,
@@ -84,6 +141,12 @@ internal fun SettingsPlaybackContent(
             detail = stringResource(R.string.settings_online_lyrics_detail),
             checked = onlineLyricsEnabled,
             onCheckedChange = onOnlineLyricsEnabledChange,
+        )
+        SettingsSwitchRow(
+            title = stringResource(R.string.settings_lock_lyrics),
+            detail = stringResource(R.string.settings_lock_lyrics_detail),
+            checked = lockScreenLyricsEnabled,
+            onCheckedChange = onLockScreenLyricsEnabledChange,
         )
         SettingsSwitchRow(
             title = stringResource(R.string.settings_usb_exclusive),

@@ -6,7 +6,7 @@
     <string name="settings_category_services">互联与服务</string>
     <string name="settings_category_appearance_detail">调整主题、背景与字体，让 ECHO 更合你的习惯。</string>
     <string name="settings_category_interface_detail">设置语言、界面密度与性能偏好。</string>
-    <string name="settings_category_playback_detail">调整歌曲衔接、歌词与 USB 输出偏好。</string>
+    <string name="settings_category_playback_detail">衔接、歌词与 USB 输出。</string>
     <string name="settings_category_services_detail">连接电脑，管理听歌记录服务。</string>
     <string name="settings_category_library_detail">管理本地音乐与曲库中的信息展示。</string>
     <string name="settings_category_about_detail">查看应用版本与错误日志。</string>

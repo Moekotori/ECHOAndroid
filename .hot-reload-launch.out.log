@@ -1,0 +1,16 @@
+Starting emulator and Echo, then watching files...
+Using already-running emulator: emulator-5554
+Emulator window moved to top-right (1272,0).
+Waiting for emulator-5554 to finish booting (timeout 240s)...
+Emulator window moved to top-right (1272,0).
+Echo is already installed.
+Launching Echo...
+Echo is running on emulator-5554.
+
+Hot reload is on. Save code to update the emulator.
+
+ECHO hot reload is watching source files.
+Save Kotlin / layout / resources in Cursor to update the emulator.
+Echo will relaunch (playback position is not kept). Ctrl+C to stop.
+
+

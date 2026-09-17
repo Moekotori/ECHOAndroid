@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="metadata_composer">Komponist</string>
+    <string name="metadata_lyrics">Liedtext</string>
+    <string name="metadata_choose_artwork">Cover wählen</string>
+    <string name="album_cue_banner">Ganzes Album-CUE · nach Sätzen spielen</string>
+</resources>

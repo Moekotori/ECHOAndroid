@@ -30,18 +30,25 @@ internal fun NowPlayingArtworkLight(
     expanded: Boolean,
     gestureStrength: () -> Float,
     modifier: Modifier = Modifier,
+    /** Idle / missing cover must not spill theme-accent halos into empty now-playing. */
+    enabled: Boolean = true,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val dark = LocalEchoDarkTheme.current
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val theme = echoTheme()
-    val presence = remember { Animatable(if (lightweight) 1f else 0.55f) }
-    LaunchedEffect(expanded, lightweight) {
-        if (lightweight) presence.snapTo(1f)
+    val presence = remember { Animatable(if (!enabled) 0f else if (lightweight) 1f else 0.55f) }
+    LaunchedEffect(expanded, lightweight, enabled) {
+        if (!enabled) presence.snapTo(0f)
+        else if (lightweight) presence.snapTo(1f)
         else presence.animateTo(
             if (expanded) 1f else 0f,
             tween(if (expanded) 460 else 300, easing = EchoMotion.Silk),
         )
+    }
+    if (!enabled) {
+        Box(modifier = modifier, content = content)
+        return
     }
     val glow = lerp(palette.vibrant, theme.accent, if (dark) 0.18f else 0.35f)
     val softGlow = lerp(palette.soft, theme.accent, 0.30f)

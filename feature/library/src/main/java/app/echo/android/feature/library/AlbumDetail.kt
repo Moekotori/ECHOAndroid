@@ -165,6 +165,10 @@ internal fun AlbumDetailPage(
                         AlbumTracksHeader(
                             count = album.trackCount,
                         )
+                        if (albumHasCueMovements(loadedTracks)) {
+                            Spacer(Modifier.height(10.dp))
+                            AlbumCueBanner()
+                        }
                         Spacer(Modifier.height(10.dp))
                     }
                 }
@@ -270,6 +274,10 @@ internal fun AlbumDetailListPage(
                         AlbumTracksHeader(
                             count = album.trackCount,
                         )
+                        if (albumHasCueMovements(tracks)) {
+                            Spacer(Modifier.height(10.dp))
+                            AlbumCueBanner()
+                        }
                         Spacer(Modifier.height(10.dp))
                     }
                 }
@@ -1200,6 +1208,14 @@ internal fun AlbumTrackRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                cueClipRangeLabel(track)?.let { clip ->
+                    Text(
+                        clip,
+                        color = colors.muted,
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                    )
+                }
             }
             Text(
                 formatDuration(track.durationMs),
@@ -1253,6 +1269,20 @@ private fun AlbumDiscTrackRow(
             onOpenAlbum = onOpenAlbum,
         )
     }
+}
+
+@Composable
+private fun AlbumCueBanner() {
+    val colors = rememberDetailGlassColors()
+    Text(
+        stringResource(L10nR.string.album_cue_banner),
+        color = colors.muted,
+        style = MaterialTheme.typography.bodySmall,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colors.elevatedSurface, RoundedCornerShape(12.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    )
 }
 
 @Composable

@@ -37,7 +37,6 @@ import app.echo.android.model.playback.PlaybackPositionState
 import app.echo.android.model.playback.PlaybackQueueState
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
 import app.echo.android.playback.EchoPlaybackProcessRuntime
-import app.echo.android.playback.EchoPlaybackRuntimeOptionsStore
 import app.echo.android.playback.EchoPlaybackService
 import app.echo.android.playback.EchoRemotePlaybackAuthRegistry
 import app.echo.android.playback.mergePlayerQueueReplayGainUris
@@ -159,7 +158,6 @@ internal class PlaybackController(
     private var activeReplayGainTrackGainDb: Float? = null
     private var replayGainEnabled: Boolean = EchoPlaybackProcessRuntime.replayGainEnabled
     private var replayGainPreampDb: Float = EchoPlaybackProcessRuntime.replayGainPreampDb
-    private var skipSilenceEnabled: Boolean = EchoPlaybackRuntimeOptionsStore.options.value.skipSilenceEnabled
     private var restoredPlaybackSession = false
     private var restoreCompleted = false
     private var sessionReadyForCommands = false
@@ -618,12 +616,6 @@ internal class PlaybackController(
         withController { recoverAndPlay() }
     }
 
-    fun setSkipSilenceEnabled(enabled: Boolean) {
-        skipSilenceEnabled = enabled
-        EchoPlaybackRuntimeOptionsStore.setSkipSilenceEnabled(enabled)
-        updatePlaybackStatusOptions()
-    }
-
     fun cyclePlayMode() {
         withController {
             shuffleModeEnabled = false
@@ -1002,7 +994,6 @@ internal class PlaybackController(
             replayGainTrackGainDb = enginePolicy.activeReplayGainTrackGainDb
                 ?: activeReplayGainTrackGainDb,
             replayGainTagsLoaded = enginePolicy.activeReplayGainTagsLoaded,
-            skipSilenceEnabled = skipSilenceEnabled,
         )
 
     private fun sleepTimerRemainingMs(): Long {

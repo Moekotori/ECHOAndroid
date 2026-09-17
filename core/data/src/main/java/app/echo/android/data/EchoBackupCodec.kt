@@ -112,9 +112,12 @@ object EchoBackupCodec {
         putOptNullableBoolean("pcHandoffEnabled", settings.pcHandoffEnabled)
         putOptNullableBoolean("showLyricsControlDeck", settings.showLyricsControlDeck)
         putOptNullableBoolean("onlineLyricsEnabled", settings.onlineLyricsEnabled)
+        putOptNullableBoolean("lockScreenLyricsEnabled", settings.lockScreenLyricsEnabled)
         putOptNullableBoolean("usbExclusiveEnabled", settings.usbExclusiveEnabled)
         putOptNullableBoolean("usbBitPerfectEnabled", settings.usbBitPerfectEnabled)
         putOptNullableBoolean("usbExclusiveAutoRequestOnStartup", settings.usbExclusiveAutoRequestOnStartup)
+        putOptNullableBoolean("pauseOnAudioDisconnect", settings.pauseOnAudioDisconnect)
+        putOptNullableBoolean("resumeOnAudioReconnect", settings.resumeOnAudioReconnect)
         putOptNullableBoolean("trackAudioInfoTagsVisible", settings.trackAudioInfoTagsVisible)
         putOptNullableBoolean("replayGainEnabled", settings.replayGainEnabled)
         putOpt("replayGainMode", settings.replayGainMode)
@@ -200,9 +203,12 @@ object EchoBackupCodec {
             pcHandoffEnabled = json.optionalBoolean("pcHandoffEnabled"),
             showLyricsControlDeck = json.optionalBoolean("showLyricsControlDeck"),
             onlineLyricsEnabled = json.optionalBoolean("onlineLyricsEnabled"),
+            lockScreenLyricsEnabled = json.optionalBoolean("lockScreenLyricsEnabled"),
             usbExclusiveEnabled = json.optionalBoolean("usbExclusiveEnabled"),
             usbBitPerfectEnabled = json.optionalBoolean("usbBitPerfectEnabled"),
             usbExclusiveAutoRequestOnStartup = json.optionalBoolean("usbExclusiveAutoRequestOnStartup"),
+            pauseOnAudioDisconnect = json.optionalBoolean("pauseOnAudioDisconnect"),
+            resumeOnAudioReconnect = json.optionalBoolean("resumeOnAudioReconnect"),
             trackAudioInfoTagsVisible = json.optionalBoolean("trackAudioInfoTagsVisible"),
             replayGainEnabled = json.optionalBoolean("replayGainEnabled"),
             replayGainMode = json.optionalString("replayGainMode"),

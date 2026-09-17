@@ -4,6 +4,7 @@
     <string name="tab_library">ライブラリ</string>
     <string name="tab_connect">連携</string>
     <string name="tab_diagnostics">シグナル</string>
+    <string name="permission_welcome">ECHO へようこそ</string>
     <string name="permission_title">権限の許可</string>
     <string name="permission_subtitle">ECHO のすべての機能を使うには、次の権限が必要です</string>
     <string name="permission_continue">続ける</string>

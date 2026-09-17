@@ -1,6 +1,7 @@
 package app.echo.android.model.library
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -63,5 +64,16 @@ class CueSheetPolicyTest {
             ),
         )
         assertEquals(2, CueSheetPolicy.tracksForAudio(image, "Album.flac").size)
+    }
+
+    @Test
+    fun unmatchedCueNeedsASameFolderAudioName() {
+        val sheet = CueSheet(
+            fileName = "Album.flac",
+            tracks = listOf(CueSheetTrack(1, "A", startMs = 0L)),
+        )
+        assertTrue(CueSheetPolicy.isMatchedToAudio(sheet, "Album.cue", listOf("Album.flac")))
+        assertFalse(CueSheetPolicy.isMatchedToAudio(sheet, "Album.cue", listOf("Other.flac", "B.wav")))
+        assertFalse(CueSheetPolicy.isMatchedToAudio(sheet, "Album.cue", emptyList()))
     }
 }

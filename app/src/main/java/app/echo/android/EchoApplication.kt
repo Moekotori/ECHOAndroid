@@ -32,8 +32,18 @@ import kotlinx.coroutines.launch
 @UnstableApi
 class EchoApplication : Application(), ImageLoaderFactory {
     private val musicBrainzGate by lazy { app.echo.android.data.MusicBrainzRequestGate() }
+    @Volatile
+    private var setlistFmApiKey: String? = null
     val artistOnlineInfo by lazy {
-        app.echo.android.data.ArtistOnlineInfoRepository(java.io.File(cacheDir, "artist-online-info"), BuildConfig.VERSION_NAME, musicBrainzGate)
+        app.echo.android.data.ArtistOnlineInfoRepository(
+            java.io.File(cacheDir, "artist-online-info"),
+            BuildConfig.VERSION_NAME,
+            musicBrainzGate,
+            setlistApiKey = {
+                setlistFmApiKey?.takeIf { it.isNotBlank() }
+                    ?: SetlistFmApiConfig.API_KEY.takeIf { it.isNotBlank() }
+            },
+        )
     }
     val albumOnlineInfo by lazy {
         app.echo.android.data.AlbumOnlineInfoRepository(java.io.File(cacheDir, "album-online-info"), BuildConfig.VERSION_NAME, musicBrainzGate)
@@ -95,6 +105,10 @@ class EchoApplication : Application(), ImageLoaderFactory {
         // Playback preferences and remote stream signing remain live when only the
         // service/media buttons are running (no ViewModel).
         EchoPlaybackProcessRuntime.scope.launch {
+            settingsStore.appSettings.map { it.setlistFmApiKey }.distinctUntilChanged()
+                .collect { setlistFmApiKey = it }
+        }
+        EchoPlaybackProcessRuntime.scope.launch {
             settingsStore.appSettings.map { it.trackTransitions }.distinctUntilChanged()
                 .collect(EchoPlaybackRuntimeOptionsStore::setTrackTransitions)
         }
@@ -111,6 +125,14 @@ class EchoApplication : Application(), ImageLoaderFactory {
                 .collect { (enabled, preampDb, mode) ->
                     EchoPlaybackProcessRuntime.setReplayGain(enabled, preampDb)
                     EchoPlaybackProcessRuntime.setReplayGainMode(mode)
+                }
+        }
+        EchoPlaybackProcessRuntime.scope.launch {
+            settingsStore.appSettings
+                .map { it.pauseOnAudioDisconnect to it.resumeOnAudioReconnect }
+                .distinctUntilChanged()
+                .collect { (pauseOnDisconnect, resumeOnReconnect) ->
+                    EchoPlaybackProcessRuntime.setAudioRoutePlaybackPolicy(pauseOnDisconnect, resumeOnReconnect)
                 }
         }
         EchoPlaybackProcessRuntime.scope.launch {

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="metadata_composer">Compositor</string>
+    <string name="metadata_lyrics">Letra</string>
+    <string name="metadata_choose_artwork">Elegir portada</string>
+    <string name="album_cue_banner">CUE de álbum completo · reproducir por movimientos</string>
+</resources>

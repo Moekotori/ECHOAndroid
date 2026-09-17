@@ -255,7 +255,7 @@ fun MiniPlayer(
                         overflow = TextOverflow.Ellipsis,
                         color = if (dark) Color.White.copy(alpha = 0.60f) else scheme.onSurfaceVariant,
                         style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Normal,
+                        fontWeight = FontWeight.SemiBold,
                     )
                     LinearProgressIndicator(
                         // 在绘制期读进度 State:tick 只重绘进度条,不触发任何重组

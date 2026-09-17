@@ -28,4 +28,13 @@
     <string name="artist_concert_details">%1$s · Event details</string>
     <string name="artist_sort_tracks">Sort tracks</string>
     <string name="artist_play_on_pc">Play on PC</string>
+    <string name="artist_setlist_show">Setlist</string>
+    <string name="artist_setlist_hide">Hide setlist</string>
+    <string name="artist_setlist_need_key">Add a setlist.fm API key in Settings → Services to load setlists.</string>
+    <string name="artist_setlist_empty">No published setlist for this date.</string>
+    <string name="artist_setlist_recent">Reference from the most recent show, not this date</string>
+    <string name="artist_setlist_failed">Could not load this setlist.</string>
+    <string name="artist_setlist_play_matched">Play %1$d of %2$d songs already in the library</string>
+    <string name="artist_setlist_tape">%1$s (tape)</string>
+    <string name="artist_setlist_refresh">Refresh setlist</string>
 </resources>

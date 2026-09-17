@@ -61,17 +61,28 @@
     <string name="settings_clear_font_detail">Oberfläche und Liedtext fallen auf die Systemschrift zurück</string>
     <string name="settings_section_playback">Wiedergabe</string>
     <string name="settings_lyrics_sync_tools">Liedtext-Sync-Werkzeuge</string>
-    <string name="settings_lyrics_sync_tools_detail">Import-, Format- und Versatzsteuerungen auf der Liedtextseite anzeigen</string>
+    <string name="settings_lyrics_sync_tools_detail">Import, Format und Versatz auf der Liedtextseite</string>
     <string name="settings_online_lyrics">Online-Liedtext</string>
-    <string name="settings_online_lyrics_detail">NetEase Cloud Music und LRCLIB versuchen, wenn eingebetteter oder lokaler Liedtext fehlt</string>
+    <string name="settings_online_lyrics_detail">Ohne lokalen Text NetEase und LRCLIB versuchen</string>
+    <string name="settings_lock_lyrics">Liedtext auf dem Sperrbildschirm</string>
+    <string name="settings_lock_lyrics_detail">Großer Text, wenn ECHO gesperrt ist oder aus der Benachrichtigung geöffnet wird. Bildschirmschoner beim Laden: Systemanzeige → Bildschirmschoner → ECHO</string>
+    <string name="settings_pause_on_disconnect">Bei Trennung pausieren</string>
+    <string name="settings_pause_on_disconnect_detail">Pausiert, wenn Kopfhörer, Bluetooth oder USB-DAC getrennt werden</string>
+    <string name="settings_resume_on_reconnect">Bei Verbindung fortsetzen</string>
+    <string name="settings_resume_on_reconnect_detail">Nur nach einer Trennungspause weiterhören</string>
+    <string name="settings_replay_gain">ReplayGain</string>
+    <string name="settings_replay_gain_detail">Lautstärke mit ReplayGain-Tags angleichen</string>
+    <string name="settings_replay_gain_bypass">Gespeichert, ungenutzt bei bit-perfect</string>
+    <string name="settings_replay_gain_mode">ReplayGain-Modus</string>
+    <string name="settings_replay_gain_mode_detail">Album behält relative Pegel im selben Album</string>
     <string name="settings_usb_exclusive">USB-Exklusivausgabe</string>
     <string name="settings_usb_auto_request">Exklusiv beim Start automatisch anfordern</string>
-    <string name="settings_usb_auto_request_on">Wenn Exklusiv eingeschaltet blieb, fordert der nächste Start den USB-DAC an</string>
-    <string name="settings_usb_auto_request_off">Der nächste Start fordert die USB-Berechtigung nicht automatisch an; die Einstellung bleibt an</string>
+    <string name="settings_usb_auto_request_on">Nächster Start fordert den USB-DAC an</string>
+    <string name="settings_usb_auto_request_off">Nächster Start fordert keine USB-Berechtigung</string>
     <string name="settings_notification_permission">Berechtigung für Medienbenachrichtigungen</string>
-    <string name="settings_notification_granted">Erteilt; Wiedergabesteuerung kann in Benachrichtigungen erscheinen</string>
-    <string name="settings_notification_denied">Sperrbildschirm-Benachrichtigungen und der Vordergrunddienst können ohne diese Berechtigung nicht verfügbar sein</string>
-    <string name="settings_notification_not_required">Diese Android-Version benötigt keine Benachrichtigungsberechtigung</string>
+    <string name="settings_notification_granted">Erteilt</string>
+    <string name="settings_notification_denied">Für Sperrbildschirm-Steuerung nötig</string>
+    <string name="settings_notification_not_required">Auf dieser Version nicht nötig</string>
     <string name="settings_on">Ein</string>
     <string name="settings_allow">Erlauben</string>
     <string name="settings_test_usb">USB-Exklusivtreiber testen</string>
@@ -360,7 +371,7 @@
     <string name="diag_eq_off">Aus · %1$d Bänder</string>
 
     <string name="settings_usb_bitperfect">USB-bit-perfect-Modus</string>
-    <string name="settings_usb_bitperfect_detail">Aktiviert die USB-Exklusivausgabe. Umgeht EQ, Korrektur, Gain, Tempo und Stille überspringen. Die digitale Lautstärke ist auf 100%% fest; passen Sie die Lautstärke am DAC an, bevor Sie aktivieren. DSD wird als DoP gesendet, wenn der DAC 176,4/352,8 kHz 24-Bit-PCM hat. Nicht unterstützte Titel oder DAC-Formate stoppen die Wiedergabe.</string>
+    <string name="settings_usb_bitperfect_detail">USB-Exklusiv; umgeht EQ und Gain. Lautstärke bleibt 100%. Nicht unterstützte Formate stoppen.</string>
     <string name="bitperfect_off">Strikter Modus aus</string>
     <string name="bitperfect_waiting">Warten auf strikte USB-Wiedergabe</string>
     <string name="bitperfect_direct">Integer-Direktweg aktiv</string>
@@ -410,6 +421,9 @@
     <string name="eq_user_preset_empty">Speichern Sie die aktuelle Kurve, um sie später wiederzuverwenden.</string>
     <string name="eq_bind_output">Für %1$s verwenden</string>
     <string name="eq_bound_output">Wird für %1$s verwendet</string>
+    <string name="eq_unbind_output">Nicht mehr für %1$s verwenden</string>
+    <string name="eq_user_preset_update">Aktuelles aktualisieren</string>
+    <string name="eq_user_preset_active">Bearbeitet „%1$s“</string>
     <string name="eq_user_preset_parametric">Parametrischer EQ</string>
     <string name="eq_user_preset_bands">%1$d Bänder</string>
     <string name="eq_share">Teilen</string>
@@ -481,15 +495,15 @@
     <string name="eq_show_filters">Filterparameter anzeigen</string>
     <string name="eq_hide_filters">Filterparameter ausblenden</string>
     <string name="settings_gapless">Lückenlose Wiedergabe</string>
-    <string name="settings_gapless_detail">Standardmäßig aktiviert: lädt den nächsten Titel vor und hält kompatible Ausgabesitzungen. Titel-Ein-/Ausblenden, Stille überspringen, Abtastratenwechsel oder fehlende Netzwerkdaten können die Wiedergabe trotzdem unterbrechen.</string>
+    <string name="settings_gapless_detail">Standard an. Fade, Abtastratenwechsel oder schwaches Netz können Lücken lassen.</string>
     <string name="settings_track_fade">Titel ein-/ausblenden</string>
-    <string name="settings_track_fade_detail">Hebt den Anfang schrittweise an und senkt das Ende. Titel überlappen nicht, daher ersetzt dies lückenlos an der Grenze. Live-Audio umgeht Fades; Titel ohne bekannte Dauer werden nur eingeblendet.</string>
-    <string name="settings_track_fade_bypass">Gespeichert, aber im strikten bit-perfect-Modus umgangen.</string>
+    <string name="settings_track_fade_detail">Ein- und ausblenden, ohne Titel zu überlappen</string>
+    <string name="settings_track_fade_bypass">Gespeichert, ungenutzt bei bit-perfect</string>
     <string name="settings_track_fade_duration">Fade-Dauer</string>
     <string name="settings_track_fade_seconds">%.1f s</string>
     <string name="settings_smart_transition">Intelligente Übergänge</string>
-    <string name="settings_smart_transition_detail">Beta. Setzt wenn möglich auf einem Beat ein, verkürzt bei Gesangskollisionen und teilt Bass bei energetischen Paaren. Fällt auf lückenlos oder Fade zurück, wenn es nicht laufen kann.</string>
-    <string name="settings_smart_transition_bypass">Gespeichert, aber nicht im Leicht-Modus, bei USB-Exklusiv oder bit-perfect-Ausgabe verwendet.</string>
+    <string name="settings_smart_transition_detail">Beta. Beat-Wechsel; sonst lückenlos oder Fade</string>
+    <string name="settings_smart_transition_bypass">Gespeichert, ungenutzt im Leicht-Modus oder USB-Exklusiv</string>
     <string name="settings_bg_video_disabled">Video-Hintergründe sind im Leicht-Modus pausiert. Der Standardhintergrund wird angezeigt; Ihre Auswahl bleibt erhalten.</string>
     <string name="settings_import_font">Schriftdatei importieren</string>
     <string name="settings_clear_action">Leeren</string>
@@ -502,4 +516,9 @@
     <string name="settings_font_preview_characters">ECHO · Aa Bb · 0123456789</string>
     <string name="settings_font_outfit" translatable="false">Outfit</string>
     <string name="settings_font_detail_outfit">Eingebautes Outfit; andere Schriften nutzen System-Fallback</string>
+    <string name="settings_setlistfm">setlist.fm-API-Schlüssel</string>
+    <string name="settings_setlistfm_placeholder">setlist.fm-API-Schlüssel</string>
+    <string name="settings_setlistfm_save">setlist.fm-Schlüssel speichern</string>
+    <string name="settings_setlistfm_detail">Erforderlich für Konzert-Setlists. Schlüssel unter api.setlist.fm holen. Kommende Termine haben oft noch keine offizielle Setlist.</string>
+    <string name="settings_setlistfm_builtin">Eingebaut; Sie müssen das nicht eingeben</string>
 </resources>

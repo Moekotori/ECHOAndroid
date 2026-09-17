@@ -121,4 +121,16 @@ class PlaybackSettingsLogicTest {
         assertEquals("1h 0m", formatSleepTimerRemaining(60 * 60 * 1000L))
         assertEquals("1h 30m", formatSleepTimerRemaining(90 * 60 * 1000L))
     }
+
+    @Test
+    fun headlinePrefersFormatThenOutput() {
+        assertEquals("System output", playbackSettingsHeadline(emptyList(), "System output"))
+        assertEquals("FLAC · 96kHz · System output", playbackSettingsHeadline(listOf("FLAC", "96kHz"), "System output"))
+    }
+
+    @Test
+    fun playModeDetailAddsShuffleOnlyWhenOn() {
+        assertEquals("Repeat off", playModeDetail("Repeat off", false, "Shuffle on"))
+        assertEquals("Repeat all · Shuffle on", playModeDetail("Repeat all", true, "Shuffle on"))
+    }
 }

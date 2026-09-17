@@ -44,6 +44,7 @@ class DocumentTreeTrackScanner(
         val batch = ArrayList<LibraryTrackEntity>(safeBatchSize)
         val pendingDirectories = ArrayDeque<DocumentTreeDirectory>()
         var scannedCount = 0
+        var unmatchedCueCount = 0
         var querySucceeded = true
         var failedReads = 0
         var excludedDirectories = 0
@@ -124,7 +125,8 @@ class DocumentTreeTrackScanner(
                     relativePath = childRelative,
                 )
             }
-            val cueByAudioName = cueSheetsByAudioName(cueRows, audioRows.map { it.displayName })
+            val (cueByAudioName, unmatchedInDirectory) = cueSheetsByAudioName(cueRows, audioRows.map { it.displayName })
+            unmatchedCueCount += unmatchedInDirectory
             val unchangedIds = ArrayList<String>()
             for (row in audioRows) {
                 coroutineContext.ensureActive()
@@ -238,30 +240,46 @@ class DocumentTreeTrackScanner(
             batch.clear()
         }
         onProgress(scannedCount, null)
-        return MediaStoreScanOutcome(scannedCount = scannedCount, querySucceeded = querySucceeded,
-            failedReadCount = failedReads, excludedDirectoryCount = excludedDirectories)
+        return MediaStoreScanOutcome(
+            scannedCount = scannedCount,
+            querySucceeded = querySucceeded,
+            failedReadCount = failedReads,
+            excludedDirectoryCount = excludedDirectories,
+            unmatchedCueCount = unmatchedCueCount,
+        )
     }
 
     private fun cueSheetsByAudioName(
         cueRows: List<DocumentAudioRow>,
         audioNames: List<String>,
-    ): Map<String, CueSheet> {
-        if (cueRows.isEmpty() || audioNames.isEmpty()) return emptyMap()
+    ): Pair<Map<String, CueSheet>, Int> {
+        if (cueRows.isEmpty()) return emptyMap<String, CueSheet>() to 0
+        if (audioNames.isEmpty()) return emptyMap<String, CueSheet>() to cueRows.size
         val matched = LinkedHashMap<String, CueSheet>()
+        var unmatched = 0
         for (row in cueRows) {
-            if (row.sizeBytes > CueSheetPolicy.MaxCueBytes) continue
-            val sheet = readCueSheet(row.documentUri) ?: continue
+            if (row.sizeBytes > CueSheetPolicy.MaxCueBytes) {
+                unmatched++
+                continue
+            }
+            val sheet = readCueSheet(row.documentUri)
+            if (sheet == null) {
+                unmatched++
+                continue
+            }
             val wantedNames = buildList {
                 add(row.displayName)
                 sheet.fileName?.let(::add)
                 sheet.tracks.forEach { track -> track.fileName?.let(::add) }
             }
-            wantedNames.forEach { wanted ->
-                val audioName = CueSheetPolicy.matchAudioName(wanted, audioNames) ?: return@forEach
-                matched.putIfAbsent(audioName, sheet)
+            val hits = wantedNames.mapNotNull { wanted -> CueSheetPolicy.matchAudioName(wanted, audioNames) }
+            if (hits.isEmpty()) {
+                unmatched++
+            } else {
+                hits.forEach { audioName -> matched.putIfAbsent(audioName, sheet) }
             }
         }
-        return matched
+        return matched to unmatched
     }
 
     private fun readCueSheet(uri: Uri): CueSheet? {

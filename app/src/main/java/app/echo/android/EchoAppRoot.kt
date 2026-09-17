@@ -94,7 +94,10 @@ import app.echo.android.design.echoLocaleSwitchLayer
 import app.echo.android.design.runEchoLocaleSwitch
 import app.echo.android.feature.connect.ConnectScreen
 import app.echo.android.feature.home.SearchScreen
+import app.echo.android.feature.player.LockLyricsScene
 import app.echo.android.feature.player.PlaybackQueueSheet
+import app.echo.android.lock.EchoLockLyricsPolicy
+import app.echo.android.lock.isEchoKeyguardLocked
 import app.echo.android.feature.settings.DiagnosticsScreen
 import app.echo.android.feature.settings.ErrorLogScreen
 import app.echo.android.feature.settings.SettingsScreen
@@ -103,6 +106,7 @@ import app.echo.android.model.error.EchoErrorRecord
 import app.echo.android.model.error.EchoErrorSource
 import app.echo.android.ui.home.EchoHomePage
 import app.echo.android.ui.library.EchoLibraryPage
+import app.echo.android.playback.EchoPlaybackProcessRuntime
 import app.echo.android.ui.playback.EchoNowPlayingHost
 import app.echo.android.ui.shell.echoPlayerDepth
 import app.echo.android.ui.shell.EchoBottomDockHost
@@ -439,6 +443,32 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     val systemPowerSaveMode = rememberSystemPowerSaveMode()
     val effectivePerformanceMode = remember(appSettings.performanceMode, systemPowerSaveMode) {
         EchoPerformanceMode.fromId(appSettings.performanceMode).resolve(systemPowerSaveMode)
+    }
+    val lyricSnapshot by EchoPlaybackProcessRuntime.lyricDisplaySnapshot.collectAsStateWithLifecycle()
+    var screenInteractive by remember {
+        mutableStateOf(context.getSystemService(PowerManager::class.java)?.isInteractive != false)
+    }
+    var keyguardLocked by remember { mutableStateOf(context.isEchoKeyguardLocked()) }
+    DisposableEffect(context) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(receiverContext: Context?, intent: Intent?) {
+                when (intent?.action) {
+                    Intent.ACTION_SCREEN_OFF -> screenInteractive = false
+                    Intent.ACTION_SCREEN_ON -> {
+                        screenInteractive = true
+                        keyguardLocked = context.isEchoKeyguardLocked()
+                    }
+                    Intent.ACTION_USER_PRESENT -> keyguardLocked = false
+                }
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_USER_PRESENT)
+        }
+        ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        onDispose { runCatching { context.unregisterReceiver(receiver) } }
     }
     val lifecycleOwner = LocalLifecycleOwner.current
     var appVisible by remember {
@@ -1167,10 +1197,16 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 pcHandoffEnabled = appSettings.pcHandoffEnabled,
                                 showLyricsControlDeck = appSettings.showLyricsControlDeck,
                                 onlineLyricsEnabled = appSettings.onlineLyricsEnabled,
+                                lockScreenLyricsEnabled = appSettings.lockScreenLyricsEnabled,
                                 usbExclusiveEnabled = appSettings.usbExclusiveEnabled,
                                 usbBitPerfectEnabled = appSettings.usbBitPerfectEnabled,
                                 trackTransitions = appSettings.trackTransitions,
                                 usbExclusiveAutoRequestOnStartup = appSettings.usbExclusiveAutoRequestOnStartup,
+                                pauseOnAudioDisconnect = appSettings.pauseOnAudioDisconnect,
+                                resumeOnAudioReconnect = appSettings.resumeOnAudioReconnect,
+                                replayGainEnabled = appSettings.replayGainEnabled,
+                                replayGainMode = appSettings.replayGainMode,
+                                replayGainPreampDb = appSettings.replayGainPreampDb,
                                 usbExclusiveTestResult = usbExclusiveTestResult,
                                 customBackgroundMode = appSettings.customBackgroundMode,
                                 customBackgroundUri = appSettings.customBackgroundUri,
@@ -1207,6 +1243,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                     stringResource(listenBrainzState.lastMessageRes, it)
                                 } ?: stringResource(listenBrainzState.lastMessageRes),
                                 listenBrainzErrorLabel = listenBrainzState.lastError,
+                                setlistFmApiKey = appSettings.setlistFmApiKey?.takeIf { it.isNotBlank() }
+                                    ?: SetlistFmApiConfig.API_KEY.takeIf { it.isNotBlank() },
+                                setlistFmApiKeyLocked = SetlistFmApiConfig.HAS_API_KEY,
                                 onDynamicArtworkEnabledChange = viewModel::setDynamicArtworkEnabled,
                                 onCompactModeEnabledChange = viewModel::setCompactModeEnabled,
                                 onDynamicColorEnabledChange = viewModel::setDynamicColorEnabled,
@@ -1218,10 +1257,15 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onPcHandoffEnabledChange = viewModel::setPcHandoffEnabled,
                                 onShowLyricsControlDeckChange = viewModel::setShowLyricsControlDeck,
                                 onOnlineLyricsEnabledChange = viewModel::setOnlineLyricsEnabled,
+                                onLockScreenLyricsEnabledChange = viewModel::setLockScreenLyricsEnabled,
                                 onUsbExclusiveEnabledChange = viewModel::setUsbExclusiveEnabled,
                                 onUsbBitPerfectEnabledChange = viewModel::setUsbBitPerfectEnabled,
                                 onTrackTransitionsChange = viewModel::setTrackTransitions,
                                 onUsbExclusiveAutoRequestOnStartupChange = viewModel::setUsbExclusiveAutoRequestOnStartup,
+                                onPauseOnAudioDisconnectChange = viewModel::setPauseOnAudioDisconnect,
+                                onResumeOnAudioReconnectChange = viewModel::setResumeOnAudioReconnect,
+                                onReplayGainChange = viewModel::setReplayGain,
+                                onReplayGainModeChange = viewModel::setReplayGainMode,
                                 onTestUsbExclusiveDriver = viewModel::testUsbExclusiveDriver,
                                 onPinQueueOffline = viewModel::pinCurrentQueueOffline,
                                 onPickImageBackground = { backgroundImageLauncher.launch(arrayOf("image/*")) },
@@ -1274,6 +1318,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onListenBrainzEnabledChange = viewModel::setListenBrainzEnabled,
                                 onSaveListenBrainzToken = viewModel::saveListenBrainzToken,
                                 onDisconnectListenBrainz = viewModel::disconnectListenBrainz,
+                                onSaveSetlistFmApiKey = viewModel::setSetlistFmApiKey,
                                 notificationPermissionGranted = hasNotifPermission,
                                 onRequestNotificationPermission = {
                                     val perm = notifPermName ?: return@SettingsScreen
@@ -1477,20 +1522,22 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                     activeUserPresetId = appSettings.equalizerActiveUserPresetId,
                                     opraLastQuery = appSettings.opraLastQuery,
                                     onSaveUserPreset = viewModel::saveCurrentEqualizerPreset,
+                                    onUpdateUserPreset = viewModel::updateCurrentEqualizerUserPreset,
                                     onApplyUserPreset = viewModel::applyEqualizerUserPreset,
                                     onRenameUserPreset = viewModel::renameEqualizerUserPreset,
                                     onDeleteUserPreset = viewModel::deleteEqualizerUserPreset,
                                     onImportShareCode = viewModel::importEqualizerShareCode,
                                     onBindPresetToOutput = viewModel::bindActiveEqualizerPresetToOutput,
+                                    onUnbindPresetFromOutput = viewModel::unbindEqualizerPresetFromOutput,
                                     outputDeviceLabel = playbackStatus.diagnostics.usbDeviceName
                                         ?: playbackStatus.diagnostics.outputDeviceName,
-                                    outputPresetBound = appSettings.equalizerDevicePresetIds[
+                                    outputPresetBound = appSettings.equalizerDevicePresetIds.containsKey(
                                         app.echo.android.model.playback.EchoOutputDspPolicy.deviceKey(
                                             EchoOutputDeviceKind.fromId(playbackStatus.diagnostics.outputDeviceKind),
                                             playbackStatus.diagnostics.usbDeviceName
                                                 ?: playbackStatus.diagnostics.outputDeviceName,
-                                        )
-                                    ] == appSettings.equalizerActiveUserPresetId,
+                                        ),
+                                    ),
                                     onToggleOpraFavorite = viewModel::toggleStarredOpraPreset,
                                     bluetoothCodecNeedsPermission = !hasBluetoothConnectPermission &&
                                         playbackStatus.diagnostics.outputDeviceKind == EchoOutputDeviceKind.Bluetooth.id,
@@ -1742,6 +1789,36 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                         )
                     }
                 }
+            }
+            val showLockLyrics = EchoLockLyricsPolicy.shouldShowOverLock(
+                enabled = appSettings.lockScreenLyricsEnabled,
+                isPlaying = playbackStatus.isPlaying,
+                hasCurrentLine = lyricSnapshot.current != null,
+                screenInteractive = screenInteractive,
+                keyguardLocked = keyguardLocked,
+            )
+            LaunchedEffect(
+                appSettings.lockScreenLyricsEnabled,
+                playbackStatus.isPlaying,
+                lyricSnapshot.current?.text,
+            ) {
+                activity?.setShowWhenLocked(
+                    EchoLockLyricsPolicy.shouldKeepShowWhenLocked(
+                        enabled = appSettings.lockScreenLyricsEnabled,
+                        isPlaying = playbackStatus.isPlaying,
+                        hasCurrentLine = lyricSnapshot.current != null,
+                    ),
+                )
+            }
+            if (showLockLyrics) {
+                LockLyricsScene(
+                    title = playbackStatus.track?.title.orEmpty(),
+                    artist = playbackStatus.track?.artist.orEmpty(),
+                    artworkUri = playbackStatus.track?.artworkUri,
+                    snapshot = lyricSnapshot,
+                    wordHighlightEnabled = appSettings.lyricsWordHighlightEnabled,
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
             EchoPermissionDialog(
                 visible = showPermissionDialog,
