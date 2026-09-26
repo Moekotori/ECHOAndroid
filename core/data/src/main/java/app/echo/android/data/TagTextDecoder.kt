@@ -12,33 +12,48 @@ import java.nio.charset.StandardCharsets
  */
 internal object TagTextDecoder {
     fun decode(bytes: ByteArray): String? {
+        // A UTF-16 code unit can end in 00; never trim bytes before detecting Unicode.
+        when {
+            bytes.startsWith(0xEF, 0xBB, 0xBF) -> return decodeDeclared(bytes.copyOfRange(3, bytes.size), StandardCharsets.UTF_8)
+            bytes.startsWith(0xFF, 0xFE) -> return decodeDeclared(bytes.copyOfRange(2, bytes.size), StandardCharsets.UTF_16LE)
+            bytes.startsWith(0xFE, 0xFF) -> return decodeDeclared(bytes.copyOfRange(2, bytes.size), StandardCharsets.UTF_16BE)
+        }
+        var unicodeEnd = bytes.size
+        while (unicodeEnd >= 2 && bytes[unicodeEnd - 1] == 0.toByte() && bytes[unicodeEnd - 2] == 0.toByte()) unicodeEnd -= 2
+        val unicodePayload = if (unicodeEnd == bytes.size) bytes else bytes.copyOf(unicodeEnd)
+        if (unicodePayload.looksLikeUtf16LittleEndian()) {
+            decodeDeclared(bytes, StandardCharsets.UTF_16LE)?.let { return it }
+        }
+        if (unicodePayload.looksLikeUtf16BigEndian()) {
+            decodeDeclared(bytes, StandardCharsets.UTF_16BE)?.let { return it }
+        }
         val payload = bytes.trimTagPadding()
         if (payload.isEmpty()) return ""
 
-        decodeBom(payload)?.let { return it }
-
         decodeStrict(payload, StandardCharsets.UTF_8)?.takeIf { it.isReadableText() }?.let { return it.trim() }
-
-        if (payload.looksLikeUtf16LittleEndian()) {
-            decodeStrict(payload, StandardCharsets.UTF_16LE)?.takeIf { it.isReadableText() }?.let { return it.trim() }
-        }
-        if (payload.looksLikeUtf16BigEndian()) {
-            decodeStrict(payload, StandardCharsets.UTF_16BE)?.takeIf { it.isReadableText() }?.let { return it.trim() }
-        }
 
         val gbk = decodeStrict(payload, Gb18030)?.takeIf { it.isReadableText() }
             ?: decodeStrict(payload, Gbk)?.takeIf { it.isReadableText() }
         val shiftJis = ShiftJis?.let { charset -> decodeStrict(payload, charset)?.takeIf { it.isReadableText() } }
-        val latin = String(payload, StandardCharsets.ISO_8859_1).trimEnd('\u0000').takeIf { it.isReadableText() }
+        val latin = decodeStrict(payload, StandardCharsets.ISO_8859_1)?.takeIf { it.isReadableText() }
+            ?: decodeStrict(payload, Windows1252)?.takeIf { it.isReadableText() }
 
         return pickBest(payload, gbk, shiftJis, latin)?.trim()
     }
 
+    /** Honor a declared encoding; malformed Unicode must not be guessed as another language. */
+    fun decodeDeclared(bytes: ByteArray, charset: Charset): String? =
+        decodeStrict(bytes, charset)?.substringBefore('\u0000')?.trimStart('\uFEFF')
+            ?.takeIf { it.isReadableText() }?.trim()
+
     private fun pickBest(bytes: ByteArray, gbk: String?, shiftJis: String?, latin: String?): String? {
         val asciiTrails = doubleByteAsciiTrailCount(bytes)
         val cjkCandidate = listOfNotNull(gbk, shiftJis).maxByOrNull { it.scriptScore() }
+        if (shiftJis != null && shiftJis.kanaCount() > (gbk?.kanaCount() ?: 0)) return shiftJis
         val cjkCount = cjkCandidate?.cjkScriptCount() ?: 0
-        val latinIsWestern = latin != null && latin.cjkScriptCount() == 0
+        val latinIsWestern = latin != null && latin.all {
+            it.isLetterOrDigit() || it.isWhitespace() || it in "'’‘\"“”.,:;!?-–—()/&"
+        }
         if (asciiTrails > 0 && latinIsWestern) return latin
         val latinLetters = latin?.count { it.isLetter() && it.code < 0x80 } ?: 0
         return when {
@@ -67,17 +82,6 @@ internal object TagTextDecoder {
         return count
     }
 
-    private fun decodeBom(bytes: ByteArray): String? =
-        when {
-            bytes.startsWith(0xEF, 0xBB, 0xBF) ->
-                decodeStrict(bytes.copyOfRange(3, bytes.size), StandardCharsets.UTF_8)
-            bytes.startsWith(0xFF, 0xFE) ->
-                decodeStrict(bytes.copyOfRange(2, bytes.size), StandardCharsets.UTF_16LE)
-            bytes.startsWith(0xFE, 0xFF) ->
-                decodeStrict(bytes.copyOfRange(2, bytes.size), StandardCharsets.UTF_16BE)
-            else -> null
-        }?.takeIf { it.isReadableText() }?.trim()
-
     private fun decodeStrict(bytes: ByteArray, charset: Charset): String? =
         try {
             charset.newDecoder()
@@ -101,10 +105,10 @@ internal object TagTextDecoder {
         size >= values.size && values.indices.all { index -> this[index].toInt() and 0xFF == values[index] }
 
     private fun ByteArray.looksLikeUtf16LittleEndian(): Boolean =
-        size >= 6 && zeroRatio(startIndex = 1) >= Utf16ZeroRatioThreshold
+        size >= 4 && size % 2 == 0 && zeroRatio(startIndex = 1) >= Utf16ZeroRatioThreshold
 
     private fun ByteArray.looksLikeUtf16BigEndian(): Boolean =
-        size >= 6 && zeroRatio(startIndex = 0) >= Utf16ZeroRatioThreshold
+        size >= 4 && size % 2 == 0 && zeroRatio(startIndex = 0) >= Utf16ZeroRatioThreshold
 
     private fun ByteArray.zeroRatio(startIndex: Int): Float {
         var total = 0
@@ -121,13 +125,14 @@ internal object TagTextDecoder {
 
     private fun String.isReadableText(): Boolean {
         if (isEmpty()) return true
-        val suspicious = count { char ->
+        return none { char ->
             char == '\u0000' ||
                 char == '\uFFFD' ||
                 (char.isISOControl() && char != '\n' && char != '\r' && char != '\t')
         }
-        return suspicious <= maxOf(1, length / 100)
     }
+
+    private fun String.kanaCount(): Int = count { it in '\u3041'..'\u3096' || it in '\u30A1'..'\u30FA' }
 
     private fun String.cjkScriptCount(): Int = count { it.isCjkScript() }
 
@@ -156,6 +161,7 @@ internal object TagTextDecoder {
 
     private val Gb18030: Charset = Charset.forName("GB18030")
     private val Gbk: Charset = Charset.forName("GBK")
+    private val Windows1252: Charset = Charset.forName("windows-1252")
     private val ShiftJis: Charset? = runCatching { Charset.forName("Shift_JIS") }.getOrNull()
     private const val Utf16ZeroRatioThreshold = 0.3f
 }

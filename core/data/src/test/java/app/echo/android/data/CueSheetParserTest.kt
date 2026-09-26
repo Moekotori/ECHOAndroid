@@ -7,6 +7,13 @@ import org.junit.Test
 
 class CueSheetParserTest {
     @Test
+    fun decodesJapaneseCueWithoutGbkMojibake() {
+        val cue = "FILE \"album.flac\" WAVE\nTRACK 01 AUDIO\nTITLE \"夜に駆ける\"\nINDEX 01 00:01:00\n"
+        val bytes = cue.toByteArray(java.nio.charset.Charset.forName("Shift_JIS"))
+        assertEquals("夜に駆ける", CueSheetParser.parse(bytes)?.tracks?.first()?.title)
+    }
+
+    @Test
     fun parsesAlbumPerformerAndIndex01Times() {
         val cue = CueSheetParser.parseText(
             """

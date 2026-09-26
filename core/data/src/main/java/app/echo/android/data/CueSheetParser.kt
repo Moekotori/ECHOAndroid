@@ -3,11 +3,7 @@ package app.echo.android.data
 import app.echo.android.model.library.CueSheet
 import app.echo.android.model.library.CueSheetPolicy
 import app.echo.android.model.library.CueSheetTrack
-import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
-
-private val CueFallbackCharsets: List<Charset> = listOf("GB18030", "Shift_JIS", "ISO-8859-1")
-    .mapNotNull { name -> runCatching { Charset.forName(name) }.getOrNull() }
 
 object CueSheetParser {
     private val IndexTime = Regex("""^(\d{1,3}):(\d{2}):(\d{2})$""")
@@ -138,30 +134,6 @@ object CueSheetParser {
         }
     }
 
-    internal fun decode(bytes: ByteArray): String {
-        if (bytes.size >= 2) {
-            when {
-                bytes[0] == 0xFF.toByte() && bytes[1] == 0xFE.toByte() ->
-                    return String(bytes, StandardCharsets.UTF_16LE)
-                bytes[0] == 0xFE.toByte() && bytes[1] == 0xFF.toByte() ->
-                    return String(bytes, StandardCharsets.UTF_16BE)
-            }
-        }
-        if (bytes.size >= 3 && bytes[0] == 0xEF.toByte() && bytes[1] == 0xBB.toByte() && bytes[2] == 0xBF.toByte()) {
-            return String(bytes, 3, bytes.size - 3, StandardCharsets.UTF_8)
-        }
-        val utf8 = String(bytes, StandardCharsets.UTF_8)
-        if (!utf8.contains('\uFFFD')) return utf8
-        val decoded = CueFallbackCharsets.mapNotNull { charset ->
-            runCatching { String(bytes, charset) }.getOrNull()
-        }
-        val valid = decoded.filterNot { it.contains('\uFFFD') }.ifEmpty { decoded }
-        val withCjk = valid.filter { cjkCount(it) > 0 }
-        return withCjk.maxByOrNull(::cjkCount) ?: valid.lastOrNull() ?: utf8
-    }
-
-    private fun cjkCount(text: String): Int =
-        text.count { ch ->
-            ch in '\u4e00'..'\u9fff' || ch in '\u3040'..'\u30ff' || ch in '\uac00'..'\ud7af'
-        }
+    internal fun decode(bytes: ByteArray): String =
+        TagTextDecoder.decode(bytes) ?: String(bytes, StandardCharsets.UTF_8)
 }

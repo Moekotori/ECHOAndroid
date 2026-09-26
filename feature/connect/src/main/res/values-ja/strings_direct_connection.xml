@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="echo_link_direct_address_hint">近くの PC を選ぶか、アドレスを入力して接続します。トークンは不要です。旧バージョンの PC では完全なペアリングリンクも使用できます。</string>
+    <string name="echo_link_direct_address_hint">初回接続時は PC の ECHOSteam で Echo Link を有効にし、2 分以内に完全なペアリングリンクを貼り付けてください。両方のデバイスを同じ LAN に接続してください。ペアリング済みの PC には直接再接続できます。</string>
+    <string name="echo_link_pairing_entry">ペアリングリンクまたは PC アドレス</string>
 </resources>

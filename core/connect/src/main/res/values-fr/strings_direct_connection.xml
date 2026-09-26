@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="connect_direct_unavailable">Ce PC a refusé la connexion directe. Activez Echo Link et mettez ECHOSteam à jour, ou collez un lien d\'appairage complet pour une version plus ancienne.</string>
+    <string name="connect_direct_unavailable">Ce PC a refusé un accès sans appairage. Connectez les deux appareils au même réseau local et collez un nouveau lien complet d’appairage depuis Echo Link dans ECHOSteam.</string>
 </resources>

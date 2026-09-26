@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="echo_link_direct_address_hint">Wählen Sie einen Computer in der Nähe oder geben Sie seine Adresse ein, um zu verbinden. Kein Token erforderlich. Ältere PCs können weiterhin einen vollständigen Kopplungslink verwenden.</string>
+    <string name="echo_link_direct_address_hint">Aktivieren Sie für die erste Verbindung Echo Link in ECHOSteam und fügen Sie den vollständigen Kopplungslink innerhalb von zwei Minuten ein. Beide Geräte müssen im selben LAN sein. Gekoppelte PCs können sich direkt wieder verbinden.</string>
+    <string name="echo_link_pairing_entry">Kopplungslink oder PC-Adresse</string>
 </resources>

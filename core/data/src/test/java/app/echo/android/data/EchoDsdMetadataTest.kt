@@ -10,6 +10,18 @@ import org.junit.Test
 
 class EchoDsdMetadataTest {
     @Test
+    fun dffReadsJapaneseTitleAfterAudioWithoutChangingDuration() {
+        val original = dff(frames = 64)
+        val metadata = chunk("ID3 ", id3Title("六兆年と一夜物語 🎵"))
+        val body = original.copyOfRange(12, original.size) + metadata
+        val source = "FRM8".toByteArray() + u64be(body.size.toLong()) + body
+        val info = EchoDsdMetadata.read(ByteArrayInputStream(source))!!
+        assertEquals("六兆年と一夜物語 🎵", info.tags?.title)
+        assertEquals(2_822_400, info.sampleRateHz)
+        assertEquals((64L * 8000L) / 2_822_400L, info.durationMs)
+    }
+
+    @Test
     fun dsfDurationAndSampleRateComeFromFmtChunk() {
         val info = EchoDsdMetadata.read(ByteArrayInputStream(dsf(realBytesPerChannel = 64)))!!
         assertEquals(2_822_400, info.sampleRateHz)

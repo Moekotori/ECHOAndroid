@@ -436,11 +436,12 @@ class MediaStoreTrackScanner(
         val mediaId = getLong(columns.idIndex)
         val rawTrack = getLongOrNull(columns.trackIndex)?.toInt()
         val albumId = getLongOrNull(columns.albumIdIndex)?.takeIf { it > 0L }
+        val fileName = columns.fileNameIndex?.let { getStringOrNull(it) }
         return MediaStoreAudioRow(
             mediaId = mediaId,
             contentUri = Uri.withAppendedPath(collection.uri, mediaId.toString()).toString(),
-            fileName = columns.fileNameIndex?.let { getStringOrNull(it) },
-            title = getStringOrNull(columns.titleIndex).takeUnlessUnknownMetadata() ?: UnknownTrackTitle,
+            fileName = fileName,
+            title = localAudioTitle(getStringOrNull(columns.titleIndex), fileName),
             artist = getStringOrNull(columns.artistIndex).takeUnlessUnknownMetadata() ?: canonicalUnknownArtist(),
             album = getStringOrNull(columns.albumIndex).takeUnlessUnknownMetadata(),
             albumArtist = columns.albumArtistIndex
@@ -502,7 +503,7 @@ class MediaStoreTrackScanner(
                 ).withAudioTags(dsd.tags).withFingerprint()
             }
         }
-        val tagged = if (LibraryWavTagPolicy.isWavContainer(mimeType, contentUri)) {
+        val tagged = if (LocalAudioTagReadPolicy.prefersFileTags(mimeType, fileName ?: contentUri)) {
             entity.withAudioTags(readAudioTagsFromUri(contentUri)).withFingerprint()
         } else {
             entity
@@ -616,19 +617,23 @@ class MediaStoreTrackScanner(
         return CueSheetCatalog(sheets, files)
     }
 
-    internal fun readAudioTagsFromUri(contentUri: String): AudioTagFields? =
+    internal fun readAudioTagsFromUri(contentUri: String, mimeType: String? = null): AudioTagFields? =
         runCatching {
             contentResolver.openInputStream(Uri.parse(contentUri))?.use { input ->
-                readLocalAudioTags(input)
+                if (EchoDsdMetadata.isDsd(mimeType, contentUri)) {
+                    EchoDsdMetadata.read(input)?.tags
+                } else {
+                    readLocalAudioTags(input)
+                }
             }
         }.onFailure { error ->
             Log.d(TAG, "Unable to read audio tags for $contentUri.", error)
         }.getOrNull()
 
-    internal fun isWavTagBackfillComplete(): Boolean = wavTagBackfillMarker().exists()
+    internal fun isLocalFileTagBackfillComplete(): Boolean = localFileTagBackfillMarker().exists()
 
-    internal fun markWavTagBackfillComplete() {
-        runCatching { wavTagBackfillMarker().writeText("1") }
+    internal fun markLocalFileTagBackfillComplete() {
+        runCatching { localFileTagBackfillMarker().writeText("1") }
     }
 
     internal fun isAggregationKeyBackfillComplete(): Boolean = aggregationKeyBackfillMarker().exists()
@@ -637,8 +642,8 @@ class MediaStoreTrackScanner(
         runCatching { aggregationKeyBackfillMarker().writeText("1") }
     }
 
-    private fun wavTagBackfillMarker(): java.io.File =
-        java.io.File(appContext.filesDir, "wav-tag-backfill-v1")
+    private fun localFileTagBackfillMarker(): java.io.File =
+        java.io.File(appContext.filesDir, "local-file-tag-backfill-v3")
 
     private fun aggregationKeyBackfillMarker(): java.io.File =
         java.io.File(appContext.filesDir, "library-aggregation-keys-v2")

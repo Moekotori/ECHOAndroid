@@ -378,7 +378,7 @@ class DocumentTreeTrackScanner(
             )
         }
         val metadata = readMetadata(this, readSampleRate, mimeType, displayName)
-        val title = metadata.title.takeUnlessUnknownMetadata() ?: displayName.removeAudioExtension()
+        val title = localAudioTitle(metadata.title, displayName)
         val artist = metadata.artist.takeUnlessUnknownMetadata() ?: canonicalUnknownArtist()
         return LibraryTrackEntity(
             id = "saf:${Uri.encode(documentId)}",
@@ -409,7 +409,7 @@ class DocumentTreeTrackScanner(
         mimeType: String?,
         displayName: String,
     ): DocumentAudioMetadata {
-        val fileTags = if (LibraryWavTagPolicy.isWavContainer(mimeType, displayName)) {
+        val fileTags = if (LocalAudioTagReadPolicy.prefersFileTags(mimeType, displayName)) {
             runCatching { contentResolver.openInputStream(uri)?.use(::readLocalAudioTags) }.getOrNull()
         } else {
             null

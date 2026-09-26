@@ -10,6 +10,61 @@ import org.junit.Test
 
 class AudioFileTagRewriterTest {
     @Test
+    fun readsId3TitleVersionsAndDeclaredUnicodeEncodings() {
+        for (version in listOf(2, 3, 4)) {
+            for ((encoding, charset) in listOf(1 to Charsets.UTF_16, 2 to Charsets.UTF_16BE, 3 to Charsets.UTF_8)) {
+                val title = "六兆年と一夜物語 · Hélène · 봄날 · 𠮷 🎵"
+                val payload = byteArrayOf(encoding.toByte()) + title.toByteArray(charset)
+                val frame = if (version == 2) {
+                    "TT2".toByteArray() + byteArrayOf(0, 0, payload.size.toByte()) + payload
+                } else {
+                    "TIT2".toByteArray() + (if (version == 4) synchsafe(payload.size) else byteArrayOf(0, 0, 0, payload.size.toByte())) + byteArrayOf(0, 0) + payload
+                }
+                val file = id3File(version, listOf(frame), FAKE_MP3)
+                assertEquals("version=$version encoding=$encoding", title, readLocalAudioTags(file.inputStream())?.title)
+            }
+        }
+    }
+
+    @Test
+    fun id3LegacyJapaneseAndChineseTagsDecode() {
+        for ((title, encoding) in listOf("夜に駆ける" to "Shift_JIS", "青花瓷" to "GBK", "Hélène" to "ISO-8859-1")) {
+            val payload = byteArrayOf(0) + title.toByteArray(java.nio.charset.Charset.forName(encoding))
+            val frame = Id3FrameBytes("TIT2", payload)
+            assertEquals(title, readLocalAudioTags(id3File(4, listOf(frame), FAKE_MP3).inputStream())?.title)
+        }
+    }
+
+    @Test
+    fun id3BlankOrMalformedDuplicateDoesNotHideValidTitle() {
+        val frames = listOf(textFrameV24("TIT2", ""), Id3FrameBytes("TIT2", byteArrayOf(3, -23)), textFrameV24("TIT2", "Valid 🎵"))
+        assertEquals("Valid 🎵", readLocalAudioTags(id3File(4, frames, FAKE_MP3).inputStream())?.title)
+    }
+
+    @Test
+    fun id3v24ReadsUnsynchronisedGroupedFrameWithLengthIndicator() {
+        val title = "夜に駆ける"
+        val text = byteArrayOf(1) + title.toByteArray(Charsets.UTF_16)
+        val payload = byteArrayOf(7) + synchsafe(text.size) + text
+        val encoded = ByteArrayOutputStream().apply {
+            payload.forEach { byte -> write(byte.toInt()); if (byte == (-1).toByte()) write(0) }
+        }.toByteArray()
+        val frame = "TIT2".toByteArray() + synchsafe(encoded.size) + byteArrayOf(0, 0x43) + encoded
+        val file = id3File(4, listOf(frame, textFrameV24("TPE1", "Artist")), FAKE_MP3)
+        assertEquals(title, readLocalAudioTags(file.inputStream())?.title)
+        // A tag-level flag also applies per frame in v2.4, without shifting frame boundaries.
+        file[5] = 0x80.toByte()
+        assertEquals("Artist", readLocalAudioTags(file.inputStream())?.artist)
+        assertEquals(title, readLocalAudioTags(file.inputStream())?.title)
+    }
+
+    @Test
+    fun flacBlankDuplicateDoesNotOverwriteUnicodeTitle() {
+        val file = flacFile(listOf("TITLE=봄날 · 𠮷 🎵", "TITLE="), byteArrayOf())
+        assertEquals("봄날 · 𠮷 🎵", readLocalAudioTags(file.inputStream())?.title)
+    }
+
+    @Test
     fun mp3WithoutId3PrependsUtf8Tags() {
         val source = byteArrayOf(0xFF.toByte(), 0xFB.toByte(), 0x90.toByte(), 0x00, 1, 2, 3, 4)
         val rewritten = rewrite(source, SAMPLE_FIELDS, "audio/mpeg")

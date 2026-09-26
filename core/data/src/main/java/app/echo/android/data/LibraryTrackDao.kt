@@ -976,14 +976,27 @@ interface LibraryTrackDao {
         SELECT id FROM library_tracks
         WHERE metadataEditedAtEpochMs IS NULL
           AND (source = 'mediastore' OR source = 'saf')
+          AND clipStartMs = 0 AND clipEndMs = 0
           AND (
-            lower(ifnull(mimeType, '')) IN ('audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave')
+            lower(ifnull(mimeType, '')) IN (
+                'audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave',
+                'audio/flac', 'audio/x-flac', 'application/flac', 'application/x-flac',
+                'audio/mpeg', 'audio/mp3', 'audio/x-mp3', 'audio/mp2', 'audio/aac', 'audio/aac-adts',
+                'audio/dsf', 'audio/dff', 'audio/x-dsf', 'audio/x-dff'
+            )
             OR lower(ifnull(contentUri, '')) LIKE '%.wav'
             OR lower(ifnull(contentUri, '')) LIKE '%.wav%'
+            OR lower(ifnull(contentUri, '')) LIKE '%.flac%'
+            OR lower(ifnull(contentUri, '')) LIKE '%.mp3%'
+            OR lower(ifnull(contentUri, '')) LIKE '%.mp2%'
+            OR lower(ifnull(contentUri, '')) LIKE '%.aac%'
+            OR lower(ifnull(contentUri, '')) LIKE '%.adts%'
+            OR lower(ifnull(contentUri, '')) LIKE '%.dsf%'
+            OR lower(ifnull(contentUri, '')) LIKE '%.dff%'
           )
         """,
     )
-    suspend fun getLocalWavTrackIdsForTagBackfill(): List<String>
+    suspend fun getLocalFileTagBackfillTrackIds(): List<String>
 
     @Query("SELECT * FROM library_tracks WHERE id IN (:ids)")
     suspend fun getTracksByIds(ids: List<String>): List<LibraryTrackEntity>

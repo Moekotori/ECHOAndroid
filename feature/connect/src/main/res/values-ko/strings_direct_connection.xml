@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="echo_link_direct_address_hint">근처 PC를 선택하거나 주소를 입력하면 연결됩니다. 토큰은 필요하지 않습니다. 이전 버전 PC는 전체 페어링 링크를 사용할 수 있습니다.</string>
+    <string name="echo_link_direct_address_hint">처음 연결할 때는 PC의 ECHOSteam에서 Echo Link를 켜고 2분 안에 전체 페어링 링크를 붙여 넣으세요. 두 기기는 같은 LAN에 있어야 합니다. 페어링된 PC에는 바로 다시 연결할 수 있습니다.</string>
+    <string name="echo_link_pairing_entry">페어링 링크 또는 PC 주소</string>
 </resources>

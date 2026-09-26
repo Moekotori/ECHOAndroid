@@ -63,7 +63,7 @@ class EchoLibraryRepository(
     private val maintenanceJob = repositoryScope.launch {
         delay(PINYIN_BACKFILL_START_DELAY_MS)
         refreshLegacyLibrarySearchIndex()
-        backfillWavTags()
+        backfillLocalFileTags()
         backfillAggregationKeys()
     }
 
@@ -2042,10 +2042,10 @@ class EchoLibraryRepository(
         }
     }
 
-    private suspend fun backfillWavTags() = withContext(LibraryScanDispatchers.Limited) {
-        if (scanner.isWavTagBackfillComplete()) return@withContext
+    private suspend fun backfillLocalFileTags() = withContext(LibraryScanDispatchers.Limited) {
+        if (scanner.isLocalFileTagBackfillComplete()) return@withContext
         val dao = database.trackDao()
-        val ids = dao.getLocalWavTrackIdsForTagBackfill()
+        val ids = dao.getLocalFileTagBackfillTrackIds()
         val pending = ArrayList<LibraryTrackEntity>()
         var changed = false
         suspend fun flushPending() {
@@ -2055,11 +2055,12 @@ class EchoLibraryRepository(
             changed = true
             yield()
         }
-        for (chunk in ids.chunked(WAV_TAG_BACKFILL_BATCH_SIZE)) {
+        for (chunk in ids.chunked(FILE_TAG_BACKFILL_BATCH_SIZE)) {
             coroutineContext.ensureActive()
             for (track in dao.getTracksByIds(chunk)) {
                 coroutineContext.ensureActive()
-                val tags = scanner.readAudioTagsFromUri(track.contentUri) ?: continue
+                if (track.metadataEditedAtEpochMs != null) continue
+                val tags = scanner.readAudioTagsFromUri(track.contentUri, track.mimeType) ?: continue
                 val next = track.withAudioTags(tags)
                 if (next.hasSameUserMetadata(track)) continue
                 pending += next.withScanMetadata()
@@ -2068,7 +2069,7 @@ class EchoLibraryRepository(
         }
         flushPending()
         if (changed) dao.rebuildLibrarySummaries()
-        scanner.markWavTagBackfillComplete()
+        scanner.markLocalFileTagBackfillComplete()
     }
 
     private suspend fun backfillAggregationKeys() = withContext(LibraryScanDispatchers.Limited) {
@@ -2345,7 +2346,7 @@ class EchoLibraryRepository(
         const val SAMPLE_RATE_BACKFILL_LIMIT = 400
         const val PINYIN_BACKFILL_BATCH_SIZE = 200
         const val PINYIN_BACKFILL_START_DELAY_MS = 750L
-        const val WAV_TAG_BACKFILL_BATCH_SIZE = 50
+        const val FILE_TAG_BACKFILL_BATCH_SIZE = 50
         const val RECOMMENDED_TRACK_LIMIT = 8
         const val LISTEN_STATS_SEED_LIMIT = 256
         const val RECENT_ALBUM_LIMIT = 12

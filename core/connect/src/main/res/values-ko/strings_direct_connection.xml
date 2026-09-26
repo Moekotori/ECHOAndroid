@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="connect_direct_unavailable">PC가 직접 연결을 거부했습니다. Echo Link를 켜고 ECHOSteam을 업데이트하세요. 이전 버전은 전체 페어링 링크를 붙여 넣으세요.</string>
+    <string name="connect_direct_unavailable">PC가 페어링되지 않은 접근을 거부했습니다. 두 기기를 같은 LAN에 연결하고 ECHOSteam의 Echo Link에서 새로 생성한 전체 페어링 링크를 붙여 넣으세요.</string>
 </resources>

@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="echo_link_direct_address_hint">选择附近电脑或输入地址即可连接，无需填写 token。旧版电脑仍可粘贴完整配对链接。</string>
+    <string name="echo_link_direct_address_hint">首次连接请在电脑 ECHOSteam 中开启 Echo Link，并在两分钟内粘贴完整配对链接。两台设备需在同一局域网；已配对的电脑可直接重连。</string>
+    <string name="echo_link_pairing_entry">输入配对链接或 PC 地址</string>
 </resources>

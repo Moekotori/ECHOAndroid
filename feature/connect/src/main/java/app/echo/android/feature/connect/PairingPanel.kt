@@ -71,13 +71,22 @@ internal fun PcLinkPanel(
     val busy = remoteState in listOf(EchoRemoteConnectionState.Pairing, EchoRemoteConnectionState.Connecting, EchoRemoteConnectionState.Reconnecting)
     var address by rememberSaveable(savedPcAddress) { mutableStateOf(savedPcAddress.orEmpty()) }
     var token by rememberSaveable(savedPcToken) { mutableStateOf(savedPcToken.orEmpty()) }
-    var manual by rememberSaveable { mutableStateOf(false) }
+    var manual by rememberSaveable { mutableStateOf(savedPcAddress.isNullOrBlank()) }
     var confirmForget by rememberSaveable { mutableStateOf(false) }
     val hasSaved = !savedPcAddress.isNullOrBlank()
     val endpoint = remember(address, token) { EchoPairingParser.parseManual(address, token) }
     val validAddress = remember(address) { EchoPairingParser.parseManual(address, "validation-token") != null }
     val keyboard = LocalSoftwareKeyboardController.current
     val connect = { if (endpoint != null && !busy) { keyboard?.hide(); onConnectPc(address.trim(), token.trim()) } }
+    val selectPc: (String, String) -> Unit = { selectedAddress, selectedToken ->
+        address = selectedAddress
+        token = selectedToken
+        manual = selectedToken.isBlank()
+        if (selectedToken.isNotBlank()) onConnectPc(selectedAddress, selectedToken)
+    }
+    LaunchedEffect(remoteState) {
+        if (remoteState == EchoRemoteConnectionState.Error) manual = true
+    }
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(if (connected || hasSaved) pcTitle else stringResource(L10nR.string.feature_connect_listen_together_with_pc_41d068),
@@ -137,7 +146,7 @@ internal fun PcLinkPanel(
                                     ConnectNote(pc.address)
                                 }
                                 TextButton(
-                                    onClick = { onConnectPc(pc.address, pc.token.orEmpty()) },
+                                    onClick = { selectPc(pc.address, pc.token.orEmpty()) },
                                     enabled = !busy,
                                 ) {
                                     Text(stringResource(L10nR.string.feature_connect_connect_c7c091))
@@ -156,11 +165,11 @@ internal fun PcLinkPanel(
                     }
                 } else if (hasSaved && !manual) {
                     ConnectNote(stringResource(L10nR.string.feature_connect_a_saved_pc_is_available_reconnect_or_pair_69fbf8))
-                    Button(onClick = { onConnectPc(savedPcAddress.orEmpty(), savedPcToken.orEmpty()) }, shape = ConnectControlShape, modifier = Modifier.fillMaxWidth()) {
+                    Button(onClick = { selectPc(savedPcAddress.orEmpty(), savedPcToken.orEmpty()) }, shape = ConnectControlShape, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(L10nR.string.feature_connect_reconnect_pc_ea8c5f))
                     }
                 }
-                ConnectNote(stringResource(L10nR.string.feature_connect_open_the_echo_link_page_on_your_pc_d07a0b))
+                ConnectNote(stringResource(L10nR.string.echo_link_direct_address_hint))
                 ConnectSection(stringResource(L10nR.string.feature_connect_nearby_pcs_b9b12a),
                     action = { TextButton(onClick = onRefreshLanDevices) { Text(stringResource(L10nR.string.feature_connect_refresh_828c69)) } }) {
                     if (discoveredLanDevices.isEmpty()) {
@@ -173,12 +182,10 @@ internal fun PcLinkPanel(
                     }
                     discoveredLanDevices.forEach { device ->
                         Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).echoClickable(role = Role.Button) {
-                            address = EchoLinkDiscoveryPolicy.addressLabel(device)
                             val saved = savedPcs.firstOrNull { EchoLinkDiscoveryPolicy.addressMatchesDevice(it.address, device) }
-                            token = saved?.token?.takeIf { it.isNotBlank() }
+                            val selectedToken = saved?.token?.takeIf { it.isNotBlank() }
                                 ?: EchoLinkDiscoveryPolicy.tokenAfterSelecting(device, savedPcAddress, savedPcToken)
-                            manual = false
-                            onConnectPc(address, token)
+                            selectPc(EchoLinkDiscoveryPolicy.addressLabel(device), selectedToken)
                             onSelectLanDevice(device)
                         }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Icon(Icons.Rounded.Computer, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
@@ -192,14 +199,13 @@ internal fun PcLinkPanel(
                 }
                 Column {
                     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).echoClickable(role = Role.Button) { keyboard?.hide(); manual = !manual }, verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(L10nR.string.feature_connect_enter_address_manually_ec2890), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+                        Text(stringResource(L10nR.string.echo_link_pairing_entry), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
                         Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = null, Modifier.echoExpandIndicator(manual))
                     }
                     EchoExpand(manual) {
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            ConnectInput(stringResource(L10nR.string.feature_connect_pc_address_or_pairing_link_a3e680), address, { address = it; token = "" }, "192.168.1.12:26789", url = true, onDone = connect,
+                            ConnectInput(stringResource(L10nR.string.feature_connect_pc_address_or_pairing_link_a3e680), address, { address = it; token = "" }, "echo://pair?…", url = true, onDone = connect,
                                 error = if (address.isNotBlank() && !validAddress) stringResource(L10nR.string.feature_connect_check_the_pc_address_or_paste_a_complete_0f216a) else null)
-                            ConnectNote(stringResource(L10nR.string.echo_link_direct_address_hint))
                             Button(onClick = connect, enabled = endpoint != null, shape = ConnectControlShape, modifier = Modifier.fillMaxWidth()) {
                                 Text(stringResource(L10nR.string.feature_connect_connect_pc_724ba0))
                             }

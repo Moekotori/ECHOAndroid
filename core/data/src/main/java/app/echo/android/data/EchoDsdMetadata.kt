@@ -58,23 +58,29 @@ internal object EchoDsdMetadata {
     }
 
     private fun readDff(input: InputStream): EchoDsdScanInfo? {
-        skipExact(input, 16L)
+        val header = input.readExact(16) ?: return null
+        var remaining = u64be(header, 4) - 4L
+        if (remaining < 0L) return null
         var channels = 0
         var dsdRateHz = 0
         var dataSize = -1L
         var compressed = false
         var tags: AudioTagFields? = null
         var chunks = 0
-        while (chunks < 64) {
+        while (chunks < 64 && remaining >= 12L) {
             chunks++
             val chunk = input.readExact(12) ?: break
+            remaining -= 12L
             val tag = fourcc(chunk, 0)
             val size = u64be(chunk, 4)
             if (size < 0L || size > 1L shl 40) return null
             val padded = size + (size and 1L)
+            if (padded > remaining) return null
+            remaining -= padded
             when (tag) {
                 "PROP" -> {
-                    val payload = input.readExact(size.toInt().coerceAtMost(1_048_576)) ?: return null
+                    if (size > 1_048_576L) return null
+                    val payload = input.readExact(size.toInt()) ?: return null
                     if (padded > size && !skipExact(input, padded - size)) return null
                     parseDffProp(payload)?.let { prop ->
                         if (prop.channels > 0) channels = prop.channels
@@ -85,12 +91,13 @@ internal object EchoDsdMetadata {
                 }
                 "DSD " -> {
                     dataSize = size
-                    break
+                    // ID3 is commonly stored after the audio chunk in DFF.
+                    if (!skipExact(input, padded)) return null
                 }
                 "DST " -> {
                     compressed = true
                     dataSize = size
-                    break
+                    if (!skipExact(input, padded)) return null
                 }
                 "ID3 " -> {
                     if (size in 10L..1_048_576L) {

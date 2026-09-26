@@ -163,11 +163,11 @@ internal fun FolderList(
     onOpenFolder: (FolderSummary) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (folders.loadState.refresh is LoadState.Loading) {
+    if (folders.isInitialPagingLoad()) {
         LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_loading_folders_54c760))
         return
     }
-    if (folders.loadState.refresh is LoadState.Error) {
+    if (folders.isInitialPagingError()) {
         LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_failed_to_load_folders_d4887b))
         return
     }
@@ -434,11 +434,11 @@ internal fun AlbumWall(
     onEmptyAction: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    if (albums.loadState.refresh is LoadState.Loading) {
+    if (albums.isInitialPagingLoad()) {
         LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_loading_albums_75c4f3))
         return
     }
-    if (albums.loadState.refresh is LoadState.Error) {
+    if (albums.isInitialPagingError()) {
         LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_failed_to_load_albums_8a8685))
         return
     }
@@ -542,11 +542,11 @@ internal fun GenreWall(
     errorLabel: String = stringResource(L10nR.string.feature_library_failed_to_load_genres_b7c102),
     emptyLabel: String = stringResource(L10nR.string.feature_library_this_library_has_no_genres_to_show_yet_11a90e),
 ) {
-    if (genres.loadState.refresh is LoadState.Loading) {
+    if (genres.isInitialPagingLoad()) {
         LibraryCollectionEmpty(loadingLabel)
         return
     }
-    if (genres.loadState.refresh is LoadState.Error) {
+    if (genres.isInitialPagingError()) {
         LibraryCollectionEmpty(errorLabel)
         return
     }
@@ -588,11 +588,11 @@ internal fun ArtistWall(
     onOpenArtist: (ArtistSummary) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (artists.loadState.refresh is LoadState.Loading) {
+    if (artists.isInitialPagingLoad()) {
         LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_loading_artists_e9b16d))
         return
     }
-    if (artists.loadState.refresh is LoadState.Error) {
+    if (artists.isInitialPagingError()) {
         LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_failed_to_load_artists_da82a6))
         return
     }

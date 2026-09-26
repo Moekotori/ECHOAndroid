@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="connect_direct_unavailable">PC が直接接続を拒否しました。Echo Link を有効にして ECHOSteam を更新してください。旧バージョンでは完全なペアリングリンクを貼り付けてください。</string>
+    <string name="connect_direct_unavailable">PC が未ペアリングのアクセスを拒否しました。両方のデバイスを同じ LAN に接続し、ECHOSteam の Echo Link で新しく生成した完全なペアリングリンクを貼り付けてください。</string>
 </resources>
