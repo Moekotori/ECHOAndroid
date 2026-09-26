@@ -78,14 +78,22 @@ class LocalScanFilterCache(
     private companion object { const val MaxFileBytes = 4 * 1024 * 1024 }
 }
 
-/** A coarse candidate filter only; the scanner still verifies the real filename before merging. */
+/**
+ * 粗筛:只留下和某条 SAF 记录同一目录的 MediaStore 行。
+ * 文件名、大小由 [LocalFileDuplicateIndex] 再核对。没有 SAF 行时不枚举曲库。
+ * mtime 和大小不在这里过滤，避免一秒或时区偏差把同一文件漏掉。
+ */
 internal fun documentDuplicateCandidates(
     native: Sequence<TrackFingerprint>,
     documents: List<TrackFingerprint>,
 ): List<TrackFingerprint> {
-    val snapshots = documents.asSequence().filter { it.sizeBytes > 0L && it.dateModifiedSeconds > 0L }
-        .map { Triple(it.relativePath, it.sizeBytes, it.dateModifiedSeconds) }.toHashSet()
-    if (snapshots.isEmpty()) return emptyList()
-    return native.filter { LibraryScanPolicy.isMediaStoreNativeId(it.id) &&
-        Triple(it.relativePath, it.sizeBytes, it.dateModifiedSeconds) in snapshots }.toList()
+    val directories = HashSet<String>()
+    for (document in documents) {
+        normalizedDuplicateDirectory(document.relativePath)?.let { directories += it }
+    }
+    if (directories.isEmpty()) return emptyList()
+    return native.filter { fingerprint ->
+        LibraryScanPolicy.isMediaStoreNativeId(fingerprint.id) &&
+            normalizedDuplicateDirectory(fingerprint.relativePath) in directories
+    }.toList()
 }

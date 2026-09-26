@@ -748,6 +748,10 @@ internal fun LibraryScanResultBanner(scanState: LibraryScanProgress) {
                 append(" · ")
                 append(stringResource(L10nR.string.scan_unmatched_cue, scanState.unmatchedCueCount))
             }
+            scanState.error?.takeIf { it.isNotBlank() }?.let { warning ->
+                append("\n")
+                append(warning)
+            }
         }
         LibraryScanPhase.Cancelled -> stringResource(L10nR.string.feature_library_scan_cancelled_the_existing_library_was_kept_266734)
         LibraryScanPhase.Error -> scanState.error ?: stringResource(L10nR.string.feature_library_library_scan_failed_94b709)

@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="library_scan_partial">스캔이 일부만 완료되었습니다. 일부 저장소를 끝까지 읽지 못했고, 기존 곡은 유지했습니다. 저장소를 확인한 뒤 다시 시도하세요.</string>
+    <string name="library_scan_partial">스캔이 일부만 완료되었습니다. 일부 저장소를 끝까지 읽지 못했고, 그 저장소의 곡은 유지했습니다. 저장소를 확인한 뒤 다시 시도하세요.</string>
     <string name="library_scan_partial_count">스캔이 일부만 완료되었습니다. 파일 또는 폴더 %1$d개를 읽지 못했습니다. 기존 곡은 유지했습니다. 저장소를 확인한 뒤 다시 시도하세요.</string>
+    <string name="library_scan_metadata_retry">스캔은 끝났지만 %1$d개 파일의 태그를 읽지 못했습니다. 이 곡은 라이브러리에 남겨 두고 다음에 다시 읽습니다.</string>
     <string name="library_scan_failed">라이브러리 스캔에 실패했습니다</string>
     <string name="library_remote_reading_index">원격 라이브러리 색인을 읽는 중</string>
     <string name="library_remote_connecting_subsonic">Navidrome/Subsonic에 연결 중</string>

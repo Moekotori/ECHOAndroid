@@ -1,5 +1,6 @@
 package app.echo.android.data
 
+import app.echo.android.model.library.CueSheetPolicy
 import app.echo.android.model.library.LibraryScanOptions
 import app.echo.android.model.library.LibrarySource
 import app.echo.android.model.platform.EchoPlatformCapabilities
@@ -35,6 +36,126 @@ object LibraryScanPolicy {
     fun isMediaStoreNativeId(trackId: String): Boolean = trackId.startsWith(MediaStoreNativeIdPrefix)
 
     fun isMediaStoreFileId(trackId: String): Boolean = trackId.startsWith(MediaStoreFileIdPrefix)
+
+    /** Audio-table id, or the base id of a cue movement. File-fallback ids are not audio rows. */
+    fun isMediaStoreAudioTrackId(trackId: String): Boolean {
+        val base = CueSheetPolicy.baseTrackId(trackId)
+        return base.startsWith(MediaStoreNativeIdPrefix) && !base.startsWith(MediaStoreFileIdPrefix)
+    }
+
+    fun isMediaStoreFileTrackId(trackId: String): Boolean =
+        CueSheetPolicy.baseTrackId(trackId).startsWith(MediaStoreFileIdPrefix)
+
+    /** Numeric MediaStore `_ID` for an audio or file row, ignoring a `#cue:` suffix. */
+    fun mediaStoreNumericId(trackId: String): String? {
+        val base = CueSheetPolicy.baseTrackId(trackId)
+        val raw = when {
+            base.startsWith(MediaStoreFileIdPrefix) -> base.removePrefix(MediaStoreFileIdPrefix)
+            base.startsWith(MediaStoreNativeIdPrefix) -> base.removePrefix(MediaStoreNativeIdPrefix)
+            else -> return null
+        }
+        return raw.toLongOrNull()?.toString()
+    }
+
+    fun cueChildrenByBase(ids: Iterable<String>): Map<String, List<String>> {
+        val grouped = LinkedHashMap<String, MutableList<String>>()
+        for (id in ids) {
+            if (!CueSheetPolicy.isCueTrackId(id)) continue
+            grouped.getOrPut(CueSheetPolicy.baseTrackId(id)) { ArrayList(2) }.add(id)
+        }
+        return grouped
+    }
+
+    /**
+     * Ids to mark seen for an unchanged file.
+     * Null means the cue shape changed: the file must be read again so movements can split or collapse.
+     * Cue text edits that keep the same movement count wait until the audio file itself changes.
+     */
+    fun rememberUnchangedCueIds(
+        trackId: String,
+        cueChildIds: Collection<String>,
+        hasCueSheet: Boolean,
+    ): List<String>? {
+        if (hasCueSheet && cueChildIds.isEmpty()) return null
+        if (!hasCueSheet && cueChildIds.isNotEmpty()) return null
+        return ArrayList<String>(cueChildIds.size + 1).apply {
+            add(trackId)
+            addAll(cueChildIds)
+        }
+    }
+
+    /** Map a SAF id onto the MediaStore row emitted for the same file, including cue movements. */
+    fun safDuplicateAliases(safBaseId: String, expandedIds: List<String>): List<Pair<String, String>> {
+        if (safBaseId.isBlank() || expandedIds.isEmpty()) return emptyList()
+        val cueIds = expandedIds.filter { CueSheetPolicy.isCueTrackId(it) }
+        if (cueIds.isEmpty()) return listOf(safBaseId to expandedIds.first())
+        val firstCue = cueIds.minWithOrNull(compareBy {
+            it.substringAfterLast(CueSheetPolicy.CueSuffix).toIntOrNull() ?: Int.MAX_VALUE
+        }) ?: cueIds.first()
+        val aliases = ArrayList<Pair<String, String>>(cueIds.size + 1)
+        aliases += safBaseId to firstCue
+        for (target in cueIds) {
+            val number = target.substringAfterLast(CueSheetPolicy.CueSuffix).toIntOrNull() ?: continue
+            aliases += CueSheetPolicy.cueTrackId(safBaseId, number) to target
+        }
+        return aliases
+    }
+
+    /**
+     * A file that is now stored only as cue movements. The old whole-file row should hand its
+     * favorites, playlists and play counts to the first movement before it is removed.
+     */
+    fun baseRowsSupersededByCue(seenIds: Set<String>, existingIds: Set<String>): List<Pair<String, String>> {
+        if (seenIds.isEmpty() || existingIds.isEmpty()) return emptyList()
+        return cueChildrenByBase(seenIds).mapNotNull { (base, children) ->
+            if (base !in existingIds || base in seenIds) return@mapNotNull null
+            val target = children.minWithOrNull(compareBy {
+                it.substringAfterLast(CueSheetPolicy.CueSuffix).toIntOrNull() ?: Int.MAX_VALUE
+            }) ?: return@mapNotNull null
+            base to target
+        }
+    }
+
+    /**
+     * Where an existing SAF row should land after a MediaStore row for the same file is in the library.
+     * Cue movements merge onto the same movement number. A whole-file SAF row merges onto the
+     * MediaStore file, or onto the first movement when that file is stored only as cue splits.
+     */
+    fun duplicateMergeTarget(
+        sourceId: String,
+        nativeBaseId: String,
+        liveIds: Set<String>,
+        cueChildren: Map<String, List<String>>,
+    ): String? {
+        if (sourceId.isBlank() || nativeBaseId.isBlank() || sourceId == nativeBaseId) return null
+        if (CueSheetPolicy.isCueTrackId(sourceId)) {
+            val number = sourceId.substringAfterLast(CueSheetPolicy.CueSuffix).toIntOrNull() ?: return null
+            val cueId = CueSheetPolicy.cueTrackId(nativeBaseId, number)
+            return cueId.takeIf { it in liveIds }
+        }
+        if (nativeBaseId in liveIds) return nativeBaseId
+        return cueChildren[nativeBaseId]?.minWithOrNull(compareBy {
+            it.substringAfterLast(CueSheetPolicy.CueSuffix).toIntOrNull() ?: Int.MAX_VALUE
+        })
+    }
+
+    /**
+     * Folder key shared by audio rows and cue files. Removable volumes use the same
+     * `Removable/<volume>/` prefix as track paths; pre-Q uses the file's parent path.
+     */
+    fun cueSheetFolder(
+        volumeName: String?,
+        mediaStoreRelativePath: String?,
+        legacyDataPath: String?,
+        primaryStorageRoot: String,
+    ): String {
+        val indexed = when {
+            mediaStoreRelativePath != null || !volumeName.isNullOrBlank() ->
+                mediaStoreRelativePathForVolume(volumeName, mediaStoreRelativePath)
+            else -> null
+        } ?: legacyDataRelativePath(legacyDataPath, primaryStorageRoot)
+        return indexed?.trim('/').orEmpty()
+    }
 
     fun isSafTrackId(trackId: String): Boolean = trackId.startsWith(SafTrackIdPrefix)
 
@@ -244,8 +365,8 @@ object LibraryScanPolicy {
     }
 
     /**
-     * 本地文件跨来源(mediastore/saf)的同一性钥匙:目录 + 文件名 + 大小 + mtime。
-     * 任一字段不可信(空/0)时返回 null,表示放弃去重判定。
+     * 精确快照键，只用于测试和索引构建。真正认同一文件用 [localFileIdentity]：
+     * 目录 + 文件名。大小和 mtime 不是同一性。
      */
     fun localFileDuplicateKey(
         relativePath: String?,
@@ -253,11 +374,18 @@ object LibraryScanPolicy {
         dateModifiedSeconds: Long,
         displayName: String? = null,
     ): String? {
-        val dir = relativePath?.replace('\\', '/')?.trim('/')?.takeIf { it.isNotBlank() } ?: return null
+        val identity = localFileIdentity(relativePath, displayName) ?: return null
         if (sizeBytes <= 0L || dateModifiedSeconds <= 0L) return null
-        val name = displayName?.takeIf { it.isNotBlank() } ?: return null
-        // 保留路径和文件名大小写，避免在区分大小写的 provider 上误合并。
+        val dir = identity.directory
+        val name = identity.name
         return "${dir.length}:$dir${name.length}:$name|$sizeBytes|$dateModifiedSeconds"
+    }
+
+    /** 目录和文件名。Unicode 用 NFC，保留大小写，避免在区分大小写的来源上把两首歌并掉。 */
+    internal fun localFileIdentity(relativePath: String?, displayName: String?): LocalFileIdentity? {
+        val directory = normalizedDuplicateDirectory(relativePath) ?: return null
+        val name = normalizedDuplicateName(displayName) ?: return null
+        return LocalFileIdentity(directory, name)
     }
 
     /**
@@ -307,7 +435,8 @@ object LibraryScanPolicy {
         incomingRelativePath: String? = null,
     ): Boolean =
         existingContentUri.isNotBlank() &&
-            existingContentUri == incomingContentUri &&
+            // Cue movements store the file uri plus an #echo-cue fragment. The file itself is unchanged.
+            CueSheetPolicy.playbackUri(existingContentUri) == CueSheetPolicy.playbackUri(incomingContentUri) &&
             existingSizeBytes == incomingSizeBytes &&
             existingDateModifiedSeconds == incomingDateModifiedSeconds &&
             // 指纹包含 relativePath:路径归一化(如卷名大小写)后必须走 Update 重写行
@@ -444,6 +573,8 @@ data class MediaStoreScanOutcome(
     val failedReadCount: Int = 0,
     val excludedDirectoryCount: Int = 0,
     val unmatchedCueCount: Int = 0,
+    /** 本次见到的整文件 id。同一路径的重复行在清理前合并。 */
+    val fileIdentities: LocalFileDuplicateIndex<String> = LocalFileDuplicateIndex.empty(),
 )
 
 data class RemoteSyncVisit(

@@ -34,7 +34,9 @@ class DocumentTreeTrackScannerAndroidTest {
         val tracks = mutableListOf<LibraryTrackEntity>()
         val key = LibraryScanPolicy.localFileDuplicateKey("Music/", 1024L, 1700000000L, "first.wav")!!
         val outcome = scanner.scanAudioTree(
-            tree, "Music/", mediaStoreDuplicateKeys = mapOf(key to indexedTrack()),
+            tree, "Music/", mediaStoreDuplicateKeys = LocalFileDuplicateIndex.fromExactKeys(
+                mapOf(key to indexedTrack()),
+            ) { it.id },
             onBatch = { tracks += it }, onProgress = { _, _ -> },
         )
         assertTrue(outcome.querySucceeded)
@@ -60,7 +62,7 @@ class DocumentTreeTrackScannerAndroidTest {
         val scanner = DocumentTreeTrackScanner(ContentResolver.wrap(provider))
         val tracks = mutableListOf<LibraryTrackEntity>()
         val first = scanner.scanAudioTree(tree, "Music/", onBatch = { tracks += it }, onProgress = { _, _ -> })
-        assertFalse(first.querySucceeded)
+        assertTrue(first.querySucceeded)
         assertEquals(1, first.failedReadCount)
         val pending = tracks.single().withScanMetadata()
         assertEquals(LibraryScanPolicy.PendingDocumentMetadataFingerprint, pending.fingerprint)

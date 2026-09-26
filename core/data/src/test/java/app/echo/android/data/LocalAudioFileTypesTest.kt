@@ -44,6 +44,28 @@ class LocalAudioFileTypesTest {
     }
 
     @Test
+    fun mediaStoreInclusionKeepsUntaggedMusicAndDropsRingtones() {
+        val sql = LocalAudioFileTypes.mediaStoreAudioInclusionSql(
+            isMusic = "is_music",
+            isPodcast = "is_podcast",
+            isRingtone = "is_ringtone",
+            isAlarm = "is_alarm",
+            isNotification = "is_notification",
+        )
+        assertTrue(sql.contains("is_music != 0"))
+        assertTrue(sql.contains("is_podcast = 0"))
+        assertTrue(sql.contains("is_ringtone = 0"))
+        val legacy = LocalAudioFileTypes.mediaStoreAudioInclusionSql(
+            isMusic = "is_music",
+            isPodcast = null,
+            isRingtone = "is_ringtone",
+            isAlarm = "is_alarm",
+            isNotification = "is_notification",
+        )
+        assertFalse(legacy.contains("is_podcast"))
+    }
+
+    @Test
     fun mediaStoreFallbackClauseCoversDsdAndSurround() {
         val (sql, args) = LocalAudioFileTypes.mediaStoreFallbackNameClause("display_name")
         assertTrue(sql.contains("display_name LIKE ?"))

@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="library_scan_partial">Scan teilweise abgeschlossen. Einige Speichervolumes konnten nicht vollständig gelesen werden; vorhandene Songs wurden behalten. Prüfen Sie den Speicher und versuchen Sie es erneut.</string>
+    <string name="library_scan_partial">Scan teilweise abgeschlossen. Einige Speichervolumes konnten nicht vollständig gelesen werden; Songs auf diesen Volumes wurden behalten. Prüfen Sie den Speicher und versuchen Sie es erneut.</string>
     <string name="library_scan_partial_count">Scan teilweise abgeschlossen: %1$d Dateien oder Ordner konnten nicht gelesen werden. Vorhandene Songs wurden behalten; prüfen Sie den Speicher und versuchen Sie es erneut.</string>
+    <string name="library_scan_metadata_retry">Scan abgeschlossen, aber %1$d Dateien hatten unlesbare Tags. Diese Titel bleiben in der Bibliothek und werden beim nächsten Scan erneut gelesen.</string>
     <string name="library_scan_failed">Bibliothek-Scan fehlgeschlagen</string>
     <string name="library_remote_reading_index">Remote-Bibliotheksindex wird gelesen</string>
     <string name="library_remote_connecting_subsonic">Verbindung mit Navidrome/Subsonic</string>

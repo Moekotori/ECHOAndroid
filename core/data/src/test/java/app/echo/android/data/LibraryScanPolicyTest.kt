@@ -659,6 +659,44 @@ class LibraryScanPolicyTest {
     }
 
     @Test
+    fun sameDirectoryAndFileNameIsOneSongDespiteMtimeOrSize() {
+        val stored = LibraryScanPolicy.localFileDuplicateKey("Music/", 1024L, 100L, "first.wav")!!
+        val index = LocalFileDuplicateIndex.fromExactKeys(mapOf(stored to "mediastore:1")) { it }
+        assertEquals("mediastore:1", index.find("Music/", 1024L, 100L, "first.wav"))
+        assertEquals("mediastore:1", index.find("Music/", 1024L, 100L + 3_600L, "first.wav"))
+        assertEquals("mediastore:1", index.find("Music/", 2048L, 100L, "first.wav"))
+        assertEquals("mediastore:1", index.find("Music", 0L, 0L, "first.wav"))
+        assertNull(index.find("Other/", 1024L, 100L, "first.wav"))
+        assertNull(index.find("Music/", 1024L, 100L, "second.wav"))
+        assertNull(index.find("Music/", 1024L, 100L, "FIRST.wav"))
+        assertNull(index.find("music/", 1024L, 100L, "first.wav"))
+    }
+
+    @Test
+    fun duplicateRowsOfOneFileKeepTheAudioTableId() {
+        val audio = LibraryScanPolicy.localFileDuplicateKey("Music/", 1024L, 100L, "a.flac")!!
+        val file = LibraryScanPolicy.localFileDuplicateKey("Music/", 1024L, 500L, "a.flac")!!
+        val saf = LibraryScanPolicy.localFileDuplicateKey("Music/", 2048L, 100L, "a.flac")!!
+        val index = LocalFileDuplicateIndex.fromExactKeys(
+            mapOf(saf to "saf:doc", file to "mediastore:file:3", audio to "mediastore:9"),
+        ) { it }
+        assertEquals("mediastore:9", index.find("Music/", 999L, 1L, "a.flac"))
+        assertEquals(
+            listOf("mediastore:file:3", "saf:doc"),
+            index.otherCopies("mediastore:9").sorted(),
+        )
+        assertEquals(1, index.duplicateGroups().size)
+        val twoAudioRows = LocalFileDuplicateIndex.fromExactKeys(
+            mapOf(
+                LibraryScanPolicy.localFileDuplicateKey("Music/", 100L, 1L, "a.flac")!! to "mediastore:2",
+                LibraryScanPolicy.localFileDuplicateKey("Music/", 200L, 1L, "a.flac")!! to "mediastore:1",
+            ),
+        ) { it }
+        assertEquals("mediastore:1", twoAudioRows.find("Music/", 300L, 9L, "a.flac"))
+        assertEquals(listOf("mediastore:2"), twoAudioRows.otherCopies("mediastore:1"))
+    }
+
+    @Test
     fun confirmedEmptyFolderDeletesButFailedTraversalNeverDoes() {
         val empty = LibraryScanCompleteness(true, 0, 12, confirmedEmpty = true)
         assertTrue(LibraryScanPolicy.shouldDeleteMissingLibraryRows(empty))
@@ -875,6 +913,113 @@ class LibraryScanPolicyTest {
                 incomingFingerprint = "raw",
                 existingFingerprint = "edited",
                 metadataEditedAtEpochMs = null,
+            ),
+        )
+    }
+
+    @Test
+    fun cueMovementIdsAreNotAudioRowIds() {
+        assertEquals("12", LibraryScanPolicy.mediaStoreNumericId("mediastore:12"))
+        assertEquals("12", LibraryScanPolicy.mediaStoreNumericId("mediastore:12#cue:2"))
+        assertEquals("9", LibraryScanPolicy.mediaStoreNumericId("mediastore:file:9"))
+        assertTrue(LibraryScanPolicy.isMediaStoreAudioTrackId("mediastore:12#cue:2"))
+        assertFalse(LibraryScanPolicy.isMediaStoreAudioTrackId("mediastore:file:9"))
+        assertTrue(LibraryScanPolicy.isMediaStoreFileTrackId("mediastore:file:9"))
+        assertEquals(
+            mapOf("saf:song" to listOf("saf:song#cue:1", "saf:song#cue:2")),
+            LibraryScanPolicy.cueChildrenByBase(listOf("saf:song", "saf:song#cue:1", "mediastore:3", "saf:song#cue:2")),
+        )
+    }
+
+    @Test
+    fun unchangedFileKeepsCueMovementsWithoutRereading() {
+        assertEquals(
+            listOf("mediastore:4", "mediastore:4#cue:1"),
+            LibraryScanPolicy.rememberUnchangedCueIds("mediastore:4", listOf("mediastore:4#cue:1"), hasCueSheet = true),
+        )
+        assertNull(
+            LibraryScanPolicy.rememberUnchangedCueIds("mediastore:4", emptyList(), hasCueSheet = true),
+        )
+        assertNull(
+            LibraryScanPolicy.rememberUnchangedCueIds("mediastore:4", listOf("mediastore:4#cue:1"), hasCueSheet = false),
+        )
+    }
+
+    @Test
+    fun folderImportAliasesCueMovementsOntoTheMediaStoreFile() {
+        assertEquals(
+            listOf(
+                "saf:doc" to "mediastore:8#cue:1",
+                "saf:doc#cue:2" to "mediastore:8#cue:2",
+                "saf:doc#cue:1" to "mediastore:8#cue:1",
+            ),
+            LibraryScanPolicy.safDuplicateAliases(
+                "saf:doc",
+                listOf("mediastore:8#cue:2", "mediastore:8#cue:1"),
+            ),
+        )
+        val live = setOf("mediastore:8#cue:1", "mediastore:8#cue:2", "saf:doc#cue:1")
+        val children = LibraryScanPolicy.cueChildrenByBase(live)
+        assertEquals(
+            "mediastore:8#cue:1",
+            LibraryScanPolicy.duplicateMergeTarget("saf:doc#cue:1", "mediastore:8", live, children),
+        )
+        assertEquals(
+            "mediastore:8#cue:1",
+            LibraryScanPolicy.duplicateMergeTarget("saf:doc", "mediastore:8", live, children),
+        )
+        assertEquals(
+            listOf("mediastore:8" to "mediastore:8#cue:1"),
+            LibraryScanPolicy.baseRowsSupersededByCue(
+                seenIds = setOf("mediastore:8#cue:2", "mediastore:8#cue:1"),
+                existingIds = setOf("mediastore:8", "mediastore:8#cue:1", "mediastore:8#cue:2"),
+            ),
+        )
+    }
+
+    @Test
+    fun cueSheetFolderUsesTheSameRemovablePrefixAsAudio() {
+        assertEquals(
+            "Removable/1d0c-1a0e/Music/Album",
+            LibraryScanPolicy.cueSheetFolder(
+                volumeName = "1D0C-1A0E",
+                mediaStoreRelativePath = "Music/Album/",
+                legacyDataPath = null,
+                primaryStorageRoot = "/storage/emulated/0",
+            ),
+        )
+        assertEquals(
+            "Music/Album",
+            LibraryScanPolicy.cueSheetFolder(
+                volumeName = "external_primary",
+                mediaStoreRelativePath = "Music/Album/",
+                legacyDataPath = null,
+                primaryStorageRoot = "/storage/emulated/0",
+            ),
+        )
+        assertEquals(
+            "Music/Album",
+            LibraryScanPolicy.cueSheetFolder(
+                volumeName = null,
+                mediaStoreRelativePath = null,
+                legacyDataPath = "/storage/emulated/0/Music/Album/album.cue",
+                primaryStorageRoot = "/storage/emulated/0",
+            ),
+        )
+    }
+
+    @Test
+    fun cueFragmentDoesNotForceAnotherDocumentMetadataRead() {
+        assertTrue(
+            LibraryScanPolicy.shouldReuseUnchangedDocumentFingerprint(
+                existingContentUri = "content://tree/doc/1#echo-cue=2",
+                incomingContentUri = "content://tree/doc/1",
+                existingSizeBytes = 1_024L,
+                incomingSizeBytes = 1_024L,
+                existingDateModifiedSeconds = 99L,
+                incomingDateModifiedSeconds = 99L,
+                existingRelativePath = "Music/",
+                incomingRelativePath = "Music/",
             ),
         )
     }

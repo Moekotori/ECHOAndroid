@@ -27,7 +27,7 @@ class DocumentTreeTrackScanner(
         relativePathPrefix: String,
         batchSize: Int = DefaultBatchSize,
         existingTracks: Map<String, TrackFingerprint> = emptyMap(),
-        mediaStoreDuplicateKeys: Map<String, LibraryTrackEntity> = emptyMap(),
+        mediaStoreDuplicateKeys: LocalFileDuplicateIndex<LibraryTrackEntity> = LocalFileDuplicateIndex.empty(),
         readSampleRate: Boolean = true,
         options: LibraryScanOptions = LibraryScanOptions(0L, 0L, false, false),
         onDuplicate: suspend (oldId: String, targetId: String) -> Unit = { _, _ -> },
@@ -51,6 +51,7 @@ class DocumentTreeTrackScanner(
 
         pendingDirectories.add(DocumentTreeDirectory(rootDocumentId, relativePath = "", lastModifiedMs = 0L))
         val treeKey = treeUri.toString()
+        val cueChildrenByBase = LibraryScanPolicy.cueChildrenByBase(existingTracks.keys)
         while (!pendingDirectories.isEmpty()) {
             coroutineContext.ensureActive()
             val directory = pendingDirectories.removeFirst()
@@ -130,45 +131,54 @@ class DocumentTreeTrackScanner(
             val unchangedIds = ArrayList<String>()
             for (row in audioRows) {
                 coroutineContext.ensureActive()
-                val duplicateKey = LibraryScanPolicy.localFileDuplicateKey(
+                val cueSheet = cueByAudioName[row.displayName]
+                val duplicate = mediaStoreDuplicateKeys.find(
                     relativePath = row.relativePath,
                     sizeBytes = row.sizeBytes,
                     dateModifiedSeconds = row.lastModifiedMs.toEpochSeconds(),
                     displayName = row.displayName,
                 )
-                val duplicate = duplicateKey?.let(mediaStoreDuplicateKeys::get)
                 if (duplicate != null) {
-                    onDuplicate("saf:${Uri.encode(row.documentId)}", duplicate.id)
-                    // Keep the stable MediaStore ID, but refresh changed tags and folder summaries too.
-                    batch += duplicate
-                    scannedCount += 1
-                    onProgress(scannedCount, duplicate)
-                    if (batch.size >= safeBatchSize) {
-                        onBatch(batch.toList())
-                        batch.clear()
+                    val expanded = cueSheet?.let { duplicate.splitByCue(it, row.displayName) } ?: listOf(duplicate)
+                    val safBaseId = "saf:${Uri.encode(row.documentId)}"
+                    LibraryScanPolicy.safDuplicateAliases(safBaseId, expanded.map { it.id }).forEach { (oldId, targetId) ->
+                        onDuplicate(oldId, targetId)
+                    }
+                    // 同一路径上的另一条曲库行（例如 mediastore:file）并进留下的 id，而不是当成另一首歌删掉。
+                    mediaStoreDuplicateKeys.otherCopies(duplicate.id).forEach { copy ->
+                        onDuplicate(copy.id, duplicate.id)
+                    }
+                    // Keep the stable MediaStore ID, including cue movements, and refresh changed tags.
+                    expanded.forEach { item ->
+                        batch += item
+                        scannedCount += 1
+                        onProgress(scannedCount, item)
+                        if (batch.size >= safeBatchSize) {
+                            onBatch(batch.toList())
+                            batch.clear()
+                        }
                     }
                     continue
                 }
                 val trackId = "saf:${Uri.encode(row.documentId)}"
-                val existingCueIds = existingTracks.keys.filter { id ->
-                    CueSheetPolicy.isCueTrackId(id) && CueSheetPolicy.baseTrackId(id) == trackId
-                }
+                val existingCueIds = cueChildrenByBase[trackId].orEmpty()
                 val existingTrack = existingTracks[trackId] ?: existingCueIds.firstOrNull()?.let(existingTracks::get)
-                val cueSheet = cueByAudioName[row.displayName]
-                if (
-                    cueSheet == null &&
-                    existingCueIds.isEmpty() &&
-                    LibraryScanPolicy.shouldReuseUnchangedDocumentTrack(
-                        existing = existingTrack?.copy(
-                            contentUri = CueSheetPolicy.playbackUri(existingTrack.contentUri),
-                        ),
-                        incomingContentUri = row.documentUri.toString(),
-                        incomingSizeBytes = row.sizeBytes,
-                        incomingDateModifiedSeconds = row.lastModifiedMs.toEpochSeconds(),
-                        incomingRelativePath = row.relativePath,
-                    )
-                ) {
-                    unchangedIds += trackId
+                val fileUnchanged = LibraryScanPolicy.shouldReuseUnchangedDocumentTrack(
+                    existing = existingTrack?.copy(
+                        contentUri = CueSheetPolicy.playbackUri(existingTrack.contentUri),
+                    ),
+                    incomingContentUri = row.documentUri.toString(),
+                    incomingSizeBytes = row.sizeBytes,
+                    incomingDateModifiedSeconds = row.lastModifiedMs.toEpochSeconds(),
+                    incomingRelativePath = row.relativePath,
+                )
+                val remembered = if (fileUnchanged) {
+                    LibraryScanPolicy.rememberUnchangedCueIds(trackId, existingCueIds, hasCueSheet = cueSheet != null)
+                } else {
+                    null
+                }
+                if (remembered != null) {
+                    unchangedIds += remembered
                     scannedCount += 1
                     continue
                 }
@@ -195,12 +205,14 @@ class DocumentTreeTrackScanner(
                         sizeBytes = row.sizeBytes,
                         lastModifiedMs = row.lastModifiedMs,
                         relativePath = row.relativePath,
-                        existingTrack = existingTrack,
+                        // An unchanged file whose cue sheet appeared or disappeared still needs a real duration.
+                        existingTrack = if (fileUnchanged) null else existingTrack,
                         readSampleRate = readSampleRate,
                     )
                 }.onSuccess { track ->
+                    // One unreadable file stays in the library and is retried. It must not block
+                    // deletion of other songs that this listing proved are gone.
                     if (track.fingerprint == LibraryScanPolicy.PendingDocumentMetadataFingerprint) {
-                        querySucceeded = false
                         failedReads++
                     }
                     if (track.id !in existingTracks &&
@@ -224,8 +236,11 @@ class DocumentTreeTrackScanner(
                     }
                 }.onFailure { error ->
                     if (error is CancellationException) throw error
-                    querySucceeded = false
                     failedReads++
+                    if (existingTrack != null) {
+                        unchangedIds += trackId
+                        unchangedIds += existingCueIds
+                    }
                     Log.w(TAG, "Skipping unreadable document tree audio file.", error)
                 }
             }

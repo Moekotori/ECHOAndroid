@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="library_scan_partial">掃描部分完成：部分儲存空間未能完整讀取，已保留原有曲目。請檢查儲存裝置後重試。</string>
+    <string name="library_scan_partial">掃描部分完成：部分儲存空間未能完整讀取，這些儲存空間上的曲目已保留。請檢查儲存裝置後重試。</string>
     <string name="library_scan_partial_count">掃描部分完成：%1$d 個檔案或目錄讀取失敗。已保留原有曲目，請檢查儲存裝置後重試。</string>
+    <string name="library_scan_metadata_retry">掃描已完成，但有 %1$d 個檔案沒能讀出標籤。這些歌先留在曲庫裡，下次掃描會再讀。</string>
     <string name="library_scan_failed">音樂庫掃描失敗</string>
     <string name="library_remote_reading_index">讀取遠端音樂庫索引</string>
     <string name="library_remote_connecting_subsonic">連線 Navidrome/Subsonic</string>

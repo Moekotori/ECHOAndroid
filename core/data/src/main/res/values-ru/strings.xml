@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="library_scan_partial">Сканирование завершено частично. Некоторые тома хранилища не удалось полностью прочитать; существующие композиции сохранены. Проверьте хранилище и повторите попытку.</string>
+    <string name="library_scan_partial">Сканирование завершено частично. Некоторые тома хранилища не удалось полностью прочитать; композиции на этих томах сохранены. Проверьте хранилище и повторите попытку.</string>
     <string name="library_scan_partial_count">Сканирование завершено частично: не удалось прочитать %1$d файлов или папок. Существующие композиции сохранены; проверьте хранилище и повторите попытку.</string>
+    <string name="library_scan_metadata_retry">Сканирование завершено, но у %1$d файлов не читаются теги. Эти композиции остаются в библиотеке и будут прочитаны снова в следующий раз.</string>
     <string name="library_scan_failed">Сканирование библиотеки не удалось</string>
     <string name="library_remote_reading_index">Чтение индекса удалённой библиотеки</string>
     <string name="library_remote_connecting_subsonic">Подключение к Navidrome/Subsonic</string>

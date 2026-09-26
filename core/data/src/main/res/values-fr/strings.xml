@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="library_scan_partial">Analyse partiellement terminée. Certains volumes de stockage n\'ont pas pu être lus entièrement ; les morceaux existants ont été conservés. Vérifiez le stockage et réessayez.</string>
+    <string name="library_scan_partial">Analyse partiellement terminée. Certains volumes de stockage n\'ont pas pu être lus entièrement ; les morceaux de ces volumes ont été conservés. Vérifiez le stockage et réessayez.</string>
     <string name="library_scan_partial_count">Analyse partiellement terminée : %1$d fichiers ou dossiers n\'ont pas pu être lus. Les morceaux existants ont été conservés ; vérifiez le stockage et réessayez.</string>
+    <string name="library_scan_metadata_retry">Analyse terminée, mais les tags de %1$d fichiers sont illisibles. Ces morceaux restent dans la bibliothèque et seront relus au prochain passage.</string>
     <string name="library_scan_failed">Échec de l\'analyse de la bibliothèque</string>
     <string name="library_remote_reading_index">Lecture de l\'index de la bibliothèque distante</string>
     <string name="library_remote_connecting_subsonic">Connexion à Navidrome/Subsonic</string>

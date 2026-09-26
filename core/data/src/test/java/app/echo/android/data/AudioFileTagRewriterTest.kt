@@ -28,11 +28,62 @@ class AudioFileTagRewriterTest {
 
     @Test
     fun id3LegacyJapaneseAndChineseTagsDecode() {
-        for ((title, encoding) in listOf("夜に駆ける" to "Shift_JIS", "青花瓷" to "GBK", "Hélène" to "ISO-8859-1")) {
+        for ((title, encoding) in listOf(
+            "夜に駆ける" to "Shift_JIS",
+            "青花瓷" to "GBK",
+            "起風了" to "GBK",
+            "周杰倫" to "Big5",
+            "봄날" to "EUC-KR",
+            "Hélène" to "ISO-8859-1",
+        )) {
             val payload = byteArrayOf(0) + title.toByteArray(java.nio.charset.Charset.forName(encoding))
             val frame = Id3FrameBytes("TIT2", payload)
             assertEquals(title, readLocalAudioTags(id3File(4, listOf(frame), FAKE_MP3).inputStream())?.title)
         }
+    }
+
+    @Test
+    fun id3v1WithoutV2UsesLegacyCharsets() {
+        val gbk = java.nio.charset.Charset.forName("GBK")
+        val tags = readLocalAudioTags(ByteArrayInputStream(FAKE_MP3 + id3v1(
+            title = "青花瓷",
+            artist = "周杰伦",
+            album = "我很忙",
+            charset = gbk,
+            year = "2007",
+            track = 3,
+        )))!!
+        assertEquals("青花瓷", tags.title)
+        assertEquals("周杰伦", tags.artist)
+        assertEquals("我很忙", tags.album)
+        assertEquals(2007, tags.year)
+        assertEquals(3, tags.trackNumber)
+
+        val big5 = readLocalAudioTags(ByteArrayInputStream(FAKE_MP3 + id3v1(
+            title = "周杰倫",
+            artist = "周杰倫",
+            album = "七里香",
+            charset = java.nio.charset.Charset.forName("Big5"),
+        )))!!
+        assertEquals("周杰倫", big5.title)
+        assertEquals("七里香", big5.album)
+    }
+
+    @Test
+    fun id3v2FieldsWinAndBlankFieldsFallBackToId3v1() {
+        val audio = FAKE_MP3 + id3v1(
+            title = "旧题",
+            artist = "周杰伦",
+            album = "我很忙",
+            charset = java.nio.charset.Charset.forName("GBK"),
+            track = 4,
+        )
+        val file = id3File(4, listOf(textFrameV24("TIT2", "新题")), audio)
+        val tags = readLocalAudioTags(ByteArrayInputStream(file))!!
+        assertEquals("新题", tags.title)
+        assertEquals("周杰伦", tags.artist)
+        assertEquals("我很忙", tags.album)
+        assertEquals(4, tags.trackNumber)
     }
 
     @Test
@@ -255,6 +306,34 @@ class AudioFileTagRewriterTest {
 
     private fun Id3FrameBytes(id: String, payload: ByteArray): ByteArray =
         id.toByteArray(Charsets.ISO_8859_1) + synchsafe(payload.size) + byteArrayOf(0, 0) + payload
+
+    private fun id3v1(
+        title: String,
+        artist: String,
+        album: String,
+        charset: java.nio.charset.Charset,
+        year: String = "2007",
+        track: Int = 1,
+    ): ByteArray {
+        val tag = ByteArray(128)
+        tag[0] = 'T'.code.toByte()
+        tag[1] = 'A'.code.toByte()
+        tag[2] = 'G'.code.toByte()
+        writeId3v1Field(tag, 3, title, charset)
+        writeId3v1Field(tag, 33, artist, charset)
+        writeId3v1Field(tag, 63, album, charset)
+        year.toByteArray(Charsets.US_ASCII).copyInto(tag, destinationOffset = 93)
+        if (track > 0) {
+            tag[125] = 0
+            tag[126] = track.toByte()
+        }
+        return tag
+    }
+
+    private fun writeId3v1Field(tag: ByteArray, offset: Int, value: String, charset: java.nio.charset.Charset) {
+        val encoded = value.toByteArray(charset)
+        encoded.copyInto(tag, destinationOffset = offset, endIndex = minOf(encoded.size, 30))
+    }
 
     private fun flacFile(comments: List<String>, audio: ByteArray): ByteArray {
         val vendor = "test".toByteArray(Charsets.UTF_8)

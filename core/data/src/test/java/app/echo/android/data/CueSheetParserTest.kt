@@ -110,6 +110,24 @@ class CueSheetParserTest {
     }
 
     @Test
+    fun decodesBig5AlbumTitles() {
+        val text = """
+            TITLE "測試專輯"
+            FILE "a.flac" WAVE
+              TRACK 01 AUDIO
+                TITLE "青花瓷"
+                INDEX 01 00:00:00
+              TRACK 02 AUDIO
+                TITLE "七里香"
+                INDEX 01 01:00:00
+        """.trimIndent()
+        val cue = CueSheetParser.parse(text.toByteArray(java.nio.charset.Charset.forName("Big5")))!!
+        assertEquals("測試專輯", cue.album)
+        assertEquals("青花瓷", cue.tracks[0].title)
+        assertEquals("七里香", cue.tracks[1].title)
+    }
+
+    @Test
     fun decodesGbkAlbumTitles() {
         val text = """
             TITLE "测试专辑"

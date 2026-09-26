@@ -95,4 +95,36 @@ class TagTextDecoderTest {
         val encoded = "雨".toByteArray(Charset.forName("GBK")) + byteArrayOf(0, 0)
         assertEquals("雨", TagTextDecoder.decode(encoded))
     }
+
+    @Test
+    fun big5TraditionalTitlesStayTraditional() {
+        val big5 = Charset.forName("Big5")
+        for (title in listOf("青花瓷", "周杰倫", "七里香", "晴天", "告白氣球", "起風了")) {
+            assertEquals(title, TagTextDecoder.decode(title.toByteArray(big5)))
+        }
+    }
+
+    @Test
+    fun eucKrHangulIsNotReadAsChinese() {
+        val eucKr = Charset.forName("EUC-KR")
+        for (title in listOf("봄날", "아이유")) {
+            assertEquals(title, TagTextDecoder.decode(title.toByteArray(eucKr)))
+        }
+    }
+
+    @Test
+    fun shiftJisKanjiWithoutKanaStaysJapanese() {
+        val shiftJis = Charset.forName("Shift_JIS")
+        for (title in listOf("残酷", "紅蓮華")) {
+            assertEquals(title, TagTextDecoder.decode(title.toByteArray(shiftJis)))
+        }
+    }
+
+    @Test
+    fun gbkTraditionalAndMixedEnglishKeepHan() {
+        val gbk = Charset.forName("GBK")
+        for (title in listOf("起風了", "風", "東風破", "周杰倫", "Love 爱", "Remix 版", "Live 现场", "01 - 起風了")) {
+            assertEquals(title, TagTextDecoder.decode(title.toByteArray(gbk)))
+        }
+    }
 }

@@ -1,5 +1,6 @@
 package app.echo.android.lyrics
 
+import app.echo.android.data.decodeLegacyTagText
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
@@ -168,12 +169,16 @@ internal object EmbeddedLyricsReader {
             else -> Id3TextEncoding(StandardCharsets.ISO_8859_1, 1)
         }
 
-    private fun decodeId3Text(payload: ByteArray, start: Int, end: Int, encoding: Id3TextEncoding): String =
-        if (start >= end || start >= payload.size) {
-            ""
+    private fun decodeId3Text(payload: ByteArray, start: Int, end: Int, encoding: Id3TextEncoding): String {
+        if (start >= end || start >= payload.size) return ""
+        val slice = payload.copyOfRange(start, end.coerceAtMost(payload.size))
+        val text = if (encoding.charset == StandardCharsets.ISO_8859_1) {
+            decodeLegacyTagText(slice).orEmpty()
         } else {
-            payload.copyOfRange(start, end.coerceAtMost(payload.size)).toString(encoding.charset).trimEnd('\u0000')
+            slice.toString(encoding.charset)
         }
+        return text.trimEnd('\u0000')
+    }
 
     private fun findTerminator(payload: ByteArray, start: Int, encoding: Id3TextEncoding): Int? {
         var index = start

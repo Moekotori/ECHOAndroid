@@ -1,11 +1,13 @@
 package app.echo.android.data
 
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.OutputStream
+import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 
@@ -63,13 +65,93 @@ internal object AudioFileTagRewriter {
         val peek = ByteArray(10)
         val peeked = readFully(input, peek)
         if (peeked <= 0) return null
-        return when {
-            isId3(peek, peeked) -> readId3ThenMaybeWav(peek, input)
-            isFlac(peek, peeked) -> readFlacFields(peek, peeked, input)
-            looksLikeRiff(peek, peeked) -> readWavFields(PrefixInputStream(peek.copyOf(peeked), input))
-            else -> null
-        }
+        if (isFlac(peek, peeked)) return readFlacFields(peek, peeked, input)
+        if (looksLikeRiff(peek, peeked)) return readWavFields(PrefixInputStream(peek.copyOf(peeked), input))
+        val id3v1 = readId3v1(input, peek.copyOf(peeked))
+        val id3 = if (isId3(peek, peeked)) readId3ThenMaybeWav(peek, input) else null
+        return mergeAudioTags(id3, id3v1)
     }
+
+    /**
+     * ID3v1 is the last 128 bytes and has no charset flag.
+     * FLAC and WAV return before this. File streams read the tail in place.
+     */
+    private fun readId3v1(input: InputStream, peek: ByteArray): AudioTagFields? {
+        val tail = when (input) {
+            is FileInputStream -> fileTail(input)
+            is ByteArrayInputStream -> inMemoryTail(input, peek)
+            else -> null
+        } ?: return null
+        return parseId3v1(tail)
+    }
+
+    private fun inMemoryTail(input: ByteArrayInputStream, peek: ByteArray): ByteArray? {
+        val remaining = input.available()
+        if (remaining < 0 || remaining > MAX_IN_MEMORY_ID3V1_BYTES || !input.markSupported()) return null
+        input.mark(remaining + 1)
+        val rest = input.readBytes()
+        input.reset()
+        val all = peek + rest
+        if (all.size < ID3V1_BYTES) return null
+        return all.copyOfRange(all.size - ID3V1_BYTES, all.size)
+    }
+
+    private fun fileTail(input: FileInputStream): ByteArray? {
+        val channel = input.channel
+        val size = runCatching { channel.size() }.getOrDefault(0L)
+        if (size < ID3V1_BYTES) return null
+        val buffer = ByteBuffer.allocate(ID3V1_BYTES)
+        val position = runCatching { channel.position() }.getOrNull()
+        val read = runCatching { channel.read(buffer, size - ID3V1_BYTES) }.getOrDefault(0)
+        if (position != null) runCatching { channel.position(position) }
+        if (read < ID3V1_BYTES) return null
+        return buffer.array()
+    }
+
+    private fun parseId3v1(tag: ByteArray): AudioTagFields? {
+        if (tag.size < ID3V1_BYTES) return null
+        if (tag[0] != 'T'.code.toByte() || tag[1] != 'A'.code.toByte() || tag[2] != 'G'.code.toByte()) return null
+        val title = decodeId3v1Field(tag.copyOfRange(3, 33))
+        val artist = decodeId3v1Field(tag.copyOfRange(33, 63))
+        val album = decodeId3v1Field(tag.copyOfRange(63, 93))
+        val year = decodeId3v1Field(tag.copyOfRange(93, 97))?.toIntOrNull()?.takeIf { it > 0 }
+        val track = if (tag[125] == 0.toByte()) (tag[126].toInt() and 0xFF).takeIf { it > 0 } else null
+        if (title.isNullOrBlank() && artist.isNullOrBlank() && album.isNullOrBlank() && year == null && track == null) {
+            return null
+        }
+        return AudioTagFields(
+            title = title.orEmpty(),
+            artist = artist.orEmpty(),
+            album = album,
+            albumArtist = null,
+            trackNumber = track,
+            discNumber = null,
+            year = year,
+        )
+    }
+
+    private fun decodeId3v1Field(raw: ByteArray): String? {
+        val slice = raw.trimId3v1Padding()
+        if (slice.isEmpty()) return null
+        val full = TagTextDecoder.decode(slice)?.takeIf { it.isNotBlank() }
+        val last = slice.last().toInt() and 0xFF
+        if (last < 0x80) return full
+        val shortened = TagTextDecoder.decode(slice.copyOf(slice.size - 1))?.takeIf { it.isNotBlank() }
+        if (shortened != null && shortened.hanCount() > (full?.hanCount() ?: 0)) return shortened
+        return full
+    }
+
+    private fun ByteArray.trimId3v1Padding(): ByteArray {
+        var end = size
+        while (end > 0) {
+            val value = this[end - 1].toInt() and 0xFF
+            if (value != 0 && value != 0x20) break
+            end -= 1
+        }
+        return if (end == size) this else copyOf(end)
+    }
+
+    private fun String.hanCount(): Int = count { it in '\u3400'..'\u4DBF' || it in '\u4E00'..'\u9FFF' }
 
     private fun rewriteId3(
         header: ByteArray,
@@ -890,6 +972,8 @@ internal object AudioFileTagRewriter {
         val payload: ByteArray,
     )
 
+    private const val ID3V1_BYTES = 128
+    private const val MAX_IN_MEMORY_ID3V1_BYTES = 8 * 1024 * 1024
     private const val COPY_BUFFER = 64 * 1024
     private const val SKIP_BUFFER = 8 * 1024
     private const val MAX_WAV_CHUNKS = 256

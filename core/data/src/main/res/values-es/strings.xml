@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="library_scan_partial">El escaneo se completó en parte. No se pudieron leer por completo algunos volúmenes de almacenamiento; se conservaron las canciones existentes. Comprueba el almacenamiento e inténtalo de nuevo.</string>
+    <string name="library_scan_partial">El escaneo se completó en parte. No se pudieron leer por completo algunos volúmenes de almacenamiento; las canciones de esos volúmenes se conservaron. Comprueba el almacenamiento e inténtalo de nuevo.</string>
     <string name="library_scan_partial_count">El escaneo se completó en parte: no se pudieron leer %1$d archivos o carpetas. Se conservaron las canciones existentes; comprueba el almacenamiento e inténtalo de nuevo.</string>
+    <string name="library_scan_metadata_retry">El escaneo terminó, pero no se pudieron leer las etiquetas de %1$d archivos. Esas canciones siguen en la biblioteca y se volverán a leer la próxima vez.</string>
     <string name="library_scan_failed">Falló el escaneo de la biblioteca</string>
     <string name="library_remote_reading_index">Leyendo el índice de la biblioteca remota</string>
     <string name="library_remote_connecting_subsonic">Conectando a Navidrome/Subsonic</string>

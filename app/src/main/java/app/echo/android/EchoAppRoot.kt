@@ -1,6 +1,7 @@
 package app.echo.android
 
 import app.echo.android.i18n.refreshEchoAppLocale
+import app.echo.android.plugin.EchoPluginsOverlay
 import androidx.compose.ui.res.stringResource
 
 import app.echo.android.model.library.LibraryScanOptions
@@ -721,6 +722,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     var searchVisible by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var errorLogVisible by remember { mutableStateOf(false) }
+    var pluginsVisible by rememberSaveable { mutableStateOf(false) }
     var selectedTab by remember { mutableIntStateOf(EchoTab.Now.ordinal) }
     var bottomDockExpanded by remember { mutableStateOf(true) }
     var bottomDockHeightPx by remember { mutableIntStateOf(0) }
@@ -952,16 +954,16 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         )
     }
 
-    EchoOverlayBackHandler(enabled = searchVisible) {
+    EchoOverlayBackHandler(enabled = searchVisible && !pluginsVisible) {
         searchVisible = false
         searchQuery = ""
     }
-    EchoOverlayBackHandler(enabled = errorLogVisible) {
+    EchoOverlayBackHandler(enabled = errorLogVisible && !pluginsVisible) {
         errorLogVisible = false
     }
-    EchoOverlayBackHandler(enabled = queueSheetVisible) { queueSheetVisible = false }
+    EchoOverlayBackHandler(enabled = queueSheetVisible && !pluginsVisible) { queueSheetVisible = false }
     EchoOverlayBackHandler(
-        enabled = nowPlayingExpanded && !queueSheetVisible,
+        enabled = nowPlayingExpanded && !queueSheetVisible && !pluginsVisible,
         onProgress = {
             nowPlayingBackRecoveryJob[0]?.cancel()
             nowPlayingBackProgress = it
@@ -982,7 +984,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         },
         onDismiss = { nowPlayingExpanded = false },
     )
-    val shellOverlayOpen = searchVisible || errorLogVisible || queueSheetVisible || nowPlayingExpanded
+    val shellOverlayOpen = searchVisible || errorLogVisible || queueSheetVisible || nowPlayingExpanded || pluginsVisible
     EchoOverlayBackHandler(enabled = !shellOverlayOpen && libraryDetailOpen) {
         closeLibraryDetail()
     }
@@ -1173,7 +1175,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             SettingsScreen(
                                 importedFontFamily = importedFontFamily,
                                 isActive = tabPagerState.currentPage == EchoPagerPage.Settings.ordinal &&
-                                    !nowPlayingExpanded && !searchVisible && !errorLogVisible && !queueSheetVisible,
+                                    !nowPlayingExpanded && !searchVisible && !errorLogVisible && !queueSheetVisible && !pluginsVisible,
                                 status = playbackStatus,
                                 trackCount = libraryStats.trackCount,
                                 albumCount = libraryStats.albumCount,
@@ -1345,6 +1347,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 },
                                 errorLogCount = errorLogCount,
                                 onOpenErrorLog = { errorLogVisible = true },
+                                onOpenPlugins = { pluginsVisible = true },
                                 backupNotice = backupNotice,
                                 onExportBackup = { backupExportLauncher.launch("echo-backup.json") },
                                 onImportBackup = {
@@ -1752,6 +1755,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     onBack = { errorLogVisible = false },
                 )
             }
+            EchoPluginsOverlay(
+                visible = pluginsVisible,
+                playback = viewModel,
+                onVisibleChange = { pluginsVisible = it },
+            )
             val permissionEntries = remember(
                 permissionActivity,
                 audioPermissionRequested,

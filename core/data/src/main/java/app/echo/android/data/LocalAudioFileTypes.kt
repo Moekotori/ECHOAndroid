@@ -52,6 +52,27 @@ internal object LocalAudioFileTypes {
         val clause = MediaStoreFallbackExtensions.joinToString(" OR ") { "$column LIKE ?" }
         return "($clause)" to MediaStoreFallbackExtensions.map { "%.$it" }.toTypedArray()
     }
+
+    /**
+     * Keep real music that MediaStore left with IS_MUSIC=0.
+     * Podcasts, ringtones, alarms and notifications stay out; those columns are optional
+     * because IS_PODCAST is only on API 29+.
+     */
+    fun mediaStoreAudioInclusionSql(
+        isMusic: String,
+        isPodcast: String?,
+        isRingtone: String,
+        isAlarm: String,
+        isNotification: String,
+    ): String {
+        val other = buildList {
+            isPodcast?.let { add("$it = 0") }
+            add("$isRingtone = 0")
+            add("$isAlarm = 0")
+            add("$isNotification = 0")
+        }.joinToString(" AND ")
+        return "($isMusic != 0 OR ($other))"
+    }
 }
 
 internal val MediaStoreFallbackExtensions = listOf(

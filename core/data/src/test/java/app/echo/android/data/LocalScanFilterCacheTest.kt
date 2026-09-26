@@ -47,11 +47,24 @@ class LocalScanFilterCacheTest {
     }
 
     @Test fun reconciliationOnlySelectsPotentialSameFileSnapshots() {
-        fun fp(id: String, path: String, size: Long = 42) = TrackFingerprint(id, "content://$id", null, "fp", size, 100, path)
-        val document = fp("saf:one", "Music/")
+        fun fp(id: String, path: String, size: Long = 42, modified: Long = 100) =
+            TrackFingerprint(id, "content://$id", null, "fp", size, modified, path)
+        val document = fp("saf:one", "Music")
         val match = fp("mediastore:one", "Music/")
-        assertEquals(listOf(match), documentDuplicateCandidates(sequenceOf(match,
-            fp("mediastore:other-dir", "Other/"), fp("mediastore:other-size", "Music/", 43)), listOf(document)))
+        val oneHourLater = fp("mediastore:skew", "Music/", modified = 3_700)
+        val otherSize = fp("mediastore:other-size", "Music/", 43)
+        assertEquals(
+            listOf(match, oneHourLater, otherSize),
+            documentDuplicateCandidates(
+                sequenceOf(
+                    match,
+                    oneHourLater,
+                    fp("mediastore:other-dir", "Other/"),
+                    otherSize,
+                ),
+                listOf(document),
+            ),
+        )
         assertTrue(documentDuplicateCandidates(sequence { error("Must not enumerate the library without SAF rows") }, emptyList()).isEmpty())
     }
 }

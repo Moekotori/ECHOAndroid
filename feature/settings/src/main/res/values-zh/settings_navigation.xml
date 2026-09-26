@@ -16,4 +16,6 @@
     <string name="settings_group_music">音乐与连接</string>
     <string name="settings_group_app">应用</string>
     <string name="settings_library_summary">%1$d 首歌曲 · %2$d 张专辑 · %3$d 位艺人</string>
+    <string name="settings_plugins">插件</string>
+    <string name="settings_plugins_summary">导入插件，并决定它能做什么。</string>
 </resources>

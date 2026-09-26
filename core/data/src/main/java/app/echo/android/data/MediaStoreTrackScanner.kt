@@ -3,6 +3,7 @@ package app.echo.android.data
 import app.echo.android.model.library.CueSheet
 import app.echo.android.model.library.CueSheetPolicy
 import app.echo.android.model.library.LibraryScanOptions
+import kotlinx.coroutines.CancellationException
 import app.echo.android.model.platform.EchoPlatformCapabilities
 import android.content.ContentResolver
 import android.content.Context
@@ -52,6 +53,8 @@ class MediaStoreTrackScanner(
         val safeBatchSize = batchSize.coerceAtLeast(1)
         val cueCatalog = loadCueSheets()
         val cueSheets = cueCatalog.byKey
+        val cueChildrenByBase = LibraryScanPolicy.cueChildrenByBase(existingTracks.keys)
+        val fileIdentities = LocalFileDuplicateIndex.builder<String> { it }
         val audioNamesByFolder = HashMap<String, HashSet<String>>()
         val batch = ArrayList<LibraryTrackEntity>(safeBatchSize)
         var scannedCount = 0
@@ -107,6 +110,7 @@ class MediaStoreTrackScanner(
                 }.getOrNull() ?: continue
                 val (track, fileName) = parsed
                 rememberAudio(track.relativePath, fileName)
+                fileIdentities.add(track.relativePath, track.sizeBytes, track.dateModifiedSeconds, fileName, track.id)
                 val expanded = expandCueTracks(track, fileName, cueSheets)
                 expanded.forEach { item ->
                     batch += item
@@ -185,6 +189,35 @@ class MediaStoreTrackScanner(
                         },
                         idPrefix = LibraryScanPolicy.MediaStoreFileIdPrefix,
                     )
+                    val trackId = row.libraryId()
+                    val existingFile = existingTracks[trackId]
+                    if (
+                        existingFile != null &&
+                        LibraryScanPolicy.isMediaStoreRowUnchanged(
+                            existing = existingFile,
+                            dateModifiedSeconds = row.dateModifiedSeconds,
+                            sizeBytes = row.sizeBytes,
+                        )
+                    ) {
+                        val excluded = !options.includesDirectory(row.relativePath)
+                        if (excluded && removeExcludedFromLibrary) {
+                            scannedCount++
+                            onSkipped()
+                            onProgress(scannedCount, null)
+                        } else {
+                            fileIdentities.add(
+                                row.relativePath,
+                                row.sizeBytes,
+                                row.dateModifiedSeconds,
+                                row.fileName,
+                                trackId,
+                            )
+                            onUnchangedIds(listOf(trackId))
+                            scannedCount++
+                            onProgress(scannedCount, null)
+                        }
+                        continue
+                    }
                     val parsed = runCatching {
                         if (!options.includesDirectory(row.relativePath)) {
                             val trackId = row.libraryId()
@@ -223,6 +256,7 @@ class MediaStoreTrackScanner(
                         Log.w(TAG, "Skipping unreadable MediaStore file audio row.", error)
                     }.getOrNull() ?: continue
                     rememberAudio(parsed.relativePath, row.fileName)
+                    fileIdentities.add(parsed.relativePath, parsed.sizeBytes, parsed.dateModifiedSeconds, row.fileName, parsed.id)
                     batch += parsed
                     scannedCount += 1
                     onProgress(scannedCount, parsed)
@@ -284,9 +318,7 @@ class MediaStoreTrackScanner(
                     coroutineContext.ensureActive()
                     val mediaId = listing.getLong(idIndex)
                     val trackId = "${LibraryScanPolicy.MediaStoreNativeIdPrefix}$mediaId"
-                    val cueIds = existingTracks.keys.filter { id ->
-                        CueSheetPolicy.isCueTrackId(id) && CueSheetPolicy.baseTrackId(id) == trackId
-                    }
+                    val cueIds = cueChildrenByBase[trackId].orEmpty()
                     val sizeBytes = listing.getLongOrNull(sizeIndex) ?: 0L
                     val dateModifiedSeconds = listing.getLongOrNull(modifiedIndex) ?: 0L
                     val rejectedByCache = existingTracks[trackId] == null && rejectedFiles?.shouldSkip(
@@ -301,7 +333,7 @@ class MediaStoreTrackScanner(
                         dataIndex = dataIndex,
                     )
                     rememberAudio(relativePath, fileName)
-                    val cueChanged = cueIds.isNotEmpty() || hasCueSheet(relativePath, fileName, cueSheets)
+                    val hasSheet = hasCueSheet(relativePath, fileName, cueSheets)
                     when (
                         LibraryScanPolicy.classifyMediaStoreProbeRow(
                             existing = existingTracks[trackId] ?: cueIds.firstOrNull()?.let(existingTracks::get),
@@ -319,10 +351,16 @@ class MediaStoreTrackScanner(
                             onSkipped()
                         }
                         MediaStoreProbeAction.RememberSeen -> {
-                            if (cueChanged) {
+                            val remembered = LibraryScanPolicy.rememberUnchangedCueIds(
+                                trackId = trackId,
+                                cueChildIds = cueIds,
+                                hasCueSheet = hasSheet,
+                            )
+                            if (remembered == null) {
                                 changedMediaIds += mediaId
                             } else {
-                                unchangedIds += trackId
+                                fileIdentities.add(relativePath, sizeBytes, dateModifiedSeconds, fileName, trackId)
+                                unchangedIds += remembered
                                 scannedCount += 1
                             }
                         }
@@ -370,10 +408,12 @@ class MediaStoreTrackScanner(
         }
         return MediaStoreScanOutcome(
             scannedCount = scannedCount,
-            querySucceeded = completeVolumeScopes.size == collections.size,
+            // 至少有一卷完整读完就可以清理那一卷。失败的卷不在 completeVolumeScopes 里，不会被删。
+            querySucceeded = completeVolumeScopes.isNotEmpty(),
             completeVolumeScopes = completeVolumeScopes,
             failedReadCount = collections.size - completeVolumeScopes.size,
             unmatchedCueCount = unmatchedCueCount,
+            fileIdentities = fileIdentities.build(),
         )
     }
 
@@ -381,53 +421,240 @@ class MediaStoreTrackScanner(
     suspend fun documentTreeDuplicateKeys(
         existing: Collection<TrackFingerprint>,
         onUnresolvedIds: (List<String>) -> Unit = {},
-    ): Map<String, LibraryTrackEntity> {
-        val keys = mutableMapOf<String, LibraryTrackEntity>()
+    ): LocalFileDuplicateIndex<LibraryTrackEntity> {
+        val identities = LocalFileDuplicateIndex.builder<LibraryTrackEntity> { it.id }
         val fingerprints = existing.associateBy { it.id }
-        for ((collectionUri, tracks) in existing.filter { LibraryScanPolicy.isMediaStoreNativeId(it.id) }
-            .groupBy { it.contentUri.substringBeforeLast('/') }) {
-            val collection = MediaStoreCollection(Uri.parse(collectionUri), null)
-            for (chunk in tracks.chunked(IdChunkSize)) {
+        resolveAudioDuplicateKeys(
+            tracks = existing.filter { LibraryScanPolicy.isMediaStoreAudioTrackId(it.id) },
+            fingerprints = fingerprints,
+            identities = identities,
+            onUnresolvedIds = onUnresolvedIds,
+        )
+        resolveFileDuplicateKeys(
+            tracks = existing.filter { LibraryScanPolicy.isMediaStoreFileTrackId(it.id) },
+            fingerprints = fingerprints,
+            identities = identities,
+            onUnresolvedIds = onUnresolvedIds,
+        )
+        return identities.build()
+    }
+
+    private suspend fun resolveAudioDuplicateKeys(
+        tracks: List<TrackFingerprint>,
+        fingerprints: Map<String, TrackFingerprint>,
+        identities: LocalFileDuplicateIndex.Builder<LibraryTrackEntity>,
+        onUnresolvedIds: (List<String>) -> Unit,
+    ) {
+        val grouped = tracks.groupBy { track ->
+            CueSheetPolicy.playbackUri(track.contentUri).substringBeforeLast('/')
+        }
+        for ((collectionUri, group) in grouped) {
+            val collection = runCatching {
+                MediaStoreCollection(Uri.parse(collectionUri), volumeNameFromMediaCollection(collectionUri))
+            }.getOrNull()
+            if (collection == null) {
+                onUnresolvedIds(group.map { it.id })
+                continue
+            }
+            val byNumeric = groupByNumericId(group, onUnresolvedIds)
+            for (chunk in byNumeric.keys.chunked(IdChunkSize)) {
                 coroutineContext.ensureActive()
+                val chunkTracks = chunk.flatMap { byNumeric[it].orEmpty() }
                 try {
-                    val args = chunk.map { it.contentUri.substringAfterLast('/') }.toTypedArray()
+                    val args = chunk.toTypedArray()
                     val cursor = contentResolver.query(
-                        collection.uri, projection().filterNot { it == SampleRateColumn }.toTypedArray(),
+                        collection.uri,
+                        projection().filterNot { it == SampleRateColumn }.toTypedArray(),
                         "${MediaStore.Audio.Media._ID} IN (${args.joinToString(",") { "?" }})",
-                        args, null,
+                        args,
+                        null,
                     )
                     if (cursor == null) {
-                        onUnresolvedIds(chunk.map { it.id })
+                        onUnresolvedIds(chunkTracks.map { it.id })
                         continue
                     }
+                    val found = HashSet<String>()
                     cursor.use {
                         val columns = MediaStoreColumns.from(cursor)
                         val nameIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
                         while (cursor.moveToNext()) {
                             coroutineContext.ensureActive()
                             val row = cursor.toAudioRow(collection, columns)
-                            val key = LibraryScanPolicy.localFileDuplicateKey(
-                                row.relativePath, row.sizeBytes, row.dateModifiedSeconds,
-                                cursor.getStringOrNull(nameIndex),
-                            )
-                            if (key == null) {
-                                onUnresolvedIds(listOf("mediastore:${row.mediaId}"))
+                            val numeric = row.mediaId.toString()
+                            found += numeric
+                            val name = cursor.getStringOrNull(nameIndex)
+                            if (LibraryScanPolicy.localFileIdentity(row.relativePath, name) == null) {
+                                onUnresolvedIds(byNumeric[numeric].orEmpty().map { it.id })
                                 continue
                             }
-                            keys[key] = row.toTrackEntity(fingerprints, readSampleRate = false)
+                            identities.add(
+                                relativePath = row.relativePath,
+                                sizeBytes = row.sizeBytes,
+                                dateModifiedSeconds = row.dateModifiedSeconds,
+                                displayName = name,
+                                value = row.toTrackEntity(
+                                    fingerprintsForBase(fingerprints, byNumeric[numeric].orEmpty(), row.libraryId()),
+                                    readSampleRate = false,
+                                ),
+                            )
                         }
                     }
-                } catch (error: kotlinx.coroutines.CancellationException) {
+                    val missing = chunkTracks
+                        .filter { LibraryScanPolicy.mediaStoreNumericId(it.id) !in found }
+                        .map { it.id }
+                    if (missing.isNotEmpty()) onUnresolvedIds(missing)
+                } catch (error: CancellationException) {
                     throw error
                 } catch (error: RuntimeException) {
                     // SAF access is sufficient for a folder scan; uncertain identity never authorizes deduplication.
-                    onUnresolvedIds(chunk.map { it.id })
+                    onUnresolvedIds(chunkTracks.map { it.id })
                     Log.w(TAG, "Cannot resolve MediaStore file identities; retaining SAF files.", error)
                 }
             }
         }
-        return keys
     }
+
+    private suspend fun resolveFileDuplicateKeys(
+        tracks: List<TrackFingerprint>,
+        fingerprints: Map<String, TrackFingerprint>,
+        identities: LocalFileDuplicateIndex.Builder<LibraryTrackEntity>,
+        onUnresolvedIds: (List<String>) -> Unit,
+    ) {
+        val grouped = tracks.groupBy { track ->
+            CueSheetPolicy.playbackUri(track.contentUri).substringBeforeLast('/')
+        }
+        for ((collectionUri, group) in grouped) {
+            val filesUri = runCatching { Uri.parse(collectionUri) }.getOrNull()
+            if (filesUri == null) {
+                onUnresolvedIds(group.map { it.id })
+                continue
+            }
+            val volumeName = volumeNameFromMediaCollection(collectionUri)
+            val byNumeric = groupByNumericId(group, onUnresolvedIds)
+            for (chunk in byNumeric.keys.chunked(IdChunkSize)) {
+                coroutineContext.ensureActive()
+                val chunkTracks = chunk.flatMap { byNumeric[it].orEmpty() }
+                try {
+                    val args = chunk.toTypedArray()
+                    val cursor = contentResolver.query(
+                        filesUri,
+                        fallbackFilesProjection(),
+                        "${MediaStore.Files.FileColumns._ID} IN (${args.joinToString(",") { "?" }})",
+                        args,
+                        null,
+                    )
+                    if (cursor == null) {
+                        onUnresolvedIds(chunkTracks.map { it.id })
+                        continue
+                    }
+                    val found = HashSet<String>()
+                    cursor.use { listing ->
+                        val idIndex = listing.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+                        val nameIndex = listing.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+                        val mimeIndex = listing.getColumnIndex(MediaStore.Files.FileColumns.MIME_TYPE)
+                        val sizeIndex = listing.getColumnIndex(MediaStore.Files.FileColumns.SIZE)
+                        val modifiedIndex = listing.getColumnIndex(MediaStore.Files.FileColumns.DATE_MODIFIED)
+                        val pathIndex = listing.getColumnIndex(MediaStore.Files.FileColumns.RELATIVE_PATH)
+                        while (listing.moveToNext()) {
+                            coroutineContext.ensureActive()
+                            val mediaId = listing.getLong(idIndex)
+                            val numeric = mediaId.toString()
+                            found += numeric
+                            val name = listing.getStringOrNull(nameIndex) ?: continue
+                            val row = MediaStoreAudioRow(
+                                mediaId = mediaId,
+                                fileName = name,
+                                contentUri = Uri.withAppendedPath(filesUri, numeric).toString(),
+                                title = name.substringBeforeLast('.', name),
+                                artist = canonicalUnknownArtist(),
+                                album = null,
+                                albumArtist = null,
+                                albumId = null,
+                                durationMs = 0L,
+                                trackNumber = null,
+                                discNumber = null,
+                                year = null,
+                                mimeType = LocalAudioFileTypes.resolvedMimeType(
+                                    name,
+                                    if (mimeIndex >= 0) listing.getStringOrNull(mimeIndex) else null,
+                                ),
+                                sizeBytes = if (sizeIndex >= 0) listing.getLongOrNull(sizeIndex) ?: 0L else 0L,
+                                sampleRateHz = null,
+                                dateModifiedSeconds = if (modifiedIndex >= 0) {
+                                    listing.getLongOrNull(modifiedIndex) ?: 0L
+                                } else {
+                                    0L
+                                },
+                                relativePath = if (pathIndex >= 0) {
+                                    LibraryScanPolicy.mediaStoreRelativePathForVolume(
+                                        volumeName = volumeName,
+                                        mediaStoreRelativePath = listing.getStringOrNull(pathIndex),
+                                    )
+                                } else {
+                                    null
+                                },
+                                idPrefix = LibraryScanPolicy.MediaStoreFileIdPrefix,
+                            )
+                            if (LibraryScanPolicy.localFileIdentity(row.relativePath, name) == null) {
+                                onUnresolvedIds(byNumeric[numeric].orEmpty().map { it.id })
+                                continue
+                            }
+                            identities.add(
+                                relativePath = row.relativePath,
+                                sizeBytes = row.sizeBytes,
+                                dateModifiedSeconds = row.dateModifiedSeconds,
+                                displayName = name,
+                                value = row.toTrackEntity(
+                                    fingerprintsForBase(fingerprints, byNumeric[numeric].orEmpty(), row.libraryId()),
+                                    readSampleRate = false,
+                                ),
+                            )
+                        }
+                    }
+                    val missing = chunkTracks
+                        .filter { LibraryScanPolicy.mediaStoreNumericId(it.id) !in found }
+                        .map { it.id }
+                    if (missing.isNotEmpty()) onUnresolvedIds(missing)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: RuntimeException) {
+                    onUnresolvedIds(chunkTracks.map { it.id })
+                    Log.w(TAG, "Cannot resolve MediaStore file identities; retaining SAF files.", error)
+                }
+            }
+        }
+    }
+
+    private fun groupByNumericId(
+        tracks: List<TrackFingerprint>,
+        onUnresolvedIds: (List<String>) -> Unit,
+    ): Map<String, List<TrackFingerprint>> {
+        val byNumeric = LinkedHashMap<String, MutableList<TrackFingerprint>>()
+        val unresolved = ArrayList<String>()
+        for (track in tracks) {
+            val numeric = LibraryScanPolicy.mediaStoreNumericId(track.id)
+            if (numeric == null) unresolved += track.id
+            else byNumeric.getOrPut(numeric) { mutableListOf() }.add(track)
+        }
+        if (unresolved.isNotEmpty()) onUnresolvedIds(unresolved)
+        return byNumeric
+    }
+
+    private fun fingerprintsForBase(
+        fingerprints: Map<String, TrackFingerprint>,
+        sameFile: List<TrackFingerprint>,
+        baseId: String,
+    ): Map<String, TrackFingerprint> {
+        if (fingerprints[baseId] != null) return fingerprints
+        val donor = sameFile.firstOrNull() ?: return fingerprints
+        return fingerprints + (baseId to donor.copy(
+            id = baseId,
+            contentUri = CueSheetPolicy.playbackUri(donor.contentUri),
+        ))
+    }
+
+    private fun volumeNameFromMediaCollection(collectionUri: String): String? =
+        runCatching { Uri.parse(collectionUri).pathSegments.firstOrNull()?.takeIf { it.isNotBlank() } }.getOrNull()
 
     private fun Cursor.toAudioRow(
         collection: MediaStoreCollection,
@@ -556,10 +783,19 @@ class MediaStoreTrackScanner(
             MediaStore.Files.FileColumns.DISPLAY_NAME,
             MediaStore.Files.FileColumns.SIZE,
         ) + if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            arrayOf(MediaStore.Files.FileColumns.RELATIVE_PATH)
+            arrayOf(
+                MediaStore.Files.FileColumns.RELATIVE_PATH,
+                MediaStore.MediaColumns.VOLUME_NAME,
+            )
         } else {
-            emptyArray()
+            @Suppress("DEPRECATION")
+            arrayOf(MediaStore.Files.FileColumns.DATA)
         }
+        @Suppress("DEPRECATION")
+        val storageRoot = Environment.getExternalStorageDirectory()
+            .absolutePath
+            .replace('\\', '/')
+            .trimEnd('/')
         val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
         } else {
@@ -585,13 +821,29 @@ class MediaStoreTrackScanner(
             } else {
                 -1
             }
+            val volumeIndex = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                listing.getColumnIndex(MediaStore.MediaColumns.VOLUME_NAME)
+            } else {
+                -1
+            }
+            @Suppress("DEPRECATION")
+            val dataIndex = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                listing.getColumnIndex(MediaStore.Files.FileColumns.DATA)
+            } else {
+                -1
+            }
             while (listing.moveToNext()) {
                 val name = listing.getStringOrNull(nameIndex) ?: continue
                 if (!LocalAudioFileTypes.isCueSheet(name, null)) continue
                 val size = if (sizeIndex >= 0) listing.getLongOrNull(sizeIndex) ?: 0L else 0L
                 if (size > CueSheetPolicy.MaxCueBytes) continue
                 val id = listing.getLong(idIndex)
-                val folder = if (pathIndex >= 0) listing.getStringOrNull(pathIndex).orEmpty().trim('/') else ""
+                val folder = LibraryScanPolicy.cueSheetFolder(
+                    volumeName = if (volumeIndex >= 0) listing.getStringOrNull(volumeIndex) else null,
+                    mediaStoreRelativePath = if (pathIndex >= 0) listing.getStringOrNull(pathIndex) else null,
+                    legacyDataPath = if (dataIndex >= 0) listing.getStringOrNull(dataIndex) else null,
+                    primaryStorageRoot = storageRoot,
+                )
                 val document = Uri.withAppendedPath(uri, id.toString())
                 val sheet = runCatching {
                     contentResolver.openInputStream(document)?.use { input ->
@@ -643,7 +895,7 @@ class MediaStoreTrackScanner(
     }
 
     private fun localFileTagBackfillMarker(): java.io.File =
-        java.io.File(appContext.filesDir, "local-file-tag-backfill-v3")
+        java.io.File(appContext.filesDir, "local-file-tag-backfill-v4")
 
     private fun aggregationKeyBackfillMarker(): java.io.File =
         java.io.File(appContext.filesDir, "library-aggregation-keys-v2")
@@ -801,7 +1053,18 @@ class MediaStoreTrackScanner(
         val (nameSql, nameArgs) = LocalAudioFileTypes.mediaStoreFallbackNameClause(
             MediaStore.Audio.Media.DISPLAY_NAME,
         )
-        val musicSelection = "(${MediaStore.Audio.Media.IS_MUSIC} != 0 OR $nameSql)"
+        val inclusion = LocalAudioFileTypes.mediaStoreAudioInclusionSql(
+            isMusic = MediaStore.Audio.Media.IS_MUSIC,
+            isPodcast = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                MediaStore.Audio.Media.IS_PODCAST
+            } else {
+                null
+            },
+            isRingtone = MediaStore.Audio.Media.IS_RINGTONE,
+            isAlarm = MediaStore.Audio.Media.IS_ALARM,
+            isNotification = MediaStore.Audio.Media.IS_NOTIFICATION,
+        )
+        val musicSelection = "($inclusion OR $nameSql)"
         if (relativePathPrefix == null) return musicSelection to nameArgs
 
         val escapedPrefix = "${escapeSqlLikeArgument(relativePathPrefix)}%"
@@ -1023,8 +1286,16 @@ private fun fallbackFilesSelection(relativePathPrefix: String?): Pair<String, Ar
         "$nameSql AND ${MediaStore.Files.FileColumns.MEDIA_TYPE} != ${MediaStore.Files.FileColumns.MEDIA_TYPE_AUDIO}" +
             " AND (${MediaStore.Files.FileColumns.MIME_TYPE} IS NULL OR ${MediaStore.Files.FileColumns.MIME_TYPE} NOT LIKE 'video/%')"
     val normalized = normalizeRelativePathPrefix(relativePathPrefix)
-    if (normalized == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-        return base to nameArgs
+    if (normalized == null) return base to nameArgs
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+        @Suppress("DEPRECATION")
+        val root = Environment.getExternalStorageDirectory()
+            .absolutePath
+            .replace('\\', '/')
+            .trimEnd('/')
+        @Suppress("DEPRECATION")
+        return "$base AND ${MediaStore.Files.FileColumns.DATA} LIKE ? ESCAPE '\\'" to
+            (nameArgs + "${escapeSqlLikeArgument("$root/$normalized")}%")
     }
     return "$base AND ${MediaStore.Files.FileColumns.RELATIVE_PATH} LIKE ? ESCAPE '\\'" to
         (nameArgs + "${escapeSqlLikeArgument(normalized)}%")

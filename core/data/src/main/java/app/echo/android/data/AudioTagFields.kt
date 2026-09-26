@@ -21,6 +21,9 @@ data class AudioTagFields(
 fun readLocalAudioTags(input: InputStream): AudioTagFields? =
     AudioFileTagRewriter.readFields(input)?.takeUnless { it.isBlank() }
 
+/** ID3 encoding 0, ID3v1, WAV INFO, CUE and other text with no charset flag. */
+fun decodeLegacyTagText(bytes: ByteArray): String? = TagTextDecoder.decode(bytes)
+
 internal fun EchoTrackMetadataUpdate.toAudioTagFields(): AudioTagFields =
     AudioTagFields(
         title = title.trim(),

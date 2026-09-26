@@ -9,6 +9,7 @@ import androidx.paging.PagingData
 import androidx.sqlite.db.SimpleSQLiteQuery
 import app.echo.android.model.error.EchoErrorLog
 import app.echo.android.model.error.EchoErrorSource
+import app.echo.android.model.library.CueSheetPolicy
 import app.echo.android.model.library.AlbumSortMode
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSortMode
@@ -1144,8 +1145,29 @@ class EchoLibraryRepository(
             )
             scannedCount = scanOutcome.scannedCount
             unmatchedCueCount = scanOutcome.unmatchedCueCount
-
+            val liveIds = HashSet<String>(existingFingerprints.size + seenIds.size)
+            liveIds.addAll(existingFingerprints.keys)
+            liveIds.addAll(seenIds)
             coroutineContext.ensureActive()
+            collapseIndexedDuplicates(dao, scanOutcome.fileIdentities, liveIds, seenIds)
+            mergeDuplicateAliases(
+                dao,
+                LibraryScanPolicy.baseRowsSupersededByCue(seenIds, liveIds),
+                liveIds,
+                seenIds,
+            )
+            if (scanOutcome.querySucceeded) {
+                reconcileLocalDuplicates(
+                    dao = dao,
+                    documents = documentFingerprints,
+                    snapshots = existingFingerprints.values.asSequence()
+                        .filter { it.id in seenIds && it.id !in changedFingerprints } +
+                        changedFingerprints.values.asSequence(),
+                    liveIds = liveIds,
+                    seenIds = seenIds,
+                )
+            }
+
             emitProgress(phase = LibraryScanPhase.CleaningRemoved)
             val completeness = LibraryScanCompleteness(
                 querySucceeded = scanOutcome.querySucceeded,
@@ -1188,15 +1210,15 @@ class EchoLibraryRepository(
                 },
             )
             if (scanOutcome.querySucceeded) {
-                reconcileLocalDuplicates(dao, documentFingerprints,
-                    existingFingerprints.values.asSequence().filter { it.id in seenIds && it.id !in changedFingerprints } +
-                        changedFingerprints.values.asSequence(),
-                )
                 reconcileChangedAlbumGrouping(dao, changedGroupingFolders)
             }
             emitProgress(
                 phase = if (scanOutcome.querySucceeded) LibraryScanPhase.Completed else LibraryScanPhase.Error,
-                error = if (scanOutcome.querySucceeded) null else text(R.string.library_scan_partial),
+                error = if (scanOutcome.failedReadCount > 0 || !scanOutcome.querySucceeded) {
+                    text(R.string.library_scan_partial)
+                } else {
+                    null
+                },
                 currentTitle = null,
                 deletedCount = deletion.deletedCount,
                 isCompleted = true,
@@ -1294,7 +1316,7 @@ class EchoLibraryRepository(
                         relativePathLike = relativePathLike,
                     )
                 ).associateBy(LibraryTrackEntity::id)
-            val duplicateAliases = mutableMapOf<String, String>()
+            val duplicateAliases = LinkedHashMap<String, String>()
             val seenIds = HashSet<String>(existingFingerprints.size)
             val unresolvedMediaStoreIds = HashSet<String>()
             val mediaStoreDuplicateKeys = scanner.documentTreeDuplicateKeys(existingFingerprints.values) {
@@ -1350,12 +1372,7 @@ class EchoLibraryRepository(
                     )
                     seenIds.addAll(classified.seenIds)
                     emitProgress(phase = LibraryScanPhase.WritingDatabase)
-                    database.withTransaction {
-                        writeClassifiedScanBatch(dao, classified)
-                        duplicateAliases.forEach { (oldId, targetId) -> dao.mergeScanDuplicate(oldId, targetId) }
-                    }
-                    seenIds.addAll(duplicateAliases.keys)
-                    duplicateAliases.clear()
+                    writeClassifiedScanBatch(dao, classified)
                     insertedCount += classified.inserts.size
                     updatedCount += classified.updates.size
                     changedGroupingFolders += LibraryAlbumGrouping.groupingFolders(
@@ -1369,8 +1386,18 @@ class EchoLibraryRepository(
             )
             scannedCount = scanOutcome.scannedCount
             unmatchedCueCount = scanOutcome.unmatchedCueCount
-
+            val liveIds = HashSet<String>(existingFingerprints.size + seenIds.size)
+            liveIds.addAll(existingFingerprints.keys)
+            liveIds.addAll(seenIds)
             coroutineContext.ensureActive()
+            mergeDuplicateAliases(dao, duplicateAliases.map { it.toPair() }, liveIds, seenIds)
+            mergeDuplicateAliases(
+                dao,
+                LibraryScanPolicy.baseRowsSupersededByCue(seenIds, liveIds),
+                liveIds,
+                seenIds,
+            )
+
             emitProgress(phase = LibraryScanPhase.CleaningRemoved, currentTitle = null)
             val deletion = deleteMissingIfComplete(
                 dao = dao,
@@ -1406,10 +1433,17 @@ class EchoLibraryRepository(
             }
             emitProgress(
                 phase = if (scanOutcome.querySucceeded) LibraryScanPhase.Completed else LibraryScanPhase.Error,
-                error = if (scanOutcome.querySucceeded) null else text(
-                    R.string.library_scan_partial_count,
-                    scanOutcome.failedReadCount,
-                ),
+                error = when {
+                    !scanOutcome.querySucceeded -> text(
+                        R.string.library_scan_partial_count,
+                        scanOutcome.failedReadCount,
+                    )
+                    scanOutcome.failedReadCount > 0 -> text(
+                        R.string.library_scan_metadata_retry,
+                        scanOutcome.failedReadCount,
+                    )
+                    else -> null
+                },
                 currentTitle = null,
                 isCompleted = true,
             )
@@ -2230,28 +2264,98 @@ class EchoLibraryRepository(
             ) ?: incoming
         }
 
+    private suspend fun mergeDuplicateAliases(
+        dao: LibraryTrackDao,
+        aliases: Iterable<Pair<String, String>>,
+        liveIds: MutableSet<String>,
+        seenIds: MutableSet<String>,
+    ) {
+        val cueChildren = LibraryScanPolicy.cueChildrenByBase(liveIds)
+        for ((oldId, targetId) in aliases) {
+            coroutineContext.ensureActive()
+            if (oldId == targetId || oldId !in liveIds) continue
+            val target = targetId.takeIf { it in liveIds }
+                ?: LibraryScanPolicy.duplicateMergeTarget(oldId, targetId, liveIds, cueChildren)
+                ?: continue
+            if (target == oldId || target !in liveIds) continue
+            dao.mergeScanDuplicate(oldId, target)
+            liveIds.remove(oldId)
+            seenIds.add(oldId)
+            yield()
+        }
+    }
+
     private suspend fun reconcileLocalDuplicates(
         dao: LibraryTrackDao,
         documents: List<TrackFingerprint>,
         snapshots: Sequence<TrackFingerprint>,
+        liveIds: MutableSet<String>,
+        seenIds: MutableSet<String>,
     ) {
         if (documents.isEmpty()) return
         val candidates = documentDuplicateCandidates(snapshots, documents)
         if (candidates.isEmpty()) return
         val native = scanner.documentTreeDuplicateKeys(candidates)
         if (native.isEmpty()) return
+        val cueChildren = LibraryScanPolicy.cueChildrenByBase(liveIds)
+        val aliases = ArrayList<Pair<String, String>>()
         for (document in documents) {
             coroutineContext.ensureActive()
+            if (document.id !in liveIds) continue
             val name = runCatching {
-                val uri = android.net.Uri.parse(document.contentUri)
+                val uri = android.net.Uri.parse(
+                    app.echo.android.model.library.CueSheetPolicy.playbackUri(document.contentUri),
+                )
                 if (uri.authority != "com.android.externalstorage.documents") return@runCatching null
                 android.provider.DocumentsContract.getDocumentId(uri).substringAfter(':').substringAfterLast('/')
             }.getOrNull() ?: continue
-            val key = LibraryScanPolicy.localFileDuplicateKey(document.relativePath, document.sizeBytes, document.dateModifiedSeconds, name) ?: continue
-            val target = native[key] ?: continue
-            dao.mergeScanDuplicate(document.id, target.id)
-            yield()
+            val target = native.find(
+                relativePath = document.relativePath,
+                sizeBytes = document.sizeBytes,
+                dateModifiedSeconds = document.dateModifiedSeconds,
+                displayName = name,
+            ) ?: continue
+            val destination = LibraryScanPolicy.duplicateMergeTarget(
+                sourceId = document.id,
+                nativeBaseId = target.id,
+                liveIds = liveIds,
+                cueChildren = cueChildren,
+            ) ?: continue
+            aliases += document.id to destination
+            for (copy in native.otherCopies(target.id)) {
+                if (copy.id == document.id || copy.id == destination || copy.id !in liveIds) continue
+                val copyDestination = if (destination in liveIds && !app.echo.android.model.library.CueSheetPolicy.isCueTrackId(copy.id)) {
+                    destination
+                } else {
+                    LibraryScanPolicy.duplicateMergeTarget(copy.id, target.id, liveIds, cueChildren)
+                } ?: continue
+                if (copy.id != copyDestination) aliases += copy.id to copyDestination
+            }
         }
+        mergeDuplicateAliases(dao, aliases, liveIds, seenIds)
+    }
+
+    private suspend fun collapseIndexedDuplicates(
+        dao: LibraryTrackDao,
+        index: LocalFileDuplicateIndex<String>,
+        liveIds: MutableSet<String>,
+        seenIds: MutableSet<String>,
+    ) {
+        val groups = index.duplicateGroups()
+        if (groups.isEmpty()) return
+        val cueChildren = LibraryScanPolicy.cueChildrenByBase(liveIds)
+        val aliases = ArrayList<Pair<String, String>>()
+        for ((keeper, copies) in groups) {
+            for (copy in copies) {
+                if (copy == keeper || copy !in liveIds) continue
+                val destination = when {
+                    keeper in liveIds -> keeper
+                    else -> LibraryScanPolicy.duplicateMergeTarget(copy, keeper, liveIds, cueChildren)
+                } ?: continue
+                if (copy != destination) aliases += copy to destination
+            }
+        }
+        mergeDuplicateAliases(dao, aliases, liveIds, seenIds)
     }
 
     private suspend fun deleteMissingIfComplete(

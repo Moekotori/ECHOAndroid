@@ -228,6 +228,7 @@ internal class LibraryController(
         try {
             foregroundWatchJob?.cancelAndJoin()
             pendingAutoWatch = false
+            pendingManualScan = null
             pendingMediaStoreRefresh = false
             val scans = localScanJobs.toList()
             scans.forEach { it.cancel() }
@@ -254,6 +255,7 @@ internal class LibraryController(
     private var foregroundWatchJob: Job? = null
     private var autoWatchRunning = false
     private var pendingAutoWatch = false
+    private var pendingManualScan: (suspend () -> Unit)? = null
     private var pendingMediaStoreRefresh = false
     private var effectivePerformanceMode: EchoEffectivePerformanceMode = EchoEffectivePerformanceMode.Balanced
 
@@ -428,11 +430,10 @@ internal class LibraryController(
                 pendingAutoWatch = true
                 return
             }
-            if (autoWatchRunning) {
-                current.cancel()
-            } else {
-                return
-            }
+            // Keep the latest user scan. Cancelling a manual scan mid-write drops a partial library.
+            pendingManualScan = block
+            if (autoWatchRunning) current.cancel()
+            return
         }
         val job = scope.launch {
             autoWatchRunning = auto
@@ -457,6 +458,12 @@ internal class LibraryController(
 
     private fun drainPendingScans() {
         if (clearingLocalIndex || scanJob?.isActive == true) return
+        val manual = pendingManualScan
+        if (manual != null) {
+            pendingManualScan = null
+            startScanJob(auto = false, manual)
+            return
+        }
         if (pendingAutoWatch) {
             pendingAutoWatch = false
             refreshWatchedTreesIfDue()
@@ -587,6 +594,7 @@ internal class LibraryController(
     fun cancelScan() {
         foregroundWatchJob?.cancel()
         pendingAutoWatch = false
+        pendingManualScan = null
         val job = scanJob
         if (job?.isActive == true) {
             job.cancel()

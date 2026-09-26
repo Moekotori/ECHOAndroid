@@ -15,4 +15,6 @@
     <string name="settings_group_music">MUSIC &amp; CONNECTIONS</string>
     <string name="settings_group_app">APPLICATION</string>
     <string name="settings_library_summary">%1$d tracks · %2$d albums · %3$d artists</string>
+    <string name="settings_plugins">Plugins</string>
+    <string name="settings_plugins_summary">Import plugins and choose what they can do.</string>
 </resources>

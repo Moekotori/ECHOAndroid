@@ -976,6 +976,7 @@ interface LibraryTrackDao {
         SELECT id FROM library_tracks
         WHERE metadataEditedAtEpochMs IS NULL
           AND (source = 'mediastore' OR source = 'saf')
+          AND id NOT LIKE '%#cue:%'
           AND clipStartMs = 0 AND clipEndMs = 0
           AND (
             lower(ifnull(mimeType, '')) IN (
@@ -1225,11 +1226,36 @@ interface LibraryTrackDao {
         rebuildLibrarySummariesForKeys(keys.albumKeys, keys.artistKeys, keys.folderKeys)
     }
 
+    @Query("SELECT DISTINCT playlistId FROM library_playlist_tracks WHERE trackId IN (:ids)")
+    suspend fun playlistIdsReferencingTracks(ids: List<String>): List<String>
+
+    @Query("DELETE FROM library_playback_stats WHERE trackId IN (:ids)")
+    suspend fun deletePlaybackStatsByTrackIds(ids: List<String>)
+
+    @Query("DELETE FROM library_playlist_tracks WHERE trackId IN (:ids)")
+    suspend fun deletePlaylistTracksByTrackIds(ids: List<String>)
+
+    @Query(
+        """
+        UPDATE library_playlists
+        SET trackCount = (
+            SELECT COUNT(*) FROM library_playlist_tracks WHERE playlistId = library_playlists.id
+        )
+        WHERE id IN (:ids)
+        """,
+    )
+    suspend fun refreshPlaylistTrackCounts(ids: List<String>)
+
     @Transaction
     suspend fun deleteScanBatch(ids: List<String>) {
         if (ids.isEmpty()) return
         var keys = LibrarySummaryKeySet()
         getSummaryKeyRows(ids).forEach { keys += it.toSummaryKeySet() }
+        val playlistIds = playlistIdsReferencingTracks(ids)
+        deleteFavoritesByTrackIds(ids)
+        deletePlaybackStatsByTrackIds(ids)
+        deletePlaylistTracksByTrackIds(ids)
+        if (playlistIds.isNotEmpty()) refreshPlaylistTrackCounts(playlistIds)
         deleteTracksByIds(ids)
         deleteFtsByTrackIds(ids)
         rebuildLibrarySummariesForKeys(keys.albumKeys, keys.artistKeys, keys.folderKeys)

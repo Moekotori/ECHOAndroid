@@ -45,6 +45,7 @@ internal fun SettingsNavigation(
     isActive: Boolean,
     compactMode: Boolean,
     summaries: Map<SettingsCategory, String>,
+    onOpenPlugins: () -> Unit,
     content: @Composable (SettingsCategory) -> Unit,
 ) {
     var selected by rememberSaveable { mutableStateOf<SettingsCategory?>(null) }
@@ -100,6 +101,19 @@ internal fun SettingsNavigation(
                                         color = settingsPanelColor(),
                                     ) {
                                         Column {
+                                            if (title == R.string.settings_group_app) {
+                                                SettingsActionRow(
+                                                    icon = Icons.Rounded.Extension,
+                                                    title = stringResource(R.string.settings_plugins),
+                                                    summary = stringResource(R.string.settings_plugins_summary),
+                                                    compactMode = compactMode,
+                                                    onClick = onOpenPlugins,
+                                                )
+                                                HorizontalDivider(
+                                                    modifier = Modifier.padding(start = 64.dp, end = 16.dp),
+                                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                                                )
+                                            }
                                             entries.forEachIndexed { index, entry ->
                                                 if (index > 0) HorizontalDivider(
                                                     modifier = Modifier.padding(start = 64.dp, end = 16.dp),
@@ -123,6 +137,48 @@ internal fun SettingsNavigation(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SettingsActionRow(
+    icon: ImageVector,
+    title: String,
+    summary: String,
+    compactMode: Boolean,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        color = Color.Transparent,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 16.dp, vertical = if (compactMode) 8.dp else 12.dp).heightIn(min = 48.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)) {
+                Icon(icon, null, Modifier.padding(8.dp).size(20.dp), tint = MaterialTheme.colorScheme.primary)
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                Text(
+                    summary,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Icon(
+                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                null,
+                Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

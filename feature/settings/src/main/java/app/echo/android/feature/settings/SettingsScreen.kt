@@ -138,10 +138,12 @@ fun SettingsScreen(
     onImportBackup: () -> Unit = {},
     notificationPermissionGranted: Boolean = true,
     onRequestNotificationPermission: () -> Unit = {},
+    onOpenPlugins: () -> Unit = {},
 ) {
     SettingsNavigation(
         isActive = isActive,
         compactMode = compactModeEnabled,
+        onOpenPlugins = onOpenPlugins,
         summaries = mapOf(
             SettingsCategory.Appearance to (stringResource(when (themeMode) {
                 "dark" -> R.string.settings_theme_dark

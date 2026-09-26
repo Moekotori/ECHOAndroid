@@ -25,6 +25,7 @@ import app.echo.android.data.toBackupSettings
 import app.echo.android.model.backup.EchoBackupDocument
 import app.echo.android.model.backup.EchoBackupException
 import app.echo.android.data.LibraryPlaybackQueuePolicy
+import app.echo.android.data.decodeLegacyTagText
 import app.echo.android.data.DocumentTreeTrackScanner
 import app.echo.android.data.EmbeddedTagWriteResult
 import app.echo.android.data.EmbeddedTagWriter
@@ -736,10 +737,12 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun importM3uPlaylist(uri: Uri) {
         viewModelScope.launch {
             val text = withContext(Dispatchers.IO) {
-                getApplication<Application>().contentResolver.openInputStream(uri)
-                    ?.bufferedReader(java.nio.charset.StandardCharsets.UTF_8)
-                    ?.use { it.readText() }
+                getApplication<Application>().contentResolver.openInputStream(uri)?.use { input ->
+                    val bytes = input.readBytes()
+                    decodeLegacyTagText(bytes) ?: bytes.toString(java.nio.charset.StandardCharsets.UTF_8)
+                }
             } ?: return@launch
+            if (text.isBlank()) return@launch
             val name = uri.lastPathSegment
                 ?.substringAfterLast('/')
                 ?.substringBeforeLast('.')

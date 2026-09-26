@@ -30,6 +30,19 @@ class M3uPlaylistCodecTest {
     }
 
     @Test
+    fun gbkPlaylistBytesKeepChineseTitles() {
+        val text = """
+            #EXTM3U
+            #EXTINF:200,周杰伦 - 青花瓷
+            Music/青花瓷.mp3
+        """.trimIndent()
+        val decoded = decodeLegacyTagText(text.toByteArray(java.nio.charset.Charset.forName("GBK")))
+        val entries = M3uPlaylistCodec.parse(decoded!!)
+        assertEquals("周杰伦 - 青花瓷", entries.single().title)
+        assertEquals("Music/青花瓷.mp3", entries.single().location)
+    }
+
+    @Test
     fun writeRoundTripKeepsOrder() {
         val body = M3uPlaylistCodec.write(
             listOf(
