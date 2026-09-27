@@ -18,7 +18,8 @@ class EchoCalendarVersionTest {
     @Test
     fun versionCodeEncodesBuildDay() {
         val expected = (today.year % 100) * 10_000 + today.monthValue * 100 + today.dayOfMonth
-        assertEquals(expected, BuildConfig.VERSION_CODE)
+        // The final two digits are reserved for same-day release revisions.
+        assertEquals(expected, BuildConfig.VERSION_CODE / 100)
     }
 
     @Test
