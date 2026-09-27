@@ -145,6 +145,7 @@ import app.echo.android.design.echoAccentColor
 import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.echoSharedPlayerArtwork
 import app.echo.android.design.LocalEchoWidthSizeClass
 import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.design.rememberSilkPagerFlingBehavior
@@ -756,6 +757,7 @@ private fun NowPlayingCoverPage(
                         artworkUri = displayedTrack?.artworkUri,
                         contentDescription = displayedTrack?.title,
                         modifier = Modifier
+                            .echoSharedPlayerArtwork(displayedTrack?.id, expandedArtwork = true)
                             .fillMaxSize()
                             .then(
                                 if (!LocalEchoEffectivePerformanceMode.current.isLightweight && LocalEchoDarkTheme.current) {

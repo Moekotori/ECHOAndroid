@@ -8,10 +8,15 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -20,22 +25,33 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-/** Share the control's interaction source, including cancelled presses and keyboard focus. */
+/** The existing click source supplies position/cancellation; this never intercepts gestures. */
 fun Modifier.echoEdgeLight(
     interactionSource: MutableInteractionSource,
     color: Color,
     cornerRadius: Dp,
+    drawEdge: Boolean = true,
 ): Modifier = composed {
     val pressed by interactionSource.collectIsPressedAsState()
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    var pressPosition by remember(interactionSource) { mutableStateOf(Offset.Unspecified) }
+    LaunchedEffect(interactionSource, lightweight) {
+        if (!lightweight) interactionSource.interactions.collect { interaction ->
+            if (interaction is PressInteraction.Press) pressPosition = interaction.pressPosition
+        }
+    }
     val light = animateFloatAsState(
         if (pressed && !lightweight) 1f else 0f,
         tween(if (lightweight) 0 else if (pressed) 100 else 340, easing = EchoMotion.Silk),
@@ -51,10 +67,23 @@ fun Modifier.echoEdgeLight(
         val stroke = Stroke(strokeWidth)
         val radius = CornerRadius((cornerRadius.toPx() - inset).coerceAtLeast(0f))
         val bounds = Size((size.width - strokeWidth).coerceAtLeast(0f), (size.height - strokeWidth).coerceAtLeast(0f))
+        val clip = Path().apply { addRoundRect(RoundRect(Rect(Offset.Zero, size), CornerRadius(cornerRadius.toPx()))) }
+        val spotRadius = minOf(size.minDimension * 0.9f, 88.dp.toPx()).coerceAtLeast(1f)
+        val spot = Brush.radialGradient(
+            listOf(Color.White.copy(alpha = 0.16f), color.copy(alpha = 0.10f), Color.Transparent),
+            center = Offset.Zero, radius = spotRadius,
+        )
         onDrawWithContent {
             drawContent()
             if (light.value > 0f) {
-                drawRoundRect(edge, Offset(inset, inset), bounds, radius, alpha = light.value, style = stroke)
+                val point = pressPosition.let {
+                    if (it.x.isFinite() && it.y.isFinite()) Offset(it.x.coerceIn(0f, size.width), it.y.coerceIn(0f, size.height))
+                    else center
+                }
+                clipPath(clip) {
+                    translate(point.x, point.y) { drawCircle(spot, spotRadius, Offset.Zero, alpha = light.value) }
+                }
+                if (drawEdge) drawRoundRect(edge, Offset(inset, inset), bounds, radius, alpha = light.value, style = stroke)
             }
         }
     }

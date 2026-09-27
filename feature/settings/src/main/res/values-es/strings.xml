@@ -502,7 +502,7 @@
     <string name="settings_track_fade_duration">Duración del fundido</string>
     <string name="settings_track_fade_seconds">%.1f s</string>
     <string name="settings_smart_transition">Transiciones inteligentes</string>
-    <string name="settings_smart_transition_detail">Beta. Cambio al ritmo; si no, gapless o fundido</string>
+    <string name="settings_smart_transition_detail">Beta. Mezcla pistas locales a velocidad normal. Si no es posible, usa el cambio normal. Si el fundido está activado, su duración limita la superposición.</string>
     <string name="settings_smart_transition_bypass">Guardado, sin uso en Ligero o USB exclusivo</string>
     <string name="settings_bg_video_disabled">Los fondos de video se pausan en modo Ligero. Se muestra el fondo predeterminado; tu selección se conserva.</string>
     <string name="settings_import_font">Importar archivo de fuente</string>

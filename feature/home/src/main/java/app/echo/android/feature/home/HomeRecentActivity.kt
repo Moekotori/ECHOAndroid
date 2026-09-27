@@ -3,7 +3,6 @@ package app.echo.android.feature.home
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -56,13 +55,12 @@ internal fun RoonRecentActivitySection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp)
             .padding(top = 4.dp, bottom = 4.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             HomeSectionHeader(stringResource(L10nR.string.feature_home_recent_activity_581ef8))
             RecentActivityTabs(
@@ -76,11 +74,12 @@ internal fun RoonRecentActivitySection(
                     title = stringResource(L10nR.string.feature_home_nothing_played_yet_988bfc),
                     subtitle = stringResource(L10nR.string.feature_home_appears_after_you_play_a_track_7f2c1a),
                     onClick = onOpenLibrary,
+                    modifier = Modifier.padding(horizontal = 24.dp),
                 )
             } else {
                 LazyRow(
                     modifier = Modifier.homeCarouselScroll(),
-                    contentPadding = PaddingValues(vertical = 4.dp),
+                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
                     items(recentPlayedTracks, key = { it.id }) { track ->
@@ -99,6 +98,7 @@ internal fun RoonRecentActivitySection(
                     else L10nR.string.feature_home_appears_after_you_scan_your_library_5ae1b0,
                 ),
                 onClick = onOpenLibrary,
+                modifier = Modifier.padding(horizontal = 24.dp),
             )
         } else {
             Crossfade(targetState = displayMode,
@@ -112,7 +112,7 @@ internal fun RoonRecentActivitySection(
                     LazyRow(
                         modifier = Modifier
                             .homeCarouselScroll(),
-                        contentPadding = PaddingValues(vertical = 4.dp),
+                        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
                         items(visibleAlbums, key = { it.albumKey }) { album ->
@@ -141,7 +141,6 @@ internal fun RecentActivityTabs(
     onSelect: (RecentActivityMode) -> Unit,
 ) {
     Surface(
-        shape = RoundedCornerShape(12.dp),
         color = Color.Transparent,
         border = null,
     ) {
@@ -205,7 +204,7 @@ private fun RecentActivityModeTab(
 @Composable
 private fun SingleRecentAlbum(album: AlbumSummary, onOpen: (AlbumSummary) -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp))
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).clip(RoundedCornerShape(4.dp))
             .homeCardClickable(onClick = { onOpen(album) })
             .padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(18.dp),

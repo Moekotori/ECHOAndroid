@@ -4,6 +4,13 @@ import app.echo.android.model.lyrics.EchoLyricLine
 
 /** Built once per document; prefix ends bound overlap lookup for duet/backing-vocal lines. */
 internal class LyricsTimeline(private val lines: List<EchoLyricLine>) {
+    private val previousContent = IntArray(lines.size).also { values ->
+        var previous = -1
+        lines.forEachIndexed { index, line ->
+            if (line.startMs >= 0 && line.text.isNotBlank()) previous = index
+            values[index] = previous
+        }
+    }
     private val ends = LongArray(lines.size).also { values ->
         var nextStart = Long.MAX_VALUE
         for (i in lines.indices.reversed()) {
@@ -35,4 +42,9 @@ internal class LyricsTimeline(private val lines: List<EchoLyricLine>) {
         return active
     }
     fun nextStart(positionMs: Long): Long? = lines.getOrNull(lastStarted(positionMs) + 1)?.startMs
+
+    // An instrumental gap ends singing, but should not reset the surrounding visual context.
+    fun contextAt(positionMs: Long): Int = previousContent.getOrElse(lastStarted(positionMs)) { -1 }
+
+    fun endAt(index: Int): Long? = ends.getOrNull(index)?.takeUnless { it == Long.MAX_VALUE }
 }

@@ -500,7 +500,7 @@
     <string name="settings_track_fade_duration">フェード時間</string>
     <string name="settings_track_fade_seconds">%.1f 秒</string>
     <string name="settings_smart_transition">スマートトランジション</string>
-    <string name="settings_smart_transition_detail">Beta。拍に合わせられれば切替。できなければギャップレスかフェード</string>
+    <string name="settings_smart_transition_detail">Beta。通常速度でローカル曲を自動ミックス。利用できない場合は通常の曲切替。フェード有効時はその長さが重なりの上限になります。</string>
     <string name="settings_smart_transition_bypass">保存済み。軽量モードまたは USB 独占では無効</string>
     <string name="settings_bg_video_disabled">軽量モードでは動画背景を停止し、デフォルトの背景を表示します。選択した動画は保持されます。</string>
     <string name="settings_import_font">フォントファイルを読み込む</string>

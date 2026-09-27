@@ -32,6 +32,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoMotion
+import app.echo.android.design.echoEdgeLight
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 
 /** Shared 24-unit optical grid for the expanded player and compact dock. */
@@ -141,7 +142,7 @@ internal fun PlayerControlButton(
         label = "player-control-press",
     )
     Box(
-        modifier = Modifier.size(touchSize).clickable(
+        modifier = Modifier.size(touchSize).echoEdgeLight(interaction, tint, 16.dp, drawEdge = false).clickable(
             interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick,
         ),
         contentAlignment = Alignment.Center,

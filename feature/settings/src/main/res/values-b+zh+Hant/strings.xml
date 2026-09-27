@@ -500,7 +500,7 @@
     <string name="settings_track_fade_duration">淡化時長</string>
     <string name="settings_track_fade_seconds">%.1f 秒</string>
     <string name="settings_smart_transition">智慧轉場</string>
-    <string name="settings_smart_transition_detail">Beta。能對拍就切；否則回退無縫或淡化</string>
+    <string name="settings_smart_transition_detail">Beta。本機歌曲正常倍速下自動混音銜接；不適用時正常切歌。開啟淡化後，淡化時長也作為重疊上限。</string>
     <string name="settings_smart_transition_bypass">已儲存，輕量檔或 USB 獨佔下不生效</string>
     <string name="settings_bg_video_disabled">輕量模式暫停影片背景，目前顯示預設背景；已保留你的影片選擇。</string>
     <string name="settings_import_font">匯入字型檔案</string>

@@ -34,7 +34,14 @@ internal fun HomeDailyAlbumSection(
         ?: return
     LaunchedEffect(album.albumKey) { selectedKey = album.albumKey }
     Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        HomeSectionHeader(stringResource(R.string.home_daily_album))
+        HomeSectionHeader(stringResource(R.string.home_daily_album)) {
+            TextButton(enabled = albums.size > 1, onClick = {
+                val index = albums.indexOfFirst { it.albumKey == album.albumKey }
+                selectedKey = albums[(index + 1) % albums.size].albumKey
+            }, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(stringResource(R.string.home_daily_album_another), style = MaterialTheme.typography.labelLarge)
+            }
+        }
         val interaction = remember { MutableInteractionSource() }
         Surface(
             onClick = { onOpen(album) }, color = Color.Transparent, shape = RoundedCornerShape(4.dp),
@@ -52,23 +59,14 @@ internal fun HomeDailyAlbumSection(
                     Text(album.albumArtist ?: album.artist ?: stringResource(R.string.feature_home_unknown_artist_85ee30),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Spacer(Modifier.height(6.dp))
+                    FilledTonalButton(onClick = { onPlay(album) }, shape = RoundedCornerShape(4.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp), modifier = Modifier.heightIn(min = 48.dp)) {
+                        Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.home_daily_album_play), style = MaterialTheme.typography.labelLarge)
+                    }
                 }
-            }
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            FilledTonalButton(onClick = { onPlay(album) }, shape = RoundedCornerShape(6.dp),
-                modifier = Modifier.heightIn(min = 48.dp)) {
-                Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(stringResource(R.string.home_daily_album_play))
-            }
-            Spacer(Modifier.weight(1f))
-            TextButton(enabled = albums.size > 1, onClick = {
-                val index = albums.indexOfFirst { it.albumKey == album.albumKey }
-                selectedKey = albums[(index + 1) % albums.size].albumKey
-            }, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text(stringResource(R.string.home_daily_album_another))
             }
         }
     }
@@ -76,9 +74,9 @@ internal fun HomeDailyAlbumSection(
 
 @Composable
 internal fun HomeRediscoverySection(albums: List<AlbumSummary>, onOpen: (AlbumSummary) -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        HomeSectionHeader(stringResource(R.string.home_rediscover))
-        LazyRow(modifier = Modifier.homeCarouselScroll(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        HomeSectionHeader(stringResource(R.string.home_rediscover), Modifier.padding(horizontal = 24.dp))
+        LazyRow(modifier = Modifier.homeCarouselScroll(), contentPadding = PaddingValues(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             items(albums, key = { it.albumKey }) { album ->
                 RecommendedAlbumCard(album, onClick = { onOpen(album) })
             }

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="remote_choose_music">選擇音樂</string>
+    <string name="remote_choose_hint">選一首歌，在 PC 上播放</string>
+    <string name="remote_queue_count">播放佇列 · %1$d</string>
+    <string name="remote_stop">停止</string>
+    <string name="remote_seek">PC 播放進度</string>
+    <string name="remote_picker_destination">在 %1$s 上播放</string>
+    <string name="remote_close">關閉</string>
+    <string name="remote_pc_library">PC 曲庫</string>
+    <string name="remote_search">搜尋歌曲、歌手或專輯</string>
+    <string name="remote_clear_search">清除搜尋</string>
+    <string name="remote_loading">正在讀取 PC 上的音樂…</string>
+    <string name="remote_no_results">找不到符合的歌曲，試試其他關鍵字。</string>
+    <string name="remote_empty_queue">PC 佇列還是空的，去 PC 曲庫選一首歌吧。</string>
+    <string name="remote_empty_library">暫無可選歌曲。在 PC 的 ECHO 中加入音樂後，重新開啟此面板。</string>
+    <string name="remote_current_track">PC 目前歌曲</string>
+</resources>

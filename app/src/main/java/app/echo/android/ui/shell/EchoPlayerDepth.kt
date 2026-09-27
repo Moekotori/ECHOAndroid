@@ -35,3 +35,23 @@ internal fun Modifier.echoPlayerDepth(
         clip = progress > 0f
     }
 }
+
+/** Keep the visible page behind the queue; cancelled drags restore the same depth. */
+@Composable
+internal fun Modifier.echoSheetDepth(visible: Boolean, dragProgress: () -> Float): Modifier {
+    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    val depth = animateFloatAsState(
+        if (visible && !lightweight) 1f else 0f,
+        if (lightweight) tween(0) else EchoMotion.silkFloat(500),
+        label = "queue-background-depth",
+    )
+    return graphicsLayer {
+        val progress = depth.value * (1f - dragProgress().coerceIn(0f, 1f))
+        transformOrigin = TransformOrigin(0.5f, 0.05f)
+        scaleX = 1f - 0.025f * progress
+        scaleY = scaleX
+        translationY = 6.dp.toPx() * progress
+        shape = RoundedCornerShape((20f * progress).dp)
+        clip = progress > 0f
+    }
+}

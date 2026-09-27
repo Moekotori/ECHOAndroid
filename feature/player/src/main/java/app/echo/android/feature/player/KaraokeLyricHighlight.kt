@@ -5,6 +5,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.style.ResolvedTextDirection
 import app.echo.android.model.lyrics.EchoLyricWord
+import java.text.BreakIterator
+import java.util.Locale
 
 internal class LyricWordShape(
     val first: Int,
@@ -14,22 +16,32 @@ internal class LyricWordShape(
     val isEmpty: Boolean get() = first >= endExclusive
 }
 
-/** Code-unit range of each word, with UTF-16 low surrogates left out of the per-glyph wipe. */
+/** Match timed text without requiring providers to preserve inter-word whitespace. */
 internal fun lyricWordShapes(text: String, words: List<EchoLyricWord>): List<LyricWordShape> {
+    val boundaries = BreakIterator.getCharacterInstance(Locale.ROOT).apply { setText(text) }
     var cursor = 0
-    return words.map { word ->
-        val start = cursor
-        val end = (cursor + word.text.length).coerceAtMost(text.length)
-        cursor += word.text.length
-        var count = 0
-        for (index in start until end) if (!text[index].isLowSurrogate()) count++
-        val glyphs = IntArray(count)
-        var filled = 0
-        for (index in start until end) {
-            if (!text[index].isLowSurrogate()) glyphs[filled++] = index
+    val shapes = ArrayList<LyricWordShape>(words.size)
+    for (word in words) {
+        var start = -1
+        var end = cursor
+        for (character in word.text) {
+            if (character.isWhitespace()) continue
+            while (cursor < text.length && text[cursor].isWhitespace()) cursor++
+            // A genuinely different transcription must not highlight unrelated characters.
+            if (cursor >= text.length || text[cursor] != character) return emptyList()
+            if (start < 0) start = cursor
+            cursor++
+            end = cursor
         }
-        LyricWordShape(start, end, glyphs)
+        if (start < 0) {
+            shapes += LyricWordShape(cursor, cursor, IntArray(0))
+            continue
+        }
+        val glyphs = (start until end).filter { !text[it].isWhitespace() && boundaries.isBoundary(it) }.toIntArray()
+        shapes += LyricWordShape(start, end, glyphs)
     }
+    if ((cursor until text.length).any { !text[it].isWhitespace() }) return emptyList()
+    return shapes
 }
 
 internal fun lyricWordEndMs(words: List<EchoLyricWord>, index: Int, lineEndMs: Long?): Long? {

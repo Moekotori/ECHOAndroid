@@ -502,7 +502,7 @@
     <string name="settings_track_fade_duration">Длительность затухания</string>
     <string name="settings_track_fade_seconds">%.1f с</string>
     <string name="settings_smart_transition">Умные переходы</string>
-    <string name="settings_smart_transition_detail">Бета. Смена по доле; иначе без паузы или затухание</string>
+    <string name="settings_smart_transition_detail">Бета. Автоматическое сведение локальных треков на обычной скорости. Если недоступно, используется обычный переход. Длительность включённого затухания ограничивает наложение.</string>
     <string name="settings_smart_transition_bypass">Сохранено, не используется в лёгком режиме или USB exclusive</string>
     <string name="settings_bg_video_disabled">Видеофоны приостановлены в лёгком режиме. Показан фон по умолчанию; ваш выбор сохранён.</string>
     <string name="settings_import_font">Импортировать файл шрифта</string>

@@ -55,4 +55,36 @@ class KaraokeLyricHighlightTest {
         assertEquals(500L, lyricWordEndMs(words, 0, 2_000L))
         assertEquals(2_000L, lyricWordEndMs(words, 1, 2_000L))
     }
+
+    @Test
+    fun wordShapesPreserveDisplaySpacingWithoutRequiringTimedSpaces() {
+        val shapes = lyricWordShapes("  Hello  world ", listOf(word(0, 500, "Hello"), word(500, 1000, "world")))
+        assertEquals(2, shapes.size)
+        assertEquals(2, shapes[0].first)
+        assertEquals(7, shapes[0].endExclusive)
+        assertEquals(9, shapes[1].first)
+        assertEquals(14, shapes[1].endExclusive)
+        assertTrue(shapes[1].glyphs.contentEquals(intArrayOf(9, 10, 11, 12, 13)))
+    }
+
+    @Test
+    fun timedWhitespaceCanDifferFromDisplayWhitespace() {
+        val shapes = lyricWordShapes("你好", listOf(word(0, 500, " 你 "), word(500, 1000, "好 ")))
+        assertEquals(2, shapes.size)
+        assertEquals(1, shapes[1].first)
+        assertEquals(2, shapes[1].endExclusive)
+    }
+
+    @Test
+    fun mismatchedOrIncompleteTranscriptionDoesNotHighlightWrongGlyphs() {
+        assertTrue(lyricWordShapes("你好", listOf(word(0, 500, "你呀"))).isEmpty())
+        assertTrue(lyricWordShapes("你好", listOf(word(0, 500, "你"))).isEmpty())
+        assertTrue(lyricWordShapes("你", listOf(word(0, 500, "你好"))).isEmpty())
+    }
+
+    @Test
+    fun combiningMarksStayWithTheirBaseCharacter() {
+        val shapes = lyricWordShapes("e\u0301好", listOf(word(0, 1000, "e\u0301好")))
+        assertTrue(shapes.single().glyphs.contentEquals(intArrayOf(0, 2)))
+    }
 }

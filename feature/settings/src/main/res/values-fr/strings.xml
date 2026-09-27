@@ -502,7 +502,7 @@
     <string name="settings_track_fade_duration">Durée du fondu</string>
     <string name="settings_track_fade_seconds">%.1f s</string>
     <string name="settings_smart_transition">Transitions intelligentes</string>
-    <string name="settings_smart_transition_detail">Bêta. Coupure sur le temps ; sinon sans blanc ou fondu</string>
+    <string name="settings_smart_transition_detail">Bêta. Mixage automatique des pistes locales à vitesse normale. Sinon, transition normale. Si le fondu est activé, sa durée limite le chevauchement.</string>
     <string name="settings_smart_transition_bypass">Enregistré, inutilisé en mode Léger ou USB exclusif</string>
     <string name="settings_bg_video_disabled">Les arrière-plans vidéo sont en pause en mode Léger. L\'arrière-plan par défaut est affiché ; votre sélection est conservée.</string>
     <string name="settings_import_font">Importer un fichier de police</string>

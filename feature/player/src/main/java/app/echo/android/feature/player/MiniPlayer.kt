@@ -64,9 +64,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.ArtworkTile
+import app.echo.android.design.EchoArtworkImage
+import app.echo.android.design.echoMiniPlayerArtworkSize
 import app.echo.android.design.echoAccentColor
 import app.echo.android.design.EchoMotion
+import app.echo.android.design.echoSharedPlayerArtwork
+import app.echo.android.design.echoEdgeLight
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.rememberEchoHapticPerformer
@@ -223,14 +226,12 @@ fun MiniPlayer(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                ArtworkTile(
+                EchoArtworkImage(
                     artworkUri = status.track?.artworkUri,
-                    modifier = Modifier.size(44.dp),
-                    accent = echoAccentColor(),
-                    showSignal = false,
-                    cornerRadius = 10.dp,
-                    elevation = 0.dp,
-                    placeholderIconSize = 22.dp,
+                    contentDescription = null,
+                    modifier = Modifier.echoSharedPlayerArtwork(status.track?.id, expandedArtwork = false).size(44.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    sizeClass = echoMiniPlayerArtworkSize(),
                 )
                 Column(
                     modifier = Modifier.weight(1f),
@@ -365,7 +366,7 @@ private fun Modifier.miniPlayerPress(
         animationSpec = tween(if (pressed) 80 else 180, easing = MiniPlayerMotionEasing),
         label = "mini-control-press",
     )
-    return clickable(
+    return echoEdgeLight(source, echoTheme().accent, 12.dp, drawEdge = false).clickable(
         interactionSource = source,
         indication = null,
         enabled = enabled,

@@ -1,8 +1,6 @@
 package app.echo.android.feature.home
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -37,11 +35,10 @@ internal fun HomeAlbumRecommendationsSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp)
             .padding(vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        HomeSectionHeader(stringResource(L10nR.string.feature_home_recommended_for_you_8335d9)) {
+        HomeSectionHeader(stringResource(L10nR.string.feature_home_recommended_for_you_8335d9), Modifier.padding(horizontal = 24.dp)) {
             IconButton(onClick = onRefresh, enabled = albums.isNotEmpty(), modifier = Modifier.size(48.dp)) {
                 Icon(Icons.Rounded.Refresh, contentDescription = stringResource(L10nR.string.feature_home_refresh_828c69),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
@@ -49,7 +46,7 @@ internal fun HomeAlbumRecommendationsSection(
         }
         LazyRow(
             modifier = Modifier.homeCarouselScroll(),
-            contentPadding = PaddingValues(vertical = 4.dp),
+            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             if (albums.isEmpty()) {
@@ -211,22 +208,22 @@ internal fun HomeFavoriteAlbumsSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp)
             .padding(vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        HomeSectionHeader(stringResource(L10nR.string.feature_home_albums_you_like_95a2b9))
+        HomeSectionHeader(stringResource(L10nR.string.feature_home_albums_you_like_95a2b9), Modifier.padding(horizontal = 24.dp))
         if (albums.isEmpty()) {
             HomeLibraryNotice(
                 title = stringResource(L10nR.string.feature_home_no_favorite_albums_yet_7c8d3b),
                 subtitle = stringResource(L10nR.string.feature_home_star_an_album_on_the_player_to_see_edd836),
                 onClick = onOpenLibrary,
+                modifier = Modifier.padding(horizontal = 24.dp),
                 )
         } else {
             LazyRow(
                 modifier = Modifier.homeCarouselScroll(),
-                contentPadding = PaddingValues(vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 items(albums.take(4), key = { it.albumKey }) { album ->
                     RecommendedAlbumCard(album = album, onClick = { onOpenAlbum(album) })
@@ -247,11 +244,8 @@ private fun EmptyRankingNotice(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(if (dark) echoTheme().panel.copy(alpha = 0.28f) else echoTheme().mist.copy(alpha = 0.42f))
-            .border(if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, Color.Transparent), RoundedCornerShape(18.dp))
             .echoClickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 14.dp),
+            .padding(vertical = 14.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(title, color = if (dark) scheme.onSurface else echoTheme().heading, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)

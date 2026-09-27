@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="remote_choose_music">Choose music</string>
+    <string name="remote_choose_hint">Choose a song to play on your PC</string>
+    <string name="remote_queue_count">Queue · %1$d</string>
+    <string name="remote_stop">Stop</string>
+    <string name="remote_seek">PC playback position</string>
+    <string name="remote_picker_destination">Play on %1$s</string>
+    <string name="remote_close">Close</string>
+    <string name="remote_pc_library">PC library</string>
+    <string name="remote_search">Search songs, artists or albums</string>
+    <string name="remote_clear_search">Clear search</string>
+    <string name="remote_loading">Loading music from your PC…</string>
+    <string name="remote_no_results">No matching songs. Try another search.</string>
+    <string name="remote_empty_queue">The PC queue is empty. Choose a song from the PC library.</string>
+    <string name="remote_empty_library">No songs are available. Add music to ECHO on your PC, then reopen this panel.</string>
+    <string name="remote_current_track">Current PC track</string>
+</resources>

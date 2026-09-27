@@ -39,9 +39,11 @@ internal fun HomeResumeSection(
                     style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                 Text(track.title, style = MaterialTheme.typography.titleSmall,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(track.artist, style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                ResumePosition(positionState, status.positionMs, status.durationMs)
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(track.artist, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    ResumePosition(positionState, status.positionMs, status.durationMs)
+                }
             }
             IconButton(onClick = onResume, modifier = Modifier.size(48.dp)) {
                 Icon(if (status.isPlaying) Icons.AutoMirrored.Rounded.ArrowForward else Icons.Rounded.PlayArrow,

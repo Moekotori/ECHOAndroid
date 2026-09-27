@@ -39,12 +39,15 @@ internal class EchoRenderersFactory(
         context: Context,
         enableFloatOutput: Boolean,
         enableAudioTrackPlaybackParams: Boolean,
-    ): AudioSink =
-        DefaultAudioSink.Builder(context)
+    ): AudioSink {
+        val processor = EchoDspAudioProcessor(arrayOf(smartTransitionProcessor, equalizerProcessor, channelBalanceProcessor))
+        val sink = DefaultAudioSink.Builder(context)
             // Custom DSP uses internal float buffers and preserves the negotiated output encoding.
             .setEnableFloatOutput(false)
             .setEnableAudioOutputPlaybackParameters(enableAudioTrackPlaybackParams)
-            .setAudioProcessors(arrayOf(EchoDspAudioProcessor(arrayOf(smartTransitionProcessor, equalizerProcessor, channelBalanceProcessor))))
+            .setAudioProcessors(arrayOf(processor))
             .setAudioOutputProvider(EchoAudioOutputProvider(context))
             .build()
+        return EchoTransitionClockAudioSink(sink, processor)
+    }
 }

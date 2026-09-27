@@ -62,4 +62,12 @@ class EchoSmartTransitionPcmTest {
         assertEquals(-0.75f, EchoSmartTransitionPcm.readSample(pcmFloat, AudioFormat.ENCODING_PCM_FLOAT), 0.0001f)
         assertTrue(abs(EchoSmartTransitionPcm.bytesPerSample(AudioFormat.ENCODING_PCM_24BIT_PACKED) - 3) < 1)
     }
+
+    @Test
+    fun codecBuffersAreTrimmedAtBothWindowEdges() {
+        assertEquals(480 until 960, EchoSmartTransitionPcm.windowFrames(0, 1024, 48_000, 10_000, 20_000))
+        assertEquals(0 until 0, EchoSmartTransitionPcm.windowFrames(30_000, 1024, 48_000, 10_000, 20_000))
+        assertEquals(0 until 480, EchoSmartTransitionPcm.windowFrames(10_000, 1024, 48_000, 10_000, 20_000))
+        assertEquals(1024 until 1024, EchoSmartTransitionPcm.windowFrames(0, 1024, 48_000, 40_000, 50_000))
+    }
 }

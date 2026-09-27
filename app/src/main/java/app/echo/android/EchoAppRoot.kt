@@ -111,6 +111,9 @@ import app.echo.android.ui.library.EchoLibraryPage
 import app.echo.android.playback.EchoPlaybackProcessRuntime
 import app.echo.android.ui.playback.EchoNowPlayingHost
 import app.echo.android.ui.shell.echoPlayerDepth
+import app.echo.android.ui.shell.echoSheetDepth
+import app.echo.android.design.EchoPlayerTransitionRoot
+import app.echo.android.design.EchoExpandedPlayer
 import app.echo.android.ui.shell.EchoBottomDockHost
 import app.echo.android.ui.shell.EchoPagerPage
 import app.echo.android.ui.shell.dockTab
@@ -749,6 +752,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     }
     var lyricsLaunchToken by remember { mutableIntStateOf(0) }
     var queueSheetVisible by remember { mutableStateOf(false) }
+    var queueDragProgress by remember { mutableFloatStateOf(0f) }
     val openLyricsRequest by EchoLaunchActions.openLyrics.collectAsStateWithLifecycle()
     LaunchedEffect(openLyricsRequest) {
         if (openLyricsRequest) {
@@ -1020,8 +1024,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         effectivePerformanceMode = effectivePerformanceMode,
         customBackgroundActive = customBackgroundActive,
     ) {
-        Box(
-            Modifier
+        EchoPlayerTransitionRoot(
+            expanded = nowPlayingExpanded,
+            modifier = Modifier
                 .fillMaxSize()
                 .echoLocaleSwitchLayer(
                     progress = localeSwitchProgress,
@@ -1047,7 +1052,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             Box(
                 modifier = Modifier.fillMaxSize()
                     .alpha(if (customBackgroundActive && (searchVisible || errorLogVisible)) 0f else 1f)
-                    .echoPlayerDepth(nowPlayingExpanded) { maxOf(nowPlayingBackProgress, nowPlayingDragProgress) },
+                    .echoPlayerDepth(nowPlayingExpanded) { maxOf(nowPlayingBackProgress, nowPlayingDragProgress) }
+                    .echoSheetDepth(queueSheetVisible) { queueDragProgress },
             ) {
                 val tabPagerFling = rememberSilkPagerFlingBehavior(tabPagerState)
                 val enteringInnerTabPage =
@@ -1602,22 +1608,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                 )
             }
 
-            AnimatedVisibility(
+            EchoExpandedPlayer(
                 visible = nowPlayingExpanded,
-                enter = if (effectivePerformanceMode.isLightweight) {
-                    fadeIn(tween(durationMillis = motionDuration(90, effectivePerformanceMode)))
-                } else {
-                    androidx.compose.animation.slideInVertically(
-                        EchoMotion.silkOffset(motionDuration(460, effectivePerformanceMode)),
-                    ) { it }
-                },
-                exit = if (effectivePerformanceMode.isLightweight) {
-                    fadeOut(tween(durationMillis = motionDuration(90, effectivePerformanceMode)))
-                } else {
-                    androidx.compose.animation.slideOutVertically(
-                        EchoMotion.silkOffset(motionDuration(380, effectivePerformanceMode)),
-                    ) { it }
-                },
+                modifier = Modifier.echoSheetDepth(queueSheetVisible) { queueDragProgress },
             ) {
                 EchoNowPlayingHost(
                     viewModel = viewModel,
@@ -1661,6 +1654,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     status = playbackStatus,
                     queueState = playbackQueue,
                     onDismiss = { queueSheetVisible = false },
+                    onDragProgress = { queueDragProgress = it },
                     onPlayItem = viewModel::playQueueItem,
                     onRemoveItem = viewModel::removeQueueItem,
                     onMoveItem = viewModel::moveQueueItem,

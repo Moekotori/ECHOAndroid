@@ -506,7 +506,7 @@
     <string name="settings_track_fade_duration">Fade duration</string>
     <string name="settings_track_fade_seconds">%.1f s</string>
     <string name="settings_smart_transition">Smart transitions</string>
-    <string name="settings_smart_transition_detail">Beta. Beat-aware handoff; otherwise gapless or fade</string>
+    <string name="settings_smart_transition_detail">Beta. Automatically blends local tracks at normal speed. Falls back to normal playback when unavailable; fade duration also limits the overlap.</string>
     <string name="settings_smart_transition_bypass">Saved, unused in Lightweight or USB exclusive</string>
     <string name="settings_bg_video_disabled">Video backgrounds are paused in Lightweight mode. The default background is shown; your selection is retained.</string>
     <string name="settings_import_font">Import font file</string>

@@ -24,8 +24,9 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
         val epoch: Long,
         val sampleRateHz: Int,
     ) {
-        @Volatile var readFrame: Int = 0
-        @Volatile var held: Int = 0
+        var readFrame: Int = 0
+        @Volatile var mixedFrames: Int = 0
+        var held: Int = 0
         var outLow0 = 0f
         var outLow1 = 0f
         var inLow0 = 0f
@@ -45,10 +46,10 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
     private var frameCursor = 0L
 
     val mixedIncomingFrames: Int
-        get() = lastSession?.readFrame ?: 0
+        get() = lastSession?.mixedFrames ?: 0
 
     val mixing: Boolean
-        get() = session.get()?.let { it.readFrame < it.frames } == true
+        get() = session.get()?.let { it.mixedFrames < it.frames } == true
 
     val outputSampleRateHz: Int?
         get() = inputAudioFormat.takeIf { it != AudioProcessor.AudioFormat.NOT_SET }?.sampleRate
@@ -98,6 +99,7 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
 
     fun cancel() {
         session.set(null)
+        lastSession = null
     }
 
     override fun isActive(): Boolean = enabled && super.isActive()
@@ -139,15 +141,22 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
             }
         }
         output.flip()
+        mix.mixedFrames = mix.readFrame
         processedPositionUs = frameCursor * 1_000_000L / format.sampleRate
     }
 
     override fun onFlush(streamMetadata: AudioProcessor.StreamMetadata) {
         streamEpoch += 1
         session.set(null)
+        lastSession = null
+        anchorPosition(streamMetadata.positionOffsetUs)
+    }
+
+    /** Called only by the audio thread when the enclosing DSP stream starts. */
+    internal fun anchorPosition(positionUs: Long) {
         val rate = outputSampleRateHz ?: 48_000
-        frameCursor = streamMetadata.positionOffsetUs * rate / 1_000_000L
-        processedPositionUs = streamMetadata.positionOffsetUs
+        frameCursor = positionUs * rate / 1_000_000L
+        processedPositionUs = positionUs
     }
 
     override fun onReset() {
@@ -243,10 +252,6 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
         outgoing: (Int, Float) -> Unit,
     ): Boolean {
         val position = frameCursor++
-        if (session.get() !== mix || mix.epoch != streamEpoch) {
-            for (channel in 0 until channels) outgoing(channel, incoming())
-            return false
-        }
         if (mix.startFrame?.let { position < it } ?: (mix.held < mix.holdFrames)) {
             for (channel in 0 until channels) outgoing(channel, incoming())
             mix.held += 1

@@ -502,7 +502,7 @@
     <string name="settings_track_fade_duration">페이드 시간</string>
     <string name="settings_track_fade_seconds">%.1f초</string>
     <string name="settings_smart_transition">스마트 전환</string>
-    <string name="settings_smart_transition_detail">베타. 박자에 맞으면 전환. 아니면 갭리스 또는 페이드</string>
+    <string name="settings_smart_transition_detail">베타. 기본 속도로 로컬 곡을 자동 믹싱합니다. 사용할 수 없으면 일반 전환을 사용하며, 페이드가 켜져 있으면 페이드 시간이 겹침의 상한입니다.</string>
     <string name="settings_smart_transition_bypass">저장됨. 경량 모드 또는 USB 전용에서는 사용하지 않음</string>
     <string name="settings_bg_video_disabled">경량 모드에서는 동영상 배경을 멈추고 기본 배경을 표시합니다. 선택한 동영상은 유지됩니다.</string>
     <string name="settings_import_font">글꼴 파일 가져오기</string>

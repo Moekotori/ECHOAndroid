@@ -109,6 +109,10 @@ class EchoDspAudioProcessorTest {
         assertEquals(0.25f, processor.output.order(ByteOrder.nativeOrder()).float, 0.0001f)
 
         mixer.setEnabled(true)
+        // A format activation invalidates plans made before its flush.
+        val warmup = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).putFloat(0.5f).also { it.flip() }
+        processor.queueInput(warmup)
+        processor.output
         mixer.arm(floatArrayOf(1f, 1f), frames = 2, channels = 1)
         val input = ByteBuffer.allocateDirect(8).order(ByteOrder.nativeOrder())
         input.putFloat(0.5f).putFloat(0.5f).flip()
@@ -150,5 +154,28 @@ class EchoDspAudioProcessorTest {
         assertTrue(abs(kernel.left - 0.5f) < 0.001f)
         kernel.reset(); kernel.process(0f, 0f, true)
         assertEquals(0f, kernel.left, 0f); assertEquals(0f, kernel.right, 0f)
+    }
+
+    @Test fun smartClockUsesSinkTimestampAndSurvivesMidTrackEnable() {
+        clear()
+        val mixer = EchoSmartTransitionMixer()
+        val processor = EchoDspAudioProcessor(arrayOf(mixer))
+        processor.configure(AudioProcessor.AudioFormat(48_000, 1, C.ENCODING_PCM_FLOAT))
+        processor.flush(AudioProcessor.StreamMetadata.DEFAULT)
+        processor.inputPositionUs = 20_000_000
+        fun feed() {
+            val input = ByteBuffer.allocateDirect(192).order(ByteOrder.nativeOrder())
+            repeat(48) { input.putFloat(0.1f) }; input.flip()
+            processor.queueInput(input); processor.output
+        }
+        feed()
+        mixer.setEnabled(true)
+        feed()
+        assertEquals(20_002_000L, mixer.processedPositionUs)
+        processor.flush(AudioProcessor.StreamMetadata.DEFAULT)
+        processor.inputPositionUs = 40_000_000
+        feed()
+        assertEquals(40_001_000L, mixer.processedPositionUs)
+        processor.reset()
     }
 }

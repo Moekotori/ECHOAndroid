@@ -1,7 +1,7 @@
 package app.echo.android.feature.player
 
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -69,28 +69,39 @@ internal fun LyricsLineList(
         // 进度经 State 引用传入 item,让行 lambda 捕获保持稳定:
         // 进度 tick 只重组"当前行"(逐词高亮),行切换才重组可见行。
         val timeline = remember(lyrics) { LyricsTimeline(lyrics.lines) }
-        val activeIndices by remember(timeline) { derivedStateOf {
+        val activeIndices by remember(timeline, positionMsState) { derivedStateOf {
             if (synced) timeline.activeAt(positionMsState.value) else emptySet()
         } }
         val activeIndex = activeIndices.minOrNull() ?: -1
+        val contextIndex by remember(timeline, positionMsState) { derivedStateOf {
+            if (synced) timeline.contextAt(positionMsState.value) else -1
+        } }
+        val focusIndex = if (activeIndex >= 0) activeIndex else contextIndex
         val listState = rememberLazyListState()
         val dragging by listState.interactionSource.collectIsDraggedAsState()
         var following by remember(lyrics) { mutableStateOf(true) }
         var calibrationIndex by remember(lyrics) { mutableStateOf<Int?>(null) }
         LaunchedEffect(dragging) { if (dragging) following = false }
-        LaunchedEffect(activeIndex, lyrics, following, animationsVisible, scrollDuration) {
-            if (synced && activeIndex >= 0 && following && animationsVisible) {
-                val target = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == activeIndex }
+        LaunchedEffect(focusIndex, lyrics, following, animationsVisible, scrollDuration) {
+            if (synced && focusIndex >= 0 && following && animationsVisible) {
+                val target = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == focusIndex }
                 if (target != null) {
                     // Item offsets exclude the leading content padding: zero is
                     // the focus anchor. Move the whole context with one animation.
                     listState.animateScrollBy(
                         value = target.offset.toFloat(),
-                        animationSpec = tween(scrollDuration, easing = FastOutSlowInEasing),
+                        animationSpec = if (lightweight) tween(scrollDuration) else spring(
+                            dampingRatio = 1f,
+                            stiffness = when (lyricsMotionMode) {
+                                "calm" -> 240f
+                                "stage" -> 110f
+                                else -> 160f
+                            },
+                        ),
                     )
                 } else {
                     // Seeking outside the visible context still travels to the line.
-                    listState.animateScrollToItem(activeIndex)
+                    listState.animateScrollToItem(focusIndex)
                 }
             }
         }
@@ -114,7 +125,8 @@ internal fun LyricsLineList(
                 key = { index, line -> "${line.startMs}-$index-${line.text}" },
             ) { index, line ->
                 val active = synced && index in activeIndices
-                val focusDistance = if (active) 0 else if (activeIndex >= 0) abs(index - activeIndex).coerceAtMost(4) else 1
+                val focused = active || index == focusIndex
+                val focusDistance = if (focused) 0 else if (focusIndex >= 0) abs(index - focusIndex).coerceAtMost(4) else 1
                 val seekable = synced && line.startMs >= 0L
                 val primaryAlpha = when (focusDistance) {
                     0 -> 1f
@@ -154,7 +166,7 @@ internal fun LyricsLineList(
                     label = "lyrics-background-alpha",
                 )
                 val lineScale = animateFloatAsState(
-                    targetValue = if (active) 1f + 0.036f * motionIntensity else 1f,
+                    targetValue = if (focused) 1f + 0.036f * motionIntensity else 1f,
                     animationSpec = tween(durationMillis = transitionDuration, easing = LyricsSettingsMotionEasing),
                     label = "lyrics-line-scale",
                 )
@@ -200,6 +212,7 @@ internal fun LyricsLineList(
                     }
                     KaraokeLyricText(
                         line = line,
+                        lineEndMs = timeline.endAt(index),
                         active = active,
                         enabled = wordHighlightEnabled,
                         position = positionMsState,
@@ -252,7 +265,7 @@ internal fun LyricsLineList(
         }
         Column(Modifier.align(Alignment.TopCenter).padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             if (synced && activeIndex < 0) {
-                val seconds by remember(timeline) { derivedStateOf {
+                val seconds by remember(timeline, positionMsState) { derivedStateOf {
                     timeline.nextStart(positionMsState.value)?.let { ((it - positionMsState.value + 999) / 1000).coerceAtLeast(0) }
                 } }
                 seconds?.let { Text(stringResource(L10nR.string.lyrics_vocals_in, it), color = lyricAccent) }

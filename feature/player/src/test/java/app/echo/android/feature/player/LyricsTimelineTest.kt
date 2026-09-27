@@ -30,4 +30,29 @@ class LyricsTimelineTest {
         assertEquals(100L, clock.position(100, 2010, true, 1f))
         assertEquals(100L, clock.position(100, 2200, false, 1f))
     }
+
+    @Test fun contextRemainsOnPreviousContentThroughGapsAndResetsOnBackwardSeek() {
+        val timeline = LyricsTimeline(listOf(
+            EchoLyricLine(1000, 2000, "First"),
+            EchoLyricLine(2000, text = ""),
+            EchoLyricLine(6000, 7000, "Next"),
+        ))
+        assertEquals(-1, timeline.contextAt(0))
+        assertEquals(0, timeline.contextAt(1500))
+        assertEquals(emptySet<Int>(), timeline.activeAt(4000))
+        assertEquals(0, timeline.contextAt(4000))
+        assertEquals(2, timeline.contextAt(8000))
+        assertEquals(0, timeline.contextAt(1500))
+        assertEquals(-1, timeline.contextAt(0))
+    }
+
+    @Test fun missingLineEndUsesNextTimestampForLastWordWipe() {
+        val timeline = LyricsTimeline(listOf(
+            EchoLyricLine(1000, text = "First"),
+            EchoLyricLine(3000, text = "Next"),
+        ))
+        assertEquals(3000L, timeline.endAt(0))
+        assertEquals(0.5f, lyricWordFraction(2000, timeline.endAt(0), 2500), 0f)
+        assertNull(timeline.endAt(1))
+    }
 }

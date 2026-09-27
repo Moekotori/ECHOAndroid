@@ -502,7 +502,7 @@
     <string name="settings_track_fade_duration">Fade-Dauer</string>
     <string name="settings_track_fade_seconds">%.1f s</string>
     <string name="settings_smart_transition">Intelligente Übergänge</string>
-    <string name="settings_smart_transition_detail">Beta. Beat-Wechsel; sonst lückenlos oder Fade</string>
+    <string name="settings_smart_transition_detail">Beta. Mischt lokale Titel bei normalem Tempo automatisch. Sonst normaler Titelwechsel. Bei aktiviertem Fading begrenzt dessen Dauer die Überlappung.</string>
     <string name="settings_smart_transition_bypass">Gespeichert, ungenutzt im Leicht-Modus oder USB-Exklusiv</string>
     <string name="settings_bg_video_disabled">Video-Hintergründe sind im Leicht-Modus pausiert. Der Standardhintergrund wird angezeigt; Ihre Auswahl bleibt erhalten.</string>
     <string name="settings_import_font">Schriftdatei importieren</string>

@@ -66,7 +66,7 @@ internal class EchoSmartTransitionController(
                 automatic = reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO,
                 expectedIndex = it.nextIndex, actualIndex = player.currentMediaItemIndex,
                 expectedId = it.nextId, actualId = mediaItem?.mediaId,
-                startMs = it.startMs, mixedFrames = it.mix.readFrame,
+                startMs = it.startMs, mixedFrames = it.mix.mixedFrames,
                 sampleRateHz = it.mix.sampleRateHz,
             )
         }

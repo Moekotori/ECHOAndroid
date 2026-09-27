@@ -38,11 +38,11 @@ internal fun HomeArtworkCard(artworkUri: String?, title: String, subtitle: Strin
     Column(
         modifier = Modifier.width(width).clip(RoundedCornerShape(4.dp))
             .homeCardClickable(onClick),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         ArtworkTile(artworkUri, modifier = Modifier.fillMaxWidth().aspectRatio(1f),
             accent = MaterialTheme.colorScheme.primary, cornerRadius = 4.dp, elevation = 0.dp)
-        Column(Modifier.heightIn(min = 64.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Column(Modifier.heightIn(min = 52.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface, maxLines = 2,
                 overflow = TextOverflow.Ellipsis)

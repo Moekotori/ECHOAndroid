@@ -3,7 +3,7 @@ package app.echo.android.feature.connect
 import android.os.SystemClock
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.VolumeUp
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -89,7 +89,7 @@ internal fun RemoteVolumeControl(volume: Float, enabled: Boolean, onVolume: (Flo
     val shown = (dragging ?: committed ?: volume).coerceIn(0f, 1f)
     val label = stringResource(R.string.feature_connect_volume_8f3a19)
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Icon(Icons.Rounded.VolumeUp, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(Icons.AutoMirrored.Rounded.VolumeUp, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Slider(shown, { dragging = it }, Modifier.weight(1f).semantics { contentDescription = label },
             enabled = enabled,
             onValueChangeFinished = {

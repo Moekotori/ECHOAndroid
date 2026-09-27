@@ -62,6 +62,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -113,6 +115,7 @@ fun PlaybackQueueSheet(
     onCycleRepeatMode: () -> Unit,
     onToggleShuffle: () -> Unit,
     modifier: Modifier = Modifier,
+    onDragProgress: (Float) -> Unit = {},
 ) {
     AnimatedVisibility(
         visible = visible,
@@ -126,6 +129,15 @@ fun PlaybackQueueSheet(
         val dragScope = rememberCoroutineScope()
         val density = LocalDensity.current
         val dismissThresholdPx = remember(density) { with(density) { 92.dp.toPx() } }
+        val reportDrag by rememberUpdatedState(onDragProgress)
+        LaunchedEffect(dragOffset, dismissThresholdPx) {
+            try {
+                snapshotFlow { (dragOffset.value / (dismissThresholdPx * 3f)).coerceIn(0f, 1f) }
+                    .collect { reportDrag(it) }
+            } finally {
+                reportDrag(0f)
+            }
+        }
         val scrimTargetAlpha = if (dark) 0.68f else 0.24f
         val scrimAlpha = transition.animateFloat(
             transitionSpec = {

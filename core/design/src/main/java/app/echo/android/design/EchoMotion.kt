@@ -21,6 +21,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 
@@ -92,6 +93,9 @@ object EchoMotion {
             stiffness = silkStiffness(ms),
             visibilityThreshold = Dp.VisibilityThreshold,
         )
+
+    fun silkRect(ms: Int): SpringSpec<Rect> =
+        spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = silkStiffness(ms))
 
     fun silkSize(ms: Int): SpringSpec<IntSize> =
         spring(

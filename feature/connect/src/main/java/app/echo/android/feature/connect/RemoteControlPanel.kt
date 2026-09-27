@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -57,16 +58,18 @@ internal fun RemoteNowPlaying(
                     Text(title.ifBlank { stringResource(R.string.feature_connect_no_track_selected_258d56) },
                         style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold,
                         maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Text(artist.ifBlank { stringResource(R.string.remote_choose_hint) },
-                        style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant,
-                        maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    if (artist.isNotBlank() || !hasTrack) {
+                        Text(if (hasTrack) artist else stringResource(R.string.remote_choose_hint),
+                            style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant,
+                            maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
                 }
             }
             // A seek hold belongs to one track; never carry it across a PC track change.
             key(currentTrackId, title) {
                 RemoteSeekControl(positionMs, durationMs, isPlaying, controlsEnabled && hasTrack, active, onSeek)
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterHorizontally),
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically) {
                 FilledTonalIconButton(onPrevious, Modifier.size(56.dp), enabled = controlsEnabled && (hasTrack || queueCount > 0)) {
                     Icon(Icons.Rounded.SkipPrevious, stringResource(R.string.feature_connect_previous_on_pc_a0f0a7), Modifier.size(28.dp))
@@ -88,7 +91,7 @@ internal fun RemoteNowPlaying(
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onOpenQueue, Modifier.weight(1f), enabled = controlsEnabled) {
-                    Icon(Icons.Rounded.QueueMusic, null, Modifier.size(20.dp))
+                    Icon(Icons.AutoMirrored.Rounded.QueueMusic, null, Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.remote_queue_count, queueCount))
                 }

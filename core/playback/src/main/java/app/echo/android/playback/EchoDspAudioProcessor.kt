@@ -26,6 +26,8 @@ internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>) 
     private var order = ByteOrder.LITTLE_ENDIAN
     private var streamOffsetUs = 0L
     private var streamFrames = 0L
+    internal var inputPositionUs: Long? = null
+    private var needsClockAnchor = true
 
     override fun onConfigure(format: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
         bytesPerSample = when (format.encoding) {
@@ -48,6 +50,7 @@ internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>) 
     override fun onFlush(metadata: AudioProcessor.StreamMetadata) {
         streamOffsetUs = metadata.positionOffsetUs
         streamFrames = 0L
+        needsClockAnchor = true
         stages.forEach { it.flush(metadata) }
         kernel.setTarget(EchoPlaybackProcessRuntime.dspSettings, EchoPlaybackProcessRuntime.dspReplayGainDb)
         kernel.reset()
@@ -57,6 +60,11 @@ internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>) 
 
     override fun queueInput(input: ByteBuffer) {
         if (!input.hasRemaining()) return
+        if (needsClockAnchor) {
+            streamOffsetUs = inputPositionUs ?: streamOffsetUs
+            stages.forEach { if (it is EchoSmartTransitionMixer) it.anchorPosition(streamOffsetUs) }
+            needsClockAnchor = false
+        }
         syncSmartMixer()
         val channels = inputAudioFormat.channelCount
         val frames = minOf(1024, input.remaining() / (channels * bytesPerSample))

@@ -26,25 +26,26 @@ internal fun KaraokeLyricText(
     weight: FontWeight,
     align: TextAlign,
     modifier: Modifier = Modifier,
+    lineEndMs: Long? = line.endMs,
 ) {
     var layout by remember(line.text) { mutableStateOf<TextLayoutResult?>(null) }
     val shapes = remember(line.text, line.words) { lyricWordShapes(line.text, line.words) }
-    val clip = remember(line.text, line.words, line.endMs) { KaraokeHighlightClip() }
-    val timedWords = remember(line.text, line.words) {
-        line.words.isNotEmpty() && line.words.joinToString(separator = "") { it.text } == line.text
-    }
-    val timed = enabled && active && timedWords
+    val clip = remember(line.text, line.words, lineEndMs) { KaraokeHighlightClip() }
+    val timedWords = line.words.isNotEmpty() && shapes.size == line.words.size
+    val timed = enabled && timedWords
+    val started by remember(position, line.startMs) { derivedStateOf { position.value >= line.startMs } }
     val muted = (0.36f + intensity.coerceIn(0.45f, 1.35f) * 0.12f).coerceIn(0.4f, 0.55f)
     Text(
         text = line.text,
-        color = if (timed) color.copy(alpha = color.alpha * muted) else color,
+        // Upcoming text is already dimmed before it gains focus, avoiding a full-line flash.
+        color = if (timed && (active || !started)) color.copy(alpha = color.alpha * muted) else color,
         style = style, fontWeight = weight, textAlign = align,
         onTextLayout = { layout = it },
         modifier = modifier.drawWithContent {
             drawContent()
             val result = layout
-            if (timed && result != null) {
-                val highlight = clip.prepare(result, line.words, line.endMs, shapes, position.value)
+            if (timed && active && result != null) {
+                val highlight = clip.prepare(result, line.words, lineEndMs, shapes, position.value)
                 if (highlight != null) clipPath(highlight) { drawText(result, color = color) }
             }
         },

@@ -43,7 +43,7 @@ internal class EchoSmartTransitionAnalyzer(
         var outro: EchoSmartTransitionAnalysis? = null
         if (decodeIntro) {
             val pcm = decoder.decodeAnalysisMono(uri, 0L, window) ?: return cached
-            intro = EchoSmartTransitionAnalysisMath.fromMono(
+            intro = withContext(Dispatchers.Default) { EchoSmartTransitionAnalysisMath.fromMono(
                 samples = pcm.samples,
                 sampleRate = EchoSmartTransitionPolicy.AnalysisSampleRateHz,
                 durationMs = durationMs,
@@ -51,13 +51,13 @@ internal class EchoSmartTransitionAnalyzer(
                 hasIntro = true,
                 hasOutro = durationMs <= EchoSmartTransitionPolicy.WindowMs,
                 vocal = pcm.vocal,
-            )
+            ) }
             if (durationMs <= EchoSmartTransitionPolicy.WindowMs) return intro
         }
         if (decodeOutro) {
             val pcm = decoder.decodeAnalysisMono(uri, (durationMs - window).coerceAtLeast(0L), window)
             if (pcm != null) {
-                outro = EchoSmartTransitionAnalysisMath.fromMono(
+                outro = withContext(Dispatchers.Default) { EchoSmartTransitionAnalysisMath.fromMono(
                     samples = pcm.samples,
                     sampleRate = EchoSmartTransitionPolicy.AnalysisSampleRateHz,
                     durationMs = durationMs,
@@ -65,7 +65,7 @@ internal class EchoSmartTransitionAnalyzer(
                     hasIntro = false,
                     hasOutro = true,
                     vocal = pcm.vocal,
-                )
+                ) }
             }
         }
         return when {
