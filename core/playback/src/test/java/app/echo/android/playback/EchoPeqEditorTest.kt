@@ -5,19 +5,35 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class EchoPeqEditorTest {
-    @Test fun manualFiltersRetainDisabledStateAndRestoreWithHeadroom() {
+    @Test fun manualFiltersRetainDisabledStateAndRestoreWithUserPreamp() {
         val c = EchoEqualizerController()
+        c.setPreamp(-3f)
         val filters = listOf(OpraEqBand("low_shelf", 100f, 6f, 0.707f, null), OpraEqBand("peak_dip", 3000f, -2f, 2f, null))
         c.setParametricFilters(filters)
         val edited = c.state.value
         assertFalse(edited.enabled)
         assertTrue(edited.parametric)
         assertEquals(filters, edited.filters)
-        assertTrue(edited.preampDb < -6f)
+        assertEquals(-3f, edited.preampDb, 0.001f)
+        assertTrue(edited.suggestedPreampDb < -6f)
         val restored = EchoEqualizerController()
         restored.setConfig(edited.enabled, edited.presetId, edited.gainsDb, edited.preampDb, edited.filters, edited.sourceLabel)
         assertEquals(edited.filters, restored.state.value.filters)
+        assertEquals(edited.preampDb, restored.state.value.preampDb, 0.001f)
         assertEquals(edited.responseCurve, restored.state.value.responseCurve)
+    }
+
+    @Test fun explicitSuggestedPreampAppliesHeadroom() {
+        val c = EchoEqualizerController()
+        c.setPreamp(-3f)
+        c.setParametricFilters(
+            listOf(OpraEqBand("low_shelf", 100f, 6f, 0.707f, null)),
+            applySuggestedPreamp = true,
+        )
+        val edited = c.state.value
+        assertFalse(edited.enabled)
+        assertTrue(edited.preampDb < -6f)
+        assertEquals(edited.suggestedPreampDb, edited.preampDb, 0.001f)
     }
 
     @Test fun rejectsInvalidOrUnboundedFiltersAndClampsFiniteValues() {
