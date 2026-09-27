@@ -9,13 +9,20 @@ import re
 import sys
 
 
-def version_code(version):
+def version_code(version, revision=1):
     if not re.fullmatch(r"[0-9]{2}\.[1-9][0-9]?\.[1-9][0-9]?", version):
         raise ValueError("Expected YY.M.D, for example 26.9.13")
     year, month, day = map(int, version.split('.'))
     datetime.date(2000 + year, month, day)
-    # Keep the visible version date-only; one release per date.
-    return (year * 10000 + month * 100 + day) * 100 + 1
+    if not 1 <= revision <= 99:
+        raise ValueError("Release revision must be between 1 and 99")
+    # Keep the visible version date-only, with increasing same-day revisions.
+    return (year * 10000 + month * 100 + day) * 100 + revision
+
+
+def release_tag(version, revision=1):
+    version_code(version, revision)
+    return f'v{version}' + (f'-r{revision}' if revision > 1 else '')
 
 
 def property_escape(value):
@@ -25,7 +32,9 @@ def property_escape(value):
 
 def main():
     version = os.environ['RELEASE_VERSION']
-    code = version_code(version)
+    revision = int(os.environ.get('RELEASE_REVISION', '1'))
+    code = version_code(version, revision)
+    tag = release_tag(version, revision)
     if '--metadata' in sys.argv:
         directory = Path('app/build/outputs/apk/release')
         output = json.loads((directory / 'output-metadata.json').read_text())
@@ -38,7 +47,7 @@ def main():
         with apk.open('rb') as stream:
             digest = hashlib.file_digest(stream, 'sha256').hexdigest()
         manifest = dict(schemaVersion=1, versionCode=code, versionName=version,
-                        apkUrl=f'https://github.com/moekotori/echoandroid/releases/download/v{version}/{apk.name}',
+                        apkUrl=f'https://github.com/moekotori/echoandroid/releases/download/{tag}/{apk.name}',
                         size=apk.stat().st_size, sha256=digest)
         (directory / 'update.json').write_text(json.dumps(manifest, indent=2) + '\n')
         return
@@ -50,7 +59,7 @@ def main():
               'keyAlias': os.environ['KEY_ALIAS'], 'keyPassword': os.environ['KEY_PASSWORD']}
     Path('keystore.properties').write_text(''.join(f'{k}={property_escape(v)}\n' for k, v in values.items()))
     with open(os.environ['GITHUB_ENV'], 'a') as env:
-        env.write(f'RELEASE_VERSION={version}\nRELEASE_CODE={code}\n')
+        env.write(f'RELEASE_VERSION={version}\nRELEASE_REVISION={revision}\nRELEASE_CODE={code}\nRELEASE_TAG={tag}\n')
 
 
 if __name__ == '__main__':

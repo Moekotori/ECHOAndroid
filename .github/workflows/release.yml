@@ -7,6 +7,11 @@ on:
         description: 'Version YY.M.D (e.g. 26.9.13)'
         required: true
         type: string
+      revision:
+        description: 'Same-day release revision (1-99; use the next unused number)'
+        required: true
+        default: '1'
+        type: string
 
 permissions:
   contents: write
@@ -43,11 +48,14 @@ jobs:
       - name: Validate version and prepare signing
         env:
           RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_REVISION: ${{ inputs.revision }}
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: python3 scripts/prepare-android-release.py
+        run: |
+          python3 -m unittest discover -s scripts -p 'test_prepare_android_release.py'
+          python3 scripts/prepare-android-release.py
       - name: Verify and build signed APK
         run: |
           chmod +x gradlew
@@ -58,7 +66,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v$RELEASE_VERSION" app/build/outputs/apk/release/*.apk app/build/outputs/apk/release/update.json --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --title "ECHOAndroid $RELEASE_VERSION" --generate-notes
+          gh release create "$RELEASE_TAG" app/build/outputs/apk/release/*.apk app/build/outputs/apk/release/update.json --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --title "ECHOAndroid $RELEASE_VERSION" --generate-notes
       - name: Remove signing material
         if: always()
         run: rm -f release-signing.jks keystore.properties

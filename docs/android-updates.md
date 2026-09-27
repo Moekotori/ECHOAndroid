@@ -8,7 +8,7 @@
 
 在 GitHub 仓库 Secrets 中配置 `ANDROID_KEYSTORE_BASE64`、`ANDROID_STORE_PASSWORD`、`ANDROID_KEY_ALIAS`、`ANDROID_KEY_PASSWORD`。必须使用已分发正式版的原签名；不要新建替代签名。Debug 包与不同签名的正式包不能覆盖更新，应用会阻止安装。
 
-手动运行 `GitHub release APK` workflow，输入 `YY.M.D`，例如 `26.9.13`；应用展示版本、APK 版本和 Release 标题均使用此格式，标签为 `v26.9.13`。每个日期发布一个版本，后续版本使用更大的日期，不添加第四段。内部 versionCode 为 `YYMMDD * 100 + 1`，兼容升级旧的 `YYMMDD` 编号；普通本地构建为对应版本日期的 `YYMMDD * 100`。更新检查读取 GitHub 最新正式 Release 的 `update.json`，按内部 versionCode 判断是否可升级。
+手动运行 `GitHub release APK` workflow，输入 `YY.M.D`，例如 `26.9.13`；应用展示版本、APK 版本和 Release 标题均使用此格式。`revision` 为当日修订号（1–99），默认为 1，对应标签 `v26.9.13`；同日再次发布使用递增修订号，例如 2 对应 `v26.9.13-r2`，不覆盖已有 Release。内部 versionCode 为 `YYMMDD * 100 + revision`，兼容升级旧的 `YYMMDD` 编号；普通本地构建为对应版本日期的 `YYMMDD * 100`。发布前必须读取当前正式版的 `update.json`，确认新 versionCode 严格更大。更新检查按内部 versionCode 判断是否可升级。
 
 流程验证并构建签名 APK，根据真实输出元数据生成 `update.json`，创建附带 APK 与元数据的 **草稿 Release**。检查 APK 与更新日志后发布草稿，已安装客户端即可发现。不要把 Secrets 或签名文件提交到仓库。工作流文件本身不会自动配置 Secrets 或发布第一版。
 
