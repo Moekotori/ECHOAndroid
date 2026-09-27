@@ -74,6 +74,7 @@ data class EchoAppSettings(
     val channelBalance: EchoChannelBalanceState = EchoChannelBalanceState(),
     val customBackgroundMode: String = EchoBackgroundMode.Default,
     val customBackgroundUri: String? = null,
+    val startupBackgroundUri: String? = null,
     val customBackgroundBlur: Float = 24f,
     val customBackgroundBrightness: Float = 0.88f,
     val customBackgroundGlass: Float = 0.42f,
@@ -189,6 +190,7 @@ data class EchoSavedPlaybackSession(
     val repeatMode: EchoRepeatMode = EchoRepeatMode.Off,
     val playbackSpeed: Float = 1f,
     val playbackPitch: Float = 1f,
+    val shuffleOrder: List<Int> = emptyList(),
 )
 
 class EchoSettingsStore(
@@ -276,6 +278,7 @@ class EchoSettingsStore(
                 ).normalized,
                 customBackgroundMode = preferences[Keys.CustomBackgroundMode] ?: EchoBackgroundMode.Default,
                 customBackgroundUri = preferences[Keys.CustomBackgroundUri],
+                startupBackgroundUri = preferences[Keys.StartupBackgroundUri],
                 customBackgroundBlur = (preferences[Keys.CustomBackgroundBlur] ?: 24f).coerceIn(0f, 80f),
                 customBackgroundBrightness = (preferences[Keys.CustomBackgroundBrightness] ?: 0.88f).coerceIn(0.35f, 1.15f),
                 customBackgroundGlass = (preferences[Keys.CustomBackgroundGlass] ?: 0.42f).coerceIn(0.08f, 0.90f),
@@ -681,6 +684,18 @@ class EchoSettingsStore(
                 it[Keys.CustomBackgroundUri] = uri
             }
         }
+    }
+
+    suspend fun setStartupBackgroundUri(uri: String?) {
+        val safeUri = uri?.takeIf { it.isNotBlank() }
+        context.echoSettings.edit { preferences ->
+            if (safeUri == null) preferences.remove(Keys.StartupBackgroundUri)
+            else preferences[Keys.StartupBackgroundUri] = safeUri
+        }
+        cacheStartupThemeSnapshot(
+            currentStartupThemeSnapshot().copy(startupBackgroundUri = safeUri),
+            synchronous = true,
+        )
     }
 
     suspend fun setCustomBackgroundStyle(style: EchoBackgroundStyle) {
@@ -1354,6 +1369,7 @@ class EchoSettingsStore(
         val ChannelBalanceRightDelayMs = floatPreferencesKey("channel_balance_right_delay_ms")
         val CustomBackgroundMode = stringPreferencesKey("custom_background_mode")
         val CustomBackgroundUri = stringPreferencesKey("custom_background_uri")
+        val StartupBackgroundUri = stringPreferencesKey("startup_background_uri")
         val CustomBackgroundBlur = floatPreferencesKey("custom_background_blur")
         val CustomBackgroundBrightness = floatPreferencesKey("custom_background_brightness")
         val CustomBackgroundGlass = floatPreferencesKey("custom_background_glass")
@@ -1607,12 +1623,18 @@ internal fun EchoSavedPlaybackSession.toPreferenceValue(): String =
         put("repeatMode", repeatMode.toPreferenceValue())
         put("playbackSpeed", playbackSpeed.toDouble())
         put("playbackPitch", playbackPitch.toDouble())
+        put("shuffleOrder", JSONArray(shuffleOrder))
         put(
             "queue",
             JSONArray().apply {
                 queue.forEach { track ->
                     put(
                         JSONObject().apply {
+                            track.queueContext?.let { context ->
+                                put("queueEntry", context.entryId)
+                                put("nextUp", context.nextUp)
+                                put("queueSource", context.source)
+                            }
                             put("id", track.id)
                             put("uri", track.uri)
                             put("title", track.title)
@@ -1644,8 +1666,10 @@ internal data class EchoSavedPlaybackResume(
 
 internal fun EchoSavedPlaybackSession.playbackQueueIdentity(): String {
     val digest = MessageDigest.getInstance("SHA-256")
+    digest.update(shuffleOrder.joinToString(",").toByteArray(StandardCharsets.UTF_8))
     queue.forEach { track ->
         listOf(
+            track.queueContext?.toString().orEmpty(),
             track.id,
             track.uri,
             track.title,
@@ -1720,6 +1744,11 @@ internal fun parsePlaybackSession(raw: String): EchoSavedPlaybackSession? =
                 val uri = item.optString("uri").takeIf { it.isNotBlank() } ?: continue
                 add(
                     EchoTrackRef(
+                        queueContext = item.optString("queueEntry").takeIf { it.isNotBlank() }?.let {
+                            app.echo.android.model.playback.PlaybackQueueContext(
+                                it, item.optBoolean("nextUp"), item.optString("queueSource").takeIf { value -> value.isNotBlank() && value != "null" },
+                            )
+                        },
                         id = id,
                         uri = uri,
                         title = item.optString("title").ifBlank { "Unknown Track" },
@@ -1739,6 +1768,11 @@ internal fun parsePlaybackSession(raw: String): EchoSavedPlaybackSession? =
         if (queue.isEmpty() || currentIndex !in queue.indices) return@runCatching null
         EchoSavedPlaybackSession(
             queue = queue,
+            shuffleOrder = json.optJSONArray("shuffleOrder")?.let { order ->
+                (0 until order.length()).map { order.optInt(it, -1) }.takeIf { values ->
+                    values.size == queue.size && values.toSet().size == queue.size && values.all { it in queue.indices }
+                }
+            }.orEmpty(),
             currentIndex = currentIndex,
             positionMs = json.optLong("positionMs").coerceAtLeast(0L),
             playWhenReady = json.optBoolean("playWhenReady", false),

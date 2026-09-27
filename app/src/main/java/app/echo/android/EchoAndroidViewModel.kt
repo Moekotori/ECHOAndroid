@@ -376,6 +376,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         libraryController.updateTrackSortMode(sortMode)
     }
 
+    suspend fun localTitleIndex(letter: Char): Int = libraryController.localTitleIndex(letter)
+
     fun updateLibraryAlbumSortMode(sortMode: AlbumSortMode) {
         libraryController.updateAlbumSortMode(sortMode)
     }
@@ -485,7 +487,13 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                     LibraryPlaybackOrigin.Songs -> emptyList()
                 }
                 if (queue.isEmpty()) return@launch
-                playQueue(queue, LibraryPlaybackQueuePolicy.startIndex(queue.map { it.id }, track.id))
+                playbackController.playQueue(queue, LibraryPlaybackQueuePolicy.startIndex(queue.map { it.id }, track.id), source = when (origin) {
+                    is LibraryPlaybackOrigin.Album -> track.album
+                    is LibraryPlaybackOrigin.Artist -> track.artist
+                    is LibraryPlaybackOrigin.Playlist -> libraryController.localPlaylists.value.firstOrNull { it.id == origin.playlistId }?.name
+                    is LibraryPlaybackOrigin.Folder -> origin.folderKey.substringAfterLast('/')
+                    LibraryPlaybackOrigin.Songs -> null
+                })
                 return@launch
             }
             val queue = libraryController.queueAroundTrack(track.id, source)
@@ -634,7 +642,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun playArtist(artistKey: String) {
         viewModelScope.launch {
             val queue = libraryController.artistTracksForPlayback(artistKey)
-            if (queue.isNotEmpty()) playbackController.playQueue(queue, 0)
+            if (queue.isNotEmpty()) playbackController.playQueue(queue, 0, source = queue.firstOrNull()?.artist)
         }
     }
 
@@ -658,7 +666,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun playFolder(folderKey: String) {
         viewModelScope.launch {
             val queue = libraryController.folderTracksForPlayback(folderKey)
-            if (queue.isNotEmpty()) playbackController.playQueue(queue, 0)
+            if (queue.isNotEmpty()) playbackController.playQueue(queue, 0, source = folderKey.substringAfterLast('/'))
         }
     }
 
@@ -678,7 +686,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun playPlaylist(playlistId: String) {
         viewModelScope.launch {
             val queue = libraryController.playlistTracksForPlayback(playlistId)
-            if (queue.isNotEmpty()) playbackController.playQueue(queue, 0)
+            if (queue.isNotEmpty()) playbackController.playQueue(queue, 0, source = libraryController.localPlaylists.value.firstOrNull { it.id == playlistId }?.name)
         }
     }
 
@@ -690,6 +698,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                     queue = queue,
                     startIndex = queue.indices.random(),
                     intent = PlaybackQueueReplaceIntent.Shuffle,
+                    source = libraryController.localPlaylists.value.firstOrNull { it.id == playlistId }?.name,
                 )
             }
         }
@@ -913,6 +922,16 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun playNext(track: EchoTrack) {
         playbackController.playNext(track)
+    }
+
+    fun addNextUp(track: EchoTrack) = playbackController.addNextUp(track)
+
+    fun clearNextUp() = playbackController.clearNextUp()
+
+    fun addNextUpByTrackId(trackId: String) {
+        viewModelScope.launch {
+            libraryController.trackById(trackId)?.let { playbackController.addNextUp(it) }
+        }
     }
 
     fun enqueue(track: EchoTrack) {
@@ -1441,6 +1460,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         updateSettings {
             setCustomBackground(mode, uri?.toString())
         }
+    }
+
+    fun setStartupBackground(uri: Uri?) {
+        updateSettings { setStartupBackgroundUri(uri?.toString()) }
     }
 
     fun setCustomBackgroundStyle(style: EchoBackgroundStyle) {

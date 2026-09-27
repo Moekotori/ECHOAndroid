@@ -74,6 +74,7 @@ internal fun SettingsTextInputRow(
     val scheme = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
+            .settingsSearchAnchor(title)
             .fillMaxWidth()
             .heightIn(min = 56.dp)
             .padding(vertical = 8.dp),
@@ -204,6 +205,7 @@ internal fun SettingsSectionCard(
     val animateSize = !LocalEchoEffectivePerformanceMode.current.isLightweight
     Column(
         modifier = Modifier
+            .settingsSearchAnchor(title)
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
             .background(settingsPanelColor())
@@ -280,6 +282,7 @@ internal fun SettingsBackgroundSourceRow(
     val dark = LocalEchoDarkTheme.current
     Row(
         modifier = Modifier
+            .settingsSearchAnchor(stringResource(R.string.settings_bg_source))
             .fillMaxWidth()
             .heightIn(min = 56.dp)
             .padding(vertical = 8.dp),
@@ -428,7 +431,7 @@ internal fun SettingsChoiceGroupRow(
     onOptionSelected: (String) -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        modifier = Modifier.settingsSearchAnchor(title).fillMaxWidth().padding(vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -509,6 +512,7 @@ internal fun SettingsSliderRow(
     LaunchedEffect(value) { if (!dragging) localValue = value }
     Row(
         modifier = Modifier
+            .settingsSearchAnchor(title)
             .fillMaxWidth()
             .heightIn(min = 56.dp)
             .padding(vertical = 8.dp),
@@ -589,6 +593,7 @@ internal fun SettingsRowShell(
     val dark = LocalEchoDarkTheme.current
     Row(
         modifier = modifier
+            .settingsSearchAnchor(title)
             .fillMaxWidth()
             .heightIn(min = 56.dp)
             .padding(vertical = 8.dp),

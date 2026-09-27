@@ -26,6 +26,13 @@ object EchoPlaybackSessionCommands {
     const val OPEN_LYRICS = "app.echo.android.playback.OPEN_LYRICS"
     const val OPEN_LOCK_LYRICS = "app.echo.android.playback.OPEN_LOCK_LYRICS"
 
+    const val ADD_NEXT_UP = "app.echo.android.playback.ADD_NEXT_UP"
+    const val CLEAR_NEXT_UP = "app.echo.android.playback.CLEAR_NEXT_UP"
+    const val EDIT_QUEUE = "app.echo.android.playback.EDIT_QUEUE"
+    val editQueue = SessionCommand(EDIT_QUEUE, Bundle.EMPTY)
+    val addNextUp = SessionCommand(ADD_NEXT_UP, Bundle.EMPTY)
+    val clearNextUp = SessionCommand(CLEAR_NEXT_UP, Bundle.EMPTY)
+
     val toggleFavorite = SessionCommand(TOGGLE_FAVORITE, Bundle.EMPTY)
     val cycleRepeat = SessionCommand(CYCLE_REPEAT, Bundle.EMPTY)
     val openLyrics = SessionCommand(OPEN_LYRICS, Bundle.EMPTY)

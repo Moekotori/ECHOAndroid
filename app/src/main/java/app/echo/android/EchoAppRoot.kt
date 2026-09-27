@@ -57,6 +57,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -246,6 +247,15 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         uri?.let { selectedUri ->
             if (persistReadPermission(selectedUri)) {
                 viewModel.setCustomBackground(EchoBackgroundMode.Image, selectedUri)
+            } else {
+                android.widget.Toast.makeText(context, R.string.background_permission_error, android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+    val startupBackgroundLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { selectedUri ->
+            if (persistReadPermission(selectedUri)) {
+                viewModel.setStartupBackground(selectedUri)
             } else {
                 android.widget.Toast.makeText(context, R.string.background_permission_error, android.widget.Toast.LENGTH_LONG).show()
             }
@@ -996,6 +1006,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         selectDockTab(EchoTab.Now)
     }
 
+    val customBackgroundActive = appSettings.customBackgroundMode != EchoBackgroundMode.Default &&
+        !appSettings.customBackgroundUri.isNullOrBlank() &&
+        !(effectivePerformanceMode.isLightweight && appSettings.customBackgroundMode == EchoBackgroundMode.Video)
     EchoMobileTheme(
         darkTheme = darkTheme,
         dynamicColor = appSettings.dynamicColorEnabled,
@@ -1005,6 +1018,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         fontScale = appSettings.uiFontScale,
         densityScale = appSettings.uiDensityScale,
         effectivePerformanceMode = effectivePerformanceMode,
+        customBackgroundActive = customBackgroundActive,
     ) {
         Box(
             Modifier
@@ -1032,13 +1046,17 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             )
             Box(
                 modifier = Modifier.fillMaxSize()
+                    .alpha(if (customBackgroundActive && (searchVisible || errorLogVisible)) 0f else 1f)
                     .echoPlayerDepth(nowPlayingExpanded) { maxOf(nowPlayingBackProgress, nowPlayingDragProgress) },
             ) {
                 val tabPagerFling = rememberSilkPagerFlingBehavior(tabPagerState)
-                val innerTabPageSettled =
+                val enteringInnerTabPage =
+                    (selectedTab == EchoTab.Connect.ordinal || selectedTab == EchoTab.Diagnostics.ordinal) &&
+                        tabPagerState.targetPage == EchoTab.entries[selectedTab].pagerPage.ordinal
+                val innerTabPageSettled = enteringInnerTabPage ||
                     tabPagerState.settledPage == EchoPagerPage.Connect.ordinal ||
-                        tabPagerState.settledPage == EchoPagerPage.Diagnostics.ordinal
-                val tabPagerNestedScroll = rememberHomeSafePagerNestedScroll(tabPagerState)
+                    tabPagerState.settledPage == EchoPagerPage.Diagnostics.ordinal
+                val tabPagerNestedScroll = rememberHomeSafePagerNestedScroll(tabPagerState, innerTabPageSettled)
                 HorizontalPager(
                     state = tabPagerState,
                     userScrollEnabled = outerPagerUserScrollEnabled(
@@ -1212,6 +1230,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 usbExclusiveTestResult = usbExclusiveTestResult,
                                 customBackgroundMode = appSettings.customBackgroundMode,
                                 customBackgroundUri = appSettings.customBackgroundUri,
+                                startupBackgroundUri = appSettings.startupBackgroundUri,
                                 customBackgroundBlur = appSettings.customBackgroundBlur,
                                 customBackgroundBrightness = appSettings.customBackgroundBrightness,
                                 customBackgroundGlass = appSettings.customBackgroundGlass,
@@ -1271,6 +1290,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onTestUsbExclusiveDriver = viewModel::testUsbExclusiveDriver,
                                 onPinQueueOffline = viewModel::pinCurrentQueueOffline,
                                 onPickImageBackground = { backgroundImageLauncher.launch(arrayOf("image/*")) },
+                                onPickStartupBackground = { startupBackgroundLauncher.launch(arrayOf("image/*")) },
+                                onClearStartupBackground = { viewModel.setStartupBackground(null) },
                                 onPickVideoBackground = { backgroundVideoLauncher.launch(arrayOf("video/*")) },
                                 onClearCustomBackground = {
                                     viewModel.setCustomBackground(EchoBackgroundMode.Default, null)
@@ -1446,6 +1467,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 lanRendererState = lanRendererState,
                                 activeRendererId = dlnaRenderer?.id,
                                 onCastToRenderer = ::performDlnaCast,
+                                onSwipeToLibrary = { navigateToPage(EchoPagerPage.Library) },
+                                onSwipeToDiagnostics = { navigateToPage(EchoPagerPage.Diagnostics) },
                                 openCastTabNonce = openCastTabNonce,
                                 castQueueCount = EchoLinkCastPolicy.trackCount(phoneCastPlan),
                                 showDsdWarning = EchoLinkCastPolicy.isDsd(
@@ -1638,6 +1661,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     onRemoveItem = viewModel::removeQueueItem,
                     onMoveItem = viewModel::moveQueueItem,
                     onClearQueue = viewModel::clearQueue,
+                    onClearNextUp = viewModel::clearNextUp,
                     onCycleRepeatMode = viewModel::cycleRepeatMode,
                     onToggleShuffle = viewModel::toggleShuffle,
                     modifier = Modifier.fillMaxSize(),
@@ -1709,6 +1733,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             viewModel.playNextByTrackId(result.id)
                         }
                     },
+                    onAddNextUp = { result -> viewModel.addNextUpByTrackId(result.id) },
                     onEnqueue = { result ->
                         if (result.type == SearchResultType.Track) {
                             viewModel.enqueueByTrackId(result.id)

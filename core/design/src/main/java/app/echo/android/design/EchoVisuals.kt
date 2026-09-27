@@ -104,10 +104,16 @@ fun GlassSurface(
 ) {
     val theme = echoTheme()
     val dark = theme.dark
+    val customBackground = LocalEchoCustomBackgroundActive.current
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(28.dp),
-        color = if (dark) theme.panel.copy(alpha = (alpha + 0.40f).coerceIn(0.48f, 0.68f)) else MaterialTheme.colorScheme.surface.copy(alpha = (alpha + 0.72f).coerceIn(0.88f, 1f)),
+        color = if (dark) theme.panel.copy(alpha = (alpha + 0.40f).coerceIn(0.48f, 0.68f))
+            else MaterialTheme.colorScheme.surface.copy(alpha = if (customBackground) {
+                (alpha + 0.54f).coerceIn(0.62f, 0.80f)
+            } else {
+                (alpha + 0.72f).coerceIn(0.88f, 1f)
+            }),
         border = BorderStroke(
             1.dp,
             if (dark) theme.glassBorder else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f),

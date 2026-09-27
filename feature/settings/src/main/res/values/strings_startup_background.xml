@@ -1,0 +1,8 @@
+<resources>
+    <string name="settings_startup_background">Startup background</string>
+    <string name="settings_startup_background_detail">Show a custom image during ECHO’s launch transition. The system splash screen still appears first.</string>
+    <string name="settings_startup_background_preview">Startup background preview</string>
+    <string name="settings_startup_background_unavailable">Image unavailable; the default launch screen will be used.</string>
+    <string name="settings_startup_background_default">Using the default launch screen</string>
+    <string name="settings_startup_background_choose">Choose image</string>
+</resources>

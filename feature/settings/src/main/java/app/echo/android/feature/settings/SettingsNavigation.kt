@@ -85,16 +85,23 @@ internal fun SettingsNavigation(
                     Column(
                         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                             .padding(top = 2.dp, bottom = 172.dp),
-                        verticalArrangement = Arrangement.spacedBy(if (compactMode) 8.dp else 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(
+                            when {
+                                category != null -> if (compactMode) 8.dp else 12.dp
+                                compactMode -> 12.dp
+                                else -> 16.dp
+                            },
+                        ),
                     ) {
                         if (category == null) {
                             settingsGroups.forEach { (title, entries) ->
-                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Text(
                                         stringResource(title),
                                         style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Medium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(start = 16.dp, top = 8.dp),
+                                        modifier = Modifier.padding(start = 16.dp, top = 4.dp),
                                     )
                                     Surface(
                                         shape = RoundedCornerShape(18.dp),
@@ -129,6 +136,7 @@ internal fun SettingsNavigation(
                             if (category != SettingsCategory.About) Text(
                                 stringResource(category.description),
                                 style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Normal,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = 4.dp),
                             )
@@ -156,7 +164,7 @@ private fun SettingsActionRow(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
-            Modifier.padding(horizontal = 16.dp, vertical = if (compactMode) 8.dp else 12.dp).heightIn(min = 48.dp),
+            Modifier.padding(horizontal = 16.dp, vertical = if (compactMode) 6.dp else 8.dp).heightIn(min = 48.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -168,6 +176,7 @@ private fun SettingsActionRow(
                 Text(
                     summary,
                     style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Normal,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -192,7 +201,7 @@ private fun SettingsCategoryRow(category: SettingsCategory, summary: String, com
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
-            Modifier.padding(horizontal = 16.dp, vertical = if (compactMode) 8.dp else 12.dp).heightIn(min = 48.dp),
+            Modifier.padding(horizontal = 16.dp, vertical = if (compactMode) 6.dp else 8.dp).heightIn(min = 48.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -201,7 +210,8 @@ private fun SettingsCategoryRow(category: SettingsCategory, summary: String, com
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(stringResource(category.title), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Text(summary, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)

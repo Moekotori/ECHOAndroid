@@ -43,7 +43,11 @@ class MainActivity : ComponentActivity() {
         setTheme(R.style.Theme_EchoAndroid_Splash)
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
-        splashScreen.installEchoExitTransition(this, restored = savedInstanceState != null)
+        splashScreen.installEchoExitTransition(
+            activity = this,
+            restored = savedInstanceState != null,
+            startupBackgroundUri = startupThemeSnapshot.startupBackgroundUri,
+        )
         window.decorView.setBackgroundColor(
             echoStartupWindowColor(EchoColorTheme.fromId(startupThemeSnapshot.colorTheme), startupDarkTheme),
         )

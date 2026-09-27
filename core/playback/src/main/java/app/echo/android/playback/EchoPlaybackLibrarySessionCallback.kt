@@ -29,6 +29,7 @@ internal class EchoPlaybackLibrarySessionCallback(
     private val player: () -> Player?,
     private val session: () -> MediaLibrarySession?,
     private val restorer: EchoPlaybackSessionRestorer,
+    private val nextUpQueue: () -> NextUpQueueController? = { null },
 ) : MediaLibrarySession.Callback {
     @Volatile
     private var currentFavorite = false
@@ -64,6 +65,9 @@ internal class EchoPlaybackLibrarySessionCallback(
         }
         val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
             .buildUpon()
+            .add(EchoPlaybackSessionCommands.editQueue)
+            .add(EchoPlaybackSessionCommands.addNextUp)
+            .add(EchoPlaybackSessionCommands.clearNextUp)
             .add(EchoPlaybackSessionCommands.toggleFavorite)
             .add(EchoPlaybackSessionCommands.cycleRepeat)
             .add(EchoPlaybackSessionCommands.openLyrics)
@@ -149,7 +153,7 @@ internal class EchoPlaybackLibrarySessionCallback(
         mediaItems: List<MediaItem>,
     ): ListenableFuture<List<MediaItem>> =
         scope.future {
-            resolvePlayableMediaItems(mediaItems)
+            resolvePlayableMediaItems(mediaItems).map { if (it.queueContext() == null) it.asQueueEntry() else it }
         }
 
     override fun onSetMediaItems(
@@ -168,7 +172,7 @@ internal class EchoPlaybackLibrarySessionCallback(
                 startIndex = startIndex,
             )
             MediaSession.MediaItemsWithStartPosition(
-                resolved,
+                resolved.map { if (it.queueContext() == null) it.asQueueEntry(source = it.mediaMetadata.albumTitle?.toString()) else it },
                 resolvedStart,
                 startPositionMs.coerceAtLeast(0L),
             )
@@ -228,6 +232,27 @@ internal class EchoPlaybackLibrarySessionCallback(
         args: Bundle,
     ): ListenableFuture<SessionResult> {
         return when (customCommand.customAction) {
+            EchoPlaybackSessionCommands.EDIT_QUEUE -> {
+                val queue = nextUpQueue()
+                if (args.getString("action") == "restore_order") queue?.restoreOrder(args.getIntArray("order")?.toList().orEmpty())
+                else queue?.edit(args.getString("action").orEmpty(), args.getString("entry").orEmpty(), args.getString("target"))
+                Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+            }
+            EchoPlaybackSessionCommands.ADD_NEXT_UP -> {
+                val bundle = args.getBundle("item")
+                val queue = nextUpQueue()
+                val item = bundle?.let { runCatching { MediaItem.fromBundle(it) }.getOrNull() }
+                if (queue == null || item == null || item.localConfiguration?.uri == null) {
+                    Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
+                } else {
+                    queue.add(item, args.getBoolean("first"))
+                    Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                }
+            }
+            EchoPlaybackSessionCommands.CLEAR_NEXT_UP -> {
+                nextUpQueue()?.clearPending()
+                Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+            }
             EchoPlaybackSessionCommands.TOGGLE_FAVORITE -> scope.future {
                 val mediaId = withContext(Dispatchers.Main.immediate) {
                     session.player.currentMediaItem?.mediaId

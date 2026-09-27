@@ -77,7 +77,7 @@ internal fun SettingsAboutLinks(openLink: (String) -> Unit) {
 private fun AboutLinkRow(icon: ImageVector, title: String, detail: String?, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Row(
-        Modifier.fillMaxWidth().echoClickable(role = Role.Button, onClick = onClick)
+        Modifier.settingsSearchAnchor(title).fillMaxWidth().echoClickable(role = Role.Button, onClick = onClick)
             .heightIn(min = 60.dp).padding(horizontal = 4.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically,
     ) {

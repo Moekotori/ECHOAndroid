@@ -5,6 +5,7 @@ import androidx.compose.ui.res.stringResource
 
 import androidx.compose.foundation.background
 import app.echo.android.design.echoClickable
+import app.echo.android.design.echoPageBackgroundColor
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,12 +30,15 @@ import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Queue
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.runtime.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -57,6 +61,7 @@ fun SearchScreen(
     onSearchQueryChange: (String) -> Unit,
     onSearchResultClick: (SearchResult) -> Unit,
     onPlayNext: (SearchResult) -> Unit = {},
+    onAddNextUp: (SearchResult) -> Unit = {},
     onEnqueue: (SearchResult) -> Unit = {},
     onBack: () -> Unit,
 ) {
@@ -69,7 +74,7 @@ fun SearchScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(echoPageBackgroundColor())
             .statusBarsPadding()
     ) {
         SearchTopBar(
@@ -86,6 +91,7 @@ fun SearchScreen(
             searchResults = searchResults,
             onResultClick = onSearchResultClick,
             onPlayNext = onPlayNext,
+            onAddNextUp = onAddNextUp,
             onEnqueue = onEnqueue,
         )
     }
@@ -162,6 +168,7 @@ private fun SearchResultsList(
     searchResults: List<SearchResult>,
     onResultClick: (SearchResult) -> Unit,
     onPlayNext: (SearchResult) -> Unit,
+    onAddNextUp: (SearchResult) -> Unit = {},
     onEnqueue: (SearchResult) -> Unit,
 ) {
     if (searchResults.isEmpty()) {
@@ -200,6 +207,7 @@ private fun SearchResultsList(
                         result = result,
                         onClick = onResultClick,
                         onPlayNext = onPlayNext,
+                        onAddNextUp = onAddNextUp,
                         onEnqueue = onEnqueue,
                     )
                 }
@@ -245,6 +253,7 @@ private fun SearchResultItemFull(
     result: SearchResult,
     onClick: (SearchResult) -> Unit,
     onPlayNext: ((SearchResult) -> Unit)? = null,
+    onAddNextUp: ((SearchResult) -> Unit)? = null,
     onEnqueue: ((SearchResult) -> Unit)? = null,
 ) {
     Row(
@@ -307,23 +316,22 @@ private fun SearchResultItemFull(
             }
         }
         if (result.type == SearchResultType.Track) {
-            IconButton(
-                onClick = { onPlayNext?.invoke(result) },
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.SkipNext,
-                    contentDescription = stringResource(L10nR.string.feature_home_play_next_a1f73e),
-                    tint = homeBodyColor().copy(alpha = 0.62f),
-                )
-            }
-            IconButton(
-                onClick = { onEnqueue?.invoke(result) },
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Queue,
-                    contentDescription = stringResource(L10nR.string.feature_home_add_to_queue_1775d3),
-                    tint = homeBodyColor().copy(alpha = 0.62f),
-                )
+            var actionsVisible by remember { mutableStateOf(false) }
+            Box {
+                IconButton(onClick = { actionsVisible = true }) {
+                    Icon(Icons.Rounded.Queue, contentDescription = stringResource(L10nR.string.queue_actions))
+                }
+                DropdownMenu(expanded = actionsVisible, onDismissRequest = { actionsVisible = false }) {
+                    DropdownMenuItem(text = { Text(stringResource(L10nR.string.queue_add_next_up)) }, onClick = {
+                        actionsVisible = false; onAddNextUp?.invoke(result)
+                    })
+                    DropdownMenuItem(text = { Text(stringResource(L10nR.string.feature_home_play_next_a1f73e)) }, onClick = {
+                        actionsVisible = false; onPlayNext?.invoke(result)
+                    })
+                    DropdownMenuItem(text = { Text(stringResource(L10nR.string.queue_append_original)) }, onClick = {
+                        actionsVisible = false; onEnqueue?.invoke(result)
+                    })
+                }
             }
         }
     }

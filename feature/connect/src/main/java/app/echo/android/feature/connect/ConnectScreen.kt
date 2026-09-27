@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.echoPageBackgroundColor
 import app.echo.android.design.animateSilkToPage
 import app.echo.android.design.rememberContentPagerNestedScroll
 import app.echo.android.design.rememberSilkPagerFlingBehavior
@@ -114,6 +115,8 @@ fun ConnectScreen(
     lanRendererState: EchoLinkDiscoveryState = EchoLinkDiscoveryState.Idle,
     activeRendererId: String? = null,
     onCastToRenderer: (EchoLanRenderer) -> Unit = {},
+    onSwipeToLibrary: () -> Unit = {},
+    onSwipeToDiagnostics: () -> Unit = {},
 ) {
     val pagerState = rememberPagerState { 3 }
     val scrollStates = listOf(rememberScrollState(), rememberScrollState(), rememberScrollState())
@@ -136,7 +139,7 @@ fun ConnectScreen(
         stringResource(L10nR.string.feature_connect_pc_link_4ca6bd),
         stringResource(L10nR.string.echo_link_cast_tab),
     )
-    Surface(Modifier.fillMaxSize(), color = scheme.background, contentColor = scheme.onBackground) {
+    Surface(Modifier.fillMaxSize(), color = echoPageBackgroundColor(), contentColor = scheme.onBackground) {
         Column(Modifier.statusBarsPadding().imePadding(), horizontalAlignment = Alignment.CenterHorizontally) {
             Column(Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxWidth()) {
                 Text(stringResource(L10nR.string.feature_connect_connect_c7c091),
@@ -144,7 +147,7 @@ fun ConnectScreen(
                     style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
                 SecondaryTabRow(
                     selectedTabIndex = pagerState.currentPage,
-                    containerColor = scheme.background,
+                    containerColor = echoPageBackgroundColor(),
                     indicator = { ConnectPagerIndicator(pagerState) },
                 ) {
                     tabs.forEachIndexed { index, label ->
@@ -156,7 +159,11 @@ fun ConnectScreen(
             }
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier.fillMaxWidth().weight(1f).connectPagerEdgeSwipe(
+                    pagerState = pagerState,
+                    onSwipeToLibrary = onSwipeToLibrary,
+                    onSwipeToDiagnostics = onSwipeToDiagnostics,
+                ),
                 beyondViewportPageCount = if (lightweight) 0 else 1,
                 flingBehavior = innerFling,
                 pageNestedScrollConnection = innerNestedScroll,

@@ -114,6 +114,7 @@ internal fun TrackList(
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
     onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
     onPlayNext: ((EchoTrack) -> Unit)? = null,
+    onAddNextUp: ((EchoTrack) -> Unit)? = null,
     onEnqueue: ((EchoTrack) -> Unit)? = null,
     onRemoveFromPlaylist: ((EchoTrack) -> Unit)? = null,
     onMoveTrack: ((fromIndex: Int, toIndex: Int) -> Unit)? = null,
@@ -146,6 +147,7 @@ internal fun TrackList(
                     onMatchNeteaseMetadata = onMatchNeteaseMetadata,
                     onAddToPlaylist = onAddToPlaylist,
                     onPlayNext = onPlayNext,
+                    onAddNextUp = onAddNextUp,
                     onEnqueue = onEnqueue,
                     onRemoveFromPlaylist = onRemoveFromPlaylist,
                     onMoveUp = onMoveTrack?.takeIf { index > 0 }?.let { move ->
@@ -171,6 +173,7 @@ internal fun TrackList(
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
     onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
     onPlayNext: ((EchoTrack) -> Unit)? = null,
+    onAddNextUp: ((EchoTrack) -> Unit)? = null,
     onEnqueue: ((EchoTrack) -> Unit)? = null,
     onRemoveFromPlaylist: ((EchoTrack) -> Unit)? = null,
     onMoveTrack: ((fromIndex: Int, toIndex: Int) -> Unit)? = null,
@@ -203,6 +206,7 @@ internal fun TrackList(
                 onMatchNeteaseMetadata = onMatchNeteaseMetadata,
                 onAddToPlaylist = onAddToPlaylist,
                 onPlayNext = onPlayNext,
+                onAddNextUp = onAddNextUp,
                 onEnqueue = onEnqueue,
                 onRemoveFromPlaylist = onRemoveFromPlaylist,
                 onMoveUp = onMoveTrack?.takeIf { index > 0 }?.let { move ->
@@ -227,6 +231,7 @@ internal fun TrackRow(
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
     onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
     onPlayNext: ((EchoTrack) -> Unit)? = null,
+    onAddNextUp: ((EchoTrack) -> Unit)? = null,
     onEnqueue: ((EchoTrack) -> Unit)? = null,
     onRemoveFromPlaylist: ((EchoTrack) -> Unit)? = null,
     onMoveUp: (() -> Unit)? = null,
@@ -258,6 +263,7 @@ internal fun TrackRow(
         onMatchNeteaseMetadata = onMatchNeteaseMetadata,
         onAddToPlaylist = onAddToPlaylist,
         onPlayNext = onPlayNext,
+        onAddNextUp = onAddNextUp,
         onEnqueue = onEnqueue,
         onRemoveFromPlaylist = onRemoveFromPlaylist,
         onMoveUp = onMoveUp,
@@ -373,6 +379,7 @@ internal fun TrackContextMenu(
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
     onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
     onPlayNext: ((EchoTrack) -> Unit)? = null,
+    onAddNextUp: ((EchoTrack) -> Unit)? = null,
     onEnqueue: ((EchoTrack) -> Unit)? = null,
     onRemoveFromPlaylist: ((EchoTrack) -> Unit)? = null,
     onMoveUp: (() -> Unit)? = null,
@@ -487,6 +494,7 @@ internal fun TrackContextMenu(
                     canPickArtwork = onPickArtwork != null,
                     canAddToPlaylist = onAddToPlaylist != null,
                     canPlayNext = onPlayNext != null,
+                    canAddNextUp = onAddNextUp != null,
                     canEnqueue = onEnqueue != null,
                     canRemoveFromPlaylist = onRemoveFromPlaylist != null,
                     canMoveUp = onMoveUp != null,
@@ -522,6 +530,10 @@ internal fun TrackContextMenu(
                     onAddToPlaylist = {
                         sheetMode = null
                         onAddToPlaylist?.invoke(track)
+                    },
+                    onAddNextUp = {
+                        sheetMode = null
+                        onAddNextUp?.invoke(track)
                     },
                     onPlayNext = {
                         sheetMode = null
@@ -599,6 +611,7 @@ private fun TrackActionSheet(
     canPickArtwork: Boolean,
     canAddToPlaylist: Boolean,
     canPlayNext: Boolean,
+    canAddNextUp: Boolean,
     canEnqueue: Boolean,
     canRemoveFromPlaylist: Boolean,
     canMoveUp: Boolean,
@@ -615,6 +628,7 @@ private fun TrackActionSheet(
     onPickArtwork: () -> Unit,
     onAddToPlaylist: () -> Unit,
     onPlayNext: () -> Unit,
+    onAddNextUp: () -> Unit,
     onEnqueue: () -> Unit,
     onRemoveFromPlaylist: () -> Unit,
     onMoveUp: () -> Unit,
@@ -654,6 +668,9 @@ private fun TrackActionSheet(
                 onClick = onOpenAlbum,
             )
         }
+        if (canAddNextUp) {
+            TrackActionRow(stringResource(L10nR.string.queue_add_next_up), Icons.Rounded.Queue, enabled = true, onClick = onAddNextUp)
+        }
         if (canPlayNext) {
             TrackActionRow(
                 stringResource(L10nR.string.feature_library_play_next_a1f73e),
@@ -664,7 +681,7 @@ private fun TrackActionSheet(
         }
         if (canEnqueue) {
             TrackActionRow(
-                stringResource(L10nR.string.feature_library_add_to_queue_1775d3),
+                stringResource(L10nR.string.queue_append_original),
                 Icons.Rounded.Queue,
                 enabled = true,
                 onClick = onEnqueue,

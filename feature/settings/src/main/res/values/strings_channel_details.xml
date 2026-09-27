@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="channel_edit_while_off">You can adjust saved settings while this is off. Enable it to apply them.</string>
+    <string name="channel_processing_rate">Processing at %1$s</string>
+    <string name="channel_pan_title">Stereo position</string>
+    <string name="channel_pan_hint">Adjust the left–right balance. Center leaves both sides balanced.</string>
+    <string name="channel_trim_title">Independent channel gain</string>
+    <string name="channel_gain_estimate_note">Calculated from pan and gain settings, before polarity, tone, delay and mono routing. These are not live level meters.</string>
+    <string name="channel_estimated_gain">Calculated gain · %1$s</string>
+    <string name="channel_routing_title">Channel routing</string>
+    <string name="channel_routing_hint">Choose how the left and right signals reach the output.</string>
+    <string name="channel_swap_hint">Exchange the left and right inputs before the remaining adjustments.</string>
+    <string name="channel_stereo_hint">Keep separate left and right outputs and preserve the stereo image.</string>
+    <string name="channel_sum_hint">Average the adjusted left and right signals and send the result to both outputs.</string>
+    <string name="channel_left_only_hint">Keep the adjusted left output and mute the right output.</string>
+    <string name="channel_right_only_hint">Keep the adjusted right output and mute the left output.</string>
+    <string name="channel_advanced_title">Advanced calibration</string>
+    <string name="channel_advanced_hint">Pan law, polarity, per-ear tone and delay</string>
+    <string name="channel_advanced_custom">Custom calibration saved · expand to inspect</string>
+    <string name="channel_pan_law">Pan response</string>
+    <string name="channel_pan_law_hint">Choose how channel levels change as the sound moves to either side.</string>
+    <string name="channel_polarity_title">Signal polarity</string>
+    <string name="channel_polarity_hint">Invert the signal polarity of either channel. This does not swap channels or add delay.</string>
+    <string name="channel_tone_hint">Adjust low, mid and high bands independently for each ear. Crossover points: 200 Hz and 2 kHz.</string>
+    <string name="channel_delay_title">Channel delay</string>
+    <string name="channel_delay_hint">Delay either channel by 0–10 ms, in 0.1 ms steps. At 0 ms no extra delay is added.</string>
+    <string name="channel_reset_all">Reset all channel settings</string>
+    <string name="channel_muted">Muted</string>
+</resources>

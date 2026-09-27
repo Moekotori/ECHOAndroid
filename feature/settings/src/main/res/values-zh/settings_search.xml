@@ -1,0 +1,8 @@
+<resources>
+    <string name="settings_search_hint">搜索设置</string>
+    <string name="settings_search_empty">没有匹配的设置</string>
+    <string name="settings_search_clear">清除搜索</string>
+    <string name="settings_search_lastfm">Last.fm 连接</string>
+    <string name="settings_search_api_key">API 密钥</string>
+    <string name="settings_search_shared_secret">共享密钥</string>
+</resources>

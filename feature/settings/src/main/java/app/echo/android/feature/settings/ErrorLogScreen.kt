@@ -52,6 +52,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.design.echoClickable
+import app.echo.android.design.echoPageBackgroundColor
 import app.echo.android.model.error.EchoErrorRecord
 import app.echo.android.model.error.EchoErrorSource
 import java.text.DateFormat
@@ -94,7 +95,7 @@ fun ErrorLogScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(scheme.background)
+            .background(echoPageBackgroundColor())
             .statusBarsPadding(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

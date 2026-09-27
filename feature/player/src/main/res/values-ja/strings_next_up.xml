@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="queue_next_up">次に再生</string>
+    <string name="queue_clear_next_up">次に再生をクリア</string>
+    <string name="queue_continue">元のキューを続ける</string>
+    <string name="queue_continue_from">続けて再生 · %1$s</string>
+    <string name="queue_show_previous">前の曲を表示</string>
+    <string name="queue_hide_previous">前の曲を隠す</string>
+</resources>

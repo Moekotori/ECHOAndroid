@@ -6,6 +6,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import app.echo.android.design.LocalEchoDarkTheme
+import app.echo.android.design.LocalEchoCustomBackgroundActive
 import app.echo.android.design.echoTheme
 
 @Composable
@@ -28,7 +29,7 @@ internal fun LastFmSettingsPanel(
     onOpenApiAccounts: () -> Unit,
 ) {
     SettingsSwitchRow(
-        title = "Last.fm Connect",
+        title = stringResource(R.string.settings_search_lastfm),
         detail = errorLabel ?: statusLabel,
         checked = enabled,
         onCheckedChange = onEnabledChange,
@@ -36,14 +37,14 @@ internal fun LastFmSettingsPanel(
     if (enabled) {
         if (apiKeyLocked) {
             SettingsActionRow(
-                title = "API key",
+                title = stringResource(R.string.settings_search_api_key),
                 detail = stringResource(R.string.settings_lastfm_builtin),
                 enabled = false,
                 onClick = {},
             )
         } else {
             SettingsTextInputRow(
-                title = "API key",
+                title = stringResource(R.string.settings_search_api_key),
                 value = apiKey,
                 placeholder = "Last.fm API key",
                 onValueChange = onApiKeyChange,
@@ -51,14 +52,14 @@ internal fun LastFmSettingsPanel(
         }
         if (sharedSecretLocked) {
             SettingsActionRow(
-                title = "Shared secret",
+                title = stringResource(R.string.settings_search_shared_secret),
                 detail = stringResource(R.string.settings_lastfm_builtin),
                 enabled = false,
                 onClick = {},
             )
         } else {
             SettingsTextInputRow(
-                title = "Shared secret",
+                title = stringResource(R.string.settings_search_shared_secret),
                 value = sharedSecret,
                 placeholder = "Last.fm shared secret",
                 secret = true,
@@ -175,10 +176,11 @@ internal fun SetlistFmSettingsPanel(
 @Composable
 internal fun settingsPanelColor(): Color {
     val scheme = MaterialTheme.colorScheme
+    val customBackground = LocalEchoCustomBackgroundActive.current
     return if (LocalEchoDarkTheme.current) {
         echoTheme().panel.copy(alpha = 0.58f)
     } else {
-        scheme.surface.copy(alpha = 0.72f)
+        scheme.surface.copy(alpha = if (customBackground) 0.66f else 0.72f)
     }
 }
 
@@ -207,4 +209,3 @@ internal fun settingsControlSurfaceColor(active: Boolean): Color {
         scheme.outlineVariant.copy(alpha = 0.42f)
     }
 }
-

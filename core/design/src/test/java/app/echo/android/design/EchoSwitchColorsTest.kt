@@ -14,8 +14,7 @@ class EchoSwitchColorsTest {
         assertEquals(Color.Transparent, colors.uncheckedBorderColor)
         assertEquals(Color.Transparent, colors.checkedBorderColor)
         assertEquals(Color.Transparent, colors.disabledUncheckedBorderColor)
-        assertEquals(tokens.accent, colors.checkedTrackColor)
-        assertEquals(tokens.onAccent, colors.checkedThumbColor)
+        assertEquals(Color.White, colors.checkedThumbColor)
         assertTrue(
             "off thumb on off track ${contrastRatio(colors.uncheckedThumbColor, colors.uncheckedTrackColor)}",
             contrastRatio(colors.uncheckedThumbColor, colors.uncheckedTrackColor) >= 3.0f,
@@ -39,7 +38,7 @@ class EchoSwitchColorsTest {
                 val mode = if (dark) "dark" else "light"
                 assertEquals("${theme.id} $mode unchecked border", Color.Transparent, colors.uncheckedBorderColor)
                 assertEquals("${theme.id} $mode checked border", Color.Transparent, colors.checkedBorderColor)
-                assertEquals(tokens.accent, colors.checkedTrackColor)
+                assertEquals(Color.White, colors.checkedThumbColor)
                 assertTrue(
                     "${theme.id} $mode off thumb ${contrastRatio(colors.uncheckedThumbColor, colors.uncheckedTrackColor)}",
                     contrastRatio(colors.uncheckedThumbColor, colors.uncheckedTrackColor) >= 3.0f,

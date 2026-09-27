@@ -1,20 +1,18 @@
 package app.echo.android.design
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchColors
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
 
 /**
- * Material 3's default switch uses a 2.dp outline and a 16.dp thumb when off. On Echo's dark
- * surfaces that reads as a hollow wireframe. This wrapper keeps a filled track and a full-size
- * thumb in both states.
+ * A compact, filled switch that keeps the thumb light and the active track in the current theme.
+ * The surrounding settings row provides the full touch target where this is used as a trailing icon.
  */
 @Composable
 fun EchoSwitch(
@@ -28,17 +26,16 @@ fun EchoSwitch(
     Switch(
         checked = checked,
         onCheckedChange = onCheckedChange,
-        modifier = modifier,
+        modifier = modifier.scale(0.88f),
         enabled = enabled,
         colors = colors,
-        thumbContent = { Box(Modifier.size(SwitchDefaults.IconSize)) },
     )
 }
 
 internal fun echoSwitchColors(tokens: EchoThemeTokens): SwitchColors {
     val surface = tokens.surface
-    val checkedThumb = tokens.onAccent
-    val checkedTrack = tokens.accent
+    val checkedThumb = Color.White
+    val checkedTrack = lerp(tokens.accentDeep, Color.Black, 0.22f)
     val uncheckedThumb = if (tokens.dark) Color.White else tokens.heading
     val uncheckedTrack = if (tokens.dark) {
         Color.White.copy(alpha = 0.22f).compositeOver(tokens.ink)

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="queue_next_up">接下来播放</string>
+    <string name="queue_clear_next_up">清空插播</string>
+    <string name="queue_continue">继续原队列</string>
+    <string name="queue_continue_from">继续播放 · %1$s</string>
+    <string name="queue_show_previous">显示先前曲目</string>
+    <string name="queue_hide_previous">收起先前曲目</string>
+</resources>

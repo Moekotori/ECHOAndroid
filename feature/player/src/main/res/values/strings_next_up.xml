@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="queue_next_up">Next Up</string>
+    <string name="queue_clear_next_up">Clear Next Up</string>
+    <string name="queue_continue">Continue original queue</string>
+    <string name="queue_continue_from">Continue · %1$s</string>
+    <string name="queue_show_previous">Show earlier tracks</string>
+    <string name="queue_hide_previous">Hide earlier tracks</string>
+</resources>

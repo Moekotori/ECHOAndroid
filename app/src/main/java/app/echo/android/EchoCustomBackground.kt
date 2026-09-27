@@ -17,7 +17,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
@@ -147,8 +146,7 @@ private fun EchoImageWallpaper(
             modifier = Modifier
                 .fillMaxSize()
                 .scale(backgroundScale)
-                .then(if (renderEffectBlur && blur > 0.dp) Modifier.blur(blur) else Modifier)
-                .alpha(brightness.coerceIn(0.35f, 1.15f)),
+                .then(if (renderEffectBlur && blur > 0.dp) Modifier.blur(blur) else Modifier),
         )
         EchoBrightnessOverlay(brightness)
     }
@@ -239,8 +237,7 @@ private fun EchoVideoWallpaper(
             },
             modifier = Modifier
                 .fillMaxSize()
-                .scale(backgroundScale)
-                .alpha(brightness.coerceIn(0.35f, 1.15f)),
+                .scale(backgroundScale),
         )
         EchoBrightnessOverlay(brightness)
     }
@@ -269,17 +266,18 @@ private fun EchoBrightnessOverlay(brightness: Float) {
 private fun EchoBackgroundGlassOverlay(glass: Float) {
     val dark = LocalEchoDarkTheme.current
     val readableGlass = glass.coerceIn(0.08f, 0.90f)
+    // Leave the middle of the artwork visible and keep stronger contrast behind edge controls.
     val colors = if (dark) {
         listOf(
-            echoTheme().night.copy(alpha = (readableGlass * 0.90f)),
-            echoTheme().ink.copy(alpha = (readableGlass * 0.82f)),
-            echoTheme().night.copy(alpha = (readableGlass * 0.94f)),
+            echoTheme().night.copy(alpha = 0.06f + readableGlass * 0.58f),
+            echoTheme().ink.copy(alpha = 0.04f + readableGlass * 0.42f),
+            echoTheme().night.copy(alpha = 0.12f + readableGlass * 0.68f),
         )
     } else {
         listOf(
-            Color.White.copy(alpha = (0.68f + readableGlass * 0.28f).coerceAtMost(0.96f)),
-            Color.White.copy(alpha = (0.60f + readableGlass * 0.30f).coerceAtMost(0.90f)),
-            Color.White.copy(alpha = (0.74f + readableGlass * 0.24f).coerceAtMost(0.98f)),
+            Color.White.copy(alpha = 0.12f + readableGlass * 0.78f),
+            Color.White.copy(alpha = 0.12f + readableGlass * 0.68f),
+            Color.White.copy(alpha = 0.18f + readableGlass * 0.86f),
         )
     }
     Box(

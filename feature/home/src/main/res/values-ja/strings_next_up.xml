@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="queue_add_next_up">次に再生するリストに追加</string>
+    <string name="queue_append_original">元のキューの末尾に追加</string>
+    <string name="queue_actions">キュー操作</string>
+</resources>

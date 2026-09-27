@@ -32,7 +32,10 @@ internal fun ThemeModeSelector(selectedMode: String, onSelect: (String) -> Unit)
     val currentTheme = EchoColorTheme.fromId(echoTheme().id)
     val darkTokens = remember(currentTheme) { echoThemeTokens(currentTheme, true) }
     val lightTokens = remember(currentTheme) { echoThemeTokens(currentTheme, false) }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(
+        modifier = Modifier.settingsSearchAnchor(stringResource(R.string.settings_display_mode)),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         Text(stringResource(R.string.settings_display_mode), color = scheme.onSurface, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
         Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             listOf(

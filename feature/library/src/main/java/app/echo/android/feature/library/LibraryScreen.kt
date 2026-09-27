@@ -326,6 +326,7 @@ fun LibraryScreen(
     onLibraryQueryChange: (String) -> Unit,
     onLibrarySourceChange: (String) -> Unit,
     onTrackSortModeChange: (LibraryTrackSortMode) -> Unit,
+    onFindSongLetterIndex: suspend (Char) -> Int,
     onAlbumSortModeChange: (AlbumSortMode) -> Unit,
     onArtistSortModeChange: (ArtistSortMode) -> Unit,
     onFolderSortModeChange: (FolderSortMode) -> Unit,
@@ -342,6 +343,7 @@ fun LibraryScreen(
     onPlayLinkedQueueOnPc: (List<EchoRemoteTrack>, Int) -> Unit = { _, _ -> },
     onPlayTrack: (EchoTrack, LibraryPlaybackOrigin) -> Unit,
     onPlayNext: (EchoTrack) -> Unit = {},
+    onAddNextUp: (EchoTrack) -> Unit = {},
     onEnqueueTrack: (EchoTrack) -> Unit = {},
     onUpdateTrackMetadata: suspend (EchoTrackMetadataUpdate) -> Unit,
     onImportLyricsForTrack: (EchoTrack) -> Unit,
@@ -552,23 +554,38 @@ fun LibraryScreen(
                                         actionLabel = stringResource(if (libraryQuery.isNotBlank()) L10nR.string.library_clear_search else L10nR.string.library_add_music),
                                         onAction = if (libraryQuery.isNotBlank()) ({ onLibraryQueryChange("") }) else ({ showEmptyScanOptions = true }),
                                     )
-                                    else -> TrackList(
-                                        tracks = trackItems,
-                                        onPlayTrack = { track ->
-                                            onPlayTrack(track, LibraryPlaybackOrigin.Songs)
-                                        },
-                                        onUpdateTrackMetadata = onUpdateTrackMetadata,
-                                        onImportLyrics = onImportLyricsForTrack,
-                                        onPickArtwork = onPickTrackArtwork,
-                                        onAddToPlaylist = { track -> addToPlaylistTrack = track },
-                                        onPlayNext = playNext,
-                                        onEnqueue = enqueueTrack,
-                                        onOpenArtist = onOpenTrackArtist,
-                                        onOpenAlbum = onOpenTrackAlbum,
-                                        showAudioInfoTags = showTrackAudioInfoTags,
-                                        listState = songListState,
-                                        modifier = Modifier.fillMaxSize(),
-                                    )
+                                    else -> Box(Modifier.fillMaxSize()) {
+                                        val showAlphabetIndex =
+                                            trackSortMode == LibraryTrackSortMode.Title && libraryQuery.isBlank()
+                                        TrackList(
+                                            tracks = trackItems,
+                                            onPlayTrack = { track ->
+                                                onPlayTrack(track, LibraryPlaybackOrigin.Songs)
+                                            },
+                                            onUpdateTrackMetadata = onUpdateTrackMetadata,
+                                            onImportLyrics = onImportLyricsForTrack,
+                                            onPickArtwork = onPickTrackArtwork,
+                                            onAddToPlaylist = { track -> addToPlaylistTrack = track },
+                                            onPlayNext = playNext,
+                                            onAddNextUp = onAddNextUp,
+                                            onEnqueue = enqueueTrack,
+                                            onOpenArtist = onOpenTrackArtist,
+                                            onOpenAlbum = onOpenTrackAlbum,
+                                            showAudioInfoTags = showTrackAudioInfoTags,
+                                            listState = songListState,
+                                            modifier = Modifier.fillMaxSize().then(
+                                                if (showAlphabetIndex) Modifier.padding(end = 28.dp) else Modifier,
+                                            ),
+                                        )
+                                        if (showAlphabetIndex) {
+                                            SongAlphabetIndex(
+                                                itemCount = trackItems.itemCount,
+                                                listState = songListState,
+                                                findIndex = onFindSongLetterIndex,
+                                                modifier = Modifier.align(Alignment.CenterEnd),
+                                            )
+                                        }
+                                    }
                                 }
                             }
 
@@ -779,6 +796,7 @@ fun LibraryScreen(
                         onPickArtwork = onPickTrackArtwork,
                         onAddToPlaylist = { track -> addToPlaylistTrack = track },
                         onPlayNext = playNext,
+                        onAddNextUp = onAddNextUp,
                         onEnqueue = enqueueTrack,
                         onOpenArtist = onOpenAlbumArtist,
                         onOpenTrackArtist = onOpenTrackArtist,
@@ -807,6 +825,7 @@ fun LibraryScreen(
                         onPickArtwork = onPickTrackArtwork,
                         onAddToPlaylist = { track -> addToPlaylistTrack = track },
                         onPlayNext = playNext,
+                        onAddNextUp = onAddNextUp,
                         onEnqueue = enqueueTrack,
                         onOpenArtist = onOpenTrackArtist,
                         onOpenAlbum = onOpenTrackAlbum,
@@ -833,6 +852,7 @@ fun LibraryScreen(
                         onPickArtwork = onPickTrackArtwork,
                         onAddToPlaylist = { track -> addToPlaylistTrack = track },
                         onPlayNext = playNext,
+                        onAddNextUp = onAddNextUp,
                         onEnqueue = enqueueTrack,
                         onOpenTrackAlbum = onOpenTrackAlbum,
                         modifier = Modifier.fillMaxSize(),
@@ -851,6 +871,7 @@ fun LibraryScreen(
                         onPickArtwork = onPickTrackArtwork,
                         onAddToPlaylist = { track -> addToPlaylistTrack = track },
                         onPlayNext = playNext,
+                        onAddNextUp = onAddNextUp,
                         onEnqueue = enqueueTrack,
                         onOpenArtist = onOpenTrackArtist,
                         onOpenAlbum = onOpenTrackAlbum,
@@ -877,6 +898,7 @@ fun LibraryScreen(
                         onPickArtwork = onPickTrackArtwork,
                         onAddToPlaylist = { track -> addToPlaylistTrack = track },
                         onPlayNext = playNext,
+                        onAddNextUp = onAddNextUp,
                         onEnqueue = enqueueTrack,
                         onOpenArtist = onOpenTrackArtist,
                         onOpenAlbum = onOpenTrackAlbum,
@@ -974,6 +996,7 @@ fun LibraryScreen(
                 onPickArtwork = onPickTrackArtwork,
                 onAddToPlaylist = { track -> addToPlaylistTrack = track },
                 onPlayNext = playNext,
+                onAddNextUp = onAddNextUp,
                 onEnqueue = enqueueTrack,
                 onOpenArtist = onOpenAlbumArtist,
                 onOpenTrackArtist = onOpenTrackArtist,
@@ -1003,6 +1026,7 @@ fun LibraryScreen(
                 onPickArtwork = onPickTrackArtwork,
                 onAddToPlaylist = { track -> addToPlaylistTrack = track },
                 onPlayNext = playNext,
+                onAddNextUp = onAddNextUp,
                 onEnqueue = enqueueTrack,
                 onOpenTrackAlbum = onOpenTrackAlbum,
                 modifier = Modifier.fillMaxSize(),
@@ -1021,6 +1045,7 @@ fun LibraryScreen(
                 onPickArtwork = onPickTrackArtwork,
                 onAddToPlaylist = { track -> addToPlaylistTrack = track },
                 onPlayNext = playNext,
+                onAddNextUp = onAddNextUp,
                 onEnqueue = enqueueTrack,
                 onOpenArtist = onOpenTrackArtist,
                 onOpenAlbum = onOpenTrackAlbum,
@@ -1047,6 +1072,7 @@ fun LibraryScreen(
                 onPickArtwork = onPickTrackArtwork,
                 onAddToPlaylist = { track -> addToPlaylistTrack = track },
                 onPlayNext = playNext,
+                onAddNextUp = onAddNextUp,
                 onEnqueue = enqueueTrack,
                 onOpenArtist = onOpenTrackArtist,
                 onOpenAlbum = onOpenTrackAlbum,

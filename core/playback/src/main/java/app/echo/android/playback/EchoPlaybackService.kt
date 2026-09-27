@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 class EchoPlaybackService : MediaLibraryService() {
     private var mediaSession: MediaLibrarySession? = null
     private var player: ExoPlayer? = null
+    private var nextUpQueue: NextUpQueueController? = null
     private var trackTransitions: EchoTrackTransitionController? = null
     private var smartTransitions: EchoSmartTransitionController? = null
     private var sessionCallback: EchoPlaybackLibrarySessionCallback? = null
@@ -112,6 +113,7 @@ class EchoPlaybackService : MediaLibraryService() {
             .setMaxSeekToPreviousPositionMs(PREVIOUS_RESTART_THRESHOLD_MS)
             .build()
             .also {
+                nextUpQueue = NextUpQueueController(it)
                 EchoPlaybackProcessRuntime.enginePolicy(this).attachTo(it)
                 it.addListener(EchoRadioPlaybackBinding(it))
                 it.addListener(playerListener)
@@ -146,6 +148,7 @@ class EchoPlaybackService : MediaLibraryService() {
             player = { player },
             session = { mediaSession },
             restorer = restorer,
+            nextUpQueue = { nextUpQueue },
         )
         sessionCallback = callback
         val buttons = callback.currentButtons(exoPlayer)
@@ -230,6 +233,7 @@ class EchoPlaybackService : MediaLibraryService() {
         sessionCallback = null
         sessionRestorer = null
         player = null
+        nextUpQueue = null
         serviceScope.cancel()
         super.onDestroy()
     }

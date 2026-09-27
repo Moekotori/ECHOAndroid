@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="queue_add_next_up">加入接下来播放</string>
+    <string name="queue_append_original">追加到原队列末尾</string>
+    <string name="queue_actions">队列操作</string>
+</resources>

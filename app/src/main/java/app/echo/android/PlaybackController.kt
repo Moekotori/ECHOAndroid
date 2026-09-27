@@ -51,6 +51,10 @@ import app.echo.android.playback.EchoUsbExclusiveApplyPolicy
 import app.echo.android.playback.EchoUsbExclusiveDriverTester
 import app.echo.android.playback.EchoSleepTimerPolicy
 import app.echo.android.playback.nextPlayerRepeatMode
+import app.echo.android.playback.asQueueEntry
+import app.echo.android.playback.queueContext
+import app.echo.android.playback.queueShuffleOrder
+import app.echo.android.playback.EchoPlaybackSessionCommands
 import app.echo.android.playback.PlaybackQueueInsertPolicy
 import app.echo.android.playback.PlaybackQueueReplaceIntent
 import app.echo.android.playback.PlaybackSessionPolicy
@@ -306,27 +310,27 @@ internal class PlaybackController(
             repeatMode = PlaybackSessionPolicy.repeatModeForQueueReplace(
                 PlaybackQueueReplaceIntent.PlayAll,
             ).toPlayerRepeatMode()
-            setMediaItem(track.toMediaItem())
+            setMediaItem(track.toMediaItem().asQueueEntry(source = track.album))
             prepare()
             play()
         }
     }
 
-    fun playNext(track: EchoTrack) {
-        val queueIds = currentQueueIds()
-        if (PlaybackQueueInsertPolicy.shouldReplaceQueue(queueIds.size)) {
-            play(track)
-            return
+    fun playNext(track: EchoTrack) = addNextUp(track, first = true)
+
+    fun addNextUp(track: EchoTrack, first: Boolean = false) {
+        resetStickyPlaybackError()
+        withController {
+            enginePolicy.mergeQueueLookups(track)
+            sendCustomCommand(EchoPlaybackSessionCommands.addNextUp, android.os.Bundle().apply {
+                putBundle("item", track.toMediaItem().toBundleIncludeLocalConfiguration())
+                putBoolean("first", first)
+            })
         }
-        val mediaController = controller
-        val currentIndex = mediaController?.currentMediaItemIndex
-            ?: _playbackQueue.value.currentIndex
-        val insertAt = PlaybackQueueInsertPolicy.playNextIndex(
-            currentIndex = currentIndex,
-            queueSize = queueIds.size,
-        )
-        if (PlaybackQueueInsertPolicy.shouldSkipInsert(queueIds, insertAt, track.id)) return
-        insertTrack(track, insertAt)
+    }
+
+    fun clearNextUp() {
+        withController { sendCustomCommand(EchoPlaybackSessionCommands.clearNextUp, android.os.Bundle.EMPTY) }
     }
 
     fun enqueue(track: EchoTrack) {
@@ -354,7 +358,7 @@ internal class PlaybackController(
         withController {
             enginePolicy.mergeQueueLookups(track)
             val insertAt = index.coerceIn(0, mediaItemCount)
-            addMediaItem(insertAt, track.toMediaItem())
+            addMediaItem(insertAt, track.toMediaItem().asQueueEntry(source = currentMediaItem?.queueContext()?.source))
             updatePlaybackCore(this)
         }
     }
@@ -363,13 +367,14 @@ internal class PlaybackController(
         queue: List<EchoTrack>,
         startIndex: Int,
         intent: PlaybackQueueReplaceIntent = PlaybackQueueReplaceIntent.PlayAll,
+        source: String? = queue.firstOrNull()?.album?.takeIf { album -> queue.all { it.album == album } },
     ) {
         if (queue.isEmpty()) return
         val safeStartIndex = startIndex.coerceIn(0, queue.lastIndex)
         resetStickyPlaybackError()
         val mediaItems = ArrayList<MediaItem>(queue.size)
         queue.forEach { track ->
-            mediaItems += track.toMediaItem()
+            mediaItems += track.toMediaItem().asQueueEntry(source = source)
         }
         usbAudioMonitor.prepareForTrack(queue[safeStartIndex].sampleRateHz)
         withController(replacesQueue = true) {
@@ -472,31 +477,22 @@ internal class PlaybackController(
         }
     }
 
-    fun playQueueItem(index: Int) {
+    fun playQueueItem(index: Int) = editQueue("play", index)
+
+    fun removeQueueItem(index: Int) = editQueue("remove", index)
+
+    fun moveQueueItem(fromIndex: Int, toIndex: Int) = editQueue("move", fromIndex, toIndex)
+
+    private fun editQueue(action: String, index: Int, targetIndex: Int? = null) {
+        val entry = _playbackQueue.value.items.getOrNull(index)?.queueContext?.entryId ?: return
+        val target = targetIndex?.let { _playbackQueue.value.items.getOrNull(it)?.queueContext?.entryId }
         resetStickyPlaybackError()
         withController {
-            if (index !in 0 until mediaItemCount) return@withController
-            seekTo(index, 0L)
-            recoverAndPlay()
-            updatePlaybackCore(this)
-        }
-    }
-
-    fun removeQueueItem(index: Int) {
-        withController {
-            if (index !in 0 until mediaItemCount) return@withController
-            removeMediaItem(index)
-            if (mediaItemCount == 0) replaceQueueLookups(emptyList())
-            updatePlaybackCore(this)
-        }
-    }
-
-    fun moveQueueItem(fromIndex: Int, toIndex: Int) {
-        withController {
-            val moved = PlaybackQueueInsertPolicy.moveIndex(fromIndex, toIndex, mediaItemCount)
-                ?: return@withController
-            moveMediaItem(moved.first, moved.second)
-            updatePlaybackCore(this)
+            sendCustomCommand(EchoPlaybackSessionCommands.editQueue, android.os.Bundle().apply {
+                putString("action", action)
+                putString("entry", entry)
+                putString("target", target)
+            })
         }
     }
 
@@ -531,7 +527,7 @@ internal class PlaybackController(
     fun toggleShuffle() {
         withController {
             shuffleModeEnabled = !shuffleModeEnabled
-            updatePlaybackCore(this, remapQueue = false)
+            updatePlaybackCore(this)
         }
     }
 
@@ -631,7 +627,7 @@ internal class PlaybackController(
     fun enableShuffle() {
         withController {
             shuffleModeEnabled = true
-            updatePlaybackCore(this, remapQueue = false)
+            updatePlaybackCore(this)
         }
     }
 
@@ -756,7 +752,7 @@ internal class PlaybackController(
                         isPlayingChanged = events.contains(Player.EVENT_IS_PLAYING_CHANGED),
                         tracksChanged = events.contains(Player.EVENT_TRACKS_CHANGED),
                         playWhenReadyChanged = events.contains(Player.EVENT_PLAY_WHEN_READY_CHANGED),
-                    ),
+                    ) || events.containsAny(Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED, Player.EVENT_REPEAT_MODE_CHANGED),
                 )
                 if (events.contains(Player.EVENT_POSITION_DISCONTINUITY)) {
                     persistPlaybackSession(persistBecauseOfSeek = true)
@@ -1104,6 +1100,10 @@ internal class PlaybackController(
                 session.currentIndex,
                 if (EchoRadioStation.isRadio(restoredQueue[session.currentIndex].id)) androidx.media3.common.C.TIME_UNSET else session.positionMs,
             )
+            mediaController.sendCustomCommand(EchoPlaybackSessionCommands.editQueue, android.os.Bundle().apply {
+                putString("action", "restore_order")
+                putIntArray("order", session.shuffleOrder.toIntArray())
+            })
             mediaController.shuffleModeEnabled = session.shuffleEnabled
             mediaController.repeatMode = session.repeatMode.toPlayerRepeatMode()
             mediaController.setPlaybackParameters(
@@ -1164,7 +1164,7 @@ internal class PlaybackController(
     ) {
         val mediaController = controller ?: return
         val playerMediaIds = (0 until mediaController.mediaItemCount).map { index ->
-            mediaController.getMediaItemAt(index).mediaId
+            mediaController.getMediaItemAt(index).let { it.queueContext()?.entryId ?: it.mediaId }
         }
         val currentIndex = mediaController.currentMediaItemIndex
             .takeIf { it in 0 until mediaController.mediaItemCount }
@@ -1202,7 +1202,7 @@ internal class PlaybackController(
         val cachedQueue = _playbackQueue.value
         val queue = if (
             PlaybackSessionPolicy.shouldReuseCachedQueueSnapshot(
-                cachedMediaIds = cachedQueue.items.map { it.id },
+                cachedMediaIds = cachedQueue.items.map { it.queueContext?.entryId ?: it.id },
                 playerMediaIds = playerMediaIds,
             )
         ) {
@@ -1225,6 +1225,7 @@ internal class PlaybackController(
                 repeatMode = mediaController.repeatMode.toEchoRepeatMode(),
                 playbackSpeed = mediaController.playbackParameters.speed,
                 playbackPitch = mediaController.playbackParameters.pitch,
+                shuffleOrder = mediaController.queueShuffleOrder(),
             )
         }
         if (
@@ -1342,7 +1343,7 @@ internal class PlaybackController(
         var cachedQueue = PlaybackQueueState()
         EchoPlaybackProcessRuntime.startProgress(PERSIST_POSITION_BUCKET_MS) { player ->
             if (player !== mediaController) return@startProgress
-            val mediaIds = (0 until player.mediaItemCount).map { index -> player.getMediaItemAt(index).mediaId }
+            val mediaIds = (0 until player.mediaItemCount).map { index -> player.getMediaItemAt(index).let { it.queueContext()?.entryId ?: it.mediaId } }
             val currentIndex = player.currentMediaItemIndex.takeIf { it in 0 until player.mediaItemCount } ?: -1
             val signature = playbackSessionPersistSignature(
                 currentIndex = currentIndex,
@@ -1453,5 +1454,6 @@ private fun Player.toSavedPlaybackSession(queue: PlaybackQueueState): EchoSavedP
         repeatMode = repeatMode.toEchoRepeatMode(),
         playbackSpeed = playbackParameters.speed,
         playbackPitch = playbackParameters.pitch,
+        shuffleOrder = queueShuffleOrder(),
     )
 }

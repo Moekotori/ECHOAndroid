@@ -1,0 +1,8 @@
+<resources>
+    <string name="settings_startup_background">启动背景</string>
+    <string name="settings_startup_background_detail">在 ECHO 启动过渡时显示自定义图片。最先出现的系统启动画面仍由 Android 显示。</string>
+    <string name="settings_startup_background_preview">启动背景预览</string>
+    <string name="settings_startup_background_unavailable">图片不可用，启动时将使用默认画面。</string>
+    <string name="settings_startup_background_default">正在使用默认启动画面</string>
+    <string name="settings_startup_background_choose">选择图片</string>
+</resources>

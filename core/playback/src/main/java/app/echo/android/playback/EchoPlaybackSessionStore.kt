@@ -17,6 +17,7 @@ data class EchoPlaybackSessionSnapshot(
     val repeatMode: EchoRepeatMode = EchoRepeatMode.Off,
     val playbackSpeed: Float = 1f,
     val playbackPitch: Float = 1f,
+    val shuffleOrder: List<Int> = emptyList(),
 )
 
 interface EchoPlaybackSessionStore {
@@ -52,6 +53,7 @@ fun Player.toPlaybackSessionSnapshot(): EchoPlaybackSessionSnapshot? {
         repeatMode = repeatMode.toEchoRepeatMode(),
         playbackSpeed = playbackParameters.speed,
         playbackPitch = playbackParameters.pitch,
+        shuffleOrder = queueShuffleOrder(),
     )
 }
 
@@ -62,10 +64,13 @@ fun Player.applyPlaybackSessionSnapshot(
     preparePlayer: Boolean = true,
 ) {
     setMediaItems(
-        snapshot.queue.map { it.toMediaItem() },
+        snapshot.queue.map { track -> track.toMediaItem().let { if (it.queueContext() == null) it.asQueueEntry() else it } },
         snapshot.currentIndex,
         if (EchoRadioStation.isRadio(snapshot.queue[snapshot.currentIndex].id)) C.TIME_UNSET else snapshot.positionMs.coerceAtLeast(0L),
     )
+    if (this is androidx.media3.exoplayer.ExoPlayer && NextUpQueuePolicy.validOrder(snapshot.shuffleOrder, mediaItemCount)) {
+        setShuffleOrder(androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder(snapshot.shuffleOrder.toIntArray(), 0L))
+    }
     shuffleModeEnabled = snapshot.shuffleEnabled
     repeatMode = snapshot.repeatMode.toPlayerRepeatMode()
     playbackParameters = PlaybackParameters(snapshot.playbackSpeed, snapshot.playbackPitch)

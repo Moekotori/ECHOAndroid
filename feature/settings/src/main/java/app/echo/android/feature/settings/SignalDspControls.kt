@@ -5,11 +5,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -20,13 +20,14 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun DspChoices(labels: List<String>, selected: Int, enabled: Boolean, onSelect: (Int) -> Unit) {
     val colors = MaterialTheme.colorScheme
-    Row(Modifier.fillMaxWidth().background(colors.surfaceContainerHigh, RoundedCornerShape(10.dp)).padding(3.dp).selectableGroup()) {
+    Row(Modifier.fillMaxWidth().selectableGroup()) {
         labels.forEachIndexed { index, label ->
-            Surface(Modifier.weight(1f), shape = RoundedCornerShape(8.dp), color = if (index == selected) colors.surface else colors.surfaceContainerHigh) {
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(Modifier.heightIn(min = 44.dp).selectable(index == selected, enabled = enabled, role = Role.RadioButton, onClick = { onSelect(index) }).padding(horizontal = 6.dp), contentAlignment = Alignment.Center) {
                     Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         color = if (!enabled) colors.onSurface.copy(alpha = 0.38f) else if (index == selected) colors.primary else colors.onSurfaceVariant)
                 }
+                HorizontalDivider(color = if (index == selected) colors.primary.copy(alpha = if (enabled) 1f else 0.38f) else Color.Transparent)
             }
         }
     }

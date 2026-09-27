@@ -48,7 +48,10 @@ internal fun ThemePaletteSelector(
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
     val selected = EchoColorTheme.fromId(selectedId)
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(
+        modifier = Modifier.settingsSearchAnchor(stringResource(R.string.settings_color_theme)),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
         Row(
             Modifier.fillMaxWidth().padding(top = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),

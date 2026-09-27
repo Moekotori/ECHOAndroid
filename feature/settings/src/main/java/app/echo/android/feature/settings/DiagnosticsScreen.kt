@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.echoPageBackgroundColor
 import app.echo.android.design.animateSilkToPage
 import app.echo.android.design.rememberContentPagerNestedScroll
 import app.echo.android.design.rememberSilkPagerFlingBehavior
@@ -91,7 +92,7 @@ fun DiagnosticsScreen(
     val scheme = MaterialTheme.colorScheme
     CompositionLocalProvider(LocalContentColor provides scheme.onBackground) {
         Column(
-            Modifier.fillMaxSize().background(scheme.background).statusBarsPadding(),
+            Modifier.fillMaxSize().background(echoPageBackgroundColor()).statusBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxWidth()) {
@@ -139,7 +140,7 @@ fun DiagnosticsScreen(
                         }
                     }
                     when (tab) {
-                        0 -> SignalOverview(status, equalizerState, channelBalanceState, onAdjust = { selectTab(1) }, onDiagnostics = { selectTab(2) })
+                        0 -> SignalOverview(status, equalizerState, channelBalanceState, dspSettings, onAdjust = { selectTab(1) }, onDiagnostics = { selectTab(2) })
                         1 -> {
                             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                                 SignalSoundTabs(

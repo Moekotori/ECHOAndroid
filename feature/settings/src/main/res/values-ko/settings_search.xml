@@ -1,0 +1,8 @@
+<resources>
+    <string name="settings_search_hint">설정 검색</string>
+    <string name="settings_search_empty">일치하는 설정이 없습니다</string>
+    <string name="settings_search_clear">검색 지우기</string>
+    <string name="settings_search_lastfm">Last.fm 연결</string>
+    <string name="settings_search_api_key">API 키</string>
+    <string name="settings_search_shared_secret">공유 암호</string>
+</resources>

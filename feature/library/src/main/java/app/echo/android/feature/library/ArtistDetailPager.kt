@@ -14,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.echoPageBackgroundColor
 import app.echo.android.design.animateSilkToPage
 import app.echo.android.design.rememberSilkPagerFlingBehavior
 import app.echo.android.model.library.ArtistOnlineQuery
@@ -33,7 +34,7 @@ internal fun ArtistDetailPager(
     val scope = rememberCoroutineScope()
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
-    Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding()) {
+    Column(modifier.fillMaxSize().background(echoPageBackgroundColor()).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 24.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.feature_library_back_49093c))

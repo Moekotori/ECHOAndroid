@@ -80,6 +80,7 @@ import app.echo.android.design.EchoSectionTitle
 import app.echo.android.design.AmbientPlanet
 import app.echo.android.design.GlassIconButton
 import app.echo.android.design.GlassSurface
+import app.echo.android.design.LocalEchoCustomBackgroundActive
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.echoDarkGlassBorder
 import app.echo.android.design.rememberEchoHapticPerformer
@@ -112,7 +113,11 @@ internal fun homePanelColor(lightAlpha: Float = 0.90f): Color {
     return if (LocalEchoDarkTheme.current) {
         echoTheme().panel.copy(alpha = (lightAlpha * 0.58f).coerceIn(0.42f, 0.62f))
     } else {
-        Color.White.copy(alpha = lightAlpha.coerceIn(0.95f, 1.00f))
+        Color.White.copy(alpha = if (LocalEchoCustomBackgroundActive.current) {
+            (lightAlpha * 0.78f).coerceIn(0.56f, 0.78f)
+        } else {
+            lightAlpha.coerceIn(0.95f, 1.00f)
+        })
     }
 }
 
@@ -143,11 +148,12 @@ private fun homePanelBrush(): Brush {
             ),
         )
     } else {
+        val customBackground = LocalEchoCustomBackgroundActive.current
         Brush.linearGradient(
             listOf(
-                Color.White.copy(alpha = 1.00f),
-                Color(0xFFF7F5F6),
-                echoTheme().mist.copy(alpha = 0.76f),
+                Color.White.copy(alpha = if (customBackground) 0.76f else 1.00f),
+                Color(0xFFF7F5F6).copy(alpha = if (customBackground) 0.68f else 1f),
+                echoTheme().mist.copy(alpha = if (customBackground) 0.58f else 0.76f),
             ),
         )
     }

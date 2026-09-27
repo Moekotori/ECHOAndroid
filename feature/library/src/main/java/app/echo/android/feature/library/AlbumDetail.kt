@@ -62,6 +62,7 @@ import app.echo.android.design.ArtworkPalette
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoContentMaxWidth
 import app.echo.android.design.LocalEchoDarkTheme
+import app.echo.android.design.echoPageBackgroundColor
 import app.echo.android.design.displayMetadataOrUnknown
 import app.echo.android.design.formatDuration
 import app.echo.android.design.rememberArtworkPalette
@@ -119,6 +120,7 @@ internal fun AlbumDetailPage(
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
     onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
     onPlayNext: ((EchoTrack) -> Unit)? = null,
+    onAddNextUp: ((EchoTrack) -> Unit)? = null,
     onEnqueue: ((EchoTrack) -> Unit)? = null,
     onOpenArtist: (() -> Unit)? = null,
     onOpenTrackArtist: ((EchoTrack) -> Unit)? = null,
@@ -210,6 +212,7 @@ internal fun AlbumDetailPage(
                                     onMatchNeteaseMetadata = onMatchNeteaseMetadata,
                                     onAddToPlaylist = onAddToPlaylist,
                                     onPlayNext = onPlayNext,
+                                    onAddNextUp = onAddNextUp,
                                     onEnqueue = onEnqueue,
                                     onOpenArtist = onOpenTrackArtist,
                                 )
@@ -336,6 +339,7 @@ internal fun GenreTrackDetailPage(
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
     onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
     onPlayNext: ((EchoTrack) -> Unit)? = null,
+    onAddNextUp: ((EchoTrack) -> Unit)? = null,
     onEnqueue: ((EchoTrack) -> Unit)? = null,
     onOpenArtist: ((EchoTrack) -> Unit)? = null,
     onOpenAlbum: ((EchoTrack) -> Unit)? = null,
@@ -423,6 +427,7 @@ internal fun GenreTrackDetailPage(
                                 onMatchNeteaseMetadata = onMatchNeteaseMetadata,
                                 onAddToPlaylist = onAddToPlaylist,
                                 onPlayNext = onPlayNext,
+                                onAddNextUp = onAddNextUp,
                                 onEnqueue = onEnqueue,
                                 onOpenArtist = onOpenArtist,
                                 onOpenAlbum = onOpenAlbum,
@@ -457,7 +462,7 @@ private fun AlbumDetailLightBackground(
     modifier: Modifier = Modifier,
 ) {
     val dark = LocalEchoDarkTheme.current
-    val base = MaterialTheme.colorScheme.background
+    val base = echoPageBackgroundColor()
     // Missing artwork must not turn a hash-generated placeholder color into a full-screen wash.
     Box(modifier = modifier.background(base)) {
         if (!artworkUri.isNullOrBlank()) {
@@ -1138,6 +1143,7 @@ internal fun AlbumTrackRow(
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
     onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
     onPlayNext: ((EchoTrack) -> Unit)? = null,
+    onAddNextUp: ((EchoTrack) -> Unit)? = null,
     onEnqueue: ((EchoTrack) -> Unit)? = null,
     onOpenArtist: ((EchoTrack) -> Unit)? = null,
     onOpenAlbum: ((EchoTrack) -> Unit)? = null,
@@ -1154,6 +1160,7 @@ internal fun AlbumTrackRow(
         onMatchNeteaseMetadata = onMatchNeteaseMetadata,
         onAddToPlaylist = onAddToPlaylist,
         onPlayNext = onPlayNext,
+        onAddNextUp = onAddNextUp,
         onEnqueue = onEnqueue,
         onOpenArtist = onOpenArtist?.let { open -> { open(track) } },
         onOpenAlbum = onOpenAlbum?.let { open -> { open(track) } },
@@ -1243,6 +1250,7 @@ private fun AlbumDiscTrackRow(
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
     onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
     onPlayNext: ((EchoTrack) -> Unit)? = null,
+    onAddNextUp: ((EchoTrack) -> Unit)? = null,
     onEnqueue: ((EchoTrack) -> Unit)? = null,
     onOpenArtist: ((EchoTrack) -> Unit)? = null,
     onOpenAlbum: ((EchoTrack) -> Unit)? = null,
@@ -1264,6 +1272,7 @@ private fun AlbumDiscTrackRow(
             onMatchNeteaseMetadata = onMatchNeteaseMetadata,
             onAddToPlaylist = onAddToPlaylist,
             onPlayNext = onPlayNext,
+            onAddNextUp = onAddNextUp,
             onEnqueue = onEnqueue,
             onOpenArtist = onOpenArtist,
             onOpenAlbum = onOpenAlbum,

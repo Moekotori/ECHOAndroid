@@ -108,6 +108,7 @@ fun PlaybackQueueSheet(
     onRemoveItem: (Int) -> Unit,
     onMoveItem: (Int, Int) -> Unit = { _, _ -> },
     onClearQueue: () -> Unit,
+    onClearNextUp: () -> Unit,
     onCycleRepeatMode: () -> Unit,
     onToggleShuffle: () -> Unit,
     modifier: Modifier = Modifier,
@@ -194,6 +195,7 @@ fun PlaybackQueueSheet(
                 onRemoveItem = onRemoveItem,
                 onMoveItem = onMoveItem,
                 onClearQueue = onClearQueue,
+                onClearNextUp = onClearNextUp,
                 onCycleRepeatMode = onCycleRepeatMode,
                 onToggleShuffle = onToggleShuffle,
                 onHandleDrag = { delta ->
@@ -232,6 +234,7 @@ private fun QueueSheetSurface(
     onRemoveItem: (Int) -> Unit,
     onMoveItem: (Int, Int) -> Unit,
     onClearQueue: () -> Unit,
+    onClearNextUp: () -> Unit,
     onCycleRepeatMode: () -> Unit,
     onToggleShuffle: () -> Unit,
     motionProgress: Float,
@@ -243,27 +246,7 @@ private fun QueueSheetSurface(
     val empty = queueState.items.isEmpty()
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
-    val currentIndex = queueState.currentIndex
-    val safeCurrentIndex = remember(currentIndex, queueState.items.size) {
-        currentIndex.takeIf { it >= 0 && queueState.items.isNotEmpty() }
-            ?.coerceIn(0, queueState.items.lastIndex)
-            ?: 0
-    }
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = safeCurrentIndex)
-    var positionedInitialItem by remember { mutableStateOf(false) }
     val contentLiftPx = with(LocalDensity.current) { 16.dp.toPx() }
-
-    LaunchedEffect(currentIndex, queueState.items.size) {
-        if (currentIndex >= 0 && queueState.items.isNotEmpty()) {
-            val targetIndex = currentIndex.coerceIn(0, queueState.items.lastIndex)
-            if (positionedInitialItem) {
-                listState.animateScrollToItem(targetIndex)
-            } else {
-                listState.scrollToItem(targetIndex)
-                positionedInitialItem = true
-            }
-        }
-    }
 
     Box(
         modifier = modifier
@@ -319,28 +302,7 @@ private fun QueueSheetSurface(
             if (queueState.items.isEmpty()) {
                 QueueEmptyState()
             } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(9.dp),
-                ) {
-                    itemsIndexed(
-                        items = queueState.items,
-                        key = { index, item -> "${item.id}-$index" },
-                    ) { index, item ->
-                        QueueTrackRow(
-                            track = item,
-                            index = index,
-                            lastIndex = queueState.items.lastIndex,
-                            active = index == queueState.currentIndex,
-                            onPlay = { onPlayItem(index) },
-                            onRemove = { onRemoveItem(index) },
-                            onMoveUp = { onMoveItem(index, index - 1) },
-                            onMoveDown = { onMoveItem(index, index + 1) },
-                        )
-                    }
-                }
+                NextUpQueueList(queueState, onPlayItem, onRemoveItem, onMoveItem, onClearNextUp)
             }
         }
     }
@@ -434,7 +396,7 @@ private fun QueueModeControls(
 }
 
 @Composable
-private fun QueueTrackRow(
+internal fun QueueTrackRow(
     track: EchoTrackRef,
     index: Int,
     lastIndex: Int,
@@ -443,6 +405,9 @@ private fun QueueTrackRow(
     onRemove: () -> Unit,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
+    modifier: Modifier = Modifier,
+    dropTarget: Boolean = false,
+    interactive: Boolean = true,
 ) {
     val scheme = MaterialTheme.colorScheme
     val containerColor by animateColorAsState(
@@ -464,12 +429,15 @@ private fun QueueTrackRow(
         label = "queue-row-border",
     )
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
             .background(containerColor)
-            .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(18.dp))
-            .echoClickable(onClick = onPlay)
+            .border(
+                BorderStroke(if (dropTarget) 2.dp else 1.dp, if (dropTarget) scheme.primary else borderColor),
+                RoundedCornerShape(18.dp),
+            )
+            .then(if (interactive) Modifier.echoClickable(onClick = onPlay) else Modifier)
             .padding(horizontal = 10.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -516,7 +484,7 @@ private fun QueueTrackRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        if (index > 0) {
+        if (interactive && index > 0) {
             QueueIconButton(
                 icon = Icons.Rounded.KeyboardArrowUp,
                 description = stringResource(L10nR.string.feature_player_move_up_e6d961),
@@ -524,7 +492,7 @@ private fun QueueTrackRow(
                 compact = true,
             )
         }
-        if (index < lastIndex) {
+        if (interactive && index < lastIndex) {
             QueueIconButton(
                 icon = Icons.Rounded.KeyboardArrowDown,
                 description = stringResource(L10nR.string.feature_player_move_down_cf81ae),
@@ -532,7 +500,7 @@ private fun QueueTrackRow(
                 compact = true,
             )
         }
-        QueueIconButton(
+        if (interactive) QueueIconButton(
             icon = if (active) Icons.Rounded.PlayArrow else Icons.Rounded.DeleteOutline,
             description = if (active) {
                 stringResource(L10nR.string.feature_player_now_playing_214a7c)
@@ -675,10 +643,8 @@ private fun QueueIconButton(
     val scheme = MaterialTheme.colorScheme
     Box(
         modifier = Modifier
-            .size(if (compact) 34.dp else 40.dp)
-            .clip(CircleShape)
-            .background(if (LocalEchoDarkTheme.current) echoTheme().panel.copy(alpha = 0.64f) else scheme.surface.copy(alpha = 0.68f))
-            .border(BorderStroke(1.dp, if (LocalEchoDarkTheme.current) echoTheme().glassBorder else scheme.outlineVariant.copy(alpha = 0.22f)), CircleShape)
+            .size(if (compact) 30.dp else 40.dp)
+            .clip(RoundedCornerShape(8.dp))
             .echoClickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -686,7 +652,7 @@ private fun QueueIconButton(
             imageVector = icon,
             contentDescription = description,
             tint = scheme.onSurfaceVariant,
-            modifier = Modifier.size(if (compact) 19.dp else 22.dp),
+            modifier = Modifier.size(if (compact) 18.dp else 22.dp),
         )
     }
 }

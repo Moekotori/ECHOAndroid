@@ -117,7 +117,7 @@ class EchoLibraryRepository(
 
             emitAll(
                 Pager(
-                    config = defaultPagingConfig(),
+                    config = defaultPagingConfig(enablePlaceholders = true),
                     pagingSourceFactory = {
                         dao.pageTracksSorted(
                             trackPagingQuery(
@@ -1977,6 +1977,11 @@ class EchoLibraryRepository(
 
     suspend fun countTracks(): Int = database.trackDao().countTracks()
 
+    suspend fun localTitleIndex(letter: Char): Int {
+        require(letter in 'A'..'Z')
+        return database.trackDao().countLocalTracksBeforeTitle(letter.toString())
+    }
+
     suspend fun countTracksFromSource(source: String): Int =
         database.trackDao().countTracksFromSource(source)
 
@@ -2245,13 +2250,13 @@ class EchoLibraryRepository(
             arrayOf<Any>(artistKey, limit),
         )
 
-    private fun defaultPagingConfig(): PagingConfig =
+    private fun defaultPagingConfig(enablePlaceholders: Boolean = false): PagingConfig =
         PagingConfig(
             pageSize = 60,
             // Keep retained pages bounded when the UI leaves and re-enters the library.
             maxSize = 600,
             prefetchDistance = 20,
-            enablePlaceholders = false,
+            enablePlaceholders = enablePlaceholders,
         )
 
     private suspend fun retainMetadataOnFailedReads(dao: LibraryTrackDao, batch: List<LibraryTrackEntity>): List<LibraryTrackEntity> =

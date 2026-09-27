@@ -46,6 +46,7 @@ fun MediaItem.toEchoTrackRef(durationMs: Long = 0L): EchoTrackRef {
         trackNumber = extrasTrackNumber,
         discNumber = extrasDiscNumber,
         sourceId = metadata.extras?.getString(EchoPlaybackSourceExtra)?.takeIf { it.isNotBlank() },
+        queueContext = queueContext(),
         clipStartMs = metadata.extras?.getLong(EchoPlaybackClipStartExtra, 0L) ?: 0L,
         clipEndMs = metadata.extras?.getLong(EchoPlaybackClipEndExtra, 0L) ?: 0L,
     )
@@ -82,7 +83,7 @@ fun EchoTrackRef.toMediaItem(): MediaItem =
                 )
                 .build(),
         )
-        .build()
+        .build().let { item -> queueContext?.let(item::withQueueContext) ?: item }
 
 fun EchoTrack.toEchoTrackRef(): EchoTrackRef =
     EchoTrackRef(
@@ -232,6 +233,8 @@ fun Player.toPlaybackQueueState(): PlaybackQueueState {
     return PlaybackQueueState(
         items = items,
         currentIndex = currentIndex,
+        playOrder = if (shuffleModeEnabled) queueShuffleOrder() else items.indices.toList(),
+        repeatAll = repeatMode == Player.REPEAT_MODE_ALL,
     )
 }
 

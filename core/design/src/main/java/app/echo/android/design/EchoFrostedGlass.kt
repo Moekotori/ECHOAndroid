@@ -25,7 +25,13 @@ fun Modifier.echoFrostedGlass(shape: Shape, elevation: Dp = 8.dp): Modifier {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
-    val substrate = scheme.surface.copy(alpha = if (lightweight) 0.97f else 0.94f)
+    val customBackground = LocalEchoCustomBackgroundActive.current
+    val substrate = scheme.surface.copy(alpha = when {
+        !customBackground -> if (lightweight) 0.97f else 0.94f
+        lightweight -> 0.88f
+        dark -> 0.68f
+        else -> 0.76f
+    })
     val wash = remember(scheme, dark) {
         Brush.linearGradient(
             0f to Color.White.copy(alpha = if (dark) 0.075f else 0.42f),

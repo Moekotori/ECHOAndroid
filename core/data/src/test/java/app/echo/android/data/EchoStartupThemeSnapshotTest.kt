@@ -23,6 +23,18 @@ class EchoStartupThemeSnapshotTest {
         assertEquals(EchoThemeMode.Dark, EchoAppSettings().themeMode)
         assertEquals(EchoColorTheme.Default.id, EchoStartupThemeSnapshot().colorTheme)
         assertEquals(EchoColorTheme.Default.id, EchoAppSettings().colorTheme)
+        assertNull(EchoStartupThemeSnapshot().startupBackgroundUri)
+    }
+
+    @Test
+    fun startupBackgroundRemainsIndependentOfAppBackground() {
+        val settings = EchoAppSettings(
+            startupBackgroundUri = "content://images/startup",
+            customBackgroundUri = "content://images/app",
+        )
+        val restored = settings.toStartupThemeSnapshot().toAppSettings()
+        assertEquals("content://images/startup", restored.startupBackgroundUri)
+        assertNull(restored.customBackgroundUri)
     }
 
     @Test

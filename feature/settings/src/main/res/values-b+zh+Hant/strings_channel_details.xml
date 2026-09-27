@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="channel_edit_while_off">關閉時仍可調整並儲存參數，開啟後才會套用。</string>
+    <string name="channel_processing_rate">處理取樣率 · %1$s</string>
+    <string name="channel_pan_title">聲像定位</string>
+    <string name="channel_pan_hint">調整聲音的左右偏向，置中時保持兩側平衡。</string>
+    <string name="channel_trim_title">獨立聲道增益</string>
+    <string name="channel_gain_estimate_note">計算增益僅反映聲像與增益設定，不包含極性、音色、延遲及單聲道映射，也不是即時電平。</string>
+    <string name="channel_estimated_gain">計算增益 · %1$s</string>
+    <string name="channel_routing_title">聲道對應</string>
+    <string name="channel_routing_hint">選擇左右訊號在輸出端的分配方式。</string>
+    <string name="channel_swap_hint">先交換左右輸入，再進行後續聲道調整。</string>
+    <string name="channel_stereo_hint">保留獨立的左右輸出，維持立體聲音場。</string>
+    <string name="channel_sum_hint">將調整後的左右訊號取平均，再同時傳送至兩側輸出。</string>
+    <string name="channel_left_only_hint">保留調整後的左側輸出，右側靜音。</string>
+    <string name="channel_right_only_hint">保留調整後的右側輸出，左側靜音。</string>
+    <string name="channel_advanced_title">進階校準</string>
+    <string name="channel_advanced_hint">聲像曲線、極性、分耳音色與延遲</string>
+    <string name="channel_advanced_custom">已儲存自訂校準 · 展開查看</string>
+    <string name="channel_pan_law">聲像響應曲線</string>
+    <string name="channel_pan_law_hint">選擇聲像向一側移動時，兩側電平的變化方式。</string>
+    <string name="channel_polarity_title">訊號極性</string>
+    <string name="channel_polarity_hint">單獨翻轉某一側的訊號極性，不會交換聲道或增加延遲。</string>
+    <string name="channel_tone_hint">分別調整左右耳的低、中、高頻增益；分頻點為 200 Hz 與 2 kHz。</string>
+    <string name="channel_delay_title">聲道延遲</string>
+    <string name="channel_delay_hint">單獨延後某一側 0–10 ms，步進 0.1 ms。0 ms 表示不加入額外延遲。</string>
+    <string name="channel_reset_all">重設所有聲道設定</string>
+    <string name="channel_muted">靜音</string>
+</resources>

@@ -25,6 +25,7 @@ internal fun SettingsAppearanceContent(
     dynamicColorEnabled: Boolean,
     customBackgroundMode: String,
     customBackgroundUri: String?,
+    startupBackgroundUri: String?,
     customBackgroundBlur: Float,
     customBackgroundBrightness: Float,
     customBackgroundGlass: Float,
@@ -42,6 +43,8 @@ internal fun SettingsAppearanceContent(
     scheduledDarkEndMinute: Int,
     onDynamicColorEnabledChange: (Boolean) -> Unit,
     onPickImageBackground: () -> Unit,
+    onPickStartupBackground: () -> Unit,
+    onClearStartupBackground: () -> Unit,
     onPickVideoBackground: () -> Unit,
     onClearCustomBackground: () -> Unit,
     onCustomBackgroundBlurChange: (Float) -> Unit,
@@ -209,6 +212,12 @@ internal fun SettingsAppearanceContent(
             )
         }
     }
+
+    SettingsStartupBackgroundCard(
+        uri = startupBackgroundUri,
+        onPick = onPickStartupBackground,
+        onClear = onClearStartupBackground,
+    )
 
     SettingsSectionCard(
         title = stringResource(R.string.settings_section_fonts),

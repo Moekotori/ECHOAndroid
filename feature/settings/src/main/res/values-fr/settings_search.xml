@@ -1,0 +1,8 @@
+<resources>
+    <string name="settings_search_hint">Rechercher un réglage</string>
+    <string name="settings_search_empty">Aucun réglage correspondant</string>
+    <string name="settings_search_clear">Effacer la recherche</string>
+    <string name="settings_search_lastfm">Connexion Last.fm</string>
+    <string name="settings_search_api_key">Clé API</string>
+    <string name="settings_search_shared_secret">Secret partagé</string>
+</resources>

@@ -3,6 +3,7 @@ package app.echo.android.design
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
@@ -110,6 +111,7 @@ private val EchoLightScheme = lightColorScheme(
 
 val LocalEchoDensityScale = staticCompositionLocalOf { 1f }
 val LocalEchoDarkTheme = staticCompositionLocalOf { true }
+val LocalEchoCustomBackgroundActive = staticCompositionLocalOf { false }
 val LocalEchoTheme = staticCompositionLocalOf { echoThemeTokens(EchoColorTheme.Echo, dark = true) }
 val LocalEchoEffectivePerformanceMode = staticCompositionLocalOf { EchoEffectivePerformanceMode.Balanced }
 val LocalEchoPlatformCapabilities = staticCompositionLocalOf {
@@ -118,6 +120,10 @@ val LocalEchoPlatformCapabilities = staticCompositionLocalOf {
 
 @Composable
 fun echoTheme(): EchoThemeTokens = LocalEchoTheme.current
+
+@Composable
+fun echoPageBackgroundColor(): Color =
+    if (LocalEchoCustomBackgroundActive.current) Color.Transparent else MaterialTheme.colorScheme.background
 
 fun echoFontFamilyForMode(
     mode: String,
@@ -184,6 +190,7 @@ fun EchoMobileTheme(
     fontScale: Float = 1f,
     densityScale: Float = 1f,
     effectivePerformanceMode: EchoEffectivePerformanceMode = EchoEffectivePerformanceMode.Balanced,
+    customBackgroundActive: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -203,6 +210,7 @@ fun EchoMobileTheme(
     CompositionLocalProvider(
         LocalEchoDensityScale provides densityScale.coerceIn(0.90f, 1.12f),
         LocalEchoDarkTheme provides darkTheme,
+        LocalEchoCustomBackgroundActive provides customBackgroundActive,
         LocalEchoTheme provides tokens,
         LocalEchoEffectivePerformanceMode provides effectivePerformanceMode,
         LocalEchoPlatformCapabilities provides platformCapabilities,
@@ -216,8 +224,11 @@ fun EchoMobileTheme(
         MaterialTheme(
             colorScheme = colorScheme,
             typography = typography,
-            content = content,
-        )
+        ) {
+            CompositionLocalProvider(LocalContentColor provides colorScheme.onBackground) {
+                content()
+            }
+        }
     }
 }
 

@@ -1,0 +1,8 @@
+<resources>
+    <string name="settings_search_hint">Search settings</string>
+    <string name="settings_search_empty">No matching settings</string>
+    <string name="settings_search_clear">Clear search</string>
+    <string name="settings_search_lastfm">Last.fm Connect</string>
+    <string name="settings_search_api_key">API key</string>
+    <string name="settings_search_shared_secret">Shared secret</string>
+</resources>

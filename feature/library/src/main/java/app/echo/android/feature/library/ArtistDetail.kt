@@ -34,6 +34,7 @@ internal fun ArtistDetailPage(
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
     onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
     onPlayNext: ((EchoTrack) -> Unit)? = null,
+    onAddNextUp: ((EchoTrack) -> Unit)? = null,
     onEnqueue: ((EchoTrack) -> Unit)? = null,
     albums: LazyPagingItems<AlbumSummary>? = null,
     query: String = "",
@@ -106,6 +107,7 @@ internal fun ArtistDetailPage(
                                 onMatchNeteaseMetadata = onMatchNeteaseMetadata,
                                 onAddToPlaylist = onAddToPlaylist,
                                 onPlayNext = onPlayNext,
+                                onAddNextUp = onAddNextUp,
                                 onEnqueue = onEnqueue,
                                 onOpenAlbum = onOpenTrackAlbum,
                             )

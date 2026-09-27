@@ -300,6 +300,8 @@ internal class LibraryController(
         _trackSortMode.value = sortMode
     }
 
+    suspend fun localTitleIndex(letter: Char): Int = repository.localTitleIndex(letter)
+
     fun updateAlbumSortMode(sortMode: AlbumSortMode) {
         _albumSortMode.value = sortMode
     }

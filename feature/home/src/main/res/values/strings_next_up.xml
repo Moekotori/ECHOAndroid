@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="queue_add_next_up">Add to Next Up</string>
+    <string name="queue_append_original">Add to end of original queue</string>
+    <string name="queue_actions">Queue actions</string>
+</resources>

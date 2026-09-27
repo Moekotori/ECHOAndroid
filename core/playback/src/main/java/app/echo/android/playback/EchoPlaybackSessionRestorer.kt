@@ -177,7 +177,7 @@ internal class EchoPlaybackSessionRestorer(
         )
         heldSavedPlayWhenReady = nextHeld
         val persistSnapshot = snapshot.copy(playWhenReady = playWhenReady)
-        val mediaIds = persistSnapshot.queue.map { it.id }
+        val mediaIds = persistSnapshot.queue.map { it.queueContext?.entryId ?: it.id } + persistSnapshot.shuffleOrder.map(Int::toString)
         val signature = playbackSessionPersistSignature(
             currentIndex = persistSnapshot.currentIndex,
             playWhenReady = persistSnapshot.playWhenReady,

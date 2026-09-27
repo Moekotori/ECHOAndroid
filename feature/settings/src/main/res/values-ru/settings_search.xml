@@ -1,0 +1,8 @@
+<resources>
+    <string name="settings_search_hint">Поиск настроек</string>
+    <string name="settings_search_empty">Подходящих настроек нет</string>
+    <string name="settings_search_clear">Очистить поиск</string>
+    <string name="settings_search_lastfm">Подключение Last.fm</string>
+    <string name="settings_search_api_key">Ключ API</string>
+    <string name="settings_search_shared_secret">Общий секрет</string>
+</resources>

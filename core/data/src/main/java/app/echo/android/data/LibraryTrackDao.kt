@@ -136,6 +136,15 @@ interface LibraryTrackDao {
     )
     fun pageTracksSorted(query: SupportSQLiteQuery): PagingSource<Int, LibraryTrackEntity>
 
+    @Query(
+        """
+        SELECT COUNT(*) FROM library_tracks
+        WHERE (source = 'mediastore' OR source = 'saf')
+          AND title COLLATE NOCASE < :letter
+        """,
+    )
+    suspend fun countLocalTracksBeforeTitle(letter: String): Int
+
     @RawQuery
     suspend fun queryTracks(query: SupportSQLiteQuery): List<LibraryTrackEntity>
 

@@ -17,20 +17,22 @@ internal fun SignalOverview(
     status: EchoPlaybackStatus,
     equalizer: EchoEqualizerState,
     channelBalance: EchoChannelBalanceState = EchoChannelBalanceState(),
+    dspSettings: EchoDspSettings = EchoDspSettings(),
     onAdjust: () -> Unit,
     onDiagnostics: () -> Unit,
 ) {
     val d = status.diagnostics
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         SignalDeviceCard(status)
-        SignalPathPanel(status, equalizer, channelBalance)
+        SignalPathPanel(status, equalizer, channelBalance, dspSettings)
         SignalSection(stringResource(L10nR.string.feature_settings_output_details_f242d2)) {
             SignalReadout(
                 stringResource(L10nR.string.diag_decoded_output),
                 if (d.isDsdSource()) {
                     d.decodedFormatLabel()
                 } else {
-                    d.decodedSampleRateHz?.let(::formatSampleRate) ?: stringResource(L10nR.string.diag_unreported)
+                    (d.decodedSampleRateHz ?: d.sampleRateHz)?.takeIf { it > 0 }?.let(::formatSampleRate)
+                        ?: stringResource(L10nR.string.diag_unreported)
                 },
             )
             SignalReadout(stringResource(L10nR.string.diag_bitrate), d.bitrate?.let(::formatBitrate) ?: stringResource(L10nR.string.diag_unreported))

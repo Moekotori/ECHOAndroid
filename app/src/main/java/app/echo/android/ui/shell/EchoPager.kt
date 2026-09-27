@@ -109,12 +109,15 @@ private const val NestedPagerDragFraction = 0.02f
  * Only continue an in-progress page drag from pre-scroll once the pager has actually moved.
  */
 @Composable
-internal fun rememberHomeSafePagerNestedScroll(state: PagerState): NestedScrollConnection {
+internal fun rememberHomeSafePagerNestedScroll(
+    state: PagerState,
+    innerTabPageOwnsGesture: Boolean,
+): NestedScrollConnection {
     val default = PagerDefaults.pageNestedScrollConnection(state, Orientation.Horizontal)
-    return remember(state, default) {
+    return remember(state, default, innerTabPageOwnsGesture) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (state.innerTabsSettled()) return Offset.Zero
+                if (innerTabPageOwnsGesture) return Offset.Zero
                 if (state.currentPageOffsetFraction.absoluteValue < NestedPagerDragFraction) {
                     return Offset.Zero
                 }
@@ -126,24 +129,19 @@ internal fun rememberHomeSafePagerNestedScroll(state: PagerState): NestedScrollC
                 available: Offset,
                 source: NestedScrollSource,
             ): Offset {
-                if (state.innerTabsSettled()) return Offset.Zero
+                if (innerTabPageOwnsGesture) return Offset.Zero
                 return default.onPostScroll(consumed, available, source)
             }
 
             override suspend fun onPreFling(available: Velocity): Velocity {
-                if (state.innerTabsSettled()) return Velocity.Zero
+                if (innerTabPageOwnsGesture) return Velocity.Zero
                 return default.onPreFling(available)
             }
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                if (state.innerTabsSettled()) return Velocity.Zero
+                if (innerTabPageOwnsGesture) return Velocity.Zero
                 return default.onPostFling(consumed, available)
             }
         }
     }
-}
-
-private fun PagerState.innerTabsSettled(): Boolean {
-    val page = settledPage
-    return page == EchoPagerPage.Connect.ordinal || page == EchoPagerPage.Diagnostics.ordinal
 }

@@ -58,11 +58,28 @@ val buildFfmpeg by tasks.registering(Exec::class) {
     inputs.property("ndkVersion", android.ndkVersion!!)
     inputs.property("host", System.getProperty("os.name") + System.getProperty("os.arch"))
     outputs.dir(layout.buildDirectory.dir("ffmpeg/native"))
-    commandLine(
-        "python3", script.absolutePath,
-        "--ndk", ndkDirectory.get().asFile.absolutePath,
-        "--work", layout.buildDirectory.dir("ffmpeg").get().asFile.absolutePath,
-    )
+    val workDirectory = layout.buildDirectory.dir("ffmpeg").get().asFile
+    if (System.getProperty("os.name").startsWith("Windows", ignoreCase = true)) {
+        val launcher = file("scripts/build-ffmpeg-wsl.sh")
+        val distribution = providers.gradleProperty("echoFfmpegWslDistribution").orNull
+        inputs.file(launcher)
+        inputs.property("wslDistribution", distribution.orEmpty())
+        commandLine(
+            listOf("wsl.exe") +
+                (distribution?.let { listOf("--distribution", it) } ?: emptyList()) +
+                listOf(
+                    "--cd", launcher.parentFile.absolutePath,
+                    "--exec", "bash", launcher.name, script.absolutePath,
+                    android.ndkVersion!!, workDirectory.absolutePath,
+                ),
+        )
+    } else {
+        commandLine(
+            "python3", script.absolutePath,
+            "--ndk", ndkDirectory.get().asFile.absolutePath,
+            "--work", workDirectory.absolutePath,
+        )
+    }
 }
 
 tasks.configureEach {

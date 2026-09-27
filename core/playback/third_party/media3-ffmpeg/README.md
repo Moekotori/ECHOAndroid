@@ -11,13 +11,23 @@ match the version catalog; review and refresh these sources on Media3 upgrades.
 ## Build
 
 Normal Gradle native builds run `scripts/build-ffmpeg.py` automatically. Requirements:
-macOS or Linux, Python 3.9+, Make, NDK 27.2.12479018 and CMake 3.22.1. Windows builds
-use WSL with a Linux JDK/SDK/NDK. The first build downloads the pinned FFmpeg 6.1.6
+macOS or Linux, Python 3.9+, Make, NDK 27.2.12479018 and CMake 3.22.1. Windows Android
+Studio/Gradle builds automatically delegate just FFmpeg compilation to WSL; the
+Windows SDK/NDK still build JNI and package the app. The default WSL distribution
+needs Python 3.9+, Make, flock and Linux NDK 27.2.12479018 under
+`~/Android/Sdk/ndk/` (or the WSL `ANDROID_HOME` / `ANDROID_SDK_ROOT`). A Linux JDK
+is not required for this delegated step. To select a distribution, set
+`echoFfmpegWslDistribution=Ubuntu-24.04` in user Gradle properties or pass it with
+`-P`. Windows Python is not needed. The launcher builds in
+`~/.cache/echo-android/ffmpeg/` on the Linux filesystem and copies libraries and
+headers into the module's build directory. Gradle clean removes that copy but
+preserves the Linux cache. The first build downloads the pinned FFmpeg 6.1.6
 release from ffmpeg.org and verifies SHA-256 before extracting it. Later builds
 reuse the native outputs until the script or NDK changes. No prebuilt third-party
 AAR or silently optional backend is used; native build failures fail the build.
 
-Build outputs stay in `core/playback/build/ffmpeg/`; CMake staging also stays under
+Build outputs stay in `core/playback/build/ffmpeg/`; Windows additionally retains
+FFmpeg sources and objects in the WSL cache above. CMake staging stays under
 `build/`. ABIs match USB audio: armeabi-v7a, arm64-v8a and x86_64, API 26 minimum,
 with 16 KB ELF segment alignment for the JNI shared library.
 

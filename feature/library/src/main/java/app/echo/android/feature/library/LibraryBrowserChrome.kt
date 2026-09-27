@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.LocalEchoContentMaxWidth
+import app.echo.android.design.echoPageBackgroundColor
 
 @Composable
 internal fun LibraryBrowserFrame(
@@ -34,7 +35,7 @@ internal fun LibraryBrowserFrame(
     searchPlaceholder: String = stringResource(R.string.feature_library_search_songs_artists_albums_14dc2c),
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+    Surface(Modifier.fillMaxSize(), color = echoPageBackgroundColor()) {
         Box(Modifier.statusBarsPadding().imePadding(), contentAlignment = Alignment.TopCenter) {
             Column(Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxSize().padding(horizontal = 24.dp)) {
                 Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -96,7 +97,7 @@ internal fun LibraryDetailFrame(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Surface(modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+    Surface(modifier.fillMaxSize(), color = echoPageBackgroundColor()) {
         Box(Modifier.statusBarsPadding(), contentAlignment = Alignment.TopCenter) {
             Column(Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxSize().padding(horizontal = 24.dp)) {
                 Row(Modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically, content = actions)
