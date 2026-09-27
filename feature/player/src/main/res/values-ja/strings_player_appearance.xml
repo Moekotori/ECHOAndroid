@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="player_appearance_title">ページの外観</string>
+    <string name="player_appearance_detail">変更をすぐにプレビューし、調整後に保存します。</string>
+    <string name="player_appearance_reset">リセット</string>
+    <string name="player_appearance_record_sleeve">レコードジャケット</string>
+    <string name="player_appearance_classic">イマーシブ</string>
+    <string name="player_appearance_text_size">文字サイズ</string>
+    <string name="player_appearance_cover_size">カバーサイズ</string>
+    <string name="player_appearance_percent">%1$d%%</string>
+</resources>

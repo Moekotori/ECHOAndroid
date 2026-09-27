@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="player_appearance_title">Seitendarstellung</string>
+    <string name="player_appearance_detail">Änderungen werden sofort angezeigt und nach dem Anpassen gespeichert.</string>
+    <string name="player_appearance_reset">Zurücksetzen</string>
+    <string name="player_appearance_record_sleeve">Plattenhülle</string>
+    <string name="player_appearance_classic">Immersiv</string>
+    <string name="player_appearance_text_size">Textgröße</string>
+    <string name="player_appearance_cover_size">Covergröße</string>
+    <string name="player_appearance_percent">%1$d%%</string>
+</resources>

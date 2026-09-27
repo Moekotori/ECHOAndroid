@@ -174,6 +174,9 @@ internal fun playModeDetail(repeatLabel: String, shuffleEnabled: Boolean, shuffl
 
 @Composable
 internal fun PlaybackSettingsDrawer(
+    appearance: PlayerAppearance,
+    onAppearancePreview: (PlayerAppearance) -> Unit,
+    onAppearanceCommit: () -> Unit,
     visible: Boolean,
     status: EchoPlaybackStatus,
     onSetRepeatMode: (EchoRepeatMode) -> Unit,
@@ -222,6 +225,9 @@ internal fun PlaybackSettingsDrawer(
                 ),
             ) {
                 PlaybackSettingsSheet(
+                    appearance = appearance,
+                    onAppearancePreview = onAppearancePreview,
+                    onAppearanceCommit = onAppearanceCommit,
                     status = status,
                     onSetRepeatMode = onSetRepeatMode,
                     onToggleShuffle = onToggleShuffle,
@@ -249,6 +255,9 @@ internal fun PlaybackSettingsDrawer(
 
 @Composable
 private fun PlaybackSettingsSheet(
+    appearance: PlayerAppearance,
+    onAppearancePreview: (PlayerAppearance) -> Unit,
+    onAppearanceCommit: () -> Unit,
     status: EchoPlaybackStatus,
     onSetRepeatMode: (EchoRepeatMode) -> Unit,
     onToggleShuffle: () -> Unit,
@@ -340,6 +349,7 @@ private fun PlaybackSettingsSheet(
                     .padding(start = 20.dp, end = 20.dp, bottom = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                PlayerAppearanceSettings(appearance, onAppearancePreview, onAppearanceCommit)
                 PlaybackSettingsSection(
                     icon = Icons.Rounded.Repeat,
                     title = stringResource(L10nR.string.feature_player_playback_mode),

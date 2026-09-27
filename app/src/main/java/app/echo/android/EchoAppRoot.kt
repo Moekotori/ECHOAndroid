@@ -1043,7 +1043,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         EchoPlayerTransitionRoot(
             expanded = nowPlayingExpanded,
             // The current record-sleeve cover is square; the compact dock keeps rounded corners.
-            expandedArtworkCornerRadius = 0.dp,
+            expandedArtworkCornerRadius = if (appSettings.playerPageStyle == "classic") 24.dp else 0.dp,
             modifier = Modifier
                 .fillMaxSize()
                 .echoLocaleSwitchLayer(

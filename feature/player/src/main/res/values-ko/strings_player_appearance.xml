@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="player_appearance_title">페이지 모양</string>
+    <string name="player_appearance_detail">변경 사항을 바로 확인하고 조절을 마치면 저장합니다.</string>
+    <string name="player_appearance_reset">초기화</string>
+    <string name="player_appearance_record_sleeve">레코드 슬리브</string>
+    <string name="player_appearance_classic">몰입형</string>
+    <string name="player_appearance_text_size">글자 크기</string>
+    <string name="player_appearance_cover_size">커버 크기</string>
+    <string name="player_appearance_percent">%1$d%%</string>
+</resources>

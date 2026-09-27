@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="player_appearance_title">Page appearance</string>
+    <string name="player_appearance_detail">Preview changes here; settings are saved when you finish adjusting.</string>
+    <string name="player_appearance_reset">Reset</string>
+    <string name="player_appearance_record_sleeve">Record sleeve</string>
+    <string name="player_appearance_classic">Immersive</string>
+    <string name="player_appearance_text_size">Text size</string>
+    <string name="player_appearance_cover_size">Cover size</string>
+    <string name="player_appearance_percent">%1$d%%</string>
+</resources>

@@ -276,7 +276,19 @@ fun NowPlayingScreen(
     predictiveBackProgress: () -> Float = { 0f },
     presentationExpanded: Boolean = true,
     onDragProgress: (Float) -> Unit = {},
+    playerPageStyle: String = "record_sleeve",
+    playerTextScale: Float = 1f,
+    playerArtworkScale: Float = 1f,
+    onPlayerAppearanceChange: (String, Float, Float) -> Unit = { _, _, _ -> },
 ) {
+    val persistedAppearance = remember(playerPageStyle, playerTextScale, playerArtworkScale) {
+        PlayerAppearance(
+            style = if (playerPageStyle == "classic") "classic" else "record_sleeve",
+            textScale = playerTextScale.takeIf { it.isFinite() }?.coerceIn(0.8f, 1.2f) ?: 1f,
+            artworkScale = playerArtworkScale.takeIf { it.isFinite() }?.coerceIn(0.7f, 1f) ?: 1f,
+        )
+    }
+    var appearance by remember(persistedAppearance) { mutableStateOf(persistedAppearance) }
     val track = status.track
     val effectivePerformanceMode = LocalEchoEffectivePerformanceMode.current
     val effectiveLyricsFocusGlowEnabled = lyricsFocusGlowEnabled && !effectivePerformanceMode.isLightweight
@@ -370,9 +382,9 @@ fun NowPlayingScreen(
     }
 
     val splitNowPlaying = LocalEchoWidthSizeClass.current.prefersNowPlayingSplit
-    val sleeveTopBar = !splitNowPlaying && pagerState.currentPage == NowPlayingPage.Cover.ordinal
-    val drawLyricsBackdrop by remember(pagerState, splitNowPlaying) {
-        derivedStateOf { splitNowPlaying || lyricsReveal() > 0f }
+    val sleeveTopBar = appearance.isRecordSleeve && !splitNowPlaying && pagerState.currentPage == NowPlayingPage.Cover.ordinal
+    val drawLyricsBackdrop by remember(pagerState, splitNowPlaying, appearance.isRecordSleeve) {
+        derivedStateOf { !appearance.isRecordSleeve || splitNowPlaying || lyricsReveal() > 0f }
     }
     RecordSleeveSystemBars(sleeveTopBar && presentationExpanded)
 
@@ -398,7 +410,7 @@ fun NowPlayingScreen(
             reveal = lyricsReveal,
             animationsVisible = presentationExpanded,
             modifier = Modifier.fillMaxSize().graphicsLayer {
-                alpha = if (splitNowPlaying) 1f else lyricsReveal()
+                alpha = if (!appearance.isRecordSleeve || splitNowPlaying) 1f else lyricsReveal()
             },
         )
         Column(
@@ -407,7 +419,7 @@ fun NowPlayingScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .widthIn(max = if (splitNowPlaying) LocalEchoContentMaxWidth.current else 560.dp)
-                .padding(horizontal = if (splitNowPlaying) 20.dp else 30.dp),
+                .padding(horizontal = if (splitNowPlaying) 20.dp else if (appearance.isRecordSleeve) 30.dp else 26.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             NowPlayingTopBar(
@@ -456,7 +468,10 @@ fun NowPlayingScreen(
                         .weight(1f),
                     horizontalArrangement = Arrangement.spacedBy(18.dp),
                 ) {
-                    RecordSleeveCoverPage(
+                    PlayerCoverPage(
+                        appearance = appearance,
+                        palette = palette,
+                        presentationExpanded = presentationExpanded,
                         status = status,
                         positionMsState = positionMsState,
                         durationMsState = durationMsState,
@@ -538,7 +553,10 @@ fun NowPlayingScreen(
                     .weight(1f),
             ) { page ->
                 when (NowPlayingPage.entries[page]) {
-                    NowPlayingPage.Cover -> RecordSleeveCoverPage(
+                    NowPlayingPage.Cover -> PlayerCoverPage(
+                        appearance = appearance,
+                        palette = palette,
+                        presentationExpanded = presentationExpanded,
                         status = status,
                         positionMsState = positionMsState,
                         durationMsState = durationMsState,
@@ -668,6 +686,11 @@ fun NowPlayingScreen(
             modifier = Modifier.fillMaxSize(),
         )
         PlaybackSettingsDrawer(
+            appearance = appearance,
+            onAppearancePreview = { appearance = it },
+            onAppearanceCommit = {
+                onPlayerAppearanceChange(appearance.style, appearance.textScale, appearance.artworkScale)
+            },
             visible = playbackSettingsVisible,
             status = status,
             onSetRepeatMode = onSetRepeatMode,
@@ -1740,7 +1763,7 @@ internal fun formatSampleRate(hz: Int): String {
 }
 
 @Composable
-private fun NowPlayingScrubber(
+internal fun NowPlayingScrubber(
     trackKey: String?,
     positionMsState: State<Long>,
     durationMsState: State<Long>,

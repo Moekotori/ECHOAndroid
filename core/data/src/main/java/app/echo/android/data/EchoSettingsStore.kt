@@ -52,6 +52,9 @@ data class EchoAppSettings(
     val trackAudioInfoTagsVisible: Boolean = true,
     val pcHandoffEnabled: Boolean = true,
     val showLyricsControlDeck: Boolean = false,
+    val playerPageStyle: String = "record_sleeve",
+    val playerTextScale: Float = 1f,
+    val playerArtworkScale: Float = 1f,
     val onlineLyricsEnabled: Boolean = false,
     val lockScreenLyricsEnabled: Boolean = true,
     val usbExclusiveEnabled: Boolean = false,
@@ -229,6 +232,9 @@ class EchoSettingsStore(
                 trackAudioInfoTagsVisible = preferences[Keys.TrackAudioInfoTagsVisible] ?: true,
                 pcHandoffEnabled = preferences[Keys.PcHandoffEnabled] ?: true,
                 showLyricsControlDeck = preferences[Keys.ShowLyricsControlDeck] ?: false,
+                playerPageStyle = PlayerAppearancePreferences.style(preferences),
+                playerTextScale = PlayerAppearancePreferences.textScale(preferences),
+                playerArtworkScale = PlayerAppearancePreferences.artworkScale(preferences),
                 onlineLyricsEnabled = preferences[Keys.OnlineLyricsEnabled] ?: false,
                 lockScreenLyricsEnabled = preferences[Keys.LockScreenLyricsEnabled] ?: true,
                 usbExclusiveEnabled = preferences[Keys.UsbExclusiveEnabled] ?: false,
@@ -427,6 +433,10 @@ class EchoSettingsStore(
 
     suspend fun setShowLyricsControlDeck(enabled: Boolean) {
         context.echoSettings.edit { it[Keys.ShowLyricsControlDeck] = enabled }
+    }
+
+    suspend fun setPlayerAppearance(style: String, textScale: Float, artworkScale: Float) {
+        context.echoSettings.edit { PlayerAppearancePreferences.write(it, style, textScale, artworkScale) }
     }
 
     suspend fun setOnlineLyricsEnabled(enabled: Boolean) {

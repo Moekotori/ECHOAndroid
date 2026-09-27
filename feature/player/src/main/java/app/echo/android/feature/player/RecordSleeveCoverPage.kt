@@ -61,6 +61,7 @@ internal fun RecordSleeveCoverPage(
     onToggleFavorite: () -> Unit,
     onOpenLyrics: () -> Unit,
     modifier: Modifier = Modifier,
+    artworkScale: Float = 1f,
 ) {
     val track = status.track
     var previousRequestedFrom by remember { mutableStateOf<String?>(null) }
@@ -90,7 +91,7 @@ internal fun RecordSleeveCoverPage(
             BoxWithConstraints(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                 NowPlayingTrackTransition(
                     track, previousRequestedFrom, artwork = true,
-                    modifier = Modifier.size(minOf(maxWidth, maxHeight)),
+                    modifier = Modifier.size(minOf(maxWidth, maxHeight) * artworkScale),
                 ) { displayedTrack ->
                     EchoPlayerArtwork(
                         artworkUri = displayedTrack?.artworkUri,

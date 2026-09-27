@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="player_appearance_title">Внешний вид страницы</string>
+    <string name="player_appearance_detail">Изменения видны сразу и сохраняются после завершения настройки.</string>
+    <string name="player_appearance_reset">Сбросить</string>
+    <string name="player_appearance_record_sleeve">Обложка пластинки</string>
+    <string name="player_appearance_classic">Погружение</string>
+    <string name="player_appearance_text_size">Размер текста</string>
+    <string name="player_appearance_cover_size">Размер обложки</string>
+    <string name="player_appearance_percent">%1$d%%</string>
+</resources>

@@ -1142,6 +1142,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun setPlayerAppearance(style: String, textScale: Float, artworkScale: Float) {
+        updateSettings { setPlayerAppearance(style, textScale, artworkScale) }
+    }
+
     fun setOnlineLyricsEnabled(enabled: Boolean) {
         lyricsController.setOnlineLyricsEnabled(enabled, playbackController.currentTrackId)
         updateSettings {

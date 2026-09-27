@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="player_appearance_title">頁面外觀</string>
+    <string name="player_appearance_detail">調整即時預覽，放開後自動儲存。</string>
+    <string name="player_appearance_reset">還原預設</string>
+    <string name="player_appearance_record_sleeve">唱片內頁</string>
+    <string name="player_appearance_classic">沉浸風格</string>
+    <string name="player_appearance_text_size">文字大小</string>
+    <string name="player_appearance_cover_size">封面大小</string>
+    <string name="player_appearance_percent">%1$d%%</string>
+</resources>
