@@ -2,6 +2,8 @@ package app.echo.android.playback
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.ensureActive
+import kotlin.coroutines.coroutineContext
 
 internal class EchoSmartTransitionAnalyzer(
     private val decoder: EchoSmartTransitionDecoder,
@@ -14,19 +16,19 @@ internal class EchoSmartTransitionAnalyzer(
         needIntro: Boolean,
         needOutro: Boolean,
     ): EchoSmartTransitionAnalysis? {
-        val key = EchoSmartTransitionPolicy.cacheKey(mediaId, uri, durationMs)
-        cache.get(key)?.takeIf { it.covers(needIntro, needOutro) }?.let { return it }
         return withContext(Dispatchers.IO) {
+            val key = EchoSmartTransitionPolicy.cacheKey(mediaId, uri, durationMs) + "|" + decoder.sourceRevision(uri)
             val cached = cache.get(key)
             if (cached != null && cached.covers(needIntro, needOutro)) return@withContext cached
             val computed = compute(uri, durationMs, needIntro, needOutro, cached) ?: return@withContext cached
+            coroutineContext.ensureActive()
             val merged = cached?.merge(computed) ?: computed
             cache.put(key, merged)
             merged
         }
     }
 
-    private fun compute(
+    private suspend fun compute(
         uri: String,
         durationMs: Long,
         needIntro: Boolean,
@@ -35,7 +37,7 @@ internal class EchoSmartTransitionAnalyzer(
     ): EchoSmartTransitionAnalysis? {
         val window = EchoSmartTransitionPolicy.WindowMs.toLong().coerceAtMost(durationMs.coerceAtLeast(0L))
         if (window <= 0L) return null
-        val decodeIntro = needIntro && cached?.hasIntro != true
+        val decodeIntro = (needIntro || (needOutro && durationMs <= EchoSmartTransitionPolicy.WindowMs)) && cached?.hasIntro != true
         val decodeOutro = needOutro && cached?.hasOutro != true && durationMs > EchoSmartTransitionPolicy.WindowMs
         var intro: EchoSmartTransitionAnalysis? = null
         var outro: EchoSmartTransitionAnalysis? = null

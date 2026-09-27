@@ -31,6 +31,7 @@ import kotlinx.coroutines.launch
 import app.echo.android.model.connect.EchoLanRenderer
 import app.echo.android.model.connect.EchoLinkLanDevice
 import app.echo.android.model.connect.EchoRemoteConnectionState
+import app.echo.android.model.connect.EchoRemoteLibraryState
 import app.echo.android.model.connect.EchoRemoteTrack
 import app.echo.android.model.library.LibraryScanProgress
 
@@ -117,6 +118,9 @@ fun ConnectScreen(
     onCastToRenderer: (EchoLanRenderer) -> Unit = {},
     onSwipeToLibrary: () -> Unit = {},
     onSwipeToDiagnostics: () -> Unit = {},
+    remoteLibrary: EchoRemoteLibraryState = EchoRemoteLibraryState(),
+    onSearchPcLibrary: (String) -> Unit = {},
+    remoteControlsActive: Boolean = true,
 ) {
     val pagerState = rememberPagerState { 3 }
     val scrollStates = listOf(rememberScrollState(), rememberScrollState(), rememberScrollState())
@@ -235,6 +239,9 @@ fun ConnectScreen(
                                 discoveredLanDevices = discoveredLanDevices,
                                 onSelectLanDevice = onSelectLanDevice,
                                 onRefreshLanDevices = onRefreshLanDevices,
+                                remoteLibrary = remoteLibrary,
+                                onSearchPcLibrary = onSearchPcLibrary,
+                                active = remoteControlsActive && pagerState.settledPage == 1,
                             )
                             else -> CastDevicesPanel(
                                 phoneTrackTitle = phoneTrackTitle,

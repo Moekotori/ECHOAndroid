@@ -7,8 +7,14 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.os.SystemClock
 import androidx.core.net.toUri
-import java.nio.ByteBuffer
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
+import java.io.File
+import kotlin.coroutines.coroutineContext
 
+/** Extra decoding is bounded, cancellable, and never runs on the player's application thread. */
 internal class EchoSmartTransitionDecoder(context: Context) {
     private val appContext = context.applicationContext
 
@@ -18,267 +24,173 @@ internal class EchoSmartTransitionDecoder(context: Context) {
         val vocal: EchoSmartTransitionVocal = EchoSmartTransitionVocal(),
     )
 
-    fun decodeAnalysisMono(uri: String, startMs: Long, durationMs: Long): AnalysisPcm? {
-        val parsed = runCatching { uri.toUri() }.getOrNull() ?: return null
-        if (!EchoSmartTransitionPolicy.isLocalUri(uri, null)) return null
-        val extractor = MediaExtractor()
-        val startedAt = SystemClock.elapsedRealtime()
-        return try {
-            extractor.setDataSource(appContext, parsed, null)
-            val track = selectAudioTrack(extractor) ?: return null
-            extractor.selectTrack(track)
-            val format = extractor.getTrackFormat(track)
-            val mime = format.getString(MediaFormat.KEY_MIME) ?: return null
-            val sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
-            val channels = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT).coerceAtLeast(1)
-            if (channels > 2) return null
-            extractor.seekTo(startMs.coerceAtLeast(0L) * 1_000L, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
-            val windowMs = durationMs.coerceAtMost(EchoSmartTransitionPolicy.WindowMs.toLong())
-            val maxSamples = ((windowMs * EchoSmartTransitionPolicy.AnalysisSampleRateHz) / 1_000L).toInt().coerceAtLeast(1)
-            val writer = EchoSmartTransitionDownsampler(
-                inputRate = sampleRate,
-                channels = channels,
-                targetRate = EchoSmartTransitionPolicy.AnalysisSampleRateHz,
-                maxSamples = maxSamples,
-            )
-            val vocal = EchoSmartTransitionVocalAccumulator(sampleRate, channels)
-            val codec = MediaCodec.createDecoderByType(mime)
-            codec.configure(format, null, null, 0)
-            codec.start()
-            drainAnalysis(extractor, codec, channels, startMs, durationMs, startedAt, writer, vocal)
-            val samples = writer.toArray()
-            if (samples.isEmpty()) null else AnalysisPcm(samples, sampleRate, vocal.finish())
-        } catch (_: RuntimeException) {
-            null
-        } catch (_: Exception) {
-            null
-        } finally {
-            runCatching { extractor.release() }
+    fun sourceRevision(uri: String): String = runCatching {
+        val parsed = uri.toUri()
+        if (parsed.scheme == "file") {
+            val file = File(requireNotNull(parsed.path))
+            "${file.length()}:${file.lastModified()}"
+        } else {
+            appContext.contentResolver.query(parsed, null, null, null, null)?.use { cursor ->
+                if (!cursor.moveToFirst()) return@use "unknown"
+                listOf("_size", "date_modified", "last_modified").joinToString(":") { name ->
+                    val index = cursor.getColumnIndex(name)
+                    if (index >= 0) cursor.getString(index).orEmpty() else ""
+                }
+            } ?: "unknown"
         }
-    }
+    }.getOrDefault("unknown")
 
-    fun decodeMixWindow(
+    suspend fun decodeAnalysisMono(uri: String, startMs: Long, durationMs: Long): AnalysisPcm? =
+        withContext(Dispatchers.IO) {
+            var writer: EchoSmartTransitionDownsampler? = null
+            var vocal: EchoSmartTransitionVocalAccumulator? = null
+            var nativeRate = 0
+            val windowMs = durationMs.coerceAtMost(EchoSmartTransitionPolicy.WindowMs.toLong())
+            val success = decodeWindow(uri, startMs, windowMs, configure = { rate, channels ->
+                nativeRate = rate
+                writer = EchoSmartTransitionDownsampler(rate, channels,
+                    EchoSmartTransitionPolicy.AnalysisSampleRateHz,
+                    (windowMs * EchoSmartTransitionPolicy.AnalysisSampleRateHz / 1000).toInt())
+                vocal = EchoSmartTransitionVocalAccumulator(rate, channels)
+                true
+            }) { left, right ->
+                writer!!.pushStereoFrame(left, right)
+                vocal!!.pushPcm16(left, right)
+            }
+            val samples = writer?.toArray()
+            if (!success || samples == null || samples.size < windowMs * EchoSmartTransitionPolicy.AnalysisSampleRateHz / 1000 - 2) {
+                null
+            } else AnalysisPcm(samples, nativeRate, vocal!!.finish())
+        }
+
+    suspend fun decodeMixWindow(
         uri: String,
         startMs: Long,
         durationMs: Long,
         expectedRateHz: Int,
         expectedChannels: Int,
-    ): FloatArray? {
-        val decoded = decode(uri, startMs, durationMs) ?: return null
-        val channels = expectedChannels.coerceIn(1, 2)
-        val resampled = EchoSmartTransitionPcm.resampleInterleaved(
-            input = decoded.pcm,
-            inputRateHz = decoded.sampleRateHz,
-            inputChannels = decoded.channels,
-            outputRateHz = expectedRateHz,
-            outputChannels = channels,
-        )
-        if (resampled.isEmpty() || expectedRateHz <= 0) return null
-        val maxFrames = EchoSmartTransitionPolicy.MaxMixBytes / (channels * 4)
-        val frames = minOf(resampled.size / channels, maxFrames)
-        if (frames <= 0) return null
-        return resampled.copyOf(frames * channels)
+    ): FloatArray? = withContext(Dispatchers.IO) {
+        if (durationMs !in 1..EchoSmartTransitionPolicy.MaxOverlapMs.toLong() ||
+            expectedRateHz !in 8_000..384_000 || expectedChannels !in 1..2) return@withContext null
+        val outputFrames = durationMs * expectedRateHz / 1000
+        if (outputFrames * expectedChannels * 4 > EchoSmartTransitionPolicy.MaxMixBytes) return@withContext null
+        var pcm = FloatArray(0)
+        var nativeRate = 0
+        var nativeChannels = 0
+        var written = 0
+        val success = decodeWindow(uri, startMs, durationMs, configure = { rate, channels ->
+            nativeRate = rate
+            nativeChannels = channels
+            val samples = durationMs * rate / 1000 * channels
+            if (samples * 4 > 8L * 1024 * 1024) false else {
+                pcm = FloatArray(samples.toInt())
+                true
+            }
+        }) { left, right ->
+            if (written + nativeChannels <= pcm.size) {
+                pcm[written++] = left
+                if (nativeChannels == 2) pcm[written++] = right
+            }
+        }
+        coroutineContext.ensureActive()
+        // Never arm a truncated window: its continuation would skip audio that was not mixed.
+        if (!success || written != pcm.size || written == 0) return@withContext null
+        if (nativeRate == expectedRateHz && nativeChannels == expectedChannels) return@withContext pcm
+        withContext(Dispatchers.Default) {
+            EchoSmartTransitionPcm.resampleInterleaved(pcm, nativeRate, nativeChannels, expectedRateHz, expectedChannels)
+        }
     }
 
-    private data class DecodedPcm(
-        val pcm: FloatArray,
-        val sampleRateHz: Int,
-        val channels: Int,
-    )
-
-    private fun decode(
+    private suspend fun decodeWindow(
         uri: String,
         startMs: Long,
         durationMs: Long,
-    ): DecodedPcm? {
-        val parsed = runCatching { uri.toUri() }.getOrNull() ?: return null
-        if (!EchoSmartTransitionPolicy.isLocalUri(uri, null)) return null
+        configure: (Int, Int) -> Boolean,
+        frame: (Float, Float) -> Unit,
+    ): Boolean {
+        if (startMs < 0 || durationMs <= 0 || !EchoSmartTransitionPolicy.isLocalUri(uri, null)) return false
+        coroutineContext.ensureActive()
         val extractor = MediaExtractor()
+        var codec: MediaCodec? = null
         val startedAt = SystemClock.elapsedRealtime()
-        return try {
-            extractor.setDataSource(appContext, parsed, null)
-            val track = selectAudioTrack(extractor) ?: return null
+        try {
+            extractor.setDataSource(appContext, uri.toUri(), null)
+            val track = (0 until extractor.trackCount).firstOrNull {
+                extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME).orEmpty().startsWith("audio/")
+            } ?: return false
             extractor.selectTrack(track)
             val format = extractor.getTrackFormat(track)
-            val mime = format.getString(MediaFormat.KEY_MIME) ?: return null
-            val sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
-            val channels = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT).coerceAtLeast(1)
-            extractor.seekTo(startMs.coerceAtLeast(0L) * 1_000L, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
-            val codec = MediaCodec.createDecoderByType(mime)
-            codec.configure(format, null, null, 0)
-            codec.start()
-            drain(extractor, codec, sampleRate, channels, startMs, durationMs, startedAt)
-        } catch (_: RuntimeException) {
-            null
+            val rate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+            val channels = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+            if (rate !in 8_000..384_000 || channels !in 1..2 || !configure(rate, channels)) return false
+            val startUs = startMs * 1000
+            val endUs = (startMs + durationMs) * 1000
+            extractor.seekTo(startUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+            val activeCodec = MediaCodec.createDecoderByType(format.getString(MediaFormat.KEY_MIME) ?: return false)
+            codec = activeCodec
+            activeCodec.configure(format, null, null, 0)
+            activeCodec.start()
+            val info = MediaCodec.BufferInfo()
+            var encoding = AudioFormat.ENCODING_PCM_16BIT
+            var inputDone = false
+            while (true) {
+                coroutineContext.ensureActive()
+                if (SystemClock.elapsedRealtime() - startedAt > EchoSmartTransitionPolicy.DecodeTimeoutMs) return false
+                if (!inputDone) {
+                    val index = activeCodec.dequeueInputBuffer(10_000)
+                    if (index >= 0) {
+                        val buffer = activeCodec.getInputBuffer(index)
+                        val timeUs = extractor.sampleTime
+                        val size = if (buffer == null) -1 else extractor.readSampleData(buffer, 0)
+                        if (size < 0 || timeUs > endUs + 200_000) {
+                            activeCodec.queueInputBuffer(index, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                            inputDone = true
+                        } else {
+                            activeCodec.queueInputBuffer(index, 0, size, timeUs.coerceAtLeast(0), 0)
+                            extractor.advance()
+                        }
+                    }
+                }
+                val index = activeCodec.dequeueOutputBuffer(info, 10_000)
+                if (index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                    val output = activeCodec.outputFormat
+                    if (output.getInteger(MediaFormat.KEY_SAMPLE_RATE) != rate ||
+                        output.getInteger(MediaFormat.KEY_CHANNEL_COUNT) != channels) return false
+                    encoding = if (output.containsKey(MediaFormat.KEY_PCM_ENCODING)) output.getInteger(MediaFormat.KEY_PCM_ENCODING)
+                        else AudioFormat.ENCODING_PCM_16BIT
+                } else if (index >= 0) {
+                    try {
+                        val output = activeCodec.getOutputBuffer(index)
+                        if (output != null && info.size > 0) {
+                            val bytesPerFrame = EchoSmartTransitionPcm.bytesPerSample(encoding) * channels
+                            val frames = info.size / bytesPerFrame
+                            val range = EchoSmartTransitionPcm.windowFrames(info.presentationTimeUs, frames, rate, startUs, endUs)
+                            EchoSmartTransitionPcm.prepareBuffer(output, info.offset + range.first * bytesPerFrame,
+                                (range.last - range.first + 1).coerceAtLeast(0) * bytesPerFrame)
+                            for (ignored in range) {
+                                val left = EchoSmartTransitionPcm.readSample(output, encoding)
+                                val right = if (channels == 2) EchoSmartTransitionPcm.readSample(output, encoding) else left
+                                frame(left, right)
+                            }
+                            if (info.presentationTimeUs + frames * 1_000_000L / rate >= endUs) return true
+                        }
+                        if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) return true
+                    } finally {
+                        activeCodec.releaseOutputBuffer(index, false)
+                    }
+                }
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: Exception) {
-            null
+            return false
         } finally {
+            // Release independently: stop/configure failure must not leak a codec.
+            codec?.let { active ->
+                runCatching { active.stop() }
+                runCatching { active.release() }
+            }
             runCatching { extractor.release() }
         }
     }
-
-    private fun selectAudioTrack(extractor: MediaExtractor): Int? {
-        for (index in 0 until extractor.trackCount) {
-            val mime = extractor.getTrackFormat(index).getString(MediaFormat.KEY_MIME).orEmpty()
-            if (mime.startsWith("audio/")) return index
-        }
-        return null
-    }
-
-    private fun drain(
-        extractor: MediaExtractor,
-        codec: MediaCodec,
-        sampleRate: Int,
-        channels: Int,
-        startMs: Long,
-        durationMs: Long,
-        startedAt: Long,
-    ): DecodedPcm? {
-        val endUs = (startMs + durationMs).coerceAtLeast(startMs) * 1_000L
-        val maxFrames = ((durationMs.coerceAtLeast(1L) * sampleRate) / 1_000L).toInt() + 64
-        val pcm = FloatArray(maxFrames * channels)
-        var written = 0
-        val info = MediaCodec.BufferInfo()
-        var encoding = AudioFormat.ENCODING_PCM_16BIT
-        var inputDone = false
-        var outputDone = false
-        try {
-            while (!outputDone) {
-                if (SystemClock.elapsedRealtime() - startedAt > EchoSmartTransitionPolicy.DecodeTimeoutMs) {
-                    return null
-                }
-                if (!inputDone) {
-                    val inputIndex = codec.dequeueInputBuffer(10_000)
-                    if (inputIndex >= 0) {
-                        val input = codec.getInputBuffer(inputIndex)
-                        val timeUs = extractor.sampleTime
-                        val size = if (input == null) -1 else extractor.readSampleData(input, 0)
-                        if (size < 0 || timeUs > endUs + 200_000L) {
-                            codec.queueInputBuffer(inputIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                            inputDone = true
-                        } else {
-                            codec.queueInputBuffer(inputIndex, 0, size, timeUs.coerceAtLeast(0L), 0)
-                            extractor.advance()
-                        }
-                    }
-                }
-                val outputIndex = codec.dequeueOutputBuffer(info, 10_000)
-                if (outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                    encoding = pcmEncodingOf(codec.outputFormat)
-                } else if (outputIndex >= 0) {
-                    val output = codec.getOutputBuffer(outputIndex)
-                    if (output != null && info.size > 0 && info.presentationTimeUs >= startMs * 1_000L - 20_000L) {
-                        written += appendPcm(output, info, encoding, pcm, written, channels)
-                        if (info.presentationTimeUs >= endUs || written >= pcm.size - channels) {
-                            outputDone = true
-                        }
-                    }
-                    codec.releaseOutputBuffer(outputIndex, false)
-                    if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) outputDone = true
-                }
-            }
-        } finally {
-            runCatching {
-                codec.stop()
-                codec.release()
-            }
-        }
-        if (written < channels) return null
-        return DecodedPcm(pcm.copyOf(written), sampleRate, channels)
-    }
-
-    private fun appendPcm(
-        buffer: ByteBuffer,
-        info: MediaCodec.BufferInfo,
-        encoding: Int,
-        pcm: FloatArray,
-        offset: Int,
-        channels: Int,
-    ): Int {
-        EchoSmartTransitionPcm.prepareBuffer(buffer, info.offset, info.size)
-        val bytes = EchoSmartTransitionPcm.bytesPerSample(encoding).coerceAtLeast(1)
-        val samples = info.size / bytes
-        val count = minOf(samples, (pcm.size - offset).coerceAtLeast(0))
-        var written = 0
-        repeat(count) {
-            pcm[offset + written] = EchoSmartTransitionPcm.readSample(buffer, encoding)
-            written += 1
-        }
-        return written - (written % channels)
-    }
-
-    private fun drainAnalysis(
-        extractor: MediaExtractor,
-        codec: MediaCodec,
-        channels: Int,
-        startMs: Long,
-        durationMs: Long,
-        startedAt: Long,
-        writer: EchoSmartTransitionDownsampler,
-        vocal: EchoSmartTransitionVocalAccumulator,
-    ) {
-        val endUs = (startMs + durationMs).coerceAtLeast(startMs) * 1_000L
-        val info = MediaCodec.BufferInfo()
-        var encoding = AudioFormat.ENCODING_PCM_16BIT
-        var inputDone = false
-        var outputDone = false
-        try {
-            while (!outputDone) {
-                if (SystemClock.elapsedRealtime() - startedAt > EchoSmartTransitionPolicy.DecodeTimeoutMs) return
-                if (!inputDone) {
-                    val inputIndex = codec.dequeueInputBuffer(10_000)
-                    if (inputIndex >= 0) {
-                        val input = codec.getInputBuffer(inputIndex)
-                        val timeUs = extractor.sampleTime
-                        val size = if (input == null) -1 else extractor.readSampleData(input, 0)
-                        if (size < 0 || timeUs > endUs + 200_000L) {
-                            codec.queueInputBuffer(inputIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                            inputDone = true
-                        } else {
-                            codec.queueInputBuffer(inputIndex, 0, size, timeUs.coerceAtLeast(0L), 0)
-                            extractor.advance()
-                        }
-                    }
-                }
-                val outputIndex = codec.dequeueOutputBuffer(info, 10_000)
-                if (outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                    encoding = pcmEncodingOf(codec.outputFormat)
-                } else if (outputIndex >= 0) {
-                    val output = codec.getOutputBuffer(outputIndex)
-                    if (output != null && info.size > 0 && info.presentationTimeUs >= startMs * 1_000L - 20_000L) {
-                        EchoSmartTransitionPcm.prepareBuffer(output, info.offset, info.size)
-                        val bytes = EchoSmartTransitionPcm.bytesPerSample(encoding).coerceAtLeast(1)
-                        val frames = (info.size / bytes) / channels.coerceAtLeast(1)
-                        repeat(frames) {
-                            val left = EchoSmartTransitionPcm.readSample(output, encoding)
-                            val right = if (channels > 1) EchoSmartTransitionPcm.readSample(output, encoding) else left
-                            if (channels > 2) {
-                                repeat(channels - 2) { EchoSmartTransitionPcm.readSample(output, encoding) }
-                            }
-                            writer.pushStereoFrame(left, right)
-                            vocal.pushPcm16(left, right)
-                        }
-                    }
-                    codec.releaseOutputBuffer(outputIndex, false)
-                    if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0 ||
-                        info.presentationTimeUs >= endUs
-                    ) {
-                        outputDone = true
-                    }
-                }
-            }
-        } finally {
-            runCatching {
-                codec.stop()
-                codec.release()
-            }
-        }
-    }
-
-    private fun pcmEncodingOf(format: MediaFormat): Int =
-        if (format.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
-            format.getInteger(MediaFormat.KEY_PCM_ENCODING)
-        } else {
-            AudioFormat.ENCODING_PCM_16BIT
-        }
 }

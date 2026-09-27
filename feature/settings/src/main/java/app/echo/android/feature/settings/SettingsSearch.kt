@@ -1,54 +1,22 @@
 package app.echo.android.feature.settings
 
 import androidx.annotation.StringRes
-import androidx.compose.foundation.background
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.platform.LocalContext
+import app.echo.android.model.settings.EchoAppLanguage
 import java.util.Locale
 
-internal data class SettingsSearchFocus(val title: String, val requestId: Int)
-
-internal val LocalSettingsSearchFocus = compositionLocalOf<SettingsSearchFocus?> { null }
-
-@Composable
-internal fun Modifier.settingsSearchAnchor(title: String): Modifier {
-    val focus = LocalSettingsSearchFocus.current
-    val requester = remember { BringIntoViewRequester() }
-    val focused = focus?.title == title
-    LaunchedEffect(focus, title) {
-        if (focused) {
-            withFrameNanos { }
-            requester.bringIntoView()
-        }
-    }
-    return this.bringIntoViewRequester(requester).then(
-        if (focused) Modifier.background(
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-            RoundedCornerShape(12.dp),
-        ) else Modifier,
-    )
-}
-
 internal enum class SettingsSearchRequirement {
-    Always, ScheduledDark, DarkTime, CustomBackground, BackgroundAdvanced, ImageBackground,
+    Always, DarkTime, CustomBackground, BackgroundAdvanced, ImageBackground,
     TrackFade, ReplayGain, LastFm, LastFmConnected, ListenBrainz, ListenBrainzConnected,
+    SetlistFmEditable,
 }
 
 internal data class SettingsSearchAvailability(
     val scheduledDarkEnabled: Boolean,
     val customBackgroundMode: String,
-    val customBackgroundReady: Boolean,
     val backgroundAdvancedAvailable: Boolean,
     val trackFadeEnabled: Boolean,
     val replayGainEnabled: Boolean,
@@ -56,6 +24,7 @@ internal data class SettingsSearchAvailability(
     val lastFmConnected: Boolean,
     val listenBrainzEnabled: Boolean,
     val listenBrainzConnected: Boolean,
+    val setlistFmLocked: Boolean,
     val importedFont: Boolean,
 )
 
@@ -92,10 +61,16 @@ private val indexedSettings = listOf(
     item(SettingsCategory.Appearance, R.string.settings_section_theme),
     item(SettingsCategory.Appearance, R.string.settings_display_mode,
         keywords = *intArrayOf(R.string.settings_theme_light, R.string.settings_theme_dark, R.string.settings_theme_system)),
-    item(SettingsCategory.Appearance, R.string.settings_color_theme),
-    item(SettingsCategory.Appearance, R.string.settings_dynamic_color),
+    item(SettingsCategory.Appearance, R.string.settings_color_theme,
+        keywords = *intArrayOf(R.string.settings_color_theme_echo, R.string.settings_color_theme_plum,
+            R.string.settings_color_theme_indigo, R.string.settings_color_theme_twilight,
+            R.string.settings_color_theme_ocean, R.string.settings_color_theme_frost,
+            R.string.settings_color_theme_rosewood, R.string.settings_color_theme_graphite,
+            R.string.settings_color_theme_amber, R.string.settings_color_theme_copper)),
+    item(SettingsCategory.Appearance, R.string.settings_dynamic_color,
+        keywords = *intArrayOf(R.string.settings_dynamic_color_detail)),
     item(SettingsCategory.Appearance, R.string.settings_scheduled_dark,
-        requirement = SettingsSearchRequirement.ScheduledDark),
+        keywords = *intArrayOf(R.string.settings_scheduled_dark_detail)),
     item(SettingsCategory.Appearance, R.string.settings_dark_start,
         requirement = SettingsSearchRequirement.DarkTime, fallback = R.string.settings_scheduled_dark),
     item(SettingsCategory.Appearance, R.string.settings_dark_end,
@@ -105,7 +80,10 @@ private val indexedSettings = listOf(
         keywords = *intArrayOf(R.string.settings_bg_image_label, R.string.settings_bg_video_label,
             R.string.settings_bg_default_label)),
     item(SettingsCategory.Appearance, R.string.settings_bg_style,
-        requirement = SettingsSearchRequirement.CustomBackground, fallback = R.string.settings_section_background),
+        requirement = SettingsSearchRequirement.CustomBackground, fallback = R.string.settings_section_background,
+        keywords = *intArrayOf(R.string.settings_bg_style_natural, R.string.settings_bg_style_soft,
+            R.string.settings_bg_style_airy, R.string.settings_bg_style_dreamy,
+            R.string.settings_bg_style_cinematic, R.string.settings_bg_style_focus)),
     item(SettingsCategory.Appearance, R.string.settings_blur,
         requirement = SettingsSearchRequirement.ImageBackground, fallback = R.string.settings_section_background),
     item(SettingsCategory.Appearance, R.string.settings_brightness,
@@ -120,49 +98,68 @@ private val indexedSettings = listOf(
     item(SettingsCategory.Appearance, R.string.settings_section_fonts),
     item(SettingsCategory.Appearance, R.string.settings_ui_font,
         keywords = *intArrayOf(R.string.settings_font_outfit, R.string.settings_font_system,
-            R.string.settings_font_serif, R.string.settings_font_mono)),
+            R.string.settings_font_serif, R.string.settings_font_mono,
+            R.string.settings_font_import, R.string.settings_font_imported)),
     item(SettingsCategory.Appearance, R.string.settings_ui_font_size),
     item(SettingsCategory.Appearance, R.string.settings_ui_density),
     item(SettingsCategory.Appearance, R.string.settings_lyrics_font),
     item(SettingsCategory.Appearance, R.string.settings_lyrics_font_size),
     item(SettingsCategory.Appearance, R.string.settings_import_font,
-        keywords = *intArrayOf(R.string.settings_reselect_font)),
-    item(SettingsCategory.Appearance, R.string.settings_clear_font),
+        keywords = *intArrayOf(R.string.settings_reselect_font, R.string.settings_import_font_detail)),
+    item(SettingsCategory.Appearance, R.string.settings_clear_font,
+        keywords = *intArrayOf(R.string.settings_clear_font_detail)),
 
     item(SettingsCategory.Interface, R.string.settings_category_interface,
         keywords = *intArrayOf(R.string.settings_category_interface_detail)),
-    item(SettingsCategory.Interface, R.string.settings_language),
+    item(SettingsCategory.Interface, R.string.settings_section_interface),
+    item(SettingsCategory.Interface, R.string.settings_language,
+        keywords = *intArrayOf(R.string.settings_language_system)),
     item(SettingsCategory.Interface, R.string.settings_performance_mode,
         keywords = *intArrayOf(R.string.settings_perf_auto, R.string.settings_perf_balanced,
             R.string.settings_perf_lightweight, R.string.settings_perf_high)),
-    item(SettingsCategory.Interface, R.string.settings_dynamic_artwork),
-    item(SettingsCategory.Interface, R.string.settings_compact_mode),
+    item(SettingsCategory.Interface, R.string.settings_dynamic_artwork,
+        keywords = *intArrayOf(R.string.settings_dynamic_artwork_detail)),
+    item(SettingsCategory.Interface, R.string.settings_compact_mode,
+        keywords = *intArrayOf(R.string.settings_compact_mode_detail)),
 
     item(SettingsCategory.Playback, R.string.settings_category_playback,
         keywords = *intArrayOf(R.string.settings_category_playback_detail)),
-    item(SettingsCategory.Playback, R.string.settings_gapless),
-    item(SettingsCategory.Playback, R.string.settings_track_fade),
+    item(SettingsCategory.Playback, R.string.settings_section_playback),
+    item(SettingsCategory.Playback, R.string.settings_gapless,
+        keywords = *intArrayOf(R.string.settings_gapless_detail)),
+    item(SettingsCategory.Playback, R.string.settings_track_fade,
+        keywords = *intArrayOf(R.string.settings_track_fade_detail)),
     item(SettingsCategory.Playback, R.string.settings_track_fade_duration,
         requirement = SettingsSearchRequirement.TrackFade, fallback = R.string.settings_track_fade),
-    item(SettingsCategory.Playback, R.string.settings_smart_transition),
-    item(SettingsCategory.Playback, R.string.settings_pause_on_disconnect),
-    item(SettingsCategory.Playback, R.string.settings_resume_on_reconnect),
-    item(SettingsCategory.Playback, R.string.settings_replay_gain),
+    item(SettingsCategory.Playback, R.string.settings_smart_transition,
+        keywords = *intArrayOf(R.string.settings_smart_transition_detail)),
+    item(SettingsCategory.Playback, R.string.settings_pause_on_disconnect,
+        keywords = *intArrayOf(R.string.settings_pause_on_disconnect_detail)),
+    item(SettingsCategory.Playback, R.string.settings_resume_on_reconnect,
+        keywords = *intArrayOf(R.string.settings_resume_on_reconnect_detail)),
+    item(SettingsCategory.Playback, R.string.settings_replay_gain,
+        keywords = *intArrayOf(R.string.settings_replay_gain_detail)),
     item(SettingsCategory.Playback, R.string.settings_replay_gain_mode,
         requirement = SettingsSearchRequirement.ReplayGain, fallback = R.string.settings_replay_gain,
         keywords = *intArrayOf(R.string.dsp_auto, R.string.dsp_track, R.string.dsp_album)),
     item(SettingsCategory.Playback, R.string.eq_preamp,
         requirement = SettingsSearchRequirement.ReplayGain, fallback = R.string.settings_replay_gain),
-    item(SettingsCategory.Playback, R.string.settings_lyrics_sync_tools),
-    item(SettingsCategory.Playback, R.string.settings_playback_haptics),
-    item(SettingsCategory.Playback, R.string.settings_online_lyrics),
-    item(SettingsCategory.Playback, R.string.settings_lock_lyrics),
+    item(SettingsCategory.Playback, R.string.settings_lyrics_sync_tools,
+        keywords = *intArrayOf(R.string.settings_lyrics_sync_tools_detail)),
+    item(SettingsCategory.Playback, R.string.settings_playback_haptics,
+        keywords = *intArrayOf(R.string.settings_playback_haptics_detail)),
+    item(SettingsCategory.Playback, R.string.settings_online_lyrics,
+        keywords = *intArrayOf(R.string.settings_online_lyrics_detail)),
+    item(SettingsCategory.Playback, R.string.settings_lock_lyrics,
+        keywords = *intArrayOf(R.string.settings_lock_lyrics_detail)),
     item(SettingsCategory.Playback, R.string.settings_usb_exclusive),
-    item(SettingsCategory.Playback, R.string.settings_usb_bitperfect),
+    item(SettingsCategory.Playback, R.string.settings_usb_bitperfect,
+        keywords = *intArrayOf(R.string.settings_usb_bitperfect_detail)),
     item(SettingsCategory.Playback, R.string.settings_usb_auto_request),
     item(SettingsCategory.Playback, R.string.settings_notification_permission),
     item(SettingsCategory.Playback, R.string.settings_test_usb),
-    item(SettingsCategory.Playback, R.string.settings_pin_queue_offline),
+    item(SettingsCategory.Playback, R.string.settings_pin_queue_offline,
+        keywords = *intArrayOf(R.string.settings_pin_queue_offline_detail)),
 
     item(SettingsCategory.Services, R.string.settings_category_services,
         keywords = *intArrayOf(R.string.settings_category_services_detail)),
@@ -174,7 +171,7 @@ private val indexedSettings = listOf(
         requirement = SettingsSearchRequirement.LastFm, fallback = R.string.settings_search_lastfm),
     item(SettingsCategory.Services, R.string.settings_lastfm_open_auth,
         requirement = SettingsSearchRequirement.LastFm, fallback = R.string.settings_search_lastfm,
-        keywords = *intArrayOf(R.string.settings_lastfm_reauth)),
+        keywords = *intArrayOf(R.string.settings_lastfm_reauth, R.string.settings_lastfm_auth_detail)),
     item(SettingsCategory.Services, R.string.settings_lastfm_complete_auth,
         requirement = SettingsSearchRequirement.LastFm, fallback = R.string.settings_search_lastfm),
     item(SettingsCategory.Services, R.string.settings_lastfm_api_accounts,
@@ -183,25 +180,37 @@ private val indexedSettings = listOf(
         requirement = SettingsSearchRequirement.LastFmConnected, fallback = R.string.settings_search_lastfm),
     item(SettingsCategory.Services, R.string.settings_listenbrainz),
     item(SettingsCategory.Services, R.string.settings_listenbrainz_token,
-        requirement = SettingsSearchRequirement.ListenBrainz, fallback = R.string.settings_listenbrainz),
+        requirement = SettingsSearchRequirement.ListenBrainz, fallback = R.string.settings_listenbrainz,
+        keywords = *intArrayOf(R.string.settings_listenbrainz_token_detail)),
     item(SettingsCategory.Services, R.string.settings_listenbrainz_save,
         requirement = SettingsSearchRequirement.ListenBrainz, fallback = R.string.settings_listenbrainz),
     item(SettingsCategory.Services, R.string.settings_listenbrainz_disconnect,
         requirement = SettingsSearchRequirement.ListenBrainzConnected, fallback = R.string.settings_listenbrainz),
     item(SettingsCategory.Services, R.string.settings_setlistfm),
-    item(SettingsCategory.Services, R.string.settings_setlistfm_save),
-    item(SettingsCategory.Services, R.string.settings_pc_handoff),
-    item(SettingsCategory.Services, R.string.settings_connect_pc),
+    item(SettingsCategory.Services, R.string.settings_setlistfm_save,
+        requirement = SettingsSearchRequirement.SetlistFmEditable, fallback = R.string.settings_setlistfm,
+        keywords = *intArrayOf(R.string.settings_setlistfm_detail)),
+    item(SettingsCategory.Services, R.string.settings_pc_handoff,
+        keywords = *intArrayOf(R.string.settings_pc_handoff_detail)),
+    item(SettingsCategory.Services, R.string.settings_connect_pc,
+        keywords = *intArrayOf(R.string.settings_connect_pc_detail)),
 
     item(SettingsCategory.Library, R.string.settings_section_library,
         keywords = *intArrayOf(R.string.settings_category_library_detail)),
-    item(SettingsCategory.Library, R.string.settings_audio_tags),
-    item(SettingsCategory.Library, R.string.settings_watched_folder_rescan),
-    item(SettingsCategory.Library, R.string.settings_offline_wifi_only),
-    item(SettingsCategory.Library, R.string.settings_offline_storage),
-    item(SettingsCategory.Library, R.string.settings_local_music),
-    item(SettingsCategory.Library, R.string.settings_library_cleanup),
-    item(SettingsCategory.Library, R.string.settings_clear_index_title),
+    item(SettingsCategory.Library, R.string.settings_audio_tags,
+        keywords = *intArrayOf(R.string.settings_audio_tags_detail)),
+    item(SettingsCategory.Library, R.string.settings_watched_folder_rescan,
+        keywords = *intArrayOf(R.string.settings_watched_folder_rescan_detail)),
+    item(SettingsCategory.Library, R.string.settings_offline_wifi_only,
+        keywords = *intArrayOf(R.string.settings_offline_wifi_only_detail)),
+    item(SettingsCategory.Library, R.string.settings_offline_storage,
+        keywords = *intArrayOf(R.string.settings_offline_storage_detail)),
+    item(SettingsCategory.Library, R.string.settings_local_music,
+        keywords = *intArrayOf(R.string.settings_local_music_detail)),
+    item(SettingsCategory.Library, R.string.settings_library_cleanup,
+        keywords = *intArrayOf(R.string.settings_library_cleanup_detail)),
+    item(SettingsCategory.Library, R.string.settings_clear_index_title,
+        keywords = *intArrayOf(R.string.settings_clear_index_detail)),
 
     item(SettingsCategory.About, R.string.settings_section_about,
         keywords = *intArrayOf(R.string.settings_category_about_detail)),
@@ -209,8 +218,10 @@ private val indexedSettings = listOf(
     item(SettingsCategory.About, R.string.settings_about_website),
     item(SettingsCategory.About, R.string.settings_about_bug_report),
     item(SettingsCategory.About, R.string.update_check),
-    item(SettingsCategory.About, R.string.settings_backup_export),
-    item(SettingsCategory.About, R.string.settings_backup_restore),
+    item(SettingsCategory.About, R.string.settings_backup_export,
+        keywords = *intArrayOf(R.string.settings_backup_export_detail)),
+    item(SettingsCategory.About, R.string.settings_backup_restore,
+        keywords = *intArrayOf(R.string.settings_backup_restore_detail)),
     item(SettingsCategory.About, R.string.settings_error_log),
     SettingsSearchItem(null, R.string.settings_plugins, keywords = listOf(R.string.settings_plugins_summary),
         opensPlugins = true),
@@ -222,16 +233,24 @@ internal fun rememberSettingsSearchResults(availability: SettingsSearchAvailabil
     val configuration = LocalConfiguration.current
     return remember(context, configuration, availability) {
         indexedSettings.map { item ->
-            val titleRes = if (item.titleRes == R.string.settings_import_font && availability.importedFont) {
-                R.string.settings_reselect_font
-            } else item.titleRes
-            val anchorRes = if (item.anchorRes == R.string.settings_import_font && availability.importedFont) {
-                R.string.settings_reselect_font
-            } else item.anchorRes
+            val titleRes = when {
+                item.titleRes == R.string.settings_import_font && availability.importedFont ->
+                    R.string.settings_reselect_font
+                item.titleRes == R.string.settings_lastfm_open_auth && availability.lastFmConnected ->
+                    R.string.settings_lastfm_reauth
+                else -> item.titleRes
+            }
+            val anchorRes = when {
+                item.anchorRes == R.string.settings_import_font && availability.importedFont ->
+                    R.string.settings_reselect_font
+                item.anchorRes == R.string.settings_lastfm_open_auth && availability.lastFmConnected ->
+                    R.string.settings_lastfm_reauth
+                else -> item.anchorRes
+            }
             val fallback = when (item.requirement) {
-                SettingsSearchRequirement.Always, SettingsSearchRequirement.ScheduledDark -> false
+                SettingsSearchRequirement.Always -> false
                 SettingsSearchRequirement.DarkTime -> !availability.scheduledDarkEnabled
-                SettingsSearchRequirement.CustomBackground -> !availability.customBackgroundReady
+                SettingsSearchRequirement.CustomBackground -> !availability.backgroundAdvancedAvailable
                 SettingsSearchRequirement.BackgroundAdvanced -> !availability.backgroundAdvancedAvailable
                 SettingsSearchRequirement.ImageBackground -> availability.customBackgroundMode != "image" ||
                     !availability.backgroundAdvancedAvailable
@@ -241,6 +260,7 @@ internal fun rememberSettingsSearchResults(availability: SettingsSearchAvailabil
                 SettingsSearchRequirement.LastFmConnected -> !availability.lastFmConnected
                 SettingsSearchRequirement.ListenBrainz -> !availability.listenBrainzEnabled
                 SettingsSearchRequirement.ListenBrainzConnected -> !availability.listenBrainzConnected
+                SettingsSearchRequirement.SetlistFmEditable -> availability.setlistFmLocked
             }
             SettingsSearchResult(
                 item = item,
@@ -248,7 +268,13 @@ internal fun rememberSettingsSearchResults(availability: SettingsSearchAvailabil
                 categoryTitle = item.category?.let { context.getString(it.title) }
                     ?: context.getString(R.string.settings_group_app),
                 anchorTitle = context.getString(if (fallback) item.fallbackRes else anchorRes),
-                keywords = item.keywords.joinToString(" ") { context.getString(it) },
+                keywords = buildString {
+                    append(item.keywords.joinToString(" ") { context.getString(it) })
+                    if (item.titleRes == R.string.settings_language) {
+                        append(' ')
+                        append(EchoAppLanguage.supported.joinToString(" ") { it.nativeName })
+                    }
+                },
             )
         }
     }

@@ -25,6 +25,7 @@ import app.echo.android.design.echoClickable
 import app.echo.android.design.echoExpandIndicator
 import app.echo.android.model.connect.EchoLinkLanDevice
 import app.echo.android.model.connect.EchoRemoteConnectionState
+import app.echo.android.model.connect.EchoRemoteLibraryState
 import app.echo.android.model.connect.EchoRemoteTrack
 import app.echo.android.model.connect.EchoSavedPcEndpoint
 
@@ -66,6 +67,9 @@ internal fun PcLinkPanel(
     onSelectLanDevice: (EchoLinkLanDevice) -> Unit,
     onRefreshLanDevices: () -> Unit,
     onHandoffPhoneToPc: (() -> Unit)? = null,
+    remoteLibrary: EchoRemoteLibraryState = EchoRemoteLibraryState(),
+    onSearchPcLibrary: (String) -> Unit = {},
+    active: Boolean = true,
 ) {
     val connected = remoteState == EchoRemoteConnectionState.Connected
     val busy = remoteState in listOf(EchoRemoteConnectionState.Pairing, EchoRemoteConnectionState.Connecting, EchoRemoteConnectionState.Reconnecting)
@@ -73,6 +77,7 @@ internal fun PcLinkPanel(
     var token by rememberSaveable(savedPcToken) { mutableStateOf(savedPcToken.orEmpty()) }
     var manual by rememberSaveable { mutableStateOf(savedPcAddress.isNullOrBlank()) }
     var confirmForget by rememberSaveable { mutableStateOf(false) }
+    var musicPicker by rememberSaveable { mutableStateOf<String?>(null) }
     val hasSaved = !savedPcAddress.isNullOrBlank()
     val endpoint = remember(address, token) { EchoPairingParser.parseManual(address, token) }
     val validAddress = remember(address) { EchoPairingParser.parseManual(address, "validation-token") != null }
@@ -86,6 +91,20 @@ internal fun PcLinkPanel(
     }
     LaunchedEffect(remoteState) {
         if (remoteState == EchoRemoteConnectionState.Error) manual = true
+        if (!connected) musicPicker = null
+    }
+    if (connected && active && musicPicker != null) {
+        RemoteMusicPicker(
+            initialQueue = musicPicker == "queue",
+            library = remoteLibrary,
+            queueItems = queueItems,
+            currentTrackId = currentTrackId,
+            pcTitle = pcTitle,
+            remoteError = remoteError,
+            onSearchLibrary = onSearchPcLibrary,
+            onPlayTrack = onPlayQueueItem,
+            onDismiss = { musicPicker = null },
+        )
     }
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -118,10 +137,12 @@ internal fun PcLinkPanel(
                     onStop = onStop,
                     onSeek = onSeek,
                     onVolume = onVolume,
-                    onPlayQueueItem = onPlayQueueItem,
+                    onOpenLibrary = { musicPicker = "library" },
+                    onOpenQueue = { musicPicker = "queue" },
                     outputMode = outputMode,
                     currentTrackId = currentTrackId,
-                    queueItems = queueItems,
+                    queueCount = queueItems.size,
+                    active = active && musicPicker == null,
                 )
                 if (onHandoffPhoneToPc != null) {
                     OutlinedButton(onClick = onHandoffPhoneToPc, modifier = Modifier.fillMaxWidth()) {

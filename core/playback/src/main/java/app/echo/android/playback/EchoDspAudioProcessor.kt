@@ -24,6 +24,8 @@ internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>) 
     private val multichannelFrame = FloatArray(8)
     private var bytesPerSample = 2
     private var order = ByteOrder.LITTLE_ENDIAN
+    private var streamOffsetUs = 0L
+    private var streamFrames = 0L
 
     override fun onConfigure(format: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
         bytesPerSample = when (format.encoding) {
@@ -44,6 +46,8 @@ internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>) 
     }
 
     override fun onFlush(metadata: AudioProcessor.StreamMetadata) {
+        streamOffsetUs = metadata.positionOffsetUs
+        streamFrames = 0L
         stages.forEach { it.flush(metadata) }
         kernel.setTarget(EchoPlaybackProcessRuntime.dspSettings, EchoPlaybackProcessRuntime.dspReplayGainDb)
         kernel.reset()
@@ -57,6 +61,7 @@ internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>) 
         val channels = inputAudioFormat.channelCount
         val frames = minOf(1024, input.remaining() / (channels * bytesPerSample))
         check(frames > 0) { "Incomplete PCM frame" }
+        streamFrames += frames
         val output = replaceOutputBuffer(frames * channels * bytesPerSample).order(order)
         val settings = EchoPlaybackProcessRuntime.dspSettings
         val replayGain = EchoPlaybackProcessRuntime.dspReplayGainDb
@@ -105,14 +110,15 @@ internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>) 
 
     private fun syncSmartMixer() {
         val format = inputAudioFormat
-        if (format == AudioProcessor.AudioFormat.NOT_SET) return
+        if (format == AudioProcessor.AudioFormat.NOT_SET || format.channelCount !in 1..2) return
         val internalFormat = AudioProcessor.AudioFormat(format.sampleRate, format.channelCount, C.ENCODING_PCM_FLOAT)
         for (stage in stages) {
             if (stage !is EchoSmartTransitionMixer) continue
             if (stage.enabled == stage.isActive) continue
             runCatching {
                 stage.configure(internalFormat)
-                if (stage.isActive) stage.flush(AudioProcessor.StreamMetadata.DEFAULT)
+                if (stage.isActive) stage.flush(AudioProcessor.StreamMetadata(
+                    streamOffsetUs + streamFrames * 1_000_000L / format.sampleRate))
             }
         }
     }

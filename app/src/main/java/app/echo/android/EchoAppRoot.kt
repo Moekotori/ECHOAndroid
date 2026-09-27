@@ -1390,6 +1390,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onDispose { viewModel.stopEchoLinkDiscovery() }
                             }
                             val remoteScanState by viewModel.remoteScanState.collectAsStateWithLifecycle()
+                            val pcLibrary by remoteClient.library.collectAsStateWithLifecycle()
                             val discoveryState by viewModel.echoLinkDiscoveryState.collectAsStateWithLifecycle()
                             val echoLinkLanDevices by viewModel.echoLinkLanDevices.collectAsStateWithLifecycle()
                             val lanRenderers by viewModel.lanRenderers.collectAsStateWithLifecycle()
@@ -1397,8 +1398,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             ConnectScreen(
                                 remoteState = remoteStatus.connectionState,
                                 pcTitle = remoteStatus.endpoint?.name ?: "PC ECHO",
-                                trackTitle = remoteStatus.playback.track?.title ?: context.getString(R.string.echo_link_not_connected),
-                                trackArtist = remoteStatus.playback.track?.artist ?: context.getString(R.string.echo_link_tap_to_pair),
+                                trackTitle = remoteStatus.playback.track?.title.orEmpty(),
+                                trackArtist = remoteStatus.playback.track?.artist.orEmpty(),
                                 trackArtworkUrl = remoteStatus.playback.track?.artworkUrl,
                                 isPlaying = remoteStatus.playback.state == EchoRemotePlaybackState.Playing,
                                 remoteError = remoteStatus.error ?: castSetupError,
@@ -1413,6 +1414,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 currentTrackId = remoteStatus.playback.queue.currentTrackId
                                     ?: remoteStatus.playback.track?.id,
                                 queueItems = remoteStatus.playback.queue.items,
+                                remoteLibrary = pcLibrary,
+                                onSearchPcLibrary = remoteClient::refreshLibrary,
+                                remoteControlsActive = connectPageSettled,
                                 subsonicServerUrl = appSettings.subsonicServerUrl,
                                 subsonicUsername = appSettings.subsonicUsername,
                                 subsonicPassword = appSettings.subsonicPassword,

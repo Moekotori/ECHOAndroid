@@ -5,6 +5,13 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 internal object EchoSmartTransitionPcm {
+    /** Select exact PCM frames even when a codec buffer straddles either window boundary. */
+    fun windowFrames(bufferStartUs: Long, frames: Int, rate: Int, startUs: Long, endUs: Long): IntRange {
+        fun boundary(timeUs: Long): Int =
+            (((timeUs - bufferStartUs).coerceAtLeast(0) * rate + 999_999) / 1_000_000)
+                .coerceIn(0, frames.toLong()).toInt()
+        return boundary(startUs) until boundary(endUs)
+    }
     fun bytesPerSample(encoding: Int): Int = when (encoding) {
         AudioFormat.ENCODING_PCM_8BIT -> 1
         AudioFormat.ENCODING_PCM_16BIT -> 2
@@ -70,8 +77,8 @@ internal object EchoSmartTransitionPcm {
     }
 
     fun prepareBuffer(buffer: ByteBuffer, offset: Int, size: Int): ByteBuffer {
-        buffer.position(offset)
         buffer.limit(offset + size)
+        buffer.position(offset)
         buffer.order(ByteOrder.LITTLE_ENDIAN)
         return buffer
     }

@@ -18,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -45,14 +47,25 @@ internal fun SettingsNavigation(
     isActive: Boolean,
     compactMode: Boolean,
     summaries: Map<SettingsCategory, String>,
+    searchAvailability: SettingsSearchAvailability,
     onOpenPlugins: () -> Unit,
     content: @Composable (SettingsCategory) -> Unit,
 ) {
     var selected by rememberSaveable { mutableStateOf<SettingsCategory?>(null) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var searchFocus by remember { mutableStateOf<SettingsSearchFocus?>(null) }
+    var searchRequestId by remember { mutableIntStateOf(0) }
     val stateHolder = rememberSaveableStateHolder()
     val motion = rememberEchoContentMotion()
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val searchItems = rememberSettingsSearchResults(searchAvailability)
+    val searchResults = remember(searchItems, searchQuery) { searchSettings(searchItems, searchQuery) }
     // Pager neighbours remain composed: they must not intercept another page's back action.
-    BackHandler(enabled = isActive && selected != null) { selected = null }
+    BackHandler(enabled = isActive && selected != null) {
+        selected = null
+        searchFocus = null
+    }
     // PageChrome draws its own background without providing a content color.
     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
         AnimatedContent(
@@ -69,7 +82,7 @@ internal fun SettingsNavigation(
                     badgeContent = {},
                     titleContent = {
                         Row(Modifier.heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-                            if (category != null) IconButton(onClick = { selected = null }) {
+                            if (category != null) IconButton(onClick = { selected = null; searchFocus = null }) {
                                 Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.settings_back), tint = MaterialTheme.colorScheme.onSurface)
                             }
                             Text(
@@ -94,7 +107,20 @@ internal fun SettingsNavigation(
                         ),
                     ) {
                         if (category == null) {
-                            settingsGroups.forEach { (title, entries) ->
+                            SettingsSearchField(searchQuery) { searchQuery = it }
+                            if (searchQuery.isNotBlank()) {
+                                SettingsSearchResults(searchResults) { result ->
+                                    focusManager.clearFocus()
+                                    keyboardController?.hide()
+                                    if (result.item.opensPlugins) {
+                                        onOpenPlugins()
+                                    } else {
+                                        searchRequestId++
+                                        searchFocus = SettingsSearchFocus(result.anchorTitle, searchRequestId)
+                                        selected = result.item.category
+                                    }
+                                }
+                            } else settingsGroups.forEach { (title, entries) ->
                                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Text(
                                         stringResource(title),
@@ -126,7 +152,10 @@ internal fun SettingsNavigation(
                                                     modifier = Modifier.padding(start = 64.dp, end = 16.dp),
                                                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
                                                 )
-                                                SettingsCategoryRow(entry, summaries[entry].orEmpty(), compactMode) { selected = entry }
+                                                SettingsCategoryRow(entry, summaries[entry].orEmpty(), compactMode) {
+                                                    searchFocus = null
+                                                    selected = entry
+                                                }
                                             }
                                         }
                                     }
@@ -140,7 +169,9 @@ internal fun SettingsNavigation(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = 4.dp),
                             )
-                            content(category)
+                            CompositionLocalProvider(LocalSettingsSearchFocus provides searchFocus) {
+                                content(category)
+                            }
                         }
                     }
                 }

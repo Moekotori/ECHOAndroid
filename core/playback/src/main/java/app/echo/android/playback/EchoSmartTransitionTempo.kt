@@ -111,7 +111,7 @@ internal object EchoSmartTransitionTempoMath {
 
     fun entryMs(leadingSilenceMs: Int, beatsMs: IntArray): Int {
         val limit = leadingSilenceMs.coerceIn(0, EchoSmartTransitionPolicy.MaxSilenceSkipMs)
-        val beat = beatsMs.filter { it in 0..limit }.maxOrNull()
+        val beat = beatsMs.firstOrNull { it in limit..minOf(limit + 100, EchoSmartTransitionPolicy.MaxSilenceSkipMs) }
         return (beat ?: limit).coerceIn(0, EchoSmartTransitionPolicy.MaxSilenceSkipMs)
     }
 

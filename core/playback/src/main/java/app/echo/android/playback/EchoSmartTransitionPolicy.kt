@@ -23,7 +23,6 @@ internal object EchoSmartTransitionPolicy {
     const val MemoryCacheLimit = 32
     const val DiskCacheMaxBytes = 2L * 1024 * 1024
     const val PredecodeLeadMs = 8_000
-    const val ProcessorLeadMs = 250L
     const val MinRemainingAfterMixMs = 300
     const val MinTrackDurationMs = 4_000
     const val MaxSilenceSkipMs = 3_000
@@ -149,7 +148,7 @@ internal object EchoSmartTransitionPolicy {
         val rate = (candidate.outputSampleRateHz ?: candidate.nextSampleRateHz ?: 48_000).coerceAtLeast(8_000)
         val channels = candidate.outputChannelCount.coerceIn(1, 2)
         val byteCapMs = (MaxMixBytes.toLong() * 1_000L) / (rate.toLong() * channels * 4L)
-        return minOf(MaxOverlapMs, userCap, byteCapMs.toInt().coerceAtLeast(MinOverlapMs))
+        return minOf(MaxOverlapMs, userCap, byteCapMs.toInt().coerceAtLeast(0))
     }
 
     fun overlapMs(

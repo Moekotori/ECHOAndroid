@@ -1,6 +1,13 @@
 package app.echo.android.feature.player
 
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
@@ -24,6 +31,8 @@ import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.echo.android.design.EchoMotion
+import app.echo.android.design.LocalEchoEffectivePerformanceMode
 
 /** Shared 24-unit optical grid for the expanded player and compact dock. */
 internal object PlayerControlIcons {
@@ -125,16 +134,36 @@ internal fun PlayerControlButton(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.9f else 1f, tween(130), label = "player-control-press")
+    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    val scale = animateFloatAsState(
+        if (pressed && !lightweight) 0.88f else 1f,
+        if (lightweight) snap() else spring(dampingRatio = if (pressed) 1f else 0.72f, stiffness = 650f),
+        label = "player-control-press",
+    )
     Box(
         modifier = Modifier.size(touchSize).clickable(
             interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick,
         ),
         contentAlignment = Alignment.Center,
     ) {
-        Crossfade(icon, animationSpec = tween(120), label = "player-control-icon") { current ->
+        AnimatedContent(
+            targetState = icon,
+            transitionSpec = {
+                ContentTransform(
+                    targetContentEnter = fadeIn(tween(if (lightweight) 0 else 180)) +
+                        scaleIn(initialScale = if (lightweight) 1f else 0.78f,
+                            animationSpec = EchoMotion.silkFloat(240)),
+                    initialContentExit = fadeOut(tween(if (lightweight) 0 else 90)) +
+                        scaleOut(targetScale = if (lightweight) 1f else 0.88f,
+                            animationSpec = EchoMotion.silkFloat(180)),
+                    sizeTransform = null,
+                )
+            },
+            contentAlignment = Alignment.Center,
+            label = "player-control-icon",
+        ) { current ->
             Icon(current, contentDescription = description, tint = tint,
-                modifier = Modifier.size(iconSize).graphicsLayer { scaleX = scale; scaleY = scale })
+                modifier = Modifier.size(iconSize).graphicsLayer { scaleX = scale.value; scaleY = scale.value })
         }
     }
 }

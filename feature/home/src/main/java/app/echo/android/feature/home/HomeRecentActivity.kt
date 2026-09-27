@@ -15,6 +15,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -39,21 +41,17 @@ internal fun RoonRecentActivitySection(
     onOpenLibrary: () -> Unit,
     onPlayTrack: (EchoTrack) -> Unit = {},
 ) {
-    var selectedMode by rememberSaveable { mutableStateOf(RecentActivityMode.Played) }
-    val albums = when (selectedMode) {
+    var selectedMode by rememberSaveable { mutableStateOf<RecentActivityMode?>(null) }
+    val displayMode = selectedMode ?: when {
+        recentPlayedAlbums.isNotEmpty() -> RecentActivityMode.Played
+        recentlyAddedAlbums.isNotEmpty() -> RecentActivityMode.Added
+        recentPlayedTracks.isNotEmpty() -> RecentActivityMode.Tracks
+        else -> RecentActivityMode.Played
+    }
+    val displayAlbums = when (displayMode) {
         RecentActivityMode.Played -> recentPlayedAlbums
         RecentActivityMode.Added -> recentlyAddedAlbums
         RecentActivityMode.Tracks -> emptyList()
-    }
-    val displayAlbums = if (albums.isEmpty() && selectedMode == RecentActivityMode.Played) {
-        recentlyAddedAlbums
-    } else {
-        albums
-    }
-    val displayMode = if (albums.isEmpty() && selectedMode == RecentActivityMode.Played && recentlyAddedAlbums.isNotEmpty()) {
-        RecentActivityMode.Added
-    } else {
-        selectedMode
     }
     Column(
         modifier = Modifier
@@ -66,18 +64,13 @@ internal fun RoonRecentActivitySection(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(
-                stringResource(L10nR.string.feature_home_recent_activity_581ef8),
-                color = homeTitleColor(),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
+            HomeSectionHeader(stringResource(L10nR.string.feature_home_recent_activity_581ef8))
             RecentActivityTabs(
-                selectedMode = selectedMode,
+                selectedMode = displayMode,
                 onSelect = { selectedMode = it },
             )
         }
-        if (selectedMode == RecentActivityMode.Tracks) {
+        if (displayMode == RecentActivityMode.Tracks) {
             if (recentPlayedTracks.isEmpty()) {
                 HomeLibraryNotice(
                     title = stringResource(L10nR.string.feature_home_nothing_played_yet_988bfc),
@@ -98,11 +91,11 @@ internal fun RoonRecentActivitySection(
         } else if (displayAlbums.isEmpty()) {
             HomeLibraryNotice(
                 title = stringResource(
-                    if (selectedMode == RecentActivityMode.Played) L10nR.string.feature_home_nothing_played_yet_988bfc
+                    if (displayMode == RecentActivityMode.Played) L10nR.string.feature_home_nothing_played_yet_988bfc
                     else L10nR.string.feature_home_no_new_albums_yet_ac7085,
                 ),
                 subtitle = stringResource(
-                    if (selectedMode == RecentActivityMode.Played) L10nR.string.feature_home_appears_after_you_play_an_album_26effb
+                    if (displayMode == RecentActivityMode.Played) L10nR.string.feature_home_appears_after_you_play_an_album_26effb
                     else L10nR.string.feature_home_appears_after_you_scan_your_library_5ae1b0,
                 ),
                 onClick = onOpenLibrary,
@@ -118,7 +111,6 @@ internal fun RoonRecentActivitySection(
                 } else {
                     LazyRow(
                         modifier = Modifier
-                            .heightIn(min = RecentActivityAlbumCardHeight)
                             .homeCarouselScroll(),
                         contentPadding = PaddingValues(vertical = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -183,15 +175,18 @@ private fun RecentActivityModeTab(
     onClick: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val fill by animateColorAsState(
-        if (selected) scheme.primary.copy(alpha = 0.13f) else Color.Transparent,
+    val indicator by animateColorAsState(
+        if (selected) scheme.primary else Color.Transparent,
         animationSpec = tween(if (LocalEchoEffectivePerformanceMode.current.isLightweight) 0 else 180),
         label = "recent-tab",
     )
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(fill)
+            .drawBehind {
+                val stroke = 2.dp.toPx()
+                drawLine(indicator, Offset(12.dp.toPx(), size.height - stroke / 2),
+                    Offset(size.width - 12.dp.toPx(), size.height - stroke / 2), stroke)
+            }
             .selectable(selected = selected, role = Role.Tab, onClick = onClick)
             .defaultMinSize(minHeight = 48.dp)
             .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -210,14 +205,14 @@ private fun RecentActivityModeTab(
 @Composable
 private fun SingleRecentAlbum(album: AlbumSummary, onOpen: (AlbumSummary) -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-            .echoClickable(role = Role.Button, onClick = { onOpen(album) })
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp))
+            .homeCardClickable(onClick = { onOpen(album) })
             .padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ArtworkTile(album.artworkUri, modifier = Modifier.size(112.dp),
-            accent = echoAccentColor(), cornerRadius = 16.dp, elevation = 0.dp)
+        ArtworkTile(album.artworkUri, modifier = Modifier.size(88.dp),
+            accent = echoAccentColor(), cornerRadius = 4.dp, elevation = 0.dp)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(album.title, style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold,
@@ -231,34 +226,5 @@ private fun SingleRecentAlbum(album: AlbumSummary, onOpen: (AlbumSummary) -> Uni
 
 @Composable
 private fun RecentTrackCard(track: EchoTrack, onClick: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .width(126.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .echoClickable(role = Role.Button, onClick = onClick),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        ArtworkTile(
-            track.artworkUri,
-            modifier = Modifier.fillMaxWidth().aspectRatio(1f),
-            accent = echoAccentColor(),
-            cornerRadius = 16.dp,
-            elevation = 0.dp,
-        )
-        Text(
-            track.title,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Text(
-            track.artist,
-            style = MaterialTheme.typography.bodySmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            color = homeBodyColor(),
-        )
-    }
+    HomeArtworkCard(track.artworkUri, track.title, track.artist, onClick)
 }

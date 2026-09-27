@@ -1,6 +1,7 @@
 package app.echo.android.playback
 
 import java.io.File
+import java.security.MessageDigest
 
 internal class EchoSmartTransitionCache(private val directory: File) {
     private val memory = object : LinkedHashMap<String, EchoSmartTransitionAnalysis>(
@@ -16,7 +17,7 @@ internal class EchoSmartTransitionCache(private val directory: File) {
     fun get(key: String): EchoSmartTransitionAnalysis? {
         memory[key]?.let { return it }
         val file = fileFor(key)
-        if (!file.isFile) return null
+        if (!file.isFile || System.currentTimeMillis() - file.lastModified() > 24L * 60 * 60 * 1000) return null
         val parsed = runCatching { parse(file.readText()) }.getOrNull() ?: return null
         memory[key] = parsed
         return parsed
@@ -40,8 +41,10 @@ internal class EchoSmartTransitionCache(private val directory: File) {
     fun memorySize(): Int = memory.size
 
     private fun fileFor(key: String): File {
-        val digest = key.hashCode().toUInt().toString(16)
-        return File(directory, "$digest.json")
+        val digest = MessageDigest.getInstance("SHA-256").digest(key.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+        // Analysis/decoder version: never reuse old approximate PCM-window results.
+        return File(directory, "v2-$digest.json")
     }
 
     private fun evictDisk() {

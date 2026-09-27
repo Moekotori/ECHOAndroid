@@ -387,6 +387,7 @@ fun NowPlayingScreen(
             artworkUri = track?.artworkUri,
             palette = palette,
             reveal = lyricsReveal,
+            animationsVisible = presentationExpanded,
             modifier = Modifier.fillMaxSize(),
         )
 
@@ -739,6 +740,7 @@ private fun NowPlayingCoverPage(
                 expanded = presentationExpanded,
                 gestureStrength = lightStrength,
                 enabled = !track?.artworkUri.isNullOrBlank(),
+                trackKey = track?.id,
                 modifier = Modifier.size(tileSize).graphicsLayer {
                     scaleX = playingScale
                     scaleY = playingScale

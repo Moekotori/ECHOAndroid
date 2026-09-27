@@ -2,7 +2,7 @@
 <!-- Module-owned translations. English values are the fallback for missing translations. -->
 <resources>
     <string name="feature_home_add_to_queue_1775d3">"加入佇列"</string>
-    <string name="feature_home_added_930006">"新增於"</string>
+    <string name="feature_home_added_930006">"最近新增"</string>
     <string name="feature_home_tracks_9c2e11">"歌曲"</string>
     <string name="feature_home_appears_after_you_play_a_track_7f2c1a">"播放歌曲後顯示"</string>
     <string name="feature_home_adjust_the_local_queue_f4499e">"調整本機佇列"</string>

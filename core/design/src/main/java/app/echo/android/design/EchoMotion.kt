@@ -30,6 +30,10 @@ object EchoMotion {
     const val FadeExitMs = 120
     const val CollapseMs = 260
     const val PressedScale = 0.97f
+    const val LightHandoffMs = 560
+    const val LightDriftMs = 12000
+    const val CardRevealMs = 420
+    const val CardStaggerMs = 45
     const val LocaleOutMs = 180
     const val LocaleInMs = 260
     const val LocaleLightweightMs = 90

@@ -8,14 +8,16 @@ import androidx.media3.exoplayer.ExoPlayer
 import app.echo.android.model.playback.EchoSleepTimerMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.coroutineContext
 
+/** One service-owned plan; player commands stay on its application thread. */
 @UnstableApi
 internal class EchoSmartTransitionController(
     private val player: ExoPlayer,
@@ -26,306 +28,132 @@ internal class EchoSmartTransitionController(
 ) : Player.Listener, AutoCloseable {
     private val decodeMutex = Mutex()
     private var loopJob: Job? = null
-    private var optionsJob: Job
-    private var loopKey: String? = null
-    private var commitPositionMs: Long = 0L
-    private var armedToId: String? = null
-    private var clippedNextIndex: Int = C.INDEX_UNSET
-    private var unclippedNextItem: MediaItem? = null
-    private var usedClipping: Boolean = false
-    @Volatile private var committing: Boolean = false
+    private val optionsJob: Job
+    private var armed: Armed? = null
+    private var committing = false
 
     init {
         player.addListener(this)
         optionsJob = scope.launch {
-            combine(
-                EchoPlaybackRuntimeOptionsStore.options,
+            combine(EchoPlaybackRuntimeOptionsStore.options,
                 EchoPlaybackProcessRuntime.bitPerfectStates,
-            ) { _, _ -> }
-                .collect { refresh(force = true) }
+                EchoPlaybackCachePolicy.transitionModes,
+                EchoPlaybackProcessRuntime.sleepTransitionModes) { _, _, _, _ -> Unit }
+                .collect { refresh() }
         }
-        refresh(force = true)
     }
 
     override fun onEvents(player: Player, events: Player.Events) {
-        if (events.containsAny(
-                Player.EVENT_MEDIA_ITEM_TRANSITION,
-                Player.EVENT_TIMELINE_CHANGED,
-                Player.EVENT_REPEAT_MODE_CHANGED,
-                Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
-                Player.EVENT_PLAYBACK_PARAMETERS_CHANGED,
-                Player.EVENT_PLAY_WHEN_READY_CHANGED,
-                Player.EVENT_PLAYBACK_STATE_CHANGED,
-            )
-        ) {
-            refresh(force = false)
-        }
+        if (events.containsAny(Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_TIMELINE_CHANGED,
+                Player.EVENT_REPEAT_MODE_CHANGED, Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
+                Player.EVENT_PLAYBACK_PARAMETERS_CHANGED, Player.EVENT_IS_PLAYING_CHANGED,
+                Player.EVENT_PLAY_WHEN_READY_CHANGED, Player.EVENT_PLAYBACK_STATE_CHANGED)) refresh()
     }
 
-    override fun onPositionDiscontinuity(
-        oldPosition: Player.PositionInfo,
-        newPosition: Player.PositionInfo,
-        reason: Int,
-    ) {
-        if (committing) return
-        if (reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_REMOVE) {
-            refresh(force = true)
+    override fun onPositionDiscontinuity(oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) {
+        if (!committing && (reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_REMOVE)) {
+            EchoPlaybackProcessRuntime.smartFadeInMediaId = null
+            refresh()
         }
     }
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
         if (committing) return
-        val incomingId = mediaItem?.mediaId
-        val didMix = mixer.mixedIncomingFrames > 0
-        if (incomingId != null && incomingId == armedToId) {
-            if (!didMix && usedClipping) {
-                restoreUnclippedCurrent()
-            } else if (didMix && !usedClipping && commitPositionMs > 0L) {
-                if (player.currentPosition + 50L < commitPositionMs) {
-                    committing = true
-                    player.seekTo(player.currentMediaItemIndex, commitPositionMs)
-                    committing = false
-                }
-            }
+        val handoff = armed
+        EchoPlaybackProcessRuntime.smartFadeInMediaId = null
+        val continuation = handoff?.let {
+            EchoSmartTransitionHandoff.continuationMs(
+                automatic = reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO,
+                expectedIndex = it.nextIndex, actualIndex = player.currentMediaItemIndex,
+                expectedId = it.nextId, actualId = mediaItem?.mediaId,
+                startMs = it.startMs, mixedFrames = it.mix.readFrame,
+                sampleRateHz = it.mix.sampleRateHz,
+            )
         }
-        disarm(restoreClip = false)
+        disarm()
+        if (continuation != null && continuation > player.currentPosition) {
+            // Keep the original MediaItem/timeline: no persistent clipping, duration or lyric offset.
+            EchoPlaybackProcessRuntime.smartFadeInMediaId = mediaItem?.mediaId
+            EchoPlaybackProcessRuntime.setTrackFadeGain(1f)
+            committing = true
+            try { player.seekTo(player.currentMediaItemIndex, continuation) }
+            finally { committing = false }
+        }
     }
 
-    private fun refresh(force: Boolean) {
-        val passthrough = EchoSmartTransitionPolicy.mixerPassthroughEnabled(
-            options = EchoPlaybackRuntimeOptionsStore.options.value.trackTransitions,
-            mode = EchoPlaybackCachePolicy.effectiveMode,
-            usbExclusive = EchoPlaybackProcessRuntime.usbExclusiveEnabled,
-            usbBitPerfect = EchoPlaybackProcessRuntime.usbBitPerfectEnabled,
-        )
-        mixer.setEnabled(passthrough)
-        val key = loopIdentity()
-        if (!force && key == loopKey && loopJob?.isActive == true) return
-        loopKey = key
+    private fun refresh() {
         loopJob?.cancel()
-        if (!passthrough) {
-            disarm()
-            return
-        }
-        loopJob = scope.launch { runLoop() }
+        loopJob = null
+        disarm()
+        val enabled = EchoSmartTransitionPolicy.mixerPassthroughEnabled(
+            EchoPlaybackRuntimeOptionsStore.options.value.trackTransitions,
+            EchoPlaybackCachePolicy.effectiveMode, EchoPlaybackProcessRuntime.usbExclusiveEnabled,
+            EchoPlaybackProcessRuntime.usbBitPerfectEnabled)
+        mixer.setEnabled(enabled)
+        if (!enabled) return
+        val snapshot = snapshot() ?: return
+        if (EchoSmartTransitionPolicy.bypassReason(snapshot.candidate) != null) return
+        loopJob = scope.launch { prepare(snapshot) }
     }
 
-    private fun loopIdentity(): String {
-        val current = player.currentMediaItem?.mediaId.orEmpty()
-        val nextIndex = player.nextMediaItemIndex
-        val next = if (nextIndex == C.INDEX_UNSET) "" else player.getMediaItemAt(nextIndex).mediaId
-        val options = EchoPlaybackRuntimeOptionsStore.options.value
-        return listOf(
-            current,
-            next,
-            options.trackTransitions.smartEnabled,
-            options.trackTransitions.fadeEnabled,
-            options.trackTransitions.fadeDurationMs,
-            EchoPlaybackCachePolicy.effectiveMode.id,
-            EchoPlaybackProcessRuntime.usbExclusiveEnabled,
-            EchoPlaybackProcessRuntime.usbBitPerfectEnabled,
-            player.repeatMode,
-            player.playbackParameters.speed,
-            EchoPlaybackProcessRuntime.sleepTimerMode,
-        ).joinToString("|")
+    private suspend fun prepare(snapshot: LoopSnapshot) {
+        val lead = EchoSmartTransitionPolicy.analyzeLeadMs(snapshot.candidate.performanceMode)
+        if (lead != Long.MAX_VALUE) delay((remainingMs(snapshot) - lead).coerceAtLeast(0))
+        if (!stillCurrent(snapshot)) return
+        val nextAnalysis = decodeMutex.withLock {
+            analyzer.analysisFor(snapshot.nextId, snapshot.nextUri, snapshot.candidate.nextDurationMs, true, false)
+        } ?: return
+        delay((remainingMs(snapshot) - EchoSmartTransitionPolicy.AnalyzeLeadMs).coerceAtLeast(0))
+        if (!stillCurrent(snapshot)) return
+        val currentAnalysis = decodeMutex.withLock {
+            analyzer.analysisFor(snapshot.currentId, snapshot.currentUri, snapshot.candidate.currentDurationMs, false, true)
+        } ?: return
+        if (!currentAnalysis.hasOutro || !nextAnalysis.hasIntro || !stillCurrent(snapshot)) return
+        val plan = EchoSmartTransitionPlanner.plan(currentAnalysis, nextAnalysis, remainingMs(snapshot),
+            snapshot.candidate.nextDurationMs, EchoSmartTransitionPolicy.maxOverlapMs(snapshot.candidate),
+            EchoPlaybackProcessRuntime.replayGainDb(snapshot.currentId).takeIf { EchoPlaybackProcessRuntime.replayGainEnabled },
+            EchoPlaybackProcessRuntime.replayGainDb(snapshot.nextId).takeIf { EchoPlaybackProcessRuntime.replayGainEnabled }) ?: return
+        delay((remainingMs(snapshot) - plan.overlapMs - EchoSmartTransitionPolicy.PredecodeLeadMs).coerceAtLeast(0))
+        if (!stillCurrent(snapshot)) return
+        val rate = mixer.outputSampleRateHz ?: return
+        val channels = mixer.outputChannelCount
+        val epoch = mixer.streamEpoch
+        val pcm = decodeMutex.withLock {
+            decoder.decodeMixWindow(snapshot.nextUri, plan.nextStartMs.toLong(), plan.overlapMs.toLong(), rate, channels)
+        } ?: return
+        coroutineContext.ensureActive()
+        if (!stillCurrent(snapshot) || mixer.streamEpoch != epoch || mixer.outputSampleRateHz != rate) return
+        val startPosition = snapshot.candidate.currentDurationMs - plan.overlapMs
+        // Do not start late or truncate a prepared window. PCM position includes sink prebuffering.
+        if (mixer.processedPositionUs >= startPosition * 1000L) return
+        val mix = mixer.arm(pcm, pcm.size / channels, channels,
+            incomingGain = plan.incomingGain, bassSwap = plan.bassSwap,
+            startPositionMs = startPosition, expectedEpoch = epoch) ?: return
+        armed = Armed(snapshot.nextIndex, snapshot.nextId, plan.nextStartMs.toLong(), mix)
+        EchoPlaybackProcessRuntime.setSmartMixArmed(true)
+        // Any player/environment event invalidates the plan; no idle polling.
+        awaitCancellation()
     }
 
-    private suspend fun runLoop() {
-        var failedPair: String? = null
-        while (coroutineContext.isActive) {
-            val snapshot = snapshot() ?: run {
-                disarm()
-                delay(500)
-                continue
-            }
-            val pairKey = "${snapshot.currentId}|${snapshot.nextId}"
-            val reason = EchoSmartTransitionPolicy.bypassReason(snapshot.candidate)
-            if (reason != null) {
-                disarm()
-                delay(400)
-                continue
-            }
-            if (pairKey == failedPair) {
-                delay(400)
-                continue
-            }
-            val remaining = remainingMs(snapshot.candidate.currentDurationMs)
-            val analyzeLead = EchoSmartTransitionPolicy.analyzeLeadMs(snapshot.candidate.performanceMode)
-            if (remaining > analyzeLead && analyzeLead != Long.MAX_VALUE) {
-                delay((remaining - analyzeLead).coerceAtLeast(200L))
-                continue
-            }
-            val nextAnalysis = decodeMutex.withLock {
-                analyzer.analysisFor(
-                    snapshot.nextId,
-                    snapshot.nextUri,
-                    snapshot.candidate.nextDurationMs,
-                    needIntro = true,
-                    needOutro = false,
-                )
-            }
-            val currentLead = EchoSmartTransitionPolicy.AnalyzeLeadMs
-            if (remainingMs(snapshot.candidate.currentDurationMs) > currentLead) {
-                delay((remainingMs(snapshot.candidate.currentDurationMs) - currentLead).coerceAtLeast(50L))
-            }
-            if (player.currentMediaItem?.mediaId != snapshot.currentId) continue
-            val currentAnalysis = decodeMutex.withLock {
-                analyzer.analysisFor(
-                    snapshot.currentId,
-                    snapshot.currentUri,
-                    snapshot.candidate.currentDurationMs,
-                    needIntro = false,
-                    needOutro = true,
-                )
-            }
-            if (currentAnalysis == null || nextAnalysis == null) {
-                failedPair = pairKey
-                disarm()
-                delay(400)
-                continue
-            }
-            val outputRate = mixer.outputSampleRateHz
-                ?: snapshot.candidate.currentSampleRateHz
-                ?: currentAnalysis.sampleRateHz
-            if (outputRate == null) {
-                failedPair = pairKey
-                disarm()
-                delay(400)
-                continue
-            }
-            val maxOverlap = EchoSmartTransitionPolicy.maxOverlapMs(snapshot.candidate)
-            fun planned(): EchoSmartTransitionPlan? = EchoSmartTransitionPlanner.plan(
-                current = currentAnalysis,
-                next = nextAnalysis,
-                remainingMs = remainingMs(snapshot.candidate.currentDurationMs),
-                nextDurationMs = snapshot.candidate.nextDurationMs,
-                maxOverlapMs = maxOverlap,
-                currentReplayGainDb = EchoPlaybackProcessRuntime.replayGainDb(snapshot.currentId),
-                nextReplayGainDb = EchoPlaybackProcessRuntime.replayGainDb(snapshot.nextId),
-            )
-            var plan = planned()
-            if (plan == null) {
-                failedPair = pairKey
-                disarm()
-                delay(400)
-                continue
-            }
-            val predecodeAt = plan.overlapMs + EchoSmartTransitionPolicy.PredecodeLeadMs
-            val waitMs = remainingMs(snapshot.candidate.currentDurationMs - plan.currentEndTrimMs) - predecodeAt
-            if (waitMs > 50L) delay(waitMs)
-            if (!coroutineContext.isActive) return
-            if (player.currentMediaItem?.mediaId != snapshot.currentId) continue
-            plan = planned()
-            if (plan == null) {
-                failedPair = pairKey
-                disarm()
-                delay(400)
-                continue
-            }
-            val channels = mixer.outputChannelCount.coerceIn(1, 2)
-            val pcm = decodeMutex.withLock {
-                decoder.decodeMixWindow(
-                    uri = snapshot.nextUri,
-                    startMs = plan.nextStartMs.toLong(),
-                    durationMs = plan.overlapMs.toLong(),
-                    expectedRateHz = outputRate,
-                    expectedChannels = channels,
-                )
-            }
-            if (pcm == null || !coroutineContext.isActive) {
-                failedPair = pairKey
-                disarm()
-                delay(400)
-                continue
-            }
-            val frames = pcm.size / channels
-            if (frames <= 0) {
-                failedPair = pairKey
-                disarm()
-                delay(400)
-                continue
-            }
-            val hold = EchoSmartTransitionPolicy.holdFrames(
-                remainingMs = remainingMs(snapshot.candidate.currentDurationMs - plan.currentEndTrimMs) -
-                    EchoSmartTransitionPolicy.ProcessorLeadMs,
-                overlapMs = plan.overlapMs,
-                sampleRateHz = outputRate,
-            )
-            armedToId = snapshot.nextId
-            commitPositionMs = plan.nextStartMs.toLong() + plan.overlapMs
-            clipNext(snapshot.nextId, commitPositionMs)
-            mixer.arm(
-                pcm = pcm,
-                frames = frames,
-                channels = channels,
-                holdFrames = hold,
-                incomingGain = plan.incomingGain,
-                bassSwap = plan.bassSwap,
-            )
-            EchoPlaybackProcessRuntime.setSmartMixArmed(true)
-            val fromId = snapshot.currentId
-            while (coroutineContext.isActive && player.currentMediaItem?.mediaId == fromId) {
-                delay(200)
-            }
-        }
+    private fun stillCurrent(previous: LoopSnapshot): Boolean {
+        val current = snapshot() ?: return false
+        return current.currentIndex == previous.currentIndex && current.nextIndex == previous.nextIndex &&
+            current.currentId == previous.currentId && current.nextId == previous.nextId &&
+            current.currentUri == previous.currentUri && current.nextUri == previous.nextUri &&
+            EchoSmartTransitionPolicy.bypassReason(current.candidate) == null
     }
 
-    private fun remainingMs(durationMs: Long): Long =
-        (durationMs - player.currentPosition.coerceAtLeast(0L)).coerceAtLeast(0L)
-
-    private fun clipNext(nextId: String, startMs: Long) {
-        restoreClip()
-        if (startMs <= 0L) return
-        val nextIndex = player.nextMediaItemIndex
-        if (nextIndex == C.INDEX_UNSET) return
-        val item = player.getMediaItemAt(nextIndex)
-        if (item.mediaId != nextId) return
-        unclippedNextItem = item
-        clippedNextIndex = nextIndex
-        usedClipping = true
-        player.replaceMediaItem(
-            nextIndex,
-            item.buildUpon()
-                .setClippingConfiguration(
-                    MediaItem.ClippingConfiguration.Builder()
-                        .setStartPositionMs(startMs)
-                        .build(),
-                )
-                .build(),
-        )
-    }
-
-    private fun restoreClip() {
-        val index = clippedNextIndex
-        val original = unclippedNextItem
-        clippedNextIndex = C.INDEX_UNSET
-        unclippedNextItem = null
-        usedClipping = false
-        if (index == C.INDEX_UNSET || original == null) return
-        if (index in 0 until player.mediaItemCount && player.getMediaItemAt(index).mediaId == original.mediaId) {
-            player.replaceMediaItem(index, original)
-        }
-    }
-
-    private fun restoreUnclippedCurrent() {
-        val original = unclippedNextItem ?: return
-        val index = player.currentMediaItemIndex
-        if (index !in 0 until player.mediaItemCount) return
-        if (player.getMediaItemAt(index).mediaId != original.mediaId) return
-        committing = true
-        try {
-            player.replaceMediaItem(index, original)
-            player.seekTo(index, 0L)
-        } finally {
-            committing = false
-        }
-    }
+    private fun remainingMs(snapshot: LoopSnapshot): Long =
+        (snapshot.candidate.currentDurationMs - player.currentPosition).coerceAtLeast(0)
 
     private fun snapshot(): LoopSnapshot? {
         val currentItem = player.currentMediaItem ?: return null
         val nextIndex = player.nextMediaItemIndex
         if (nextIndex == C.INDEX_UNSET) return null
         val nextItem = player.getMediaItemAt(nextIndex)
+        // CUE/source ranges need their own analysis coordinates; preserve their original playback.
+        if (currentItem.clippingConfiguration != MediaItem.ClippingConfiguration.UNSET ||
+            nextItem.clippingConfiguration != MediaItem.ClippingConfiguration.UNSET) return null
         val current = currentItem.toEchoTrackRef(player.duration.takeIf { it > 0L } ?: 0L)
         val nextDuration = nextItem.mediaMetadata.durationMs?.takeIf { it > 0L }
             ?: nextItem.toEchoTrackRef().durationMs
@@ -360,6 +188,8 @@ internal class EchoSmartTransitionController(
             isPlaying = player.isPlaying,
         )
         return LoopSnapshot(
+            currentIndex = player.currentMediaItemIndex,
+            nextIndex = nextIndex,
             currentId = current.id,
             nextId = next.id,
             currentUri = currentUri,
@@ -368,15 +198,9 @@ internal class EchoSmartTransitionController(
         )
     }
 
-    private fun disarm(restoreClip: Boolean = true) {
+    private fun disarm() {
         mixer.cancel()
-        if (restoreClip) restoreClip() else {
-            clippedNextIndex = C.INDEX_UNSET
-            unclippedNextItem = null
-            usedClipping = false
-        }
-        armedToId = null
-        commitPositionMs = 0L
+        armed = null
         EchoPlaybackProcessRuntime.setSmartMixArmed(false)
     }
 
@@ -385,10 +209,16 @@ internal class EchoSmartTransitionController(
         optionsJob.cancel()
         player.removeListener(this)
         disarm()
+        EchoPlaybackProcessRuntime.smartFadeInMediaId = null
         mixer.setEnabled(false)
     }
 
+    private data class Armed(val nextIndex: Int, val nextId: String, val startMs: Long,
+        val mix: EchoSmartTransitionMixer.MixSession)
+
     private data class LoopSnapshot(
+        val currentIndex: Int,
+        val nextIndex: Int,
         val currentId: String,
         val nextId: String,
         val currentUri: String,

@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.res.stringResource
@@ -68,6 +69,24 @@ internal fun SettingsAppearanceContent(
 ) {
     var advancedTheme by rememberSaveable { mutableStateOf(scheduledDarkModeEnabled) }
     var customBackgroundAdvancedExpanded by rememberSaveable { mutableStateOf(false) }
+    val searchFocus = LocalSettingsSearchFocus.current
+    val themeAdvancedTargets = setOf(
+        stringResource(R.string.settings_scheduled_dark),
+        stringResource(R.string.settings_dark_start),
+        stringResource(R.string.settings_dark_end),
+    )
+    val backgroundAdvancedTargets = setOf(
+        stringResource(R.string.settings_blur),
+        stringResource(R.string.settings_brightness),
+        stringResource(R.string.settings_glass),
+        stringResource(R.string.settings_scale),
+    )
+    LaunchedEffect(searchFocus) {
+        searchFocus?.title?.let { title ->
+            if (title in themeAdvancedTargets) advancedTheme = true
+            if (title in backgroundAdvancedTargets) customBackgroundAdvancedExpanded = true
+        }
+    }
     SettingsSectionCard(
         title = stringResource(R.string.settings_section_theme),
     ) {

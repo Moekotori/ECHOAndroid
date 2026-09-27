@@ -6,6 +6,7 @@ import androidx.compose.ui.text.font.FontFamily
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoReplayGainMode
 import app.echo.android.model.settings.EchoBackgroundStyle
+import app.echo.android.model.settings.EchoEffectivePerformanceMode
 
 @Composable
 fun SettingsScreen(
@@ -147,6 +148,22 @@ fun SettingsScreen(
         isActive = isActive,
         compactMode = compactModeEnabled,
         onOpenPlugins = onOpenPlugins,
+        searchAvailability = SettingsSearchAvailability(
+            scheduledDarkEnabled = scheduledDarkModeEnabled,
+            customBackgroundMode = customBackgroundMode,
+            backgroundAdvancedAvailable = customBackgroundMode != "default" &&
+                !customBackgroundUri.isNullOrBlank() &&
+                !(customBackgroundMode == "video" &&
+                    effectivePerformanceMode == EchoEffectivePerformanceMode.Lightweight.id),
+            trackFadeEnabled = trackTransitions.fadeEnabled,
+            replayGainEnabled = replayGainEnabled,
+            lastFmEnabled = lastFmEnabled,
+            lastFmConnected = lastFmEnabled && !lastFmSessionKey.isNullOrBlank(),
+            listenBrainzEnabled = listenBrainzEnabled,
+            listenBrainzConnected = listenBrainzEnabled && !listenBrainzToken.isNullOrBlank(),
+            setlistFmLocked = setlistFmApiKeyLocked,
+            importedFont = !importedFontUri.isNullOrBlank(),
+        ),
         summaries = mapOf(
             SettingsCategory.Appearance to (stringResource(when (themeMode) {
                 "dark" -> R.string.settings_theme_dark

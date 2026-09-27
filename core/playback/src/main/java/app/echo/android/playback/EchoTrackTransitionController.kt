@@ -64,6 +64,9 @@ internal class EchoTrackTransitionController(
             options.fadeDurationMs,
             enabled,
             suppressFadeOut = EchoPlaybackProcessRuntime.smartMixArmed,
+            suppressFadeIn = EchoPlaybackProcessRuntime.smartMixArmed ||
+                (player.currentMediaItem?.mediaId != null &&
+                    player.currentMediaItem?.mediaId == EchoPlaybackProcessRuntime.smartFadeInMediaId),
         )
         if (gain == lastGain) return
         lastGain = gain

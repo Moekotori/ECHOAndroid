@@ -7,6 +7,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.currentStateAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -17,6 +21,7 @@ import androidx.compose.ui.draw.drawWithCache
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.ArtworkPalette
+import app.echo.android.design.EchoAmbientLight
 import app.echo.android.design.BlurredArtworkBackground
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.echoTheme
@@ -27,7 +32,11 @@ internal fun NowPlayingBackdrop(
     palette: ArtworkPalette,
     reveal: () -> Float,
     modifier: Modifier = Modifier,
+    animationsVisible: Boolean = true,
 ) {
+    val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
+    val lightActive = animationsVisible && !artworkUri.isNullOrBlank() &&
+        lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
     if (!LocalEchoDarkTheme.current) {
         val scheme = MaterialTheme.colorScheme
         // Preserve a light reading surface while letting the current cover tint it.
@@ -36,17 +45,20 @@ internal fun NowPlayingBackdrop(
             deep = lerp(scheme.surface, palette.soft, 0.10f),
             soft = lerp(scheme.surface, palette.soft, 0.08f),
         )
-        BlurredArtworkBackground(
-            artworkUri = artworkUri,
-            palette = lightWash,
-            modifier = modifier,
-            artworkScale = 1.20f,
-            artworkBlur = 28.dp,
-            artworkAlpha = 0.16f,
-            overlayStartAlpha = 0.54f,
-            overlayMidAlpha = 0.66f,
-            overlayEndAlpha = 0.90f,
-        )
+        Box(modifier) {
+            BlurredArtworkBackground(
+                artworkUri = artworkUri,
+                palette = lightWash,
+                modifier = Modifier.fillMaxSize(),
+                artworkScale = 1.20f,
+                artworkBlur = 28.dp,
+                artworkAlpha = 0.16f,
+                overlayStartAlpha = 0.54f,
+                overlayMidAlpha = 0.66f,
+                overlayEndAlpha = 0.90f,
+            )
+            EchoAmbientLight(palette.vibrant, lightActive, Modifier.fillMaxSize(), strength = { 1f - 0.5f * reveal() })
+        }
         return
     }
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
@@ -69,6 +81,7 @@ internal fun NowPlayingBackdrop(
             overlayMidAlpha = 0.58f,
             overlayEndAlpha = 0.90f,
         )
+        EchoAmbientLight(palette.vibrant, lightActive, Modifier.fillMaxSize(), strength = { 1f - 0.5f * reveal() })
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)

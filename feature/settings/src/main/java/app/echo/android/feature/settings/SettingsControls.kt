@@ -205,10 +205,10 @@ internal fun SettingsSectionCard(
     val animateSize = !LocalEchoEffectivePerformanceMode.current.isLightweight
     Column(
         modifier = Modifier
-            .settingsSearchAnchor(title)
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
             .background(settingsPanelColor())
+            .settingsSearchAnchor(title)
             .then(if (animateSize) Modifier.echoAnimateContentSize() else Modifier)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),

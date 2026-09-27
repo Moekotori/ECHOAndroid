@@ -66,6 +66,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
@@ -120,14 +121,17 @@ fun PlaybackQueueSheet(
         modifier = modifier,
     ) {
         val dark = LocalEchoDarkTheme.current
+        val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
         val dragOffset = remember { Animatable(0f) }
         val dragScope = rememberCoroutineScope()
         val density = LocalDensity.current
         val dismissThresholdPx = remember(density) { with(density) { 92.dp.toPx() } }
         val scrimTargetAlpha = if (dark) 0.68f else 0.24f
-        val scrimAlpha by transition.animateFloat(
+        val scrimAlpha = transition.animateFloat(
             transitionSpec = {
-                if (targetState == EnterExitState.Visible) {
+                if (lightweight) {
+                    tween(durationMillis = 90)
+                } else if (targetState == EnterExitState.Visible) {
                     tween(durationMillis = 280, easing = QueueSheetMotionEasing)
                 } else {
                     tween(durationMillis = 180, easing = QueueSheetExitEasing)
@@ -140,7 +144,9 @@ fun PlaybackQueueSheet(
         // 弹簧驱动:半路打断(快速开关)时速度连续,不会出现 tween 重启的顿挫
         val sheetProgress by transition.animateFloat(
             transitionSpec = {
-                if (targetState == EnterExitState.Visible) {
+                if (lightweight) {
+                    tween(durationMillis = 90)
+                } else if (targetState == EnterExitState.Visible) {
                     EchoMotion.silkFloat(500)
                 } else {
                     EchoMotion.silkFloat(320)
@@ -152,8 +158,10 @@ fun PlaybackQueueSheet(
         }
         val contentProgress by transition.animateFloat(
             transitionSpec = {
-                if (targetState == EnterExitState.Visible) {
-                    EchoMotion.silkFloat(430)
+                if (lightweight) {
+                    tween(durationMillis = 90)
+                } else if (targetState == EnterExitState.Visible) {
+                    EchoMotion.silkFloat(580)
                 } else {
                     EchoMotion.silkFloat(200)
                 }
@@ -168,18 +176,23 @@ fun PlaybackQueueSheet(
         }
 
         Box(Modifier.fillMaxSize()) {
+            val theme = echoTheme()
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
+                    .drawWithCache {
+                        val scrim = Brush.verticalGradient(
                             listOf(
-                                echoTheme().night.copy(alpha = scrimAlpha * 0.58f),
-                                echoTheme().ink.copy(alpha = scrimAlpha * 0.42f),
-                                echoTheme().panel.copy(alpha = scrimAlpha * 0.50f),
+                                theme.night.copy(alpha = 0.58f),
+                                theme.ink.copy(alpha = 0.42f),
+                                theme.panel.copy(alpha = 0.50f),
                             ),
-                        ),
-                    )
+                        )
+                        onDrawBehind {
+                            val dragFade = 1f - 0.45f * (dragOffset.value / (dismissThresholdPx * 3f)).coerceIn(0f, 1f)
+                            drawRect(scrim, alpha = scrimAlpha.value * dragFade)
+                        }
+                    }
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -189,7 +202,7 @@ fun PlaybackQueueSheet(
             QueueSheetSurface(
                 status = status,
                 queueState = queueState,
-                motionProgress = contentProgress,
+                motionProgress = { contentProgress },
                 onDismiss = onDismiss,
                 onPlayItem = onPlayItem,
                 onRemoveItem = onRemoveItem,
@@ -210,14 +223,17 @@ fun PlaybackQueueSheet(
                         dragScope.launch { dragOffset.animateTo(0f, QueueSheetDragSpring) }
                     }
                 },
+                onHandleDragCancel = {
+                    dragScope.launch { dragOffset.animateTo(0f, QueueSheetDragSpring) }
+                },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .graphicsLayer {
                         val hiddenProgress = 1f - sheetProgress
-                        translationY = size.height * hiddenProgress + dragOffset.value
+                        translationY = (if (lightweight) 0f else size.height * hiddenProgress) + dragOffset.value
                         alpha = sheetProgress
-                        scaleX = 0.985f + 0.015f * sheetProgress
-                        scaleY = 0.992f + 0.008f * sheetProgress
+                        scaleX = if (lightweight) 1f else 0.985f + 0.015f * sheetProgress
+                        scaleY = if (lightweight) 1f else 0.992f + 0.008f * sheetProgress
                         transformOrigin = TransformOrigin(0.5f, 1f)
                     },
             )
@@ -237,9 +253,10 @@ private fun QueueSheetSurface(
     onClearNextUp: () -> Unit,
     onCycleRepeatMode: () -> Unit,
     onToggleShuffle: () -> Unit,
-    motionProgress: Float,
+    motionProgress: () -> Float,
     onHandleDrag: (Float) -> Unit,
     onHandleDragEnd: () -> Unit,
+    onHandleDragCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val dark = LocalEchoDarkTheme.current
@@ -268,8 +285,9 @@ private fun QueueSheetSurface(
                 .fillMaxWidth()
                 .then(if (empty) Modifier else Modifier.fillMaxSize())
                 .graphicsLayer {
-                    alpha = 0.86f + 0.14f * motionProgress
-                    translationY = contentLiftPx * (1f - motionProgress)
+                    val progress = motionProgress()
+                    alpha = 0.6f + 0.4f * progress
+                    translationY = if (lightweight) 0f else contentLiftPx * (1f - progress)
                 }
                 .padding(horizontal = 20.dp, vertical = 8.dp),
         ) {
@@ -281,6 +299,7 @@ private fun QueueSheetSurface(
                     .queueSheetHandleDrag(
                         onDrag = onHandleDrag,
                         onDragEnd = onHandleDragEnd,
+                        onDragCancel = onHandleDragCancel,
                     )
                     .background(echoTheme().muted.copy(alpha = 0.35f)),
             )
@@ -516,13 +535,14 @@ internal fun QueueTrackRow(
 private fun Modifier.queueSheetHandleDrag(
     onDrag: (Float) -> Unit,
     onDragEnd: () -> Unit,
-): Modifier = pointerInput(onDrag, onDragEnd) {
+    onDragCancel: () -> Unit,
+): Modifier = pointerInput(onDrag, onDragEnd, onDragCancel) {
     detectVerticalDragGestures(
         onVerticalDrag = { change, dragAmount ->
             change.consume()
             onDrag(dragAmount)
         },
-        onDragCancel = onDragEnd,
+        onDragCancel = onDragCancel,
         onDragEnd = onDragEnd,
     )
 }

@@ -1,7 +1,15 @@
 package app.echo.android.feature.home
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import app.echo.android.design.LocalEchoCustomBackgroundActive
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -27,6 +35,8 @@ import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.library.LibraryScanProgress
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.PlaybackHeatmapDay
+import java.time.DayOfWeek
+import java.time.LocalDate
 
 @Composable
 fun HomeScreen(
@@ -71,96 +81,99 @@ fun HomeScreen(
         (recommendedAlbums.take(24) + recentlyAddedAlbums.take(24) + favoriteAlbums.take(24))
             .distinctBy { it.albumKey }.take(24)
     }
-    val sectionGap = if (compactViewport) 14.dp else 22.dp
-    val blockGap = if (compactViewport) 14.dp else 20.dp
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding(),
-    ) {
-        item(key = "header") {
-            RoonHomeHeader(
-                status = status,
-                compact = compactViewport,
-                onOpenSearch = onOpenSearch,
-            )
-        }
-        if (status.state == EchoPlaybackState.Error &&
-            status.diagnostics.lastError?.kind == EchoAudioErrorKind.FileMissing) {
-            item(key = "missing-file") {
-                HomeLibraryNotice(
-                    title = stringResource(R.string.home_missing_file_title),
-                    subtitle = stringResource(R.string.home_missing_file_detail),
-                    onClick = onOpenLibrary,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-                )
+    val hasRecentMusic = recentPlayedAlbums.isNotEmpty() || recentlyAddedAlbums.isNotEmpty() || recentPlayedTracks.isNotEmpty()
+    val today = LocalDate.now()
+    val hasListeningHistory = remember(heatmapDays, today) {
+        val firstDay = today.with(DayOfWeek.MONDAY).minusWeeks(11).toEpochDay()
+        heatmapDays.any { it.playCount > 0 && it.epochDay in firstDay..today.toEpochDay() }
+    }
+    HomeAppearance {
+        val base = MaterialTheme.colorScheme.background
+        val background = base.copy(alpha = if (LocalEchoCustomBackgroundActive.current) 0.94f else 1f)
+        Box(Modifier.fillMaxSize().background(background)) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().statusBarsPadding(),
+                contentPadding = PaddingValues(top = 12.dp, bottom = bottomInset + 24.dp),
+                verticalArrangement = Arrangement.spacedBy(if (compactViewport) 24.dp else 28.dp),
+            ) {
+                item(key = "header") { HomeSectionEntrance(0) { HomeHeader(onOpenSearch) } }
+                if (status.state == EchoPlaybackState.Error &&
+                    status.diagnostics.lastError?.kind == EchoAudioErrorKind.FileMissing) {
+                    item(key = "missing-file") {
+                        HomeLibraryNotice(
+                            title = stringResource(R.string.home_missing_file_title),
+                            subtitle = stringResource(R.string.home_missing_file_detail),
+                            onClick = onOpenLibrary,
+                            modifier = Modifier.padding(horizontal = 24.dp),
+                        )
+                    }
+                }
+                if (status.track != null && status.state != EchoPlaybackState.Error) {
+                    item(key = "resume-listening") {
+                        HomeSectionEntrance(1) { HomeResumeSection(status, positionState, onResumePlayback) }
+                    }
+                }
+                if (trackCount == 0 && !hasRecentMusic && dailyAlbums.isEmpty()) {
+                    item(key = "empty-library") {
+                        HomeEmptyLibrary(scanState, onOpenLibrary)
+                    }
+                }
+                if (hasRecentMusic) {
+                    item(key = "recent") {
+                        HomeSectionEntrance(2) {
+                            RoonRecentActivitySection(
+                                recentPlayedAlbums = recentPlayedAlbums,
+                                recentlyAddedAlbums = recentlyAddedAlbums,
+                                recentPlayedTracks = recentPlayedTracks,
+                                onOpenAlbum = onOpenAlbum,
+                                onOpenLibrary = onOpenLibrary,
+                                onPlayTrack = onPlayTrack,
+                            )
+                        }
+                    }
+                }
+                if (dailyAlbums.isNotEmpty()) {
+                    item(key = "daily-album") {
+                        HomeSectionEntrance(3) { HomeDailyAlbumSection(dailyAlbums, onPlayAlbum, onOpenAlbum) }
+                    }
+                }
+                if (distinctRecommendations.isNotEmpty()) {
+                    item(key = "recommended") {
+                        HomeAlbumRecommendationsSection(distinctRecommendations, onRefreshRecommendations, onOpenLibrary, onOpenAlbum)
+                    }
+                }
+                if (favoriteAlbums.isNotEmpty()) {
+                    item(key = "favorites") {
+                        HomeFavoriteAlbumsSection(favoriteAlbums, onOpenAlbum, onOpenLibrary)
+                    }
+                }
+                if (rediscoveredAlbums.isNotEmpty()) {
+                    item(key = "rediscover") { HomeRediscoverySection(rediscoveredAlbums, onOpenAlbum) }
+                }
+                if (topArtists.isNotEmpty()) {
+                    item(key = "artists") { HomeArtistRankingSection(topArtists, onOpenArtist, onOpenLibrary) }
+                }
+                if (hasListeningHistory) {
+                    item(key = "listening-summary") {
+                        Box(Modifier.padding(horizontal = 24.dp)) {
+                            HomeListeningSummary(heatmapDays, onOpenLibrary)
+                        }
+                    }
+                }
+                if (trackCount > 0 || hasRecentMusic) {
+                    item(key = "overview") {
+                        Box(Modifier.padding(horizontal = 24.dp)) {
+                            LibraryOverview(trackCount, albumCount, artistCount, scanState, onOpenLibrary)
+                        }
+                    }
+                }
             }
-        }
-        item(key = "recent") {
-            Spacer(Modifier.height(sectionGap))
-            RoonRecentActivitySection(
-                recentPlayedAlbums = recentPlayedAlbums,
-                recentlyAddedAlbums = recentlyAddedAlbums,
-                recentPlayedTracks = recentPlayedTracks,
-                onOpenAlbum = onOpenAlbum,
-                onOpenLibrary = onOpenLibrary,
-                onPlayTrack = onPlayTrack,
-            )
-        }
-        item(key = "overview") {
-            Spacer(Modifier.height(sectionGap))
-            Box(Modifier.padding(horizontal = 24.dp)) {
-                LibraryOverview(
-                    trackCount = trackCount,
-                    albumCount = albumCount,
-                    artistCount = artistCount,
-                    scanState = scanState,
-                    onOpenLibrary = onOpenLibrary,
-                )
+            // A static scrim keeps scrolled text from showing through the floating player/dock.
+            // This overlay has no input handlers, so list and carousel gestures remain available.
+            if (bottomInset > 0.dp) {
+                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(bottomInset + 32.dp)
+                    .background(Brush.verticalGradient(0f to Color.Transparent, 0.10f to base, 1f to base)))
             }
-        }
-        item(key = "daily-album") {
-            Spacer(Modifier.height(blockGap))
-            HomeDailyAlbumSection(dailyAlbums, onPlayAlbum, onOpenAlbum, onOpenLibrary)
-        }
-        if (distinctRecommendations.isNotEmpty()) {
-            item(key = "recommended") {
-                Spacer(Modifier.height(blockGap))
-                HomeAlbumRecommendationsSection(
-                    albums = distinctRecommendations,
-                    onRefresh = onRefreshRecommendations,
-                    onOpenLibrary = onOpenLibrary,
-                    onOpenAlbum = onOpenAlbum,
-                )
-            }
-        }
-        item(key = "artists") {
-            Spacer(Modifier.height(blockGap))
-            HomeArtistRankingSection(
-                artists = topArtists,
-                onOpenArtist = onOpenArtist,
-                onOpenLibrary = onOpenLibrary,
-            )
-        }
-        item(key = "favorites") {
-            Spacer(Modifier.height(blockGap))
-            HomeFavoriteAlbumsSection(
-                albums = favoriteAlbums,
-                heatmapDays = heatmapDays,
-                onOpenAlbum = onOpenAlbum,
-                onOpenLibrary = onOpenLibrary,
-            )
-        }
-        item(key = "rediscover") {
-            Spacer(Modifier.height(blockGap))
-            HomeRediscoverySection(rediscoveredAlbums, onOpenAlbum, onOpenLibrary)
-        }
-        item(key = "resume-listening") {
-            Spacer(Modifier.height(blockGap))
-            HomeResumeSection(status, positionState, onResumePlayback, onOpenLibrary)
-        }
-        item(key = "bottom-inset") {
-            Spacer(Modifier.height(bottomInset + 16.dp))
         }
     }
 }
@@ -181,4 +194,3 @@ private object HomeCarouselNestedScroll : NestedScrollConnection {
 
 /** Keep leftover horizontal drags on album rows instead of turning them into tab swipes. */
 internal fun Modifier.homeCarouselScroll(): Modifier = nestedScroll(HomeCarouselNestedScroll)
-

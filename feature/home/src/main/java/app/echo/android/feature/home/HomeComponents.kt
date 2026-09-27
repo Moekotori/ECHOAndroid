@@ -2,8 +2,6 @@ package app.echo.android.feature.home
 
 import app.echo.android.feature.home.R as L10nR
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.foundation.layout.defaultMinSize
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -14,9 +12,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,8 +21,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -53,21 +47,17 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoColors
@@ -82,20 +72,14 @@ import app.echo.android.design.GlassIconButton
 import app.echo.android.design.GlassSurface
 import app.echo.android.design.LocalEchoCustomBackgroundActive
 import app.echo.android.design.LocalEchoDarkTheme
-import app.echo.android.design.echoDarkGlassBorder
 import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.design.formatDuration
 import app.echo.android.design.progressFraction
 import app.echo.android.design.echoTheme
-import app.echo.android.model.library.AlbumSummary
-import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.library.EchoTrack
-import app.echo.android.model.library.LibraryScanProgress
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoRepeatMode
-import app.echo.android.model.playback.PlaybackHeatmapDay
-import java.util.Calendar
 
 enum class SearchResultType { Track, Album, Artist }
 
@@ -122,7 +106,7 @@ internal fun homePanelColor(lightAlpha: Float = 0.90f): Color {
 }
 
 @Composable
-private fun homePanelBorder(lightAlpha: Float = 0.94f): BorderStroke {
+internal fun homePanelBorder(lightAlpha: Float = 0.94f): BorderStroke {
     return BorderStroke(
         1.dp,
         if (LocalEchoDarkTheme.current) echoTheme().glassBorder else echoTheme().softLine.copy(alpha = lightAlpha.coerceIn(0.74f, 0.96f)),
@@ -156,163 +140,6 @@ private fun homePanelBrush(): Brush {
                 echoTheme().mist.copy(alpha = if (customBackground) 0.58f else 0.76f),
             ),
         )
-    }
-}
-
-@Composable
-internal fun LibraryOverview(
-    trackCount: Int,
-    albumCount: Int,
-    artistCount: Int,
-    scanState: LibraryScanProgress = LibraryScanProgress(),
-    onOpenLibrary: () -> Unit = {},
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 8.dp),
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                LibraryMetric(
-                    stringResource(L10nR.string.feature_home_songs_107b60),
-                    trackCount.toString(),
-                    Modifier.weight(1f),
-                    onClick = onOpenLibrary,
-                )
-                LibraryMetric(
-                    stringResource(L10nR.string.feature_home_albums_e68c2b),
-                    albumCount.toString(),
-                    Modifier.weight(1f),
-                    onClick = onOpenLibrary,
-                )
-                LibraryMetric(
-                    stringResource(L10nR.string.feature_home_artists_e168aa),
-                    artistCount.toString(),
-                    Modifier.weight(1f),
-                    onClick = onOpenLibrary,
-                )
-            }
-            if (scanState.isScanning) {
-                HomeLibraryScanHint(scanState = scanState, onOpenLibrary = onOpenLibrary)
-            }
-        }
-    }
-}
-
-@Composable
-private fun HomeLibraryScanHint(
-    scanState: LibraryScanProgress,
-    onOpenLibrary: () -> Unit,
-) {
-    val progress = scanState.totalCount?.let { total -> "${scanState.scannedCount}/$total" }
-        ?: scanState.scannedCount.toString()
-    val detail = scanState.currentTitle?.takeIf { it.isNotBlank() } ?: progress
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .echoClickable(onClick = onOpenLibrary)
-            .padding(horizontal = 2.dp, vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Icon(
-            imageVector = Icons.Rounded.LibraryMusic,
-            contentDescription = null,
-            tint = echoAccentColor(),
-            modifier = Modifier.size(18.dp),
-        )
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-            Text(
-                text = stringResource(L10nR.string.feature_home_scanning_library_d0b14c),
-                color = homeTitleColor(),
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = if (detail == progress) progress else "$progress · $detail",
-                color = homeBodyColor(),
-                style = MaterialTheme.typography.labelMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
-@Composable
-internal fun LibraryMetric(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null,
-) {
-    Column(
-        modifier = modifier
-            .then(
-                if (onClick != null) {
-                    Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .echoClickable(role = Role.Button, onClick = onClick)
-                        .padding(vertical = 4.dp)
-                } else {
-                    Modifier
-                },
-            ),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        Text(value, color = homeTitleColor(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
-        Text(label, color = homeBodyColor(), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Normal)
-    }
-}
-
-@Composable
-internal fun RoonHomeHeader(
-    status: EchoPlaybackStatus,
-    compact: Boolean,
-    onOpenSearch: () -> Unit = {},
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-                start = 22.dp,
-                top = if (compact) 4.dp else 8.dp,
-                end = 22.dp,
-                bottom = if (compact) 8.dp else 12.dp,
-            ),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            val shape = RoundedCornerShape(28.dp)
-            Surface(
-                onClick = onOpenSearch,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .defaultMinSize(minHeight = 48.dp),
-                shape = shape,
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.64f),
-                border = null,
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Icon(Icons.Rounded.Search, contentDescription = null, tint = homeBodyColor(), modifier = Modifier.size(20.dp))
-                    Text(
-                        stringResource(L10nR.string.feature_home_search_local_music_albums_and_artists_443a4f),
-                        color = homeBodyColor(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-        }
     }
 }
 
@@ -402,75 +229,6 @@ internal fun RecentPlayedAlbumsTab() {
             )
         }
     }
-}
-
-@Composable
-internal fun RecentAlbumCard(
-    album: AlbumSummary,
-    mode: RecentActivityMode,
-    onClick: () -> Unit,
-) {
-    val cardWidth = ((LocalConfiguration.current.screenWidthDp.dp - 64.dp) / 2).coerceIn(124.dp, 180.dp)
-    val artistLabel = album.albumArtist ?: album.artist ?: stringResource(L10nR.string.feature_home_unknown_artist_85ee30)
-    Column(
-        modifier = Modifier
-            .width(cardWidth)
-            .heightIn(min = RecentActivityAlbumCardHeight)
-            .clip(RoundedCornerShape(14.dp))
-            .echoClickable(role = Role.Button, onClick = onClick),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        ArtworkTile(
-            artworkUri = album.artworkUri,
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f),
-            accent = echoAccentColor(),
-            showSignal = album.artworkUri == null,
-            cornerRadius = 14.dp,
-            elevation = if (LocalEchoDarkTheme.current) 0.dp else 7.dp,
-        )
-        Text(
-            album.title,
-            color = homeTitleColor(),
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-            recentAlbumSubtitle(album, mode, artistLabel),
-            color = homeBodyColor(),
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Normal,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-@Composable
-private fun recentAlbumSubtitle(
-    album: AlbumSummary,
-    mode: RecentActivityMode,
-    artistLabel: String,
-): String {
-    val dateLabel = album.addedAtSeconds.takeIf { it > 0L }?.let { formatAlbumDate(it) }
-    return if (mode == RecentActivityMode.Added && dateLabel != null) {
-        "$artistLabel \u00b7 $dateLabel"
-    } else {
-        artistLabel
-    }
-}
-
-@Composable
-private fun formatAlbumDate(seconds: Long): String {
-    val calendar = Calendar.getInstance().apply {
-        timeInMillis = seconds * 1000L
-    }
-    val month = calendar.get(Calendar.MONTH) + 1
-    val day = calendar.get(Calendar.DAY_OF_MONTH)
-    return stringResource(L10nR.string.feature_home_month_day_000137, (month).toString(), (day).toString())
 }
 
 @Composable
@@ -630,333 +388,6 @@ internal fun RoonRecentActivitySection(
                 onClick = onOpenLibrary,
             )
         }
-    }
-}
-
-@Composable
-internal fun HomeAlbumRecommendationsSection(
-    albums: List<AlbumSummary>,
-    onRefresh: () -> Unit,
-    onOpenLibrary: () -> Unit,
-    onOpenAlbum: (AlbumSummary) -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp)
-            .padding(vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                stringResource(L10nR.string.feature_home_recommended_for_you_8335d9),
-                color = homeTitleColor(),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Surface(
-                onClick = onRefresh,
-                enabled = albums.isNotEmpty(),
-                modifier = Modifier.alpha(if (albums.isEmpty()) 0.42f else 1f),
-                shape = RoundedCornerShape(16.dp),
-                color = homePanelColor(0.94f),
-                border = homePanelBorder(0.84f),
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(5.dp),
-                ) {
-                    Icon(Icons.Rounded.Refresh, contentDescription = null, tint = homeBodyColor(), modifier = Modifier.size(15.dp))
-                    Text(
-                        stringResource(L10nR.string.feature_home_refresh_828c69),
-                        color = homeBodyColor(),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
-        }
-        LazyRow(
-            modifier = Modifier.homeCarouselScroll(),
-            contentPadding = PaddingValues(vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            if (albums.isEmpty()) {
-                item {
-                    EmptyRecentAlbumsCard(
-                        title = stringResource(L10nR.string.feature_home_no_recommendations_yet_040329),
-                        subtitle = stringResource(L10nR.string.feature_home_play_or_favorite_albums_to_fill_this_row_cf6bca),
-                        onClick = onOpenLibrary,
-                    )
-                }
-            } else {
-                items(albums, key = { it.albumKey }) { album ->
-                    RecommendedAlbumCard(
-                        album = album,
-                        onClick = { onOpenAlbum(album) },
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-internal fun RecommendedAlbumCard(
-    album: AlbumSummary,
-    onClick: () -> Unit,
-) {
-    val artistLabel = album.albumArtist ?: album.artist ?: stringResource(L10nR.string.feature_home_unknown_artist_85ee30)
-    Column(
-        modifier = Modifier
-            .width(136.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .echoClickable(role = Role.Button, onClick = onClick),
-        verticalArrangement = Arrangement.spacedBy(7.dp),
-    ) {
-        ArtworkTile(
-            artworkUri = album.artworkUri,
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f),
-            accent = echoTheme().accentDeep,
-            showSignal = album.artworkUri == null,
-            cornerRadius = 14.dp,
-            elevation = if (LocalEchoDarkTheme.current) 0.dp else 6.dp,
-        )
-        Text(
-            album.title,
-            color = homeTitleColor(),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-            artistLabel,
-            color = homeBodyColor(),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Normal,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-@Composable
-internal fun HomeArtistRankingSection(
-    artists: List<ArtistSummary>,
-    onOpenArtist: (ArtistSummary) -> Unit,
-    onOpenLibrary: () -> Unit,
-) {
-    val scheme = MaterialTheme.colorScheme
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp)
-            .padding(vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text(
-            stringResource(L10nR.string.feature_home_artist_ranking_80100b),
-            color = scheme.onSurface,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-        )
-        if (artists.isEmpty()) {
-            EmptyRankingNotice(
-                title = stringResource(L10nR.string.feature_home_no_ranking_data_yet_810ddb),
-                subtitle = stringResource(L10nR.string.feature_home_appears_after_you_play_an_artist_8a9384),
-                onClick = onOpenLibrary,
-            )
-        } else {
-            val maxTracks = artists.maxOf { it.trackCount.coerceAtLeast(1) }
-            artists.take(5).forEachIndexed { index, artist ->
-                ArtistRankRow(
-                    rank = index + 1,
-                    artist = artist,
-                    progress = artist.trackCount.coerceAtLeast(1).toFloat() / maxTracks.toFloat(),
-                    onClick = { onOpenArtist(artist) },
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ArtistRankRow(
-    rank: Int,
-    artist: ArtistSummary,
-    progress: Float,
-    onClick: () -> Unit,
-) {
-    val scheme = MaterialTheme.colorScheme
-    val dark = LocalEchoDarkTheme.current
-    val durationLabel = artistReadableDuration(artist.durationMs)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .echoClickable(role = Role.Button, onClick = onClick)
-            .background(
-                if (rank == 1) {
-                    Brush.horizontalGradient(
-                        listOf(
-                            scheme.primary.copy(alpha = if (dark) 0.12f else 0.12f),
-                            if (dark) Color.White.copy(alpha = 0.025f) else echoTheme().accentDeep.copy(alpha = 0.10f),
-                            Color.Transparent,
-                        ),
-                    )
-                } else {
-                    Brush.horizontalGradient(listOf(Color.Transparent, Color.Transparent))
-                },
-            )
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text(
-            rank.toString().padStart(2, '0'),
-            color = if (rank == 1) scheme.primary else scheme.onSurfaceVariant,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.ExtraBold,
-            modifier = Modifier.width(34.dp),
-        )
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(5.dp),
-        ) {
-            Text(
-                artist.name,
-                color = scheme.onSurface,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.ExtraBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                stringResource(L10nR.string.feature_home_artist_trackcount_tracks_durationlabel_3431c6, (artist.trackCount).toString(), (durationLabel).toString()),
-                color = scheme.onSurfaceVariant,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(99.dp))
-                    .background(if (dark) Color.White.copy(alpha = 0.09f) else scheme.surfaceVariant.copy(alpha = 0.52f)),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(progress.coerceIn(0.08f, 1f))
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(99.dp))
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(scheme.primary.copy(alpha = 0.86f), scheme.primary.copy(alpha = 0.42f)),
-                            ),
-                        ),
-                )
-            }
-        }
-        Surface(
-            shape = RoundedCornerShape(99.dp),
-            color = homePanelColor(0.78f),
-            border = homePanelBorder(0.76f),
-        ) {
-            Text(
-                stringResource(L10nR.string.feature_home_artist_albumcount_coerceatleast_0_albums_3a30a7, (artist.albumCount.coerceAtLeast(0)).toString()),
-                color = scheme.onSurfaceVariant,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                maxLines = 1,
-            )
-        }
-    }
-}
-
-@Composable
-internal fun HomeFavoriteAlbumsSection(
-    albums: List<AlbumSummary>,
-    heatmapDays: List<PlaybackHeatmapDay>,
-    onOpenAlbum: (AlbumSummary) -> Unit,
-    onOpenLibrary: () -> Unit,
-) {
-    val scheme = MaterialTheme.colorScheme
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp)
-            .padding(vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        Text(
-            stringResource(L10nR.string.feature_home_albums_you_like_95a2b9),
-            color = scheme.onSurface,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-        )
-        if (albums.isEmpty()) {
-            HomeLibraryNotice(
-                title = stringResource(L10nR.string.feature_home_no_favorite_albums_yet_7c8d3b),
-                subtitle = stringResource(L10nR.string.feature_home_star_an_album_on_the_player_to_see_edd836),
-                onClick = onOpenLibrary,
-                )
-        } else {
-            LazyRow(
-                modifier = Modifier.homeCarouselScroll(),
-                contentPadding = PaddingValues(vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                items(albums.take(4), key = { it.albumKey }) { album ->
-                    RecommendedAlbumCard(album = album, onClick = { onOpenAlbum(album) })
-                }
-            }
-        }
-        HomeListeningSummary(days = heatmapDays, onOpenLibrary = onOpenLibrary)
-    }
-}
-
-@Composable
-private fun EmptyRankingNotice(
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-) {
-    val scheme = MaterialTheme.colorScheme
-    val dark = LocalEchoDarkTheme.current
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(if (dark) echoTheme().panel.copy(alpha = 0.28f) else echoTheme().mist.copy(alpha = 0.42f))
-            .border(if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, Color.Transparent), RoundedCornerShape(18.dp))
-            .echoClickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 14.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Text(title, color = if (dark) scheme.onSurface else echoTheme().heading, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-        Text(subtitle, color = if (dark) scheme.onSurfaceVariant else echoTheme().muted, style = MaterialTheme.typography.labelLarge)
-    }
-}
-
-@Composable
-private fun artistReadableDuration(durationMs: Long): String {
-    val minutes = (durationMs / 60000L).toInt()
-    return if (minutes >= 1) {
-        stringResource(L10nR.string.feature_home_minutes_min_c3e281, (minutes).toString())
-    } else {
-        formatDuration(durationMs)
     }
 }
 

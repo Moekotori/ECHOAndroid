@@ -58,6 +58,9 @@ object EchoPlaybackProcessRuntime {
     var smartMixArmed: Boolean = false
         private set
 
+    @Volatile internal var smartFadeInMediaId: String? = null
+    internal val sleepTransitionModes = MutableStateFlow(EchoSleepTimerMode.Off)
+
     internal fun setTrackFadeGain(gain: Float) {
         trackFadeGain = gain.coerceIn(0f, 1f)
         enginePolicy?.applyReplayGain()
@@ -104,7 +107,10 @@ object EchoPlaybackProcessRuntime {
 
     @Volatile
     var sleepTimerMode: EchoSleepTimerMode = EchoSleepTimerMode.Off
-        private set
+        private set(value) {
+            field = value
+            sleepTransitionModes.value = value
+        }
 
     @Volatile
     var sleepTimerRequestedMinutes: Int? = null

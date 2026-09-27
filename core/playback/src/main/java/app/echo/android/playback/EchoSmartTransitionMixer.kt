@@ -6,6 +6,7 @@ import androidx.media3.common.audio.BaseAudioProcessor
 import androidx.media3.common.util.UnstableApi
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.concurrent.atomic.AtomicReference
 
 @UnstableApi
 internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
@@ -19,6 +20,9 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
         val incomingGain: Float,
         val bassSwap: Boolean,
         val lowPass: Float,
+        val startFrame: Long?,
+        val epoch: Long,
+        val sampleRateHz: Int,
     ) {
         @Volatile var readFrame: Int = 0
         @Volatile var held: Int = 0
@@ -32,15 +36,19 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
     var enabled: Boolean = false
         private set
 
-    @Volatile
-    private var session: MixSession? = null
-
-    @Volatile
-    var mixedIncomingFrames: Int = 0
+    private val session = AtomicReference<MixSession?>()
+    @Volatile private var lastSession: MixSession? = null
+    @Volatile var streamEpoch: Long = 0
         private set
+    @Volatile var processedPositionUs: Long = 0
+        private set
+    private var frameCursor = 0L
+
+    val mixedIncomingFrames: Int
+        get() = lastSession?.readFrame ?: 0
 
     val mixing: Boolean
-        get() = session != null
+        get() = session.get()?.let { it.readFrame < it.frames } == true
 
     val outputSampleRateHz: Int?
         get() = inputAudioFormat.takeIf { it != AudioProcessor.AudioFormat.NOT_SET }?.sampleRate
@@ -62,15 +70,16 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
         holdFrames: Int = 0,
         incomingGain: Float = 1f,
         bassSwap: Boolean = false,
-    ) {
-        if (frames <= 0 || pcm.isEmpty()) {
+        startPositionMs: Long? = null,
+        expectedEpoch: Long = streamEpoch,
+    ): MixSession? {
+        if (frames <= 0 || channels !in 1..2 || frames > pcm.size / channels || expectedEpoch != streamEpoch) {
             cancel()
-            return
+            return null
         }
-        mixedIncomingFrames = 0
         val rate = outputSampleRateHz ?: 48_000
         val lowPass = (1.0 - kotlin.math.exp(-2.0 * Math.PI * 250.0 / rate.coerceAtLeast(8_000))).toFloat()
-        session = MixSession(
+        val armed = MixSession(
             pcm = pcm,
             frames = frames,
             channels = channels.coerceIn(1, 2),
@@ -78,11 +87,17 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
             incomingGain = incomingGain.coerceIn(0.4f, 1.4f),
             bassSwap = bassSwap && channels.coerceIn(1, 2) == 2,
             lowPass = lowPass,
+            startFrame = startPositionMs?.let { it * rate / 1000L },
+            epoch = expectedEpoch,
+            sampleRateHz = rate,
         )
+        lastSession = armed
+        session.set(armed)
+        return armed
     }
 
     fun cancel() {
-        session = null
+        session.set(null)
     }
 
     override fun isActive(): Boolean = enabled && super.isActive()
@@ -92,9 +107,7 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
         if (!isSupportedEncoding(inputAudioFormat.encoding)) {
             throw AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
         }
-        if (inputAudioFormat.channelCount !in 1..2) {
-            throw AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
-        }
+        if (inputAudioFormat.channelCount !in 1..2) return AudioProcessor.AudioFormat.NOT_SET
         return inputAudioFormat
     }
 
@@ -102,14 +115,16 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
         val remaining = inputBuffer.remaining()
         if (remaining == 0) return
         val output = replaceOutputBuffer(remaining)
-        val mix = session
-        if (mix == null) {
+        val mix = session.get()
+        if (mix == null || mix.epoch != streamEpoch) {
+            frameCursor += remaining / inputAudioFormat.bytesPerFrame
+            processedPositionUs = frameCursor * 1_000_000L / inputAudioFormat.sampleRate
             output.put(inputBuffer)
             output.flip()
             return
         }
         val format = inputAudioFormat
-        val mixed = when (format.encoding) {
+        when (format.encoding) {
             C.ENCODING_PCM_16BIT, C.ENCODING_PCM_16BIT_BIG_ENDIAN ->
                 mixPcm16(inputBuffer, output, format.channelCount, mix)
             C.ENCODING_PCM_24BIT, C.ENCODING_PCM_24BIT_BIG_ENDIAN ->
@@ -124,10 +139,16 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
             }
         }
         output.flip()
-        if (!mixed) session = null
+        processedPositionUs = frameCursor * 1_000_000L / format.sampleRate
     }
 
-    override fun onFlush(streamMetadata: AudioProcessor.StreamMetadata) = Unit
+    override fun onFlush(streamMetadata: AudioProcessor.StreamMetadata) {
+        streamEpoch += 1
+        session.set(null)
+        val rate = outputSampleRateHz ?: 48_000
+        frameCursor = streamMetadata.positionOffsetUs * rate / 1_000_000L
+        processedPositionUs = streamMetadata.positionOffsetUs
+    }
 
     override fun onReset() {
         cancel()
@@ -221,14 +242,20 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
         incoming: () -> Float,
         outgoing: (Int, Float) -> Unit,
     ): Boolean {
-        if (mix.held < mix.holdFrames) {
+        val position = frameCursor++
+        if (session.get() !== mix || mix.epoch != streamEpoch) {
+            for (channel in 0 until channels) outgoing(channel, incoming())
+            return false
+        }
+        if (mix.startFrame?.let { position < it } ?: (mix.held < mix.holdFrames)) {
             for (channel in 0 until channels) outgoing(channel, incoming())
             mix.held += 1
             return true
         }
         val read = mix.readFrame
         if (read >= mix.frames) {
-            for (channel in 0 until channels) outgoing(channel, incoming())
+            // Never resurrect the outgoing song after it has faded out. Flush opens the next stream.
+            for (channel in 0 until channels) { incoming(); outgoing(channel, 0f) }
             return false
         }
         val progress = if (mix.frames <= 1) 1f else (read.toFloat() / (mix.frames - 1).toFloat())
@@ -253,7 +280,6 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
             if (channels > 1) outgoing(1, current1 * outGain + incoming1 * inGain)
         }
         mix.readFrame = read + 1
-        mixedIncomingFrames = mix.readFrame
         return mix.readFrame < mix.frames
     }
 

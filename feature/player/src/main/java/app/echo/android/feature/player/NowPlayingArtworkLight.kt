@@ -1,10 +1,12 @@
 package app.echo.android.feature.player
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -32,12 +34,21 @@ internal fun NowPlayingArtworkLight(
     modifier: Modifier = Modifier,
     /** Idle / missing cover must not spill theme-accent halos into empty now-playing. */
     enabled: Boolean = true,
+    trackKey: String? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val dark = LocalEchoDarkTheme.current
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val theme = echoTheme()
     val presence = remember { Animatable(if (!enabled) 0f else if (lightweight) 1f else 0.55f) }
+    val handoff = remember { Animatable(1f) }
+    LaunchedEffect(trackKey, lightweight, enabled) {
+        if (lightweight || !enabled) handoff.snapTo(1f)
+        else {
+            handoff.snapTo(0.78f)
+            handoff.animateTo(1f, tween(EchoMotion.LightHandoffMs, easing = EchoMotion.Silk))
+        }
+    }
     LaunchedEffect(expanded, lightweight, enabled) {
         if (!enabled) presence.snapTo(0f)
         else if (lightweight) presence.snapTo(1f)
@@ -50,8 +61,15 @@ internal fun NowPlayingArtworkLight(
         Box(modifier = modifier, content = content)
         return
     }
-    val glow = lerp(palette.vibrant, theme.accent, if (dark) 0.18f else 0.35f)
-    val softGlow = lerp(palette.soft, theme.accent, 0.30f)
+    // Palette changes stay inside this light layer; the cover request is unchanged.
+    val glow by animateColorAsState(
+        lerp(palette.vibrant, theme.accent, if (dark) 0.18f else 0.35f),
+        tween(if (lightweight) 0 else EchoMotion.LightHandoffMs), label = "cover-light-color",
+    )
+    val softGlow by animateColorAsState(
+        lerp(palette.soft, theme.accent, 0.30f),
+        tween(if (lightweight) 0 else EchoMotion.LightHandoffMs), label = "cover-soft-light-color",
+    )
     Box(
         modifier = modifier.drawWithCache {
             val center = Offset(size.width * 0.5f, size.height * 0.52f)
@@ -84,7 +102,7 @@ internal fun NowPlayingArtworkLight(
             val stroke = Stroke(lineWidth)
             onDrawWithContent {
                 // Read changing values in the draw phase; cached brushes and image composition stay intact.
-                val strength = if (lightweight) 0.5f else presence.value * gestureStrength().coerceIn(0f, 1f)
+                val strength = if (lightweight) 0.5f else presence.value * handoff.value * gestureStrength().coerceIn(0f, 1f)
                 drawCircle(halo, radius, center, alpha = strength)
                 if (!lightweight) drawCircle(lowerHalo, lowerRadius, lowerCenter, alpha = strength)
                 drawContent()

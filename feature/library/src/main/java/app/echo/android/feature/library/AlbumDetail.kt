@@ -204,8 +204,14 @@ internal fun AlbumDetailPage(
                                     multiDisc = multiDisc,
                                     accent = palette.vibrant,
                                     onClick = { onPlayTrack(track) },
-                                    onMoveUp = onMoveTrack.albumMoveAction(index, index - 1, track, tracks.peek(index - 1)),
-                                    onMoveDown = onMoveTrack.albumMoveAction(index, index + 1, track, tracks.peek(index + 1)),
+                                    onMoveUp = onMoveTrack.albumMoveAction(
+                                        index, index - 1, track,
+                                        if (index > 0) tracks.peek(index - 1) else null,
+                                    ),
+                                    onMoveDown = onMoveTrack.albumMoveAction(
+                                        index, index + 1, track,
+                                        if (index + 1 < tracks.itemCount) tracks.peek(index + 1) else null,
+                                    ),
                                     onUpdateTrackMetadata = onUpdateTrackMetadata,
                                     onImportLyrics = onImportLyrics,
                                     onPickArtwork = onPickArtwork,

@@ -40,19 +40,12 @@ internal object EchoSmartTransitionPlanner {
             leadingSilenceMs = next.leadingSilenceMs,
             beatsMs = if (next.bpmConfidence >= EchoSmartTransitionTempoMath.MinimumConfidence) next.beatsMs else intArrayOf(),
         )
-        val trim = current.trailingSilenceMs.coerceIn(0, 8_000)
-        val usableRemaining = (remainingMs - trim).coerceAtLeast(0L)
+        if (!current.hasOutro || !next.hasIntro || maxOverlapMs <= 0 ||
+            !current.tailEnergy.isFinite() || !next.headEnergy.isFinite()) return null
+        // Preserve the outgoing timeline and natural tail. Never end a mix before that stream ends.
+        val trim = 0
+        val usableRemaining = remainingMs.coerceAtLeast(0L)
         val highEnergy = density >= BassDensity && current.tailEnergy >= BassEnergy && next.headEnergy >= BassEnergy
-        if (conflict >= VocalCutThreshold && highEnergy) {
-            return EchoSmartTransitionPlan(
-                overlapMs = BeatCutMs,
-                nextStartMs = nextStart,
-                incomingGain = incomingGain(currentReplayGainDb, nextReplayGainDb),
-                bassSwap = false,
-                profile = EchoSmartTransitionProfile.BeatCut,
-                currentEndTrimMs = trim,
-            )
-        }
         var overlap = EchoSmartTransitionPolicy.overlapMs(
             tailEnergy = current.tailEnergy,
             headEnergy = next.headEnergy,
@@ -61,19 +54,9 @@ internal object EchoSmartTransitionPlanner {
             maxMs = maxOverlapMs,
         ) ?: return null
         if (conflict >= VocalShortenThreshold) {
-            val beatMs = next.bpm?.takeIf { next.bpmConfidence >= EchoSmartTransitionTempoMath.MinimumConfidence }
-                ?.let { (60_000f / it).toInt() } ?: 500
-            overlap = overlap.coerceAtMost(beatMs.coerceIn(400, 1_500))
-            if (overlap < EchoSmartTransitionPolicy.MinOverlapMs && usableRemaining >= BeatCutMs) {
-                return EchoSmartTransitionPlan(
-                    overlapMs = BeatCutMs,
-                    nextStartMs = nextStart,
-                    incomingGain = incomingGain(currentReplayGainDb, nextReplayGainDb),
-                    bassSwap = false,
-                    profile = EchoSmartTransitionProfile.BeatCut,
-                    currentEndTrimMs = trim,
-                )
-            }
+            // A centre-channel heuristic alone does not justify a 60 ms "beat cut".
+            // Use a short smooth fade, bounded by the user's cap and available PCM budget.
+            overlap = minOf(overlap, if (conflict >= VocalCutThreshold) 500 else 1000)
         }
         val profile = if (tailRide) EchoSmartTransitionProfile.TailRide else EchoSmartTransitionProfile.Crossfade
         return EchoSmartTransitionPlan(
@@ -87,8 +70,8 @@ internal object EchoSmartTransitionPlanner {
     }
 
     fun incomingGain(currentReplayGainDb: Float?, nextReplayGainDb: Float?): Float {
-        if (currentReplayGainDb == null || nextReplayGainDb == null) return 1f
-        val db = ((currentReplayGainDb - nextReplayGainDb) * 0.55f).coerceIn(-3.5f, 3f)
+        if (currentReplayGainDb == null || nextReplayGainDb == null || !currentReplayGainDb.isFinite() || !nextReplayGainDb.isFinite()) return 1f
+        val db = ((nextReplayGainDb - currentReplayGainDb) * 0.55f).coerceIn(-3.5f, 3f)
         return 10.0.pow((db / 20.0)).toFloat().coerceIn(0.4f, 1.4f)
     }
 }

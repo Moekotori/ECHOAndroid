@@ -6,8 +6,10 @@ import app.echo.android.model.settings.EchoEffectivePerformanceMode
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.flow.MutableStateFlow
 
 object EchoPlaybackCachePolicy {
+    internal val transitionModes = MutableStateFlow(EchoEffectivePerformanceMode.Balanced)
     const val BalancedMaxBytes = 256L * 1024L * 1024L
     const val LightweightMaxBytes = 128L * 1024L * 1024L
     const val HighPerformanceMaxBytes = 512L * 1024L * 1024L
@@ -41,6 +43,7 @@ object EchoPlaybackCachePolicy {
 
     fun setEffectivePerformanceMode(mode: EchoEffectivePerformanceMode) {
         this.mode.set(mode)
+        transitionModes.value = mode
         applyMaxBytes()
     }
 
