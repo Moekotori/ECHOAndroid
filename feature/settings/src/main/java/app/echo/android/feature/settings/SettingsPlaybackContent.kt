@@ -125,16 +125,18 @@ internal fun SettingsPlaybackContent(
             )
         }
         SettingsSwitchRow(
-            title = stringResource(R.string.settings_lyrics_sync_tools),
-            detail = stringResource(R.string.settings_lyrics_sync_tools_detail),
-            checked = showLyricsControlDeck,
-            onCheckedChange = onShowLyricsControlDeckChange,
-        )
-        SettingsSwitchRow(
             title = stringResource(R.string.settings_playback_haptics),
             detail = stringResource(R.string.settings_playback_haptics_detail),
             checked = playbackHapticsEnabled,
             onCheckedChange = onPlaybackHapticsEnabledChange,
+        )
+    }
+    SettingsSectionCard(title = stringResource(R.string.settings_section_lyrics)) {
+        SettingsSwitchRow(
+            title = stringResource(R.string.settings_lyrics_sync_tools),
+            detail = stringResource(R.string.settings_lyrics_sync_tools_detail),
+            checked = showLyricsControlDeck,
+            onCheckedChange = onShowLyricsControlDeckChange,
         )
         SettingsSwitchRow(
             title = stringResource(R.string.settings_online_lyrics),
@@ -148,6 +150,26 @@ internal fun SettingsPlaybackContent(
             checked = lockScreenLyricsEnabled,
             onCheckedChange = onLockScreenLyricsEnabledChange,
         )
+        val notificationRuntimePermission =
+            LocalEchoPlatformCapabilities.current.notificationRuntimePermission
+        if (!notificationRuntimePermission || notificationPermissionGranted) {
+            SettingsInfoRow(
+                title = stringResource(R.string.settings_notification_permission),
+                detail = stringResource(
+                    if (!notificationRuntimePermission) R.string.settings_notification_not_required
+                    else R.string.settings_notification_granted,
+                ),
+            )
+        } else {
+            SettingsActionRow(
+                title = stringResource(R.string.settings_notification_permission),
+                detail = stringResource(R.string.settings_notification_denied),
+                actionLabel = stringResource(R.string.settings_allow),
+                onClick = onRequestNotificationPermission,
+            )
+        }
+    }
+    SettingsSectionCard(title = stringResource(R.string.settings_section_usb)) {
         SettingsSwitchRow(
             title = stringResource(R.string.settings_usb_exclusive),
             detail = usbExclusiveDetail(status),
@@ -170,30 +192,6 @@ internal fun SettingsPlaybackContent(
             checked = usbExclusiveAutoRequestOnStartup,
             onCheckedChange = onUsbExclusiveAutoRequestOnStartupChange,
         )
-        val notificationRuntimePermission =
-            LocalEchoPlatformCapabilities.current.notificationRuntimePermission
-        SettingsActionRow(
-            title = stringResource(R.string.settings_notification_permission),
-            detail = when {
-                !notificationRuntimePermission ->
-                    stringResource(R.string.settings_notification_not_required)
-                notificationPermissionGranted ->
-                    stringResource(R.string.settings_notification_granted)
-                else -> stringResource(R.string.settings_notification_denied)
-            },
-            actionLabel = if (!notificationRuntimePermission || notificationPermissionGranted) {
-                stringResource(R.string.settings_on)
-            } else {
-                stringResource(R.string.settings_allow)
-            },
-            disabledLabel = if (!notificationRuntimePermission) {
-                stringResource(R.string.settings_on)
-            } else {
-                null
-            },
-            enabled = notificationRuntimePermission && !notificationPermissionGranted,
-            onClick = onRequestNotificationPermission,
-        )
         SettingsActionRow(
             title = stringResource(R.string.settings_test_usb),
             detail = usbExclusiveTestDetail(status, usbExclusiveTestResult),
@@ -201,6 +199,8 @@ internal fun SettingsPlaybackContent(
             actionLabel = stringResource(R.string.settings_test),
             onClick = onTestUsbExclusiveDriver,
         )
+    }
+    SettingsSectionCard(title = stringResource(R.string.settings_section_offline)) {
         SettingsActionRow(
             title = stringResource(R.string.settings_pin_queue_offline),
             detail = stringResource(R.string.settings_pin_queue_offline_detail),

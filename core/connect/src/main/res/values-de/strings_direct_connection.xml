@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="connect_direct_unavailable">Dieser PC hat den Zugriff ohne Kopplung abgelehnt. Verbinden Sie beide Geräte mit demselben LAN und fügen Sie einen neuen, vollständigen Kopplungslink aus Echo Link in ECHOSteam ein.</string>
+    <string name="connect_direct_unavailable">Der PC hat die Direktverbindung abgelehnt. Aktivieren Sie Echo Link und verwenden Sie eine ECHOSteam-Version mit LAN-Direktverbindung oder fügen Sie einen neuen vollständigen Kopplungslink ein.</string>
 </resources>

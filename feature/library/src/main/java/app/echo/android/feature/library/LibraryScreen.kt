@@ -483,6 +483,7 @@ fun LibraryScreen(
             onScanAll = { options -> showEmptyScanOptions = false; onScanAll(options) },
         )
         Column(Modifier.fillMaxSize()) {
+                Column(Modifier.padding(end = 24.dp)) {
                     if (scanState.isScanning) LibraryScanStatus(scanState, onCancelScan)
                     LibraryBrowserHeader(
                         scanState = scanState,
@@ -507,6 +508,7 @@ fun LibraryScreen(
                         onArtistSortModeChange = onArtistSortModeChange,
                         onFolderSortModeChange = onFolderSortModeChange,
                     )
+                }
                     Box(modifier = Modifier.weight(1f)) {
                         val libraryTabMotion = rememberEchoContentMotion()
                         AnimatedContent(
@@ -517,6 +519,10 @@ fun LibraryScreen(
                             label = "library-mode-transition",
                             modifier = Modifier.fillMaxSize(),
                         ) { mode ->
+                        val showAlphabetIndex = mode == LibraryViewMode.Songs &&
+                            trackSortMode == LibraryTrackSortMode.Title && libraryQuery.isBlank()
+                        // Keep the index and its touch targets inside a container reaching the edge.
+                        Box(Modifier.fillMaxSize().padding(end = if (showAlphabetIndex) 0.dp else 24.dp)) {
                         when (mode) {
                             LibraryViewMode.Radio -> {
                                 LaunchedEffect(libraryQuery) { onRadioDirectoryQuery(libraryQuery) }
@@ -555,8 +561,6 @@ fun LibraryScreen(
                                         onAction = if (libraryQuery.isNotBlank()) ({ onLibraryQueryChange("") }) else ({ showEmptyScanOptions = true }),
                                     )
                                     else -> Box(Modifier.fillMaxSize()) {
-                                        val showAlphabetIndex =
-                                            trackSortMode == LibraryTrackSortMode.Title && libraryQuery.isBlank()
                                         TrackList(
                                             tracks = trackItems,
                                             onPlayTrack = { track ->
@@ -660,6 +664,7 @@ fun LibraryScreen(
                             )
                         }
                         }
+                        }
                     }
         }
     }
@@ -703,6 +708,7 @@ fun LibraryScreen(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 label = "library-source-body",
             ) { displayedSource ->
+                Box(Modifier.fillMaxSize().padding(end = if (displayedSource == LibrarySourceMode.PcEcho) 24.dp else 0.dp)) {
                 when {
                     displayedSource == LibrarySourceMode.PcEcho && linkedLibraryAvailable -> {
                         val linkedState by linkedLibraryState.collectAsState()
@@ -756,6 +762,7 @@ fun LibraryScreen(
                         onAction = onOpenConnect,
                     )
                     else -> LocalLibraryBody(displayedSource)
+                }
                 }
             }
         }

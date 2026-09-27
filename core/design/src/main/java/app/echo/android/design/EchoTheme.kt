@@ -132,21 +132,18 @@ fun echoFontFamilyForMode(
     "outfit" -> EchoOutfitFontFamily
     "serif" -> FontFamily.Serif
     "monospace" -> FontFamily.Monospace
-    "imported" -> importedFontFamily ?: FontFamily.SansSerif
-    else -> FontFamily.SansSerif
+    "imported" -> importedFontFamily ?: FontFamily.Default
+    else -> FontFamily.Default
 }
 
 private fun echoTypography(
     fontFamily: FontFamily,
     fontScale: Float,
 ): Typography = Typography().let { typography ->
-    val outfit = fontFamily === EchoOutfitFontFamily
-    // Outfit has no CJK glyphs. Heavier requested weights make the system
-    // fallback match Bold/ExtraBold instead of Regular/Medium.
-    val display = if (outfit) FontWeight.Black else FontWeight.ExtraBold
-    val title = if (outfit) FontWeight.ExtraBold else FontWeight.Bold
-    val body = if (outfit) FontWeight.ExtraBold else FontWeight.Bold
-    val label = if (outfit) FontWeight.ExtraBold else FontWeight.Bold
+    val display = FontWeight.Bold
+    val title = FontWeight.SemiBold
+    val body = FontWeight.Normal
+    val label = FontWeight.Medium
     typography.copy(
         displayLarge = typography.displayLarge.echoFont(fontFamily, display, fontScale),
         displayMedium = typography.displayMedium.echoFont(fontFamily, display, fontScale),
@@ -186,7 +183,7 @@ fun EchoMobileTheme(
     dynamicColor: Boolean = false,
     colorTheme: EchoColorTheme = EchoColorTheme.Default,
     playbackHapticsEnabled: Boolean = true,
-    fontFamily: FontFamily = FontFamily.SansSerif,
+    fontFamily: FontFamily = FontFamily.Default,
     fontScale: Float = 1f,
     densityScale: Float = 1f,
     effectivePerformanceMode: EchoEffectivePerformanceMode = EchoEffectivePerformanceMode.Balanced,

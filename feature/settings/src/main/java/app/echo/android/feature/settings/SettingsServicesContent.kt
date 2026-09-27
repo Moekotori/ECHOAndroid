@@ -42,7 +42,7 @@ internal fun SettingsServicesContent(
     var listenBrainzTokenInput by rememberSaveable(listenBrainzToken) { mutableStateOf(listenBrainzToken.orEmpty()) }
     var setlistFmApiKeyInput by rememberSaveable(setlistFmApiKey) { mutableStateOf(setlistFmApiKey.orEmpty()) }
     SettingsSectionCard(
-        title = stringResource(R.string.settings_section_connect),
+        title = stringResource(R.string.settings_section_music_services),
     ) {
         LastFmSettingsPanel(
             enabled = lastFmEnabled,
@@ -79,6 +79,8 @@ internal fun SettingsServicesContent(
             onApiKeyChange = { setlistFmApiKeyInput = it },
             onSave = { onSaveSetlistFmApiKey(setlistFmApiKeyInput) },
         )
+    }
+    SettingsSectionCard(title = stringResource(R.string.settings_section_connect)) {
         SettingsSwitchRow(
             title = stringResource(R.string.settings_pc_handoff),
             detail = stringResource(R.string.settings_pc_handoff_detail),

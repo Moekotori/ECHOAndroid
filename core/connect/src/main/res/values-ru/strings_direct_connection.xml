@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="connect_direct_unavailable">ПК отклонил доступ без сопряжения. Подключите оба устройства к одной локальной сети и вставьте новую полную ссылку сопряжения из Echo Link в ECHOSteam.</string>
+    <string name="connect_direct_unavailable">ПК отклонил прямое подключение. Включите Echo Link и используйте версию ECHOSteam с поддержкой прямого подключения по LAN либо вставьте новую полную ссылку сопряжения.</string>
 </resources>

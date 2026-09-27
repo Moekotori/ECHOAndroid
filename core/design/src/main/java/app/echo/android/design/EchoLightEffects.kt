@@ -61,7 +61,7 @@ fun Modifier.echoEdgeLight(
         val strokeWidth = 1.dp.toPx()
         val inset = strokeWidth / 2f
         val edge = Brush.linearGradient(
-            listOf(Color.White.copy(alpha = 0.75f), color.copy(alpha = 0.18f), color.copy(alpha = 0.65f)),
+            listOf(Color.White.copy(alpha = 0.48f), color.copy(alpha = 0.12f), color.copy(alpha = 0.40f)),
             end = Offset(size.width, size.height),
         )
         val stroke = Stroke(strokeWidth)
@@ -70,11 +70,11 @@ fun Modifier.echoEdgeLight(
         val clip = Path().apply { addRoundRect(RoundRect(Rect(Offset.Zero, size), CornerRadius(cornerRadius.toPx()))) }
         val spotRadius = minOf(size.minDimension * 0.9f, 88.dp.toPx()).coerceAtLeast(1f)
         val spot = Brush.radialGradient(
-            listOf(Color.White.copy(alpha = 0.16f), color.copy(alpha = 0.10f), Color.Transparent),
+            listOf(Color.White.copy(alpha = 0.08f), color.copy(alpha = 0.06f), Color.Transparent),
             center = Offset.Zero, radius = spotRadius,
         )
         onDrawWithContent {
-            drawContent()
+            // Light belongs beneath the foreground: glyphs must keep their original contrast.
             if (light.value > 0f) {
                 val point = pressPosition.let {
                     if (it.x.isFinite() && it.y.isFinite()) Offset(it.x.coerceIn(0f, size.width), it.y.coerceIn(0f, size.height))
@@ -83,7 +83,10 @@ fun Modifier.echoEdgeLight(
                 clipPath(clip) {
                     translate(point.x, point.y) { drawCircle(spot, spotRadius, Offset.Zero, alpha = light.value) }
                 }
-                if (drawEdge) drawRoundRect(edge, Offset(inset, inset), bounds, radius, alpha = light.value, style = stroke)
+            }
+            drawContent()
+            if (drawEdge && light.value > 0f) {
+                drawRoundRect(edge, Offset(inset, inset), bounds, radius, alpha = light.value, style = stroke)
             }
         }
     }

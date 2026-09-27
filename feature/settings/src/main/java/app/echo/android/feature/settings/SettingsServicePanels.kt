@@ -36,11 +36,9 @@ internal fun LastFmSettingsPanel(
     )
     if (enabled) {
         if (apiKeyLocked) {
-            SettingsActionRow(
+            SettingsInfoRow(
                 title = stringResource(R.string.settings_search_api_key),
                 detail = stringResource(R.string.settings_lastfm_builtin),
-                enabled = false,
-                onClick = {},
             )
         } else {
             SettingsTextInputRow(
@@ -51,11 +49,9 @@ internal fun LastFmSettingsPanel(
             )
         }
         if (sharedSecretLocked) {
-            SettingsActionRow(
+            SettingsInfoRow(
                 title = stringResource(R.string.settings_search_shared_secret),
                 detail = stringResource(R.string.settings_lastfm_builtin),
-                enabled = false,
-                onClick = {},
             )
         } else {
             SettingsTextInputRow(
@@ -151,11 +147,9 @@ internal fun SetlistFmSettingsPanel(
     onSave: () -> Unit,
 ) {
     if (locked) {
-        SettingsActionRow(
+        SettingsInfoRow(
             title = stringResource(R.string.settings_setlistfm),
             detail = stringResource(R.string.settings_setlistfm_builtin),
-            enabled = false,
-            onClick = {},
         )
         return
     }
@@ -178,9 +172,9 @@ internal fun settingsPanelColor(): Color {
     val scheme = MaterialTheme.colorScheme
     val customBackground = LocalEchoCustomBackgroundActive.current
     return if (LocalEchoDarkTheme.current) {
-        echoTheme().panel.copy(alpha = 0.58f)
+        echoTheme().panel.copy(alpha = if (customBackground) 0.88f else 0.94f)
     } else {
-        scheme.surface.copy(alpha = if (customBackground) 0.66f else 0.72f)
+        scheme.surface.copy(alpha = if (customBackground) 0.90f else 0.96f)
     }
 }
 

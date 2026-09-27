@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="connect_direct_unavailable">Ce PC a refusé un accès sans appairage. Connectez les deux appareils au même réseau local et collez un nouveau lien complet d’appairage depuis Echo Link dans ECHOSteam.</string>
+    <string name="connect_direct_unavailable">Le PC a refusé la connexion directe. Activez Echo Link et utilisez une version d’ECHOSteam compatible avec la connexion directe en réseau local, ou collez un nouveau lien complet d’appairage.</string>
 </resources>

@@ -3,6 +3,7 @@ package app.echo.android.feature.settings
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Close
@@ -21,6 +22,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -29,6 +32,8 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun SettingsSearchField(query: String, onQueryChange: (String) -> Unit) {
     val panelColor = settingsPanelColor()
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     TextField(
         value = query,
         onValueChange = onQueryChange,
@@ -47,6 +52,10 @@ internal fun SettingsSearchField(query: String, onQueryChange: (String) -> Unit)
             }
         } else null,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = {
+            focusManager.clearFocus()
+            keyboardController?.hide()
+        }),
         shape = RoundedCornerShape(16.dp),
         colors = TextFieldDefaults.colors(
             focusedContainerColor = panelColor,
@@ -72,7 +81,7 @@ internal fun SettingsSearchResults(
         )
         return
     }
-    Surface(shape = RoundedCornerShape(18.dp), color = settingsPanelColor()) {
+    Surface(shape = RoundedCornerShape(20.dp), color = settingsPanelColor()) {
         Column {
             results.forEachIndexed { index, result ->
                 if (index > 0) HorizontalDivider(
@@ -97,7 +106,7 @@ internal fun SettingsSearchResults(
                                 result.title,
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Medium,
-                                maxLines = 1,
+                                maxLines = 2,
                                 overflow = TextOverflow.Ellipsis,
                             )
                             Text(

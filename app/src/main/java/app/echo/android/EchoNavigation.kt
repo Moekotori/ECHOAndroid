@@ -1,72 +1,55 @@
 package app.echo.android
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import app.echo.android.design.echoFrostedGlass
-import app.echo.android.design.LocalEchoEffectivePerformanceMode
-import app.echo.android.design.echoClickable
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Devices
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.LibraryMusic
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.geometry.lerp
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.echoBackdropGlass
+import app.echo.android.design.echoPressFeedback
+import app.echo.android.design.echoEdgeLight
 import app.echo.android.design.echoTheme
-import app.echo.android.design.EchoMotion
-import app.echo.android.design.LocalEchoDarkTheme
-import kotlinx.coroutines.flow.collectLatest
+import kotlin.math.abs
 
-private val DockItemMotionEasing = EchoMotion.Silk
-private val DockGlassShape = RoundedCornerShape(26.dp)
-private val DockItemShape = RoundedCornerShape(22.dp)
-
+private val DockItemShape = RoundedCornerShape(24.dp)
 
 enum class EchoTab(
     val icon: ImageVector,
@@ -95,127 +78,81 @@ fun BottomDock(
     onSelectTab: (Int) -> Unit,
     modifier: Modifier = Modifier,
     selectedTabProgress: () -> Float = { selectedTab.toFloat() },
-    progressLive: Boolean = false,
     gestureModifier: Modifier = Modifier,
 ) {
-    val dark = LocalEchoDarkTheme.current
-    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
-    val density = LocalDensity.current
     val scheme = MaterialTheme.colorScheme
-    val theme = echoTheme()
-    val tabCount = EchoTab.entries.size
+    val accent = echoTheme().accent
+    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    val progressState = rememberUpdatedState(selectedTabProgress)
+    val progress = remember { { progressState.value().coerceIn(0f, EchoTab.entries.lastIndex.toFloat()) } }
+    val indicatorColor = if (onLightSurface) scheme.primary else accent
+    val indicatorBrush = remember(indicatorColor, onLightSurface) {
+        Brush.verticalGradient(
+            listOf(
+                indicatorColor.copy(alpha = if (onLightSurface) 0.18f else 0.24f),
+                indicatorColor.copy(alpha = if (onLightSurface) 0.10f else 0.12f),
+            ),
+        )
+    }
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color.Transparent),
+            .padding(horizontal = 10.dp, vertical = 5.dp)
+            .echoBackdropGlass(cornerRadius = 28.dp, elevation = 6.dp)
+            .padding(4.dp)
+            .then(gestureModifier),
     ) {
-        BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 5.dp)
-                .echoFrostedGlass(shape = DockGlassShape, elevation = 6.dp)
-                .then(gestureModifier)
-                .padding(horizontal = 4.dp, vertical = 5.dp),
-        ) {
-            if (dark) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .fillMaxWidth()
-                        .height(1.dp)
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(
-                                    Color.Transparent,
-                                    Color.White.copy(alpha = 0.08f),
-                                    Color.Transparent,
-                                ),
-                            ),
-                        ),
+        // Equal-width tabs share this local coordinate space. No global layout callbacks
+        // or second animation are needed: the pager already animates taps and swipes.
+        Box(
+            Modifier.matchParentSize().drawWithCache {
+                val tabWidth = size.width / EchoTab.entries.size
+                val indicatorWidth = minOf(56.dp.toPx(), tabWidth)
+                val indicatorHeight = 40.dp.toPx()
+                val indicatorSize = Size(indicatorWidth, indicatorHeight)
+                val corner = CornerRadius(20.dp.toPx())
+                val glintRadius = 24.dp.toPx()
+                val glint = Brush.radialGradient(
+                    listOf(Color.White.copy(alpha = if (onLightSurface) 0.18f else 0.12f), Color.Transparent),
+                    center = Offset.Zero, radius = glintRadius,
                 )
-            }
-            val tabWidth = maxWidth / tabCount
-            val tabWidthPx = with(density) { tabWidth.toPx() }.coerceAtLeast(1f)
-            val maxIndicatorIndex = EchoTab.entries.lastIndex.toFloat()
-            val progressLiveState = rememberUpdatedState(progressLive)
-            val selectedTabProgressState = rememberUpdatedState(selectedTabProgress)
-            val indicatorAnim = remember { Animatable(selectedTabProgress().coerceIn(0f, maxIndicatorIndex)) }
-            // 手指驱动(pager 滑动 / dock 拖拽)时指示条 1:1 直跟,离散跳转(点按)才走弹簧,
-            // 避免弹簧追赶连续目标带来的滞后感。
-            LaunchedEffect(tabWidthPx, lightweight) {
-                snapshotFlow {
-                    val target = selectedTabProgressState.value()
-                        .coerceIn(0f, maxIndicatorIndex)
-                    target to (progressLiveState.value)
-                }.collectLatest { (target, live) ->
-                    if (live || lightweight) {
-                        indicatorAnim.snapTo(target)
-                    } else if (target != indicatorAnim.targetValue || target != indicatorAnim.value) {
-                        indicatorAnim.animateTo(
-                            targetValue = target,
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioNoBouncy,
-                                stiffness = 420f,
-                            ),
-                        )
+                onDrawBehind {
+                    val pageProgress = progress()
+                    val logicalCenter = (pageProgress + 0.5f) * tabWidth
+                    val centerX = if (layoutDirection == LayoutDirection.Rtl) {
+                        size.width - logicalCenter
+                    } else {
+                        logicalCenter
                     }
-                }
-            }
-            val indicatorBrush = when {
-                onLightSurface -> Brush.horizontalGradient(
-                    listOf(
-                        scheme.primary.copy(alpha = 0.09f),
-                        scheme.primary.copy(alpha = 0.05f),
-                    ),
-                )
-                else -> Brush.horizontalGradient(
-                    listOf(
-                        theme.accent.copy(alpha = 0.19f),
-                        theme.accent.copy(alpha = 0.08f),
-                    ),
-                )
-            }
-            // Measure the actual item content, including font scale and RTL placement.
-            // Read animation progress during drawing so every tick does not recompose the dock.
-            var rowOrigin by remember { mutableStateOf(Offset.Zero) }
-            val itemBounds = remember { mutableStateMapOf<Int, Rect>() }
-            Box(Modifier.fillMaxWidth()) {
-                Canvas(Modifier.matchParentSize()) {
-                    // Read live position in the draw phase, without a coroutine/frame of lag.
-                    val progress = selectedTabProgressState.value().coerceIn(0f, maxIndicatorIndex)
-                    val from = progress.toInt()
-                    val to = (from + 1).coerceAtMost(EchoTab.entries.lastIndex)
-                    val fromBounds = itemBounds[from] ?: return@Canvas
-                    val toBounds = itemBounds[to] ?: fromBounds
-                    val bounds = lerp(fromBounds, toBounds, progress - from)
                     drawRoundRect(
                         brush = indicatorBrush,
-                        topLeft = Offset(
-                            bounds.center.x - rowOrigin.x - 21.dp.toPx(),
-                            bounds.top - rowOrigin.y,
-                        ),
-                        size = Size(42.dp.toPx(), 30.dp.toPx()),
-                        cornerRadius = CornerRadius(12.dp.toPx()),
+                        topLeft = Offset(centerX - indicatorWidth / 2f, (size.height - indicatorHeight) / 2f),
+                        size = indicatorSize,
+                        cornerRadius = corner,
                     )
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .onGloballyPositioned { rowOrigin = it.positionInRoot() },
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    EchoTab.entries.forEach { tab ->
-                        DockItem(
-                            tab = tab,
-                            selected = selectedTab == tab.ordinal,
-                            onLightSurface = onLightSurface,
-                            onClick = { onSelectTab(tab.ordinal) },
-                            onContentBounds = { itemBounds[tab.ordinal] = it },
-                            modifier = Modifier.weight(1f),
-                        )
+                    if (!lightweight) {
+                        val fraction = pageProgress - kotlin.math.floor(pageProgress)
+                        val motionLight = 4f * fraction * (1f - fraction)
+                        translate(left = centerX, top = size.height * 0.3f) {
+                            drawCircle(glint, glintRadius, Offset.Zero, alpha = motionLight)
+                        }
                     }
                 }
+            },
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth().selectableGroup(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            EchoTab.entries.forEach { tab ->
+                DockItem(
+                    tab = tab,
+                    selected = selectedTab == tab.ordinal,
+                    onLightSurface = onLightSurface,
+                    progress = progress,
+                    onClick = { onSelectTab(tab.ordinal) },
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
     }
@@ -226,86 +163,44 @@ private fun DockItem(
     tab: EchoTab,
     selected: Boolean,
     onLightSurface: Boolean,
+    progress: () -> Float,
     onClick: () -> Unit,
-    onContentBounds: (Rect) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
     val accent = echoTheme().accent
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
-    val targetIconColor = when {
-        selected && onLightSurface -> scheme.onSurface
-        selected -> accent
-        onLightSurface -> scheme.onSurfaceVariant
-        else -> Color.White.copy(alpha = 0.70f)
-    }
-    val targetLabelColor = when {
-        selected && onLightSurface -> scheme.onSurface
-        selected -> Color.White.copy(alpha = 0.96f)
-        onLightSurface -> scheme.onSurfaceVariant
-        else -> Color.White.copy(alpha = 0.72f)
-    }
-    val iconColor by animateColorAsState(
-        targetValue = targetIconColor,
-        animationSpec = tween(durationMillis = if (lightweight) 0 else 180, easing = DockItemMotionEasing),
-        label = "dock-icon-color",
-    )
-    val labelColor by animateColorAsState(
-        targetValue = targetLabelColor,
-        animationSpec = tween(durationMillis = if (lightweight) 0 else 180, easing = DockItemMotionEasing),
-        label = "dock-label-color",
-    )
-    val iconScale by animateFloatAsState(
-        targetValue = if (selected) 1f else 0.94f,
-        animationSpec = if (lightweight) tween(0) else spring(
-            dampingRatio = 0.72f,
-            stiffness = Spring.StiffnessMediumLow,
-        ),
-        label = "dock-icon-scale",
-    )
+    val activeColor = if (onLightSurface) scheme.primary else accent
+    val idleColor = if (onLightSurface) scheme.onSurfaceVariant else Color.White.copy(alpha = 0.70f)
+    val painter = rememberVectorPainter(tab.icon)
+    val label = tab.label()
+    val interactionSource = remember { MutableInteractionSource() }
     Box(
         modifier = modifier
-            .echoClickable(onClick = onClick)
-            .padding(vertical = 2.dp),
+            .height(48.dp)
+            .clip(DockItemShape)
+            .echoPressFeedback(interactionSource)
+            .echoEdgeLight(interactionSource, activeColor, 24.dp, drawEdge = false)
+            .selectable(
+                selected = selected,
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+                role = Role.Tab,
+                onClick = onClick,
+            )
+            .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        Column(
-            modifier = Modifier
-                .onGloballyPositioned {
-                    onContentBounds(
-                        Rect(it.positionInRoot(), Size(it.size.width.toFloat(), it.size.height.toFloat())),
-                    )
+        // Tint and scale follow the same fractional page position as the highlight.
+        // Read progress only while drawing, so swipes do not recompose the tab row.
+        Canvas(Modifier.size(24.dp)) {
+            val active = (1f - abs(progress() - tab.ordinal)).coerceIn(0f, 1f)
+            val iconScale = if (lightweight) 1f else 0.94f + active * 0.06f
+            scale(iconScale) {
+                with(painter) {
+                    draw(size, colorFilter = ColorFilter.tint(lerp(idleColor, activeColor, active)))
                 }
-                .defaultMinSize(minWidth = 56.dp, minHeight = 52.dp)
-                .clip(DockItemShape)
-                .padding(horizontal = 2.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Box(
-                modifier = Modifier.size(width = 42.dp, height = 30.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    tab.icon,
-                    contentDescription = null,
-                    tint = iconColor,
-                    modifier = Modifier
-                        .size(22.dp)
-                        .graphicsLayer {
-                            scaleX = iconScale
-                            scaleY = iconScale
-                        },
-                )
             }
-            Text(
-                text = tab.label(),
-                color = labelColor,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
         }
     }
 }

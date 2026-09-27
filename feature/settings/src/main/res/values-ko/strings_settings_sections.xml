@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_section_lyrics">가사 및 알림</string>
+    <string name="settings_section_usb">USB 오디오</string>
+    <string name="settings_section_offline">오프라인 음악</string>
+    <string name="settings_section_maintenance">라이브러리 관리</string>
+    <string name="settings_section_music_services">음악 서비스</string>
+</resources>

@@ -1,6 +1,5 @@
 package app.echo.android.feature.settings
 
-import app.echo.android.design.echoAnimateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import app.echo.android.design.echoClickable
@@ -8,7 +7,6 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.heightIn
@@ -55,7 +53,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.LocalEchoDarkTheme
-import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.settings.EchoBackgroundStyle
 import app.echo.android.model.settings.EchoAppLanguage
@@ -77,7 +74,7 @@ internal fun SettingsTextInputRow(
             .settingsSearchAnchor(title)
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .padding(vertical = 8.dp),
+            .padding(horizontal = 4.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.Top,
     ) {
@@ -85,7 +82,7 @@ internal fun SettingsTextInputRow(
             Text(
                 title,
                 color = scheme.onSurface,
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -96,7 +93,7 @@ internal fun SettingsTextInputRow(
                 placeholder = { Text(placeholder, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 singleLine = true,
                 visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
-                shape = RoundedCornerShape(4.dp),
+                shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -153,8 +150,8 @@ internal fun performanceModeDetail(mode: String, effectiveMode: String): String 
 
 @Composable
 internal fun fontOptions(importedFontUri: String?): List<SettingsChoiceOption> = buildList {
-    add(SettingsChoiceOption("outfit", stringResource(R.string.settings_font_outfit)))
     add(SettingsChoiceOption("system", stringResource(R.string.settings_font_system)))
+    add(SettingsChoiceOption("outfit", stringResource(R.string.settings_font_outfit)))
     add(SettingsChoiceOption("serif", stringResource(R.string.settings_font_serif)))
     add(SettingsChoiceOption("monospace", stringResource(R.string.settings_font_mono)))
     add(
@@ -192,62 +189,6 @@ internal fun Float.roundToQuarterHour(): Int =
     ((this / 15f).roundToInt() * 15).coerceIn(0, 23 * 60 + 59)
 
 @Composable
-internal fun SettingsSectionCard(
-    title: String,
-    collapsible: Boolean = false,
-    expanded: Boolean = true,
-    onExpandedChange: (Boolean) -> Unit = {},
-    persistentContent: @Composable ColumnScope.() -> Unit = {},
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    val scheme = MaterialTheme.colorScheme
-    val dark = LocalEchoDarkTheme.current
-    val animateSize = !LocalEchoEffectivePerformanceMode.current.isLightweight
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(settingsPanelColor())
-            .settingsSearchAnchor(title)
-            .then(if (animateSize) Modifier.echoAnimateContentSize() else Modifier)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Row(
-            modifier = if (collapsible) {
-                Modifier
-                    .fillMaxWidth()
-                    .echoClickable { onExpandedChange(!expanded) }
-                    .padding(vertical = 2.dp)
-            } else {
-                Modifier.fillMaxWidth()
-            },
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                title,
-                color = if (dark) Color.White.copy(alpha = 0.96f) else scheme.onSurface,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium,
-            )
-            if (collapsible) {
-                Icon(
-                    imageVector = if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
-                    contentDescription = null,
-                    tint = if (dark) Color.White.copy(alpha = 0.72f) else scheme.onSurfaceVariant,
-                    modifier = Modifier.size(24.dp),
-                )
-            }
-        }
-        persistentContent()
-        if (expanded) {
-            content()
-        }
-    }
-}
-
-@Composable
 internal fun SettingsDisclosureRow(
     title: String,
     detail: String,
@@ -279,29 +220,28 @@ internal fun SettingsBackgroundSourceRow(
     onClearCustomBackground: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val dark = LocalEchoDarkTheme.current
     Row(
         modifier = Modifier
             .settingsSearchAnchor(stringResource(R.string.settings_bg_source))
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .padding(vertical = 8.dp),
+            .padding(horizontal = 4.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 stringResource(R.string.settings_bg_source),
-                color = if (dark) Color.White.copy(alpha = 0.94f) else scheme.onSurface,
-                style = MaterialTheme.typography.titleSmall,
+                color = scheme.onSurface,
+                style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 backgroundDetail(mode, uri),
-                color = if (dark) Color.White.copy(alpha = 0.70f) else scheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -431,14 +371,14 @@ internal fun SettingsChoiceGroupRow(
     onOptionSelected: (String) -> Unit,
 ) {
     Column(
-        modifier = Modifier.settingsSearchAnchor(title).fillMaxWidth().padding(vertical = 6.dp),
+        modifier = Modifier.settingsSearchAnchor(title).fillMaxWidth().padding(horizontal = 4.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
             Text(
                 detail,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Normal,
             )
@@ -488,7 +428,6 @@ internal fun SettingsOptionChip(
             color = if (selected) settingsControlColor() else if (dark) Color.White.copy(alpha = 0.74f) else scheme.onSurfaceVariant,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Medium,
-            maxLines = 1,
         )
     }
 }
@@ -515,7 +454,7 @@ internal fun SettingsSliderRow(
             .settingsSearchAnchor(title)
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .padding(vertical = 8.dp),
+            .padding(horizontal = 4.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -527,14 +466,14 @@ internal fun SettingsSliderRow(
             ) {
                 Text(
                     title,
-                    color = if (dark) Color.White.copy(alpha = 0.94f) else scheme.onSurface,
-                    style = MaterialTheme.typography.titleSmall,
+                    color = scheme.onSurface,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.weight(1f).padding(end = 12.dp),
                 )
                 Text(
                     valueLabel(localValue),
-                    color = if (dark) Color.White.copy(alpha = 0.72f) else scheme.onSurfaceVariant,
+                    color = scheme.onSurfaceVariant,
                     style = MaterialTheme.typography.labelMedium,
                     maxLines = 1,
                 )
@@ -590,27 +529,28 @@ internal fun SettingsRowShell(
     trailing: @Composable () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val dark = LocalEchoDarkTheme.current
     Row(
-        modifier = modifier
-            .settingsSearchAnchor(title)
+        modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 56.dp)
-            .padding(vertical = 8.dp),
+            .clip(RoundedCornerShape(12.dp))
+            .then(modifier)
+            .settingsSearchAnchor(title)
+            .heightIn(min = if (LocalSettingsCompactMode.current) 56.dp else 64.dp)
+            .padding(horizontal = 4.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
                 title,
-                color = if (dark) Color.White.copy(alpha = 0.94f) else scheme.onSurface,
-                style = MaterialTheme.typography.titleSmall,
+                color = scheme.onSurface,
+                style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
             )
             Text(
                 detail,
-                color = if (dark) Color.White.copy(alpha = 0.70f) else scheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
             )
         }
         trailing()

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_section_lyrics">歌词与通知</string>
+    <string name="settings_section_usb">USB 音频</string>
+    <string name="settings_section_offline">离线音乐</string>
+    <string name="settings_section_maintenance">曲库维护</string>
+    <string name="settings_section_music_services">音乐服务</string>
+</resources>

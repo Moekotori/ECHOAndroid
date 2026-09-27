@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="connect_direct_unavailable">电脑拒绝了未配对访问。请让两台设备连接同一局域网，并粘贴电脑 ECHOSteam 的 Echo Link 页面新生成的完整配对链接。</string>
+    <string name="connect_direct_unavailable">电脑拒绝了直接连接。请开启 Echo Link 并使用支持局域网直连的 ECHOSteam 版本，或粘贴新生成的完整配对链接。</string>
 </resources>

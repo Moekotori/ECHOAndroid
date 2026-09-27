@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="echo_link_direct_address_hint">Pour la première connexion, activez Echo Link dans ECHOSteam et collez le lien complet d’appairage dans les deux minutes. Les deux appareils doivent être sur le même réseau local. Les PC appairés peuvent se reconnecter directement.</string>
-    <string name="echo_link_pairing_entry">Lien d’appairage ou adresse du PC</string>
+    <string name="echo_link_direct_address_hint">Activez Echo Link dans ECHOSteam, puis sélectionnez un PC proche ou saisissez son adresse IP sur le même réseau local. Les PC sans connexion directe peuvent toujours utiliser un lien complet d’appairage.</string>
+    <string name="echo_link_pairing_entry">Adresse du PC ou lien d’appairage</string>
 </resources>

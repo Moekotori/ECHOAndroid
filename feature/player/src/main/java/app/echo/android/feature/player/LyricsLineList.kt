@@ -264,12 +264,6 @@ internal fun LyricsLineList(
             }
         }
         Column(Modifier.align(Alignment.TopCenter).padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            if (synced && activeIndex < 0) {
-                val seconds by remember(timeline, positionMsState) { derivedStateOf {
-                    timeline.nextStart(positionMsState.value)?.let { ((it - positionMsState.value + 999) / 1000).coerceAtLeast(0) }
-                } }
-                seconds?.let { Text(stringResource(L10nR.string.lyrics_vocals_in, it), color = lyricAccent) }
-            }
             if (!following && synced) {
                 TextButton(
                     onClick = { following = true; calibrationIndex = null },

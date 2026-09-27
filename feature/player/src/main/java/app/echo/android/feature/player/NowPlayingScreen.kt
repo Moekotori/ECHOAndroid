@@ -369,6 +369,13 @@ fun NowPlayingScreen(
         derivedStateOf { currentDismissOffsetPx() < 12f }
     }
 
+    val splitNowPlaying = LocalEchoWidthSizeClass.current.prefersNowPlayingSplit
+    val sleeveTopBar = !splitNowPlaying && pagerState.currentPage == NowPlayingPage.Cover.ordinal
+    val drawLyricsBackdrop by remember(pagerState, splitNowPlaying) {
+        derivedStateOf { splitNowPlaying || lyricsReveal() > 0f }
+    }
+    RecordSleeveSystemBars(sleeveTopBar && presentationExpanded)
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -382,24 +389,25 @@ fun NowPlayingScreen(
                 scaleY = scale
                 alpha = 1f - 0.12f * settledProgress
                 transformOrigin = TransformOrigin(0.5f, 0.06f)
-            },
+            }
+            .background(RecordSleeveStyle.Paper),
     ) {
-        NowPlayingBackdrop(
+        if (drawLyricsBackdrop) NowPlayingBackdrop(
             artworkUri = track?.artworkUri,
             palette = palette,
             reveal = lyricsReveal,
             animationsVisible = presentationExpanded,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().graphicsLayer {
+                alpha = if (splitNowPlaying) 1f else lyricsReveal()
+            },
         )
-
-        val splitNowPlaying = LocalEchoWidthSizeClass.current.prefersNowPlayingSplit
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .widthIn(max = if (splitNowPlaying) LocalEchoContentMaxWidth.current else 560.dp)
-                .padding(horizontal = if (splitNowPlaying) 20.dp else 26.dp),
+                .padding(horizontal = if (splitNowPlaying) 20.dp else 30.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             NowPlayingTopBar(
@@ -428,6 +436,8 @@ fun NowPlayingScreen(
                 currentPage = pagerState.currentPage,
                 pageCount = NowPlayingPage.entries.size,
                 showPageIndicator = !splitNowPlaying,
+                editorial = sleeveTopBar,
+                onOpenPlaybackSettings = { playbackSettingsVisible = true },
             )
             status.diagnostics.lastError?.let { playbackError ->
                 NowPlayingErrorBanner(
@@ -446,14 +456,10 @@ fun NowPlayingScreen(
                         .weight(1f),
                     horizontalArrangement = Arrangement.spacedBy(18.dp),
                 ) {
-                    NowPlayingCoverPage(
-                        palette = palette,
-                        presentationExpanded = presentationExpanded,
-                        lightStrength = { 1f - 0.55f * (currentDismissOffsetPx() / dismissThresholdPx).coerceIn(0f, 1f) },
+                    RecordSleeveCoverPage(
                         status = status,
                         positionMsState = positionMsState,
                         durationMsState = durationMsState,
-                        lyrics = readyLyrics,
                         onPlayPause = onPlayPause,
                         onNext = onNext,
                         onPrevious = onPrevious,
@@ -461,8 +467,8 @@ fun NowPlayingScreen(
                         onOpenQueue = onOpenQueue,
                         onCast = onCast,
                         castActive = castActive,
-                        playbackSettingsExpanded = playbackSettingsVisible,
-                        onOpenPlaybackSettings = { playbackSettingsVisible = true },
+                        onToggleShuffle = onToggleShuffle,
+                        onCycleRepeatMode = onCycleRepeatMode,
                         isCurrentTrackFavorite = isCurrentTrackFavorite,
                         onToggleFavorite = onToggleFavorite,
                         onOpenLyrics = {},
@@ -532,14 +538,10 @@ fun NowPlayingScreen(
                     .weight(1f),
             ) { page ->
                 when (NowPlayingPage.entries[page]) {
-                    NowPlayingPage.Cover -> NowPlayingCoverPage(
-                        palette = palette,
-                        presentationExpanded = presentationExpanded,
-                        lightStrength = { 1f - 0.55f * (currentDismissOffsetPx() / dismissThresholdPx).coerceIn(0f, 1f) },
+                    NowPlayingPage.Cover -> RecordSleeveCoverPage(
                         status = status,
                         positionMsState = positionMsState,
                         durationMsState = durationMsState,
-                        lyrics = readyLyrics,
                         onPlayPause = onPlayPause,
                         onNext = onNext,
                         onPrevious = onPrevious,
@@ -547,8 +549,8 @@ fun NowPlayingScreen(
                         onOpenQueue = onOpenQueue,
                         onCast = onCast,
                         castActive = castActive,
-                        playbackSettingsExpanded = playbackSettingsVisible,
-                        onOpenPlaybackSettings = { playbackSettingsVisible = true },
+                        onToggleShuffle = onToggleShuffle,
+                        onCycleRepeatMode = onCycleRepeatMode,
                         isCurrentTrackFavorite = isCurrentTrackFavorite,
                         onToggleFavorite = onToggleFavorite,
                         onOpenLyrics = {
@@ -690,143 +692,6 @@ fun NowPlayingScreen(
 }
 
 @Composable
-private fun NowPlayingCoverPage(
-    palette: ArtworkPalette,
-    presentationExpanded: Boolean,
-    lightStrength: () -> Float,
-    status: EchoPlaybackStatus,
-    positionMsState: State<Long>,
-    durationMsState: State<Long>,
-    lyrics: EchoLyrics?,
-    onPlayPause: () -> Unit,
-    onNext: () -> Unit,
-    onPrevious: () -> Unit,
-    onSeek: (Long) -> Unit,
-    onOpenQueue: () -> Unit,
-    onCast: (() -> Unit)? = null,
-    castActive: Boolean = false,
-    playbackSettingsExpanded: Boolean,
-    onOpenPlaybackSettings: () -> Unit,
-    isCurrentTrackFavorite: Boolean,
-    onToggleFavorite: () -> Unit,
-    onOpenLyrics: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val track = status.track
-    var previousRequestedFrom by remember { mutableStateOf<String?>(null) }
-    val playingScale by animateFloatAsState(
-        targetValue = if (status.isPlaying) 1f else 0.96f,
-        animationSpec = spring(
-            dampingRatio = 0.86f,
-            stiffness = Spring.StiffnessMediumLow,
-        ),
-        label = "now-playing-cover-scale",
-    )
-
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        BoxWithConstraints(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .padding(top = 4.dp, bottom = 12.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            val tileSize = minOf(maxWidth, maxHeight)
-            val artworkShape = RoundedCornerShape(24.dp)
-            NowPlayingArtworkLight(
-                palette = palette,
-                expanded = presentationExpanded,
-                gestureStrength = lightStrength,
-                enabled = !track?.artworkUri.isNullOrBlank(),
-                trackKey = track?.id,
-                modifier = Modifier.size(tileSize).graphicsLayer {
-                    scaleX = playingScale
-                    scaleY = playingScale
-                },
-            ) {
-                NowPlayingTrackTransition(
-                    track = track,
-                    previousRequestedFrom = previousRequestedFrom,
-                    artwork = true,
-                    modifier = Modifier.fillMaxSize(),
-                ) { displayedTrack ->
-                    EchoArtworkImage(
-                        artworkUri = displayedTrack?.artworkUri,
-                        contentDescription = displayedTrack?.title,
-                        modifier = Modifier
-                            .echoSharedPlayerArtwork(displayedTrack?.id, expandedArtwork = true)
-                            .fillMaxSize()
-                            .then(
-                                if (!LocalEchoEffectivePerformanceMode.current.isLightweight && LocalEchoDarkTheme.current) {
-                                    Modifier.shadow(18.dp, artworkShape, clip = false)
-                                } else Modifier
-                            ),
-                        shape = artworkShape,
-                        sizeClass = EchoArtworkSize.Hero,
-                    )
-                }
-            }
-        }
-
-        Box(modifier = Modifier.fillMaxWidth()) {
-            Column(
-                modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                // 行文本用 derivedStateOf:进度 tick 不重组 TrackInfo,只在歌词行切换时更新
-                val currentLyricLine by remember(lyrics) {
-                    derivedStateOf { currentSyncedLyricText(lyrics, positionMsState.value) }
-                }
-                NowPlayingTrackTransition(
-                    track = track,
-                    previousRequestedFrom = previousRequestedFrom,
-                    modifier = Modifier.fillMaxWidth(),
-                ) { displayedTrack ->
-                    NowPlayingTrackInfo(
-                        title = displayedTrack?.title ?: stringResource(L10nR.string.feature_player_not_playing_d72324),
-                        artist = displayedTrack?.artist ?: stringResource(L10nR.string.feature_player_pick_a_song_to_start_68b6af),
-                        album = displayedTrack?.album,
-                        currentLyricLine = currentLyricLine.takeIf { displayedTrack?.id == track?.id },
-                        onOpenLyrics = { if (displayedTrack?.id == track?.id) onOpenLyrics() },
-                        playbackSettingsExpanded = playbackSettingsExpanded,
-                        onOpenPlaybackSettings = { if (displayedTrack?.id == track?.id) onOpenPlaybackSettings() },
-                        isFavorite = isCurrentTrackFavorite,
-                        favoriteEnabled = track != null,
-                        onToggleFavorite = { if (displayedTrack?.id == track?.id) onToggleFavorite() },
-                    )
-                }
-                Spacer(Modifier.height(10.dp))
-                NowPlayingFormatInfo(diagnostics = status.diagnostics)
-                Spacer(Modifier.height(12.dp))
-                NowPlayingScrubber(
-                    trackKey = status.track?.id,
-                    positionMsState = positionMsState,
-                    durationMsState = durationMsState,
-                    onSeek = onSeek,
-                )
-                Spacer(Modifier.height(6.dp))
-                NowPlayingControlDock(
-                    isPlaying = status.isPlaying,
-                    leadingIcon = PlayerControlIcons.Lyrics,
-                    leadingDescription = stringResource(L10nR.string.feature_player_lyrics_b90c97),
-                    onLeadingAction = onOpenLyrics,
-                    onPlayPause = onPlayPause,
-                    onNext = { previousRequestedFrom = null; onNext() },
-                    onPrevious = { previousRequestedFrom = track?.id; onPrevious() },
-                    onOpenQueue = onOpenQueue,
-                    onCast = onCast,
-                    castActive = castActive,
-                )
-            }
-        }
-        Spacer(Modifier.height(8.dp))
-    }
-}
-
-@Composable
 private fun NowPlayingTopBar(
     onDismiss: () -> Unit,
     onHandleDrag: (Float) -> Unit,
@@ -834,6 +699,8 @@ private fun NowPlayingTopBar(
     currentPage: Int,
     pageCount: Int,
     showPageIndicator: Boolean,
+    editorial: Boolean,
+    onOpenPlaybackSettings: () -> Unit,
 ) {
     val onHandleDragLatest = rememberUpdatedState(onHandleDrag)
     val handleDragState = rememberDraggableState { delta -> onHandleDragLatest.value(delta) }
@@ -854,16 +721,25 @@ private fun NowPlayingTopBar(
                 .height(48.dp),
         ) {
             GlyphButton(
-                icon = Icons.Rounded.KeyboardArrowDown,
+                icon = if (editorial) PlayerControlIcons.Collapse else Icons.Rounded.KeyboardArrowDown,
                 description = stringResource(L10nR.string.feature_player_close_player_d23966),
                 touchSize = 44.dp,
                 iconSize = 30.dp,
-                tint = OnArt.copy(alpha = 0.88f),
+                tint = if (editorial) RecordSleeveStyle.Wine else OnArt.copy(alpha = 0.88f),
                 background = Color.Transparent,
                 onClick = onDismiss,
                 modifier = Modifier.align(Alignment.CenterStart),
             )
-            Column(
+            if (editorial) {
+                Text(
+                    "ECHO",
+                    color = RecordSleeveStyle.Wine,
+                    fontFamily = RecordSleeveStyle.BodyFont,
+                    fontSize = 14.sp,
+                    letterSpacing = 3.5.sp,
+                    modifier = Modifier.align(Alignment.Center),
+                )
+            } else Column(
                 modifier = Modifier
                     .align(Alignment.Center)
                     .clickable(
@@ -880,8 +756,18 @@ private fun NowPlayingTopBar(
                         .background(OnArt.copy(alpha = 0.42f)),
                 )
             }
+            GlyphButton(
+                icon = Icons.Rounded.MoreHoriz,
+                description = stringResource(L10nR.string.feature_player_expand_playback_settings_cf64a0),
+                touchSize = 48.dp,
+                iconSize = 26.dp,
+                tint = if (editorial) RecordSleeveStyle.Wine else OnArt,
+                background = Color.Transparent,
+                onClick = onOpenPlaybackSettings,
+                modifier = Modifier.align(Alignment.CenterEnd),
+            )
         }
-        if (showPageIndicator && pageCount > 1) {
+        if (!editorial && showPageIndicator && pageCount > 1) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -1765,127 +1651,6 @@ internal fun formatLyricsOffset(offsetMs: Long): String {
     return "$sign${"%.2f".format(seconds)}s"
 }
 
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun NowPlayingTrackInfo(
-    title: String,
-    artist: String,
-    album: String?,
-    currentLyricLine: String?,
-    onOpenLyrics: () -> Unit,
-    playbackSettingsExpanded: Boolean,
-    onOpenPlaybackSettings: () -> Unit,
-    isFavorite: Boolean,
-    favoriteEnabled: Boolean,
-    onToggleFavorite: () -> Unit,
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Text(
-                title,
-                modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE),
-                color = OnArt,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.ExtraBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            AnimatedContent(
-                targetState = currentLyricLine?.takeIf { it.isNotBlank() },
-                transitionSpec = {
-                    (fadeIn(tween(180, easing = LyricsSettingsMotionEasing)) +
-                        slideInVertically(tween(220, easing = LyricsSettingsMotionEasing)) { it / 3 }) togetherWith
-                        (fadeOut(tween(120, easing = LyricsSettingsMotionEasing)) +
-                            slideOutVertically(tween(160, easing = LyricsSettingsMotionEasing)) { -it / 4 })
-                },
-                label = "now-playing-current-lyric",
-            ) { line ->
-                if (line == null) {
-                    Spacer(Modifier.height(0.dp))
-                } else {
-                    Text(
-                        line,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(onClick = onOpenLyrics)
-                            .basicMarquee(iterations = Int.MAX_VALUE),
-                        color = OnArt.copy(alpha = 0.82f),
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            color = OnArt.copy(alpha = 0.82f),
-                        ),
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    artist,
-                    color = OnArtMuted,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                album?.takeIf { it.isNotBlank() }?.let { value ->
-                    Text(
-                        value,
-                        color = OnArt.copy(alpha = 0.78f),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-            Spacer(Modifier.width(12.dp))
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                GlyphButton(
-                    icon = if (isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
-                    description = if (isFavorite) {
-                        stringResource(L10nR.string.feature_player_unfavorite_3a27e4)
-                    } else {
-                        stringResource(L10nR.string.feature_player_favorite_b5d1f5)
-                    },
-                    touchSize = 40.dp,
-                    iconSize = 21.dp,
-                    tint = if (isFavorite) Color(0xFFFFD54F) else OnArt.copy(alpha = 0.90f),
-                    background = OnArtChip,
-                    onClick = { if (favoriteEnabled) onToggleFavorite() },
-                )
-                GlyphButton(
-                    icon = Icons.Rounded.MoreHoriz,
-                    description = if (playbackSettingsExpanded) {
-                        stringResource(L10nR.string.feature_player_collapse_playback_settings_79e2cd)
-                    } else {
-                        stringResource(L10nR.string.feature_player_expand_playback_settings_cf64a0)
-                    },
-                    touchSize = 40.dp,
-                    iconSize = 21.dp,
-                    tint = OnArt.copy(alpha = 0.92f),
-                    background = OnArtChip,
-                    onClick = onOpenPlaybackSettings,
-                )
-            }
-        }
-    }
-}
-
 @Composable
 private fun NowPlayingErrorBanner(
     error: EchoPlaybackError,
@@ -1949,38 +1714,6 @@ private fun playbackErrorLabel(error: EchoPlaybackError): String = when (error.k
 }
 
 @Composable
-private fun NowPlayingFormatInfo(diagnostics: EchoPlaybackDiagnostics) {
-    val chips = playbackFormatChips(
-        diagnostics = diagnostics,
-        pcmRateLabel = ::formatSampleRate,
-        channelLabel = ::channelLabel,
-    )
-    val bitrateKbps = diagnostics.bitrate?.takeIf { it > 0 }?.let { it / 1000 }
-    if (chips.isEmpty() && bitrateKbps == null) return
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        chips.forEachIndexed { index, label ->
-            FormatChip(text = label, highlight = index == 0)
-        }
-        bitrateKbps?.let { kbps ->
-            Text(
-                "$kbps kbps",
-                color = OnArt.copy(alpha = 0.78f),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 2.dp),
-            )
-        }
-    }
-}
-
-@Composable
 private fun FormatChip(text: String, highlight: Boolean) {
     val chipShape = RoundedCornerShape(10.dp)
     Box(
@@ -2004,12 +1737,6 @@ internal fun formatSampleRate(hz: Int): String {
     val whole = khzTimes10 / 10
     val frac = khzTimes10 % 10
     return if (frac == 0) "${whole}kHz" else "$whole.${frac}kHz"
-}
-
-private fun channelLabel(channels: Int): String = when (channels) {
-    1 -> "Mono"
-    2 -> "2CH"
-    else -> "${channels}CH"
 }
 
 @Composable
@@ -2112,32 +1839,4 @@ internal fun GlyphButton(
             Icon(icon, contentDescription = description, tint = tint, modifier = Modifier.size(iconSize))
         }
     }
-}
-
-
-/** 歌词行按 startMs 升序(解析器已排序),二分找最后一个 startMs <= positionMs+80 的行;无则 -1。 */
-private fun syncedLyricIndexAt(lines: List<EchoLyricLine>, positionMs: Long): Int {
-    val target = positionMs
-    var low = 0
-    var high = lines.lastIndex
-    var result = -1
-    while (low <= high) {
-        val mid = (low + high) ushr 1
-        if (lines[mid].startMs <= target) {
-            result = mid
-            low = mid + 1
-        } else {
-            high = mid - 1
-        }
-    }
-    return result
-}
-
-private fun currentSyncedLyricText(lyrics: EchoLyrics?, positionMs: Long): String? {
-    if (lyrics == null || !lyrics.isSynced || lyrics.lines.isEmpty()) return null
-    val index = syncedLyricIndexAt(lyrics.lines, positionMs)
-    if (index < 0) return null
-    val line = lyrics.lines[index]
-    if (line.endMs?.let { positionMs >= it } == true) return null
-    return line.text.takeIf { it.isNotBlank() }
 }

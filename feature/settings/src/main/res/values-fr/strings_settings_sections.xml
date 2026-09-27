@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_section_lyrics">Paroles et notifications</string>
+    <string name="settings_section_usb">Audio USB</string>
+    <string name="settings_section_offline">Musique hors ligne</string>
+    <string name="settings_section_maintenance">Gestion de la bibliothèque</string>
+    <string name="settings_section_music_services">Services musicaux</string>
+</resources>

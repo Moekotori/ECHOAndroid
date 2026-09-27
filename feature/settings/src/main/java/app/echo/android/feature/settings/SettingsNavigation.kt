@@ -21,6 +21,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -63,15 +65,25 @@ internal fun SettingsNavigation(
     val searchResults = remember(searchItems, searchQuery) { searchSettings(searchItems, searchQuery) }
     // Pager neighbours remain composed: they must not intercept another page's back action.
     BackHandler(enabled = isActive && selected != null) {
+        focusManager.clearFocus()
+        keyboardController?.hide()
         selected = null
         searchFocus = null
     }
+    BackHandler(enabled = isActive && selected == null && searchQuery.isNotEmpty()) {
+        focusManager.clearFocus()
+        keyboardController?.hide()
+        searchQuery = ""
+    }
     // PageChrome draws its own background without providing a content color.
-    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+    CompositionLocalProvider(
+        LocalContentColor provides MaterialTheme.colorScheme.onSurface,
+        LocalSettingsCompactMode provides compactMode,
+    ) {
         AnimatedContent(
             targetState = selected,
             transitionSpec = { if (targetState == null) motion.pagePop() else motion.pagePush() },
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().imePadding(),
             label = "settings-navigation",
         ) { category ->
             stateHolder.SaveableStateProvider(category?.name ?: "home") {
@@ -82,12 +94,17 @@ internal fun SettingsNavigation(
                     badgeContent = {},
                     titleContent = {
                         Row(Modifier.heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-                            if (category != null) IconButton(onClick = { selected = null; searchFocus = null }) {
+                            if (category != null) IconButton(onClick = {
+                                focusManager.clearFocus()
+                                keyboardController?.hide()
+                                selected = null
+                                searchFocus = null
+                            }) {
                                 Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.settings_back), tint = MaterialTheme.colorScheme.onSurface)
                             }
                             Text(
                                 stringResource(category?.title ?: R.string.settings_title),
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1f).semantics { heading() },
                                 color = MaterialTheme.colorScheme.onSurface,
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.SemiBold,
@@ -97,10 +114,10 @@ internal fun SettingsNavigation(
                 ) {
                     Column(
                         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                            .padding(top = 2.dp, bottom = 172.dp),
+                            .padding(top = 8.dp, bottom = 172.dp),
                         verticalArrangement = Arrangement.spacedBy(
                             when {
-                                category != null -> if (compactMode) 8.dp else 12.dp
+                                category != null -> if (compactMode) 12.dp else 20.dp
                                 compactMode -> 12.dp
                                 else -> 16.dp
                             },
@@ -127,10 +144,10 @@ internal fun SettingsNavigation(
                                         style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.Medium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(start = 16.dp, top = 4.dp),
+                                        modifier = Modifier.padding(start = 12.dp, top = 4.dp).semantics { heading() },
                                     )
                                     Surface(
-                                        shape = RoundedCornerShape(18.dp),
+                                        shape = RoundedCornerShape(20.dp),
                                         color = settingsPanelColor(),
                                     ) {
                                         Column {
@@ -167,7 +184,7 @@ internal fun SettingsNavigation(
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Normal,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 4.dp),
+                                modifier = Modifier.padding(horizontal = 12.dp),
                             )
                             CompositionLocalProvider(LocalSettingsSearchFocus provides searchFocus) {
                                 content(category)
@@ -225,27 +242,11 @@ private fun SettingsActionRow(
 
 @Composable
 private fun SettingsCategoryRow(category: SettingsCategory, summary: String, compactMode: Boolean, onClick: () -> Unit) {
-    Surface(
+    SettingsActionRow(
+        icon = category.icon,
+        title = stringResource(category.title),
+        summary = summary,
+        compactMode = compactMode,
         onClick = onClick,
-        color = Color.Transparent,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(
-            Modifier.padding(horizontal = 16.dp, vertical = if (compactMode) 6.dp else 8.dp).heightIn(min = 48.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)) {
-                Icon(category.icon, null, Modifier.padding(8.dp).size(20.dp), tint = MaterialTheme.colorScheme.primary)
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(stringResource(category.title), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                Text(summary, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2, overflow = TextOverflow.Ellipsis)
-            }
-            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
+    )
 }

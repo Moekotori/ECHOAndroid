@@ -8,6 +8,18 @@ import org.junit.Test
 
 class EchoLinkDiscoveryPolicyTest {
     @Test
+    fun onlyExplicitDirectSupportSkipsPairing() {
+        for (direct in listOf(null, "", "0", "true", "1")) {
+            val txt = mutableMapOf("auth" to "pairing")
+            if (direct != null) txt["direct"] = direct
+            val device = EchoLinkDiscoveryPolicy.deviceFromResolved(
+                serviceName = "pc", host = "192.168.1.20", port = 26789, txt = txt,
+            )!!
+            assertEquals(direct != "1", device.requiresPairing)
+        }
+    }
+
+    @Test
     fun resolvedServiceBecomesLanDeviceWithoutToken() {
         val device = EchoLinkDiscoveryPolicy.deviceFromResolved(
             serviceName = "pc-echo-office",

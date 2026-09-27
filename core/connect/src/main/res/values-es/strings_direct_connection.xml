@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="connect_direct_unavailable">Este PC rechazó el acceso sin emparejamiento. Conecta ambos dispositivos a la misma red local y pega un nuevo enlace completo de emparejamiento de Echo Link en ECHOSteam.</string>
+    <string name="connect_direct_unavailable">El PC rechazó la conexión directa. Activa Echo Link y usa una versión de ECHOSteam compatible con conexión directa por LAN, o pega un nuevo enlace completo de emparejamiento.</string>
 </resources>

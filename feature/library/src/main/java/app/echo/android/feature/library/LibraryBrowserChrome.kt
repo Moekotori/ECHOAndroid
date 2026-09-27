@@ -37,14 +37,14 @@ internal fun LibraryBrowserFrame(
 ) {
     Surface(Modifier.fillMaxSize(), color = echoPageBackgroundColor()) {
         Box(Modifier.statusBarsPadding().imePadding(), contentAlignment = Alignment.TopCenter) {
-            Column(Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxSize().padding(horizontal = 24.dp)) {
-                Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxSize().padding(start = 24.dp)) {
+                Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp, end = 24.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.feature_library_library_848e9b), Modifier.weight(1f),
                         style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Medium)
                     actions()
                 }
-                sources()
-                LibraryInlineSearch(query, onQueryChange, Modifier.padding(vertical = 10.dp), searchPlaceholder)
+                Box(Modifier.padding(end = 24.dp)) { sources() }
+                LibraryInlineSearch(query, onQueryChange, Modifier.padding(top = 10.dp, bottom = 10.dp, end = 24.dp), searchPlaceholder)
                 content()
             }
         }

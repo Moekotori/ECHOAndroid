@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="echo_link_direct_address_hint">For the first connection, enable Echo Link in ECHOSteam and paste its complete pairing link within two minutes. Keep both devices on the same LAN. Paired PCs can reconnect directly.</string>
-    <string name="echo_link_pairing_entry">Pairing link or PC address</string>
+    <string name="echo_link_direct_address_hint">Enable Echo Link in ECHOSteam, then select a nearby PC or enter its IP address on the same LAN. PCs without direct connection support can still use a complete pairing link.</string>
+    <string name="echo_link_pairing_entry">PC address or pairing link</string>
 </resources>

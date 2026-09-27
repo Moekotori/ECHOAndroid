@@ -53,7 +53,7 @@ internal fun SettingsFontPreview(
                 color = scheme.onSurfaceVariant,
                 style = TextStyle(
                     fontFamily = family,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Normal,
                     fontSize = (12f * scale).sp,
                     lineHeight = (18f * scale).sp,
                 ),

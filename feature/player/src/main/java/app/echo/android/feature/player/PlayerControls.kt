@@ -15,6 +15,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Lyrics
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -80,14 +82,7 @@ internal object PlayerControlIcons {
             lineTo(15.3f, 12.85f); quadTo(16.65f, 12f, 15.3f, 11.15f); close()
         }
     }
-    val Lyrics = vector("PlayerLyrics") {
-        path(stroke = SolidColor(Color.Black), strokeLineWidth = 1.8f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
-            moveTo(5f, 6f); lineTo(19f, 6f)
-            moveTo(5f, 11f); lineTo(16f, 11f)
-            moveTo(5f, 16f); lineTo(12f, 16f)
-            moveTo(16.5f, 15f); lineTo(19f, 15f); lineTo(19f, 18f); quadTo(19f, 20f, 17f, 20.5f)
-        }
-    }
+    val Lyrics = Icons.Outlined.Lyrics
     val Settings = vector("PlayerSettings") {
         path(stroke = SolidColor(Color.Black), strokeLineWidth = 1.8f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
             moveTo(4f, 7f); lineTo(8f, 7f); moveTo(12f, 7f); lineTo(20f, 7f)

@@ -42,3 +42,49 @@ Focused control review: title, artist, play/queue icons, navigation labels and s
 Final result: blocked
 
 Blocker: full motion/gesture acceptance is not completed. Captured light/dark material states and build checks passed; no claim of complete device or release acceptance.
+
+---
+
+# Record sleeve player — visual QA
+
+Date: 2026-09-27. Scope: the approved light song-detail mock, with icon-only bottom utilities, implemented in the existing Android player module.
+
+## Evidence
+
+- Selected reference: `C:/Users/Moe/.codex/generated_images/01a0e18e-65c5-7311-81ee-a70ad6700189/exec-e535f23c-7b87-47b3-a61a-f8cd454fe52e.png` (839 × 1874).
+- Final Android screenshot: `C:/Users/Moe/.codex/visualizations/2026/09/27/01a0e18e-65c5-7311-81ee-a70ad6700189/sleeve-final.png` (1080 × 2400).
+- Full comparison: `C:/Users/Moe/.codex/visualizations/2026/09/27/01a0e18e-65c5-7311-81ee-a70ad6700189/comparison.png`.
+- Typography/seek comparison: `C:/Users/Moe/.codex/visualizations/2026/09/27/01a0e18e-65c5-7311-81ee-a70ad6700189/type-comparison.png`.
+- Android 16 emulator, 420 dpi / 2.625 density; physical viewport approximately 411 × 914 dp. Native status/navigation bars remain OS-owned. The comparison crops them to 1080 × 2244 and scales each image to equal width while preserving aspect ratio. The mock's content-only viewport is taller; it is not stretched to disguise the difference.
+- Both final images show the King Crimson cover page with pause controls. Live progress differs by a few seconds. The app uses real embedded artwork and full metadata, including album subtitle and the song's edition suffix; the generated reference simplified these.
+
+## Comparison and fixes
+
+1. Initial capture (`sleeve-first.png`): excessive title contrast, thin body font, and bottom utilities outside the first viewport. Replaced the initial font choice with fixed upstream font instances and reserved space for the controls in a bounded layout.
+2. Intermediate capture (`sleeve-static-fonts.png`): cover became too small with the full long title. Kept the edition suffix in a separate small text line, corrected small-text line heights, and reduced excess spacing. The title remains complete, and the cover can use the remaining height.
+3. Final comparisons: Cormorant Garamond Medium for display text, Outfit Regular for metadata; both fonts are bundled with OFL licenses. Refined title size/weight against the reference. The native thin scrubber uses a single drawing origin so the dot is centered on its line.
+
+## Required fidelity surfaces
+
+- Typography: serif display title, normal sans-serif artist/metadata, tracked uppercase album and brand. Title scales within 28–46 sp for long names. The comparison includes a focused typography crop. CJK/system fallback and very large accessibility text have not been visually sampled.
+- Layout: square artwork, fine divider, title and favorite on the same row, one quality line, thin scrubber, five transport controls, then two icon-only utilities. All controls are visible at the verified viewport. Short windows and enlarged text can scroll. Native insets and extra real metadata account for the modest cover-size difference from the mock.
+- Colors: paper `#FAF7F2`, ink `#242830`, wine `#78364B`; dark system icons on the paper screen, restored when leaving it.
+- Artwork: real album image retained with square crop and no rounding. The source mock contains an AI-redrawn rendition; replacing real artwork with that rendition would be incorrect.
+- Copy: real title/artist/album/format/position; no visible queue or cast captions. Accessibility descriptions remain present. Playback settings moved to the top ellipsis; artwork tap and horizontal paging still reach lyrics.
+
+## Validation
+
+- `:feature:player:testDebugUnitTest`: 36 tests, zero failures/errors, including edition suffix preservation.
+- `:app:assembleDebug`: passed after final UI/font edits; APK installed on the emulator.
+- Runtime: playback session reached `PLAYING`; pause, previous-track action, seek position update, queue opening, artwork-to-lyrics navigation, and return swipe observed. Playback paused after verification.
+- No recent AndroidRuntime error observed during the smoke check.
+- No PC/protocol/audio-engine edits. No instrumented or lengthy performance tests. No claim of physical-device audio quality, measured performance improvement, cast-device connectivity, or tablet visual acceptance.
+
+## Remaining polish
+
+- P3: the existing Android shuffle/repeat/queue vectors have slightly heavier strokes than the generated mock. Their actions and selected states remain functional.
+- Expected adaptation: real album subtitle and edition qualifier add text absent from the mock; native system insets reduce available content height.
+
+No remaining actionable P0/P1/P2 finding in the verified portrait flow.
+
+final result: passed

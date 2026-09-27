@@ -64,17 +64,15 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.EchoArtworkImage
-import app.echo.android.design.echoMiniPlayerArtworkSize
+import app.echo.android.design.EchoPlayerArtwork
 import app.echo.android.design.echoAccentColor
 import app.echo.android.design.EchoMotion
-import app.echo.android.design.echoSharedPlayerArtwork
 import app.echo.android.design.echoEdgeLight
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.design.progressFraction
-import app.echo.android.design.echoFrostedGlass
+import app.echo.android.design.echoBackdropGlass
 import app.echo.android.design.echoTheme
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
@@ -143,7 +141,6 @@ fun MiniPlayer(
         label = "mini-player-progress-alpha",
     )
     val playbackDescription = stringResource(L10nR.string.feature_player_play_or_pause_37a70f)
-    val shape = RoundedCornerShape(cornerRadius)
     LaunchedEffect(status.track?.id, lightweight) {
         if (lightweight) {
             trackEntrance.snapTo(1f)
@@ -159,7 +156,7 @@ fun MiniPlayer(
         modifier = modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 64.dp)
-            .echoFrostedGlass(shape = shape, elevation = surfaceElevation)
+            .echoBackdropGlass(cornerRadius = cornerRadius, elevation = surfaceElevation)
             .padding(
                 start = if (compactDock) 4.dp else 12.dp,
                 top = if (compactDock) 7.dp else 5.dp,
@@ -180,101 +177,112 @@ fun MiniPlayer(
                     rotation = if (onShowDock != null) 180f else 0f,
                 )
             }
-            Row(
-                modifier = Modifier
-                    .weight(1f)
+            Box(
+                modifier = Modifier.weight(1f)
                     .onSizeChanged { widthPx = it.width.toFloat().coerceAtLeast(1f) }
-                    .clipToBounds()
-                    .graphicsLayer {
-                        translationX = dragOffset.floatValue
-                        alpha = (0.65f + 0.35f * trackEntrance.value) *
-                            (1f - 0.35f * (abs(dragOffset.floatValue) / widthPx).coerceIn(0f, 1f))
-                        translationY = (1f - trackEntrance.value) * 4.dp.toPx()
-                    }
-                    .clip(RoundedCornerShape(12.dp))
-                    .echoClickable(enabled = onExpand != null) { onExpand?.invoke() }
-                    .draggable(
-                        orientation = Orientation.Horizontal,
-                        enabled = canSwitch,
-                        state = rememberDraggableState { delta ->
-                            dragOffset.floatValue = (dragOffset.floatValue + delta)
-                                .coerceIn(-widthPx * 0.45f, widthPx * 0.45f)
-                        },
-                        onDragStarted = { settleJob?.cancel() },
-                        onDragStopped = { velocity ->
-                            val offset = dragOffset.floatValue
-                            val threshold = widthPx * 0.22f
-                            val fastSwipe = abs(velocity) > flingThresholdPx && abs(offset) > minimumFlingDistancePx && velocity * offset > 0f
-                            if (abs(offset) >= threshold || fastSwipe) {
-                                haptics.tick()
-                                if (offset < 0f) nextAction?.invoke() else previousAction?.invoke()
-                            }
-                            settleJob = scope.launch {
-                                if (lightweight) {
-                                    dragOffset.floatValue = 0f
-                                } else {
-                                    animate(
-                                        initialValue = dragOffset.floatValue,
-                                        targetValue = 0f,
-                                        initialVelocity = velocity.coerceIn(-1800f, 1800f),
-                                        animationSpec = MiniPlayerSwipeReturnSpring,
-                                    ) { value, _ -> dragOffset.floatValue = value }
-                                }
-                            }
-                        },
-                    ),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    .clipToBounds(),
+                contentAlignment = Alignment.Center,
             ) {
-                EchoArtworkImage(
-                    artworkUri = status.track?.artworkUri,
-                    contentDescription = null,
-                    modifier = Modifier.echoSharedPlayerArtwork(status.track?.id, expandedArtwork = false).size(44.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    sizeClass = echoMiniPlayerArtworkSize(),
-                )
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(if (compactDock) 2.dp else 1.dp),
-                ) {
-                    Text(
-                        status.track?.title ?: "ECHO Mobile",
-                        modifier = Modifier.basicMarquee(
-                            iterations = Int.MAX_VALUE,
-                            initialDelayMillis = 700,
-                            repeatDelayMillis = 1600,
+                Row(
+                    modifier = Modifier.fillMaxWidth()
+                        .graphicsLayer {
+                            translationX = dragOffset.floatValue
+                            alpha = (0.65f + 0.35f * trackEntrance.value) *
+                                (1f - 0.55f * (abs(dragOffset.floatValue) / (widthPx * MiniPlayerSwipeCommitFraction)).coerceIn(0f, 1f))
+                            translationY = (1f - trackEntrance.value) * 4.dp.toPx()
+                        }
+                        .clip(RoundedCornerShape(12.dp))
+                        .echoClickable(enabled = onExpand != null) { onExpand?.invoke() }
+                        .draggable(
+                            orientation = Orientation.Horizontal,
+                            enabled = canSwitch,
+                            state = rememberDraggableState { delta ->
+                                dragOffset.floatValue = (dragOffset.floatValue + delta)
+                                    .coerceIn(-widthPx * 0.45f, widthPx * 0.45f)
+                            },
+                            onDragStarted = { settleJob?.cancel() },
+                            onDragStopped = { velocity ->
+                                val offset = dragOffset.floatValue
+                                val threshold = widthPx * MiniPlayerSwipeCommitFraction
+                                val fastSwipe = abs(velocity) > flingThresholdPx && abs(offset) > minimumFlingDistancePx && velocity * offset > 0f
+                                if (abs(offset) >= threshold || fastSwipe) {
+                                    haptics.tick()
+                                    if (offset < 0f) nextAction?.invoke() else previousAction?.invoke()
+                                }
+                                settleJob = scope.launch {
+                                    if (lightweight) {
+                                        dragOffset.floatValue = 0f
+                                    } else {
+                                        animate(
+                                            initialValue = dragOffset.floatValue,
+                                            targetValue = 0f,
+                                            initialVelocity = velocity.coerceIn(-1800f, 1800f),
+                                            animationSpec = MiniPlayerSwipeReturnSpring,
+                                        ) { value, _ -> dragOffset.floatValue = value }
+                                    }
+                                }
+                            },
                         ),
-                        maxLines = 1,
-                        overflow = TextOverflow.Clip,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (dark) Color.White.copy(alpha = 0.96f) else scheme.onSurface,
-                        style = MaterialTheme.typography.titleSmall,
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    EchoPlayerArtwork(
+                        artworkUri = status.track?.artworkUri,
+                        trackId = status.track?.id,
+                        expandedArtwork = false,
+                        contentDescription = null,
+                        modifier = Modifier.size(44.dp),
                     )
-                    Text(
-                        status.track?.artist ?: stringResource(L10nR.string.feature_player_ready_97b946),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = if (dark) Color.White.copy(alpha = 0.60f) else scheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    LinearProgressIndicator(
-                        // 在绘制期读进度 State:tick 只重绘进度条,不触发任何重组
-                        progress = {
-                            val positionMs = positionState?.value?.positionMs
-                                ?: statusState.value.positionMs
-                            progressFraction(positionMs, activeDurationMs)
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = if (compactDock) 2.dp else 1.dp)
-                            .height(2.dp)
-                            .clip(RoundedCornerShape(99.dp))
-                            .graphicsLayer { alpha = progressAlpha },
-                        color = if (dark) theme.accent.copy(alpha = 0.62f) else scheme.primary,
-                        trackColor = if (dark) Color.White.copy(alpha = 0.08f) else scheme.outlineVariant.copy(alpha = 0.55f),
-                        gapSize = 0.dp,
-                        drawStopIndicator = {},
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(if (compactDock) 2.dp else 1.dp),
+                    ) {
+                        Text(
+                            status.track?.title ?: "ECHO Mobile",
+                            modifier = Modifier.basicMarquee(
+                                iterations = Int.MAX_VALUE,
+                                initialDelayMillis = 700,
+                                repeatDelayMillis = 1600,
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Clip,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (dark) Color.White.copy(alpha = 0.96f) else scheme.onSurface,
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        Text(
+                            status.track?.artist ?: stringResource(L10nR.string.feature_player_ready_97b946),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = if (dark) Color.White.copy(alpha = 0.60f) else scheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        LinearProgressIndicator(
+                            // 在绘制期读进度 State:tick 只重绘进度条,不触发任何重组
+                            progress = {
+                                val positionMs = positionState?.value?.positionMs
+                                    ?: statusState.value.positionMs
+                                progressFraction(positionMs, activeDurationMs)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = if (compactDock) 2.dp else 1.dp)
+                                .height(2.dp)
+                                .clip(RoundedCornerShape(99.dp))
+                                .graphicsLayer { alpha = progressAlpha },
+                            color = if (dark) theme.accent.copy(alpha = 0.62f) else scheme.primary,
+                            trackColor = if (dark) Color.White.copy(alpha = 0.08f) else scheme.outlineVariant.copy(alpha = 0.55f),
+                            gapSize = 0.dp,
+                            drawStopIndicator = {},
+                        )
+                    }
+                }
+                if (canSwitch) {
+                    MiniPlayerSwipeFeedback(
+                        offset = { dragOffset.floatValue },
+                        width = { widthPx },
+                        modifier = Modifier.matchParentSize(),
                     )
                 }
             }

@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="connect_direct_unavailable">電腦拒絕了未配對存取。請讓兩台裝置連接同一區域網路，並貼上電腦 ECHOSteam 的 Echo Link 頁面新產生的完整配對連結。</string>
+    <string name="connect_direct_unavailable">電腦拒絕了直接連線。請開啟 Echo Link 並使用支援區域網路直接連線的 ECHOSteam 版本，或貼上新產生的完整配對連結。</string>
 </resources>

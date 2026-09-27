@@ -5,7 +5,6 @@ import androidx.compose.ui.res.stringResource
 
 import androidx.compose.foundation.background
 import app.echo.android.design.echoClickable
-import app.echo.android.design.echoPageBackgroundColor
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -74,7 +73,8 @@ fun SearchScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(echoPageBackgroundColor())
+            // Search is a reading surface, including when the shell has custom artwork/video.
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
         SearchTopBar(
@@ -150,8 +150,8 @@ private fun SearchTopBar(
                 }
             },
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = homePanelColor(0.94f),
-                unfocusedContainerColor = homePanelColor(0.94f),
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
                 cursorColor = homeBodyColor(),

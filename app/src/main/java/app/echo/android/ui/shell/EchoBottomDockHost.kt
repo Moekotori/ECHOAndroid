@@ -28,6 +28,7 @@ import app.echo.android.BottomDock
 import app.echo.android.EchoAndroidViewModel
 import app.echo.android.EchoTab
 import app.echo.android.design.EchoMotion
+import app.echo.android.design.echoBackdropGlassActive
 import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.design.echoTheme
 import app.echo.android.design.rememberSilkPagerFlingBehavior
@@ -88,6 +89,7 @@ internal fun EchoBottomDockHost(
             visibilityThreshold = 0.01f,
         )
     }
+    val liveGlass = echoBackdropGlassActive()
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -95,9 +97,9 @@ internal fun EchoBottomDockHost(
                 Brush.verticalGradient(
                     if (darkTheme) {
                         val theme = echoTheme()
-                        listOf(Color.Transparent, theme.night.copy(alpha = 0.50f), theme.night.copy(alpha = 0.94f))
+                        listOf(Color.Transparent, theme.night.copy(alpha = if (liveGlass) 0.12f else 0.50f), theme.night.copy(alpha = if (liveGlass) 0.36f else 0.94f))
                     } else {
-                        listOf(Color.Transparent, echoTheme().night.copy(alpha = 0.50f), echoTheme().night.copy(alpha = 0.94f))
+                        listOf(Color.Transparent, echoTheme().night.copy(alpha = if (liveGlass) 0.12f else 0.50f), echoTheme().night.copy(alpha = if (liveGlass) 0.36f else 0.94f))
                     },
                 ),
             )
@@ -140,10 +142,11 @@ internal fun EchoBottomDockHost(
                     rememberSilkPagerFlingBehavior(pagerState),
                 ),
                 selectedTabProgress = dockTabProgress,
-                progressLive = pagerState.isScrollInProgress,
                 onLightSurface = !darkTheme,
                 onSelectTab = onSelectTab,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .widthIn(max = LocalEchoContentMaxWidth.current)
+                    .fillMaxWidth(),
             )
         }
     }

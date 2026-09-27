@@ -27,7 +27,7 @@ object EchoLinkDiscoveryPolicy {
             host = endpointHost,
             port = endpointPort,
             version = version,
-            requiresPairing = true,
+            requiresPairing = txt["direct"] != "1",
             serviceName = serviceName,
         )
     }

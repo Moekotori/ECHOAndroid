@@ -98,6 +98,7 @@ import app.echo.android.feature.connect.ConnectScreen
 import app.echo.android.feature.home.SearchScreen
 import app.echo.android.feature.player.LockLyricsScene
 import app.echo.android.feature.player.PlaybackQueueSheet
+import app.echo.android.ui.playback.EchoCastSheetHost
 import app.echo.android.lock.EchoLockLyricsPolicy
 import app.echo.android.lock.isEchoKeyguardLocked
 import app.echo.android.feature.settings.DiagnosticsScreen
@@ -115,6 +116,9 @@ import app.echo.android.ui.shell.echoSheetDepth
 import app.echo.android.design.EchoPlayerTransitionRoot
 import app.echo.android.design.EchoExpandedPlayer
 import app.echo.android.ui.shell.EchoBottomDockHost
+import app.echo.android.design.EchoGlassBackdropProvider
+import app.echo.android.design.EchoGlassSource
+import app.echo.android.design.echoGlassSource
 import app.echo.android.ui.shell.EchoPagerPage
 import app.echo.android.ui.shell.dockTab
 import app.echo.android.ui.shell.motionDuration
@@ -752,6 +756,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     }
     var lyricsLaunchToken by remember { mutableIntStateOf(0) }
     var queueSheetVisible by remember { mutableStateOf(false) }
+    var castSheetVisible by remember { mutableStateOf(false) }
     var queueDragProgress by remember { mutableFloatStateOf(0f) }
     val openLyricsRequest by EchoLaunchActions.openLyrics.collectAsStateWithLifecycle()
     LaunchedEffect(openLyricsRequest) {
@@ -886,13 +891,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     }
     fun selectDockTab(tab: EchoTab) = navigateToPage(tab.pagerPage)
     fun onNowPlayingCast() {
-        if (echoLinkSession.castActive.value) return
-        val connected = remoteClient.status.value.connectionState == EchoRemoteConnectionState.Connected
-        val canCast = phoneCastPlan !is EchoLinkCastPlan.Blocked && playbackStatus.track != null
-        if (connected && canCast) performPhoneCast()
+        castSheetVisible = true
     }
     LaunchedEffect(openCastRequest) {
         if (openCastRequest) {
+            castSheetVisible = false
             nowPlayingExpanded = false
             queueSheetVisible = false
             openCastTabNonce += 1
@@ -902,6 +905,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     }
     LaunchedEffect(openLibraryRequest) {
         if (openLibraryRequest) {
+            castSheetVisible = false
             nowPlayingExpanded = false
             queueSheetVisible = false
             searchVisible = false
@@ -977,7 +981,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     }
     EchoOverlayBackHandler(enabled = queueSheetVisible && !pluginsVisible) { queueSheetVisible = false }
     EchoOverlayBackHandler(
-        enabled = nowPlayingExpanded && !queueSheetVisible && !pluginsVisible,
+        enabled = nowPlayingExpanded && !queueSheetVisible && !castSheetVisible && !pluginsVisible,
         onProgress = {
             nowPlayingBackRecoveryJob[0]?.cancel()
             nowPlayingBackProgress = it
@@ -998,7 +1002,15 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         },
         onDismiss = { nowPlayingExpanded = false },
     )
-    val shellOverlayOpen = searchVisible || errorLogVisible || queueSheetVisible || nowPlayingExpanded || pluginsVisible
+    val shellOverlayOpen = searchVisible || errorLogVisible || queueSheetVisible || castSheetVisible || nowPlayingExpanded || pluginsVisible
+    val connectPageSettled = appVisible && screenInteractive && !shellOverlayOpen &&
+        tabPagerState.settledPage == EchoPagerPage.Connect.ordinal
+    // One owner for discovery: closing either surface must not stop the other.
+    val discoverCastDevices = appVisible && screenInteractive && (connectPageSettled || castSheetVisible)
+    DisposableEffect(viewModel, discoverCastDevices) {
+        if (discoverCastDevices) viewModel.startEchoLinkDiscovery()
+        onDispose { if (discoverCastDevices) viewModel.stopEchoLinkDiscovery() }
+    }
     EchoOverlayBackHandler(enabled = !shellOverlayOpen && libraryDetailOpen) {
         closeLibraryDetail()
     }
@@ -1024,8 +1036,14 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         effectivePerformanceMode = effectivePerformanceMode,
         customBackgroundActive = customBackgroundActive,
     ) {
+        EchoGlassBackdropProvider(
+            enabled = !shellOverlayOpen && screenInteractive && appVisible &&
+                appSettings.customBackgroundMode != EchoBackgroundMode.Video,
+        ) {
         EchoPlayerTransitionRoot(
             expanded = nowPlayingExpanded,
+            // The current record-sleeve cover is square; the compact dock keeps rounded corners.
+            expandedArtworkCornerRadius = 0.dp,
             modifier = Modifier
                 .fillMaxSize()
                 .echoLocaleSwitchLayer(
@@ -1036,7 +1054,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         ) {
             EchoCustomBackground(
                 settings = appSettings,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().echoGlassSource(EchoGlassSource.Background),
                 onLoadError = { failedUri ->
                     if (appSettings.customBackgroundUri == failedUri) {
                         android.widget.Toast.makeText(context, R.string.background_load_error, android.widget.Toast.LENGTH_LONG).show()
@@ -1076,7 +1094,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     beyondViewportPageCount = if (effectivePerformanceMode.isLightweight) 0 else 1,
                     flingBehavior = tabPagerFling,
                     pageNestedScrollConnection = tabPagerNestedScroll,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().echoGlassSource(EchoGlassSource.Content),
                 ) { page ->
                     Box(modifier = Modifier.fillMaxSize()) {
                         when (EchoPagerPage.entries[page]) {
@@ -1384,17 +1402,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             }
 
                             EchoPagerPage.Connect -> {
-                            // 只有真正停留在 Connect 页才启动 LAN 发现;
-                            // 邻页预组合(beyondViewportPageCount=1)不应常驻 NSD 扫描
-                            val connectPageSettled =
-                                appVisible && tabPagerState.settledPage == EchoPagerPage.Connect.ordinal
-                            DisposableEffect(connectPageSettled) {
-                                if (!connectPageSettled) {
-                                    return@DisposableEffect onDispose {}
-                                }
-                                viewModel.startEchoLinkDiscovery()
-                                onDispose { viewModel.stopEchoLinkDiscovery() }
-                            }
                             val remoteScanState by viewModel.remoteScanState.collectAsStateWithLifecycle()
                             val pcLibrary by remoteClient.library.collectAsStateWithLifecycle()
                             val discoveryState by viewModel.echoLinkDiscoveryState.collectAsStateWithLifecycle()
@@ -1639,6 +1646,28 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     openLyricsRequestId = lyricsLaunchToken,
                 )
             }
+            if (castSheetVisible) {
+                EchoCastSheetHost(
+                    viewModel = viewModel,
+                    appSettings = appSettings,
+                    playbackStatus = playbackStatus,
+                    remoteStatus = remoteStatus,
+                    castPlan = phoneCastPlan,
+                    trackFormat = phoneCastFormatLabel,
+                    trackLossless = phoneCastLossless,
+                    casting = castingToPc || pendingCast != null,
+                    castSessionActive = castSessionActive,
+                    castSessionName = castSessionName,
+                    sendingAddress = sendingCastAddress,
+                    castSetupError = castSetupError,
+                    activeRendererId = dlnaRenderer?.id,
+                    onCastToAddress = ::requestPhoneCast,
+                    onCastToConnected = ::performPhoneCast,
+                    onCastToRenderer = ::performDlnaCast,
+                    onStopCast = ::stopPhoneCast,
+                    onDismiss = { castSheetVisible = false },
+                )
+            }
             // 队列 sheet 关闭时不收集队列流,避免曲目切换/队列变更触发根作用域重组;
             // 关闭后保留最后一次快照,退出动画期间内容不跳变
             val playbackQueue by produceState(
@@ -1880,6 +1909,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     }
                 },
             )
+        }
         }
     }
 }

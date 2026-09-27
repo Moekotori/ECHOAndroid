@@ -6,20 +6,27 @@ import androidx.compose.animation.BoundsTransform
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.State
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 
 private val LocalPlayerSharedScope = compositionLocalOf<SharedTransitionScope?> { null }
 private val LocalPlayerVisibilityScope = compositionLocalOf<AnimatedVisibilityScope?> { null }
 private val LocalPlayerExpanded = compositionLocalOf { false }
+private val LocalPlayerArtworkCorner = compositionLocalOf<State<Dp>?> { null }
 private data class PlayerArtworkKey(val trackId: String)
 
 /** Reuse the expanded image cache while the thumbnail is being drawn at hero size on return. */
@@ -34,16 +41,46 @@ fun echoMiniPlayerArtworkSize(): EchoArtworkSize =
 fun EchoPlayerTransitionRoot(
     expanded: Boolean,
     modifier: Modifier = Modifier,
+    expandedArtworkCornerRadius: Dp = 24.dp,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    // This state survives mounting/unmounting either endpoint. Read it only in the artwork leaf.
+    val corner = animateDpAsState(
+        targetValue = if (expanded) expandedArtworkCornerRadius else 10.dp,
+        animationSpec = if (lightweight) snap() else EchoMotion.silkDp(520),
+        label = "player-artwork-corner",
+    )
     SharedTransitionLayout(modifier) {
         CompositionLocalProvider(
             LocalPlayerSharedScope provides this,
             LocalPlayerExpanded provides expanded,
+            LocalPlayerArtworkCorner provides corner,
         ) {
             Box(Modifier.fillMaxSize(), content = content)
         }
     }
+}
+
+/** The two endpoints share both bounds and corner motion without recomposing the player page. */
+@Composable
+fun EchoPlayerArtwork(
+    artworkUri: String?,
+    trackId: String?,
+    expandedArtwork: Boolean,
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    restingCornerRadius: Dp = if (expandedArtwork) 24.dp else 10.dp,
+) {
+    val corner = if (LocalEchoEffectivePerformanceMode.current.isLightweight) restingCornerRadius
+        else LocalPlayerArtworkCorner.current?.value ?: restingCornerRadius
+    EchoArtworkImage(
+        artworkUri = artworkUri,
+        contentDescription = contentDescription,
+        modifier = Modifier.echoSharedPlayerArtwork(trackId, expandedArtwork).then(modifier),
+        shape = RoundedCornerShape(corner),
+        sizeClass = if (expandedArtwork) EchoArtworkSize.Hero else echoMiniPlayerArtworkSize(),
+    )
 }
 
 /** Shared-element animations participate in this visibility transition, including its disposal. */

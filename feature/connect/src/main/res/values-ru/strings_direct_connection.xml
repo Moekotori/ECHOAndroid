@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="echo_link_direct_address_hint">Для первого подключения включите Echo Link в ECHOSteam и вставьте полную ссылку сопряжения в течение двух минут. Оба устройства должны быть в одной локальной сети. После сопряжения можно подключаться напрямую.</string>
-    <string name="echo_link_pairing_entry">Ссылка сопряжения или адрес ПК</string>
+    <string name="echo_link_direct_address_hint">Включите Echo Link в ECHOSteam, затем выберите ПК поблизости или введите его IP в той же локальной сети. Для ПК без прямого подключения можно использовать полную ссылку сопряжения.</string>
+    <string name="echo_link_pairing_entry">Адрес ПК или ссылка сопряжения</string>
 </resources>

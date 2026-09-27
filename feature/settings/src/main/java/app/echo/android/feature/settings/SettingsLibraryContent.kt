@@ -35,6 +35,13 @@ internal fun SettingsLibraryContent(
             checked = watchedFolderRescanEnabled,
             onCheckedChange = onWatchedFolderRescanEnabledChange,
         )
+        SettingsActionRow(
+            title = stringResource(R.string.settings_local_music),
+            detail = stringResource(R.string.settings_local_music_detail),
+            onClick = onOpenLibrary,
+        )
+    }
+    SettingsSectionCard(title = stringResource(R.string.settings_section_offline)) {
         SettingsSwitchRow(
             title = stringResource(R.string.settings_offline_wifi_only),
             detail = stringResource(R.string.settings_offline_wifi_only_detail),
@@ -49,11 +56,8 @@ internal fun SettingsLibraryContent(
                 Formatter.formatFileSize(context, LibraryOfflinePolicy.DefaultQuotaBytes),
             ),
         )
-        SettingsActionRow(
-            title = stringResource(R.string.settings_local_music),
-            detail = stringResource(R.string.settings_local_music_detail),
-            onClick = onOpenLibrary,
-        )
+    }
+    SettingsSectionCard(title = stringResource(R.string.settings_section_maintenance)) {
         SettingsLibraryCleanupRow(onCleanupLocalLibrary)
         SettingsClearLibraryIndexRow(onClearLocalLibraryIndex)
     }
