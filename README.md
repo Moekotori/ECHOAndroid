@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="./logo1.png" alt="ECHO Android" width="112" />
-</p>
-
 <h1 align="center">ECHO Android</h1>
 
 <p align="center"><strong>把自己的音乐带在身边，也把手机变成桌面 ECHO 的遥控器。</strong></p>
@@ -120,4 +116,6 @@ Linux / macOS 使用 `./gradlew assembleDebug`。APK 输出到 `app/build/output
 
 ## 许可
 
-本仓库采用 [MIT License](./LICENSE)。第三方组件遵循各自的许可，随附说明见 [音频组件许可证目录](./core/playback/third_party/licenses)。
+Copyright (c) 2026 Moekotori.
+
+本仓库采用 [GNU Lesser General Public License v3.0（LGPL-3.0）](./LICENSE)，并附带其引用的 [GNU GPL v3.0 全文](./LICENSE-GPL)。第三方组件遵循各自的许可，随附说明见 [音频组件许可证目录](./core/playback/third_party/licenses)。
