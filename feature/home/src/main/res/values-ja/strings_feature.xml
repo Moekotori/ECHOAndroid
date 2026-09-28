@@ -99,6 +99,8 @@
     <string name="feature_home_search_local_music_albums_and_artists_443a4f">"端末の曲、アルバム、アーティストを検索"</string>
     <string name="feature_home_search_local_music_b9c195">"端末の音楽を検索..."</string>
     <string name="feature_home_search_songs_albums_and_artists_c46634">"曲、アルバム、アーティストを検索"</string>
+    <string name="feature_home_listen_together_title">一緒に聴く</string>
+    <string name="feature_home_listen_together_detail">PC の一緒に聴くルームに参加</string>
     <string name="feature_home_seeking_ea77e5">"シーク中"</string>
     <string name="feature_home_shuffle_957ce0">"シャッフル"</string>
     <string name="feature_home_shuffle_on_c7c5c4">"シャッフルオン"</string>

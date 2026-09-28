@@ -8,4 +8,6 @@
     <string name="player_appearance_text_size">Размер текста</string>
     <string name="player_appearance_cover_size">Размер обложки</string>
     <string name="player_appearance_percent">%1$d%%</string>
+    <string name="player_appearance_pixel_handheld">Пиксели</string>
+    <string name="player_appearance_type_poster">Типоплакат</string>
 </resources>

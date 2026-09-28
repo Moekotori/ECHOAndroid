@@ -848,6 +848,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         playbackController.pause()
     }
 
+    fun usbExclusiveOutputActive(): Boolean = playbackController.isUsbExclusiveEnabled()
+
     fun playPause() {
         playbackController.playPause()
     }
@@ -1514,6 +1516,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         updateSettings {
             setUiDensityScale(value)
         }
+    }
+
+    fun setLyricsPageStyle(value: String) {
+        updateSettings { setLyricsPageStyle(value) }
     }
 
     fun setLyricsFontFamily(value: String) {

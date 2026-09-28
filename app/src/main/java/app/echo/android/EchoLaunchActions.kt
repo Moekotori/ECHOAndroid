@@ -59,4 +59,16 @@ object EchoLaunchActions {
     fun consumeOpenCast() {
         _openCast.value = false
     }
+
+    private val _listeningInvite = MutableStateFlow<String?>(null)
+    val listeningInvite: StateFlow<String?> = _listeningInvite.asStateFlow()
+
+    fun requestOpenListening(code: String) {
+        val trimmed = code.trim()
+        if (trimmed.isNotEmpty()) _listeningInvite.value = trimmed
+    }
+
+    fun consumeListeningInvite() {
+        _listeningInvite.value = null
+    }
 }

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="listening_notification_channel">함께 듣기</string>
+    <string name="listening_notification_title">함께 듣기</string>
+    <string name="listening_notification_stop">듣기 중지</string>
+</resources>

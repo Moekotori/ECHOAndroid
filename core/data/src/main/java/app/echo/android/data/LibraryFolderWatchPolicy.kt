@@ -16,6 +16,7 @@ data class WatchedLibraryTree(
 )
 
 object LibraryFolderWatchPolicy {
+    const val RescanEnabledByDefault = true
     const val MaxTrees = 8
     const val ForegroundDebounceMs = 1_200L
     const val AutoRescanMinIntervalMs = 30_000L
@@ -113,6 +114,13 @@ object LibraryFolderWatchPolicy {
 
     fun scanMadeLibraryChanges(inserted: Int, updated: Int, deleted: Int): Boolean =
         inserted > 0 || updated > 0 || deleted > 0
+
+    /**
+     * A directory's lastModified is not proof its children are unchanged. SAF providers often
+     * leave it alone when a file is added or removed, so auto-rescan must list every folder.
+     * Unchanged files still skip metadata reads.
+     */
+    fun shouldReuseCachedDirectoryListing(): Boolean = false
 
     internal fun canonicalUri(uri: String): String {
         val decoded = runCatching {

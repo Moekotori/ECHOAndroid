@@ -146,6 +146,13 @@ class MainActivity : ComponentActivity() {
             intent.removeExtra(EchoPlaybackIntents.EXTRA_OPEN_LYRICS)
             EchoLaunchActions.requestOpenLyrics()
         }
+        val listeningCode = intent.dataString?.takeIf { it.startsWith("echo-listen:") }
+        if (listeningCode != null) {
+            EchoLaunchActions.requestOpenListening(listeningCode)
+            intent.action = Intent.ACTION_MAIN
+            intent.data = null
+            return
+        }
         val incoming = EchoIncomingAudio.urisFromIntent(intent)
         if (incoming.isNotEmpty()) {
             EchoLaunchActions.requestPlayIncoming(incoming.map { it.toString() })

@@ -98,7 +98,7 @@
     <string name="settings_audio_tags">Etiquetas de formato de audio</string>
     <string name="settings_audio_tags_detail">Mostrar etiquetas pequeñas como FLAC y 192 kHz en la lista de canciones</string>
     <string name="settings_watched_folder_rescan">Vigilar carpetas escaneadas</string>
-    <string name="settings_watched_folder_rescan_detail">Al volver a ECHO, vuelve a escanear de forma incremental las carpetas que ya escaneaste. Desactivado de forma predeterminada</string>
+    <string name="settings_watched_folder_rescan_detail">Al volver a ECHO, vuelve a revisar las carpetas elegidas y detecta canciones añadidas o eliminadas. Los archivos sin cambios no se vuelven a leer</string>
     <string name="settings_local_music">Música local</string>
     <string name="settings_local_music_detail">Explorar canciones, álbumes, artistas y el escaneo</string>
     <string name="settings_pin_queue_offline">Mantener la cola actual sin conexión</string>

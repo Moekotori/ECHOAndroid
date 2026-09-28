@@ -92,7 +92,7 @@
     <string name="settings_audio_tags">音声フォーマットタグ</string>
     <string name="settings_audio_tags_detail">曲リストに FLAC、192kHz などの小さなタグを表示します</string>
     <string name="settings_watched_folder_rescan">スキャン済みフォルダーを監視</string>
-    <string name="settings_watched_folder_rescan_detail">ECHO に戻ったとき、以前スキャンしたフォルダーを差分更新します。初期状態はオフです</string>
+    <string name="settings_watched_folder_rescan_detail">ECHO に戻ったとき、選んだフォルダーを再スキャンし、追加・削除された曲を反映します。変わっていないファイルは読み直しません</string>
     <string name="settings_local_music">端末内の音楽</string>
     <string name="settings_local_music_detail">曲、アルバム、アーティスト、スキャンを開く</string>
     <string name="settings_pin_queue_offline">現在のキューをオフライン用に保存</string>

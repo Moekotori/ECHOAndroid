@@ -149,6 +149,7 @@ object EchoBackupCodec {
         }
         putOpt("opraLastQuery", settings.opraLastQuery)
         settings.channelBalance?.let { put("channelBalance", encodeBalance(it)) }
+        putOpt("lyricsPageStyle", settings.lyricsPageStyle)
         putOpt("lyricsFontFamily", settings.lyricsFontFamily)
         settings.lyricsFontScale?.let { put("lyricsFontScale", it.toDouble()) }
         putOpt("lyricsColorMode", settings.lyricsColorMode)
@@ -228,6 +229,7 @@ object EchoBackupCodec {
             },
             opraLastQuery = json.optionalString("opraLastQuery"),
             channelBalance = json.optJSONObject("channelBalance")?.let(::decodeBalance),
+            lyricsPageStyle = json.optionalString("lyricsPageStyle"),
             lyricsFontFamily = json.optionalString("lyricsFontFamily"),
             lyricsFontScale = json.optionalFloat("lyricsFontScale"),
             lyricsColorMode = json.optionalString("lyricsColorMode"),

@@ -550,7 +550,7 @@ internal class LibraryController(
                 skipSampleRateRead = skipSampleRateRead(),
                 options = effectiveOptions,
                 removeExcludedFromLibrary = !quiet,
-                reuseDirectoryListings = quiet,
+                reuseDirectoryListings = LibraryFolderWatchPolicy.shouldReuseCachedDirectoryListing(),
             ).collect { progress ->
                 if (!quiet) {
                     publishScanProgress(_scanState, progress, "Document tree scan failed")

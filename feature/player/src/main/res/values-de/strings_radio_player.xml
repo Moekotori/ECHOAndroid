@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="radio_player_title">Radio</string>
+    <string name="radio_online">Internetradio</string>
+    <string name="radio_timer">Schlaftimer</string>
+    <string name="radio_timer_minutes">%1$d Minuten</string>
+    <string name="radio_timer_cancel">Timer abbrechen</string>
+    <string name="radio_demo_program">Mitternachtsspaziergang</string>
+    <string name="radio_state_playing">Wiedergabe</string>
+    <string name="radio_state_connecting">Verbindung wird hergestellt</string>
+    <string name="radio_state_buffering">Puffern</string>
+    <string name="radio_state_paused">Pausiert</string>
+    <string name="radio_state_stopped">Gestoppt</string>
+    <string name="radio_state_error">Wiedergabe fehlgeschlagen</string>
+    <string name="radio_bitrate">%1$d kbps</string>
+    <string name="radio_queue">Warteschlange</string>
+    <string name="radio_cast">Übertragen</string>
+</resources>

@@ -89,6 +89,7 @@ import androidx.compose.material.icons.rounded.FormatSize
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Star
@@ -154,6 +155,7 @@ import app.echo.android.design.formatDuration
 import app.echo.android.design.progressFraction
 import app.echo.android.design.rememberArtworkPalette
 import app.echo.android.design.echoTheme
+import app.echo.android.model.settings.EchoLyricsPageStyle
 import app.echo.android.model.lyrics.EchoLyricLine
 import app.echo.android.model.lyrics.EchoLyrics
 import app.echo.android.model.lyrics.EchoLyricsFormat
@@ -239,10 +241,11 @@ fun NowPlayingScreen(
     modifier: Modifier = Modifier,
     positionState: State<PlaybackPositionState>? = null,
     lyricsFontFamily: FontFamily? = null,
+    lyricsPageStyle: String = EchoLyricsPageStyle.Mist.id,
     lyricsFontMode: String = "system",
     lyricsFontScale: Float = 1f,
     lyricsColorMode: String = "white",
-    lyricsAlignment: String = "center",
+    lyricsAlignment: String = EchoLyricsPageStyle.Mist.defaultAlignment,
     lyricsLineSpacing: Float = 1f,
     lyricsBackgroundDim: Float = 0f,
     lyricsWordHighlightEnabled: Boolean = true,
@@ -254,6 +257,7 @@ fun NowPlayingScreen(
     lyricsFocusGlowEnabled: Boolean = false,
     importedFontUri: String? = null,
     onlineLyricsEnabled: Boolean = false,
+    onLyricsPageStyleChange: (String) -> Unit = {},
     onImportLyricsFont: () -> Unit = {},
     onLyricsFontFamilyChange: (String) -> Unit = {},
     onLyricsFontScaleChange: (Float) -> Unit = {},
@@ -283,26 +287,23 @@ fun NowPlayingScreen(
 ) {
     val persistedAppearance = remember(playerPageStyle, playerTextScale, playerArtworkScale) {
         PlayerAppearance(
-            style = if (playerPageStyle == "classic") "classic" else "record_sleeve",
+            style = normalizedPlayerStyle(playerPageStyle),
             textScale = playerTextScale.takeIf { it.isFinite() }?.coerceIn(0.8f, 1.2f) ?: 1f,
             artworkScale = playerArtworkScale.takeIf { it.isFinite() }?.coerceIn(0.7f, 1f) ?: 1f,
         )
     }
     var appearance by remember(persistedAppearance) { mutableStateOf(persistedAppearance) }
     val track = status.track
+    val isRadio = app.echo.android.model.radio.EchoRadioStation.isRadio(track?.id)
+    val radioColors = if (isRadio) radioPlayerColors() else null
     val effectivePerformanceMode = LocalEchoEffectivePerformanceMode.current
     val effectiveLyricsFocusGlowEnabled = lyricsFocusGlowEnabled && !effectivePerformanceMode.isLightweight
     val palette = rememberArtworkPalette(track?.artworkUri, seedKey = track?.id)
     val pagerState = rememberPagerState(
         initialPage = NowPlayingPage.Cover.ordinal,
-        pageCount = { NowPlayingPage.entries.size },
+        pageCount = { if (isRadio) 1 else NowPlayingPage.entries.size },
     )
     val pageScope = rememberCoroutineScope()
-    LaunchedEffect(openLyricsRequestId) {
-        if (openLyricsRequestId > 0) {
-            pagerState.scrollToPage(NowPlayingPage.Lyrics.ordinal)
-        }
-    }
     // 进度以 State 引用下发,根页不读取具体值:进度 tick 只重组真正显示进度的叶子
     // (scrubber/当前歌词行),封面、玻璃、背景等子树保持可跳过。
     val statusState = rememberUpdatedState(status)
@@ -331,6 +332,19 @@ fun NowPlayingScreen(
     }
     var lyricsSettingsVisible by remember { mutableStateOf(false) }
     var playbackSettingsVisible by remember { mutableStateOf(false) }
+    // Opening the drawer can interrupt a horizontal fling. Settle the cover before
+    // a style changes its page width, so controls cannot remain partly off-screen.
+    LaunchedEffect(playbackSettingsVisible, appearance.style) {
+        if (playbackSettingsVisible) pagerState.scrollToPage(NowPlayingPage.Cover.ordinal)
+    }
+    LaunchedEffect(openLyricsRequestId, isRadio) {
+        if (isRadio) {
+            pagerState.scrollToPage(NowPlayingPage.Cover.ordinal)
+            lyricsSettingsVisible = false
+        } else if (openLyricsRequestId > 0) {
+            pagerState.scrollToPage(NowPlayingPage.Lyrics.ordinal)
+        }
+    }
     val lyricAccent = lyricsColorForMode(lyricsColorMode)
     val density = LocalDensity.current
     val dismissScope = rememberCoroutineScope()
@@ -381,336 +395,330 @@ fun NowPlayingScreen(
         derivedStateOf { currentDismissOffsetPx() < 12f }
     }
 
+    val lyricStyle = EchoLyricsPageStyle.fromId(lyricsPageStyle)
     val splitNowPlaying = LocalEchoWidthSizeClass.current.prefersNowPlayingSplit
-    val sleeveTopBar = appearance.isRecordSleeve && !splitNowPlaying && pagerState.currentPage == NowPlayingPage.Cover.ordinal
-    val drawLyricsBackdrop by remember(pagerState, splitNowPlaying, appearance.isRecordSleeve) {
-        derivedStateOf { !appearance.isRecordSleeve || splitNowPlaying || lyricsReveal() > 0f }
+    val lyricsSurfaceVisible = !isRadio && pagerState.currentPage == NowPlayingPage.Lyrics.ordinal
+    val sleeveTopBar = !isRadio && appearance.usesFlatSurface && !splitNowPlaying && pagerState.currentPage == NowPlayingPage.Cover.ordinal
+    val drawLyricsBackdrop by remember(pagerState, splitNowPlaying, appearance.usesFlatSurface, isRadio) {
+        derivedStateOf { !isRadio && (!appearance.usesFlatSurface || splitNowPlaying || lyricsReveal() > 0f) }
     }
-    RecordSleeveSystemBars(sleeveTopBar && presentationExpanded)
+    RecordSleeveSystemBars(
+        enabled = presentationExpanded && (isRadio || sleeveTopBar || (!splitNowPlaying && lyricsSurfaceVisible)),
+        darkIcons = if (isRadio) !LocalEchoDarkTheme.current else sleeveTopBar || lyricStyle == EchoLyricsPageStyle.Paper,
+    )
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .nestedScroll(nestedScrollConnection)
-            .graphicsLayer {
-                val dismissOffsetPx = currentDismissOffsetPx()
-                val settledProgress = (dismissOffsetPx / dismissThresholdPx).coerceIn(0f, 1f)
-                translationY = dismissOffsetPx
-                val scale = 1f - 0.045f * settledProgress
-                scaleX = scale
-                scaleY = scale
-                alpha = 1f - 0.12f * settledProgress
-                transformOrigin = TransformOrigin(0.5f, 0.06f)
-            }
-            .background(RecordSleeveStyle.Paper),
-    ) {
-        if (drawLyricsBackdrop) NowPlayingBackdrop(
-            artworkUri = track?.artworkUri,
-            palette = palette,
-            reveal = lyricsReveal,
-            animationsVisible = presentationExpanded,
-            modifier = Modifier.fillMaxSize().graphicsLayer {
-                alpha = if (!appearance.isRecordSleeve || splitNowPlaying) 1f else lyricsReveal()
-            },
-        )
-        Column(
-            modifier = Modifier
+    LyricsPageTheme(lyricStyle, enabled = lyricsSurfaceVisible && !splitNowPlaying) {
+        Box(
+            modifier = modifier
                 .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .widthIn(max = if (splitNowPlaying) LocalEchoContentMaxWidth.current else 560.dp)
-                .padding(horizontal = if (splitNowPlaying) 20.dp else if (appearance.isRecordSleeve) 30.dp else 26.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+                .nestedScroll(nestedScrollConnection)
+                .graphicsLayer {
+                    val dismissOffsetPx = currentDismissOffsetPx()
+                    val settledProgress = (dismissOffsetPx / dismissThresholdPx).coerceIn(0f, 1f)
+                    translationY = dismissOffsetPx
+                    val scale = 1f - 0.045f * settledProgress
+                    scaleX = scale
+                    scaleY = scale
+                    alpha = 1f - 0.12f * settledProgress
+                    transformOrigin = TransformOrigin(0.5f, 0.06f)
+                }
+                .background(radioColors?.background ?: appearance.background),
         ) {
-            NowPlayingTopBar(
-                onDismiss = onDismiss,
-                onHandleDrag = { delta ->
-                    if (dismissEnabledState.value) {
-                        dismissDrag.applyDelta(delta, dismissThresholdPx) { crossed ->
-                            if (crossed) dismissHaptics.tick()
-                        }
-                    }
-                },
-                onHandleDragEnd = { velocityY ->
-                    if (dismissEnabledState.value) {
-                        dismissDrag.settleJob?.cancel()
-                        dismissDrag.settleJob = dismissScope.launch {
-                            settleNowPlayingDismiss(
-                                dragState = dismissDrag,
-                                velocityY = velocityY,
-                                thresholdPx = dismissThresholdPx,
-                                flingVelocityPx = dismissFlingPx,
-                                onDismiss = onDismissState.value,
-                            )
-                        }
-                    }
-                },
-                currentPage = pagerState.currentPage,
-                pageCount = NowPlayingPage.entries.size,
-                showPageIndicator = !splitNowPlaying,
-                editorial = sleeveTopBar,
-                onOpenPlaybackSettings = { playbackSettingsVisible = true },
-            )
-            status.diagnostics.lastError?.let { playbackError ->
-                NowPlayingErrorBanner(
-                    error = playbackError,
-                    autoSkipped = status.diagnostics.lastCommand == "skip_error",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 10.dp, bottom = 4.dp),
-                )
+            if (drawLyricsBackdrop) {
+                val backdropModifier = Modifier.fillMaxSize().graphicsLayer {
+                    alpha = if (!appearance.usesFlatSurface || splitNowPlaying) 1f else lyricsReveal()
+                }
+                if (lyricsSurfaceVisible && !splitNowPlaying) {
+                    LyricsPageBackdrop(track?.artworkUri, palette, lyricsReveal, presentationExpanded, backdropModifier)
+                } else {
+                    NowPlayingBackdrop(track?.artworkUri, palette, lyricsReveal, backdropModifier,
+                        animationsVisible = presentationExpanded && !lyricsSurfaceVisible)
+                }
             }
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .widthIn(max = if (splitNowPlaying) LocalEchoContentMaxWidth.current else 560.dp)
+                    .padding(horizontal = if (isRadio) 26.dp else if (splitNowPlaying) 20.dp else when (appearance.style) { "record_sleeve" -> 30.dp; "pixel_handheld" -> 18.dp; "type_poster" -> 24.dp; else -> 26.dp }),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                NowPlayingTopBar(
+                    onDismiss = onDismiss,
+                    onHandleDrag = { delta ->
+                        if (dismissEnabledState.value) {
+                            dismissDrag.applyDelta(delta, dismissThresholdPx) { crossed ->
+                                if (crossed) dismissHaptics.tick()
+                            }
+                        }
+                    },
+                    onHandleDragEnd = { velocityY ->
+                        if (dismissEnabledState.value) {
+                            dismissDrag.settleJob?.cancel()
+                            dismissDrag.settleJob = dismissScope.launch {
+                                settleNowPlayingDismiss(
+                                    dragState = dismissDrag,
+                                    velocityY = velocityY,
+                                    thresholdPx = dismissThresholdPx,
+                                    flingVelocityPx = dismissFlingPx,
+                                    onDismiss = onDismissState.value,
+                                )
+                            }
+                        }
+                    },
+                    currentPage = pagerState.currentPage,
+                    pageCount = NowPlayingPage.entries.size,
+                    showPageIndicator = !isRadio && !splitNowPlaying,
+                    editorial = sleeveTopBar,
+                    appearance = appearance,
+                    radioColors = radioColors,
+                    isFavorite = isCurrentTrackFavorite,
+                    onToggleFavorite = { if (track != null) onToggleFavorite() },
+                    lyricsPage = lyricsSurfaceVisible && !splitNowPlaying,
+                    onOpenPlaybackSettings = {
+                        if (lyricsSurfaceVisible && !splitNowPlaying) lyricsSettingsVisible = true
+                        else playbackSettingsVisible = true
+                    },
+                )
+                status.diagnostics.lastError?.let { playbackError ->
+                    NowPlayingErrorBanner(
+                        error = playbackError,
+                        autoSkipped = status.diagnostics.lastCommand == "skip_error",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 10.dp, bottom = 4.dp),
+                    )
+                }
 
-            if (splitNowPlaying) {
-                Row(
+                if (isRadio) {
+                    RadioNowPlayingPage(
+                        status = status,
+                        onPlayPause = onPlayPause,
+                        onNext = onNext,
+                        onPrevious = onPrevious,
+                        onOpenQueue = onOpenQueue,
+                        onCast = onCast,
+                        castActive = castActive,
+                        onSetSleepTimer = onSetSleepTimer,
+                        onCancelSleepTimer = onCancelSleepTimer,
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                    )
+                } else if (splitNowPlaying) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(18.dp),
+                    ) {
+                        PlayerCoverPage(
+                            appearance = appearance,
+                            palette = palette,
+                            presentationExpanded = presentationExpanded,
+                            status = status,
+                            positionMsState = positionMsState,
+                            durationMsState = durationMsState,
+                            onPlayPause = onPlayPause,
+                            onNext = onNext,
+                            onPrevious = onPrevious,
+                            onSeek = onSeek,
+                            onOpenQueue = onOpenQueue,
+                            onCast = onCast,
+                            castActive = castActive,
+                            onToggleShuffle = onToggleShuffle,
+                            onCycleRepeatMode = onCycleRepeatMode,
+                            isCurrentTrackFavorite = isCurrentTrackFavorite,
+                            onToggleFavorite = onToggleFavorite,
+                            onOpenLyrics = {},
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                        )
+                        NowPlayingLyricsPage(
+                            status = status,
+                            lyricsState = lyricsState,
+                            lyricsPageStyle = lyricStyle,
+                            palette = palette,
+                            showBackdrop = splitNowPlaying,
+                            showLyricsControlDeck = showLyricsControlDeck,
+                            lyricsFontFamily = lyricsFontFamily,
+                            lyricsFontScale = lyricsFontScale,
+                            lyricsColorMode = lyricsColorMode,
+                            lyricsAlignment = lyricsAlignment,
+                            lyricsLineSpacing = lyricsLineSpacing,
+                            lyricsBackgroundDim = lyricsBackgroundDim,
+                            lyricsWordHighlightEnabled = lyricsWordHighlightEnabled,
+                            lyricsWordHighlightIntensity = lyricsWordHighlightIntensity,
+                            lyricsImmersiveModeEnabled = lyricsImmersiveModeEnabled,
+                            lyricsMotionMode = lyricsMotionMode,
+                            lyricsShowTranslation = lyricsShowTranslation,
+                            lyricsShowRomanization = lyricsShowRomanization,
+                            lyricsFocusGlowEnabled = effectiveLyricsFocusGlowEnabled,
+                            onPlayPause = onPlayPause,
+                            onNext = onNext,
+                            onPrevious = onPrevious,
+                            onSeek = onSeek,
+                            onOpenQueue = onOpenQueue,
+                            onCast = onCast,
+                            castActive = castActive,
+                            positionMsState = positionMsState,
+                            durationMsState = durationMsState,
+                            onImportLyrics = onImportLyrics,
+                            onAdjustLyricsOffset = onAdjustLyricsOffset,
+                            onResetLyricsOffset = onResetLyricsOffset,
+                            onOpenLyricsSettings = { lyricsSettingsVisible = true },
+                            showTransportDock = false,
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                        )
+                    }
+                } else HorizontalPager(
+                    state = pagerState,
+                    beyondViewportPageCount = 0,
+                    userScrollEnabled = pagerScrollEnabled,
+                    flingBehavior = rememberSilkPagerFlingBehavior(pagerState),
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(18.dp),
-                ) {
-                    PlayerCoverPage(
-                        appearance = appearance,
-                        palette = palette,
-                        presentationExpanded = presentationExpanded,
-                        status = status,
-                        positionMsState = positionMsState,
-                        durationMsState = durationMsState,
-                        onPlayPause = onPlayPause,
-                        onNext = onNext,
-                        onPrevious = onPrevious,
-                        onSeek = onSeek,
-                        onOpenQueue = onOpenQueue,
-                        onCast = onCast,
-                        castActive = castActive,
-                        onToggleShuffle = onToggleShuffle,
-                        onCycleRepeatMode = onCycleRepeatMode,
-                        isCurrentTrackFavorite = isCurrentTrackFavorite,
-                        onToggleFavorite = onToggleFavorite,
-                        onOpenLyrics = {},
-                        modifier = Modifier.weight(1f).fillMaxHeight(),
-                    )
-                    NowPlayingLyricsPage(
-                        status = status,
-                        lyricsState = lyricsState,
-                        showLyricsControlDeck = showLyricsControlDeck,
-                        lyricsFontFamily = lyricsFontFamily,
-                        lyricsFontMode = lyricsFontMode,
-                        lyricsFontScale = lyricsFontScale,
-                        lyricsColorMode = lyricsColorMode,
-                        lyricsAlignment = lyricsAlignment,
-                        lyricsLineSpacing = lyricsLineSpacing,
-                        lyricsBackgroundDim = lyricsBackgroundDim,
-                        lyricsWordHighlightEnabled = lyricsWordHighlightEnabled,
-                        lyricsWordHighlightIntensity = lyricsWordHighlightIntensity,
-                        lyricsImmersiveModeEnabled = lyricsImmersiveModeEnabled,
-                        lyricsMotionMode = lyricsMotionMode,
-                        lyricsShowTranslation = lyricsShowTranslation,
-                        lyricsShowRomanization = lyricsShowRomanization,
-                        lyricsFocusGlowEnabled = effectiveLyricsFocusGlowEnabled,
-                        importedFontUri = importedFontUri,
-                        onlineLyricsEnabled = onlineLyricsEnabled,
-                        onPlayPause = onPlayPause,
-                        onNext = onNext,
-                        onPrevious = onPrevious,
-                        onSeek = onSeek,
-                        onOpenQueue = onOpenQueue,
-                        onCast = onCast,
-                        castActive = castActive,
-                        positionMsState = positionMsState,
-                        durationMsState = durationMsState,
-                        onCloseLyrics = {},
-                        onImportLyrics = onImportLyrics,
-                        onImportLyricsFont = onImportLyricsFont,
-                        onAdjustLyricsOffset = onAdjustLyricsOffset,
-                        onResetLyricsOffset = onResetLyricsOffset,
-                        onLyricsFontFamilyChange = onLyricsFontFamilyChange,
-                        onLyricsFontScaleChange = onLyricsFontScaleChange,
-                        onLyricsColorModeChange = onLyricsColorModeChange,
-                        onLyricsAlignmentChange = onLyricsAlignmentChange,
-                        onLyricsLineSpacingChange = onLyricsLineSpacingChange,
-                        onLyricsBackgroundDimChange = onLyricsBackgroundDimChange,
-                        onLyricsWordHighlightEnabledChange = onLyricsWordHighlightEnabledChange,
-                        onLyricsWordHighlightIntensityChange = onLyricsWordHighlightIntensityChange,
-                        onLyricsImmersiveModeChange = onLyricsImmersiveModeChange,
-                        onLyricsMotionModeChange = onLyricsMotionModeChange,
-                        onLyricsShowTranslationChange = onLyricsShowTranslationChange,
-                        onLyricsShowRomanizationChange = onLyricsShowRomanizationChange,
-                        onLyricsFocusGlowChange = onLyricsFocusGlowChange,
-                        onShowLyricsControlDeckChange = onShowLyricsControlDeckChange,
-                        onOnlineLyricsEnabledChange = onOnlineLyricsEnabledChange,
-                        onOpenLyricsSettings = { lyricsSettingsVisible = true },
-                        showTransportDock = false,
-                        modifier = Modifier.weight(1f).fillMaxHeight(),
-                    )
-                }
-            } else HorizontalPager(
-                state = pagerState,
-                beyondViewportPageCount = 0,
-                userScrollEnabled = pagerScrollEnabled,
-                flingBehavior = rememberSilkPagerFlingBehavior(pagerState),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-            ) { page ->
-                when (NowPlayingPage.entries[page]) {
-                    NowPlayingPage.Cover -> PlayerCoverPage(
-                        appearance = appearance,
-                        palette = palette,
-                        presentationExpanded = presentationExpanded,
-                        status = status,
-                        positionMsState = positionMsState,
-                        durationMsState = durationMsState,
-                        onPlayPause = onPlayPause,
-                        onNext = onNext,
-                        onPrevious = onPrevious,
-                        onSeek = onSeek,
-                        onOpenQueue = onOpenQueue,
-                        onCast = onCast,
-                        castActive = castActive,
-                        onToggleShuffle = onToggleShuffle,
-                        onCycleRepeatMode = onCycleRepeatMode,
-                        isCurrentTrackFavorite = isCurrentTrackFavorite,
-                        onToggleFavorite = onToggleFavorite,
-                        onOpenLyrics = {
-                            pageScope.launch {
-                                pagerState.animateScrollToPage(NowPlayingPage.Lyrics.ordinal)
-                            }
-                        },
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                    NowPlayingPage.Lyrics -> NowPlayingLyricsPage(
-                        animationsVisible = pagerState.currentPage == NowPlayingPage.Lyrics.ordinal,
-                        status = status,
-                        lyricsState = lyricsState,
-                        showLyricsControlDeck = showLyricsControlDeck,
-                        lyricsFontFamily = lyricsFontFamily,
-                        lyricsFontMode = lyricsFontMode,
-                        lyricsFontScale = lyricsFontScale,
-                        lyricsColorMode = lyricsColorMode,
-                        lyricsAlignment = lyricsAlignment,
-                        lyricsLineSpacing = lyricsLineSpacing,
-                        lyricsBackgroundDim = lyricsBackgroundDim,
-                        lyricsWordHighlightEnabled = lyricsWordHighlightEnabled,
-                        lyricsWordHighlightIntensity = lyricsWordHighlightIntensity,
-                        lyricsImmersiveModeEnabled = lyricsImmersiveModeEnabled,
-                        lyricsMotionMode = lyricsMotionMode,
-                        lyricsShowTranslation = lyricsShowTranslation,
-                        lyricsShowRomanization = lyricsShowRomanization,
-                        lyricsFocusGlowEnabled = effectiveLyricsFocusGlowEnabled,
-                        importedFontUri = importedFontUri,
-                        onlineLyricsEnabled = onlineLyricsEnabled,
-                        onPlayPause = onPlayPause,
-                        onNext = onNext,
-                        onPrevious = onPrevious,
-                        onSeek = onSeek,
-                        onOpenQueue = onOpenQueue,
-                        onCast = onCast,
-                        castActive = castActive,
-                        positionMsState = positionMsState,
-                        durationMsState = durationMsState,
-                        onCloseLyrics = {
-                            pageScope.launch {
-                                pagerState.animateScrollToPage(NowPlayingPage.Cover.ordinal)
-                            }
-                        },
-                        onImportLyrics = onImportLyrics,
-                        onImportLyricsFont = onImportLyricsFont,
-                        onAdjustLyricsOffset = onAdjustLyricsOffset,
-                        onResetLyricsOffset = onResetLyricsOffset,
-                        onLyricsFontFamilyChange = onLyricsFontFamilyChange,
-                        onLyricsFontScaleChange = onLyricsFontScaleChange,
-                        onLyricsColorModeChange = onLyricsColorModeChange,
-                        onLyricsAlignmentChange = onLyricsAlignmentChange,
-                        onLyricsLineSpacingChange = onLyricsLineSpacingChange,
-                        onLyricsBackgroundDimChange = onLyricsBackgroundDimChange,
-                        onLyricsWordHighlightEnabledChange = onLyricsWordHighlightEnabledChange,
-                        onLyricsWordHighlightIntensityChange = onLyricsWordHighlightIntensityChange,
-                        onLyricsImmersiveModeChange = onLyricsImmersiveModeChange,
-                        onLyricsMotionModeChange = onLyricsMotionModeChange,
-                        onLyricsShowTranslationChange = onLyricsShowTranslationChange,
-                        onLyricsShowRomanizationChange = onLyricsShowRomanizationChange,
-                        onLyricsFocusGlowChange = onLyricsFocusGlowChange,
-                        onShowLyricsControlDeckChange = onShowLyricsControlDeckChange,
-                        onOnlineLyricsEnabledChange = onOnlineLyricsEnabledChange,
-                        onOpenLyricsSettings = { lyricsSettingsVisible = true },
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                ) { page ->
+                    when (NowPlayingPage.entries[page]) {
+                        NowPlayingPage.Cover -> PlayerCoverPage(
+                            appearance = appearance,
+                            palette = palette,
+                            presentationExpanded = presentationExpanded,
+                            status = status,
+                            positionMsState = positionMsState,
+                            durationMsState = durationMsState,
+                            onPlayPause = onPlayPause,
+                            onNext = onNext,
+                            onPrevious = onPrevious,
+                            onSeek = onSeek,
+                            onOpenQueue = onOpenQueue,
+                            onCast = onCast,
+                            castActive = castActive,
+                            onToggleShuffle = onToggleShuffle,
+                            onCycleRepeatMode = onCycleRepeatMode,
+                            isCurrentTrackFavorite = isCurrentTrackFavorite,
+                            onToggleFavorite = onToggleFavorite,
+                            onOpenLyrics = {
+                                pageScope.launch {
+                                    pagerState.animateScrollToPage(NowPlayingPage.Lyrics.ordinal)
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                        NowPlayingPage.Lyrics -> NowPlayingLyricsPage(
+                            animationsVisible = pagerState.currentPage == NowPlayingPage.Lyrics.ordinal,
+                            status = status,
+                            lyricsState = lyricsState,
+                            lyricsPageStyle = lyricStyle,
+                            palette = palette,
+                            showBackdrop = splitNowPlaying,
+                            showLyricsControlDeck = showLyricsControlDeck,
+                            lyricsFontFamily = lyricsFontFamily,
+                            lyricsFontScale = lyricsFontScale,
+                            lyricsColorMode = lyricsColorMode,
+                            lyricsAlignment = lyricsAlignment,
+                            lyricsLineSpacing = lyricsLineSpacing,
+                            lyricsBackgroundDim = lyricsBackgroundDim,
+                            lyricsWordHighlightEnabled = lyricsWordHighlightEnabled,
+                            lyricsWordHighlightIntensity = lyricsWordHighlightIntensity,
+                            lyricsImmersiveModeEnabled = lyricsImmersiveModeEnabled,
+                            lyricsMotionMode = lyricsMotionMode,
+                            lyricsShowTranslation = lyricsShowTranslation,
+                            lyricsShowRomanization = lyricsShowRomanization,
+                            lyricsFocusGlowEnabled = effectiveLyricsFocusGlowEnabled,
+                            onPlayPause = onPlayPause,
+                            onNext = onNext,
+                            onPrevious = onPrevious,
+                            onSeek = onSeek,
+                            onOpenQueue = onOpenQueue,
+                            onCast = onCast,
+                            castActive = castActive,
+                            positionMsState = positionMsState,
+                            durationMsState = durationMsState,
+                            onImportLyrics = onImportLyrics,
+                            onAdjustLyricsOffset = onAdjustLyricsOffset,
+                            onResetLyricsOffset = onResetLyricsOffset,
+                            onOpenLyricsSettings = { lyricsSettingsVisible = true },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
                 }
             }
+            LyricsSettingsDrawer(
+                visible = lyricsSettingsVisible,
+                lyricsPageStyle = lyricStyle,
+                onLyricsPageStyleChange = onLyricsPageStyleChange,
+                lyricsFontMode = lyricsFontMode,
+                importedFontUri = importedFontUri,
+                lyricsFontScale = lyricsFontScale,
+                lyricsColorMode = lyricsColorMode,
+                lyricsAlignment = lyricsAlignment,
+                lyricsLineSpacing = lyricsLineSpacing,
+                lyricsBackgroundDim = lyricsBackgroundDim,
+                lyricsWordHighlightEnabled = lyricsWordHighlightEnabled,
+                lyricsWordHighlightIntensity = lyricsWordHighlightIntensity,
+                lyricsImmersiveModeEnabled = lyricsImmersiveModeEnabled,
+                lyricsMotionMode = lyricsMotionMode,
+                lyricAccent = lyricAccent,
+                showTranslation = lyricsShowTranslation,
+                showRomanization = lyricsShowRomanization,
+                focusGlowEnabled = effectiveLyricsFocusGlowEnabled,
+                hasTranslation = hasTranslation,
+                hasRomanization = hasRomanization,
+                showLyricsControlDeck = showLyricsControlDeck,
+                onlineLyricsEnabled = onlineLyricsEnabled,
+                onDismiss = { lyricsSettingsVisible = false },
+                onCloseLyrics = {
+                    lyricsSettingsVisible = false
+                    pageScope.launch {
+                        pagerState.animateScrollToPage(NowPlayingPage.Cover.ordinal)
+                    }
+                },
+                onImportLyrics = onImportLyrics,
+                onImportLyricsFont = onImportLyricsFont,
+                onLyricsFontFamilyChange = onLyricsFontFamilyChange,
+                onLyricsFontScaleChange = onLyricsFontScaleChange,
+                onLyricsColorModeChange = onLyricsColorModeChange,
+                onLyricsAlignmentChange = onLyricsAlignmentChange,
+                onLyricsLineSpacingChange = onLyricsLineSpacingChange,
+                onLyricsBackgroundDimChange = onLyricsBackgroundDimChange,
+                onLyricsWordHighlightEnabledChange = onLyricsWordHighlightEnabledChange,
+                onLyricsWordHighlightIntensityChange = onLyricsWordHighlightIntensityChange,
+                onLyricsImmersiveModeChange = onLyricsImmersiveModeChange,
+                onLyricsMotionModeChange = onLyricsMotionModeChange,
+                onLyricsShowTranslationChange = onLyricsShowTranslationChange,
+                onLyricsShowRomanizationChange = onLyricsShowRomanizationChange,
+                onLyricsFocusGlowChange = onLyricsFocusGlowChange,
+                onShowLyricsControlDeckChange = onShowLyricsControlDeckChange,
+                onOnlineLyricsEnabledChange = onOnlineLyricsEnabledChange,
+                modifier = Modifier.fillMaxSize(),
+            )
+            PlaybackSettingsDrawer(
+                appearance = appearance,
+                onAppearancePreview = { appearance = it },
+                onAppearanceCommit = {
+                    onPlayerAppearanceChange(appearance.style, appearance.textScale, appearance.artworkScale)
+                },
+                visible = playbackSettingsVisible,
+                status = status,
+                onSetRepeatMode = onSetRepeatMode,
+                onToggleShuffle = onToggleShuffle,
+                onSetPlaybackSpeed = onSetPlaybackSpeed,
+                onSetSleepTimer = onSetSleepTimer,
+                onSetSleepTimerEndOfTrack = onSetSleepTimerEndOfTrack,
+                onCancelSleepTimer = onCancelSleepTimer,
+                onSetReplayGain = onSetReplayGain,
+                onSetReplayGainMode = onSetReplayGainMode,
+                onAdjustReplayGainPreamp = onAdjustReplayGainPreamp,
+                replayGainScanState = replayGainScanState,
+                onScanReplayGain = onScanReplayGain,
+                lyricsOffsetMs = readyLyrics?.metadata?.get("user_offset_ms")?.toLongOrNull() ?: 0L,
+                onAdjustLyricsOffset = onAdjustLyricsOffset,
+                onResetLyricsOffset = onResetLyricsOffset,
+                onOpenQueue = onOpenQueue,
+                onDismiss = { playbackSettingsVisible = false },
+                modifier = Modifier.fillMaxSize(),
+            )
         }
-        LyricsSettingsDrawer(
-            visible = lyricsSettingsVisible,
-            lyricsFontMode = lyricsFontMode,
-            importedFontUri = importedFontUri,
-            lyricsFontScale = lyricsFontScale,
-            lyricsColorMode = lyricsColorMode,
-            lyricsAlignment = lyricsAlignment,
-            lyricsLineSpacing = lyricsLineSpacing,
-            lyricsBackgroundDim = lyricsBackgroundDim,
-            lyricsWordHighlightEnabled = lyricsWordHighlightEnabled,
-            lyricsWordHighlightIntensity = lyricsWordHighlightIntensity,
-            lyricsImmersiveModeEnabled = lyricsImmersiveModeEnabled,
-            lyricsMotionMode = lyricsMotionMode,
-            lyricAccent = lyricAccent,
-            showTranslation = lyricsShowTranslation,
-            showRomanization = lyricsShowRomanization,
-            focusGlowEnabled = effectiveLyricsFocusGlowEnabled,
-            hasTranslation = hasTranslation,
-            hasRomanization = hasRomanization,
-            showLyricsControlDeck = showLyricsControlDeck,
-            onlineLyricsEnabled = onlineLyricsEnabled,
-            onDismiss = { lyricsSettingsVisible = false },
-            onCloseLyrics = {
-                lyricsSettingsVisible = false
-                pageScope.launch {
-                    pagerState.animateScrollToPage(NowPlayingPage.Cover.ordinal)
-                }
-            },
-            onImportLyrics = onImportLyrics,
-            onImportLyricsFont = onImportLyricsFont,
-            onLyricsFontFamilyChange = onLyricsFontFamilyChange,
-            onLyricsFontScaleChange = onLyricsFontScaleChange,
-            onLyricsColorModeChange = onLyricsColorModeChange,
-            onLyricsAlignmentChange = onLyricsAlignmentChange,
-            onLyricsLineSpacingChange = onLyricsLineSpacingChange,
-            onLyricsBackgroundDimChange = onLyricsBackgroundDimChange,
-            onLyricsWordHighlightEnabledChange = onLyricsWordHighlightEnabledChange,
-            onLyricsWordHighlightIntensityChange = onLyricsWordHighlightIntensityChange,
-            onLyricsImmersiveModeChange = onLyricsImmersiveModeChange,
-            onLyricsMotionModeChange = onLyricsMotionModeChange,
-            onLyricsShowTranslationChange = onLyricsShowTranslationChange,
-            onLyricsShowRomanizationChange = onLyricsShowRomanizationChange,
-            onLyricsFocusGlowChange = onLyricsFocusGlowChange,
-            onShowLyricsControlDeckChange = onShowLyricsControlDeckChange,
-            onOnlineLyricsEnabledChange = onOnlineLyricsEnabledChange,
-            modifier = Modifier.fillMaxSize(),
-        )
-        PlaybackSettingsDrawer(
-            appearance = appearance,
-            onAppearancePreview = { appearance = it },
-            onAppearanceCommit = {
-                onPlayerAppearanceChange(appearance.style, appearance.textScale, appearance.artworkScale)
-            },
-            visible = playbackSettingsVisible,
-            status = status,
-            onSetRepeatMode = onSetRepeatMode,
-            onToggleShuffle = onToggleShuffle,
-            onSetPlaybackSpeed = onSetPlaybackSpeed,
-            onSetSleepTimer = onSetSleepTimer,
-            onSetSleepTimerEndOfTrack = onSetSleepTimerEndOfTrack,
-            onCancelSleepTimer = onCancelSleepTimer,
-            onSetReplayGain = onSetReplayGain,
-            onSetReplayGainMode = onSetReplayGainMode,
-            onAdjustReplayGainPreamp = onAdjustReplayGainPreamp,
-            replayGainScanState = replayGainScanState,
-            onScanReplayGain = onScanReplayGain,
-            lyricsOffsetMs = readyLyrics?.metadata?.get("user_offset_ms")?.toLongOrNull() ?: 0L,
-            onAdjustLyricsOffset = onAdjustLyricsOffset,
-            onResetLyricsOffset = onResetLyricsOffset,
-            onOpenQueue = onOpenQueue,
-            onDismiss = { playbackSettingsVisible = false },
-            modifier = Modifier.fillMaxSize(),
-        )
     }
 }
 
@@ -723,8 +731,14 @@ private fun NowPlayingTopBar(
     pageCount: Int,
     showPageIndicator: Boolean,
     editorial: Boolean,
+    appearance: PlayerAppearance,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
+    lyricsPage: Boolean = false,
+    radioColors: RadioPlayerColors? = null,
     onOpenPlaybackSettings: () -> Unit,
 ) {
+    val headerInk = radioColors?.ink ?: if (editorial) appearance.headerInk else OnArt
     val onHandleDragLatest = rememberUpdatedState(onHandleDrag)
     val handleDragState = rememberDraggableState { delta -> onHandleDragLatest.value(delta) }
     Column(
@@ -744,23 +758,26 @@ private fun NowPlayingTopBar(
                 .height(48.dp),
         ) {
             GlyphButton(
-                icon = if (editorial) PlayerControlIcons.Collapse else Icons.Rounded.KeyboardArrowDown,
+                icon = if (editorial && radioColors == null && appearance.style == "pixel_handheld") PixelPlayerIcons.Collapse
+                    else if (editorial || radioColors != null) PlayerControlIcons.Collapse else Icons.Rounded.KeyboardArrowDown,
                 description = stringResource(L10nR.string.feature_player_close_player_d23966),
                 touchSize = 44.dp,
                 iconSize = 30.dp,
-                tint = if (editorial) RecordSleeveStyle.Wine else OnArt.copy(alpha = 0.88f),
+                tint = headerInk.copy(alpha = 0.88f),
                 background = Color.Transparent,
                 onClick = onDismiss,
                 modifier = Modifier.align(Alignment.CenterStart),
             )
-            if (editorial) {
+            if (radioColors != null || editorial || lyricsPage) {
                 Text(
-                    "ECHO",
-                    color = RecordSleeveStyle.Wine,
-                    fontFamily = RecordSleeveStyle.BodyFont,
-                    fontSize = 14.sp,
-                    letterSpacing = 3.5.sp,
-                    modifier = Modifier.align(Alignment.Center),
+                    if (radioColors != null) stringResource(L10nR.string.radio_player_title)
+                    else if (lyricsPage && LocalLyricsPageStyle.current == EchoLyricsPageStyle.Paper) stringResource(L10nR.string.lyrics_page_title) else "ECHO",
+                    color = headerInk,
+                    fontFamily = if (editorial && appearance.style == "pixel_handheld") ExpressivePlayerStyle.PixelDisplay else RecordSleeveStyle.BodyFont,
+                    fontSize = if (editorial && appearance.style == "pixel_handheld") 32.sp else 14.sp,
+                    letterSpacing = if (radioColors != null) 0.sp else if (editorial && appearance.style == "pixel_handheld") 1.sp else 3.5.sp,
+                    modifier = if (editorial && appearance.style == "type_poster") Modifier.align(Alignment.CenterStart).padding(start = 46.dp)
+                        else Modifier.align(Alignment.Center),
                 )
             } else Column(
                 modifier = Modifier
@@ -779,18 +796,29 @@ private fun NowPlayingTopBar(
                         .background(OnArt.copy(alpha = 0.42f)),
                 )
             }
+            if (editorial && appearance.style == "type_poster") {
+                GlyphButton(
+                    icon = if (isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                    description = stringResource(if (isFavorite) L10nR.string.feature_player_unfavorite_3a27e4 else L10nR.string.feature_player_favorite_b5d1f5),
+                    touchSize = 48.dp, iconSize = 28.dp, tint = appearance.headerInk,
+                    background = Color.Transparent, onClick = onToggleFavorite,
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = 48.dp),
+                )
+            }
             GlyphButton(
-                icon = Icons.Rounded.MoreHoriz,
-                description = stringResource(L10nR.string.feature_player_expand_playback_settings_cf64a0),
+                icon = if (radioColors != null) Icons.Rounded.MoreVert
+                    else if (editorial && appearance.style == "pixel_handheld") PixelPlayerIcons.More else Icons.Rounded.MoreHoriz,
+                description = stringResource(if (lyricsPage) L10nR.string.feature_player_lyrics_settings_843bc9
+                    else L10nR.string.feature_player_expand_playback_settings_cf64a0),
                 touchSize = 48.dp,
                 iconSize = 26.dp,
-                tint = if (editorial) RecordSleeveStyle.Wine else OnArt,
+                tint = headerInk,
                 background = Color.Transparent,
                 onClick = onOpenPlaybackSettings,
                 modifier = Modifier.align(Alignment.CenterEnd),
             )
         }
-        if (!editorial && showPageIndicator && pageCount > 1) {
+        if (!editorial && !lyricsPage && showPageIndicator && pageCount > 1) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -817,195 +845,10 @@ private fun NowPlayingTopBar(
 }
 
 @Composable
-private fun NowPlayingLyricsPage(
-    status: EchoPlaybackStatus,
-    lyricsState: EchoLyricsLoadState,
-    showLyricsControlDeck: Boolean,
-    lyricsFontFamily: FontFamily?,
-    lyricsFontMode: String,
-    lyricsFontScale: Float,
-    lyricsColorMode: String,
-    lyricsAlignment: String,
-    lyricsLineSpacing: Float,
-    lyricsBackgroundDim: Float,
-    lyricsWordHighlightEnabled: Boolean,
-    lyricsWordHighlightIntensity: Float,
-    lyricsImmersiveModeEnabled: Boolean,
-    lyricsMotionMode: String,
-    lyricsShowTranslation: Boolean,
-    lyricsShowRomanization: Boolean,
-    lyricsFocusGlowEnabled: Boolean,
-    importedFontUri: String?,
-    onlineLyricsEnabled: Boolean,
-    onPlayPause: () -> Unit,
-    onNext: () -> Unit,
-    onPrevious: () -> Unit,
-    onSeek: (Long) -> Unit,
-    onOpenQueue: () -> Unit,
-    onCast: (() -> Unit)? = null,
-    castActive: Boolean = false,
-    positionMsState: State<Long>,
-    durationMsState: State<Long>,
-    onCloseLyrics: () -> Unit,
-    onImportLyrics: () -> Unit,
-    onImportLyricsFont: () -> Unit,
-    onAdjustLyricsOffset: (Long) -> Unit,
-    onResetLyricsOffset: () -> Unit,
-    onLyricsFontFamilyChange: (String) -> Unit,
-    onLyricsFontScaleChange: (Float) -> Unit,
-    onLyricsColorModeChange: (String) -> Unit,
-    onLyricsAlignmentChange: (String) -> Unit,
-    onLyricsLineSpacingChange: (Float) -> Unit,
-    onLyricsBackgroundDimChange: (Float) -> Unit,
-    onLyricsWordHighlightEnabledChange: (Boolean) -> Unit,
-    onLyricsWordHighlightIntensityChange: (Float) -> Unit,
-    onLyricsImmersiveModeChange: (Boolean) -> Unit,
-    onLyricsMotionModeChange: (String) -> Unit,
-    onLyricsShowTranslationChange: (Boolean) -> Unit,
-    onLyricsShowRomanizationChange: (Boolean) -> Unit,
-    onLyricsFocusGlowChange: (Boolean) -> Unit,
-    onShowLyricsControlDeckChange: (Boolean) -> Unit,
-    onOnlineLyricsEnabledChange: (Boolean) -> Unit,
-    onOpenLyricsSettings: () -> Unit,
-    showTransportDock: Boolean = true,
-    modifier: Modifier = Modifier,
-    animationsVisible: Boolean = true,
-) {
-    val readyLyrics = (lyricsState as? EchoLyricsLoadState.Ready)?.lyrics
-    val displayPosition = rememberLyricsDisplayPosition(
-        positionMsState, status.track?.id, status.isPlaying, status.playbackSpeed,
-        animationsVisible && !LocalEchoEffectivePerformanceMode.current.isLightweight,
-    )
-    val lyricAccent = lyricsColorForMode(lyricsColorMode)
-    val lyricsDimAlpha by animateFloatAsState(
-        targetValue = lyricsBackgroundDim.coerceIn(0f, 0.78f),
-        animationSpec = tween(durationMillis = 240, easing = LyricsSettingsMotionEasing),
-        label = "lyrics-page-dim",
-    )
-    Box(modifier = modifier.fillMaxWidth()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background((if (LocalEchoDarkTheme.current) Color.Black else MaterialTheme.colorScheme.surface).copy(alpha = lyricsDimAlpha)),
-        )
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Box(
-                modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .padding(top = 8.dp, bottom = 14.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                when (lyricsState) {
-                    EchoLyricsLoadState.Idle -> LyricsEmptyState(
-                        stringResource(L10nR.string.feature_player_lyrics_appear_after_you_pick_a_song_1622d2),
-                        onImportLyrics,
-                    )
-                    EchoLyricsLoadState.Loading -> LyricsEmptyState(
-                        stringResource(L10nR.string.feature_player_reading_local_lyrics_807f08),
-                    )
-                    EchoLyricsLoadState.Missing -> LyricsEmptyState(
-                        stringResource(L10nR.string.feature_player_no_matching_lyrics_found_7ffc7e),
-                        onImportLyrics,
-                    )
-                    is EchoLyricsLoadState.Error -> LyricsEmptyState(lyricsState.message, onImportLyrics)
-                    is EchoLyricsLoadState.Ready -> LyricsLineList(
-                        lyrics = lyricsState.lyrics,
-                        onAdjustOffset = onAdjustLyricsOffset,
-                        positionMsState = displayPosition,
-                        onSeek = onSeek,
-                        lyricsFontFamily = lyricsFontFamily,
-                        lyricsFontScale = lyricsFontScale,
-                        lyricAccent = lyricAccent,
-                        lyricsAlignment = lyricsAlignment,
-                        lyricsLineSpacing = lyricsLineSpacing,
-                        lyricsWordHighlightEnabled = lyricsWordHighlightEnabled,
-                        lyricsWordHighlightIntensity = lyricsWordHighlightIntensity,
-                        lyricsImmersiveModeEnabled = lyricsImmersiveModeEnabled,
-                        lyricsMotionMode = lyricsMotionMode,
-                        showTranslation = lyricsShowTranslation,
-                        showRomanization = lyricsShowRomanization,
-                        focusGlowEnabled = lyricsFocusGlowEnabled,
-                        animationsVisible = animationsVisible,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 4.dp),
-                    )
-                }
-            }
-
-            AnimatedVisibility(
-                visible = showLyricsControlDeck && readyLyrics != null,
-                enter = expandVertically(
-                    expandFrom = Alignment.Top,
-                    animationSpec = EchoMotion.silkSize(360),
-                ) + fadeIn(tween(durationMillis = 220, delayMillis = 40, easing = LyricsSettingsMotionEasing)) +
-                    slideInVertically(EchoMotion.silkOffset(360)) { -it / 4 },
-                exit = shrinkVertically(
-                    shrinkTowards = Alignment.Top,
-                    animationSpec = EchoMotion.silkSize(240),
-                ) + fadeOut(tween(durationMillis = 160, easing = LyricsSettingsMotionEasing)) +
-                    slideOutVertically(EchoMotion.silkOffset(240)) { -it / 5 },
-            ) {
-                readyLyrics?.let { lyrics ->
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .animateContentSize(tween(durationMillis = 260, easing = LyricsSettingsMotionEasing)),
-                    ) {
-                        LyricsControlDeck(
-                            lyrics = lyrics,
-                            onImportLyrics = onImportLyrics,
-                            onAdjustLyricsOffset = onAdjustLyricsOffset,
-                            onResetLyricsOffset = onResetLyricsOffset,
-                        )
-                        Spacer(Modifier.height(10.dp))
-                    }
-                }
-            }
-            if (showTransportDock) {
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-                        NowPlayingScrubber(
-                            trackKey = status.track?.id,
-                            positionMsState = positionMsState,
-                            durationMsState = durationMsState,
-                            onSeek = onSeek,
-                        )
-                        Spacer(Modifier.height(6.dp))
-                        NowPlayingControlDock(
-                            isPlaying = status.isPlaying,
-                            leadingIcon = PlayerControlIcons.Settings,
-                            leadingDescription = stringResource(L10nR.string.feature_player_lyrics_settings_843bc9),
-                            onLeadingAction = onOpenLyricsSettings,
-                            onPlayPause = onPlayPause,
-                            onNext = onNext,
-                            onPrevious = onPrevious,
-                            onOpenQueue = onOpenQueue,
-                            onCast = onCast,
-                            castActive = castActive,
-                        )
-                    }
-                }
-                Spacer(Modifier.height(10.dp))
-            } else {
-                PlayerControlButton(
-                    icon = PlayerControlIcons.Settings,
-                    description = stringResource(L10nR.string.feature_player_lyrics_settings_843bc9),
-                    onClick = onOpenLyricsSettings,
-                )
-                Spacer(Modifier.height(10.dp))
-            }
-        }
-    }
-}
-
-@Composable
 private fun LyricsSettingsDrawer(
     visible: Boolean,
+    lyricsPageStyle: EchoLyricsPageStyle,
+    onLyricsPageStyleChange: (String) -> Unit,
     lyricsFontMode: String,
     importedFontUri: String?,
     lyricsFontScale: Float,
@@ -1072,6 +915,8 @@ private fun LyricsSettingsDrawer(
                 ),
             ) {
                 LyricsSettingsPanel(
+                    lyricsPageStyle = lyricsPageStyle,
+                    onLyricsPageStyleChange = onLyricsPageStyleChange,
                     lyricsFontMode = lyricsFontMode,
                     importedFontUri = importedFontUri,
                     lyricsFontScale = lyricsFontScale,
@@ -1119,6 +964,8 @@ private fun LyricsSettingsDrawer(
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun LyricsSettingsPanel(
+    lyricsPageStyle: EchoLyricsPageStyle,
+    onLyricsPageStyleChange: (String) -> Unit,
     lyricsFontMode: String,
     importedFontUri: String?,
     lyricsFontScale: Float,
@@ -1190,6 +1037,7 @@ private fun LyricsSettingsPanel(
             androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides titleColor) {
                 Column(Modifier.fillMaxWidth().weight(1f, fill = false).verticalScroll(rememberScrollState())
                     .padding(start = 20.dp, end = 20.dp, bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    LyricsPageStyleSelector(lyricsPageStyle, onLyricsPageStyleChange)
                     PlaybackSettingsSection(Icons.Rounded.TextFields,
                         stringResource(L10nR.string.lyrics_setting_typography),
                         "${lyricsFontDetail(lyricsFontMode, importedFontUri)} · ${(lyricsFontScale * 100).roundToInt()}%",
@@ -1420,7 +1268,7 @@ private fun LyricsColorSwatch(
 }
 
 @Composable
-private fun lyricsColorForMode(mode: String): Color {
+internal fun lyricsColorForMode(mode: String): Color {
     val color = LyricsColorOptions.firstOrNull { it.value == mode }?.color ?: Color.White
     return if (LocalEchoDarkTheme.current) color else if (mode == "white") MaterialTheme.colorScheme.onSurface
     else androidx.compose.ui.graphics.lerp(color, Color(0xFF29252A), 0.62f)
@@ -1492,7 +1340,7 @@ private fun lyricsFontDetail(mode: String, importedFontUri: String?): String =
     }
 
 @Composable
-private fun LyricsEmptyState(
+internal fun LyricsEmptyState(
     message: String,
     onImportLyrics: (() -> Unit)? = null,
 ) {
@@ -1540,7 +1388,7 @@ private fun LyricsEmptyState(
 }
 
 @Composable
-private fun LyricsControlDeck(
+internal fun LyricsControlDeck(
     lyrics: EchoLyrics,
     onImportLyrics: () -> Unit,
     onAdjustLyricsOffset: (Long) -> Unit,

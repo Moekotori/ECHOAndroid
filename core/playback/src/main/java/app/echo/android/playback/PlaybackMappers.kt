@@ -159,8 +159,8 @@ fun Player.toEchoPlaybackStatus(
 
 fun Player.toPlaybackMetadataState(): PlaybackMetadataState {
     val item = currentMediaItem
-    val safeDuration = if (EchoRadioStation.isRadio(currentMediaItem?.mediaId)) 0L else duration.takeIf { it > 0L } ?: 0L
-    val track = item?.toEchoTrackRef(durationMs = safeDuration)
+    val safeDuration = if (EchoRadioStation.isRadio(item?.mediaId)) 0L else duration.takeIf { it > 0L } ?: 0L
+    val track = item?.toEchoTrackRef(durationMs = safeDuration)?.withRadioNowPlaying(radioNowPlaying())
     return PlaybackMetadataState(
         track = track,
         title = track?.title.orEmpty(),

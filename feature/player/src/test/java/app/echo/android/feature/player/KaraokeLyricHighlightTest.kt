@@ -9,6 +9,23 @@ class KaraokeLyricHighlightTest {
     private fun word(start: Long, end: Long?, text: String) = EchoLyricWord(start, end, text)
 
     @Test
+    fun currentWordEmphasisMeetsSteadyInkAtTheWordBoundaries() {
+        assertEquals(0.86f, lyricWordHighlightAlpha(0f, 1f), 0.0001f)
+        assertEquals(1f, lyricWordHighlightAlpha(0.5f, 1f), 0.0001f)
+        assertEquals(0.86f, lyricWordHighlightAlpha(1f, 1f), 0.0001f)
+        assertEquals(lyricWordHighlightAlpha(0.25f, 1f), lyricWordHighlightAlpha(0.75f, 1f), 0.0001f)
+    }
+
+    @Test
+    fun highlightStrengthRemainsBoundedAndDoesNotMoveTheWipeTiming() {
+        assertTrue(lyricWordHighlightAlpha(0.5f, 0.45f) < lyricWordHighlightAlpha(0.5f, 1f))
+        assertEquals(1f, lyricWordHighlightAlpha(0.5f, 1.35f), 0.0001f)
+        assertEquals(0.86f, lyricWordHighlightAlpha(-1f, 1f), 0.0001f)
+        assertEquals(0.86f, lyricWordHighlightAlpha(2f, 1f), 0.0001f)
+        assertEquals(0.5f, lyricWordFraction(1000, 2000, 1500), 0f)
+    }
+
+    @Test
     fun fractionIsZeroBeforeTheWordAndFullWhenTheEndIsMissing() {
         assertEquals(0f, lyricWordFraction(1_000L, 2_000L, 999L), 0f)
         assertEquals(0.5f, lyricWordFraction(1_000L, 2_000L, 1_500L), 0f)

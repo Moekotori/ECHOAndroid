@@ -18,6 +18,43 @@ class EchoLinkLibraryQueryPolicyTest {
     }
 
     @Test
+    fun nextLibraryPageWaitsUntilTheLoadedPageFillsTheScreenOrTheUserScrolls() {
+        assertFalse(
+            EchoLinkLibraryQueryPolicy.shouldRequestNextPage(
+                loadedCount = 12,
+                totalCount = 40,
+                lastVisibleIndex = 11,
+                visibleItemCount = 12,
+            ),
+        )
+        assertTrue(
+            EchoLinkLibraryQueryPolicy.shouldRequestNextPage(
+                loadedCount = 500,
+                totalCount = 2_000,
+                lastVisibleIndex = 496,
+                visibleItemCount = 12,
+            ),
+        )
+        assertTrue(
+            EchoLinkLibraryQueryPolicy.shouldRequestNextPage(
+                loadedCount = 12,
+                totalCount = 40,
+                lastVisibleIndex = 11,
+                visibleItemCount = 12,
+                firstVisibleIndex = 1,
+            ),
+        )
+        assertFalse(
+            EchoLinkLibraryQueryPolicy.shouldRequestNextPage(
+                loadedCount = 40,
+                totalCount = 40,
+                lastVisibleIndex = 39,
+                visibleItemCount = 12,
+            ),
+        )
+    }
+
+    @Test
     fun remoteAlbumKeysRoundTrip() {
         assertEquals("echo-link-album:a1", EchoLinkLibraryQueryPolicy.remoteAlbumKey("a1"))
         assertEquals("a1", EchoLinkLibraryQueryPolicy.remoteAlbumId("echo-link-album:a1"))

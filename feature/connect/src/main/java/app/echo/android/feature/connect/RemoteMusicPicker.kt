@@ -11,6 +11,9 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshotFlow
+import app.echo.android.model.connect.EchoLinkLibraryQueryPolicy
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -34,6 +37,7 @@ internal fun RemoteMusicPicker(
     pcTitle: String,
     remoteError: String?,
     onSearchLibrary: (String) -> Unit,
+    onLoadMoreLibrary: () -> Unit = {},
     onPlayTrack: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -69,6 +73,23 @@ internal fun RemoteMusicPicker(
     val loading = rows == null || (!showQueue && (awaitingQuery || library.isLoading || library.isLoadingMore))
     val visibleRows = if (awaitingQuery) emptyList() else rows.orEmpty()
     val listState = rememberLazyListState()
+    val loadMore = rememberUpdatedState(onLoadMoreLibrary)
+    val pageableCount = if (showQueue || visibleRows.size < source.size) visibleRows.size else library.totalCount
+    LaunchedEffect(listState, visibleRows.size, pageableCount, library.isLoadingMore, showQueue) {
+        if (showQueue || library.isLoadingMore || visibleRows.isEmpty() || pageableCount <= visibleRows.size) return@LaunchedEffect
+        snapshotFlow {
+            val visible = listState.layoutInfo.visibleItemsInfo
+            EchoLinkLibraryQueryPolicy.shouldRequestNextPage(
+                loadedCount = visibleRows.size,
+                totalCount = pageableCount,
+                lastVisibleIndex = visible.lastOrNull()?.index ?: -1,
+                visibleItemCount = visible.size,
+                firstVisibleIndex = visible.firstOrNull()?.index ?: 0,
+            )
+        }.distinctUntilChanged().collect { request ->
+            if (request) loadMore.value()
+        }
+    }
     LaunchedEffect(showQueue, search) { listState.scrollToItem(0) }
     ModalBottomSheet(
         onDismissRequest = onDismiss,

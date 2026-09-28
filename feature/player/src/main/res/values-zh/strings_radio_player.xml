@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="radio_player_title">电台</string>
+    <string name="radio_online">在线电台</string>
+    <string name="radio_timer">定时关闭</string>
+    <string name="radio_timer_minutes">%1$d 分钟</string>
+    <string name="radio_timer_cancel">取消定时</string>
+    <string name="radio_demo_program">午夜漫游</string>
+    <string name="radio_state_playing">正在播放</string>
+    <string name="radio_state_connecting">连接中</string>
+    <string name="radio_state_buffering">缓冲中</string>
+    <string name="radio_state_paused">已暂停</string>
+    <string name="radio_state_stopped">已停止</string>
+    <string name="radio_state_error">播放失败</string>
+    <string name="radio_bitrate">%1$d kbps</string>
+    <string name="radio_queue">队列</string>
+    <string name="radio_cast">投放</string>
+</resources>

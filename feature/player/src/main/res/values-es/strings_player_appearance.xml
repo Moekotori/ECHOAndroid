@@ -8,4 +8,6 @@
     <string name="player_appearance_text_size">Tamaño del texto</string>
     <string name="player_appearance_cover_size">Tamaño de portada</string>
     <string name="player_appearance_percent">%1$d%%</string>
+    <string name="player_appearance_pixel_handheld">Píxeles</string>
+    <string name="player_appearance_type_poster">Cartel tipográfico</string>
 </resources>

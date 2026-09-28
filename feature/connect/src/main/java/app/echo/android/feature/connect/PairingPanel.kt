@@ -69,6 +69,7 @@ internal fun PcLinkPanel(
     onHandoffPhoneToPc: (() -> Unit)? = null,
     remoteLibrary: EchoRemoteLibraryState = EchoRemoteLibraryState(),
     onSearchPcLibrary: (String) -> Unit = {},
+    onLoadMorePcLibrary: () -> Unit = {},
     active: Boolean = true,
 ) {
     val connected = remoteState == EchoRemoteConnectionState.Connected
@@ -102,6 +103,7 @@ internal fun PcLinkPanel(
             pcTitle = pcTitle,
             remoteError = remoteError,
             onSearchLibrary = onSearchPcLibrary,
+            onLoadMoreLibrary = onLoadMorePcLibrary,
             onPlayTrack = onPlayQueueItem,
             onDismiss = { musicPicker = null },
         )

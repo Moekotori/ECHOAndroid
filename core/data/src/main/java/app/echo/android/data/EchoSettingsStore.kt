@@ -25,6 +25,7 @@ import app.echo.android.model.playback.EchoRepeatMode
 import app.echo.android.model.playback.EchoReplayGainMode
 import app.echo.android.model.playback.EchoTrackRef
 import app.echo.android.model.settings.EchoAppLanguage
+import app.echo.android.model.settings.EchoLyricsPageStyle
 import app.echo.android.model.settings.EchoColorTheme
 import app.echo.android.model.settings.EchoPerformanceMode
 import kotlinx.coroutines.Dispatchers
@@ -85,10 +86,11 @@ data class EchoAppSettings(
     val uiFontFamily: String = EchoFontFamilyMode.System,
     val uiFontScale: Float = 1f,
     val uiDensityScale: Float = 1f,
+    val lyricsPageStyle: String = EchoLyricsPageStyle.Mist.id,
     val lyricsFontFamily: String = EchoFontFamilyMode.System,
     val lyricsFontScale: Float = 1f,
     val lyricsColorMode: String = EchoLyricsColorMode.White,
-    val lyricsAlignment: String = EchoLyricsAlignment.Center,
+    val lyricsAlignment: String = EchoLyricsPageStyle.Mist.defaultAlignment,
     val lyricsLineSpacing: Float = 1f,
     val lyricsBackgroundDim: Float = 0f,
     val lyricsWordHighlightEnabled: Boolean = true,
@@ -121,7 +123,7 @@ data class EchoAppSettings(
     val replayGainEnabled: Boolean = false,
     val replayGainPreampDb: Float = 0f,
     val librarySelectedSource: String = EchoLibrarySelectedSource.Local,
-    val watchedFolderRescanEnabled: Boolean = false,
+    val watchedFolderRescanEnabled: Boolean = LibraryFolderWatchPolicy.RescanEnabledByDefault,
     val offlineWifiOnly: Boolean = true,
     val subsonicServerUrl: String? = null,
     val subsonicUsername: String? = null,
@@ -292,10 +294,13 @@ class EchoSettingsStore(
                 uiFontFamily = normalizeFontFamilyMode(preferences[Keys.UiFontFamily]),
                 uiFontScale = (preferences[Keys.UiFontScale] ?: 1f).coerceIn(0.88f, 1.18f),
                 uiDensityScale = (preferences[Keys.UiDensityScale] ?: 1f).coerceIn(0.90f, 1.12f),
-                lyricsFontFamily = normalizeFontFamilyMode(preferences[Keys.LyricsFontFamily]),
+                lyricsPageStyle = EchoLyricsPageStyle.fromId(preferences[Keys.LyricsPageStyle]).id,
+                lyricsFontFamily = normalizeFontFamilyMode(preferences[Keys.LyricsFontFamily]
+                    ?: EchoLyricsPageStyle.fromId(preferences[Keys.LyricsPageStyle]).defaultFontFamily),
                 lyricsFontScale = (preferences[Keys.LyricsFontScale] ?: 1f).coerceIn(0.82f, 1.28f),
                 lyricsColorMode = preferences[Keys.LyricsColorMode] ?: EchoLyricsColorMode.White,
-                lyricsAlignment = normalizeLyricsAlignment(preferences[Keys.LyricsAlignment]),
+                lyricsAlignment = normalizeLyricsAlignment(preferences[Keys.LyricsAlignment]
+                    ?: EchoLyricsPageStyle.fromId(preferences[Keys.LyricsPageStyle]).defaultAlignment),
                 lyricsLineSpacing = (preferences[Keys.LyricsLineSpacing] ?: 1f).coerceIn(0.82f, 1.38f),
                 lyricsBackgroundDim = (preferences[Keys.LyricsBackgroundDim] ?: 0f).coerceIn(0f, 0.78f),
                 lyricsWordHighlightEnabled = preferences[Keys.LyricsWordHighlightEnabled] ?: true,
@@ -349,7 +354,8 @@ class EchoSettingsStore(
                 ),
                 librarySelectedSource = normalizeLibrarySelectedSource(preferences[Keys.LibrarySelectedSource]),
                 libraryScanOptions = decodeLibraryScanOptions(preferences[Keys.LibraryScanOptions]),
-                watchedFolderRescanEnabled = preferences[Keys.WatchedFolderRescanEnabled] ?: false,
+                watchedFolderRescanEnabled = preferences[Keys.WatchedFolderRescanEnabled]
+                    ?: LibraryFolderWatchPolicy.RescanEnabledByDefault,
                 offlineWifiOnly = preferences[Keys.OfflineWifiOnly] ?: true,
                 subsonicServerUrl = preferences[Keys.SubsonicServerUrl]
                     ?.let(::normalizeSubsonicBaseUrl)
@@ -745,6 +751,20 @@ class EchoSettingsStore(
         context.echoSettings.edit { it[Keys.UiDensityScale] = value.coerceIn(0.90f, 1.12f) }
     }
 
+    suspend fun setLyricsPageStyle(value: String) {
+        val style = EchoLyricsPageStyle.fromId(value)
+        context.echoSettings.edit { preferences ->
+            // Apply the layout together so a switch never flashes a mixed preset.
+            if (EchoLyricsPageStyle.fromId(preferences[Keys.LyricsPageStyle]) != style) {
+                preferences[Keys.LyricsPageStyle] = style.id
+                preferences[Keys.LyricsFontFamily] = style.defaultFontFamily
+                preferences[Keys.LyricsAlignment] = style.defaultAlignment
+                preferences[Keys.LyricsColorMode] = EchoLyricsColorMode.White
+            }
+            preferences[Keys.LyricsPageStyle] = style.id
+        }
+    }
+
     suspend fun setLyricsFontFamily(value: String) {
         context.echoSettings.edit { it[Keys.LyricsFontFamily] = normalizeFontFamilyMode(value) }
     }
@@ -1009,7 +1029,8 @@ class EchoSettingsStore(
     }
 
     suspend fun watchedFolderRescanEnabled(): Boolean =
-        context.echoSettings.data.first()[Keys.WatchedFolderRescanEnabled] ?: false
+        context.echoSettings.data.first()[Keys.WatchedFolderRescanEnabled]
+            ?: LibraryFolderWatchPolicy.RescanEnabledByDefault
 
     suspend fun localLibraryIndexCleared(): Boolean =
         context.echoSettings.data.first()[Keys.LocalLibraryIndexCleared] ?: false
@@ -1307,6 +1328,7 @@ class EchoSettingsStore(
                 prefs[Keys.ChannelBalanceLeftDelayMs] = state.leftDelayMs
                 prefs[Keys.ChannelBalanceRightDelayMs] = state.rightDelayMs
             }
+            backup.lyricsPageStyle?.let { prefs[Keys.LyricsPageStyle] = EchoLyricsPageStyle.fromId(it).id }
             backup.lyricsFontFamily?.let { prefs[Keys.LyricsFontFamily] = it }
             backup.lyricsFontScale?.let { prefs[Keys.LyricsFontScale] = it }
             backup.lyricsColorMode?.let { prefs[Keys.LyricsColorMode] = it }
@@ -1387,6 +1409,7 @@ class EchoSettingsStore(
         val UiFontFamily = stringPreferencesKey("ui_font_family")
         val UiFontScale = floatPreferencesKey("ui_font_scale")
         val UiDensityScale = floatPreferencesKey("ui_density_scale")
+        val LyricsPageStyle = stringPreferencesKey("lyrics_page_style")
         val LyricsFontFamily = stringPreferencesKey("lyrics_font_family")
         val LyricsFontScale = floatPreferencesKey("lyrics_font_scale")
         val LyricsColorMode = stringPreferencesKey("lyrics_color_mode")
@@ -1590,6 +1613,7 @@ fun EchoAppSettings.toBackupSettings(): app.echo.android.model.backup.EchoBackup
         equalizerDevicePresetIds = equalizerDevicePresetIds.takeIf { it.isNotEmpty() },
         opraLastQuery = opraLastQuery.takeIf { it.isNotBlank() },
         channelBalance = channelBalance,
+        lyricsPageStyle = lyricsPageStyle,
         lyricsFontFamily = lyricsFontFamily,
         lyricsFontScale = lyricsFontScale,
         lyricsColorMode = lyricsColorMode,

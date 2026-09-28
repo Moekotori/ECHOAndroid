@@ -8,4 +8,6 @@
     <string name="player_appearance_text_size">Text size</string>
     <string name="player_appearance_cover_size">Cover size</string>
     <string name="player_appearance_percent">%1$d%%</string>
+    <string name="player_appearance_pixel_handheld">Pixel handheld</string>
+    <string name="player_appearance_type_poster">Type poster</string>
 </resources>

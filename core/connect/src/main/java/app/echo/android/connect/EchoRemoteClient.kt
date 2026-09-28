@@ -59,9 +59,10 @@ class EchoRemoteClient internal constructor(
         if (!visible) {
             stopEventStream()
             statusPollJob?.cancel()
-            if (libraryRefreshJob?.isActive == true) {
+            if (libraryRefreshJob?.isActive == true || collectionLoadActive()) {
                 refreshOnForeground = true
                 libraryRefreshJob?.cancel()
+                cancelCollectionLoads()
                 _library.update { it.copy(isLoading = false, isLoadingMore = false) }
             }
         } else if (endpoint != null && !authRejected) {
@@ -82,6 +83,12 @@ class EchoRemoteClient internal constructor(
     private var libraryRefreshJob: Job? = null
     private var playlistRefreshJob: Job? = null
     private var albumRefreshJob: Job? = null
+    private var trackLoadMoreJob: Job? = null
+    private var albumLoadMoreJob: Job? = null
+    private var playlistLoadMoreJob: Job? = null
+    private var nextTrackPage = 0
+    private var nextAlbumPage = 0
+    private var nextPlaylistPage = 0
     private var folderRefreshJob: Job? = null
     private var phonePlaybackJob: Job? = null
     private var playOnPhoneGeneration = 0L
@@ -142,6 +149,7 @@ class EchoRemoteClient internal constructor(
         libraryRefreshGeneration += 1
         libraryRefreshJob?.cancel()
         libraryRefreshJob = null
+        cancelCollectionLoads()
         playlistRefreshGeneration += 1
         playlistRefreshJob?.cancel()
         playlistRefreshJob = null
@@ -237,6 +245,7 @@ class EchoRemoteClient internal constructor(
         libraryRefreshGeneration += 1
         libraryRefreshJob?.cancel()
         libraryRefreshJob = null
+        cancelCollectionLoads()
         playlistRefreshGeneration += 1
         playlistRefreshJob?.cancel()
         playlistRefreshJob = null
@@ -307,6 +316,8 @@ class EchoRemoteClient internal constructor(
         albumRefreshGeneration += 1
         albumRefreshJob?.cancel()
         albumRefreshJob = null
+        val generation = ++libraryRefreshGeneration
+        cancelCollectionLoads()
         _library.update { current ->
             val sameQuery = current.query.trim() == query.trim()
             val keepTracks = sameQuery ||
@@ -317,55 +328,67 @@ class EchoRemoteClient internal constructor(
                 query = query,
                 tracks = if (keepTracks) current.tracks else emptyList(),
                 albums = if (sameQuery) current.albums else emptyList(),
+                albumTotalCount = if (sameQuery) current.albumTotalCount else 0,
                 albumTracks = emptyMap(),
                 loadingAlbumId = null,
                 playlists = if (sameQuery) current.playlists else emptyList(),
+                playlistTotalCount = if (sameQuery) current.playlistTotalCount else 0,
                 playlistTracks = emptyMap(),
                 loadingPlaylistId = null,
                 totalCount = if (keepTracks) current.totalCount else 0,
                 error = null,
             )
         }
-        val generation = ++libraryRefreshGeneration
         libraryRefreshJob?.cancel()
-        // 流式分页:首页 + 歌单到达即发布(不再等最多 40 页全部拉完才显示),
-        // 后续页在后台续拉,每 PublishEveryPages 页合并发布一次,期间 isLoadingMore=true。
+        // 只发布第一页。后面的页等列表滚到末尾再取，避免整库进内存。
         libraryRefreshJob = scope.launch {
             fun isCurrentRefresh(): Boolean =
                 endpoint?.id == target.id && generation == libraryRefreshGeneration
 
             launch {
-                runSuspendCatching { fetchAllPlaylists(target, query) }
-                    .onSuccess { page ->
-                        if (isCurrentRefresh()) _library.update { it.copy(playlists = page.playlists) }
+                runSuspendCatching {
+                    transport.fetchPlaylists(target, query, page = 1, pageSize = PcLibraryPageSize)
+                }.onSuccess { page ->
+                    if (!isCurrentRefresh()) return@onSuccess
+                    nextPlaylistPage = if (page.playlists.size < page.totalCount) 2 else 0
+                    _library.update {
+                        it.copy(
+                            playlists = page.playlists,
+                            playlistTotalCount = page.totalCount.coerceAtLeast(page.playlists.size),
+                        )
                     }
-                    .onFailure { error ->
-                        if (isCurrentRefresh()) _library.update { it.copy(error = error.userMessage()) }
-                    }
+                }.onFailure { error ->
+                    if (isCurrentRefresh()) _library.update { it.copy(error = error.userMessage()) }
+                }
             }
             if (!_library.value.albumsUnavailable) {
                 launch {
-                    runSuspendCatching { fetchAllAlbums(target, query) }
-                        .onSuccess { page ->
-                            if (isCurrentRefresh()) {
-                                _library.update {
-                                    it.copy(albums = page.albums, albumsUnavailable = false)
-                                }
+                    runSuspendCatching {
+                        transport.fetchAlbums(target, query, page = 1, pageSize = PcLibraryPageSize)
+                    }.onSuccess { page ->
+                        if (!isCurrentRefresh()) return@onSuccess
+                        nextAlbumPage = if (page.albums.size < page.totalCount) 2 else 0
+                        _library.update {
+                            it.copy(
+                                albums = page.albums,
+                                albumTotalCount = page.totalCount.coerceAtLeast(page.albums.size),
+                                albumsUnavailable = false,
+                            )
+                        }
+                    }.onFailure { error ->
+                        if (isCurrentRefresh()) {
+                            _library.update { current ->
+                                current.copy(
+                                    albums = emptyList(),
+                                    albumTotalCount = 0,
+                                    albumsUnavailable = EchoLinkRequestPolicy.shouldMarkAlbumsUnavailable(
+                                        collectionNotFound = error.isEchoLinkNotFound(),
+                                    ),
+                                    error = if (error.isEchoLinkNotFound()) current.error else error.userMessage(),
+                                )
                             }
                         }
-                        .onFailure { error ->
-                            if (isCurrentRefresh()) {
-                                _library.update { current ->
-                                    current.copy(
-                                        albums = emptyList(),
-                                        albumsUnavailable = EchoLinkRequestPolicy.shouldMarkAlbumsUnavailable(
-                                            collectionNotFound = error.isEchoLinkNotFound(),
-                                        ),
-                                        error = if (error.isEchoLinkNotFound()) current.error else error.userMessage(),
-                                    )
-                                }
-                            }
-                        }
+                    }
                 }
             }
             val firstPage = runSuspendCatching {
@@ -382,64 +405,162 @@ class EchoRemoteClient internal constructor(
                 remoteTrackCount = firstPage.tracks.size,
                 previousTrackCount = previousTracks.size,
             )
-            val loadedTracks = ArrayList(if (keepPrevious) previousTracks else firstPage.tracks)
-            var totalCount = if (keepPrevious) {
+            val loadedTracks = if (keepPrevious) previousTracks else firstPage.tracks
+            val totalCount = if (keepPrevious) {
                 _library.value.totalCount.coerceAtLeast(loadedTracks.size)
             } else {
                 firstPage.totalCount.coerceAtLeast(loadedTracks.size)
             }
-            fun publish(isLoadingMore: Boolean, error: String? = null) {
-                // 流式拉取期间用户可能并发点开歌单:基于当前状态合并,保留
-                // refreshPlaylistTracks 写入的曲目与 loadingPlaylistId,不能整体覆盖
-                _library.update { current ->
-                    current.copy(
-                        isLoading = false,
-                        isLoadingMore = isLoadingMore,
-                        query = query,
-                        tracks = loadedTracks.toList(),
-                        totalCount = totalCount,
-                        error = error ?: current.error,
-                    )
-                }
-            }
-
-            var hasMore = !keepPrevious && firstPage.tracks.isNotEmpty() && loadedTracks.size < totalCount
-            publish(isLoadingMore = hasMore)
-
-            var page = 2
-            var pagesSincePublish = 0
-            while (hasMore && page <= MaxLibraryPages) {
-                val pageResult = runSuspendCatching {
-                    transport.fetchTracks(target, query, page, PcLibraryPageSize)
-                }.getOrElse { error ->
-                    if (isCurrentRefresh()) {
-                        publish(isLoadingMore = false, error = error.userMessage())
-                    }
-                    return@launch
-                }
-                if (!isCurrentRefresh()) return@launch
-                if (pageResult.tracks.isEmpty()) break
-                loadedTracks += pageResult.tracks
-                totalCount = pageResult.totalCount.coerceAtLeast(loadedTracks.size)
-                hasMore = loadedTracks.size < totalCount
-                pagesSincePublish += 1
-                if (pagesSincePublish >= PublishEveryPages && hasMore) {
-                    publish(isLoadingMore = true)
-                    pagesSincePublish = 0
-                }
-                page += 1
-            }
-            if (isCurrentRefresh()) {
-                publish(
+            nextTrackPage = if (!keepPrevious && loadedTracks.size < totalCount) 2 else 0
+            // 保留并发打开的歌单曲目，不能把整个曲库状态覆盖掉。
+            _library.update { current ->
+                current.copy(
+                    isLoading = false,
                     isLoadingMore = false,
-                    error = if (loadedTracks.size < totalCount) {
-                        text(R.string.connect_library_partial, loadedTracks.size, totalCount)
-                    } else {
-                        null
-                    },
+                    query = query,
+                    tracks = loadedTracks,
+                    totalCount = totalCount,
                 )
             }
         }
+    }
+
+    fun loadMoreTracks() {
+        loadMoreCollection(
+            nextPage = nextTrackPage,
+            loaded = _library.value.tracks.size,
+            total = _library.value.totalCount,
+            active = trackLoadMoreJob,
+            onJob = { trackLoadMoreJob = it },
+            onAdvance = { nextTrackPage = it },
+            fetch = { target, query, page ->
+                transport.fetchTracks(target, query, page, PcLibraryPageSize)
+            },
+            append = { current, page ->
+                val tracks = current.tracks + page.tracks
+                current.copy(
+                    tracks = tracks,
+                    totalCount = page.totalCount.coerceAtLeast(tracks.size),
+                )
+            },
+            itemCount = { page -> page.tracks.size },
+            isComplete = { state -> state.tracks.size >= state.totalCount },
+        )
+    }
+
+    fun loadMoreAlbums() {
+        if (_library.value.albumsUnavailable) return
+        loadMoreCollection(
+            nextPage = nextAlbumPage,
+            loaded = _library.value.albums.size,
+            total = _library.value.albumTotalCount,
+            active = albumLoadMoreJob,
+            onJob = { albumLoadMoreJob = it },
+            onAdvance = { nextAlbumPage = it },
+            fetch = { target, query, page ->
+                transport.fetchAlbums(target, query, page, PcLibraryPageSize)
+            },
+            append = { current, page ->
+                val albums = current.albums + page.albums
+                current.copy(
+                    albums = albums,
+                    albumTotalCount = page.totalCount.coerceAtLeast(albums.size),
+                )
+            },
+            itemCount = { page -> page.albums.size },
+            isComplete = { state -> state.albums.size >= state.albumTotalCount },
+        )
+    }
+
+    fun loadMorePlaylists() {
+        loadMoreCollection(
+            nextPage = nextPlaylistPage,
+            loaded = _library.value.playlists.size,
+            total = _library.value.playlistTotalCount,
+            active = playlistLoadMoreJob,
+            onJob = { playlistLoadMoreJob = it },
+            onAdvance = { nextPlaylistPage = it },
+            fetch = { target, query, page ->
+                transport.fetchPlaylists(target, query, page, PcLibraryPageSize)
+            },
+            append = { current, page ->
+                val playlists = current.playlists + page.playlists
+                current.copy(
+                    playlists = playlists,
+                    playlistTotalCount = page.totalCount.coerceAtLeast(playlists.size),
+                )
+            },
+            itemCount = { page -> page.playlists.size },
+            isComplete = { state -> state.playlists.size >= state.playlistTotalCount },
+        )
+    }
+
+    private fun <T> loadMoreCollection(
+        nextPage: Int,
+        loaded: Int,
+        total: Int,
+        active: Job?,
+        onJob: (Job?) -> Unit,
+        onAdvance: (Int) -> Unit,
+        fetch: suspend (EchoRemoteEndpoint, String, Int) -> T,
+        append: (EchoRemoteLibraryState, T) -> EchoRemoteLibraryState,
+        itemCount: (T) -> Int,
+        isComplete: (EchoRemoteLibraryState) -> Boolean,
+    ) {
+        if (nextPage < 2 || active?.isActive == true) return
+        if (total in 1..loaded) {
+            onAdvance(0)
+            return
+        }
+        val target = endpoint ?: return
+        if (nextPage > MaxLibraryPages) {
+            onAdvance(0)
+            _library.update {
+                it.copy(
+                    isLoadingMore = false,
+                    error = text(R.string.connect_library_partial, loaded, total.coerceAtLeast(loaded)),
+                )
+            }
+            return
+        }
+        val generation = libraryRefreshGeneration
+        val query = _library.value.query
+        onJob(scope.launch {
+            _library.update { it.copy(isLoadingMore = true) }
+            val result = runSuspendCatching { fetch(target, query, nextPage) }
+            if (endpoint?.id != target.id || generation != libraryRefreshGeneration) return@launch
+            result.onSuccess { page ->
+                if (itemCount(page) <= 0) {
+                    onAdvance(0)
+                    _library.update { it.copy(isLoadingMore = false) }
+                    return@onSuccess
+                }
+                if (endpoint?.id != target.id || generation != libraryRefreshGeneration) return@onSuccess
+                _library.update { current -> append(current, page).copy(isLoadingMore = false) }
+                if (generation != libraryRefreshGeneration) return@onSuccess
+                onAdvance(if (isComplete(_library.value)) 0 else nextPage + 1)
+            }.onFailure { error ->
+                onAdvance(0)
+                _library.update { it.copy(isLoadingMore = false, error = error.userMessage()) }
+            }
+        })
+    }
+
+    private fun collectionLoadActive(): Boolean =
+        trackLoadMoreJob?.isActive == true ||
+            albumLoadMoreJob?.isActive == true ||
+            playlistLoadMoreJob?.isActive == true
+
+    private fun cancelCollectionLoads() {
+        trackLoadMoreJob?.cancel()
+        trackLoadMoreJob = null
+        albumLoadMoreJob?.cancel()
+        albumLoadMoreJob = null
+        playlistLoadMoreJob?.cancel()
+        playlistLoadMoreJob = null
+        nextTrackPage = 0
+        nextAlbumPage = 0
+        nextPlaylistPage = 0
     }
 
     fun refreshPlaylistTracks(playlist: EchoRemotePlaylist) {
@@ -862,19 +983,6 @@ class EchoRemoteClient internal constructor(
         }
     }
 
-    private suspend fun fetchAllAlbums(target: EchoRemoteEndpoint, query: String): EchoLinkAlbumPage {
-        val items = mutableListOf<EchoRemoteAlbum>()
-        var page = 1
-        while (true) {
-            val batch = transport.fetchAlbums(target, query, page, PcLibraryPageSize)
-            items += batch.albums
-            if (batch.albums.isEmpty() || items.size >= batch.totalCount) {
-                return EchoLinkAlbumPage(items, batch.totalCount.coerceAtLeast(items.size))
-            }
-            check(page++ < MaxLibraryPages) { "PC album list exceeds the supported page limit" }
-        }
-    }
-
     private suspend fun fetchAllAlbumTracks(target: EchoRemoteEndpoint, id: String): EchoLinkTrackPage {
         val items = mutableListOf<EchoRemoteTrack>()
         var page = 1
@@ -885,19 +993,6 @@ class EchoRemoteClient internal constructor(
                 return EchoLinkTrackPage(items, batch.totalCount.coerceAtLeast(items.size))
             }
             check(page++ < MaxLibraryPages) { "PC album exceeds the supported page limit" }
-        }
-    }
-
-    private suspend fun fetchAllPlaylists(target: EchoRemoteEndpoint, query: String): EchoLinkPlaylistPage {
-        val items = mutableListOf<EchoRemotePlaylist>()
-        var page = 1
-        while (true) {
-            val batch = transport.fetchPlaylists(target, query, page, PcLibraryPageSize)
-            items += batch.playlists
-            if (batch.playlists.isEmpty() || items.size >= batch.totalCount) {
-                return EchoLinkPlaylistPage(items, batch.totalCount)
-            }
-            check(page++ < MaxLibraryPages) { "PC playlist list exceeds the supported page limit" }
         }
     }
 
@@ -1167,9 +1262,6 @@ class EchoRemoteClient internal constructor(
         const val PcLibraryPageSize = 500
         const val PcPlaylistTrackPageSize = 500
         const val MaxLibraryPages = 40
-
-        // 流式拉取时每拉取多少页向 UI 合并发布一次,限制下游 catalog 重建次数
-        const val PublishEveryPages = 2
     }
 }
 

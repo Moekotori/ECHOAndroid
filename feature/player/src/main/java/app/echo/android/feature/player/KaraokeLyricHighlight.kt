@@ -62,6 +62,13 @@ internal fun lyricGlyphPart(fraction: Float, glyphCount: Int, glyphIndex: Int): 
     return (fraction * glyphCount - glyphIndex).coerceIn(0f, 1f)
 }
 
+/** A small rise within the current word, meeting the steady ink at both boundaries. */
+internal fun lyricWordHighlightAlpha(fraction: Float, intensity: Float): Float {
+    val progress = fraction.coerceIn(0f, 1f)
+    val breath = 4f * progress * (1f - progress)
+    return (0.86f + 0.14f * breath * intensity.coerceIn(0.45f, 1.35f)).coerceAtMost(1f)
+}
+
 /**
  * Fully lit words, plus the single word still wiping.
  * [partialWord] is -1 when the highlight is steady (not started, between words, or finished).
@@ -103,10 +110,19 @@ internal fun planKaraokeHighlight(
 internal class KaraokeHighlightClip {
     private val completed = Path()
     private val frame = Path()
+    private val currentWord = Path()
+    private var currentWordVisible = false
+    private var glyphBounds = emptyArray<Array<GlyphBounds>>()
     private var layout: TextLayoutResult? = null
     private var builtWords = 0
     private var cachedPlan: KaraokeHighlightPlan? = null
     private var visible = false
+
+    val completedPath: Path? get() = if (builtWords > 0) completed else null
+    val currentWordPath: Path? get() = if (currentWordVisible) currentWord else null
+    val currentWordFraction: Float get() = cachedPlan?.partialFraction ?: 0f
+
+    private class GlyphBounds(val bounds: Rect, val rtl: Boolean)
 
     fun prepare(
         result: TextLayoutResult,
@@ -116,18 +132,35 @@ internal class KaraokeHighlightClip {
         now: Long,
     ): Path? {
         val plan = planKaraokeHighlight(words, lineEndMs, now)
-        if (layout === result && plan == cachedPlan) return if (visible) frame else null
-        if (layout !== result || plan.completedWords < builtWords) {
+        // Color animation can copy TextLayoutResult without changing the shaped paragraph.
+        val sameLayout = layout?.multiParagraph === result.multiParagraph && layout?.size == result.size
+        if (sameLayout && plan == cachedPlan) {
+            layout = result
+            return if (visible) frame else null
+        }
+        if (!sameLayout || plan.completedWords < builtWords) {
             completed.rewind()
             builtWords = 0
-            layout = result
+            if (!sameLayout) {
+                // Shape once per layout. Word progress only changes the clipping edge.
+                glyphBounds = Array(shapes.size) { word ->
+                    Array(shapes[word].glyphs.size) { glyph ->
+                        val offset = shapes[word].glyphs[glyph]
+                        GlyphBounds(result.getBoundingBox(offset),
+                            result.getBidiRunDirection(offset) == ResolvedTextDirection.Rtl)
+                    }
+                }
+            }
         }
+        layout = result
         while (builtWords < plan.completedWords && builtWords < shapes.size) {
             val shape = shapes[builtWords]
             if (!shape.isEmpty) completed.addPath(result.getPathForRange(shape.first, shape.endExclusive))
             builtWords++
         }
         frame.rewind()
+        currentWord.rewind()
+        currentWordVisible = false
         var ink = false
         if (builtWords > 0) {
             frame.addPath(completed)
@@ -135,27 +168,30 @@ internal class KaraokeHighlightClip {
         }
         val partial = plan.partialWord
         if (partial in shapes.indices && plan.partialFraction > 0f) {
-            if (addPartial(result, shapes[partial], plan.partialFraction)) ink = true
+            if (addPartial(partial, plan.partialFraction)) {
+                ink = true
+                currentWordVisible = true
+            }
         }
         cachedPlan = plan
         visible = ink
         return if (ink) frame else null
     }
 
-    private fun addPartial(result: TextLayoutResult, shape: LyricWordShape, fraction: Float): Boolean {
-        val glyphs = shape.glyphs
+    private fun addPartial(word: Int, fraction: Float): Boolean {
+        val glyphs = glyphBounds.getOrNull(word) ?: return false
         if (glyphs.isEmpty()) return false
         var ink = false
         for (glyphIndex in glyphs.indices) {
             val part = lyricGlyphPart(fraction, glyphs.size, glyphIndex)
             if (part <= 0f) continue
-            val bounds = result.getBoundingBox(glyphs[glyphIndex])
-            val rtl = result.getBidiRunDirection(glyphs[glyphIndex]) == ResolvedTextDirection.Rtl
+            val bounds = glyphs[glyphIndex].bounds
+            val rtl = glyphs[glyphIndex].rtl
             val width = bounds.width * part
-            frame.addRect(
-                if (rtl) Rect(bounds.right - width, bounds.top, bounds.right, bounds.bottom)
-                else Rect(bounds.left, bounds.top, bounds.left + width, bounds.bottom),
-            )
+            val covered = if (rtl) Rect(bounds.right - width, bounds.top, bounds.right, bounds.bottom)
+                else Rect(bounds.left, bounds.top, bounds.left + width, bounds.bottom)
+            frame.addRect(covered)
+            currentWord.addRect(covered)
             ink = true
         }
         return ink

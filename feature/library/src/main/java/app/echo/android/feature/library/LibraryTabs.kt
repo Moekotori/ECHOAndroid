@@ -36,6 +36,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -475,8 +476,14 @@ internal fun AlbumSummaryWall(
     onOpenAlbum: (AlbumSummary) -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(bottom = LibraryBottomControlsPadding),
+    totalCount: Int = albums.size,
+    isLoadingMore: Boolean = false,
+    onLoadMore: () -> Unit = {},
 ) {
+    val gridState = rememberLazyGridState()
+    LoadMoreWhenNearEnd(gridState, albums.size, totalCount, isLoadingMore, onLoadMore)
     LazyVerticalGrid(
+        state = gridState,
         columns = LibraryWallGridCells,
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(LibraryWallHorizontalSpacing),

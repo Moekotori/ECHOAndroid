@@ -88,3 +88,39 @@ Date: 2026-09-27. Scope: the approved light song-detail mock, with icon-only bot
 No remaining actionable P0/P1/P2 finding in the verified portrait flow.
 
 final result: passed
+
+
+---
+
+# Pixel handheld and type poster — 2026-09-28
+
+- Selected pixel reference: `C:/Users/Moe/.codex/generated_images/01a0e18e-65c5-7311-81ee-a70ad6700189/exec-f9c93e98-0ee3-4827-8b53-e1db5326c3f6.png`.
+- Selected poster reference: `C:/Users/Moe/.codex/generated_images/01a0e18e-65c5-7311-81ee-a70ad6700189/exec-48397b4d-51e5-4270-bbaf-8e83d88294cb.png`.
+- Native captures: `build/player-styles/pixel-final.png`, `build/player-styles/poster-final.png`; picker: `build/player-styles/four-styles.png`.
+- Combined visual comparisons: `build/player-styles/pixel-comparison.png`, `build/player-styles/poster-comparison.png`. Both reference and implementation were inspected together. Captures are 1080 x 2400 on Android 16 / 420 dpi. OS bars were cropped to 1080 x 2244; each content image was scaled to the same 400 px width, without stretching its aspect ratio. Native available content height is shorter than the generated mock.
+
+## Findings and corrections
+
+- Initial P1: poster autosizing clipped the visible letter shapes vertically. Replaced it with actual glyph-bound sizing and Android end ellipsis. Final capture shows complete letters; the long third line ends with an ellipsis, as explicitly requested by the user. Accessibility retains the full line text.
+- Initial P2: the pixel controls used ordinary icons and flat square surfaces. Added upstream Pixelarticons resources, stepped outlines, offset shadows, a larger primary glyph and an outlined segmented timeline.
+- Initial P2: ordered dithering produced conspicuous checkerboard blocks. The cover now uses bounded, cancellable error diffusion to a two-color palette, cached by Coil. Actual embedded album art is retained rather than replacing it with the image generator's altered artwork.
+
+## Fidelity surfaces
+
+- Fonts: bundled Pixelify Sans Bold and VT323 for the handheld; Anton and Outfit for the poster. Font/icon licenses are included. Poster glyph height and end ellipsis were reviewed in a full-resolution native capture.
+- Layout: handheld LCD grouping and asymmetric square transport, and poster three-line title / large clock / black transport bar are distinct. Bottom utilities remain icon-only. Native insets, full album metadata and the edition suffix account for spacing differences from the reference.
+- Colors: handheld forest/pistachio two-tone treatment; poster acid yellow/black. Real cover artwork is processed once per cache miss, not on playback ticks.
+- Artwork: actual device album data, bounded decode and transformed bitmap size, crisp nearest-neighbor display. The generated reference altered the album face; pixel-for-pixel likeness of that artwork is not claimed.
+- Copy: real title/artist/album/audio format/time. Long title and album content ellipsize; full title data remains intact.
+
+## Verification
+
+- Four styles visible in the existing settings drawer; switched between both new styles and verified the selection survives reinstall/relaunch.
+- Existing progress/transport callbacks retained; on-device playback updates observed. Final captures leave playback paused.
+- Player logic tests (39), preference tests, module graph and localization checks passed before visual refinement. Final native APK build passed after refinement.
+- Concurrent builds caused shared output/cache failures. Final validation used isolated module build directories and a private project cache; source files from parallel work were preserved. Final artifact: `build/player-styles/clean-modules/app/outputs/apk/debug/ECHOAndroid-26.9.28-debug.apk`.
+- No physical-device performance claim. CJK fallback and accessibility font extremes have not been visually exhaustively sampled.
+
+Remaining P3: minor icon-shape and real-metadata spacing differences from the generated artwork. No remaining clipping or inaccessible primary control in the verified portrait state.
+
+final result: passed

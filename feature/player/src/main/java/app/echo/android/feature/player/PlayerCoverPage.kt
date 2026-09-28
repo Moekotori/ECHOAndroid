@@ -14,7 +14,18 @@ internal data class PlayerAppearance(
     val textScale: Float = 1f,
     val artworkScale: Float = 1f,
 ) {
-    val isRecordSleeve: Boolean get() = style != "classic"
+    val isRecordSleeve: Boolean get() = style == "record_sleeve"
+    val usesFlatSurface: Boolean get() = style != "classic"
+    val background get() = when (style) {
+        "pixel_handheld" -> ExpressivePlayerStyle.PixelPaper
+        "type_poster" -> ExpressivePlayerStyle.PosterPaper
+        else -> RecordSleeveStyle.Paper
+    }
+    val headerInk get() = when (style) {
+        "pixel_handheld" -> ExpressivePlayerStyle.PixelInk
+        "type_poster" -> ExpressivePlayerStyle.PosterInk
+        else -> RecordSleeveStyle.Wine
+    }
 }
 
 @Composable
@@ -40,9 +51,17 @@ internal fun PlayerCoverPage(
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
+    val actions = ExpressivePlayerActions(onPlayPause, onNext, onPrevious, onSeek, onOpenQueue,
+        onCast, onToggleShuffle, onCycleRepeatMode, onToggleFavorite, onOpenLyrics)
     // Only cover-page type scales. Lyrics, transport hit targets and the drawer do not.
     CompositionLocalProvider(LocalDensity provides Density(density.density, density.fontScale * appearance.textScale)) {
-        if (appearance.isRecordSleeve) {
+        if (appearance.style == "pixel_handheld") {
+            PixelHandheldCoverPage(status, positionMsState, durationMsState, actions,
+                isCurrentTrackFavorite, castActive, appearance.artworkScale, modifier)
+        } else if (appearance.style == "type_poster") {
+            TypePosterCoverPage(status, positionMsState, durationMsState, actions,
+                castActive, appearance.artworkScale, modifier)
+        } else if (appearance.isRecordSleeve) {
             RecordSleeveCoverPage(
                 status, positionMsState, durationMsState, onPlayPause, onNext, onPrevious,
                 onSeek, onOpenQueue, onCast, castActive, onToggleShuffle, onCycleRepeatMode,

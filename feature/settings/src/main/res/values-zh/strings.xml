@@ -92,7 +92,7 @@
     <string name="settings_audio_tags">音频格式标签</string>
     <string name="settings_audio_tags_detail">在歌曲列表显示 FLAC、192kHz 等小标签</string>
     <string name="settings_watched_folder_rescan">监视已扫描文件夹</string>
-    <string name="settings_watched_folder_rescan_detail">回到 ECHO 时增量再扫你选过的文件夹。默认关闭</string>
+    <string name="settings_watched_folder_rescan_detail">回到 ECHO 时再扫你选过的文件夹，补上新增和删掉的歌曲。没改过的文件不会重新读取</string>
     <string name="settings_local_music">本地音乐</string>
     <string name="settings_pin_queue_offline">缓存当前队列以便离线听</string>
     <string name="settings_pin_queue_offline_detail">把当前队列里的远程和电脑曲目缓存下来，断网也能播</string>

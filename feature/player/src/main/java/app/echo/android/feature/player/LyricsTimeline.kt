@@ -4,6 +4,9 @@ import app.echo.android.model.lyrics.EchoLyricLine
 
 /** Built once per document; prefix ends bound overlap lookup for duet/backing-vocal lines. */
 internal class LyricsTimeline(private val lines: List<EchoLyricLine>) {
+    private var activeFrom = Long.MAX_VALUE
+    private var activeUntil = Long.MIN_VALUE
+    private var cachedActive: Set<Int> = emptySet()
     private val previousContent = IntArray(lines.size).also { values ->
         var previous = -1
         lines.forEachIndexed { index, line ->
@@ -31,15 +34,22 @@ internal class LyricsTimeline(private val lines: List<EchoLyricLine>) {
         return result
     }
     fun activeAt(positionMs: Long): Set<Int> {
+        if (positionMs >= activeFrom && positionMs < activeUntil) return cachedActive
         val last = lastStarted(positionMs)
-        if (last < 0) return emptySet()
         val active = mutableSetOf<Int>()
+        var until = lines.getOrNull(last + 1)?.startMs ?: Long.MAX_VALUE
         var i = last
         while (i >= 0 && prefixEnds[i] > positionMs) {
-            if (lines[i].startMs >= 0 && ends[i] > positionMs && lines[i].text.isNotBlank()) active += i
+            if (lines[i].startMs >= 0 && ends[i] > positionMs && lines[i].text.isNotBlank()) {
+                active += i
+                until = minOf(until, ends[i])
+            }
             i--
         }
-        return active
+        activeFrom = positionMs
+        activeUntil = until
+        cachedActive = active.ifEmpty { emptySet() }
+        return cachedActive
     }
     fun nextStart(positionMs: Long): Long? = lines.getOrNull(lastStarted(positionMs) + 1)?.startMs
 

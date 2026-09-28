@@ -98,7 +98,7 @@
     <string name="settings_audio_tags">Audioformat-Tags</string>
     <string name="settings_audio_tags_detail">Kleine Tags wie FLAC und 192 kHz in der Titelliste anzeigen</string>
     <string name="settings_watched_folder_rescan">Gescannte Ordner überwachen</string>
-    <string name="settings_watched_folder_rescan_detail">Beim Zurückkehren zu ECHO zuvor gescannte Ordner inkrementell erneut scannen. Standardmäßig aus</string>
+    <string name="settings_watched_folder_rescan_detail">Beim Zurückkehren zu ECHO bereits gewählte Ordner erneut einlesen und hinzugefügte oder entfernte Titel übernehmen. Unveränderte Dateien werden nicht erneut gelesen</string>
     <string name="settings_local_music">Lokale Musik</string>
     <string name="settings_local_music_detail">Titel, Alben, Interpreten und Scan durchsuchen</string>
     <string name="settings_pin_queue_offline">Aktuelle Warteschlange offline halten</string>

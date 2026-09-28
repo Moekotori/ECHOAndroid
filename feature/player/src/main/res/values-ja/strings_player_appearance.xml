@@ -8,4 +8,6 @@
     <string name="player_appearance_text_size">文字サイズ</string>
     <string name="player_appearance_cover_size">カバーサイズ</string>
     <string name="player_appearance_percent">%1$d%%</string>
+    <string name="player_appearance_pixel_handheld">ピクセル</string>
+    <string name="player_appearance_type_poster">文字ポスター</string>
 </resources>

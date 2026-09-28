@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_page_title">Текст песни</string>
+    <string name="lyrics_page_style">Стиль текста</string>
+    <string name="lyrics_style_mist">Туманная ночь</string>
+    <string name="lyrics_style_paper">Чтение на бумаге</string>
+    <string name="lyrics_style_mist_detail">Тёмная обложка · по левому краю</string>
+    <string name="lyrics_style_paper_detail">Светлый фон · шрифт с засечками по центру</string>
+</resources>

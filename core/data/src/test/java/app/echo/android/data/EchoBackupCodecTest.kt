@@ -17,6 +17,30 @@ import org.junit.Test
 
 class EchoBackupCodecTest {
     @Test
+    fun lyricStyleRoundTripsWithItsCustomizations() {
+        val settings = EchoAppSettings(
+            lyricsPageStyle = "paper", lyricsFontFamily = "imported",
+            lyricsFontScale = 1.2f, lyricsAlignment = "start", lyricsShowTranslation = false,
+        ).toBackupSettings()
+        val decoded = EchoBackupCodec.decode(EchoBackupCodec.encode(EchoBackupDocument(settings = settings))).settings
+        assertEquals("paper", decoded.lyricsPageStyle)
+        assertEquals("imported", decoded.lyricsFontFamily)
+        assertEquals(1.2f, decoded.lyricsFontScale)
+        assertEquals("start", decoded.lyricsAlignment)
+        assertEquals(false, decoded.lyricsShowTranslation)
+    }
+
+    @Test
+    fun oldBackupDoesNotInventALyricStyle() {
+        val decoded = EchoBackupCodec.decode(
+            JSONObject().put("version", 1).put("settings", JSONObject().put("lyricsAlignment", "center")).toString(),
+        ).settings
+        assertEquals(null, decoded.lyricsPageStyle)
+        assertEquals("center", decoded.lyricsAlignment)
+        assertEquals("mist", EchoAppSettings().lyricsPageStyle)
+    }
+
+    @Test
     fun roundTripsEqBalanceAndTheme() {
         val original = EchoBackupDocument(
             version = 1,

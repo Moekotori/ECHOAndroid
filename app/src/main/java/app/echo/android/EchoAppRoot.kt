@@ -1,6 +1,8 @@
 package app.echo.android
 
 import app.echo.android.i18n.refreshEchoAppLocale
+import app.echo.android.feature.listening.ListeningScreen
+import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.plugin.EchoPluginsOverlay
 import androidx.compose.ui.res.stringResource
 
@@ -34,6 +36,7 @@ import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -737,6 +740,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     var selectedPlaylist by remember { mutableStateOf<EchoPlaylist?>(null) }
     var detailReturnPage by remember { mutableStateOf<EchoPagerPage?>(null) }
     var searchVisible by remember { mutableStateOf(false) }
+    var listeningVisible by rememberSaveable { mutableStateOf(false) }
+    var listeningDraft by rememberSaveable { mutableStateOf("") }
     var searchQuery by remember { mutableStateOf("") }
     var errorLogVisible by remember { mutableStateOf(false) }
     var pluginsVisible by rememberSaveable { mutableStateOf(false) }
@@ -766,6 +771,37 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             viewModel.setShowLyricsControlDeck(true)
             EchoLaunchActions.consumeOpenLyrics()
         }
+    }
+    val listening = (context.applicationContext as EchoApplication).listening
+    val listeningState by listening.controller.state.collectAsStateWithLifecycle()
+    DisposableEffect(listening, viewModel) {
+        listening.outputAllowed = { !viewModel.usbExclusiveOutputActive() }
+        onDispose { listening.outputAllowed = { true } }
+    }
+    var roomHeard by remember { mutableStateOf(false) }
+    var localHeard by remember { mutableStateOf(false) }
+    LaunchedEffect(listeningState.audio, listeningState.yieldedToLocal, playbackStatus.state) {
+        val hearingRoom = !listeningState.yieldedToLocal &&
+            (listeningState.audio == app.echo.android.model.listening.EchoListeningAudio.Buffering ||
+                listeningState.audio == app.echo.android.model.listening.EchoListeningAudio.Receiving)
+        val local = playbackStatus.state == EchoPlaybackState.Playing ||
+            playbackStatus.state == EchoPlaybackState.Loading ||
+            playbackStatus.state == EchoPlaybackState.Buffering
+        when {
+            hearingRoom && local && !roomHeard && localHeard -> viewModel.pause()
+            hearingRoom && local && roomHeard && !localHeard -> listening.controller.noteLocalPlayback(true)
+            hearingRoom && local -> Unit
+            else -> listening.controller.noteLocalPlayback(local)
+        }
+        roomHeard = hearingRoom
+        localHeard = local
+    }
+    val listeningInvite by EchoLaunchActions.listeningInvite.collectAsStateWithLifecycle()
+    LaunchedEffect(listeningInvite) {
+        val code = listeningInvite ?: return@LaunchedEffect
+        EchoLaunchActions.consumeListeningInvite()
+        listeningDraft = code
+        listeningVisible = true
     }
     val incomingAudioUris by EchoLaunchActions.incomingAudioUris.collectAsStateWithLifecycle()
     LaunchedEffect(incomingAudioUris) {
@@ -972,7 +1008,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         )
     }
 
-    EchoOverlayBackHandler(enabled = searchVisible && !pluginsVisible) {
+    EchoOverlayBackHandler(enabled = listeningVisible && !pluginsVisible) {
+        listeningVisible = false
+    }
+    EchoOverlayBackHandler(enabled = searchVisible && !listeningVisible && !pluginsVisible) {
         searchVisible = false
         searchQuery = ""
     }
@@ -1002,7 +1041,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         },
         onDismiss = { nowPlayingExpanded = false },
     )
-    val shellOverlayOpen = searchVisible || errorLogVisible || queueSheetVisible || castSheetVisible || nowPlayingExpanded || pluginsVisible
+    val shellOverlayOpen = searchVisible || listeningVisible || errorLogVisible || queueSheetVisible || castSheetVisible || nowPlayingExpanded || pluginsVisible
     val connectPageSettled = appVisible && screenInteractive && !shellOverlayOpen &&
         tabPagerState.settledPage == EchoPagerPage.Connect.ordinal
     // One owner for discovery: closing either surface must not stop the other.
@@ -1199,6 +1238,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onOpenLibrary = { selectDockTab(EchoTab.Library) },
                                 onOpenConnect = { selectDockTab(EchoTab.Connect) },
                                 onOpenSearch = { searchVisible = true },
+                                onOpenListening = { listeningVisible = true },
                                 onResumePlayback = {
                                     if (!playbackStatus.isPlaying) routedPlayPause()
                                     expandNowPlaying()
@@ -1429,6 +1469,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 queueItems = remoteStatus.playback.queue.items,
                                 remoteLibrary = pcLibrary,
                                 onSearchPcLibrary = remoteClient::refreshLibrary,
+                                onLoadMorePcLibrary = remoteClient::loadMoreTracks,
                                 remoteControlsActive = connectPageSettled,
                                 subsonicServerUrl = appSettings.subsonicServerUrl,
                                 subsonicUsername = appSettings.subsonicUsername,
@@ -1770,6 +1811,38 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                         searchVisible = false
                         searchQuery = ""
                     },
+                )
+            }
+            if (listeningVisible) {
+                ListeningScreen(
+                    state = listeningState,
+                    initialInput = listeningDraft,
+                    defaultName = app.echo.android.listening.EchoListeningCodes.sanitizeName(android.os.Build.MODEL) ?: "ECHO",
+                    onBack = { listeningVisible = false },
+                    onConnect = { input, name, serverPassword ->
+                        appScope.launch {
+                            listening.controller.connect(input, name, serverPassword)
+                        }
+                    },
+                    onRefresh = { appScope.launch { listening.controller.refreshRooms() } },
+                    onJoin = { roomId, password ->
+                        appScope.launch { listening.controller.join(roomId, password, invitation = null) }
+                    },
+                    onLeave = { appScope.launch { listening.controller.leave() } },
+                    onDisconnect = { listening.controller.disconnect() },
+                    onChat = { text -> appScope.launch { listening.controller.sendChat(text) } },
+                    onVolume = listening.controller::setVolume,
+                    onDismissPassword = listening.controller::dismissPassword,
+                    onResumeAudio = {
+                        if (playbackStatus.isPlaying ||
+                            playbackStatus.state == EchoPlaybackState.Loading ||
+                            playbackStatus.state == EchoPlaybackState.Buffering
+                        ) {
+                            viewModel.pause()
+                        }
+                        listening.controller.resumeAfterLocalPlayback()
+                    },
+                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
                 )
             }
             AnimatedVisibility(

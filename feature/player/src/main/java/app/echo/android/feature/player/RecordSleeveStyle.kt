@@ -40,16 +40,16 @@ internal object RecordSleeveStyle {
 
 /** Keep system icons readable on paper, then restore the host's appearance. */
 @Composable
-internal fun RecordSleeveSystemBars(enabled: Boolean) {
+internal fun RecordSleeveSystemBars(enabled: Boolean, darkIcons: Boolean = true) {
     val view = LocalView.current
-    DisposableEffect(view, enabled) {
+    DisposableEffect(view, enabled, darkIcons) {
         val window = view.context.activity()?.window
         if (!enabled || window == null) return@DisposableEffect onDispose {}
         val controller = WindowCompat.getInsetsController(window, view)
         val statusWasLight = controller.isAppearanceLightStatusBars
         val navigationWasLight = controller.isAppearanceLightNavigationBars
-        controller.isAppearanceLightStatusBars = true
-        controller.isAppearanceLightNavigationBars = true
+        controller.isAppearanceLightStatusBars = darkIcons
+        controller.isAppearanceLightNavigationBars = darkIcons
         onDispose {
             controller.isAppearanceLightStatusBars = statusWasLight
             controller.isAppearanceLightNavigationBars = navigationWasLight

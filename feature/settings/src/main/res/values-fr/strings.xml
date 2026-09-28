@@ -98,7 +98,7 @@
     <string name="settings_audio_tags">Étiquettes de format audio</string>
     <string name="settings_audio_tags_detail">Afficher de petites étiquettes telles que FLAC et 192 kHz dans la liste des titres</string>
     <string name="settings_watched_folder_rescan">Surveiller les dossiers analysés</string>
-    <string name="settings_watched_folder_rescan_detail">Lorsque vous revenez à ECHO, réanalyse incrémentielle des dossiers déjà analysés. Désactivé par défaut</string>
+    <string name="settings_watched_folder_rescan_detail">Lorsque vous revenez dans ECHO, les dossiers déjà choisis sont réanalysés pour prendre en compte les morceaux ajoutés ou supprimés. Les fichiers inchangés ne sont pas relus</string>
     <string name="settings_local_music">Musique locale</string>
     <string name="settings_local_music_detail">Parcourir les titres, albums, artistes et l\'analyse</string>
     <string name="settings_pin_queue_offline">Garder la file actuelle hors ligne</string>

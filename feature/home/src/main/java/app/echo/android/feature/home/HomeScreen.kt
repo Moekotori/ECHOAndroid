@@ -62,6 +62,7 @@ fun HomeScreen(
     onOpenLibrary: () -> Unit,
     onOpenConnect: () -> Unit,
     onOpenSearch: () -> Unit = {},
+    onOpenListening: (() -> Unit)? = null,
     bottomInset: Dp = 0.dp,
     rediscoveredAlbums: List<AlbumSummary> = emptyList(),
     positionState: State<PlaybackPositionState>? = null,
@@ -97,6 +98,11 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(if (compactViewport) 24.dp else 28.dp),
             ) {
                 item(key = "header") { HomeSectionEntrance(0) { HomeHeader(onOpenSearch) } }
+                if (onOpenListening != null) {
+                    item(key = "listen-together") {
+                        HomeListeningEntry(onOpenListening)
+                    }
+                }
                 if (status.state == EchoPlaybackState.Error &&
                     status.diagnostics.lastError?.kind == EchoAudioErrorKind.FileMissing) {
                     item(key = "missing-file") {

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="listening_notification_channel">Слушать вместе</string>
+    <string name="listening_notification_title">Слушать вместе</string>
+    <string name="listening_notification_stop">Перестать слушать</string>
+</resources>

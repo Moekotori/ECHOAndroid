@@ -99,6 +99,8 @@
     <string name="feature_home_search_local_music_albums_and_artists_443a4f">"Rechercher musique locale, albums et artistes"</string>
     <string name="feature_home_search_local_music_b9c195">"Rechercher la musique locale..."</string>
     <string name="feature_home_search_songs_albums_and_artists_c46634">"Rechercher morceaux, albums et artistes"</string>
+    <string name="feature_home_listen_together_title">Écoute ensemble</string>
+    <string name="feature_home_listen_together_detail">Rejoindre une salle d’ECHO sur PC</string>
     <string name="feature_home_seeking_ea77e5">"Recherche"</string>
     <string name="feature_home_shuffle_957ce0">"Aléatoire"</string>
     <string name="feature_home_shuffle_on_c7c5c4">"Aléatoire activé"</string>

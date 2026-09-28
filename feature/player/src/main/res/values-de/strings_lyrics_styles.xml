@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_page_title">Liedtext</string>
+    <string name="lyrics_page_style">Liedtextstil</string>
+    <string name="lyrics_style_mist">Nebelnacht</string>
+    <string name="lyrics_style_paper">Lesepapier</string>
+    <string name="lyrics_style_mist_detail">Dunkles Cover · linksbündig</string>
+    <string name="lyrics_style_paper_detail">Heller Hintergrund · zentrierte Serifenschrift</string>
+</resources>

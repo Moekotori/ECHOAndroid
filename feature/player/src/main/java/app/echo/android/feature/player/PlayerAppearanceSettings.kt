@@ -35,19 +35,24 @@ internal fun PlayerAppearanceSettings(
             }
         },
     ) {
-        Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            PlaybackChoiceChip(
-                text = stringResource(R.string.player_appearance_record_sleeve),
-                selected = appearance.isRecordSleeve,
-                onClick = { onPreview(appearance.copy(style = "record_sleeve")); onCommit() },
-                modifier = Modifier.weight(1f),
+        Column(Modifier.fillMaxWidth().selectableGroup(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            val styles = listOf(
+                "record_sleeve" to R.string.player_appearance_record_sleeve,
+                "classic" to R.string.player_appearance_classic,
+                "pixel_handheld" to R.string.player_appearance_pixel_handheld,
+                "type_poster" to R.string.player_appearance_type_poster,
             )
-            PlaybackChoiceChip(
-                text = stringResource(R.string.player_appearance_classic),
-                selected = !appearance.isRecordSleeve,
-                onClick = { onPreview(appearance.copy(style = "classic")); onCommit() },
-                modifier = Modifier.weight(1f),
-            )
+            styles.chunked(2).forEach { row ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    row.forEach { (id, label) ->
+                        PlaybackChoiceChip(
+                            text = stringResource(label), selected = appearance.style == id,
+                            onClick = { onPreview(appearance.copy(style = id)); onCommit() },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+            }
         }
         AppearanceScaleSlider(
             label = stringResource(R.string.player_appearance_text_size),

@@ -99,6 +99,8 @@
     <string name="feature_home_search_local_music_albums_and_artists_443a4f">"로컬 음악, 앨범, 아티스트 검색"</string>
     <string name="feature_home_search_local_music_b9c195">"로컬 음악 검색..."</string>
     <string name="feature_home_search_songs_albums_and_artists_c46634">"곡, 앨범, 아티스트 검색"</string>
+    <string name="feature_home_listen_together_title">함께 듣기</string>
+    <string name="feature_home_listen_together_detail">PC의 함께 듣기 방에 참여</string>
     <string name="feature_home_seeking_ea77e5">"탐색 중"</string>
     <string name="feature_home_shuffle_957ce0">"셔플"</string>
     <string name="feature_home_shuffle_on_c7c5c4">"셔플 켜짐"</string>

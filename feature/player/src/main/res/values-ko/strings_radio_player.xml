@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="radio_player_title">라디오</string>
+    <string name="radio_online">온라인 라디오</string>
+    <string name="radio_timer">취침 타이머</string>
+    <string name="radio_timer_minutes">%1$d분</string>
+    <string name="radio_timer_cancel">타이머 취소</string>
+    <string name="radio_demo_program">한밤의 산책</string>
+    <string name="radio_state_playing">재생 중</string>
+    <string name="radio_state_connecting">연결 중</string>
+    <string name="radio_state_buffering">버퍼링 중</string>
+    <string name="radio_state_paused">일시 정지</string>
+    <string name="radio_state_stopped">정지됨</string>
+    <string name="radio_state_error">재생할 수 없음</string>
+    <string name="radio_bitrate">%1$d kbps</string>
+    <string name="radio_queue">대기열</string>
+    <string name="radio_cast">캐스트</string>
+</resources>

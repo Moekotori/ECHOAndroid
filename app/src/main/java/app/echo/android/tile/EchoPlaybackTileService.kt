@@ -15,6 +15,7 @@ import app.echo.android.R
 import app.echo.android.playback.EchoPlaybackProcessRuntime
 import app.echo.android.playback.EchoPlaybackService
 import app.echo.android.playback.PlaybackSessionPolicy
+import app.echo.android.playback.radioNowPlaying
 import app.echo.android.widget.EchoPlaybackRemote
 
 @UnstableApi
@@ -92,12 +93,13 @@ class EchoPlaybackTileService : TileService() {
     }
 
     private fun updateTileFromPlayer(player: Player) {
+        val radio = player.radioNowPlaying()
         val metadata = player.mediaMetadata
         applyTile(
             isPlaying = player.isPlaying,
             hasTrack = player.currentMediaItem != null,
-            title = metadata.title?.toString().orEmpty(),
-            artist = metadata.artist?.toString().orEmpty(),
+            title = radio?.title ?: metadata.title?.toString().orEmpty(),
+            artist = radio?.artist ?: metadata.artist?.toString().orEmpty(),
         )
     }
 

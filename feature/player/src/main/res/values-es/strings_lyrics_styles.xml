@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_page_title">Letra</string>
+    <string name="lyrics_page_style">Estilo de letra</string>
+    <string name="lyrics_style_mist">Noche de niebla</string>
+    <string name="lyrics_style_paper">Lectura en papel</string>
+    <string name="lyrics_style_mist_detail">Portada oscura · alineada a la izquierda</string>
+    <string name="lyrics_style_paper_detail">Fondo claro · serif centrada</string>
+</resources>

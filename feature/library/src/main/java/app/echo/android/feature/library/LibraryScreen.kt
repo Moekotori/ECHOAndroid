@@ -338,6 +338,9 @@ fun LibraryScreen(
     onOpenLinkedPlaylist: (EchoRemotePlaylist) -> Unit,
     onOpenLinkedAlbum: (EchoRemoteAlbum) -> Unit = {},
     onRefreshLinkedFolders: (String) -> Unit = {},
+    onLoadMoreLinkedTracks: () -> Unit = {},
+    onLoadMoreLinkedAlbums: () -> Unit = {},
+    onLoadMoreLinkedPlaylists: () -> Unit = {},
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
     onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
     onPlayLinkedQueueOnPc: (List<EchoRemoteTrack>, Int) -> Unit = { _, _ -> },
@@ -749,6 +752,9 @@ fun LibraryScreen(
                             },
                             onRefresh = onRefreshLinkedLibrary,
                             onRefreshFolders = onRefreshLinkedFolders,
+                            onLoadMoreTracks = onLoadMoreLinkedTracks,
+                            onLoadMoreAlbums = onLoadMoreLinkedAlbums,
+                            onLoadMorePlaylists = onLoadMoreLinkedPlaylists,
                             onPlayLinkedTrack = onPlayLinkedTrack,
                             onPlayLinkedQueue = onPlayLinkedQueue,
                             onPlayLinkedQueueOnPc = onPlayLinkedQueueOnPc,
@@ -1276,6 +1282,9 @@ private fun LinkedEchoLibraryPage(
     onOpenPlaylist: (EchoRemotePlaylist) -> Unit,
     onRefresh: (String) -> Unit,
     onRefreshFolders: (String) -> Unit,
+    onLoadMoreTracks: () -> Unit,
+    onLoadMoreAlbums: () -> Unit,
+    onLoadMorePlaylists: () -> Unit,
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
     onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
     onPlayLinkedQueueOnPc: (List<EchoRemoteTrack>, Int) -> Unit,
@@ -1388,7 +1397,7 @@ private fun LinkedEchoLibraryPage(
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
             )
         }
-        if (state.isLoadingMore) {
+        if (state.isLoadingMore && selectedMode == LinkedLibraryMode.Songs) {
             Text(
                 text = stringResource(L10nR.string.feature_library_loading_more_from_pc_echo_tracks_size_state_e85d63, (tracks.size).toString(), (state.totalCount).toString()),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1463,11 +1472,19 @@ private fun LinkedEchoLibraryPage(
                 onPlayLinkedTrack = onPlayLinkedTrack,
                 onPlayOnPc = { track -> onPlayLinkedQueueOnPc(listOf(track), 0) },
                 showAudioInfoTags = showTrackAudioInfoTags,
+                loadedCount = state.tracks.size,
+                totalCount = state.totalCount,
+                isLoadingMore = state.isLoadingMore,
+                onLoadMore = onLoadMoreTracks,
                 modifier = Modifier.fillMaxSize(),
             )
             mode == LinkedLibraryMode.Albums -> LinkedAlbumWall(
                 albums = albums,
                 onOpenAlbum = onOpenAlbum,
+                loadedCount = state.albums.size,
+                totalCount = state.albumTotalCount,
+                isLoadingMore = state.isLoadingMore,
+                onLoadMore = onLoadMoreAlbums,
                 modifier = Modifier.fillMaxSize(),
             )
             mode == LinkedLibraryMode.Artists -> LinkedArtistWall(
@@ -1478,6 +1495,10 @@ private fun LinkedEchoLibraryPage(
             mode == LinkedLibraryMode.Playlists -> LinkedPlaylistList(
                 playlists = filteredPlaylists,
                 onOpenPlaylist = onOpenPlaylist,
+                loadedCount = state.playlists.size,
+                totalCount = state.playlistTotalCount,
+                isLoadingMore = state.isLoadingMore,
+                onLoadMore = onLoadMorePlaylists,
                 modifier = Modifier.fillMaxSize(),
             )
             mode == LinkedLibraryMode.Folders -> LinkedFolderBrowser(
@@ -1541,8 +1562,16 @@ private fun LinkedTrackList(
     onPlayOnPc: ((EchoRemoteTrack) -> Unit)? = null,
     showAudioInfoTags: Boolean,
     modifier: Modifier = Modifier,
+    loadedCount: Int = tracks.size,
+    totalCount: Int = tracks.size,
+    isLoadingMore: Boolean = false,
+    onLoadMore: () -> Unit = {},
 ) {
+    val listState = rememberLazyListState()
+    val requestTotal = if (tracks.size < loadedCount) tracks.size else totalCount
+    LoadMoreWhenNearEnd(listState, tracks.size, requestTotal, isLoadingMore, onLoadMore)
     LazyColumn(
+        state = listState,
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(bottom = LibraryBottomControlsPadding),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -1566,8 +1595,16 @@ private fun LinkedPlaylistList(
     playlists: List<EchoRemotePlaylist>,
     onOpenPlaylist: (EchoRemotePlaylist) -> Unit,
     modifier: Modifier = Modifier,
+    loadedCount: Int = playlists.size,
+    totalCount: Int = playlists.size,
+    isLoadingMore: Boolean = false,
+    onLoadMore: () -> Unit = {},
 ) {
+    val listState = rememberLazyListState()
+    val requestTotal = if (playlists.size < loadedCount) playlists.size else totalCount
+    LoadMoreWhenNearEnd(listState, playlists.size, requestTotal, isLoadingMore, onLoadMore)
     LazyColumn(
+        state = listState,
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(bottom = LibraryBottomControlsPadding),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -1742,11 +1779,18 @@ private fun LinkedAlbumWall(
     albums: List<AlbumSummary>,
     onOpenAlbum: (AlbumSummary) -> Unit,
     modifier: Modifier = Modifier,
+    loadedCount: Int = albums.size,
+    totalCount: Int = albums.size,
+    isLoadingMore: Boolean = false,
+    onLoadMore: () -> Unit = {},
 ) {
     AlbumSummaryWall(
         albums = albums,
         onOpenAlbum = onOpenAlbum,
         modifier = modifier,
+        totalCount = if (albums.size < loadedCount) albums.size else totalCount.coerceAtLeast(loadedCount),
+        isLoadingMore = isLoadingMore,
+        onLoadMore = onLoadMore,
     )
 }
 

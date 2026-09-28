@@ -98,7 +98,7 @@
     <string name="settings_audio_tags">오디오 형식 태그</string>
     <string name="settings_audio_tags_detail">곡 목록에 FLAC, 192 kHz 같은 작은 태그를 표시합니다</string>
     <string name="settings_watched_folder_rescan">스캔한 폴더 감시</string>
-    <string name="settings_watched_folder_rescan_detail">ECHO로 돌아오면 이전에 스캔한 폴더를 증분 스캔합니다. 기본값은 꺼짐입니다</string>
+    <string name="settings_watched_folder_rescan_detail">ECHO로 돌아오면 선택한 폴더를 다시 살펴 추가되거나 삭제된 곡을 반영합니다. 바뀌지 않은 파일은 다시 읽지 않습니다</string>
     <string name="settings_local_music">로컬 음악</string>
     <string name="settings_local_music_detail">곡, 앨범, 아티스트, 스캔을 둘러봅니다</string>
     <string name="settings_pin_queue_offline">현재 대기열을 오프라인으로 유지</string>

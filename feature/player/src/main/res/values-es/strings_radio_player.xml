@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="radio_player_title">Radio</string>
+    <string name="radio_online">Radio en línea</string>
+    <string name="radio_timer">Temporizador</string>
+    <string name="radio_timer_minutes">%1$d minutos</string>
+    <string name="radio_timer_cancel">Cancelar temporizador</string>
+    <string name="radio_demo_program">Paseo nocturno</string>
+    <string name="radio_state_playing">Reproduciendo</string>
+    <string name="radio_state_connecting">Conectando</string>
+    <string name="radio_state_buffering">Cargando</string>
+    <string name="radio_state_paused">En pausa</string>
+    <string name="radio_state_stopped">Detenido</string>
+    <string name="radio_state_error">No se puede reproducir</string>
+    <string name="radio_bitrate">%1$d kbps</string>
+    <string name="radio_queue">Cola</string>
+    <string name="radio_cast">Transmitir</string>
+</resources>

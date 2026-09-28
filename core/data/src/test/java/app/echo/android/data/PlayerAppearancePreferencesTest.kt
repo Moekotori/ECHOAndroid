@@ -6,6 +6,15 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class PlayerAppearancePreferencesTest {
+    @Test fun preservesEverySelectableStyleAcrossPreferenceReloads() {
+        for (style in listOf("classic", "record_sleeve", "pixel_handheld", "type_poster")) {
+            val prefs = mutablePreferencesOf()
+            PlayerAppearancePreferences.write(prefs, style, 1.1f, 0.8f)
+            assertEquals(style, PlayerAppearancePreferences.style(prefs.toPreferences()))
+            assertEquals(1.1f, PlayerAppearancePreferences.textScale(prefs.toPreferences()))
+            assertEquals(0.8f, PlayerAppearancePreferences.artworkScale(prefs.toPreferences()))
+        }
+    }
     @Test fun missingPreferencesKeepTheApprovedDesign() {
         val prefs = mutablePreferencesOf()
         assertEquals("record_sleeve", PlayerAppearancePreferences.style(prefs))

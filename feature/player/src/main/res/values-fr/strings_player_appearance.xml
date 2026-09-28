@@ -8,4 +8,6 @@
     <string name="player_appearance_text_size">Taille du texte</string>
     <string name="player_appearance_cover_size">Taille de la pochette</string>
     <string name="player_appearance_percent">%1$d%%</string>
+    <string name="player_appearance_pixel_handheld">Pixels</string>
+    <string name="player_appearance_type_poster">Affiche typo</string>
 </resources>

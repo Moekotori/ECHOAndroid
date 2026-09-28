@@ -98,7 +98,7 @@
     <string name="settings_audio_tags">Audio format tags</string>
     <string name="settings_audio_tags_detail">Show small tags such as FLAC and 192 kHz in the track list</string>
     <string name="settings_watched_folder_rescan">Watch scanned folders</string>
-    <string name="settings_watched_folder_rescan_detail">When you return to ECHO, incrementally rescan folders you previously scanned. Off by default</string>
+    <string name="settings_watched_folder_rescan_detail">When you return to ECHO, rescan folders you already chose and pick up added or removed songs. Unchanged files are not read again</string>
     <string name="settings_local_music">Local music</string>
     <string name="settings_local_music_detail">Browse tracks, albums, artists, and scanning</string>
     <string name="settings_pin_queue_offline">Keep current queue offline</string>

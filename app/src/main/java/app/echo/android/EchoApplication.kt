@@ -49,6 +49,7 @@ class EchoApplication : Application(), ImageLoaderFactory {
         app.echo.android.data.AlbumOnlineInfoRepository(java.io.File(cacheDir, "album-online-info"), BuildConfig.VERSION_NAME, musicBrainzGate)
     }
     val echoLinkSession by lazy { EchoLinkSession(this) }
+    val listening by lazy { app.echo.android.listening.EchoListeningRuntime(this) }
     internal val lyricsSession: EchoNowPlayingLyricsSession by lazy { EchoNowPlayingLyricsSession(this) }
     internal val offlineDownloads: EchoOfflineDownloads by lazy {
         EchoOfflineDownloads(

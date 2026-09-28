@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_page_title">Lyrics</string>
+    <string name="lyrics_page_style">Lyric style</string>
+    <string name="lyrics_style_mist">Misty night</string>
+    <string name="lyrics_style_paper">Paper reading</string>
+    <string name="lyrics_style_mist_detail">Dark artwork · left aligned</string>
+    <string name="lyrics_style_paper_detail">Light surface · centered serif</string>
+</resources>

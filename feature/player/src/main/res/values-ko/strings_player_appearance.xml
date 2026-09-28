@@ -8,4 +8,6 @@
     <string name="player_appearance_text_size">글자 크기</string>
     <string name="player_appearance_cover_size">커버 크기</string>
     <string name="player_appearance_percent">%1$d%%</string>
+    <string name="player_appearance_pixel_handheld">픽셀 플레이어</string>
+    <string name="player_appearance_type_poster">타이포 포스터</string>
 </resources>

@@ -12,6 +12,24 @@ object EchoLinkLibraryQueryPolicy {
         return albumKey.removePrefix(RemoteAlbumKeyPrefix).takeIf { it.isNotBlank() }
     }
 
+    /**
+     * 已加载的一页还没铺满屏幕时不要自动连拉，否则短列表会把整库拉完。
+     * 铺满之后，滚到末尾附近再取下一页。
+     */
+    fun shouldRequestNextPage(
+        loadedCount: Int,
+        totalCount: Int,
+        lastVisibleIndex: Int,
+        visibleItemCount: Int,
+        firstVisibleIndex: Int = 0,
+        prefetch: Int = 8,
+    ): Boolean {
+        if (loadedCount <= 0 || totalCount <= loadedCount || lastVisibleIndex < 0) return false
+        if (lastVisibleIndex < loadedCount - prefetch.coerceAtLeast(1)) return false
+        val fillsViewport = visibleItemCount in 1 until loadedCount
+        return fillsViewport || firstVisibleIndex > 0
+    }
+
     fun shouldFetchPlaylistTracks(
         knownTrackCount: Int,
         declaredTrackCount: Int,

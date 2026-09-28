@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="listening_notification_channel">一緒に聴く</string>
+    <string name="listening_notification_title">一緒に聴く</string>
+    <string name="listening_notification_stop">聴くのをやめる</string>
+</resources>

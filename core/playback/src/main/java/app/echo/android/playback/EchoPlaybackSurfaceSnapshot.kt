@@ -20,9 +20,10 @@ fun Player.toPlaybackSurfaceSnapshot(): EchoPlaybackSurfaceSnapshot {
     val metadata = item?.mediaMetadata
     val playUri = item?.localConfiguration?.uri?.toString()
         ?: metadata?.extras?.getString(EchoEmbeddedArtworkSourceUriExtra)
+    val radio = radioNowPlaying()
     return EchoPlaybackSurfaceSnapshot(
-        title = metadata?.title?.toString().orEmpty(),
-        artist = metadata?.artist?.toString().orEmpty(),
+        title = radio?.title ?: metadata?.title?.toString().orEmpty(),
+        artist = radio?.artist ?: metadata?.artist?.toString().orEmpty(),
         isPlaying = isPlaying,
         hasTrack = item != null,
         repeatMode = repeatMode,

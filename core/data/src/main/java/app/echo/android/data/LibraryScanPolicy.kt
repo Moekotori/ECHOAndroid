@@ -389,8 +389,9 @@ object LibraryScanPolicy {
     }
 
     /**
-     * SAF 嵌套目录在 lastModified 可信且未变时复用上次子项列表,跳过 ContentResolver 列举。
-     * 根目录、mtime 为 0 或提供者不更新目录 mtime 时必须重列;文件内容变更若不碰目录 mtime,要等到下次完整列举。
+     * 仅当调用方明确打开缓存时，嵌套目录才在 lastModified 未变时跳过列举。
+     * 曲库刷新不能用它：很多 SAF 提供者在子文件增删时不改目录 mtime。
+     * 根目录、mtime 为 0、或 mtime 变化时必须重列。
      */
     fun shouldReuseCachedDocumentListing(
         cachedLastModifiedMs: Long,

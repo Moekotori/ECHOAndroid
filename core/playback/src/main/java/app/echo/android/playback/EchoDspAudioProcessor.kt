@@ -93,6 +93,16 @@ internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>) 
             }
         }
         kernel.setTarget(settings, replayGain)
+        if (channels <= 2 && kernel.processBuffer(samples, frames, channels)) {
+            samples.position(0)
+            samples.limit(frames * channels * 4)
+            repeat(frames * channels) {
+                val value = samples.float
+                writeSample(output, if (value.isFinite()) value else 0f)
+            }
+            output.flip()
+            return
+        }
         repeat(frames) {
             if (channels <= 2) {
                 val l = samples.float.let { if (it.isFinite()) it else 0f }

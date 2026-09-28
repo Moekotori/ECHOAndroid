@@ -424,11 +424,22 @@ class EchoRemoteClientTest {
         val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
         client.connect(endpoint, refreshLibraryOnConnect = true)
         delay(80)
-        assertEquals(5, client.library.value.tracks.size)
+        assertEquals(2, client.library.value.tracks.size)
         assertEquals(5, client.library.value.totalCount)
-        assertEquals(3, transport.libraryTrackCalls)
-        // 流式拉取完成后必须清掉"继续加载中"标记
+        assertEquals(1, transport.libraryTrackCalls)
         assertFalse(client.library.value.isLoadingMore)
+        client.loadMoreTracks()
+        delay(30)
+        assertEquals(4, client.library.value.tracks.size)
+        assertEquals(2, transport.libraryTrackCalls)
+        client.loadMoreTracks()
+        delay(30)
+        assertEquals(5, client.library.value.tracks.size)
+        assertEquals(3, transport.libraryTrackCalls)
+        assertFalse(client.library.value.isLoadingMore)
+        client.loadMoreTracks()
+        delay(20)
+        assertEquals(3, transport.libraryTrackCalls)
         client.disconnect()
     }
 
@@ -452,9 +463,17 @@ class EchoRemoteClientTest {
         delay(20)
         assertEquals(listOf("pl-track"), client.library.value.playlistTracks["pl"]?.map { it.id })
 
-        // 流式刷新的后续发布不得清掉已加载的歌单曲目
+        // 滚到末尾再取的下一页不得清掉已加载的歌单曲目
+        client.loadMoreTracks()
+        delay(10)
         pageBlocker.complete(Unit)
         delay(40)
+        assertEquals(4, client.library.value.tracks.size)
+        assertEquals(listOf("pl-track"), client.library.value.playlistTracks["pl"]?.map { it.id })
+        client.loadMoreTracks()
+        delay(20)
+        client.loadMoreTracks()
+        delay(20)
         assertFalse(client.library.value.isLoadingMore)
         assertEquals(8, client.library.value.tracks.size)
         assertEquals(listOf("pl-track"), client.library.value.playlistTracks["pl"]?.map { it.id })
@@ -482,7 +501,9 @@ class EchoRemoteClientTest {
         delay(20)
         assertEquals("pl", client.library.value.loadingPlaylistId)
 
-        // 歌单仍在加载时流式刷新完成:加载指示器不得凭空消失
+        // 歌单仍在加载时再取歌曲下一页:加载指示器不得凭空消失
+        client.loadMoreTracks()
+        delay(10)
         pageBlocker.complete(Unit)
         delay(40)
         assertFalse(client.library.value.isLoadingMore)

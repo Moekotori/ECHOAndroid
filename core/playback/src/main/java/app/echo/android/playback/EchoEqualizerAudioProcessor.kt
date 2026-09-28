@@ -27,6 +27,8 @@ class EchoEqualizerAudioProcessor(
     private var delayLine: FloatArray = FloatArray(0)
     private var configuredSampleRateHz: Int = 0
     private var configuredFilters: List<OpraEqBand>? = null
+    private var packedCoeffs = FloatArray(0)
+    private var packedFrom: Array<EchoBiquadNormalized>? = null
 
     fun setRuntime(runtime: EchoEqualizerRuntime) {
         this.runtime = runtime
@@ -176,6 +178,21 @@ class EchoEqualizerAudioProcessor(
         val floatOut = output.asFloatBuffer()
         val frameCount = floatIn.remaining() / channelCount
         ensureDelayLine(channelCount)
+        if (EchoDspNative.processEq(
+                input = inputBuffer,
+                output = output,
+                frames = frameCount,
+                channels = channelCount,
+                preamp = preampLinear,
+                clamp = !preserveFloatHeadroom,
+                coeffs = packedCoeffs(),
+                delay = delayLine,
+            )
+        ) {
+            inputBuffer.position(inputBuffer.limit())
+            output.position(output.position() + frameCount * channelCount * 4)
+            return
+        }
         val filters = coeffs
         repeat(frameCount) {
             for (channel in 0 until channelCount) {
@@ -186,6 +203,23 @@ class EchoEqualizerAudioProcessor(
         }
         inputBuffer.position(inputBuffer.limit())
         output.position(output.position() + frameCount * channelCount * 4)
+    }
+
+    private fun packedCoeffs(): FloatArray {
+        val filters = coeffs
+        if (packedFrom === filters) return packedCoeffs
+        val packed = FloatArray(filters.size * 5)
+        filters.forEachIndexed { index, coeff ->
+            val at = index * 5
+            packed[at] = coeff.b0
+            packed[at + 1] = coeff.b1
+            packed[at + 2] = coeff.b2
+            packed[at + 3] = coeff.a1
+            packed[at + 4] = coeff.a2
+        }
+        packedCoeffs = packed
+        packedFrom = filters
+        return packed
     }
 
     private fun filterSample(

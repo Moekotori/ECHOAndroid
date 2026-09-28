@@ -92,7 +92,7 @@
     <string name="settings_audio_tags">音訊格式標籤</string>
     <string name="settings_audio_tags_detail">在歌曲清單顯示 FLAC、192kHz 等小標籤</string>
     <string name="settings_watched_folder_rescan">監看已掃描資料夾</string>
-    <string name="settings_watched_folder_rescan_detail">回到 ECHO 時增量再掃你選過的資料夾。預設關閉</string>
+    <string name="settings_watched_folder_rescan_detail">回到 ECHO 時再掃你選過的資料夾，補上新增和刪掉的歌曲。沒改過的檔案不會重新讀取</string>
     <string name="settings_local_music">本機音樂</string>
     <string name="settings_local_music_detail">檢視歌曲、專輯、藝人和掃描入口</string>
     <string name="settings_pin_queue_offline">快取目前佇列以便離線聽</string>

@@ -1,6 +1,8 @@
 package app.echo.android.playback
 
 import app.echo.android.model.playback.EchoDspSettings
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import kotlin.math.*
 
 /** Stereo crossfeed followed by a linked sample-peak limiter. No allocations in process(). */
@@ -24,6 +26,62 @@ internal class EchoDspKernel {
     private var targetMix = 0f
     private var targetLevel = 1f
     private var limiting = false
+    private val nativeState = FloatArray(11)
+    private val nativeCursor = IntArray(1)
+
+    /** In-place stereo or mono. Surround stays on the per-frame path. */
+    internal fun processBuffer(samples: ByteBuffer, frames: Int, channels: Int): Boolean {
+        if (channels !in 1..2 || frames <= 0) return false
+        if (samples.isDirect && samples.order() == ByteOrder.nativeOrder() && processNative(samples, frames, channels)) {
+            return true
+        }
+        val view = samples.duplicate().order(ByteOrder.nativeOrder()).asFloatBuffer()
+        if (view.remaining() < frames * channels) return false
+        repeat(frames) { frame ->
+            val base = frame * channels
+            val leftIn = view.get(base).let { if (it.isFinite()) it else 0f }
+            val rightIn = if (channels == 2) view.get(base + 1).let { if (it.isFinite()) it else 0f } else leftIn
+            process(leftIn, rightIn, channels == 2)
+            view.put(base, left)
+            if (channels == 2) view.put(base + 1, right)
+        }
+        return true
+    }
+
+    private fun processNative(samples: ByteBuffer, frames: Int, channels: Int): Boolean {
+        nativeState[0] = lowLeft
+        nativeState[1] = lowRight
+        nativeState[2] = lowAlpha
+        nativeState[3] = smooth
+        nativeState[4] = release
+        nativeState[5] = crossMix
+        nativeState[6] = level
+        nativeState[7] = reduction
+        nativeState[8] = ceiling
+        nativeState[9] = targetMix
+        nativeState[10] = targetLevel
+        nativeCursor[0] = cursor
+        if (!EchoDspNative.processKernel(
+                samples,
+                frames,
+                channels,
+                nativeState,
+                nativeCursor,
+                delayedLeft,
+                delayedRight,
+                limiting,
+            )
+        ) {
+            return false
+        }
+        lowLeft = nativeState[0]
+        lowRight = nativeState[1]
+        crossMix = nativeState[5]
+        level = nativeState[6]
+        reduction = nativeState[7]
+        cursor = nativeCursor[0]
+        return true
+    }
 
     val neutral: Boolean get() = crossMix == 0f && level == 1f && reduction == 1f
 

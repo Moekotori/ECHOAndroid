@@ -120,6 +120,7 @@ fun ConnectScreen(
     onSwipeToDiagnostics: () -> Unit = {},
     remoteLibrary: EchoRemoteLibraryState = EchoRemoteLibraryState(),
     onSearchPcLibrary: (String) -> Unit = {},
+    onLoadMorePcLibrary: () -> Unit = {},
     remoteControlsActive: Boolean = true,
 ) {
     val pagerState = rememberPagerState { 3 }
@@ -241,6 +242,7 @@ fun ConnectScreen(
                                 onRefreshLanDevices = onRefreshLanDevices,
                                 remoteLibrary = remoteLibrary,
                                 onSearchPcLibrary = onSearchPcLibrary,
+                                onLoadMorePcLibrary = onLoadMorePcLibrary,
                                 active = remoteControlsActive && pagerState.settledPage == 1,
                             )
                             else -> CastDevicesPanel(

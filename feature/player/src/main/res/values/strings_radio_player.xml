@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="radio_player_title">Radio</string>
+    <string name="radio_online">Online radio</string>
+    <string name="radio_timer">Sleep timer</string>
+    <string name="radio_timer_minutes">%1$d minutes</string>
+    <string name="radio_timer_cancel">Cancel timer</string>
+    <string name="radio_demo_program">Midnight wander</string>
+    <string name="radio_state_playing">Playing</string>
+    <string name="radio_state_connecting">Connecting</string>
+    <string name="radio_state_buffering">Buffering</string>
+    <string name="radio_state_paused">Paused</string>
+    <string name="radio_state_stopped">Stopped</string>
+    <string name="radio_state_error">Unable to play</string>
+    <string name="radio_bitrate">%1$d kbps</string>
+    <!-- Decorative sample broadcast data chosen for the radio player design. -->
+    <string name="radio_demo_channel" translatable="false">CH 01</string>
+    <string name="radio_demo_frequency" translatable="false">98.6</string>
+    <string name="radio_demo_band" translatable="false">FM</string>
+    <string name="radio_demo_stereo" translatable="false">STEREO</string>
+    <string name="radio_demo_schedule" translatable="false">22:00 – 02:00</string>
+    <string name="radio_demo_bitrate" translatable="false">128 kbps</string>
+    <string name="radio_queue">Queue</string>
+    <string name="radio_cast">Cast</string>
+</resources>

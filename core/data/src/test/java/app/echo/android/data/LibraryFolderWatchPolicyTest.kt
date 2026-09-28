@@ -131,6 +131,12 @@ class LibraryFolderWatchPolicyTest {
     }
 
     @Test
+    fun autoRescanDoesNotTrustDirectoryMtime() {
+        assertTrue(LibraryFolderWatchPolicy.RescanEnabledByDefault)
+        assertFalse(LibraryFolderWatchPolicy.shouldReuseCachedDirectoryListing())
+    }
+
+    @Test
     fun scanMadeLibraryChangesIgnoresListingOnlyPasses() {
         assertFalse(LibraryFolderWatchPolicy.scanMadeLibraryChanges(0, 0, 0))
         assertTrue(LibraryFolderWatchPolicy.scanMadeLibraryChanges(1, 0, 0))

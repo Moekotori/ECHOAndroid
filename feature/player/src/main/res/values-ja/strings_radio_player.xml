@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="radio_player_title">ラジオ</string>
+    <string name="radio_online">オンラインラジオ</string>
+    <string name="radio_timer">スリープタイマー</string>
+    <string name="radio_timer_minutes">%1$d 分</string>
+    <string name="radio_timer_cancel">タイマーを解除</string>
+    <string name="radio_demo_program">真夜中の散歩</string>
+    <string name="radio_state_playing">再生中</string>
+    <string name="radio_state_connecting">接続中</string>
+    <string name="radio_state_buffering">バッファリング中</string>
+    <string name="radio_state_paused">一時停止中</string>
+    <string name="radio_state_stopped">停止中</string>
+    <string name="radio_state_error">再生できません</string>
+    <string name="radio_bitrate">%1$d kbps</string>
+    <string name="radio_queue">キュー</string>
+    <string name="radio_cast">キャスト</string>
+</resources>

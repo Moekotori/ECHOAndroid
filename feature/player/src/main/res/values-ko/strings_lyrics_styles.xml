@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_page_title">가사</string>
+    <string name="lyrics_page_style">가사 스타일</string>
+    <string name="lyrics_style_mist">안개 낀 밤</string>
+    <string name="lyrics_style_paper">종이 위의 가사</string>
+    <string name="lyrics_style_mist_detail">어두운 앨범 아트 · 왼쪽 정렬</string>
+    <string name="lyrics_style_paper_detail">밝은 배경 · 가운데 정렬 세리프</string>
+</resources>

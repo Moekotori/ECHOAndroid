@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_page_title">Paroles</string>
+    <string name="lyrics_page_style">Style des paroles</string>
+    <string name="lyrics_style_mist">Nuit brumeuse</string>
+    <string name="lyrics_style_paper">Lecture sur papier</string>
+    <string name="lyrics_style_mist_detail">Pochette sombre · alignement à gauche</string>
+    <string name="lyrics_style_paper_detail">Fond clair · texte à empattements centré</string>
+</resources>

@@ -98,7 +98,7 @@
     <string name="settings_audio_tags">Теги аудиоформата</string>
     <string name="settings_audio_tags_detail">Показывать небольшие теги вроде FLAC и 192 kHz в списке треков</string>
     <string name="settings_watched_folder_rescan">Следить за просканированными папками</string>
-    <string name="settings_watched_folder_rescan_detail">При возврате в ECHO инкрементно повторно сканировать ранее просканированные папки. По умолчанию выкл.</string>
+    <string name="settings_watched_folder_rescan_detail">При возврате в ECHO заново просматривает выбранные папки и подхватывает добавленные или удалённые треки. Неизменённые файлы не читаются снова</string>
     <string name="settings_local_music">Локальная музыка</string>
     <string name="settings_local_music_detail">Просмотр треков, альбомов, исполнителей и сканирование</string>
     <string name="settings_pin_queue_offline">Сохранить текущую очередь офлайн</string>

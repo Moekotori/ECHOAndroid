@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="listening_notification_channel">一起听</string>
+    <string name="listening_notification_title">一起听</string>
+    <string name="listening_notification_stop">停止收听</string>
+</resources>

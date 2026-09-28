@@ -21,7 +21,10 @@ internal object PlayerAppearancePreferences {
         preferences[ArtworkScale] = normalizeScale(artworkScale, 0.7f, 1f)
     }
 
-    private fun normalizeStyle(value: String?): String = if (value == "classic") "classic" else "record_sleeve"
+    private fun normalizeStyle(value: String?): String = when (value) {
+        "classic", "pixel_handheld", "type_poster" -> value
+        else -> "record_sleeve"
+    }
     private fun normalizeScale(value: Float?, min: Float, max: Float): Float =
         value?.takeIf { it.isFinite() }?.coerceIn(min, max) ?: 1f
 }

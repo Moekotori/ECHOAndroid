@@ -8,4 +8,6 @@
     <string name="player_appearance_text_size">文字大小</string>
     <string name="player_appearance_cover_size">封面大小</string>
     <string name="player_appearance_percent">%1$d%%</string>
+    <string name="player_appearance_pixel_handheld">像素掌機</string>
+    <string name="player_appearance_type_poster">字排海報</string>
 </resources>

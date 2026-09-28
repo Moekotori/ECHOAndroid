@@ -1,3 +1,5 @@
+-keep class app.echo.android.playback.EchoDspNative { native <methods>; }
+
 # DefaultRenderersFactory discovers this renderer by name; JNI uses these class/method names.
 -keep class androidx.media3.decoder.ffmpeg.FfmpegAudioRenderer { public <init>(...); }
 -keepclasseswithmembernames,includedescriptorclasses class androidx.media3.decoder.ffmpeg.** {

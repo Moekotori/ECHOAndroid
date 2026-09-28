@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="radio_player_title">Радио</string>
+    <string name="radio_online">Интернет-радио</string>
+    <string name="radio_timer">Таймер сна</string>
+    <string name="radio_timer_minutes">%1$d мин</string>
+    <string name="radio_timer_cancel">Отменить таймер</string>
+    <string name="radio_demo_program">Полночная прогулка</string>
+    <string name="radio_state_playing">Воспроизведение</string>
+    <string name="radio_state_connecting">Подключение</string>
+    <string name="radio_state_buffering">Буферизация</string>
+    <string name="radio_state_paused">Пауза</string>
+    <string name="radio_state_stopped">Остановлено</string>
+    <string name="radio_state_error">Ошибка воспроизведения</string>
+    <string name="radio_bitrate">%1$d kbps</string>
+    <string name="radio_queue">Очередь</string>
+    <string name="radio_cast">Трансляция</string>
+</resources>
