@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_smb_reading_index">Reading the SMB index</string>
+    <string name="library_smb_scanning">Scanning SMB folders</string>
+    <string name="library_smb_sync_failed">SMB library sync failed</string>
+</resources>

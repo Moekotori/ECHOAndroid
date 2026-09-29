@@ -10,7 +10,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.echo.android.EchoAndroidViewModel
 import app.echo.android.data.EchoAppSettings
 import app.echo.android.feature.player.NowPlayingScreen
+import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.playback.EchoPlaybackStatus
+import app.echo.android.model.playback.PlaybackPositionState
+import app.echo.android.model.radio.EchoRadioStation
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun EchoNowPlayingHost(
@@ -33,9 +38,13 @@ internal fun EchoNowPlayingHost(
     predictiveBackProgress: () -> Float = { 0f },
     presentationExpanded: Boolean = true,
     onDragProgress: (Float) -> Unit = {},
+    /** 投送到 DLNA / Chromecast 时换成远端进度。 */
+    positionFlow: StateFlow<PlaybackPositionState> = viewModel.playbackPosition,
+    onOpenArtist: (ArtistSummary) -> Unit = {},
 ) {
     // 传 State 引用而非值:进度 tick 不在宿主层触发重组,由页内叶子订阅
-    val playbackPosition = viewModel.playbackPosition.collectAsStateWithLifecycle()
+    val playbackPosition = positionFlow.collectAsStateWithLifecycle()
+    val artistNavigationScope = rememberCoroutineScope()
     val lyricsState by viewModel.lyricsState.collectAsStateWithLifecycle()
     val favoriteTrackIds by viewModel.favoriteTrackIds.collectAsStateWithLifecycle()
     val isCurrentTrackFavorite = playbackStatus.track?.id?.let { it in favoriteTrackIds } == true
@@ -125,6 +134,16 @@ internal fun EchoNowPlayingHost(
         onOnlineLyricsEnabledChange = viewModel::setOnlineLyricsEnabled,
         isCurrentTrackFavorite = isCurrentTrackFavorite,
         onToggleFavorite = { viewModel.toggleFavorite() },
+        onOpenArtist = { trackId, artistName ->
+            artistNavigationScope.launch {
+                if (EchoRadioStation.isRadio(trackId)) return@launch
+                val artwork = playbackStatus.track?.takeIf { it.id == trackId }?.artworkUri
+                val artist = viewModel.artistForTrack(trackId)
+                    ?: viewModel.artistNavigationTarget(artistName, artwork)
+                    ?: return@launch
+                onOpenArtist(artist)
+            }
+        },
         openLyricsRequestId = openLyricsRequestId,
         predictiveBackProgress = predictiveBackProgress,
         presentationExpanded = presentationExpanded,

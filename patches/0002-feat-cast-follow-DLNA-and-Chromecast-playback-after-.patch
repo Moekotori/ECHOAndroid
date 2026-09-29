@@ -1,0 +1,1100 @@
+From 652775a785605e12e748ab3167f66281af758e33 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 28 Sep 2026 20:19:51 +0800
+Subject: [PATCH] feat(cast): follow DLNA and Chromecast playback after casting
+
+Poll DLNA position/transport state and read Chromecast MEDIA_STATUS on a
+dedicated reader thread. Mirror the remote track, play state and progress
+in the mini player and now playing screen, auto-advance the queue when a
+track finishes (and follow renderer-driven SetNext changes), route seek to
+Chromecast, and map hardware volume keys to the renderer volume.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01FEDCezPFi51Bf5mkmoEhB4
+---
+ .../main/java/app/echo/android/EchoAppRoot.kt |  12 +-
+ .../app/echo/android/EchoLanCastPlayback.kt   |  40 +++
+ .../java/app/echo/android/EchoLinkSession.kt  | 262 +++++++++++++++++-
+ .../java/app/echo/android/MainActivity.kt     |  16 ++
+ .../android/ui/playback/EchoNowPlayingHost.kt |   6 +-
+ .../android/ui/shell/EchoBottomDockHost.kt    |   6 +-
+ .../echo/android/connect/EchoCastProtocol.kt  |   7 +
+ .../echo/android/connect/EchoCastStatus.kt    |  48 ++++
+ .../android/connect/EchoChromecastClient.kt   | 109 ++++++--
+ .../echo/android/connect/EchoDlnaClient.kt    |  50 ++++
+ .../connect/EchoLanCastFollowPolicy.kt        |  53 ++++
+ .../connect/EchoCastStatusParserTest.kt       |  44 +++
+ .../connect/EchoLanCastFollowPolicyTest.kt    |  54 ++++
+ 13 files changed, 668 insertions(+), 39 deletions(-)
+ create mode 100644 app/src/main/java/app/echo/android/EchoLanCastPlayback.kt
+ create mode 100644 core/connect/src/main/java/app/echo/android/connect/EchoCastStatus.kt
+ create mode 100644 core/connect/src/main/java/app/echo/android/connect/EchoLanCastFollowPolicy.kt
+ create mode 100644 core/connect/src/test/java/app/echo/android/connect/EchoCastStatusParserTest.kt
+ create mode 100644 core/connect/src/test/java/app/echo/android/connect/EchoLanCastFollowPolicyTest.kt
+
+diff --git a/app/src/main/java/app/echo/android/EchoAppRoot.kt b/app/src/main/java/app/echo/android/EchoAppRoot.kt
+index d44afeb..c8a91db 100644
+--- a/app/src/main/java/app/echo/android/EchoAppRoot.kt
++++ b/app/src/main/java/app/echo/android/EchoAppRoot.kt
+@@ -414,6 +414,12 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
+     val castSessionActive by echoLinkSession.castActive.collectAsStateWithLifecycle()
+     val castSessionName by echoLinkSession.castTargetName.collectAsStateWithLifecycle()
+     val dlnaRenderer by echoLinkSession.dlnaRenderer.collectAsStateWithLifecycle()
++    val lanCast by echoLinkSession.castPlayback.collectAsStateWithLifecycle()
++    // 投送时播放页和迷你播放器显示远端设备的曲目与播放状态；进度走单独的 flow。
++    val shellPlaybackStatus = remember(playbackStatus, lanCast) {
++        lanCast?.let { playbackStatus.withLanCast(it, echoLinkSession.castPosition.value.positionMs) } ?: playbackStatus
++    }
++    val shellPositionFlow = if (lanCast != null) echoLinkSession.castPosition else viewModel.playbackPosition
+     fun routedPlayPause() {
+         if (dlnaRenderer != null) echoLinkSession.dlnaPlayPause() else viewModel.playPause()
+     }
+@@ -1644,7 +1650,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
+                 EchoBottomDockHost(
+                     viewModel = viewModel,
+                     pagerState = tabPagerState,
+-                    playbackStatus = playbackStatus,
++                    playbackStatus = shellPlaybackStatus,
++                    positionFlow = shellPositionFlow,
+                     darkTheme = darkTheme,
+                     selectedTab = selectedTab,
+                     bottomDockExpanded = bottomDockExpanded,
+@@ -1668,7 +1675,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
+             ) {
+                 EchoNowPlayingHost(
+                     viewModel = viewModel,
+-                    playbackStatus = playbackStatus,
++                    playbackStatus = shellPlaybackStatus,
++                    positionFlow = shellPositionFlow,
+                     appSettings = appSettings,
+                     lyricsFontFamily = lyricsFontFamily,
+                     onDismiss = { nowPlayingExpanded = false },
+diff --git a/app/src/main/java/app/echo/android/EchoLanCastPlayback.kt b/app/src/main/java/app/echo/android/EchoLanCastPlayback.kt
+new file mode 100644
+index 0000000..83bea59
+--- /dev/null
++++ b/app/src/main/java/app/echo/android/EchoLanCastPlayback.kt
+@@ -0,0 +1,40 @@
++package app.echo.android
++
++import app.echo.android.connect.EchoLinkCastSourceTrack
++import app.echo.android.model.playback.EchoPlaybackState
++import app.echo.android.model.playback.EchoPlaybackStatus
++import app.echo.android.model.playback.EchoTrackRef
++
++/**
++ * 投送到 DLNA / Chromecast 时，远端设备的播放状态。进度单独放在
++ * [EchoLinkSession.castPosition]，避免每秒的进度刷新让整棵界面重组。
++ */
++data class EchoLanCastPlayback(
++    val rendererName: String,
++    val index: Int,
++    val track: EchoLinkCastSourceTrack,
++    val isPlaying: Boolean,
++    val durationMs: Long,
++    /** 0..1；设备不支持读取音量时为 null。 */
++    val volume: Float? = null,
++)
++
++/** 把远端状态套到本地的 [EchoPlaybackStatus] 上，播放页和迷你播放器不用区分来源。 */
++internal fun EchoPlaybackStatus.withLanCast(cast: EchoLanCastPlayback, positionMs: Long): EchoPlaybackStatus =
++    copy(
++        state = if (cast.isPlaying) EchoPlaybackState.Playing else EchoPlaybackState.Paused,
++        isPlaying = cast.isPlaying,
++        track = EchoTrackRef(
++            id = cast.track.id,
++            uri = cast.track.uri,
++            title = cast.track.title,
++            artist = cast.track.artist,
++            album = cast.track.album,
++            artworkUri = cast.track.artworkUri,
++            durationMs = cast.durationMs.takeIf { it > 0L } ?: cast.track.durationMs,
++            sampleRateHz = cast.track.sampleRateHz,
++            sourceId = cast.track.sourceId,
++        ),
++        positionMs = positionMs,
++        durationMs = cast.durationMs.takeIf { it > 0L } ?: cast.track.durationMs,
++    )
+diff --git a/app/src/main/java/app/echo/android/EchoLinkSession.kt b/app/src/main/java/app/echo/android/EchoLinkSession.kt
+index c4bfcb4..326fef5 100644
+--- a/app/src/main/java/app/echo/android/EchoLinkSession.kt
++++ b/app/src/main/java/app/echo/android/EchoLinkSession.kt
+@@ -1,6 +1,8 @@
+ package app.echo.android
+ 
+ import android.app.Application
++import android.os.SystemClock
++import app.echo.android.connect.EchoCastMediaStatus
+ import app.echo.android.connect.EchoChromecastCastPolicy
+ import app.echo.android.connect.EchoChromecastClient
+ import app.echo.android.connect.EchoDlnaCastPolicy
+@@ -11,19 +13,24 @@ import app.echo.android.connect.EchoLinkCastPolicy
+ import app.echo.android.connect.EchoLinkCastPublication
+ import app.echo.android.connect.EchoLinkCastServer
+ import app.echo.android.connect.EchoLinkCastSourceTrack
++import app.echo.android.connect.EchoLanCastFollowPolicy
+ import app.echo.android.connect.EchoLinkLanAddresses
+ import app.echo.android.connect.EchoRemoteClient
+ import app.echo.android.data.EchoSettingsStore
+ import app.echo.android.model.connect.EchoLanRenderer
++import app.echo.android.model.connect.EchoLanRendererKind
+ import app.echo.android.model.connect.EchoRemoteCommand
+ import app.echo.android.model.connect.EchoRemoteConnectionState
+ import app.echo.android.model.connect.EchoRemoteStreamItem
+ import app.echo.android.model.error.EchoErrorLog
+ import app.echo.android.model.error.EchoErrorSource
++import app.echo.android.model.playback.PlaybackPositionState
+ import java.util.concurrent.atomic.AtomicReference
++import kotlin.math.roundToInt
+ import kotlinx.coroutines.CoroutineExceptionHandler
+ import kotlinx.coroutines.CoroutineScope
+ import kotlinx.coroutines.Dispatchers
++import kotlinx.coroutines.Job
+ import kotlinx.coroutines.SupervisorJob
+ import kotlinx.coroutines.delay
+ import kotlinx.coroutines.flow.MutableStateFlow
+@@ -58,8 +65,23 @@ class EchoLinkSession(private val application: Application) {
+     private val _dlnaRenderer = MutableStateFlow<EchoLanRenderer?>(null)
+     val dlnaRenderer: StateFlow<EchoLanRenderer?> = _dlnaRenderer.asStateFlow()
+     private var dlnaItems: List<EchoRemoteStreamItem> = emptyList()
++    private var dlnaSources: List<EchoLinkCastSourceTrack> = emptyList()
+     private var dlnaIndex: Int = 0
+     private var dlnaPaused: Boolean = false
++    private val _castPlayback = MutableStateFlow<EchoLanCastPlayback?>(null)
++    /** 投送到 DLNA / Chromecast 时远端的播放状态；未投送时为 null。 */
++    val castPlayback: StateFlow<EchoLanCastPlayback?> = _castPlayback.asStateFlow()
++    private val _castPosition = MutableStateFlow(PlaybackPositionState())
++    val castPosition: StateFlow<PlaybackPositionState> = _castPosition.asStateFlow()
++    private var followJob: Job? = null
++    private var lastAdvanceElapsedMs: Long = 0L
++    private var castSampledPositionMs: Long = 0L
++    private var castSampledAtElapsedMs: Long = 0L
++
++    init {
++        chromecastClient.onMediaStatus = { status -> scope.launch { onChromecastStatus(status) } }
++        chromecastClient.onVolume = { level -> scope.launch { _castPlayback.value = _castPlayback.value?.copy(volume = level) } }
++    }
+ 
+     init {
+         scope.launch {
+@@ -190,9 +212,7 @@ class EchoLinkSession(private val application: Application) {
+         }
+         scope.launch {
+             if (previous != null) {
+-                withContext(Dispatchers.IO) {
+-                    runCatching { dlnaClient.stop(previous) }
+-                }
++                withContext(Dispatchers.IO) { stopRenderer(previous) }
+             }
+             val items = publishLocalCast(tracks, peerHost = renderer.host)
+             if (items == null) {
+@@ -219,10 +239,12 @@ class EchoLinkSession(private val application: Application) {
+             }
+             result.onSuccess {
+                 dlnaItems = items
++                dlnaSources = tracks
+                 dlnaIndex = index
+                 dlnaPaused = false
+                 _dlnaRenderer.value = renderer
+                 markCastStarted(renderer.name)
++                beginFollowing(renderer, positionMs)
+                 onSuccess()
+             }.onFailure { error ->
+                 EchoErrorLog.record(
+@@ -246,7 +268,11 @@ class EchoLinkSession(private val application: Application) {
+         if (client.status.value.connectionState == EchoRemoteConnectionState.Connected) {
+             client.send(EchoRemoteCommand.Stop)
+         }
++        val previous = _dlnaRenderer.value
+         scope.launch {
++            if (previous != null && previous.kind != EchoLanRendererKind.Chromecast) {
++                withContext(Dispatchers.IO) { stopRenderer(previous) }
++            }
+             val items = publishLocalCast(tracks, peerHost = renderer.host)
+             if (items == null) {
+                 onFailure(EchoDlnaException(500, "no_lan"))
+@@ -265,9 +291,13 @@ class EchoLinkSession(private val application: Application) {
+             }
+             result.onSuccess {
+                 dlnaItems = items
++                dlnaSources = tracks
+                 dlnaIndex = index
+                 dlnaPaused = false
++                // Chromecast 也登记为当前渲染器，播放页的播放 / 暂停 / 切歌 / 拖动才会发往设备。
++                _dlnaRenderer.value = renderer
+                 markCastStarted(renderer.name)
++                beginFollowing(renderer, positionMs)
+                 onSuccess()
+             }.onFailure { error ->
+                 EchoErrorLog.record(
+@@ -282,8 +312,12 @@ class EchoLinkSession(private val application: Application) {
+ 
+     fun dlnaPlayPause() {
+         if (chromecastClient.isActive()) {
+-            scope.launch(Dispatchers.IO) {
+-                runCatching { chromecastClient.togglePause() }
++            scope.launch {
++                val result = withContext(Dispatchers.IO) { runCatching { chromecastClient.togglePause() } }
++                if (result.isSuccess) {
++                    dlnaPaused = !dlnaPaused
++                    markCastPlaying(!dlnaPaused)
++                }
+             }
+             return
+         }
+@@ -295,7 +329,10 @@ class EchoLinkSession(private val application: Application) {
+                     if (pause) dlnaClient.pause(renderer) else dlnaClient.resume(renderer)
+                 }
+             }
+-            if (result.isSuccess) dlnaPaused = pause
++            if (result.isSuccess) {
++                dlnaPaused = pause
++                markCastPlaying(!pause)
++            }
+         }
+     }
+ 
+@@ -303,13 +340,15 @@ class EchoLinkSession(private val application: Application) {
+         val nextIndex = dlnaIndex + delta
+         val items = dlnaItems
+         val item = items.getOrNull(nextIndex) ?: return
++        lastAdvanceElapsedMs = SystemClock.elapsedRealtime()
+         if (chromecastClient.isActive()) {
+-            scope.launch(Dispatchers.IO) {
+-                runCatching { chromecastClient.playNext(item) }
+-                    .onSuccess {
+-                        dlnaIndex = nextIndex
+-                        dlnaPaused = false
+-                    }
++            scope.launch {
++                val result = withContext(Dispatchers.IO) { runCatching { chromecastClient.playNext(item) } }
++                if (result.isSuccess) {
++                    dlnaIndex = nextIndex
++                    dlnaPaused = false
++                    publishCastTrack(positionMs = 0L, playing = true)
++                }
+             }
+             return
+         }
+@@ -323,21 +362,57 @@ class EchoLinkSession(private val application: Application) {
+             if (result.isSuccess) {
+                 dlnaIndex = nextIndex
+                 dlnaPaused = false
++                publishCastTrack(positionMs = 0L, playing = true)
+             }
+         }
+     }
+ 
+     fun dlnaSeek(positionMs: Long) {
+         val renderer = _dlnaRenderer.value ?: return
++        val target = positionMs.coerceAtLeast(0L)
++        sampleCastPosition(target)
++        scope.launch(Dispatchers.IO) {
++            runCatching {
++                if (renderer.kind == EchoLanRendererKind.Chromecast) {
++                    chromecastClient.seek(target)
++                } else {
++                    dlnaClient.seek(renderer, target)
++                }
++            }
++        }
++    }
++
++    /**
++     * 音量键调远端音量。设备还没上报过音量时返回 false，让系统照常调手机音量，
++     * 避免从一个猜测值起步把远端音量突然调大。
++     */
++    fun adjustCastVolume(delta: Float): Boolean {
++        val renderer = _dlnaRenderer.value ?: return false
++        val current = _castPlayback.value ?: return false
++        val volume = current.volume ?: return false
++        val next = (volume + delta).coerceIn(0f, 1f)
++        _castPlayback.value = current.copy(volume = next)
+         scope.launch(Dispatchers.IO) {
+-            runCatching { dlnaClient.seek(renderer, positionMs) }
++            runCatching {
++                if (renderer.kind == EchoLanRendererKind.Chromecast) {
++                    chromecastClient.setVolume(next)
++                } else {
++                    dlnaClient.setVolume(renderer, (next * 100f).roundToInt())
++                }
++            }
+         }
++        return true
+     }
+ 
+     fun stopLocalCast() {
+         runCatching { chromecastClient.close() }
++        followJob?.cancel()
++        followJob = null
++        _castPlayback.value = null
++        _castPosition.value = PlaybackPositionState()
+         _dlnaRenderer.value = null
+         dlnaItems = emptyList()
++        dlnaSources = emptyList()
+         dlnaIndex = 0
+         dlnaPaused = false
+         castPeerHost.set(null)
+@@ -370,4 +445,165 @@ class EchoLinkSession(private val application: Application) {
+         }
+         stopLocalCast()
+     }
++
++    private fun stopRenderer(renderer: EchoLanRenderer) {
++        runCatching {
++            if (renderer.kind == EchoLanRendererKind.Chromecast) chromecastClient.stop() else dlnaClient.stop(renderer)
++        }
++    }
++
++    private fun beginFollowing(renderer: EchoLanRenderer, positionMs: Long) {
++        lastAdvanceElapsedMs = SystemClock.elapsedRealtime()
++        publishCastTrack(positionMs = positionMs, playing = true)
++        followJob?.cancel()
++        followJob = scope.launch {
++            if (renderer.kind == EchoLanRendererKind.Chromecast) {
++                followChromecast(renderer)
++            } else {
++                followDlna(renderer)
++            }
++        }
++    }
++
++    private fun publishCastTrack(positionMs: Long, playing: Boolean, durationMs: Long? = null) {
++        val renderer = _dlnaRenderer.value ?: return
++        val source = dlnaSources.getOrNull(dlnaIndex) ?: return
++        val previous = _castPlayback.value
++        val sameTrack = previous?.index == dlnaIndex
++        _castPlayback.value = EchoLanCastPlayback(
++            rendererName = renderer.name,
++            index = dlnaIndex,
++            track = source,
++            isPlaying = playing,
++            durationMs = durationMs ?: if (sameTrack) previous!!.durationMs else source.durationMs,
++            volume = previous?.volume,
++        )
++        sampleCastPosition(positionMs)
++    }
++
++    private fun markCastPlaying(playing: Boolean) {
++        val current = _castPlayback.value ?: return
++        sampleCastPosition(_castPosition.value.positionMs)
++        _castPlayback.value = current.copy(isPlaying = playing)
++    }
++
++    private fun sampleCastPosition(positionMs: Long) {
++        castSampledPositionMs = positionMs.coerceAtLeast(0L)
++        castSampledAtElapsedMs = SystemClock.elapsedRealtime()
++        _castPosition.value = PlaybackPositionState(
++            positionMs = castSampledPositionMs,
++            durationMs = _castPlayback.value?.durationMs ?: 0L,
++        )
++    }
++
++    /** DLNA 没有推送，每秒拉一次进度和传输状态；音量每 10 秒拉一次。 */
++    private suspend fun followDlna(renderer: EchoLanRenderer) {
++        var wasPlaying = true
++        var lastPositionMs = 0L
++        var polls = 0
++        while (_dlnaRenderer.value === renderer) {
++            val info = withContext(Dispatchers.IO) { runCatching { dlnaClient.positionInfo(renderer) }.getOrNull() }
++            val state = withContext(Dispatchers.IO) { runCatching { dlnaClient.transportState(renderer) }.getOrNull() }
++            if (_dlnaRenderer.value !== renderer) return
++            if (polls % DLNA_VOLUME_EVERY_POLLS == 0 && renderer.renderingControl != null) {
++                withContext(Dispatchers.IO) { runCatching { dlnaClient.volume(renderer) }.getOrNull() }?.let { volume ->
++                    _castPlayback.value = _castPlayback.value?.copy(volume = volume / 100f)
++                }
++            }
++            polls += 1
++
++            val advancedTo = EchoLanCastFollowPolicy.indexForTrackUri(dlnaItems, dlnaIndex, info?.trackUri)
++            if (advancedTo != null) {
++                // 渲染器已按 SetNextAVTransportURI 自行切歌：同步索引，并补上再下一首。
++                dlnaIndex = advancedTo
++                lastAdvanceElapsedMs = SystemClock.elapsedRealtime()
++                publishCastTrack(positionMs = info?.positionMs ?: 0L, playing = true, durationMs = info?.durationMs)
++                dlnaItems.getOrNull(advancedTo + 1)?.let { next ->
++                    withContext(Dispatchers.IO) { runCatching { dlnaClient.setNext(renderer, next) } }
++                }
++                wasPlaying = true
++                lastPositionMs = info?.positionMs ?: 0L
++                delay(DLNA_POLL_MS)
++                continue
++            }
++
++            val durationMs = info?.durationMs?.takeIf { it > 0L } ?: _castPlayback.value?.durationMs ?: 0L
++            val inGrace = SystemClock.elapsedRealtime() - lastAdvanceElapsedMs < EchoLanCastFollowPolicy.ADVANCE_GRACE_MS
++            if (!inGrace && EchoLanCastFollowPolicy.dlnaTrackEnded(state, wasPlaying, dlnaPaused, lastPositionMs, durationMs)) {
++                if (dlnaItems.getOrNull(dlnaIndex + 1) != null) {
++                    dlnaSkip(1)
++                } else {
++                    markCastPlaying(false)
++                }
++                wasPlaying = false
++                delay(DLNA_POLL_MS)
++                continue
++            }
++
++            if (state != null) {
++                val playing = EchoLanCastFollowPolicy.isDlnaPlaying(state)
++                val current = _castPlayback.value
++                if (current != null && (current.isPlaying != playing || (durationMs > 0L && current.durationMs != durationMs))) {
++                    _castPlayback.value = current.copy(isPlaying = playing, durationMs = durationMs)
++                }
++                wasPlaying = playing
++            }
++            info?.positionMs?.let { position ->
++                lastPositionMs = position
++                sampleCastPosition(position)
++            }
++            delay(DLNA_POLL_MS)
++        }
++    }
++
++    /** Chromecast 状态由读线程推来；这里只在两次上报之间按时间外推进度。 */
++    private suspend fun followChromecast(renderer: EchoLanRenderer) {
++        while (_dlnaRenderer.value === renderer) {
++            val cast = _castPlayback.value
++            if (cast != null && cast.isPlaying) {
++                _castPosition.value = PlaybackPositionState(
++                    positionMs = EchoLanCastFollowPolicy.extrapolatedPositionMs(
++                        sampledPositionMs = castSampledPositionMs,
++                        sampledAtElapsedMs = castSampledAtElapsedMs,
++                        nowElapsedMs = SystemClock.elapsedRealtime(),
++                        playing = true,
++                        durationMs = cast.durationMs,
++                    ),
++                    durationMs = cast.durationMs,
++                )
++            }
++            delay(CHROMECAST_TICK_MS)
++        }
++    }
++
++    private fun onChromecastStatus(status: EchoCastMediaStatus) {
++        val renderer = _dlnaRenderer.value ?: return
++        if (renderer.kind != EchoLanRendererKind.Chromecast) return
++        if (status.playerState == "CLOSED") {
++            stopLocalCast()
++            return
++        }
++        val inGrace = SystemClock.elapsedRealtime() - lastAdvanceElapsedMs < EchoLanCastFollowPolicy.ADVANCE_GRACE_MS
++        if (status.finished && !inGrace) {
++            if (dlnaItems.getOrNull(dlnaIndex + 1) != null) dlnaSkip(1) else markCastPlaying(false)
++            return
++        }
++        val current = _castPlayback.value ?: return
++        val durationMs = status.durationMs?.takeIf { it > 0L } ?: current.durationMs
++        val playing = when (status.playerState) {
++            null -> current.isPlaying
++            else -> status.isPlaying
++        }
++        dlnaPaused = !playing
++        if (current.isPlaying != playing || current.durationMs != durationMs) {
++            _castPlayback.value = current.copy(isPlaying = playing, durationMs = durationMs)
++        }
++        status.positionMs?.let(::sampleCastPosition)
++    }
++
++    private companion object {
++        const val DLNA_POLL_MS = 1_000L
++        const val DLNA_VOLUME_EVERY_POLLS = 10
++        const val CHROMECAST_TICK_MS = 500L
++    }
+ }
+diff --git a/app/src/main/java/app/echo/android/MainActivity.kt b/app/src/main/java/app/echo/android/MainActivity.kt
+index 9afc97c..bcb3476 100644
+--- a/app/src/main/java/app/echo/android/MainActivity.kt
++++ b/app/src/main/java/app/echo/android/MainActivity.kt
+@@ -2,6 +2,7 @@ package app.echo.android
+ 
+ import android.content.Context
+ import android.content.Intent
++import android.view.KeyEvent
+ import android.graphics.Color
+ import android.os.Build
+ import android.os.Bundle
+@@ -58,6 +59,19 @@ class MainActivity : ComponentActivity() {
+         consumeLaunchIntent(intent)
+     }
+ 
++    /** 投送到 DLNA / Chromecast 时，音量键调的是远端设备，不是手机。 */
++    @OptIn(UnstableApi::class)
++    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
++        val delta = when (keyCode) {
++            KeyEvent.KEYCODE_VOLUME_UP -> CAST_VOLUME_STEP
++            KeyEvent.KEYCODE_VOLUME_DOWN -> -CAST_VOLUME_STEP
++            else -> return super.onKeyDown(keyCode, event)
++        }
++        val session = (application as? EchoApplication)?.echoLinkSession
++        if (session != null && session.adjustCastVolume(delta)) return true
++        return super.onKeyDown(keyCode, event)
++    }
++
+     override fun onNewIntent(intent: Intent) {
+         super.onNewIntent(intent)
+         setIntent(intent)
+@@ -187,3 +201,5 @@ class MainActivity : ComponentActivity() {
+         const val MIN_HIGH_REFRESH_RATE = 90f
+     }
+ }
++
++private const val CAST_VOLUME_STEP = 0.05f
+diff --git a/app/src/main/java/app/echo/android/ui/playback/EchoNowPlayingHost.kt b/app/src/main/java/app/echo/android/ui/playback/EchoNowPlayingHost.kt
+index b8c873e..9f8d76b 100644
+--- a/app/src/main/java/app/echo/android/ui/playback/EchoNowPlayingHost.kt
++++ b/app/src/main/java/app/echo/android/ui/playback/EchoNowPlayingHost.kt
+@@ -11,6 +11,8 @@ import app.echo.android.EchoAndroidViewModel
+ import app.echo.android.data.EchoAppSettings
+ import app.echo.android.feature.player.NowPlayingScreen
+ import app.echo.android.model.playback.EchoPlaybackStatus
++import app.echo.android.model.playback.PlaybackPositionState
++import kotlinx.coroutines.flow.StateFlow
+ 
+ @Composable
+ internal fun EchoNowPlayingHost(
+@@ -33,9 +35,11 @@ internal fun EchoNowPlayingHost(
+     predictiveBackProgress: () -> Float = { 0f },
+     presentationExpanded: Boolean = true,
+     onDragProgress: (Float) -> Unit = {},
++    /** 投送到 DLNA / Chromecast 时换成远端进度。 */
++    positionFlow: StateFlow<PlaybackPositionState> = viewModel.playbackPosition,
+ ) {
+     // 传 State 引用而非值:进度 tick 不在宿主层触发重组,由页内叶子订阅
+-    val playbackPosition = viewModel.playbackPosition.collectAsStateWithLifecycle()
++    val playbackPosition = positionFlow.collectAsStateWithLifecycle()
+     val lyricsState by viewModel.lyricsState.collectAsStateWithLifecycle()
+     val favoriteTrackIds by viewModel.favoriteTrackIds.collectAsStateWithLifecycle()
+     val isCurrentTrackFavorite = playbackStatus.track?.id?.let { it in favoriteTrackIds } == true
+diff --git a/app/src/main/java/app/echo/android/ui/shell/EchoBottomDockHost.kt b/app/src/main/java/app/echo/android/ui/shell/EchoBottomDockHost.kt
+index 53796a4..7f57538 100644
+--- a/app/src/main/java/app/echo/android/ui/shell/EchoBottomDockHost.kt
++++ b/app/src/main/java/app/echo/android/ui/shell/EchoBottomDockHost.kt
+@@ -34,6 +34,8 @@ import app.echo.android.design.echoTheme
+ import app.echo.android.design.rememberSilkPagerFlingBehavior
+ import app.echo.android.feature.player.MiniPlayer
+ import app.echo.android.model.playback.EchoPlaybackStatus
++import app.echo.android.model.playback.PlaybackPositionState
++import kotlinx.coroutines.flow.StateFlow
+ import app.echo.android.model.settings.EchoEffectivePerformanceMode
+ 
+ private val DockMotionEasing = EchoMotion.Silk
+@@ -56,9 +58,11 @@ internal fun EchoBottomDockHost(
+     onNext: () -> Unit,
+     onPrevious: () -> Unit,
+     modifier: Modifier = Modifier,
++    /** 投送到 DLNA / Chromecast 时换成远端进度。 */
++    positionFlow: StateFlow<PlaybackPositionState> = viewModel.playbackPosition,
+ ) {
+     // 传 State 引用而非值:进度 tick 不重组整个底栏,由 MiniPlayer 进度条绘制期读取
+-    val playbackPosition = viewModel.playbackPosition.collectAsStateWithLifecycle()
++    val playbackPosition = positionFlow.collectAsStateWithLifecycle()
+     // 以 lambda 延迟读取 pager 偏移,滑动时只更新指示条自身,不重组整个底栏
+     val dockTabProgress = remember(pagerState) {
+         {
+diff --git a/core/connect/src/main/java/app/echo/android/connect/EchoCastProtocol.kt b/core/connect/src/main/java/app/echo/android/connect/EchoCastProtocol.kt
+index 275e049..4153da1 100644
+--- a/core/connect/src/main/java/app/echo/android/connect/EchoCastProtocol.kt
++++ b/core/connect/src/main/java/app/echo/android/connect/EchoCastProtocol.kt
+@@ -33,6 +33,13 @@ internal object EchoCastProtocol {
+     fun stopJson(requestId: Int, mediaSessionId: Int): String =
+         """{"type":"STOP","requestId":$requestId,"mediaSessionId":$mediaSessionId}"""
+ 
++    fun seekJson(requestId: Int, mediaSessionId: Int, positionMs: Long): String =
++        """{"type":"SEEK","requestId":$requestId,"mediaSessionId":$mediaSessionId,"currentTime":${positionMs.coerceAtLeast(0L) / 1000.0}}"""
++    fun statusRequestJson(requestId: Int): String =
++        """{"type":"GET_STATUS","requestId":$requestId}"""
++    fun setVolumeJson(requestId: Int, level: Float): String =
++        """{"type":"SET_VOLUME","requestId":$requestId,"volume":{"level":${level.coerceIn(0f, 1f)}}}"""
++
+     fun loadJson(
+         requestId: Int,
+         contentId: String,
+diff --git a/core/connect/src/main/java/app/echo/android/connect/EchoCastStatus.kt b/core/connect/src/main/java/app/echo/android/connect/EchoCastStatus.kt
+new file mode 100644
+index 0000000..f66e772
+--- /dev/null
++++ b/core/connect/src/main/java/app/echo/android/connect/EchoCastStatus.kt
+@@ -0,0 +1,48 @@
++package app.echo.android.connect
++
++import org.json.JSONObject
++
++/** Chromecast 接收端上报的播放状态。字段缺失时为 null，由调用方沿用上一次的值。 */
++data class EchoCastMediaStatus(
++    val mediaSessionId: Int?,
++    val playerState: String?,
++    val idleReason: String?,
++    val positionMs: Long?,
++    val durationMs: Long?,
++) {
++    val isPlaying: Boolean get() = playerState == "PLAYING" || playerState == "BUFFERING"
++    val finished: Boolean get() = playerState == "IDLE" && idleReason == "FINISHED"
++}
++
++internal object EchoCastStatusParser {
++    /** MEDIA_STATUS 的 status 是数组；空数组表示会话已结束，返回 IDLE。 */
++    fun media(payload: String): EchoCastMediaStatus? {
++        val json = runCatching { JSONObject(payload) }.getOrNull() ?: return null
++        if (json.optString("type") != "MEDIA_STATUS") return null
++        val array = json.optJSONArray("status") ?: return null
++        if (array.length() == 0) {
++            return EchoCastMediaStatus(null, "IDLE", null, null, null)
++        }
++        val status = array.optJSONObject(0) ?: return null
++        val media = status.optJSONObject("media")
++        return EchoCastMediaStatus(
++            mediaSessionId = status.optInt("mediaSessionId", -1).takeIf { it >= 0 },
++            playerState = status.optString("playerState").takeIf { it.isNotBlank() },
++            idleReason = status.optString("idleReason").takeIf { it.isNotBlank() },
++            positionMs = status.optDouble("currentTime", Double.NaN).toMillisOrNull(),
++            durationMs = media?.optDouble("duration", Double.NaN)?.toMillisOrNull(),
++        )
++    }
++
++    /** RECEIVER_STATUS 里的设备音量，0..1。 */
++    fun receiverVolume(payload: String): Float? {
++        val json = runCatching { JSONObject(payload) }.getOrNull() ?: return null
++        if (json.optString("type") != "RECEIVER_STATUS") return null
++        val level = json.optJSONObject("status")?.optJSONObject("volume")?.optDouble("level", Double.NaN)
++            ?: return null
++        return level.takeIf { it.isFinite() }?.toFloat()?.coerceIn(0f, 1f)
++    }
++
++    private fun Double.toMillisOrNull(): Long? =
++        takeIf { it.isFinite() && it >= 0.0 }?.let { (it * 1000.0).toLong() }
++}
+diff --git a/core/connect/src/main/java/app/echo/android/connect/EchoChromecastClient.kt b/core/connect/src/main/java/app/echo/android/connect/EchoChromecastClient.kt
+index 0bd7af8..ab3ee82 100644
+--- a/core/connect/src/main/java/app/echo/android/connect/EchoChromecastClient.kt
++++ b/core/connect/src/main/java/app/echo/android/connect/EchoChromecastClient.kt
+@@ -4,6 +4,7 @@ import app.echo.android.model.connect.EchoLanRenderer
+ import app.echo.android.model.connect.EchoRemoteStreamItem
+ import java.io.BufferedInputStream
+ import java.io.OutputStream
++import java.net.SocketTimeoutException
+ import java.security.SecureRandom
+ import java.security.cert.X509Certificate
+ import javax.net.ssl.SSLContext
+@@ -18,6 +19,13 @@ class EchoChromecastClient {
+     @Volatile private var paused: Boolean = false
+     private val lock = Any()
+ 
++    /**
++     * 接收端状态回调，在读线程上调用，调用方自行切线程。
++     * 会话断开时以 [EchoCastMediaStatus.playerState] = "CLOSED" 通知一次。
++     */
++    @Volatile var onMediaStatus: ((EchoCastMediaStatus) -> Unit)? = null
++    @Volatile var onVolume: ((Float) -> Unit)? = null
++
+     fun isActive(): Boolean = socket?.isClosed == false
+ 
+     fun play(
+@@ -33,7 +41,7 @@ class EchoChromecastClient {
+             val port = renderer.port.takeIf { it > 0 } ?: EchoChromecastCastPolicy.DefaultPort
+             val opened = openSocket(renderer.host, port)
+             socket = opened
+-            val input = BufferedInputStream(opened.inputStream)
++            val reader = BufferedInputStream(opened.inputStream)
+             val output = opened.outputStream
+             requestId = 1
+             write(output, EchoCastProtocol.ReceiverId, EchoCastProtocol.ConnectionNamespace, EchoCastProtocol.connectJson())
+@@ -43,11 +51,14 @@ class EchoChromecastClient {
+                 EchoCastProtocol.ReceiverNamespace,
+                 EchoCastProtocol.launchJson(nextRequestId(), EchoChromecastCastPolicy.DefaultReceiverAppId),
+             )
+-            val transport = awaitTransportId(input, output) ?: throw EchoDlnaException(500, "chromecast_unsupported")
++            val transport = awaitTransportId(reader, output) ?: throw EchoDlnaException(500, "chromecast_unsupported")
+             transportId = transport
+             write(output, transport, EchoCastProtocol.ConnectionNamespace, EchoCastProtocol.connectJson())
+-            loadLocked(item, positionMs, input, output)
+-            Thread(::heartbeatLoop, "echo-cast-heartbeat").apply { isDaemon = true }.start()
++            sendLoadLocked(item, positionMs, output)
++            mediaSessionId = awaitMediaSessionId(reader, output) ?: mediaSessionId
++            paused = false
++            Thread({ readLoop(opened, reader) }, "echo-cast-reader").apply { isDaemon = true }.start()
++            Thread({ heartbeatLoop(opened) }, "echo-cast-heartbeat").apply { isDaemon = true }.start()
+         }
+     }
+ 
+@@ -59,18 +70,35 @@ class EchoChromecastClient {
+         if (paused) resume() else pause()
+     }
+ 
++    fun seek(positionMs: Long) = mediaCommand { id, session -> EchoCastProtocol.seekJson(id, session, positionMs) }
++
++    /** 设备音量，0..1。Chromecast 的音量属于接收端，不属于媒体会话。 */
++    fun setVolume(level: Float) {
++        synchronized(lock) {
++            val output = socket?.outputStream ?: return
++            write(
++                output,
++                EchoCastProtocol.ReceiverId,
++                EchoCastProtocol.ReceiverNamespace,
++                EchoCastProtocol.setVolumeJson(nextRequestId(), level),
++            )
++        }
++    }
++
+     fun stop() {
+         runCatching { mediaCommand { id, session -> EchoCastProtocol.stopJson(id, session) } }
+         close()
+     }
+ 
++    /** 切到另一首。新的 mediaSessionId 由读线程从 MEDIA_STATUS 里取得。 */
+     fun playNext(item: EchoRemoteStreamItem) {
+         EchoChromecastCastPolicy.rejectReason(item)?.let { reason ->
+             throw EchoDlnaException(415, reason.code)
+         }
+         synchronized(lock) {
+             val opened = socket ?: throw EchoDlnaException(500, "chromecast_closed")
+-            loadLocked(item, 0L, BufferedInputStream(opened.inputStream), opened.outputStream)
++            sendLoadLocked(item, 0L, opened.outputStream)
++            paused = false
+         }
+     }
+ 
+@@ -78,10 +106,9 @@ class EchoChromecastClient {
+         synchronized(lock) { closeLocked() }
+     }
+ 
+-    private fun loadLocked(
++    private fun sendLoadLocked(
+         item: EchoRemoteStreamItem,
+         positionMs: Long,
+-        input: BufferedInputStream,
+         output: OutputStream,
+     ) {
+         val transport = transportId ?: return
+@@ -98,32 +125,66 @@ class EchoChromecastClient {
+                 artist = item.artist,
+             ),
+         )
+-        mediaSessionId = awaitMediaSessionId(input, output) ?: mediaSessionId
+-        paused = false
+     }
+ 
+     private fun mediaCommand(body: (requestId: Int, sessionId: Int) -> String) {
+-        val output = socket?.outputStream ?: return
+-        val transport = transportId ?: return
+-        val session = mediaSessionId ?: return
+         synchronized(lock) {
++            val output = socket?.outputStream ?: return
++            val transport = transportId ?: return
++            val session = mediaSessionId ?: return
+             write(output, transport, EchoCastProtocol.MediaNamespace, body(nextRequestId(), session))
+         }
+     }
+ 
+-    private fun heartbeatLoop() {
++    /** 唯一的读者。play() 的同步握手结束后才启动，避免两处同时读同一个流。 */
++    private fun readLoop(owner: SSLSocket, reader: BufferedInputStream) {
++        while (socket === owner && !owner.isClosed) {
++            val message = try {
++                EchoCastProtocol.read(reader)
++            } catch (_: SocketTimeoutException) {
++                continue
++            } catch (_: Exception) {
++                break
++            }
++            if (message.namespace == EchoCastProtocol.HeartbeatNamespace && message.payloadUtf8.contains("PING")) {
++                synchronized(lock) {
++                    if (socket === owner) {
++                        runCatching {
++                            write(owner.outputStream, message.sourceId, EchoCastProtocol.HeartbeatNamespace, """{"type":"PONG"}""")
++                        }
++                    }
++                }
++                continue
++            }
++            EchoCastStatusParser.media(message.payloadUtf8)?.let { status ->
++                status.mediaSessionId?.let { mediaSessionId = it }
++                when (status.playerState) {
++                    "PAUSED" -> paused = true
++                    "PLAYING", "BUFFERING" -> paused = false
++                }
++                onMediaStatus?.invoke(status)
++            }
++            EchoCastStatusParser.receiverVolume(message.payloadUtf8)?.let { level -> onVolume?.invoke(level) }
++        }
++        if (socket === owner) {
++            close()
++            onMediaStatus?.invoke(EchoCastMediaStatus(null, "CLOSED", null, null, null))
++        }
++    }
++
++    /** 心跳顺带拉一次接收端状态（音量）和媒体状态，接收端只在变化时才主动推送。 */
++    private fun heartbeatLoop(owner: SSLSocket) {
+         while (true) {
+             try {
+-                Thread.sleep(5_000)
++                Thread.sleep(HEARTBEAT_MS)
+                 synchronized(lock) {
+-                    val current = socket ?: return
+-                    if (current.isClosed) return
+-                    write(
+-                        current.outputStream,
+-                        EchoCastProtocol.ReceiverId,
+-                        EchoCastProtocol.HeartbeatNamespace,
+-                        EchoCastProtocol.pingJson(),
+-                    )
++                    if (socket !== owner || owner.isClosed) return
++                    val output = owner.outputStream
++                    write(output, EchoCastProtocol.ReceiverId, EchoCastProtocol.HeartbeatNamespace, EchoCastProtocol.pingJson())
++                    write(output, EchoCastProtocol.ReceiverId, EchoCastProtocol.ReceiverNamespace, EchoCastProtocol.statusRequestJson(nextRequestId()))
++                    transportId?.let { transport ->
++                        write(output, transport, EchoCastProtocol.MediaNamespace, EchoCastProtocol.statusRequestJson(nextRequestId()))
++                    }
+                 }
+             } catch (_: Exception) {
+                 break
+@@ -200,6 +261,10 @@ class EchoChromecastClient {
+         return socket
+     }
+ 
++    private companion object {
++        const val HEARTBEAT_MS = 5_000L
++    }
++
+     private object LanTrustManager : X509TrustManager {
+         override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) = Unit
+         override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) = Unit
+diff --git a/core/connect/src/main/java/app/echo/android/connect/EchoDlnaClient.kt b/core/connect/src/main/java/app/echo/android/connect/EchoDlnaClient.kt
+index c06c79a..472e1ab 100644
+--- a/core/connect/src/main/java/app/echo/android/connect/EchoDlnaClient.kt
++++ b/core/connect/src/main/java/app/echo/android/connect/EchoDlnaClient.kt
+@@ -84,6 +84,50 @@ class EchoDlnaClient(
+         return EchoDlnaSoap.parseTransportState(xml)
+     }
+ 
++    /** GetPositionInfo：当前曲目的进度、时长和 URI。渲染器自己切到 NextURI 后，TrackURI 会随之变化。 */
++    fun positionInfo(renderer: EchoLanRenderer): EchoDlnaPositionInfo {
++        val xml = invoke(requireAvTransport(renderer), "GetPositionInfo", mapOf("InstanceID" to "0"))
++        return EchoDlnaPositionInfo(
++            positionMs = EchoDlnaSoap.parseRelTimeMs(xml),
++            durationMs = EchoDlnaSoap.parseDurationMs(xml),
++            trackUri = EchoDlnaSoap.xmlText(xml, "TrackURI"),
++        )
++    }
++
++    /** 0..100；渲染器没有 RenderingControl 时返回 null。 */
++    fun volume(renderer: EchoLanRenderer): Int? {
++        val service = renderer.renderingControl ?: return null
++        val xml = invoke(service, "GetVolume", mapOf("InstanceID" to "0", "Channel" to "Master"))
++        return EchoDlnaSoap.xmlText(xml, "CurrentVolume")?.toIntOrNull()?.coerceIn(0, 100)
++    }
++
++    fun setVolume(renderer: EchoLanRenderer, volume: Int) {
++        val service = renderer.renderingControl ?: throw EchoDlnaException(400, "no_renderingcontrol")
++        invoke(
++            service,
++            "SetVolume",
++            mapOf(
++                "InstanceID" to "0",
++                "Channel" to "Master",
++                "DesiredVolume" to volume.coerceIn(0, 100).toString(),
++            ),
++        )
++    }
++
++    /** 只设置下一首，用于渲染器已经自动切歌后补上再下一首。 */
++    fun setNext(renderer: EchoLanRenderer, next: EchoRemoteStreamItem) {
++        if (!EchoDlnaCastPolicy.canPlay(renderer, next)) return
++        invoke(
++            requireAvTransport(renderer),
++            "SetNextAVTransportURI",
++            mapOf(
++                "InstanceID" to "0",
++                "NextURI" to next.streamUrl,
++                "NextURIMetaData" to didl(next, EchoDlnaCastPolicy.offeredMime(next)),
++            ),
++        )
++    }
++
+     private fun didl(item: EchoRemoteStreamItem, mime: String): String = EchoDlnaDidl.build(
+         id = item.id,
+         streamUrl = item.streamUrl,
+@@ -102,6 +146,12 @@ class EchoDlnaClient(
+         transport.post(service.controlUrl, service.serviceType, action, args)
+ }
+ 
++data class EchoDlnaPositionInfo(
++    val positionMs: Long?,
++    val durationMs: Long?,
++    val trackUri: String?,
++)
++
+ class EchoDlnaHttpTransport(
+     private val connectTimeoutMs: Int = 6_000,
+     private val readTimeoutMs: Int = 6_000,
+diff --git a/core/connect/src/main/java/app/echo/android/connect/EchoLanCastFollowPolicy.kt b/core/connect/src/main/java/app/echo/android/connect/EchoLanCastFollowPolicy.kt
+new file mode 100644
+index 0000000..598d304
+--- /dev/null
++++ b/core/connect/src/main/java/app/echo/android/connect/EchoLanCastFollowPolicy.kt
+@@ -0,0 +1,53 @@
++package app.echo.android.connect
++
++import app.echo.android.model.connect.EchoRemoteStreamItem
++
++/** 投送到 DLNA / Chromecast 之后，根据渲染器上报的状态推断“该切到哪一首”。纯函数，便于单测。 */
++object EchoLanCastFollowPolicy {
++    /** 播到离结尾这么近再停下，才算自然播完；更早停下多半是用户在设备上按了停止。 */
++    const val END_TOLERANCE_MS = 5_000L
++
++    /** 切歌后这段时间内不再判断“播完”，渲染器此时常常短暂上报 STOPPED / TRANSITIONING。 */
++    const val ADVANCE_GRACE_MS = 6_000L
++
++    /**
++     * 渲染器通过 SetNextAVTransportURI 自己切到下一首时，TrackURI 会变成下一首的地址。
++     * 返回它在队列里的位置；没变化或认不出来时返回 null。
++     */
++    fun indexForTrackUri(items: List<EchoRemoteStreamItem>, currentIndex: Int, trackUri: String?): Int? {
++        val uri = trackUri?.trim()?.takeIf { it.isNotEmpty() } ?: return null
++        if (items.getOrNull(currentIndex)?.streamUrl == uri) return null
++        val ahead = (currentIndex + 1 until items.size).firstOrNull { items[it].streamUrl == uri }
++        return ahead ?: items.indices.firstOrNull { items[it].streamUrl == uri }
++    }
++
++    fun isDlnaPlaying(transportState: String?): Boolean =
++        transportState == "PLAYING" || transportState == "TRANSITIONING"
++
++    /** DLNA：上一轮在播、这一轮停了、且停在结尾附近（或时长未知），判为自然播完。 */
++    fun dlnaTrackEnded(
++        transportState: String?,
++        wasPlaying: Boolean,
++        pausedByUser: Boolean,
++        lastPositionMs: Long,
++        durationMs: Long,
++    ): Boolean {
++        if (!wasPlaying || pausedByUser) return false
++        if (transportState != "STOPPED" && transportState != "NO_MEDIA_PRESENT") return false
++        return durationMs <= 0L || lastPositionMs >= durationMs - END_TOLERANCE_MS
++    }
++
++    /** Chromecast 在播放状态下按经过时间外推进度，不超过时长。 */
++    fun extrapolatedPositionMs(
++        sampledPositionMs: Long,
++        sampledAtElapsedMs: Long,
++        nowElapsedMs: Long,
++        playing: Boolean,
++        durationMs: Long,
++    ): Long {
++        val base = sampledPositionMs.coerceAtLeast(0L)
++        if (!playing) return base
++        val position = base + (nowElapsedMs - sampledAtElapsedMs).coerceAtLeast(0L)
++        return if (durationMs > 0L) position.coerceAtMost(durationMs) else position
++    }
++}
+diff --git a/core/connect/src/test/java/app/echo/android/connect/EchoCastStatusParserTest.kt b/core/connect/src/test/java/app/echo/android/connect/EchoCastStatusParserTest.kt
+new file mode 100644
+index 0000000..c810c1f
+--- /dev/null
++++ b/core/connect/src/test/java/app/echo/android/connect/EchoCastStatusParserTest.kt
+@@ -0,0 +1,44 @@
++package app.echo.android.connect
++
++import org.junit.Assert.assertEquals
++import org.junit.Assert.assertFalse
++import org.junit.Assert.assertNull
++import org.junit.Assert.assertTrue
++import org.junit.Test
++
++class EchoCastStatusParserTest {
++    @Test
++    fun parsesPlayingStatus() {
++        val status = EchoCastStatusParser.media(
++            """{"type":"MEDIA_STATUS","status":[{"mediaSessionId":3,"playerState":"PLAYING","currentTime":12.5,"media":{"duration":200.0}}]}""",
++        )!!
++        assertEquals(3, status.mediaSessionId)
++        assertEquals(12_500L, status.positionMs)
++        assertEquals(200_000L, status.durationMs)
++        assertTrue(status.isPlaying)
++        assertFalse(status.finished)
++    }
++
++    @Test
++    fun finishedWhenIdleWithReason() {
++        val status = EchoCastStatusParser.media(
++            """{"type":"MEDIA_STATUS","status":[{"mediaSessionId":3,"playerState":"IDLE","idleReason":"FINISHED"}]}""",
++        )!!
++        assertTrue(status.finished)
++    }
++
++    @Test
++    fun ignoresOtherMessages() {
++        assertNull(EchoCastStatusParser.media("""{"type":"PONG"}"""))
++        assertNull(EchoCastStatusParser.media("not json"))
++    }
++
++    @Test
++    fun readsReceiverVolume() {
++        assertEquals(
++            0.4f,
++            EchoCastStatusParser.receiverVolume("""{"type":"RECEIVER_STATUS","status":{"volume":{"level":0.4,"muted":false}}}""")!!,
++            0.0001f,
++        )
++    }
++}
+diff --git a/core/connect/src/test/java/app/echo/android/connect/EchoLanCastFollowPolicyTest.kt b/core/connect/src/test/java/app/echo/android/connect/EchoLanCastFollowPolicyTest.kt
+new file mode 100644
+index 0000000..8e9c8c0
+--- /dev/null
++++ b/core/connect/src/test/java/app/echo/android/connect/EchoLanCastFollowPolicyTest.kt
+@@ -0,0 +1,54 @@
++package app.echo.android.connect
++
++import app.echo.android.model.connect.EchoRemoteStreamItem
++import org.junit.Assert.assertEquals
++import org.junit.Assert.assertFalse
++import org.junit.Assert.assertNull
++import org.junit.Assert.assertTrue
++import org.junit.Test
++
++class EchoLanCastFollowPolicyTest {
++    private val items = listOf("a", "b", "c").map {
++        EchoRemoteStreamItem(id = it, streamUrl = "http://10.0.0.2:8090/cast/$it", title = it, artist = "x")
++    }
++
++    @Test
++    fun sameUriMeansNoAdvance() {
++        assertNull(EchoLanCastFollowPolicy.indexForTrackUri(items, 0, "http://10.0.0.2:8090/cast/a"))
++    }
++
++    @Test
++    fun rendererAdvancedToNext() {
++        assertEquals(1, EchoLanCastFollowPolicy.indexForTrackUri(items, 0, "http://10.0.0.2:8090/cast/b"))
++    }
++
++    @Test
++    fun unknownUriIsIgnored() {
++        assertNull(EchoLanCastFollowPolicy.indexForTrackUri(items, 0, "http://elsewhere/x"))
++        assertNull(EchoLanCastFollowPolicy.indexForTrackUri(items, 0, null))
++    }
++
++    @Test
++    fun stopNearEndCountsAsFinished() {
++        assertTrue(EchoLanCastFollowPolicy.dlnaTrackEnded("STOPPED", true, false, 238_000L, 240_000L))
++    }
++
++    @Test
++    fun stopMidTrackIsNotFinished() {
++        assertFalse(EchoLanCastFollowPolicy.dlnaTrackEnded("STOPPED", true, false, 60_000L, 240_000L))
++    }
++
++    @Test
++    fun pausedOrAlreadyStoppedIsNotFinished() {
++        assertFalse(EchoLanCastFollowPolicy.dlnaTrackEnded("PAUSED_PLAYBACK", true, false, 239_000L, 240_000L))
++        assertFalse(EchoLanCastFollowPolicy.dlnaTrackEnded("STOPPED", false, false, 239_000L, 240_000L))
++        assertFalse(EchoLanCastFollowPolicy.dlnaTrackEnded("STOPPED", true, true, 239_000L, 240_000L))
++    }
++
++    @Test
++    fun extrapolationStopsAtDuration() {
++        assertEquals(10_500L, EchoLanCastFollowPolicy.extrapolatedPositionMs(10_000L, 1_000L, 1_500L, true, 60_000L))
++        assertEquals(60_000L, EchoLanCastFollowPolicy.extrapolatedPositionMs(59_000L, 0L, 5_000L, true, 60_000L))
++        assertEquals(10_000L, EchoLanCastFollowPolicy.extrapolatedPositionMs(10_000L, 0L, 5_000L, false, 60_000L))
++    }
++}
+-- 
+2.43.0
+

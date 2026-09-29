@@ -316,6 +316,7 @@ internal fun EchoLibraryPage(
             onCloseDetail = onCloseDetail,
             onOpenConnect = onOpenConnect,
             cloudLibraryConfigured = !appSettings.webDavServerUrl.isNullOrBlank() ||
+                !appSettings.smbServerUrl.isNullOrBlank() ||
                 !appSettings.subsonicServerUrl.isNullOrBlank() ||
                 !appSettings.jellyfinServerUrl.isNullOrBlank(),
             onImportM3uPlaylist = {

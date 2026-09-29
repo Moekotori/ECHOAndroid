@@ -21,7 +21,11 @@ import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.model.playback.EchoTrackRef
 
 @Composable
-internal fun LyricsTrackHeading(track: EchoTrackRef?, paper: Boolean) {
+internal fun LyricsTrackHeading(
+    track: EchoTrackRef?,
+    paper: Boolean,
+    onOpenArtist: ((trackId: String, artistName: String) -> Unit)? = null,
+) {
     if (track == null) return
     if (paper) {
         Column(
@@ -33,16 +37,28 @@ internal fun LyricsTrackHeading(track: EchoTrackRef?, paper: Boolean) {
                 fontSize = 23.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(track.artist, color = OnArtMuted, style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.fillMaxWidth().openArtistWhen(track.id, track.artist, onOpenArtist),
+                textAlign = TextAlign.Center,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)))
     } else {
-        LyricsTrackIdentity(track, Modifier.padding(top = 12.dp, bottom = 16.dp), artworkSize = 48)
+        LyricsTrackIdentity(
+            track,
+            Modifier.padding(top = 12.dp, bottom = 16.dp),
+            artworkSize = 48,
+            onOpenArtist = onOpenArtist,
+        )
     }
 }
 
 @Composable
-internal fun LyricsTrackIdentity(track: EchoTrackRef?, modifier: Modifier = Modifier, artworkSize: Int = 40) {
+internal fun LyricsTrackIdentity(
+    track: EchoTrackRef?,
+    modifier: Modifier = Modifier,
+    artworkSize: Int = 40,
+    onOpenArtist: ((trackId: String, artistName: String) -> Unit)? = null,
+) {
     if (track == null) return
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -52,6 +68,7 @@ internal fun LyricsTrackIdentity(track: EchoTrackRef?, modifier: Modifier = Modi
             Text(track.title, color = OnArt, style = MaterialTheme.typography.titleMedium,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(track.artist, color = OnArtMuted, style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.fillMaxWidth().openArtistWhen(track.id, track.artist, onOpenArtist),
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }

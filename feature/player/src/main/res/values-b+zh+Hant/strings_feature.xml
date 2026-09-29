@@ -58,6 +58,7 @@
     <string name="feature_player_no_matching_lyrics_found_7ffc7e">"未找到同名歌詞"</string>
     <string name="feature_player_normal_speed_a8fc98">"普通變速"</string>
     <string name="feature_player_not_playing_d72324">"未在播放"</string>
+    <string name="feature_player_open_artist">"查看藝術家"</string>
     <string name="feature_player_nothing_playing_3beac0">"目前沒有在播放"</string>
     <string name="feature_player_now_playing_214a7c">"目前播放"</string>
     <string name="feature_player_off_12ac24">"關閉"</string>

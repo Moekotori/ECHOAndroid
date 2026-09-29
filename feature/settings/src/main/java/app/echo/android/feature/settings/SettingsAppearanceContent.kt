@@ -18,6 +18,10 @@ import androidx.compose.ui.unit.dp
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.LocalEchoPlatformCapabilities
 import app.echo.android.model.settings.EchoBackgroundStyle
+import app.echo.android.model.settings.EchoColorTheme
+import app.echo.android.model.settings.EchoCustomColors
+import app.echo.android.model.settings.EchoSavedColorTheme
+import app.echo.android.model.settings.EchoSavedColorThemeResult
 import kotlin.math.roundToInt
 
 @Composable
@@ -39,6 +43,9 @@ internal fun SettingsAppearanceContent(
     importedFontUri: String?,
     themeMode: String,
     colorTheme: String,
+    customColors: EchoCustomColors,
+    savedColorThemes: List<EchoSavedColorTheme>,
+    appliedSavedColorThemeId: String?,
     scheduledDarkModeEnabled: Boolean,
     scheduledDarkStartMinute: Int,
     scheduledDarkEndMinute: Int,
@@ -63,6 +70,10 @@ internal fun SettingsAppearanceContent(
     onClearImportedFont: () -> Unit,
     onThemeModeChange: (String) -> Unit,
     onColorThemeChange: (String) -> Unit,
+    onCustomColorsChange: (EchoCustomColors) -> Unit,
+    onSaveCustomColorTheme: (String, (EchoSavedColorThemeResult) -> Unit) -> Unit,
+    onApplySavedColorTheme: (String) -> Unit,
+    onDeleteSavedColorTheme: (String) -> Unit,
     onScheduledDarkModeEnabledChange: (Boolean) -> Unit,
     onScheduledDarkStartMinuteChange: (Int) -> Unit,
     onScheduledDarkEndMinuteChange: (Int) -> Unit,
@@ -92,11 +103,23 @@ internal fun SettingsAppearanceContent(
     ) {
         ThemeModeSelector(
             selectedMode = themeMode,
+            customColors = customColors,
             onSelect = onThemeModeChange,
         )
         ThemePaletteSelector(
             selectedId = colorTheme,
+            customColors = customColors,
             onSelect = onColorThemeChange,
+        )
+        ThemeCustomEditor(
+            selected = colorTheme == EchoColorTheme.Custom.id,
+            colors = customColors,
+            savedThemes = savedColorThemes,
+            appliedId = appliedSavedColorThemeId,
+            onColorsChange = onCustomColorsChange,
+            onSave = onSaveCustomColorTheme,
+            onApply = onApplySavedColorTheme,
+            onDelete = onDeleteSavedColorTheme,
         )
         val dynamicColorAvailable = LocalEchoPlatformCapabilities.current.dynamicColor
         SettingsSwitchRow(

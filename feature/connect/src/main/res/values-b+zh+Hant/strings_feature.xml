@@ -143,6 +143,8 @@
     <string name="feature_connect_keep_pc_echo_running_and_both_devices_on_7986ec">"請保持 PC ECHO 運作，並確認兩台裝置在同一網路。"</string>
     <string name="feature_connect_link_preferences_f81ffb">"連線偏好"</string>
     <string name="feature_connect_listen_together_with_pc_41d068">"連線你的 PC"</string>
+    <string name="feature_connect_listen_together_title">一起聽</string>
+    <string name="feature_connect_listen_together_detail">加入 PC 上的一起聽房間</string>
     <string name="feature_connect_nearby_pcs_b9b12a">"附近的 PC"</string>
     <string name="feature_connect_no_pc_found_use_the_same_wi_fi_ce621e">還沒找到電腦。請確認已開啟 Echo Link 並連線同一 Wi-Fi，然後重新搜尋。</string>
     <string name="feature_connect_no_track_selected_258d56">"尚未選擇曲目"</string>

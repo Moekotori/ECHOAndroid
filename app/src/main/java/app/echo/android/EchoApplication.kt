@@ -10,6 +10,7 @@ import app.echo.android.data.EchoLibraryDatabase
 import app.echo.android.data.EchoRadioStore
 import app.echo.android.data.EchoSettingsStore
 import app.echo.android.data.LibraryOfflineStore
+import app.echo.android.data.ListeningHistoryRepository
 import java.io.File
 import app.echo.android.data.readEchoStartupThemeSnapshot
 import app.echo.android.i18n.initializeEchoAppLocale
@@ -51,6 +52,10 @@ class EchoApplication : Application(), ImageLoaderFactory {
     val echoLinkSession by lazy { EchoLinkSession(this) }
     val listening by lazy { app.echo.android.listening.EchoListeningRuntime(this) }
     internal val lyricsSession: EchoNowPlayingLyricsSession by lazy { EchoNowPlayingLyricsSession(this) }
+    val listeningHistory by lazy { ListeningHistoryRepository(EchoLibraryDatabase.create(this)) }
+    private val listeningHistoryRecorder by lazy {
+        ListeningHistoryRecorder(EchoPlaybackProcessRuntime.scope, listeningHistory)
+    }
     internal val offlineDownloads: EchoOfflineDownloads by lazy {
         EchoOfflineDownloads(
             app = this,
@@ -103,6 +108,8 @@ class EchoApplication : Application(), ImageLoaderFactory {
         EchoPlaybackProcessRuntime.setSessionStore(EchoSettingsPlaybackSessionStore(settingsStore))
         lyricsSession.start(settingsStore)
         offlineDownloads.start()
+        listeningHistoryRecorder.start(EchoPlaybackProcessRuntime.surface)
+        app.echo.android.lyrics.overlay.EchoFloatingLyricsController(this, settingsStore).start()
         // Playback preferences and remote stream signing remain live when only the
         // service/media buttons are running (no ViewModel).
         EchoPlaybackProcessRuntime.scope.launch {

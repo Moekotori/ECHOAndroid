@@ -143,6 +143,8 @@
     <string name="feature_connect_keep_pc_echo_running_and_both_devices_on_7986ec">"Mantén PC ECHO en ejecución y ambos dispositivos en la misma red."</string>
     <string name="feature_connect_link_preferences_f81ffb">"Preferencias de enlace"</string>
     <string name="feature_connect_listen_together_with_pc_41d068">"Escuchar junto con la PC"</string>
+    <string name="feature_connect_listen_together_title">Escuchar juntos</string>
+    <string name="feature_connect_listen_together_detail">Entrar a una sala de ECHO en PC</string>
     <string name="feature_connect_nearby_pcs_b9b12a">"PCs cercanas"</string>
     <string name="feature_connect_no_pc_found_use_the_same_wi_fi_ce621e">No se encontraron computadoras. Comprueba que Echo Link esté activado en la misma Wi-Fi e inténtalo de nuevo.</string>
     <string name="feature_connect_no_track_selected_258d56">"Ninguna pista seleccionada"</string>

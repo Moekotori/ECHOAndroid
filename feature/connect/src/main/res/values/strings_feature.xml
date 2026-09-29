@@ -143,6 +143,8 @@
     <string name="feature_connect_keep_pc_echo_running_and_both_devices_on_7986ec">"Keep PC ECHO running and both devices on the same network."</string>
     <string name="feature_connect_link_preferences_f81ffb">"Link preferences"</string>
     <string name="feature_connect_listen_together_with_pc_41d068">"Listen together with PC"</string>
+    <string name="feature_connect_listen_together_title">Listen together</string>
+    <string name="feature_connect_listen_together_detail">Join a room from PC ECHO</string>
     <string name="feature_connect_nearby_pcs_b9b12a">"Nearby PCs"</string>
     <string name="feature_connect_no_pc_found_use_the_same_wi_fi_ce621e">No computers found. Check that Echo Link is enabled on the same Wi-Fi, then try again.</string>
     <string name="feature_connect_no_track_selected_258d56">"No track selected"</string>

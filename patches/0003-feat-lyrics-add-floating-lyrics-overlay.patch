@@ -1,0 +1,685 @@
+From 0c1a828a17902adcf179830473be56c3a18866a1 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 28 Sep 2026 20:25:21 +0800
+Subject: [PATCH] feat(lyrics): add floating lyrics overlay
+
+Show the current and next lyric line in a system overlay while music
+plays and ECHO is in the background. The overlay can be dragged
+vertically, locked for click-through (window alpha 0.8 for Android 12+
+touch pass-through), and resized from Settings > Playback > Lyrics.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01FEDCezPFi51Bf5mkmoEhB4
+---
+ app/src/main/AndroidManifest.xml              |   1 +
+ .../app/echo/android/EchoAndroidViewModel.kt  |   6 +
+ .../main/java/app/echo/android/EchoAppRoot.kt |  17 ++
+ .../java/app/echo/android/EchoApplication.kt  |   1 +
+ .../overlay/EchoFloatingLyricsController.kt   | 186 ++++++++++++++++++
+ .../lyrics/overlay/EchoFloatingLyricsView.kt  |  94 +++++++++
+ .../echo/android/data/EchoSettingsStore.kt    |  22 +++
+ .../settings/EchoFloatingLyricsSettings.kt    |  19 ++
+ .../settings/SettingsFloatingLyricsRows.kt    |  48 +++++
+ .../settings/SettingsPlaybackContent.kt       |  10 +
+ .../feature/settings/SettingsScreen.kt        |   9 +
+ .../feature/settings/SettingsSearch.kt        |   2 +
+ .../strings_floating_lyrics.xml               |  10 +
+ .../res/values-zh/strings_floating_lyrics.xml |  10 +
+ .../res/values/strings_floating_lyrics.xml    |  10 +
+ 15 files changed, 445 insertions(+)
+ create mode 100644 app/src/main/java/app/echo/android/lyrics/overlay/EchoFloatingLyricsController.kt
+ create mode 100644 app/src/main/java/app/echo/android/lyrics/overlay/EchoFloatingLyricsView.kt
+ create mode 100644 core/model/src/main/java/app/echo/android/model/settings/EchoFloatingLyricsSettings.kt
+ create mode 100644 feature/settings/src/main/java/app/echo/android/feature/settings/SettingsFloatingLyricsRows.kt
+ create mode 100644 feature/settings/src/main/res/values-b+zh+Hant/strings_floating_lyrics.xml
+ create mode 100644 feature/settings/src/main/res/values-zh/strings_floating_lyrics.xml
+ create mode 100644 feature/settings/src/main/res/values/strings_floating_lyrics.xml
+
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+index 01b77f4..4e41909 100644
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml
+@@ -13,6 +13,7 @@
+     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+     <uses-permission android:name="android.permission.VIBRATE" />
+     <uses-permission android:name="android.permission.WAKE_LOCK" />
++    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+     <uses-feature android:name="android.hardware.usb.host" android:required="false" />
+diff --git a/app/src/main/java/app/echo/android/EchoAndroidViewModel.kt b/app/src/main/java/app/echo/android/EchoAndroidViewModel.kt
+index 2e3176b..3a7d336 100644
+--- a/app/src/main/java/app/echo/android/EchoAndroidViewModel.kt
++++ b/app/src/main/java/app/echo/android/EchoAndroidViewModel.kt
+@@ -1176,6 +1176,12 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
+         }
+     }
+ 
++    fun setFloatingLyrics(value: app.echo.android.model.settings.EchoFloatingLyricsSettings) {
++        updateSettings {
++            setFloatingLyrics(value)
++        }
++    }
++
+     fun setSetlistFmApiKey(apiKey: String?) {
+         updateSettings {
+             setSetlistFmApiKey(apiKey)
+diff --git a/app/src/main/java/app/echo/android/EchoAppRoot.kt b/app/src/main/java/app/echo/android/EchoAppRoot.kt
+index c8a91db..68d3c18 100644
+--- a/app/src/main/java/app/echo/android/EchoAppRoot.kt
++++ b/app/src/main/java/app/echo/android/EchoAppRoot.kt
+@@ -214,6 +214,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
+             hasNotifPermission = granted
+         }
+     }
++    var hasOverlayPermission by remember {
++        mutableStateOf(android.provider.Settings.canDrawOverlays(context))
++    }
+     val bluetoothPermName = remember { bluetoothConnectPermissionName() }
+     var hasBluetoothConnectPermission by remember {
+         mutableStateOf(
+@@ -514,6 +517,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
+                         ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+                     hasNotifPermission = notifPermName == null ||
+                         ContextCompat.checkSelfPermission(context, notifPermName) == PackageManager.PERMISSION_GRANTED
++                    hasOverlayPermission = android.provider.Settings.canDrawOverlays(context)
+                 }
+                 Lifecycle.Event.ON_STOP -> appVisible = false
+                 else -> Unit
+@@ -1294,6 +1298,19 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
+                                 showLyricsControlDeck = appSettings.showLyricsControlDeck,
+                                 onlineLyricsEnabled = appSettings.onlineLyricsEnabled,
+                                 lockScreenLyricsEnabled = appSettings.lockScreenLyricsEnabled,
++                                floatingLyrics = appSettings.floatingLyrics,
++                                floatingLyricsPermissionGranted = hasOverlayPermission,
++                                onFloatingLyricsChange = viewModel::setFloatingLyrics,
++                                onRequestFloatingLyricsPermission = {
++                                    runCatching {
++                                        context.startActivity(
++                                            Intent(
++                                                android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
++                                                AndroidUri.parse("package:${context.packageName}"),
++                                            ),
++                                        )
++                                    }
++                                },
+                                 usbExclusiveEnabled = appSettings.usbExclusiveEnabled,
+                                 usbBitPerfectEnabled = appSettings.usbBitPerfectEnabled,
+                                 trackTransitions = appSettings.trackTransitions,
+diff --git a/app/src/main/java/app/echo/android/EchoApplication.kt b/app/src/main/java/app/echo/android/EchoApplication.kt
+index 8ddf196..23aab2a 100644
+--- a/app/src/main/java/app/echo/android/EchoApplication.kt
++++ b/app/src/main/java/app/echo/android/EchoApplication.kt
+@@ -109,6 +109,7 @@ class EchoApplication : Application(), ImageLoaderFactory {
+         lyricsSession.start(settingsStore)
+         offlineDownloads.start()
+         listeningHistoryRecorder.start(EchoPlaybackProcessRuntime.surface)
++        app.echo.android.lyrics.overlay.EchoFloatingLyricsController(this, settingsStore).start()
+         // Playback preferences and remote stream signing remain live when only the
+         // service/media buttons are running (no ViewModel).
+         EchoPlaybackProcessRuntime.scope.launch {
+diff --git a/app/src/main/java/app/echo/android/lyrics/overlay/EchoFloatingLyricsController.kt b/app/src/main/java/app/echo/android/lyrics/overlay/EchoFloatingLyricsController.kt
+new file mode 100644
+index 0000000..de221cc
+--- /dev/null
++++ b/app/src/main/java/app/echo/android/lyrics/overlay/EchoFloatingLyricsController.kt
+@@ -0,0 +1,186 @@
++package app.echo.android.lyrics.overlay
++
++import android.app.Activity
++import android.app.Application
++import android.graphics.Color
++import android.graphics.PixelFormat
++import android.os.Bundle
++import android.provider.Settings
++import android.view.Gravity
++import android.view.WindowManager
++import androidx.annotation.OptIn
++import androidx.media3.common.util.UnstableApi
++import app.echo.android.data.EchoSettingsStore
++import app.echo.android.model.error.EchoErrorLog
++import app.echo.android.model.error.EchoErrorSource
++import app.echo.android.model.lyrics.EchoLyricDisplaySnapshot
++import app.echo.android.model.settings.EchoFloatingLyricsSettings
++import app.echo.android.playback.EchoPlaybackProcessRuntime
++import kotlinx.coroutines.Dispatchers
++import kotlinx.coroutines.flow.MutableStateFlow
++import kotlinx.coroutines.flow.combine
++import kotlinx.coroutines.flow.distinctUntilChanged
++import kotlinx.coroutines.flow.map
++import kotlinx.coroutines.launch
++
++/**
++ * 系统悬浮窗歌词。进程级单例，由 Application 启动。
++ *
++ * 只在「开关打开 + 有悬浮窗权限 + 界面不在前台 + 正在播放 + 当前曲目有歌词」时显示；
++ * 回到应用内自动隐藏，避免和播放页的歌词重复。数据来自播放服务已有的歌词快照，
++ * 这里不额外计时，也不逐帧刷新。
++ */
++@OptIn(UnstableApi::class)
++internal class EchoFloatingLyricsController(
++    private val app: Application,
++    private val settingsStore: EchoSettingsStore,
++) {
++    private val windowManager = app.getSystemService(WindowManager::class.java)
++    private val appVisible = MutableStateFlow(false)
++    private var startedActivities = 0
++    private var view: EchoFloatingLyricsView? = null
++    private var params: WindowManager.LayoutParams? = null
++    private var settings = EchoFloatingLyricsSettings()
++
++    fun start() {
++        app.registerActivityLifecycleCallbacks(VisibilityCallbacks())
++        EchoPlaybackProcessRuntime.scope.launch(Dispatchers.Main.immediate) {
++            combine(
++                settingsStore.appSettings.map { it.floatingLyrics }.distinctUntilChanged(),
++                appVisible,
++                EchoPlaybackProcessRuntime.surface.map { it.isPlaying }.distinctUntilChanged(),
++                EchoPlaybackProcessRuntime.lyricDisplaySnapshot,
++            ) { floating, visible, playing, snapshot -> FloatingState(floating, visible, playing, snapshot) }
++                .collect(::render)
++        }
++    }
++
++    private fun render(state: FloatingState) {
++        settings = state.settings
++        val currentLine = state.snapshot.current?.text?.trim()?.takeIf { it.isNotEmpty() }
++        val nextLine = state.snapshot.next?.text?.trim()?.takeIf { it.isNotEmpty() }
++        val shouldShow = state.settings.enabled &&
++            !state.appVisible &&
++            state.playing &&
++            (currentLine != null || nextLine != null) &&
++            Settings.canDrawOverlays(app)
++        if (!shouldShow) {
++            hide()
++            return
++        }
++        val shown = view ?: show(state.settings) ?: return
++        shown.bind(
++            currentLine = currentLine ?: nextLine,
++            nextLine = if (currentLine != null) nextLine else null,
++            fontScale = state.settings.fontScale,
++            accent = CURRENT_LINE_COLOR,
++            locked = state.settings.locked,
++        )
++        params?.let { layout ->
++            if (applyLock(layout, state.settings.locked)) {
++                runCatching { windowManager.updateViewLayout(shown, layout) }
++            }
++        }
++    }
++
++    private fun show(settings: EchoFloatingLyricsSettings): EchoFloatingLyricsView? {
++        val layout = WindowManager.LayoutParams(
++            WindowManager.LayoutParams.MATCH_PARENT,
++            WindowManager.LayoutParams.WRAP_CONTENT,
++            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
++            BASE_FLAGS,
++            PixelFormat.TRANSLUCENT,
++        ).apply {
++            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
++            y = settings.offsetY.takeIf { it >= 0 } ?: defaultOffsetY()
++        }
++        applyLock(layout, settings.locked)
++        val created = EchoFloatingLyricsView(
++            context = app,
++            onDrag = { dy -> moveBy(dy) },
++            onDragEnd = ::persistOffset,
++        )
++        return runCatching {
++            windowManager.addView(created, layout)
++            view = created
++            params = layout
++            created
++        }.onFailure { error ->
++            EchoErrorLog.record(EchoErrorSource.Lyrics, "Floating lyrics window failed", throwable = error)
++        }.getOrNull()
++    }
++
++    private fun hide() {
++        val current = view ?: return
++        view = null
++        params = null
++        runCatching { windowManager.removeViewImmediate(current) }
++    }
++
++    /**
++     * 锁定 = 不接收触摸，点击穿透到下面的应用。Android 12 起，穿透窗口的整体不透明度
++     * 必须不高于 0.8，否则系统会拦下触摸，所以锁定时把窗口 alpha 压到 0.8。
++     * 返回参数是否有变化。
++     */
++    private fun applyLock(layout: WindowManager.LayoutParams, locked: Boolean): Boolean {
++        val flags = if (locked) BASE_FLAGS or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE else BASE_FLAGS
++        val alpha = if (locked) LOCKED_WINDOW_ALPHA else 1f
++        if (layout.flags == flags && layout.alpha == alpha) return false
++        layout.flags = flags
++        layout.alpha = alpha
++        return true
++    }
++
++    private fun moveBy(dy: Int) {
++        val shown = view ?: return
++        val layout = params ?: return
++        val maxY = (app.resources.displayMetrics.heightPixels - shown.height).coerceAtLeast(0)
++        layout.y = (layout.y + dy).coerceIn(0, maxY)
++        runCatching { windowManager.updateViewLayout(shown, layout) }
++    }
++
++    private fun persistOffset() {
++        val y = params?.y ?: return
++        val updated = settings.copy(offsetY = y)
++        settings = updated
++        EchoPlaybackProcessRuntime.scope.launch(Dispatchers.IO) {
++            runCatching { settingsStore.setFloatingLyrics(updated) }
++        }
++    }
++
++    private fun defaultOffsetY(): Int = (app.resources.displayMetrics.heightPixels * DEFAULT_OFFSET_FRACTION).toInt()
++
++    private data class FloatingState(
++        val settings: EchoFloatingLyricsSettings,
++        val appVisible: Boolean,
++        val playing: Boolean,
++        val snapshot: EchoLyricDisplaySnapshot,
++    )
++
++    private inner class VisibilityCallbacks : Application.ActivityLifecycleCallbacks {
++        override fun onActivityStarted(activity: Activity) {
++            startedActivities += 1
++            appVisible.value = startedActivities > 0
++        }
++
++        override fun onActivityStopped(activity: Activity) {
++            startedActivities = (startedActivities - 1).coerceAtLeast(0)
++            appVisible.value = startedActivities > 0
++        }
++
++        override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
++        override fun onActivityResumed(activity: Activity) = Unit
++        override fun onActivityPaused(activity: Activity) = Unit
++        override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
++        override fun onActivityDestroyed(activity: Activity) = Unit
++    }
++
++    private companion object {
++        const val BASE_FLAGS = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
++            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
++            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
++        const val LOCKED_WINDOW_ALPHA = 0.8f
++        const val DEFAULT_OFFSET_FRACTION = 0.12f
++        val CURRENT_LINE_COLOR = Color.rgb(0xFF, 0xE0, 0x8A)
++    }
++}
+diff --git a/app/src/main/java/app/echo/android/lyrics/overlay/EchoFloatingLyricsView.kt b/app/src/main/java/app/echo/android/lyrics/overlay/EchoFloatingLyricsView.kt
+new file mode 100644
+index 0000000..caccdf4
+--- /dev/null
++++ b/app/src/main/java/app/echo/android/lyrics/overlay/EchoFloatingLyricsView.kt
+@@ -0,0 +1,94 @@
++package app.echo.android.lyrics.overlay
++
++import android.annotation.SuppressLint
++import android.content.Context
++import android.graphics.Color
++import android.graphics.Typeface
++import android.graphics.drawable.GradientDrawable
++import android.text.TextUtils
++import android.util.TypedValue
++import android.view.Gravity
++import android.view.MotionEvent
++import android.widget.LinearLayout
++import android.widget.TextView
++
++/**
++ * 悬浮歌词的内容：当前行和下一行。用普通 View 而不是 ComposeView，
++ * 挂在 WindowManager 上时不需要额外的 Lifecycle / SavedState 宿主，开销也更小。
++ */
++@SuppressLint("ViewConstructor")
++internal class EchoFloatingLyricsView(
++    context: Context,
++    private val onDrag: (dy: Int) -> Unit,
++    private val onDragEnd: () -> Unit,
++) : LinearLayout(context) {
++    private val density = resources.displayMetrics.density
++    private val current = lyricText(bold = true)
++    private val next = lyricText(bold = false).apply { alpha = 0.72f }
++    private var lastRawY = 0f
++    private var dragging = false
++
++    init {
++        orientation = VERTICAL
++        gravity = Gravity.CENTER_HORIZONTAL
++        val horizontal = (16 * density).toInt()
++        val vertical = (8 * density).toInt()
++        setPadding(horizontal, vertical, horizontal, vertical)
++        addView(current, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
++        addView(next, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
++    }
++
++    fun bind(currentLine: String?, nextLine: String?, fontScale: Float, accent: Int, locked: Boolean) {
++        current.text = currentLine.orEmpty()
++        next.text = nextLine.orEmpty()
++        next.visibility = if (nextLine.isNullOrBlank()) GONE else VISIBLE
++        current.setTextColor(accent)
++        current.setTextSize(TypedValue.COMPLEX_UNIT_SP, CURRENT_SP * fontScale)
++        next.setTextSize(TypedValue.COMPLEX_UNIT_SP, NEXT_SP * fontScale)
++        // 未锁定时给一块半透明底，提示“可以拖动”；锁定后完全透明，只留文字阴影。
++        background = if (locked) {
++            null
++        } else {
++            GradientDrawable().apply {
++                cornerRadius = 16 * density
++                setColor(Color.argb(0x66, 0, 0, 0))
++            }
++        }
++    }
++
++    @SuppressLint("ClickableViewAccessibility")
++    override fun onTouchEvent(event: MotionEvent): Boolean {
++        when (event.actionMasked) {
++            MotionEvent.ACTION_DOWN -> {
++                lastRawY = event.rawY
++                dragging = true
++            }
++            MotionEvent.ACTION_MOVE -> if (dragging) {
++                val dy = (event.rawY - lastRawY).toInt()
++                if (dy != 0) {
++                    lastRawY = event.rawY
++                    onDrag(dy)
++                }
++            }
++            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> if (dragging) {
++                dragging = false
++                onDragEnd()
++            }
++        }
++        return true
++    }
++
++    private fun lyricText(bold: Boolean): TextView = TextView(context).apply {
++        gravity = Gravity.CENTER_HORIZONTAL
++        maxLines = 2
++        ellipsize = TextUtils.TruncateAt.END
++        setTextColor(Color.WHITE)
++        setShadowLayer(6 * density, 0f, 1.5f * density, Color.argb(0xCC, 0, 0, 0))
++        if (bold) setTypeface(typeface, Typeface.BOLD)
++    }
++
++    private companion object {
++        const val CURRENT_SP = 18f
++        const val NEXT_SP = 14f
++    }
++}
+diff --git a/core/data/src/main/java/app/echo/android/data/EchoSettingsStore.kt b/core/data/src/main/java/app/echo/android/data/EchoSettingsStore.kt
+index 9c426be..8c70732 100644
+--- a/core/data/src/main/java/app/echo/android/data/EchoSettingsStore.kt
++++ b/core/data/src/main/java/app/echo/android/data/EchoSettingsStore.kt
+@@ -58,6 +58,8 @@ data class EchoAppSettings(
+     val playerArtworkScale: Float = 1f,
+     val onlineLyricsEnabled: Boolean = false,
+     val lockScreenLyricsEnabled: Boolean = true,
++    val floatingLyrics: app.echo.android.model.settings.EchoFloatingLyricsSettings =
++        app.echo.android.model.settings.EchoFloatingLyricsSettings(),
+     val usbExclusiveEnabled: Boolean = false,
+     val usbBitPerfectEnabled: Boolean = false,
+     val usbExclusiveAutoRequestOnStartup: Boolean = true,
+@@ -239,6 +241,12 @@ class EchoSettingsStore(
+                 playerArtworkScale = PlayerAppearancePreferences.artworkScale(preferences),
+                 onlineLyricsEnabled = preferences[Keys.OnlineLyricsEnabled] ?: false,
+                 lockScreenLyricsEnabled = preferences[Keys.LockScreenLyricsEnabled] ?: true,
++                floatingLyrics = app.echo.android.model.settings.EchoFloatingLyricsSettings(
++                    enabled = preferences[Keys.FloatingLyricsEnabled] ?: false,
++                    locked = preferences[Keys.FloatingLyricsLocked] ?: false,
++                    fontScale = preferences[Keys.FloatingLyricsFontScale] ?: 1f,
++                    offsetY = preferences[Keys.FloatingLyricsOffsetY] ?: -1,
++                ).normalized,
+                 usbExclusiveEnabled = preferences[Keys.UsbExclusiveEnabled] ?: false,
+                 usbBitPerfectEnabled = preferences[Keys.UsbBitPerfectEnabled] ?: false,
+                 trackTransitions = app.echo.android.model.playback.EchoTrackTransitionOptions(
+@@ -453,6 +461,16 @@ class EchoSettingsStore(
+         context.echoSettings.edit { it[Keys.LockScreenLyricsEnabled] = enabled }
+     }
+ 
++    suspend fun setFloatingLyrics(value: app.echo.android.model.settings.EchoFloatingLyricsSettings) {
++        val normalized = value.normalized
++        context.echoSettings.edit {
++            it[Keys.FloatingLyricsEnabled] = normalized.enabled
++            it[Keys.FloatingLyricsLocked] = normalized.locked
++            it[Keys.FloatingLyricsFontScale] = normalized.fontScale
++            it[Keys.FloatingLyricsOffsetY] = normalized.offsetY
++        }
++    }
++
+     suspend fun setUsbExclusiveEnabled(enabled: Boolean) {
+         context.echoSettings.edit {
+             it[Keys.UsbExclusiveEnabled] = enabled
+@@ -1363,6 +1381,10 @@ class EchoSettingsStore(
+         val ShowLyricsControlDeck = booleanPreferencesKey("show_lyrics_control_deck")
+         val OnlineLyricsEnabled = booleanPreferencesKey("online_lyrics_enabled")
+         val LockScreenLyricsEnabled = booleanPreferencesKey("lock_screen_lyrics_enabled")
++        val FloatingLyricsEnabled = booleanPreferencesKey("floating_lyrics_enabled")
++        val FloatingLyricsLocked = booleanPreferencesKey("floating_lyrics_locked")
++        val FloatingLyricsFontScale = floatPreferencesKey("floating_lyrics_font_scale")
++        val FloatingLyricsOffsetY = intPreferencesKey("floating_lyrics_offset_y")
+         val UsbExclusiveEnabled = booleanPreferencesKey("usb_exclusive_enabled")
+         val UsbBitPerfectEnabled = booleanPreferencesKey("usb_bit_perfect_enabled")
+         val TrackFadeEnabled = booleanPreferencesKey("track_fade_enabled")
+diff --git a/core/model/src/main/java/app/echo/android/model/settings/EchoFloatingLyricsSettings.kt b/core/model/src/main/java/app/echo/android/model/settings/EchoFloatingLyricsSettings.kt
+new file mode 100644
+index 0000000..e94a88f
+--- /dev/null
++++ b/core/model/src/main/java/app/echo/android/model/settings/EchoFloatingLyricsSettings.kt
+@@ -0,0 +1,19 @@
++package app.echo.android.model.settings
++
++/** 悬浮歌词。窗口水平居中，只记录纵向位置。 */
++data class EchoFloatingLyricsSettings(
++    val enabled: Boolean = false,
++    /** 锁定后窗口不接收触摸，点击会穿透到下面的应用。 */
++    val locked: Boolean = false,
++    val fontScale: Float = 1f,
++    /** 距屏幕顶部的像素；负数表示用默认位置。 */
++    val offsetY: Int = -1,
++) {
++    val normalized: EchoFloatingLyricsSettings
++        get() = copy(fontScale = fontScale.coerceIn(MinFontScale, MaxFontScale))
++
++    companion object {
++        const val MinFontScale = 0.8f
++        const val MaxFontScale = 1.6f
++    }
++}
+diff --git a/feature/settings/src/main/java/app/echo/android/feature/settings/SettingsFloatingLyricsRows.kt b/feature/settings/src/main/java/app/echo/android/feature/settings/SettingsFloatingLyricsRows.kt
+new file mode 100644
+index 0000000..e5ee65a
+--- /dev/null
++++ b/feature/settings/src/main/java/app/echo/android/feature/settings/SettingsFloatingLyricsRows.kt
+@@ -0,0 +1,48 @@
++package app.echo.android.feature.settings
++
++import androidx.compose.runtime.Composable
++import androidx.compose.ui.res.stringResource
++import app.echo.android.model.settings.EchoFloatingLyricsSettings
++import kotlin.math.roundToInt
++
++/** 悬浮歌词的设置行，放在「歌词」分区里。 */
++@Composable
++internal fun SettingsFloatingLyricsRows(
++    settings: EchoFloatingLyricsSettings,
++    permissionGranted: Boolean,
++    onChange: (EchoFloatingLyricsSettings) -> Unit,
++    onRequestPermission: () -> Unit,
++) {
++    SettingsSwitchRow(
++        title = stringResource(R.string.settings_floating_lyrics),
++        detail = stringResource(R.string.settings_floating_lyrics_detail),
++        checked = settings.enabled,
++        onCheckedChange = { enabled ->
++            onChange(settings.copy(enabled = enabled))
++            if (enabled && !permissionGranted) onRequestPermission()
++        },
++    )
++    if (!settings.enabled) return
++    if (!permissionGranted) {
++        SettingsActionRow(
++            title = stringResource(R.string.settings_floating_lyrics_permission),
++            detail = stringResource(R.string.settings_floating_lyrics_permission_detail),
++            actionLabel = stringResource(R.string.settings_allow),
++            onClick = onRequestPermission,
++        )
++    }
++    SettingsSwitchRow(
++        title = stringResource(R.string.settings_floating_lyrics_lock),
++        detail = stringResource(R.string.settings_floating_lyrics_lock_detail),
++        checked = settings.locked,
++        onCheckedChange = { onChange(settings.copy(locked = it)) },
++    )
++    SettingsSliderRow(
++        title = stringResource(R.string.settings_floating_lyrics_size),
++        valueLabel = { "${(it * 100f).roundToInt()}%" },
++        value = settings.fontScale,
++        valueRange = EchoFloatingLyricsSettings.MinFontScale..EchoFloatingLyricsSettings.MaxFontScale,
++        steps = 7,
++        onValueChange = { onChange(settings.copy(fontScale = it)) },
++    )
++}
+diff --git a/feature/settings/src/main/java/app/echo/android/feature/settings/SettingsPlaybackContent.kt b/feature/settings/src/main/java/app/echo/android/feature/settings/SettingsPlaybackContent.kt
+index d362069..b187ea4 100644
+--- a/feature/settings/src/main/java/app/echo/android/feature/settings/SettingsPlaybackContent.kt
++++ b/feature/settings/src/main/java/app/echo/android/feature/settings/SettingsPlaybackContent.kt
+@@ -18,6 +18,8 @@ internal fun SettingsPlaybackContent(
+     showLyricsControlDeck: Boolean,
+     onlineLyricsEnabled: Boolean,
+     lockScreenLyricsEnabled: Boolean,
++    floatingLyrics: app.echo.android.model.settings.EchoFloatingLyricsSettings,
++    floatingLyricsPermissionGranted: Boolean,
+     usbExclusiveEnabled: Boolean,
+     usbBitPerfectEnabled: Boolean,
+     trackTransitions: app.echo.android.model.playback.EchoTrackTransitionOptions,
+@@ -32,6 +34,8 @@ internal fun SettingsPlaybackContent(
+     onShowLyricsControlDeckChange: (Boolean) -> Unit,
+     onOnlineLyricsEnabledChange: (Boolean) -> Unit,
+     onLockScreenLyricsEnabledChange: (Boolean) -> Unit,
++    onFloatingLyricsChange: (app.echo.android.model.settings.EchoFloatingLyricsSettings) -> Unit,
++    onRequestFloatingLyricsPermission: () -> Unit,
+     onUsbExclusiveEnabledChange: (Boolean) -> Unit,
+     onUsbBitPerfectEnabledChange: (Boolean) -> Unit,
+     onTrackTransitionsChange: (app.echo.android.model.playback.EchoTrackTransitionOptions) -> Unit,
+@@ -150,6 +154,12 @@ internal fun SettingsPlaybackContent(
+             checked = lockScreenLyricsEnabled,
+             onCheckedChange = onLockScreenLyricsEnabledChange,
+         )
++        SettingsFloatingLyricsRows(
++            settings = floatingLyrics,
++            permissionGranted = floatingLyricsPermissionGranted,
++            onChange = onFloatingLyricsChange,
++            onRequestPermission = onRequestFloatingLyricsPermission,
++        )
+         val notificationRuntimePermission =
+             LocalEchoPlatformCapabilities.current.notificationRuntimePermission
+         if (!notificationRuntimePermission || notificationPermissionGranted) {
+diff --git a/feature/settings/src/main/java/app/echo/android/feature/settings/SettingsScreen.kt b/feature/settings/src/main/java/app/echo/android/feature/settings/SettingsScreen.kt
+index c4dd908..fe82ce0 100644
+--- a/feature/settings/src/main/java/app/echo/android/feature/settings/SettingsScreen.kt
++++ b/feature/settings/src/main/java/app/echo/android/feature/settings/SettingsScreen.kt
+@@ -32,6 +32,9 @@ fun SettingsScreen(
+     showLyricsControlDeck: Boolean,
+     onlineLyricsEnabled: Boolean,
+     lockScreenLyricsEnabled: Boolean,
++    floatingLyrics: app.echo.android.model.settings.EchoFloatingLyricsSettings =
++        app.echo.android.model.settings.EchoFloatingLyricsSettings(),
++    floatingLyricsPermissionGranted: Boolean = false,
+     usbExclusiveEnabled: Boolean,
+     usbBitPerfectEnabled: Boolean,
+     trackTransitions: app.echo.android.model.playback.EchoTrackTransitionOptions,
+@@ -88,6 +91,8 @@ fun SettingsScreen(
+     onShowLyricsControlDeckChange: (Boolean) -> Unit,
+     onOnlineLyricsEnabledChange: (Boolean) -> Unit,
+     onLockScreenLyricsEnabledChange: (Boolean) -> Unit,
++    onFloatingLyricsChange: (app.echo.android.model.settings.EchoFloatingLyricsSettings) -> Unit = {},
++    onRequestFloatingLyricsPermission: () -> Unit = {},
+     onUsbExclusiveEnabledChange: (Boolean) -> Unit,
+     onUsbBitPerfectEnabledChange: (Boolean) -> Unit,
+     onTrackTransitionsChange: (app.echo.android.model.playback.EchoTrackTransitionOptions) -> Unit,
+@@ -247,6 +252,8 @@ fun SettingsScreen(
+                     showLyricsControlDeck = showLyricsControlDeck,
+                     onlineLyricsEnabled = onlineLyricsEnabled,
+                     lockScreenLyricsEnabled = lockScreenLyricsEnabled,
++                    floatingLyrics = floatingLyrics,
++                    floatingLyricsPermissionGranted = floatingLyricsPermissionGranted,
+                     usbExclusiveEnabled = usbExclusiveEnabled,
+                     usbBitPerfectEnabled = usbBitPerfectEnabled,
+                     trackTransitions = trackTransitions,
+@@ -261,6 +268,8 @@ fun SettingsScreen(
+                     onShowLyricsControlDeckChange = onShowLyricsControlDeckChange,
+                     onOnlineLyricsEnabledChange = onOnlineLyricsEnabledChange,
+                     onLockScreenLyricsEnabledChange = onLockScreenLyricsEnabledChange,
++                    onFloatingLyricsChange = onFloatingLyricsChange,
++                    onRequestFloatingLyricsPermission = onRequestFloatingLyricsPermission,
+                     onUsbExclusiveEnabledChange = onUsbExclusiveEnabledChange,
+                     onUsbBitPerfectEnabledChange = onUsbBitPerfectEnabledChange,
+                     onTrackTransitionsChange = onTrackTransitionsChange,
+diff --git a/feature/settings/src/main/java/app/echo/android/feature/settings/SettingsSearch.kt b/feature/settings/src/main/java/app/echo/android/feature/settings/SettingsSearch.kt
+index 37d0dca..f870871 100644
+--- a/feature/settings/src/main/java/app/echo/android/feature/settings/SettingsSearch.kt
++++ b/feature/settings/src/main/java/app/echo/android/feature/settings/SettingsSearch.kt
+@@ -155,6 +155,8 @@ private val indexedSettings = listOf(
+         keywords = *intArrayOf(R.string.settings_online_lyrics_detail)),
+     item(SettingsCategory.Playback, R.string.settings_lock_lyrics,
+         keywords = *intArrayOf(R.string.settings_lock_lyrics_detail)),
++    item(SettingsCategory.Playback, R.string.settings_floating_lyrics,
++        keywords = *intArrayOf(R.string.settings_floating_lyrics_detail)),
+     item(SettingsCategory.Playback, R.string.settings_usb_exclusive),
+     item(SettingsCategory.Playback, R.string.settings_usb_bitperfect,
+         keywords = *intArrayOf(R.string.settings_usb_bitperfect_detail)),
+diff --git a/feature/settings/src/main/res/values-b+zh+Hant/strings_floating_lyrics.xml b/feature/settings/src/main/res/values-b+zh+Hant/strings_floating_lyrics.xml
+new file mode 100644
+index 0000000..308c3b9
+--- /dev/null
++++ b/feature/settings/src/main/res/values-b+zh+Hant/strings_floating_lyrics.xml
+@@ -0,0 +1,10 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="settings_floating_lyrics">懸浮歌詞</string>
++    <string name="settings_floating_lyrics_detail">播放時在其他應用上方顯示目前歌詞，回到 ECHO 時自動隱藏。</string>
++    <string name="settings_floating_lyrics_permission">顯示在其他應用程式上層</string>
++    <string name="settings_floating_lyrics_permission_detail">懸浮歌詞需要這項權限，請在系統設定裡為 ECHO 開啟。</string>
++    <string name="settings_floating_lyrics_lock">鎖定懸浮歌詞</string>
++    <string name="settings_floating_lyrics_lock_detail">鎖定後點擊會穿透到下方的應用；解鎖後可以上下拖動位置。</string>
++    <string name="settings_floating_lyrics_size">懸浮歌詞字級</string>
++</resources>
+diff --git a/feature/settings/src/main/res/values-zh/strings_floating_lyrics.xml b/feature/settings/src/main/res/values-zh/strings_floating_lyrics.xml
+new file mode 100644
+index 0000000..9d7da0a
+--- /dev/null
++++ b/feature/settings/src/main/res/values-zh/strings_floating_lyrics.xml
+@@ -0,0 +1,10 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="settings_floating_lyrics">悬浮歌词</string>
++    <string name="settings_floating_lyrics_detail">播放时在其它应用上方显示当前歌词，回到 ECHO 时自动隐藏。</string>
++    <string name="settings_floating_lyrics_permission">显示在其它应用上层</string>
++    <string name="settings_floating_lyrics_permission_detail">悬浮歌词需要这项权限，请在系统设置里为 ECHO 打开。</string>
++    <string name="settings_floating_lyrics_lock">锁定悬浮歌词</string>
++    <string name="settings_floating_lyrics_lock_detail">锁定后点击会穿透到下面的应用；解锁后可以上下拖动位置。</string>
++    <string name="settings_floating_lyrics_size">悬浮歌词字号</string>
++</resources>
+diff --git a/feature/settings/src/main/res/values/strings_floating_lyrics.xml b/feature/settings/src/main/res/values/strings_floating_lyrics.xml
+new file mode 100644
+index 0000000..c27409b
+--- /dev/null
++++ b/feature/settings/src/main/res/values/strings_floating_lyrics.xml
+@@ -0,0 +1,10 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="settings_floating_lyrics">Floating lyrics</string>
++    <string name="settings_floating_lyrics_detail">Show the current line on top of other apps while music plays. Hidden while ECHO is open.</string>
++    <string name="settings_floating_lyrics_permission">Display over other apps</string>
++    <string name="settings_floating_lyrics_permission_detail">Floating lyrics need this permission. Turn it on for ECHO in system settings.</string>
++    <string name="settings_floating_lyrics_lock">Lock floating lyrics</string>
++    <string name="settings_floating_lyrics_lock_detail">Taps pass through to the app underneath. Unlock to drag it up or down.</string>
++    <string name="settings_floating_lyrics_size">Floating lyrics size</string>
++</resources>
+-- 
+2.43.0
+

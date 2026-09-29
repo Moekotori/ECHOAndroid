@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connect_smb_description">同一局域网内 NAS 或电脑上的共享文件夹</string>
+    <string name="connect_smb_invalid_address">请填写主机和共享名，例如 smb://nas/Music</string>
+    <string name="connect_smb_username_hint">留空为访客访问；也可以写成 域\\用户名</string>
+</resources>

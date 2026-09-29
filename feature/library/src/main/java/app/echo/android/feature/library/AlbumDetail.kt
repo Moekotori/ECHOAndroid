@@ -1068,11 +1068,13 @@ private fun sourceLabel(sourceId: String): String = when (sourceId.lowercase()) 
     "mediastore" -> stringResource(L10nR.string.feature_library_local_library_ddf4b1)
     "subsonic" -> "Subsonic / Navidrome"
     "webdav" -> "WebDAV"
+    "smb" -> "SMB"
     "jellyfin" -> "Jellyfin / Emby"
     "unknown" -> stringResource(L10nR.string.feature_library_unknown_source_d8c291)
     else -> when {
         sourceId.startsWith("subsonic:", ignoreCase = true) -> "Subsonic / Navidrome"
         sourceId.startsWith("webdav:", ignoreCase = true) -> "WebDAV"
+        sourceId.startsWith("smb:", ignoreCase = true) -> "SMB"
         sourceId.startsWith("jellyfin:", ignoreCase = true) -> "Jellyfin / Emby"
         else -> sourceId
     }

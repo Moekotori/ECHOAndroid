@@ -24,6 +24,8 @@ import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.EchoTrackMetadataUpdate
 import app.echo.android.model.library.LibrarySmartPlaylistKind
 import app.echo.android.model.library.LibrarySource
+import app.echo.android.smb.EchoSmbEndpoint
+import app.echo.android.smb.EchoSmbScanner
 import app.echo.android.model.library.LibraryStats
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -1682,11 +1684,50 @@ class EchoLibraryRepository(
     fun refreshWebDavSnapshot(
         endpoint: WebDavEndpoint,
         batchSize: Int = SCAN_BATCH_SIZE,
-    ): Flow<LibraryScanProgress> = flow {
+    ): Flow<LibraryScanProgress> {
         val client = WebDavClient(endpoint)
-        val dao = database.trackDao()
-        val source = endpoint.sourceId
         val scanRunId = System.currentTimeMillis()
+        return refreshRemoteFileSnapshot(
+            source = endpoint.sourceId,
+            readingIndexText = text(R.string.library_webdav_reading_index),
+            scanningText = text(R.string.library_webdav_scanning),
+            failedText = text(R.string.library_webdav_sync_failed),
+            batchSize = batchSize,
+        ) { onTrack ->
+            client.scanAudioFiles { file -> onTrack(file.toLibraryTrackEntity(endpoint, scanRunId)) }
+        }
+    }
+
+    fun refreshSmbSnapshot(
+        endpoint: EchoSmbEndpoint,
+        batchSize: Int = SCAN_BATCH_SIZE,
+    ): Flow<LibraryScanProgress> {
+        val scanner = EchoSmbScanner()
+        val scanRunId = System.currentTimeMillis()
+        return refreshRemoteFileSnapshot(
+            source = endpoint.sourceId,
+            readingIndexText = text(R.string.library_smb_reading_index),
+            scanningText = text(R.string.library_smb_scanning),
+            failedText = text(R.string.library_smb_sync_failed),
+            batchSize = batchSize,
+        ) { onTrack ->
+            scanner.scanAudio(endpoint) { file -> onTrack(file.toLibraryTrackEntity(endpoint, scanRunId)) }
+        }
+    }
+
+    /**
+     * 文件型远程来源（WebDAV、SMB）的同步：逐个接收扫描到的文件、分批写库、
+     * 扫描完整时删除已消失的曲目。[scan] 负责遍历，把每个文件转成曲目交给回调。
+     */
+    private fun refreshRemoteFileSnapshot(
+        source: String,
+        readingIndexText: String,
+        scanningText: String,
+        failedText: String,
+        batchSize: Int,
+        scan: suspend (onTrack: suspend (LibraryTrackEntity) -> Unit) -> RemoteSyncVisit,
+    ): Flow<LibraryScanProgress> = flow {
+        val dao = database.trackDao()
         var progress = LibraryScanProgress(phase = LibraryScanPhase.Preparing)
         var insertedCount = 0
         var updatedCount = 0
@@ -1721,7 +1762,7 @@ class EchoLibraryRepository(
             coroutineContext.ensureActive()
             emitProgress(
                 phase = LibraryScanPhase.Diffing,
-                currentTitle = text(R.string.library_webdav_reading_index),
+                currentTitle = readingIndexText,
             )
             val existingFingerprints = dao.getExistingMediaStoreFingerprints(source)
                 .associateBy(TrackFingerprint::id)
@@ -1730,12 +1771,12 @@ class EchoLibraryRepository(
 
             emitProgress(
                 phase = LibraryScanPhase.QueryingMediaStore,
-                currentTitle = text(R.string.library_webdav_scanning),
+                currentTitle = scanningText,
             )
-            val visit = client.scanAudioFiles { file ->
+            val visit = scan { track ->
                 coroutineContext.ensureActive()
                 scannedCount += 1
-                pending += file.toLibraryTrackEntity(endpoint, scanRunId)
+                pending += track
                 val now = System.currentTimeMillis()
                 if (
                     LibraryScanPolicy.shouldEmitScanProgress(
@@ -1748,7 +1789,7 @@ class EchoLibraryRepository(
                     lastProgressEmitAtMs = now
                     emitProgress(
                         phase = LibraryScanPhase.QueryingMediaStore,
-                        currentTitle = file.title,
+                        currentTitle = track.title,
                     )
                 }
                 if (pending.size >= batchSize) {
@@ -1758,7 +1799,7 @@ class EchoLibraryRepository(
                     seenIds.addAll(written.seenIds)
                     changedSummaries += written.summaryKeys
                     pending.clear()
-                    emitProgress(phase = LibraryScanPhase.WritingDatabase, currentTitle = file.title)
+                    emitProgress(phase = LibraryScanPhase.WritingDatabase, currentTitle = track.title)
                     yield()
                 }
             }
@@ -1792,7 +1833,7 @@ class EchoLibraryRepository(
             emitProgress(
                 phase = LibraryScanPhase.Error,
                 currentTitle = null,
-                error = error.message ?: text(R.string.library_webdav_sync_failed),
+                error = error.message ?: failedText,
                 isCompleted = true,
             )
         }

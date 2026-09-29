@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
 import app.echo.android.model.settings.EchoColorTheme
+import app.echo.android.model.settings.EchoCustomColors
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
@@ -37,7 +38,11 @@ data class EchoThemeTokens(
     val surface: Color,
 )
 
-fun echoThemeTokens(theme: EchoColorTheme, dark: Boolean): EchoThemeTokens =
+fun echoThemeTokens(
+    theme: EchoColorTheme,
+    dark: Boolean,
+    custom: EchoCustomColors = EchoCustomColors.Default,
+): EchoThemeTokens =
     when (theme) {
         EchoColorTheme.Echo -> if (dark) EchoDefaultDark else EchoDefaultLight
         EchoColorTheme.Twilight -> if (dark) TwilightDark else TwilightLight
@@ -49,13 +54,18 @@ fun echoThemeTokens(theme: EchoColorTheme, dark: Boolean): EchoThemeTokens =
         EchoColorTheme.Plum -> if (dark) PlumDark else PlumLight
         EchoColorTheme.Copper -> if (dark) CopperDark else CopperLight
         EchoColorTheme.Frost -> if (dark) FrostDark else FrostLight
+        EchoColorTheme.Custom -> echoCustomThemeTokens(custom, dark)
     }
 
-fun echoStartupWindowColor(theme: EchoColorTheme, dark: Boolean): Int =
+fun echoStartupWindowColor(
+    theme: EchoColorTheme,
+    dark: Boolean,
+    custom: EchoCustomColors = EchoCustomColors.Default,
+): Int =
     if (theme == EchoColorTheme.Echo) {
         if (dark) EchoDefaultStartupDarkArgb else EchoDefaultStartupLightArgb
     } else {
-        echoThemeTokens(theme, dark).night.toArgb()
+        echoThemeTokens(theme, dark, custom).night.toArgb()
     }
 
 internal fun contrastRatio(foreground: Color, background: Color): Float {
@@ -453,7 +463,7 @@ private val FrostDark = themedPalette(
     mist = Color(0xFF0E1724),
 )
 
-private fun themedPalette(
+internal fun themedPalette(
     id: EchoColorTheme,
     dark: Boolean,
     accent: Color,

@@ -24,6 +24,7 @@ android {
 dependencies {
     implementation(project(":core:i18n"))
     implementation(project(":core:model"))
+    implementation(project(":core:smb"))
 
     implementation(libs.androidx.core.ktx)
     api(libs.androidx.room.runtime)

@@ -53,6 +53,7 @@ internal fun NowPlayingLyricsPage(
     onAdjustLyricsOffset: (Long) -> Unit,
     onResetLyricsOffset: () -> Unit,
     onOpenLyricsSettings: () -> Unit,
+    onOpenArtist: ((trackId: String, artistName: String) -> Unit)? = null,
     lyricsPageStyle: EchoLyricsPageStyle,
     palette: ArtworkPalette,
     showBackdrop: Boolean = false,
@@ -84,7 +85,7 @@ internal fun NowPlayingLyricsPage(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                LyricsTrackHeading(status.track, paper)
+                LyricsTrackHeading(status.track, paper, onOpenArtist)
                 Box(
                     modifier = Modifier
                     .fillMaxWidth()
@@ -165,7 +166,12 @@ internal fun NowPlayingLyricsPage(
                     Box(modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(top = 12.dp, bottom = 4.dp)) {
                             if (paper) {
-                                LyricsTrackIdentity(status.track, Modifier.padding(bottom = 12.dp), artworkSize = 36)
+                                LyricsTrackIdentity(
+                                    status.track,
+                                    Modifier.padding(bottom = 12.dp),
+                                    artworkSize = 36,
+                                    onOpenArtist = onOpenArtist,
+                                )
                             }
                             LyricsScrubber(
                                 trackKey = status.track?.id,

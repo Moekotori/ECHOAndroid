@@ -99,8 +99,6 @@
     <string name="feature_home_search_local_music_albums_and_artists_443a4f">"Search local music, albums, and artists"</string>
     <string name="feature_home_search_local_music_b9c195">"Search local music..."</string>
     <string name="feature_home_search_songs_albums_and_artists_c46634">"Search songs, albums, and artists"</string>
-    <string name="feature_home_listen_together_title">Listen together</string>
-    <string name="feature_home_listen_together_detail">Join a room from PC ECHO</string>
     <string name="feature_home_seeking_ea77e5">"Seeking"</string>
     <string name="feature_home_shuffle_957ce0">"Shuffle"</string>
     <string name="feature_home_shuffle_on_c7c5c4">"Shuffle on"</string>

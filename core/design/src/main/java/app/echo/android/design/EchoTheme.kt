@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import app.echo.android.model.platform.EchoPlatformCapabilities
 import app.echo.android.model.settings.EchoColorTheme
+import app.echo.android.model.settings.EchoCustomColors
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -182,6 +183,7 @@ fun EchoMobileTheme(
     darkTheme: Boolean = true,
     dynamicColor: Boolean = false,
     colorTheme: EchoColorTheme = EchoColorTheme.Default,
+    customColors: EchoCustomColors = EchoCustomColors.Default,
     playbackHapticsEnabled: Boolean = true,
     fontFamily: FontFamily = FontFamily.Default,
     fontScale: Float = 1f,
@@ -192,7 +194,9 @@ fun EchoMobileTheme(
 ) {
     val context = LocalContext.current
     val widthClass = rememberEchoWidthSizeClass()
-    val tokens = remember(colorTheme, darkTheme) { echoThemeTokens(colorTheme, darkTheme) }
+    val tokens = remember(colorTheme, darkTheme, customColors) {
+        echoThemeTokens(colorTheme, darkTheme, customColors)
+    }
     val platformCapabilities = remember {
         EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT)
     }

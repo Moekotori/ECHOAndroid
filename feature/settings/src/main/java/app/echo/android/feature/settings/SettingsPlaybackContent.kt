@@ -18,6 +18,8 @@ internal fun SettingsPlaybackContent(
     showLyricsControlDeck: Boolean,
     onlineLyricsEnabled: Boolean,
     lockScreenLyricsEnabled: Boolean,
+    floatingLyrics: app.echo.android.model.settings.EchoFloatingLyricsSettings,
+    floatingLyricsPermissionGranted: Boolean,
     usbExclusiveEnabled: Boolean,
     usbBitPerfectEnabled: Boolean,
     trackTransitions: app.echo.android.model.playback.EchoTrackTransitionOptions,
@@ -32,6 +34,8 @@ internal fun SettingsPlaybackContent(
     onShowLyricsControlDeckChange: (Boolean) -> Unit,
     onOnlineLyricsEnabledChange: (Boolean) -> Unit,
     onLockScreenLyricsEnabledChange: (Boolean) -> Unit,
+    onFloatingLyricsChange: (app.echo.android.model.settings.EchoFloatingLyricsSettings) -> Unit,
+    onRequestFloatingLyricsPermission: () -> Unit,
     onUsbExclusiveEnabledChange: (Boolean) -> Unit,
     onUsbBitPerfectEnabledChange: (Boolean) -> Unit,
     onTrackTransitionsChange: (app.echo.android.model.playback.EchoTrackTransitionOptions) -> Unit,
@@ -149,6 +153,12 @@ internal fun SettingsPlaybackContent(
             detail = stringResource(R.string.settings_lock_lyrics_detail),
             checked = lockScreenLyricsEnabled,
             onCheckedChange = onLockScreenLyricsEnabledChange,
+        )
+        SettingsFloatingLyricsRows(
+            settings = floatingLyrics,
+            permissionGranted = floatingLyricsPermissionGranted,
+            onChange = onFloatingLyricsChange,
+            onRequestPermission = onRequestFloatingLyricsPermission,
         )
         val notificationRuntimePermission =
             LocalEchoPlatformCapabilities.current.notificationRuntimePermission

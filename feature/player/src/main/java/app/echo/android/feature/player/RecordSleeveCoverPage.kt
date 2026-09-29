@@ -60,6 +60,7 @@ internal fun RecordSleeveCoverPage(
     isCurrentTrackFavorite: Boolean,
     onToggleFavorite: () -> Unit,
     onOpenLyrics: () -> Unit,
+    onOpenArtist: ((trackId: String, artistName: String) -> Unit)? = null,
     modifier: Modifier = Modifier,
     artworkScale: Float = 1f,
 ) {
@@ -147,6 +148,9 @@ internal fun RecordSleeveCoverPage(
                     Spacer(Modifier.height(8.dp))
                     Text(
                         displayedTrack?.artist ?: stringResource(R.string.feature_player_pick_a_song_to_start_68b6af),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .openArtistWhen(displayedTrack?.id, displayedTrack?.artist, onOpenArtist),
                         color = RecordSleeveStyle.Ink,
                         fontFamily = RecordSleeveStyle.BodyFont,
                         fontSize = 20.sp,

@@ -72,6 +72,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -584,6 +585,12 @@ internal fun TrackContextMenu(
         TrackInfoDialog(
             track = track,
             onDismiss = { showInfo = false },
+            onOpenArtist = onOpenArtist?.let { open ->
+                {
+                    showInfo = false
+                    open()
+                }
+            },
         )
     }
     if (showEditor && onUpdateTrackMetadata != null) {
@@ -1121,7 +1128,9 @@ private fun NumericMetadataField(
 private fun TrackInfoDialog(
     track: EchoTrack,
     onDismiss: () -> Unit,
+    onOpenArtist: (() -> Unit)? = null,
 ) {
+    val artistLabel = stringResource(L10nR.string.feature_library_go_to_artist)
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -1137,6 +1146,8 @@ private fun TrackInfoDialog(
                 TrackInfoLine(
                     stringResource(L10nR.string.feature_library_artist_b6e7ad),
                     displayMetadataOrUnknown(track.artist, unknownArtistLabel()),
+                    onClick = onOpenArtist?.takeIf { track.artist.isNotBlank() },
+                    onClickLabel = artistLabel,
                 )
                 TrackInfoLine(
                     stringResource(L10nR.string.feature_library_album_eb13be),
@@ -1195,9 +1206,23 @@ private fun TrackInfoDialog(
 private fun TrackInfoLine(
     label: String,
     value: String,
+    onClick: (() -> Unit)? = null,
+    onClickLabel: String? = null,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (onClick != null) {
+                    Modifier.echoClickable(
+                        onClickLabel = onClickLabel,
+                        role = Role.Button,
+                        onClick = onClick,
+                    )
+                } else {
+                    Modifier
+                },
+            ),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.Top,
     ) {
@@ -1212,7 +1237,11 @@ private fun TrackInfoLine(
         Text(
             value,
             modifier = Modifier.weight(1f),
-            color = MaterialTheme.colorScheme.onSurface,
+            color = if (onClick != null) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,

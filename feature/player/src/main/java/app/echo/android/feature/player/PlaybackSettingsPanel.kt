@@ -37,6 +37,7 @@ import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.Repeat
+import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.Speed
@@ -361,9 +362,13 @@ private fun PlaybackSettingsSheet(
                 ) {
                     Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         listOf(EchoRepeatMode.Off, EchoRepeatMode.All, EchoRepeatMode.One).forEach { mode ->
-                            PlaybackChoiceChip(
-                                text = repeatModeLabel(mode), selected = status.repeatMode == mode,
-                                onClick = { onSetRepeatMode(mode) }, modifier = Modifier.weight(1f),
+                            PlaybackIconChoice(
+                                icon = if (mode == EchoRepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
+                                description = repeatModeLabel(mode),
+                                selected = status.repeatMode == mode,
+                                slashed = mode == EchoRepeatMode.Off,
+                                onClick = { onSetRepeatMode(mode) },
+                                modifier = Modifier.weight(1f),
                             )
                         }
                     }

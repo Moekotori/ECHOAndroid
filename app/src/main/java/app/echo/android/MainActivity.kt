@@ -2,6 +2,7 @@ package app.echo.android
 
 import android.content.Context
 import android.content.Intent
+import android.view.KeyEvent
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -49,13 +50,30 @@ class MainActivity : ComponentActivity() {
             startupBackgroundUri = startupThemeSnapshot.startupBackgroundUri,
         )
         window.decorView.setBackgroundColor(
-            echoStartupWindowColor(EchoColorTheme.fromId(startupThemeSnapshot.colorTheme), startupDarkTheme),
+            echoStartupWindowColor(
+                EchoColorTheme.fromId(startupThemeSnapshot.colorTheme),
+                startupDarkTheme,
+                startupThemeSnapshot.customColors,
+            ),
         )
         applyEdgeToEdge(startupDarkTheme)
         setContent {
             EchoMobileApp()
         }
         consumeLaunchIntent(intent)
+    }
+
+    /** 投送到 DLNA / Chromecast 时，音量键调的是远端设备，不是手机。 */
+    @OptIn(UnstableApi::class)
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        val delta = when (keyCode) {
+            KeyEvent.KEYCODE_VOLUME_UP -> CAST_VOLUME_STEP
+            KeyEvent.KEYCODE_VOLUME_DOWN -> -CAST_VOLUME_STEP
+            else -> return super.onKeyDown(keyCode, event)
+        }
+        val session = (application as? EchoApplication)?.echoLinkSession
+        if (session != null && session.adjustCastVolume(delta)) return true
+        return super.onKeyDown(keyCode, event)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -187,3 +205,5 @@ class MainActivity : ComponentActivity() {
         const val MIN_HIGH_REFRESH_RATE = 90f
     }
 }
+
+private const val CAST_VOLUME_STEP = 0.05f

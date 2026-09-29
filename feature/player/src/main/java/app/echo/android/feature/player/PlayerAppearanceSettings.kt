@@ -37,8 +37,8 @@ internal fun PlayerAppearanceSettings(
     ) {
         Column(Modifier.fillMaxWidth().selectableGroup(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             val styles = listOf(
-                "record_sleeve" to R.string.player_appearance_record_sleeve,
                 "classic" to R.string.player_appearance_classic,
+                "record_sleeve" to R.string.player_appearance_record_sleeve,
                 "pixel_handheld" to R.string.player_appearance_pixel_handheld,
                 "type_poster" to R.string.player_appearance_type_poster,
             )

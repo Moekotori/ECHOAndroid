@@ -46,6 +46,7 @@ internal fun TypePosterCoverPage(status: EchoPlaybackStatus, position: State<Lon
                 }
             }
             Text(track?.artist ?: stringResource(R.string.feature_player_pick_a_song_to_start_68b6af),
+                modifier = Modifier.fillMaxWidth().openArtistWhen(track?.id, track?.artist, actions.openArtist),
                 color = ink, fontFamily = RecordSleeveStyle.BodyFont, fontSize = 27.sp,
                 lineHeight = 32.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             edition?.let { Text(it, color = ink, fontFamily = RecordSleeveStyle.BodyFont,

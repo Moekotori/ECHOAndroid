@@ -2,6 +2,7 @@ package app.echo.android.data
 
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import androidx.datastore.preferences.core.stringPreferencesKey
+import app.echo.android.model.settings.EchoLyricsPageStyle
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -17,9 +18,22 @@ class PlayerAppearancePreferencesTest {
     }
     @Test fun missingPreferencesKeepTheApprovedDesign() {
         val prefs = mutablePreferencesOf()
-        assertEquals("record_sleeve", PlayerAppearancePreferences.style(prefs))
+        assertEquals("classic", PlayerAppearancePreferences.style(prefs))
         assertEquals(1f, PlayerAppearancePreferences.textScale(prefs))
         assertEquals(1f, PlayerAppearancePreferences.artworkScale(prefs))
+    }
+
+    @Test fun lightSongStylesUseLightLyricsAndDarkUsesTheDarkBase() {
+        assertEquals(EchoLyricsPageStyle.Mist, PlayerAppearancePreferences.boundLyricsStyle("classic"))
+        assertEquals(EchoLyricsPageStyle.Paper, PlayerAppearancePreferences.boundLyricsStyle("record_sleeve"))
+        assertEquals(EchoLyricsPageStyle.Paper, PlayerAppearancePreferences.boundLyricsStyle("pixel_handheld"))
+        assertEquals(EchoLyricsPageStyle.Paper, PlayerAppearancePreferences.boundLyricsStyle("type_poster"))
+        assertEquals("classic", PlayerAppearancePreferences.boundPlayerStyle(EchoLyricsPageStyle.Mist, "record_sleeve"))
+        assertEquals("classic", PlayerAppearancePreferences.boundPlayerStyle(EchoLyricsPageStyle.Mist, "pixel_handheld"))
+        assertEquals("classic", PlayerAppearancePreferences.boundPlayerStyle(EchoLyricsPageStyle.Mist, "classic"))
+        assertEquals("record_sleeve", PlayerAppearancePreferences.boundPlayerStyle(EchoLyricsPageStyle.Paper, "classic"))
+        assertEquals("pixel_handheld", PlayerAppearancePreferences.boundPlayerStyle(EchoLyricsPageStyle.Paper, "pixel_handheld"))
+        assertEquals("type_poster", PlayerAppearancePreferences.boundPlayerStyle(EchoLyricsPageStyle.Paper, "type_poster"))
     }
 
     @Test fun savesAndReadsAllAppearanceFieldsWithoutTouchingOtherSettings() {
@@ -35,9 +49,10 @@ class PlayerAppearancePreferencesTest {
     @Test fun invalidAndOutOfRangeValuesCannotBreakLayout() {
         val prefs = mutablePreferencesOf()
         PlayerAppearancePreferences.write(prefs, "future-style", Float.NaN, Float.POSITIVE_INFINITY)
-        assertEquals("record_sleeve", PlayerAppearancePreferences.style(prefs))
+        assertEquals("classic", PlayerAppearancePreferences.style(prefs))
         assertEquals(1f, PlayerAppearancePreferences.textScale(prefs))
         assertEquals(1f, PlayerAppearancePreferences.artworkScale(prefs))
+        assertEquals(EchoLyricsPageStyle.Mist, PlayerAppearancePreferences.boundLyricsStyle("future-style"))
         PlayerAppearancePreferences.write(prefs, "classic", 10f, -1f)
         assertEquals(1.2f, PlayerAppearancePreferences.textScale(prefs))
         assertEquals(0.7f, PlayerAppearancePreferences.artworkScale(prefs))

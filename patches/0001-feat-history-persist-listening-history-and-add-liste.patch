@@ -1,0 +1,1461 @@
+From 4ab7ced8ab94bfaeb24858ab40e2845a58cbb9e7 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 28 Sep 2026 19:42:52 +0800
+Subject: [PATCH] feat(history): persist listening history and add listening
+ stats page
+
+Record qualified listens (30s or half of a short track) in a new
+library_play_events table (Room v17 -> v18). The home heatmap now reads
+from the table instead of an in-memory map that reset on restart. Add a
+stats page with range tabs, totals, time-of-day chart and top tracks,
+albums and artists.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01FEDCezPFi51Bf5mkmoEhB4
+---
+ .../app/echo/android/EchoAndroidViewModel.kt  |  39 ++--
+ .../main/java/app/echo/android/EchoAppRoot.kt |  21 +-
+ .../java/app/echo/android/EchoApplication.kt  |   6 +
+ .../echo/android/ListeningHistoryRecorder.kt  | 207 +++++++++++++++++
+ .../app/echo/android/ui/home/EchoHomePage.kt  |   2 +
+ .../echo/android/data/EchoLibraryDatabase.kt  |  31 ++-
+ .../echo/android/data/LibraryPlayEventDao.kt  | 126 ++++++++++
+ .../android/data/LibraryPlayEventEntity.kt    |  32 +++
+ .../android/data/ListeningHistoryPolicy.kt    |  23 ++
+ .../data/ListeningHistoryRepository.kt        | 101 ++++++++
+ .../data/ListeningHistoryPolicyTest.kt        |  47 ++++
+ .../android/model/playback/ListeningStats.kt  |  33 +++
+ .../playback/EchoPlaybackSurfaceSnapshot.kt   |   2 +
+ .../feature/home/HomeListeningSummary.kt      |  16 +-
+ .../echo/android/feature/home/HomeScreen.kt   |   3 +-
+ .../feature/home/ListeningStatsParts.kt       | 127 ++++++++++
+ .../feature/home/ListeningStatsScreen.kt      | 218 ++++++++++++++++++
+ .../strings_listening_stats.xml               |  24 ++
+ .../res/values-zh/strings_listening_stats.xml |  24 ++
+ .../res/values/strings_listening_stats.xml    |  25 ++
+ 20 files changed, 1081 insertions(+), 26 deletions(-)
+ create mode 100644 app/src/main/java/app/echo/android/ListeningHistoryRecorder.kt
+ create mode 100644 core/data/src/main/java/app/echo/android/data/LibraryPlayEventDao.kt
+ create mode 100644 core/data/src/main/java/app/echo/android/data/LibraryPlayEventEntity.kt
+ create mode 100644 core/data/src/main/java/app/echo/android/data/ListeningHistoryPolicy.kt
+ create mode 100644 core/data/src/main/java/app/echo/android/data/ListeningHistoryRepository.kt
+ create mode 100644 core/data/src/test/java/app/echo/android/data/ListeningHistoryPolicyTest.kt
+ create mode 100644 core/model/src/main/java/app/echo/android/model/playback/ListeningStats.kt
+ create mode 100644 feature/home/src/main/java/app/echo/android/feature/home/ListeningStatsParts.kt
+ create mode 100644 feature/home/src/main/java/app/echo/android/feature/home/ListeningStatsScreen.kt
+ create mode 100644 feature/home/src/main/res/values-b+zh+Hant/strings_listening_stats.xml
+ create mode 100644 feature/home/src/main/res/values-zh/strings_listening_stats.xml
+ create mode 100644 feature/home/src/main/res/values/strings_listening_stats.xml
+
+diff --git a/app/src/main/java/app/echo/android/EchoAndroidViewModel.kt b/app/src/main/java/app/echo/android/EchoAndroidViewModel.kt
+index 07ec259..2e3176b 100644
+--- a/app/src/main/java/app/echo/android/EchoAndroidViewModel.kt
++++ b/app/src/main/java/app/echo/android/EchoAndroidViewModel.kt
+@@ -66,6 +66,8 @@ import app.echo.android.model.playback.EchoEqualizerUserPresets
+ import app.echo.android.model.playback.PlaybackControlsState
+ import app.echo.android.model.playback.PlaybackDiagnosticsState
+ import app.echo.android.model.playback.OpraHeadphoneCorrectionState
++import app.echo.android.model.playback.ListeningStats
++import app.echo.android.model.playback.ListeningStatsRange
+ import app.echo.android.model.playback.PlaybackHeatmapDay
+ import app.echo.android.model.playback.PlaybackMetadataState
+ import app.echo.android.model.playback.PlaybackPositionState
+@@ -80,16 +82,17 @@ import app.echo.android.playback.EchoPlaybackProcessRuntime
+ import app.echo.android.playback.EchoReplayGainScanner
+ import app.echo.android.model.playback.EchoReplayGainScanFailure
+ import app.echo.android.model.playback.EchoReplayGainScanState
+-import java.time.LocalDate
+ import java.util.UUID
+ import kotlinx.coroutines.Dispatchers
+ import kotlinx.coroutines.Job
+ import kotlinx.coroutines.flow.Flow
+ import kotlinx.coroutines.flow.MutableStateFlow
++import kotlinx.coroutines.flow.SharingStarted
+ import kotlinx.coroutines.flow.StateFlow
+ import kotlinx.coroutines.flow.asStateFlow
+ import kotlinx.coroutines.flow.distinctUntilChanged
+ import kotlinx.coroutines.flow.first
++import kotlinx.coroutines.flow.stateIn
+ import kotlinx.coroutines.flow.update
+ import kotlinx.coroutines.launch
+ import kotlinx.coroutines.withContext
+@@ -234,8 +237,21 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
+     val recentPlaybackAlbums: StateFlow<List<AlbumSummary>> = _recentPlaybackAlbums.asStateFlow()
+     private val _recentPlaybackArtists = MutableStateFlow<List<ArtistSummary>>(emptyList())
+     val recentPlaybackArtists: StateFlow<List<ArtistSummary>> = _recentPlaybackArtists.asStateFlow()
+-    private val _recentPlaybackHeatmap = MutableStateFlow<List<PlaybackHeatmapDay>>(emptyList())
+-    val recentPlaybackHeatmap: StateFlow<List<PlaybackHeatmapDay>> = _recentPlaybackHeatmap.asStateFlow()
++    private val listeningHistory = (application as EchoApplication).listeningHistory
++    val recentPlaybackHeatmap: StateFlow<List<PlaybackHeatmapDay>> = listeningHistory
++        .observeHeatmap(HOME_HEATMAP_VISIBLE_DAYS)
++        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), emptyList())
++    private val _listeningStats = MutableStateFlow<ListeningStats?>(null)
++    val listeningStats: StateFlow<ListeningStats?> = _listeningStats.asStateFlow()
++    private var listeningStatsJob: Job? = null
++
++    fun loadListeningStats(range: ListeningStatsRange) {
++        listeningStatsJob?.cancel()
++        listeningStatsJob = viewModelScope.launch {
++            val stats = withContext(Dispatchers.IO) { listeningHistory.stats(range) }
++            _listeningStats.value = stats
++        }
++    }
+     private val _usbExclusiveTestResult = MutableStateFlow(
+         application.getString(R.string.usb_test_idle),
+     )
+@@ -245,7 +261,6 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
+ 
+     private val albumPlaybackCounts = mutableMapOf<String, Int>()
+     private val artistPlaybackCounts = mutableMapOf<String, Int>()
+-    private val playbackHeatmapCounts = mutableMapOf<Long, Int>()
+     init {
+         lastFmController.start(
+             settingsFlow = settingsStore.appSettings,
+@@ -2019,7 +2034,6 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
+ 
+     private fun recordRecentPlayback(trackId: String) {
+         viewModelScope.launch {
+-            recordPlaybackHeatmapTick()
+             val (album, artist) = withContext(Dispatchers.IO) {
+                 repository.recordPlayback(trackId)
+                 repository.albumSummaryForTrack(trackId) to repository.artistSummaryForTrack(trackId)
+@@ -2041,21 +2055,6 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
+         }
+     }
+ 
+-    private fun recordPlaybackHeatmapTick() {
+-        val today = LocalDate.now().toEpochDay()
+-        val firstVisibleDay = today - HOME_HEATMAP_VISIBLE_DAYS + 1
+-        playbackHeatmapCounts[today] = (playbackHeatmapCounts[today] ?: 0) + 1
+-        playbackHeatmapCounts.keys.removeAll { it < firstVisibleDay }
+-        _recentPlaybackHeatmap.value = playbackHeatmapCounts
+-            .toSortedMap()
+-            .map { (epochDay, count) ->
+-                PlaybackHeatmapDay(
+-                    epochDay = epochDay,
+-                    playCount = count,
+-                )
+-            }
+-    }
+-
+     private companion object {
+         const val HOME_HEATMAP_VISIBLE_DAYS = 84L
+     }
+diff --git a/app/src/main/java/app/echo/android/EchoAppRoot.kt b/app/src/main/java/app/echo/android/EchoAppRoot.kt
+index c06968a..d44afeb 100644
+--- a/app/src/main/java/app/echo/android/EchoAppRoot.kt
++++ b/app/src/main/java/app/echo/android/EchoAppRoot.kt
+@@ -2,6 +2,7 @@ package app.echo.android
+ 
+ import app.echo.android.i18n.refreshEchoAppLocale
+ import app.echo.android.feature.listening.ListeningScreen
++import app.echo.android.feature.home.ListeningStatsScreen
+ import app.echo.android.model.playback.EchoPlaybackState
+ import app.echo.android.plugin.EchoPluginsOverlay
+ import androidx.compose.ui.res.stringResource
+@@ -741,6 +742,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
+     var detailReturnPage by remember { mutableStateOf<EchoPagerPage?>(null) }
+     var searchVisible by remember { mutableStateOf(false) }
+     var listeningVisible by rememberSaveable { mutableStateOf(false) }
++    var listeningStatsVisible by rememberSaveable { mutableStateOf(false) }
+     var listeningDraft by rememberSaveable { mutableStateOf("") }
+     var searchQuery by remember { mutableStateOf("") }
+     var errorLogVisible by remember { mutableStateOf(false) }
+@@ -1011,6 +1013,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
+     EchoOverlayBackHandler(enabled = listeningVisible && !pluginsVisible) {
+         listeningVisible = false
+     }
++    EchoOverlayBackHandler(enabled = listeningStatsVisible && !pluginsVisible) {
++        listeningStatsVisible = false
++    }
+     EchoOverlayBackHandler(enabled = searchVisible && !listeningVisible && !pluginsVisible) {
+         searchVisible = false
+         searchQuery = ""
+@@ -1041,7 +1046,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
+         },
+         onDismiss = { nowPlayingExpanded = false },
+     )
+-    val shellOverlayOpen = searchVisible || listeningVisible || errorLogVisible || queueSheetVisible || castSheetVisible || nowPlayingExpanded || pluginsVisible
++    val shellOverlayOpen = searchVisible || listeningVisible || listeningStatsVisible || errorLogVisible || queueSheetVisible || castSheetVisible || nowPlayingExpanded || pluginsVisible
+     val connectPageSettled = appVisible && screenInteractive && !shellOverlayOpen &&
+         tabPagerState.settledPage == EchoPagerPage.Connect.ordinal
+     // One owner for discovery: closing either surface must not stop the other.
+@@ -1239,6 +1244,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
+                                 onOpenConnect = { selectDockTab(EchoTab.Connect) },
+                                 onOpenSearch = { searchVisible = true },
+                                 onOpenListening = { listeningVisible = true },
++                                onOpenListeningStats = { listeningStatsVisible = true },
+                                 onResumePlayback = {
+                                     if (!playbackStatus.isPlaying) routedPlayPause()
+                                     expandNowPlaying()
+@@ -1813,6 +1819,19 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
+                     },
+                 )
+             }
++            if (listeningStatsVisible) {
++                val listeningStats by viewModel.listeningStats.collectAsStateWithLifecycle()
++                ListeningStatsScreen(
++                    stats = listeningStats,
++                    onLoad = viewModel::loadListeningStats,
++                    onOpenTrack = { trackId ->
++                        listeningStatsVisible = false
++                        viewModel.playTrackFromLibrary(trackId)
++                    },
++                    onBack = { listeningStatsVisible = false },
++                    modifier = Modifier.fillMaxSize(),
++                )
++            }
+             if (listeningVisible) {
+                 ListeningScreen(
+                     state = listeningState,
+diff --git a/app/src/main/java/app/echo/android/EchoApplication.kt b/app/src/main/java/app/echo/android/EchoApplication.kt
+index 6a3cb31..8ddf196 100644
+--- a/app/src/main/java/app/echo/android/EchoApplication.kt
++++ b/app/src/main/java/app/echo/android/EchoApplication.kt
+@@ -10,6 +10,7 @@ import app.echo.android.data.EchoLibraryDatabase
+ import app.echo.android.data.EchoRadioStore
+ import app.echo.android.data.EchoSettingsStore
+ import app.echo.android.data.LibraryOfflineStore
++import app.echo.android.data.ListeningHistoryRepository
+ import java.io.File
+ import app.echo.android.data.readEchoStartupThemeSnapshot
+ import app.echo.android.i18n.initializeEchoAppLocale
+@@ -51,6 +52,10 @@ class EchoApplication : Application(), ImageLoaderFactory {
+     val echoLinkSession by lazy { EchoLinkSession(this) }
+     val listening by lazy { app.echo.android.listening.EchoListeningRuntime(this) }
+     internal val lyricsSession: EchoNowPlayingLyricsSession by lazy { EchoNowPlayingLyricsSession(this) }
++    val listeningHistory by lazy { ListeningHistoryRepository(EchoLibraryDatabase.create(this)) }
++    private val listeningHistoryRecorder by lazy {
++        ListeningHistoryRecorder(EchoPlaybackProcessRuntime.scope, listeningHistory)
++    }
+     internal val offlineDownloads: EchoOfflineDownloads by lazy {
+         EchoOfflineDownloads(
+             app = this,
+@@ -103,6 +108,7 @@ class EchoApplication : Application(), ImageLoaderFactory {
+         EchoPlaybackProcessRuntime.setSessionStore(EchoSettingsPlaybackSessionStore(settingsStore))
+         lyricsSession.start(settingsStore)
+         offlineDownloads.start()
++        listeningHistoryRecorder.start(EchoPlaybackProcessRuntime.surface)
+         // Playback preferences and remote stream signing remain live when only the
+         // service/media buttons are running (no ViewModel).
+         EchoPlaybackProcessRuntime.scope.launch {
+diff --git a/app/src/main/java/app/echo/android/ListeningHistoryRecorder.kt b/app/src/main/java/app/echo/android/ListeningHistoryRecorder.kt
+new file mode 100644
+index 0000000..b3bc38f
+--- /dev/null
++++ b/app/src/main/java/app/echo/android/ListeningHistoryRecorder.kt
+@@ -0,0 +1,207 @@
++package app.echo.android
++
++import app.echo.android.data.ListeningHistoryListen
++import app.echo.android.data.ListeningHistoryPolicy
++import app.echo.android.data.ListeningHistoryRepository
++import app.echo.android.model.error.EchoErrorLog
++import app.echo.android.model.error.EchoErrorSource
++import app.echo.android.model.playback.EchoPlaybackState
++import app.echo.android.model.playback.EchoPlaybackStatus
++import app.echo.android.model.playback.EchoTrackRef
++import app.echo.android.model.playback.PlaybackPositionState
++import app.echo.android.model.radio.EchoRadioStation
++import app.echo.android.playback.EchoPlaybackSurfaceSnapshot
++import kotlinx.coroutines.CancellationException
++import kotlinx.coroutines.CoroutineScope
++import kotlinx.coroutines.Dispatchers
++import kotlinx.coroutines.Job
++import kotlinx.coroutines.channels.Channel
++import kotlinx.coroutines.flow.StateFlow
++import kotlinx.coroutines.flow.distinctUntilChanged
++import kotlinx.coroutines.launch
++
++/**
++ * 把播放状态折算成“有效收听”写入 [ListeningHistoryRepository]。
++ *
++ * 达到 [ListeningHistoryPolicy.countsAsListen] 的阈值时立刻插入一行，之后在暂停、切歌或
++ * 每累计一分钟时抬高 listenedMs。这样即使进程被杀，已经算数的收听也不会丢。
++ * 所有数据库写入经同一个 channel 串行执行，保证“先插入、后更新”的顺序。
++ */
++internal class ListeningHistoryRecorder(
++    private val scope: CoroutineScope,
++    private val repository: ListeningHistoryRepository,
++    private val now: () -> Long = System::currentTimeMillis,
++) {
++    private class Record {
++        var eventId: Long = 0L
++    }
++
++    private data class ActiveListen(
++        val track: EchoTrackRef,
++        val durationMs: Long,
++        val startedAtEpochMs: Long,
++        val accumulatedMs: Long = 0L,
++        val lastTickEpochMs: Long = 0L,
++        val lastPositionMs: Long = 0L,
++        val wasPlaying: Boolean = false,
++        val record: Record? = null,
++        val lastPersistedMs: Long = 0L,
++    )
++
++    private var active: ActiveListen? = null
++    private var collectJob: Job? = null
++    private val writes = Channel<suspend () -> Unit>(capacity = Channel.UNLIMITED)
++
++    init {
++        scope.launch(Dispatchers.IO) {
++            for (write in writes) {
++                try {
++                    write()
++                } catch (cancelled: CancellationException) {
++                    throw cancelled
++                } catch (error: Exception) {
++                    EchoErrorLog.record(EchoErrorSource.Library, "Listening history write failed", throwable = error)
++                }
++            }
++        }
++    }
++
++    /** 从播放服务发布的 surface 快照驱动，只依赖播放进程，不依赖界面是否存在。 */
++    fun start(surface: StateFlow<EchoPlaybackSurfaceSnapshot>) {
++        collectJob?.cancel()
++        collectJob = scope.launch {
++            surface
++                .distinctUntilChanged { previous, next ->
++                    previous.mediaId == next.mediaId &&
++                        previous.hasTrack == next.hasTrack &&
++                        previous.isPlaying == next.isPlaying &&
++                        previous.positionMs / 1_000L == next.positionMs / 1_000L
++                }
++                .collect { snapshot ->
++                    val (status, position) = snapshot.toHistoryPlayback()
++                    handle(status, position)
++                }
++        }
++    }
++
++    private fun handle(status: EchoPlaybackStatus, position: PlaybackPositionState) {
++        val nowMs = now()
++        val track = status.track?.takeUnless { EchoRadioStation.isRadio(it.id) }
++        val current = active
++
++        if (track == null) {
++            if (current != null) {
++                flush(tick(current, playing = false, positionMs = current.lastPositionMs, nowMs = nowMs))
++            }
++            if (LastFmScrobbleRules.shouldClearActiveScrobbleForMissingTrack(status.state)) active = null
++            return
++        }
++
++        val positionMs = position.positionMs.coerceAtLeast(0L)
++        val durationMs = maxOf(track.durationMs, position.durationMs, 0L)
++        val restarted = current != null && current.track.id == track.id &&
++            LastFmScrobbleRules.shouldStartNewListenAfterRepeat(
++                alreadyScrobbled = current.record != null,
++                previousPositionMs = current.lastPositionMs,
++                currentPositionMs = positionMs,
++            )
++
++        val next = if (current == null || current.track.id != track.id || restarted) {
++            current?.let { flush(tick(it, playing = false, positionMs = it.lastPositionMs, nowMs = nowMs)) }
++            ActiveListen(
++                track = track,
++                durationMs = durationMs,
++                startedAtEpochMs = nowMs,
++                lastTickEpochMs = if (status.isPlaying) nowMs else 0L,
++                lastPositionMs = positionMs,
++                wasPlaying = status.isPlaying,
++            )
++        } else {
++            tick(current.copy(durationMs = maxOf(current.durationMs, durationMs)), status.isPlaying, positionMs, nowMs)
++        }
++
++        active = when {
++            next.record == null && ListeningHistoryPolicy.countsAsListen(next.durationMs, next.accumulatedMs) -> insert(next)
++            next.record != null && (!status.isPlaying || next.accumulatedMs - next.lastPersistedMs >= PERSIST_EVERY_MS) -> persist(next)
++            else -> next
++        }
++    }
++
++    private fun tick(listen: ActiveListen, playing: Boolean, positionMs: Long, nowMs: Long): ActiveListen =
++        listen.copy(
++            accumulatedMs = LastFmScrobbleRules.accumulatedPlayMs(
++                previouslyAccumulatedMs = listen.accumulatedMs,
++                wasPlaying = listen.wasPlaying,
++                lastTickEpochMs = listen.lastTickEpochMs,
++                nowEpochMs = nowMs,
++            ),
++            lastTickEpochMs = if (playing) nowMs else 0L,
++            lastPositionMs = positionMs,
++            wasPlaying = playing,
++        )
++
++    /** 结束一次收听：已记录的补上最终时长，未记录但刚好达标的补插一行。 */
++    private fun flush(listen: ActiveListen) {
++        when {
++            listen.record != null -> persist(listen)
++            ListeningHistoryPolicy.countsAsListen(listen.durationMs, listen.accumulatedMs) -> insert(listen)
++        }
++    }
++
++    private fun insert(listen: ActiveListen): ActiveListen {
++        val record = Record()
++        val row = ListeningHistoryListen(
++            trackId = listen.track.id,
++            title = listen.track.title.trim(),
++            artist = listen.track.artist.trim(),
++            album = listen.track.album?.trim()?.takeIf(String::isNotBlank),
++            artworkUri = listen.track.artworkUri,
++            source = listen.track.sourceId,
++            durationMs = listen.durationMs,
++            listenedMs = listen.accumulatedMs,
++            startedAtEpochMs = listen.startedAtEpochMs,
++        )
++        writes.trySend { record.eventId = repository.recordListen(row) }
++        return listen.copy(record = record, lastPersistedMs = listen.accumulatedMs)
++    }
++
++    private fun persist(listen: ActiveListen): ActiveListen {
++        val record = listen.record ?: return listen
++        if (listen.accumulatedMs <= listen.lastPersistedMs) return listen
++        val listenedMs = listen.accumulatedMs
++        writes.trySend { repository.updateListenedMs(record.eventId, listenedMs) }
++        return listen.copy(lastPersistedMs = listenedMs)
++    }
++
++    private companion object {
++        const val PERSIST_EVERY_MS = 60_000L
++    }
++}
++
++private fun EchoPlaybackSurfaceSnapshot.toHistoryPlayback(): Pair<EchoPlaybackStatus, PlaybackPositionState> {
++    val track = mediaId
++        ?.takeIf { hasTrack && it.isNotBlank() }
++        ?.let { id ->
++            EchoTrackRef(
++                id = id,
++                uri = playUri.orEmpty(),
++                title = title,
++                artist = artist,
++                album = album,
++                artworkUri = artworkUri,
++                durationMs = durationMs,
++            )
++        }
++    val status = EchoPlaybackStatus(
++        state = when {
++            isPlaying -> EchoPlaybackState.Playing
++            hasTrack -> EchoPlaybackState.Paused
++            else -> EchoPlaybackState.Idle
++        },
++        track = track,
++        positionMs = positionMs,
++        durationMs = durationMs,
++        isPlaying = isPlaying,
++    )
++    return status to PlaybackPositionState(positionMs = positionMs, durationMs = durationMs)
++}
+diff --git a/app/src/main/java/app/echo/android/ui/home/EchoHomePage.kt b/app/src/main/java/app/echo/android/ui/home/EchoHomePage.kt
+index feabe1e..75d2fe3 100644
+--- a/app/src/main/java/app/echo/android/ui/home/EchoHomePage.kt
++++ b/app/src/main/java/app/echo/android/ui/home/EchoHomePage.kt
+@@ -20,6 +20,7 @@ internal fun EchoHomePage(
+     onOpenConnect: () -> Unit,
+     onOpenSearch: () -> Unit,
+     onOpenListening: () -> Unit,
++    onOpenListeningStats: () -> Unit,
+     onResumePlayback: () -> Unit,
+     bottomInset: Dp,
+ ) {
+@@ -63,6 +64,7 @@ internal fun EchoHomePage(
+         onOpenConnect = onOpenConnect,
+         onOpenSearch = onOpenSearch,
+         onOpenListening = onOpenListening,
++        onOpenListeningStats = onOpenListeningStats,
+         recentPlayedTracks = recentlyPlayedTracks,
+         onPlayTrack = viewModel::play,
+     )
+diff --git a/core/data/src/main/java/app/echo/android/data/EchoLibraryDatabase.kt b/core/data/src/main/java/app/echo/android/data/EchoLibraryDatabase.kt
+index 9d63672..fb1425c 100644
+--- a/core/data/src/main/java/app/echo/android/data/EchoLibraryDatabase.kt
++++ b/core/data/src/main/java/app/echo/android/data/EchoLibraryDatabase.kt
+@@ -21,14 +21,16 @@ import androidx.sqlite.db.SupportSQLiteDatabase
+         LibraryGenreSummaryEntity::class,
+         LibraryOfflinePinEntity::class,
+         LibraryOfflineFileEntity::class,
++        LibraryPlayEventEntity::class,
+     ],
+-    version = 17,
++    version = 18,
+     exportSchema = true,
+ )
+ abstract class EchoLibraryDatabase : RoomDatabase() {
+     abstract fun trackDao(): LibraryTrackDao
+     abstract fun playlistDao(): LibraryPlaylistDao
+     abstract fun offlineDao(): LibraryOfflineDao
++    abstract fun playEventDao(): LibraryPlayEventDao
+ 
+     companion object {
+         @Volatile
+@@ -59,6 +61,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
+                         Migration14To15,
+                         Migration15To16,
+                         Migration16To17,
++                        Migration17To18,
+                     )
+                     .build()
+                     .also { instance = it }
+@@ -394,6 +397,32 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
+             }
+         }
+ 
++        internal val Migration17To18 = object : Migration(17, 18) {
++            override fun migrate(db: SupportSQLiteDatabase) {
++                db.execSQL(
++                    """
++                    CREATE TABLE IF NOT EXISTS library_play_events (
++                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
++                        trackId TEXT NOT NULL,
++                        title TEXT NOT NULL,
++                        artist TEXT NOT NULL,
++                        album TEXT,
++                        artworkUri TEXT,
++                        source TEXT,
++                        durationMs INTEGER NOT NULL,
++                        listenedMs INTEGER NOT NULL,
++                        playedAtEpochMs INTEGER NOT NULL,
++                        localEpochDay INTEGER NOT NULL,
++                        localHour INTEGER NOT NULL
++                    )
++                    """.trimIndent(),
++                )
++                db.execSQL("CREATE INDEX IF NOT EXISTS index_library_play_events_playedAtEpochMs ON library_play_events(playedAtEpochMs)")
++                db.execSQL("CREATE INDEX IF NOT EXISTS index_library_play_events_localEpochDay ON library_play_events(localEpochDay)")
++                db.execSQL("CREATE INDEX IF NOT EXISTS index_library_play_events_trackId ON library_play_events(trackId)")
++            }
++        }
++
+         internal val Migration14To15 = object : Migration(14, 15) {
+             override fun migrate(db: SupportSQLiteDatabase) {
+                 db.execSQL("ALTER TABLE library_tracks ADD COLUMN clipStartMs INTEGER NOT NULL DEFAULT 0")
+diff --git a/core/data/src/main/java/app/echo/android/data/LibraryPlayEventDao.kt b/core/data/src/main/java/app/echo/android/data/LibraryPlayEventDao.kt
+new file mode 100644
+index 0000000..0f1ecdf
+--- /dev/null
++++ b/core/data/src/main/java/app/echo/android/data/LibraryPlayEventDao.kt
+@@ -0,0 +1,126 @@
++package app.echo.android.data
++
++import androidx.room.Dao
++import androidx.room.Insert
++import androidx.room.Query
++import kotlinx.coroutines.flow.Flow
++
++data class PlayEventDayCountRow(
++    val epochDay: Long,
++    val playCount: Int,
++)
++
++data class PlayEventHourCountRow(
++    val hour: Int,
++    val playCount: Int,
++)
++
++data class PlayEventTotalsRow(
++    val plays: Int,
++    val listenedMs: Long,
++    val activeDays: Int,
++)
++
++data class PlayEventRankRow(
++    val rankKey: String,
++    val title: String,
++    val subtitle: String?,
++    val artworkUri: String?,
++    val playCount: Int,
++    val listenedMs: Long,
++)
++
++@Dao
++interface LibraryPlayEventDao {
++    @Insert
++    suspend fun insert(event: LibraryPlayEventEntity): Long
++
++    @Query("UPDATE library_play_events SET listenedMs = :listenedMs WHERE id = :id AND listenedMs < :listenedMs")
++    suspend fun raiseListenedMs(id: Long, listenedMs: Long): Int
++
++    @Query(
++        """
++        SELECT localEpochDay AS epochDay, COUNT(*) AS playCount
++        FROM library_play_events
++        WHERE localEpochDay >= :fromEpochDay
++        GROUP BY localEpochDay
++        ORDER BY localEpochDay
++        """,
++    )
++    fun observeDailyCounts(fromEpochDay: Long): Flow<List<PlayEventDayCountRow>>
++
++    @Query(
++        """
++        SELECT COUNT(*) AS plays,
++               COALESCE(SUM(listenedMs), 0) AS listenedMs,
++               COUNT(DISTINCT localEpochDay) AS activeDays
++        FROM library_play_events
++        WHERE playedAtEpochMs >= :fromEpochMs
++        """,
++    )
++    suspend fun totals(fromEpochMs: Long): PlayEventTotalsRow
++
++    @Query(
++        """
++        SELECT localHour AS hour, COUNT(*) AS playCount
++        FROM library_play_events
++        WHERE playedAtEpochMs >= :fromEpochMs
++        GROUP BY localHour
++        """,
++    )
++    suspend fun hourlyCounts(fromEpochMs: Long): List<PlayEventHourCountRow>
++
++    @Query(
++        """
++        SELECT trackId AS rankKey,
++               MAX(title) AS title,
++               MAX(artist) AS subtitle,
++               MAX(artworkUri) AS artworkUri,
++               COUNT(*) AS playCount,
++               COALESCE(SUM(listenedMs), 0) AS listenedMs
++        FROM library_play_events
++        WHERE playedAtEpochMs >= :fromEpochMs
++        GROUP BY trackId
++        ORDER BY playCount DESC, listenedMs DESC
++        LIMIT :limit
++        """,
++    )
++    suspend fun topTracks(fromEpochMs: Long, limit: Int): List<PlayEventRankRow>
++
++    @Query(
++        """
++        SELECT LOWER(TRIM(album)) AS rankKey,
++               MAX(album) AS title,
++               MAX(artist) AS subtitle,
++               MAX(artworkUri) AS artworkUri,
++               COUNT(*) AS playCount,
++               COALESCE(SUM(listenedMs), 0) AS listenedMs
++        FROM library_play_events
++        WHERE playedAtEpochMs >= :fromEpochMs AND album IS NOT NULL AND TRIM(album) != ''
++        GROUP BY LOWER(TRIM(album))
++        ORDER BY playCount DESC, listenedMs DESC
++        LIMIT :limit
++        """,
++    )
++    suspend fun topAlbums(fromEpochMs: Long, limit: Int): List<PlayEventRankRow>
++
++    @Query(
++        """
++        SELECT LOWER(TRIM(artist)) AS rankKey,
++               MAX(artist) AS title,
++               NULL AS subtitle,
++               MAX(artworkUri) AS artworkUri,
++               COUNT(*) AS playCount,
++               COALESCE(SUM(listenedMs), 0) AS listenedMs
++        FROM library_play_events
++        WHERE playedAtEpochMs >= :fromEpochMs AND TRIM(artist) != ''
++        GROUP BY LOWER(TRIM(artist))
++        ORDER BY playCount DESC, listenedMs DESC
++        LIMIT :limit
++        """,
++    )
++    suspend fun topArtists(fromEpochMs: Long, limit: Int): List<PlayEventRankRow>
++
++    @Query("DELETE FROM library_play_events")
++    suspend fun clear()
++}
+diff --git a/core/data/src/main/java/app/echo/android/data/LibraryPlayEventEntity.kt b/core/data/src/main/java/app/echo/android/data/LibraryPlayEventEntity.kt
+new file mode 100644
+index 0000000..2c4417c
+--- /dev/null
++++ b/core/data/src/main/java/app/echo/android/data/LibraryPlayEventEntity.kt
+@@ -0,0 +1,32 @@
++package app.echo.android.data
++
++import androidx.room.Entity
++import androidx.room.Index
++import androidx.room.PrimaryKey
++
++/**
++ * 一次有效收听。标题等字段是写入时的快照，曲目被重扫或删除后统计仍然成立。
++ * localEpochDay / localHour 按收听当时的时区计算，旅行或改时区不会让旧记录漂移。
++ */
++@Entity(
++    tableName = "library_play_events",
++    indices = [
++        Index(value = ["playedAtEpochMs"]),
++        Index(value = ["localEpochDay"]),
++        Index(value = ["trackId"]),
++    ],
++)
++data class LibraryPlayEventEntity(
++    @PrimaryKey(autoGenerate = true) val id: Long = 0L,
++    val trackId: String,
++    val title: String,
++    val artist: String,
++    val album: String?,
++    val artworkUri: String?,
++    val source: String?,
++    val durationMs: Long,
++    val listenedMs: Long,
++    val playedAtEpochMs: Long,
++    val localEpochDay: Long,
++    val localHour: Int,
++)
+diff --git a/core/data/src/main/java/app/echo/android/data/ListeningHistoryPolicy.kt b/core/data/src/main/java/app/echo/android/data/ListeningHistoryPolicy.kt
+new file mode 100644
+index 0000000..2ef1a2c
+--- /dev/null
++++ b/core/data/src/main/java/app/echo/android/data/ListeningHistoryPolicy.kt
+@@ -0,0 +1,23 @@
++package app.echo.android.data
++
++import app.echo.android.model.playback.ListeningStatsRange
++import java.time.Instant
++import java.time.ZoneId
++
++object ListeningHistoryPolicy {
++    /** 很短的曲目（铃声、片段）听完一半也算；其余听满 30 秒算一次。 */
++    const val MIN_LISTEN_MS = 30_000L
++
++    fun countsAsListen(durationMs: Long, listenedMs: Long): Boolean {
++        if (listenedMs <= 0L) return false
++        if (durationMs in 1 until MIN_LISTEN_MS * 2) return listenedMs * 2 >= durationMs
++        return listenedMs >= MIN_LISTEN_MS
++    }
++
++    /** 范围从本地日期的零点开始，今天算作第一天。 */
++    fun rangeStartEpochMs(range: ListeningStatsRange, nowEpochMs: Long, zone: ZoneId): Long {
++        val days = range.days ?: return 0L
++        val today = Instant.ofEpochMilli(nowEpochMs).atZone(zone).toLocalDate()
++        return today.minusDays(days - 1).atStartOfDay(zone).toInstant().toEpochMilli()
++    }
++}
+diff --git a/core/data/src/main/java/app/echo/android/data/ListeningHistoryRepository.kt b/core/data/src/main/java/app/echo/android/data/ListeningHistoryRepository.kt
+new file mode 100644
+index 0000000..99a2181
+--- /dev/null
++++ b/core/data/src/main/java/app/echo/android/data/ListeningHistoryRepository.kt
+@@ -0,0 +1,101 @@
++package app.echo.android.data
++
++import androidx.room.withTransaction
++import app.echo.android.model.playback.ListeningStats
++import app.echo.android.model.playback.ListeningStatsEntry
++import app.echo.android.model.playback.ListeningStatsRange
++import app.echo.android.model.playback.PlaybackHeatmapDay
++import java.time.Instant
++import java.time.ZoneId
++import kotlinx.coroutines.flow.Flow
++import kotlinx.coroutines.flow.map
++
++/** 听歌历史的读写入口。聚合都在 SQL 里完成，不把整表读进内存。 */
++class ListeningHistoryRepository(
++    private val database: EchoLibraryDatabase,
++    private val zone: () -> ZoneId = ZoneId::systemDefault,
++    private val now: () -> Long = System::currentTimeMillis,
++) {
++    private val dao: LibraryPlayEventDao get() = database.playEventDao()
++
++    suspend fun recordListen(listen: ListeningHistoryListen): Long {
++        val local = Instant.ofEpochMilli(listen.startedAtEpochMs).atZone(zone())
++        return dao.insert(
++            LibraryPlayEventEntity(
++                trackId = listen.trackId,
++                title = listen.title,
++                artist = listen.artist,
++                album = listen.album,
++                artworkUri = listen.artworkUri,
++                source = listen.source,
++                durationMs = listen.durationMs.coerceAtLeast(0L),
++                listenedMs = listen.listenedMs.coerceAtLeast(0L),
++                playedAtEpochMs = listen.startedAtEpochMs,
++                localEpochDay = local.toLocalDate().toEpochDay(),
++                localHour = local.hour,
++            ),
++        )
++    }
++
++    /** 同一次收听继续累计时长；只会增大，重复调用无副作用。 */
++    suspend fun updateListenedMs(eventId: Long, listenedMs: Long) {
++        if (eventId <= 0L) return
++        dao.raiseListenedMs(eventId, listenedMs.coerceAtLeast(0L))
++    }
++
++    fun observeHeatmap(visibleDays: Long): Flow<List<PlaybackHeatmapDay>> {
++        val today = Instant.ofEpochMilli(now()).atZone(zone()).toLocalDate().toEpochDay()
++        return dao.observeDailyCounts(today - visibleDays + 1).map { rows ->
++            rows.map { PlaybackHeatmapDay(epochDay = it.epochDay, playCount = it.playCount) }
++        }
++    }
++
++    suspend fun stats(range: ListeningStatsRange, limit: Int = DEFAULT_RANK_LIMIT): ListeningStats {
++        val from = ListeningHistoryPolicy.rangeStartEpochMs(range, now(), zone())
++        return database.withTransaction {
++            val totals = dao.totals(from)
++            val hours = IntArray(24)
++            dao.hourlyCounts(from).forEach { row ->
++                if (row.hour in 0..23) hours[row.hour] = row.playCount
++            }
++            ListeningStats(
++                range = range,
++                totalPlays = totals.plays,
++                totalListenedMs = totals.listenedMs,
++                activeDays = totals.activeDays,
++                topTracks = dao.topTracks(from, limit).map(PlayEventRankRow::toEntry),
++                topAlbums = dao.topAlbums(from, limit).map(PlayEventRankRow::toEntry),
++                topArtists = dao.topArtists(from, limit).map(PlayEventRankRow::toEntry),
++                playsByHour = hours.toList(),
++            )
++        }
++    }
++
++    suspend fun clear() = dao.clear()
++
++    private companion object {
++        const val DEFAULT_RANK_LIMIT = 10
++    }
++}
++
++data class ListeningHistoryListen(
++    val trackId: String,
++    val title: String,
++    val artist: String,
++    val album: String?,
++    val artworkUri: String?,
++    val source: String?,
++    val durationMs: Long,
++    val listenedMs: Long,
++    val startedAtEpochMs: Long,
++)
++
++private fun PlayEventRankRow.toEntry(): ListeningStatsEntry =
++    ListeningStatsEntry(
++        key = rankKey,
++        title = title,
++        subtitle = subtitle?.takeIf(String::isNotBlank),
++        artworkUri = artworkUri,
++        playCount = playCount,
++        listenedMs = listenedMs,
++    )
+diff --git a/core/data/src/test/java/app/echo/android/data/ListeningHistoryPolicyTest.kt b/core/data/src/test/java/app/echo/android/data/ListeningHistoryPolicyTest.kt
+new file mode 100644
+index 0000000..26d0ab3
+--- /dev/null
++++ b/core/data/src/test/java/app/echo/android/data/ListeningHistoryPolicyTest.kt
+@@ -0,0 +1,47 @@
++package app.echo.android.data
++
++import app.echo.android.model.playback.ListeningStatsRange
++import java.time.LocalDate
++import java.time.ZoneId
++import org.junit.Assert.assertEquals
++import org.junit.Assert.assertFalse
++import org.junit.Assert.assertTrue
++import org.junit.Test
++
++class ListeningHistoryPolicyTest {
++    @Test
++    fun normalTrackNeedsThirtySeconds() {
++        assertFalse(ListeningHistoryPolicy.countsAsListen(durationMs = 240_000L, listenedMs = 29_999L))
++        assertTrue(ListeningHistoryPolicy.countsAsListen(durationMs = 240_000L, listenedMs = 30_000L))
++    }
++
++    @Test
++    fun shortTrackCountsAfterHalf() {
++        assertFalse(ListeningHistoryPolicy.countsAsListen(durationMs = 20_000L, listenedMs = 9_000L))
++        assertTrue(ListeningHistoryPolicy.countsAsListen(durationMs = 20_000L, listenedMs = 10_000L))
++    }
++
++    @Test
++    fun unknownDurationUsesThirtySeconds() {
++        assertFalse(ListeningHistoryPolicy.countsAsListen(durationMs = 0L, listenedMs = 10_000L))
++        assertTrue(ListeningHistoryPolicy.countsAsListen(durationMs = 0L, listenedMs = 31_000L))
++    }
++
++    @Test
++    fun nothingListenedNeverCounts() {
++        assertFalse(ListeningHistoryPolicy.countsAsListen(durationMs = 10_000L, listenedMs = 0L))
++    }
++
++    @Test
++    fun weekStartsAtLocalMidnightSixDaysAgo() {
++        val zone = ZoneId.of("Asia/Hong_Kong")
++        val now = LocalDate.of(2026, 9, 28).atTime(15, 30).atZone(zone).toInstant().toEpochMilli()
++        val expected = LocalDate.of(2026, 9, 22).atStartOfDay(zone).toInstant().toEpochMilli()
++        assertEquals(expected, ListeningHistoryPolicy.rangeStartEpochMs(ListeningStatsRange.Week, now, zone))
++    }
++
++    @Test
++    fun allTimeStartsAtEpoch() {
++        assertEquals(0L, ListeningHistoryPolicy.rangeStartEpochMs(ListeningStatsRange.All, 123_456L, ZoneId.of("UTC")))
++    }
++}
+diff --git a/core/model/src/main/java/app/echo/android/model/playback/ListeningStats.kt b/core/model/src/main/java/app/echo/android/model/playback/ListeningStats.kt
+new file mode 100644
+index 0000000..cb0d298
+--- /dev/null
++++ b/core/model/src/main/java/app/echo/android/model/playback/ListeningStats.kt
+@@ -0,0 +1,33 @@
++package app.echo.android.model.playback
++
++/** 统计页的时间范围。`All` 不限起点。 */
++enum class ListeningStatsRange(val days: Long?) {
++    Week(7L),
++    Month(30L),
++    Year(365L),
++    All(null),
++}
++
++/** 一条排行记录：曲目、专辑或艺术家。`key` 在同一张榜内唯一，曲目榜里就是 trackId。 */
++data class ListeningStatsEntry(
++    val key: String,
++    val title: String,
++    val subtitle: String? = null,
++    val artworkUri: String? = null,
++    val playCount: Int,
++    val listenedMs: Long,
++)
++
++data class ListeningStats(
++    val range: ListeningStatsRange = ListeningStatsRange.Month,
++    val totalPlays: Int = 0,
++    val totalListenedMs: Long = 0L,
++    val activeDays: Int = 0,
++    val topTracks: List<ListeningStatsEntry> = emptyList(),
++    val topAlbums: List<ListeningStatsEntry> = emptyList(),
++    val topArtists: List<ListeningStatsEntry> = emptyList(),
++    /** 24 个元素，下标是本地时间的小时。 */
++    val playsByHour: List<Int> = List(24) { 0 },
++) {
++    val isEmpty: Boolean get() = totalPlays == 0
++}
+diff --git a/core/playback/src/main/java/app/echo/android/playback/EchoPlaybackSurfaceSnapshot.kt b/core/playback/src/main/java/app/echo/android/playback/EchoPlaybackSurfaceSnapshot.kt
+index 6ef37ca..ce357a4 100644
+--- a/core/playback/src/main/java/app/echo/android/playback/EchoPlaybackSurfaceSnapshot.kt
++++ b/core/playback/src/main/java/app/echo/android/playback/EchoPlaybackSurfaceSnapshot.kt
+@@ -5,6 +5,7 @@ import androidx.media3.common.Player
+ data class EchoPlaybackSurfaceSnapshot(
+     val title: String = "",
+     val artist: String = "",
++    val album: String? = null,
+     val isPlaying: Boolean = false,
+     val hasTrack: Boolean = false,
+     val repeatMode: Int = Player.REPEAT_MODE_OFF,
+@@ -24,6 +25,7 @@ fun Player.toPlaybackSurfaceSnapshot(): EchoPlaybackSurfaceSnapshot {
+     return EchoPlaybackSurfaceSnapshot(
+         title = radio?.title ?: metadata?.title?.toString().orEmpty(),
+         artist = radio?.artist ?: metadata?.artist?.toString().orEmpty(),
++        album = metadata?.albumTitle?.toString()?.takeIf { radio == null && it.isNotBlank() },
+         isPlaying = isPlaying,
+         hasTrack = item != null,
+         repeatMode = repeatMode,
+diff --git a/feature/home/src/main/java/app/echo/android/feature/home/HomeListeningSummary.kt b/feature/home/src/main/java/app/echo/android/feature/home/HomeListeningSummary.kt
+index 12f5636..d35b644 100644
+--- a/feature/home/src/main/java/app/echo/android/feature/home/HomeListeningSummary.kt
++++ b/feature/home/src/main/java/app/echo/android/feature/home/HomeListeningSummary.kt
+@@ -27,7 +27,11 @@ import java.time.LocalDate
+ import java.util.Locale
+ 
+ @Composable
+-internal fun HomeListeningSummary(days: List<PlaybackHeatmapDay>, onOpenLibrary: () -> Unit) {
++internal fun HomeListeningSummary(
++    days: List<PlaybackHeatmapDay>,
++    onOpenLibrary: () -> Unit,
++    onOpenStats: (() -> Unit)? = null,
++) {
+     val today = LocalDate.now()
+     val summary = remember(days, today) {
+         val firstDay = today.with(DayOfWeek.MONDAY).minusWeeks(11).toEpochDay()
+@@ -68,8 +72,14 @@ internal fun HomeListeningSummary(days: List<PlaybackHeatmapDay>, onOpenLibrary:
+             style = MaterialTheme.typography.bodyMedium,
+             color = scheme.onSurfaceVariant,
+         )
+-        TextButton(onClick = onOpenLibrary, modifier = Modifier.align(Alignment.End)) {
+-            Text(stringResource(R.string.home_listening_open_library))
++        if (onOpenStats != null) {
++            TextButton(onClick = onOpenStats, modifier = Modifier.align(Alignment.End)) {
++                Text(stringResource(R.string.home_listening_open_stats))
++            }
++        } else {
++            TextButton(onClick = onOpenLibrary, modifier = Modifier.align(Alignment.End)) {
++                Text(stringResource(R.string.home_listening_open_library))
++            }
+         }
+     }
+ }
+diff --git a/feature/home/src/main/java/app/echo/android/feature/home/HomeScreen.kt b/feature/home/src/main/java/app/echo/android/feature/home/HomeScreen.kt
+index ab63ef4..01305f7 100644
+--- a/feature/home/src/main/java/app/echo/android/feature/home/HomeScreen.kt
++++ b/feature/home/src/main/java/app/echo/android/feature/home/HomeScreen.kt
+@@ -63,6 +63,7 @@ fun HomeScreen(
+     onOpenConnect: () -> Unit,
+     onOpenSearch: () -> Unit = {},
+     onOpenListening: (() -> Unit)? = null,
++    onOpenListeningStats: (() -> Unit)? = null,
+     bottomInset: Dp = 0.dp,
+     rediscoveredAlbums: List<AlbumSummary> = emptyList(),
+     positionState: State<PlaybackPositionState>? = null,
+@@ -162,7 +163,7 @@ fun HomeScreen(
+                 if (hasListeningHistory) {
+                     item(key = "listening-summary") {
+                         Box(Modifier.padding(horizontal = 24.dp)) {
+-                            HomeListeningSummary(heatmapDays, onOpenLibrary)
++                            HomeListeningSummary(heatmapDays, onOpenLibrary, onOpenListeningStats)
+                         }
+                     }
+                 }
+diff --git a/feature/home/src/main/java/app/echo/android/feature/home/ListeningStatsParts.kt b/feature/home/src/main/java/app/echo/android/feature/home/ListeningStatsParts.kt
+new file mode 100644
+index 0000000..77af68a
+--- /dev/null
++++ b/feature/home/src/main/java/app/echo/android/feature/home/ListeningStatsParts.kt
+@@ -0,0 +1,127 @@
++package app.echo.android.feature.home
++
++import androidx.compose.foundation.Canvas
++import androidx.compose.foundation.layout.Arrangement
++import androidx.compose.foundation.layout.Column
++import androidx.compose.foundation.layout.Row
++import androidx.compose.foundation.layout.fillMaxWidth
++import androidx.compose.foundation.layout.height
++import androidx.compose.foundation.layout.padding
++import androidx.compose.foundation.layout.size
++import androidx.compose.foundation.layout.width
++import androidx.compose.foundation.shape.CircleShape
++import androidx.compose.foundation.shape.RoundedCornerShape
++import androidx.compose.material3.MaterialTheme
++import androidx.compose.material3.Text
++import androidx.compose.runtime.Composable
++import androidx.compose.runtime.remember
++import androidx.compose.ui.Alignment
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.draw.clip
++import androidx.compose.ui.geometry.CornerRadius
++import androidx.compose.ui.geometry.Offset
++import androidx.compose.ui.geometry.Size
++import androidx.compose.ui.res.stringResource
++import androidx.compose.ui.semantics.contentDescription
++import androidx.compose.ui.semantics.semantics
++import androidx.compose.ui.text.font.FontWeight
++import androidx.compose.ui.text.style.TextOverflow
++import androidx.compose.ui.unit.dp
++import app.echo.android.design.ArtworkTile
++import app.echo.android.design.echoAccentColor
++import app.echo.android.design.echoClickable
++import app.echo.android.model.playback.ListeningStatsEntry
++
++/** 24 根柱子的时段分布。静态绘制，没有动画或计时器。 */
++@Composable
++internal fun ListeningStatsHourChart(playsByHour: List<Int>, modifier: Modifier = Modifier) {
++    val accent = echoAccentColor()
++    val track = MaterialTheme.colorScheme.surfaceVariant
++    val max = remember(playsByHour) { playsByHour.maxOrNull()?.coerceAtLeast(1) ?: 1 }
++    val peak = remember(playsByHour) { playsByHour.indices.maxByOrNull { playsByHour[it] } ?: 0 }
++    val peakText = stringResource(R.string.listening_stats_peak_hour, peak)
++    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
++        Text(
++            stringResource(R.string.listening_stats_by_hour),
++            style = MaterialTheme.typography.titleMedium,
++            color = MaterialTheme.colorScheme.onBackground,
++        )
++        Text(peakText, style = MaterialTheme.typography.bodyMedium, color = homeBodyColor())
++        Canvas(
++            Modifier
++                .fillMaxWidth()
++                .height(96.dp)
++                .semantics { contentDescription = peakText },
++        ) {
++            val slots = 24
++            val gap = 3.dp.toPx()
++            val barWidth = ((size.width - gap * (slots - 1)) / slots).coerceAtLeast(1f)
++            val radius = CornerRadius(barWidth / 2f, barWidth / 2f)
++            for (hour in 0 until slots) {
++                val value = playsByHour.getOrElse(hour) { 0 }
++                val left = hour * (barWidth + gap)
++                drawRoundRect(track, Offset(left, 0f), Size(barWidth, size.height), radius)
++                if (value > 0) {
++                    val barHeight = (size.height * value / max).coerceAtLeast(barWidth)
++                    drawRoundRect(accent, Offset(left, size.height - barHeight), Size(barWidth, barHeight), radius)
++                }
++            }
++        }
++        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
++            listOf("0", "6", "12", "18", "23").forEach { label ->
++                Text(label, style = MaterialTheme.typography.labelSmall, color = homeBodyColor())
++            }
++        }
++    }
++}
++
++@Composable
++internal fun ListeningStatsRankRow(
++    rank: Int,
++    entry: ListeningStatsEntry,
++    circle: Boolean,
++    onClick: (() -> Unit)?,
++) {
++    val rowModifier = Modifier
++        .fillMaxWidth()
++        .clip(RoundedCornerShape(12.dp))
++        .let { if (onClick != null) it.echoClickable(onClick = onClick) else it }
++        .padding(vertical = 6.dp)
++    Row(rowModifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
++        Text(
++            rank.toString(),
++            style = MaterialTheme.typography.titleSmall,
++            color = homeBodyColor(),
++            modifier = Modifier.width(24.dp),
++        )
++        ArtworkTile(
++            artworkUri = entry.artworkUri,
++            modifier = Modifier.size(48.dp).clip(if (circle) CircleShape else RoundedCornerShape(8.dp)),
++            accent = echoAccentColor(),
++            cornerRadius = if (circle) 24.dp else 8.dp,
++        )
++        Column(Modifier.weight(1f)) {
++            Text(
++                entry.title,
++                style = MaterialTheme.typography.bodyLarge,
++                fontWeight = FontWeight.Medium,
++                color = MaterialTheme.colorScheme.onBackground,
++                maxLines = 1,
++                overflow = TextOverflow.Ellipsis,
++            )
++            entry.subtitle?.let { subtitle ->
++                Text(
++                    subtitle,
++                    style = MaterialTheme.typography.bodySmall,
++                    color = homeBodyColor(),
++                    maxLines = 1,
++                    overflow = TextOverflow.Ellipsis,
++                )
++            }
++        }
++        Column(horizontalAlignment = Alignment.End) {
++            Text(listeningPlayCount(entry.playCount), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onBackground)
++            Text(formatListeningDuration(entry.listenedMs), style = MaterialTheme.typography.labelSmall, color = homeBodyColor())
++        }
++    }
++}
+diff --git a/feature/home/src/main/java/app/echo/android/feature/home/ListeningStatsScreen.kt b/feature/home/src/main/java/app/echo/android/feature/home/ListeningStatsScreen.kt
+new file mode 100644
+index 0000000..4ef9f19
+--- /dev/null
++++ b/feature/home/src/main/java/app/echo/android/feature/home/ListeningStatsScreen.kt
+@@ -0,0 +1,218 @@
++package app.echo.android.feature.home
++
++import androidx.compose.foundation.background
++import androidx.compose.foundation.layout.Arrangement
++import androidx.compose.foundation.layout.Box
++import androidx.compose.foundation.layout.Column
++import androidx.compose.foundation.layout.PaddingValues
++import androidx.compose.foundation.layout.Row
++import androidx.compose.foundation.layout.fillMaxSize
++import androidx.compose.foundation.layout.fillMaxWidth
++import androidx.compose.foundation.layout.navigationBarsPadding
++import androidx.compose.foundation.layout.padding
++import androidx.compose.foundation.layout.statusBarsPadding
++import androidx.compose.foundation.lazy.LazyColumn
++import androidx.compose.foundation.lazy.itemsIndexed
++import androidx.compose.material.icons.Icons
++import androidx.compose.material.icons.automirrored.rounded.ArrowBack
++import androidx.compose.material3.CircularProgressIndicator
++import androidx.compose.material3.FilterChip
++import androidx.compose.material3.Icon
++import androidx.compose.material3.IconButton
++import androidx.compose.material3.MaterialTheme
++import androidx.compose.material3.Text
++import androidx.compose.runtime.Composable
++import androidx.compose.runtime.LaunchedEffect
++import androidx.compose.runtime.getValue
++import androidx.compose.runtime.mutableStateOf
++import androidx.compose.runtime.saveable.rememberSaveable
++import androidx.compose.runtime.setValue
++import androidx.compose.ui.Alignment
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.res.pluralStringResource
++import androidx.compose.ui.res.stringResource
++import androidx.compose.ui.text.font.FontWeight
++import androidx.compose.ui.unit.dp
++import app.echo.android.model.playback.ListeningStats
++import app.echo.android.model.playback.ListeningStatsEntry
++import app.echo.android.model.playback.ListeningStatsRange
++
++/**
++ * 听歌统计页。数据由调用方按范围加载；本页只负责展示和切换范围。
++ * [onOpenTrack] 以 trackId 回调，曲目可能已不在曲库里，由调用方决定如何处理。
++ */
++@Composable
++fun ListeningStatsScreen(
++    stats: ListeningStats?,
++    onLoad: (ListeningStatsRange) -> Unit,
++    onOpenTrack: (trackId: String) -> Unit,
++    onBack: () -> Unit,
++    modifier: Modifier = Modifier,
++) {
++    var range by rememberSaveable { mutableStateOf(ListeningStatsRange.Month) }
++    LaunchedEffect(range) { onLoad(range) }
++    val current = stats?.takeIf { it.range == range }
++
++    Column(
++        modifier = modifier
++            .fillMaxSize()
++            .background(MaterialTheme.colorScheme.background)
++            .statusBarsPadding(),
++    ) {
++        Row(
++            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
++            verticalAlignment = Alignment.CenterVertically,
++        ) {
++            IconButton(onClick = onBack) {
++                Icon(
++                    Icons.AutoMirrored.Rounded.ArrowBack,
++                    contentDescription = stringResource(R.string.feature_home_back_49093c),
++                    tint = homeBodyColor(),
++                )
++            }
++            Text(
++                stringResource(R.string.listening_stats_title),
++                style = MaterialTheme.typography.titleLarge,
++                color = MaterialTheme.colorScheme.onBackground,
++            )
++        }
++        Row(
++            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
++            horizontalArrangement = Arrangement.spacedBy(8.dp),
++        ) {
++            ListeningStatsRange.entries.forEach { option ->
++                FilterChip(
++                    selected = option == range,
++                    onClick = { range = option },
++                    label = { Text(option.label()) },
++                )
++            }
++        }
++        when {
++            current == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
++                CircularProgressIndicator()
++            }
++            current.isEmpty -> ListeningStatsEmpty()
++            else -> ListeningStatsContent(current, onOpenTrack)
++        }
++    }
++}
++
++@Composable
++private fun ListeningStatsContent(stats: ListeningStats, onOpenTrack: (String) -> Unit) {
++    LazyColumn(
++        modifier = Modifier.fillMaxSize(),
++        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 32.dp),
++        verticalArrangement = Arrangement.spacedBy(12.dp),
++    ) {
++        item(key = "totals") { ListeningStatsTotals(stats) }
++        item(key = "hours") { ListeningStatsHourChart(stats.playsByHour, Modifier.padding(top = 12.dp)) }
++        rankSection("tracks", R.string.listening_stats_top_tracks, stats.topTracks, circle = false) { onOpenTrack(it.key) }
++        rankSection("albums", R.string.listening_stats_top_albums, stats.topAlbums, circle = false, onClick = null)
++        rankSection("artists", R.string.listening_stats_top_artists, stats.topArtists, circle = true, onClick = null)
++        item(key = "bottom") { Box(Modifier.navigationBarsPadding()) }
++    }
++}
++
++private fun androidx.compose.foundation.lazy.LazyListScope.rankSection(
++    key: String,
++    titleRes: Int,
++    entries: List<ListeningStatsEntry>,
++    circle: Boolean,
++    onClick: ((ListeningStatsEntry) -> Unit)?,
++) {
++    if (entries.isEmpty()) return
++    item(key = "$key-title") {
++        Text(
++            stringResource(titleRes),
++            style = MaterialTheme.typography.titleMedium,
++            color = MaterialTheme.colorScheme.onBackground,
++            modifier = Modifier.padding(top = 16.dp),
++        )
++    }
++    itemsIndexed(entries, key = { _, entry -> "$key:${entry.key}" }) { index, entry ->
++        ListeningStatsRankRow(rank = index + 1, entry = entry, circle = circle, onClick = onClick?.let { handler -> { handler(entry) } })
++    }
++}
++
++@Composable
++private fun ListeningStatsTotals(stats: ListeningStats) {
++    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
++        ListeningStatsFigure(
++            label = stringResource(R.string.listening_stats_total_time),
++            value = formatListeningDuration(stats.totalListenedMs),
++            modifier = Modifier.weight(1.4f),
++        )
++        ListeningStatsFigure(
++            label = stringResource(R.string.listening_stats_total_plays),
++            value = stats.totalPlays.toString(),
++            modifier = Modifier.weight(1f),
++        )
++        ListeningStatsFigure(
++            label = stringResource(R.string.listening_stats_active_days),
++            value = stats.activeDays.toString(),
++            modifier = Modifier.weight(1f),
++        )
++    }
++}
++
++@Composable
++private fun ListeningStatsFigure(label: String, value: String, modifier: Modifier = Modifier) {
++    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
++        Text(label, style = MaterialTheme.typography.labelMedium, color = homeBodyColor())
++        Text(
++            value,
++            style = MaterialTheme.typography.titleLarge,
++            fontWeight = FontWeight.SemiBold,
++            color = MaterialTheme.colorScheme.onBackground,
++            maxLines = 2,
++        )
++    }
++}
++
++@Composable
++private fun ListeningStatsEmpty() {
++    Column(
++        modifier = Modifier.fillMaxSize().padding(32.dp),
++        verticalArrangement = Arrangement.Center,
++        horizontalAlignment = Alignment.CenterHorizontally,
++    ) {
++        Text(
++            stringResource(R.string.listening_stats_empty_title),
++            style = MaterialTheme.typography.titleMedium,
++            color = MaterialTheme.colorScheme.onBackground,
++        )
++        Text(
++            stringResource(R.string.listening_stats_empty_detail),
++            style = MaterialTheme.typography.bodyMedium,
++            color = homeBodyColor(),
++            modifier = Modifier.padding(top = 8.dp),
++        )
++    }
++}
++
++@Composable
++private fun ListeningStatsRange.label(): String = stringResource(
++    when (this) {
++        ListeningStatsRange.Week -> R.string.listening_stats_range_week
++        ListeningStatsRange.Month -> R.string.listening_stats_range_month
++        ListeningStatsRange.Year -> R.string.listening_stats_range_year
++        ListeningStatsRange.All -> R.string.listening_stats_range_all
++    },
++)
++
++@Composable
++internal fun formatListeningDuration(ms: Long): String {
++    val totalMinutes = (ms / 60_000L).toInt()
++    val hours = totalMinutes / 60
++    val minutes = totalMinutes % 60
++    return if (hours > 0) {
++        stringResource(R.string.listening_stats_hours_minutes, hours, minutes)
++    } else {
++        stringResource(R.string.listening_stats_minutes, minutes)
++    }
++}
++
++@Composable
++internal fun listeningPlayCount(count: Int): String =
++    pluralStringResource(R.plurals.listening_stats_play_count, count, count)
+diff --git a/feature/home/src/main/res/values-b+zh+Hant/strings_listening_stats.xml b/feature/home/src/main/res/values-b+zh+Hant/strings_listening_stats.xml
+new file mode 100644
+index 0000000..89d75d1
+--- /dev/null
++++ b/feature/home/src/main/res/values-b+zh+Hant/strings_listening_stats.xml
+@@ -0,0 +1,24 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="home_listening_open_stats">查看統計</string>
++    <string name="listening_stats_title">聽歌統計</string>
++    <string name="listening_stats_range_week">7 天</string>
++    <string name="listening_stats_range_month">30 天</string>
++    <string name="listening_stats_range_year">一年</string>
++    <string name="listening_stats_range_all">全部</string>
++    <string name="listening_stats_total_time">收聽時長</string>
++    <string name="listening_stats_total_plays">播放次數</string>
++    <string name="listening_stats_active_days">聽歌天數</string>
++    <string name="listening_stats_hours_minutes">%1$d 小時 %2$d 分鐘</string>
++    <string name="listening_stats_minutes">%1$d 分鐘</string>
++    <string name="listening_stats_by_hour">一天中的時段</string>
++    <string name="listening_stats_peak_hour">最常在 %1$02d:00 前後聽歌</string>
++    <string name="listening_stats_top_tracks">最常聽的歌曲</string>
++    <string name="listening_stats_top_albums">最常聽的專輯</string>
++    <string name="listening_stats_top_artists">最常聽的藝人</string>
++    <plurals name="listening_stats_play_count">
++        <item quantity="other">%1$d 次</item>
++    </plurals>
++    <string name="listening_stats_empty_title">這段時間還沒有收聽紀錄</string>
++    <string name="listening_stats_empty_detail">聽滿 30 秒（短曲目聽滿一半）才會計入。</string>
++</resources>
+diff --git a/feature/home/src/main/res/values-zh/strings_listening_stats.xml b/feature/home/src/main/res/values-zh/strings_listening_stats.xml
+new file mode 100644
+index 0000000..3d4b365
+--- /dev/null
++++ b/feature/home/src/main/res/values-zh/strings_listening_stats.xml
+@@ -0,0 +1,24 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="home_listening_open_stats">查看统计</string>
++    <string name="listening_stats_title">听歌统计</string>
++    <string name="listening_stats_range_week">7 天</string>
++    <string name="listening_stats_range_month">30 天</string>
++    <string name="listening_stats_range_year">一年</string>
++    <string name="listening_stats_range_all">全部</string>
++    <string name="listening_stats_total_time">收听时长</string>
++    <string name="listening_stats_total_plays">播放次数</string>
++    <string name="listening_stats_active_days">听歌天数</string>
++    <string name="listening_stats_hours_minutes">%1$d 小时 %2$d 分钟</string>
++    <string name="listening_stats_minutes">%1$d 分钟</string>
++    <string name="listening_stats_by_hour">一天中的时段</string>
++    <string name="listening_stats_peak_hour">最常在 %1$02d:00 前后听歌</string>
++    <string name="listening_stats_top_tracks">最常听的歌曲</string>
++    <string name="listening_stats_top_albums">最常听的专辑</string>
++    <string name="listening_stats_top_artists">最常听的艺术家</string>
++    <plurals name="listening_stats_play_count">
++        <item quantity="other">%1$d 次</item>
++    </plurals>
++    <string name="listening_stats_empty_title">这段时间还没有收听记录</string>
++    <string name="listening_stats_empty_detail">听满 30 秒（短曲目听满一半）才会计入。</string>
++</resources>
+diff --git a/feature/home/src/main/res/values/strings_listening_stats.xml b/feature/home/src/main/res/values/strings_listening_stats.xml
+new file mode 100644
+index 0000000..e06a664
+--- /dev/null
++++ b/feature/home/src/main/res/values/strings_listening_stats.xml
+@@ -0,0 +1,25 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="home_listening_open_stats">View stats</string>
++    <string name="listening_stats_title">Listening stats</string>
++    <string name="listening_stats_range_week">7 days</string>
++    <string name="listening_stats_range_month">30 days</string>
++    <string name="listening_stats_range_year">Year</string>
++    <string name="listening_stats_range_all">All time</string>
++    <string name="listening_stats_total_time">Listening time</string>
++    <string name="listening_stats_total_plays">Plays</string>
++    <string name="listening_stats_active_days">Active days</string>
++    <string name="listening_stats_hours_minutes">%1$d h %2$d min</string>
++    <string name="listening_stats_minutes">%1$d min</string>
++    <string name="listening_stats_by_hour">Time of day</string>
++    <string name="listening_stats_peak_hour">Most often around %1$02d:00</string>
++    <string name="listening_stats_top_tracks">Top tracks</string>
++    <string name="listening_stats_top_albums">Top albums</string>
++    <string name="listening_stats_top_artists">Top artists</string>
++    <plurals name="listening_stats_play_count">
++        <item quantity="one">%1$d play</item>
++        <item quantity="other">%1$d plays</item>
++    </plurals>
++    <string name="listening_stats_empty_title">No listens in this range yet</string>
++    <string name="listening_stats_empty_detail">Plays count after 30 seconds, or half of a short track.</string>
++</resources>
+-- 
+2.43.0
+

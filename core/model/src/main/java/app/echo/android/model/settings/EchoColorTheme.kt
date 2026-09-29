@@ -11,6 +11,7 @@ enum class EchoColorTheme(val id: String) {
     Plum("plum"),
     Copper("copper"),
     Frost("frost"),
+    Custom("custom"),
     ;
 
     companion object {

@@ -27,6 +27,11 @@ import app.echo.android.model.playback.EchoTrackRef
 import app.echo.android.model.settings.EchoAppLanguage
 import app.echo.android.model.settings.EchoLyricsPageStyle
 import app.echo.android.model.settings.EchoColorTheme
+import app.echo.android.model.settings.EchoCustomColors
+import app.echo.android.model.settings.EchoSavedColorTheme
+import app.echo.android.model.settings.EchoSavedColorThemeResult
+import app.echo.android.model.settings.EchoSavedColorThemes
+import app.echo.android.model.settings.toEchoOpaqueColor
 import app.echo.android.model.settings.EchoPerformanceMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -53,11 +58,13 @@ data class EchoAppSettings(
     val trackAudioInfoTagsVisible: Boolean = true,
     val pcHandoffEnabled: Boolean = true,
     val showLyricsControlDeck: Boolean = false,
-    val playerPageStyle: String = "record_sleeve",
+    val playerPageStyle: String = "classic",
     val playerTextScale: Float = 1f,
     val playerArtworkScale: Float = 1f,
     val onlineLyricsEnabled: Boolean = false,
     val lockScreenLyricsEnabled: Boolean = true,
+    val floatingLyrics: app.echo.android.model.settings.EchoFloatingLyricsSettings =
+        app.echo.android.model.settings.EchoFloatingLyricsSettings(),
     val usbExclusiveEnabled: Boolean = false,
     val usbBitPerfectEnabled: Boolean = false,
     val usbExclusiveAutoRequestOnStartup: Boolean = true,
@@ -103,6 +110,9 @@ data class EchoAppSettings(
     val importedFontUri: String? = null,
     val themeMode: String = EchoThemeMode.Dark,
     val colorTheme: String = EchoColorTheme.Default.id,
+    val customColors: EchoCustomColors = EchoCustomColors.Default,
+    val savedColorThemes: List<EchoSavedColorTheme> = emptyList(),
+    val appliedSavedColorThemeId: String? = null,
     val appLanguage: String = EchoAppLanguage.System,
     val scheduledDarkModeEnabled: Boolean = false,
     val scheduledDarkStartMinute: Int = 22 * 60,
@@ -131,6 +141,9 @@ data class EchoAppSettings(
     val webDavServerUrl: String? = null,
     val webDavUsername: String? = null,
     val webDavPassword: String? = null,
+    val smbServerUrl: String? = null,
+    val smbUsername: String? = null,
+    val smbPassword: String? = null,
     val jellyfinServerUrl: String? = null,
     val jellyfinUsername: String? = null,
     val jellyfinPassword: String? = null,
@@ -223,6 +236,7 @@ class EchoSettingsStore(
 
     val appSettings: Flow<EchoAppSettings> =
         context.echoSettings.data.map { preferences ->
+            val savedColorThemes = EchoSavedColorThemeCodec.decode(preferences[Keys.SavedColorThemes])
             EchoAppSettings(
                 preferOffload = preferences[Keys.PreferOffload] ?: true,
                 lastOutputRoute = preferences[Keys.LastOutputRoute] ?: "system",
@@ -239,6 +253,12 @@ class EchoSettingsStore(
                 playerArtworkScale = PlayerAppearancePreferences.artworkScale(preferences),
                 onlineLyricsEnabled = preferences[Keys.OnlineLyricsEnabled] ?: false,
                 lockScreenLyricsEnabled = preferences[Keys.LockScreenLyricsEnabled] ?: true,
+                floatingLyrics = app.echo.android.model.settings.EchoFloatingLyricsSettings(
+                    enabled = preferences[Keys.FloatingLyricsEnabled] ?: false,
+                    locked = preferences[Keys.FloatingLyricsLocked] ?: false,
+                    fontScale = preferences[Keys.FloatingLyricsFontScale] ?: 1f,
+                    offsetY = preferences[Keys.FloatingLyricsOffsetY] ?: -1,
+                ).normalized,
                 usbExclusiveEnabled = preferences[Keys.UsbExclusiveEnabled] ?: false,
                 usbBitPerfectEnabled = preferences[Keys.UsbBitPerfectEnabled] ?: false,
                 trackTransitions = app.echo.android.model.playback.EchoTrackTransitionOptions(
@@ -313,6 +333,10 @@ class EchoSettingsStore(
                 importedFontUri = preferences[Keys.ImportedFontUri],
                 themeMode = normalizeThemeMode(preferences[Keys.ThemeMode]),
                 colorTheme = EchoColorTheme.fromId(preferences[Keys.ColorTheme]).id,
+                customColors = readCustomColors(preferences),
+                savedColorThemes = savedColorThemes,
+                appliedSavedColorThemeId = preferences[Keys.AppliedSavedColorThemeId]
+                    ?.takeIf { id -> savedColorThemes.any { it.id == id } },
                 appLanguage = context.echoAppLanguage(EchoAppLanguage.fromId(preferences[Keys.AppLanguage])),
                 scheduledDarkModeEnabled = preferences[Keys.ScheduledDarkModeEnabled] ?: false,
                 scheduledDarkStartMinute = (preferences[Keys.ScheduledDarkStartMinute] ?: 22 * 60).coerceIn(0, 23 * 60 + 59),
@@ -371,6 +395,9 @@ class EchoSettingsStore(
                     EchoSecretKeys.WebDavPassword,
                     preferences[Keys.WebDavPassword],
                 ),
+                smbServerUrl = preferences[Keys.SmbServerUrl],
+                smbUsername = preferences[Keys.SmbUsername],
+                smbPassword = preferences[Keys.SmbServerUrl]?.let { secrets.get(EchoSecretKeys.SmbPassword) },
                 jellyfinServerUrl = preferences[Keys.JellyfinServerUrl]
                     ?.let(::normalizeJellyfinBaseUrl)
                     ?.takeIf { it.isNotBlank() },
@@ -442,7 +469,15 @@ class EchoSettingsStore(
     }
 
     suspend fun setPlayerAppearance(style: String, textScale: Float, artworkScale: Float) {
-        context.echoSettings.edit { PlayerAppearancePreferences.write(it, style, textScale, artworkScale) }
+        context.echoSettings.edit { preferences ->
+            val previous = PlayerAppearancePreferences.style(preferences)
+            PlayerAppearancePreferences.write(preferences, style, textScale, artworkScale)
+            val next = PlayerAppearancePreferences.style(preferences)
+            // Style changes retie lyrics. Scale edits on the same style do not.
+            if (next != previous) {
+                writeLyricsPageStyle(preferences, PlayerAppearancePreferences.boundLyricsStyle(next))
+            }
+        }
     }
 
     suspend fun setOnlineLyricsEnabled(enabled: Boolean) {
@@ -451,6 +486,16 @@ class EchoSettingsStore(
 
     suspend fun setLockScreenLyricsEnabled(enabled: Boolean) {
         context.echoSettings.edit { it[Keys.LockScreenLyricsEnabled] = enabled }
+    }
+
+    suspend fun setFloatingLyrics(value: app.echo.android.model.settings.EchoFloatingLyricsSettings) {
+        val normalized = value.normalized
+        context.echoSettings.edit {
+            it[Keys.FloatingLyricsEnabled] = normalized.enabled
+            it[Keys.FloatingLyricsLocked] = normalized.locked
+            it[Keys.FloatingLyricsFontScale] = normalized.fontScale
+            it[Keys.FloatingLyricsOffsetY] = normalized.offsetY
+        }
     }
 
     suspend fun setUsbExclusiveEnabled(enabled: Boolean) {
@@ -754,15 +799,31 @@ class EchoSettingsStore(
     suspend fun setLyricsPageStyle(value: String) {
         val style = EchoLyricsPageStyle.fromId(value)
         context.echoSettings.edit { preferences ->
-            // Apply the layout together so a switch never flashes a mixed preset.
-            if (EchoLyricsPageStyle.fromId(preferences[Keys.LyricsPageStyle]) != style) {
-                preferences[Keys.LyricsPageStyle] = style.id
-                preferences[Keys.LyricsFontFamily] = style.defaultFontFamily
-                preferences[Keys.LyricsAlignment] = style.defaultAlignment
-                preferences[Keys.LyricsColorMode] = EchoLyricsColorMode.White
+            val previous = EchoLyricsPageStyle.fromId(preferences[Keys.LyricsPageStyle])
+            writeLyricsPageStyle(preferences, style)
+            if (previous != style) {
+                val player = PlayerAppearancePreferences.style(preferences)
+                val bound = PlayerAppearancePreferences.boundPlayerStyle(style, player)
+                if (bound != player) {
+                    PlayerAppearancePreferences.write(
+                        preferences,
+                        bound,
+                        PlayerAppearancePreferences.textScale(preferences),
+                        PlayerAppearancePreferences.artworkScale(preferences),
+                    )
+                }
             }
-            preferences[Keys.LyricsPageStyle] = style.id
         }
+    }
+
+    private fun writeLyricsPageStyle(preferences: MutablePreferences, style: EchoLyricsPageStyle) {
+        // Apply the layout together so a switch never flashes a mixed preset.
+        if (EchoLyricsPageStyle.fromId(preferences[Keys.LyricsPageStyle]) != style) {
+            preferences[Keys.LyricsFontFamily] = style.defaultFontFamily
+            preferences[Keys.LyricsAlignment] = style.defaultAlignment
+            preferences[Keys.LyricsColorMode] = EchoLyricsColorMode.White
+        }
+        preferences[Keys.LyricsPageStyle] = style.id
     }
 
     suspend fun setLyricsFontFamily(value: String) {
@@ -844,11 +905,122 @@ class EchoSettingsStore(
 
     suspend fun setColorTheme(value: String) {
         val safeValue = EchoColorTheme.fromId(value).id
-        context.echoSettings.edit { it[Keys.ColorTheme] = safeValue }
+        context.echoSettings.edit { prefs ->
+            prefs[Keys.ColorTheme] = safeValue
+            if (safeValue != EchoColorTheme.Custom.id) prefs.remove(Keys.AppliedSavedColorThemeId)
+        }
         cacheStartupThemeSnapshot(
             currentStartupThemeSnapshot().copy(colorTheme = safeValue),
             synchronous = true,
         )
+    }
+
+    suspend fun setCustomColors(colors: EchoCustomColors) {
+        val safe = colors.normalized()
+        context.echoSettings.edit { prefs ->
+            prefs.putCustomColors(safe)
+            prefs[Keys.ColorTheme] = EchoColorTheme.Custom.id
+            val saved = EchoSavedColorThemeCodec.decode(prefs[Keys.SavedColorThemes])
+            val applied = prefs[Keys.AppliedSavedColorThemeId]
+            if (saved.none { it.id == applied && it.colors == safe }) {
+                prefs.remove(Keys.AppliedSavedColorThemeId)
+            }
+        }
+        cacheStartupThemeSnapshot(
+            currentStartupThemeSnapshot().copy(
+                colorTheme = EchoColorTheme.Custom.id,
+                customColors = safe,
+            ),
+            synchronous = true,
+        )
+    }
+
+    suspend fun saveCustomColorTheme(name: String): EchoSavedColorThemeResult {
+        val normalizedName = EchoSavedColorThemes.normalizeName(name)
+            ?: return EchoSavedColorThemeResult.InvalidName
+        var result = EchoSavedColorThemeResult.InvalidName
+        var colorsForSnapshot = EchoCustomColors.Default
+        context.echoSettings.edit { prefs ->
+            val colors = readCustomColors(prefs)
+            colorsForSnapshot = colors
+            val current = EchoSavedColorThemeCodec.decode(prefs[Keys.SavedColorThemes])
+            val existing = current.firstOrNull { it.name.equals(normalizedName, ignoreCase = true) }
+            val theme = EchoSavedColorTheme(
+                id = existing?.id ?: java.util.UUID.randomUUID().toString(),
+                name = normalizedName,
+                colors = colors,
+            )
+            val next = EchoSavedColorThemes.upsert(current, theme)
+            if (next == null) {
+                result = EchoSavedColorThemeResult.Full
+            } else {
+                prefs[Keys.SavedColorThemes] = EchoSavedColorThemeCodec.encode(next)
+                prefs[Keys.AppliedSavedColorThemeId] = existing?.id ?: theme.id
+                prefs[Keys.ColorTheme] = EchoColorTheme.Custom.id
+                prefs.putCustomColors(colors)
+                result = if (existing != null) {
+                    EchoSavedColorThemeResult.Updated
+                } else {
+                    EchoSavedColorThemeResult.Saved
+                }
+            }
+        }
+        if (result == EchoSavedColorThemeResult.Saved || result == EchoSavedColorThemeResult.Updated) {
+            cacheStartupThemeSnapshot(
+                currentStartupThemeSnapshot().copy(
+                    colorTheme = EchoColorTheme.Custom.id,
+                    customColors = colorsForSnapshot,
+                ),
+                synchronous = true,
+            )
+        }
+        return result
+    }
+
+    suspend fun applySavedColorTheme(id: String) {
+        var applied: EchoCustomColors? = null
+        context.echoSettings.edit { prefs ->
+            val theme = EchoSavedColorThemeCodec.decode(prefs[Keys.SavedColorThemes])
+                .firstOrNull { it.id == id }
+                ?: return@edit
+            prefs.putCustomColors(theme.colors)
+            prefs[Keys.ColorTheme] = EchoColorTheme.Custom.id
+            prefs[Keys.AppliedSavedColorThemeId] = theme.id
+            applied = theme.colors
+        }
+        applied?.let { colors ->
+            cacheStartupThemeSnapshot(
+                currentStartupThemeSnapshot().copy(
+                    colorTheme = EchoColorTheme.Custom.id,
+                    customColors = colors,
+                ),
+                synchronous = true,
+            )
+        }
+    }
+
+    suspend fun deleteSavedColorTheme(id: String) {
+        context.echoSettings.edit { prefs ->
+            val saved = EchoSavedColorThemeCodec.decode(prefs[Keys.SavedColorThemes])
+            prefs[Keys.SavedColorThemes] = EchoSavedColorThemeCodec.encode(
+                EchoSavedColorThemes.remove(saved, id),
+            )
+            if (prefs[Keys.AppliedSavedColorThemeId] == id) prefs.remove(Keys.AppliedSavedColorThemeId)
+        }
+    }
+
+    private fun readCustomColors(preferences: androidx.datastore.preferences.core.Preferences): EchoCustomColors =
+        EchoCustomColors.fromStored(
+            preferences[Keys.CustomAccent],
+            preferences[Keys.CustomSecondary],
+            preferences[Keys.CustomBackground],
+        )
+
+    private fun androidx.datastore.preferences.core.MutablePreferences.putCustomColors(colors: EchoCustomColors) {
+        val safe = colors.normalized()
+        this[Keys.CustomAccent] = safe.accent
+        this[Keys.CustomSecondary] = safe.secondary
+        this[Keys.CustomBackground] = safe.background
     }
 
     fun persistAppLanguageSnapshot(value: String) {
@@ -1184,6 +1356,32 @@ class EchoSettingsStore(
         }
     }
 
+    /** 用户名可以留空（访客）；此时不保存密码。 */
+    suspend fun setSmbCredentials(
+        serverUrl: String,
+        username: String,
+        password: String,
+    ) {
+        val normalizedUrl = serverUrl.trim().trimEnd('/', '\\')
+        if (normalizedUrl.isBlank()) {
+            clearSmbCredentials()
+            return
+        }
+        secrets.set(EchoSecretKeys.SmbPassword, password.takeIf { username.isNotBlank() && it.isNotEmpty() })
+        context.echoSettings.edit {
+            it[Keys.SmbServerUrl] = normalizedUrl
+            if (username.isBlank()) it.remove(Keys.SmbUsername) else it[Keys.SmbUsername] = username.trim()
+        }
+    }
+
+    suspend fun clearSmbCredentials() {
+        secrets.set(EchoSecretKeys.SmbPassword, null)
+        context.echoSettings.edit {
+            it.remove(Keys.SmbServerUrl)
+            it.remove(Keys.SmbUsername)
+        }
+    }
+
     suspend fun clearWebDavCredentials() {
         secrets.set(EchoSecretKeys.WebDavPassword, null)
         context.echoSettings.edit {
@@ -1264,7 +1462,16 @@ class EchoSettingsStore(
     suspend fun applyBackupSettings(backup: app.echo.android.model.backup.EchoBackupSettings) {
         context.echoSettings.edit { prefs ->
             backup.themeMode?.let { prefs[Keys.ThemeMode] = it }
-            backup.colorTheme?.let { prefs[Keys.ColorTheme] = it }
+            backup.colorTheme?.let { prefs[Keys.ColorTheme] = EchoColorTheme.fromId(it).id }
+            backup.customAccent?.let { prefs[Keys.CustomAccent] = it.toEchoOpaqueColor() }
+            backup.customSecondary?.let { prefs[Keys.CustomSecondary] = it.toEchoOpaqueColor() }
+            backup.customBackground?.let { prefs[Keys.CustomBackground] = it.toEchoOpaqueColor() }
+            backup.savedColorThemes?.let { themes ->
+                prefs[Keys.SavedColorThemes] = EchoSavedColorThemeCodec.encode(themes)
+            }
+            backup.appliedSavedColorThemeId?.let { id ->
+                if (id.isBlank()) prefs.remove(Keys.AppliedSavedColorThemeId) else prefs[Keys.AppliedSavedColorThemeId] = id
+            }
             backup.appLanguage?.let { prefs[Keys.AppLanguage] = it }
             backup.performanceMode?.let { prefs[Keys.PerformanceMode] = it }
             backup.dynamicColorEnabled?.let { prefs[Keys.DynamicColorEnabled] = it }
@@ -1363,6 +1570,10 @@ class EchoSettingsStore(
         val ShowLyricsControlDeck = booleanPreferencesKey("show_lyrics_control_deck")
         val OnlineLyricsEnabled = booleanPreferencesKey("online_lyrics_enabled")
         val LockScreenLyricsEnabled = booleanPreferencesKey("lock_screen_lyrics_enabled")
+        val FloatingLyricsEnabled = booleanPreferencesKey("floating_lyrics_enabled")
+        val FloatingLyricsLocked = booleanPreferencesKey("floating_lyrics_locked")
+        val FloatingLyricsFontScale = floatPreferencesKey("floating_lyrics_font_scale")
+        val FloatingLyricsOffsetY = intPreferencesKey("floating_lyrics_offset_y")
         val UsbExclusiveEnabled = booleanPreferencesKey("usb_exclusive_enabled")
         val UsbBitPerfectEnabled = booleanPreferencesKey("usb_bit_perfect_enabled")
         val TrackFadeEnabled = booleanPreferencesKey("track_fade_enabled")
@@ -1426,6 +1637,11 @@ class EchoSettingsStore(
         val ImportedFontUri = stringPreferencesKey("imported_font_uri")
         val ThemeMode = stringPreferencesKey("theme_mode")
         val ColorTheme = stringPreferencesKey("color_theme")
+        val CustomAccent = intPreferencesKey("custom_accent")
+        val CustomSecondary = intPreferencesKey("custom_secondary")
+        val CustomBackground = intPreferencesKey("custom_background")
+        val SavedColorThemes = stringPreferencesKey("saved_color_themes")
+        val AppliedSavedColorThemeId = stringPreferencesKey("applied_saved_color_theme_id")
         val AppLanguage = stringPreferencesKey("app_language")
         val ScheduledDarkModeEnabled = booleanPreferencesKey("scheduled_dark_mode_enabled")
         val ScheduledDarkStartMinute = intPreferencesKey("scheduled_dark_start_minute")
@@ -1455,6 +1671,8 @@ class EchoSettingsStore(
         val WebDavServerUrl = stringPreferencesKey("webdav_server_url")
         val WebDavUsername = stringPreferencesKey("webdav_username")
         val WebDavPassword = stringPreferencesKey("webdav_password")
+        val SmbServerUrl = stringPreferencesKey("smb_server_url")
+        val SmbUsername = stringPreferencesKey("smb_username")
         val EchoLinkSavedPcs = stringPreferencesKey("echo_link_saved_pcs")
         val JellyfinServerUrl = stringPreferencesKey("jellyfin_server_url")
         val JellyfinUsername = stringPreferencesKey("jellyfin_username")
@@ -1578,6 +1796,11 @@ fun EchoAppSettings.toBackupSettings(): app.echo.android.model.backup.EchoBackup
     app.echo.android.model.backup.EchoBackupSettings(
         themeMode = themeMode,
         colorTheme = colorTheme,
+        customAccent = customColors.accent,
+        customSecondary = customColors.secondary,
+        customBackground = customColors.background,
+        savedColorThemes = savedColorThemes,
+        appliedSavedColorThemeId = appliedSavedColorThemeId,
         appLanguage = appLanguage,
         performanceMode = performanceMode,
         dynamicColorEnabled = dynamicColorEnabled,

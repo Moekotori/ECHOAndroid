@@ -1,6 +1,8 @@
 package app.echo.android
 
 import app.echo.android.model.settings.EchoBackgroundStyle
+import app.echo.android.model.settings.EchoCustomColors
+import app.echo.android.model.settings.EchoSavedColorThemeResult
 
 import app.echo.android.model.library.LibraryScanOptions
 import android.app.Application
@@ -66,6 +68,8 @@ import app.echo.android.model.playback.EchoEqualizerUserPresets
 import app.echo.android.model.playback.PlaybackControlsState
 import app.echo.android.model.playback.PlaybackDiagnosticsState
 import app.echo.android.model.playback.OpraHeadphoneCorrectionState
+import app.echo.android.model.playback.ListeningStats
+import app.echo.android.model.playback.ListeningStatsRange
 import app.echo.android.model.playback.PlaybackHeatmapDay
 import app.echo.android.model.playback.PlaybackMetadataState
 import app.echo.android.model.playback.PlaybackPositionState
@@ -80,16 +84,17 @@ import app.echo.android.playback.EchoPlaybackProcessRuntime
 import app.echo.android.playback.EchoReplayGainScanner
 import app.echo.android.model.playback.EchoReplayGainScanFailure
 import app.echo.android.model.playback.EchoReplayGainScanState
-import java.time.LocalDate
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -234,8 +239,21 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     val recentPlaybackAlbums: StateFlow<List<AlbumSummary>> = _recentPlaybackAlbums.asStateFlow()
     private val _recentPlaybackArtists = MutableStateFlow<List<ArtistSummary>>(emptyList())
     val recentPlaybackArtists: StateFlow<List<ArtistSummary>> = _recentPlaybackArtists.asStateFlow()
-    private val _recentPlaybackHeatmap = MutableStateFlow<List<PlaybackHeatmapDay>>(emptyList())
-    val recentPlaybackHeatmap: StateFlow<List<PlaybackHeatmapDay>> = _recentPlaybackHeatmap.asStateFlow()
+    private val listeningHistory = (application as EchoApplication).listeningHistory
+    val recentPlaybackHeatmap: StateFlow<List<PlaybackHeatmapDay>> = listeningHistory
+        .observeHeatmap(HOME_HEATMAP_VISIBLE_DAYS)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), emptyList())
+    private val _listeningStats = MutableStateFlow<ListeningStats?>(null)
+    val listeningStats: StateFlow<ListeningStats?> = _listeningStats.asStateFlow()
+    private var listeningStatsJob: Job? = null
+
+    fun loadListeningStats(range: ListeningStatsRange) {
+        listeningStatsJob?.cancel()
+        listeningStatsJob = viewModelScope.launch {
+            val stats = withContext(Dispatchers.IO) { listeningHistory.stats(range) }
+            _listeningStats.value = stats
+        }
+    }
     private val _usbExclusiveTestResult = MutableStateFlow(
         application.getString(R.string.usb_test_idle),
     )
@@ -245,7 +263,6 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     private val albumPlaybackCounts = mutableMapOf<String, Int>()
     private val artistPlaybackCounts = mutableMapOf<String, Int>()
-    private val playbackHeatmapCounts = mutableMapOf<Long, Int>()
     init {
         lastFmController.start(
             settingsFlow = settingsStore.appSettings,
@@ -1161,6 +1178,12 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun setFloatingLyrics(value: app.echo.android.model.settings.EchoFloatingLyricsSettings) {
+        updateSettings {
+            setFloatingLyrics(value)
+        }
+    }
+
     fun setSetlistFmApiKey(apiKey: String?) {
         updateSettings {
             setSetlistFmApiKey(apiKey)
@@ -1618,6 +1641,33 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun setCustomColors(colors: EchoCustomColors) {
+        updateSettings {
+            setCustomColors(colors)
+        }
+    }
+
+    fun saveCustomColorTheme(name: String, onResult: (EchoSavedColorThemeResult) -> Unit) {
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                settingsStore.saveCustomColorTheme(name)
+            }
+            onResult(result)
+        }
+    }
+
+    fun applySavedColorTheme(id: String) {
+        updateSettings {
+            applySavedColorTheme(id)
+        }
+    }
+
+    fun deleteSavedColorTheme(id: String) {
+        updateSettings {
+            deleteSavedColorTheme(id)
+        }
+    }
+
     fun setAppLanguage(value: String) {
         val language = EchoAppLanguage.fromId(value)
         settingsStore.persistAppLanguageSnapshot(language)
@@ -1758,6 +1808,34 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         )
         libraryController.refreshWebDav(endpoint)
         saveWebDavCredentials(serverUrl, username, password)
+    }
+
+    fun saveSmbCredentials(
+        serverUrl: String,
+        username: String,
+        password: String,
+    ) {
+        updateSettings {
+            setSmbCredentials(serverUrl, username, password)
+        }
+    }
+
+    fun clearSmbCredentials() {
+        updateSettings {
+            clearSmbCredentials()
+        }
+    }
+
+    fun syncSmbLibrary(
+        serverUrl: String,
+        username: String,
+        password: String,
+    ) {
+        val endpoint = app.echo.android.data.smbEndpointFrom(serverUrl, username, password) ?: return
+        // 播放要用同一份凭据，先登记再扫描，扫完就能直接播。
+        app.echo.android.smb.EchoSmbConnections.replaceCredentials(listOf(endpoint))
+        libraryController.refreshSmb(endpoint)
+        saveSmbCredentials(serverUrl, username, password)
     }
 
     fun saveJellyfinCredentials(
@@ -2019,7 +2097,6 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     private fun recordRecentPlayback(trackId: String) {
         viewModelScope.launch {
-            recordPlaybackHeatmapTick()
             val (album, artist) = withContext(Dispatchers.IO) {
                 repository.recordPlayback(trackId)
                 repository.albumSummaryForTrack(trackId) to repository.artistSummaryForTrack(trackId)
@@ -2039,21 +2116,6 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                     .take(8)
             }
         }
-    }
-
-    private fun recordPlaybackHeatmapTick() {
-        val today = LocalDate.now().toEpochDay()
-        val firstVisibleDay = today - HOME_HEATMAP_VISIBLE_DAYS + 1
-        playbackHeatmapCounts[today] = (playbackHeatmapCounts[today] ?: 0) + 1
-        playbackHeatmapCounts.keys.removeAll { it < firstVisibleDay }
-        _recentPlaybackHeatmap.value = playbackHeatmapCounts
-            .toSortedMap()
-            .map { (epochDay, count) ->
-                PlaybackHeatmapDay(
-                    epochDay = epochDay,
-                    playCount = count,
-                )
-            }
     }
 
     private companion object {

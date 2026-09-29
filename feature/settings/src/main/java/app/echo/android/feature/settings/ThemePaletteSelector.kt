@@ -37,12 +37,14 @@ import androidx.compose.ui.unit.dp
 import app.echo.android.design.echoThemeTokens
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.model.settings.EchoColorTheme
+import app.echo.android.model.settings.EchoCustomColors
 
 private const val PaletteColumns = 5
 
 @Composable
 internal fun ThemePaletteSelector(
     selectedId: String,
+    customColors: EchoCustomColors,
     onSelect: (String) -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -83,6 +85,7 @@ internal fun ThemePaletteSelector(
                     row.forEach { theme ->
                         ColorThemeSwatch(
                             theme = theme,
+                            customColors = customColors,
                             selected = theme == selected,
                             darkPreview = dark,
                             onSelect = { onSelect(theme.id) },
@@ -110,13 +113,14 @@ internal fun colorThemeLabel(id: String): String =
 @Composable
 private fun ColorThemeSwatch(
     theme: EchoColorTheme,
+    customColors: EchoCustomColors,
     selected: Boolean,
     darkPreview: Boolean,
     onSelect: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val tokens = remember(theme, darkPreview) { echoThemeTokens(theme, darkPreview) }
+    val tokens = remember(theme, customColors, darkPreview) { echoThemeTokens(theme, darkPreview, customColors) }
     val label = stringResource(colorThemeLabelRes(theme))
     val shape = RoundedCornerShape(14.dp)
     Box(
@@ -180,4 +184,5 @@ private fun colorThemeLabelRes(theme: EchoColorTheme): Int =
         EchoColorTheme.Plum -> R.string.settings_color_theme_plum
         EchoColorTheme.Copper -> R.string.settings_color_theme_copper
         EchoColorTheme.Frost -> R.string.settings_color_theme_frost
+        EchoColorTheme.Custom -> R.string.settings_color_theme_custom
     }

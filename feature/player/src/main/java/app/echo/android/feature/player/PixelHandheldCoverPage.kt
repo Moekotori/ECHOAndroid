@@ -55,6 +55,7 @@ internal fun PixelHandheldCoverPage(status: EchoPlaybackStatus, position: State<
                         autoSize = TextAutoSize.StepBased(22.sp, 36.sp, 1.sp), maxLines = 2,
                         overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth())
                     Text(track?.artist ?: stringResource(R.string.feature_player_pick_a_song_to_start_68b6af),
+                        modifier = Modifier.fillMaxWidth().openArtistWhen(track?.id, track?.artist, actions.openArtist),
                         color = ink, fontFamily = ExpressivePlayerStyle.PixelBody, fontSize = 27.sp,
                         lineHeight = 28.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     edition?.let { Text(it, color = ink, fontFamily = ExpressivePlayerStyle.PixelBody,

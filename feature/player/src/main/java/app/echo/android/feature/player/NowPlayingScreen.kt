@@ -276,11 +276,12 @@ fun NowPlayingScreen(
     onOnlineLyricsEnabledChange: (Boolean) -> Unit = {},
     isCurrentTrackFavorite: Boolean = false,
     onToggleFavorite: () -> Unit = {},
+    onOpenArtist: ((trackId: String, artistName: String) -> Unit)? = null,
     openLyricsRequestId: Int = 0,
     predictiveBackProgress: () -> Float = { 0f },
     presentationExpanded: Boolean = true,
     onDragProgress: (Float) -> Unit = {},
-    playerPageStyle: String = "record_sleeve",
+    playerPageStyle: String = DefaultPlayerStyle,
     playerTextScale: Float = 1f,
     playerArtworkScale: Float = 1f,
     onPlayerAppearanceChange: (String, Float, Float) -> Unit = { _, _, _ -> },
@@ -293,6 +294,10 @@ fun NowPlayingScreen(
         )
     }
     var appearance by remember(persistedAppearance) { mutableStateOf(persistedAppearance) }
+    // Style chips preview and save in the same click. Keep the latest draft here so
+    // the save does not persist the appearance from the previous composition.
+    val appearanceDraft = remember(persistedAppearance) { AppearanceDraft(persistedAppearance) }
+    appearanceDraft.current = appearance
     val track = status.track
     val isRadio = app.echo.android.model.radio.EchoRadioStation.isRadio(track?.id)
     val radioColors = if (isRadio) radioPlayerColors() else null
@@ -530,6 +535,7 @@ fun NowPlayingScreen(
                             isCurrentTrackFavorite = isCurrentTrackFavorite,
                             onToggleFavorite = onToggleFavorite,
                             onOpenLyrics = {},
+                            onOpenArtist = onOpenArtist,
                             modifier = Modifier.weight(1f).fillMaxHeight(),
                         )
                         NowPlayingLyricsPage(
@@ -565,6 +571,7 @@ fun NowPlayingScreen(
                             onAdjustLyricsOffset = onAdjustLyricsOffset,
                             onResetLyricsOffset = onResetLyricsOffset,
                             onOpenLyricsSettings = { lyricsSettingsVisible = true },
+                            onOpenArtist = onOpenArtist,
                             showTransportDock = false,
                             modifier = Modifier.weight(1f).fillMaxHeight(),
                         )
@@ -602,6 +609,7 @@ fun NowPlayingScreen(
                                     pagerState.animateScrollToPage(NowPlayingPage.Lyrics.ordinal)
                                 }
                             },
+                            onOpenArtist = onOpenArtist,
                             modifier = Modifier.fillMaxSize(),
                         )
                         NowPlayingPage.Lyrics -> NowPlayingLyricsPage(
@@ -638,6 +646,7 @@ fun NowPlayingScreen(
                             onAdjustLyricsOffset = onAdjustLyricsOffset,
                             onResetLyricsOffset = onResetLyricsOffset,
                             onOpenLyricsSettings = { lyricsSettingsVisible = true },
+                            onOpenArtist = onOpenArtist,
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
@@ -694,9 +703,13 @@ fun NowPlayingScreen(
             )
             PlaybackSettingsDrawer(
                 appearance = appearance,
-                onAppearancePreview = { appearance = it },
+                onAppearancePreview = { next ->
+                    appearanceDraft.current = next
+                    appearance = next
+                },
                 onAppearanceCommit = {
-                    onPlayerAppearanceChange(appearance.style, appearance.textScale, appearance.artworkScale)
+                    val next = appearanceDraft.current
+                    onPlayerAppearanceChange(next.style, next.textScale, next.artworkScale)
                 },
                 visible = playbackSettingsVisible,
                 status = status,
@@ -1711,3 +1724,5 @@ internal fun GlyphButton(
         }
     }
 }
+
+private class AppearanceDraft(var current: PlayerAppearance)

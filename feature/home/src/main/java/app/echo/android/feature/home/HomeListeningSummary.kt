@@ -27,7 +27,11 @@ import java.time.LocalDate
 import java.util.Locale
 
 @Composable
-internal fun HomeListeningSummary(days: List<PlaybackHeatmapDay>, onOpenLibrary: () -> Unit) {
+internal fun HomeListeningSummary(
+    days: List<PlaybackHeatmapDay>,
+    onOpenLibrary: () -> Unit,
+    onOpenStats: (() -> Unit)? = null,
+) {
     val today = LocalDate.now()
     val summary = remember(days, today) {
         val firstDay = today.with(DayOfWeek.MONDAY).minusWeeks(11).toEpochDay()
@@ -68,8 +72,14 @@ internal fun HomeListeningSummary(days: List<PlaybackHeatmapDay>, onOpenLibrary:
             style = MaterialTheme.typography.bodyMedium,
             color = scheme.onSurfaceVariant,
         )
-        TextButton(onClick = onOpenLibrary, modifier = Modifier.align(Alignment.End)) {
-            Text(stringResource(R.string.home_listening_open_library))
+        if (onOpenStats != null) {
+            TextButton(onClick = onOpenStats, modifier = Modifier.align(Alignment.End)) {
+                Text(stringResource(R.string.home_listening_open_stats))
+            }
+        } else {
+            TextButton(onClick = onOpenLibrary, modifier = Modifier.align(Alignment.End)) {
+                Text(stringResource(R.string.home_listening_open_library))
+            }
         }
     }
 }

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_smb_reading_index">讀取 SMB 索引</string>
+    <string name="library_smb_scanning">掃描 SMB 共用資料夾</string>
+    <string name="library_smb_sync_failed">SMB 音樂庫同步失敗</string>
+</resources>

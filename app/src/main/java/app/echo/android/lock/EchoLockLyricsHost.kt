@@ -34,6 +34,7 @@ fun EchoLockLyricsHost() {
         darkTheme = true,
         dynamicColor = settings.dynamicColorEnabled,
         colorTheme = EchoColorTheme.fromId(settings.colorTheme),
+        customColors = settings.customColors,
         playbackHapticsEnabled = false,
         effectivePerformanceMode = performance,
     ) {

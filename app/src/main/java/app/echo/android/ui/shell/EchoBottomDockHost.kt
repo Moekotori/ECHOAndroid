@@ -28,12 +28,13 @@ import app.echo.android.BottomDock
 import app.echo.android.EchoAndroidViewModel
 import app.echo.android.EchoTab
 import app.echo.android.design.EchoMotion
-import app.echo.android.design.echoBackdropGlassActive
 import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.design.echoTheme
 import app.echo.android.design.rememberSilkPagerFlingBehavior
 import app.echo.android.feature.player.MiniPlayer
 import app.echo.android.model.playback.EchoPlaybackStatus
+import app.echo.android.model.playback.PlaybackPositionState
+import kotlinx.coroutines.flow.StateFlow
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
 
 private val DockMotionEasing = EchoMotion.Silk
@@ -56,9 +57,11 @@ internal fun EchoBottomDockHost(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     modifier: Modifier = Modifier,
+    /** 投送到 DLNA / Chromecast 时换成远端进度。 */
+    positionFlow: StateFlow<PlaybackPositionState> = viewModel.playbackPosition,
 ) {
     // 传 State 引用而非值:进度 tick 不重组整个底栏,由 MiniPlayer 进度条绘制期读取
-    val playbackPosition = viewModel.playbackPosition.collectAsStateWithLifecycle()
+    val playbackPosition = positionFlow.collectAsStateWithLifecycle()
     // 以 lambda 延迟读取 pager 偏移,滑动时只更新指示条自身,不重组整个底栏
     val dockTabProgress = remember(pagerState) {
         {
@@ -89,18 +92,17 @@ internal fun EchoBottomDockHost(
             visibilityThreshold = 0.01f,
         )
     }
-    val liveGlass = echoBackdropGlassActive()
+    val theme = echoTheme()
     Column(
         modifier = modifier
             .fillMaxWidth()
             .background(
                 Brush.verticalGradient(
-                    if (darkTheme) {
-                        val theme = echoTheme()
-                        listOf(Color.Transparent, theme.night.copy(alpha = if (liveGlass) 0.12f else 0.50f), theme.night.copy(alpha = if (liveGlass) 0.36f else 0.94f))
-                    } else {
-                        listOf(Color.Transparent, echoTheme().night.copy(alpha = if (liveGlass) 0.12f else 0.50f), echoTheme().night.copy(alpha = if (liveGlass) 0.36f else 0.94f))
-                    },
+                    listOf(
+                        Color.Transparent,
+                        theme.night.copy(alpha = 0.50f),
+                        theme.night.copy(alpha = 0.94f),
+                    ),
                 ),
             )
             .navigationBarsPadding()

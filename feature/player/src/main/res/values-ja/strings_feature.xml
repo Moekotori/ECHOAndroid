@@ -58,6 +58,7 @@
     <string name="feature_player_no_matching_lyrics_found_7ffc7e">"同名の歌詞が見つかりません"</string>
     <string name="feature_player_normal_speed_a8fc98">"通常速度"</string>
     <string name="feature_player_not_playing_d72324">"未再生"</string>
+    <string name="feature_player_open_artist">"アーティストを表示"</string>
     <string name="feature_player_nothing_playing_3beac0">"再生なし"</string>
     <string name="feature_player_now_playing_214a7c">"再生中"</string>
     <string name="feature_player_off_12ac24">"オフ"</string>

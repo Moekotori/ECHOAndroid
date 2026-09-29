@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_smb_reading_index">SMB 索引を読み込み中</string>
+    <string name="library_smb_scanning">SMB 共有フォルダーをスキャン中</string>
+    <string name="library_smb_sync_failed">SMB ライブラリの同期に失敗しました</string>
+</resources>

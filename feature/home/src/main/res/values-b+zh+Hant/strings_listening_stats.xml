@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_listening_open_stats">查看統計</string>
+    <string name="listening_stats_title">聽歌統計</string>
+    <string name="listening_stats_range_week">7 天</string>
+    <string name="listening_stats_range_month">30 天</string>
+    <string name="listening_stats_range_year">一年</string>
+    <string name="listening_stats_range_all">全部</string>
+    <string name="listening_stats_total_time">收聽時長</string>
+    <string name="listening_stats_total_plays">播放次數</string>
+    <string name="listening_stats_active_days">聽歌天數</string>
+    <string name="listening_stats_hours_minutes">%1$d 小時 %2$d 分鐘</string>
+    <string name="listening_stats_minutes">%1$d 分鐘</string>
+    <string name="listening_stats_by_hour">一天中的時段</string>
+    <string name="listening_stats_peak_hour">最常在 %1$02d:00 前後聽歌</string>
+    <string name="listening_stats_top_tracks">最常聽的歌曲</string>
+    <string name="listening_stats_top_albums">最常聽的專輯</string>
+    <string name="listening_stats_top_artists">最常聽的藝人</string>
+    <plurals name="listening_stats_play_count">
+        <item quantity="other">%1$d 次</item>
+    </plurals>
+    <string name="listening_stats_empty_title">這段時間還沒有收聽紀錄</string>
+    <string name="listening_stats_empty_detail">聽滿 30 秒（短曲目聽滿一半）才會計入。</string>
+</resources>

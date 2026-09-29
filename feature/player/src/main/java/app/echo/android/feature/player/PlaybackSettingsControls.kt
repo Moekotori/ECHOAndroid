@@ -4,6 +4,7 @@ import app.echo.android.feature.player.R as L10nR
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -37,7 +38,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -169,6 +172,70 @@ internal fun PlaybackChoiceChip(
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
         )
+    }
+}
+
+@Composable
+internal fun PlaybackIconChoice(
+    icon: ImageVector,
+    description: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    slashed: Boolean = false,
+) {
+    val dark = LocalEchoDarkTheme.current
+    val accent = echoAccentColor()
+    val haptics = rememberEchoHapticPerformer()
+    val interactionSource = remember { MutableInteractionSource() }
+    val iconTint = if (dark) Color.White else echoTheme().heading
+    val containerColor by animateColorAsState(
+        targetValue = if (selected) {
+            accent.copy(alpha = if (dark) 0.22f else 0.16f)
+        } else {
+            if (dark) echoTheme().panel.copy(alpha = 0.46f) else Color.White.copy(alpha = 0.56f)
+        },
+        animationSpec = tween(durationMillis = if (app.echo.android.design.LocalEchoEffectivePerformanceMode.current.isLightweight) 0 else 180, easing = LyricsSettingsMotionEasing),
+        label = "playback-icon-choice-container",
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (selected) accent.copy(alpha = 0.72f) else if (dark) echoTheme().glassBorder else Color.Transparent,
+        animationSpec = tween(durationMillis = if (app.echo.android.design.LocalEchoEffectivePerformanceMode.current.isLightweight) 0 else 180, easing = LyricsSettingsMotionEasing),
+        label = "playback-icon-choice-border",
+    )
+    Box(
+        modifier = modifier
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(containerColor)
+            .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(14.dp))
+            .echoPressFeedback(interactionSource)
+            .selectable(
+                selected = selected,
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+                role = Role.RadioButton,
+                onClick = {
+                    if (!selected) haptics.tick()
+                    onClick()
+                },
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(Modifier.size(22.dp), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = description, tint = iconTint, modifier = Modifier.size(22.dp))
+            if (slashed) {
+                Canvas(Modifier.matchParentSize()) {
+                    drawLine(
+                        color = iconTint,
+                        start = Offset(size.width * 0.16f, size.height * 0.84f),
+                        end = Offset(size.width * 0.84f, size.height * 0.16f),
+                        strokeWidth = 1.6.dp.toPx(),
+                        cap = StrokeCap.Round,
+                    )
+                }
+            }
+        }
     }
 }
 

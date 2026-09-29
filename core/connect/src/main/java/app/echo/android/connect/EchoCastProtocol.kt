@@ -33,6 +33,13 @@ internal object EchoCastProtocol {
     fun stopJson(requestId: Int, mediaSessionId: Int): String =
         """{"type":"STOP","requestId":$requestId,"mediaSessionId":$mediaSessionId}"""
 
+    fun seekJson(requestId: Int, mediaSessionId: Int, positionMs: Long): String =
+        """{"type":"SEEK","requestId":$requestId,"mediaSessionId":$mediaSessionId,"currentTime":${positionMs.coerceAtLeast(0L) / 1000.0}}"""
+    fun statusRequestJson(requestId: Int): String =
+        """{"type":"GET_STATUS","requestId":$requestId}"""
+    fun setVolumeJson(requestId: Int, level: Float): String =
+        """{"type":"SET_VOLUME","requestId":$requestId,"volume":{"level":${level.coerceIn(0f, 1f)}}}"""
+
     fun loadJson(
         requestId: Int,
         contentId: String,

@@ -72,7 +72,7 @@ import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.design.progressFraction
-import app.echo.android.design.echoBackdropGlass
+import app.echo.android.design.echoFrostedGlass
 import app.echo.android.design.echoTheme
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
@@ -156,7 +156,7 @@ fun MiniPlayer(
         modifier = modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 64.dp)
-            .echoBackdropGlass(cornerRadius = cornerRadius, elevation = surfaceElevation)
+            .echoFrostedGlass(shape = RoundedCornerShape(cornerRadius), elevation = surfaceElevation)
             .padding(
                 start = if (compactDock) 4.dp else 12.dp,
                 top = if (compactDock) 7.dp else 5.dp,

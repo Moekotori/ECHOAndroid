@@ -636,6 +636,14 @@ internal class LibraryController(
         }
     }
 
+    fun refreshSmb(endpoint: app.echo.android.smb.EchoSmbEndpoint) {
+        startRemoteSync(
+            fallbackError = appContext.getString(R.string.remote_sync_smb_failed),
+        ) {
+            repository.refreshSmbSnapshot(endpoint)
+        }
+    }
+
     fun refreshJellyfin(
         endpoint: JellyfinEndpoint,
         onSucceeded: ((accessToken: String, userId: String) -> Unit)? = null,

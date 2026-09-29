@@ -143,6 +143,8 @@
     <string name="feature_connect_keep_pc_echo_running_and_both_devices_on_7986ec">"PC ECHO를 실행하고 두 기기를 같은 네트워크에 연결하세요."</string>
     <string name="feature_connect_link_preferences_f81ffb">"연결 설정"</string>
     <string name="feature_connect_listen_together_with_pc_41d068">"PC와 함께 듣기"</string>
+    <string name="feature_connect_listen_together_title">함께 듣기</string>
+    <string name="feature_connect_listen_together_detail">PC의 함께 듣기 방에 참여</string>
     <string name="feature_connect_nearby_pcs_b9b12a">"근처 PC"</string>
     <string name="feature_connect_no_pc_found_use_the_same_wi_fi_ce621e">PC를 찾지 못했습니다. 같은 Wi-Fi에서 Echo Link가 켜져 있는지 확인한 뒤 다시 시도하세요.</string>
     <string name="feature_connect_no_track_selected_258d56">"선택한 곡이 없습니다"</string>

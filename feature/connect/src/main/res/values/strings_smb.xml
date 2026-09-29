@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connect_smb_description">A shared folder on your NAS or computer, on the same network</string>
+    <string name="connect_smb_invalid_address">Enter a host and share, such as smb://nas/Music</string>
+    <string name="connect_smb_username_hint">Leave blank for guest access; DOMAIN\\user also works</string>
+</resources>

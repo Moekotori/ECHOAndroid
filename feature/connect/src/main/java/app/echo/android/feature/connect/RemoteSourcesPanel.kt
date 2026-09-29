@@ -26,6 +26,10 @@ import java.net.URI
 internal fun RemoteSourcesPanel(
     subsonicServerUrl: String?, subsonicUsername: String?, subsonicPassword: String?,
     webDavServerUrl: String?, webDavUsername: String?, webDavPassword: String?,
+    smbServerUrl: String?, smbUsername: String?, smbPassword: String?,
+    onSyncSmb: (String, String, String) -> Unit,
+    onSaveSmb: (String, String, String) -> Unit,
+    onClearSmb: () -> Unit,
     jellyfinServerUrl: String?, jellyfinUsername: String?, jellyfinPassword: String?,
     scanState: LibraryScanProgress,
     onSyncSubsonic: (String, String, String) -> Unit,
@@ -74,6 +78,18 @@ internal fun RemoteSourcesPanel(
             busy = scanState.isScanning, onSave = onSaveWebDav, onSync = onSyncWebDav, onClear = onClearWebDav,
         )
         SourceEditor(
+            title = "SMB",
+            description = stringResource(L10nR.string.connect_smb_description),
+            placeholder = "smb://192.168.1.10/Music",
+            savedUrl = smbServerUrl, savedUsername = smbUsername, savedPassword = smbPassword,
+            expanded = expandedSource == "smb", onExpand = { expandedSource = if (expandedSource == "smb") null else "smb" },
+            busy = scanState.isScanning, onSave = onSaveSmb, onSync = onSyncSmb, onClear = onClearSmb,
+            isValidUrl = ::isSmbAddress,
+            invalidUrlMessage = stringResource(L10nR.string.connect_smb_invalid_address),
+            credentialsOptional = true,
+            usernameHint = stringResource(L10nR.string.connect_smb_username_hint),
+        )
+        SourceEditor(
             title = "Jellyfin / Emby",
             description = stringResource(L10nR.string.feature_connect_jellyfin_or_emby_independent_of_echo_link_a8f3c1),
             placeholder = "http://192.168.1.10:8096",
@@ -95,17 +111,26 @@ private fun SourceEditor(
     onSave: (String, String, String) -> Unit,
     onSync: (String, String, String) -> Unit,
     onClear: () -> Unit,
+    isValidUrl: (String) -> Boolean = ::isHttpAddress,
+    invalidUrlMessage: String? = null,
+    /** SMB 可以访客访问：用户名、密码都可以留空。 */
+    credentialsOptional: Boolean = false,
+    usernameHint: String? = null,
 ) {
     var url by rememberSaveable(savedUrl) { mutableStateOf(savedUrl.orEmpty()) }
     var username by rememberSaveable(savedUsername) { mutableStateOf(savedUsername.orEmpty()) }
     var password by rememberSaveable(savedPassword) { mutableStateOf(savedPassword.orEmpty()) }
     var confirmingRemoval by rememberSaveable { mutableStateOf(false) }
     val keyboard = LocalSoftwareKeyboardController.current
-    val saved = !savedUrl.isNullOrBlank() && !savedUsername.isNullOrBlank() && !savedPassword.isNullOrBlank()
+    val saved = !savedUrl.isNullOrBlank() &&
+        (credentialsOptional || (!savedUsername.isNullOrBlank() && !savedPassword.isNullOrBlank()))
     val hasSaved = !savedUrl.isNullOrBlank() || !savedUsername.isNullOrBlank() || !savedPassword.isNullOrBlank()
     val dirty = url != savedUrl.orEmpty() || username != savedUsername.orEmpty() || password != savedPassword.orEmpty()
-    val validUrl = runCatching { URI(url.trim()).let { it.scheme?.lowercase() in listOf("http", "https") && !it.host.isNullOrBlank() } }.getOrDefault(false)
-    val ready = validUrl && username.isNotBlank() && password.isNotBlank()
+    val validUrl = isValidUrl(url.trim())
+    val ready = validUrl && (
+        if (credentialsOptional) username.isBlank() || password.isNotBlank()
+        else username.isNotBlank() && password.isNotBlank()
+    )
     val submit = { if (ready && !busy) { keyboard?.hide(); onSync(url.trim(), username.trim(), password) } }
     Column {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -124,8 +149,11 @@ private fun SourceEditor(
             Column(Modifier.padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 ConnectInput(stringResource(L10nR.string.feature_connect_server_address_ec245e), url, { url = it }, placeholder,
                     enabled = !busy, url = true,
-                    error = if (url.isNotBlank() && !validUrl) stringResource(L10nR.string.feature_connect_enter_a_full_http_or_https_address_3c7370) else null)
-                ConnectInput(stringResource(L10nR.string.feature_connect_username_dfb030), username, { username = it }, enabled = !busy)
+                    error = if (url.isNotBlank() && !validUrl) {
+                        invalidUrlMessage ?: stringResource(L10nR.string.feature_connect_enter_a_full_http_or_https_address_3c7370)
+                    } else null)
+                ConnectInput(stringResource(L10nR.string.feature_connect_username_dfb030), username, { username = it },
+                    usernameHint ?: "", enabled = !busy)
                 ConnectInput(stringResource(L10nR.string.feature_connect_password_2eaf7d), password, { password = it },
                     secret = true, enabled = !busy, onDone = submit)
                 Button(onClick = submit, enabled = ready && !busy, shape = ConnectControlShape, modifier = Modifier.fillMaxWidth()) {
@@ -152,4 +180,17 @@ private fun SourceEditor(
         onDismiss = { confirmingRemoval = false },
         onConfirm = { confirmingRemoval = false; url = ""; username = ""; password = ""; onClear() },
     )
+}
+
+private fun isHttpAddress(value: String): Boolean =
+    runCatching { URI(value).let { it.scheme?.lowercase() in listOf("http", "https") && !it.host.isNullOrBlank() } }
+        .getOrDefault(false)
+
+/** smb://host/share、\\host\share 或 host/share；至少要有主机和共享名。 */
+private fun isSmbAddress(value: String): Boolean {
+    var text = value.trim().replace('\\', '/')
+    if (text.startsWith("smb://", ignoreCase = true)) text = text.substring(6)
+    else if (text.contains("://")) return false
+    val parts = text.trimStart('/').split('/').filter { it.isNotBlank() }
+    return parts.size >= 2
 }

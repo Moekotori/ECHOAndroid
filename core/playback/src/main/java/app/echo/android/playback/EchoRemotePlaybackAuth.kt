@@ -253,7 +253,7 @@ fun echoPlaybackDataSourceFactory(context: Context): DataSource.Factory =
 @UnstableApi
 fun echoRemoteAuthDataSourceFactory(context: Context): ResolvingDataSource.Factory =
     ResolvingDataSource.Factory(
-        DefaultDataSource.Factory(context),
+        EchoSmbAwareDataSourceFactory(DefaultDataSource.Factory(context)),
         echoRemoteAuthResolver(),
     )
 

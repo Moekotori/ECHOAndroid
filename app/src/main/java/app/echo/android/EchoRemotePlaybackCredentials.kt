@@ -3,6 +3,8 @@ package app.echo.android
 import app.echo.android.data.EchoAppSettings
 import app.echo.android.data.JellyfinEndpoint
 import app.echo.android.data.SubsonicEndpoint
+import app.echo.android.data.smbEndpointFrom
+import app.echo.android.smb.EchoSmbConnections
 import app.echo.android.design.EchoArtworkUrlRewriteRegistry
 import app.echo.android.playback.EchoJellyfinPlaybackCredential
 import app.echo.android.playback.EchoRemotePlaybackAuthRegistry
@@ -20,6 +22,9 @@ internal data class RemotePlaybackCredentialSnapshot(
     val subsonicPassword: String?,
     val jellyfinServerUrl: String?,
     val jellyfinAccessToken: String?,
+    val smbServerUrl: String? = null,
+    val smbUsername: String? = null,
+    val smbPassword: String? = null,
 )
 
 internal fun EchoAppSettings.remotePlaybackCredentialSnapshot(): RemotePlaybackCredentialSnapshot =
@@ -32,6 +37,9 @@ internal fun EchoAppSettings.remotePlaybackCredentialSnapshot(): RemotePlaybackC
         subsonicPassword = subsonicPassword,
         jellyfinServerUrl = jellyfinServerUrl,
         jellyfinAccessToken = jellyfinAccessToken,
+        smbServerUrl = smbServerUrl,
+        smbUsername = smbUsername,
+        smbPassword = smbPassword,
     )
 
 internal val EchoSubsonicEndpointRef = AtomicReference<SubsonicEndpoint?>(null)
@@ -71,6 +79,10 @@ internal fun applyRemotePlaybackCredentials(
     ) {
         EchoRemotePlaybackAuthRegistry.replaceJellyfinCredentials(jellyfin)
         EchoArtworkUrlRewriteRegistry.notifyChanged()
+    }
+    val smb = listOfNotNull(smbEndpointFrom(settings.smbServerUrl, settings.smbUsername, settings.smbPassword))
+    if (smb.isNotEmpty() || allowClearIfEmpty) {
+        EchoSmbConnections.replaceCredentials(smb)
     }
     EchoSubsonicEndpointRef.set(subsonicEndpointFrom(settings))
 }

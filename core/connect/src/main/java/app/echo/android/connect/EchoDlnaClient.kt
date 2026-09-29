@@ -84,6 +84,50 @@ class EchoDlnaClient(
         return EchoDlnaSoap.parseTransportState(xml)
     }
 
+    /** GetPositionInfo：当前曲目的进度、时长和 URI。渲染器自己切到 NextURI 后，TrackURI 会随之变化。 */
+    fun positionInfo(renderer: EchoLanRenderer): EchoDlnaPositionInfo {
+        val xml = invoke(requireAvTransport(renderer), "GetPositionInfo", mapOf("InstanceID" to "0"))
+        return EchoDlnaPositionInfo(
+            positionMs = EchoDlnaSoap.parseRelTimeMs(xml),
+            durationMs = EchoDlnaSoap.parseDurationMs(xml),
+            trackUri = EchoDlnaSoap.xmlText(xml, "TrackURI"),
+        )
+    }
+
+    /** 0..100；渲染器没有 RenderingControl 时返回 null。 */
+    fun volume(renderer: EchoLanRenderer): Int? {
+        val service = renderer.renderingControl ?: return null
+        val xml = invoke(service, "GetVolume", mapOf("InstanceID" to "0", "Channel" to "Master"))
+        return EchoDlnaSoap.xmlText(xml, "CurrentVolume")?.toIntOrNull()?.coerceIn(0, 100)
+    }
+
+    fun setVolume(renderer: EchoLanRenderer, volume: Int) {
+        val service = renderer.renderingControl ?: throw EchoDlnaException(400, "no_renderingcontrol")
+        invoke(
+            service,
+            "SetVolume",
+            mapOf(
+                "InstanceID" to "0",
+                "Channel" to "Master",
+                "DesiredVolume" to volume.coerceIn(0, 100).toString(),
+            ),
+        )
+    }
+
+    /** 只设置下一首，用于渲染器已经自动切歌后补上再下一首。 */
+    fun setNext(renderer: EchoLanRenderer, next: EchoRemoteStreamItem) {
+        if (!EchoDlnaCastPolicy.canPlay(renderer, next)) return
+        invoke(
+            requireAvTransport(renderer),
+            "SetNextAVTransportURI",
+            mapOf(
+                "InstanceID" to "0",
+                "NextURI" to next.streamUrl,
+                "NextURIMetaData" to didl(next, EchoDlnaCastPolicy.offeredMime(next)),
+            ),
+        )
+    }
+
     private fun didl(item: EchoRemoteStreamItem, mime: String): String = EchoDlnaDidl.build(
         id = item.id,
         streamUrl = item.streamUrl,
@@ -101,6 +145,12 @@ class EchoDlnaClient(
     private fun invoke(service: EchoDlnaService, action: String, args: Map<String, String>): String =
         transport.post(service.controlUrl, service.serviceType, action, args)
 }
+
+data class EchoDlnaPositionInfo(
+    val positionMs: Long?,
+    val durationMs: Long?,
+    val trackUri: String?,
+)
 
 class EchoDlnaHttpTransport(
     private val connectTimeoutMs: Int = 6_000,

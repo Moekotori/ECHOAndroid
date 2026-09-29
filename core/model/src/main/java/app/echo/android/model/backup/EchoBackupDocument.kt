@@ -1,6 +1,7 @@
 package app.echo.android.model.backup
 
 import app.echo.android.model.playback.EchoChannelBalanceState
+import app.echo.android.model.settings.EchoSavedColorTheme
 import app.echo.android.model.playback.EchoEqualizerUserPreset
 import app.echo.android.model.playback.EchoTrackTransitionOptions
 import app.echo.android.model.playback.OpraEqBand
@@ -72,6 +73,11 @@ data class EchoBackupSettings(
     val uiFontFamily: String? = null,
     val uiFontScale: Float? = null,
     val uiDensityScale: Float? = null,
+    val customAccent: Int? = null,
+    val customSecondary: Int? = null,
+    val customBackground: Int? = null,
+    val savedColorThemes: List<EchoSavedColorTheme>? = null,
+    val appliedSavedColorThemeId: String? = null,
 )
 
 data class EchoBackupPlaylist(

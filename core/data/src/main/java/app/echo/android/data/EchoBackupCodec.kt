@@ -166,6 +166,13 @@ object EchoBackupCodec {
         putOpt("uiFontFamily", settings.uiFontFamily)
         settings.uiFontScale?.let { put("uiFontScale", it.toDouble()) }
         settings.uiDensityScale?.let { put("uiDensityScale", it.toDouble()) }
+        settings.customAccent?.let { put("customAccent", it) }
+        settings.customSecondary?.let { put("customSecondary", it) }
+        settings.customBackground?.let { put("customBackground", it) }
+        settings.savedColorThemes?.let { themes ->
+            put("savedColorThemes", JSONArray(EchoSavedColorThemeCodec.encode(themes)))
+        }
+        putOpt("appliedSavedColorThemeId", settings.appliedSavedColorThemeId)
     }
 
     private fun decodeSettings(json: JSONObject?): EchoBackupSettings {
@@ -246,8 +253,20 @@ object EchoBackupCodec {
             uiFontFamily = json.optionalString("uiFontFamily"),
             uiFontScale = json.optionalFloat("uiFontScale"),
             uiDensityScale = json.optionalFloat("uiDensityScale"),
+            customAccent = json.optionalInt("customAccent"),
+            customSecondary = json.optionalInt("customSecondary"),
+            customBackground = json.optionalInt("customBackground"),
+            savedColorThemes = if (json.has("savedColorThemes")) decodeSavedColorThemes(json.opt("savedColorThemes")) else null,
+            appliedSavedColorThemeId = json.optionalString("appliedSavedColorThemeId"),
         )
     }
+
+    private fun decodeSavedColorThemes(raw: Any?): List<app.echo.android.model.settings.EchoSavedColorTheme> =
+        when (raw) {
+            is JSONArray -> EchoSavedColorThemeCodec.decode(raw.toString())
+            is String -> EchoSavedColorThemeCodec.decode(raw)
+            else -> emptyList()
+        }
 
     private fun encodeBalance(state: EchoChannelBalanceState): JSONObject = JSONObject().apply {
         put("enabled", state.enabled)

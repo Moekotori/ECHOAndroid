@@ -5,6 +5,7 @@ import androidx.media3.common.Player
 data class EchoPlaybackSurfaceSnapshot(
     val title: String = "",
     val artist: String = "",
+    val album: String? = null,
     val isPlaying: Boolean = false,
     val hasTrack: Boolean = false,
     val repeatMode: Int = Player.REPEAT_MODE_OFF,
@@ -24,6 +25,7 @@ fun Player.toPlaybackSurfaceSnapshot(): EchoPlaybackSurfaceSnapshot {
     return EchoPlaybackSurfaceSnapshot(
         title = radio?.title ?: metadata?.title?.toString().orEmpty(),
         artist = radio?.artist ?: metadata?.artist?.toString().orEmpty(),
+        album = metadata?.albumTitle?.toString()?.takeIf { radio == null && it.isNotBlank() },
         isPlaying = isPlaying,
         hasTrack = item != null,
         repeatMode = repeatMode,

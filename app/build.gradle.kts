@@ -114,6 +114,13 @@ android {
         jniLibs {
             useLegacyPackaging = false
         }
+        resources {
+            // smbj 带进来的 BouncyCastle / slf4j 都有这些多版本元数据，Android 用不到，会互相冲突。
+            excludes += setOf(
+                "META-INF/versions/9/OSGI-INF/MANIFEST.MF",
+                "META-INF/versions/*/module-info.class",
+            )
+        }
     }
 }
 
@@ -126,6 +133,7 @@ dependencies {
     implementation(project(":core:data"))
     implementation(project(":core:model"))
     implementation(project(":core:playback"))
+    implementation(project(":core:smb"))
     implementation(project(":core:connect"))
     implementation(project(":core:listening"))
     implementation(project(":core:design"))

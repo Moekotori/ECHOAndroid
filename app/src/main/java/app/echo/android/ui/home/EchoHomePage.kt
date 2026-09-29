@@ -19,7 +19,7 @@ internal fun EchoHomePage(
     onOpenLibrary: () -> Unit,
     onOpenConnect: () -> Unit,
     onOpenSearch: () -> Unit,
-    onOpenListening: () -> Unit,
+    onOpenListeningStats: () -> Unit,
     onResumePlayback: () -> Unit,
     bottomInset: Dp,
 ) {
@@ -62,7 +62,7 @@ internal fun EchoHomePage(
         onOpenLibrary = onOpenLibrary,
         onOpenConnect = onOpenConnect,
         onOpenSearch = onOpenSearch,
-        onOpenListening = onOpenListening,
+        onOpenListeningStats = onOpenListeningStats,
         recentPlayedTracks = recentlyPlayedTracks,
         onPlayTrack = viewModel::play,
     )

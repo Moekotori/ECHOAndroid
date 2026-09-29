@@ -59,6 +59,7 @@ internal fun ClassicCoverPage(
     isFavorite: Boolean,
     onToggleFavorite: () -> Unit,
     onOpenLyrics: () -> Unit,
+    onOpenArtist: ((trackId: String, artistName: String) -> Unit)? = null,
     modifier: Modifier = Modifier,
     artworkScale: Float = 1f,
 ) {
@@ -102,6 +103,9 @@ internal fun ClassicCoverPage(
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(
                                     displayedTrack?.artist ?: stringResource(R.string.feature_player_pick_a_song_to_start_68b6af),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .openArtistWhen(displayedTrack?.id, displayedTrack?.artist, onOpenArtist),
                                     color = OnArtMuted, style = MaterialTheme.typography.titleMedium,
                                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                                 )

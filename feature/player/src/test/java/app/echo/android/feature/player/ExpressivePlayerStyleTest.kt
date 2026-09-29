@@ -8,7 +8,7 @@ class ExpressivePlayerStyleTest {
         for (id in listOf("pixel_handheld", "type_poster", "classic", "record_sleeve")) {
             assertEquals(id, normalizedPlayerStyle(id))
         }
-        assertEquals("record_sleeve", normalizedPlayerStyle("unknown"))
+        assertEquals("classic", normalizedPlayerStyle("unknown"))
     }
 
     @Test fun posterRetainsEveryTitleWord() {

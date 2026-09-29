@@ -58,6 +58,7 @@
     <string name="feature_player_no_matching_lyrics_found_7ffc7e">"Aucune parole correspondante"</string>
     <string name="feature_player_normal_speed_a8fc98">"Vitesse normale"</string>
     <string name="feature_player_not_playing_d72324">"Pas de lecture"</string>
+    <string name="feature_player_open_artist">"Voir l’artiste"</string>
     <string name="feature_player_nothing_playing_3beac0">"Rien en lecture"</string>
     <string name="feature_player_now_playing_214a7c">"En cours"</string>
     <string name="feature_player_off_12ac24">"Désactivé"</string>

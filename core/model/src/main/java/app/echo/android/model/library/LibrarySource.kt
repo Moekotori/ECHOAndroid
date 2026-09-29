@@ -11,6 +11,7 @@ data class LibrarySource(
         val Saf = LibrarySource("saf")
         val Subsonic = LibrarySource("subsonic")
         val WebDav = LibrarySource("webdav")
+        val Smb = LibrarySource("smb")
         val Jellyfin = LibrarySource("jellyfin")
         val Netease = LibrarySource("netease")
         val EchoLink = LibrarySource("echo-link")

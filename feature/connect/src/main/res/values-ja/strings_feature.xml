@@ -143,6 +143,8 @@
     <string name="feature_connect_keep_pc_echo_running_and_both_devices_on_7986ec">"PC ECHO を起動し、両方の端末を同じネットワークに接続してください。"</string>
     <string name="feature_connect_link_preferences_f81ffb">"連携設定"</string>
     <string name="feature_connect_listen_together_with_pc_41d068">"PC と接続"</string>
+    <string name="feature_connect_listen_together_title">一緒に聴く</string>
+    <string name="feature_connect_listen_together_detail">PC の一緒に聴くルームに参加</string>
     <string name="feature_connect_nearby_pcs_b9b12a">"近くの PC"</string>
     <string name="feature_connect_no_pc_found_use_the_same_wi_fi_ce621e">PC が見つかりません。同じ Wi-Fi と Echo Link の設定を確認して再検索してください。</string>
     <string name="feature_connect_no_track_selected_258d56">"曲が未選択です"</string>

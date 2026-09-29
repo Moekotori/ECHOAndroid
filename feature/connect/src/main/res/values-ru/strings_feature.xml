@@ -143,6 +143,8 @@
     <string name="feature_connect_keep_pc_echo_running_and_both_devices_on_7986ec">"Держите PC ECHO запущенным, а оба устройства — в одной сети."</string>
     <string name="feature_connect_link_preferences_f81ffb">"Параметры связи"</string>
     <string name="feature_connect_listen_together_with_pc_41d068">"Слушайте вместе с ПК"</string>
+    <string name="feature_connect_listen_together_title">Слушать вместе</string>
+    <string name="feature_connect_listen_together_detail">Войти в комнату ECHO на ПК</string>
     <string name="feature_connect_nearby_pcs_b9b12a">"Ближайшие ПК"</string>
     <string name="feature_connect_no_pc_found_use_the_same_wi_fi_ce621e">Компьютеры не найдены. Убедитесь, что Echo Link включён в той же сети Wi-Fi, и повторите попытку.</string>
     <string name="feature_connect_no_track_selected_258d56">"Трек не выбран"</string>

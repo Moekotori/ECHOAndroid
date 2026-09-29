@@ -6,7 +6,10 @@ import androidx.compose.ui.text.font.FontFamily
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoReplayGainMode
 import app.echo.android.model.settings.EchoBackgroundStyle
+import app.echo.android.model.settings.EchoCustomColors
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
+import app.echo.android.model.settings.EchoSavedColorTheme
+import app.echo.android.model.settings.EchoSavedColorThemeResult
 
 @Composable
 fun SettingsScreen(
@@ -32,6 +35,9 @@ fun SettingsScreen(
     showLyricsControlDeck: Boolean,
     onlineLyricsEnabled: Boolean,
     lockScreenLyricsEnabled: Boolean,
+    floatingLyrics: app.echo.android.model.settings.EchoFloatingLyricsSettings =
+        app.echo.android.model.settings.EchoFloatingLyricsSettings(),
+    floatingLyricsPermissionGranted: Boolean = false,
     usbExclusiveEnabled: Boolean,
     usbBitPerfectEnabled: Boolean,
     trackTransitions: app.echo.android.model.playback.EchoTrackTransitionOptions,
@@ -57,6 +63,9 @@ fun SettingsScreen(
     importedFontUri: String?,
     themeMode: String,
     colorTheme: String,
+    customColors: EchoCustomColors = EchoCustomColors.Default,
+    savedColorThemes: List<EchoSavedColorTheme> = emptyList(),
+    appliedSavedColorThemeId: String? = null,
     appLanguage: String,
     scheduledDarkModeEnabled: Boolean,
     scheduledDarkStartMinute: Int,
@@ -88,6 +97,8 @@ fun SettingsScreen(
     onShowLyricsControlDeckChange: (Boolean) -> Unit,
     onOnlineLyricsEnabledChange: (Boolean) -> Unit,
     onLockScreenLyricsEnabledChange: (Boolean) -> Unit,
+    onFloatingLyricsChange: (app.echo.android.model.settings.EchoFloatingLyricsSettings) -> Unit = {},
+    onRequestFloatingLyricsPermission: () -> Unit = {},
     onUsbExclusiveEnabledChange: (Boolean) -> Unit,
     onUsbBitPerfectEnabledChange: (Boolean) -> Unit,
     onTrackTransitionsChange: (app.echo.android.model.playback.EchoTrackTransitionOptions) -> Unit,
@@ -118,6 +129,10 @@ fun SettingsScreen(
     onClearImportedFont: () -> Unit,
     onThemeModeChange: (String) -> Unit,
     onColorThemeChange: (String) -> Unit,
+    onCustomColorsChange: (EchoCustomColors) -> Unit = {},
+    onSaveCustomColorTheme: (String, (EchoSavedColorThemeResult) -> Unit) -> Unit = { _, _ -> },
+    onApplySavedColorTheme: (String) -> Unit = {},
+    onDeleteSavedColorTheme: (String) -> Unit = {},
     onAppLanguageChange: (String) -> Unit,
     onScheduledDarkModeEnabledChange: (Boolean) -> Unit,
     onScheduledDarkStartMinuteChange: (Int) -> Unit,
@@ -201,6 +216,9 @@ fun SettingsScreen(
                     importedFontUri = importedFontUri,
                     themeMode = themeMode,
                     colorTheme = colorTheme,
+                    customColors = customColors,
+                    savedColorThemes = savedColorThemes,
+                    appliedSavedColorThemeId = appliedSavedColorThemeId,
                     scheduledDarkModeEnabled = scheduledDarkModeEnabled,
                     scheduledDarkStartMinute = scheduledDarkStartMinute,
                     scheduledDarkEndMinute = scheduledDarkEndMinute,
@@ -225,6 +243,10 @@ fun SettingsScreen(
                     onClearImportedFont = onClearImportedFont,
                     onThemeModeChange = onThemeModeChange,
                     onColorThemeChange = onColorThemeChange,
+                    onCustomColorsChange = onCustomColorsChange,
+                    onSaveCustomColorTheme = onSaveCustomColorTheme,
+                    onApplySavedColorTheme = onApplySavedColorTheme,
+                    onDeleteSavedColorTheme = onDeleteSavedColorTheme,
                     onScheduledDarkModeEnabledChange = onScheduledDarkModeEnabledChange,
                     onScheduledDarkStartMinuteChange = onScheduledDarkStartMinuteChange,
                     onScheduledDarkEndMinuteChange = onScheduledDarkEndMinuteChange,
@@ -247,6 +269,8 @@ fun SettingsScreen(
                     showLyricsControlDeck = showLyricsControlDeck,
                     onlineLyricsEnabled = onlineLyricsEnabled,
                     lockScreenLyricsEnabled = lockScreenLyricsEnabled,
+                    floatingLyrics = floatingLyrics,
+                    floatingLyricsPermissionGranted = floatingLyricsPermissionGranted,
                     usbExclusiveEnabled = usbExclusiveEnabled,
                     usbBitPerfectEnabled = usbBitPerfectEnabled,
                     trackTransitions = trackTransitions,
@@ -261,6 +285,8 @@ fun SettingsScreen(
                     onShowLyricsControlDeckChange = onShowLyricsControlDeckChange,
                     onOnlineLyricsEnabledChange = onOnlineLyricsEnabledChange,
                     onLockScreenLyricsEnabledChange = onLockScreenLyricsEnabledChange,
+                    onFloatingLyricsChange = onFloatingLyricsChange,
+                    onRequestFloatingLyricsPermission = onRequestFloatingLyricsPermission,
                     onUsbExclusiveEnabledChange = onUsbExclusiveEnabledChange,
                     onUsbBitPerfectEnabledChange = onUsbBitPerfectEnabledChange,
                     onTrackTransitionsChange = onTrackTransitionsChange,

@@ -21,14 +21,16 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LibraryGenreSummaryEntity::class,
         LibraryOfflinePinEntity::class,
         LibraryOfflineFileEntity::class,
+        LibraryPlayEventEntity::class,
     ],
-    version = 17,
+    version = 18,
     exportSchema = true,
 )
 abstract class EchoLibraryDatabase : RoomDatabase() {
     abstract fun trackDao(): LibraryTrackDao
     abstract fun playlistDao(): LibraryPlaylistDao
     abstract fun offlineDao(): LibraryOfflineDao
+    abstract fun playEventDao(): LibraryPlayEventDao
 
     companion object {
         @Volatile
@@ -59,6 +61,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                         Migration14To15,
                         Migration15To16,
                         Migration16To17,
+                        Migration17To18,
                     )
                     .build()
                     .also { instance = it }
@@ -391,6 +394,32 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                 )
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_library_offline_files_pinId ON library_offline_files(pinId)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_library_offline_files_status ON library_offline_files(status)")
+            }
+        }
+
+        internal val Migration17To18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS library_play_events (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        trackId TEXT NOT NULL,
+                        title TEXT NOT NULL,
+                        artist TEXT NOT NULL,
+                        album TEXT,
+                        artworkUri TEXT,
+                        source TEXT,
+                        durationMs INTEGER NOT NULL,
+                        listenedMs INTEGER NOT NULL,
+                        playedAtEpochMs INTEGER NOT NULL,
+                        localEpochDay INTEGER NOT NULL,
+                        localHour INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_library_play_events_playedAtEpochMs ON library_play_events(playedAtEpochMs)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_library_play_events_localEpochDay ON library_play_events(localEpochDay)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_library_play_events_trackId ON library_play_events(trackId)")
             }
         }
 

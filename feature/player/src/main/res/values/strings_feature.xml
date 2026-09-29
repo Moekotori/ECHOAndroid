@@ -58,6 +58,7 @@
     <string name="feature_player_no_matching_lyrics_found_7ffc7e">"No matching lyrics found"</string>
     <string name="feature_player_normal_speed_a8fc98">"Normal speed"</string>
     <string name="feature_player_not_playing_d72324">"Not playing"</string>
+    <string name="feature_player_open_artist">"Open artist"</string>
     <string name="feature_player_nothing_playing_3beac0">"Nothing playing"</string>
     <string name="feature_player_now_playing_214a7c">"Now playing"</string>
     <string name="feature_player_off_12ac24">"Off"</string>

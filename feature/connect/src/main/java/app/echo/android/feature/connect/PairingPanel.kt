@@ -8,6 +8,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Computer
+import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -71,6 +72,7 @@ internal fun PcLinkPanel(
     onSearchPcLibrary: (String) -> Unit = {},
     onLoadMorePcLibrary: () -> Unit = {},
     active: Boolean = true,
+    onOpenListening: (() -> Unit)? = null,
 ) {
     val connected = remoteState == EchoRemoteConnectionState.Connected
     val busy = remoteState in listOf(EchoRemoteConnectionState.Pairing, EchoRemoteConnectionState.Connecting, EchoRemoteConnectionState.Reconnecting)
@@ -115,6 +117,9 @@ internal fun PcLinkPanel(
             Text(remoteConnectionLabel(remoteState), color = if (connected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelLarge)
             ConnectNote(stringResource(L10nR.string.feature_connect_control_pc_playback_from_your_phone_or_browse_20f8b5))
+        }
+        if (onOpenListening != null) {
+            ListenTogetherEntry(onOpen = onOpenListening)
         }
         remoteError?.takeIf { it.isNotBlank() }?.let { ConnectNote(it, error = true) }
         when {
@@ -255,4 +260,23 @@ internal fun PcLinkPanel(
         onDismiss = { confirmForget = false },
         onConfirm = { confirmForget = false; address = ""; token = ""; onForgetPc() },
     )
+}
+
+@Composable
+private fun ListenTogetherEntry(onOpen: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 64.dp).echoClickable(role = Role.Button, onClick = onOpen),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Icon(Icons.Rounded.Headphones, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                stringResource(L10nR.string.feature_connect_listen_together_title),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            ConnectNote(stringResource(L10nR.string.feature_connect_listen_together_detail))
+        }
+    }
 }

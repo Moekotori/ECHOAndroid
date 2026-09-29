@@ -89,6 +89,7 @@ tasks.configureEach {
 dependencies {
     implementation(project(":core:i18n"))
     implementation(project(":core:model"))
+    implementation(project(":core:smb"))
     implementation(project(":core:usb-audio"))
 
     implementation(libs.androidx.core.ktx)

@@ -143,6 +143,8 @@
     <string name="feature_connect_keep_pc_echo_running_and_both_devices_on_7986ec">"请保持 PC ECHO 运行，并确认两台设备在同一网络。"</string>
     <string name="feature_connect_link_preferences_f81ffb">"联动偏好"</string>
     <string name="feature_connect_listen_together_with_pc_41d068">"连接你的 PC"</string>
+    <string name="feature_connect_listen_together_title">一起听</string>
+    <string name="feature_connect_listen_together_detail">加入 PC 上的一起听房间</string>
     <string name="feature_connect_nearby_pcs_b9b12a">"附近的 PC"</string>
     <string name="feature_connect_no_pc_found_use_the_same_wi_fi_ce621e">暂未发现电脑。请确认已开启 Echo Link 并连接同一 Wi-Fi，然后重新搜索。</string>
     <string name="feature_connect_no_track_selected_258d56">"尚未选择曲目"</string>

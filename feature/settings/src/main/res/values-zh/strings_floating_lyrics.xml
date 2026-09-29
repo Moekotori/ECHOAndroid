@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_floating_lyrics">悬浮歌词</string>
+    <string name="settings_floating_lyrics_detail">播放时在其它应用上方显示当前歌词，回到 ECHO 时自动隐藏。</string>
+    <string name="settings_floating_lyrics_permission">显示在其它应用上层</string>
+    <string name="settings_floating_lyrics_permission_detail">悬浮歌词需要这项权限，请在系统设置里为 ECHO 打开。</string>
+    <string name="settings_floating_lyrics_lock">锁定悬浮歌词</string>
+    <string name="settings_floating_lyrics_lock_detail">锁定后点击会穿透到下面的应用；解锁后可以上下拖动位置。</string>
+    <string name="settings_floating_lyrics_size">悬浮歌词字号</string>
+</resources>

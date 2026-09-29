@@ -2,6 +2,7 @@ package app.echo.android
 
 import app.echo.android.i18n.refreshEchoAppLocale
 import app.echo.android.feature.listening.ListeningScreen
+import app.echo.android.feature.home.ListeningStatsScreen
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.plugin.EchoPluginsOverlay
 import androidx.compose.ui.res.stringResource
@@ -119,9 +120,6 @@ import app.echo.android.ui.shell.echoSheetDepth
 import app.echo.android.design.EchoPlayerTransitionRoot
 import app.echo.android.design.EchoExpandedPlayer
 import app.echo.android.ui.shell.EchoBottomDockHost
-import app.echo.android.design.EchoGlassBackdropProvider
-import app.echo.android.design.EchoGlassSource
-import app.echo.android.design.echoGlassSource
 import app.echo.android.ui.shell.EchoPagerPage
 import app.echo.android.ui.shell.dockTab
 import app.echo.android.ui.shell.motionDuration
@@ -212,6 +210,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             hasNotifPermission = granted
         }
+    }
+    var hasOverlayPermission by remember {
+        mutableStateOf(android.provider.Settings.canDrawOverlays(context))
     }
     val bluetoothPermName = remember { bluetoothConnectPermissionName() }
     var hasBluetoothConnectPermission by remember {
@@ -413,6 +414,12 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     val castSessionActive by echoLinkSession.castActive.collectAsStateWithLifecycle()
     val castSessionName by echoLinkSession.castTargetName.collectAsStateWithLifecycle()
     val dlnaRenderer by echoLinkSession.dlnaRenderer.collectAsStateWithLifecycle()
+    val lanCast by echoLinkSession.castPlayback.collectAsStateWithLifecycle()
+    // 投送时播放页和迷你播放器显示远端设备的曲目与播放状态；进度走单独的 flow。
+    val shellPlaybackStatus = remember(playbackStatus, lanCast) {
+        lanCast?.let { playbackStatus.withLanCast(it, echoLinkSession.castPosition.value.positionMs) } ?: playbackStatus
+    }
+    val shellPositionFlow = if (lanCast != null) echoLinkSession.castPosition else viewModel.playbackPosition
     fun routedPlayPause() {
         if (dlnaRenderer != null) echoLinkSession.dlnaPlayPause() else viewModel.playPause()
     }
@@ -507,6 +514,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                         ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
                     hasNotifPermission = notifPermName == null ||
                         ContextCompat.checkSelfPermission(context, notifPermName) == PackageManager.PERMISSION_GRANTED
+                    hasOverlayPermission = android.provider.Settings.canDrawOverlays(context)
                 }
                 Lifecycle.Event.ON_STOP -> appVisible = false
                 else -> Unit
@@ -741,6 +749,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     var detailReturnPage by remember { mutableStateOf<EchoPagerPage?>(null) }
     var searchVisible by remember { mutableStateOf(false) }
     var listeningVisible by rememberSaveable { mutableStateOf(false) }
+    var listeningStatsVisible by rememberSaveable { mutableStateOf(false) }
     var listeningDraft by rememberSaveable { mutableStateOf("") }
     var searchQuery by remember { mutableStateOf("") }
     var errorLogVisible by remember { mutableStateOf(false) }
@@ -863,7 +872,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     val lyricsFontFamily = echoFontFamilyForMode(appSettings.lyricsFontFamily, importedFontFamily)
     val activity = context as? ComponentActivity
 
-    LaunchedEffect(darkTheme, appSettings.colorTheme, effectivePerformanceMode.prefersHighRefreshRate) {
+    LaunchedEffect(darkTheme, appSettings.colorTheme, appSettings.customColors, effectivePerformanceMode.prefersHighRefreshRate) {
         (activity as? MainActivity)?.setHighRefreshRateRequested(effectivePerformanceMode.prefersHighRefreshRate)
         activity?.enableEdgeToEdge(
             statusBarStyle = if (darkTheme) {
@@ -878,7 +887,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             },
         )
         activity?.window?.decorView?.setBackgroundColor(
-            echoStartupWindowColor(EchoColorTheme.fromId(appSettings.colorTheme), darkTheme),
+            echoStartupWindowColor(
+                EchoColorTheme.fromId(appSettings.colorTheme),
+                darkTheme,
+                appSettings.customColors,
+            ),
         )
     }
 
@@ -1011,6 +1024,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     EchoOverlayBackHandler(enabled = listeningVisible && !pluginsVisible) {
         listeningVisible = false
     }
+    EchoOverlayBackHandler(enabled = listeningStatsVisible && !pluginsVisible) {
+        listeningStatsVisible = false
+    }
     EchoOverlayBackHandler(enabled = searchVisible && !listeningVisible && !pluginsVisible) {
         searchVisible = false
         searchQuery = ""
@@ -1041,7 +1057,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         },
         onDismiss = { nowPlayingExpanded = false },
     )
-    val shellOverlayOpen = searchVisible || listeningVisible || errorLogVisible || queueSheetVisible || castSheetVisible || nowPlayingExpanded || pluginsVisible
+    val shellOverlayOpen = searchVisible || listeningVisible || listeningStatsVisible || errorLogVisible || queueSheetVisible || castSheetVisible || nowPlayingExpanded || pluginsVisible
     val connectPageSettled = appVisible && screenInteractive && !shellOverlayOpen &&
         tabPagerState.settledPage == EchoPagerPage.Connect.ordinal
     // One owner for discovery: closing either surface must not stop the other.
@@ -1068,6 +1084,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         darkTheme = darkTheme,
         dynamicColor = appSettings.dynamicColorEnabled,
         colorTheme = EchoColorTheme.fromId(appSettings.colorTheme),
+        customColors = appSettings.customColors,
         playbackHapticsEnabled = appSettings.playbackHapticsEnabled,
         fontFamily = uiFontFamily,
         fontScale = appSettings.uiFontScale,
@@ -1075,10 +1092,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         effectivePerformanceMode = effectivePerformanceMode,
         customBackgroundActive = customBackgroundActive,
     ) {
-        EchoGlassBackdropProvider(
-            enabled = !shellOverlayOpen && screenInteractive && appVisible &&
-                appSettings.customBackgroundMode != EchoBackgroundMode.Video,
-        ) {
         EchoPlayerTransitionRoot(
             expanded = nowPlayingExpanded,
             // The current record-sleeve cover is square; the compact dock keeps rounded corners.
@@ -1093,7 +1106,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         ) {
             EchoCustomBackground(
                 settings = appSettings,
-                modifier = Modifier.fillMaxSize().echoGlassSource(EchoGlassSource.Background),
+                modifier = Modifier.fillMaxSize(),
                 onLoadError = { failedUri ->
                     if (appSettings.customBackgroundUri == failedUri) {
                         android.widget.Toast.makeText(context, R.string.background_load_error, android.widget.Toast.LENGTH_LONG).show()
@@ -1133,7 +1146,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     beyondViewportPageCount = if (effectivePerformanceMode.isLightweight) 0 else 1,
                     flingBehavior = tabPagerFling,
                     pageNestedScrollConnection = tabPagerNestedScroll,
-                    modifier = Modifier.fillMaxSize().echoGlassSource(EchoGlassSource.Content),
+                    modifier = Modifier.fillMaxSize(),
                 ) { page ->
                     Box(modifier = Modifier.fillMaxSize()) {
                         when (EchoPagerPage.entries[page]) {
@@ -1238,7 +1251,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onOpenLibrary = { selectDockTab(EchoTab.Library) },
                                 onOpenConnect = { selectDockTab(EchoTab.Connect) },
                                 onOpenSearch = { searchVisible = true },
-                                onOpenListening = { listeningVisible = true },
+                                onOpenListeningStats = { listeningStatsVisible = true },
                                 onResumePlayback = {
                                     if (!playbackStatus.isPlaying) routedPlayPause()
                                     expandNowPlaying()
@@ -1282,6 +1295,19 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 showLyricsControlDeck = appSettings.showLyricsControlDeck,
                                 onlineLyricsEnabled = appSettings.onlineLyricsEnabled,
                                 lockScreenLyricsEnabled = appSettings.lockScreenLyricsEnabled,
+                                floatingLyrics = appSettings.floatingLyrics,
+                                floatingLyricsPermissionGranted = hasOverlayPermission,
+                                onFloatingLyricsChange = viewModel::setFloatingLyrics,
+                                onRequestFloatingLyricsPermission = {
+                                    runCatching {
+                                        context.startActivity(
+                                            Intent(
+                                                android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                                AndroidUri.parse("package:${context.packageName}"),
+                                            ),
+                                        )
+                                    }
+                                },
                                 usbExclusiveEnabled = appSettings.usbExclusiveEnabled,
                                 usbBitPerfectEnabled = appSettings.usbBitPerfectEnabled,
                                 trackTransitions = appSettings.trackTransitions,
@@ -1307,6 +1333,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 importedFontUri = appSettings.importedFontUri,
                                 themeMode = appSettings.themeMode,
                                 colorTheme = appSettings.colorTheme,
+                                customColors = appSettings.customColors,
+                                savedColorThemes = appSettings.savedColorThemes,
+                                appliedSavedColorThemeId = appSettings.appliedSavedColorThemeId,
                                 appLanguage = appSettings.appLanguage,
                                 scheduledDarkModeEnabled = appSettings.scheduledDarkModeEnabled,
                                 scheduledDarkStartMinute = appSettings.scheduledDarkStartMinute,
@@ -1383,6 +1412,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 },
                                 onThemeModeChange = viewModel::setThemeMode,
                                 onColorThemeChange = viewModel::setColorTheme,
+                                onCustomColorsChange = viewModel::setCustomColors,
+                                onSaveCustomColorTheme = viewModel::saveCustomColorTheme,
+                                onApplySavedColorTheme = viewModel::applySavedColorTheme,
+                                onDeleteSavedColorTheme = viewModel::deleteSavedColorTheme,
                                 onAppLanguageChange = ::changeAppLanguage,
                                 onScheduledDarkModeEnabledChange = viewModel::setScheduledDarkModeEnabled,
                                 onScheduledDarkStartMinuteChange = viewModel::setScheduledDarkStartMinute,
@@ -1477,6 +1510,12 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 webDavServerUrl = appSettings.webDavServerUrl,
                                 webDavUsername = appSettings.webDavUsername,
                                 webDavPassword = appSettings.webDavPassword,
+                                smbServerUrl = appSettings.smbServerUrl,
+                                smbUsername = appSettings.smbUsername,
+                                smbPassword = appSettings.smbPassword,
+                                onSyncSmbLibrary = viewModel::syncSmbLibrary,
+                                onSaveSmbCredentials = viewModel::saveSmbCredentials,
+                                onClearSmbCredentials = viewModel::clearSmbCredentials,
                                 jellyfinServerUrl = appSettings.jellyfinServerUrl,
                                 jellyfinUsername = appSettings.jellyfinUsername,
                                 jellyfinPassword = appSettings.jellyfinPassword,
@@ -1568,6 +1607,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 discoveredLanDevices = echoLinkLanDevices,
                                 discoveryState = discoveryState,
                                 onRefreshLanDevices = viewModel::refreshEchoLinkDiscovery,
+                                onOpenListening = { listeningVisible = true },
                             )
                             }
 
@@ -1638,7 +1678,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                 EchoBottomDockHost(
                     viewModel = viewModel,
                     pagerState = tabPagerState,
-                    playbackStatus = playbackStatus,
+                    playbackStatus = shellPlaybackStatus,
+                    positionFlow = shellPositionFlow,
                     darkTheme = darkTheme,
                     selectedTab = selectedTab,
                     bottomDockExpanded = bottomDockExpanded,
@@ -1662,7 +1703,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             ) {
                 EchoNowPlayingHost(
                     viewModel = viewModel,
-                    playbackStatus = playbackStatus,
+                    playbackStatus = shellPlaybackStatus,
+                    positionFlow = shellPositionFlow,
                     appSettings = appSettings,
                     lyricsFontFamily = lyricsFontFamily,
                     onDismiss = { nowPlayingExpanded = false },
@@ -1685,6 +1727,19 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                         fontImportLauncher.launch(FontDocumentMimeTypes)
                     },
                     openLyricsRequestId = lyricsLaunchToken,
+                    onOpenArtist = { artist ->
+                        nowPlayingExpanded = false
+                        queueSheetVisible = false
+                        if (detailReturnPage == null) {
+                            detailReturnPage = EchoPagerPage.entries[tabPagerState.settledPage]
+                        }
+                        selectedAlbum = null
+                        selectedGenre = null
+                        selectedFolder = null
+                        selectedPlaylist = null
+                        selectedArtist = artist
+                        selectDockTab(EchoTab.Library)
+                    },
                 )
             }
             if (castSheetVisible) {
@@ -1811,6 +1866,19 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                         searchVisible = false
                         searchQuery = ""
                     },
+                )
+            }
+            if (listeningStatsVisible) {
+                val listeningStats by viewModel.listeningStats.collectAsStateWithLifecycle()
+                ListeningStatsScreen(
+                    stats = listeningStats,
+                    onLoad = viewModel::loadListeningStats,
+                    onOpenTrack = { trackId ->
+                        listeningStatsVisible = false
+                        viewModel.playTrackFromLibrary(trackId)
+                    },
+                    onBack = { listeningStatsVisible = false },
+                    modifier = Modifier.fillMaxSize(),
                 )
             }
             if (listeningVisible) {
@@ -1982,7 +2050,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     }
                 },
             )
-        }
         }
     }
 }

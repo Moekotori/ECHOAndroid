@@ -32,7 +32,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.scale
-import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -43,13 +42,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
-import app.echo.android.design.echoBackdropGlass
+import app.echo.android.design.echoFrostedGlass
 import app.echo.android.design.echoPressFeedback
-import app.echo.android.design.echoEdgeLight
 import app.echo.android.design.echoTheme
 import kotlin.math.abs
 
-private val DockItemShape = RoundedCornerShape(24.dp)
+private val DockGlassShape = RoundedCornerShape(22.dp)
+private val DockItemShape = RoundedCornerShape(18.dp)
 
 enum class EchoTab(
     val icon: ImageVector,
@@ -84,38 +83,37 @@ fun BottomDock(
     val accent = echoTheme().accent
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val progressState = rememberUpdatedState(selectedTabProgress)
-    val progress = remember { { progressState.value().coerceIn(0f, EchoTab.entries.lastIndex.toFloat()) } }
-    val indicatorColor = if (onLightSurface) scheme.primary else accent
-    val indicatorBrush = remember(indicatorColor, onLightSurface) {
+    val progress = remember {
+        { progressState.value().coerceIn(0f, EchoTab.entries.lastIndex.toFloat()) }
+    }
+    val activeColor = if (onLightSurface) scheme.primary else accent
+    val idleColor = if (onLightSurface) scheme.onSurfaceVariant else Color.White.copy(alpha = 0.68f)
+    val indicatorBrush = remember(activeColor, onLightSurface) {
         Brush.verticalGradient(
             listOf(
-                indicatorColor.copy(alpha = if (onLightSurface) 0.18f else 0.24f),
-                indicatorColor.copy(alpha = if (onLightSurface) 0.10f else 0.12f),
+                activeColor.copy(alpha = if (onLightSurface) 0.16f else 0.26f),
+                activeColor.copy(alpha = if (onLightSurface) 0.08f else 0.13f),
             ),
         )
     }
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 10.dp, vertical = 5.dp)
-            .echoBackdropGlass(cornerRadius = 28.dp, elevation = 6.dp)
-            .padding(4.dp)
-            .then(gestureModifier),
+            .padding(horizontal = 10.dp, vertical = 4.dp)
+            .echoFrostedGlass(shape = DockGlassShape, elevation = 6.dp)
+            .then(gestureModifier)
+            .padding(4.dp),
     ) {
-        // Equal-width tabs share this local coordinate space. No global layout callbacks
-        // or second animation are needed: the pager already animates taps and swipes.
+        // 四个等宽页签。指示条在绘制时读 pager 进度，滑动不重组这一行。
         Box(
             Modifier.matchParentSize().drawWithCache {
-                val tabWidth = size.width / EchoTab.entries.size
-                val indicatorWidth = minOf(56.dp.toPx(), tabWidth)
-                val indicatorHeight = 40.dp.toPx()
+                val tabCount = EchoTab.entries.size
+                val tabWidth = size.width / tabCount
+                val indicatorWidth = minOf(52.dp.toPx(), tabWidth - 8.dp.toPx())
+                val indicatorHeight = 36.dp.toPx()
                 val indicatorSize = Size(indicatorWidth, indicatorHeight)
-                val corner = CornerRadius(20.dp.toPx())
-                val glintRadius = 24.dp.toPx()
-                val glint = Brush.radialGradient(
-                    listOf(Color.White.copy(alpha = if (onLightSurface) 0.18f else 0.12f), Color.Transparent),
-                    center = Offset.Zero, radius = glintRadius,
-                )
+                val corner = CornerRadius(indicatorHeight / 2f)
+                val top = (size.height - indicatorHeight) / 2f
                 onDrawBehind {
                     val pageProgress = progress()
                     val logicalCenter = (pageProgress + 0.5f) * tabWidth
@@ -126,17 +124,10 @@ fun BottomDock(
                     }
                     drawRoundRect(
                         brush = indicatorBrush,
-                        topLeft = Offset(centerX - indicatorWidth / 2f, (size.height - indicatorHeight) / 2f),
+                        topLeft = Offset(centerX - indicatorWidth / 2f, top),
                         size = indicatorSize,
                         cornerRadius = corner,
                     )
-                    if (!lightweight) {
-                        val fraction = pageProgress - kotlin.math.floor(pageProgress)
-                        val motionLight = 4f * fraction * (1f - fraction)
-                        translate(left = centerX, top = size.height * 0.3f) {
-                            drawCircle(glint, glintRadius, Offset.Zero, alpha = motionLight)
-                        }
-                    }
                 }
             },
         )
@@ -148,7 +139,9 @@ fun BottomDock(
                 DockItem(
                     tab = tab,
                     selected = selectedTab == tab.ordinal,
-                    onLightSurface = onLightSurface,
+                    activeColor = activeColor,
+                    idleColor = idleColor,
+                    lightweight = lightweight,
                     progress = progress,
                     onClick = { onSelectTab(tab.ordinal) },
                     modifier = Modifier.weight(1f),
@@ -162,16 +155,13 @@ fun BottomDock(
 private fun DockItem(
     tab: EchoTab,
     selected: Boolean,
-    onLightSurface: Boolean,
+    activeColor: Color,
+    idleColor: Color,
+    lightweight: Boolean,
     progress: () -> Float,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val scheme = MaterialTheme.colorScheme
-    val accent = echoTheme().accent
-    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
-    val activeColor = if (onLightSurface) scheme.primary else accent
-    val idleColor = if (onLightSurface) scheme.onSurfaceVariant else Color.White.copy(alpha = 0.70f)
     val painter = rememberVectorPainter(tab.icon)
     val label = tab.label()
     val interactionSource = remember { MutableInteractionSource() }
@@ -180,7 +170,6 @@ private fun DockItem(
             .height(48.dp)
             .clip(DockItemShape)
             .echoPressFeedback(interactionSource)
-            .echoEdgeLight(interactionSource, activeColor, 24.dp, drawEdge = false)
             .selectable(
                 selected = selected,
                 interactionSource = interactionSource,
@@ -191,8 +180,6 @@ private fun DockItem(
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        // Tint and scale follow the same fractional page position as the highlight.
-        // Read progress only while drawing, so swipes do not recompose the tab row.
         Canvas(Modifier.size(24.dp)) {
             val active = (1f - abs(progress() - tab.ordinal)).coerceIn(0f, 1f)
             val iconScale = if (lightweight) 1f else 0.94f + active * 0.06f

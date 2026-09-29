@@ -99,8 +99,6 @@
     <string name="feature_home_search_local_music_albums_and_artists_443a4f">"搜索本机音乐、专辑、歌手"</string>
     <string name="feature_home_search_local_music_b9c195">"搜索本机音乐..."</string>
     <string name="feature_home_search_songs_albums_and_artists_c46634">"搜索音乐、专辑、艺术家"</string>
-    <string name="feature_home_listen_together_title">一起听</string>
-    <string name="feature_home_listen_together_detail">加入 PC 上的一起听房间</string>
     <string name="feature_home_seeking_ea77e5">"定位中"</string>
     <string name="feature_home_shuffle_957ce0">"随机"</string>
     <string name="feature_home_shuffle_on_c7c5c4">"随机开启"</string>

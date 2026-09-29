@@ -15,7 +15,9 @@ internal object ExpressivePlayerStyle {
     val PosterDisplay = FontFamily(Font(R.font.poster_anton))
 }
 
+internal const val DefaultPlayerStyle = "classic"
+
 internal fun normalizedPlayerStyle(style: String): String = when (style) {
-    "classic", "pixel_handheld", "type_poster" -> style
-    else -> "record_sleeve"
+    "classic", "record_sleeve", "pixel_handheld", "type_poster" -> style
+    else -> DefaultPlayerStyle
 }

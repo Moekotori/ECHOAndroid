@@ -44,7 +44,7 @@ fun AlbumOnlineInfoProvider(loader: AlbumOnlineInfoLoader, content: @Composable 
 @Composable
 internal fun AlbumOnlineInformation(album: AlbumSummary) {
     val loader = LocalAlbumOnlineInfoLoader.current ?: return
-    val language = LocalConfiguration.current.locales[0].language
+    val language = LocalConfiguration.current.locales[0].toLanguageTag()
     var attempt by remember(album, language) { mutableIntStateOf(0) }
     var loading by remember(album, language) { mutableStateOf(true) }
     var failed by remember(album, language) { mutableStateOf(false) }

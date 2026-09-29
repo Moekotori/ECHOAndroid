@@ -9,6 +9,8 @@ import app.echo.android.model.playback.EchoChannelBalanceState
 import app.echo.android.model.playback.EchoEqualizerPreset
 import app.echo.android.model.playback.EchoEqualizerUserPreset
 import app.echo.android.model.playback.EchoTrackTransitionOptions
+import app.echo.android.model.settings.EchoCustomColors
+import app.echo.android.model.settings.EchoSavedColorTheme
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -112,12 +114,38 @@ class EchoBackupCodecTest {
     }
 
     @Test
+    fun customThemeRoundTrips() {
+        val colors = EchoCustomColors(0xFF112233.toInt(), 0xFF445566.toInt(), 0xFF778899.toInt())
+        val saved = EchoSavedColorTheme("night", "Night", colors)
+        val decoded = EchoBackupCodec.decode(
+            EchoBackupCodec.encode(
+                EchoBackupDocument(
+                    settings = EchoBackupSettings(
+                        colorTheme = "custom",
+                        customAccent = colors.accent,
+                        customSecondary = colors.secondary,
+                        customBackground = colors.background,
+                        savedColorThemes = listOf(saved),
+                        appliedSavedColorThemeId = "night",
+                    ),
+                ),
+            ),
+        ).settings
+        assertEquals("custom", decoded.colorTheme)
+        assertEquals(colors.accent, decoded.customAccent)
+        assertEquals(listOf(saved), decoded.savedColorThemes)
+        assertEquals("night", decoded.appliedSavedColorThemeId)
+    }
+
+    @Test
     fun missingUserPresetsStayNull() {
         val decoded = EchoBackupCodec.decode(
             JSONObject().put("version", 1).put("settings", JSONObject().put("themeMode", "dark")).toString(),
         )
         assertEquals(null, decoded.settings.equalizerUserPresets)
         assertEquals(null, decoded.settings.opraLastQuery)
+        assertEquals(null, decoded.settings.savedColorThemes)
+        assertEquals(null, decoded.settings.customAccent)
     }
 
     @Test

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_floating_lyrics">Floating lyrics</string>
+    <string name="settings_floating_lyrics_detail">Show the current line on top of other apps while music plays. Hidden while ECHO is open.</string>
+    <string name="settings_floating_lyrics_permission">Display over other apps</string>
+    <string name="settings_floating_lyrics_permission_detail">Floating lyrics need this permission. Turn it on for ECHO in system settings.</string>
+    <string name="settings_floating_lyrics_lock">Lock floating lyrics</string>
+    <string name="settings_floating_lyrics_lock_detail">Taps pass through to the app underneath. Unlock to drag it up or down.</string>
+    <string name="settings_floating_lyrics_size">Floating lyrics size</string>
+</resources>

@@ -58,6 +58,7 @@
     <string name="feature_player_no_matching_lyrics_found_7ffc7e">"Kein passender Liedtext gefunden"</string>
     <string name="feature_player_normal_speed_a8fc98">"Normale Geschwindigkeit"</string>
     <string name="feature_player_not_playing_d72324">"Keine Wiedergabe"</string>
+    <string name="feature_player_open_artist">"Zum Interpreten"</string>
     <string name="feature_player_nothing_playing_3beac0">"Nichts wird wiedergegeben"</string>
     <string name="feature_player_now_playing_214a7c">"Jetzt läuft"</string>
     <string name="feature_player_off_12ac24">"Aus"</string>

@@ -38,6 +38,7 @@ internal data class ExpressivePlayerActions(
     val repeat: () -> Unit,
     val favorite: () -> Unit,
     val lyrics: () -> Unit,
+    val openArtist: ((trackId: String, artistName: String) -> Unit)? = null,
 )
 
 @Composable

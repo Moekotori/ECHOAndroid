@@ -25,13 +25,18 @@ import app.echo.android.design.EchoThemeTokens
 import app.echo.android.design.echoTheme
 import app.echo.android.design.echoThemeTokens
 import app.echo.android.model.settings.EchoColorTheme
+import app.echo.android.model.settings.EchoCustomColors
 
 @Composable
-internal fun ThemeModeSelector(selectedMode: String, onSelect: (String) -> Unit) {
+internal fun ThemeModeSelector(
+    selectedMode: String,
+    customColors: EchoCustomColors,
+    onSelect: (String) -> Unit,
+) {
     val scheme = MaterialTheme.colorScheme
     val currentTheme = EchoColorTheme.fromId(echoTheme().id)
-    val darkTokens = remember(currentTheme) { echoThemeTokens(currentTheme, true) }
-    val lightTokens = remember(currentTheme) { echoThemeTokens(currentTheme, false) }
+    val darkTokens = remember(currentTheme, customColors) { echoThemeTokens(currentTheme, true, customColors) }
+    val lightTokens = remember(currentTheme, customColors) { echoThemeTokens(currentTheme, false, customColors) }
     Column(
         modifier = Modifier.settingsSearchAnchor(stringResource(R.string.settings_display_mode)),
         verticalArrangement = Arrangement.spacedBy(8.dp),

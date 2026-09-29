@@ -58,6 +58,7 @@
     <string name="feature_player_no_matching_lyrics_found_7ffc7e">"일치하는 가사를 찾지 못했습니다"</string>
     <string name="feature_player_normal_speed_a8fc98">"보통 속도"</string>
     <string name="feature_player_not_playing_d72324">"재생하지 않음"</string>
+    <string name="feature_player_open_artist">"아티스트 보기"</string>
     <string name="feature_player_nothing_playing_3beac0">"재생 중인 곡 없음"</string>
     <string name="feature_player_now_playing_214a7c">"재생 중"</string>
     <string name="feature_player_off_12ac24">"끄기"</string>

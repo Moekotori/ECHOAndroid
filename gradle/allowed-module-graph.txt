@@ -6,15 +6,16 @@
 # Feature modules usually only need :core:model and :core:design;
 # extra core deps are fine if you list them here.
 
-:app -> :core:i18n :core:connect :core:data :core:design :core:listening :core:lyrics :core:model :core:playback :core:plugin :feature:connect :feature:home :feature:library :feature:listening :feature:player :feature:plugins :feature:settings
+:app -> :core:i18n :core:connect :core:data :core:design :core:listening :core:lyrics :core:model :core:playback :core:plugin :core:smb :feature:connect :feature:home :feature:library :feature:listening :feature:player :feature:plugins :feature:settings
 :core:connect -> :core:model
-:core:data -> :core:i18n :core:model
+:core:data -> :core:i18n :core:model :core:smb
 :core:design -> :core:model
 :core:listening -> :core:model
 :core:lyrics -> :core:model
 :core:plugin ->
+:core:smb ->
 :core:model ->
-:core:playback -> :core:i18n :core:model :core:usb-audio
+:core:playback -> :core:i18n :core:model :core:smb :core:usb-audio
 :core:usb-audio ->
 :feature:connect -> :core:connect :core:design :core:model
 :feature:home -> :core:design :core:model

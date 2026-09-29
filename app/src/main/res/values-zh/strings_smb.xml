@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="remote_sync_smb_failed">SMB 同步失败</string>
+    <string name="remote_sync_smb_invalid_address">请输入 SMB 地址，例如 smb://nas/Music</string>
+</resources>

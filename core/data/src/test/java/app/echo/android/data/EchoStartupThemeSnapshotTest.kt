@@ -1,6 +1,7 @@
 package app.echo.android.data
 
 import app.echo.android.model.settings.EchoColorTheme
+import app.echo.android.model.settings.EchoCustomColors
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -23,7 +24,20 @@ class EchoStartupThemeSnapshotTest {
         assertEquals(EchoThemeMode.Dark, EchoAppSettings().themeMode)
         assertEquals(EchoColorTheme.Default.id, EchoStartupThemeSnapshot().colorTheme)
         assertEquals(EchoColorTheme.Default.id, EchoAppSettings().colorTheme)
+        assertEquals(EchoCustomColors.Default, EchoAppSettings().customColors)
         assertNull(EchoStartupThemeSnapshot().startupBackgroundUri)
+    }
+
+    @Test
+    fun customColorsSurviveStartupSnapshotButSavedThemesDoNot() {
+        val colors = EchoCustomColors(0xFFFF0000.toInt(), 0xFF00FF00.toInt(), 0xFF0000FF.toInt())
+        val restored = EchoAppSettings(
+            colorTheme = EchoColorTheme.Custom.id,
+            customColors = colors,
+        ).toStartupThemeSnapshot().toAppSettings()
+        assertEquals(EchoColorTheme.Custom.id, restored.colorTheme)
+        assertEquals(colors, restored.customColors)
+        assertEquals(emptyList<app.echo.android.model.settings.EchoSavedColorTheme>(), restored.savedColorThemes)
     }
 
     @Test

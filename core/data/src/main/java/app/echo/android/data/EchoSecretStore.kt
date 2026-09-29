@@ -15,6 +15,7 @@ internal object EchoSecretKeys {
     const val EchoLinkToken = "echo_link_pc_token"
     const val SubsonicPassword = "subsonic_password"
     const val WebDavPassword = "webdav_password"
+    const val SmbPassword = "smb_password"
     const val LastFmSessionKey = "lastfm_session_key"
     const val LastFmSharedSecret = "lastfm_shared_secret"
     const val JellyfinPassword = "jellyfin_password"
