@@ -145,6 +145,18 @@ conversion remain owned by the existing player; this contract adds no transcodin
 PC sessions created by Echo Link mark their manual source with `owner: "echo-link"`.
 Shuffle stays inside that supplied queue; ordinary PC manual-queue shuffle keeps
 its existing whole-library behavior.
+
+Reliability additions: playback status advertises optional `supportsAtomicPhoneQueue`.
+When true, Android sends one `queueReplaceRemote` with `positionMs` and the zero-based
+`startIndex` occurrence; the PC starts only once at that position. Older senders
+omit these fields and keep their existing two-command handoff compatibility.
+V1 queue previews include `currentQueueId` and `revision`; V2 snapshots include
+root `currentQueueId` and `queueRevision` (independent of playback tick revision).
+Queue changes emit a full `playback.queue.changed` SSE snapshot even when paused.
+Android refreshes only an open queue's visible page when its queue revision changes;
+ordinary progress updates do not fetch queue pages. Closed sheets release browsing
+state and subscriptions are released with the SSE connection. Startup auto-play
+must also skip temporary phone-cast queue items, even when no resume record exists.
 ```json
 {
   "playback": {

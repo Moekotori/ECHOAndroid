@@ -99,7 +99,9 @@ class EchoLinkCastServer(
         activeClients.clear()
         runCatching { serverSocket.getAndSet(null)?.close() }
         acceptThread.getAndSet(null)?.interrupt()
-        workers.getAndSet(newWorkers()).shutdownNow()
+        val abandoned = workers.getAndSet(newWorkers()).shutdownNow()
+        // Cancelled queued tasks never reach their finally block to return the permit.
+        repeat(abandoned.size) { connections.release() }
         port.set(0)
         lastActivityMs.set(0L)
     }
