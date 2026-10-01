@@ -56,6 +56,8 @@ internal fun EchoLibraryPage(
     onOpenFolder: (FolderSummary) -> Unit,
     onOpenPlaylist: (EchoPlaylist) -> Unit,
     onCloseDetail: () -> Unit,
+    onLinkedLibraryPageOpenChanged: (Boolean) -> Unit,
+    linkedDetailBackEnabled: Boolean,
     onOpenConnect: () -> Unit,
 ) {
     var repairFileResult by remember { mutableStateOf<kotlinx.coroutines.CompletableDeferred<android.net.Uri?>?>(null) }
@@ -360,6 +362,8 @@ internal fun EchoLibraryPage(
             onOpenFolder = onOpenFolder,
             onOpenPlaylist = onOpenPlaylist,
             onCloseDetail = onCloseDetail,
+            onLinkedLibraryPageOpenChanged = onLinkedLibraryPageOpenChanged,
+            linkedDetailBackEnabled = linkedDetailBackEnabled,
             onOpenConnect = onOpenConnect,
             cloudLibraryConfigured = !appSettings.webDavServerUrl.isNullOrBlank() ||
                 !appSettings.smbServerUrl.isNullOrBlank() ||

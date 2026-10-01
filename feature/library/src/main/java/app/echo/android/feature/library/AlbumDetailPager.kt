@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.animateSilkToPage
 import app.echo.android.design.rememberSilkPagerFlingBehavior
+import app.echo.android.design.rememberContentPagerNestedScroll
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.EchoTrack
 import kotlinx.coroutines.launch
@@ -45,6 +46,8 @@ internal fun AlbumDetailPager(
 ) = key(album.albumKey) {
     val pager = rememberPagerState { 2 }
     val scope = rememberCoroutineScope()
+    val fling = rememberSilkPagerFlingBehavior(pager)
+    val nestedScroll = rememberContentPagerNestedScroll(pager, fling)
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     var informationVisited by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(pager.settledPage) {
@@ -70,7 +73,8 @@ internal fun AlbumDetailPager(
             state = pager,
             modifier = Modifier.weight(1f).fillMaxWidth(),
             beyondViewportPageCount = 1,
-            flingBehavior = rememberSilkPagerFlingBehavior(pager),
+            flingBehavior = fling,
+            pageNestedScrollConnection = nestedScroll,
         ) { page ->
             if (page == 0) {
                 LazyColumn(

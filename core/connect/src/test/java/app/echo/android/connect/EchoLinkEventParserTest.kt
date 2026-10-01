@@ -10,6 +10,23 @@ import org.json.JSONObject
 import org.junit.Test
 
 class EchoLinkEventParserTest {
+    @Test
+    fun playbackOrderIsOptionalAndCommandsUseThePcWireValues() {
+        val old = JSONObject("""{"state":"playing"}""").toPlaybackSnapshot(endpoint)
+        assertEquals(null, old.playbackOrder)
+        val unknown = JSONObject("""{"playbackOrder":"future-mode"}""").toPlaybackSnapshot(endpoint)
+        assertEquals(null, unknown.playbackOrder)
+        for (mode in app.echo.android.model.connect.EchoRemotePlaybackOrder.entries) {
+            val json = JSONObject().put("playbackOrder", mode.wireValue)
+            assertEquals(mode, json.toPlaybackSnapshot(endpoint).playbackOrder)
+            val event = parseEchoLinkEventData(JSONObject().put("snapshot", json).toString(), endpoint)
+            assertEquals(mode, event!!.payload.playbackOrder)
+            val command = app.echo.android.model.connect.EchoRemoteCommand.SetPlaybackOrder(mode).toJson()
+            assertEquals("setPlaybackOrder", command.getString("command"))
+            assertEquals(mode.wireValue, command.getString("mode"))
+        }
+    }
+
     private val endpoint = EchoRemoteEndpoint(
         id = "192.168.1.20:26789",
         name = "PC ECHO",

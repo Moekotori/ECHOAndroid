@@ -24,11 +24,11 @@ import app.echo.android.design.formatDuration
 import app.echo.android.model.connect.EchoRemoteTrack
 
 @Composable
-internal fun RemoteMusicRow(track: EchoRemoteTrack, current: Boolean, onClick: () -> Unit) {
+internal fun RemoteMusicRow(track: EchoRemoteTrack, current: Boolean, onClick: () -> Unit, enabled: Boolean = true) {
     val scheme = MaterialTheme.colorScheme
     Surface(
         onClick = onClick,
-        enabled = !track.id.isNullOrBlank(),
+        enabled = enabled && !track.id.isNullOrBlank(),
         color = if (current) scheme.surfaceContainerLow else Color.Transparent,
         shape = RoundedCornerShape(8.dp),
         modifier = Modifier.fillMaxWidth().semantics { selected = current },
@@ -50,7 +50,7 @@ internal fun RemoteMusicRow(track: EchoRemoteTrack, current: Boolean, onClick: (
                 stringResource(if (current) R.string.remote_current_track else R.string.feature_connect_play_on_pc_aa41d1),
                 Modifier.size(20.dp), tint = when {
                     track.id.isNullOrBlank() -> scheme.onSurface.copy(alpha = 0.38f)
-                    current -> scheme.primary
+                    current -> scheme.onSurface
                     else -> scheme.onSurfaceVariant
                 })
         }

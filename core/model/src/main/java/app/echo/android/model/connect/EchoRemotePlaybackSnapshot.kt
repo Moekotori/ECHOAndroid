@@ -11,4 +11,8 @@ data class EchoRemotePlaybackSnapshot(
     val queue: EchoRemotePlaybackQueue = EchoRemotePlaybackQueue(),
     val volumeControlEnabled: Boolean = true,
     val volumeLockedReason: String? = null,
+    // Absent on older PCs: do not claim a mode or offer unsupported controls.
+    val playbackOrder: EchoRemotePlaybackOrder? = null,
+    val supportsAtomicPhoneQueue: Boolean = false,
+    val queueIdentityAvailable: Boolean = false,
 )

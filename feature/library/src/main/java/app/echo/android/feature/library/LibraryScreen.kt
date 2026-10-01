@@ -324,6 +324,8 @@ fun LibraryScreen(
     onOpenFolder: (FolderSummary) -> Unit,
     onOpenPlaylist: (EchoPlaylist) -> Unit,
     onCloseDetail: () -> Unit,
+    onLinkedLibraryPageOpenChanged: (Boolean) -> Unit = {},
+    linkedDetailBackEnabled: Boolean = true,
     onOpenConnect: () -> Unit = {},
     cloudLibraryConfigured: Boolean = false,
     onImportM3uPlaylist: () -> Unit = {},
@@ -716,6 +718,22 @@ fun LibraryScreen(
     val linkedAlbumDetail = selectedLinkedAlbum
     val linkedArtistDetail = selectedLinkedArtist
     val linkedPlaylistDetail = selectedLinkedPlaylist
+    val linkedPageOpen = selectedSource == LibrarySourceMode.PcEcho
+    val linkedDetailOpen = linkedPageOpen &&
+        (linkedAlbumDetail != null || linkedArtistDetail != null || linkedPlaylistDetail != null)
+    val reportLinkedPage = androidx.compose.runtime.rememberUpdatedState(onLinkedLibraryPageOpenChanged)
+    // The PC browser (including the playlist list) owns its gestures before a detail opens.
+    androidx.compose.runtime.DisposableEffect(linkedPageOpen) {
+        reportLinkedPage.value(linkedPageOpen)
+        onDispose { reportLinkedPage.value(false) }
+    }
+    androidx.activity.compose.BackHandler(enabled = linkedDetailOpen && linkedDetailBackEnabled) {
+        when {
+            selectedLinkedAlbum != null -> selectedLinkedAlbum = null
+            selectedLinkedArtist != null -> selectedLinkedArtist = null
+            else -> selectedLinkedPlaylist = null
+        }
+    }
     val detailTransitionTarget = when {
         selectedSource == LibrarySourceMode.PcEcho && linkedAlbumDetail != null ->
             LibraryDetailTransitionTarget.LinkedAlbum(linkedAlbumDetail)

@@ -11,8 +11,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
+import app.echo.android.design.echoDrag
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.basicMarquee
 import app.echo.android.design.echoClickable
@@ -130,6 +129,10 @@ fun MiniPlayer(
         }
     }
     var previousTrackId by remember { mutableStateOf(status.track?.id) }
+    LaunchedEffect(status.track?.id) {
+        settleJob?.cancel()
+        dragOffset.floatValue = 0f
+    }
     LaunchedEffect(status.track?.id, lightweight, motionEnabled) {
         val changed = previousTrackId != status.track?.id
         previousTrackId = status.track?.id
@@ -181,15 +184,16 @@ fun MiniPlayer(
                         }
                         .clip(RoundedCornerShape(12.dp))
                         .echoClickable(enabled = onExpand != null) { onExpand?.invoke() }
-                        .draggable(
+                        .echoDrag(
                             orientation = Orientation.Horizontal,
                             enabled = canSwitch,
-                            state = rememberDraggableState { delta ->
+                            gestureKey = status.track?.id,
+                            onDelta = { delta ->
                                 dragOffset.floatValue = (dragOffset.floatValue + delta)
                                     .coerceIn(-widthPx * 0.45f, widthPx * 0.45f)
                             },
-                            onDragStarted = { settleJob?.cancel() },
-                            onDragStopped = { velocity ->
+                            onStart = { settleJob?.cancel() },
+                            onStop = { velocity ->
                                 val offset = dragOffset.floatValue
                                 val threshold = widthPx * MiniPlayerSwipeCommitFraction
                                 val fastSwipe = abs(velocity) > flingThresholdPx && abs(offset) > minimumFlingDistancePx && velocity * offset > 0f
@@ -209,6 +213,10 @@ fun MiniPlayer(
                                         ) { value, _ -> dragOffset.floatValue = value }
                                     }
                                 }
+                            },
+                            onCancel = {
+                                settleJob?.cancel()
+                                dragOffset.floatValue = 0f
                             },
                         ),
                     verticalAlignment = Alignment.CenterVertically,

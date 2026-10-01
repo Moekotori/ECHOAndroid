@@ -3,7 +3,7 @@ package app.echo.android.feature.settings
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.gestures.detectDragGestures
+import app.echo.android.design.detectEchoTargetDrag
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -165,20 +165,18 @@ internal fun SignalEqPlot(
                                 }
                                 return best
                             }
-                            detectDragGestures(
-                                onDragStart = { offset ->
-                                    val index = nearest(offset)
-                                    if (index < 0) return@detectDragGestures
+                            detectEchoTargetDrag(
+                                targetAt = { nearest(it).takeIf { index -> index >= 0 } },
+                                onStart = { index, _ ->
                                     dragIndex = index
                                     selectCallback.value?.invoke(index)
                                     localFreq = frequencies.value[index].toFloat()
                                     localGain = gains.value[index]
                                 },
-                                onDragEnd = { dragIndex = -1 },
-                                onDragCancel = { dragIndex = -1 },
+                                onStop = { dragIndex = -1 },
+                                onCancel = { dragIndex = -1 },
                                 onDrag = { change, _ ->
                                     val index = dragIndex
-                                    if (index < 0) return@detectDragGestures
                                     change.consume()
                                     val width = size.width.toFloat()
                                     val height = size.height.toFloat()
@@ -378,7 +376,7 @@ internal fun SignalEqFader(
                 .fillMaxWidth()
                 .height(140.dp)
                 .pointerInput(enabled, minGainDb, maxGainDb) {
-                    detectTapGestures { offset ->
+                    if (enabled) detectTapGestures { offset ->
                         if (!enabled) return@detectTapGestures
                         val inset = 12.dp.toPx()
                         val next = snapEqGain(
@@ -389,7 +387,7 @@ internal fun SignalEqFader(
                     }
                 }
                 .pointerInput(enabled, minGainDb, maxGainDb) {
-                    detectVerticalDragGestures(
+                    if (enabled) detectVerticalDragGestures(
                         onDragStart = { offset ->
                             if (!enabled) return@detectVerticalDragGestures
                             dragging = true
@@ -491,7 +489,7 @@ internal fun SignalGainStrip(
                 }
             }
             .pointerInput(enabled, min, max) {
-                detectTapGestures { offset ->
+                if (enabled) detectTapGestures { offset ->
                     if (!enabled) return@detectTapGestures
                     val next = snap(eqLinearValue(offset.x, size.width.toFloat(), min, max, 12.dp.toPx()))
                     localValue = next
@@ -499,7 +497,7 @@ internal fun SignalGainStrip(
                 }
             }
             .pointerInput(enabled, min, max) {
-                detectHorizontalDragGestures(
+                if (enabled) detectHorizontalDragGestures(
                     onDragStart = { offset ->
                         if (!enabled) return@detectHorizontalDragGestures
                         dragging = true

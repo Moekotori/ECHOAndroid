@@ -575,6 +575,51 @@ class EchoRemoteClientTest {
     }
 
     @Test
+    fun commandFailuresStayVisibleEvenWhenRealtimeStatusArrives() = runBlocking {
+        val blocker = CompletableDeferred<Unit>()
+        val client = EchoRemoteClient(this, FakeEchoLinkTransport(commandBlocker = blocker, failCommand = true))
+        client.setForeground(false)
+        try {
+            client.connect(endpoint, false)
+            delay(20)
+            client.send(EchoRemoteCommand.Next)
+            delay(10)
+            client.ingest(app.echo.android.model.connect.EchoRemoteMessage.StatusSnapshot(EchoRemotePlaybackSnapshot(positionMs = 42)))
+            blocker.complete(Unit)
+            delay(10)
+            assertEquals("command failed", client.status.value.error)
+            client.ingest(app.echo.android.model.connect.EchoRemoteMessage.StatusSnapshot(EchoRemotePlaybackSnapshot(positionMs = 84)))
+            assertEquals("command failed", client.status.value.error)
+            assertEquals(84L, client.status.value.playback.positionMs)
+        } finally {
+            client.disconnect()
+        }
+        assertNull(client.status.value.error)
+    }
+
+    @Test
+    fun atomicPhoneCastSendsTheSelectedOccurrenceAndPositionInOneCommand() = runBlocking {
+        val transport = FakeEchoLinkTransport()
+        val client = EchoRemoteClient(this, transport)
+        client.setForeground(false)
+        try {
+            client.connect(endpoint, false)
+            delay(20)
+            client.ingest(app.echo.android.model.connect.EchoRemoteMessage.StatusSnapshot(
+                EchoRemotePlaybackSnapshot(supportsAtomicPhoneQueue = true)))
+            val item = EchoRemoteStreamItem("same", "http://127.0.0.1/song.flac", "Song", "Artist")
+            var acknowledged = false
+            client.castRemoteQueueToPc(listOf(item, item), 1, 42000, onSuccess = { acknowledged = true })
+            delay(20)
+            assertTrue(acknowledged)
+            assertEquals(1, transport.commands.size)
+            val command = transport.commands.single() as EchoRemoteCommand.QueueReplaceRemote
+            assertEquals(42000L, command.positionMs)
+            assertEquals(1, command.startIndex)
+        } finally { client.disconnect() }
+    }
+
+    @Test
     fun failedCommandKeepsTheSessionConnected() = runBlocking {
         val client = EchoRemoteClient(this, FakeEchoLinkTransport(failCommand = true))
         client.connect(endpoint, false)
@@ -920,6 +965,33 @@ class EchoRemoteClientTest {
         assertTrue(phoneStarted)
         assertEquals(2, transport.streamCalls)
         client.disconnect()
+    }
+
+    @Test
+    fun partialEventsKeepQueueAndFullSnapshotsCanClearIt() = runBlocking {
+        val client = EchoRemoteClient(this, FakeEchoLinkTransport())
+        client.setForeground(false)
+        try {
+            client.connect(endpoint, refreshLibraryOnConnect = false)
+            delay(20)
+            val queue = app.echo.android.model.connect.EchoRemotePlaybackQueue(
+                currentTrackId = "a", items = listOf(remoteTrack("a"), remoteTrack("b")),
+            )
+            client.ingest(app.echo.android.model.connect.EchoRemoteMessage.StatusSnapshot(
+                EchoRemotePlaybackSnapshot(queue = queue)))
+            val event = parseEchoLinkEventData(
+                """{"snapshot":{"state":"playing","track":{"id":"b","title":"B","artist":"Artist"},"playbackOrder":"shuffle"}}""",
+                endpoint,
+            )!!
+            client.ingest(event)
+            assertEquals(queue.items, client.status.value.playback.queue.items)
+            assertEquals("b", client.status.value.playback.queue.currentTrackId)
+            assertEquals(app.echo.android.model.connect.EchoRemotePlaybackOrder.Shuffle, client.status.value.playback.playbackOrder)
+            client.ingest(parseEchoLinkEventData("""{"snapshot":{"queue":{"items":[]}}}""", endpoint)!!)
+            assertTrue(client.status.value.playback.queue.items.isEmpty())
+        } finally {
+            client.disconnect()
+        }
     }
 
     @Test

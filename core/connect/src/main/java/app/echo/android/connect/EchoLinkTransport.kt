@@ -85,6 +85,8 @@ internal interface EchoLinkTransport {
         onClosed: (Throwable?) -> Unit,
     ): EchoLinkEventSubscription
     suspend fun sendCommand(endpoint: EchoRemoteEndpoint, command: EchoRemoteCommand): EchoLinkStatusResponse?
+    suspend fun fetchPlaybackQueue(endpoint: EchoRemoteEndpoint, page: Int): app.echo.android.model.connect.EchoRemoteQueueState =
+        throw EchoLinkHttpException("unknown_command", 404)
     suspend fun fetchTracks(endpoint: EchoRemoteEndpoint, query: String, page: Int, pageSize: Int): EchoLinkTrackPage
     suspend fun fetchPlaylists(endpoint: EchoRemoteEndpoint, query: String, page: Int, pageSize: Int): EchoLinkPlaylistPage
     suspend fun fetchPlaylistTracks(endpoint: EchoRemoteEndpoint, playlistId: String, page: Int, pageSize: Int): EchoLinkTrackPage
@@ -244,6 +246,24 @@ internal class OkHttpEchoLinkTransport(
         endpoint: EchoRemoteEndpoint,
         command: EchoRemoteCommand,
     ): EchoLinkStatusResponse? = withContext(responseDispatcher) {
+        if (command is EchoRemoteCommand.SetPlaybackOrder && endpoint.supportsV2Events) {
+            // Paired V2 PCs already support this action, even before V1 added the command.
+            val acknowledgement = executeJson(
+                Request.Builder()
+                    .url(endpoint.versionedUrl(2, "actions", "playback"))
+                    .authorized(endpoint)
+                    .post(JSONObject()
+                        .put("requestId", java.util.UUID.randomUUID().toString())
+                        .put("action", "setPlaybackOrder")
+                        .put("mode", command.mode.wireValue)
+                        .toString().toRequestBody(JsonMediaType))
+                    .build(),
+            )
+            if (!acknowledgement.optBoolean("ok", false)) {
+                throw EchoLinkHttpException("PC ECHO did not acknowledge the playback action")
+            }
+            return@withContext null
+        }
         val json = executeJson(
             Request.Builder()
                 .url(endpoint.url("playback", "command"))
@@ -255,6 +275,20 @@ internal class OkHttpEchoLinkTransport(
             json.has("playback") || json.has("state") -> json.toStatusResponse(endpoint)
             else -> null
         }
+    }
+
+    override suspend fun fetchPlaybackQueue(endpoint: EchoRemoteEndpoint, page: Int) = withContext(responseDispatcher) {
+        val json = executeJson(Request.Builder().url(endpoint.url("playback", "queue") {
+            addQueryParameter("page", page.toString()); addQueryParameter("pageSize", "100")
+        }).authorized(endpoint).get().build())
+        val rows = json.optJSONArray("items") ?: JSONArray()
+        require(rows.length() <= 100) { "PC returned an oversized queue page" }
+        val items = buildList {
+            for (index in 0 until rows.length()) rows.optJSONObject(index)?.toRemoteTrack(endpoint)?.let(::add)
+        }
+        app.echo.android.model.connect.EchoRemoteQueueState(items = items,
+            totalCount = json.optInt("totalCount", items.size).coerceAtLeast(items.size),
+            revision = json.optLong("revision", 0), currentQueueId = json.optText("currentQueueId"))
     }
 
     override suspend fun fetchTracks(
@@ -524,6 +558,8 @@ internal fun JSONObject.toRemoteTrack(endpoint: EchoRemoteEndpoint): EchoRemoteT
         durationMs = optDurationMs(),
         sourceLabel = optText("sourceLabel") ?: optText("source"),
         canPlayOnPhone = optBoolean("canPlayOnPhone", true),
+        queueId = optText("queueId"),
+        queueIndex = optInt("queueIndex", -1).takeIf { it >= 0 },
     )
 }
 

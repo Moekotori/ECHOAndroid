@@ -11,6 +11,59 @@ import org.junit.Test
 
 class EchoLinkCastServerTest {
     @Test
+    fun stopClosesAcceptedClientsWithoutWaitingForTheirReadTimeout() {
+        val opened = java.util.concurrent.CountDownLatch(1)
+        val release = java.util.concurrent.CountDownLatch(1)
+        val server = EchoLinkCastServer(openBody = EchoLinkCastBodyFactory { _, _ ->
+            opened.countDown()
+            runCatching { release.await(1, java.util.concurrent.TimeUnit.SECONDS) }
+            EchoLinkCastBody(java.io.ByteArrayInputStream(byteArrayOf(1)), 1L, "application/octet-stream")
+        }, bindHost = "127.0.0.1")
+        try {
+            val port = server.start()
+            val url = server.publish(listOf(EchoLinkCastPublication(EchoLinkCastPolicy.newToken(), "song", "source",
+                title = "Song", artist = "Artist")), "127.0.0.1", port).single().streamUrl
+            java.net.Socket("127.0.0.1", port).use { socket ->
+                socket.soTimeout = 1000
+                socket.getOutputStream().write("GET ${java.net.URI(url).rawPath} HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n".toByteArray())
+                socket.getOutputStream().flush()
+                assertTrue(opened.await(1, java.util.concurrent.TimeUnit.SECONDS))
+                server.stop()
+                assertEquals(-1, socket.getInputStream().read())
+            }
+        } finally { release.countDown(); server.stop() }
+    }
+
+    @Test
+    fun successfulBodyTransfersRefreshIdleTimeWithoutWaitingTwentyMinutes() {
+        val clock = java.util.concurrent.atomic.AtomicLong(1000L)
+        val file = File.createTempFile("echo-cast-progress", ".bin")
+        file.writeBytes(ByteArray(200000))
+        val server = EchoLinkCastServer(
+            openBody = EchoLinkCastBodyFactory { _, _ ->
+                val input = object : java.io.FilterInputStream(FileInputStream(file)) {
+                    override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+                        val read = super.read(buffer, offset, length)
+                        if (read > 0) clock.addAndGet(EchoLinkCastPolicy.IdleTimeoutMs + 1000)
+                        return read
+                    }
+                }
+                EchoLinkCastBody(input, totalLength = null, mimeType = "application/octet-stream")
+            }, bindHost = "127.0.0.1", nowMs = { clock.get() },
+        )
+        try {
+            val port = server.start()
+            val items = server.publish(listOf(EchoLinkCastPublication(EchoLinkCastPolicy.newToken(), "song",
+                file.toURI().toString(), title = "Song", artist = "Artist")), "127.0.0.1", port)
+            OkHttpClient().newCall(Request.Builder().url(items.single().streamUrl).build()).execute().use {
+                assertEquals(200000, it.body!!.bytes().size)
+            }
+            assertFalse(server.isIdle(clock.get(), timeoutMs = 1000))
+            assertTrue(server.isIdle(clock.get() + 1001, timeoutMs = 1000))
+        } finally { server.stop(); file.delete() }
+    }
+
+    @Test
     fun servesFullBodyRangeAndRejectsUnknownToken() {
         val payload = ByteArray(256) { index -> index.toByte() }
         val file = File.createTempFile("echo-cast", ".bin")

@@ -28,7 +28,17 @@ internal fun parseEchoLinkEventData(
         ?: json.optJSONObject("playback")
         ?: json
     val playbackJson = snapshotJson.optJSONObject("playback") ?: snapshotJson
-    return EchoRemoteMessage.StatusSnapshot(playbackJson.toPlaybackSnapshot(endpoint))
+    return EchoRemoteMessage.StatusSnapshot(
+        payload = playbackJson.toPlaybackSnapshot(endpoint),
+        queueIncluded = playbackJson.has("queue"),
+        trackArtworkIncluded = playbackJson.optJSONObject("track")?.let {
+            it.has("artworkUrl") || it.has("coverUrl") || it.has("coverThumb") ||
+                it.has("cover") || it.has("albumArtUrl") || it.has("albumArt")
+        } ?: true,
+        volumeControlIncluded = playbackJson.has("volumeControlEnabled"),
+        outputIncluded = playbackJson.has("outputMode") || playbackJson.has("output"),
+        playbackOrderIncluded = playbackJson.has("playbackOrder"),
+    )
 }
 
 internal fun JSONObject.toPlaybackSnapshot(endpoint: EchoRemoteEndpoint): EchoRemotePlaybackSnapshot =
@@ -38,11 +48,17 @@ internal fun JSONObject.toPlaybackSnapshot(endpoint: EchoRemoteEndpoint): EchoRe
         positionMs = optLong("positionMs", 0L).coerceAtLeast(0L),
         durationMs = optDurationMs(),
         volume = optDouble("volume", 1.0).toFloat().coerceIn(0f, 1f),
-        outputMode = optText("outputMode") ?: optText("output") ?: "PC ECHO",
+        outputMode = optText("outputMode") ?: optJSONObject("output")?.optText("mode")
+            ?: if (opt("output") is String) optText("output") ?: "PC ECHO" else "PC ECHO",
         updatedAtEpochMs = optLong("updatedAtEpochMs", System.currentTimeMillis()),
-        queue = optJSONObject("queue").toRemoteQueue(endpoint),
+        queue = optJSONObject("queue")?.toRemoteQueue(endpoint) ?: EchoRemotePlaybackQueue(
+            revision = optLong("queueRevision", -1).takeIf { it >= 0 },
+            currentQueueId = optText("currentQueueId")),
         volumeControlEnabled = optBoolean("volumeControlEnabled", true),
         volumeLockedReason = optText("volumeLockedReason"),
+        playbackOrder = app.echo.android.model.connect.EchoRemotePlaybackOrder.fromWireValue(optText("playbackOrder")),
+        supportsAtomicPhoneQueue = optBoolean("supportsAtomicPhoneQueue", false),
+        queueIdentityAvailable = has("currentQueueId") || optJSONObject("queue")?.has("currentQueueId") == true,
     )
 
 internal fun JSONObject?.toRemoteQueue(endpoint: EchoRemoteEndpoint): EchoRemotePlaybackQueue {
@@ -56,6 +72,9 @@ internal fun JSONObject?.toRemoteQueue(endpoint: EchoRemoteEndpoint): EchoRemote
     return EchoRemotePlaybackQueue(
         currentTrackId = optText("currentTrackId") ?: optText("currentId"),
         items = items,
+        totalCount = optInt("totalCount", items.size).coerceAtLeast(items.size),
+        revision = optLong("revision", -1).takeIf { it >= 0 },
+        currentQueueId = optText("currentQueueId"),
     )
 }
 

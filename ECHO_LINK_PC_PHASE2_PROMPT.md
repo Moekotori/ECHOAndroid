@@ -110,6 +110,41 @@ Add compatible command bodies under existing `POST /echo-link/v1/playback/comman
 ```
 
 Status response should include optional queue fields:
+
+Android remote playback also uses the additive command
+`{ "command": "setPlaybackOrder", "mode": "sequential" | "shuffle" | "repeat-one" }`.
+Return optional `playback.playbackOrder` with the same values in status and event snapshots.
+Missing or unknown values mean the Android mode control is unavailable (older PC).
+Await the existing PC playback controller for mode changes and previous/next; keep
+the current track, progress, and queue intact when changing modes. Selecting an
+existing queue track uses the PC queue item controller rather than replacing the
+queue with one track. Do not implement a second shuffle/advance policy in Echo Link.
+Paired V2 clients use the existing `/echo-link/v2/actions/playback` action
+`{ "requestId": "unique-id", "action": "setPlaybackOrder", "mode": "shuffle" }`;
+direct/legacy clients use the V1 command above. Commit the new PC queue session
+before broadcasting its revision to renderer windows so a dirty window cannot
+silently discard the remote queue. V2 events may omit queue, artwork, and volume
+control details; Android preserves omitted details and applies explicit clears.
+
+Queue browsing uses `GET /echo-link/v1/playback/queue?page=1&pageSize=100`.
+Return `items` as track previews with stable occurrence `queueId` and absolute
+`queueIndex`, plus `totalCount`, `revision`, and `currentQueueId`. Page size is
+bounded to 200; Android requests 100 and retains a sliding window of 1,000 rows.
+`playQueueItem` takes `queueId`. `queueMove` takes `queueId`, absolute `toIndex`,
+and `expectedRevision`; return HTTP 409 for stale revisions. Sorting must keep
+the current occurrence, progress, and playback mode, and acknowledge after save.
+Queue replacement preserves duplicates and accepts up to 10,000 entries; larger
+requests fail explicitly with HTTP 413 instead of silently dropping songs.
+
+The PC receives Android's existing `playRemoteStream` and `queueReplaceRemote`
+commands through its normal HTTP-file playback path. Only HTTP(S) URLs hosted
+on the requesting phone's literal IP are accepted. Phone items are temporary,
+are not imported into the PC library, and are excluded from restart auto-resume.
+Cast URLs depend on the phone keeping its cast server active. PCM and format
+conversion remain owned by the existing player; this contract adds no transcoding.
+PC sessions created by Echo Link mark their manual source with `owner: "echo-link"`.
+Shuffle stays inside that supplied queue; ordinary PC manual-queue shuffle keeps
+its existing whole-library behavior.
 ```json
 {
   "playback": {

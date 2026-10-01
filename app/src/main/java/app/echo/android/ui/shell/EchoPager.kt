@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.Velocity
 import app.echo.android.EchoTab
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.echoHorizontalGestureOwnsScroll
+import app.echo.android.design.echoPagerOwnsFling
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
@@ -95,11 +96,15 @@ internal fun outerPagerUserScrollEnabled(
     targetPage: Int,
     scrollInProgress: Boolean,
     innerTabPageSettled: Boolean,
+    linkedLibraryPageOpen: Boolean = false,
 ): Boolean {
     if (innerTabPageSettled) return false
-    if (!libraryDetailOpen || prefersLibrarySplit) return true
     val settledOnLibrary = settledPage == EchoPagerPage.Library.ordinal &&
         targetPage == EchoPagerPage.Library.ordinal
+    // All PC collection browsers and details are full-page, including on wide screens.
+    // A nested scroll or an interrupted outer drag must not reopen this lock.
+    if (linkedLibraryPageOpen && settledOnLibrary) return false
+    if ((!libraryDetailOpen || prefersLibrarySplit) && !linkedLibraryPageOpen) return true
     return !settledOnLibrary || scrollInProgress
 }
 
@@ -123,7 +128,7 @@ internal fun rememberHomeSafePagerNestedScroll(
                 if (state.currentPageOffsetFraction.absoluteValue < NestedPagerDragFraction) {
                     return Offset.Zero
                 }
-                return default.onPreScroll(available, source)
+                return default.onPreScroll(available, source).copy(y = 0f)
             }
 
             override fun onPostScroll(
@@ -143,6 +148,7 @@ internal fun rememberHomeSafePagerNestedScroll(
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
                 if (innerTabPageOwnsGesture) return Velocity.Zero
+                if (!echoPagerOwnsFling(consumed, available, state.currentPageOffsetFraction)) return Velocity.Zero
                 return default.onPostFling(consumed, available)
             }
         }

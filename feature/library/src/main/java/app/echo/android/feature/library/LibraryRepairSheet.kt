@@ -41,7 +41,13 @@ internal fun LibraryRepairSheet(actions: LibraryExperienceActions, onDismiss: ()
         catch (e: CancellationException) { throw e } catch (_: Exception) { error = true }
         finally { finding = false }
     }
-    ModalBottomSheet(onDismissRequest = { if (!applying) onDismiss() }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    val repairInProgress = rememberUpdatedState(applying)
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = { it != SheetValue.Hidden || !repairInProgress.value },
+    )
+    ModalBottomSheet(onDismissRequest = { if (!applying) onDismiss() }, sheetState = sheetState,
+        sheetGesturesEnabled = !applying) {
         LazyColumn(Modifier.fillMaxWidth(), contentPadding = PaddingValues(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {

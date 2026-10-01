@@ -49,6 +49,16 @@ class EchoRemoteClient internal constructor(
 
     private val _library = MutableStateFlow(EchoRemoteLibraryState())
     val library: StateFlow<EchoRemoteLibraryState> = _library.asStateFlow()
+    private val queueBrowser = EchoLinkRemoteQueue(scope, transport, { endpoint },
+        { _status.value.playback.queue }, { it.userMessage() })
+    val remoteQueue = queueBrowser.state
+    fun refreshQueue() { queueBrowser.startWatching(); queueBrowser.refresh() }
+    fun loadMoreQueue() = queueBrowser.loadMore()
+    fun loadPreviousQueue() = queueBrowser.loadPrevious()
+    fun cancelQueueRequests() = queueBrowser.stopWatching()
+    fun setQueueVisibleAnchor(index: Int) = queueBrowser.setVisibleAnchor(index)
+    fun moveQueueItem(queueId: String, toIndex: Int) = queueBrowser.move(queueId, toIndex)
+    fun confirmQueueSelection(queueId: String) = queueBrowser.confirmSelection(queueId)
 
     private var refreshOnForeground = false
     private var foreground = true
@@ -135,6 +145,8 @@ class EchoRemoteClient internal constructor(
             size > EchoLinkStreamCachePolicy.MaxEntries
     }
     private var statusRefreshGeneration = 0L
+    private var commandGeneration = 0L
+    private var lastCommandError: String? = null
     private var libraryRefreshGeneration = 0L
     private var playlistRefreshGeneration = 0L
     private var albumRefreshGeneration = 0L
@@ -173,6 +185,8 @@ class EchoRemoteClient internal constructor(
             clearStreamCache()
         }
         val generation = ++connectGeneration
+        queueBrowser.cancel(clear = true)
+        lastCommandError = null
         connectJob?.cancel()
         endpoint = nextEndpoint
         stopEventStream()
@@ -267,6 +281,8 @@ class EchoRemoteClient internal constructor(
     }
 
     fun disconnect() {
+        queueBrowser.cancel(clear = true)
+        lastCommandError = null
         refreshOnForeground = false
         connectGeneration += 1
         connectJob?.cancel()
@@ -303,10 +319,11 @@ class EchoRemoteClient internal constructor(
         when (message) {
             is EchoRemoteMessage.StatusSnapshot -> {
                 val target = endpoint ?: return
+                val playback = mergeEchoLinkSnapshot(_status.value.playback, message)
                 statusRefreshGeneration += 1
                 applyStatus(
                     target,
-                    EchoLinkStatusResponse(deviceName = target.name, playback = message.payload),
+                    EchoLinkStatusResponse(deviceName = target.name, playback = playback),
                 )
             }
 
@@ -887,15 +904,20 @@ class EchoRemoteClient internal constructor(
                 onFailure(error)
             }
             if (items.size > 1) {
+                val atomic = _status.value.playback.supportsAtomicPhoneQueue
                 val replaced = dispatchCommand(
                     target = target,
                     command = EchoRemoteCommand.QueueReplaceRemote(
                         items = items,
                         startTrackId = startItem.id,
+                        positionMs = if (atomic) safePosition else 0L,
+                        startIndex = if (atomic) (if (startIndex in items.indices) startIndex else 0) else null,
                     ),
+                    onSuccess = { if (atomic) onSuccess() },
                     onFailure = castFailure,
                 )
                 if (!replaced || connection != connectGeneration) return@launch
+                if (atomic) return@launch
             }
             dispatchCommand(
                 target = target,
@@ -1063,6 +1085,9 @@ class EchoRemoteClient internal constructor(
         onFailure: (Throwable) -> Unit = {},
     ): Boolean {
         val generation = ++statusRefreshGeneration
+        val commandRequest = ++commandGeneration
+        lastCommandError = null
+        _status.update { it.copy(error = null) }
         val connection = connectGeneration
         val result = runSuspendCatching { transport.sendCommand(target, command) }
         result.onSuccess { response ->
@@ -1084,12 +1109,13 @@ class EchoRemoteClient internal constructor(
                 onFailure(error)
                 return@onFailure
             }
-            if (generation == statusRefreshGeneration) {
+            if (commandRequest == commandGeneration) {
+                lastCommandError = error.userMessage()
                 _status.update { current ->
-                    current.copy(error = error.userMessage())
+                    current.copy(error = lastCommandError)
                 }
                 _library.update { current ->
-                    current.copy(error = error.userMessage())
+                    current.copy(error = lastCommandError)
                 }
             }
             onFailure(error)
@@ -1215,8 +1241,11 @@ class EchoRemoteClient internal constructor(
                 connectionState = EchoRemoteConnectionState.Connected,
                 endpoint = namedEndpoint,
                 playback = response.playback,
-                error = null,
+                error = lastCommandError,
             )
+        }
+        if (response.playback.queueIdentityAvailable) {
+            queueBrowser.observe(response.playback.queue.revision, response.playback.queue.currentQueueId)
         }
     }
 
@@ -1296,12 +1325,16 @@ class EchoRemoteClient internal constructor(
         return runSuspendCatching { transport.fetchLyrics(target, trackId) }.getOrNull()
     }
 
-    private fun Throwable.userMessage(): String =
-        if (this is EchoLinkHttpException && message == "fixed_volume") {
-            text(R.string.connect_volume_locked)
-        } else {
-            message?.takeIf { it.isNotBlank() } ?: text(R.string.connect_failed)
-        }
+    private fun Throwable.userMessage(): String = when {
+        this !is EchoLinkHttpException -> message?.takeIf { it.isNotBlank() } ?: text(R.string.connect_failed)
+        message == "fixed_volume" -> text(R.string.connect_volume_locked)
+        message == "playback_action_unavailable" -> text(R.string.connect_playback_unavailable)
+        message == "main_window_unavailable" || message == "main_window_playback_controller_unavailable" -> text(R.string.connect_pc_player_unavailable)
+        message == "main_window_playback_command_timeout" -> text(R.string.connect_command_timeout)
+        message == "unknown_command" || message == "unsupported_playback_action" -> text(R.string.connect_action_update_pc)
+        message == "playback_queue_session_conflict" -> text(R.string.connect_queue_changed)
+        else -> message?.takeIf { it.isNotBlank() } ?: text(R.string.connect_failed)
+    }
 
     private companion object {
         const val StatusPollIntervalMs = 5_000L

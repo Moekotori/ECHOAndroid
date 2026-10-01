@@ -140,6 +140,8 @@ fun ConnectScreen(
     openPcTabNonce: Int = 0,
     openPcQueueNonce: Int = 0,
     onPcQueueOpened: () -> Unit = {},
+    onOpenFullQueue: (() -> Unit)? = null,
+    queueTotalCount: Int = queueItems.size,
 ) {
     val pagerState = rememberPagerState { 3 }
     val scrollStates = listOf(rememberScrollState(), rememberScrollState(), rememberScrollState())
@@ -269,6 +271,7 @@ fun ConnectScreen(
                                 outputMode = outputMode,
                                 currentTrackId = currentTrackId,
                                 queueItems = queueItems,
+                                queueTotalCount = queueTotalCount,
                                 onConnectPc = onConnectPc,
                                 onPlayPause = onPlayPause,
                                 onPrevious = onPrevious,
@@ -277,6 +280,7 @@ fun ConnectScreen(
                                 onSeek = onSeek,
                                 onVolume = onVolume,
                                 onPlayQueueItem = onPlayQueueItem,
+                                onOpenFullQueue = onOpenFullQueue,
                                 onHandoffPhoneToPc = onHandoffPhoneToPc,
                                 onDisconnect = onDisconnect,
                                 onForgetPc = onForgetPc,

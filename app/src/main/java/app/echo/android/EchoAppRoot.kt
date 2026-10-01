@@ -770,7 +770,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     }
     var lyricsLaunchToken by rememberSaveable { mutableIntStateOf(0) }
     var queueSheetVisible by rememberSaveable { mutableStateOf(false) }
+    var remotePlayerSheetVisible by rememberSaveable { mutableStateOf(false) }
+    var remoteQueueSheetVisible by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(remoteMode) {
+        remotePlayerSheetVisible = false
+        remoteQueueSheetVisible = false
         if (remoteMode) {
             nowPlayingExpanded = false
             queueSheetVisible = false
@@ -839,6 +843,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     }
     val openLibraryRequest by EchoLaunchActions.openLibrary.collectAsStateWithLifecycle()
     val openCastRequest by EchoLaunchActions.openCast.collectAsStateWithLifecycle()
+    var linkedLibraryPageOpen by remember { mutableStateOf(false) }
     val libraryDetailOpen = selectedAlbum != null || selectedArtist != null || selectedGenre != null || selectedFolder != null || selectedPlaylist != null
     LaunchedEffect(effectivePerformanceMode, appVisible, nowPlayingExpanded) {
         val visibility = when {
@@ -961,11 +966,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         viewModel.setLibrarySelectedSource("pc_echo")
         if (remoteClient.library.value.tracks.isEmpty()) remoteClient.refreshLibrary()
         selectDockTab(EchoTab.Library)
-    }
-    fun openPcControls(queue: Boolean = false) {
-        openPcTabNonce += 1
-        if (queue) openPcQueueNonce += 1
-        selectDockTab(EchoTab.Connect)
     }
     fun onNowPlayingCast() {
         castSheetVisible = true
@@ -1090,7 +1090,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     EchoOverlayBackHandler(enabled = addMusicVisible && !pluginsVisible) {
         addMusicVisible = false
     }
-    val shellOverlayOpen = searchVisible || listeningVisible || listeningStatsVisible || playbackHistoryVisible || errorLogVisible || queueSheetVisible || castSheetVisible || nowPlayingExpanded || pluginsVisible || addMusicVisible
+    val shellOverlayOpen = searchVisible || listeningVisible || listeningStatsVisible || playbackHistoryVisible || errorLogVisible || queueSheetVisible || remotePlayerSheetVisible || remoteQueueSheetVisible || castSheetVisible || nowPlayingExpanded || pluginsVisible || addMusicVisible
     val connectPageSettled = appVisible && screenInteractive && !shellOverlayOpen &&
         tabPagerState.settledPage == EchoPagerPage.Connect.ordinal
     // One owner for discovery: closing either surface must not stop the other.
@@ -1171,11 +1171,17 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                 val innerTabPageSettled = enteringInnerTabPage ||
                     tabPagerState.settledPage == EchoPagerPage.Connect.ordinal ||
                     tabPagerState.settledPage == EchoPagerPage.Diagnostics.ordinal
-                val tabPagerNestedScroll = rememberHomeSafePagerNestedScroll(tabPagerState, innerTabPageSettled)
+                val detailOwnsGesture = (libraryDetailOpen || linkedLibraryPageOpen) &&
+                    tabPagerState.settledPage == EchoPagerPage.Library.ordinal &&
+                    (linkedLibraryPageOpen || !LocalEchoWidthSizeClass.current.prefersLibrarySplit)
+                val tabPagerNestedScroll = rememberHomeSafePagerNestedScroll(
+                    tabPagerState, innerTabPageSettled || detailOwnsGesture,
+                )
                 HorizontalPager(
                     state = tabPagerState,
                     userScrollEnabled = outerPagerUserScrollEnabled(
                         libraryDetailOpen = libraryDetailOpen,
+                        linkedLibraryPageOpen = linkedLibraryPageOpen,
                         prefersLibrarySplit = LocalEchoWidthSizeClass.current.prefersLibrarySplit,
                         settledPage = tabPagerState.settledPage,
                         targetPage = tabPagerState.targetPage,
@@ -1255,6 +1261,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                     selectedPlaylist = playlist
                                 },
                                 onCloseDetail = { closeLibraryDetail() },
+                                onLinkedLibraryPageOpenChanged = { linkedLibraryPageOpen = it },
+                                linkedDetailBackEnabled = !shellOverlayOpen && selectedTab == EchoTab.Library.ordinal,
                                 onOpenConnect = { selectDockTab(EchoTab.Connect) },
                             )
 
@@ -1524,6 +1532,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 remoteMode = remoteMode,
                                 onRemoteModeChange = ::selectEchoLinkMode,
                                 onOpenPcLibrary = ::openPcLibrary,
+                                onOpenFullQueue = { remoteQueueSheetVisible = true },
+                                queueTotalCount = remoteStatus.playback.queue.totalCount,
                                 openPcTabNonce = openPcTabNonce,
                                 openPcQueueNonce = openPcQueueNonce,
                                 onPcQueueOpened = { openPcQueueNonce = 0 },
@@ -1666,6 +1676,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 val opraState by viewModel.opraState.collectAsStateWithLifecycle()
                                 val replayGainScan by viewModel.replayGainScanState.collectAsStateWithLifecycle()
                                 DiagnosticsScreen(
+                                    onSwipeToConnect = { navigateToPage(EchoPagerPage.Connect) },
                                     status = playbackStatus,
                                     positionFlow = viewModel.playbackPosition,
                                     equalizerState = equalizerState,
@@ -1742,10 +1753,13 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 playback = remoteStatus.playback,
                                 connected = remoteStatus.connectionState == EchoRemoteConnectionState.Connected,
                                 pcTitle = remoteStatus.endpoint?.name ?: "PC ECHO",
-                                onExpand = { openPcControls() },
+                                onExpand = { remotePlayerSheetVisible = true },
                                 onPlayPause = { remoteClient.send(EchoRemoteCommand.PlayPause) },
                                 onNext = { remoteClient.send(EchoRemoteCommand.Next) },
-                                onOpenQueue = { openPcControls(queue = true) },
+                                onPrevious = { remoteClient.send(EchoRemoteCommand.Previous) },
+                                remoteError = remoteStatus.error,
+                                onPlaybackOrderChange = { remoteClient.send(EchoRemoteCommand.SetPlaybackOrder(it)) },
+                                onOpenQueue = { remoteQueueSheetVisible = true },
                                 modifier = Modifier.widthIn(max = app.echo.android.design.LocalEchoContentMaxWidth.current),
                             )
                         }
@@ -1817,6 +1831,55 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                         selectedArtist = artist
                         selectDockTab(EchoTab.Library)
                     },
+                )
+            }
+            if (remotePlayerSheetVisible) {
+                app.echo.android.feature.connect.EchoLinkRemotePlayerSheet(
+                    playback = remoteStatus.playback,
+                    connected = remoteStatus.connectionState == EchoRemoteConnectionState.Connected,
+                    remoteError = remoteStatus.error,
+                    active = appVisible && screenInteractive,
+                    onPlayPause = { remoteClient.send(EchoRemoteCommand.PlayPause) },
+                    onPrevious = { remoteClient.send(EchoRemoteCommand.Previous) },
+                    onNext = { remoteClient.send(EchoRemoteCommand.Next) },
+                    onStop = { remoteClient.send(EchoRemoteCommand.Stop) },
+                    onSeek = { remoteClient.send(EchoRemoteCommand.SeekTo(it)) },
+                    onVolume = { remoteClient.send(EchoRemoteCommand.SetVolume(it)) },
+                    onOpenLibrary = {
+                        remotePlayerSheetVisible = false
+                        openPcLibrary()
+                    },
+                    onOpenQueue = {
+                        remotePlayerSheetVisible = false
+                        remoteQueueSheetVisible = true
+                    },
+                    onDismiss = { remotePlayerSheetVisible = false },
+                    onPlaybackOrderChange = { remoteClient.send(EchoRemoteCommand.SetPlaybackOrder(it)) },
+                )
+            }
+            if (remoteQueueSheetVisible) {
+                val remoteQueue by remoteClient.remoteQueue.collectAsStateWithLifecycle()
+                DisposableEffect(remoteClient) {
+                    remoteClient.refreshQueue()
+                    onDispose { remoteClient.cancelQueueRequests() }
+                }
+                app.echo.android.feature.connect.EchoLinkRemoteQueueSheet(
+                    currentTrackId = remoteStatus.playback.track?.id,
+                    remoteError = remoteStatus.error,
+                    queue = remoteQueue,
+                    connected = remoteStatus.connectionState == EchoRemoteConnectionState.Connected,
+                    pcTitle = remoteStatus.endpoint?.name ?: "PC ECHO",
+                    onRefresh = remoteClient::refreshQueue,
+                    onLoadMore = remoteClient::loadMoreQueue,
+                    onLoadPrevious = remoteClient::loadPreviousQueue,
+                    onMove = remoteClient::moveQueueItem,
+                    onVisibleAnchor = remoteClient::setQueueVisibleAnchor,
+                    onPlayTrack = { track ->
+                        remoteClient.send(track.queueId?.let(EchoRemoteCommand::PlayQueueItem)
+                            ?: EchoRemoteCommand.PlayTrackOnPc(track.id.orEmpty()),
+                            onSuccess = { track.queueId?.let(remoteClient::confirmQueueSelection) })
+                    },
+                    onDismiss = { remoteQueueSheetVisible = false },
                 )
             }
             if (castSheetVisible) {

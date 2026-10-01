@@ -7,6 +7,9 @@ sealed interface EchoRemoteCommand {
     data object Stop : EchoRemoteCommand
     data class SeekTo(val positionMs: Long) : EchoRemoteCommand
     data class SetVolume(val volume: Float) : EchoRemoteCommand
+    data class SetPlaybackOrder(val mode: EchoRemotePlaybackOrder) : EchoRemoteCommand
+    data class PlayQueueItem(val queueId: String) : EchoRemoteCommand
+    data class QueueMove(val queueId: String, val toIndex: Int, val expectedRevision: Long) : EchoRemoteCommand
     data class PlayTrackOnPc(val trackId: String) : EchoRemoteCommand
     data class HandoffToPc(val trackId: String, val positionMs: Long) : EchoRemoteCommand
     data class QueueReplace(
@@ -22,5 +25,7 @@ sealed interface EchoRemoteCommand {
     data class QueueReplaceRemote(
         val items: List<EchoRemoteStreamItem>,
         val startTrackId: String,
+        val positionMs: Long = 0L,
+        val startIndex: Int? = null,
     ) : EchoRemoteCommand
 }

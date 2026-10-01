@@ -23,7 +23,7 @@ internal fun HomePinnedPlaylists(playlists: List<EchoPlaylist>, onOpen: (EchoPla
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text(stringResource(R.string.home_pinned_playlists), Modifier.padding(horizontal = 24.dp),
             style = MaterialTheme.typography.titleLarge)
-        LazyRow(contentPadding = PaddingValues(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+        LazyRow(modifier = Modifier.homeCarouselScroll(), contentPadding = PaddingValues(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
             items(playlists, key = { it.id }) { playlist ->
                 Column(Modifier.width(164.dp).clickable { onOpen(playlist) }, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     ArtworkTile(playlist.artworkUri, Modifier.fillMaxWidth().aspectRatio(1f), accent = MaterialTheme.colorScheme.primary, cornerRadius = 4.dp)

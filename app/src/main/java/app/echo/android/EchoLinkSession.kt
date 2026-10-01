@@ -190,7 +190,10 @@ class EchoLinkSession(private val application: Application) {
         }
         val items = castServer.publish(publications, host, port)
         if (items.isEmpty()) return null
-        runCatching { EchoLinkCastService.start(application) }
+        if (runCatching { EchoLinkCastService.start(application) }.isFailure) {
+            castServer.stop()
+            return null
+        }
         return items
     }
 

@@ -176,7 +176,11 @@ class EchoContentMotion internal constructor(private val lightweight: Boolean) {
 fun rememberSilkPagerFlingBehavior(state: PagerState): TargetedFlingBehavior {
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val snap = remember(lightweight) { EchoMotion.silkPagerSnapSpec(lightweight) }
-    return PagerDefaults.flingBehavior(state = state, snapAnimationSpec = snap)
+    return PagerDefaults.flingBehavior(
+        state = state,
+        snapAnimationSpec = snap,
+        snapPositionalThreshold = 0.2f,
+    )
 }
 
 suspend fun PagerState.animateSilkToPage(page: Int, lightweight: Boolean) {
@@ -202,7 +206,7 @@ fun rememberContentPagerNestedScroll(
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset =
                 if (source == NestedScrollSource.UserInput && !echoHorizontalGestureOwnsScroll(Offset.Zero, available)) Offset.Zero
-                else default.onPreScroll(available, source)
+                else default.onPreScroll(available, source).copy(y = 0f)
 
             override fun onPostScroll(
                 consumed: Offset,
@@ -221,9 +225,7 @@ fun rememberContentPagerNestedScroll(
                 default.onPreFling(available)
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                if (available.x.absoluteValue < 40f &&
-                    state.currentPageOffsetFraction.absoluteValue <= 0.001f
-                ) {
+                if (!echoPagerOwnsFling(consumed, available, state.currentPageOffsetFraction)) {
                     return Velocity.Zero
                 }
                 if (available.x != 0f || state.currentPageOffsetFraction.absoluteValue > 0.001f) {

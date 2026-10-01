@@ -9,4 +9,6 @@ data class EchoRemoteTrack(
     val durationMs: Long,
     val sourceLabel: String? = null,
     val canPlayOnPhone: Boolean = true,
+    val queueId: String? = null,
+    val queueIndex: Int? = null,
 )

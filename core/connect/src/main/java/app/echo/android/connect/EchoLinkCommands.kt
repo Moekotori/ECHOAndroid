@@ -14,6 +14,9 @@ internal fun EchoRemoteCommand.toJson(): JSONObject {
         EchoRemoteCommand.Next -> json.put("command", "next")
         EchoRemoteCommand.Previous -> json.put("command", "previous")
         EchoRemoteCommand.Stop -> json.put("command", "stop")
+        is EchoRemoteCommand.PlayQueueItem -> json.put("command", "playQueueItem").put("queueId", queueId)
+        is EchoRemoteCommand.QueueMove -> json.put("command", "queueMove").put("queueId", queueId)
+            .put("toIndex", toIndex).put("expectedRevision", expectedRevision)
         is EchoRemoteCommand.SeekTo -> {
             json.put("command", "seekTo")
             json.put("positionMs", positionMs)
@@ -21,6 +24,10 @@ internal fun EchoRemoteCommand.toJson(): JSONObject {
         is EchoRemoteCommand.SetVolume -> {
             json.put("command", "setVolume")
             json.put("volume", volume.coerceIn(0f, 1f))
+        }
+        is EchoRemoteCommand.SetPlaybackOrder -> {
+            json.put("command", "setPlaybackOrder")
+            json.put("mode", mode.wireValue)
         }
         is EchoRemoteCommand.PlayTrackOnPc -> {
             json.put("command", "playTrack")
@@ -50,6 +57,8 @@ internal fun EchoRemoteCommand.toJson(): JSONObject {
         }
         is EchoRemoteCommand.QueueReplaceRemote -> {
             json.put("command", "queueReplaceRemote")
+            json.put("positionMs", positionMs.coerceAtLeast(0L))
+            startIndex?.let { json.put("startIndex", it) }
             json.put("target", "pc")
             json.put("startTrackId", startTrackId)
             json.put("items", JSONArray().also { array ->

@@ -19,6 +19,7 @@ import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.echoPageBackgroundColor
 import app.echo.android.design.animateSilkToPage
 import app.echo.android.design.rememberSilkPagerFlingBehavior
+import app.echo.android.design.rememberContentPagerNestedScroll
 import app.echo.android.model.library.ArtistOnlineQuery
 import app.echo.android.model.library.ArtistSummary
 import kotlinx.coroutines.launch
@@ -34,6 +35,8 @@ internal fun ArtistDetailPager(
 ) = key(artist.artistKey) {
     val pager = rememberPagerState { 3 }
     val scope = rememberCoroutineScope()
+    val fling = rememberSilkPagerFlingBehavior(pager)
+    val nestedScroll = rememberContentPagerNestedScroll(pager, fling)
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
     Column(modifier.fillMaxSize().background(echoPageBackgroundColor()).statusBarsPadding()) {
@@ -55,7 +58,8 @@ internal fun ArtistDetailPager(
             state = pager,
             modifier = Modifier.weight(1f).fillMaxWidth(),
             beyondViewportPageCount = 1,
-            flingBehavior = rememberSilkPagerFlingBehavior(pager),
+            flingBehavior = fling,
+            pageNestedScrollConnection = nestedScroll,
         ) { page ->
             when (page) {
                 0 -> music()

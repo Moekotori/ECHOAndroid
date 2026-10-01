@@ -34,20 +34,27 @@ fun EchoLinkRemoteMiniPlayer(
     onNext: () -> Unit,
     onOpenQueue: () -> Unit,
     modifier: Modifier = Modifier,
+    onPrevious: () -> Unit = {},
+    remoteError: String? = null,
+    onPlaybackOrderChange: (app.echo.android.model.connect.EchoRemotePlaybackOrder) -> Unit = {},
 ) {
     val hasMusic = playback.track != null || playback.queue.items.isNotEmpty()
     Row(modifier.fillMaxWidth().heightIn(min = 72.dp).padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        Row(Modifier.weight(1f).heightIn(min = 64.dp).echoClickable(role = Role.Button, onClick = onExpand),
+        Row(Modifier.weight(1f).heightIn(min = 64.dp)
+            .remoteTrackSwipe(connected && hasMusic, onNext, onPrevious,
+                trackKey = playback.queue.currentTrackId ?: playback.track?.id)
+            .echoClickable(role = Role.Button, onClick = onExpand),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             EchoArtworkImage(playback.track?.artworkUrl, null, Modifier.size(44.dp), sizeClass = EchoArtworkSize.Card)
             Column(Modifier.weight(1f)) {
                 Text(playback.track?.title ?: stringResource(R.string.remote_choose_music),
                     maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
-                Text(if (connected) stringResource(R.string.remote_picker_destination, pcTitle)
+                Text(remoteError ?: if (connected) stringResource(R.string.remote_picker_destination, pcTitle)
                     else stringResource(R.string.feature_connect_not_connected_c4d337),
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (remoteError != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         IconButton(onPlayPause, enabled = connected && hasMusic) {
@@ -57,6 +64,9 @@ fun EchoLinkRemoteMiniPlayer(
         }
         IconButton(onNext, enabled = connected && hasMusic) {
             EchoIcon(Icons.Rounded.SkipNext, stringResource(R.string.feature_connect_next_on_pc_303358))
+        }
+        playback.playbackOrder?.let { order ->
+            RemotePlaybackOrderButton(order, connected, onPlaybackOrderChange)
         }
         IconButton(onOpenQueue, enabled = connected) {
             EchoIcon(Icons.AutoMirrored.Rounded.QueueMusic, stringResource(R.string.feature_connect_pc_queue_2e91c4))

@@ -3,6 +3,7 @@ package app.echo.android.ui.shell
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.remember
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -16,11 +17,15 @@ internal suspend fun collectEchoBackGesture(
     onDismiss: () -> Unit,
 ) {
     if (!isActive()) return
+    var lostOwnership = false
     try {
-        progress.collect { if (isActive()) onProgress(it.coerceIn(0f, 1f)) }
-        if (isActive()) onDismiss()
+        progress.collect {
+            if (!isActive()) lostOwnership = true
+            if (!lostOwnership) onProgress(it.coerceIn(0f, 1f))
+        }
+        if (!lostOwnership && isActive()) onDismiss()
     } catch (cancelled: CancellationException) {
-        if (isActive()) onCancel()
+        if (!lostOwnership && isActive()) onCancel()
         throw cancelled
     }
 }
@@ -33,11 +38,18 @@ internal fun EchoOverlayBackHandler(
     onDismiss: () -> Unit,
 ) {
     val active = rememberUpdatedState(enabled)
+    val ownership = remember(enabled) { Any() }
+    val currentOwnership = rememberUpdatedState(ownership)
     val update = rememberUpdatedState(onProgress)
     val cancel = rememberUpdatedState(onCancel)
     val dismiss = rememberUpdatedState(onDismiss)
     PredictiveBackHandler(enabled = enabled) { progress ->
-        collectEchoBackGesture(progress.map { it.progress }, { active.value },
-            { update.value(it) }, { cancel.value() }, { dismiss.value() })
+        val gestureOwner = currentOwnership.value
+        val gestureUpdate = update.value
+        val gestureCancel = cancel.value
+        val gestureDismiss = dismiss.value
+        collectEchoBackGesture(progress.map { it.progress },
+            { active.value && currentOwnership.value === gestureOwner },
+            gestureUpdate, gestureCancel, gestureDismiss)
     }
 }

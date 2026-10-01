@@ -1,7 +1,7 @@
 package app.echo.android.feature.player
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import app.echo.android.design.detectEchoTargetDrag
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -92,12 +92,15 @@ internal fun NextUpQueueList(
     LazyColumn(
         state = state,
         modifier = Modifier.fillMaxSize().pointerInput(state, dragTargets) {
-            detectDragGesturesAfterLongPress(
-                onDragStart = { offset ->
+            detectEchoTargetDrag(
+                longPress = true,
+                targetAt = { offset ->
                     val info = state.layoutInfo.visibleItemsInfo.firstOrNull {
                         offset.y >= it.offset && offset.y < it.offset + it.size
-                    } ?: return@detectDragGesturesAfterLongPress
-                    val target = dragTargets[info.key] ?: return@detectDragGesturesAfterLongPress
+                    }
+                    info?.let { dragTargets[it.key]?.let { target -> target to it } }
+                },
+                onStart = { (target, info), offset ->
                     dragSource = target
                     dropTarget = target
                     pointerY = offset.y
@@ -113,7 +116,7 @@ internal fun NextUpQueueList(
                         updateDropTarget()
                     }
                 },
-                onDragEnd = {
+                onStop = {
                     val from = dragSource?.queueIndex
                     val to = dropTarget?.queueIndex
                     dragSource = null
@@ -123,7 +126,7 @@ internal fun NextUpQueueList(
                         haptics.endSeek(committed = true)
                     } else haptics.endSeek(committed = false)
                 },
-                onDragCancel = {
+                onCancel = {
                     haptics.endSeek(committed = false)
                     dragSource = null
                     dropTarget = null

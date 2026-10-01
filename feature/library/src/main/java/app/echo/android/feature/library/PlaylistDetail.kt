@@ -7,7 +7,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import app.echo.android.design.echoClickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,7 +56,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -82,7 +80,6 @@ import app.echo.android.model.library.LibrarySmartPlaylistKind
 import app.echo.android.model.library.LibrarySource
 
 private val PlaylistDetailBottomPadding = 168.dp
-private const val PlaylistBackSwipeThresholdPx = 120f
 private val PlaylistTitleShadow = Shadow(
     color = Color.Black.copy(alpha = 0.22f),
     offset = Offset(0f, 1.4f),
@@ -157,7 +154,7 @@ internal fun PlaylistDetailPage(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .playlistBackSwipe(onBack),
+            .detailBackSwipe(onBack),
     ) {
         PlaylistDetailBackground(
             artworkUri = coverUris.firstOrNull(),
@@ -317,18 +314,6 @@ internal fun PlaylistDetailPage(
     }
 }
 
-private fun Modifier.playlistBackSwipe(onBack: () -> Unit): Modifier = pointerInput(onBack) {
-    var dragX = 0f
-    detectHorizontalDragGestures(
-        onDragStart = { dragX = 0f },
-        onHorizontalDrag = { _, dragAmount -> dragX += dragAmount },
-        onDragEnd = {
-            if (dragX >= PlaylistBackSwipeThresholdPx) onBack()
-            dragX = 0f
-        },
-        onDragCancel = { dragX = 0f },
-    )
-}
 
 @Composable
 private fun PlaylistDetailBackground(

@@ -6,6 +6,38 @@ import org.junit.Test
 
 class OuterPagerUserScrollEnabledTest {
     @Test
+    fun pcBrowserAndDetailsLockOuterSwipeIncludingWideScreens() {
+        for (split in listOf(false, true)) {
+            assertFalse(
+                outerPagerUserScrollEnabled(
+                    libraryDetailOpen = false,
+                    linkedLibraryPageOpen = true,
+                    prefersLibrarySplit = split,
+                    settledPage = EchoPagerPage.Library.ordinal,
+                    targetPage = EchoPagerPage.Library.ordinal,
+                    scrollInProgress = false,
+                    innerTabPageSettled = false,
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun pcPlaylistPageCannotUnlockWhileOuterScrollIsInProgress() {
+        assertFalse(
+            outerPagerUserScrollEnabled(
+                libraryDetailOpen = false,
+                linkedLibraryPageOpen = true,
+                prefersLibrarySplit = false,
+                settledPage = EchoPagerPage.Library.ordinal,
+                targetPage = EchoPagerPage.Library.ordinal,
+                scrollInProgress = true,
+                innerTabPageSettled = false,
+            ),
+        )
+    }
+
+    @Test
     fun homeAllowsSwipe() {
         assertTrue(
             outerPagerUserScrollEnabled(

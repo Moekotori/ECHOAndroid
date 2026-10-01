@@ -8,6 +8,21 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class EchoBackGestureTest {
+    @Test fun reopeningOwnerCannotReviveItsOldGesture() = runBlocking {
+        var active = true
+        val updates = mutableListOf<Float>()
+        collectEchoBackGesture(flow {
+            emit(0.2f)
+            active = false
+            emit(0.4f)
+            active = true
+            emit(0.8f)
+        }, { active }, updates::add,
+            { fail("Old gesture restored the reopened page") },
+            { fail("Old gesture dismissed the reopened page") })
+        assertEquals(listOf(0.2f), updates)
+    }
+
     @Test fun completedGestureCommitsOnce() = runBlocking {
         val updates = mutableListOf<Float>()
         var commits = 0

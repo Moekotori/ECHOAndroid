@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="connect_queue_changed">The PC queue changed. Refresh it and try again.</string>
+    <string name="connect_playback_unavailable">This action is unavailable for the current PC queue. Check the queue or choose another track.</string>
+    <string name="connect_pc_player_unavailable">The PC player is not ready. Open PC ECHO and try again.</string>
+    <string name="connect_command_timeout">The PC player did not respond in time. Check PC ECHO and try again.</string>
+    <string name="connect_action_update_pc">This PC version does not support this action. Update PC ECHO.</string>
     <string name="connect_invalid_pairing">Invalid PC address or pairing token</string>
     <string name="connect_not_connected">PC ECHO is not connected yet</string>
     <string name="connect_library_partial">Loaded %1$d of %2$d tracks. Search to narrow the library.</string>

@@ -1,3 +1,12 @@
 <resources>
+    <string name="remote_queue_drag_hint">长按右侧拖柄，调整播放顺序。</string>
+    <string name="remote_queue_update_pc">更新 PC ECHO 后可浏览完整队列并调整顺序。</string>
+    <string name="remote_queue_move">移动曲目</string>
+    <string name="remote_queue_move_up">上移</string>
+    <string name="remote_queue_move_down">下移</string>
+    <string name="remote_playback_order_sequential">顺序播放</string>
+    <string name="remote_playback_order_shuffle">随机播放</string>
+    <string name="remote_playback_order_repeat_one">单曲循环</string>
+    <string name="remote_playback_order_update_pc">更新 PC ECHO 后可在这里切换播放模式。</string>
     <string name="echo_link_open_pc_library">浏览 PC 曲库</string>
 </resources>

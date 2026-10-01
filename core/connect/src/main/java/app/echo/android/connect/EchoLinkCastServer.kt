@@ -7,6 +7,7 @@ import java.io.BufferedOutputStream
 import java.io.ByteArrayOutputStream
 import java.io.Closeable
 import java.io.InputStream
+import java.io.IOException
 import java.io.OutputStream
 import java.net.InetSocketAddress
 import java.net.ServerSocket
@@ -53,6 +54,7 @@ class EchoLinkCastServer(
     private val allowedPeerHost: () -> String? = { null },
     private val bindHost: String = "0.0.0.0",
     private val bindPort: Int = 0,
+    private val nowMs: () -> Long = { System.currentTimeMillis() },
 ) {
     private val publications = ConcurrentHashMap<String, EchoLinkCastPublication>()
     private val running = AtomicBoolean(false)
@@ -62,6 +64,7 @@ class EchoLinkCastServer(
     private val workers = AtomicReference(newWorkers())
     private val connections = Semaphore(EchoLinkCastPolicy.MaxConnections)
     private val lastActivityMs = AtomicLong(0L)
+    private val activeClients = ConcurrentHashMap.newKeySet<Socket>()
 
     val isRunning: Boolean
         get() = running.get()
@@ -78,7 +81,7 @@ class EchoLinkCastServer(
         socket.bind(InetSocketAddress(bindHost, bindPort))
         serverSocket.set(socket)
         port.set(socket.localPort)
-        lastActivityMs.set(System.currentTimeMillis())
+        lastActivityMs.set(nowMs())
         running.set(true)
         workers.set(newWorkers())
         val thread = Thread({ acceptLoop(socket) }, "echo-link-cast-accept")
@@ -92,6 +95,8 @@ class EchoLinkCastServer(
     fun stop() {
         running.set(false)
         publications.clear()
+        activeClients.forEach { runCatching { it.close() } }
+        activeClients.clear()
         runCatching { serverSocket.getAndSet(null)?.close() }
         acceptThread.getAndSet(null)?.interrupt()
         workers.getAndSet(newWorkers()).shutdownNow()
@@ -150,16 +155,27 @@ class EchoLinkCastServer(
                 continue
             }
             val pool = workers.get()
+            activeClients.add(client)
+            if (!running.get()) {
+                activeClients.remove(client)
+                runCatching { client.close() }
+                connections.release()
+                break
+            }
             try {
                 pool.execute {
                     try {
                         handle(client)
+                    } catch (_: IOException) {
+                        // Peer disconnects and stop() closing a live socket are normal lifecycle events.
                     } finally {
+                        activeClients.remove(client)
                         runCatching { client.close() }
                         connections.release()
                     }
                 }
             } catch (_: Throwable) {
+                activeClients.remove(client)
                 connections.release()
                 runCatching { client.close() }
             }
@@ -192,11 +208,11 @@ class EchoLinkCastServer(
         }
         val (publication, artwork) = located
         if (artwork) {
-            lastActivityMs.set(System.currentTimeMillis())
+            lastActivityMs.set(nowMs())
             serveArtwork(client, output, method, publication, rangeHeader = request.headers["range"])
             return
         }
-        lastActivityMs.set(System.currentTimeMillis())
+        lastActivityMs.set(nowMs())
         val range = EchoLinkCastPolicy.parseRange(request.headers["range"], null)
         if (request.headers["range"] != null && range == null) {
             reply(output, 416, "Range Not Satisfiable", 0)
@@ -416,6 +432,7 @@ class EchoLinkCastServer(
             val read = input.read(buffer, 0, allowed)
             if (read <= 0) break
             output.write(buffer, 0, read)
+            lastActivityMs.set(nowMs())
             if (remaining != null) remaining -= read
         }
     }

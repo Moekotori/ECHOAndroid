@@ -47,7 +47,13 @@ fun LyricsEditorSheet(lyrics: EchoLyrics, position: () -> Long, onPlayPause: () 
             catch (e: CancellationException) { throw e } catch (_: Exception) { error = true }
         }
     }
-    ModalBottomSheet(onDismissRequest = { if (!saving) onDismiss() }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    val saveInProgress = rememberUpdatedState(saving)
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = { it != SheetValue.Hidden || !saveInProgress.value },
+    )
+    ModalBottomSheet(onDismissRequest = { if (!saving) onDismiss() }, sheetState = sheetState,
+        sheetGesturesEnabled = !saving) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(.94f).imePadding()) {
             Column(Modifier.padding(horizontal = 24.dp)) {
                 Text(stringResource(R.string.lyrics_edit_title), style = MaterialTheme.typography.headlineSmall)

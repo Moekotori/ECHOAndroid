@@ -65,6 +65,8 @@ internal fun PcLinkPanel(
     onSeek: (Long) -> Unit,
     onVolume: (Float) -> Unit,
     onPlayQueueItem: (String) -> Unit = {},
+    onOpenFullQueue: (() -> Unit)? = null,
+    queueTotalCount: Int = queueItems.size,
     onDisconnect: () -> Unit,
     onForgetPc: () -> Unit,
     onForgetSavedPc: (EchoSavedPcEndpoint) -> Unit = {},
@@ -184,10 +186,10 @@ internal fun PcLinkPanel(
                     onSeek = onSeek,
                     onVolume = onVolume,
                     onOpenLibrary = { musicPicker = "library" },
-                    onOpenQueue = { musicPicker = "queue" },
+                    onOpenQueue = { onOpenFullQueue?.invoke() ?: run { musicPicker = "queue" } },
                     outputMode = outputMode,
                     currentTrackId = currentTrackId,
-                    queueCount = queueItems.size,
+                    queueCount = queueTotalCount,
                     active = active && musicPicker == null,
                 )
                 if (onHandoffPhoneToPc != null) {

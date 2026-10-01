@@ -42,8 +42,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
@@ -159,6 +157,8 @@ import app.echo.android.design.echoSharedPlayerArtwork
 import app.echo.android.design.LocalEchoWidthSizeClass
 import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.design.rememberSilkPagerFlingBehavior
+import app.echo.android.design.rememberContentPagerNestedScroll
+import app.echo.android.design.echoDrag
 import app.echo.android.design.echoDarkGlassBorder
 import app.echo.android.design.formatDuration
 import app.echo.android.design.progressFraction
@@ -346,6 +346,7 @@ fun NowPlayingScreen(
     val dismissScope = rememberCoroutineScope()
     val dismissHaptics = rememberEchoHapticPerformer()
     val dismissDrag = remember { NowPlayingDismissDragState() }
+    val dismissGesture = remember { NowPlayingGestureCompletion() }
     val dragProgressCallback = rememberUpdatedState(onDragProgress)
     LaunchedEffect(presentationExpanded) {
         if (presentationExpanded && dismissDrag.offsetPx > 0f) {
@@ -379,8 +380,13 @@ fun NowPlayingScreen(
             if (crossed) dismissHaptics.tick()
         },
         onSettle = { velocityY ->
+            val gestureResult = dismissGesture.result
             dismissDrag.settleJob?.cancel()
             dismissDrag.settleJob = dismissScope.launch {
+                if (gestureResult?.await() != true) {
+                    restoreNowPlayingDismiss(dismissDrag, lightweight = effectivePerformanceMode.isLightweight)
+                    return@launch
+                }
                 settleNowPlayingDismiss(
                     dragState = dismissDrag,
                     velocityY = velocityY,
@@ -423,6 +429,7 @@ fun NowPlayingScreen(
         Box(
             modifier = modifier
                 .fillMaxSize()
+                .observeNowPlayingGesture(dismissGesture)
                 .nestedScroll(nestedScrollConnection)
                 .graphicsLayer {
                     val dismissOffsetPx = currentDismissOffsetPx()
@@ -489,6 +496,12 @@ fun NowPlayingScreen(
                                     lightweight = effectivePerformanceMode.isLightweight,
                                 )
                             }
+                        }
+                    },
+                    onHandleDragCancel = {
+                        dismissDrag.settleJob?.cancel()
+                        dismissDrag.settleJob = dismissScope.launch {
+                            restoreNowPlayingDismiss(dismissDrag, lightweight = effectivePerformanceMode.isLightweight)
                         }
                     },
                     currentPage = pagerState.currentPage,
@@ -617,14 +630,19 @@ fun NowPlayingScreen(
                         modifier = Modifier.fillMaxSize(),
                     )
 
-                        } else HorizontalPager(
+                        } else {
+                            val pageFling = rememberSilkPagerFlingBehavior(pagerState)
+                            val pageNestedScroll = rememberContentPagerNestedScroll(pagerState, pageFling)
+                            HorizontalPager(
                             state = pagerState, beyondViewportPageCount = 0,
                             userScrollEnabled = pagerScrollEnabled,
-                            flingBehavior = rememberSilkPagerFlingBehavior(pagerState),
+                            flingBehavior = pageFling,
+                            pageNestedScrollConnection = pageNestedScroll,
                             modifier = Modifier.fillMaxSize(),
                         ) { page ->
                             if (NowPlayingPage.entries[page] == NowPlayingPage.Cover) coverPage()
                             else lyricsPage(false)
+                        }
                         }
                     },
                 )
@@ -735,6 +753,7 @@ private fun NowPlayingTopBar(
     onDismiss: () -> Unit,
     onHandleDrag: (Float) -> Unit,
     onHandleDragEnd: (Float) -> Unit,
+    onHandleDragCancel: () -> Unit,
     currentPage: Int,
     pageCount: Int,
     showPageIndicator: Boolean,
@@ -747,16 +766,15 @@ private fun NowPlayingTopBar(
     onOpenPlaybackSettings: () -> Unit,
 ) {
     val headerInk = radioColors?.ink ?: if (editorial) appearance.headerInk else OnArt
-    val onHandleDragLatest = rememberUpdatedState(onHandleDrag)
-    val handleDragState = rememberDraggableState { delta -> onHandleDragLatest.value(delta) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .draggable(
-                state = handleDragState,
+            .echoDrag(
                 orientation = Orientation.Vertical,
-                onDragStarted = { onHandleDragLatest.value(0f) },
-                onDragStopped = { velocity -> onHandleDragEnd(velocity) },
+                onStart = { onHandleDrag(0f) },
+                onDelta = onHandleDrag,
+                onStop = onHandleDragEnd,
+                onCancel = onHandleDragCancel,
             ),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

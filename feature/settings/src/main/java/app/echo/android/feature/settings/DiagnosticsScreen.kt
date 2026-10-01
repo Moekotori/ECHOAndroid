@@ -24,6 +24,7 @@ import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.echoPageBackgroundColor
 import app.echo.android.design.animateSilkToPage
 import app.echo.android.design.rememberContentPagerNestedScroll
+import app.echo.android.design.echoPagerEdgeSwipe
 import app.echo.android.design.rememberSilkPagerFlingBehavior
 import app.echo.android.model.playback.*
 import kotlinx.coroutines.flow.StateFlow
@@ -73,6 +74,7 @@ fun DiagnosticsScreen(
     onParametricChange: (List<OpraEqBand>) -> Unit,
     bluetoothCodecNeedsPermission: Boolean = false,
     onRequestBluetoothCodecPermission: () -> Unit = {},
+    onSwipeToConnect: () -> Unit = {},
 ) {
     val pagerState = rememberPagerState { 3 }
     var soundPanel by rememberSaveable { mutableIntStateOf(0) }
@@ -118,7 +120,7 @@ fun DiagnosticsScreen(
             }
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier.fillMaxWidth().weight(1f).echoPagerEdgeSwipe(pagerState, onSwipeToConnect),
                 beyondViewportPageCount = if (lightweight) 0 else 1,
                 flingBehavior = innerFling,
                 pageNestedScrollConnection = innerNestedScroll,

@@ -1,3 +1,12 @@
 <resources>
+    <string name="remote_queue_drag_hint">Hold the drag handle to change playback order.</string>
+    <string name="remote_queue_update_pc">Update PC ECHO to browse the full queue and reorder tracks.</string>
+    <string name="remote_queue_move">Move track</string>
+    <string name="remote_queue_move_up">Move up</string>
+    <string name="remote_queue_move_down">Move down</string>
+    <string name="remote_playback_order_sequential">Sequential</string>
+    <string name="remote_playback_order_shuffle">Shuffle</string>
+    <string name="remote_playback_order_repeat_one">Repeat one</string>
+    <string name="remote_playback_order_update_pc">Update PC ECHO to change playback order here.</string>
     <string name="echo_link_open_pc_library">Browse PC library</string>
 </resources>
