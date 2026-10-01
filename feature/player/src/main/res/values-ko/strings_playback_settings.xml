@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="playback_more_settings">추가 재생 설정</string>
     <string name="playback_keep_pitch">음높이 유지</string>
     <string name="playback_reset_speed">1×로 복원</string>
     <string name="playback_lyrics_earlier">← 앞당기기</string>

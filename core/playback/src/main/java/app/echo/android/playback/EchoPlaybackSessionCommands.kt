@@ -29,6 +29,8 @@ object EchoPlaybackSessionCommands {
     const val ADD_NEXT_UP = "app.echo.android.playback.ADD_NEXT_UP"
     const val CLEAR_NEXT_UP = "app.echo.android.playback.CLEAR_NEXT_UP"
     const val EDIT_QUEUE = "app.echo.android.playback.EDIT_QUEUE"
+    const val SET_AB_LOOP = "app.echo.android.playback.SET_AB_LOOP"
+    val setAbLoop = SessionCommand(SET_AB_LOOP, Bundle.EMPTY)
     val editQueue = SessionCommand(EDIT_QUEUE, Bundle.EMPTY)
     val addNextUp = SessionCommand(ADD_NEXT_UP, Bundle.EMPTY)
     val clearNextUp = SessionCommand(CLEAR_NEXT_UP, Bundle.EMPTY)

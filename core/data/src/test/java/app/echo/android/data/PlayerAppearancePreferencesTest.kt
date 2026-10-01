@@ -7,6 +7,47 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class PlayerAppearancePreferencesTest {
+    @Test fun explicitAppearanceSurvivesEitherThemeWithoutResettingSizes() {
+        val lyricsKey = stringPreferencesKey("lyrics_page_style")
+        for (lyrics in EchoLyricsPageStyle.entries) {
+            val prefs = mutablePreferencesOf(lyricsKey to lyrics.id)
+            PlayerAppearancePreferences.write(prefs, "record_sleeve", 1.1f, 0.8f)
+
+            for (theme in listOf(EchoThemeMode.Light, EchoThemeMode.Dark, EchoThemeMode.System)) {
+                assertEquals(lyrics, PlayerAppearancePreferences.lyricsStyle(prefs, theme))
+            }
+            assertEquals("record_sleeve", PlayerAppearancePreferences.style(prefs))
+            assertEquals(1.1f, PlayerAppearancePreferences.textScale(prefs))
+            assertEquals(0.8f, PlayerAppearancePreferences.artworkScale(prefs))
+        }
+    }
+
+    @Test fun missingLyricsFollowThemeWhileSavedCoverKeepsItsBinding() {
+        val prefs = mutablePreferencesOf()
+        assertEquals(EchoLyricsPageStyle.Paper, PlayerAppearancePreferences.lyricsStyle(prefs, EchoThemeMode.Light))
+        assertEquals(EchoLyricsPageStyle.Mist, PlayerAppearancePreferences.lyricsStyle(prefs, EchoThemeMode.Dark))
+        prefs[stringPreferencesKey("player_page_style")] = "classic"
+        assertEquals(EchoLyricsPageStyle.Mist, PlayerAppearancePreferences.lyricsStyle(prefs, EchoThemeMode.Light))
+        PlayerAppearancePreferences.write(prefs, "record_sleeve", 1f, 1f)
+        assertEquals(EchoLyricsPageStyle.Paper, PlayerAppearancePreferences.lyricsStyle(prefs, EchoThemeMode.Dark))
+    }
+
+    @Test fun sizeOnlyEditKeepsTheLightLyricDefault() {
+        val prefs = mutablePreferencesOf()
+        PlayerAppearancePreferences.write(prefs, "classic", 1.1f, 0.8f)
+        assertEquals(EchoLyricsPageStyle.Paper, PlayerAppearancePreferences.lyricsStyle(prefs, EchoThemeMode.Light))
+        assertEquals(1.1f, PlayerAppearancePreferences.textScale(prefs))
+        assertEquals(0.8f, PlayerAppearancePreferences.artworkScale(prefs))
+    }
+
+    @Test fun afterglowSelectionSurvivesCoverStyleAndScaleChanges() {
+        for (lyrics in listOf(EchoLyricsPageStyle.AfterglowMist, EchoLyricsPageStyle.AfterglowNight)) {
+            for (player in listOf("classic", "record_sleeve", "pixel_handheld", "type_poster")) {
+                assertEquals(lyrics, PlayerAppearancePreferences.boundLyricsStyle(player, lyrics))
+                assertEquals(player, PlayerAppearancePreferences.boundPlayerStyle(lyrics, player))
+            }
+        }
+    }
     @Test fun preservesEverySelectableStyleAcrossPreferenceReloads() {
         for (style in listOf("classic", "record_sleeve", "pixel_handheld", "type_poster")) {
             val prefs = mutablePreferencesOf()

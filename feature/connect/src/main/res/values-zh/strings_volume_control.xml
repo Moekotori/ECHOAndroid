@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="remote_fixed_volume">PC 已开启固定音量。请在 PC 音量面板关闭后，再在这里调节音量。</string>
+    <string name="remote_volume_locked">PC 音量已锁定。</string>
+</resources>

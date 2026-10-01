@@ -79,41 +79,41 @@ private val EchoDarkScheme = darkColorScheme(
 private val EchoLightScheme = lightColorScheme(
     primary = Color(0xFF925568),
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFF5DDE4),
+    primaryContainer = Color(0xFFF1E5E9),
     onPrimaryContainer = Color(0xFF442532),
     secondary = Color(0xFF76616A),
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFF0E3E8),
+    secondaryContainer = Color(0xFFEEE8EC),
     onSecondaryContainer = Color(0xFF382D33),
     tertiary = Color(0xFF846536),
     onTertiary = Color.White,
     tertiaryContainer = Color(0xFFF4E5CA),
     onTertiaryContainer = Color(0xFF423016),
-    background = Color(0xFFF8F5F3),
-    onBackground = Color(0xFF29252A),
-    surface = Color(0xFFFFFBFA),
-    onSurface = Color(0xFF29252A),
-    surfaceVariant = Color(0xFFF0E9E7),
-    onSurfaceVariant = Color(0xFF6E6268),
-    surfaceDim = Color(0xFFE8DFDC),
-    surfaceBright = Color(0xFFFFFBFA),
+    background = Color.White,
+    onBackground = Color(0xFF27272D),
+    surface = Color.White,
+    onSurface = Color(0xFF27272D),
+    surfaceVariant = Color(0xFFF6F6F6),
+    onSurfaceVariant = Color(0xFF686870),
+    surfaceDim = Color(0xFFEEEEEE),
+    surfaceBright = Color.White,
     surfaceContainerLowest = Color.White,
-    surfaceContainerLow = Color(0xFFFCF8F6),
-    surfaceContainer = Color(0xFFF5EFEC),
-    surfaceContainerHigh = Color(0xFFEFE7E4),
-    surfaceContainerHighest = Color(0xFFE9E0DD),
+    surfaceContainerLow = Color.White,
+    surfaceContainer = Color(0xFFFAFAFA),
+    surfaceContainerHigh = Color(0xFFF6F6F6),
+    surfaceContainerHighest = Color(0xFFF0F0F0),
     inverseSurface = Color(0xFF322D31),
     inverseOnSurface = Color(0xFFF8F0F2),
     inversePrimary = Color(0xFFE6B4C5),
-    outline = Color(0xFF93848A),
-    outlineVariant = Color(0xFFDED2D5),
+    outline = Color(0xFF85858E),
+    outlineVariant = Color(0xFFE7E7E7),
     surfaceTint = Color(0xFF925568),
 )
 
 val LocalEchoDensityScale = staticCompositionLocalOf { 1f }
-val LocalEchoDarkTheme = staticCompositionLocalOf { true }
+val LocalEchoDarkTheme = staticCompositionLocalOf { false }
 val LocalEchoCustomBackgroundActive = staticCompositionLocalOf { false }
-val LocalEchoTheme = staticCompositionLocalOf { echoThemeTokens(EchoColorTheme.Echo, dark = true) }
+val LocalEchoTheme = staticCompositionLocalOf { echoThemeTokens(EchoColorTheme.Echo, dark = false) }
 val LocalEchoEffectivePerformanceMode = staticCompositionLocalOf { EchoEffectivePerformanceMode.Balanced }
 val LocalEchoPlatformCapabilities = staticCompositionLocalOf {
     EchoPlatformCapabilities.fromSdk(Build.VERSION.SDK_INT)
@@ -180,7 +180,7 @@ private fun TextUnit.scale(scale: Float): TextUnit =
 
 @Composable
 fun EchoMobileTheme(
-    darkTheme: Boolean = true,
+    darkTheme: Boolean = false,
     dynamicColor: Boolean = false,
     colorTheme: EchoColorTheme = EchoColorTheme.Default,
     customColors: EchoCustomColors = EchoCustomColors.Default,
@@ -300,6 +300,7 @@ private fun EchoThemeTokens.toMaterialScheme() =
             surfaceContainerHighest = lerp(panel, heading, 0.10f),
         )
     } else {
+        val custom = id == EchoColorTheme.Custom.id
         val primaryBox = lerp(mist, accent, 0.16f)
         val secondaryBox = lerp(mist, secondary, 0.12f)
         val tertiaryBox = lerp(mist, accentDeep, 0.12f)
@@ -328,12 +329,12 @@ private fun EchoThemeTokens.toMaterialScheme() =
             inverseOnSurface = panel,
             outline = this.outline,
             outlineVariant = outlineVariant,
-            surfaceDim = lerp(mist, heading, 0.08f),
+            surfaceDim = if (custom) lerp(mist, heading, 0.08f) else Color(0xFFEEEEEE),
             surfaceBright = panel,
             surfaceContainerLowest = Color.White,
             surfaceContainerLow = panel,
             surfaceContainer = mist,
-            surfaceContainerHigh = lerp(mist, accent, 0.08f),
-            surfaceContainerHighest = lerp(mist, heading, 0.08f),
+            surfaceContainerHigh = if (custom) lerp(mist, accent, 0.08f) else Color(0xFFF6F6F6),
+            surfaceContainerHighest = if (custom) lerp(mist, heading, 0.08f) else Color(0xFFF0F0F0),
         )
     }

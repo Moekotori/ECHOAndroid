@@ -293,6 +293,7 @@ internal object AudioFileTagRewriter {
             trackNumber = track,
             discNumber = null,
             year = year,
+            genre = values["IGNR"],
         )
     }
 
@@ -439,6 +440,8 @@ internal object AudioFileTagRewriter {
         fields: AudioTagFields,
     ): List<Id3Frame> {
         val managed = HashSet(if (version == 4) ManagedId3v24 else ManagedId3v23)
+        if (fields.composer != null || fields.composerModified) managed += "TCOM"
+        if (fields.genre != null || fields.genreModified) managed += "TCON"
         if (fields.lyrics != null) managed += "USLT"
         if (fields.artworkBytes != null) managed += "APIC"
         val kept = frames.filterNot { frame ->
@@ -450,6 +453,8 @@ internal object AudioFileTagRewriter {
         next += textFrame(version, "TPE1", fields.artist)
         fields.album?.let { next += textFrame(version, "TALB", it) }
         fields.albumArtist?.let { next += textFrame(version, "TPE2", it) }
+        fields.composer?.let { next += textFrame(version, "TCOM", it) }
+        fields.genre?.let { next += textFrame(version, "TCON", it) }
         fields.trackNumber?.let { next += textFrame(version, "TRCK", it.toString()) }
         fields.discNumber?.let { next += textFrame(version, "TPOS", it.toString()) }
         fields.year?.let { year ->
@@ -559,16 +564,19 @@ internal object AudioFileTagRewriter {
     private fun fieldsFromId3Frames(frames: List<Id3Frame>, majorVersion: Int): AudioTagFields {
         fun text(id: String): String? = frames.asSequence().filter { it.id == id }
             .mapNotNull { readableId3Payload(it, majorVersion)?.let(::decodeId3Text) }.firstOrNull()
+        fun names(id: String): String? = LibraryArtistPolicy.display(frames.filter { it.id == id }
+            .flatMap { readableId3Payload(it, majorVersion)?.let(::decodeId3Values).orEmpty() })
         val yearText = text("TDRC") ?: text("TYER")
         return AudioTagFields(
             title = text("TIT2").orEmpty(),
-            artist = text("TPE1").orEmpty(),
+            artist = names("TPE1").orEmpty(),
             album = text("TALB"),
-            albumArtist = text("TPE2"),
+            albumArtist = names("TPE2"),
             trackNumber = text("TRCK")?.substringBefore('/')?.toIntOrNull()?.takeIf { it > 0 },
             discNumber = text("TPOS")?.substringBefore('/')?.toIntOrNull()?.takeIf { it > 0 },
             year = yearText?.take(4)?.toIntOrNull()?.takeIf { it > 0 },
             composer = text("TCOM")?.takeIf { it.isNotBlank() },
+            genre = text("TCON")?.takeIf { it.isNotBlank() },
             lyrics = frames.firstOrNull { it.id == "USLT" }
                 ?.let { readableId3Payload(it, majorVersion) }?.let(::decodeUslt),
         )
@@ -598,6 +606,32 @@ internal object AudioFileTagRewriter {
             else -> null
         }
         return text?.trimEnd('\u0000')?.trim()?.takeIf { it.isNotEmpty() }
+    }
+
+    private fun decodeId3Values(payload: ByteArray): List<String> {
+        if (payload.size <= 1) return emptyList()
+        val raw = payload.copyOfRange(1, payload.size)
+        if (payload[0].toInt() == 0) {
+            val values = ArrayList<String>()
+            var start = 0
+            for (end in 0..raw.size) {
+                if (end == raw.size || raw[end] == 0.toByte()) {
+                    TagTextDecoder.decode(raw.copyOfRange(start, end))?.takeIf { it.isNotBlank() }?.let(values::add)
+                    start = end + 1
+                }
+            }
+            return values
+        }
+        val charset = when (payload[0].toInt()) {
+            1 -> Charsets.UTF_16
+            2 -> Charsets.UTF_16BE
+            3 -> Charsets.UTF_8
+            else -> return emptyList()
+        }
+        val text = runCatching { charset.newDecoder().decode(ByteBuffer.wrap(raw)).toString() }.getOrNull()
+            ?: return emptyList()
+        return text.split('\u0000').map { it.trimStart('\uFEFF').trim() }
+            .filter { it.isNotBlank() && it.none { char -> char.isISOControl() } }
     }
 
     private fun decodeUslt(payload: ByteArray): String? {
@@ -655,7 +689,7 @@ internal object AudioFileTagRewriter {
         existing?.let { payload ->
             parseVorbisComments(payload).forEach { (key, value) ->
                 val upper = key.uppercase()
-                if (upper in ManagedVorbisKeys) return@forEach
+                if (upper in ManagedVorbisKeys || (upper == "GENRE" && (fields.genre != null || fields.genreModified)) || (upper == "COMPOSER" && (fields.composer != null || fields.composerModified))) return@forEach
                 if (fields.lyrics != null && upper in VorbisLyricsKeys) return@forEach
                 if (fields.replayGainTrackGainDb != null && upper == "REPLAYGAIN_TRACK_GAIN") return@forEach
                 comments[key] = value
@@ -665,6 +699,8 @@ internal object AudioFileTagRewriter {
         comments["ARTIST"] = fields.artist
         fields.album?.let { comments["ALBUM"] = it }
         fields.albumArtist?.let { comments["ALBUMARTIST"] = it }
+        fields.composer?.let { comments["COMPOSER"] = it }
+        fields.genre?.let { comments["GENRE"] = it }
         fields.trackNumber?.let { comments["TRACKNUMBER"] = it.toString() }
         fields.discNumber?.let { comments["DISCNUMBER"] = it.toString() }
         fields.year?.let { comments["DATE"] = it.toString() }
@@ -771,14 +807,20 @@ internal object AudioFileTagRewriter {
 
     private fun fieldsFromVorbis(payload: ByteArray): AudioTagFields {
         val values = HashMap<String, String>()
-        parseVorbisComments(payload).forEach { (key, value) ->
+        val comments = parseVorbisComments(payload)
+        comments.forEach { (key, value) ->
             if (value.isNotBlank()) values.putIfAbsent(key.uppercase(java.util.Locale.ROOT), value)
         }
+        fun names(vararg keys: String): String? = LibraryArtistPolicy.display(comments
+            .filter { (key, _) -> key.uppercase(java.util.Locale.ROOT) in keys }
+            .map { it.second })
         return AudioTagFields(
             title = values["TITLE"].orEmpty(),
-            artist = values["ARTIST"].orEmpty(),
+            artist = names("ARTIST").orEmpty(),
             album = values["ALBUM"],
-            albumArtist = values["ALBUMARTIST"] ?: values["ALBUM ARTIST"],
+            albumArtist = names("ALBUMARTIST", "ALBUM ARTIST"),
+            composer = values["COMPOSER"],
+            genre = values["GENRE"],
             trackNumber = values["TRACKNUMBER"]?.substringBefore('/')?.toIntOrNull()?.takeIf { it > 0 },
             discNumber = values["DISCNUMBER"]?.substringBefore('/')?.toIntOrNull()?.takeIf { it > 0 },
             year = (values["DATE"] ?: values["YEAR"])?.take(4)?.toIntOrNull()?.takeIf { it > 0 },

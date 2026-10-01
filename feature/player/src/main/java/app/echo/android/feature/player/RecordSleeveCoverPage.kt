@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.StarBorder
@@ -66,15 +65,10 @@ internal fun RecordSleeveCoverPage(
 ) {
     val track = status.track
     var previousRequestedFrom by remember { mutableStateOf<String?>(null) }
-    BoxWithConstraints(modifier.background(RecordSleeveStyle.Paper)) {
-        // Reserve the controls first. Small windows / enlarged text can scroll instead
-        // of clipping controls or reducing their touch targets.
-        val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
-        val pageHeight = maxOf(maxHeight, (720f * fontScale).dp)
-        Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).height(pageHeight),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
+    PlayerCoverLayout(
+        minimumPortraitHeight = (720f * LocalDensity.current.fontScale.coerceAtLeast(1f)).dp,
+        modifier = modifier.background(RecordSleeveStyle.Paper),
+        artwork = {
             Box(Modifier.fillMaxWidth().height(48.dp), contentAlignment = Alignment.Center) {
                 Text(
                     text = track?.album.orEmpty().uppercase(java.util.Locale.ROOT),
@@ -106,6 +100,8 @@ internal fun RecordSleeveCoverPage(
                     )
                 }
             }
+        },
+        details = {
             Spacer(Modifier.height(14.dp))
             Box(Modifier.fillMaxWidth().height(1.dp).background(RecordSleeveStyle.Rule))
             Spacer(Modifier.height(10.dp))
@@ -190,8 +186,8 @@ internal fun RecordSleeveCoverPage(
             Spacer(Modifier.height(4.dp))
             RecordSleeveUtilities(onOpenQueue, onCast, castActive)
             Spacer(Modifier.height(8.dp))
-        }
-    }
+        },
+    )
 }
 
 private val TrailingEdition = Regex("^(.+?)\\s+(\\([^()]+\\))$")

@@ -32,7 +32,6 @@ fun SettingsScreen(
     offlineWifiOnly: Boolean = true,
     offlineUsedBytes: Long = 0L,
     pcHandoffEnabled: Boolean,
-    showLyricsControlDeck: Boolean,
     onlineLyricsEnabled: Boolean,
     lockScreenLyricsEnabled: Boolean,
     floatingLyrics: app.echo.android.model.settings.EchoFloatingLyricsSettings =
@@ -94,7 +93,6 @@ fun SettingsScreen(
     onWatchedFolderRescanEnabledChange: (Boolean) -> Unit,
     onOfflineWifiOnlyChange: (Boolean) -> Unit = {},
     onPcHandoffEnabledChange: (Boolean) -> Unit,
-    onShowLyricsControlDeckChange: (Boolean) -> Unit,
     onOnlineLyricsEnabledChange: (Boolean) -> Unit,
     onLockScreenLyricsEnabledChange: (Boolean) -> Unit,
     onFloatingLyricsChange: (app.echo.android.model.settings.EchoFloatingLyricsSettings) -> Unit = {},
@@ -108,7 +106,6 @@ fun SettingsScreen(
     onReplayGainChange: (Boolean, Float) -> Unit,
     onReplayGainModeChange: (EchoReplayGainMode) -> Unit,
     onTestUsbExclusiveDriver: () -> Unit,
-    onPinQueueOffline: () -> Unit = {},
     onPickImageBackground: () -> Unit,
     onPickStartupBackground: () -> Unit,
     onClearStartupBackground: () -> Unit,
@@ -147,7 +144,6 @@ fun SettingsScreen(
     onDisconnectListenBrainz: () -> Unit,
     onSaveSetlistFmApiKey: (String?) -> Unit = {},
     onOpenLibrary: () -> Unit,
-    onOpenConnect: () -> Unit,
     onClearLocalLibraryIndex: suspend () -> Boolean,
     onCleanupLocalLibrary: suspend () -> Pair<Int, Int> = { 0 to 0 },
     errorLogCount: Int = 0,
@@ -158,9 +154,11 @@ fun SettingsScreen(
     notificationPermissionGranted: Boolean = true,
     onRequestNotificationPermission: () -> Unit = {},
     onOpenPlugins: () -> Unit = {},
+    isPageVisible: Boolean = isActive,
 ) {
     SettingsNavigation(
         isActive = isActive,
+        isPageVisible = isPageVisible,
         compactMode = compactModeEnabled,
         onOpenPlugins = onOpenPlugins,
         searchAvailability = SettingsSearchAvailability(
@@ -178,6 +176,10 @@ fun SettingsScreen(
             listenBrainzConnected = listenBrainzEnabled && !listenBrainzToken.isNullOrBlank(),
             setlistFmLocked = setlistFmApiKeyLocked,
             importedFont = !importedFontUri.isNullOrBlank(),
+            notificationPermissionNeeded = app.echo.android.design.LocalEchoPlatformCapabilities.current
+                .notificationRuntimePermission && !notificationPermissionGranted,
+            usbConfigurationVisible = status.diagnostics.usbConnected || usbExclusiveEnabled || usbBitPerfectEnabled ||
+                usbExclusiveAutoRequestOnStartup,
         ),
         summaries = mapOf(
             SettingsCategory.Appearance to (stringResource(when (themeMode) {
@@ -189,9 +191,8 @@ fun SettingsScreen(
                 "video" -> R.string.settings_summary_bg_video
                 else -> R.string.settings_summary_bg_default
             })),
-            SettingsCategory.Interface to (languageDetail(appLanguage) + " · " +
-                performanceModeOptions().firstOrNull { it.value == performanceMode }?.label.orEmpty()),
-            SettingsCategory.Playback to stringResource(if (usbExclusiveEnabled) R.string.settings_usb_exclusive else R.string.settings_gapless),
+            SettingsCategory.Interface to languageDetail(appLanguage),
+            SettingsCategory.Playback to stringResource(if (usbExclusiveEnabled) R.string.settings_usb_exclusive else R.string.settings_section_lyrics),
             SettingsCategory.Services to (lastFmStatusLabel + " · " + listenBrainzStatusLabel),
             SettingsCategory.Library to stringResource(R.string.settings_library_summary, trackCount, albumCount, artistCount),
             SettingsCategory.About to appVersionLabel,
@@ -235,7 +236,6 @@ fun SettingsScreen(
                     onCustomBackgroundStyleChange = onCustomBackgroundStyleChange,
                     onUiFontFamilyChange = onUiFontFamilyChange,
                     onUiFontScaleChange = onUiFontScaleChange,
-                    onUiDensityScaleChange = onUiDensityScaleChange,
                     onLyricsFontFamilyChange = onLyricsFontFamilyChange,
                     onLyricsFontScaleChange = onLyricsFontScaleChange,
                     onImportUiFont = onImportUiFont,
@@ -254,11 +254,13 @@ fun SettingsScreen(
                 SettingsCategory.Interface -> SettingsInterfaceContent(
                     dynamicArtworkEnabled = dynamicArtworkEnabled,
                     compactModeEnabled = compactModeEnabled,
+                    uiDensityScale = uiDensityScale,
                     performanceMode = performanceMode,
                     effectivePerformanceMode = effectivePerformanceMode,
                     appLanguage = appLanguage,
                     onDynamicArtworkEnabledChange = onDynamicArtworkEnabledChange,
                     onCompactModeEnabledChange = onCompactModeEnabledChange,
+                    onUiDensityScaleChange = onUiDensityScaleChange,
                     onPerformanceModeChange = onPerformanceModeChange,
                     onAppLanguageChange = onAppLanguageChange,
                 )
@@ -266,7 +268,6 @@ fun SettingsScreen(
                     status = status,
                     playbackHapticsEnabled = playbackHapticsEnabled,
                     effectivePerformanceMode = effectivePerformanceMode,
-                    showLyricsControlDeck = showLyricsControlDeck,
                     onlineLyricsEnabled = onlineLyricsEnabled,
                     lockScreenLyricsEnabled = lockScreenLyricsEnabled,
                     floatingLyrics = floatingLyrics,
@@ -282,7 +283,6 @@ fun SettingsScreen(
                     replayGainPreampDb = replayGainPreampDb,
                     usbExclusiveTestResult = usbExclusiveTestResult,
                     onPlaybackHapticsEnabledChange = onPlaybackHapticsEnabledChange,
-                    onShowLyricsControlDeckChange = onShowLyricsControlDeckChange,
                     onOnlineLyricsEnabledChange = onOnlineLyricsEnabledChange,
                     onLockScreenLyricsEnabledChange = onLockScreenLyricsEnabledChange,
                     onFloatingLyricsChange = onFloatingLyricsChange,
@@ -296,7 +296,6 @@ fun SettingsScreen(
                     onReplayGainChange = onReplayGainChange,
                     onReplayGainModeChange = onReplayGainModeChange,
                     onTestUsbExclusiveDriver = onTestUsbExclusiveDriver,
-                    onPinQueueOffline = onPinQueueOffline,
                     notificationPermissionGranted = notificationPermissionGranted,
                     onRequestNotificationPermission = onRequestNotificationPermission,
                 )
@@ -327,7 +326,6 @@ fun SettingsScreen(
                     onSaveListenBrainzToken = onSaveListenBrainzToken,
                     onDisconnectListenBrainz = onDisconnectListenBrainz,
                     onSaveSetlistFmApiKey = onSaveSetlistFmApiKey,
-                    onOpenConnect = onOpenConnect,
                 )
                 SettingsCategory.Library -> SettingsLibraryContent(
                     trackAudioInfoTagsVisible = trackAudioInfoTagsVisible,

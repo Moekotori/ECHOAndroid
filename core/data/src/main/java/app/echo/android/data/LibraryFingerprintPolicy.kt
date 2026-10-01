@@ -25,6 +25,11 @@ object LibraryFingerprintPolicy {
         mimeType: String?,
         relativePath: String?,
         remote: Boolean,
+        clipStartMs: Long = 0L,
+        clipEndMs: Long = 0L,
+        genre: String? = null,
+        composer: String? = null,
+        fileName: String? = null,
     ): String {
         val stableDate = if (remote) {
             remoteDateModifiedSeconds(dateModifiedSeconds * 1000L)
@@ -47,6 +52,11 @@ object LibraryFingerprintPolicy {
             year?.toString().orEmpty(),
             mimeType.orEmpty(),
             relativePath.orEmpty(),
+            clipStartMs.toString(),
+            clipEndMs.toString(),
+            genre.orEmpty(),
+            composer.orEmpty(),
+            fileName.orEmpty(),
         ).joinToString("|")
     }
 }

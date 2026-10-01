@@ -9,6 +9,17 @@ class KaraokeLyricHighlightTest {
     private fun word(start: Long, end: Long?, text: String) = EchoLyricWord(start, end, text)
 
     @Test
+    fun glowSustainsThroughTheWordAndReleasesAcrossTheBoundary() {
+        assertEquals(0f, lyricWordGlowStrength(1000, 1500, 999), 0f)
+        assertEquals(1f, lyricWordGlowStrength(1000, 1500, 1250), 0f)
+        assertEquals(1f, lyricWordGlowStrength(1000, 1500, 1500), 0f)
+        assertEquals(0.5f, lyricWordGlowStrength(1000, 1500, 1610), 0.0001f)
+        assertEquals(0f, lyricWordGlowStrength(1000, 1500, 1720), 0f)
+        assertTrue(lyricWordGlowStrength(1500, 1520, 1510) > 0f)
+        assertEquals(0f, lyricWordGlowStrength(1000, null, 1100), 0f)
+    }
+
+    @Test
     fun currentWordEmphasisMeetsSteadyInkAtTheWordBoundaries() {
         assertEquals(0.86f, lyricWordHighlightAlpha(0f, 1f), 0.0001f)
         assertEquals(1f, lyricWordHighlightAlpha(0.5f, 1f), 0.0001f)

@@ -57,7 +57,7 @@ internal fun SettingsLibraryContent(
             ),
         )
     }
-    SettingsSectionCard(title = stringResource(R.string.settings_section_maintenance)) {
+    SettingsSectionCard(title = stringResource(R.string.settings_section_maintenance), secondary = true) {
         SettingsLibraryCleanupRow(onCleanupLocalLibrary)
         SettingsClearLibraryIndexRow(onClearLocalLibraryIndex)
     }

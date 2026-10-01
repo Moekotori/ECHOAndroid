@@ -30,6 +30,7 @@ internal class EchoPlaybackLibrarySessionCallback(
     private val session: () -> MediaLibrarySession?,
     private val restorer: EchoPlaybackSessionRestorer,
     private val nextUpQueue: () -> NextUpQueueController? = { null },
+    private val abLoop: () -> EchoAbLoopController? = { null },
 ) : MediaLibrarySession.Callback {
     @Volatile
     private var currentFavorite = false
@@ -66,6 +67,7 @@ internal class EchoPlaybackLibrarySessionCallback(
         val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
             .buildUpon()
             .add(EchoPlaybackSessionCommands.editQueue)
+            .add(EchoPlaybackSessionCommands.setAbLoop)
             .add(EchoPlaybackSessionCommands.addNextUp)
             .add(EchoPlaybackSessionCommands.clearNextUp)
             .add(EchoPlaybackSessionCommands.toggleFavorite)
@@ -232,6 +234,10 @@ internal class EchoPlaybackLibrarySessionCallback(
         args: Bundle,
     ): ListenableFuture<SessionResult> {
         return when (customCommand.customAction) {
+            EchoPlaybackSessionCommands.SET_AB_LOOP -> {
+                val accepted = abLoop()?.set(args.getString("trackId"), args.getLong("startMs"), args.getLong("endMs")) == true
+                Futures.immediateFuture(SessionResult(if (accepted) SessionResult.RESULT_SUCCESS else SessionResult.RESULT_ERROR_BAD_VALUE))
+            }
             EchoPlaybackSessionCommands.EDIT_QUEUE -> {
                 val queue = nextUpQueue()
                 if (args.getString("action") == "restore_order") queue?.restoreOrder(args.getIntArray("order")?.toList().orEmpty())

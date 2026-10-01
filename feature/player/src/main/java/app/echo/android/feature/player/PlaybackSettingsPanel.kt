@@ -67,6 +67,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoExpand
 import app.echo.android.design.EchoSwitch
+import app.echo.android.design.EchoSheetOverlay
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.echoAccentColor
@@ -175,6 +176,7 @@ internal fun playModeDetail(repeatLabel: String, shuffleEnabled: Boolean, shuffl
 
 @Composable
 internal fun PlaybackSettingsDrawer(
+    onOpenTrackTools: () -> Unit = {},
     appearance: PlayerAppearance,
     onAppearancePreview: (PlayerAppearance) -> Unit,
     onAppearanceCommit: () -> Unit,
@@ -198,64 +200,39 @@ internal fun PlaybackSettingsDrawer(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val lightweight = app.echo.android.design.LocalEchoEffectivePerformanceMode.current.isLightweight
     BackHandler(enabled = visible, onBack = onDismiss)
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn(tween(durationMillis = 90, easing = LyricsSettingsMotionEasing)),
-        exit = fadeOut(tween(durationMillis = 180, easing = LyricsSettingsMotionEasing)),
-        modifier = modifier.fillMaxSize(),
-    ) {
-        Box(Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.18f))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onDismiss,
-                    ),
-            )
-            Box(
-                modifier = Modifier.align(Alignment.BottomCenter).animateEnterExit(
-                    enter = if (lightweight) fadeIn(tween(90)) else
-                        slideInVertically(EchoMotion.silkOffset(340)) { it },
-                    exit = if (lightweight) fadeOut(tween(90)) else
-                        slideOutVertically(EchoMotion.silkOffset(260)) { it },
-                ),
-            ) {
-                PlaybackSettingsSheet(
-                    appearance = appearance,
-                    onAppearancePreview = onAppearancePreview,
-                    onAppearanceCommit = onAppearanceCommit,
-                    status = status,
-                    onSetRepeatMode = onSetRepeatMode,
-                    onToggleShuffle = onToggleShuffle,
-                    onSetPlaybackSpeed = onSetPlaybackSpeed,
-                    onSetSleepTimer = onSetSleepTimer,
-                    onSetSleepTimerEndOfTrack = onSetSleepTimerEndOfTrack,
-                    onCancelSleepTimer = onCancelSleepTimer,
-                    onSetReplayGain = onSetReplayGain,
-                    onAdjustReplayGainPreamp = onAdjustReplayGainPreamp,
-                    replayGainScanState = replayGainScanState,
-                    onScanReplayGain = onScanReplayGain,
-                    lyricsOffsetMs = lyricsOffsetMs,
-                    onAdjustLyricsOffset = onAdjustLyricsOffset,
-                    onResetLyricsOffset = onResetLyricsOffset,
-                    onOpenQueue = {
-                        onDismiss()
-                        onOpenQueue()
-                    },
-                    onDismiss = onDismiss,
-                )
-            }
-        }
+    EchoSheetOverlay(visible = visible, onDismiss = onDismiss, modifier = modifier) {
+        PlaybackSettingsSheet(
+            onOpenTrackTools = onOpenTrackTools,
+            appearance = appearance,
+            onAppearancePreview = onAppearancePreview,
+            onAppearanceCommit = onAppearanceCommit,
+            status = status,
+            onSetRepeatMode = onSetRepeatMode,
+            onToggleShuffle = onToggleShuffle,
+            onSetPlaybackSpeed = onSetPlaybackSpeed,
+            onSetSleepTimer = onSetSleepTimer,
+            onSetSleepTimerEndOfTrack = onSetSleepTimerEndOfTrack,
+            onCancelSleepTimer = onCancelSleepTimer,
+            onSetReplayGain = onSetReplayGain,
+            onAdjustReplayGainPreamp = onAdjustReplayGainPreamp,
+            replayGainScanState = replayGainScanState,
+            onScanReplayGain = onScanReplayGain,
+            lyricsOffsetMs = lyricsOffsetMs,
+            onAdjustLyricsOffset = onAdjustLyricsOffset,
+            onResetLyricsOffset = onResetLyricsOffset,
+            onOpenQueue = {
+                onDismiss()
+                onOpenQueue()
+            },
+            onDismiss = onDismiss,
+        )
     }
 }
 
 @Composable
 private fun PlaybackSettingsSheet(
+    onOpenTrackTools: () -> Unit = {},
     appearance: PlayerAppearance,
     onAppearancePreview: (PlayerAppearance) -> Unit,
     onAppearanceCommit: () -> Unit,
@@ -280,8 +257,10 @@ private fun PlaybackSettingsSheet(
     val dark = LocalEchoDarkTheme.current
     val haptics = rememberEchoHapticPerformer()
     val customActive = isCustomSleepTimer(status.sleepTimerMode, status.sleepTimerMinutes)
-    var timerExpanded by remember { mutableStateOf(status.sleepTimerMode != EchoSleepTimerMode.Off) }
-    var speedExpanded by remember { mutableStateOf(abs(status.playbackSpeed - 1f) > 0.01f) }
+    var timerExpanded by remember { mutableStateOf(false) }
+    var speedExpanded by remember { mutableStateOf(false) }
+    var moreExpanded by remember { mutableStateOf(false) }
+    var lyricsOffsetExpanded by remember { mutableStateOf(false) }
     var showCustomSleepTimer by remember { mutableStateOf(false) }
     var customMinutes by remember {
         mutableIntStateOf(status.sleepTimerMinutes?.takeIf { it !in SleepTimerPresetMinutes } ?: SleepTimerCustomDefaultMinutes)
@@ -295,7 +274,7 @@ private fun PlaybackSettingsSheet(
                 .fillMaxWidth()
                 .heightIn(max = maxHeight * 0.88f)
                 .clip(panelShape)
-                .background(if (dark) echoTheme().panel else Color(0xFFF4F1F3))
+                .background(echoTheme().panel)
                 .navigationBarsPadding(),
         ) {
             Column(
@@ -310,12 +289,6 @@ private fun PlaybackSettingsSheet(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Icon(
-                        Icons.Rounded.Settings,
-                        contentDescription = null,
-                        tint = echoAccentColor(),
-                        modifier = Modifier.size(28.dp),
-                    )
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
                             stringResource(L10nR.string.feature_player_playback_settings_651436),
@@ -348,11 +321,11 @@ private fun PlaybackSettingsSheet(
                     .weight(1f, fill = false)
                     .verticalScroll(rememberScrollState())
                     .padding(start = 20.dp, end = 20.dp, bottom = 18.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                PlayerAppearanceSettings(appearance, onAppearancePreview, onAppearanceCommit)
                 PlaybackSettingsSection(
                     icon = Icons.Rounded.Repeat,
+                    framed = false,
                     title = stringResource(L10nR.string.feature_player_playback_mode),
                     detail = playModeDetail(
                         repeatLabel = repeatModeLabel(status.repeatMode),
@@ -389,6 +362,7 @@ private fun PlaybackSettingsSheet(
 
                 PlaybackSettingsSection(
                     icon = Icons.Rounded.Bedtime,
+                    framed = false,
                     title = stringResource(L10nR.string.feature_player_sleep_timer_108738),
                     detail = sleepTimerDetail(status),
                     expanded = timerExpanded,
@@ -492,156 +466,184 @@ private fun PlaybackSettingsSheet(
                     }
                 }
 
-                PlaybackSettingsSection(
-                    icon = Icons.Rounded.Speed,
-                    title = stringResource(L10nR.string.feature_player_speed_1d93fc),
-                    detail = listOf(
-                        formatPlaybackSpeedLabel(status.playbackSpeed),
-                        if (nightcore) {
-                            stringResource(L10nR.string.feature_player_nightcore)
-                        } else {
-                            stringResource(L10nR.string.playback_keep_pitch)
-                        },
-                    ).joinToString(" · "),
-                    expanded = speedExpanded,
-                    onToggleExpanded = { speedExpanded = !speedExpanded },
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        PlaybackToggleChip(
-                            icon = Icons.Rounded.Speed,
-                            text = stringResource(L10nR.string.playback_keep_pitch),
-                            selected = !nightcore,
-                            onClick = {
-                                onSetPlaybackSpeed(status.playbackSpeed, false)
-                            },
-                            modifier = Modifier.weight(1f),
-                            role = Role.RadioButton,
-                        )
-                        PlaybackToggleChip(
-                            icon = if (nightcore) Icons.Rounded.Star else Icons.Rounded.StarBorder,
-                            text = stringResource(L10nR.string.feature_player_nightcore),
-                            selected = nightcore,
-                            onClick = {
-                                onSetPlaybackSpeed(
-                                    playbackSpeedForNightcoreToggle(status.playbackSpeed, true),
-                                    true,
-                                )
-                            },
-                            modifier = Modifier.weight(1f),
-                            role = Role.RadioButton,
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        playbackSpeedChoices(nightcore).forEach { speed ->
-                            PlaybackChoiceChip(
-                                text = formatPlaybackSpeedLabel(speed),
-                                selected = abs(status.playbackSpeed - speed) < 0.01f,
-                                onClick = { onSetPlaybackSpeed(speed, nightcore) },
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                    }
-                    TextButton(onClick = { onSetPlaybackSpeed(1f, false) }, enabled = nightcore || abs(status.playbackSpeed - 1f) > 0.01f) {
-                        Text(stringResource(L10nR.string.playback_reset_speed))
-                    }
-                }
+                PlayerAppearanceSettings(appearance, onAppearancePreview, onAppearanceCommit)
 
                 PlaybackSettingsSection(
-                    icon = Icons.Rounded.GraphicEq,
-                    title = stringResource(L10nR.string.feature_player_replay_gain),
-                    detail = if (status.replayGainEnabled) {
-                        listOf(
-                            stringResource(L10nR.string.feature_player_enabled_889420),
-                            replayGainModeLabel(status.replayGainMode),
-                            formatReplayGainDb(status.replayGainPreampDb),
-                        ).joinToString(" · ")
-                    } else {
-                        stringResource(L10nR.string.feature_player_disabled_3bd0d0)
-                    },
-                    trailing = {
-                        EchoSwitch(
-                            checked = status.replayGainEnabled,
-                            onCheckedChange = { enabled ->
-                                haptics.confirm()
-                                onSetReplayGain(enabled, status.replayGainPreampDb)
-                            },
-                            modifier = Modifier.semantics { contentDescription = "ReplayGain" },
-                        )
-                    },
+                    icon = Icons.Rounded.Settings,
+                    title = stringResource(L10nR.string.playback_more_settings),
+                    detail = buildList {
+                        if (abs(status.playbackSpeed - 1f) > 0.01f) add(formatPlaybackSpeedLabel(status.playbackSpeed))
+                        if (status.replayGainEnabled) add(stringResource(L10nR.string.feature_player_replay_gain))
+                        if (lyricsOffsetMs != 0L) add(formatLyricsOffset(lyricsOffsetMs))
+                    }.joinToString(" · "),
+                    framed = false,
+                    expanded = moreExpanded,
+                    onToggleExpanded = { moreExpanded = !moreExpanded },
                 ) {
-                    EchoExpand(expanded = status.replayGainEnabled) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            PlaybackStepper(
-                                valueLabel = "${stringResource(L10nR.string.feature_player_replay_gain_preamp)} ${formatReplayGainDb(status.replayGainPreampDb)}",
-                                decrementEnabled = canLowerReplayGainPreamp(status.replayGainPreampDb),
-                                incrementEnabled = canRaiseReplayGainPreamp(status.replayGainPreampDb),
-                                decrementDescription = stringResource(L10nR.string.feature_player_replay_gain_preamp_down),
-                                incrementDescription = stringResource(L10nR.string.feature_player_replay_gain_preamp_up),
-                                valueDescription = stringResource(L10nR.string.feature_player_replay_gain_reset_preamp),
-                                onDecrement = { onAdjustReplayGainPreamp(-ReplayGainPreampStepDb) },
-                                onIncrement = { onAdjustReplayGainPreamp(ReplayGainPreampStepDb) },
-                                onValueClick = {
-                                    if (abs(status.replayGainPreampDb) >= 0.01f) {
-                                        onSetReplayGain(true, 0f)
-                                    }
+                    PlaybackSettingsSection(
+                        icon = Icons.Rounded.Speed,
+                        framed = false,
+                        title = stringResource(L10nR.string.feature_player_speed_1d93fc),
+                        detail = listOf(
+                            formatPlaybackSpeedLabel(status.playbackSpeed),
+                            if (nightcore) {
+                                stringResource(L10nR.string.feature_player_nightcore)
+                            } else {
+                                stringResource(L10nR.string.playback_keep_pitch)
+                            },
+                        ).joinToString(" · "),
+                        expanded = speedExpanded,
+                        onToggleExpanded = { speedExpanded = !speedExpanded },
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            PlaybackToggleChip(
+                                icon = Icons.Rounded.Speed,
+                                text = stringResource(L10nR.string.playback_keep_pitch),
+                                selected = !nightcore,
+                                onClick = {
+                                    onSetPlaybackSpeed(status.playbackSpeed, false)
                                 },
-                                decrementIcon = Icons.Rounded.Remove,
-                                incrementIcon = Icons.Rounded.Add,
+                                modifier = Modifier.weight(1f),
+                                role = Role.RadioButton,
                             )
-                            Text(
-                                stringResource(
-                                    L10nR.string.feature_player_tag_status_replaygaintrackgaindb_let_formatreplaygaindb_unread_p_9c7a19,
-                                    status.replayGainTrackGainDb?.let(::formatReplayGainDb)
-                                        ?: stringResource(
-                                            if (status.replayGainTagsLoaded) {
-                                                L10nR.string.feature_player_replay_gain_none
-                                            } else {
-                                                L10nR.string.feature_player_replay_gain_unread
-                                            },
-                                        ),
-                                    formatReplayGainDb(status.replayGainPreampDb),
-                                ),
-                                color = if (dark) Color.White.copy(alpha = 0.62f) else echoTheme().muted,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
+                            PlaybackToggleChip(
+                                icon = if (nightcore) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                                text = stringResource(L10nR.string.feature_player_nightcore),
+                                selected = nightcore,
+                                onClick = {
+                                    onSetPlaybackSpeed(
+                                        playbackSpeedForNightcoreToggle(status.playbackSpeed, true),
+                                        true,
+                                    )
+                                },
+                                modifier = Modifier.weight(1f),
+                                role = Role.RadioButton,
                             )
-                            TextButton(
-                                onClick = onScanReplayGain,
-                                enabled = replayGainScanState !is EchoReplayGainScanState.Scanning &&
-                                    status.track != null,
-                            ) {
-                                Text(replayGainScanLabel(replayGainScanState))
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            playbackSpeedChoices(nightcore).forEach { speed ->
+                                PlaybackChoiceChip(
+                                    text = formatPlaybackSpeedLabel(speed),
+                                    selected = abs(status.playbackSpeed - speed) < 0.01f,
+                                    onClick = { onSetPlaybackSpeed(speed, nightcore) },
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                        }
+                        TextButton(onClick = { onSetPlaybackSpeed(1f, false) }, enabled = nightcore || abs(status.playbackSpeed - 1f) > 0.01f) {
+                            Text(stringResource(L10nR.string.playback_reset_speed))
+                        }
+                    }
+
+                    PlaybackSettingsSection(
+                        icon = Icons.Rounded.GraphicEq,
+                        framed = false,
+                        title = stringResource(L10nR.string.feature_player_replay_gain),
+                        detail = if (status.replayGainEnabled) {
+                            listOf(
+                                stringResource(L10nR.string.feature_player_enabled_889420),
+                                replayGainModeLabel(status.replayGainMode),
+                                formatReplayGainDb(status.replayGainPreampDb),
+                            ).joinToString(" · ")
+                        } else {
+                            stringResource(L10nR.string.feature_player_disabled_3bd0d0)
+                        },
+                        trailing = {
+                            EchoSwitch(
+                                checked = status.replayGainEnabled,
+                                onCheckedChange = { enabled ->
+                                    haptics.confirm()
+                                    onSetReplayGain(enabled, status.replayGainPreampDb)
+                                },
+                                modifier = Modifier.semantics { contentDescription = "ReplayGain" },
+                            )
+                        },
+                    ) {
+                        EchoExpand(expanded = status.replayGainEnabled) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                PlaybackStepper(
+                                    valueLabel = "${stringResource(L10nR.string.feature_player_replay_gain_preamp)} ${formatReplayGainDb(status.replayGainPreampDb)}",
+                                    decrementEnabled = canLowerReplayGainPreamp(status.replayGainPreampDb),
+                                    incrementEnabled = canRaiseReplayGainPreamp(status.replayGainPreampDb),
+                                    decrementDescription = stringResource(L10nR.string.feature_player_replay_gain_preamp_down),
+                                    incrementDescription = stringResource(L10nR.string.feature_player_replay_gain_preamp_up),
+                                    valueDescription = stringResource(L10nR.string.feature_player_replay_gain_reset_preamp),
+                                    onDecrement = { onAdjustReplayGainPreamp(-ReplayGainPreampStepDb) },
+                                    onIncrement = { onAdjustReplayGainPreamp(ReplayGainPreampStepDb) },
+                                    onValueClick = {
+                                        if (abs(status.replayGainPreampDb) >= 0.01f) {
+                                            onSetReplayGain(true, 0f)
+                                        }
+                                    },
+                                    decrementIcon = Icons.Rounded.Remove,
+                                    incrementIcon = Icons.Rounded.Add,
+                                )
+                                Text(
+                                    stringResource(
+                                        L10nR.string.feature_player_tag_status_replaygaintrackgaindb_let_formatreplaygaindb_unread_p_9c7a19,
+                                        status.replayGainTrackGainDb?.let(::formatReplayGainDb)
+                                            ?: stringResource(
+                                                if (status.replayGainTagsLoaded) {
+                                                    L10nR.string.feature_player_replay_gain_none
+                                                } else {
+                                                    L10nR.string.feature_player_replay_gain_unread
+                                                },
+                                            ),
+                                        formatReplayGainDb(status.replayGainPreampDb),
+                                    ),
+                                    color = if (dark) Color.White.copy(alpha = 0.62f) else echoTheme().muted,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                TextButton(
+                                    onClick = onScanReplayGain,
+                                    enabled = replayGainScanState !is EchoReplayGainScanState.Scanning &&
+                                        status.track != null,
+                                ) {
+                                    Text(replayGainScanLabel(replayGainScanState))
+                                }
                             }
                         }
                     }
-                }
 
-                PlaybackSettingsSection(
-                    icon = Icons.Rounded.Lyrics,
-                    title = stringResource(L10nR.string.feature_player_lyrics_offset),
-                    detail = formatLyricsOffset(lyricsOffsetMs),
-                ) {
-                    PlaybackStepper(
-                        valueLabel = formatLyricsOffset(lyricsOffsetMs),
-                        decrementEnabled = true,
-                        incrementEnabled = true,
-                        decrementDescription = stringResource(L10nR.string.feature_player_lyrics_earlier_by_0_25s_0605b3),
-                        incrementDescription = stringResource(L10nR.string.feature_player_lyrics_later_by_0_25s_f31341),
-                        valueDescription = stringResource(L10nR.string.feature_player_reset_lyrics_offset_df9dcc),
-                        onDecrement = { onAdjustLyricsOffset(-LyricsOffsetStepMs) },
-                        onIncrement = { onAdjustLyricsOffset(LyricsOffsetStepMs) },
-                        onValueClick = if (lyricsOffsetMs != 0L) onResetLyricsOffset else null,
-                        decrementIcon = Icons.Rounded.FastRewind,
-                        incrementIcon = Icons.Rounded.FastForward,
-                    )
-                    TextButton(onClick = onResetLyricsOffset, enabled = lyricsOffsetMs != 0L) {
-                        Text(stringResource(L10nR.string.feature_player_reset_lyrics_offset_df9dcc))
+                    PlaybackSettingsSection(
+                        icon = Icons.Rounded.Lyrics,
+                        framed = false,
+                        title = stringResource(L10nR.string.feature_player_lyrics_offset),
+                        detail = formatLyricsOffset(lyricsOffsetMs),
+                        expanded = lyricsOffsetExpanded,
+                        onToggleExpanded = { lyricsOffsetExpanded = !lyricsOffsetExpanded },
+                    ) {
+                        PlaybackStepper(
+                            valueLabel = formatLyricsOffset(lyricsOffsetMs),
+                            decrementEnabled = true,
+                            incrementEnabled = true,
+                            decrementDescription = stringResource(L10nR.string.feature_player_lyrics_earlier_by_0_25s_0605b3),
+                            incrementDescription = stringResource(L10nR.string.feature_player_lyrics_later_by_0_25s_f31341),
+                            valueDescription = stringResource(L10nR.string.feature_player_reset_lyrics_offset_df9dcc),
+                            onDecrement = { onAdjustLyricsOffset(-LyricsOffsetStepMs) },
+                            onIncrement = { onAdjustLyricsOffset(LyricsOffsetStepMs) },
+                            onValueClick = if (lyricsOffsetMs != 0L) onResetLyricsOffset else null,
+                            decrementIcon = Icons.Rounded.FastRewind,
+                            incrementIcon = Icons.Rounded.FastForward,
+                        )
+                        TextButton(onClick = onResetLyricsOffset, enabled = lyricsOffsetMs != 0L) {
+                            Text(stringResource(L10nR.string.feature_player_reset_lyrics_offset_df9dcc))
+                        }
+                    }
+                    if (status.track != null && !app.echo.android.model.radio.EchoRadioStation.isRadio(status.track?.id)) {
+                        PlaybackActionRow(
+                            icon = Icons.Rounded.Settings,
+                            text = stringResource(L10nR.string.track_tools_title),
+                            framed = false,
+                            onClick = { onDismiss(); onOpenTrackTools() },
+                        )
                     }
                 }
             }
@@ -702,4 +704,3 @@ private fun replayGainModeLabel(mode: EchoReplayGainMode): String = when (mode) 
     EchoReplayGainMode.Track -> stringResource(L10nR.string.feature_player_replay_gain_track)
     EchoReplayGainMode.Album -> stringResource(L10nR.string.feature_player_replay_gain_album)
 }
-

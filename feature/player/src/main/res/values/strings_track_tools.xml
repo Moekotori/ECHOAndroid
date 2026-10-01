@@ -1,0 +1,29 @@
+<resources>
+    <string name="track_tools_title">Moments &amp; lyrics cards</string>
+    <string name="track_tools_error">Could not complete this action. Check playback or file access and try again.</string>
+    <string name="track_tools_save">Save</string>
+    <string name="track_tools_cancel">Cancel</string>
+    <string name="track_loop_title">A–B loop</string>
+    <string name="track_loop_external">A–B looping is available when this phone controls playback. End casting to use it.</string>
+    <string name="track_loop_hint">Mark a start and end while listening, or adjust the range below. Choose at least half a second.</string>
+    <string name="track_loop_active">Loop enabled · %1$s — %2$s</string>
+    <string name="track_loop_mark_a">A · %1$s</string>
+    <string name="track_loop_mark_b">B · %1$s</string>
+    <string name="track_loop_start">Loop this part</string>
+    <string name="track_loop_stop">Stop looping</string>
+    <string name="track_bookmarks">Saved moments</string>
+    <string name="track_bookmark_add">Save this moment</string>
+    <string name="track_bookmark_empty">Hear something you love? Save its position and come back in one tap.</string>
+    <string name="track_bookmark_name">A name for this moment</string>
+    <string name="track_bookmark_delete">Delete saved moment</string>
+    <string name="lyrics_card_title">Lyrics card</string>
+    <string name="lyrics_card_missing">Add lyrics to this song to make a card.</string>
+    <string name="lyrics_card_hint">Choose up to 6 lines (1,000 characters). Preview the exact image before saving or sharing.</string>
+    <string name="lyrics_card_paper">Paper</string>
+    <string name="lyrics_card_midnight">Midnight</string>
+    <string name="lyrics_card_artwork">Album colors</string>
+    <string name="lyrics_card_preview">Preview of the lyrics card</string>
+    <string name="lyrics_card_share">Share image</string>
+    <string name="lyrics_card_save">Save image</string>
+    <string name="lyrics_card_saved">Image saved</string>
+</resources>

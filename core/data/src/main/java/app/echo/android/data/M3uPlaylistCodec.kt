@@ -19,6 +19,7 @@ data class M3uMatchRow(
     val artist: String,
     val relativePath: String?,
     val contentUri: String,
+    val fileName: String? = null,
 )
 
 object M3uPlaylistCodec {
@@ -73,25 +74,34 @@ object M3uPlaylistCodec {
         val location = normalizeM3uLocation(entry.location)
         if (location.isBlank()) return null
         val fileName = location.substringAfterLast('/')
-        rows.firstOrNull { row ->
-            val relative = normalizeM3uLocation(row.relativePath.orEmpty())
+        rows.filter { it.contentUri == entry.location }.singleOrNull()?.id?.let { return it }
+        rows.filter { row ->
+            val relative = row.fileLocation()?.let(::normalizeM3uLocation).orEmpty()
             relative.isNotBlank() && (relative == location || relative.endsWith("/$location") || location.endsWith("/$relative"))
-        }?.id?.let { return it }
+        }.singleOrNull()?.id?.let { return it }
         if (fileName.isNotBlank()) {
-            rows.firstOrNull { row ->
-                normalizeM3uLocation(row.relativePath.orEmpty()).substringAfterLast('/') == fileName
-            }?.id?.let { return it }
+            rows.filter { row ->
+                row.fileLocation()?.let(::normalizeM3uLocation)?.substringAfterLast('/') == fileName
+            }.singleOrNull()?.id?.let { return it }
         }
         val inferred = inferredTitleArtist(entry.title)
         if (inferred != null) {
             val (artist, title) = inferred
-            rows.firstOrNull { row ->
+            rows.filter { row ->
                 row.title.equals(title, ignoreCase = true) &&
                     (artist.isBlank() || row.artist.equals(artist, ignoreCase = true))
-            }?.id?.let { return it }
+            }.singleOrNull()?.id?.let { return it }
         }
         return null
     }
+}
+
+internal fun M3uMatchRow.fileLocation(): String? {
+    val path = relativePath?.replace('\\', '/')?.trimEnd('/')?.takeIf { it.isNotBlank() }
+    val name = fileName?.takeIf { it.isNotBlank() }
+    if (name != null) return if (path == null) name else "$path/$name"
+    // Compatibility with previously exported full paths; scanner folder paths are never file names.
+    return path?.takeIf { LocalAudioFileTypes.isSupported(it.substringAfterLast('/'), null) }
 }
 
 internal fun normalizeM3uLocation(raw: String): String {

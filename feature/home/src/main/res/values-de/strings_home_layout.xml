@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_layout_title">Startseite anpassen</string>
+    <string name="home_layout_detail">Mit den Pfeilen umsortieren und ungenutzte Bereiche ausblenden. Leere Bereiche erscheinen, sobald Inhalte verfügbar sind.</string>
+    <string name="home_layout_move_up">%1$s nach oben verschieben</string>
+    <string name="home_layout_move_down">%1$s nach unten verschieben</string>
+    <string name="home_layout_reset">Standard wiederherstellen</string>
+    <string name="home_layout_cancel">Abbrechen</string>
+    <string name="home_layout_apply">Fertig</string>
+    <string name="home_layout_overview">Bibliotheksübersicht</string>
+    <string name="home_layout_hidden">Alle Bereiche der Startseite sind ausgeblendet.</string>
+</resources>

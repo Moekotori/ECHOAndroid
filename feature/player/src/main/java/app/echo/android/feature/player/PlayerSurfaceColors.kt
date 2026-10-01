@@ -9,7 +9,7 @@ import app.echo.android.design.LocalEchoDarkTheme
 internal val OnArt: Color
     @Composable get() = if (LocalEchoDarkTheme.current) Color.White else MaterialTheme.colorScheme.onSurface
 internal val OnArtMuted: Color
-    @Composable get() = OnArt.copy(alpha = 0.84f)
+    @Composable get() = if (LocalEchoDarkTheme.current) OnArt.copy(alpha = 0.84f) else MaterialTheme.colorScheme.onSurfaceVariant
 internal val OnArtFaint: Color
     @Composable get() = OnArt.copy(alpha = 0.42f)
 internal val OnArtChip: Color

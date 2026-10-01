@@ -74,4 +74,37 @@ class NowPlayingDismissMotionTest {
         ))
         assertEquals(0f, state.offsetPx, 0f)
     }
+
+    @Test fun horizontalPageSwipeDoesNotStartWholePlayerPull() {
+        val state = NowPlayingDismissDragState()
+        assertEquals(Offset.Zero, connection(state).onPostScroll(
+            Offset(30f, 0f), Offset(0f, 4f), NestedScrollSource.UserInput,
+        ))
+        assertFalse(state.isDragging)
+        assertEquals(0f, state.offsetPx, 0f)
+    }
+
+    @Test fun ownedVerticalPullKeepsPositionDespiteLaterDiagonalMovement() {
+        val state = NowPlayingDismissDragState()
+        val connection = connection(state)
+        connection.onPostScroll(Offset.Zero, Offset(0f, 8f), NestedScrollSource.UserInput)
+        assertEquals(Offset(0f, 3f), connection.onPreScroll(Offset(20f, 3f), NestedScrollSource.UserInput))
+        assertEquals(11f, state.offsetPx, 0f)
+        assertTrue(state.isDragging)
+        state.finishDrag()
+        assertFalse(state.isDragging)
+        assertEquals(Offset.Zero, connection.onPreScroll(Offset(20f, 3f), NestedScrollSource.UserInput))
+    }
+
+    @Test fun fullyReversedPullReleasesOwnershipBeforeNextSwipe() = runBlocking {
+        val state = NowPlayingDismissDragState()
+        val connection = connection(state)
+        state.applyDelta(8f, 100f) {}
+        connection.onPreScroll(Offset(0f, -8f), NestedScrollSource.UserInput)
+        connection.onPostFling(Velocity.Zero, Velocity.Zero)
+        assertFalse(state.isDragging)
+        assertEquals(Offset.Zero, connection.onPostScroll(
+            Offset(30f, 0f), Offset(0f, 4f), NestedScrollSource.UserInput,
+        ))
+    }
 }

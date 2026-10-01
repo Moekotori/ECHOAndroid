@@ -4,8 +4,6 @@ import androidx.annotation.StringRes
 import app.echo.android.data.EchoAppSettings
 import app.echo.android.model.error.EchoErrorLog
 import app.echo.android.model.error.EchoErrorSource
-import app.echo.android.model.playback.EchoPlaybackStatus
-import app.echo.android.model.playback.PlaybackPositionState
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -58,11 +56,6 @@ internal data class LastFmTrack(
     val durationMs: Long,
 )
 
-private data class LastFmPlaybackSnapshot(
-    val status: EchoPlaybackStatus,
-    val position: PlaybackPositionState,
-)
-
 private data class ActiveScrobble(
     val track: LastFmTrack,
     val startedAtEpochSeconds: Long,
@@ -89,29 +82,18 @@ internal class LastFmScrobbleController(
 
     fun start(
         settingsFlow: Flow<EchoAppSettings>,
-        playbackStatus: StateFlow<EchoPlaybackStatus>,
-        playbackPosition: StateFlow<PlaybackPositionState>,
+        playback: Flow<EchoScrobblePlayback>,
     ) {
         collectJob?.cancel()
         collectJob = scope.launch {
             combine(
                 settingsFlow.distinctUntilChanged(),
-                playbackStatus,
-                playbackPosition,
-            ) { appSettings, status, position ->
+                playback,
+            ) { appSettings, snapshot ->
                 settings = appSettings
-                LastFmPlaybackSnapshot(status = status, position = position)
-            }.distinctUntilChanged { previous, next ->
-                previous.status.track?.id == next.status.track?.id &&
-                    previous.status.isPlaying == next.status.isPlaying &&
-                    (!next.status.isPlaying ||
-                        previous.position.positionMs / 1_000L == next.position.positionMs / 1_000L)
+                snapshot
             }.collect(::handleSnapshot)
         }
-    }
-
-    fun clear() {
-        // Keep collecting after the UI ViewModel dies; start() replaces this job.
     }
 
     fun setConnecting() {
@@ -164,7 +146,7 @@ internal class LastFmScrobbleController(
         EchoErrorLog.record(EchoErrorSource.Network, message)
     }
 
-    private fun handleSnapshot(snapshot: LastFmPlaybackSnapshot) {
+    private fun handleSnapshot(snapshot: EchoScrobblePlayback) {
         val credentials = settings.lastFmCredentialsOrNull()
         if (
             LastFmScrobbleRules.shouldClearActiveScrobble(

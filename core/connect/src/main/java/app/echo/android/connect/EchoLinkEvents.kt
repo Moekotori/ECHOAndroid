@@ -41,6 +41,8 @@ internal fun JSONObject.toPlaybackSnapshot(endpoint: EchoRemoteEndpoint): EchoRe
         outputMode = optText("outputMode") ?: optText("output") ?: "PC ECHO",
         updatedAtEpochMs = optLong("updatedAtEpochMs", System.currentTimeMillis()),
         queue = optJSONObject("queue").toRemoteQueue(endpoint),
+        volumeControlEnabled = optBoolean("volumeControlEnabled", true),
+        volumeLockedReason = optText("volumeLockedReason"),
     )
 
 internal fun JSONObject?.toRemoteQueue(endpoint: EchoRemoteEndpoint): EchoRemotePlaybackQueue {

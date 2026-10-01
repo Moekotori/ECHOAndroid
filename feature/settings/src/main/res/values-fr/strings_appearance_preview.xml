@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_appearance_preview">Aperçu de l’apparence</string>
+    <string name="settings_background_preview_unavailable">Impossible de prévisualiser ce fond.</string>
+    <string name="settings_background_preview_loading">Chargement de l’aperçu…</string>
+    <string name="settings_background_preview_still">Les fonds vidéo sont présentés sous forme d’image fixe.</string>
+    <string name="settings_background_preview_legacy_blur">Sur cet appareil, le flou est mis à jour lorsque vous relâchez le curseur.</string>
+</resources>

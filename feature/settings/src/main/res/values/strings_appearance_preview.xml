@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_appearance_preview">Appearance preview</string>
+    <string name="settings_background_preview_unavailable">This background cannot be previewed.</string>
+    <string name="settings_background_preview_loading">Loading preview…</string>
+    <string name="settings_background_preview_still">Video backgrounds use a still image in this preview.</string>
+    <string name="settings_background_preview_legacy_blur">On this device, the blur preview updates when you release the slider.</string>
+</resources>

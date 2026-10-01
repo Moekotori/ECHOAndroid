@@ -1,6 +1,7 @@
 package app.echo.android.data
 
 import androidx.room.Entity
+import androidx.room.ColumnInfo
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
@@ -61,4 +62,5 @@ data class LibraryTrackEntity(
     val composerKey: String = "",
     val clipStartMs: Long = 0L,
     val clipEndMs: Long = 0L,
+    @ColumnInfo(defaultValue = "NULL") val fileName: String? = null,
 )

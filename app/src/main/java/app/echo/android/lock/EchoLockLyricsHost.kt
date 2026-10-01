@@ -44,6 +44,7 @@ fun EchoLockLyricsHost() {
             artworkUri = surface.artworkUri,
             snapshot = snapshot,
             wordHighlightEnabled = settings.lyricsWordHighlightEnabled,
+            estimatedWordHighlightEnabled = settings.lyricsEstimatedWordHighlightEnabled,
             modifier = Modifier.fillMaxSize(),
         )
     }

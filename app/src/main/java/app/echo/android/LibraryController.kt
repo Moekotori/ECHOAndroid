@@ -756,6 +756,11 @@ internal class LibraryController(
             repository.artistSummaryForTrack(trackId)
         }
 
+    suspend fun collectionTracksForPlayback(origin: app.echo.android.model.library.LibraryPlaybackOrigin, anchorId: String): List<EchoTrack> =
+        withContext(Dispatchers.IO) {
+            repository.collectionTracksForPlayback(origin, anchorId).map { it.toEchoTrack() }
+        }
+
     suspend fun albumTracksForPlayback(albumKey: String): List<EchoTrack> =
         withContext(Dispatchers.IO) {
             repository.albumTracksForPlayback(albumKey).map { it.toEchoTrack() }

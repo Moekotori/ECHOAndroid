@@ -1,0 +1,33 @@
+<resources>
+    <string name="smart_all">满足全部条件</string>
+    <string name="smart_any">满足任一条件</string>
+    <string name="smart_album">专辑包含 · 可选</string>
+    <string name="smart_folder">目录包含 · 可选</string>
+    <string name="smart_format">格式包含 · 如 flac</string>
+    <string name="smart_exclude">始终排除这些文字</string>
+    <string name="smart_duration_from">最短秒数</string>
+    <string name="smart_duration_to">最长秒数</string>
+    <string name="batch_clear">已选 %1$d 首 · 清空</string>
+    <string name="batch_actions">批量操作</string>
+    <string name="batch_favorite">批量收藏</string>
+    <string name="batch_unfavorite">取消收藏</string>
+    <string name="batch_playlist">加入歌单</string>
+    <string name="batch_queue">加入队列末尾</string>
+    <string name="batch_next">按所选顺序下一首播放</string>
+    <string name="batch_next_up">加入接下来播放</string>
+    <string name="batch_tags">批量编辑标签</string>
+    <string name="batch_cancel">取消</string>
+    <string name="batch_artist">艺术家</string>
+    <string name="batch_album">专辑</string>
+    <string name="batch_album_artist">专辑艺术家</string>
+    <string name="batch_composer">作曲家</string>
+    <string name="batch_year">年份</string>
+    <string name="batch_genre">流派</string>
+    <string name="batch_tag_hint">选中 %1$d 首。只修改勾选项，勾选的空白项会清除对应标签。修改播放中的文件可能短暂停顿。</string>
+    <string name="batch_progress">已处理 %1$d / %2$d</string>
+    <string name="batch_result">曲库已更新 %1$d 首 · 失败 %2$d 首 · 未写入文件 %3$d 首</string>
+    <string name="batch_preview">预览修改</string>
+    <string name="batch_confirm">应用到 %1$d 首歌曲？</string>
+    <string name="batch_empty">清除该项</string>
+    <string name="batch_apply">应用选中的修改</string>
+</resources>

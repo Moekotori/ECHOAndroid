@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_density_standard">標準</string>
+    <string name="settings_density_comfortable">ゆったり</string>
+    <string name="settings_density_custom">カスタム · %1$s</string>
+    <string name="settings_font_advanced">フォントとインポート</string>
+</resources>

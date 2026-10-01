@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="playback_more_settings">更多播放设置</string>
     <string name="playback_keep_pitch">保持音高</string>
     <string name="playback_reset_speed">恢复 1×</string>
     <string name="playback_lyrics_earlier">← 提前</string>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="afterglow_mist">Afterglow · 안개</string>
+    <string name="afterglow_night">Afterglow · 밤하늘</string>
+    <string name="afterglow_mist_detail">안개 풍경과 가벼운 글자 연출</string>
+    <string name="afterglow_night_detail">푸른빛과 금빛 밤하늘과 별 궤도</string>
+    <string name="afterglow_previous_line">이전 가사</string>
+    <string name="afterglow_next_line">다음 가사</string>
+    <string name="afterglow_palette">색상</string>
+    <string name="afterglow_randomize">연출 변경</string>
+    <string name="afterglow_scene">장면</string>
+    <string name="afterglow_scene_auto">가사에 맞추기</string>
+    <string name="afterglow_scene_ridge">안개 능선</string>
+    <string name="afterglow_scene_wisteria">등나무 정원</string>
+    <string name="afterglow_scene_lake">호숫가 안개</string>
+    <string name="afterglow_scene_voyage">별빛 항해</string>
+    <string name="afterglow_scene_aurora">오로라</string>
+    <string name="afterglow_scene_chart">별자리 지도</string>
+    <string name="afterglow_show_controls">조작 버튼 표시</string>
+    <string name="afterglow_hide_controls">조작 버튼 숨기기</string>
+</resources>

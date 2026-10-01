@@ -1,0 +1,15 @@
+<resources>
+    <string name="migration_title">预览迁移备份</string>
+    <string name="migration_counts">歌单 %1$d 份 · 收藏 %2$d 首 · 片段 %3$d 个</string>
+    <string name="migration_history_lyrics">听歌记录 %1$d 条 · 歌词选择 %2$d 份 · 外观素材 %3$d 个</string>
+    <string name="migration_matches">已匹配 %1$d 首 · 缺失或有歧义 %2$d 首</string>
+    <string name="migration_policy">普通歌单与收藏合并，已匹配歌曲的歌词选择会替换；听歌记录去重导入，下面列出的设置会覆盖当前值。备份不包含音频文件与账号凭据。</string>
+    <string name="migration_home">将恢复首页布局</string>
+    <string name="migration_player">将恢复播放器外观</string>
+    <string name="migration_theme">将恢复主题</string>
+    <string name="migration_language">将恢复语言</string>
+    <string name="migration_background">将恢复背景设置与素材</string>
+    <string name="migration_lyrics">将恢复歌词显示设置</string>
+    <string name="migration_apply">恢复这份备份</string>
+    <string name="migration_cancel">取消</string>
+</resources>

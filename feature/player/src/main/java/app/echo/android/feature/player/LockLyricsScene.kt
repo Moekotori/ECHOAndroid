@@ -44,6 +44,7 @@ fun LockLyricsScene(
     snapshot: EchoLyricDisplaySnapshot,
     wordHighlightEnabled: Boolean,
     modifier: Modifier = Modifier,
+    estimatedWordHighlightEnabled: Boolean = false,
 ) {
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val current = snapshot.current
@@ -51,7 +52,8 @@ fun LockLyricsScene(
         !lightweight &&
         snapshot.isPlaying &&
         current != null &&
-        current.words.isNotEmpty()
+        (current.words.isNotEmpty() || estimatedWordHighlightEnabled &&
+            (current.endMs ?: snapshot.next?.startMs)?.let { it > current.startMs } == true)
     val position = rememberLockLyricsPosition(snapshot, interpolate = karaoke)
     Box(
         modifier
@@ -119,6 +121,8 @@ fun LockLyricsScene(
                     line = current,
                     karaoke = karaoke,
                     position = position,
+                    estimatedWordHighlightEnabled = estimatedWordHighlightEnabled,
+                    lineEndMs = current?.endMs ?: snapshot.next?.startMs,
                 )
                 LockLyricSideLine(snapshot.next)
             }
@@ -149,6 +153,8 @@ private fun LockLyricCurrentLine(
     line: EchoLyricLine?,
     karaoke: Boolean,
     position: State<Long>,
+    estimatedWordHighlightEnabled: Boolean,
+    lineEndMs: Long?,
 ) {
     val style = MaterialTheme.typography.headlineMedium.copy(
         fontSize = 34.sp,
@@ -169,6 +175,8 @@ private fun LockLyricCurrentLine(
         line = line,
         active = true,
         enabled = karaoke,
+        estimatedWordHighlightEnabled = estimatedWordHighlightEnabled,
+        lineEndMs = lineEndMs,
         position = position,
         color = Color.White,
         intensity = 1f,

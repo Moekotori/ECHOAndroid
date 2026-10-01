@@ -36,12 +36,12 @@ internal fun HomeArtworkCard(artworkUri: String?, title: String, subtitle: Strin
     // Two covers plus a glimpse of the next one communicate horizontal scrolling on a phone.
     val width = ((LocalConfiguration.current.screenWidthDp.dp - 64.dp) / 2.2f).coerceIn(120.dp, 160.dp)
     Column(
-        modifier = Modifier.width(width).clip(RoundedCornerShape(4.dp))
+        modifier = Modifier.width(width).clip(RoundedCornerShape(6.dp))
             .homeCardClickable(onClick),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         ArtworkTile(artworkUri, modifier = Modifier.fillMaxWidth().aspectRatio(1f),
-            accent = MaterialTheme.colorScheme.primary, cornerRadius = 4.dp, elevation = 0.dp)
+            accent = MaterialTheme.colorScheme.primary, cornerRadius = 6.dp, elevation = 0.dp)
         Column(Modifier.heightIn(min = 52.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface, maxLines = 2,

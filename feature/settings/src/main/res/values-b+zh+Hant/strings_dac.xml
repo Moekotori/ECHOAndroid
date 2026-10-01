@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dac_check_title">DAC 與直通檢查</string>
+    <string name="dac_status_direct">ECHO 已驗證 USB 直通鏈路</string>
+    <string name="dac_status_exclusive">USB 獨佔正在輸出</string>
+    <string name="dac_status_unverified">目前尚未驗證直通輸出</string>
+    <string name="dac_requested_rate">已請求的取樣率</string>
+    <string name="dac_source_precision">來源檔案精度</string>
+    <string name="dac_reported_rates">USB 已回報的取樣率</string>
+    <string name="dac_show_capabilities">裝置能力與讀數說明</string>
+    <string name="dac_hide_capabilities">收起讀數說明</string>
+    <string name="dac_status_direct_short">直通已驗證</string>
+    <string name="dac_status_exclusive_short">獨佔輸出中</string>
+    <string name="dac_status_unverified_short">直通待驗證</string>
+    <string name="dac_path_note_title">鏈路說明</string>
+    <string name="dac_next_step_title">下一步</string>
+    <string name="dac_copy_report">複製 DAC 報告</string>
+    <string name="dac_report_copied">報告已複製</string>
+    <string name="dac_evidence_note">請求值不等於輸出測量。USB 時鐘讀數需在實際播放且直通鏈路已驗證時顯示，代表應用程式傳輸狀態，並非對 DAC 的外部硬體測量。</string>
+    <string name="dac_rates_note">取樣率來自 Android 與 USB 描述資訊，不代表所有取樣率、精度和聲道組合都能正常輸出；未回報也不等於不支援。</string>
+    <string name="dac_decoded_rate_changed">解碼器回報 %1$s → %2$s，解碼取樣率與來源檔案不同；僅憑這一點無法確定 DAC 的最終時鐘。</string>
+    <string name="dac_help_playback_error">播放發生錯誤。開啟詳細診斷查看目前原因，依照提示檢查音源存取或重新連接 DAC。</string>
+    <string name="dac_help_no_usb">連接 USB DAC 後可檢查裝置能力。目前鏈路沒有已驗證的 USB 直通輸出，仍可正常使用一般播放。</string>
+    <string name="dac_help_bluetooth">目前輸出為藍牙，可在診斷頁查看編碼。來源檔案規格不能證明 USB 直通；連接 USB DAC 後可檢查直通鏈路。</string>
+    <string name="dac_help_permission_pending">請在 Android 的 USB 存取對話框中確認授權，再播放歌曲檢查實際輸出。</string>
+    <string name="dac_help_permission_required">尚未取得 USB 存取權限。前往「設定 → 播放」開啟 USB 獨佔並確認授權；沒有對話框時可重新連接 DAC。</string>
+    <string name="dac_help_exclusive_disabled">DAC 已連接，但尚未開啟獨佔。需要繞過系統混音時，可在「設定 → 播放」開啟 USB 獨佔。</string>
+    <string name="dac_help_waiting_playback">開始或繼續播放歌曲後再檢查實際輸出。暫停、緩衝以及上次播放的讀數，都不能驗證目前直通狀態。</string>
+    <string name="dac_help_transport_error">獨佔鏈路不可用或已回報錯誤。開啟詳細診斷查看 USB 錯誤，重新連接 DAC，或在「設定 → 播放」執行 USB 驅動測試。</string>
+    <string name="dac_help_exclusive_pending">已開啟獨佔，但尚未回報實際 USB 輸出。請檢查 USB 診斷，開關已開啟並不等於已接管輸出。</string>
+    <string name="dac_help_unsupported_source">嚴格直通鏈路無法保留這個音源。可改用受支援的本地無損 PCM 歌曲；目前音源無法直通時可使用一般播放。</string>
+    <string name="dac_help_unsupported_format">DAC 或嚴格解碼器無法接收目前格式。請對照來源檔案精度與 USB 能力，改用受支援的歌曲；提高請求取樣率不能解決此問題。</string>
+    <string name="dac_help_clock_unverified">尚未驗證輸出時鐘。請查看 USB 診斷並重新連接 DAC，請求取樣率相同不足以證明直通。</string>
+    <string name="dac_help_volume_changed">數位音量改變了音訊樣本。請查看診斷中的音量提示，裝置支援時使用 DAC 的音量控制；調整增益前先確認聆聽音量安全。</string>
+    <string name="dac_help_direct">實際 USB 輸出與嚴格解碼器已回報直通鏈路，此模式會旁路 ECHO 的聲音處理；裝置支援時可使用 DAC 的音量控制。</string>
+    <string name="dac_help_processing">獨佔鏈路正在輸出，Bit-perfect 未開啟，可使用聲音處理。需要保留原始樣本時，可在「設定 → 播放」開啟 USB Bit-perfect，它會旁路 ECHO 的聲音處理。</string>
+    <string name="dac_help_bitperfect_pending">已開啟 Bit-perfect，但嚴格鏈路尚未回報直通。請等待播放穩定，若持續如此可開啟詳細診斷檢查。</string>
+</resources>

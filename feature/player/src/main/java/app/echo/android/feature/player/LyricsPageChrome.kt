@@ -95,9 +95,9 @@ internal fun LyricsTransportControls(
             onOpenQueue, touchSize = 48.dp, iconSize = 22.dp, tint = OnArtMuted)
         PlayerControlButton(PlayerControlIcons.Previous, stringResource(R.string.feature_player_previous_af0264),
             { haptics.tick(); onPrevious() }, touchSize = 48.dp, iconSize = 30.dp, tint = OnArt)
-        GlyphButton(if (isPlaying) PlayerControlIcons.Pause else PlayerControlIcons.Play,
-            stringResource(R.string.feature_player_play_or_pause_37a70f), 56.dp, 32.dp,
-            MaterialTheme.colorScheme.onPrimary, MaterialTheme.colorScheme.primary,
+        PlayerControlButton(if (isPlaying) PlayerControlIcons.Pause else PlayerControlIcons.Play,
+            stringResource(R.string.feature_player_play_or_pause_37a70f),
+            touchSize = 64.dp, iconSize = 36.dp, tint = MaterialTheme.colorScheme.primary,
             onClick = { haptics.confirm(); onPlayPause() })
         PlayerControlButton(PlayerControlIcons.Next, stringResource(R.string.feature_player_next_d67904),
             { haptics.tick(); onNext() }, touchSize = 48.dp, iconSize = 30.dp, tint = OnArt)

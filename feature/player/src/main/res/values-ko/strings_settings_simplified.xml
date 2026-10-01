@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="queue_actions">대기열 작업</string>
+    <string name="queue_keep_offline">대기열을 오프라인으로 저장</string>
+</resources>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_appearance_preview">Vista previa</string>
+    <string name="settings_background_preview_unavailable">No se puede previsualizar este fondo.</string>
+    <string name="settings_background_preview_loading">Cargando vista previa…</string>
+    <string name="settings_background_preview_still">Los fondos de vídeo se muestran como una imagen fija.</string>
+    <string name="settings_background_preview_legacy_blur">En este dispositivo, el desenfoque se actualiza al soltar el control.</string>
+</resources>

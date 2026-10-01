@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_density_standard">Standard</string>
+    <string name="settings_density_comfortable">Aérée</string>
+    <string name="settings_density_custom">Personnalisée · %1$s</string>
+    <string name="settings_font_advanced">Polices et importation</string>
+</resources>

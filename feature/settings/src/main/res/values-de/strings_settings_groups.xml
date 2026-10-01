@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_section_listening">Wiedergabevorlieben</string>
+    <string name="settings_section_runtime">Leistung und Akku</string>
+    <string name="settings_section_transition">Titelübergänge</string>
+    <string name="settings_section_volume">Lautstärkeverarbeitung</string>
+    <string name="settings_section_schedule">Automatischer Dunkelmodus</string>
+    <string name="settings_section_readability">Textgröße</string>
+    <string name="settings_section_background_adjustments">Hintergrundanpassungen</string>
+</resources>

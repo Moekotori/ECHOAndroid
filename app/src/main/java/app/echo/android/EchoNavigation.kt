@@ -5,6 +5,8 @@ import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -18,6 +20,7 @@ import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -28,7 +31,6 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.scale
@@ -39,16 +41,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
-import app.echo.android.design.echoFrostedGlass
 import app.echo.android.design.echoPressFeedback
 import app.echo.android.design.echoTheme
 import kotlin.math.abs
 
-private val DockGlassShape = RoundedCornerShape(22.dp)
-private val DockItemShape = RoundedCornerShape(18.dp)
+private val DockItemShape = RoundedCornerShape(10.dp)
 
 enum class EchoTab(
     val icon: ImageVector,
@@ -88,32 +89,22 @@ fun BottomDock(
     }
     val activeColor = if (onLightSurface) scheme.primary else accent
     val idleColor = if (onLightSurface) scheme.onSurfaceVariant else Color.White.copy(alpha = 0.68f)
-    val indicatorBrush = remember(activeColor, onLightSurface) {
-        Brush.verticalGradient(
-            listOf(
-                activeColor.copy(alpha = if (onLightSurface) 0.16f else 0.26f),
-                activeColor.copy(alpha = if (onLightSurface) 0.08f else 0.13f),
-            ),
-        )
-    }
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 10.dp, vertical = 4.dp)
-            .echoFrostedGlass(shape = DockGlassShape, elevation = 6.dp)
             .then(gestureModifier)
-            .padding(4.dp),
+            .padding(horizontal = 12.dp, vertical = 4.dp),
     ) {
         // 四个等宽页签。指示条在绘制时读 pager 进度，滑动不重组这一行。
         Box(
             Modifier.matchParentSize().drawWithCache {
                 val tabCount = EchoTab.entries.size
                 val tabWidth = size.width / tabCount
-                val indicatorWidth = minOf(52.dp.toPx(), tabWidth - 8.dp.toPx())
-                val indicatorHeight = 36.dp.toPx()
+                val indicatorWidth = minOf(28.dp.toPx(), tabWidth - 8.dp.toPx())
+                val indicatorHeight = 2.dp.toPx()
                 val indicatorSize = Size(indicatorWidth, indicatorHeight)
                 val corner = CornerRadius(indicatorHeight / 2f)
-                val top = (size.height - indicatorHeight) / 2f
+                val top = 0f
                 onDrawBehind {
                     val pageProgress = progress()
                     val logicalCenter = (pageProgress + 0.5f) * tabWidth
@@ -123,7 +114,7 @@ fun BottomDock(
                         logicalCenter
                     }
                     drawRoundRect(
-                        brush = indicatorBrush,
+                        color = activeColor,
                         topLeft = Offset(centerX - indicatorWidth / 2f, top),
                         size = indicatorSize,
                         cornerRadius = corner,
@@ -167,7 +158,7 @@ private fun DockItem(
     val interactionSource = remember { MutableInteractionSource() }
     Box(
         modifier = modifier
-            .height(48.dp)
+            .height(56.dp)
             .clip(DockItemShape)
             .echoPressFeedback(interactionSource)
             .selectable(
@@ -180,7 +171,8 @@ private fun DockItem(
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(Modifier.size(24.dp)) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Canvas(Modifier.size(22.dp)) {
             val active = (1f - abs(progress() - tab.ordinal)).coerceIn(0f, 1f)
             val iconScale = if (lightweight) 1f else 0.94f + active * 0.06f
             scale(iconScale) {
@@ -188,6 +180,10 @@ private fun DockItem(
                     draw(size, colorFilter = ColorFilter.tint(lerp(idleColor, activeColor, active)))
                 }
             }
+        }
+        Text(label, style = MaterialTheme.typography.labelSmall,
+            color = if (selected) activeColor else idleColor, maxLines = 1,
+            modifier = Modifier.clearAndSetSemantics { })
         }
     }
 }

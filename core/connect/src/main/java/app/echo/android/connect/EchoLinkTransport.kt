@@ -15,6 +15,7 @@ import java.io.IOException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -66,6 +67,14 @@ internal data class EchoLinkStreamResponse(
 )
 
 internal interface EchoLinkTransport {
+    suspend fun syncSnapshot(endpoint: EchoRemoteEndpoint,key: String): app.echo.android.model.connect.EchoSyncState = throw app.echo.android.model.connect.EchoSyncUnsupportedException()
+    suspend fun syncReplace(endpoint: EchoRemoteEndpoint,expected: String,desired: app.echo.android.model.connect.EchoSyncState): app.echo.android.model.connect.EchoSyncApplyResult = throw app.echo.android.model.connect.EchoSyncUnsupportedException()
+    suspend fun syncCollections(endpoint: EchoRemoteEndpoint): List<app.echo.android.model.connect.EchoSyncCollection> =
+        throw app.echo.android.model.connect.EchoSyncUnsupportedException()
+    suspend fun syncExportBatch(endpoint: EchoRemoteEndpoint, collection: app.echo.android.model.connect.EchoSyncCollection, offset: Int): app.echo.android.model.connect.EchoSyncBatch =
+        throw app.echo.android.model.connect.EchoSyncUnsupportedException()
+    suspend fun syncImportBatch(endpoint: EchoRemoteEndpoint, batch: app.echo.android.model.connect.EchoSyncBatch, preview: Boolean): app.echo.android.model.connect.EchoSyncBatchResult =
+        throw app.echo.android.model.connect.EchoSyncUnsupportedException()
     suspend fun completePairing(endpoint: EchoRemoteEndpoint): EchoRemoteEndpoint
     suspend fun fetchStatus(endpoint: EchoRemoteEndpoint): EchoLinkStatusResponse
     suspend fun createEventTicket(endpoint: EchoRemoteEndpoint): EchoLinkEventTicket
@@ -92,11 +101,52 @@ internal class OkHttpEchoLinkTransport(
     private val client: OkHttpClient = OkHttpClient.Builder()
         .retryOnConnectionFailure(true)
         .build(),
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val responseDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : EchoLinkTransport {
-    override suspend fun completePairing(endpoint: EchoRemoteEndpoint): EchoRemoteEndpoint {
+    // The PC sends idle heartbeats every 15 s. Reuse pools, but allow missed heartbeats.
+    private val eventClient = client.newBuilder().readTimeout(45, TimeUnit.SECONDS).build()
+    override suspend fun syncSnapshot(endpoint: EchoRemoteEndpoint,key: String) = withContext(responseDispatcher) {
+        try { executeJson(Request.Builder().url(endpoint.versionedUrl(1,"library","sync2","state") { addQueryParameter("key",key) }).authorized(endpoint).get().build()).syncState() }
+        catch (error: EchoLinkHttpException) { if (error.statusCode == 404 || error.statusCode == 501) throw app.echo.android.model.connect.EchoSyncUnsupportedException(); throw error }
+    }
+    override suspend fun syncReplace(endpoint: EchoRemoteEndpoint,expected: String,desired: app.echo.android.model.connect.EchoSyncState) = withContext(responseDispatcher) {
+        val body = JSONObject().put("version",2).put("expectedRevision",expected).put("desired",desired.stateJson())
+        val response = executeJson(Request.Builder().url(endpoint.versionedUrl(1,"library","sync2","replace"))
+            .authorized(endpoint).post(body.toString().toRequestBody(JsonMediaType)).build())
+        app.echo.android.model.connect.EchoSyncApplyResult(response.getInt("matched"),response.getInt("missing"),response.optBoolean("keptExisting"))
+    }
+
+    override suspend fun syncCollections(endpoint: EchoRemoteEndpoint) = withContext(responseDispatcher) {
+        require(endpoint.token.isNotBlank())
+        val json = try {
+            executeJson(Request.Builder().url(endpoint.versionedUrl(1, "library", "sync", "collections")).authorized(endpoint).get().build())
+        } catch (error: EchoLinkHttpException) {
+            if (error.statusCode == 404 || error.statusCode == 501) throw app.echo.android.model.connect.EchoSyncUnsupportedException()
+            throw error
+        }
+        if (json.optInt("version") != 1) throw app.echo.android.model.connect.EchoSyncUnsupportedException()
+        val rows = json.getJSONArray("collections")
+        require(rows.length() <= 501)
+        List(rows.length()) { rows.getJSONObject(it).syncCollection() }
+    }
+
+    override suspend fun syncExportBatch(endpoint: EchoRemoteEndpoint, collection: app.echo.android.model.connect.EchoSyncCollection, offset: Int) = withContext(responseDispatcher) {
+        val json = executeJson(Request.Builder().url(endpoint.versionedUrl(1, "library", "sync", "tracks") {
+            addQueryParameter("key", collection.key); addQueryParameter("offset", offset.coerceAtLeast(0).toString())
+        }).authorized(endpoint).get().build())
+        app.echo.android.model.connect.EchoSyncBatch(collection, json.syncTracks())
+    }
+
+    override suspend fun syncImportBatch(endpoint: EchoRemoteEndpoint, batch: app.echo.android.model.connect.EchoSyncBatch, preview: Boolean) = withContext(responseDispatcher) {
+        require(batch.tracks.size <= 200)
+        val json = executeJson(Request.Builder().url(endpoint.versionedUrl(1, "library", "sync", "merge"))
+            .authorized(endpoint).post(batch.syncJson(preview).toString().toRequestBody(JsonMediaType)).build())
+        app.echo.android.model.connect.EchoSyncBatchResult(json.getInt("matched"), json.getInt("skipped"))
+    }
+
+    override suspend fun completePairing(endpoint: EchoRemoteEndpoint): EchoRemoteEndpoint = withContext(responseDispatcher) {
         if (!endpoint.needsV2PairExchange) {
-            return endpoint
+            return@withContext endpoint
         }
         val json = executeJson(
             Request.Builder()
@@ -114,7 +164,7 @@ internal class OkHttpEchoLinkTransport(
         )
         val accessToken = json.optText("accessToken")
             ?: throw EchoLinkHttpException("PC ECHO did not return an access token")
-        return endpoint.copy(
+        return@withContext endpoint.copy(
             token = accessToken,
             pairingId = null,
             pairingSecret = null,
@@ -123,7 +173,7 @@ internal class OkHttpEchoLinkTransport(
         )
     }
 
-    override suspend fun createEventTicket(endpoint: EchoRemoteEndpoint): EchoLinkEventTicket {
+    override suspend fun createEventTicket(endpoint: EchoRemoteEndpoint): EchoLinkEventTicket = withContext(responseDispatcher) {
         val json = executeJson(
             Request.Builder()
                 .url(endpoint.versionedUrl(2, "events", "ticket"))
@@ -137,7 +187,7 @@ internal class OkHttpEchoLinkTransport(
             ?: endpoint.versionedUrl(2, "events") {
                 addQueryParameter("ticket", ticket)
             }
-        return EchoLinkEventTicket(ticket = ticket, eventsUrl = eventsUrl)
+        return@withContext EchoLinkEventTicket(ticket = ticket, eventsUrl = eventsUrl)
     }
 
     override fun subscribeEvents(
@@ -152,7 +202,7 @@ internal class OkHttpEchoLinkTransport(
             .authorized(endpoint)
             .get()
             .build()
-        val source = EventSources.createFactory(client).newEventSource(
+        val source = EventSources.createFactory(eventClient).newEventSource(
             request,
             object : EventSourceListener() {
                 override fun onEvent(
@@ -179,7 +229,7 @@ internal class OkHttpEchoLinkTransport(
         return EchoLinkEventSubscription { source.cancel() }
     }
 
-    override suspend fun fetchStatus(endpoint: EchoRemoteEndpoint): EchoLinkStatusResponse {
+    override suspend fun fetchStatus(endpoint: EchoRemoteEndpoint): EchoLinkStatusResponse = withContext(responseDispatcher) {
         val json = executeJson(
             Request.Builder()
                 .url(endpoint.url("status"))
@@ -187,13 +237,13 @@ internal class OkHttpEchoLinkTransport(
                 .get()
                 .build(),
         )
-        return json.toStatusResponse(endpoint)
+        return@withContext json.toStatusResponse(endpoint)
     }
 
     override suspend fun sendCommand(
         endpoint: EchoRemoteEndpoint,
         command: EchoRemoteCommand,
-    ): EchoLinkStatusResponse? {
+    ): EchoLinkStatusResponse? = withContext(responseDispatcher) {
         val json = executeJson(
             Request.Builder()
                 .url(endpoint.url("playback", "command"))
@@ -201,7 +251,7 @@ internal class OkHttpEchoLinkTransport(
                 .post(command.toJson().toString().toRequestBody(JsonMediaType))
                 .build(),
         )
-        return when {
+        return@withContext when {
             json.has("playback") || json.has("state") -> json.toStatusResponse(endpoint)
             else -> null
         }
@@ -212,7 +262,7 @@ internal class OkHttpEchoLinkTransport(
         query: String,
         page: Int,
         pageSize: Int,
-    ): EchoLinkTrackPage {
+    ): EchoLinkTrackPage = withContext(responseDispatcher) {
         val json = executeJson(
             Request.Builder()
                 .url(echoLinkLibraryTracksUrl(endpoint, query, page, pageSize))
@@ -227,7 +277,7 @@ internal class OkHttpEchoLinkTransport(
             }
         }
         val totalCount = json.optInt("totalCount", json.optInt("total", tracks.size))
-        return EchoLinkTrackPage(tracks = tracks, totalCount = totalCount)
+        return@withContext EchoLinkTrackPage(tracks = tracks, totalCount = totalCount)
     }
 
     override suspend fun fetchPlaylists(
@@ -235,7 +285,7 @@ internal class OkHttpEchoLinkTransport(
         query: String,
         page: Int,
         pageSize: Int,
-    ): EchoLinkPlaylistPage {
+    ): EchoLinkPlaylistPage = withContext(responseDispatcher) {
         val json = executeJson(
             Request.Builder()
                 .url(
@@ -255,7 +305,7 @@ internal class OkHttpEchoLinkTransport(
                 items.optJSONObject(index)?.toRemotePlaylist(endpoint)?.let(::add)
             }
         }
-        return EchoLinkPlaylistPage(
+        return@withContext EchoLinkPlaylistPage(
             playlists = playlists,
             totalCount = json.optInt("totalCount", json.optInt("total", playlists.size)),
         )
@@ -266,7 +316,7 @@ internal class OkHttpEchoLinkTransport(
         playlistId: String,
         page: Int,
         pageSize: Int,
-    ): EchoLinkTrackPage {
+    ): EchoLinkTrackPage = withContext(responseDispatcher) {
         val json = executeJson(
             Request.Builder()
                 .url(echoLinkPlaylistTracksUrl(endpoint, playlistId, pageSize, page))
@@ -274,7 +324,7 @@ internal class OkHttpEchoLinkTransport(
                 .get()
                 .build(),
         )
-        return json.toTrackPage(endpoint)
+        return@withContext json.toTrackPage(endpoint)
     }
 
     override suspend fun fetchAlbums(
@@ -282,7 +332,7 @@ internal class OkHttpEchoLinkTransport(
         query: String,
         page: Int,
         pageSize: Int,
-    ): EchoLinkAlbumPage {
+    ): EchoLinkAlbumPage = withContext(responseDispatcher) {
         val json = executeJson(
             Request.Builder()
                 .url(echoLinkLibraryAlbumsUrl(endpoint, query, page, pageSize))
@@ -296,7 +346,7 @@ internal class OkHttpEchoLinkTransport(
                 items.optJSONObject(index)?.toRemoteAlbum(endpoint)?.let(::add)
             }
         }
-        return EchoLinkAlbumPage(
+        return@withContext EchoLinkAlbumPage(
             albums = albums,
             totalCount = json.optInt("totalCount", json.optInt("total", albums.size)),
         )
@@ -307,7 +357,7 @@ internal class OkHttpEchoLinkTransport(
         albumId: String,
         page: Int,
         pageSize: Int,
-    ): EchoLinkTrackPage {
+    ): EchoLinkTrackPage = withContext(responseDispatcher) {
         val json = executeJson(
             Request.Builder()
                 .url(echoLinkAlbumTracksUrl(endpoint, albumId, page, pageSize))
@@ -315,13 +365,13 @@ internal class OkHttpEchoLinkTransport(
                 .get()
                 .build(),
         )
-        return json.toTrackPage(endpoint)
+        return@withContext json.toTrackPage(endpoint)
     }
 
     override suspend fun fetchFolders(
         endpoint: EchoRemoteEndpoint,
         path: String,
-    ): EchoLinkFolderPage {
+    ): EchoLinkFolderPage = withContext(responseDispatcher) {
         val json = executeJson(
             Request.Builder()
                 .url(echoLinkFoldersUrl(endpoint, path))
@@ -329,13 +379,13 @@ internal class OkHttpEchoLinkTransport(
                 .get()
                 .build(),
         )
-        return json.toFolderPage(endpoint, path)
+        return@withContext json.toFolderPage(endpoint, path)
     }
 
     override suspend fun resolveStream(
         endpoint: EchoRemoteEndpoint,
         trackId: String,
-    ): EchoLinkStreamResponse {
+    ): EchoLinkStreamResponse = withContext(responseDispatcher) {
         val json = executeJson(
             Request.Builder()
                 .url(endpoint.url("library", "tracks", trackId, "stream"))
@@ -343,13 +393,13 @@ internal class OkHttpEchoLinkTransport(
                 .post(JSONObject().put("target", "phone").toString().toRequestBody(JsonMediaType))
                 .build(),
         )
-        return json.toStreamResponse(endpoint)
+        return@withContext json.toStreamResponse(endpoint)
     }
 
     override suspend fun fetchLyrics(
         endpoint: EchoRemoteEndpoint,
         trackId: String,
-    ): EchoRemoteLyrics? {
+    ): EchoRemoteLyrics? = withContext(responseDispatcher) {
         val requests = listOf(
             Request.Builder()
                 .url(endpoint.url("library", "tracks", trackId, "lyrics"))
@@ -366,12 +416,12 @@ internal class OkHttpEchoLinkTransport(
             runCatching { executeText(request).toRemoteLyrics() }
                 .getOrElse { if (it is CancellationException) throw it else null }
                 ?.takeIf { it.rawText.isNotBlank() }
-                ?.let { return it }
+                ?.let { return@withContext it }
         }
-        return null
+        return@withContext null
     }
 
-    private suspend fun executeJson(request: Request): JSONObject = withContext(ioDispatcher) {
+    private suspend fun executeJson(request: Request): JSONObject = withContext(responseDispatcher) {
         val body = executeText(request)
         if (body.isBlank()) JSONObject() else JSONObject(body)
     }

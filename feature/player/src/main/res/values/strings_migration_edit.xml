@@ -1,0 +1,17 @@
+<resources>
+    <string name="lyrics_edit_title">Edit lyrics and timing</string>
+    <string name="lyrics_edit_hint">Choose a line, play the song, then stamp the current time. Blank times stay unsynced; exports need every line timed.</string>
+    <string name="lyrics_edit_play">Play / pause</string>
+    <string name="lyrics_edit_mark">Stamp and next</string>
+    <string name="lyrics_edit_add">Add line</string>
+    <string name="lyrics_edit_active">Timing line %1$d</string>
+    <string name="lyrics_edit_line">Line %1$d · seek</string>
+    <string name="lyrics_edit_delete">Delete line</string>
+    <string name="lyrics_edit_time">mm:ss.mmm · optional</string>
+    <string name="lyrics_edit_text">Lyric text</string>
+    <string name="lyrics_edit_translation">Translation · optional</string>
+    <string name="lyrics_edit_error">Check time syntax and order. LRC export needs all lines timed.</string>
+    <string name="lyrics_edit_saved">Saved successfully</string>
+    <string name="lyrics_edit_save">Save local copy</string>
+    <string name="lyrics_edit_export">Export LRC</string>
+</resources>

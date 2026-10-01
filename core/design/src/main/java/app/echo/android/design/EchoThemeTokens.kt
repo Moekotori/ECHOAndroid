@@ -83,7 +83,7 @@ internal fun relativeLuminance(color: Color): Float {
 }
 
 private const val EchoDefaultStartupDarkArgb = 0xFF080B12.toInt()
-private const val EchoDefaultStartupLightArgb = 0xFFF1F1F3.toInt()
+private const val EchoDefaultStartupLightArgb = 0xFFFFFFFF.toInt()
 
 private val EchoDefaultDark = EchoThemeTokens(
     id = EchoColorTheme.Echo.id,
@@ -120,23 +120,23 @@ private val EchoDefaultLight = EchoThemeTokens(
     accentText = Color(0xFF925568),
     onAccent = Color.White,
     secondary = Color(0xFF76616A),
-    heading = Color(0xFF25242A),
-    muted = Color(0xFF6D6D73),
-    onSurface = Color(0xFF29252A),
-    bgTop = Color(0xFFFCF9F6),
-    bgMid = Color(0xFFF8F3F1),
-    bgBottom = Color(0xFFF0E8E7),
-    night = Color(0xFFF8F5F3),
-    ink = Color(0xFFFFFBFA),
-    panel = Color(0xFFF5EFEC),
-    mist = Color(0xFFF4F1F2),
-    glassBorder = Color(0xFFE6E3E5),
-    softLine = Color(0xFFDCD8DA),
-    glassWash = Color(0xFFF6F4F5),
-    outline = Color(0xFF93848A),
-    outlineVariant = Color(0xFFDED2D5),
-    onSurfaceVariant = Color(0xFF6E6268),
-    surface = Color(0xFFFFFBFA),
+    heading = Color(0xFF27272D),
+    muted = Color(0xFF686870),
+    onSurface = Color(0xFF27272D),
+    bgTop = Color.White,
+    bgMid = Color.White,
+    bgBottom = Color.White,
+    night = Color.White,
+    ink = Color.White,
+    panel = Color.White,
+    mist = Color(0xFFFAFAFA),
+    glassBorder = Color(0xFFE7E7E7),
+    softLine = Color(0xFFE7E7E7),
+    glassWash = Color.White,
+    outline = Color(0xFF85858E),
+    outlineVariant = Color(0xFFE7E7E7),
+    onSurfaceVariant = Color(0xFF686870),
+    surface = Color.White,
 )
 
 private val TwilightLight = themedPalette(
@@ -147,14 +147,14 @@ private val TwilightLight = themedPalette(
     accentText = Color(0xFFDF6B5F),
     onAccent = Color.White,
     secondary = Color(0xFF4E8F8A),
-    heading = Color(0xFF352321),
-    muted = Color(0xFF765D57),
-    onSurface = Color(0xFF4F3833),
-    bgTop = Color(0xFFFFF4EF),
-    bgMid = Color(0xFFF3D7CF),
-    bgBottom = Color(0xFFEFE5F2),
-    panel = Color(0xFFFFFCF9),
-    mist = Color(0xFFFBE9E4),
+    heading = Color(0xFF27272D),
+    muted = Color(0xFF686870),
+    onSurface = Color(0xFF27272D),
+    bgTop = Color.White,
+    bgMid = Color.White,
+    bgBottom = Color.White,
+    panel = Color.White,
+    mist = Color(0xFFFAFAFA),
 )
 
 private val TwilightDark = themedPalette(
@@ -183,14 +183,14 @@ private val RosewoodLight = themedPalette(
     accentText = Color(0xFF8F4D48),
     onAccent = Color.White,
     secondary = Color(0xFF8B6A3E),
-    heading = Color(0xFF35211F),
-    muted = Color(0xFF7E6662),
-    onSurface = Color(0xFF5C4240),
-    bgTop = Color(0xFFFBF3EE),
-    bgMid = Color(0xFFEAD3C7),
-    bgBottom = Color(0xFFF0DFE7),
-    panel = Color(0xFFFFF8F4),
-    mist = Color(0xFFEFDCD3),
+    heading = Color(0xFF27272D),
+    muted = Color(0xFF686870),
+    onSurface = Color(0xFF27272D),
+    bgTop = Color.White,
+    bgMid = Color.White,
+    bgBottom = Color.White,
+    panel = Color.White,
+    mist = Color(0xFFFAFAFA),
 )
 
 private val RosewoodDark = themedPalette(
@@ -219,14 +219,14 @@ private val AmberLight = themedPalette(
     accentText = Color(0xFF9A6A24),
     onAccent = Color.White,
     secondary = Color(0xFF6A4B3A),
-    heading = Color(0xFF33291E),
-    muted = Color(0xFF7A6A59),
-    onSurface = Color(0xFF584737),
-    bgTop = Color(0xFFFBF7EE),
-    bgMid = Color(0xFFEAD9BB),
-    bgBottom = Color(0xFFF3E7D4),
-    panel = Color(0xFFFFFAF1),
-    mist = Color(0xFFEFE1C9),
+    heading = Color(0xFF27272D),
+    muted = Color(0xFF686870),
+    onSurface = Color(0xFF27272D),
+    bgTop = Color.White,
+    bgMid = Color.White,
+    bgBottom = Color.White,
+    panel = Color.White,
+    mist = Color(0xFFFAFAFA),
 )
 
 private val AmberDark = themedPalette(
@@ -255,14 +255,14 @@ private val OceanLight = themedPalette(
     accentText = Color(0xFF2F7390),
     onAccent = Color.White,
     secondary = Color(0xFF596B9A),
-    heading = Color(0xFF202D3A),
-    muted = Color(0xFF607486),
-    onSurface = Color(0xFF415363),
-    bgTop = Color(0xFFF4F8FB),
-    bgMid = Color(0xFFD8E8EF),
-    bgBottom = Color(0xFFDCE3F2),
-    panel = Color(0xFFFBFDFF),
-    mist = Color(0xFFE5EEF4),
+    heading = Color(0xFF27272D),
+    muted = Color(0xFF686870),
+    onSurface = Color(0xFF27272D),
+    bgTop = Color.White,
+    bgMid = Color.White,
+    bgBottom = Color.White,
+    panel = Color.White,
+    mist = Color(0xFFFAFAFA),
 )
 
 private val OceanDark = themedPalette(
@@ -291,14 +291,14 @@ private val GraphiteLight = themedPalette(
     accentText = Color(0xFF2F7F73),
     onAccent = Color.White,
     secondary = Color(0xFF496A9F),
-    heading = Color(0xFF1F292B),
-    muted = Color(0xFF637174),
-    onSurface = Color(0xFF3F5053),
-    bgTop = Color(0xFFF5F7F8),
-    bgMid = Color(0xFFDFE6E8),
-    bgBottom = Color(0xFFD8F3EC),
-    panel = Color(0xFFFBFCFC),
-    mist = Color(0xFFE8EEF0),
+    heading = Color(0xFF27272D),
+    muted = Color(0xFF686870),
+    onSurface = Color(0xFF27272D),
+    bgTop = Color.White,
+    bgMid = Color.White,
+    bgBottom = Color.White,
+    panel = Color.White,
+    mist = Color(0xFFFAFAFA),
 )
 
 private val GraphiteDark = themedPalette(
@@ -327,14 +327,14 @@ private val IndigoLight = themedPalette(
     accentText = Color(0xFF174F7F),
     onAccent = Color.White,
     secondary = Color(0xFFB06D1F),
-    heading = Color(0xFF10283A),
-    muted = Color(0xFF536B78),
-    onSurface = Color(0xFF314655),
-    bgTop = Color(0xFFEAF1ED),
-    bgMid = Color(0xFFC5D6DC),
-    bgBottom = Color(0xFFE4D4B4),
-    panel = Color(0xFFFBFBF3),
-    mist = Color(0xFFD6E1DF),
+    heading = Color(0xFF27272D),
+    muted = Color(0xFF686870),
+    onSurface = Color(0xFF27272D),
+    bgTop = Color.White,
+    bgMid = Color.White,
+    bgBottom = Color.White,
+    panel = Color.White,
+    mist = Color(0xFFFAFAFA),
 )
 
 private val IndigoDark = themedPalette(
@@ -363,14 +363,14 @@ private val PlumLight = themedPalette(
     accentText = Color(0xFF823F65),
     onAccent = Color.White,
     secondary = Color(0xFF665084),
-    heading = Color(0xFF3B2030),
-    muted = Color(0xFF786170),
-    onSurface = Color(0xFF59404F),
-    bgTop = Color(0xFFF8F1F5),
-    bgMid = Color(0xFFD8B9CA),
-    bgBottom = Color(0xFFBCA8C8),
-    panel = Color(0xFFFFFAFD),
-    mist = Color(0xFFEADDE5),
+    heading = Color(0xFF27272D),
+    muted = Color(0xFF686870),
+    onSurface = Color(0xFF27272D),
+    bgTop = Color.White,
+    bgMid = Color.White,
+    bgBottom = Color.White,
+    panel = Color.White,
+    mist = Color(0xFFFAFAFA),
 )
 
 private val PlumDark = themedPalette(
@@ -399,14 +399,14 @@ private val CopperLight = themedPalette(
     accentText = Color(0xFF9B5939),
     onAccent = Color.White,
     secondary = Color(0xFF386A76),
-    heading = Color(0xFF2C2B2A),
-    muted = Color(0xFF716861),
-    onSurface = Color(0xFF504944),
-    bgTop = Color(0xFFF5F1EB),
-    bgMid = Color(0xFFD8C7B9),
-    bgBottom = Color(0xFFC8D8DC),
-    panel = Color(0xFFFCFAF6),
-    mist = Color(0xFFE7DDD3),
+    heading = Color(0xFF27272D),
+    muted = Color(0xFF686870),
+    onSurface = Color(0xFF27272D),
+    bgTop = Color.White,
+    bgMid = Color.White,
+    bgBottom = Color.White,
+    panel = Color.White,
+    mist = Color(0xFFFAFAFA),
 )
 
 private val CopperDark = themedPalette(
@@ -435,14 +435,14 @@ private val FrostLight = themedPalette(
     accentText = Color(0xFF245F9E),
     onAccent = Color.White,
     secondary = Color(0xFF7F3E70),
-    heading = Color(0xFF142234),
-    muted = Color(0xFF546A80),
-    onSurface = Color(0xFF34495F),
-    bgTop = Color(0xFFEAF2FB),
-    bgMid = Color(0xFFAAC2DF),
-    bgBottom = Color(0xFFD4C0DC),
-    panel = Color(0xFFFBFDFF),
-    mist = Color(0xFFD9E5F2),
+    heading = Color(0xFF27272D),
+    muted = Color(0xFF686870),
+    onSurface = Color(0xFF27272D),
+    bgTop = Color.White,
+    bgMid = Color.White,
+    bgBottom = Color.White,
+    panel = Color.White,
+    mist = Color(0xFFFAFAFA),
 )
 
 private val FrostDark = themedPalette(
@@ -480,6 +480,7 @@ internal fun themedPalette(
     panel: Color,
     mist: Color,
 ): EchoThemeTokens {
+    val neutralLight = !dark && id != EchoColorTheme.Custom
     val surface = if (dark) bgMid else panel
     val night = bgTop
     val ink = if (dark) bgMid else panel
@@ -501,11 +502,15 @@ internal fun themedPalette(
         ink = ink,
         panel = panel,
         mist = mist,
-        glassBorder = if (dark) Color.White.copy(alpha = 0.10f) else lerp(mist, accent, 0.16f),
-        softLine = if (dark) Color.White.copy(alpha = 0.08f) else lerp(mist, heading, 0.14f),
-        glassWash = if (dark) lerp(panel, secondary, 0.12f) else lerp(mist, secondary, 0.10f),
+        glassBorder = if (dark) Color.White.copy(alpha = 0.10f)
+            else if (neutralLight) Color(0xFFE7E7E7) else lerp(mist, accent, 0.16f),
+        softLine = if (dark) Color.White.copy(alpha = 0.08f)
+            else if (neutralLight) Color(0xFFE7E7E7) else lerp(mist, heading, 0.14f),
+        glassWash = if (dark) lerp(panel, secondary, 0.12f)
+            else if (neutralLight) Color.White else lerp(mist, secondary, 0.10f),
         outline = lerp(onSurface, surface, if (dark) 0.58f else 0.42f),
-        outlineVariant = lerp(onSurface, surface, if (dark) 0.78f else 0.72f),
+        outlineVariant = if (neutralLight) Color(0xFFE7E7E7)
+            else lerp(onSurface, surface, if (dark) 0.78f else 0.72f),
         onSurfaceVariant = muted,
         surface = surface,
     )

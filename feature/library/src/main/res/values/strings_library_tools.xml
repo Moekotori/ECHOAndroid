@@ -1,0 +1,44 @@
+<resources>
+    <string name="smart_create">Smart playlist</string>
+    <string name="smart_edit_rules">Edit rules</string>
+    <string name="smart_pin_home">Pin to home</string>
+    <string name="smart_unpin_home">Unpin from home</string>
+    <string name="smart_pin_error">Could not pin this playlist. Home supports up to 8 pinned playlists.</string>
+    <string name="smart_editor_title">Music that finds its place</string>
+    <string name="smart_editor_hint">Choose conditions. Your playlist updates as your library and listening change. All conditions must match.</string>
+    <string name="smart_name">Playlist name</string>
+    <string name="smart_artist">Artist contains · optional</string>
+    <string name="smart_genre">Genre contains · optional</string>
+    <string name="smart_favorites">Only my favorites</string>
+    <string name="smart_not_played">Not played in</string>
+    <string name="smart_any_time">Any time</string>
+    <plurals name="smart_days"><item quantity="one">%1$d day</item><item quantity="other">%1$d days</item></plurals>
+    <string name="smart_year_from">From year</string>
+    <string name="smart_year_to">Through year</string>
+    <string name="smart_year_error">The end year must be the same as or later than the start year.</string>
+    <string name="smart_sort">Play in this order</string>
+    <string name="smart_sort_title">Title</string>
+    <string name="smart_sort_added">Recently added</string>
+    <string name="smart_sort_least">Least played</string>
+    <string name="smart_sort_most">Most played</string>
+    <plurals name="smart_preview_count"><item quantity="one">%1$d matching track</item><item quantity="other">%1$d matching tracks</item></plurals>
+    <string name="smart_preview_empty">No tracks match yet. Loosen a condition, or save this playlist for future music.</string>
+    <string name="smart_save">Save smart playlist</string>
+    <string name="library_tool_error">Could not complete this operation. Your existing library is safe. Try again.</string>
+    <string name="library_tool_retry">Try again</string>
+    <string name="library_tool_saving">Saving…</string>
+    <string name="repair_title">Repair library</string>
+    <string name="repair_hint">Find files that moved or lost access permission. Preview a replacement before reconnecting it.</string>
+    <string name="repair_scan_folder">Scan the new folder</string>
+    <string name="repair_scan_folder_hint">If your music moved to another folder, scan it first, then return here to choose the matching files.</string>
+    <string name="repair_inspecting">Checking file access…</string>
+    <string name="repair_all_available">All indexed local files are accessible.</string>
+    <string name="repair_limit">Showing the first 500 unavailable tracks. Check again after repairing these.</string>
+    <string name="repair_back">All unavailable tracks</string>
+    <string name="repair_choose">Choose a matching track, or locate the file yourself.</string>
+    <string name="repair_choose_file">Locate audio file</string>
+    <string name="repair_preview">Reconnect to this file</string>
+    <string name="repair_preserve">Favorites, playlist membership, bookmarks and play counts are preserved. No audio file will be deleted.</string>
+    <string name="repair_apply">Reconnect file</string>
+    <plurals name="repair_done"><item quantity="one">Reconnected %1$d track</item><item quantity="other">Reconnected %1$d tracks</item></plurals>
+</resources>

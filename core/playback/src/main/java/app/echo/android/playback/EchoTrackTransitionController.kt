@@ -30,7 +30,8 @@ internal class EchoTrackTransitionController(
         player.addListener(this)
         optionsJob = scope.launch {
             combine(EchoPlaybackRuntimeOptionsStore.options.map { it.trackTransitions }.distinctUntilChanged(),
-                EchoPlaybackProcessRuntime.bitPerfectStates.map { EchoPlaybackProcessRuntime.usbBitPerfectEnabled }.distinctUntilChanged()) { config, strict -> config to strict }
+                EchoPlaybackProcessRuntime.bitPerfectStates.map { EchoPlaybackProcessRuntime.usbBitPerfectEnabled }.distinctUntilChanged(),
+                EchoPlaybackProcessRuntime.abLoop) { config, strict, _ -> config to strict }
                 .collect { (config, _) -> options = config.normalized(); refresh() }
         }
         refresh()
@@ -44,7 +45,7 @@ internal class EchoTrackTransitionController(
 
     private fun refresh() {
         fadeJob?.cancel(); fadeJob = null
-        val enabled = options.fadeEnabled && !EchoPlaybackProcessRuntime.usbBitPerfectEnabled && !player.isCurrentMediaItemLive
+        val enabled = options.fadeEnabled && !EchoPlaybackProcessRuntime.abLoop.value.active && !EchoPlaybackProcessRuntime.usbBitPerfectEnabled && !player.isCurrentMediaItemLive
         updateGain(enabled)
         if (!enabled || !player.isPlaying) return
         fadeJob = scope.launch {

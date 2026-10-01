@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_layout_title">編排首頁</string>
+    <string name="home_layout_detail">用箭頭調整順序，關閉不常用的內容。暫時沒有資料的內容會在資料可用時出現。</string>
+    <string name="home_layout_move_up">將%1$s上移</string>
+    <string name="home_layout_move_down">將%1$s下移</string>
+    <string name="home_layout_reset">恢復預設</string>
+    <string name="home_layout_cancel">取消</string>
+    <string name="home_layout_apply">完成</string>
+    <string name="home_layout_overview">曲庫概覽</string>
+    <string name="home_layout_hidden">所有首頁內容都已隱藏。</string>
+</resources>

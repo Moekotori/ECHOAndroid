@@ -25,6 +25,7 @@ internal fun SignalOverview(
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         SignalDeviceCard(status)
         SignalPathPanel(status, equalizer, channelBalance, dspSettings)
+        SignalDacPanel(status, onDiagnostics)
         SignalSection(stringResource(L10nR.string.feature_settings_output_details_f242d2)) {
             SignalReadout(
                 stringResource(L10nR.string.diag_decoded_output),
@@ -37,12 +38,6 @@ internal fun SignalOverview(
             )
             SignalReadout(stringResource(L10nR.string.diag_bitrate), d.bitrate?.let(::formatBitrate) ?: stringResource(L10nR.string.diag_unreported))
             SignalReadout("Bit-perfect", d.bitPerfectReadout(equalizer))
-            if (d.usbBitPerfectEnabled && d.bitPerfectOutputBits != null) {
-                SignalReadout(stringResource(L10nR.string.bitperfect_precision), stringResource(L10nR.string.bitperfect_precision_value,
-                    d.bitPerfectSourceBits ?: 0, d.bitPerfectDecodedBits ?: 0, d.bitPerfectOutputBits ?: 0))
-                SignalReadout(stringResource(L10nR.string.bitperfect_clock_label), d.bitPerfectSampleRateHz?.let(::formatSampleRate)
-                    ?: stringResource(L10nR.string.diag_unreported))
-            }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 TextButton(onClick = onAdjust) { Text(stringResource(L10nR.string.feature_settings_adjust_sound_f8940e)) }
                 TextButton(onClick = onDiagnostics) { Text(stringResource(L10nR.string.feature_settings_view_diagnostics_31fcec)) }

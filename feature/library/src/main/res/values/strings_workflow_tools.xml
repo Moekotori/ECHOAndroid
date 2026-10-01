@@ -1,0 +1,33 @@
+<resources>
+    <string name="smart_all">Match all conditions</string>
+    <string name="smart_any">Match any condition</string>
+    <string name="smart_album">Album contains · optional</string>
+    <string name="smart_folder">Folder contains · optional</string>
+    <string name="smart_format">Format contains · e.g. flac</string>
+    <string name="smart_exclude">Always exclude this text</string>
+    <string name="smart_duration_from">Minimum seconds</string>
+    <string name="smart_duration_to">Maximum seconds</string>
+    <string name="batch_clear">Selected: %1$d · Clear</string>
+    <string name="batch_actions">Batch actions</string>
+    <string name="batch_favorite">Add to favorites</string>
+    <string name="batch_unfavorite">Remove favorites</string>
+    <string name="batch_playlist">Add to playlist</string>
+    <string name="batch_queue">Append to queue</string>
+    <string name="batch_next">Play next in this order</string>
+    <string name="batch_next_up">Add to Next Up</string>
+    <string name="batch_tags">Edit selected tags</string>
+    <string name="batch_cancel">Cancel</string>
+    <string name="batch_artist">Artist</string>
+    <string name="batch_album">Album</string>
+    <string name="batch_album_artist">Album artist</string>
+    <string name="batch_composer">Composer</string>
+    <string name="batch_year">Year</string>
+    <string name="batch_genre">Genre</string>
+    <string name="batch_tag_hint">Selected: %1$d. Only checked fields change; checked blank fields clear tags. Playing files may briefly pause.</string>
+    <string name="batch_progress">Processed: %1$d / %2$d</string>
+    <string name="batch_result">Library updated: %1$d · Failed: %2$d · Files not written: %3$d</string>
+    <string name="batch_preview">Review changes</string>
+    <string name="batch_confirm">Apply to %1$d tracks?</string>
+    <string name="batch_empty">Clear field</string>
+    <string name="batch_apply">Apply selected changes</string>
+</resources>

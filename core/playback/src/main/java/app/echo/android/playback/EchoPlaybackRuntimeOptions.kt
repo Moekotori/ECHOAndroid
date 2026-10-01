@@ -190,6 +190,9 @@ object EchoPlaybackProcessRuntime {
         private set
 
     private val _surface = MutableStateFlow(EchoPlaybackSurfaceSnapshot())
+    private val _abLoop = MutableStateFlow(app.echo.android.model.playback.EchoAbLoopState())
+    val abLoop = _abLoop.asStateFlow()
+    internal fun publishAbLoop(value: app.echo.android.model.playback.EchoAbLoopState) { _abLoop.value = value }
     val surface: StateFlow<EchoPlaybackSurfaceSnapshot> = _surface.asStateFlow()
 
     private val _notificationLyrics = MutableStateFlow<EchoNotificationLyricDocument?>(null)

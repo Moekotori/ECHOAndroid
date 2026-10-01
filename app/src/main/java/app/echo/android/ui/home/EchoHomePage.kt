@@ -16,14 +16,18 @@ internal fun EchoHomePage(
     playbackStatus: EchoPlaybackStatus,
     onOpenAlbum: (AlbumSummary) -> Unit,
     onOpenArtist: (ArtistSummary) -> Unit,
+    onOpenPlaylist: (app.echo.android.model.library.EchoPlaylist) -> Unit = {},
     onOpenLibrary: () -> Unit,
     onOpenConnect: () -> Unit,
     onOpenSearch: () -> Unit,
     onOpenListeningStats: () -> Unit,
+    onOpenPlaybackHistory: () -> Unit,
     onResumePlayback: () -> Unit,
     bottomInset: Dp,
+    homeLayout: app.echo.android.model.settings.EchoHomeLayout,
 ) {
     val libraryStats by viewModel.libraryStats.collectAsStateWithLifecycle()
+    val playlists by viewModel.localPlaylists.collectAsStateWithLifecycle()
     val recentPlaybackAlbums by viewModel.recentPlaybackAlbums.collectAsStateWithLifecycle()
     val recentPlaybackArtists by viewModel.recentPlaybackArtists.collectAsStateWithLifecycle()
     val recentPlaybackHeatmap by viewModel.recentPlaybackHeatmap.collectAsStateWithLifecycle()
@@ -35,6 +39,11 @@ internal fun EchoHomePage(
     val playbackPosition = viewModel.playbackPosition.collectAsStateWithLifecycle()
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
     HomeScreen(
+        pinnedPlaylists = androidx.compose.runtime.remember(playlists) { playlists.filter { it.pinnedToHome }.take(8) },
+        onOpenPlaylist = onOpenPlaylist,
+        onPlayPlaylist = { viewModel.playPlaylist(it.id) },
+        homeLayout = homeLayout,
+        onHomeLayoutChange = viewModel::setHomeLayout,
         status = playbackStatus,
         rediscoveredAlbums = rediscoveredAlbums,
         positionState = playbackPosition,
@@ -63,6 +72,7 @@ internal fun EchoHomePage(
         onOpenConnect = onOpenConnect,
         onOpenSearch = onOpenSearch,
         onOpenListeningStats = onOpenListeningStats,
+        onOpenPlaybackHistory = onOpenPlaybackHistory,
         recentPlayedTracks = recentlyPlayedTracks,
         onPlayTrack = viewModel::play,
     )

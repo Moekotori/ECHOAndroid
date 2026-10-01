@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_layout_title">Personnaliser l’accueil</string>
+    <string name="home_layout_detail">Utilisez les flèches pour réorganiser les sections et masquez celles que vous n’utilisez pas. Les sections vides apparaîtront lorsque du contenu sera disponible.</string>
+    <string name="home_layout_move_up">Monter %1$s</string>
+    <string name="home_layout_move_down">Descendre %1$s</string>
+    <string name="home_layout_reset">Rétablir les valeurs</string>
+    <string name="home_layout_cancel">Annuler</string>
+    <string name="home_layout_apply">Terminé</string>
+    <string name="home_layout_overview">Aperçu de la bibliothèque</string>
+    <string name="home_layout_hidden">Toutes les sections de l’accueil sont masquées.</string>
+</resources>

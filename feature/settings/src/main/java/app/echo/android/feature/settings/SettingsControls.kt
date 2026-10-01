@@ -1,7 +1,7 @@
 package app.echo.android.feature.settings
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
 import app.echo.android.design.echoClickable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -20,7 +21,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Check
@@ -29,7 +29,8 @@ import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -37,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -74,7 +76,7 @@ internal fun SettingsTextInputRow(
             .settingsSearchAnchor(title)
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .padding(horizontal = 4.dp, vertical = 10.dp),
+            .padding(vertical = if (LocalSettingsCompactMode.current) 10.dp else 14.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.Top,
     ) {
@@ -84,16 +86,18 @@ internal fun SettingsTextInputRow(
                 color = scheme.onSurface,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
             )
-            OutlinedTextField(
+            TextField(
                 value = value,
                 onValueChange = onValueChange,
                 placeholder = { Text(placeholder, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 singleLine = true,
                 visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
-                shape = RoundedCornerShape(12.dp),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                ),
+                shape = SettingsShape,
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -225,7 +229,7 @@ internal fun SettingsBackgroundSourceRow(
             .settingsSearchAnchor(stringResource(R.string.settings_bg_source))
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .padding(horizontal = 4.dp, vertical = 10.dp),
+            .padding(vertical = if (LocalSettingsCompactMode.current) 10.dp else 14.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -285,21 +289,19 @@ internal fun BackgroundSourceAction(
     Row(
         modifier = modifier
             .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(settingsRowColor(selected))
+            .clip(SettingsShape)
             .then(if (enabled) Modifier.echoClickable(onClick = onClick) else Modifier)
             .alpha(if (enabled || selected) 1f else 0.48f)
-            .padding(horizontal = 10.dp),
+            .padding(horizontal = 10.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (selected) Icon(Icons.Rounded.Check, null, Modifier.size(16.dp), tint = accent)
         Text(
             label,
             color = accent,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Medium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -371,7 +373,7 @@ internal fun SettingsChoiceGroupRow(
     onOptionSelected: (String) -> Unit,
 ) {
     Column(
-        modifier = Modifier.settingsSearchAnchor(title).fillMaxWidth().padding(horizontal = 4.dp, vertical = 12.dp),
+        modifier = Modifier.settingsSearchAnchor(title).fillMaxWidth().padding(vertical = if (LocalSettingsCompactMode.current) 10.dp else 14.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -407,13 +409,11 @@ internal fun SettingsOptionChip(
 ) {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
-    val shape = RoundedCornerShape(12.dp)
+    val shape = SettingsShape
     Row(
         modifier = Modifier
             .heightIn(min = 48.dp)
             .clip(shape)
-            .background(settingsRowColor(selected))
-            .border(1.dp, if (selected) settingsControlColor().copy(alpha = 0.5f) else scheme.outlineVariant.copy(alpha = 0.55f), shape)
             .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -427,7 +427,7 @@ internal fun SettingsOptionChip(
             label,
             color = if (selected) settingsControlColor() else if (dark) Color.White.copy(alpha = 0.74f) else scheme.onSurfaceVariant,
             style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Medium,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
         )
     }
 }
@@ -442,19 +442,20 @@ internal fun SettingsSliderRow(
     steps: Int,
     onValueChange: (Float) -> Unit,
     preview: (@Composable (Float) -> Unit)? = null,
+    onPreviewValueChange: (Float) -> Unit = {},
 ) {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
     val controlColor = settingsControlColor()
-    var localValue by rememberSaveable { mutableFloatStateOf(value) }
-    var dragging by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(value) { if (!dragging) localValue = value }
+    var localValue by rememberSaveable(title) { mutableFloatStateOf(value.coerceIn(valueRange)) }
+    var dragging by remember(title) { mutableStateOf(false) }
+    LaunchedEffect(value, valueRange) { if (!dragging) localValue = value.coerceIn(valueRange) }
     Row(
         modifier = Modifier
             .settingsSearchAnchor(title)
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .padding(horizontal = 4.dp, vertical = 10.dp),
+            .padding(vertical = if (LocalSettingsCompactMode.current) 10.dp else 14.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -480,8 +481,8 @@ internal fun SettingsSliderRow(
             }
             preview?.invoke(localValue)
             Slider(
-                value = localValue,
-                onValueChange = { dragging = true; localValue = it },
+                value = localValue.coerceIn(valueRange),
+                onValueChange = { dragging = true; localValue = it; onPreviewValueChange(it) },
                 onValueChangeFinished = { onValueChange(localValue); dragging = false },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -500,7 +501,7 @@ internal fun SettingsSliderRow(
                     Box(
                         Modifier
                             .size(20.dp)
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(CircleShape)
                             .background(controlColor),
                     )
                 },
@@ -532,11 +533,11 @@ internal fun SettingsRowShell(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(SettingsShape)
             .then(modifier)
             .settingsSearchAnchor(title)
             .heightIn(min = if (LocalSettingsCompactMode.current) 56.dp else 64.dp)
-            .padding(horizontal = 4.dp, vertical = 10.dp),
+            .padding(vertical = if (LocalSettingsCompactMode.current) 10.dp else 14.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -547,13 +548,13 @@ internal fun SettingsRowShell(
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
             )
-            Text(
+            if (detail.isNotBlank()) Text(
                 detail,
                 color = scheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
-        trailing()
+        Box(Modifier.widthIn(max = 96.dp), contentAlignment = Alignment.CenterEnd) { trailing() }
     }
 }
 

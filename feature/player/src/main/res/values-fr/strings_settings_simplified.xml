@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="queue_actions">Actions de la file</string>
+    <string name="queue_keep_offline">Conserver la file hors ligne</string>
+</resources>

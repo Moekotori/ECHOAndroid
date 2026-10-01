@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="afterglow_mist">Afterglow · Mist</string>
+    <string name="afterglow_night">Afterglow · Night</string>
+    <string name="afterglow_mist_detail">Mist, drifting letters and pastel scenes</string>
+    <string name="afterglow_night_detail">Night skies, orbit lines and blue-gold scenes</string>
+    <string name="afterglow_previous_line">Previous lyric line</string>
+    <string name="afterglow_next_line">Next lyric line</string>
+    <string name="afterglow_palette">Palette</string>
+    <string name="afterglow_randomize">Recompose</string>
+    <string name="afterglow_scene">Scene</string>
+    <string name="afterglow_scene_auto">Follow lyrics</string>
+    <string name="afterglow_scene_ridge">Mist ridges</string>
+    <string name="afterglow_scene_wisteria">Wisteria arbour</string>
+    <string name="afterglow_scene_lake">Lake mist</string>
+    <string name="afterglow_scene_voyage">Star voyage</string>
+    <string name="afterglow_scene_aurora">Aurora</string>
+    <string name="afterglow_scene_chart">Star chart</string>
+    <string name="afterglow_show_controls">Show controls</string>
+    <string name="afterglow_hide_controls">Hide controls</string>
+</resources>

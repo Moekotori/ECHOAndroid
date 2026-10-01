@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_layout_title">Настроить главную</string>
+    <string name="home_layout_detail">Меняйте порядок стрелками и скрывайте ненужные разделы. Пустые разделы появятся, когда в них будет содержимое.</string>
+    <string name="home_layout_move_up">Переместить %1$s вверх</string>
+    <string name="home_layout_move_down">Переместить %1$s вниз</string>
+    <string name="home_layout_reset">По умолчанию</string>
+    <string name="home_layout_cancel">Отмена</string>
+    <string name="home_layout_apply">Готово</string>
+    <string name="home_layout_overview">Обзор медиатеки</string>
+    <string name="home_layout_hidden">Все разделы главной страницы скрыты.</string>
+</resources>

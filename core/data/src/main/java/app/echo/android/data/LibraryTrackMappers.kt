@@ -46,6 +46,7 @@ fun EchoTrack.toLibraryTrackEntity(): LibraryTrackEntity =
         sampleRateHz = sampleRateHz,
         dateModifiedSeconds = dateModifiedSeconds,
         source = source.id,
+        genre = genre,
         composer = composer,
         relativePath = null,
         metadataEditedAtEpochMs = null,
@@ -82,7 +83,7 @@ internal fun LibraryTrackEntity.withComputedSearchMetadata(): LibraryTrackEntity
             normalizedAlbumArtist = nextNormalizedAlbumArtist,
             normalizedArtist = nextNormalizedArtist,
         ),
-        artistKey = libraryArtistKey(nextNormalizedArtist),
+        artistKey = LibraryArtistPolicy.keys(artist).firstOrNull() ?: libraryArtistKey(nextNormalizedArtist),
         genreKey = libraryGenreKey(genre?.normalizedForSearch()),
         composerKey = libraryGenreKey(composer?.normalizedForSearch()),
     )
@@ -101,7 +102,8 @@ internal fun LibraryTrackEntity.withUserMetadata(
         trackNumber = update.trackNumber?.takeIf { it > 0 },
         discNumber = update.discNumber?.takeIf { it > 0 },
         year = update.year?.takeIf { it > 0 },
-        composer = update.composer.normalizedNullableMetadata(),
+        composer = if (update.composer == null) composer else update.composer.normalizedNullableMetadata(),
+        genre = if (update.genre == null) genre else update.genre.normalizedNullableMetadata(),
         metadataEditedAtEpochMs = editedAtEpochMs,
     ).withScanMetadata()
 
@@ -155,6 +157,10 @@ internal fun buildTrackFingerprint(track: EchoTrack): String =
         mimeType = track.mimeType,
         relativePath = null,
         remote = LibraryScanPolicy.isRemoteLibrarySource(track.source.id),
+        clipStartMs = track.clipStartMs,
+        clipEndMs = track.clipEndMs,
+        genre = track.genre,
+        composer = track.composer,
     )
 
 internal fun buildTrackFingerprint(track: LibraryTrackEntity): String =
@@ -175,14 +181,20 @@ internal fun buildTrackFingerprint(track: LibraryTrackEntity): String =
         mimeType = track.mimeType,
         relativePath = track.relativePath,
         remote = LibraryScanPolicy.isRemoteLibrarySource(track.source),
+        clipStartMs = track.clipStartMs,
+        clipEndMs = track.clipEndMs,
+        genre = track.genre,
+        composer = track.composer,
+        fileName = track.fileName,
     )
 
 internal fun LibraryTrackEntity.splitByCue(
     sheet: app.echo.android.model.library.CueSheet,
     audioFileName: String? = null,
 ): List<LibraryTrackEntity> {
-    val tracks = app.echo.android.model.library.CueSheetPolicy.tracksForAudio(sheet, audioFileName)
-        .ifEmpty { sheet.tracks }
+    val tracks = if (audioFileName == null) sheet.tracks else
+        app.echo.android.model.library.CueSheetPolicy.tracksForAudio(sheet, audioFileName)
+    if (tracks.isEmpty()) return listOf(this)
     val ended = app.echo.android.model.library.CueSheetPolicy.withEndTimes(tracks, durationMs)
     if (ended.size == 1) {
         val cue = ended.single()
@@ -202,7 +214,7 @@ internal fun LibraryTrackEntity.splitByCue(
             )
         }
     }
-    if (ended.size < 2) return listOf(this)
+    if (ended.isEmpty()) return listOf(this)
     return ended.map { cue ->
         val start = cue.startMs.coerceAtLeast(0L)
         val end = cue.endMs.takeIf { it > start } ?: 0L
@@ -255,7 +267,7 @@ internal fun LibraryTrackEntity.toSummaryKeySet(): LibrarySummaryKeySet {
     }
     return LibrarySummaryKeySet(
         albumKeys = setOfNotNull(albumSummaryKey),
-        artistKeys = setOfNotNull(artistSummaryKey),
+        artistKeys = if (artistSummaryKey == null) emptySet() else LibraryArtistPolicy.keys(artist),
         folderKeys = setOfNotNull(folderSummaryKey),
         genreKeys = setOfNotNull(genreSummaryKey),
     )

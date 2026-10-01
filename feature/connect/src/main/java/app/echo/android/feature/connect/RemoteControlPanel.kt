@@ -1,7 +1,6 @@
 package app.echo.android.feature.connect
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
@@ -29,6 +28,8 @@ internal fun RemoteNowPlaying(
     positionMs: Long,
     durationMs: Long,
     volume: Float,
+    volumeControlEnabled: Boolean,
+    volumeLockedReason: String?,
     onPlayPause: () -> Unit,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
@@ -44,20 +45,18 @@ internal fun RemoteNowPlaying(
 ) {
     val scheme = MaterialTheme.colorScheme
     val hasTrack = currentTrackId != null || title.isNotBlank()
-    Surface(color = scheme.surfaceContainerLow, shape = RoundedCornerShape(24.dp)) {
-        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Rounded.Computer, null, tint = scheme.primary, modifier = Modifier.size(18.dp))
-                Text(stringResource(R.string.feature_connect_playing_on_pc_580a8a),
-                    style = MaterialTheme.typography.labelLarge, color = scheme.primary)
-            }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                EchoArtworkImage(artworkUrl, null, Modifier.size(96.dp),
-                    shape = RoundedCornerShape(16.dp), sizeClass = EchoArtworkSize.Card)
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val coverSize = if (maxWidth < 340.dp) 112.dp else 136.dp
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                EchoArtworkImage(artworkUrl, null, Modifier.size(coverSize),
+                    shape = RoundedCornerShape(12.dp), sizeClass = EchoArtworkSize.Card)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.feature_connect_playing_on_pc_580a8a),
+                        style = MaterialTheme.typography.labelMedium, color = scheme.primary)
                     Text(title.ifBlank { stringResource(R.string.feature_connect_no_track_selected_258d56) },
-                        style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold,
-                        maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold,
+                        maxLines = 3, overflow = TextOverflow.Ellipsis)
                     if (artist.isNotBlank() || !hasTrack) {
                         Text(if (hasTrack) artist else stringResource(R.string.remote_choose_hint),
                             style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant,
@@ -65,45 +64,53 @@ internal fun RemoteNowPlaying(
                     }
                 }
             }
-            // A seek hold belongs to one track; never carry it across a PC track change.
-            key(currentTrackId, title) {
-                RemoteSeekControl(positionMs, durationMs, isPlaying, controlsEnabled && hasTrack, active, onSeek)
+        }
+        // A seek hold belongs to one track; never carry it across a PC track change.
+        key(currentTrackId, title) {
+            RemoteSeekControl(positionMs, durationMs, isPlaying, controlsEnabled && hasTrack, active, onSeek)
+        }
+        RemoteTransportControls(isPlaying, controlsEnabled && (hasTrack || queueCount > 0),
+            onPrevious, onPlayPause, onNext)
+        HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.6f))
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            key(volumeControlEnabled) {
+                RemoteVolumeControl(volume, controlsEnabled && volumeControlEnabled, onVolume)
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically) {
-                FilledTonalIconButton(onPrevious, Modifier.size(56.dp), enabled = controlsEnabled && (hasTrack || queueCount > 0)) {
-                    Icon(Icons.Rounded.SkipPrevious, stringResource(R.string.feature_connect_previous_on_pc_a0f0a7), Modifier.size(28.dp))
-                }
-                FilledIconButton(onPlayPause, Modifier.size(76.dp), enabled = controlsEnabled && (hasTrack || queueCount > 0), shape = CircleShape) {
-                    Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                        stringResource(if (isPlaying) R.string.feature_connect_pause_pc_003bcf else R.string.feature_connect_play_on_pc_aa41d1),
-                        Modifier.size(38.dp))
-                }
-                FilledTonalIconButton(onNext, Modifier.size(56.dp), enabled = controlsEnabled && (hasTrack || queueCount > 0)) {
-                    Icon(Icons.Rounded.SkipNext, stringResource(R.string.feature_connect_next_on_pc_303358), Modifier.size(28.dp))
-                }
+            if (!volumeControlEnabled) {
+                Text(
+                    stringResource(if (volumeLockedReason == "fixed_volume") {
+                        R.string.remote_fixed_volume
+                    } else {
+                        R.string.remote_volume_locked
+                    }),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = scheme.onSurfaceVariant,
+                )
             }
-            RemoteVolumeControl(volume, controlsEnabled, onVolume)
-            FilledTonalButton(onOpenLibrary, Modifier.fillMaxWidth().heightIn(min = 48.dp), enabled = controlsEnabled) {
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            FilledTonalButton(onOpenLibrary, Modifier.weight(1f).heightIn(min = 52.dp), enabled = controlsEnabled,
+                shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(horizontal = 12.dp)) {
                 Icon(Icons.Rounded.LibraryMusic, null, Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.remote_choose_music))
+                Text(stringResource(R.string.remote_choose_music), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onOpenQueue, Modifier.weight(1f), enabled = controlsEnabled) {
-                    Icon(Icons.AutoMirrored.Rounded.QueueMusic, null, Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.remote_queue_count, queueCount))
-                }
-                TextButton(onStop, enabled = controlsEnabled && hasTrack) {
-                    Icon(Icons.Rounded.Stop, null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(stringResource(R.string.remote_stop))
-                }
+            OutlinedButton(onOpenQueue, Modifier.weight(1f).heightIn(min = 52.dp), enabled = controlsEnabled,
+                shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(horizontal = 12.dp)) {
+                Icon(Icons.AutoMirrored.Rounded.QueueMusic, null, Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.remote_queue_count, queueCount), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            if (outputMode.isNotBlank() && hasTrack) {
-                Text(stringResource(R.string.feature_connect_pc_output_mode_e2a6b1, outputMode),
-                    style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(if (hasTrack) outputMode else "", modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            TextButton(onStop, enabled = controlsEnabled && hasTrack) {
+                Icon(Icons.Rounded.Stop, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(stringResource(R.string.remote_stop))
             }
         }
     }

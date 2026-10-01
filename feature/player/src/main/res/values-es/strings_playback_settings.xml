@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="playback_more_settings">Más ajustes de reproducción</string>
     <string name="playback_keep_pitch">Conservar tono</string>
     <string name="playback_reset_speed">Restablecer a 1×</string>
     <string name="playback_lyrics_earlier">← Antes</string>

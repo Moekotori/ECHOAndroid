@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_section_listening">재생 환경</string>
+    <string name="settings_section_runtime">성능 및 절전</string>
+    <string name="settings_section_transition">곡 전환</string>
+    <string name="settings_section_volume">음량 처리</string>
+    <string name="settings_section_schedule">자동 다크 모드</string>
+    <string name="settings_section_readability">글자 크기</string>
+    <string name="settings_section_background_adjustments">배경 조정</string>
+</resources>

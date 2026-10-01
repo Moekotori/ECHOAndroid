@@ -25,44 +25,41 @@ internal fun NowPlayingControlDock(
     castActive: Boolean = false,
 ) {
     val haptics = rememberEchoHapticPerformer()
-    // Share the available width instead of moving secondary actions to another row.
-    // Keep the play/pause slot larger and all controls on the same vertical center.
-    Row(
-        Modifier.fillMaxWidth().padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        ControlSlot {
-            PlayerControlButton(
-                leadingIcon, leadingDescription, onLeadingAction,
-                touchSize = 48.dp, iconSize = 21.dp, tint = OnArt.copy(alpha = 0.55f),
-            )
-        }
-        ControlSlot {
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             PlayerControlButton(
                 PlayerControlIcons.Previous,
                 stringResource(L10nR.string.feature_player_previous_af0264),
                 onClick = { haptics.tick(); onPrevious() },
-                touchSize = 48.dp, iconSize = 29.dp, tint = OnArt.copy(alpha = 0.90f),
+                touchSize = 56.dp, iconSize = 32.dp, tint = OnArt.copy(alpha = 0.90f),
             )
-        }
-        ControlSlot(weight = 64f / 48f) {
             PlayerControlButton(
                 if (isPlaying) PlayerControlIcons.Pause else PlayerControlIcons.Play,
                 stringResource(L10nR.string.feature_player_play_or_pause_37a70f),
                 onClick = { haptics.confirm(); onPlayPause() },
-                touchSize = 64.dp, iconSize = 44.dp, tint = MaterialTheme.colorScheme.primary,
+                touchSize = 72.dp, iconSize = 44.dp, tint = MaterialTheme.colorScheme.primary,
             )
-        }
-        ControlSlot {
             PlayerControlButton(
                 PlayerControlIcons.Next,
                 stringResource(L10nR.string.feature_player_next_d67904),
                 onClick = { haptics.tick(); onNext() },
-                touchSize = 48.dp, iconSize = 29.dp, tint = OnArt.copy(alpha = 0.90f),
+                touchSize = 56.dp, iconSize = 32.dp, tint = OnArt.copy(alpha = 0.90f),
             )
         }
-        if (onCast != null) {
-            ControlSlot {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            PlayerControlButton(
+                leadingIcon, leadingDescription, onLeadingAction,
+                touchSize = 48.dp, iconSize = 22.dp, tint = OnArtMuted,
+            )
+            if (onCast != null) {
                 PlayerControlButton(
                     PlayerControlIcons.Cast,
                     stringResource(
@@ -71,25 +68,16 @@ internal fun NowPlayingControlDock(
                     ),
                     onClick = { haptics.tick(); onCast() },
                     touchSize = 48.dp,
-                    iconSize = 21.dp,
-                    tint = if (castActive) MaterialTheme.colorScheme.primary else OnArt.copy(alpha = 0.55f),
+                    iconSize = 23.dp,
+                    tint = if (castActive) MaterialTheme.colorScheme.primary else OnArtMuted,
                 )
             }
-        }
-        ControlSlot {
             PlayerControlButton(
                 PlayerControlIcons.Queue,
                 stringResource(L10nR.string.feature_player_queue_37fa6a),
                 onOpenQueue,
-                touchSize = 48.dp, iconSize = 21.dp, tint = OnArt.copy(alpha = 0.55f),
+                touchSize = 48.dp, iconSize = 22.dp, tint = OnArtMuted,
             )
         }
-    }
-}
-
-@Composable
-private fun RowScope.ControlSlot(weight: Float = 1f, content: @Composable () -> Unit) {
-    Box(Modifier.weight(weight), contentAlignment = Alignment.Center) {
-        content()
     }
 }

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_appearance_preview">Darstellungsvorschau</string>
+    <string name="settings_background_preview_unavailable">Dieser Hintergrund kann nicht angezeigt werden.</string>
+    <string name="settings_background_preview_loading">Vorschau wird geladen…</string>
+    <string name="settings_background_preview_still">Videohintergründe werden hier als Standbild angezeigt.</string>
+    <string name="settings_background_preview_legacy_blur">Auf diesem Gerät wird die Unschärfe beim Loslassen des Reglers aktualisiert.</string>
+</resources>

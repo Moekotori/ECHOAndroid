@@ -1,0 +1,44 @@
+<resources>
+    <string name="smart_create">智慧歌單</string>
+    <string name="smart_edit_rules">編輯規則</string>
+    <string name="smart_pin_home">固定到首頁</string>
+    <string name="smart_unpin_home">取消首頁固定</string>
+    <string name="smart_pin_error">暫時無法固定這份歌單，首頁最多支援固定 8 份歌單。</string>
+    <string name="smart_editor_title">讓喜歡的音樂自己歸位</string>
+    <string name="smart_editor_hint">選擇條件，歌單會隨曲庫和聆聽紀錄自動更新。歌曲需要符合所有條件。</string>
+    <string name="smart_name">歌單名稱</string>
+    <string name="smart_artist">藝人包含 · 選填</string>
+    <string name="smart_genre">曲風包含 · 選填</string>
+    <string name="smart_favorites">只收錄我的收藏</string>
+    <string name="smart_not_played">最近多久沒有播放</string>
+    <string name="smart_any_time">不限</string>
+    <plurals name="smart_days"><item quantity="other">%1$d 天</item></plurals>
+    <string name="smart_year_from">起始年份</string>
+    <string name="smart_year_to">結束年份</string>
+    <string name="smart_year_error">結束年份不能早於起始年份。</string>
+    <string name="smart_sort">播放順序</string>
+    <string name="smart_sort_title">歌曲名稱</string>
+    <string name="smart_sort_added">最近加入</string>
+    <string name="smart_sort_least">最少播放</string>
+    <string name="smart_sort_most">最多播放</string>
+    <plurals name="smart_preview_count"><item quantity="other">符合條件的 %1$d 首歌曲</item></plurals>
+    <string name="smart_preview_empty">暫時沒有符合條件的歌曲。可以放寬條件，也可以先儲存，等待新音樂加入。</string>
+    <string name="smart_save">儲存智慧歌單</string>
+    <string name="library_tool_error">操作未完成，原有曲庫資料仍保留，請重試。</string>
+    <string name="library_tool_retry">重試</string>
+    <string name="library_tool_saving">正在儲存…</string>
+    <string name="repair_title">曲庫修復</string>
+    <string name="repair_hint">找回移動位置或失去存取權限的檔案，先預覽，再重新關聯。</string>
+    <string name="repair_scan_folder">掃描新的音樂目錄</string>
+    <string name="repair_scan_folder_hint">如果音樂搬到了其他目錄，先掃描它，再回來選擇符合的檔案。</string>
+    <string name="repair_inspecting">正在檢查檔案存取狀況…</string>
+    <string name="repair_all_available">曲庫中的本機檔案均可存取。</string>
+    <string name="repair_limit">目前顯示前 500 首無法存取的歌曲。修復後可再次檢查。</string>
+    <string name="repair_back">全部無法存取的歌曲</string>
+    <string name="repair_choose">選擇符合的歌曲，也可以手動找回音訊檔案。</string>
+    <string name="repair_choose_file">選擇音訊檔案</string>
+    <string name="repair_preview">重新關聯到這個檔案</string>
+    <string name="repair_preserve">保留收藏、歌單、片段書籤和播放次數，不會刪除任何音訊檔案。</string>
+    <string name="repair_apply">重新關聯</string>
+    <plurals name="repair_done"><item quantity="other">已重新關聯 %1$d 首歌曲</item></plurals>
+</resources>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="afterglow_mist">Afterglow · Nebel</string>
+    <string name="afterglow_night">Afterglow · Nacht</string>
+    <string name="afterglow_mist_detail">Pastellszenen und schwebende Buchstaben</string>
+    <string name="afterglow_night_detail">Nachthimmel und blau-goldene Umlaufbahnen</string>
+    <string name="afterglow_previous_line">Vorherige Textzeile</string>
+    <string name="afterglow_next_line">Nächste Textzeile</string>
+    <string name="afterglow_palette">Farben</string>
+    <string name="afterglow_randomize">Neu gestalten</string>
+    <string name="afterglow_scene">Szene</string>
+    <string name="afterglow_scene_auto">Dem Songtext folgen</string>
+    <string name="afterglow_scene_ridge">Nebelberge</string>
+    <string name="afterglow_scene_wisteria">Blauregenlaube</string>
+    <string name="afterglow_scene_lake">Seenebel</string>
+    <string name="afterglow_scene_voyage">Sternenreise</string>
+    <string name="afterglow_scene_aurora">Polarlicht</string>
+    <string name="afterglow_scene_chart">Sternkarte</string>
+    <string name="afterglow_show_controls">Steuerung anzeigen</string>
+    <string name="afterglow_hide_controls">Steuerung ausblenden</string>
+</resources>

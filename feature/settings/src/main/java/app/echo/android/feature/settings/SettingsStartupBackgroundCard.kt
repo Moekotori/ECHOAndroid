@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,7 +30,7 @@ internal fun SettingsStartupBackgroundCard(
 ) {
     val hasImage = !uri.isNullOrBlank()
     var imageFailed by remember(uri) { mutableStateOf(false) }
-    SettingsSectionCard(title = stringResource(R.string.settings_startup_background)) {
+    SettingsSectionCard(title = stringResource(R.string.settings_startup_background), secondary = true) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(
                 stringResource(R.string.settings_startup_background_detail),
@@ -51,7 +50,7 @@ internal fun SettingsStartupBackgroundCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(136.dp)
-                        .clip(RoundedCornerShape(16.dp)),
+                        .clip(SettingsShape),
                 )
             } else {
                 Text(

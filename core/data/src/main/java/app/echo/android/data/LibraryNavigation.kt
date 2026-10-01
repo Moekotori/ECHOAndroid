@@ -7,7 +7,7 @@ import app.echo.android.model.library.ArtistSummary
  * Unknown and various-artists labels are not artist pages.
  */
 fun artistNavigationTarget(name: String, artworkUri: String? = null): ArtistSummary? {
-    val trimmed = name.trim()
+    val trimmed = LibraryArtistPolicy.names(name).firstOrNull().orEmpty()
     if (trimmed.isEmpty()) return null
     if (LibraryMetadataSentinels.isUnknown(trimmed)) return null
     if (LibraryMetadataSentinels.isVariousArtists(trimmed)) return null

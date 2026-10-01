@@ -19,13 +19,15 @@ class EchoStartupThemeSnapshotTest {
     }
 
     @Test
-    fun defaultThemeModeIsDark() {
-        assertEquals(EchoThemeMode.Dark, EchoStartupThemeSnapshot().themeMode)
-        assertEquals(EchoThemeMode.Dark, EchoAppSettings().themeMode)
+    fun defaultThemeModeIsLight() {
+        assertEquals(EchoThemeMode.Light, EchoStartupThemeSnapshot().themeMode)
+        assertEquals(EchoThemeMode.Light, EchoAppSettings().themeMode)
         assertEquals(EchoColorTheme.Default.id, EchoStartupThemeSnapshot().colorTheme)
         assertEquals(EchoColorTheme.Default.id, EchoAppSettings().colorTheme)
         assertEquals(EchoCustomColors.Default, EchoAppSettings().customColors)
         assertNull(EchoStartupThemeSnapshot().startupBackgroundUri)
+        assertEquals("paper", EchoStartupThemeSnapshot().toAppSettings().lyricsPageStyle)
+        assertEquals("mist", EchoStartupThemeSnapshot(themeMode = EchoThemeMode.Dark).toAppSettings().lyricsPageStyle)
     }
 
     @Test
@@ -59,9 +61,9 @@ class EchoStartupThemeSnapshotTest {
     }
 
     @Test
-    fun normalizeThemeModeFallsBackToDark() {
-        assertEquals(EchoThemeMode.Dark, normalizeThemeMode(null))
-        assertEquals(EchoThemeMode.Dark, normalizeThemeMode(""))
-        assertEquals(EchoThemeMode.Dark, normalizeThemeMode("auto"))
+    fun normalizeThemeModeFallsBackToLight() {
+        assertEquals(EchoThemeMode.Light, normalizeThemeMode(null))
+        assertEquals(EchoThemeMode.Light, normalizeThemeMode(""))
+        assertEquals(EchoThemeMode.Light, normalizeThemeMode("auto"))
     }
 }

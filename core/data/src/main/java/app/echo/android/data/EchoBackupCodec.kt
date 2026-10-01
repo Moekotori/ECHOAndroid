@@ -19,6 +19,9 @@ object EchoBackupCodec {
         "session",
         "apikey",
         "api_key",
+        "cookie",
+        "authorization",
+        "credential",
     )
 
     fun encode(document: EchoBackupDocument): String {
@@ -32,6 +35,10 @@ object EchoBackupCodec {
             .put("favorites", JSONArray().also { array ->
                 document.favorites.forEach { track -> array.put(encodeTrack(track)) }
             })
+            .put("bookmarks", JSONArray().also { array -> document.bookmarks.forEach { bookmark ->
+                array.put(JSONObject().put("track", encodeTrack(bookmark.track)).put("positionMs", bookmark.positionMs).put("label", bookmark.label))
+            } })
+        BackupExperienceCodec.encode(json, document)
         return json.toString()
     }
 
@@ -47,12 +54,23 @@ object EchoBackupCodec {
         if (collectKeys(json).any(::isForbiddenKey)) {
             throw EchoBackupException("Backup file contains secret fields")
         }
+        if ((json.optJSONArray("bookmarks")?.length() ?: 0) > 10000) throw EchoBackupException("Too many saved moments in backup")
         return EchoBackupDocument(
             version = version,
             exportedAtEpochMs = json.optLong("exportedAtEpochMs", 0L),
             settings = decodeSettings(json.optJSONObject("settings")),
             playlists = json.optJSONArray("playlists").objects().mapNotNull(::decodePlaylist),
             favorites = json.optJSONArray("favorites").objects().mapNotNull(::decodeTrack),
+            bookmarks = json.optJSONArray("bookmarks").objects().mapNotNull { item ->
+                val track = item.optJSONObject("track")?.let(::decodeTrack) ?: return@mapNotNull null
+                val position = item.optLong("positionMs", -1)
+                val label = item.optString("label")
+                if (position < 0 || label.trim().length !in 1..100) null
+                    else app.echo.android.model.backup.EchoBackupBookmark(track, position, label)
+            },
+            history = BackupExperienceCodec.history(json),
+            lyrics = BackupExperienceCodec.lyrics(json),
+            assets = BackupExperienceCodec.assets(json),
         )
     }
 
@@ -98,6 +116,7 @@ object EchoBackupCodec {
     }
 
     private fun encodeSettings(settings: EchoBackupSettings): JSONObject = JSONObject().apply {
+        BackupExperienceCodec.encodeSettings(this, settings)
         putOpt("themeMode", settings.themeMode)
         putOpt("colorTheme", settings.colorTheme)
         putOpt("appLanguage", settings.appLanguage)
@@ -157,6 +176,7 @@ object EchoBackupCodec {
         settings.lyricsLineSpacing?.let { put("lyricsLineSpacing", it.toDouble()) }
         settings.lyricsBackgroundDim?.let { put("lyricsBackgroundDim", it.toDouble()) }
         putOptNullableBoolean("lyricsWordHighlightEnabled", settings.lyricsWordHighlightEnabled)
+        putOptNullableBoolean("lyricsEstimatedWordHighlightEnabled", settings.lyricsEstimatedWordHighlightEnabled)
         settings.lyricsWordHighlightIntensity?.let { put("lyricsWordHighlightIntensity", it.toDouble()) }
         putOptNullableBoolean("lyricsImmersiveModeEnabled", settings.lyricsImmersiveModeEnabled)
         putOpt("lyricsMotionMode", settings.lyricsMotionMode)
@@ -197,6 +217,11 @@ object EchoBackupCodec {
             else -> null
         }
         return EchoBackupSettings(
+            homeLayout = BackupExperienceCodec.home(json),
+            playerPageStyle = json.optionalString("playerPageStyle"), playerTextScale = json.optionalFloat("playerTextScale"), playerArtworkScale = json.optionalFloat("playerArtworkScale"),
+            backgroundMode = json.optionalString("backgroundMode"), backgroundStyle = json.optionalString("backgroundStyle"),
+            backgroundBlur = json.optionalFloat("backgroundBlur"), backgroundBrightness = json.optionalFloat("backgroundBrightness"),
+            backgroundGlass = json.optionalFloat("backgroundGlass"), backgroundScale = json.optionalFloat("backgroundScale"),
             themeMode = json.optionalString("themeMode"),
             colorTheme = json.optionalString("colorTheme"),
             appLanguage = json.optionalString("appLanguage"),
@@ -244,6 +269,7 @@ object EchoBackupCodec {
             lyricsLineSpacing = json.optionalFloat("lyricsLineSpacing"),
             lyricsBackgroundDim = json.optionalFloat("lyricsBackgroundDim"),
             lyricsWordHighlightEnabled = json.optionalBoolean("lyricsWordHighlightEnabled"),
+            lyricsEstimatedWordHighlightEnabled = json.optionalBoolean("lyricsEstimatedWordHighlightEnabled"),
             lyricsWordHighlightIntensity = json.optionalFloat("lyricsWordHighlightIntensity"),
             lyricsImmersiveModeEnabled = json.optionalBoolean("lyricsImmersiveModeEnabled"),
             lyricsMotionMode = json.optionalString("lyricsMotionMode"),
@@ -304,21 +330,39 @@ object EchoBackupCodec {
     private fun encodePlaylist(playlist: EchoBackupPlaylist): JSONObject =
         JSONObject()
             .put("name", playlist.name)
+            .put("pinnedToHome", playlist.pinnedToHome)
             .put("tracks", JSONArray().also { array ->
                 playlist.tracks.forEach { array.put(encodeTrack(it)) }
             })
+            .apply { playlist.smartRule?.let { rule -> put("smartRule", JSONObject()
+                .put("artist", rule.artist).put("genre", rule.genre).put("favoriteOnly", rule.favoriteOnly)
+                .put("notPlayedDays", rule.notPlayedDays).put("minimumYear", rule.minimumYear)
+                .put("maximumYear", rule.maximumYear).put("sort", rule.sort.name)
+                .put("matchAny",rule.matchAny).put("album",rule.album).put("folder",rule.folder).put("format",rule.format)
+                .put("minimumDurationSeconds",rule.minimumDurationSeconds).put("maximumDurationSeconds",rule.maximumDurationSeconds).put("excludeText",rule.excludeText)) } }
 
     private fun decodePlaylist(json: JSONObject): EchoBackupPlaylist? {
         val name = json.optString("name").trim().takeIf { it.isNotEmpty() } ?: return null
         return EchoBackupPlaylist(
             name = name,
+            pinnedToHome = json.optBoolean("pinnedToHome"),
             tracks = json.optJSONArray("tracks").objects().mapNotNull(::decodeTrack),
+            smartRule = json.optJSONObject("smartRule")?.let { rule ->
+                app.echo.android.model.library.EchoSmartPlaylistRule(rule.optString("artist"), rule.optString("genre"),
+                    rule.optBoolean("favoriteOnly"), rule.optInt("notPlayedDays"), rule.optInt("minimumYear"), rule.optInt("maximumYear"),
+                    app.echo.android.model.library.EchoSmartPlaylistSort.entries.firstOrNull { it.name == rule.optString("sort") }
+                        ?: app.echo.android.model.library.EchoSmartPlaylistSort.Title, rule.optBoolean("matchAny"), rule.optString("album"),
+                    rule.optString("folder"),rule.optString("format"),rule.optInt("minimumDurationSeconds"),rule.optInt("maximumDurationSeconds"),rule.optString("excludeText")).also {
+                    if (!it.isValid) throw EchoBackupException("Invalid smart playlist rule")
+                }
+            },
         )
     }
 
     private fun encodeTrack(track: EchoBackupTrackRef): JSONObject = JSONObject().apply {
         put("title", track.title)
         put("artist", track.artist)
+        putOpt("album", track.album)
         putOpt("relativePath", track.relativePath)
         if (track.durationMs > 0L) put("durationMs", track.durationMs)
     }
@@ -333,6 +377,7 @@ object EchoBackupCodec {
             artist = artist,
             relativePath = relativePath,
             durationMs = json.optLong("durationMs", 0L),
+            album = json.optionalString("album"),
         )
     }
 

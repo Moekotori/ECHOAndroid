@@ -32,6 +32,7 @@ internal fun LyricsLineList(
     lyricsAlignment: String,
     lyricsLineSpacing: Float,
     lyricsWordHighlightEnabled: Boolean,
+    lyricsEstimatedWordHighlightEnabled: Boolean,
     lyricsWordHighlightIntensity: Float,
     lyricsImmersiveModeEnabled: Boolean,
     lyricsMotionMode: String,
@@ -42,6 +43,7 @@ internal fun LyricsLineList(
     modifier: Modifier = Modifier,
     highlightColor: Color = lyricAccent,
     paper: Boolean = false,
+    durationMs: Long = 0L,
 ) {
     BoxWithConstraints(modifier = modifier) {
         val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
@@ -85,8 +87,8 @@ internal fun LyricsLineList(
                 followMotion.reset()
             }
         }
-        val scale = lyricsFontScale.coerceIn(0.82f, 1.28f)
-        val spacing = lyricsLineSpacing.coerceIn(0.82f, 1.38f)
+        val scale = lyricsFontScale.coerceIn(0.50f, 1.28f)
+        val spacing = lyricsLineSpacing.coerceIn(0.50f, 1.38f)
         val motionIntensity = if (animateFocus) lyricsMotionIntensity(lyricsMotionMode) else 0f
         val immersive = lyricsImmersiveModeEnabled && synced
         LazyColumn(
@@ -103,16 +105,18 @@ internal fun LyricsLineList(
                 key = { index, line -> "${line.startMs}-$index-${line.text}" },
             ) { index, line ->
                 val active = synced && index in activeIndices
-                val focused = active || index == focusIndex
-                val focusDistance = if (focused) 0 else if (focusIndex >= 0) abs(index - focusIndex).coerceAtMost(4) else 1
+                // Overlapping vocals may share word highlighting, but only one line grows.
+                val focused = index == focusIndex
+                val focusDistance = if (focused || active) 0 else if (focusIndex >= 0) abs(index - focusIndex).coerceAtMost(4) else 1
                 val seekable = synced && line.startMs >= 0L
                 LyricsLineItem(
-                    line = line, lineEndMs = timeline.endAt(index), positionMsState = positionMsState,
+                    line = line, lineEndMs = timeline.endAt(index) ?: durationMs.takeIf { it > line.startMs }, positionMsState = positionMsState,
                     active = active, focused = focused, focusDistance = focusDistance, immersive = immersive,
                     lyricsFontFamily = lyricsFontFamily, scale = scale, spacing = spacing,
                     lyricsAlignment = lyricsAlignment, lyricAccent = lyricAccent, highlightColor = highlightColor,
                     lyricsWordHighlightIntensity = lyricsWordHighlightIntensity,
                     wordHighlightEnabled = lyricsWordHighlightEnabled && !lightweight && animationsVisible,
+                    estimatedWordHighlightEnabled = lyricsEstimatedWordHighlightEnabled,
                     focusGlowEnabled = focusGlowEnabled, showTranslation = showTranslation,
                     showRomanization = showRomanization, motionIntensity = motionIntensity,
                     animateFocus = animateFocus, paper = paper,

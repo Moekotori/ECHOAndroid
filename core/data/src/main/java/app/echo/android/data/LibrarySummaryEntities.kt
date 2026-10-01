@@ -92,6 +92,7 @@ data class TrackSummaryKeyRow(
     val relativePath: String?,
     val source: String,
     val genreKey: String = "",
+    val artist: String? = null,
 )
 
 fun TrackSummaryKeyRow.toSummaryKeySet(): LibrarySummaryKeySet {
@@ -112,7 +113,8 @@ fun TrackSummaryKeyRow.toSummaryKeySet(): LibrarySummaryKeySet {
     }
     return LibrarySummaryKeySet(
         albumKeys = setOfNotNull(albumSummaryKey),
-        artistKeys = setOfNotNull(artistSummaryKey),
+        artistKeys = if (artistSummaryKey == null) emptySet() else
+            setOf(artistSummaryKey) + artist?.let(LibraryArtistPolicy::keys).orEmpty(),
         folderKeys = setOfNotNull(folderSummaryKey),
         genreKeys = setOfNotNull(
             genreKey.takeIf { it.isNotBlank() && LibraryScanPolicy.isLocalLibrarySource(source) },

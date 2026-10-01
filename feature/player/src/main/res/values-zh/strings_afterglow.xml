@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="afterglow_mist">Afterglow · 雾景</string>
+    <string name="afterglow_night">Afterglow · 夜航</string>
+    <string name="afterglow_mist_detail">雾色场景与轻盈文字编排</string>
+    <string name="afterglow_night_detail">蓝金夜景与星轨文字编排</string>
+    <string name="afterglow_previous_line">上一句歌词</string>
+    <string name="afterglow_next_line">下一句歌词</string>
+    <string name="afterglow_palette">配色</string>
+    <string name="afterglow_randomize">重新编排</string>
+    <string name="afterglow_scene">场景</string>
+    <string name="afterglow_scene_auto">跟随歌词</string>
+    <string name="afterglow_scene_ridge">雾山棱线</string>
+    <string name="afterglow_scene_wisteria">紫藤花架</string>
+    <string name="afterglow_scene_lake">湖畔晨雾</string>
+    <string name="afterglow_scene_voyage">星海航行</string>
+    <string name="afterglow_scene_aurora">极光</string>
+    <string name="afterglow_scene_chart">星图</string>
+    <string name="afterglow_show_controls">显示控制按钮</string>
+    <string name="afterglow_hide_controls">隐藏控制按钮</string>
+</resources>

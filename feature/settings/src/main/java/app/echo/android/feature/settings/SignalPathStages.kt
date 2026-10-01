@@ -114,10 +114,10 @@ internal fun signalPathStages(
             facts = listOf(
                 stringResource(R.string.path_output_clock) to
                     (d.bitPerfectSampleRateHz?.takeIf {
-                        live && d.usbExclusiveStreaming && d.bitPerfectState == EchoBitPerfectState.Direct && it > 0
+                        status.hasVerifiedUsbDirect() && it > 0
                     }?.let(::formatSampleRate) ?: unknown),
                 stringResource(R.string.path_output_bits) to
-                    (d.bitPerfectOutputBits?.takeIf { live && d.usbExclusiveStreaming && it > 0 }?.let { "$it bit" } ?: unknown),
+                    (d.bitPerfectOutputBits?.takeIf { status.hasLiveUsbOutput() && d.usbBitPerfectEnabled && it > 0 }?.let { "$it bit" } ?: unknown),
             ),
         ))
     }

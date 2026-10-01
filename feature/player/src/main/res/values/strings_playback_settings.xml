@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="playback_more_settings">More playback settings</string>
     <string name="playback_keep_pitch">Keep pitch</string>
     <string name="playback_reset_speed">Reset to 1×</string>
     <string name="playback_lyrics_earlier">← Earlier</string>

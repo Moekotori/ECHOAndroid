@@ -1,0 +1,29 @@
+<resources>
+    <string name="track_tools_title">片段收藏与歌词卡片</string>
+    <string name="track_tools_error">操作未完成，请检查播放状态或文件访问权限后重试。</string>
+    <string name="track_tools_save">保存</string>
+    <string name="track_tools_cancel">取消</string>
+    <string name="track_loop_title">A–B 片段循环</string>
+    <string name="track_loop_external">A–B 循环用于手机本机播放，结束投送后即可使用。</string>
+    <string name="track_loop_hint">边听边标记起点和终点，也可以拖动下方范围。片段至少需要半秒。</string>
+    <string name="track_loop_active">循环已启用 · %1$s — %2$s</string>
+    <string name="track_loop_mark_a">A · %1$s</string>
+    <string name="track_loop_mark_b">B · %1$s</string>
+    <string name="track_loop_start">循环这个片段</string>
+    <string name="track_loop_stop">结束循环</string>
+    <string name="track_bookmarks">收藏的片段</string>
+    <string name="track_bookmark_add">收藏当前片段</string>
+    <string name="track_bookmark_empty">听到喜欢的瞬间，保存它的位置，下次轻点即可重听。</string>
+    <string name="track_bookmark_name">给这个片段起个名字</string>
+    <string name="track_bookmark_delete">删除片段收藏</string>
+    <string name="lyrics_card_title">歌词卡片</string>
+    <string name="lyrics_card_missing">为这首歌添加歌词后，即可制作卡片。</string>
+    <string name="lyrics_card_hint">最多选择 6 句、共 1,000 字。预览确认后，保存或分享图片。</string>
+    <string name="lyrics_card_paper">纸张</string>
+    <string name="lyrics_card_midnight">深夜</string>
+    <string name="lyrics_card_artwork">专辑色彩</string>
+    <string name="lyrics_card_preview">歌词卡片预览</string>
+    <string name="lyrics_card_share">分享图片</string>
+    <string name="lyrics_card_save">保存图片</string>
+    <string name="lyrics_card_saved">图片已保存</string>
+</resources>

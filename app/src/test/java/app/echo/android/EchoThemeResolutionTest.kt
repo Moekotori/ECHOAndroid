@@ -59,10 +59,10 @@ class EchoThemeResolutionTest {
     }
 
     @Test
-    fun unknownModeDefaultsToDark() {
-        assertTrue(
+    fun unknownModeDefaultsToLightEvenWhenPhoneIsDark() {
+        assertFalse(
             resolveEchoDarkTheme(
-                systemDarkTheme = false,
+                systemDarkTheme = true,
                 themeMode = "",
                 scheduledDarkModeEnabled = false,
                 scheduledStartMinute = 22 * 60,

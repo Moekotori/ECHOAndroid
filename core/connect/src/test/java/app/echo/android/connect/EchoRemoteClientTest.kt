@@ -63,6 +63,34 @@ class EchoRemoteClientTest {
     }
 
     @Test
+    fun lockedVolumeDoesNotSendCommandsOrBlockPlaybackAndCanUnlock() = runBlocking {
+        val transport = FakeEchoLinkTransport()
+        val client = EchoRemoteClient(this, transport)
+        client.setForeground(false)
+        try {
+            client.connect(endpoint, false)
+            delay(20)
+            val locked = client.status.value.playback.copy(
+                volumeControlEnabled = false,
+                volumeLockedReason = "fixed_volume",
+            )
+            client.ingest(app.echo.android.model.connect.EchoRemoteMessage.StatusSnapshot(locked))
+            client.send(EchoRemoteCommand.SetVolume(0.5f))
+            client.send(EchoRemoteCommand.PlayPause)
+            delay(20)
+            assertEquals(listOf(EchoRemoteCommand.PlayPause), transport.commands)
+            client.ingest(app.echo.android.model.connect.EchoRemoteMessage.StatusSnapshot(
+                locked.copy(volumeControlEnabled = true, volumeLockedReason = null),
+            ))
+            client.send(EchoRemoteCommand.SetVolume(0.5f))
+            delay(20)
+            assertEquals(EchoRemoteCommand.SetVolume(0.5f), transport.commands.last())
+        } finally {
+            client.disconnect()
+        }
+    }
+
+    @Test
     fun selectedTrackStartsWithoutResolvingTheRestOfTheQueue() = runBlocking {
         val transport = FakeEchoLinkTransport()
         val client = EchoRemoteClient(this, transport)
@@ -180,7 +208,7 @@ class EchoRemoteClientTest {
     @Test
     fun backgroundStopsStatusPollingUntilVisible() = runBlocking {
         val transport = FakeEchoLinkTransport()
-        val client = EchoRemoteClient(this, transport, statusPollIntervalMs = 5)
+        val client = EchoRemoteClient(this, transport, statusPollIntervalMs = 5_000)
         client.connect(endpoint, false)
         delay(20)
         client.setForeground(false)
@@ -886,7 +914,78 @@ class EchoRemoteClientTest {
         delay(10)
         assertEquals(42L, client.status.value.playback.positionMs)
         assertEquals(2, client.status.value.playback.queue.items.size)
+        val latest = client.status.value.playback
+        repeat(100) { transport.emitSnapshot(latest.copy(positionMs = it.toLong())) }
+        // Transport callbacks enqueue snapshots; owner state changes only when its scope runs.
+        assertEquals(42L, client.status.value.playback.positionMs)
+        delay(10)
+        assertEquals(99L, client.status.value.playback.positionMs)
         client.disconnect()
+    }
+
+    @Test
+    fun eventStreamRecoversFromTransientFailuresAndStopsInBackground() = runBlocking {
+        val transport = FakeEchoLinkTransport().apply { eventTicketFailuresRemaining = 1 }
+        val client = EchoRemoteClient(this, transport, eventRetryDelayMs = 5)
+        try {
+            client.connect(endpoint.copy(supportsV2Events = true), false)
+            delay(50)
+            assertEquals(2, transport.eventTicketCalls)
+            assertEquals(1, transport.eventSubscriptions)
+            transport.closeEvents(java.io.IOException("lost connection"))
+            delay(30)
+            assertEquals(2, transport.eventSubscriptions)
+            val calls = transport.eventTicketCalls
+            transport.closeEvents(java.io.IOException("background disconnect"))
+            client.setForeground(false)
+            delay(30)
+            assertEquals(calls, transport.eventTicketCalls)
+        } finally {
+            client.disconnect()
+        }
+    }
+
+    @Test
+    fun repeatedEventFailureHasABoundedRetryBudget() = runBlocking {
+        val transport = FakeEchoLinkTransport().apply { eventTicketFailuresRemaining = 100 }
+        val client = EchoRemoteClient(this, transport, eventRetryDelayMs = 5)
+        try {
+            client.connect(endpoint.copy(supportsV2Events = true), false)
+            delay(80)
+            assertEquals(4, transport.eventTicketCalls)
+            delay(30)
+            assertEquals(4, transport.eventTicketCalls)
+            assertEquals(EchoRemoteConnectionState.Connected, client.status.value.connectionState)
+        } finally {
+            client.disconnect()
+        }
+    }
+
+    @Test
+    fun oldEventCallbacksCannotOverwriteAReconnectedPcWithTheSameId() = runBlocking {
+        val transport = FakeEchoLinkTransport()
+        val client = EchoRemoteClient(this, transport)
+        try {
+            val first = endpoint.copy(supportsV2Events = true)
+            client.connect(first, false)
+            delay(20)
+            val oldEvent = transport.eventListeners.single()
+            val oldClose = transport.closeListeners.single()
+            val second = first.copy(token = "new-access-token")
+            client.connect(second, false)
+            delay(20)
+            oldEvent(app.echo.android.model.connect.EchoRemoteMessage.StatusSnapshot(
+                EchoRemotePlaybackSnapshot(positionMs = 999L),
+            ))
+            oldClose(EchoLinkHttpException("old credential revoked", 401))
+            transport.emitSnapshot(EchoRemotePlaybackSnapshot(positionMs = 42L))
+            delay(20)
+            assertEquals("new-access-token", client.status.value.endpoint?.token)
+            assertEquals(42L, client.status.value.playback.positionMs)
+            assertEquals(EchoRemoteConnectionState.Connected, client.status.value.connectionState)
+        } finally {
+            client.disconnect()
+        }
     }
 
     @Test
@@ -977,10 +1076,18 @@ private class FakeEchoLinkTransport(
     var eventTicketCalls = 0
     var eventSubscriptions = 0
     var failEventTicket = false
+    var eventTicketFailuresRemaining = 0
+    val eventListeners = mutableListOf<(app.echo.android.model.connect.EchoRemoteMessage) -> Unit>()
+    val closeListeners = mutableListOf<(Throwable?) -> Unit>()
     private var eventListener: ((app.echo.android.model.connect.EchoRemoteMessage) -> Unit)? = null
+    private var closeListener: ((Throwable?) -> Unit)? = null
 
     override suspend fun createEventTicket(endpoint: EchoRemoteEndpoint): EchoLinkEventTicket {
         eventTicketCalls += 1
+        if (eventTicketFailuresRemaining > 0) {
+            eventTicketFailuresRemaining -= 1
+            throw EchoLinkHttpException("temporary event failure", 503)
+        }
         if (failEventTicket) throw EchoLinkHttpException("events unavailable", 404)
         return EchoLinkEventTicket(
             ticket = "ticket-1",
@@ -1004,8 +1111,16 @@ private class FakeEchoLinkTransport(
     ): EchoLinkEventSubscription {
         eventSubscriptions += 1
         eventListener = onEvent
-        return EchoLinkEventSubscription { eventListener = null }
+        closeListener = onClosed
+        eventListeners += onEvent
+        closeListeners += onClosed
+        return EchoLinkEventSubscription {
+            if (eventListener === onEvent) eventListener = null
+            if (closeListener === onClosed) closeListener = null
+        }
     }
+
+    fun closeEvents(error: Throwable?) { closeListener?.invoke(error) }
 
     fun emitSnapshot(snapshot: EchoRemotePlaybackSnapshot) {
         eventListener?.invoke(app.echo.android.model.connect.EchoRemoteMessage.StatusSnapshot(snapshot))

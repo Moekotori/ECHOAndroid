@@ -9,6 +9,34 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AudioFileTagRewriterTest {
+    @Test fun batchGenreAndComposerSurviveFileRewrite() {
+        val fields = SAMPLE_FIELDS.copy(genre = "Ambient",composer = "Composer")
+        val rewritten = rewrite(FAKE_MP3,fields,"audio/mpeg")
+        val read = readLocalAudioTags(rewritten.inputStream())!!
+        assertEquals("Ambient",read.genre)
+        assertEquals("Composer",read.composer)
+        assertEquals(fields.title,read.title)
+        assertEquals(fields.artist,read.artist)
+    }
+    @Test fun unselectedGenreIsKeptAndExplicitClearRemovesIt() {
+        val source = id3File(4,listOf(textFrameV24("TCON","Ambient")),FAKE_MP3)
+        assertEquals("Ambient",readLocalAudioTags(rewrite(source,SAMPLE_FIELDS,"audio/mpeg").inputStream())?.genre)
+        assertNull(readLocalAudioTags(rewrite(source,SAMPLE_FIELDS.copy(genreModified = true),"audio/mpeg").inputStream())?.genre)
+    }
+    @Test
+    fun id3RepeatedFramesAndNullSeparatedValuesKeepAllArtists() {
+        for ((encoding, charset) in listOf(1 to Charsets.UTF_16, 2 to Charsets.UTF_16BE, 3 to Charsets.UTF_8)) {
+            val frames = listOf(
+                Id3FrameBytes("TPE1", byteArrayOf(encoding.toByte()) + "A\u0000B".toByteArray(charset)),
+                Id3FrameBytes("TPE1", byteArrayOf(encoding.toByte()) + "C".toByteArray(charset)),
+                Id3FrameBytes("TPE2", byteArrayOf(encoding.toByte()) + "Owner A\u0000Owner B".toByteArray(charset)),
+            )
+            val tags = readLocalAudioTags(id3File(4, frames, FAKE_MP3).inputStream())!!
+            assertEquals("A; B; C", tags.artist)
+            assertEquals("Owner A; Owner B", tags.albumArtist)
+        }
+    }
+
     @Test
     fun readsId3TitleVersionsAndDeclaredUnicodeEncodings() {
         for (version in listOf(2, 3, 4)) {

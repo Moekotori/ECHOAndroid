@@ -31,7 +31,7 @@ fun SettingsUpdateRow(onCheck: () -> Unit) {
 fun SettingsUpdateDialog(currentVersion: String, version: String?, sizeBytes: Long?, notes: String,
     busy: Boolean, progress: Int?, ready: Boolean, error: UpdateProblem?, onDismiss: () -> Unit,
     onCheck: () -> Unit, onCancel: () -> Unit, onDownload: () -> Unit, onInstall: () -> Unit) {
-    AlertDialog(onDismissRequest = onDismiss,
+    AlertDialog(shape = SettingsShape, onDismissRequest = onDismiss,
         title = { Text(stringResource(if (version != null) R.string.update_available else R.string.update_title)) },
         text = {
             Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
@@ -62,7 +62,7 @@ fun SettingsUpdateDialog(currentVersion: String, version: String?, sizeBytes: Lo
                 if (progress != null) {
                     LinearProgressIndicator(progress = { progress / 100f }, modifier = Modifier.fillMaxWidth())
                     Text(stringResource(R.string.update_percent, progress))
-                    TextButton(onClick = onCancel) { Text(stringResource(R.string.update_cancel_download)) }
+                    TextButton(shape = SettingsShape, onClick = onCancel) { Text(stringResource(R.string.update_cancel_download)) }
                 } else if (busy) CircularProgressIndicator()
                 if (notes.isNotBlank()) {
                     Text(stringResource(R.string.update_notes), style = MaterialTheme.typography.titleSmall)
@@ -71,7 +71,7 @@ fun SettingsUpdateDialog(currentVersion: String, version: String?, sizeBytes: Lo
             }
         },
         confirmButton = {
-            if (!busy) TextButton(onClick = when {
+            if (!busy) TextButton(shape = SettingsShape, onClick = when {
                 ready -> onInstall
                 version != null -> onDownload
                 error != null -> onCheck
@@ -84,7 +84,7 @@ fun SettingsUpdateDialog(currentVersion: String, version: String?, sizeBytes: Lo
             })) }
         },
         dismissButton = {
-            if (busy || version != null || error != null) TextButton(onClick = onDismiss) {
+            if (busy || version != null || error != null) TextButton(shape = SettingsShape, onClick = onDismiss) {
                 Text(stringResource(if (progress != null) R.string.update_hide_download else R.string.update_later))
             }
         },

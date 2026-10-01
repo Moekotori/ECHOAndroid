@@ -35,7 +35,6 @@ internal fun SettingsServicesContent(
     onSaveListenBrainzToken: (String) -> Unit,
     onDisconnectListenBrainz: () -> Unit,
     onSaveSetlistFmApiKey: (String?) -> Unit,
-    onOpenConnect: () -> Unit,
 ) {
     var lastFmApiKeyInput by rememberSaveable(lastFmApiKey) { mutableStateOf(lastFmApiKey.orEmpty()) }
     var lastFmSecretInput by rememberSaveable(lastFmSharedSecret) { mutableStateOf(lastFmSharedSecret.orEmpty()) }
@@ -86,16 +85,6 @@ internal fun SettingsServicesContent(
             detail = stringResource(R.string.settings_pc_handoff_detail),
             checked = pcHandoffEnabled,
             onCheckedChange = onPcHandoffEnabledChange,
-        )
-        SettingsActionRow(
-            title = stringResource(R.string.settings_connect_pc),
-            detail = if (pcHandoffEnabled) {
-                stringResource(R.string.settings_connect_pc_detail)
-            } else {
-                stringResource(R.string.settings_connect_pc_disabled)
-            },
-            enabled = pcHandoffEnabled,
-            onClick = onOpenConnect,
         )
     }
 }

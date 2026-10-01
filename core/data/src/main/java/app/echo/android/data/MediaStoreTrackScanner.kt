@@ -701,6 +701,7 @@ class MediaStoreTrackScanner(
             id = trackId,
             contentUri = contentUri,
             title = title,
+            fileName = fileName,
             artist = artist,
             album = album,
             albumArtist = albumArtist,
@@ -895,10 +896,10 @@ class MediaStoreTrackScanner(
     }
 
     private fun localFileTagBackfillMarker(): java.io.File =
-        java.io.File(appContext.filesDir, "local-file-tag-backfill-v4")
+        java.io.File(appContext.filesDir, "local-file-tag-backfill-v5")
 
     private fun aggregationKeyBackfillMarker(): java.io.File =
-        java.io.File(appContext.filesDir, "library-aggregation-keys-v2")
+        java.io.File(appContext.filesDir, "library-aggregation-keys-v3")
 
     internal fun readSampleRateHz(contentUri: String): Int? =
         runCatching {

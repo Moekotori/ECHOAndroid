@@ -98,12 +98,15 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT id, title, artist, relativePath, contentUri
+        SELECT id, title, artist, relativePath, contentUri, fileName
         FROM library_tracks
         WHERE source = 'mediastore' OR source = 'saf'
         """,
     )
     suspend fun getLocalM3uMatchRows(): List<M3uMatchRow>
+
+    @Query("SELECT id FROM library_tracks WHERE id > :after ORDER BY id LIMIT 500")
+    suspend fun backupIdsAfter(after: String): List<String>
 
     @Query("SELECT * FROM library_tracks WHERE contentUri = :contentUri LIMIT 1")
     suspend fun getTrackByContentUri(contentUri: String): LibraryTrackEntity?
@@ -408,6 +411,8 @@ interface LibraryTrackDao {
         """,
     )
     suspend fun getRemoteAlbumSummary(source: String, albumKey: String): AlbumSummary?
+    @Query("SELECT albumKey, title, albumArtist, artist, artworkUri, trackCount, durationMs, year, addedAtSeconds FROM library_album_summaries WHERE isRemote = 1 AND (title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%') ORDER BY title COLLATE NOCASE LIMIT 30")
+    suspend fun searchRemoteAlbumSummaries(query: String): List<AlbumSummary>
 
     @Query(
         """
@@ -469,7 +474,7 @@ interface LibraryTrackDao {
     @Query(
         """
         SELECT * FROM library_tracks
-        WHERE source IN ('mediastore', 'saf') AND artistKey = :artistKey
+        WHERE source IN ('mediastore', 'saf') AND id IN (SELECT trackId FROM library_track_artists WHERE artistKey = :artistKey)
           AND (:query IS NULL OR instr(lower(title), lower(:query)) > 0
                OR instr(lower(COALESCE(album, '')), lower(:query)) > 0)
         ORDER BY
@@ -492,7 +497,7 @@ interface LibraryTrackDao {
         FROM library_album_summaries
         WHERE isRemote = 0 AND albumKey IN (
             SELECT DISTINCT albumKey FROM library_tracks
-            WHERE artistKey = :artistKey AND source IN ('mediastore', 'saf')
+            WHERE id IN (SELECT trackId FROM library_track_artists WHERE artistKey = :artistKey) AND source IN ('mediastore', 'saf')
         )
         ORDER BY year DESC, title COLLATE NOCASE ASC, albumKey ASC
         """,
@@ -599,7 +604,7 @@ interface LibraryTrackDao {
         """
         SELECT * FROM library_tracks
         WHERE (source = 'mediastore' OR source = 'saf')
-          AND artistKey = :artistKey
+          AND id IN (SELECT trackId FROM library_track_artists WHERE artistKey = :artistKey)
         ORDER BY
             album COLLATE NOCASE ASC,
             CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
@@ -696,7 +701,7 @@ interface LibraryTrackDao {
         """
         SELECT * FROM library_tracks
         WHERE (source = 'mediastore' OR source = 'saf')
-          AND artistKey = :artistKey
+          AND id IN (SELECT trackId FROM library_track_artists WHERE artistKey = :artistKey)
         ORDER BY
             album COLLATE NOCASE ASC,
             CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
@@ -1015,7 +1020,22 @@ interface LibraryTrackDao {
     suspend fun getTrackAlbumKeys(source: String): List<TrackAlbumKeyRow>
 
     @Upsert
-    suspend fun upsertBatch(tracks: List<LibraryTrackEntity>)
+    suspend fun upsertTrackRows(tracks: List<LibraryTrackEntity>)
+
+    @Query("DELETE FROM library_track_artists WHERE trackId IN (:ids)")
+    suspend fun deleteArtistMemberships(ids: List<String>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertArtistMemberships(rows: List<LibraryTrackArtistEntity>)
+
+    @Transaction
+    suspend fun upsertBatch(tracks: List<LibraryTrackEntity>) {
+        if (tracks.isEmpty()) return
+        upsertTrackRows(tracks)
+        deleteArtistMemberships(tracks.map { it.id })
+        val memberships = tracks.flatMap(LibraryArtistPolicy::memberships)
+        memberships.chunked(500).forEach { insertArtistMemberships(it) }
+    }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFtsBatch(tracks: List<LibraryTrackFtsEntity>)
@@ -1195,7 +1215,7 @@ interface LibraryTrackDao {
                 SELECT 1
                 FROM library_tracks AS matched_track
                 WHERE (matched_track.source = 'mediastore' OR matched_track.source = 'saf')
-                  AND matched_track.artistKey = library_artist_summaries.artistKey
+                  AND matched_track.id IN (SELECT trackId FROM library_track_artists WHERE artistKey = library_artist_summaries.artistKey)
                   AND (
                     matched_track.normalizedTitle LIKE '%' || lower(:query) || '%'
                     OR matched_track.normalizedArtist LIKE '%' || lower(:query) || '%'
@@ -1232,7 +1252,7 @@ interface LibraryTrackDao {
         var keys = tracks.toSummaryKeySet()
         getSummaryKeyRows(tracks.map { it.id }).forEach { keys += it.toSummaryKeySet() }
         upsertBatchWithFts(tracks)
-        rebuildLibrarySummariesForKeys(keys.albumKeys, keys.artistKeys, keys.folderKeys)
+        rebuildLibrarySummariesForKeys(keys.albumKeys, keys.artistKeys, keys.folderKeys, keys.genreKeys)
     }
 
     @Query("SELECT DISTINCT playlistId FROM library_playlist_tracks WHERE trackId IN (:ids)")
@@ -1267,7 +1287,7 @@ interface LibraryTrackDao {
         if (playlistIds.isNotEmpty()) refreshPlaylistTrackCounts(playlistIds)
         deleteTracksByIds(ids)
         deleteFtsByTrackIds(ids)
-        rebuildLibrarySummariesForKeys(keys.albumKeys, keys.artistKeys, keys.folderKeys)
+        rebuildLibrarySummariesForKeys(keys.albumKeys, keys.artistKeys, keys.folderKeys, keys.genreKeys)
     }
 
     @Query("INSERT OR REPLACE INTO library_favorites (trackId, favoritedAtEpochMs) SELECT :targetId, MAX(favoritedAtEpochMs) FROM library_favorites WHERE trackId IN (:oldId, :targetId) GROUP BY 'merged'")
@@ -1294,6 +1314,12 @@ interface LibraryTrackDao {
     @Query("DELETE FROM library_playback_stats WHERE trackId = :oldId")
     suspend fun deleteMergedPlaybackReference(oldId: String)
 
+    @Query("INSERT OR IGNORE INTO library_bookmarks (id, trackId, positionMs, label, titleSnapshot, artistSnapshot, uriSnapshot, durationSnapshot) SELECT :targetId || ':' || positionMs, :targetId, positionMs, label, titleSnapshot, artistSnapshot, uriSnapshot, durationSnapshot FROM library_bookmarks WHERE trackId = :oldId")
+    suspend fun mergeBookmarkReferences(oldId: String, targetId: String)
+
+    @Query("DELETE FROM library_bookmarks WHERE trackId = :oldId")
+    suspend fun deleteMergedBookmarks(oldId: String)
+
     /** Identity and all user-owned references move together, or roll back together. */
     @Transaction
     suspend fun mergeScanDuplicate(oldId: String, targetId: String) {
@@ -1309,6 +1335,8 @@ interface LibraryTrackDao {
         refreshMergedPlaylistCounts(targetId)
         mergePlaybackReferences(oldId, targetId)
         deleteMergedPlaybackReference(oldId)
+        mergeBookmarkReferences(oldId, targetId)
+        deleteMergedBookmarks(oldId)
         upsertScanBatch(listOf(merged))
         deleteScanBatch(listOf(oldId))
     }
@@ -1374,7 +1402,7 @@ interface LibraryTrackDao {
     @Query(EchoLibraryDatabase.RebuildAlbumSummariesSql)
     suspend fun insertAlbumSummariesFromTracks()
 
-    @Query(EchoLibraryDatabase.RebuildArtistSummariesSql)
+    @Query(LibraryArtistIndexSql.Rebuild)
     suspend fun insertArtistSummariesFromTracks()
 
     @Query(EchoLibraryDatabase.RebuildFolderSummariesSql)
@@ -1388,7 +1416,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT albumKey, artistKey, relativePath, source, genreKey
+        SELECT albumKey, artistKey, relativePath, source, genreKey, artist
         FROM library_tracks
         WHERE id IN (:ids)
         """,
@@ -1410,7 +1438,7 @@ interface LibraryTrackDao {
     @Query(EchoLibraryDatabase.RebuildAlbumSummariesForKeysSql)
     suspend fun insertAlbumSummariesForKeys(keys: List<String>)
 
-    @Query(EchoLibraryDatabase.RebuildArtistSummariesForKeysSql)
+    @Query(LibraryArtistIndexSql.RebuildForKeys)
     suspend fun insertArtistSummariesForKeys(keys: List<String>)
 
     @Query(EchoLibraryDatabase.RebuildFolderSummariesForKeysSql)

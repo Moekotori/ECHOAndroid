@@ -43,7 +43,7 @@ class LyricsLineAtPositionTest {
     }
 
     @Test
-    fun notificationLinesSkipBlankAndKeepTimes() {
+    fun notificationLinesKeepSilenceBoundaries() {
         val lyrics = EchoLyrics(
             lines = listOf(
                 EchoLyricLine(0, text = "One"),
@@ -51,6 +51,17 @@ class LyricsLineAtPositionTest {
                 EchoLyricLine(3000, text = "Two"),
             ),
         )
-        assertEquals(listOf(0L to "One", 3000L to "Two"), LyricsLineAtPosition.notificationLines(lyrics))
+        assertEquals(listOf(0L to "One", 1500L to "", 3000L to "Two"), LyricsLineAtPosition.notificationLines(lyrics))
+    }
+
+    @Test
+    fun explicitEndClearsTextAndSchedulesTheGapAndOutro() {
+        val lyrics = EchoLyrics(lines = listOf(
+            EchoLyricLine(1000, 2000, "A"),
+            EchoLyricLine(5000, 6000, "B"),
+        ))
+        assertNull(LyricsLineAtPosition.primaryText(lyrics, 2000))
+        assertEquals(listOf(1000L to "A", 2000L to "", 5000L to "B", 6000L to ""),
+            LyricsLineAtPosition.notificationLines(lyrics))
     }
 }

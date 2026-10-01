@@ -932,9 +932,8 @@ class LibraryScanPolicyTest {
     }
 
     @Test
-    fun unchangedFileKeepsCueMovementsWithoutRereading() {
-        assertEquals(
-            listOf("mediastore:4", "mediastore:4#cue:1"),
+    fun unchangedAudioStillRefreshesIndependentCueMetadata() {
+        assertNull(
             LibraryScanPolicy.rememberUnchangedCueIds("mediastore:4", listOf("mediastore:4#cue:1"), hasCueSheet = true),
         )
         assertNull(
@@ -943,6 +942,8 @@ class LibraryScanPolicyTest {
         assertNull(
             LibraryScanPolicy.rememberUnchangedCueIds("mediastore:4", listOf("mediastore:4#cue:1"), hasCueSheet = false),
         )
+        assertEquals(listOf("mediastore:4"),
+            LibraryScanPolicy.rememberUnchangedCueIds("mediastore:4", emptyList(), hasCueSheet = false))
     }
 
     @Test

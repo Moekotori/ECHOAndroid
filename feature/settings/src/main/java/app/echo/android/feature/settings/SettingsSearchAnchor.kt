@@ -3,7 +3,6 @@ package app.echo.android.feature.settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,12 +26,13 @@ internal val LocalSettingsSearchFocus = compositionLocalOf<SettingsSearchFocus?>
 @Composable
 internal fun Modifier.settingsSearchAnchor(title: String): Modifier {
     val focus = LocalSettingsSearchFocus.current
+    // Ordinary rows need no requester, size state or layout-driven coroutine.
+    if (focus?.title != title) return this
     val requester = remember { BringIntoViewRequester() }
     val density = LocalDensity.current
     var size by remember { mutableStateOf(IntSize.Zero) }
-    val focused = focus?.title == title
     LaunchedEffect(focus, title, size) {
-        if (focused && size != IntSize.Zero) {
+        if (size != IntSize.Zero) {
             withFrameNanos { }
             // The mini player and dock float over the bottom of the scroll viewport.
             val visibleTopHeight = minOf(size.height.toFloat(), with(density) { 64.dp.toPx() })
@@ -42,10 +42,8 @@ internal fun Modifier.settingsSearchAnchor(title: String): Modifier {
             ))
         }
     }
-    return this.bringIntoViewRequester(requester).onSizeChanged { size = it }.then(
-        if (focused) Modifier.background(
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-            RoundedCornerShape(12.dp),
-        ) else Modifier,
+    return this.bringIntoViewRequester(requester).onSizeChanged { size = it }.background(
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+        SettingsShape,
     )
 }

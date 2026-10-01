@@ -8,16 +8,23 @@ package app.echo.android.data
 internal object LibraryAlbumGrouping {
     fun reconcile(tracks: List<LibraryTrackEntity>): List<LibraryTrackEntity> {
         val changed = ArrayList<LibraryTrackEntity>()
-        tracks
+        val desired = tracks
             .filter { LibraryScanPolicy.isLocalLibrarySource(it.source) }
+            .map { track -> track.copy(albumKey = libraryAlbumKey(
+                albumNameForKey(track.normalizedAlbum ?: track.album?.normalizedForSearch()),
+                track.normalizedAlbumArtist ?: track.albumArtist?.normalizedForSearch(),
+                track.normalizedArtist ?: track.artist.normalizedForSearch(),
+            )) }
             .groupBy(::groupingIdentity)
-            .forEach { (identity, group) ->
-                if (!identity.canReconcile || group.size < 2) return@forEach
-                val winner = winningAlbumKey(identity.album, group) ?: return@forEach
-                group.forEach { track ->
-                    if (track.albumKey != winner) changed += track.copy(albumKey = winner)
-                }
+            .flatMap { (identity, group) ->
+                val winner = if (identity.canReconcile && group.size >= 2 &&
+                    identity.folder?.substringAfterLast('/') !in SharedFolderNames) winningAlbumKey(identity.album, group) else null
+                if (winner == null) group else group.map { it.copy(albumKey = winner) }
             }
+            .associateBy { it.id }
+        tracks.forEach { track ->
+            desired[track.id]?.takeIf { it.albumKey != track.albumKey }?.let(changed::add)
+        }
         return changed
     }
 
@@ -62,12 +69,16 @@ internal object LibraryAlbumGrouping {
         val albumArtists = group.mapNotNull { track ->
             track.normalizedAlbumArtist?.takeIf { it.isNotBlank() }
                 ?: track.albumArtist?.normalizedForSearch()?.takeIf { it.isNotBlank() }
-        }
+        }.mapNotNull(::canonicalAlbumArtistKey).distinct()
+        // Explicit conflicting owners are separate releases, even in a shared download folder.
+        if (albumArtists.size > 1) return null
         if (albumArtists.isNotEmpty()) {
-            val preferred = albumArtists.firstOrNull(LibraryMetadataSentinels::isVariousArtists)
-                ?: albumArtists.groupingBy { it }.eachCount().maxBy { it.value }.key
+            val preferred = albumArtists.single()
             return libraryAlbumKey(album, preferred, group.first().normalizedArtist)
         }
+        val credited = group.map { LibraryArtistPolicy.keys(it.artist) }
+        val common = credited.reduce { first, next -> first.intersect(next) }
+        if (common.size == 1) return libraryAlbumKey(album, common.single(), null)
         val artistKeys = group.mapTo(linkedSetOf()) { it.artistKey }
         if (artistKeys.size > 1) {
             return libraryAlbumKey(album, VariousArtistsKey, null)
@@ -97,3 +108,5 @@ private val DiscFolderRegex = Regex(
     """^(?:disc|disk|cd|光盘|碟)\s*\.?\s*\d+$""",
     RegexOption.IGNORE_CASE,
 )
+
+private val SharedFolderNames = setOf("download", "downloads", "music", "audio", "音乐", "下载")

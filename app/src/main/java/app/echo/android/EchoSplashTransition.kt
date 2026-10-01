@@ -93,7 +93,7 @@ internal fun SplashScreen.installEchoExitTransition(
         val lightweight = mode.isLightweight
         // Keep the hand-off rhythm independent of whether settings finished loading.
         // Zero slope at both ends avoids a sudden kick from the stationary system icon.
-        val duration = 420L
+        val duration = 280L
         val easing = PathInterpolator(0.4f, 0f, 0.2f, 1f)
         var removed = false
         lateinit var observer: DefaultLifecycleObserver

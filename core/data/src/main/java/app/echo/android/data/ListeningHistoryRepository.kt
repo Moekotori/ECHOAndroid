@@ -1,6 +1,10 @@
 package app.echo.android.data
 
 import androidx.room.withTransaction
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.map
+import app.echo.android.model.playback.PlaybackHistoryEntry
 import app.echo.android.model.playback.ListeningStats
 import app.echo.android.model.playback.ListeningStatsEntry
 import app.echo.android.model.playback.ListeningStatsRange
@@ -9,6 +13,8 @@ import java.time.Instant
 import java.time.ZoneId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /** 听歌历史的读写入口。聚合都在 SQL 里完成，不把整表读进内存。 */
 class ListeningHistoryRepository(
@@ -17,10 +23,29 @@ class ListeningHistoryRepository(
     private val now: () -> Long = System::currentTimeMillis,
 ) {
     private val dao: LibraryPlayEventDao get() = database.playEventDao()
+    private val writes = Mutex()
+    private var clearedThroughEpochMs = Long.MIN_VALUE
 
-    suspend fun recordListen(listen: ListeningHistoryListen): Long {
+    fun pagedHistory(query: String, range: ListeningStatsRange) = Pager(
+        config = PagingConfig(pageSize = 40, initialLoadSize = 40, maxSize = 160, enablePlaceholders = false),
+        pagingSourceFactory = {
+            dao.pageHistory(playbackHistoryQuery(query, ListeningHistoryPolicy.rangeStartEpochMs(range, now(), zone())))
+        },
+    ).flow.map { page ->
+        page.map { row ->
+            val event = row.event
+            PlaybackHistoryEntry(event.id, event.trackId, event.title, event.artist, event.album,
+                event.artworkUri, event.playedAtEpochMs, event.listenedMs, row.canReplay)
+        }
+    }
+
+    suspend fun deleteEvent(id: Long) = dao.deleteEvent(id)
+
+    suspend fun recordListen(listen: ListeningHistoryListen): Long = writes.withLock {
+        // A listen that started before Clear must not reappear from a queued recorder write.
+        if (listen.startedAtEpochMs <= clearedThroughEpochMs) return@withLock 0L
         val local = Instant.ofEpochMilli(listen.startedAtEpochMs).atZone(zone())
-        return dao.insert(
+        dao.insert(
             LibraryPlayEventEntity(
                 trackId = listen.trackId,
                 title = listen.title,
@@ -71,7 +96,10 @@ class ListeningHistoryRepository(
         }
     }
 
-    suspend fun clear() = dao.clear()
+    suspend fun clear() = writes.withLock {
+        dao.clear()
+        clearedThroughEpochMs = now()
+    }
 
     private companion object {
         const val DEFAULT_RANK_LIMIT = 10

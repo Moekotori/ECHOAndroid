@@ -39,25 +39,25 @@ internal fun NowPlayingBackdrop(
         lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
     if (!LocalEchoDarkTheme.current) {
         val scheme = MaterialTheme.colorScheme
-        // Preserve a light reading surface while letting the current cover tint it.
+        // Carry the cover's colors across the whole light surface, including the controls.
         val lightWash = palette.copy(
-            vibrant = lerp(scheme.surface, palette.vibrant, 0.12f),
-            deep = lerp(scheme.surface, palette.soft, 0.10f),
-            soft = lerp(scheme.surface, palette.soft, 0.08f),
+            vibrant = lerp(scheme.background, palette.vibrant, 0.38f),
+            deep = lerp(scheme.background, palette.soft, 0.30f),
+            soft = lerp(scheme.background, palette.soft, 0.26f),
         )
         Box(modifier) {
             BlurredArtworkBackground(
                 artworkUri = artworkUri,
                 palette = lightWash,
                 modifier = Modifier.fillMaxSize(),
-                artworkScale = 1.20f,
+                artworkScale = 1.32f,
                 artworkBlur = 28.dp,
-                artworkAlpha = 0.16f,
-                overlayStartAlpha = 0.54f,
-                overlayMidAlpha = 0.66f,
-                overlayEndAlpha = 0.90f,
+                artworkAlpha = 0.46f,
+                overlayStartAlpha = 0.24f,
+                overlayMidAlpha = 0.32f,
+                overlayEndAlpha = 0.58f,
             )
-            EchoAmbientLight(palette.vibrant, lightActive, Modifier.fillMaxSize(), strength = { 1f - 0.5f * reveal() })
+            EchoAmbientLight(palette.vibrant, lightActive, Modifier.fillMaxSize(), strength = { 0.5f - 0.25f * reveal() })
         }
         return
     }

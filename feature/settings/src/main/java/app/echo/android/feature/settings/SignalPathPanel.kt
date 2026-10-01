@@ -29,7 +29,7 @@ internal fun SignalPathPanel(
     var expanded by rememberSaveable { mutableStateOf(false) }
     val live = status.isPlaying && status.state != EchoPlaybackState.Error
     // A route or a setting alone cannot verify bit-perfect transport.
-    val verified = live && d.usbExclusiveStreaming && d.bitPerfectState == EchoBitPerfectState.Direct
+    val verified = status.hasVerifiedUsbDirect()
     val label = when {
         !live -> playbackStateLabel(status.state)
         verified -> stringResource(R.string.path_verified)

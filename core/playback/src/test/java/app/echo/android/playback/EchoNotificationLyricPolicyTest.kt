@@ -11,11 +11,37 @@ import org.junit.Test
 
 class EchoNotificationLyricPolicyTest {
     @Test
-    fun documentDropsUnsyncedAndBlankLines() {
+    fun documentDropsUnsyncedAndRequiresSungContent() {
         assertNull(EchoNotificationLyricPolicy.document("track", listOf(-1L to "plain", 1000L to "  ")))
         val doc = EchoNotificationLyricPolicy.document("track", listOf(0L to "One", 2000L to "Two"))
         assertEquals("track", doc?.trackId)
         assertEquals(2, doc?.lines?.size)
+    }
+
+    @Test
+    fun silenceBoundaryClearsNotificationAndFloatingSnapshot() {
+        val lyrics = EchoLyrics(lines = listOf(
+            EchoLyricLine(1000, 2000, "A"),
+            EchoLyricLine(2000, 5000, ""),
+            EchoLyricLine(5000, text = "B"),
+        ))
+        val doc = EchoNotificationLyricPolicy.document("t", listOf(1000L to "A", 2000L to "", 5000L to "B"))!!
+        assertEquals(2000L, EchoNotificationLyricPolicy.nextStartMs(doc.lines, 1500))
+        assertNull(EchoNotificationLyricPolicy.primaryText(doc.lines, 3000))
+        val gap = EchoNotificationLyricPolicy.snapshot("t", lyrics, doc.lines, 3000, true, 1f, 0L)
+        assertNull(gap.current)
+        assertEquals("A", gap.previous?.text)
+        assertEquals("B", gap.next?.text)
+    }
+
+    @Test
+    fun explicitEndClearsSnapshotWithoutABlankLine() {
+        val lines = listOf(EchoLyricLine(1000, 2000, "A"), EchoLyricLine(5000, 6000, "B"))
+        val gap = EchoNotificationLyricPolicy.snapshotFromLines("t", lines, 2000, true, 1f, 0L)
+        assertNull(gap.current)
+        assertEquals("A", gap.previous?.text)
+        assertEquals("B", gap.next?.text)
+        assertNull(EchoNotificationLyricPolicy.snapshotFromLines("t", lines, 6000, true, 1f, 0L).current)
     }
 
     @Test

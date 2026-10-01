@@ -29,7 +29,7 @@ internal fun LyricsPageBackdrop(
     animationsVisible: Boolean,
     modifier: Modifier,
 ) {
-    if (LocalLyricsPageStyle.current == EchoLyricsPageStyle.Paper) {
+    if (LocalLyricsPageStyle.current == EchoLyricsPageStyle.Paper || LocalLyricsPageStyle.current.isAfterglow) {
         Box(modifier.background(LocalEchoTheme.current.bgTop))
     } else {
         Box(modifier) {
@@ -50,7 +50,7 @@ internal fun LyricsPageTheme(
         content()
         return
     }
-    val dark = style == EchoLyricsPageStyle.Mist
+    val dark = style != EchoLyricsPageStyle.Paper
     val tokens = remember(dark) { echoThemeTokens(EchoColorTheme.Echo, dark) }
     val scheme = remember(tokens) {
         val base = if (dark) darkColorScheme() else lightColorScheme()
@@ -87,32 +87,45 @@ internal fun LyricsPageStyleSelector(style: EchoLyricsPageStyle, onSelect: (Stri
     Column(Modifier.fillMaxWidth().selectableGroup()) {
         Text(stringResource(R.string.lyrics_page_style), style = MaterialTheme.typography.titleSmall)
         Spacer(Modifier.height(10.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-            EchoLyricsPageStyle.entries.forEach { option ->
-                val selected = style == option
-                Column(
-                    Modifier.weight(1f)
-                        .selectable(selected = selected, role = Role.RadioButton, onClick = { onSelect(option.id) })
-                        .padding(vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(5.dp),
-                ) {
-                    Text(
-                        stringResource(if (option == EchoLyricsPageStyle.Mist) R.string.lyrics_style_mist else R.string.lyrics_style_paper),
-                        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        stringResource(if (option == EchoLyricsPageStyle.Mist) R.string.lyrics_style_mist_detail else R.string.lyrics_style_paper_detail),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    Spacer(Modifier.height(7.dp))
-                    Box(Modifier.fillMaxWidth().height(2.dp).background(
-                        if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-                    ))
+        // Temporarily hide Afterglow choices while retaining saved style compatibility.
+        EchoLyricsPageStyle.entries.filterNot { it.isAfterglow }.chunked(2).forEach { options ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                options.forEach { option ->
+                    val selected = style == option
+                    Column(
+                        Modifier.weight(1f)
+                            .selectable(selected = selected, role = Role.RadioButton, onClick = { onSelect(option.id) })
+                            .padding(vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(5.dp),
+                    ) {
+                        Text(
+                            stringResource(when (option) {
+                                EchoLyricsPageStyle.Mist -> R.string.lyrics_style_mist
+                                EchoLyricsPageStyle.Paper -> R.string.lyrics_style_paper
+                                EchoLyricsPageStyle.AfterglowMist -> R.string.afterglow_mist
+                                EchoLyricsPageStyle.AfterglowNight -> R.string.afterglow_night
+                            }),
+                            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            stringResource(when (option) {
+                                EchoLyricsPageStyle.Mist -> R.string.lyrics_style_mist_detail
+                                EchoLyricsPageStyle.Paper -> R.string.lyrics_style_paper_detail
+                                EchoLyricsPageStyle.AfterglowMist -> R.string.afterglow_mist_detail
+                                EchoLyricsPageStyle.AfterglowNight -> R.string.afterglow_night_detail
+                            }),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Spacer(Modifier.height(7.dp))
+                        Box(Modifier.fillMaxWidth().height(2.dp).background(
+                            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                        ))
+                      }
+                  }
                 }
-            }
         }
     }
 }

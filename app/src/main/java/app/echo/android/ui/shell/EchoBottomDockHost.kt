@@ -15,12 +15,13 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.pager.PagerState
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -29,7 +30,6 @@ import app.echo.android.EchoAndroidViewModel
 import app.echo.android.EchoTab
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoContentMaxWidth
-import app.echo.android.design.echoTheme
 import app.echo.android.design.rememberSilkPagerFlingBehavior
 import app.echo.android.feature.player.MiniPlayer
 import app.echo.android.model.playback.EchoPlaybackStatus
@@ -57,6 +57,7 @@ internal fun EchoBottomDockHost(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     modifier: Modifier = Modifier,
+    animationsVisible: Boolean = true,
     /** 投送到 DLNA / Chromecast 时换成远端进度。 */
     positionFlow: StateFlow<PlaybackPositionState> = viewModel.playbackPosition,
 ) {
@@ -92,25 +93,23 @@ internal fun EchoBottomDockHost(
             visibilityThreshold = 0.01f,
         )
     }
-    val theme = echoTheme()
+    val scheme = MaterialTheme.colorScheme
+    val dividerColor = if (darkTheme) scheme.outlineVariant else scheme.outlineVariant.copy(alpha = 0.55f)
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color.Transparent,
-                        theme.night.copy(alpha = 0.50f),
-                        theme.night.copy(alpha = 0.94f),
-                    ),
-                ),
-            )
-            .navigationBarsPadding()
-            .padding(top = 6.dp, bottom = 4.dp),
+            .background(scheme.surface)
+            .drawWithCache {
+                onDrawBehind {
+                    drawLine(dividerColor, Offset.Zero, Offset(size.width, 0f), (if (darkTheme) 1.dp else 0.5.dp).toPx())
+                }
+            }
+            .navigationBarsPadding(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // Keep the player mounted: expanding navigation must not restart artwork or gestures.
         MiniPlayer(
+            animationsVisible = animationsVisible,
             status = playbackStatus,
             positionState = playbackPosition,
             onPlayPause = onPlayPause,
@@ -122,8 +121,7 @@ internal fun EchoBottomDockHost(
             onPrevious = onPrevious,
             modifier = Modifier
                 .widthIn(max = LocalEchoContentMaxWidth.current)
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp),
+                .fillMaxWidth(),
         )
         // Reveal from the bottom so navigation stays anchored while the player moves above it.
         AnimatedVisibility(

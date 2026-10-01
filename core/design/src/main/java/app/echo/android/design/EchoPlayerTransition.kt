@@ -8,6 +8,7 @@ import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
@@ -17,6 +18,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.State
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -88,16 +92,25 @@ fun EchoPlayerArtwork(
 fun EchoExpandedPlayer(
     visible: Boolean,
     modifier: Modifier = Modifier,
+    onHidden: () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    val presentation = remember { MutableTransitionState(false) }
+    presentation.targetState = visible
+    val hidden = rememberUpdatedState(onHidden)
+    LaunchedEffect(presentation.isIdle, presentation.currentState, visible) {
+        if (presentation.isIdle && !presentation.currentState && !visible) hidden.value()
+    }
     AnimatedVisibility(
-        visible = visible,
+        visibleState = presentation,
         modifier = modifier,
         enter = fadeIn(tween(if (lightweight) 90 else 320, easing = EchoMotion.Silk)),
         exit = fadeOut(tween(if (lightweight) 90 else 280, easing = EchoMotion.SilkExit)),
     ) {
-        CompositionLocalProvider(LocalPlayerVisibilityScope provides this, content = content)
+        CompositionLocalProvider(LocalPlayerVisibilityScope provides this) {
+            EchoPageSurface(active = visible, content = content)
+        }
     }
 }
 

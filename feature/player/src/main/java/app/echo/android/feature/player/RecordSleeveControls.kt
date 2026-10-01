@@ -75,17 +75,12 @@ internal fun RecordSleeveTransport(
             PlayerControlIcons.Previous, stringResource(R.string.feature_player_previous_af0264),
             onClick = { haptics.tick(); onPrevious() }, iconSize = 34.dp,
         )
-        IconButton(
+        PlayerControlButton(
+            icon = if (isPlaying) PlayerControlIcons.Pause else PlayerControlIcons.Play,
+            description = stringResource(R.string.feature_player_play_or_pause_37a70f),
             onClick = { haptics.confirm(); onPlayPause() },
-            modifier = Modifier.size(64.dp).background(RecordSleeveStyle.Wine, CircleShape),
-        ) {
-            Icon(
-                if (isPlaying) PlayerControlIcons.Pause else PlayerControlIcons.Play,
-                contentDescription = stringResource(R.string.feature_player_play_or_pause_37a70f),
-                tint = RecordSleeveStyle.Paper,
-                modifier = Modifier.size(36.dp),
-            )
-        }
+            touchSize = 64.dp, iconSize = 40.dp, tint = RecordSleeveStyle.Wine,
+        )
         RecordSleeveIconButton(
             PlayerControlIcons.Next, stringResource(R.string.feature_player_next_d67904),
             onClick = { haptics.tick(); onNext() }, iconSize = 34.dp,

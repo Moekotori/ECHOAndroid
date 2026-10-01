@@ -25,7 +25,7 @@ object LyricsLineAtPosition {
         val index = lastStartedIndex(lines, positionMs)
         if (index < 0) return null
         val line = lines[index]
-        if (line.startMs < 0L || line.text.isBlank()) return null
+        if (line.startMs < 0L || line.text.isBlank() || line.endMs?.let { positionMs >= it } == true) return null
         return line
     }
 
@@ -41,9 +41,17 @@ object LyricsLineAtPosition {
 
     fun notificationLines(lyrics: EchoLyrics): List<Pair<Long, String>> {
         if (!lyrics.isSynced) return emptyList()
-        return lyrics.lines.mapNotNull { line ->
-            val text = line.text.trim()
-            if (line.startMs < 0L || text.isEmpty()) null else line.startMs to text
+        return buildList {
+            lyrics.lines.forEachIndexed { index, line ->
+                if (line.startMs < 0L) return@forEachIndexed
+                add(line.startMs to line.text.trim())
+                val end = line.endMs
+                val nextStart = lyrics.lines.getOrNull(index + 1)?.startMs
+                // Keep silence boundaries so service scheduling clears the last sung line.
+                if (end != null && end > line.startMs && (nextStart == null || end < nextStart)) {
+                    add(end to "")
+                }
+            }
         }
     }
 }

@@ -4,6 +4,15 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class EchoLyricsPageStyleTest {
+    @Test fun afterglowStylesRoundTripWithoutChangingExistingDefaults() {
+        assertEquals(EchoLyricsPageStyle.AfterglowMist, EchoLyricsPageStyle.fromId("afterglow_mist"))
+        assertEquals(EchoLyricsPageStyle.AfterglowNight, EchoLyricsPageStyle.fromId("afterglow_night"))
+        assertEquals("center", EchoLyricsPageStyle.AfterglowMist.defaultAlignment)
+        assertEquals("center", EchoLyricsPageStyle.AfterglowNight.defaultAlignment)
+        assertEquals(true, EchoLyricsPageStyle.AfterglowMist.isAfterglow)
+        assertEquals(false, EchoLyricsPageStyle.Mist.isAfterglow)
+        assertEquals(false, EchoLyricsPageStyle.Paper.isAfterglow)
+    }
     @Test fun unknownAndMissingStylesUseMist() {
         assertEquals(EchoLyricsPageStyle.Mist, EchoLyricsPageStyle.fromId(null))
         assertEquals(EchoLyricsPageStyle.Mist, EchoLyricsPageStyle.fromId("future_style"))

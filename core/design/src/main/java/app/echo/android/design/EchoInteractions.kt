@@ -159,10 +159,14 @@ fun rememberEchoContentMotion(): EchoContentMotion {
 }
 
 class EchoContentMotion internal constructor(private val lightweight: Boolean) {
-    fun pagePush() = if (lightweight) EchoMotion.stateChange() else EchoMotion.pagePush()
-    fun pagePop() = if (lightweight) EchoMotion.stateChange() else EchoMotion.pagePop()
+    fun pageFade() = EchoMotion.pageFade(lightweight)
+    fun pagePush() = if (lightweight) pageFade() else EchoMotion.pagePush()
+    fun pagePop() = if (lightweight) pageFade() else EchoMotion.pagePop()
     fun tabSwitch(forward: Boolean) =
-        if (lightweight) EchoMotion.stateChange() else EchoMotion.tabSwitch(forward)
+        if (lightweight) pageFade() else EchoMotion.tabSwitch(forward)
+
+    fun overlayEnter() = pagePush().targetContentEnter
+    fun overlayExit() = pagePop().initialContentExit
 
     /** Same-page body swap. Surrounding chrome must stay mounted. */
     fun sourceSwitch() = EchoMotion.stateChange()
@@ -176,8 +180,12 @@ fun rememberSilkPagerFlingBehavior(state: PagerState): TargetedFlingBehavior {
 }
 
 suspend fun PagerState.animateSilkToPage(page: Int, lightweight: Boolean) {
-    if (lightweight) scrollToPage(page)
-    else animateScrollToPage(page, animationSpec = EchoMotion.silkPagerSnapSpec(lightweight = false))
+    if (page == currentPage && !isScrollInProgress && currentPageOffsetFraction == 0f) return
+    animateScrollToPage(
+        page,
+        animationSpec = if (lightweight) tween(durationMillis = 100, easing = EchoMotion.Silk)
+            else EchoMotion.silkPagerSnapSpec(lightweight = false),
+    )
 }
 
 /**
@@ -193,13 +201,15 @@ fun rememberContentPagerNestedScroll(
     return remember(state, default, flingBehavior) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset =
-                default.onPreScroll(available, source)
+                if (source == NestedScrollSource.UserInput && !echoHorizontalGestureOwnsScroll(Offset.Zero, available)) Offset.Zero
+                else default.onPreScroll(available, source)
 
             override fun onPostScroll(
                 consumed: Offset,
                 available: Offset,
                 source: NestedScrollSource,
             ): Offset {
+                if (source == NestedScrollSource.UserInput && !echoHorizontalGestureOwnsScroll(consumed, available)) return Offset.Zero
                 if (source == NestedScrollSource.UserInput && available.x != 0f) {
                     val consumedX = -state.dispatchRawDelta(-available.x)
                     return Offset(x = consumedX, y = 0f)

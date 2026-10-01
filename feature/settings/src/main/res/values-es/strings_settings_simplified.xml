@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_density_standard">Estándar</string>
+    <string name="settings_density_comfortable">Amplia</string>
+    <string name="settings_density_custom">Personalizada · %1$s</string>
+    <string name="settings_font_advanced">Fuentes e importación</string>
+</resources>

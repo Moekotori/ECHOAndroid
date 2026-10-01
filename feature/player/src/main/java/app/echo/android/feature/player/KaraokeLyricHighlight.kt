@@ -121,6 +121,8 @@ internal class KaraokeHighlightClip {
     val completedPath: Path? get() = if (builtWords > 0) completed else null
     val currentWordPath: Path? get() = if (currentWordVisible) currentWord else null
     val currentWordFraction: Float get() = cachedPlan?.partialFraction ?: 0f
+    val currentWordIndex: Int get() = cachedPlan?.partialWord ?: -1
+    val completedWordCount: Int get() = cachedPlan?.completedWords ?: 0
 
     private class GlyphBounds(val bounds: Rect, val rtl: Boolean)
 

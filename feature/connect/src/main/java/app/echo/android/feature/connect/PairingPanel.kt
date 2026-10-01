@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.connect.EchoLinkDiscoveryPolicy
 import app.echo.android.connect.EchoPairingParser
@@ -32,6 +33,7 @@ import app.echo.android.model.connect.EchoSavedPcEndpoint
 
 @Composable
 internal fun PcLinkPanel(
+    librarySyncActions: LibrarySyncActions? = null,
     remoteState: EchoRemoteConnectionState,
     pcTitle: String,
     trackTitle: String,
@@ -47,6 +49,8 @@ internal fun PcLinkPanel(
     positionMs: Long,
     durationMs: Long,
     volume: Float,
+    volumeControlEnabled: Boolean = true,
+    volumeLockedReason: String? = null,
     outputMode: String = "",
     currentTrackId: String? = null,
     queueItems: List<EchoRemoteTrack> = emptyList(),
@@ -74,6 +78,16 @@ internal fun PcLinkPanel(
     active: Boolean = true,
     onOpenListening: (() -> Unit)? = null,
 ) {
+    var showLibrarySync by remember { mutableStateOf(false) }
+    var legacySync by remember { mutableStateOf(false) }
+    LaunchedEffect(remoteState, active) {
+        if (remoteState != EchoRemoteConnectionState.Connected || !active) showLibrarySync = false
+    }
+    if (showLibrarySync && librarySyncActions != null) {
+        val advanced = librarySyncActions.advanced
+        if (!legacySync && advanced != null) LibraryReconcileSheet(advanced,{ legacySync = true },{ showLibrarySync = false })
+        else LibrarySyncSheet(pcTitle, librarySyncActions) { showLibrarySync = false }
+    }
     val connected = remoteState == EchoRemoteConnectionState.Connected
     val busy = remoteState in listOf(EchoRemoteConnectionState.Pairing, EchoRemoteConnectionState.Connecting, EchoRemoteConnectionState.Reconnecting)
     var address by rememberSaveable(savedPcAddress) { mutableStateOf(savedPcAddress.orEmpty()) }
@@ -112,16 +126,22 @@ internal fun PcLinkPanel(
     }
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(if (connected || hasSaved) pcTitle else stringResource(L10nR.string.feature_connect_listen_together_with_pc_41d068),
-                style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(if (connected || hasSaved) pcTitle else stringResource(L10nR.string.remote_connect_title),
+                style = if (connected) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold, maxLines = if (connected) 1 else 2, overflow = TextOverflow.Ellipsis)
             Text(remoteConnectionLabel(remoteState), color = if (connected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelLarge)
-            ConnectNote(stringResource(L10nR.string.feature_connect_control_pc_playback_from_your_phone_or_browse_20f8b5))
+            if (!connected) {
+                ConnectNote(stringResource(L10nR.string.feature_connect_control_pc_playback_from_your_phone_or_browse_20f8b5))
+            }
         }
-        if (onOpenListening != null) {
+        if (onOpenListening != null && !connected) {
             ListenTogetherEntry(onOpen = onOpenListening)
         }
         remoteError?.takeIf { it.isNotBlank() }?.let { ConnectNote(it, error = true) }
+        if (connected && librarySyncActions != null) OutlinedButton(onClick = { showLibrarySync = true }, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(L10nR.string.sync_title))
+        }
         when {
             busy -> {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -138,6 +158,8 @@ internal fun PcLinkPanel(
                     positionMs = positionMs,
                     durationMs = durationMs,
                     volume = volume,
+                    volumeControlEnabled = volumeControlEnabled,
+                    volumeLockedReason = volumeLockedReason,
                     onPlayPause = onPlayPause,
                     onPrevious = onPrevious,
                     onNext = onNext,
@@ -152,11 +174,18 @@ internal fun PcLinkPanel(
                     active = active && musicPicker == null,
                 )
                 if (onHandoffPhoneToPc != null) {
-                    OutlinedButton(onClick = onHandoffPhoneToPc, modifier = Modifier.fillMaxWidth()) {
+                    TextButton(onClick = onHandoffPhoneToPc) {
                         Text(stringResource(L10nR.string.echo_link_handoff_phone))
                     }
                 }
-                TextButton(onClick = onDisconnect) { Text(stringResource(L10nR.string.feature_connect_disconnect_pc_fd446c)) }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    if (onOpenListening != null) {
+                        TextButton(onClick = onOpenListening) {
+                            Text(stringResource(L10nR.string.feature_connect_listen_together_title))
+                        }
+                    }
+                    TextButton(onClick = onDisconnect) { Text(stringResource(L10nR.string.feature_connect_disconnect_pc_fd446c)) }
+                }
             }
             else -> {
                 if (savedPcs.isNotEmpty() && !manual) {

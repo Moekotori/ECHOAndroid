@@ -10,22 +10,31 @@ import app.echo.android.data.LibraryTrackEntity
 import app.echo.android.R
 import app.echo.android.model.lyrics.EchoLyrics
 import java.io.File
+import app.echo.android.model.settings.EchoLyricsSource
+import app.echo.android.model.settings.EchoLyricsOptions
 
 class LocalLyricsResolver(
     private val context: Context,
 ) {
     private val contentResolver: ContentResolver = context.contentResolver
-    fun loadForTrack(track: LibraryTrackEntity): EchoLyrics? {
-        val candidates = buildCandidateNames(track)
-        return loadEmbeddedLyrics(track.contentUri)
-            ?: loadFromFileUri(track.contentUri, candidates)
-            ?: loadFromMediaStore(track, candidates)
+    fun loadForTrack(track: LibraryTrackEntity, order: List<EchoLyricsSource> = EchoLyricsSource.entries.toList()): EchoLyrics? {
+        val candidates by lazy { buildCandidateNames(track) }
+        EchoLyricsOptions(sourceOrder = order).normalized.sourceOrder.forEach { source ->
+            val result = if (source == EchoLyricsSource.Embedded) {
+                loadEmbeddedLyrics(track.contentUri)
+            } else {
+                val names = candidates.filter { it.endsWith(".spl", true) == (source == EchoLyricsSource.Spl) }
+                loadFromFileUri(track.contentUri, names) ?: loadFromMediaStore(track, names)
+            }
+            if (result != null) return result
+        }
+        return null
     }
 
     fun loadFromUri(uri: Uri): EchoLyrics? {
         val sourceLabel = displayName(uri) ?: uri.lastPathSegment
         return readText(uri)
-            ?.let { EchoLyricsParser.parse(it, sourceLabel = sourceLabel) }
+            ?.let { runCatching { EchoLyricsParser.parse(it, sourceLabel = sourceLabel) }.getOrNull() }
             ?.takeIf { it.lines.any { line -> line.text.isNotBlank() } }
     }
 
@@ -53,11 +62,12 @@ class LocalLyricsResolver(
 
         return candidates.asSequence()
             .map { File(parent, it) }
-            .firstOrNull { it.isFile && it.canRead() }
-            ?.let { file ->
-                readText(file)?.let { text -> EchoLyricsParser.parse(text, sourceLabel = file.name) }
+            .filter { it.isFile && it.canRead() }
+            .mapNotNull { file ->
+                readText(file)?.let { text -> runCatching { EchoLyricsParser.parse(text, sourceLabel = file.name) }.getOrNull() }
                     ?.takeIf { it.lines.any { line -> line.text.isNotBlank() } }
             }
+            .firstOrNull()
     }
 
     private fun loadEmbeddedLyrics(contentUri: String): EchoLyrics? {
@@ -80,7 +90,7 @@ class LocalLyricsResolver(
             MediaStore.Files.FileColumns._ID,
             MediaStore.Files.FileColumns.DISPLAY_NAME,
         )
-        val candidateLookup = candidates.associateBy { it.normalizedLyricsName() }
+        val candidateLookup = candidates.mapIndexed { index, name -> name.normalizedLyricsName() to index }.toMap()
         val displayNamePlaceholders = candidates.joinToString(",") { "?" }
         val selection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             "${MediaStore.Files.FileColumns.RELATIVE_PATH} = ? AND " +
@@ -98,6 +108,7 @@ class LocalLyricsResolver(
             ?.use { cursor ->
                 val idIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
                 val nameIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+                val matches = mutableListOf<Pair<Int, Uri>>()
                 while (cursor.moveToNext()) {
                     val id = cursor.getLong(idIndex)
                     val displayName = cursor.getString(nameIndex)
@@ -111,11 +122,12 @@ class LocalLyricsResolver(
                         continue
                     }
                     val lyricsUri = Uri.withAppendedPath(collection, id.toString())
-                    val parsed = readText(lyricsUri)
-                        ?.let { EchoLyricsParser.parse(it, sourceLabel = displayName) }
-                    if (parsed != null && parsed.lines.any { it.text.isNotBlank() }) return@use parsed
+                    matches += candidateLookup.getValue(displayName.normalizedLyricsName()) to lyricsUri
                 }
-                null
+                matches.sortedBy { it.first }.firstNotNullOfOrNull { (rank, uri) ->
+                    readText(uri)?.let { runCatching { EchoLyricsParser.parse(it, sourceLabel = candidates[rank]) }.getOrNull() }
+                        ?.takeIf { parsed -> parsed.lines.any { it.text.isNotBlank() } }
+                }
             }
     }
 
@@ -195,26 +207,11 @@ class LocalLyricsResolver(
 
     private fun String.normalizedLyricsName(): String =
         trim()
-            .substringBeforeLast('.', missingDelimiterValue = this)
             .lowercase()
             .replace(Regex("""[\s._\-]+"""), "")
 
     private companion object {
-        val LYRICS_EXTENSIONS = listOf(
-            ".lrc",
-            ".elrc",
-            ".lrcx",
-            ".yrc",
-            ".ttml",
-            ".srt",
-            ".vtt",
-            ".webvtt",
-            ".ass",
-            ".ssa",
-            ".qrc",
-            ".krc",
-            ".txt",
-        )
+        val LYRICS_EXTENSIONS = EchoLyricsParser.fileExtensions
     }
 }
 

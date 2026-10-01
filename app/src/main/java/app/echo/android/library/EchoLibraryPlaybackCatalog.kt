@@ -274,6 +274,7 @@ class EchoLibraryPlaybackCatalog(
             database.playlistDao()
                 .listPlaylistsForBrowse(LibrarySource.MediaStore.id, userLimit, userOffset)
                 .map { row ->
+                    virtualPlaylistItem(row.id)?.let { return@map it }
                     EchoPlaybackBrowseItem(
                         mediaId = EchoPlaybackLibraryIds.playlist(row.id),
                         title = row.name,
@@ -318,6 +319,12 @@ class EchoLibraryPlaybackCatalog(
     }
 
     private suspend fun virtualPlaylistItem(id: String): EchoPlaybackBrowseItem? {
+        if (id.startsWith(app.echo.android.model.library.EchoSmartPlaylistRule.IdPrefix)) {
+            val row = database.experienceDao().smartPlaylist(id) ?: return null
+            return EchoPlaybackBrowseItem(mediaId = EchoPlaybackLibraryIds.playlist(id), title = row.name,
+                subtitle = playlistCountSubtitle(row.trackCount), artworkUri = row.artworkUri,
+                browsable = true, playable = row.trackCount > 0, kind = EchoPlaybackBrowseKind.Playlist)
+        }
         if (LibraryFavoritePolicy.isLikedSongsId(id)) {
             return pinnedPlaylistItems().firstOrNull {
                 EchoPlaybackLibraryIds.playlistId(it.mediaId) == EchoPlaylist.LikedSongsId
@@ -334,6 +341,9 @@ class EchoLibraryPlaybackCatalog(
         limit: Int,
         offset: Int,
     ): List<EchoPlaybackBrowseItem>? {
+        if (playlistId.startsWith(app.echo.android.model.library.EchoSmartPlaylistRule.IdPrefix)) {
+            return database.trackDao().queryTracks(app.echo.android.data.smartPlaylistQuery(playlistId, limit, offset = offset)).map { it.toBrowseItem() }
+        }
         if (LibraryFavoritePolicy.isLikedSongsId(playlistId)) {
             return database.playlistDao().listFavoriteTracksForBrowse(limit, offset).map { it.toBrowseItem() }
         }

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_density_standard">标准</string>
+    <string name="settings_density_comfortable">宽松</string>
+    <string name="settings_density_custom">自定义 · %1$s</string>
+    <string name="settings_font_advanced">字体与导入</string>
+</resources>

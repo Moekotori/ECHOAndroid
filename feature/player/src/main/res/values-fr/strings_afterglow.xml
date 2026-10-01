@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="afterglow_mist">Afterglow · Brume</string>
+    <string name="afterglow_night">Afterglow · Nuit</string>
+    <string name="afterglow_mist_detail">Scènes pastel et lettres flottantes</string>
+    <string name="afterglow_night_detail">Ciel nocturne et orbites bleues et dorées</string>
+    <string name="afterglow_previous_line">Ligne précédente</string>
+    <string name="afterglow_next_line">Ligne suivante</string>
+    <string name="afterglow_palette">Couleurs</string>
+    <string name="afterglow_randomize">Changer la composition</string>
+    <string name="afterglow_scene">Scène</string>
+    <string name="afterglow_scene_auto">Suivre les paroles</string>
+    <string name="afterglow_scene_ridge">Crêtes de brume</string>
+    <string name="afterglow_scene_wisteria">Tonnelle de glycines</string>
+    <string name="afterglow_scene_lake">Brume du lac</string>
+    <string name="afterglow_scene_voyage">Voyage stellaire</string>
+    <string name="afterglow_scene_aurora">Aurore</string>
+    <string name="afterglow_scene_chart">Carte du ciel</string>
+    <string name="afterglow_show_controls">Afficher les commandes</string>
+    <string name="afterglow_hide_controls">Masquer les commandes</string>
+</resources>

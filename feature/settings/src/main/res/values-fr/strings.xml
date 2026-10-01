@@ -32,7 +32,7 @@
     <string name="settings_custom_saved_themes">Thèmes enregistrés</string>
     <string name="settings_custom_detail">Les modes clair et sombre restent lisibles. Les couleurs système teintent toujours les commandes.</string>
     <string name="settings_dynamic_color">Couleurs système</string>
-    <string name="settings_dynamic_color_detail">Utiliser les couleurs du fond d\'écran pour les commandes. Le verre Echo est conservé. Android 12+</string>
+    <string name="settings_dynamic_color_detail">Commandes aux couleurs du fond d\'écran</string>
     <string name="settings_dynamic_color_unavailable">Nécessite Android 12 ou plus récent</string>
     <string name="settings_playback_haptics">Retour haptique de lecture</string>
     <string name="settings_playback_haptics_detail">Retour clic et tick sur Lire, Pause et saut</string>
@@ -85,7 +85,7 @@
     <string name="settings_pause_on_disconnect_detail">Met en pause si casque, Bluetooth ou DAC USB se déconnecte</string>
     <string name="settings_resume_on_reconnect">Reprendre à la reconnexion</string>
     <string name="settings_resume_on_reconnect_detail">Reprend seulement après une pause due à une déconnexion</string>
-    <string name="settings_replay_gain">ReplayGain</string>
+    <string name="settings_replay_gain">Normaliser le volume</string>
     <string name="settings_replay_gain_detail">Uniformiser le volume avec les balises ReplayGain</string>
     <string name="settings_replay_gain_bypass">Enregistré, inutilisé en bit-perfect</string>
     <string name="settings_replay_gain_mode">Mode ReplayGain</string>

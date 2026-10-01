@@ -10,6 +10,16 @@ import org.junit.Test
 
 class FlacTagReaderTest {
     @Test
+    fun repeatedArtistAndAlbumArtistCommentsPreserveAllNames() {
+        val payload = comments("TITLE=Song", "ARTIST=AC/DC", "ARTIST=Artist B", "ARTIST=AC/DC",
+            "ALBUMARTIST=Owner A", "ALBUM ARTIST=Owner B")
+        val source = "fLaC".toByteArray() + block(0, ByteArray(34)) + block(0x84, payload)
+        val tags = readLocalAudioTags(source.inputStream())!!
+        assertEquals("AC/DC; Artist B", tags.artist)
+        assertEquals("Owner A; Owner B", tags.albumArtist)
+    }
+
+    @Test
     fun readsJapaneseUtf8TagsAndSkipsArtworkBeforeComments() {
         // Same tag values and metadata block ordering as the reported FLAC.
         val comments = comments("TITLE=六兆年と一夜物語", "ARTIST=KEMU VOXX/IA", "ALBUM=IA THE WORLD ～風～")

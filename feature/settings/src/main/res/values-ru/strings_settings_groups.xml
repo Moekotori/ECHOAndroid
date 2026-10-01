@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_section_listening">Настройки воспроизведения</string>
+    <string name="settings_section_runtime">Производительность и батарея</string>
+    <string name="settings_section_transition">Переходы между треками</string>
+    <string name="settings_section_volume">Обработка громкости</string>
+    <string name="settings_section_schedule">Автоматическая тёмная тема</string>
+    <string name="settings_section_readability">Размер текста</string>
+    <string name="settings_section_background_adjustments">Настройка фона</string>
+</resources>

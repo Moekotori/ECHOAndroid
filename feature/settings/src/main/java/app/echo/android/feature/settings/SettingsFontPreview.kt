@@ -4,12 +4,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -30,12 +30,12 @@ internal fun SettingsFontPreview(
     val family = echoFontFamilyForMode(mode, importedFontFamily)
     Surface(
         modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
-        shape = RoundedCornerShape(12.dp),
-        color = scheme.primary.copy(alpha = 0.06f),
+        shape = SettingsShape,
+        color = Color.Transparent,
         contentColor = scheme.onSurface,
     ) {
         Column(
-            Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            Modifier.padding(vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             // Explicit base sizes avoid applying the app's font scale twice.

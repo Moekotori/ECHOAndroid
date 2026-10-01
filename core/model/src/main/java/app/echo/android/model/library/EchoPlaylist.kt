@@ -8,6 +8,7 @@ data class EchoPlaylist(
     val artworkUri: String? = null,
     val updatedAtEpochMs: Long = 0L,
     val source: String = LibrarySource.MediaStore.id,
+    val pinnedToHome: Boolean = false,
 ) {
     val isLikedSongs: Boolean
         get() = id == LikedSongsId
@@ -16,7 +17,10 @@ data class EchoPlaylist(
         get() = LibrarySmartPlaylistKind.fromId(id)
 
     val isSmartPlaylist: Boolean
-        get() = smartKind != null
+        get() = smartKind != null || id.startsWith(EchoSmartPlaylistRule.IdPrefix)
+
+    val isCustomSmartPlaylist: Boolean
+        get() = id.startsWith(EchoSmartPlaylistRule.IdPrefix)
 
     val canEdit: Boolean
         get() = source == LibrarySource.MediaStore.id && !isLikedSongs && !isSmartPlaylist

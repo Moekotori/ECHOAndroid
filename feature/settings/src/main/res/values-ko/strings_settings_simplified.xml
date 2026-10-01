@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_density_standard">표준</string>
+    <string name="settings_density_comfortable">여유롭게</string>
+    <string name="settings_density_custom">사용자 지정 · %1$s</string>
+    <string name="settings_font_advanced">글꼴 및 가져오기</string>
+</resources>

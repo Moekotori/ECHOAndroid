@@ -30,11 +30,12 @@ internal fun SettingsClearLibraryIndexRow(onClear: suspend () -> Boolean) {
     )
     if (confirming) {
         AlertDialog(
+            shape = SettingsShape,
             onDismissRequest = { confirming = false },
             title = { Text(stringResource(R.string.settings_clear_index_title)) },
             text = { Text(stringResource(R.string.settings_clear_index_confirm)) },
             confirmButton = {
-                TextButton(onClick = {
+                TextButton(shape = SettingsShape, onClick = {
                     confirming = false
                     clearing = true
                     scope.launch {
@@ -49,7 +50,7 @@ internal fun SettingsClearLibraryIndexRow(onClear: suspend () -> Boolean) {
                 }
             },
             dismissButton = {
-                TextButton(onClick = { confirming = false }) {
+                TextButton(shape = SettingsShape, onClick = { confirming = false }) {
                     Text(stringResource(android.R.string.cancel))
                 }
             },
@@ -57,12 +58,13 @@ internal fun SettingsClearLibraryIndexRow(onClear: suspend () -> Boolean) {
     }
     result?.let { succeeded ->
         AlertDialog(
+            shape = SettingsShape,
             onDismissRequest = { result = null },
             text = {
                 Text(stringResource(if (succeeded) R.string.settings_clear_index_success else R.string.settings_clear_index_failure))
             },
             confirmButton = {
-                TextButton(onClick = { result = null }) { Text(stringResource(android.R.string.ok)) }
+                TextButton(shape = SettingsShape, onClick = { result = null }) { Text(stringResource(android.R.string.ok)) }
             },
         )
     }
@@ -83,11 +85,12 @@ internal fun SettingsLibraryCleanupRow(onCleanup: suspend () -> Pair<Int, Int>) 
     )
     if (confirming) {
         AlertDialog(
+            shape = SettingsShape,
             onDismissRequest = { confirming = false },
             title = { Text(stringResource(R.string.settings_library_cleanup)) },
             text = { Text(stringResource(R.string.settings_library_cleanup_confirm)) },
             confirmButton = {
-                TextButton(onClick = {
+                TextButton(shape = SettingsShape, onClick = {
                     confirming = false
                     busy = true
                     scope.launch {
@@ -100,7 +103,7 @@ internal fun SettingsLibraryCleanupRow(onCleanup: suspend () -> Pair<Int, Int>) 
                 }) { Text(stringResource(R.string.settings_library_cleanup_action)) }
             },
             dismissButton = {
-                TextButton(onClick = { confirming = false }) {
+                TextButton(shape = SettingsShape, onClick = { confirming = false }) {
                     Text(stringResource(android.R.string.cancel))
                 }
             },
@@ -108,12 +111,13 @@ internal fun SettingsLibraryCleanupRow(onCleanup: suspend () -> Pair<Int, Int>) 
     }
     result?.let { (missing, duplicates) ->
         AlertDialog(
+            shape = SettingsShape,
             onDismissRequest = { result = null },
             text = {
                 Text(stringResource(R.string.settings_library_cleanup_result, missing, duplicates))
             },
             confirmButton = {
-                TextButton(onClick = { result = null }) { Text(stringResource(android.R.string.ok)) }
+                TextButton(shape = SettingsShape, onClick = { result = null }) { Text(stringResource(android.R.string.ok)) }
             },
         )
     }

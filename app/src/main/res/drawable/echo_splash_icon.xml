@@ -1,3 +1,25 @@
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@mipmap/echo_startup_still" />
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android"
+    android:paddingMode="stack">
+    <!-- Keep the whole identity inside Android's circular splash safe area. -->
+    <item android:drawable="@drawable/echo_splash_halo" />
+    <item>
+        <inset
+            android:insetLeft="27.7778%"
+            android:insetRight="27.7778%"
+            android:insetTop="22.2222%"
+            android:insetBottom="33.3333%">
+            <bitmap
+                android:src="@drawable/echo_startup_still"
+                android:gravity="fill"
+                android:filter="true" />
+        </inset>
+    </item>
+    <item>
+        <inset
+            android:insetLeft="34.7222%"
+            android:insetRight="34.7222%"
+            android:insetTop="70.8333%"
+            android:insetBottom="20.8333%"
+            android:drawable="@drawable/echo_splash_wordmark" />
+    </item>
 </layer-list>

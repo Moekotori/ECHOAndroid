@@ -61,9 +61,35 @@ internal class LyricsController(
     private val offsetWriteMutex = Mutex()
     private var lastLyricsTrackId: String? = null
     val currentTrackId: String? get() = lastLyricsTrackId
+    suspend fun saveEditedLyrics(trackId: String, lyrics: EchoLyrics) {
+        withContext(Dispatchers.IO) {
+            importedLyricsStore.save(trackId, lyrics, selected = true)
+            importedLyricsStore.setLyricsOffset(trackId, 0)
+        }
+        if (lastLyricsTrackId == trackId) updateLyricsForTrack(trackId, force = true)
+    }
+    suspend fun backupSelections(lookup: suspend (Set<String>) -> Map<String,String>) = withContext(Dispatchers.IO) {
+        importedLyricsStore.selectedForBackup(lookup)
+    }
+    suspend fun restoreSelection(trackId: String, json: String?, offset: Long) {
+        withContext(Dispatchers.IO) {
+            if (json != null) importedLyricsStore.save(trackId, app.echo.android.lyrics.EchoLyricsJson.decode(json), selected = true)
+            importedLyricsStore.setLyricsOffset(trackId, offset)
+        }
+        if (lastLyricsTrackId == trackId) updateLyricsForTrack(trackId, force = true)
+    }
     private var currentLyricsUserOffsetMs: Long = 0L
     @Volatile
     private var onlineLyricsEnabled: Boolean = false
+    @Volatile
+    private var sourceOrder = app.echo.android.model.settings.EchoLyricsSource.entries.toList()
+
+    fun setSourceOrder(value: List<app.echo.android.model.settings.EchoLyricsSource>, trackId: String?) {
+        val normalized = app.echo.android.model.settings.EchoLyricsOptions(sourceOrder = value).normalized.sourceOrder
+        if (sourceOrder == normalized) return
+        sourceOrder = normalized
+        updateLyricsForTrack(trackId, force = true)
+    }
     private val onlineLyricsCache = object : LinkedHashMap<String, EchoLyrics>(32, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, EchoLyrics>?): Boolean =
             size > MAX_ONLINE_LYRICS_CACHE_ENTRIES
@@ -227,13 +253,15 @@ internal class LyricsController(
                         )
                     } else {
                         val track = trackForLyrics(trackId)
-                        if (track == null) {
+                        if (selected != null) {
+                            LyricsLoadResult(EchoLyricsLoadState.Ready(selected), importedLyricsStore.lyricsOffsetForTrack(trackId))
+                        } else if (track == null) {
                             LyricsLoadResult(EchoLyricsLoadState.Missing)
                         } else {
                             val userOffsetMs = importedLyricsStore.lyricsOffsetForTrack(trackId)
                             val importedLyrics = importedLyricsStore.lyricsUriForTrack(trackId)
                                 ?.let { runCatching { lyricsResolver.loadFromUri(it) }.getOrNull() }
-                            val localLyrics = importedLyrics ?: runCatching { lyricsResolver.loadForTrack(track) }.getOrNull()
+                            val localLyrics = selected ?: importedLyrics ?: runCatching { lyricsResolver.loadForTrack(track, sourceOrder) }.getOrNull()
                                 ?.takeIf { it.lines.any { line -> line.text.isNotBlank() } }
                             val serverLyrics = if (localLyrics == null) {
                                 runCatching { subsonicLyricsLoader(track) }.getOrNull()

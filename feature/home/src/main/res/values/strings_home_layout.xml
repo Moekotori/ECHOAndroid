@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_layout_title">Customize home</string>
+    <string name="home_layout_detail">Use the arrows to reorder sections. Turn off anything you do not use. Empty sections appear when content is available.</string>
+    <string name="home_layout_move_up">Move %1$s up</string>
+    <string name="home_layout_move_down">Move %1$s down</string>
+    <string name="home_layout_reset">Restore defaults</string>
+    <string name="home_layout_cancel">Cancel</string>
+    <string name="home_layout_apply">Done</string>
+    <string name="home_layout_overview">Library overview</string>
+    <string name="home_layout_hidden">All home sections are hidden.</string>
+</resources>

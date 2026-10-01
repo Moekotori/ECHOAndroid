@@ -79,7 +79,7 @@ class ImportedLyricsStore(
 
     @Synchronized
     fun save(trackId: String, lyrics: EchoLyrics, selected: Boolean) {
-        val bytes = EchoLyricsJson.encode(lyrics).toByteArray(Charsets.UTF_8)
+        val bytes = JSONObject(EchoLyricsJson.encode(lyrics)).put("echoTrackId", trackId).toString().toByteArray(Charsets.UTF_8)
         require(bytes.size <= MAX_BYTES) { "Lyrics file is too large" }
         val file = storedFile(trackId, selected)
         file.parentFile?.mkdirs()
@@ -100,6 +100,33 @@ class ImportedLyricsStore(
 
     @Synchronized
     fun clearCached(trackId: String) { storedFile(trackId, selected = false).delete() }
+
+    suspend fun selectedForBackup(lookupLegacyIds: suspend (Set<String>) -> Map<String,String>): Map<String,Pair<String?,Long>> {
+        val prefs = context.echoImportedLyrics.data.first()
+        val bindings = prefs[Keys.BINDINGS]?.let(::parseBindings) ?: JSONObject()
+        val offsets = prefs[Keys.OFFSETS]?.let(::parseBindings) ?: JSONObject()
+        val ids = (bindings.keys().asSequence().toList() + offsets.keys().asSequence().toList()).toMutableSet()
+        val files = java.io.File(context.filesDir, "lyrics/selected").listFiles()?.filter { it.extension == "json" }.orEmpty()
+        require(files.size <= 10000)
+        val unknown = mutableMapOf<String,String>()
+        val texts = mutableMapOf<String,String>()
+        var bytes = 0L
+        files.forEach { file ->
+            require(file.length() <= MAX_BYTES)
+            bytes += file.length(); require(bytes <= 16L * 1024 * 1024)
+            val json = JSONObject(file.readText())
+            val id = json.optString("echoTrackId")
+            val sanitized = EchoLyricsJson.decode(json.toString()).let { lyrics ->
+                lyrics.copy(metadata = lyrics.metadata.filterKeys { key -> !app.echo.android.data.EchoBackupCodec.isForbiddenKey(key) })
+            }
+            val text = EchoLyricsJson.encode(sanitized)
+            if (id.isNotBlank()) { ids += id; texts[id] = text } else unknown[file.nameWithoutExtension] = text
+        }
+        val legacy = lookupLegacyIds(unknown.keys)
+        unknown.forEach { (hash,text) -> legacy[hash]?.let { id -> ids += id; texts[id] = text } }
+        require(ids.size <= 10000)
+        return ids.associateWith { id -> texts[id] to offsets.optLong(id,0).coerceIn(-30000,30000) }
+    }
 
     private fun storedFile(trackId: String, selected: Boolean): File {
         val key = MessageDigest.getInstance("SHA-256").digest(trackId.toByteArray())

@@ -68,15 +68,14 @@ object LibraryScanPolicy {
 
     /**
      * Ids to mark seen for an unchanged file.
-     * Null means the cue shape changed: the file must be read again so movements can split or collapse.
-     * Cue text edits that keep the same movement count wait until the audio file itself changes.
+     * Cue content is independent of audio mtime. Re-expand it on every scan, including single-track cues.
      */
     fun rememberUnchangedCueIds(
         trackId: String,
         cueChildIds: Collection<String>,
         hasCueSheet: Boolean,
     ): List<String>? {
-        if (hasCueSheet && cueChildIds.isEmpty()) return null
+        if (hasCueSheet) return null
         if (!hasCueSheet && cueChildIds.isNotEmpty()) return null
         return ArrayList<String>(cueChildIds.size + 1).apply {
             add(trackId)

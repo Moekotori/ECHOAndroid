@@ -12,6 +12,7 @@ data class EchoLyrics(
 }
 
 enum class EchoLyricsFormat {
+    Spl,
     Lrc,
     EnhancedLrc,
     Ttml,
@@ -22,6 +23,9 @@ enum class EchoLyricsFormat {
     Qrc,
     Krc,
     PlainText,
+    Sbv,
+    Sami,
+    Json,
 }
 
 data class EchoLyricLine(

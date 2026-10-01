@@ -49,6 +49,32 @@ internal fun EchoNowPlayingHost(
     val favoriteTrackIds by viewModel.favoriteTrackIds.collectAsStateWithLifecycle()
     val isCurrentTrackFavorite = playbackStatus.track?.id?.let { it in favoriteTrackIds } == true
     var showLyricsManager by remember(playbackStatus.track?.id) { mutableStateOf(false) }
+    var showLyricsEditor by remember(playbackStatus.track?.id) { mutableStateOf(false) }
+    if (showLyricsEditor) playbackStatus.track?.let { track ->
+        val source = (lyricsState as? app.echo.android.model.lyrics.EchoLyricsLoadState.Ready)?.lyrics
+            ?: app.echo.android.model.lyrics.EchoLyrics(lines = listOf(app.echo.android.model.lyrics.EchoLyricLine(-1, text = "")))
+        app.echo.android.feature.player.LyricsEditorSheet(source,
+            position = { if (castActive) playbackPosition.value.positionMs else viewModel.currentPlaybackPositionMs() },
+            onPlayPause = onPlayPause, onSeek = onSeek,
+            onSave = { viewModel.saveEditedLyrics(track.id, it) }, onDismiss = { showLyricsEditor = false })
+    }
+    var showTrackTools by remember(playbackStatus.track?.id) { mutableStateOf(false) }
+    if (showTrackTools) playbackStatus.track?.let { track ->
+        val loop by viewModel.abLoop.collectAsStateWithLifecycle()
+        val tools = remember(viewModel) {
+            val library = viewModel.libraryExperience
+            app.echo.android.feature.player.TrackToolsActions(library::bookmarks, library::saveBookmark,
+                library::deleteBookmark, viewModel::setAbLoop)
+        }
+        val libraryTrack = remember(track) { app.echo.android.model.library.EchoTrack(track.id, track.uri, track.title, track.artist,
+            album = track.album, artworkUri = track.artworkUri, durationMs = track.durationMs, sampleRateHz = track.sampleRateHz,
+            clipStartMs = track.clipStartMs, clipEndMs = track.clipEndMs) }
+        app.echo.android.feature.player.TrackToolsSheet(libraryTrack, {
+            if (castActive) playbackPosition.value.positionMs else viewModel.currentPlaybackPositionMs()
+        }, loop,
+            (lyricsState as? app.echo.android.model.lyrics.EchoLyricsLoadState.Ready)?.lyrics, tools,
+            onSeek = onSeek, onDismiss = { showTrackTools = false }, loopAvailable = !castActive)
+    }
     if (showLyricsManager) {
         val candidates by viewModel.lyricsCandidates.collectAsStateWithLifecycle()
         val searching by viewModel.lyricsSearching.collectAsStateWithLifecycle()
@@ -64,6 +90,7 @@ internal fun EchoNowPlayingHost(
             onRemove = viewModel::removeLyricsSelection,
             onAdjustOffset = viewModel::adjustLyricsOffset,
             onDismiss = { showLyricsManager = false },
+            onEdit = { showLyricsManager = false; showLyricsEditor = true },
         )
     }
     NowPlayingScreen(
@@ -84,6 +111,7 @@ internal fun EchoNowPlayingHost(
         lyricsLineSpacing = appSettings.lyricsLineSpacing,
         lyricsBackgroundDim = appSettings.lyricsBackgroundDim,
         lyricsWordHighlightEnabled = appSettings.lyricsWordHighlightEnabled,
+        lyricsEstimatedWordHighlightEnabled = appSettings.lyricsEstimatedWordHighlightEnabled,
         lyricsWordHighlightIntensity = appSettings.lyricsWordHighlightIntensity,
         lyricsImmersiveModeEnabled = appSettings.lyricsImmersiveModeEnabled,
         lyricsMotionMode = appSettings.lyricsMotionMode,
@@ -98,6 +126,7 @@ internal fun EchoNowPlayingHost(
         onPrevious = onPrevious,
         onSeek = onSeek,
         onOpenQueue = onOpenQueue,
+        onOpenTrackTools = { showTrackTools = true },
         onCast = onCast,
         castActive = castActive,
         onSetRepeatMode = viewModel::setRepeatMode,
@@ -124,6 +153,7 @@ internal fun EchoNowPlayingHost(
         onLyricsLineSpacingChange = viewModel::setLyricsLineSpacing,
         onLyricsBackgroundDimChange = viewModel::setLyricsBackgroundDim,
         onLyricsWordHighlightEnabledChange = viewModel::setLyricsWordHighlightEnabled,
+        onLyricsEstimatedWordHighlightEnabledChange = viewModel::setLyricsEstimatedWordHighlightEnabled,
         onLyricsWordHighlightIntensityChange = viewModel::setLyricsWordHighlightIntensity,
         onLyricsImmersiveModeChange = viewModel::setLyricsImmersiveModeEnabled,
         onLyricsMotionModeChange = viewModel::setLyricsMotionMode,

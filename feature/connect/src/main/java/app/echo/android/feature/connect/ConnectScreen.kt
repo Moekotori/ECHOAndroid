@@ -39,6 +39,7 @@ import app.echo.android.model.library.LibraryScanProgress
 @Composable
 fun ConnectScreen(
     remoteState: EchoRemoteConnectionState,
+    librarySyncActions: LibrarySyncActions? = null,
     pcTitle: String,
     trackTitle: String,
     trackArtist: String,
@@ -52,6 +53,8 @@ fun ConnectScreen(
     positionMs: Long = 0L,
     durationMs: Long = 0L,
     volume: Float = 1f,
+    volumeControlEnabled: Boolean = true,
+    volumeLockedReason: String? = null,
     outputMode: String = "",
     currentTrackId: String? = null,
     queueItems: List<EchoRemoteTrack> = emptyList(),
@@ -217,6 +220,7 @@ fun ConnectScreen(
                                 onCancel = onCancelRemoteSync,
                             )
                             1 -> PcLinkPanel(
+                                librarySyncActions = librarySyncActions,
                                 remoteState = remoteState,
                                 pcTitle = pcTitle,
                                 trackTitle = trackTitle,
@@ -232,6 +236,8 @@ fun ConnectScreen(
                                 positionMs = positionMs,
                                 durationMs = durationMs,
                                 volume = volume,
+                                volumeControlEnabled = volumeControlEnabled,
+                                volumeLockedReason = volumeLockedReason,
                                 outputMode = outputMode,
                                 currentTrackId = currentTrackId,
                                 queueItems = queueItems,

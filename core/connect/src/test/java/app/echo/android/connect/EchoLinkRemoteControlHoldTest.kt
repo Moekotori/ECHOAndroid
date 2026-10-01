@@ -7,6 +7,12 @@ import org.junit.Test
 
 class EchoLinkRemoteControlHoldTest {
     @Test
+    fun smallAdjustmentsStillHoldAgainstThePreviousRemoteValue() {
+        assertTrue(EchoLinkRemoteControlHold.shouldHoldCommittedPosition(9_000L, 0L, 8_000L, 100L))
+        assertTrue(EchoLinkRemoteControlHold.shouldHoldCommittedVolume(0.78f, 0L, 0.8f, 100L))
+        assertFalse(EchoLinkRemoteControlHold.shouldHoldCommittedVolume(0.78f, 0L, 0.78f, 100L))
+    }
+    @Test
     fun staleRemotePositionIsNotShownAfterSeekCommit() {
         val committed = 60_000L
         val staleRemote = 8_000L

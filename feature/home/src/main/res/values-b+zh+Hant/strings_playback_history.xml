@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playback_history_title">播放歷史</string>
+    <string name="playback_history_subtitle">按時間回顧你的聆聽紀錄</string>
+    <string name="playback_history_more">更多操作</string>
+    <string name="playback_history_search">搜尋歌曲、藝人或專輯</string>
+    <string name="playback_history_reset_search">清除搜尋</string>
+    <string name="playback_history_today">今天</string>
+    <string name="playback_history_yesterday">昨天</string>
+    <string name="playback_history_listened">已聆聽 %1$s</string>
+    <string name="playback_history_unavailable">歌曲已不在曲庫中</string>
+    <string name="playback_history_empty">還沒有播放歷史</string>
+    <string name="playback_history_no_results">沒有符合篩選條件的紀錄</string>
+    <string name="playback_history_reset_filters">查看全部歷史</string>
+    <string name="playback_history_load_error">無法載入播放歷史</string>
+    <string name="playback_history_retry">重試</string>
+    <string name="playback_history_delete">刪除這筆紀錄</string>
+    <string name="playback_history_deleted">紀錄已刪除</string>
+    <string name="playback_history_clear">清空播放歷史</string>
+    <string name="playback_history_clear_detail">刪除所有聆聽紀錄，包括目前篩選之外的紀錄？聽歌統計和活動熱力圖也會歸零。音樂檔案和播放清單會保留，此操作無法復原。</string>
+    <string name="playback_history_cleared">播放歷史已清空</string>
+    <string name="playback_history_cancel">取消</string>
+    <string name="playback_history_action_error">操作未完成，請重試。</string>
+</resources>

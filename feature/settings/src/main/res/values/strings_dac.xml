@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dac_check_title">DAC and direct output</string>
+    <string name="dac_status_direct">USB direct output verified by ECHO</string>
+    <string name="dac_status_exclusive">USB exclusive output is streaming</string>
+    <string name="dac_status_unverified">Direct output is not verified</string>
+    <string name="dac_requested_rate">Requested rate</string>
+    <string name="dac_source_precision">Source precision</string>
+    <string name="dac_reported_rates">Reported USB rates</string>
+    <string name="dac_show_capabilities">Device capabilities and readout details</string>
+    <string name="dac_hide_capabilities">Hide readout details</string>
+    <string name="dac_status_direct_short">Direct path verified</string>
+    <string name="dac_status_exclusive_short">Exclusive output active</string>
+    <string name="dac_status_unverified_short">Direct path unverified</string>
+    <string name="dac_path_note_title">About this path</string>
+    <string name="dac_next_step_title">Next step</string>
+    <string name="dac_copy_report">Copy DAC report</string>
+    <string name="dac_report_copied">Report copied</string>
+    <string name="dac_evidence_note">A requested rate is not an output measurement. The USB clock readout requires active playback and a verified direct path; it describes the app transport, not an external measurement of the DAC.</string>
+    <string name="dac_rates_note">Rates come from Android and USB descriptors. They are not proof that every rate, precision and channel combination works. An unreported rate does not mean it is unsupported.</string>
+    <string name="dac_decoded_rate_changed">The decoder reports %1$s → %2$s. The decoded rate differs from the source; this alone does not identify the final DAC clock.</string>
+    <string name="dac_help_playback_error">Playback has failed. Open diagnostics for the current error; check source access or reconnect the DAC according to the error.</string>
+    <string name="dac_help_no_usb">Connect a USB DAC to inspect its capabilities. The current route has no verified USB direct output; ordinary playback remains available.</string>
+    <string name="dac_help_bluetooth">The current output is Bluetooth. Its codec is shown in diagnostics; source resolution does not verify a USB direct path. Connect a USB DAC to check direct output.</string>
+    <string name="dac_help_permission_pending">Confirm the Android USB access dialog, then start playback to check the actual output.</string>
+    <string name="dac_help_permission_required">USB access is not granted. In Settings → Playback, enable USB exclusive output and confirm access. If no dialog appears, reconnect the DAC.</string>
+    <string name="dac_help_exclusive_disabled">The DAC is connected, but exclusive output is off. Enable USB exclusive output in Settings → Playback if you want to bypass the system mixer.</string>
+    <string name="dac_help_waiting_playback">Start or resume a track to check active output. Paused, buffering and previous output facts do not verify the current direct path.</string>
+    <string name="dac_help_transport_error">The exclusive path is unavailable or reported an error. Open diagnostics for the USB error, reconnect the DAC, or run the USB driver test in Settings → Playback.</string>
+    <string name="dac_help_exclusive_pending">Exclusive output is enabled, but no active USB stream is reported. Check USB diagnostics; the switch alone does not verify takeover.</string>
+    <string name="dac_help_unsupported_source">The strict path cannot preserve this source. Try a supported local lossless PCM track; use ordinary playback for this source when direct output is unavailable.</string>
+    <string name="dac_help_unsupported_format">The DAC or strict decoder cannot accept this format. Compare source precision with the reported USB capabilities and try a supported track; increasing the requested rate will not resolve this.</string>
+    <string name="dac_help_clock_unverified">The output clock could not be verified. Open USB diagnostics and reconnect the DAC. A matching requested rate is not enough to claim direct output.</string>
+    <string name="dac_help_volume_changed">Digital volume changed the samples. Check the volume warning in diagnostics and use the DAC volume control when available; protect your listening level before changing gain.</string>
+    <string name="dac_help_direct">Active USB streaming and the strict decoder report a direct path. ECHO processing is bypassed in this mode; use the DAC volume control when available.</string>
+    <string name="dac_help_processing">The exclusive path is active; Bit-perfect mode is off. Sound processing may be used. To preserve samples, enable USB Bit-perfect in Settings → Playback; it bypasses ECHO sound processing.</string>
+    <string name="dac_help_bitperfect_pending">Bit-perfect is enabled, but the strict path has not reported direct output. Wait for playback to settle and inspect diagnostics if this persists.</string>
+</resources>

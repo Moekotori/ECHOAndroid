@@ -1,0 +1,5 @@
+<resources>
+    <string name="home_pinned_playlists">固定的歌單</string>
+    <string name="home_play_pinned">播放歌單</string>
+    <plurals name="home_pinned_track_count"><item quantity="other">%1$d 首歌曲</item></plurals>
+</resources>

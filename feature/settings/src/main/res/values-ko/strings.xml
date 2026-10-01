@@ -32,7 +32,7 @@
     <string name="settings_custom_saved_themes">저장한 테마</string>
     <string name="settings_custom_detail">밝은 테마와 어두운 테마 모두 읽기 쉽게 맞춥니다. 시스템 색상은 컨트롤에 적용됩니다.</string>
     <string name="settings_dynamic_color">시스템 색상</string>
-    <string name="settings_dynamic_color_detail">컨트롤에 배경화면 색상을 사용합니다. ECHO 유리 질감은 유지됩니다. Android 12+</string>
+    <string name="settings_dynamic_color_detail">컨트롤에 배경화면 색상 적용</string>
     <string name="settings_dynamic_color_unavailable">Android 12 이상이 필요합니다</string>
     <string name="settings_playback_haptics">재생 햅틱</string>
     <string name="settings_playback_haptics_detail">재생, 일시정지, 건너뛰기 시 클릭과 틱 피드백</string>
@@ -85,7 +85,7 @@
     <string name="settings_pause_on_disconnect_detail">헤드폰, Bluetooth, USB DAC가 끊기면 일시정지</string>
     <string name="settings_resume_on_reconnect">다시 연결하면 이어듣기</string>
     <string name="settings_resume_on_reconnect_detail">끊겨서 멈춘 뒤에만 헤드폰, Bluetooth, 카오디오에 다시 연결되면 재생</string>
-    <string name="settings_replay_gain">ReplayGain</string>
+    <string name="settings_replay_gain">음량 균일화</string>
     <string name="settings_replay_gain_detail">태그로 음량을 맞춥니다</string>
     <string name="settings_replay_gain_bypass">저장됨. bit-perfect에서는 사용하지 않음</string>
     <string name="settings_replay_gain_mode">ReplayGain 모드</string>

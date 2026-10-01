@@ -32,6 +32,7 @@ dependencies {
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.paging.compose)
 
     implementation("com.belerweb:pinyin4j:2.5.1")
 

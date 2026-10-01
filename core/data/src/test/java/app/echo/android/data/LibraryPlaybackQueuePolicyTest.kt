@@ -21,7 +21,7 @@ class LibraryPlaybackQueuePolicyTest {
     fun collectionStartIndexIsTheTappedTrack() {
         val albumIds = listOf("a", "b", "c", "d")
         assertEquals(2, LibraryPlaybackQueuePolicy.startIndex(albumIds, "c"))
-        assertEquals(0, LibraryPlaybackQueuePolicy.startIndex(albumIds, "missing"))
+        assertEquals(-1, LibraryPlaybackQueuePolicy.startIndex(albumIds, "missing"))
         assertEquals("album-1", LibraryPlaybackQueuePolicy.collectionKey(LibraryPlaybackOrigin.Album("album-1")))
     }
 

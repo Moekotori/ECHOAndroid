@@ -48,9 +48,10 @@ internal class EchoNowPlayingLyricsSession(private val application: Application)
     fun start(settingsStore: EchoSettingsStore) {
         EchoPlaybackProcessRuntime.scope.launch {
             settingsStore.appSettings
-                .map { it.onlineLyricsEnabled }
+                .map { it.onlineLyricsEnabled to it.lyricsOptions.sourceOrder }
                 .distinctUntilChanged()
-                .collect { enabled ->
+                .collect { (enabled, sourceOrder) ->
+                    controller.setSourceOrder(sourceOrder, EchoPlaybackProcessRuntime.surfaceSnapshot.mediaId)
                     controller.setOnlineLyricsEnabled(
                         enabled,
                         EchoPlaybackProcessRuntime.surfaceSnapshot.mediaId,

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_section_listening">Listening preferences</string>
+    <string name="settings_section_runtime">Performance and battery</string>
+    <string name="settings_section_transition">Track transitions</string>
+    <string name="settings_section_volume">Volume processing</string>
+    <string name="settings_section_schedule">Automatic dark mode</string>
+    <string name="settings_section_readability">Text size</string>
+    <string name="settings_section_background_adjustments">Background adjustments</string>
+</resources>

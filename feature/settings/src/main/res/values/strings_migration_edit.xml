@@ -1,0 +1,15 @@
+<resources>
+    <string name="migration_title">Review migration backup</string>
+    <string name="migration_counts">Playlists: %1$d · Favorites: %2$d · Moments: %3$d</string>
+    <string name="migration_history_lyrics">History: %1$d · Lyric selections: %2$d · Assets: %3$d</string>
+    <string name="migration_matches">Matched songs: %1$d · Missing or ambiguous: %2$d</string>
+    <string name="migration_policy">Manual playlists and favorites merge. Matching lyric selections are replaced, history imports without duplicate events, and the listed settings overwrite current values. Audio files and credentials are not included.</string>
+    <string name="migration_home">Home layout will change</string>
+    <string name="migration_player">Player appearance will change</string>
+    <string name="migration_theme">Theme will change</string>
+    <string name="migration_language">Language will change</string>
+    <string name="migration_background">Background settings and assets will change</string>
+    <string name="migration_lyrics">Lyric display preferences will change</string>
+    <string name="migration_apply">Restore selected backup</string>
+    <string name="migration_cancel">Cancel</string>
+</resources>

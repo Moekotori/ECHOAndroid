@@ -57,6 +57,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.currentStateAsState
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -72,7 +76,6 @@ import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.design.progressFraction
-import app.echo.android.design.echoFrostedGlass
 import app.echo.android.design.echoTheme
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
@@ -100,6 +103,7 @@ fun MiniPlayer(
     onExpand: (() -> Unit)? = null,
     onNext: (() -> Unit)? = null,
     onPrevious: (() -> Unit)? = null,
+    animationsVisible: Boolean = true,
 ) {
     val scope = rememberCoroutineScope()
     val haptics = rememberEchoHapticPerformer()
@@ -107,6 +111,9 @@ fun MiniPlayer(
     val theme = echoTheme()
     val dark = LocalEchoDarkTheme.current
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
+    val marqueeActive = animationsVisible && status.isPlaying && !lightweight &&
+        LocalWindowInfo.current.isWindowFocused && lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
     val dragOffset = remember { mutableFloatStateOf(0f) }
     var settleJob by remember { mutableStateOf<Job?>(null) }
     val trackEntrance = remember { Animatable(1f) }
@@ -125,17 +132,7 @@ fun MiniPlayer(
     val nextAction by rememberUpdatedState(onNext)
     val previousAction by rememberUpdatedState(onPrevious)
     val compactDock = onShowDock != null || onOpenQueue != null
-    val cornerRadius by animateDpAsState(
-        targetValue = 22.dp,
-        animationSpec = tween(durationMillis = miniPlayerMotionDuration(420, lightweight), easing = MiniPlayerMotionEasing),
-        label = "mini-player-corner",
-    )
-    val surfaceElevation by animateDpAsState(
-        targetValue = if (compactDock) 3.dp else 2.dp,
-        animationSpec = tween(durationMillis = miniPlayerMotionDuration(420, lightweight), easing = MiniPlayerMotionEasing),
-        label = "mini-player-elevation",
-    )
-    val progressAlpha by animateFloatAsState(
+    val progressAlpha = animateFloatAsState(
         targetValue = if (activeDurationMs > 0L) 1f else 0.42f,
         animationSpec = tween(durationMillis = miniPlayerMotionDuration(220, lightweight), easing = MiniPlayerMotionEasing),
         label = "mini-player-progress-alpha",
@@ -152,31 +149,22 @@ fun MiniPlayer(
             animationSpec = tween(durationMillis = 220, easing = MiniPlayerMotionEasing),
         )
     }
-    Box(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 64.dp)
-            .echoFrostedGlass(shape = RoundedCornerShape(cornerRadius), elevation = surfaceElevation)
             .padding(
-                start = if (compactDock) 4.dp else 12.dp,
-                top = if (compactDock) 7.dp else 5.dp,
-                end = 4.dp,
-                bottom = if (compactDock) 7.dp else 5.dp,
+                start = 16.dp,
+                top = 6.dp,
+                end = 8.dp,
+                bottom = 0.dp,
             ),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            if (onShowDock != null || onHideDock != null) {
-                MiniPlayerActionButton(
-                    icon = PlayerControlIcons.Collapse,
-                    description = stringResource(if (onShowDock != null) L10nR.string.feature_player_show_bottom_bar_bf2549 else L10nR.string.feature_player_hide_bottom_bar_e918c8),
-                    onClick = { (onShowDock ?: onHideDock)?.invoke() },
-                    rotation = if (onShowDock != null) 180f else 0f,
-                )
-            }
             Box(
                 modifier = Modifier.weight(1f)
                     .onSizeChanged { widthPx = it.width.toFloat().coerceAtLeast(1f) }
@@ -240,12 +228,12 @@ fun MiniPlayer(
                         Text(
                             status.track?.title ?: "ECHO Mobile",
                             modifier = Modifier.basicMarquee(
-                                iterations = Int.MAX_VALUE,
+                                iterations = if (marqueeActive) Int.MAX_VALUE else 0,
                                 initialDelayMillis = 700,
                                 repeatDelayMillis = 1600,
                             ),
                             maxLines = 1,
-                            overflow = TextOverflow.Clip,
+                            overflow = if (marqueeActive) TextOverflow.Clip else TextOverflow.Ellipsis,
                             fontWeight = FontWeight.SemiBold,
                             color = if (dark) Color.White.copy(alpha = 0.96f) else scheme.onSurface,
                             style = MaterialTheme.typography.titleSmall,
@@ -256,25 +244,7 @@ fun MiniPlayer(
                             overflow = TextOverflow.Ellipsis,
                             color = if (dark) Color.White.copy(alpha = 0.60f) else scheme.onSurfaceVariant,
                             style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        LinearProgressIndicator(
-                            // 在绘制期读进度 State:tick 只重绘进度条,不触发任何重组
-                            progress = {
-                                val positionMs = positionState?.value?.positionMs
-                                    ?: statusState.value.positionMs
-                                progressFraction(positionMs, activeDurationMs)
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = if (compactDock) 2.dp else 1.dp)
-                                .height(2.dp)
-                                .clip(RoundedCornerShape(99.dp))
-                                .graphicsLayer { alpha = progressAlpha },
-                            color = if (dark) theme.accent.copy(alpha = 0.62f) else scheme.primary,
-                            trackColor = if (dark) Color.White.copy(alpha = 0.08f) else scheme.outlineVariant.copy(alpha = 0.55f),
-                            gapSize = 0.dp,
-                            drawStopIndicator = {},
+                            fontWeight = FontWeight.Normal,
                         )
                     }
                 }
@@ -318,7 +288,28 @@ fun MiniPlayer(
                     onClick = onOpenQueue,
                 )
             }
+            if (onShowDock != null || onHideDock != null) {
+                MiniPlayerActionButton(
+                    icon = PlayerControlIcons.Collapse,
+                    description = stringResource(if (onShowDock != null) L10nR.string.feature_player_show_bottom_bar_bf2549 else L10nR.string.feature_player_hide_bottom_bar_e918c8),
+                    onClick = { (onShowDock ?: onHideDock)?.invoke() },
+                    rotation = if (onShowDock != null) 180f else 0f,
+                )
+            }
         }
+        LinearProgressIndicator(
+            // Read progress during drawing; ticks do not rebuild the playback row.
+            progress = {
+                val positionMs = positionState?.value?.positionMs ?: statusState.value.positionMs
+                progressFraction(positionMs, activeDurationMs)
+            },
+            modifier = Modifier.fillMaxWidth().padding(end = 8.dp).height(2.dp)
+                .graphicsLayer { alpha = progressAlpha.value },
+            color = scheme.primary,
+            trackColor = scheme.outlineVariant.copy(alpha = 0.65f),
+            gapSize = 0.dp,
+            drawStopIndicator = {},
+        )
     }
 }
 

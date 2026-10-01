@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="afterglow_mist">Afterglow · 霧景</string>
+    <string name="afterglow_night">Afterglow · 夜航</string>
+    <string name="afterglow_mist_detail">霧色の風景と軽やかな文字演出</string>
+    <string name="afterglow_night_detail">青と金の夜景と星の軌道</string>
+    <string name="afterglow_previous_line">前の歌詞へ</string>
+    <string name="afterglow_next_line">次の歌詞へ</string>
+    <string name="afterglow_palette">配色</string>
+    <string name="afterglow_randomize">演出を変更</string>
+    <string name="afterglow_scene">シーン</string>
+    <string name="afterglow_scene_auto">歌詞に合わせる</string>
+    <string name="afterglow_scene_ridge">霧の稜線</string>
+    <string name="afterglow_scene_wisteria">藤の花</string>
+    <string name="afterglow_scene_lake">湖畔の朝もや</string>
+    <string name="afterglow_scene_voyage">星海航行</string>
+    <string name="afterglow_scene_aurora">オーロラ</string>
+    <string name="afterglow_scene_chart">星図</string>
+    <string name="afterglow_show_controls">操作ボタンを表示</string>
+    <string name="afterglow_hide_controls">操作ボタンを隠す</string>
+</resources>

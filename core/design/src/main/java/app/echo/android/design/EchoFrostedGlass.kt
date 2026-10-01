@@ -27,6 +27,7 @@ fun Modifier.echoFrostedGlass(shape: Shape, elevation: Dp = 8.dp): Modifier {
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val customBackground = LocalEchoCustomBackgroundActive.current
     val substrate = scheme.surface.copy(alpha = when {
+        !dark && !customBackground -> 1f
         !customBackground -> if (lightweight) 0.97f else 0.94f
         lightweight -> 0.88f
         dark -> 0.68f
@@ -49,7 +50,7 @@ fun Modifier.echoFrostedGlass(shape: Shape, elevation: Dp = 8.dp): Modifier {
     }
     return this
         .then(
-            if (lightweight) Modifier else Modifier.shadow(
+            if (lightweight || !dark) Modifier else Modifier.shadow(
                 elevation = elevation,
                 shape = shape,
                 clip = false,
@@ -59,6 +60,10 @@ fun Modifier.echoFrostedGlass(shape: Shape, elevation: Dp = 8.dp): Modifier {
         )
         .clip(shape)
         .background(substrate)
-        .then(if (lightweight) Modifier else Modifier.background(wash))
-        .border(BorderStroke(0.75.dp, rim), shape)
+        .then(if (lightweight || !dark) Modifier else Modifier.background(wash))
+        .border(
+            if (dark) BorderStroke(0.75.dp, rim)
+            else BorderStroke(1.dp, scheme.outlineVariant.copy(alpha = 0.8f)),
+            shape,
+        )
 }

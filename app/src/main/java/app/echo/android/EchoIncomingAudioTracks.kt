@@ -74,6 +74,20 @@ private fun readStandaloneIncomingTrack(context: Context, uri: Uri): EchoTrack {
             album = fileTags?.album?.takeIf { it.isNotBlank() }
                 ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
                     ?.takeIf { it.isNotBlank() },
+            albumArtist = fileTags?.albumArtist?.takeIf { it.isNotBlank() }
+                ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST),
+            trackNumber = fileTags?.trackNumber
+                ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER)
+                    ?.substringBefore('/')?.trim()?.toIntOrNull()?.takeIf { it > 0 },
+            discNumber = fileTags?.discNumber
+                ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DISC_NUMBER)
+                    ?.substringBefore('/')?.trim()?.toIntOrNull()?.takeIf { it > 0 },
+            year = fileTags?.year
+                ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_YEAR)
+                    ?.take(4)?.toIntOrNull()?.takeIf { it > 0 },
+            composer = fileTags?.composer
+                ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_COMPOSER),
+            genre = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_GENRE),
             durationMs = durationMs,
             mimeType = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE),
             sampleRateHz = sampleRateHz,
@@ -83,8 +97,14 @@ private fun readStandaloneIncomingTrack(context: Context, uri: Uri): EchoTrack {
         EchoTrack(
             id = EchoIncomingAudio.incomingTrackId(uri),
             uri = uri.toString(),
-            title = fallbackTitle,
-            artist = context.getString(R.string.unknown_artist),
+            title = fileTags?.title?.takeIf { it.isNotBlank() } ?: fallbackTitle,
+            artist = fileTags?.artist?.takeIf { it.isNotBlank() } ?: context.getString(R.string.unknown_artist),
+            album = fileTags?.album,
+            albumArtist = fileTags?.albumArtist,
+            trackNumber = fileTags?.trackNumber,
+            discNumber = fileTags?.discNumber,
+            year = fileTags?.year,
+            composer = fileTags?.composer,
             source = LibrarySource.Unknown,
         )
     } finally {

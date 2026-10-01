@@ -1,0 +1,5 @@
+<resources>
+    <color name="echo_splash_background">#080B12</color>
+    <color name="echo_splash_halo">#162337</color>
+    <color name="echo_splash_ink">#DFE8F5</color>
+</resources>

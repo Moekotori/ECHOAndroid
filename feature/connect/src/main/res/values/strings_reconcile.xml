@@ -1,0 +1,18 @@
+<resources>
+    <string name="reconcile_title">Review changes across devices</string>
+    <string name="reconcile_hint">Changes are compared with the last successful sync on each device. Both sides changed? Choose which version to keep before applying.</string>
+    <string name="reconcile_error">Changes were not fully applied. Some completed steps may remain. Refresh the preview before retrying.</string>
+    <string name="reconcile_legacy">Use compatible additive merge</string>
+    <string name="reconcile_counts">Phone: %1$d · PC: %2$d</string>
+    <string name="reconcile_side">Phone: %1$s (%2$d)
+PC: %3$s (%4$d)</string>
+    <string name="reconcile_conflict">Both devices changed this collection. Choose a resolution.</string>
+    <string name="reconcile_phone">Keep phone</string>
+    <string name="reconcile_pc">Keep PC</string>
+    <string name="reconcile_merge">Merge songs</string>
+    <string name="reconcile_changes">Proposed removals · Phone: %1$d · PC: %2$d</string>
+    <string name="reconcile_delete">This choice deletes a playlist. Audio files are kept.</string>
+    <string name="reconcile_apply">Apply reviewed changes</string>
+    <string name="reconcile_result">Matched: %1$d · Unmatched: %2$d</string>
+    <string name="reconcile_kept">Some songs could not be matched. Existing songs were kept instead of removing or reordering them.</string>
+</resources>

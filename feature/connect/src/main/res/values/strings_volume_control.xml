@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="remote_fixed_volume">Fixed volume is enabled on the PC. Turn it off in the PC volume panel to adjust volume here.</string>
+    <string name="remote_volume_locked">Volume is locked on the PC.</string>
+</resources>

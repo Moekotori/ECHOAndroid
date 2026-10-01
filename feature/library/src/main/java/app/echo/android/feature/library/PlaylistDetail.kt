@@ -902,6 +902,7 @@ internal fun playlistDisplayName(playlist: EchoPlaylist): String =
 internal fun playlistCaption(playlist: EchoPlaylist): String {
     val count = playlist.trackCount
     return when {
+        playlist.isCustomSmartPlaylist -> androidx.compose.ui.res.pluralStringResource(L10nR.plurals.smart_preview_count, count, count)
         playlist.isLikedSongs -> stringResource(L10nR.string.feature_library_count_tracks_liked_songs_e36fb7, (count).toString())
         playlist.isSmartPlaylist -> stringResource(L10nR.string.feature_library_count_tracks_smart, count.toString())
         playlist.canEdit -> stringResource(L10nR.string.feature_library_count_tracks_local_playlist_352a0d, (count).toString())

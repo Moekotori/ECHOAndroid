@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_layout_title">Personalizar inicio</string>
+    <string name="home_layout_detail">Usa las flechas para cambiar el orden y oculta lo que no uses. Las secciones vacías aparecerán cuando haya contenido.</string>
+    <string name="home_layout_move_up">Subir %1$s</string>
+    <string name="home_layout_move_down">Bajar %1$s</string>
+    <string name="home_layout_reset">Restaurar valores</string>
+    <string name="home_layout_cancel">Cancelar</string>
+    <string name="home_layout_apply">Listo</string>
+    <string name="home_layout_overview">Resumen de biblioteca</string>
+    <string name="home_layout_hidden">Todas las secciones del inicio están ocultas.</string>
+</resources>

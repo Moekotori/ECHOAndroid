@@ -1,0 +1,23 @@
+<resources>
+    <string name="sync_title">Sync favorites &amp; playlists</string>
+    <string name="sync_hint">Choose what to send or receive, then review the matches. Only song metadata goes to your paired PC, when you start a sync.</string>
+    <string name="sync_matching_hint">Matches use title, artist, album and duration. Missing or ambiguous songs are skipped. No audio files are transferred.</string>
+    <string name="sync_conflicts">Merge adds songs and keeps existing order and names. It never removes favorites or playlist entries. Smart playlist rules stay on their original device.</string>
+    <string name="sync_favorites">My favorites</string>
+    <plurals name="sync_from_pc"><item quantity="one">PC → phone · %1$d track</item><item quantity="other">PC → phone · %1$d tracks</item></plurals>
+    <plurals name="sync_to_pc"><item quantity="one">Phone → PC · %1$d track</item><item quantity="other">Phone → PC · %1$d tracks</item></plurals>
+    <string name="sync_loading">Reading collections…</string>
+    <string name="sync_working">Matching and merging in batches…</string>
+    <string name="sync_preview_button">Preview sync</string>
+    <string name="sync_preview">Matched: %1$d · Missing or ambiguous: %2$d</string>
+    <string name="sync_apply">Merge selected collections</string>
+    <string name="sync_change_selection">Change selection</string>
+    <string name="sync_done">Sync finished · Matched: %1$d · Skipped: %2$d</string>
+    <string name="sync_close">Done</string>
+    <string name="sync_cancel">Cancel</string>
+    <string name="sync_retry">Try again</string>
+    <string name="sync_limit">Select fewer collections. Each sync can review up to 10,000 song references.</string>
+    <string name="sync_error">Sync stopped. Completed batches are kept. Retry safely without duplicating entries.</string>
+    <string name="sync_unsupported">This PC version does not support library sync. Update ECHOSteam, then try again.</string>
+    <string name="sync_pairing_required">Complete PC pairing first. Direct LAN connections can browse music, but cannot sync collections.</string>
+</resources>

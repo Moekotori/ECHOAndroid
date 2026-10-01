@@ -1,0 +1,17 @@
+<resources>
+    <string name="lyrics_edit_title">歌词编辑与打轴</string>
+    <string name="lyrics_edit_hint">选中一句后，边播放边标记当前时间。时间留空表示未打轴；导出前请为每句打轴。</string>
+    <string name="lyrics_edit_play">播放 / 暂停</string>
+    <string name="lyrics_edit_mark">标记时间并下一句</string>
+    <string name="lyrics_edit_add">添加一句</string>
+    <string name="lyrics_edit_active">正在标记第 %1$d 句</string>
+    <string name="lyrics_edit_line">第 %1$d 句 · 跳转</string>
+    <string name="lyrics_edit_delete">删除这句</string>
+    <string name="lyrics_edit_time">分:秒.毫秒 · 可留空</string>
+    <string name="lyrics_edit_text">歌词正文</string>
+    <string name="lyrics_edit_translation">翻译 · 可选</string>
+    <string name="lyrics_edit_error">请检查时间格式与先后顺序，导出 LRC 前需要为全部歌词打轴。</string>
+    <string name="lyrics_edit_saved">已保存</string>
+    <string name="lyrics_edit_save">保存本机副本</string>
+    <string name="lyrics_edit_export">导出 LRC</string>
+</resources>

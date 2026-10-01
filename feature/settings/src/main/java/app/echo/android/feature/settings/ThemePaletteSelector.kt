@@ -1,14 +1,14 @@
 package app.echo.android.feature.settings
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.border
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -18,16 +18,15 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Icon
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -38,8 +37,6 @@ import app.echo.android.design.echoThemeTokens
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.model.settings.EchoColorTheme
 import app.echo.android.model.settings.EchoCustomColors
-
-private const val PaletteColumns = 5
 
 @Composable
 internal fun ThemePaletteSelector(
@@ -52,10 +49,10 @@ internal fun ThemePaletteSelector(
     val selected = EchoColorTheme.fromId(selectedId)
     Column(
         modifier = Modifier.settingsSearchAnchor(stringResource(R.string.settings_color_theme)),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(top = 6.dp),
+            Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -73,36 +70,33 @@ internal fun ThemePaletteSelector(
                 fontWeight = FontWeight.Medium,
             )
         }
-        Column(
-            modifier = Modifier.selectableGroup(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            EchoColorTheme.entries.chunked(PaletteColumns).forEach { row ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    row.forEach { theme ->
-                        ColorThemeSwatch(
-                            theme = theme,
-                            customColors = customColors,
-                            selected = theme == selected,
-                            darkPreview = dark,
-                            onSelect = { onSelect(theme.id) },
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                    repeat(PaletteColumns - row.size) {
-                        Spacer(Modifier.weight(1f))
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            // Keep every swatch at least 48 dp wide on small windows and split-screen.
+            val columns = ((maxWidth + 4.dp) / 52.dp).toInt().coerceIn(1, 6)
+            val rows = remember(columns) { EchoColorTheme.entries.chunked(columns) }
+            Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                rows.forEach { row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        row.forEach { theme ->
+                            ColorThemeSwatch(
+                                theme = theme,
+                                customColors = customColors,
+                                selected = theme == selected,
+                                darkPreview = dark,
+                                onSelect = { onSelect(theme.id) },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        repeat(columns - row.size) {
+                            Spacer(Modifier.weight(1f))
+                        }
                     }
                 }
             }
         }
-        Text(
-            stringResource(R.string.settings_color_theme_detail),
-            color = scheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodySmall,
-        )
     }
 }
 
@@ -122,20 +116,16 @@ private fun ColorThemeSwatch(
     val scheme = MaterialTheme.colorScheme
     val tokens = remember(theme, customColors, darkPreview) { echoThemeTokens(theme, darkPreview, customColors) }
     val label = stringResource(colorThemeLabelRes(theme))
-    val shape = RoundedCornerShape(14.dp)
     Box(
         modifier = modifier
-            .height(52.dp)
-            .clip(shape)
-            .border(
-                width = if (selected) 2.dp else 1.dp,
-                color = if (selected) scheme.primary else scheme.outlineVariant,
-                shape = shape,
-            )
+            .height(48.dp)
             .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect)
             .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
     ) {
-        Canvas(Modifier.fillMaxSize().padding(3.dp).clip(RoundedCornerShape(11.dp))) {
+        Canvas(Modifier.size(40.dp).then(
+            if (selected) Modifier.border(2.dp, scheme.primary, RectangleShape) else Modifier,
+        )) {
             val w = size.width
             val h = size.height
             drawRect(
@@ -146,17 +136,17 @@ private fun ColorThemeSwatch(
             drawCircle(
                 color = tokens.accent,
                 radius = 5.dp.toPx(),
-                center = Offset(w * 0.32f, h * 0.52f),
+                center = Offset(w * 0.30f, h * 0.56f),
             )
             drawCircle(
                 color = tokens.secondary,
                 radius = 3.5.dp.toPx(),
-                center = Offset(w * 0.62f, h * 0.52f),
+                center = Offset(w * 0.60f, h * 0.56f),
             )
             drawCircle(
                 color = tokens.panel.copy(alpha = if (tokens.dark) 0.92f else 0.96f),
-                radius = 2.5.dp.toPx(),
-                center = Offset(w * 0.82f, h * 0.52f),
+                radius = 2.dp.toPx(),
+                center = Offset(w * 0.82f, h * 0.56f),
             )
         }
         if (selected) {
@@ -164,9 +154,8 @@ private fun ColorThemeSwatch(
                 Icons.Rounded.Check,
                 contentDescription = null,
                 tint = scheme.onPrimary,
-                modifier = Modifier.align(Alignment.TopEnd).padding(5.dp)
-                    .background(scheme.primary, RoundedCornerShape(5.dp))
-                    .padding(2.dp).size(12.dp),
+                modifier = Modifier.align(Alignment.TopCenter).padding(start = 24.dp, top = 4.dp)
+                    .background(scheme.primary).size(14.dp).padding(1.dp),
             )
         }
     }

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_density_standard">Стандартно</string>
+    <string name="settings_density_comfortable">Просторно</string>
+    <string name="settings_density_custom">Свой вариант · %1$s</string>
+    <string name="settings_font_advanced">Шрифты и импорт</string>
+</resources>

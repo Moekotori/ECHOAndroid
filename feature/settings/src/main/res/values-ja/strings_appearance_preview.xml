@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_appearance_preview">表示プレビュー</string>
+    <string name="settings_background_preview_unavailable">この背景はプレビューできません。</string>
+    <string name="settings_background_preview_loading">プレビューを読み込み中…</string>
+    <string name="settings_background_preview_still">動画の背景は静止画でプレビューします。</string>
+    <string name="settings_background_preview_legacy_blur">この端末では、スライダーから指を離すとぼかしのプレビューが更新されます。</string>
+</resources>

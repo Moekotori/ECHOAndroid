@@ -6,8 +6,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import app.echo.android.design.LocalEchoDarkTheme
-import app.echo.android.design.LocalEchoCustomBackgroundActive
-import app.echo.android.design.echoTheme
 
 @Composable
 internal fun LastFmSettingsPanel(
@@ -167,16 +165,9 @@ internal fun SetlistFmSettingsPanel(
     )
 }
 
+// Settings groups sit directly on the page; separation comes from spacing and headings.
 @Composable
-internal fun settingsPanelColor(): Color {
-    val scheme = MaterialTheme.colorScheme
-    val customBackground = LocalEchoCustomBackgroundActive.current
-    return if (LocalEchoDarkTheme.current) {
-        echoTheme().panel.copy(alpha = if (customBackground) 0.88f else 0.94f)
-    } else {
-        scheme.surface.copy(alpha = if (customBackground) 0.90f else 0.96f)
-    }
-}
+internal fun settingsPanelColor(): Color = Color.Transparent
 
 @Composable
 internal fun settingsRowColor(selected: Boolean = false): Color {

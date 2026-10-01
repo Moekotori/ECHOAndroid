@@ -73,11 +73,11 @@ val EchoContentMaxWidth = 560.dp
 val EchoAccent = Color(0xFFD3A9B5)
 val EchoAccentText = Color(0xFFE4C4CC)
 val EchoAccentDeep = Color(0xFF9B5B6A)
-val EchoBgTop = Color(0xFFFCF9F6)
-val EchoBgMid = Color(0xFFF8F3F1)
-val EchoBgBottom = Color(0xFFF0E8E7)
-val RoonInk = Color(0xFF25242A)
-val RoonMuted = Color(0xFF6D6D73)
+val EchoBgTop = Color.White
+val EchoBgMid = Color.White
+val EchoBgBottom = Color.White
+val RoonInk = Color(0xFF27272D)
+val RoonMuted = Color(0xFF686870)
 val EchoHomeBlue = EchoAccent
 val EchoHomeBlueDeep = EchoAccentDeep
 val EchoHomeMist = Color(0xFFF4F1F2)
@@ -209,6 +209,11 @@ fun EchoGlassBackground(modifier: Modifier = Modifier) {
     val theme = echoTheme()
     val scheme = MaterialTheme.colorScheme
     val dark = theme.dark
+    // Light presets keep a white canvas; color belongs to controls and artwork.
+    if (!dark && theme.id != EchoColorTheme.Custom.id) {
+        Box(modifier = modifier.background(scheme.background))
+        return
+    }
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     // Static, theme-derived washes: no bitmap allocation, blur pass, or idle animation.
     // Brushes are rebuilt only when the palette, performance mode, or size changes.

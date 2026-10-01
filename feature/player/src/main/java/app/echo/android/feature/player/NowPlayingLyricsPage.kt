@@ -17,6 +17,7 @@ import app.echo.android.design.ArtworkPalette
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.feature.player.afterglow.AfterglowStage
 import app.echo.android.model.lyrics.EchoLyricsLoadState
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.settings.EchoLyricsPageStyle
@@ -34,6 +35,7 @@ internal fun NowPlayingLyricsPage(
     lyricsLineSpacing: Float,
     lyricsBackgroundDim: Float,
     lyricsWordHighlightEnabled: Boolean,
+    lyricsEstimatedWordHighlightEnabled: Boolean,
     lyricsWordHighlightIntensity: Float,
     lyricsImmersiveModeEnabled: Boolean,
     lyricsMotionMode: String,
@@ -66,7 +68,7 @@ internal fun NowPlayingLyricsPage(
         val readyLyrics = (lyricsState as? EchoLyricsLoadState.Ready)?.lyrics
         val displayPosition = rememberLyricsDisplayPosition(
             positionMsState, status.track?.id, status.isPlaying, status.playbackSpeed,
-            animationsVisible && !LocalEchoEffectivePerformanceMode.current.isLightweight,
+            animationsVisible && !lyricsPageStyle.isAfterglow && !LocalEchoEffectivePerformanceMode.current.isLightweight,
         )
         val lyricAccent = lyricsColorForMode(lyricsColorMode)
         val lyricsDimAlpha by animateFloatAsState(
@@ -81,127 +83,160 @@ internal fun NowPlayingLyricsPage(
                     .fillMaxSize()
                     .background((if (LocalEchoDarkTheme.current) Color.Black else MaterialTheme.colorScheme.surface).copy(alpha = lyricsDimAlpha)),
             )
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                LyricsTrackHeading(status.track, paper, onOpenArtist)
-                Box(
-                    modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(top = 8.dp, bottom = 14.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    when (lyricsState) {
-                        EchoLyricsLoadState.Idle -> LyricsEmptyState(
-                            stringResource(L10nR.string.feature_player_lyrics_appear_after_you_pick_a_song_1622d2),
-                            onImportLyrics,
-                        )
-                        EchoLyricsLoadState.Loading -> LyricsEmptyState(
-                            stringResource(L10nR.string.feature_player_reading_local_lyrics_807f08),
-                        )
-                        EchoLyricsLoadState.Missing -> LyricsEmptyState(
-                            stringResource(L10nR.string.feature_player_no_matching_lyrics_found_7ffc7e),
-                            onImportLyrics,
-                        )
-                        is EchoLyricsLoadState.Error -> LyricsEmptyState(lyricsState.message, onImportLyrics)
-                        is EchoLyricsLoadState.Ready -> LyricsLineList(
-                            lyrics = lyricsState.lyrics,
-                            onAdjustOffset = onAdjustLyricsOffset,
-                            positionMsState = displayPosition,
-                            onSeek = onSeek,
-                            lyricsFontFamily = lyricsFontFamily,
-                            lyricsFontScale = lyricsFontScale,
-                            lyricAccent = lyricAccent,
-                            highlightColor = if (lyricsColorMode == "white") MaterialTheme.colorScheme.primary else lyricAccent,
-                            paper = paper,
-                            lyricsAlignment = lyricsAlignment,
-                            lyricsLineSpacing = lyricsLineSpacing,
-                            lyricsWordHighlightEnabled = lyricsWordHighlightEnabled,
-                            lyricsWordHighlightIntensity = lyricsWordHighlightIntensity,
-                            lyricsImmersiveModeEnabled = lyricsImmersiveModeEnabled,
-                            lyricsMotionMode = lyricsMotionMode,
-                            showTranslation = lyricsShowTranslation,
-                            showRomanization = lyricsShowRomanization,
-                            focusGlowEnabled = lyricsFocusGlowEnabled,
-                            animationsVisible = animationsVisible,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 4.dp),
-                        )
-                    }
-                }
-
-                AnimatedVisibility(
-                    visible = showLyricsControlDeck && readyLyrics != null,
-                    enter = expandVertically(
-                        expandFrom = Alignment.Top,
-                        animationSpec = EchoMotion.silkSize(360),
-                    ) + fadeIn(tween(durationMillis = 220, delayMillis = 40, easing = LyricsSettingsMotionEasing)) +
-                        slideInVertically(EchoMotion.silkOffset(360)) { -it / 4 },
-                    exit = shrinkVertically(
-                        shrinkTowards = Alignment.Top,
-                        animationSpec = EchoMotion.silkSize(240),
-                    ) + fadeOut(tween(durationMillis = 160, easing = LyricsSettingsMotionEasing)) +
-                        slideOutVertically(EchoMotion.silkOffset(240)) { -it / 5 },
-                ) {
-                    readyLyrics?.let { lyrics ->
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .animateContentSize(tween(durationMillis = 260, easing = LyricsSettingsMotionEasing)),
-                        ) {
-                            LyricsControlDeck(
-                                lyrics = lyrics,
-                                onImportLyrics = onImportLyrics,
-                                onAdjustLyricsOffset = onAdjustLyricsOffset,
-                                onResetLyricsOffset = onResetLyricsOffset,
+            LyricsPageLayout(
+                heading = { LyricsTrackHeading(status.track, paper, onOpenArtist) },
+                lyrics = {
+                    Box(
+                        modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight()
+                        .padding(top = 8.dp, bottom = 14.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        when (lyricsState) {
+                            EchoLyricsLoadState.Idle -> LyricsEmptyState(
+                                stringResource(L10nR.string.feature_player_lyrics_appear_after_you_pick_a_song_1622d2),
+                                onImportLyrics,
                             )
-                            Spacer(Modifier.height(10.dp))
+                            EchoLyricsLoadState.Loading -> LyricsEmptyState(
+                                stringResource(L10nR.string.feature_player_reading_local_lyrics_807f08),
+                            )
+                            EchoLyricsLoadState.Missing -> LyricsEmptyState(
+                                stringResource(L10nR.string.feature_player_no_matching_lyrics_found_7ffc7e),
+                                onImportLyrics,
+                            )
+                            is EchoLyricsLoadState.Error -> LyricsEmptyState(lyricsState.message, onImportLyrics)
+                            is EchoLyricsLoadState.Ready -> {
+                                val ordinaryLyrics: @Composable () -> Unit = {
+                                    LyricsLineList(
+                                        lyrics = lyricsState.lyrics,
+                                        durationMs = durationMsState.value,
+                                        onAdjustOffset = onAdjustLyricsOffset,
+                                        positionMsState = displayPosition,
+                                        onSeek = onSeek,
+                                        lyricsFontFamily = lyricsFontFamily,
+                                        lyricsFontScale = lyricsFontScale,
+                                        lyricAccent = lyricAccent,
+                                        highlightColor = if (lyricsColorMode == "white") MaterialTheme.colorScheme.primary else lyricAccent,
+                                        paper = paper,
+                                        lyricsAlignment = lyricsAlignment,
+                                        lyricsLineSpacing = lyricsLineSpacing,
+                                        lyricsWordHighlightEnabled = lyricsWordHighlightEnabled,
+                                        lyricsEstimatedWordHighlightEnabled = lyricsEstimatedWordHighlightEnabled,
+                                        lyricsWordHighlightIntensity = lyricsWordHighlightIntensity,
+                                        lyricsImmersiveModeEnabled = lyricsImmersiveModeEnabled,
+                                        lyricsMotionMode = lyricsMotionMode,
+                                        showTranslation = lyricsShowTranslation,
+                                        showRomanization = lyricsShowRomanization,
+                                        focusGlowEnabled = lyricsFocusGlowEnabled,
+                                        animationsVisible = animationsVisible,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(horizontal = 4.dp),
+                                    )
+                                }
+                                if (lyricsPageStyle.isAfterglow) {
+                                    key(status.track?.id) {
+                                        AfterglowStage(
+                                            lyrics = lyricsState.lyrics,
+                                            style = lyricsPageStyle,
+                                            trackKey = status.track?.id,
+                                            title = status.track?.title.orEmpty(),
+                                            hostPosition = positionMsState,
+                                            durationMs = durationMsState.value,
+                                            playing = status.isPlaying,
+                                            speed = status.playbackSpeed,
+                                            visible = animationsVisible,
+                                            fontFamily = lyricsFontFamily,
+                                            fontScale = lyricsFontScale,
+                                            lineSpacing = lyricsLineSpacing,
+                                            motionMode = lyricsMotionMode,
+                                            showTranslation = lyricsShowTranslation,
+                                            showRomanization = lyricsShowRomanization,
+                                            wordHighlight = lyricsWordHighlightEnabled,
+                                            estimatedWordHighlight = lyricsEstimatedWordHighlightEnabled,
+                                            highlightIntensity = lyricsWordHighlightIntensity,
+                                            onSeek = onSeek,
+                                            modifier = Modifier.fillMaxSize(),
+                                            fallback = ordinaryLyrics,
+                                        )
+                                    }
+                                } else ordinaryLyrics()
+                            }
                         }
                     }
-                }
-                if (showTransportDock) {
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(top = 12.dp, bottom = 4.dp)) {
-                            if (paper) {
-                                LyricsTrackIdentity(
-                                    status.track,
-                                    Modifier.padding(bottom = 12.dp),
-                                    artworkSize = 36,
-                                    onOpenArtist = onOpenArtist,
+                },
+                controls = { landscape ->
+                    AnimatedVisibility(
+                        visible = showLyricsControlDeck && readyLyrics != null,
+                        enter = expandVertically(
+                            expandFrom = Alignment.Top,
+                            animationSpec = EchoMotion.silkSize(360),
+                        ) + fadeIn(tween(durationMillis = 220, delayMillis = 40, easing = LyricsSettingsMotionEasing)) +
+                            slideInVertically(EchoMotion.silkOffset(360)) { -it / 4 },
+                        exit = shrinkVertically(
+                            shrinkTowards = Alignment.Top,
+                            animationSpec = EchoMotion.silkSize(240),
+                        ) + fadeOut(tween(durationMillis = 160, easing = LyricsSettingsMotionEasing)) +
+                            slideOutVertically(EchoMotion.silkOffset(240)) { -it / 5 },
+                    ) {
+                        readyLyrics?.let { lyrics ->
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .animateContentSize(tween(durationMillis = 260, easing = LyricsSettingsMotionEasing)),
+                            ) {
+                                LyricsControlDeck(
+                                    lyrics = lyrics,
+                                    onImportLyrics = onImportLyrics,
+                                    onAdjustLyricsOffset = onAdjustLyricsOffset,
+                                    onResetLyricsOffset = onResetLyricsOffset,
+                                )
+                                Spacer(Modifier.height(10.dp))
+                            }
+                        }
+                    }
+                    if (showTransportDock) {
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(top = 12.dp, bottom = 4.dp)) {
+                                if (paper && !landscape) {
+                                    LyricsTrackIdentity(
+                                        status.track,
+                                        Modifier.padding(bottom = 12.dp),
+                                        artworkSize = 36,
+                                        onOpenArtist = onOpenArtist,
+                                    )
+                                }
+                                LyricsScrubber(
+                                    trackKey = status.track?.id,
+                                    positionMsState = positionMsState,
+                                    durationMsState = durationMsState,
+                                    onSeek = onSeek,
+                                )
+                                Spacer(Modifier.height(6.dp))
+                                LyricsTransportControls(
+                                    isPlaying = status.isPlaying,
+                                    onOpenSettings = onOpenLyricsSettings,
+                                    onPlayPause = onPlayPause,
+                                    onNext = onNext,
+                                    onPrevious = onPrevious,
+                                    onOpenQueue = onOpenQueue,
+                                    onCast = onCast,
+                                    castActive = castActive,
                                 )
                             }
-                            LyricsScrubber(
-                                trackKey = status.track?.id,
-                                positionMsState = positionMsState,
-                                durationMsState = durationMsState,
-                                onSeek = onSeek,
-                            )
-                            Spacer(Modifier.height(6.dp))
-                            LyricsTransportControls(
-                                isPlaying = status.isPlaying,
-                                onOpenSettings = onOpenLyricsSettings,
-                                onPlayPause = onPlayPause,
-                                onNext = onNext,
-                                onPrevious = onPrevious,
-                                onOpenQueue = onOpenQueue,
-                                onCast = onCast,
-                                castActive = castActive,
-                            )
                         }
+                        Spacer(Modifier.height(10.dp))
+                    } else {
+                        PlayerControlButton(
+                            icon = PlayerControlIcons.Settings,
+                            description = stringResource(L10nR.string.feature_player_lyrics_settings_843bc9),
+                            onClick = onOpenLyricsSettings,
+                        )
+                        Spacer(Modifier.height(10.dp))
                     }
-                    Spacer(Modifier.height(10.dp))
-                } else {
-                    PlayerControlButton(
-                        icon = PlayerControlIcons.Settings,
-                        description = stringResource(L10nR.string.feature_player_lyrics_settings_843bc9),
-                        onClick = onOpenLyricsSettings,
-                    )
-                    Spacer(Modifier.height(10.dp))
-                }
-            }
+                },
+            )
         }
     }
 }

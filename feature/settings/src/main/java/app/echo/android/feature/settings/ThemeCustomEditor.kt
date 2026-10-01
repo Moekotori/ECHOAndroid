@@ -1,7 +1,6 @@
 package app.echo.android.feature.settings
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.rounded.Check
@@ -18,7 +16,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -98,6 +97,7 @@ internal fun ThemeCustomEditor(
                 },
             )
             TextButton(
+                shape = SettingsShape,
                 onClick = { naming = true },
                 modifier = Modifier.settingsSearchAnchor(stringResource(R.string.settings_custom_save)),
             ) {
@@ -176,8 +176,7 @@ private fun CustomColorChannel(
                 Modifier
                     .size(28.dp)
                     .clip(CircleShape)
-                    .background(Color(color))
-                    .border(1.dp, scheme.outlineVariant, CircleShape),
+                    .background(Color(color)),
             )
             Text(
                 title,
@@ -278,20 +277,26 @@ private fun SaveColorThemeDialog(
     var name by remember(initialName) { mutableStateOf(initialName) }
     val valid = EchoSavedColorThemes.normalizeName(name) != null
     AlertDialog(
+        shape = SettingsShape,
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.settings_custom_save)) },
         text = {
-            OutlinedTextField(
+            TextField(
                 value = name,
                 onValueChange = { name = it.take(EchoSavedColorThemes.MaxNameLength) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 label = { Text(stringResource(R.string.settings_custom_save_name)) },
-                shape = RoundedCornerShape(16.dp),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                ),
+                shape = SettingsShape,
             )
         },
         confirmButton = {
             TextButton(
+                shape = SettingsShape,
                 onClick = { EchoSavedColorThemes.normalizeName(name)?.let(onConfirm) },
                 enabled = valid,
             ) {
@@ -299,7 +304,7 @@ private fun SaveColorThemeDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.error_log_clear_cancel)) }
+            TextButton(shape = SettingsShape, onClick = onDismiss) { Text(stringResource(R.string.error_log_clear_cancel)) }
         },
     )
 }

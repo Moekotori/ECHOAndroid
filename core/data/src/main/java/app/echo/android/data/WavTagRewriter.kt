@@ -183,11 +183,12 @@ internal object WavTagRewriter {
     private fun encodeInfoList(existing: ByteArray?, fields: AudioTagFields): ByteArray {
         val values = linkedMapOf<String, ByteArray>()
         existing?.let { parseInfoItems(it) }?.forEach { (key, value) ->
-            if (key !in ManagedInfoKeys) values[key] = value
+            if (key !in ManagedInfoKeys && !(key == "IGNR" && (fields.genre != null || fields.genreModified))) values[key] = value
         }
         values["INAM"] = utf8Z(fields.title)
         values["IART"] = utf8Z(fields.artist)
         fields.album?.let { values["IPRD"] = utf8Z(it) }
+        fields.genre?.let { values["IGNR"] = utf8Z(it) }
         fields.trackNumber?.let { values["ITRK"] = utf8Z(it.toString()) }
         fields.year?.let { values["ICRD"] = utf8Z(it.toString()) }
         val payload = ArrayList<Byte>()

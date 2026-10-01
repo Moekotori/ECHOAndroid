@@ -12,6 +12,10 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -25,12 +29,21 @@ internal fun PlayerAppearanceSettings(
     onPreview: (PlayerAppearance) -> Unit,
     onCommit: () -> Unit,
 ) {
+    var expanded by remember { mutableStateOf(false) }
     PlaybackSettingsSection(
         icon = Icons.Rounded.Palette,
         title = stringResource(R.string.player_appearance_title),
-        detail = stringResource(R.string.player_appearance_detail),
+        detail = stringResource(when (appearance.style) {
+            "record_sleeve" -> R.string.player_appearance_record_sleeve
+            "pixel_handheld" -> R.string.player_appearance_pixel_handheld
+            "type_poster" -> R.string.player_appearance_type_poster
+            else -> R.string.player_appearance_classic
+        }),
+        expanded = expanded,
+        onToggleExpanded = { expanded = !expanded },
+        framed = false,
         trailing = {
-            TextButton(onClick = { onPreview(PlayerAppearance()); onCommit() }) {
+            if (expanded) TextButton(onClick = { onPreview(PlayerAppearance()); onCommit() }) {
                 Text(stringResource(R.string.player_appearance_reset))
             }
         },

@@ -15,9 +15,12 @@ import androidx.media3.session.MediaSession
 import app.echo.android.model.lyrics.EchoLyricDisplaySnapshot
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 @UnstableApi
@@ -25,12 +28,14 @@ class EchoPlaybackService : MediaLibraryService() {
     private var mediaSession: MediaLibrarySession? = null
     private var player: ExoPlayer? = null
     private var nextUpQueue: NextUpQueueController? = null
+    private var abLoop: EchoAbLoopController? = null
     private var trackTransitions: EchoTrackTransitionController? = null
     private var smartTransitions: EchoSmartTransitionController? = null
     private var sessionCallback: EchoPlaybackLibrarySessionCallback? = null
     private var sessionRestorer: EchoPlaybackSessionRestorer? = null
     private var notificationLyrics: EchoNotificationLyricController? = null
     private var audioRoutePlayback: EchoAudioRoutePlaybackController? = null
+    private var surfaceProgressJob: Job? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     override fun attachBaseContext(base: Context) {
@@ -55,6 +60,7 @@ class EchoPlaybackService : MediaLibraryService() {
                 return
             }
             EchoPlaybackProcessRuntime.publishSurface(player.toPlaybackSurfaceSnapshot())
+            updateSurfaceProgress(player)
             if (events.containsAny(
                     Player.EVENT_MEDIA_ITEM_TRANSITION,
                     Player.EVENT_MEDIA_METADATA_CHANGED,
@@ -79,6 +85,23 @@ class EchoPlaybackService : MediaLibraryService() {
                 sessionRestorer?.persistFromPlayer(
                     persistBecauseOfSeek = events.contains(Player.EVENT_POSITION_DISCONTINUITY),
                 )
+            }
+        }
+    }
+
+    private fun updateSurfaceProgress(player: Player) {
+        if (!player.isPlaying) {
+            surfaceProgressJob?.cancel()
+            surfaceProgressJob = null
+            return
+        }
+        if (surfaceProgressJob?.isActive == true) return
+        surfaceProgressJob = serviceScope.launch {
+            while (isActive && player.isPlaying) {
+                delay(1_000L)
+                if (player.isPlaying) {
+                    EchoPlaybackProcessRuntime.publishSurface(player.toPlaybackSurfaceSnapshot())
+                }
             }
         }
     }
@@ -120,6 +143,7 @@ class EchoPlaybackService : MediaLibraryService() {
             }
 
         player = exoPlayer
+        abLoop = EchoAbLoopController(exoPlayer, serviceScope)
         audioRoutePlayback = EchoAudioRoutePlaybackController(this, exoPlayer, serviceScope).also { it.start() }
         trackTransitions = EchoTrackTransitionController(exoPlayer, serviceScope, EchoPlaybackProcessRuntime::setTrackFadeGain)
         val decoder = EchoSmartTransitionDecoder(this)
@@ -149,6 +173,7 @@ class EchoPlaybackService : MediaLibraryService() {
             session = { mediaSession },
             restorer = restorer,
             nextUpQueue = { nextUpQueue },
+            abLoop = { abLoop },
         )
         sessionCallback = callback
         val buttons = callback.currentButtons(exoPlayer)
@@ -169,6 +194,7 @@ class EchoPlaybackService : MediaLibraryService() {
             }
             .build()
         EchoPlaybackProcessRuntime.publishSurface(exoPlayer.toPlaybackSurfaceSnapshot())
+        updateSurfaceProgress(exoPlayer)
         setMediaNotificationProvider(EchoMediaNotificationProvider(this))
         notificationLyrics = EchoNotificationLyricController(
             player = exoPlayer,
@@ -210,6 +236,8 @@ class EchoPlaybackService : MediaLibraryService() {
         }
 
     override fun onDestroy() {
+        abLoop?.close()
+        abLoop = null
         trackTransitions?.close()
         trackTransitions = null
         smartTransitions?.close()

@@ -12,13 +12,27 @@ data class EchoBackupDocument(
     val settings: EchoBackupSettings = EchoBackupSettings(),
     val playlists: List<EchoBackupPlaylist> = emptyList(),
     val favorites: List<EchoBackupTrackRef> = emptyList(),
+    val bookmarks: List<EchoBackupBookmark> = emptyList(),
+    val history: List<EchoBackupHistoryEvent> = emptyList(),
+    val lyrics: List<EchoBackupLyrics> = emptyList(),
+    val assets: List<EchoBackupAsset> = emptyList(),
 ) {
     companion object {
-        const val CurrentVersion = 1
+        const val CurrentVersion = 3
     }
 }
 
 data class EchoBackupSettings(
+    val homeLayout: app.echo.android.model.settings.EchoHomeLayout? = null,
+    val playerPageStyle: String? = null,
+    val playerTextScale: Float? = null,
+    val playerArtworkScale: Float? = null,
+    val backgroundMode: String? = null,
+    val backgroundStyle: String? = null,
+    val backgroundBlur: Float? = null,
+    val backgroundBrightness: Float? = null,
+    val backgroundGlass: Float? = null,
+    val backgroundScale: Float? = null,
     val themeMode: String? = null,
     val colorTheme: String? = null,
     val appLanguage: String? = null,
@@ -64,6 +78,7 @@ data class EchoBackupSettings(
     val lyricsLineSpacing: Float? = null,
     val lyricsBackgroundDim: Float? = null,
     val lyricsWordHighlightEnabled: Boolean? = null,
+    val lyricsEstimatedWordHighlightEnabled: Boolean? = null,
     val lyricsWordHighlightIntensity: Float? = null,
     val lyricsImmersiveModeEnabled: Boolean? = null,
     val lyricsMotionMode: String? = null,
@@ -83,14 +98,27 @@ data class EchoBackupSettings(
 data class EchoBackupPlaylist(
     val name: String,
     val tracks: List<EchoBackupTrackRef> = emptyList(),
+    val smartRule: app.echo.android.model.library.EchoSmartPlaylistRule? = null,
+    val pinnedToHome: Boolean = false,
 )
+
+data class EchoBackupBookmark(val track: EchoBackupTrackRef, val positionMs: Long, val label: String)
 
 data class EchoBackupTrackRef(
     val title: String = "",
     val artist: String = "",
     val relativePath: String? = null,
     val durationMs: Long = 0L,
+    val album: String? = null,
 )
+
+data class EchoBackupHistoryEvent(val track: EchoBackupTrackRef, val listenedMs: Long, val playedAtEpochMs: Long,
+    val localEpochDay: Long, val localHour: Int, val source: String?)
+data class EchoBackupLyrics(val track: EchoBackupTrackRef, val documentJson: String?, val userOffsetMs: Long)
+data class EchoBackupAsset(val role: String, val entry: String)
+data class EchoBackupPreview(val currentPlaylists: Int, val incomingPlaylists: Int, val incomingFavorites: Int,
+    val incomingMoments: Int, val incomingHistory: Int, val incomingLyrics: Int, val incomingAssets: Int,
+    val matchedTracks: Int, val missingTracks: Int, val changedSettings: List<String>)
 
 data class EchoBackupRestoreResult(
     val playlistsRestored: Int = 0,

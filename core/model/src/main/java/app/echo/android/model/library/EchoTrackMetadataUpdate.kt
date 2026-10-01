@@ -12,4 +12,5 @@ data class EchoTrackMetadataUpdate(
     val composer: String? = null,
     val artworkUri: String? = null,
     val lyrics: String? = null,
+    val genre: String? = null,
 )

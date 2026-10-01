@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
@@ -37,14 +36,17 @@ internal fun TypePosterCoverPage(status: EchoPlaybackStatus, position: State<Lon
     val (title, edition) = remember(fullTitle) { recordSleeveTitleParts(fullTitle) }
     val lines = remember(title) { posterTitleLines(title) }
     val formats = remember(status.diagnostics) { playbackFormatChips(status.diagnostics, ::formatSampleRate).joinToString(" · ") }
-    BoxWithConstraints(modifier.background(ExpressivePlayerStyle.PosterPaper)) {
-        val height = maxOf(maxHeight, (770f * LocalDensity.current.fontScale.coerceAtLeast(1f)).dp)
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).height(height)) {
+    PlayerCoverLayout(
+        minimumPortraitHeight = (770f * LocalDensity.current.fontScale.coerceAtLeast(1f)).dp,
+        modifier = modifier.background(ExpressivePlayerStyle.PosterPaper),
+        artwork = {
             Column(Modifier.fillMaxWidth().weight(1f)) {
                 lines.forEach { line ->
                     PosterTitleLine(line, Modifier.fillMaxWidth().weight(1f))
                 }
             }
+        },
+        details = {
             Text(track?.artist ?: stringResource(R.string.feature_player_pick_a_song_to_start_68b6af),
                 modifier = Modifier.fillMaxWidth().openArtistWhen(track?.id, track?.artist, actions.openArtist),
                 color = ink, fontFamily = RecordSleeveStyle.BodyFont, fontSize = 27.sp,
@@ -72,8 +74,8 @@ internal fun TypePosterCoverPage(status: EchoPlaybackStatus, position: State<Lon
             Spacer(Modifier.height(12.dp))
             ExpressiveUtilities(false, status, castActive, actions)
             Spacer(Modifier.height(4.dp))
-        }
-    }
+        },
+    )
 }
 
 /** Measure visible glyph bounds, then let Android ellipsize overflow at the end. */

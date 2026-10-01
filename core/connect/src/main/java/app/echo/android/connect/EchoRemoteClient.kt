@@ -34,6 +34,7 @@ class EchoRemoteClient internal constructor(
     private val connectRetryDelayMs: Long = 500L,
     private val statusPollIntervalMs: Long = StatusPollIntervalMs,
     private val appContext: Context? = null,
+    private val eventRetryDelayMs: Long = 1_000L,
 ) {
     constructor(scope: CoroutineScope) : this(scope, OkHttpEchoLinkTransport())
     constructor(scope: CoroutineScope, context: Context) : this(scope, OkHttpEchoLinkTransport(), appContext = context)
@@ -55,10 +56,13 @@ class EchoRemoteClient internal constructor(
     private var authRejected = false
 
     fun setForeground(visible: Boolean) {
+        if (foreground == visible) return
         foreground = visible
         if (!visible) {
             stopEventStream()
             statusPollJob?.cancel()
+            foregroundRefreshJob?.cancel()
+            statusRefreshGeneration += 1
             if (libraryRefreshJob?.isActive == true || collectionLoadActive()) {
                 refreshOnForeground = true
                 libraryRefreshJob?.cancel()
@@ -66,7 +70,7 @@ class EchoRemoteClient internal constructor(
                 _library.update { it.copy(isLoading = false, isLoadingMore = false) }
             }
         } else if (endpoint != null && !authRejected) {
-            if (connectJob?.isActive != true) startRealtimeStatus()
+            if (connectJob?.isActive != true) startRealtimeStatus(refreshImmediately = true)
             if (refreshOnForeground && _status.value.connectionState == EchoRemoteConnectionState.Connected) {
                 refreshOnForeground = false
                 refreshLibrary()
@@ -75,11 +79,39 @@ class EchoRemoteClient internal constructor(
     }
 
     private var endpoint: EchoRemoteEndpoint? = null
+    suspend fun searchTracksSnapshot(query: String): List<app.echo.android.model.connect.EchoRemoteTrack> {
+        val target = endpoint ?: return emptyList()
+        check(status.value.connectionState == app.echo.android.model.connect.EchoRemoteConnectionState.Connected)
+        val result = transport.fetchTracks(target, query.trim(), 1, 30).tracks
+        check(endpoint?.id == target.id)
+        return result
+    }
+    fun librarySyncSession(): EchoLibrarySyncSession {
+        val target = endpoint ?: error("PC is not connected")
+        if (target.token.isBlank()) throw app.echo.android.model.connect.EchoSyncPairingRequiredException()
+        fun assertCurrent() {
+            check(endpoint?.id == target.id && endpoint?.token == target.token &&
+                status.value.connectionState == app.echo.android.model.connect.EchoRemoteConnectionState.Connected)
+        }
+        return object : EchoLibrarySyncSession {
+            override suspend fun snapshot(key: String): app.echo.android.model.connect.EchoSyncState { assertCurrent(); return transport.syncSnapshot(target,key) }
+            override suspend fun replace(expected: String,desired: app.echo.android.model.connect.EchoSyncState): app.echo.android.model.connect.EchoSyncApplyResult { assertCurrent(); return transport.syncReplace(target,expected,desired) }
+            override suspend fun collections(): List<app.echo.android.model.connect.EchoSyncCollection> {
+                assertCurrent(); return transport.syncCollections(target)
+            }
+            override suspend fun exportBatch(collection: app.echo.android.model.connect.EchoSyncCollection, offset: Int): app.echo.android.model.connect.EchoSyncBatch {
+                assertCurrent(); return transport.syncExportBatch(target, collection, offset)
+            }
+            override suspend fun importBatch(batch: app.echo.android.model.connect.EchoSyncBatch, preview: Boolean): app.echo.android.model.connect.EchoSyncBatchResult {
+                assertCurrent(); return transport.syncImportBatch(target, batch, preview)
+            }
+        }
+    }
     private var connectJob: Job? = null
     private var statusPollJob: Job? = null
-    private var eventsJob: Job? = null
-    private var eventSubscription: EchoLinkEventSubscription? = null
-    private var eventStreamActive = false
+    private var foregroundRefreshJob: Job? = null
+    private var eventSession: EchoLinkEventSession? = null
+    private var pollingIntervalMs = statusPollIntervalMs
     private var libraryRefreshJob: Job? = null
     private var playlistRefreshJob: Job? = null
     private var albumRefreshJob: Job? = null
@@ -147,6 +179,7 @@ class EchoRemoteClient internal constructor(
         statusPollJob?.cancel()
         statusRefreshGeneration += 1
         libraryRefreshGeneration += 1
+        foregroundRefreshJob?.cancel()
         libraryRefreshJob?.cancel()
         libraryRefreshJob = null
         cancelCollectionLoads()
@@ -241,6 +274,8 @@ class EchoRemoteClient internal constructor(
         stopEventStream()
         statusPollJob?.cancel()
         statusPollJob = null
+        foregroundRefreshJob?.cancel()
+        foregroundRefreshJob = null
         statusRefreshGeneration += 1
         libraryRefreshGeneration += 1
         libraryRefreshJob?.cancel()
@@ -268,6 +303,7 @@ class EchoRemoteClient internal constructor(
         when (message) {
             is EchoRemoteMessage.StatusSnapshot -> {
                 val target = endpoint ?: return
+                statusRefreshGeneration += 1
                 applyStatus(
                     target,
                     EchoLinkStatusResponse(deviceName = target.name, playback = message.payload),
@@ -286,6 +322,10 @@ class EchoRemoteClient internal constructor(
     }
 
     fun send(command: EchoRemoteCommand, onSuccess: () -> Unit = {}) {
+        if (command is EchoRemoteCommand.SetVolume && !_status.value.playback.volumeControlEnabled) {
+            _status.update { it.copy(error = text(R.string.connect_volume_locked)) }
+            return
+        }
         val target = endpoint ?: run {
             _status.update {
                 it.copy(
@@ -1062,12 +1102,16 @@ class EchoRemoteClient internal constructor(
         _library.update { current -> current.copy(error = message) }
     }
 
-    private fun startRealtimeStatus() {
+    private fun startRealtimeStatus(refreshImmediately: Boolean = false) {
         val target = endpoint ?: return
         if (!foreground || authRejected) return
+        if (refreshImmediately) {
+            foregroundRefreshJob?.cancel()
+            foregroundRefreshJob = scope.launch { refreshStatusOnce(target) }
+        }
         if (target.supportsV2Events) {
+            startStatusPolling(statusPollIntervalMs)
             startEventStream(target)
-            startStatusPolling(SseHeartbeatPollIntervalMs)
         } else {
             stopEventStream()
             startStatusPolling(statusPollIntervalMs)
@@ -1075,67 +1119,56 @@ class EchoRemoteClient internal constructor(
     }
 
     private fun startEventStream(target: EchoRemoteEndpoint) {
-        eventsJob?.cancel()
-        eventSubscription?.cancel()
-        eventSubscription = null
-        eventStreamActive = false
-        eventsJob = scope.launch {
-            val ticket = runSuspendCatching { transport.createEventTicket(target) }
-            val resolved = ticket.getOrNull()
-            if (resolved == null) {
-                if (rejectAuthentication(target, ticket.exceptionOrNull())) return@launch
-                startStatusPolling(statusPollIntervalMs)
-                return@launch
-            }
-            if (!isActive || !foreground || authRejected || endpoint?.id != target.id) return@launch
-            eventStreamActive = true
-            eventSubscription = transport.subscribeEvents(
-                endpoint = target,
-                ticket = resolved,
-                onEvent = { message ->
-                    if (endpoint?.id == target.id && !authRejected) ingest(message)
-                },
-                onClosed = { error ->
-                    eventStreamActive = false
-                    if (error != null && rejectAuthentication(target, error)) return@subscribeEvents
-                    if (foreground && !authRejected && endpoint?.id == target.id) {
-                        startStatusPolling(statusPollIntervalMs)
-                    }
-                },
-            )
-        }
+        stopEventStream()
+        val connection = connectGeneration
+        fun isCurrent(): Boolean = foreground && !authRejected &&
+            connection == connectGeneration && EchoLinkRequestPolicy.isSameEndpoint(endpoint, target)
+        eventSession = EchoLinkEventSession(
+            scope, transport, eventRetryDelayMs,
+            onConnected = { if (isCurrent()) startStatusPolling(SseHeartbeatPollIntervalMs) },
+            onEvent = { if (isCurrent()) ingest(it) },
+            onFailure = { error ->
+                if (!isCurrent() || rejectAuthentication(target, error)) {
+                    false
+                } else {
+                    startStatusPolling(statusPollIntervalMs)
+                    true
+                }
+            },
+        ).also { it.start(target) }
     }
 
     private fun stopEventStream() {
-        eventsJob?.cancel()
-        eventsJob = null
-        eventSubscription?.cancel()
-        eventSubscription = null
-        eventStreamActive = false
+        eventSession?.stop()
+        eventSession = null
     }
 
     private fun startStatusPolling(intervalMs: Long = statusPollIntervalMs) {
+        if (statusPollJob?.isActive == true && pollingIntervalMs == intervalMs) return
         statusPollJob?.cancel()
         if (!foreground || authRejected) return
+        pollingIntervalMs = intervalMs
         statusPollJob = scope.launch {
             while (isActive && foreground && !authRejected) {
                 delay((intervalMs * (1L shl pollFailures.coerceAtMost(4))).coerceAtMost(60_000L))
-                endpoint?.let { refreshStatusOnce(it) }
+                if (foregroundRefreshJob?.isActive != true) endpoint?.let { refreshStatusOnce(it) }
             }
         }
     }
 
     private suspend fun refreshStatusOnce(target: EchoRemoteEndpoint) {
+        val connection = connectGeneration
         val generation = ++statusRefreshGeneration
         runSuspendCatching { transport.fetchStatus(target) }
             .onSuccess { response ->
-                if (generation == statusRefreshGeneration) {
+                if (connection == connectGeneration && generation == statusRefreshGeneration &&
+                    EchoLinkRequestPolicy.isSameEndpoint(endpoint, target)) {
                     applyStatus(target, response)
                 }
             }
             .onFailure { error ->
                 if (
-                    endpoint?.id == target.id &&
+                    connection == connectGeneration && EchoLinkRequestPolicy.isSameEndpoint(endpoint, target) &&
                     generation == statusRefreshGeneration
                 ) {
                     if (rejectAuthentication(target, error)) return@onFailure
@@ -1153,6 +1186,9 @@ class EchoRemoteClient internal constructor(
     private fun rejectAuthentication(target: EchoRemoteEndpoint, error: Throwable?): Boolean {
         if ((error as? EchoLinkHttpException)?.statusCode !in listOf(401, 403)) return false
         authRejected = true
+        statusPollJob?.cancel()
+        foregroundRefreshJob?.cancel()
+        stopEventStream()
         val message = if (target.token.isBlank()) R.string.connect_direct_unavailable else R.string.connect_auth_expired
         markConnectionError(target, EchoLinkHttpException(text(message)))
         clearStreamCache()
@@ -1160,7 +1196,7 @@ class EchoRemoteClient internal constructor(
     }
 
     private fun applyStatus(target: EchoRemoteEndpoint, response: EchoLinkStatusResponse) {
-        if (endpoint?.id != target.id) return
+        if (authRejected || !EchoLinkRequestPolicy.isSameEndpoint(endpoint, target)) return
         pollFailures = 0
         val namedEndpoint = response.deviceName
             ?.takeIf { it.isNotBlank() }
@@ -1254,7 +1290,11 @@ class EchoRemoteClient internal constructor(
     }
 
     private fun Throwable.userMessage(): String =
-        message?.takeIf { it.isNotBlank() } ?: text(R.string.connect_failed)
+        if (this is EchoLinkHttpException && message == "fixed_volume") {
+            text(R.string.connect_volume_locked)
+        } else {
+            message?.takeIf { it.isNotBlank() } ?: text(R.string.connect_failed)
+        }
 
     private companion object {
         const val StatusPollIntervalMs = 5_000L

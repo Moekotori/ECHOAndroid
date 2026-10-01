@@ -255,36 +255,6 @@ private object LibrarySourceIds {
     const val Cloud = "cloud"
 }
 
-private sealed interface LibraryDetailTransitionTarget {
-    object Browser : LibraryDetailTransitionTarget
-
-    data class AlbumDetail(
-        val album: AlbumSummary,
-        val tracks: LazyPagingItems<EchoTrack>,
-    ) : LibraryDetailTransitionTarget
-
-    data class ArtistDetail(
-        val artist: ArtistSummary,
-        val tracks: LazyPagingItems<EchoTrack>,
-    ) : LibraryDetailTransitionTarget
-
-    data class FolderDetail(
-        val folder: FolderSummary,
-        val tracks: LazyPagingItems<EchoTrack>,
-    ) : LibraryDetailTransitionTarget
-
-    data class PlaylistDetail(
-        val playlist: EchoPlaylist,
-        val tracks: LazyPagingItems<EchoTrack>,
-    ) : LibraryDetailTransitionTarget
-
-    data class LinkedAlbum(val album: AlbumSummary) : LibraryDetailTransitionTarget
-
-    data class LinkedArtist(val artist: ArtistSummary) : LibraryDetailTransitionTarget
-
-    data class LinkedPlaylist(val playlist: EchoRemotePlaylist) : LibraryDetailTransitionTarget
-}
-
 @Composable
 fun LibraryScreen(
     hasPermission: Boolean,
@@ -364,6 +334,7 @@ fun LibraryScreen(
     onPlayPlaylist: (EchoPlaylist) -> Unit,
     onShufflePlaylist: (EchoPlaylist) -> Unit,
     onCreatePlaylist: (String) -> Unit,
+    experienceActions: LibraryExperienceActions? = null,
     onRenamePlaylist: (EchoPlaylist, String) -> Unit,
     onDeletePlaylist: (EchoPlaylist) -> Unit,
     onAddTrackToPlaylist: (EchoPlaylist, EchoTrack) -> Unit,
@@ -659,6 +630,7 @@ fun LibraryScreen(
                                 onOpenPlaylist = onOpenPlaylist,
                                 onPlayPlaylist = onPlayPlaylist,
                                 onCreatePlaylist = onCreatePlaylist,
+                                experienceActions = experienceActions,
                                 onRenamePlaylist = onRenamePlaylist,
                                 onDeletePlaylist = onDeletePlaylist,
                                 onImportM3uPlaylist = onImportM3uPlaylist,
@@ -774,164 +746,6 @@ fun LibraryScreen(
         }
     }
 
-    if (prefersSplit && selectedSource != LibrarySourceMode.PcEcho) {
-        val livePlaylist = selectedPlaylist?.let { selected ->
-            playlists.firstOrNull { it.id == selected.id } ?: selected
-        }
-        Row(Modifier.fillMaxSize()) {
-            Box(Modifier.weight(0.42f).fillMaxHeight()) {
-                SharedLibraryBrowser()
-            }
-            Box(
-                Modifier
-                    .width(1.dp)
-                    .fillMaxHeight()
-                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f)),
-            )
-            Box(Modifier.weight(0.58f).fillMaxHeight()) {
-                when {
-                    selectedAlbum != null && albumDetailTracks != null -> AlbumDetailPage(
-                        album = selectedAlbum,
-                        tracks = albumDetailTracks,
-                        onBack = onCloseDetail,
-                        onPlayAll = { onPlayAlbum(selectedAlbum) },
-                        onShuffle = { onShuffleAlbum(selectedAlbum) },
-                        onPlayTrack = { track ->
-                            onPlayTrack(track, LibraryPlaybackOrigin.Album(selectedAlbum.albumKey))
-                        },
-                        onMoveTrack = if (selectedSource == LibrarySourceMode.Local) {
-                            { from, to -> onReorderAlbumTracks(selectedAlbum, from, to) }
-                        } else {
-                            null
-                        },
-                        onUpdateTrackMetadata = onUpdateTrackMetadata,
-                        onImportLyrics = onImportLyricsForTrack,
-                        onPickArtwork = onPickTrackArtwork,
-                        onAddToPlaylist = { track -> addToPlaylistTrack = track },
-                        onPlayNext = playNext,
-                        onAddNextUp = onAddNextUp,
-                        onEnqueue = enqueueTrack,
-                        onOpenArtist = onOpenAlbumArtist,
-                        onOpenTrackArtist = onOpenTrackArtist,
-                        offlinePin = albumOfflinePin,
-                        onToggleOffline = albumOfflineToggle(selectedAlbum, albumOfflinePin, onPinAlbumOffline, onUnpinOffline),
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                    selectedGenre != null && genreDetailTracks != null -> GenreTrackDetailPage(
-                        artist = ArtistSummary(
-                            artistKey = selectedGenre.genreKey,
-                            name = selectedGenre.name,
-                            artworkUri = selectedGenre.artworkUri,
-                            albumCount = selectedGenre.albumCount,
-                            trackCount = selectedGenre.trackCount,
-                            durationMs = selectedGenre.durationMs,
-                        ),
-                        tracks = genreDetailTracks,
-                        onBack = onCloseDetail,
-                        onPlayAll = { onPlayGenre(selectedGenre) },
-                        onShuffle = { onPlayGenre(selectedGenre) },
-                        onPlayTrack = { track ->
-                            onPlayTrack(track, LibraryPlaybackOrigin.Songs)
-                        },
-                        onUpdateTrackMetadata = onUpdateTrackMetadata,
-                        onImportLyrics = onImportLyricsForTrack,
-                        onPickArtwork = onPickTrackArtwork,
-                        onAddToPlaylist = { track -> addToPlaylistTrack = track },
-                        onPlayNext = playNext,
-                        onAddNextUp = onAddNextUp,
-                        onEnqueue = enqueueTrack,
-                        onOpenArtist = onOpenTrackArtist,
-                        onOpenAlbum = onOpenTrackAlbum,
-                    )
-                    selectedArtist != null && artistDetailTracks != null -> ArtistDetailPage(
-                        artist = selectedArtist,
-                        tracks = artistDetailTracks,
-                        albums = artistDetailAlbums,
-                        query = artistQuery,
-                        sort = artistSort,
-                        onQueryChange = onArtistQueryChange,
-                        onSortChange = onArtistSortChange,
-                        onOpenAlbum = onOpenAlbum,
-                        listState = artistListState,
-                        albumListState = artistAlbumListState,
-                        onBack = onCloseDetail,
-                        onPlayAll = { onPlayArtist(selectedArtist) },
-                        onShuffle = { onShuffleArtist(selectedArtist) },
-                        onPlayTrack = { track ->
-                            onPlayTrack(track, LibraryPlaybackOrigin.Artist(selectedArtist.artistKey))
-                        },
-                        onUpdateTrackMetadata = onUpdateTrackMetadata,
-                        onImportLyrics = onImportLyricsForTrack,
-                        onPickArtwork = onPickTrackArtwork,
-                        onAddToPlaylist = { track -> addToPlaylistTrack = track },
-                        onPlayNext = playNext,
-                        onAddNextUp = onAddNextUp,
-                        onEnqueue = enqueueTrack,
-                        onOpenTrackAlbum = onOpenTrackAlbum,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                    selectedFolder != null && folderDetailTracks != null -> FolderDetailPage(
-                        folder = selectedFolder,
-                        tracks = folderDetailTracks,
-                        onBack = onCloseDetail,
-                        onPlayAll = { onPlayFolder(selectedFolder) },
-                        onShuffle = { onShuffleFolder(selectedFolder) },
-                        onPlayTrack = { track ->
-                            onPlayTrack(track, LibraryPlaybackOrigin.Folder(selectedFolder.folderKey))
-                        },
-                        onUpdateTrackMetadata = onUpdateTrackMetadata,
-                        onImportLyrics = onImportLyricsForTrack,
-                        onPickArtwork = onPickTrackArtwork,
-                        onAddToPlaylist = { track -> addToPlaylistTrack = track },
-                        onPlayNext = playNext,
-                        onAddNextUp = onAddNextUp,
-                        onEnqueue = enqueueTrack,
-                        onOpenArtist = onOpenTrackArtist,
-                        onOpenAlbum = onOpenTrackAlbum,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                    livePlaylist != null && playlistDetailTracks != null -> PlaylistDetailPage(
-                        playlist = livePlaylist,
-                        tracks = playlistDetailTracks,
-                        onBack = onCloseDetail,
-                        onPlayAll = { onPlayPlaylist(livePlaylist) },
-                        onShuffle = { onShufflePlaylist(livePlaylist) },
-                        onPlayTrack = { track ->
-                            onPlayTrack(track, LibraryPlaybackOrigin.Playlist(livePlaylist.id))
-                        },
-                        onRenamePlaylist = { name -> onRenamePlaylist(livePlaylist, name) },
-                        onDeletePlaylist = {
-                            onDeletePlaylist(livePlaylist)
-                            onCloseDetail()
-                        },
-                        onRemoveTrack = { track -> onRemoveTrackFromPlaylist(livePlaylist, track) },
-                        onMoveTrack = { from, to -> onReorderPlaylistTracks(livePlaylist, from, to) },
-                        onUpdateTrackMetadata = onUpdateTrackMetadata,
-                        onImportLyrics = onImportLyricsForTrack,
-                        onPickArtwork = onPickTrackArtwork,
-                        onAddToPlaylist = { track -> addToPlaylistTrack = track },
-                        onPlayNext = playNext,
-                        onAddNextUp = onAddNextUp,
-                        onEnqueue = enqueueTrack,
-                        onOpenArtist = onOpenTrackArtist,
-                        onOpenAlbum = onOpenTrackAlbum,
-                        offlinePin = playlistOfflinePin,
-                        onToggleOffline = playlistOfflineToggle(
-                            livePlaylist,
-                            playlistDetailTracks.itemSnapshotList.items,
-                            playlistOfflinePin,
-                            onPinPlaylistOffline,
-                            onUnpinOffline,
-                        ),
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                    else -> LibrarySplitPlaceholder()
-                }
-            }
-        }
-    } else {
-
-    // 详情页走全屏沉浸式页面，不套用曲库的 PageChrome
     val activeAlbumDetail = selectedAlbum
     val activeArtistDetail = selectedArtist
     val activeFolderDetail = selectedFolder
@@ -949,8 +763,10 @@ fun LibraryScreen(
         selectedSource == LibrarySourceMode.PcEcho -> LibraryDetailTransitionTarget.Browser
         activeAlbumDetail != null && albumDetailTracks != null ->
             LibraryDetailTransitionTarget.AlbumDetail(activeAlbumDetail, albumDetailTracks)
+        selectedGenre != null && genreDetailTracks != null ->
+            LibraryDetailTransitionTarget.GenreDetail(selectedGenre, genreDetailTracks)
         activeArtistDetail != null && artistDetailTracks != null ->
-            LibraryDetailTransitionTarget.ArtistDetail(activeArtistDetail, artistDetailTracks)
+            LibraryDetailTransitionTarget.ArtistDetail(activeArtistDetail, artistDetailTracks, artistDetailAlbums)
         activeFolderDetail != null && folderDetailTracks != null ->
             LibraryDetailTransitionTarget.FolderDetail(activeFolderDetail, folderDetailTracks)
         activePlaylistDetail != null && playlistDetailTracks != null -> {
@@ -961,34 +777,10 @@ fun LibraryScreen(
         else -> LibraryDetailTransitionTarget.Browser
     }
 
-    val libraryDetailMotion = rememberEchoContentMotion()
+    val splitDetails = prefersSplit && selectedSource != LibrarySourceMode.PcEcho
 
-    AnimatedContent(
-        targetState = detailTransitionTarget,
-        contentKey = { target ->
-            when (target) {
-                LibraryDetailTransitionTarget.Browser -> "library-browser"
-                is LibraryDetailTransitionTarget.AlbumDetail -> "album:${target.album.albumKey}"
-                is LibraryDetailTransitionTarget.ArtistDetail -> "artist:${target.artist.artistKey}"
-                is LibraryDetailTransitionTarget.FolderDetail -> "folder:${target.folder.folderKey}"
-                is LibraryDetailTransitionTarget.PlaylistDetail -> "playlist:${target.playlist.id}"
-                is LibraryDetailTransitionTarget.LinkedAlbum -> "linked-album:${target.album.albumKey}"
-                is LibraryDetailTransitionTarget.LinkedArtist -> "linked-artist:${target.artist.artistKey}"
-                is LibraryDetailTransitionTarget.LinkedPlaylist -> "linked-playlist:${target.playlist.id}"
-            }
-        },
-        transitionSpec = {
-            if (targetState == LibraryDetailTransitionTarget.Browser ||
-                (initialState is LibraryDetailTransitionTarget.AlbumDetail && targetState is LibraryDetailTransitionTarget.ArtistDetail)
-            ) {
-                libraryDetailMotion.pagePop()
-            } else {
-                libraryDetailMotion.pagePush()
-            }
-        },
-        label = "library-detail-transition",
-        modifier = Modifier.fillMaxSize(),
-    ) { target ->
+    @Composable
+    fun DetailContent(target: LibraryDetailTransitionTarget) {
         when (target) {
             is LibraryDetailTransitionTarget.AlbumDetail -> AlbumDetailPage(
                 album = target.album,
@@ -1017,12 +809,38 @@ fun LibraryScreen(
                 onToggleOffline = albumOfflineToggle(target.album, albumOfflinePin, onPinAlbumOffline, onUnpinOffline),
                 modifier = Modifier.fillMaxSize(),
             )
+            is LibraryDetailTransitionTarget.GenreDetail -> GenreTrackDetailPage(
+                artist = ArtistSummary(
+                    artistKey = target.genre.genreKey,
+                    name = target.genre.name,
+                    artworkUri = target.genre.artworkUri,
+                    albumCount = target.genre.albumCount,
+                    trackCount = target.genre.trackCount,
+                    durationMs = target.genre.durationMs,
+                ),
+                tracks = target.tracks,
+                onBack = onCloseDetail,
+                onPlayAll = { onPlayGenre(target.genre) },
+                onShuffle = { onPlayGenre(target.genre) },
+                onPlayTrack = { track ->
+                    onPlayTrack(track, LibraryPlaybackOrigin.Songs)
+                },
+                onUpdateTrackMetadata = onUpdateTrackMetadata,
+                onImportLyrics = onImportLyricsForTrack,
+                onPickArtwork = onPickTrackArtwork,
+                onAddToPlaylist = { track -> addToPlaylistTrack = track },
+                onPlayNext = playNext,
+                onAddNextUp = onAddNextUp,
+                onEnqueue = enqueueTrack,
+                onOpenArtist = onOpenTrackArtist,
+                onOpenAlbum = onOpenTrackAlbum,
+            )
             is LibraryDetailTransitionTarget.ArtistDetail -> ArtistDetailPage(
                 artist = target.artist,
                 tracks = target.tracks,
                 onBack = onCloseDetail,
                 onPlayAll = { onPlayArtist(target.artist) },
-                albums = artistDetailAlbums,
+                albums = target.albums,
                 query = artistQuery,
                 sort = artistSort,
                 onQueryChange = onArtistQueryChange,
@@ -1156,9 +974,31 @@ fun LibraryScreen(
                     modifier = Modifier.fillMaxSize(),
                 )
             }
-            LibraryDetailTransitionTarget.Browser -> SharedLibraryBrowser()
+            LibraryDetailTransitionTarget.Browser -> {
+                if (splitDetails) LibrarySplitPlaceholder() else SharedLibraryBrowser()
+            }
         }
     }
+
+    if (splitDetails) {
+        Row(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(0.42f).fillMaxHeight()) { SharedLibraryBrowser() }
+            Box(Modifier.width(1.dp).fillMaxHeight()
+                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f)))
+            LibraryDetailTransition(
+                targetState = detailTransitionTarget,
+                split = true,
+                modifier = Modifier.weight(0.58f).fillMaxHeight(),
+                content = { DetailContent(it) },
+            )
+        }
+    } else {
+        LibraryDetailTransition(
+            targetState = detailTransitionTarget,
+            split = false,
+            modifier = Modifier.fillMaxSize(),
+            content = { DetailContent(it) },
+        )
     }
 
     addToPlaylistTrack?.let { track ->
@@ -1205,13 +1045,11 @@ private fun LibrarySourceScanButton(
     modifier: Modifier = Modifier,
 ) {
     var showScanOptions by remember { mutableStateOf(false) }
-    androidx.compose.material3.TextButton(
+    IconButton(
         onClick = { showScanOptions = true },
         enabled = !scanState.isScanning, modifier = modifier,
     ) {
-        Icon(Icons.Rounded.Add, contentDescription = null, Modifier.size(20.dp))
-        Spacer(Modifier.width(6.dp))
-        Text(stringResource(L10nR.string.library_add_music))
+        Icon(Icons.Rounded.Add, contentDescription = stringResource(L10nR.string.library_add_music))
     }
     if (showScanOptions) LibraryScanOptionsDialog(
         initialOptions = initialScanOptions,

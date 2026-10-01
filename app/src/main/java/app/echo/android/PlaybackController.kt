@@ -316,6 +316,17 @@ internal class PlaybackController(
         }
     }
 
+    fun playAt(track: EchoTrack, positionMs: Long) {
+        resetStickyPlaybackError()
+        enginePolicy.replaceQueueLookups(listOf(track))
+        usbAudioMonitor.prepareForTrack(track.sampleRateHz)
+        withController(replacesQueue = true) {
+            replaceQueueLookups(listOf(track))
+            setMediaItems(listOf(track.toMediaItem().asQueueEntry(source = track.album)), 0, positionMs.coerceAtLeast(0))
+            prepare(); play()
+        }
+    }
+
     fun playNext(track: EchoTrack) = addNextUp(track, first = true)
 
     fun addNextUp(track: EchoTrack, first: Boolean = false) {
@@ -447,6 +458,25 @@ internal class PlaybackController(
             }
             updatePlaybackPosition(this)
             persistPlaybackSession(persistBecauseOfSeek = true)
+        }
+    }
+
+    fun currentPositionMs(): Long = controller?.currentPosition?.coerceAtLeast(0L)
+        ?: _playbackPosition.value.positionMs
+
+    suspend fun setAbLoop(trackId: String?, startMs: Long, endMs: Long): Boolean {
+        val live = controller ?: return false
+        val args = android.os.Bundle().apply {
+            putString("trackId", trackId); putLong("startMs", startMs); putLong("endMs", endMs)
+        }
+        val future = live.sendCustomCommand(EchoPlaybackSessionCommands.setAbLoop, args)
+        return kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
+            future.addListener({
+                if (continuation.isActive) continuation.resumeWith(Result.success(runCatching {
+                    future.get().resultCode == androidx.media3.session.SessionResult.RESULT_SUCCESS
+                }.getOrDefault(false)))
+            }, ContextCompat.getMainExecutor(application))
+            continuation.invokeOnCancellation { future.cancel(false) }
         }
     }
 

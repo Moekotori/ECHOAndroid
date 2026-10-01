@@ -15,6 +15,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.unit.Velocity
 import app.echo.android.EchoTab
 import app.echo.android.design.EchoMotion
+import app.echo.android.design.echoHorizontalGestureOwnsScroll
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
@@ -118,6 +119,7 @@ internal fun rememberHomeSafePagerNestedScroll(
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 if (innerTabPageOwnsGesture) return Offset.Zero
+                if (source == NestedScrollSource.UserInput && !echoHorizontalGestureOwnsScroll(Offset.Zero, available)) return Offset.Zero
                 if (state.currentPageOffsetFraction.absoluteValue < NestedPagerDragFraction) {
                     return Offset.Zero
                 }
@@ -130,6 +132,7 @@ internal fun rememberHomeSafePagerNestedScroll(
                 source: NestedScrollSource,
             ): Offset {
                 if (innerTabPageOwnsGesture) return Offset.Zero
+                if (source == NestedScrollSource.UserInput && !echoHorizontalGestureOwnsScroll(consumed, available)) return Offset.Zero
                 return default.onPostScroll(consumed, available, source)
             }
 

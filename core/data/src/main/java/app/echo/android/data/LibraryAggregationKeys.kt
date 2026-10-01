@@ -39,9 +39,11 @@ internal object LibraryMetadataSentinels {
     }
 }
 
-private fun canonicalAlbumArtistKey(normalizedAlbumArtist: String?): String? {
+internal fun canonicalAlbumArtistKey(normalizedAlbumArtist: String?): String? {
     val value = normalizedAlbumArtist?.takeIf { it.isNotBlank() } ?: return null
-    return if (LibraryMetadataSentinels.isVariousArtists(value)) VariousArtistsKey else value
+    return LibraryArtistPolicy.names(value)
+        .map { if (LibraryMetadataSentinels.isVariousArtists(it)) VariousArtistsKey else it }
+        .distinct().sorted().joinToString("; ").takeIf { it.isNotBlank() }
 }
 
 private fun String?.normalizedKeyFallback(fallback: String): String =

@@ -56,6 +56,28 @@ internal fun EchoLibraryPage(
     onCloseDetail: () -> Unit,
     onOpenConnect: () -> Unit,
 ) {
+    var repairFileResult by remember { mutableStateOf<kotlinx.coroutines.CompletableDeferred<android.net.Uri?>?>(null) }
+    val repairFilePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        repairFileResult?.complete(uri)
+    }
+    val repairScanFolder = androidx.compose.runtime.rememberUpdatedState { onScanFolder(appSettings.libraryScanOptions) }
+    val experienceActions = remember(viewModel, repairFilePicker) {
+        val tools = viewModel.libraryExperience
+        app.echo.android.feature.library.LibraryExperienceActions(
+            preview = tools::preview, rule = tools::rule, save = tools::save,
+            pin = tools::pin,
+            inspect = tools::inspect, candidates = tools::candidates, relink = tools::relink,
+            rescanFolder = { repairScanFolder.value() },
+            chooseFile = {
+                val result = kotlinx.coroutines.CompletableDeferred<android.net.Uri?>()
+                repairFileResult = result
+                try {
+                    repairFilePicker.launch(arrayOf("audio/*", "application/ogg", "application/flac"))
+                    result.await()?.let { tools.readFile(it) }
+                } finally { repairFileResult = null }
+            },
+        )
+    }
     val libraryQuery by viewModel.libraryQuery.collectAsStateWithLifecycle()
     val libraryTrackSortMode by viewModel.libraryTrackSortMode.collectAsStateWithLifecycle()
     val libraryAlbumSortMode by viewModel.libraryAlbumSortMode.collectAsStateWithLifecycle()
@@ -63,6 +85,27 @@ internal fun EchoLibraryPage(
     val libraryFolderSortMode by viewModel.libraryFolderSortMode.collectAsStateWithLifecycle()
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
     val localPlaylists by viewModel.localPlaylists.collectAsStateWithLifecycle()
+    val batchContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
+    var batchConsent by remember { mutableStateOf<kotlinx.coroutines.CompletableDeferred<Boolean>?>(null) }
+    val batchWriteLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
+        batchConsent?.complete(it.resultCode == android.app.Activity.RESULT_OK)
+    }
+    val batchActions = remember(viewModel, localPlaylists, batchWriteLauncher) {
+        app.echo.android.feature.library.LibraryBatchActions(localPlaylists,
+            viewModel.libraryExperience::favorites, viewModel.libraryExperience::addToPlaylist,
+            viewModel::batchQueue, viewModel::batchTags, writeAccess = { selected ->
+                val uris = selected.map { android.net.Uri.parse(it.uri) }.filter { it.authority == "media" }
+                if (android.os.Build.VERSION.SDK_INT < 30 || uris.isEmpty()) true else {
+                    val response = kotlinx.coroutines.CompletableDeferred<Boolean>()
+                    batchConsent = response
+                    try {
+                        val sender = android.provider.MediaStore.createWriteRequest(batchContext.contentResolver, uris).intentSender
+                        batchWriteLauncher.launch(androidx.activity.result.IntentSenderRequest.Builder(sender).build())
+                        response.await()
+                    } finally { batchConsent = null }
+                }
+            })
+    }
     val selectedAlbumKey = selectedAlbum?.albumKey
     val selectedArtistKey = selectedArtist?.artistKey
     val selectedFolderKey = selectedFolder?.folderKey
@@ -173,6 +216,7 @@ internal fun EchoLibraryPage(
         loader = app.echo.android.feature.library.EmbeddedLyricsLoader { viewModel.loadEmbeddedLyrics(it) },
     ) {
     app.echo.android.feature.library.AlbumOnlineInfoProvider(application.albumOnlineInfo) {
+    app.echo.android.feature.library.LibraryBatchProvider(batchActions) {
         LibraryScreen(
             radioStations = radioStations,
             radioLoadFailed = radioLoadFailed,
@@ -284,6 +328,7 @@ internal fun EchoLibraryPage(
             onPlayPlaylist = { playlist -> viewModel.playPlaylist(playlist.id) },
             onShufflePlaylist = { playlist -> viewModel.shufflePlaylist(playlist.id) },
             onCreatePlaylist = { name -> viewModel.createLocalPlaylist(name) },
+            experienceActions = experienceActions,
             onRenamePlaylist = { playlist, name -> viewModel.renameLocalPlaylist(playlist.id, name) },
             onDeletePlaylist = { playlist ->
                 viewModel.deleteLocalPlaylist(playlist.id)
@@ -342,6 +387,7 @@ internal fun EchoLibraryPage(
             onPinPlaylistOffline = { playlist -> viewModel.pinPlaylistOffline(playlist.id, playlist.name) },
             onUnpinOffline = viewModel::unpinOffline,
         )
+    }
     }
     }
     }

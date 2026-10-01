@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connect_volume_locked">PC volume is locked. Check the volume settings on the PC.</string>
+</resources>

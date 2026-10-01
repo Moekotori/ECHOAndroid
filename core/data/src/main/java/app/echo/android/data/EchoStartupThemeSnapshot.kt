@@ -4,13 +4,14 @@ import android.content.Context
 import app.echo.android.model.settings.EchoAppLanguage
 import app.echo.android.model.settings.EchoColorTheme
 import app.echo.android.model.settings.EchoCustomColors
+import app.echo.android.model.settings.EchoLyricsPageStyle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 
 data class EchoStartupThemeSnapshot(
-    val themeMode: String = EchoThemeMode.Dark,
+    val themeMode: String = EchoThemeMode.Light,
     val colorTheme: String = EchoColorTheme.Default.id,
     val appLanguage: String = EchoAppLanguage.System,
     val scheduledDarkModeEnabled: Boolean = false,
@@ -19,9 +20,14 @@ data class EchoStartupThemeSnapshot(
     val startupBackgroundUri: String? = null,
     val customColors: EchoCustomColors = EchoCustomColors.Default,
 ) {
-    fun toAppSettings(): EchoAppSettings =
-        EchoAppSettings(
-            themeMode = normalizeThemeMode(themeMode),
+    fun toAppSettings(): EchoAppSettings {
+        val mode = normalizeThemeMode(themeMode)
+        val lyrics = if (mode == EchoThemeMode.Dark) EchoLyricsPageStyle.Mist else EchoLyricsPageStyle.Paper
+        return EchoAppSettings(
+            themeMode = mode,
+            lyricsPageStyle = lyrics.id,
+            lyricsFontFamily = lyrics.defaultFontFamily,
+            lyricsAlignment = lyrics.defaultAlignment,
             colorTheme = EchoColorTheme.fromId(colorTheme).id,
             appLanguage = EchoAppLanguage.fromId(appLanguage),
             scheduledDarkModeEnabled = scheduledDarkModeEnabled,
@@ -30,6 +36,7 @@ data class EchoStartupThemeSnapshot(
             startupBackgroundUri = startupBackgroundUri,
             customColors = customColors.normalized(),
         )
+    }
 }
 
 fun Context.readEchoStartupThemeSnapshot(): EchoStartupThemeSnapshot {
@@ -74,7 +81,7 @@ fun Context.readEchoStartupThemeSnapshotForLaunch(
                     appContext.writeEchoStartupThemeSnapshot(snapshot, synchronous = true)
                 }
         }
-    } ?: cachedSnapshot.withCurrentThemeDefault()
+    } ?: cachedSnapshot
 }
 
 internal fun Context.writeEchoStartupThemeSnapshot(
@@ -123,11 +130,8 @@ internal fun normalizeThemeMode(value: String?): String =
         EchoThemeMode.System,
         -> value
 
-        else -> EchoThemeMode.Dark
+        else -> EchoThemeMode.Light
     }
-
-private fun EchoStartupThemeSnapshot.withCurrentThemeDefault(): EchoStartupThemeSnapshot =
-    if (themeMode == EchoThemeMode.System) copy(themeMode = EchoThemeMode.Dark) else this
 
 private fun EchoStartupThemeSnapshot.normalized(): EchoStartupThemeSnapshot =
     copy(
@@ -171,7 +175,7 @@ private const val KeyCustomBackground = "custom_background"
 private fun android.content.SharedPreferences.storedColor(key: String): Int? =
     if (contains(key)) getInt(key, 0) else null
 private const val KeyThemeDefaultVersion = "theme_default_version"
-private const val CurrentThemeDefaultVersion = 2
+private const val CurrentThemeDefaultVersion = 3
 private const val DefaultScheduledDarkStartMinute = 22 * 60
 private const val DefaultScheduledDarkEndMinute = 7 * 60
 private const val StartupThemeDataStoreReadTimeoutMillis = 120L

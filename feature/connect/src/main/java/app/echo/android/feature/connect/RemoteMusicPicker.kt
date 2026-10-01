@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
@@ -99,7 +100,8 @@ internal fun RemoteMusicPicker(
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.88f).imePadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(stringResource(R.string.remote_choose_music), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text(stringResource(if (showQueue) R.string.feature_connect_pc_queue_2e91c4 else R.string.remote_choose_music),
+                        style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
                     Text(stringResource(R.string.remote_picker_destination, pcTitle),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -111,6 +113,7 @@ internal fun RemoteMusicPicker(
             }
             OutlinedTextField(
                 value = query, onValueChange = { query = it }, singleLine = true,
+                shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
                 label = { Text(stringResource(R.string.remote_search)) },
                 leadingIcon = { Icon(Icons.Rounded.Search, null) },
@@ -141,19 +144,23 @@ internal fun RemoteMusicPicker(
             } else {
                 LazyColumn(state = listState, modifier = Modifier.weight(1f).fillMaxWidth(),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    verticalArrangement = Arrangement.spacedBy(0.dp)) {
                     // Queue entries may repeat the same track; preserve their original positions.
                     items(visibleRows, key = { "${it.value.id.orEmpty()}:${it.index}" }, contentType = { "pcTrack" }) { row ->
-                        RemoteMusicRow(
-                            track = row.value,
-                            current = !row.value.id.isNullOrBlank() && row.value.id == currentTrackId,
-                            onClick = {
-                                row.value.id?.takeIf(String::isNotBlank)?.let {
-                                    onPlayTrack(it)
-                                    onDismiss()
-                                }
-                            },
-                        )
+                        Column {
+                            RemoteMusicRow(
+                                track = row.value,
+                                current = !row.value.id.isNullOrBlank() && row.value.id == currentTrackId,
+                                onClick = {
+                                    row.value.id?.takeIf(String::isNotBlank)?.let {
+                                        onPlayTrack(it)
+                                        onDismiss()
+                                    }
+                                },
+                            )
+                            HorizontalDivider(Modifier.padding(start = 72.dp),
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        }
                     }
                 }
             }

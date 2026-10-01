@@ -2,6 +2,7 @@ package app.echo.android.data
 
 import app.echo.android.model.library.LibraryScanOptions
 import app.echo.android.model.settings.EchoBackgroundStyle
+import app.echo.android.model.settings.EchoHomeLayout
 
 import app.echo.android.i18n.echoAppLanguage
 import android.content.Context
@@ -63,6 +64,7 @@ data class EchoAppSettings(
     val playerArtworkScale: Float = 1f,
     val onlineLyricsEnabled: Boolean = false,
     val lockScreenLyricsEnabled: Boolean = true,
+    val lyricsOptions: app.echo.android.model.settings.EchoLyricsOptions = app.echo.android.model.settings.EchoLyricsOptions(),
     val floatingLyrics: app.echo.android.model.settings.EchoFloatingLyricsSettings =
         app.echo.android.model.settings.EchoFloatingLyricsSettings(),
     val usbExclusiveEnabled: Boolean = false,
@@ -93,14 +95,15 @@ data class EchoAppSettings(
     val uiFontFamily: String = EchoFontFamilyMode.System,
     val uiFontScale: Float = 1f,
     val uiDensityScale: Float = 1f,
-    val lyricsPageStyle: String = EchoLyricsPageStyle.Mist.id,
-    val lyricsFontFamily: String = EchoFontFamilyMode.System,
+    val lyricsPageStyle: String = EchoLyricsPageStyle.Paper.id,
+    val lyricsFontFamily: String = EchoLyricsPageStyle.Paper.defaultFontFamily,
     val lyricsFontScale: Float = 1f,
     val lyricsColorMode: String = EchoLyricsColorMode.White,
-    val lyricsAlignment: String = EchoLyricsPageStyle.Mist.defaultAlignment,
+    val lyricsAlignment: String = EchoLyricsPageStyle.Paper.defaultAlignment,
     val lyricsLineSpacing: Float = 1f,
     val lyricsBackgroundDim: Float = 0f,
     val lyricsWordHighlightEnabled: Boolean = true,
+    val lyricsEstimatedWordHighlightEnabled: Boolean = false,
     val lyricsWordHighlightIntensity: Float = 1f,
     val lyricsImmersiveModeEnabled: Boolean = false,
     val lyricsMotionMode: String = EchoLyricsMotionMode.Smooth,
@@ -108,7 +111,7 @@ data class EchoAppSettings(
     val lyricsShowRomanization: Boolean = true,
     val lyricsFocusGlowEnabled: Boolean = false,
     val importedFontUri: String? = null,
-    val themeMode: String = EchoThemeMode.Dark,
+    val themeMode: String = EchoThemeMode.Light,
     val colorTheme: String = EchoColorTheme.Default.id,
     val customColors: EchoCustomColors = EchoCustomColors.Default,
     val savedColorThemes: List<EchoSavedColorTheme> = emptyList(),
@@ -151,6 +154,7 @@ data class EchoAppSettings(
     val jellyfinUserId: String? = null,
     val listenBrainzEnabled: Boolean = false,
     val listenBrainzToken: String? = null,
+    val homeLayout: EchoHomeLayout = EchoHomeLayout(),
 )
 
 object EchoBackgroundMode {
@@ -237,7 +241,10 @@ class EchoSettingsStore(
     val appSettings: Flow<EchoAppSettings> =
         context.echoSettings.data.map { preferences ->
             val savedColorThemes = EchoSavedColorThemeCodec.decode(preferences[Keys.SavedColorThemes])
+            val themeMode = normalizeThemeMode(preferences[Keys.ThemeMode])
+            val lyricsStyle = PlayerAppearancePreferences.lyricsStyle(preferences, themeMode)
             EchoAppSettings(
+                homeLayout = HomeLayoutPreferences.read(preferences),
                 preferOffload = preferences[Keys.PreferOffload] ?: true,
                 lastOutputRoute = preferences[Keys.LastOutputRoute] ?: "system",
                 dynamicArtworkEnabled = preferences[Keys.DynamicArtworkEnabled] ?: true,
@@ -253,6 +260,17 @@ class EchoSettingsStore(
                 playerArtworkScale = PlayerAppearancePreferences.artworkScale(preferences),
                 onlineLyricsEnabled = preferences[Keys.OnlineLyricsEnabled] ?: false,
                 lockScreenLyricsEnabled = preferences[Keys.LockScreenLyricsEnabled] ?: true,
+                lyricsOptions = app.echo.android.model.settings.EchoLyricsOptions(
+                    sourceOrder = app.echo.android.model.settings.EchoLyricsOptions.sourcesFromId(preferences[Keys.LyricsSourceOrder]),
+                    notificationEnabled = preferences[Keys.LyricsNotificationEnabled] ?: true,
+                    statusOverlayEnabled = preferences[Keys.LyricsStatusOverlayEnabled] ?: false,
+                    systemStatusBarEnabled = preferences[Keys.LyricsSystemStatusEnabled] ?: false,
+                    statusHideTranslation = preferences[Keys.LyricsStatusHideTranslation] ?: true,
+                    statusFontSp = preferences[Keys.LyricsStatusFontSp] ?: 12f,
+                    statusWidthDp = preferences[Keys.LyricsStatusWidthDp] ?: 180,
+                    statusOffsetXDp = preferences[Keys.LyricsStatusOffsetXDp] ?: 80,
+                    statusOffsetYDp = preferences[Keys.LyricsStatusOffsetYDp] ?: 0,
+                ).normalized,
                 floatingLyrics = app.echo.android.model.settings.EchoFloatingLyricsSettings(
                     enabled = preferences[Keys.FloatingLyricsEnabled] ?: false,
                     locked = preferences[Keys.FloatingLyricsLocked] ?: false,
@@ -314,16 +332,17 @@ class EchoSettingsStore(
                 uiFontFamily = normalizeFontFamilyMode(preferences[Keys.UiFontFamily]),
                 uiFontScale = (preferences[Keys.UiFontScale] ?: 1f).coerceIn(0.88f, 1.18f),
                 uiDensityScale = (preferences[Keys.UiDensityScale] ?: 1f).coerceIn(0.90f, 1.12f),
-                lyricsPageStyle = EchoLyricsPageStyle.fromId(preferences[Keys.LyricsPageStyle]).id,
+                lyricsPageStyle = lyricsStyle.id,
                 lyricsFontFamily = normalizeFontFamilyMode(preferences[Keys.LyricsFontFamily]
-                    ?: EchoLyricsPageStyle.fromId(preferences[Keys.LyricsPageStyle]).defaultFontFamily),
-                lyricsFontScale = (preferences[Keys.LyricsFontScale] ?: 1f).coerceIn(0.82f, 1.28f),
+                    ?: lyricsStyle.defaultFontFamily),
+                lyricsFontScale = (preferences[Keys.LyricsFontScale] ?: 1f).coerceIn(0.50f, 1.28f),
                 lyricsColorMode = preferences[Keys.LyricsColorMode] ?: EchoLyricsColorMode.White,
                 lyricsAlignment = normalizeLyricsAlignment(preferences[Keys.LyricsAlignment]
-                    ?: EchoLyricsPageStyle.fromId(preferences[Keys.LyricsPageStyle]).defaultAlignment),
-                lyricsLineSpacing = (preferences[Keys.LyricsLineSpacing] ?: 1f).coerceIn(0.82f, 1.38f),
+                    ?: lyricsStyle.defaultAlignment),
+                lyricsLineSpacing = (preferences[Keys.LyricsLineSpacing] ?: 1f).coerceIn(0.50f, 1.38f),
                 lyricsBackgroundDim = (preferences[Keys.LyricsBackgroundDim] ?: 0f).coerceIn(0f, 0.78f),
                 lyricsWordHighlightEnabled = preferences[Keys.LyricsWordHighlightEnabled] ?: true,
+                lyricsEstimatedWordHighlightEnabled = preferences[Keys.LyricsEstimatedWordHighlightEnabled] ?: false,
                 lyricsWordHighlightIntensity = (preferences[Keys.LyricsWordHighlightIntensity] ?: 1f).coerceIn(0.45f, 1.35f),
                 lyricsImmersiveModeEnabled = preferences[Keys.LyricsImmersiveModeEnabled] ?: false,
                 lyricsMotionMode = normalizeLyricsMotionMode(preferences[Keys.LyricsMotionMode]),
@@ -331,7 +350,7 @@ class EchoSettingsStore(
                 lyricsShowRomanization = preferences[Keys.LyricsShowRomanization] ?: true,
                 lyricsFocusGlowEnabled = preferences[Keys.LyricsFocusGlowEnabled] ?: false,
                 importedFontUri = preferences[Keys.ImportedFontUri],
-                themeMode = normalizeThemeMode(preferences[Keys.ThemeMode]),
+                themeMode = themeMode,
                 colorTheme = EchoColorTheme.fromId(preferences[Keys.ColorTheme]).id,
                 customColors = readCustomColors(preferences),
                 savedColorThemes = savedColorThemes,
@@ -428,6 +447,10 @@ class EchoSettingsStore(
     private fun currentStartupThemeSnapshot(): EchoStartupThemeSnapshot =
         cachedStartupThemeSnapshot ?: context.readEchoStartupThemeSnapshot()
 
+    suspend fun setHomeLayout(value: EchoHomeLayout) {
+        context.echoSettings.edit { HomeLayoutPreferences.write(it, value) }
+    }
+
     suspend fun setPreferOffload(enabled: Boolean) {
         context.echoSettings.edit { it[Keys.PreferOffload] = enabled }
     }
@@ -471,11 +494,16 @@ class EchoSettingsStore(
     suspend fun setPlayerAppearance(style: String, textScale: Float, artworkScale: Float) {
         context.echoSettings.edit { preferences ->
             val previous = PlayerAppearancePreferences.style(preferences)
+            val previousLyrics = PlayerAppearancePreferences.lyricsStyle(preferences, normalizeThemeMode(preferences[Keys.ThemeMode]))
+            // Keep the old resolved style until the cover-to-lyrics binding applies its full layout.
+            preferences[Keys.LyricsPageStyle] = previousLyrics.id
             PlayerAppearancePreferences.write(preferences, style, textScale, artworkScale)
             val next = PlayerAppearancePreferences.style(preferences)
-            // Style changes retie lyrics. Scale edits on the same style do not.
+            // Cover changes retie ordinary lyrics; Afterglow and same-style scale edits keep their choice.
             if (next != previous) {
-                writeLyricsPageStyle(preferences, PlayerAppearancePreferences.boundLyricsStyle(next))
+                writeLyricsPageStyle(preferences, PlayerAppearancePreferences.boundLyricsStyle(
+                    next, previousLyrics,
+                ))
             }
         }
     }
@@ -486,6 +514,21 @@ class EchoSettingsStore(
 
     suspend fun setLockScreenLyricsEnabled(enabled: Boolean) {
         context.echoSettings.edit { it[Keys.LockScreenLyricsEnabled] = enabled }
+    }
+
+    suspend fun setLyricsOptions(value: app.echo.android.model.settings.EchoLyricsOptions) {
+        val normalized = value.normalized
+        context.echoSettings.edit {
+            it[Keys.LyricsSourceOrder] = normalized.sourceOrder.joinToString(",") { source -> source.id }
+            it[Keys.LyricsNotificationEnabled] = normalized.notificationEnabled
+            it[Keys.LyricsStatusOverlayEnabled] = normalized.statusOverlayEnabled
+            it[Keys.LyricsSystemStatusEnabled] = normalized.systemStatusBarEnabled
+            it[Keys.LyricsStatusHideTranslation] = normalized.statusHideTranslation
+            it[Keys.LyricsStatusFontSp] = normalized.statusFontSp
+            it[Keys.LyricsStatusWidthDp] = normalized.statusWidthDp
+            it[Keys.LyricsStatusOffsetXDp] = normalized.statusOffsetXDp
+            it[Keys.LyricsStatusOffsetYDp] = normalized.statusOffsetYDp
+        }
     }
 
     suspend fun setFloatingLyrics(value: app.echo.android.model.settings.EchoFloatingLyricsSettings) {
@@ -799,7 +842,7 @@ class EchoSettingsStore(
     suspend fun setLyricsPageStyle(value: String) {
         val style = EchoLyricsPageStyle.fromId(value)
         context.echoSettings.edit { preferences ->
-            val previous = EchoLyricsPageStyle.fromId(preferences[Keys.LyricsPageStyle])
+            val previous = PlayerAppearancePreferences.lyricsStyle(preferences, normalizeThemeMode(preferences[Keys.ThemeMode]))
             writeLyricsPageStyle(preferences, style)
             if (previous != style) {
                 val player = PlayerAppearancePreferences.style(preferences)
@@ -818,7 +861,7 @@ class EchoSettingsStore(
 
     private fun writeLyricsPageStyle(preferences: MutablePreferences, style: EchoLyricsPageStyle) {
         // Apply the layout together so a switch never flashes a mixed preset.
-        if (EchoLyricsPageStyle.fromId(preferences[Keys.LyricsPageStyle]) != style) {
+        if (PlayerAppearancePreferences.lyricsStyle(preferences, normalizeThemeMode(preferences[Keys.ThemeMode])) != style) {
             preferences[Keys.LyricsFontFamily] = style.defaultFontFamily
             preferences[Keys.LyricsAlignment] = style.defaultAlignment
             preferences[Keys.LyricsColorMode] = EchoLyricsColorMode.White
@@ -831,7 +874,7 @@ class EchoSettingsStore(
     }
 
     suspend fun setLyricsFontScale(value: Float) {
-        context.echoSettings.edit { it[Keys.LyricsFontScale] = value.coerceIn(0.82f, 1.28f) }
+        context.echoSettings.edit { it[Keys.LyricsFontScale] = value.coerceIn(0.50f, 1.28f) }
     }
 
     suspend fun setLyricsColorMode(value: String) {
@@ -843,7 +886,7 @@ class EchoSettingsStore(
     }
 
     suspend fun setLyricsLineSpacing(value: Float) {
-        context.echoSettings.edit { it[Keys.LyricsLineSpacing] = value.coerceIn(0.82f, 1.38f) }
+        context.echoSettings.edit { it[Keys.LyricsLineSpacing] = value.coerceIn(0.50f, 1.38f) }
     }
 
     suspend fun setLyricsBackgroundDim(value: Float) {
@@ -852,6 +895,10 @@ class EchoSettingsStore(
 
     suspend fun setLyricsWordHighlightEnabled(enabled: Boolean) {
         context.echoSettings.edit { it[Keys.LyricsWordHighlightEnabled] = enabled }
+    }
+
+    suspend fun setLyricsEstimatedWordHighlightEnabled(enabled: Boolean) {
+        context.echoSettings.edit { it[Keys.LyricsEstimatedWordHighlightEnabled] = enabled }
     }
 
     suspend fun setLyricsWordHighlightIntensity(value: Float) {
@@ -896,7 +943,9 @@ class EchoSettingsStore(
 
     suspend fun setThemeMode(value: String) {
         val safeValue = normalizeThemeMode(value)
-        context.echoSettings.edit { it[Keys.ThemeMode] = safeValue }
+        context.echoSettings.edit { preferences ->
+            preferences[Keys.ThemeMode] = safeValue
+        }
         cacheStartupThemeSnapshot(
             currentStartupThemeSnapshot().copy(themeMode = safeValue),
             synchronous = true,
@@ -1462,6 +1511,13 @@ class EchoSettingsStore(
     suspend fun applyBackupSettings(backup: app.echo.android.model.backup.EchoBackupSettings) {
         context.echoSettings.edit { prefs ->
             backup.themeMode?.let { prefs[Keys.ThemeMode] = it }
+            backup.homeLayout?.let { HomeLayoutPreferences.write(prefs, it) }
+            if (backup.playerPageStyle != null || backup.playerTextScale != null || backup.playerArtworkScale != null) PlayerAppearancePreferences.write(prefs,
+                backup.playerPageStyle ?: PlayerAppearancePreferences.style(prefs), backup.playerTextScale ?: PlayerAppearancePreferences.textScale(prefs), backup.playerArtworkScale ?: PlayerAppearancePreferences.artworkScale(prefs))
+            backup.backgroundBlur?.let { prefs[Keys.CustomBackgroundBlur] = it.coerceIn(0f,80f) }
+            backup.backgroundBrightness?.let { prefs[Keys.CustomBackgroundBrightness] = it.coerceIn(.35f,1.15f) }
+            backup.backgroundGlass?.let { prefs[Keys.CustomBackgroundGlass] = it.coerceIn(.08f,.9f) }
+            backup.backgroundScale?.let { prefs[Keys.CustomBackgroundScale] = it.coerceIn(1f,1.4f) }
             backup.colorTheme?.let { prefs[Keys.ColorTheme] = EchoColorTheme.fromId(it).id }
             backup.customAccent?.let { prefs[Keys.CustomAccent] = it.toEchoOpaqueColor() }
             backup.customSecondary?.let { prefs[Keys.CustomSecondary] = it.toEchoOpaqueColor() }
@@ -1543,6 +1599,7 @@ class EchoSettingsStore(
             backup.lyricsLineSpacing?.let { prefs[Keys.LyricsLineSpacing] = it }
             backup.lyricsBackgroundDim?.let { prefs[Keys.LyricsBackgroundDim] = it }
             backup.lyricsWordHighlightEnabled?.let { prefs[Keys.LyricsWordHighlightEnabled] = it }
+            backup.lyricsEstimatedWordHighlightEnabled?.let { prefs[Keys.LyricsEstimatedWordHighlightEnabled] = it }
             backup.lyricsWordHighlightIntensity?.let { prefs[Keys.LyricsWordHighlightIntensity] = it }
             backup.lyricsImmersiveModeEnabled?.let { prefs[Keys.LyricsImmersiveModeEnabled] = it }
             backup.lyricsMotionMode?.let { prefs[Keys.LyricsMotionMode] = it }
@@ -1570,6 +1627,15 @@ class EchoSettingsStore(
         val ShowLyricsControlDeck = booleanPreferencesKey("show_lyrics_control_deck")
         val OnlineLyricsEnabled = booleanPreferencesKey("online_lyrics_enabled")
         val LockScreenLyricsEnabled = booleanPreferencesKey("lock_screen_lyrics_enabled")
+        val LyricsSourceOrder = stringPreferencesKey("lyrics_source_order")
+        val LyricsNotificationEnabled = booleanPreferencesKey("lyrics_notification_enabled")
+        val LyricsStatusOverlayEnabled = booleanPreferencesKey("lyrics_status_overlay_enabled")
+        val LyricsSystemStatusEnabled = booleanPreferencesKey("lyrics_system_status_enabled")
+        val LyricsStatusHideTranslation = booleanPreferencesKey("lyrics_status_hide_translation")
+        val LyricsStatusFontSp = floatPreferencesKey("lyrics_status_font_sp")
+        val LyricsStatusWidthDp = intPreferencesKey("lyrics_status_width_dp")
+        val LyricsStatusOffsetXDp = intPreferencesKey("lyrics_status_offset_x_dp")
+        val LyricsStatusOffsetYDp = intPreferencesKey("lyrics_status_offset_y_dp")
         val FloatingLyricsEnabled = booleanPreferencesKey("floating_lyrics_enabled")
         val FloatingLyricsLocked = booleanPreferencesKey("floating_lyrics_locked")
         val FloatingLyricsFontScale = floatPreferencesKey("floating_lyrics_font_scale")
@@ -1628,6 +1694,7 @@ class EchoSettingsStore(
         val LyricsLineSpacing = floatPreferencesKey("lyrics_line_spacing")
         val LyricsBackgroundDim = floatPreferencesKey("lyrics_background_dim")
         val LyricsWordHighlightEnabled = booleanPreferencesKey("lyrics_word_highlight_enabled")
+        val LyricsEstimatedWordHighlightEnabled = booleanPreferencesKey("lyrics_estimated_word_highlight_enabled")
         val LyricsWordHighlightIntensity = floatPreferencesKey("lyrics_word_highlight_intensity")
         val LyricsImmersiveModeEnabled = booleanPreferencesKey("lyrics_immersive_mode_enabled")
         val LyricsMotionMode = stringPreferencesKey("lyrics_motion_mode")
@@ -1794,6 +1861,9 @@ internal fun parseEqualizerFilters(value: String?): List<OpraEqBand> {
 
 fun EchoAppSettings.toBackupSettings(): app.echo.android.model.backup.EchoBackupSettings =
     app.echo.android.model.backup.EchoBackupSettings(
+        homeLayout = homeLayout, playerPageStyle = playerPageStyle, playerTextScale = playerTextScale, playerArtworkScale = playerArtworkScale,
+        backgroundMode = customBackgroundMode, backgroundBlur = customBackgroundBlur, backgroundBrightness = customBackgroundBrightness,
+        backgroundGlass = customBackgroundGlass, backgroundScale = customBackgroundScale,
         themeMode = themeMode,
         colorTheme = colorTheme,
         customAccent = customColors.accent,
@@ -1844,6 +1914,7 @@ fun EchoAppSettings.toBackupSettings(): app.echo.android.model.backup.EchoBackup
         lyricsLineSpacing = lyricsLineSpacing,
         lyricsBackgroundDim = lyricsBackgroundDim,
         lyricsWordHighlightEnabled = lyricsWordHighlightEnabled,
+        lyricsEstimatedWordHighlightEnabled = lyricsEstimatedWordHighlightEnabled,
         lyricsWordHighlightIntensity = lyricsWordHighlightIntensity,
         lyricsImmersiveModeEnabled = lyricsImmersiveModeEnabled,
         lyricsMotionMode = lyricsMotionMode,

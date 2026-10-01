@@ -4,6 +4,9 @@ import app.echo.android.model.connect.EchoRemoteEndpoint
 import app.echo.android.model.connect.EchoRemotePlaybackState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.json.JSONObject
 import org.junit.Test
 
 class EchoLinkEventParserTest {
@@ -50,5 +53,20 @@ class EchoLinkEventParserTest {
         assertEquals("a", playback.queue.currentTrackId)
         assertEquals(2, playback.queue.items.size)
         assertEquals("Next", playback.queue.items[1].title)
+        assertTrue(playback.volumeControlEnabled)
+    }
+
+    @Test
+    fun fixedVolumeSurvivesStatusAndEventParsingAndCanUnlock() {
+        val lockedJson = """{"state":"paused","volume":1,"volumeControlEnabled":false,"volumeLockedReason":"fixed_volume"}"""
+        val status = JSONObject(lockedJson).toPlaybackSnapshot(endpoint)
+        val event = parseEchoLinkEventData("""{"snapshot":$lockedJson}""", endpoint)!!.payload
+        assertFalse(status.volumeControlEnabled)
+        assertEquals("fixed_volume", status.volumeLockedReason)
+        assertFalse(event.volumeControlEnabled)
+        assertEquals("fixed_volume", event.volumeLockedReason)
+        val unlocked = JSONObject("""{"volumeControlEnabled":true,"volumeLockedReason":null}""").toPlaybackSnapshot(endpoint)
+        assertTrue(unlocked.volumeControlEnabled)
+        assertEquals(null, unlocked.volumeLockedReason)
     }
 }

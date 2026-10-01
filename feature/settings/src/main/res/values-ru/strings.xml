@@ -32,7 +32,7 @@
     <string name="settings_custom_saved_themes">Сохранённые темы</string>
     <string name="settings_custom_detail">Светлая и тёмная схемы остаются читаемыми. Системные цвета по-прежнему окрашивают элементы управления.</string>
     <string name="settings_dynamic_color">Системные цвета</string>
-    <string name="settings_dynamic_color_detail">Использовать цвета обоев для элементов управления. Стекло Echo сохраняется. Android 12+</string>
+    <string name="settings_dynamic_color_detail">Элементы управления в цветах обоев</string>
     <string name="settings_dynamic_color_unavailable">Нужен Android 12 или новее</string>
     <string name="settings_playback_haptics">Тактильная отдача воспроизведения</string>
     <string name="settings_playback_haptics_detail">Щелчок и тик при воспроизведении, паузе и переходе</string>
@@ -85,7 +85,7 @@
     <string name="settings_pause_on_disconnect_detail">Пауза, если отключились наушники, Bluetooth или USB DAC</string>
     <string name="settings_resume_on_reconnect">Продолжить при подключении</string>
     <string name="settings_resume_on_reconnect_detail">Только после паузы из‑за отключения</string>
-    <string name="settings_replay_gain">ReplayGain</string>
+    <string name="settings_replay_gain">Выравнивать громкость</string>
     <string name="settings_replay_gain_detail">Выровнять громкость по тегам ReplayGain</string>
     <string name="settings_replay_gain_bypass">Сохранено, не используется в bit-perfect</string>
     <string name="settings_replay_gain_mode">Режим ReplayGain</string>

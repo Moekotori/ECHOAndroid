@@ -24,6 +24,7 @@ fun LyricsManagerDialog(
     onRemove: () -> Unit,
     onAdjustOffset: (Long) -> Unit,
     onDismiss: () -> Unit,
+    onEdit: (() -> Unit)? = null,
 ) {
     var previewId by remember(trackTitle) { mutableStateOf<String?>(null) }
     var searched by remember(trackTitle) { mutableStateOf(false) }
@@ -38,6 +39,7 @@ fun LyricsManagerDialog(
                         Text(stringResource(R.string.lyrics_manager_search))
                     }
                     TextButton(onClick = onImport) { Text(stringResource(R.string.lyrics_manager_import)) }
+                    if (onEdit != null) TextButton(onClick = onEdit) { Text(stringResource(R.string.lyrics_edit_title)) }
                     TextButton(onClick = onRemove) { Text(stringResource(R.string.lyrics_manager_clear)) }
                     Row {
                         TextButton(onClick = { onAdjustOffset(-50L) }) { Text("−50 ms") }

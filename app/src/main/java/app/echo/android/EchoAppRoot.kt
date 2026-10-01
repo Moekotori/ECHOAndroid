@@ -24,18 +24,10 @@ import android.graphics.Color as AndroidColor
 import android.os.PowerManager
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
-import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -61,7 +53,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -94,7 +85,8 @@ import app.echo.android.design.EchoArtworkRequestHeadersRegistry
 import app.echo.android.design.EchoMobileTheme
 import app.echo.android.design.echoStartupWindowColor
 import app.echo.android.model.settings.EchoColorTheme
-import app.echo.android.design.EchoMotion
+import app.echo.android.design.EchoPageOverlay
+import app.echo.android.design.echoPageUnderlay
 import app.echo.android.design.LocalEchoWidthSizeClass
 import app.echo.android.design.echoLocaleSwitchLayer
 import app.echo.android.design.runEchoLocaleSwitch
@@ -119,10 +111,11 @@ import app.echo.android.ui.shell.echoPlayerDepth
 import app.echo.android.ui.shell.echoSheetDepth
 import app.echo.android.design.EchoPlayerTransitionRoot
 import app.echo.android.design.EchoExpandedPlayer
+import app.echo.android.design.rememberEchoBackProgress
+import app.echo.android.ui.shell.EchoOverlayBackHandler
 import app.echo.android.ui.shell.EchoBottomDockHost
 import app.echo.android.ui.shell.EchoPagerPage
 import app.echo.android.ui.shell.dockTab
-import app.echo.android.ui.shell.motionDuration
 import app.echo.android.ui.shell.pagerPage
 import app.echo.android.design.rememberSilkPagerFlingBehavior
 import app.echo.android.ui.shell.outerPagerUserScrollEnabled
@@ -159,7 +152,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
-import kotlin.coroutines.cancellation.CancellationException
 
 private val LyricsDocumentMimeTypes = arrayOf("text/*", "application/xml", "application/octet-stream", "*/*")
 private val ArtworkDocumentMimeTypes = arrayOf("image/*", "application/octet-stream", "*/*")
@@ -295,7 +287,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         fontImportTarget = null
     }
     val backupExportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json"),
+        ActivityResultContracts.CreateDocument("application/zip"),
     ) { uri ->
         uri?.let(viewModel::exportBackup)
     }
@@ -304,6 +296,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     ) { uri ->
         uri?.let(viewModel::importBackup)
     }
+    val migrationPreview by viewModel.libraryMigration.preview.collectAsStateWithLifecycle()
+    val migrationBusy by viewModel.libraryMigration.busy.collectAsStateWithLifecycle()
+    migrationPreview?.let { preview -> app.echo.android.feature.settings.BackupMigrationPreview(preview, migrationBusy,
+        onApply = viewModel::applyMigrationBackup, onDismiss = viewModel.libraryMigration::dismiss) }
     var lyricsImportTrackId by remember { mutableStateOf<String?>(null) }
     val lyricsImportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { lyricsUri ->
@@ -750,6 +746,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     var searchVisible by remember { mutableStateOf(false) }
     var listeningVisible by rememberSaveable { mutableStateOf(false) }
     var listeningStatsVisible by rememberSaveable { mutableStateOf(false) }
+    var playbackHistoryVisible by rememberSaveable { mutableStateOf(false) }
     var listeningDraft by rememberSaveable { mutableStateOf("") }
     var searchQuery by remember { mutableStateOf("") }
     var errorLogVisible by remember { mutableStateOf(false) }
@@ -758,20 +755,21 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     var bottomDockExpanded by remember { mutableStateOf(true) }
     var bottomDockHeightPx by remember { mutableIntStateOf(0) }
     val bottomDockInset = with(LocalDensity.current) { bottomDockHeightPx.toDp() }
-    var nowPlayingExpanded by remember { mutableStateOf(false) }
+    var nowPlayingExpanded by rememberSaveable { mutableStateOf(false) }
     var nowPlayingDragProgress by remember { mutableFloatStateOf(0f) }
-    var nowPlayingBackProgress by remember { mutableFloatStateOf(0f) }
-    val nowPlayingBackRecoveryJob = remember { arrayOfNulls<Job>(1) }
-    // 在设置 expanded=true 的同一帧归零返回进度,避免重开首帧带着残留位移渲染
+    val nowPlayingBack = rememberEchoBackProgress(effectivePerformanceMode.isLightweight)
     fun expandNowPlaying() {
-        nowPlayingBackRecoveryJob[0]?.cancel()
-        nowPlayingBackProgress = 0f
+        nowPlayingBack.restore()
         nowPlayingExpanded = true
     }
-    var lyricsLaunchToken by remember { mutableIntStateOf(0) }
+    var lyricsLaunchToken by rememberSaveable { mutableIntStateOf(0) }
     var queueSheetVisible by remember { mutableStateOf(false) }
     var castSheetVisible by remember { mutableStateOf(false) }
     var queueDragProgress by remember { mutableFloatStateOf(0f) }
+    val queueBack = rememberEchoBackProgress(effectivePerformanceMode.isLightweight)
+    LaunchedEffect(queueSheetVisible) {
+        if (queueSheetVisible) queueBack.restore()
+    }
     val openLyricsRequest by EchoLaunchActions.openLyrics.collectAsStateWithLifecycle()
     LaunchedEffect(openLyricsRequest) {
         if (openLyricsRequest) {
@@ -981,17 +979,25 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             return
         }
         returnPage.dockTab?.let { selectedTab = it.ordinal }
+        val closingDetailKeys = listOf(
+            selectedAlbum?.albumKey, selectedArtist?.artistKey, selectedGenre?.genreKey,
+            selectedFolder?.folderKey, selectedPlaylist?.id,
+        )
         routeNavigationJob[0]?.cancel()
         routeNavigationJob[0] = appScope.launch {
-            try {
-                val targetPage = returnPage.ordinal
-                if (needsPagerSettle(targetPage)) {
-                    tabPagerState.animateScrollToPage(
-                        page = targetPage,
-                        animationSpec = routeMotionSpec(tabPagerState.currentPage, targetPage, effectivePerformanceMode),
-                    )
-                }
-            } finally {
+            val targetPage = returnPage.ordinal
+            if (needsPagerSettle(targetPage)) {
+                tabPagerState.animateScrollToPage(
+                    page = targetPage,
+                    animationSpec = routeMotionSpec(tabPagerState.currentPage, targetPage, effectivePerformanceMode),
+                )
+            }
+            // A cancelled return must not clear a detail opened by the next navigation.
+            val currentDetailKeys = listOf(
+                selectedAlbum?.albumKey, selectedArtist?.artistKey, selectedGenre?.genreKey,
+                selectedFolder?.folderKey, selectedPlaylist?.id,
+            )
+            if (currentDetailKeys == closingDetailKeys) {
                 clearLibraryDetail()
             }
         }
@@ -1024,40 +1030,31 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     EchoOverlayBackHandler(enabled = listeningVisible && !pluginsVisible) {
         listeningVisible = false
     }
+    EchoOverlayBackHandler(enabled = playbackHistoryVisible && !listeningStatsVisible && !pluginsVisible) {
+        playbackHistoryVisible = false
+    }
     EchoOverlayBackHandler(enabled = listeningStatsVisible && !pluginsVisible) {
         listeningStatsVisible = false
     }
     EchoOverlayBackHandler(enabled = searchVisible && !listeningVisible && !pluginsVisible) {
         searchVisible = false
-        searchQuery = ""
     }
     EchoOverlayBackHandler(enabled = errorLogVisible && !pluginsVisible) {
         errorLogVisible = false
     }
-    EchoOverlayBackHandler(enabled = queueSheetVisible && !pluginsVisible) { queueSheetVisible = false }
+    EchoOverlayBackHandler(
+        enabled = queueSheetVisible && !pluginsVisible,
+        onProgress = queueBack::update,
+        onCancel = { queueBack.restore() },
+        onDismiss = { queueSheetVisible = false },
+    )
     EchoOverlayBackHandler(
         enabled = nowPlayingExpanded && !queueSheetVisible && !castSheetVisible && !pluginsVisible,
-        onProgress = {
-            nowPlayingBackRecoveryJob[0]?.cancel()
-            nowPlayingBackProgress = it
-        },
-        onCancel = {
-            // 取消返回手势时弹簧回弹,而非瞬间跳回原位
-            nowPlayingBackRecoveryJob[0]?.cancel()
-            nowPlayingBackRecoveryJob[0] = appScope.launch {
-                animate(
-                    initialValue = nowPlayingBackProgress,
-                    targetValue = 0f,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = 420f,
-                    ),
-                ) { value, _ -> nowPlayingBackProgress = value }
-            }
-        },
+        onProgress = nowPlayingBack::update,
+        onCancel = { nowPlayingBack.restore() },
         onDismiss = { nowPlayingExpanded = false },
     )
-    val shellOverlayOpen = searchVisible || listeningVisible || listeningStatsVisible || errorLogVisible || queueSheetVisible || castSheetVisible || nowPlayingExpanded || pluginsVisible
+    val shellOverlayOpen = searchVisible || listeningVisible || listeningStatsVisible || playbackHistoryVisible || errorLogVisible || queueSheetVisible || castSheetVisible || nowPlayingExpanded || pluginsVisible
     val connectPageSettled = appVisible && screenInteractive && !shellOverlayOpen &&
         tabPagerState.settledPage == EchoPagerPage.Connect.ordinal
     // One owner for discovery: closing either surface must not stop the other.
@@ -1121,9 +1118,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             )
             Box(
                 modifier = Modifier.fillMaxSize()
-                    .alpha(if (customBackgroundActive && (searchVisible || errorLogVisible)) 0f else 1f)
-                    .echoPlayerDepth(nowPlayingExpanded) { maxOf(nowPlayingBackProgress, nowPlayingDragProgress) }
-                    .echoSheetDepth(queueSheetVisible) { queueDragProgress },
+                    .echoPageUnderlay(searchVisible || errorLogVisible || listeningStatsVisible || playbackHistoryVisible || listeningVisible || pluginsVisible)
+                    .echoPlayerDepth(nowPlayingExpanded) { maxOf(nowPlayingBack.value, nowPlayingDragProgress) }
+                    .echoSheetDepth(queueSheetVisible) { maxOf(queueBack.value, queueDragProgress) },
             ) {
                 val tabPagerFling = rememberSilkPagerFlingBehavior(tabPagerState)
                 val enteringInnerTabPage =
@@ -1227,6 +1224,13 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             )
 
                             EchoPagerPage.Now -> EchoHomePage(
+                                onOpenPlaylist = { playlist ->
+                                    detailReturnPage = EchoPagerPage.Now
+                                    selectedAlbum = null; selectedArtist = null; selectedGenre = null; selectedFolder = null
+                                    selectedPlaylist = playlist
+                                    selectDockTab(EchoTab.Library)
+                                },
+                                homeLayout = appSettings.homeLayout,
                                 bottomInset = bottomDockInset,
                                 viewModel = viewModel,
                                 playbackStatus = playbackStatus,
@@ -1252,6 +1256,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onOpenConnect = { selectDockTab(EchoTab.Connect) },
                                 onOpenSearch = { searchVisible = true },
                                 onOpenListeningStats = { listeningStatsVisible = true },
+                                onOpenPlaybackHistory = { playbackHistoryVisible = true },
                                 onResumePlayback = {
                                     if (!playbackStatus.isPlaying) routedPlayPause()
                                     expandNowPlaying()
@@ -1269,6 +1274,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 .collectAsStateWithLifecycle(0L)
                             SettingsScreen(
                                 importedFontFamily = importedFontFamily,
+                                isPageVisible = tabPagerState.currentPage == EchoPagerPage.Settings.ordinal,
                                 isActive = tabPagerState.currentPage == EchoPagerPage.Settings.ordinal &&
                                     !nowPlayingExpanded && !searchVisible && !errorLogVisible && !queueSheetVisible && !pluginsVisible,
                                 status = playbackStatus,
@@ -1292,7 +1298,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 offlineWifiOnly = appSettings.offlineWifiOnly,
                                 offlineUsedBytes = offlineUsedBytes,
                                 pcHandoffEnabled = appSettings.pcHandoffEnabled,
-                                showLyricsControlDeck = appSettings.showLyricsControlDeck,
                                 onlineLyricsEnabled = appSettings.onlineLyricsEnabled,
                                 lockScreenLyricsEnabled = appSettings.lockScreenLyricsEnabled,
                                 floatingLyrics = appSettings.floatingLyrics,
@@ -1369,7 +1374,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onWatchedFolderRescanEnabledChange = viewModel::setWatchedFolderRescanEnabled,
                                 onOfflineWifiOnlyChange = viewModel::setOfflineWifiOnly,
                                 onPcHandoffEnabledChange = viewModel::setPcHandoffEnabled,
-                                onShowLyricsControlDeckChange = viewModel::setShowLyricsControlDeck,
                                 onOnlineLyricsEnabledChange = viewModel::setOnlineLyricsEnabled,
                                 onLockScreenLyricsEnabledChange = viewModel::setLockScreenLyricsEnabled,
                                 onUsbExclusiveEnabledChange = viewModel::setUsbExclusiveEnabled,
@@ -1381,7 +1385,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onReplayGainChange = viewModel::setReplayGain,
                                 onReplayGainModeChange = viewModel::setReplayGainMode,
                                 onTestUsbExclusiveDriver = viewModel::testUsbExclusiveDriver,
-                                onPinQueueOffline = viewModel::pinCurrentQueueOffline,
                                 onPickImageBackground = { backgroundImageLauncher.launch(arrayOf("image/*")) },
                                 onPickStartupBackground = { startupBackgroundLauncher.launch(arrayOf("image/*")) },
                                 onClearStartupBackground = { viewModel.setStartupBackground(null) },
@@ -1457,7 +1460,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                     }
                                 },
                                 onOpenLibrary = { selectDockTab(EchoTab.Library) },
-                                onOpenConnect = { selectDockTab(EchoTab.Connect) },
                                 onClearLocalLibraryIndex = viewModel::clearLocalLibraryIndex,
                                 onCleanupLocalLibrary = {
                                     val result = viewModel.cleanupLocalLibrary()
@@ -1467,7 +1469,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onOpenErrorLog = { errorLogVisible = true },
                                 onOpenPlugins = { pluginsVisible = true },
                                 backupNotice = backupNotice,
-                                onExportBackup = { backupExportLauncher.launch("echo-backup.json") },
+                                onExportBackup = { backupExportLauncher.launch("echo-migration.zip") },
                                 onImportBackup = {
                                     backupImportLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
                                 },
@@ -1482,6 +1484,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             val lanRenderers by viewModel.lanRenderers.collectAsStateWithLifecycle()
                             val lanRendererState by viewModel.lanRendererDiscoveryState.collectAsStateWithLifecycle()
                             ConnectScreen(
+                                librarySyncActions = app.echo.android.ui.connect.rememberLibrarySyncActions(viewModel, remoteClient),
                                 remoteState = remoteStatus.connectionState,
                                 pcTitle = remoteStatus.endpoint?.name ?: "PC ECHO",
                                 trackTitle = remoteStatus.playback.track?.title.orEmpty(),
@@ -1496,6 +1499,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 positionMs = remoteStatus.playback.positionMs,
                                 durationMs = remoteStatus.playback.durationMs,
                                 volume = remoteStatus.playback.volume,
+                                volumeControlEnabled = remoteStatus.playback.volumeControlEnabled,
+                                volumeLockedReason = remoteStatus.playback.volumeLockedReason,
                                 outputMode = remoteStatus.playback.outputMode,
                                 currentTrackId = remoteStatus.playback.queue.currentTrackId
                                     ?: remoteStatus.playback.track?.id,
@@ -1676,6 +1681,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     }
                 }
                 EchoBottomDockHost(
+                    animationsVisible = !shellOverlayOpen,
                     viewModel = viewModel,
                     pagerState = tabPagerState,
                     playbackStatus = shellPlaybackStatus,
@@ -1699,7 +1705,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
 
             EchoExpandedPlayer(
                 visible = nowPlayingExpanded,
-                modifier = Modifier.echoSheetDepth(queueSheetVisible) { queueDragProgress },
+                onHidden = { nowPlayingBack.reset() },
+                modifier = Modifier.echoSheetDepth(queueSheetVisible) { maxOf(queueBack.value, queueDragProgress) },
             ) {
                 EchoNowPlayingHost(
                     viewModel = viewModel,
@@ -1708,7 +1715,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     appSettings = appSettings,
                     lyricsFontFamily = lyricsFontFamily,
                     onDismiss = { nowPlayingExpanded = false },
-                    predictiveBackProgress = { nowPlayingBackProgress },
+                    predictiveBackProgress = { nowPlayingBack.value },
                     presentationExpanded = nowPlayingExpanded,
                     onDragProgress = { nowPlayingDragProgress = it },
                     onOpenQueue = { queueSheetVisible = true },
@@ -1776,6 +1783,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             }
             PlaybackQueueSheet(
                     visible = queueSheetVisible,
+                    predictiveBackProgress = { queueBack.value },
+                    onHidden = { queueBack.reset() },
                     status = playbackStatus,
                     queueState = playbackQueue,
                     onDismiss = { queueSheetVisible = false },
@@ -1787,88 +1796,35 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     onClearNextUp = viewModel::clearNextUp,
                     onCycleRepeatMode = viewModel::cycleRepeatMode,
                     onToggleShuffle = viewModel::toggleShuffle,
+                    onPinQueueOffline = viewModel::pinCurrentQueueOffline,
                     modifier = Modifier.fillMaxSize(),
             )
-            AnimatedVisibility(
-                visible = searchVisible,
-                enter = if (effectivePerformanceMode.isLightweight) {
-                    fadeIn(tween(durationMillis = motionDuration(90, effectivePerformanceMode)))
-                } else {
-                    EchoMotion.overlayEnter(
-                        enterMs = motionDuration(EchoMotion.OverlayMs, effectivePerformanceMode),
-                        fadeMs = motionDuration(EchoMotion.OverlayFadeMs, effectivePerformanceMode),
-                    )
-                },
-                exit = if (effectivePerformanceMode.isLightweight) {
-                    fadeOut(tween(durationMillis = motionDuration(90, effectivePerformanceMode)))
-                } else {
-                    EchoMotion.overlayExit(
-                        exitMs = motionDuration(EchoMotion.OverlayExitMs, effectivePerformanceMode),
-                    )
-                },
-            ) {
-                val localSearchResults by produceState(
-                    initialValue = LocalHomeSearchResults(),
-                    key1 = searchQuery,
-                ) {
-                    val trimmedQuery = searchQuery.trim()
-                    value = if (trimmedQuery.isBlank()) {
-                        LocalHomeSearchResults()
-                    } else {
-                        delay(150.milliseconds)
-                        viewModel.searchLocalLibrary(trimmedQuery).toHomeSearchResults()
-                    }
-                }
-                val searchResults = remember(localSearchResults) { localSearchResults.toUiResults(context) }
-                SearchScreen(
-                    searchQuery = searchQuery,
-                    searchResults = searchResults,
-                    onSearchQueryChange = { searchQuery = it },
-                    onSearchResultClick = { result ->
-                        when (result.type) {
-                            SearchResultType.Album -> {
-                                localSearchResults.albums.find { it.albumKey == result.id }?.let { album ->
-                                    searchVisible = false
-                                    searchQuery = ""
-                                    detailReturnPage = EchoPagerPage.Now
-                                    selectedAlbum = album
-                                    selectDockTab(EchoTab.Library)
-                                }
-                            }
-                            SearchResultType.Artist -> {
-                                localSearchResults.artists.find { it.artistKey == result.id }?.let { artist ->
-                                    searchVisible = false
-                                    searchQuery = ""
-                                    detailReturnPage = EchoPagerPage.Now
-                                    selectedArtist = artist
-                                    selectDockTab(EchoTab.Library)
-                                }
-                            }
-                            SearchResultType.Track -> {
-                                searchVisible = false
-                                searchQuery = ""
-                                viewModel.playTrackFromLibrary(result.id)
-                            }
-                        }
-                    },
-                    onPlayNext = { result ->
-                        if (result.type == SearchResultType.Track) {
-                            viewModel.playNextByTrackId(result.id)
-                        }
-                    },
-                    onAddNextUp = { result -> viewModel.addNextUpByTrackId(result.id) },
-                    onEnqueue = { result ->
-                        if (result.type == SearchResultType.Track) {
-                            viewModel.enqueueByTrackId(result.id)
-                        }
-                    },
-                    onBack = {
-                        searchVisible = false
-                        searchQuery = ""
-                    },
+            EchoPageOverlay(visible = searchVisible, onHidden = { searchQuery = "" }) {
+                app.echo.android.ui.home.EchoUnifiedSearchHost(viewModel, remoteClient, searchQuery, searchVisible,
+                    "${remoteStatus.endpoint?.id}:${remoteStatus.connectionState}",
+                    onQuery = { searchQuery = it }, onClose = { searchVisible = false },
+                    onAlbum = { album ->
+                        searchVisible = false; detailReturnPage = EchoPagerPage.Now
+                        selectedArtist = null; selectedFolder = null; selectedPlaylist = null; selectedGenre = null
+                        selectedAlbum = album; selectDockTab(EchoTab.Library)
+                    }, onArtist = { artist ->
+                        searchVisible = false; detailReturnPage = EchoPagerPage.Now
+                        selectedAlbum = null; selectedFolder = null; selectedPlaylist = null; selectedGenre = null
+                        selectedArtist = artist; selectDockTab(EchoTab.Library)
+                    }, onPlaylist = { playlist ->
+                        searchVisible = false; detailReturnPage = EchoPagerPage.Now
+                        selectedAlbum = null; selectedArtist = null; selectedFolder = null; selectedGenre = null
+                        selectedPlaylist = playlist; selectDockTab(EchoTab.Library)
+                    })
+            }
+            EchoPageOverlay(visible = playbackHistoryVisible) {
+                app.echo.android.ui.home.EchoPlaybackHistoryPage(
+                    controller = viewModel.playbackHistory,
+                    onStats = { listeningStatsVisible = true },
+                    onBack = { playbackHistoryVisible = false },
                 )
             }
-            if (listeningStatsVisible) {
+            EchoPageOverlay(visible = listeningStatsVisible) {
                 val listeningStats by viewModel.listeningStats.collectAsStateWithLifecycle()
                 ListeningStatsScreen(
                     stats = listeningStats,
@@ -1881,7 +1837,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     modifier = Modifier.fillMaxSize(),
                 )
             }
-            if (listeningVisible) {
+            EchoPageOverlay(visible = listeningVisible) {
                 ListeningScreen(
                     state = listeningState,
                     initialInput = listeningDraft,
@@ -1913,23 +1869,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
                 )
             }
-            AnimatedVisibility(
+            EchoPageOverlay(
                 visible = errorLogVisible,
-                enter = if (effectivePerformanceMode.isLightweight) {
-                    fadeIn(tween(durationMillis = motionDuration(90, effectivePerformanceMode)))
-                } else {
-                    EchoMotion.overlayEnter(
-                        enterMs = motionDuration(EchoMotion.OverlayMs, effectivePerformanceMode),
-                        fadeMs = motionDuration(EchoMotion.OverlayFadeMs, effectivePerformanceMode),
-                    )
-                },
-                exit = if (effectivePerformanceMode.isLightweight) {
-                    fadeOut(tween(durationMillis = motionDuration(90, effectivePerformanceMode)))
-                } else {
-                    EchoMotion.overlayExit(
-                        exitMs = motionDuration(EchoMotion.OverlayExitMs, effectivePerformanceMode),
-                    )
-                },
             ) {
                 val errorLogRecords by produceState(
                     initialValue = emptyList<EchoErrorRecord>(),
@@ -2018,6 +1959,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     artworkUri = playbackStatus.track?.artworkUri,
                     snapshot = lyricSnapshot,
                     wordHighlightEnabled = appSettings.lyricsWordHighlightEnabled,
+                    estimatedWordHighlightEnabled = appSettings.lyricsEstimatedWordHighlightEnabled,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -2129,25 +2071,6 @@ private fun rememberSystemPowerSaveMode(): Boolean {
         }
     }
     return powerSaveMode
-}
-
-@Composable
-private fun EchoOverlayBackHandler(
-    enabled: Boolean,
-    onProgress: (Float) -> Unit = {},
-    onCancel: () -> Unit = { onProgress(0f) },
-    onDismiss: () -> Unit,
-) {
-    PredictiveBackHandler(enabled = enabled) { progress ->
-        try {
-            progress.collect { backEvent ->
-                onProgress(backEvent.progress)
-            }
-            onDismiss()
-        } catch (_: CancellationException) {
-            onCancel()
-        }
-    }
 }
 
 private fun EchoTrackRef.toCastSource(

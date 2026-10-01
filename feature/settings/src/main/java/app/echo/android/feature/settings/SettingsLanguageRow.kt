@@ -30,6 +30,7 @@ internal fun SettingsLanguageRow(selected: String, onSelect: (String) -> Unit) {
         val options = languageOptions()
         val scroll = rememberLazyListState(initialFirstVisibleItemIndex = options.indexOfFirst { it.value == selected }.coerceAtLeast(0))
         AlertDialog(
+            shape = SettingsShape,
             onDismissRequest = { open = false },
             title = { Text(stringResource(R.string.settings_language)) },
             text = {
@@ -59,7 +60,7 @@ internal fun SettingsLanguageRow(selected: String, onSelect: (String) -> Unit) {
                 }
             },
             confirmButton = {
-                TextButton(onClick = { open = false }) { Text(stringResource(R.string.error_log_clear_cancel)) }
+                TextButton(shape = SettingsShape, onClick = { open = false }) { Text(stringResource(R.string.error_log_clear_cancel)) }
             },
         )
     }

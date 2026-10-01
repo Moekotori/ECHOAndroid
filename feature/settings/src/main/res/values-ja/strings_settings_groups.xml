@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_section_listening">再生の設定</string>
+    <string name="settings_section_runtime">パフォーマンスと省電力</string>
+    <string name="settings_section_transition">曲のつなぎ</string>
+    <string name="settings_section_volume">音量調整</string>
+    <string name="settings_section_schedule">自動ダークモード</string>
+    <string name="settings_section_readability">文字サイズ</string>
+    <string name="settings_section_background_adjustments">背景の調整</string>
+</resources>

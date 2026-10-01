@@ -1,6 +1,7 @@
 package app.echo.android.design
 
 import app.echo.android.model.settings.EchoColorTheme
+import androidx.compose.ui.graphics.Color
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -81,9 +82,28 @@ class EchoThemeTokensTest {
     }
 
     @Test
-    fun defaultStartupWindowKeepsExistingSplashColors() {
+    fun defaultStartupWindowMatchesLightPageAndPreservesDarkSplash() {
         assertEquals(0xFF080B12.toInt(), echoStartupWindowColor(EchoColorTheme.Echo, dark = true))
-        assertEquals(0xFFF1F1F3.toInt(), echoStartupWindowColor(EchoColorTheme.Echo, dark = false))
+        assertEquals(0xFFFFFFFF.toInt(), echoStartupWindowColor(EchoColorTheme.Echo, dark = false))
+    }
+
+    @Test
+    fun lightPresetsUseWhitePagesAndNeutralSurfaces() {
+        for (theme in EchoColorTheme.entries.filter { it != EchoColorTheme.Custom }) {
+            val tokens = echoThemeTokens(theme, dark = false)
+            val scheme = echoColorScheme(tokens)
+            for (color in listOf(tokens.bgTop, tokens.bgMid, tokens.bgBottom, tokens.panel, tokens.glassWash,
+                scheme.background, scheme.surface, scheme.surfaceContainerLow)) {
+                assertEquals("${theme.id} white base", Color.White, color)
+            }
+            for (color in listOf(tokens.mist, tokens.glassBorder, tokens.softLine, tokens.outlineVariant,
+                scheme.surfaceContainer, scheme.surfaceContainerHigh, scheme.surfaceContainerHighest)) {
+                assertEquals("${theme.id} neutral surface red/green", color.red, color.green, 0.0001f)
+                assertEquals("${theme.id} neutral surface green/blue", color.green, color.blue, 0.0001f)
+            }
+            assertEquals("${theme.id} startup matches page", 0xFFFFFFFF.toInt(), echoStartupWindowColor(theme, false))
+            assertEquals("${theme.id} keeps accent", tokens.accent, scheme.primary)
+        }
     }
 
     @Test

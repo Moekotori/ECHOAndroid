@@ -23,9 +23,9 @@ object EchoNotificationLyricPolicy {
         val id = trackId?.trim()?.takeIf { it.isNotEmpty() } ?: return null
         val timed = lines.mapNotNull { (startMs, text) ->
             val trimmed = collapseText(text)
-            if (startMs < 0L || trimmed.isEmpty()) null else EchoNotificationLyricLine(startMs, trimmed)
+            if (startMs < 0L) null else EchoNotificationLyricLine(startMs, trimmed)
         }
-        if (timed.isEmpty()) return null
+        if (timed.none { it.text.isNotEmpty() }) return null
         return EchoNotificationLyricDocument(id, timed)
     }
 
@@ -75,7 +75,7 @@ object EchoNotificationLyricPolicy {
         speed: Float,
         publishedAtElapsedRealtimeMs: Long,
     ): EchoLyricDisplaySnapshot {
-        val synced = lyrics?.takeIf { it.isSynced }?.lines?.filter { it.startMs >= 0L && it.text.isNotBlank() }
+        val synced = lyrics?.takeIf { it.isSynced }?.lines?.filter { it.startMs >= 0L }
         return if (!synced.isNullOrEmpty()) {
             snapshotFromLines(trackId, synced, positionMs, isPlaying, speed, publishedAtElapsedRealtimeMs)
         } else {
@@ -99,13 +99,16 @@ object EchoNotificationLyricPolicy {
         publishedAtElapsedRealtimeMs: Long,
     ): EchoLyricDisplaySnapshot {
         val index = lastStartedLyricIndex(lines, positionMs)
-        val current = lines.getOrNull(index)
+        val started = lines.getOrNull(index)
+        val current = started?.takeIf { line ->
+            line.text.isNotBlank() && line.endMs?.let { positionMs >= it } != true
+        }
         return EchoLyricDisplaySnapshot(
             trackId = trackId,
-            previous = lines.getOrNull(index - 1),
+            previous = if (current == null && started?.text?.isNotBlank() == true) started else lines.getOrNull(index - 1),
             current = current,
             next = lines.getOrNull(index + 1),
-            currentStartMs = current?.startMs ?: 0L,
+            currentStartMs = started?.startMs ?: 0L,
             positionMs = positionMs.coerceAtLeast(0L),
             publishedAtElapsedRealtimeMs = publishedAtElapsedRealtimeMs,
             isPlaying = isPlaying,

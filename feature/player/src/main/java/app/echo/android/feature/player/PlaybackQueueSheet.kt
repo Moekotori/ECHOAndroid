@@ -9,10 +9,8 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -46,6 +44,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.MusicNote
@@ -54,6 +54,8 @@ import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.Icon
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -90,16 +92,13 @@ import app.echo.android.design.formatDuration
 import app.echo.android.design.echoTheme
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoRepeatMode
+import app.echo.android.model.playback.EchoRemotePinPolicy
 import app.echo.android.model.playback.EchoTrackRef
 import app.echo.android.model.playback.PlaybackQueueState
 import kotlinx.coroutines.launch
 
 private val QueueSheetMotionEasing = EchoMotion.Silk
 private val QueueSheetExitEasing = EchoMotion.SilkExit
-private val QueueSheetDragSpring = spring<Float>(
-    dampingRatio = Spring.DampingRatioNoBouncy,
-    stiffness = Spring.StiffnessMediumLow,
-)
 
 @Composable
 fun PlaybackQueueSheet(
@@ -116,23 +115,42 @@ fun PlaybackQueueSheet(
     onToggleShuffle: () -> Unit,
     modifier: Modifier = Modifier,
     onDragProgress: (Float) -> Unit = {},
+    predictiveBackProgress: () -> Float = { 0f },
+    onHidden: () -> Unit = {},
+    onPinQueueOffline: (() -> Unit)? = null,
 ) {
+    val presentation = remember { MutableTransitionState(false) }
+    presentation.targetState = visible
+    val hidden = rememberUpdatedState(onHidden)
+    LaunchedEffect(presentation.isIdle, presentation.currentState, visible) {
+        if (presentation.isIdle && !presentation.currentState && !visible) hidden.value()
+    }
     AnimatedVisibility(
-        visible = visible,
+        visibleState = presentation,
         enter = EnterTransition.None,
         exit = ExitTransition.None,
         modifier = modifier,
     ) {
         val dark = LocalEchoDarkTheme.current
         val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
-        val dragOffset = remember { Animatable(0f) }
+        val dragOffset = remember { NowPlayingDismissDragState() }
         val dragScope = rememberCoroutineScope()
         val density = LocalDensity.current
         val dismissThresholdPx = remember(density) { with(density) { 92.dp.toPx() } }
         val reportDrag by rememberUpdatedState(onDragProgress)
+        val active = rememberUpdatedState(visible)
+        val dismiss = rememberUpdatedState(onDismiss)
+        fun visualOffset() = dragOffset.offsetPx +
+            predictiveBackProgress().coerceIn(0f, 1f) * dismissThresholdPx * 1.35f
+        fun restoreDrag() {
+            dragOffset.settleJob?.cancel()
+            dragOffset.settleJob = dragScope.launch {
+                restoreNowPlayingDismiss(dragOffset, lightweight = lightweight)
+            }
+        }
         LaunchedEffect(dragOffset, dismissThresholdPx) {
             try {
-                snapshotFlow { (dragOffset.value / (dismissThresholdPx * 3f)).coerceIn(0f, 1f) }
+                snapshotFlow { (dragOffset.offsetPx / (dismissThresholdPx * 3f)).coerceIn(0f, 1f) }
                     .collect { reportDrag(it) }
             } finally {
                 reportDrag(0f)
@@ -154,12 +172,12 @@ fun PlaybackQueueSheet(
             if (state == EnterExitState.Visible) scrimTargetAlpha else 0f
         }
         // 弹簧驱动:半路打断(快速开关)时速度连续,不会出现 tween 重启的顿挫
-        val sheetProgress by transition.animateFloat(
+        val sheetProgress = transition.animateFloat(
             transitionSpec = {
                 if (lightweight) {
                     tween(durationMillis = 90)
                 } else if (targetState == EnterExitState.Visible) {
-                    EchoMotion.silkFloat(500)
+                    EchoMotion.silkFloat(420)
                 } else {
                     EchoMotion.silkFloat(320)
                 }
@@ -168,12 +186,12 @@ fun PlaybackQueueSheet(
         ) { state ->
             if (state == EnterExitState.Visible) 1f else 0f
         }
-        val contentProgress by transition.animateFloat(
+        val contentProgress = transition.animateFloat(
             transitionSpec = {
                 if (lightweight) {
                     tween(durationMillis = 90)
                 } else if (targetState == EnterExitState.Visible) {
-                    EchoMotion.silkFloat(580)
+                    EchoMotion.silkFloat(380)
                 } else {
                     EchoMotion.silkFloat(200)
                 }
@@ -184,7 +202,7 @@ fun PlaybackQueueSheet(
         }
 
         LaunchedEffect(visible) {
-            if (visible) dragOffset.snapTo(0f)
+            if (visible && dragOffset.offsetPx > 0f) restoreDrag()
         }
 
         Box(Modifier.fillMaxSize()) {
@@ -201,7 +219,7 @@ fun PlaybackQueueSheet(
                             ),
                         )
                         onDrawBehind {
-                            val dragFade = 1f - 0.45f * (dragOffset.value / (dismissThresholdPx * 3f)).coerceIn(0f, 1f)
+                            val dragFade = 1f - 0.45f * (visualOffset() / (dismissThresholdPx * 3f)).coerceIn(0f, 1f)
                             drawRect(scrim, alpha = scrimAlpha.value * dragFade)
                         }
                     }
@@ -214,7 +232,7 @@ fun PlaybackQueueSheet(
             QueueSheetSurface(
                 status = status,
                 queueState = queueState,
-                motionProgress = { contentProgress },
+                motionProgress = { contentProgress.value },
                 onDismiss = onDismiss,
                 onPlayItem = onPlayItem,
                 onRemoveItem = onRemoveItem,
@@ -223,29 +241,30 @@ fun PlaybackQueueSheet(
                 onClearNextUp = onClearNextUp,
                 onCycleRepeatMode = onCycleRepeatMode,
                 onToggleShuffle = onToggleShuffle,
+                onPinQueueOffline = onPinQueueOffline,
                 onHandleDrag = { delta ->
-                    dragScope.launch {
-                        dragOffset.snapTo((dragOffset.value + delta).coerceAtLeast(0f))
-                    }
+                    if (active.value) dragOffset.applyDelta(delta, dismissThresholdPx) {}
                 },
                 onHandleDragEnd = {
-                    if (dragOffset.value > dismissThresholdPx) {
-                        onDismiss()
-                    } else {
-                        dragScope.launch { dragOffset.animateTo(0f, QueueSheetDragSpring) }
+                    dragOffset.finishDrag()
+                    if (active.value) {
+                        if (dragOffset.offsetPx >= dismissThresholdPx) dismiss.value()
+                        else restoreDrag()
                     }
                 },
                 onHandleDragCancel = {
-                    dragScope.launch { dragOffset.animateTo(0f, QueueSheetDragSpring) }
+                    dragOffset.finishDrag()
+                    if (active.value) restoreDrag()
                 },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .graphicsLayer {
-                        val hiddenProgress = 1f - sheetProgress
-                        translationY = (if (lightweight) 0f else size.height * hiddenProgress) + dragOffset.value
-                        alpha = sheetProgress
-                        scaleX = if (lightweight) 1f else 0.985f + 0.015f * sheetProgress
-                        scaleY = if (lightweight) 1f else 0.992f + 0.008f * sheetProgress
+                        val progress = sheetProgress.value.coerceIn(0f, 1f)
+                        val hiddenProgress = 1f - progress
+                        translationY = (if (lightweight) 0f else size.height * hiddenProgress) + visualOffset()
+                        alpha = progress
+                        scaleX = if (lightweight) 1f else 0.985f + 0.015f * progress
+                        scaleY = if (lightweight) 1f else 0.992f + 0.008f * progress
                         transformOrigin = TransformOrigin(0.5f, 1f)
                     },
             )
@@ -266,6 +285,7 @@ private fun QueueSheetSurface(
     onCycleRepeatMode: () -> Unit,
     onToggleShuffle: () -> Unit,
     motionProgress: () -> Float,
+    onPinQueueOffline: (() -> Unit)?,
     onHandleDrag: (Float) -> Unit,
     onHandleDragEnd: () -> Unit,
     onHandleDragCancel: () -> Unit,
@@ -306,21 +326,23 @@ private fun QueueSheetSurface(
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
-                    .size(width = 42.dp, height = 5.dp)
-                    .clip(CircleShape)
+                    .size(width = 72.dp, height = 48.dp)
                     .queueSheetHandleDrag(
                         onDrag = onHandleDrag,
                         onDragEnd = onHandleDragEnd,
                         onDragCancel = onHandleDragCancel,
-                    )
-                    .background(echoTheme().muted.copy(alpha = 0.35f)),
-            )
-            Spacer(Modifier.height(14.dp))
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(Modifier.size(width = 42.dp, height = 5.dp).clip(CircleShape)
+                    .background(echoTheme().muted.copy(alpha = 0.35f)))
+            }
             QueueSheetHeader(
                 queueState = queueState,
                 status = status,
                 onDismiss = onDismiss,
                 onClearQueue = onClearQueue,
+                onPinQueueOffline = onPinQueueOffline,
             )
             Spacer(Modifier.height(12.dp))
             QueueModeControls(
@@ -345,10 +367,15 @@ private fun QueueSheetHeader(
     status: EchoPlaybackStatus,
     onDismiss: () -> Unit,
     onClearQueue: () -> Unit,
+    onPinQueueOffline: (() -> Unit)?,
 ) {
     val dark = LocalEchoDarkTheme.current
     val titleColor = if (dark) Color.White else echoTheme().heading
     val mutedColor = if (dark) Color.White.copy(alpha = 0.65f) else echoTheme().muted
+    var menuExpanded by remember { mutableStateOf(false) }
+    val canPin = remember(queueState.items) {
+        queueState.items.any { EchoRemotePinPolicy.canPin(it.sourceId, it.id, it.uri) }
+    }
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -372,15 +399,29 @@ private fun QueueSheetHeader(
             )
         }
         if (queueState.items.isNotEmpty()) {
-            GlyphButton(
-                icon = Icons.Rounded.DeleteOutline,
-                description = stringResource(L10nR.string.feature_player_clear_queue_eae952),
-                touchSize = 44.dp,
-                iconSize = 22.dp,
-                tint = titleColor,
-                background = Color.Transparent,
-                onClick = onClearQueue,
-            )
+            Box {
+                GlyphButton(
+                    icon = Icons.Rounded.MoreVert,
+                    description = stringResource(L10nR.string.queue_actions),
+                    touchSize = 44.dp,
+                    iconSize = 22.dp,
+                    tint = titleColor,
+                    background = Color.Transparent,
+                    onClick = { menuExpanded = true },
+                )
+                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    if (canPin && onPinQueueOffline != null) DropdownMenuItem(
+                        text = { Text(stringResource(L10nR.string.queue_keep_offline)) },
+                        leadingIcon = { Icon(Icons.Rounded.Download, contentDescription = null) },
+                        onClick = { menuExpanded = false; onPinQueueOffline() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(L10nR.string.feature_player_clear_queue_eae952)) },
+                        leadingIcon = { Icon(Icons.Rounded.DeleteOutline, contentDescription = null) },
+                        onClick = { menuExpanded = false; onClearQueue() },
+                    )
+                }
+            }
         }
         GlyphButton(
             icon = Icons.Rounded.Close,
@@ -544,19 +585,26 @@ internal fun QueueTrackRow(
     }
 }
 
+@Composable
 private fun Modifier.queueSheetHandleDrag(
     onDrag: (Float) -> Unit,
     onDragEnd: () -> Unit,
     onDragCancel: () -> Unit,
-): Modifier = pointerInput(onDrag, onDragEnd, onDragCancel) {
-    detectVerticalDragGestures(
-        onVerticalDrag = { change, dragAmount ->
-            change.consume()
-            onDrag(dragAmount)
-        },
-        onDragCancel = onDragCancel,
-        onDragEnd = onDragEnd,
-    )
+): Modifier {
+    val drag = rememberUpdatedState(onDrag)
+    val end = rememberUpdatedState(onDragEnd)
+    val cancel = rememberUpdatedState(onDragCancel)
+    return pointerInput(Unit) {
+        detectVerticalDragGestures(
+            onDragStart = { drag.value(0f) },
+            onVerticalDrag = { change, dragAmount ->
+                change.consume()
+                drag.value(dragAmount)
+            },
+            onDragCancel = { cancel.value() },
+            onDragEnd = { end.value() },
+        )
+    }
 }
 
 @Composable

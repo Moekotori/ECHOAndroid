@@ -1,0 +1,21 @@
+<resources>
+    <string name="search_back">Back</string>
+    <string name="search_retry">Retry</string>
+    <string name="search_everywhere">Search music, playlists and moments</string>
+    <string name="search_all">All</string>
+    <string name="search_library">Library</string>
+    <string name="search_pc">PC ECHO</string>
+    <string name="search_partial">Some sources are unavailable. Available results are shown.</string>
+    <string name="search_playlists">Playlists</string>
+    <string name="search_tracks">Songs</string>
+    <string name="search_phone">Phone</string>
+    <string name="search_remote">Remote library</string>
+    <string name="search_albums">Albums</string>
+    <string name="search_artists">Artists</string>
+    <string name="search_empty">No matches. Try a shorter query or another source.</string>
+    <string name="search_hint">Search your indexed phone and remote libraries, connected PC, playlists and saved moments.</string>
+    <string name="moments_title">Saved moments</string>
+    <string name="moments_search">Search names, songs or artists</string>
+    <string name="moments_empty">Save a moment from playback settings to find it here.</string>
+    <string name="moments_delete">Delete moment</string>
+</resources>

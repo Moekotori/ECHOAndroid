@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connect_volume_locked">PC 音量已锁定，请检查 PC 的音量设置。</string>
+</resources>

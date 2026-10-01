@@ -1,0 +1,21 @@
+<resources>
+    <string name="search_back">返回</string>
+    <string name="search_retry">重试</string>
+    <string name="search_everywhere">搜索音乐、歌单与片段</string>
+    <string name="search_all">全部</string>
+    <string name="search_library">曲库</string>
+    <string name="search_pc">PC ECHO</string>
+    <string name="search_partial">部分来源暂时不可用，已展示可用的结果。</string>
+    <string name="search_playlists">歌单</string>
+    <string name="search_tracks">歌曲</string>
+    <string name="search_phone">手机</string>
+    <string name="search_remote">远程曲库</string>
+    <string name="search_albums">专辑</string>
+    <string name="search_artists">艺术家</string>
+    <string name="search_empty">没有找到结果，可以缩短搜索词或切换来源。</string>
+    <string name="search_hint">搜索已入库的手机和远程音乐、已连接的电脑、歌单与收藏片段。</string>
+    <string name="moments_title">片段收藏</string>
+    <string name="moments_search">搜索片段名称、歌名或艺术家</string>
+    <string name="moments_empty">在播放器设置中收藏片段后，就能在这里找到它。</string>
+    <string name="moments_delete">删除片段</string>
+</resources>

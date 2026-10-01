@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="queue_actions">Acciones de la cola</string>
+    <string name="queue_keep_offline">Guardar cola sin conexión</string>
+</resources>

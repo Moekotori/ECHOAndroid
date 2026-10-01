@@ -30,6 +30,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Remove
 
 import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
@@ -49,6 +50,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoExpand
+import app.echo.android.design.echoPageSection
 import app.echo.android.design.EchoSwitch
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.echoAccentColor
@@ -65,14 +67,18 @@ internal fun PlaybackSettingsSection(
     detail: String,
     expanded: Boolean = true,
     onToggleExpanded: (() -> Unit)? = null,
+    framed: Boolean = true,
     trailing: @Composable () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     val dark = LocalEchoDarkTheme.current
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
-            .background(if (dark) Color.White.copy(alpha = 0.05f) else Color.White.copy(alpha = 0.62f))
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+        Modifier.fillMaxWidth().echoPageSection().then(
+            if (framed) Modifier.clip(RoundedCornerShape(22.dp))
+                .background(if (dark) Color.White.copy(alpha = 0.05f) else Color.White.copy(alpha = 0.62f))
+                .padding(horizontal = 14.dp, vertical = 12.dp)
+            else Modifier.padding(vertical = 4.dp),
+        ),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(
@@ -97,6 +103,7 @@ internal fun PlaybackSettingsSection(
         EchoExpand(expanded) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { content() }
         }
+        if (!framed) HorizontalDivider(color = echoTheme().muted.copy(alpha = 0.16f))
     }
 }
 
@@ -551,4 +558,3 @@ internal fun PlaybackStepperButton(
         )
     }
 }
-

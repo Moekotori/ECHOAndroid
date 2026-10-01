@@ -1,0 +1,5 @@
+<resources>
+    <string name="home_pinned_playlists">Your playlists</string>
+    <string name="home_play_pinned">Play playlist</string>
+    <plurals name="home_pinned_track_count"><item quantity="one">%1$d track</item><item quantity="other">%1$d tracks</item></plurals>
+</resources>

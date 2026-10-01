@@ -61,6 +61,18 @@ class LyricsTimelineTest {
         assertEquals(100L, clock.position(100, 2200, false, 1f))
     }
 
+    @Test fun displayClockAbsorbsSmallSampleJitterWithoutReversingTheWipe() {
+        val clock = LyricsDisplayClock()
+        assertEquals(1000L, clock.position(1000, 0, true, 1f))
+        assertEquals(1200L, clock.position(1000, 200, true, 1f))
+        assertEquals(1216L, clock.position(1190, 216, true, 1f))
+        val next = clock.position(1190, 232, true, 1f)
+        assertTrue(next >= 1216L)
+        assertEquals(1390L, clock.position(1190, 416, true, 1f))
+        assertEquals(5000L, clock.position(5000, 432, true, 1f))
+        assertEquals(4990L, clock.position(4990, 448, false, 1f))
+    }
+
     @Test fun contextRemainsOnPreviousContentThroughGapsAndResetsOnBackwardSeek() {
         val timeline = LyricsTimeline(listOf(
             EchoLyricLine(1000, 2000, "First"),

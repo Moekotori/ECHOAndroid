@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_appearance_preview">모양 미리보기</string>
+    <string name="settings_background_preview_unavailable">이 배경은 미리 볼 수 없습니다.</string>
+    <string name="settings_background_preview_loading">미리보기 로드 중…</string>
+    <string name="settings_background_preview_still">동영상 배경은 정지 이미지로 미리 보여 줍니다.</string>
+    <string name="settings_background_preview_legacy_blur">이 기기에서는 슬라이더에서 손을 떼면 흐림 미리보기가 업데이트됩니다.</string>
+</resources>

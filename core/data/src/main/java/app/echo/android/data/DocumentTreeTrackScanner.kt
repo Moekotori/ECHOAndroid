@@ -399,6 +399,7 @@ class DocumentTreeTrackScanner(
             id = "saf:${Uri.encode(documentId)}",
             contentUri = toString(),
             title = title,
+            fileName = displayName,
             artist = artist,
             album = metadata.album.takeUnlessUnknownMetadata(),
             albumArtist = metadata.albumArtist.takeUnlessUnknownMetadata(),

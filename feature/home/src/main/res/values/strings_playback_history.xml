@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playback_history_title">Playback history</string>
+    <string name="playback_history_subtitle">Revisit your music, one listen at a time</string>
+    <string name="playback_history_more">More actions</string>
+    <string name="playback_history_search">Search songs, artists or albums</string>
+    <string name="playback_history_reset_search">Clear search</string>
+    <string name="playback_history_today">Today</string>
+    <string name="playback_history_yesterday">Yesterday</string>
+    <string name="playback_history_listened">Listened %1$s</string>
+    <string name="playback_history_unavailable">Track is no longer in your library</string>
+    <string name="playback_history_empty">No playback history yet</string>
+    <string name="playback_history_no_results">No listens match these filters</string>
+    <string name="playback_history_reset_filters">Show all history</string>
+    <string name="playback_history_load_error">Could not load playback history</string>
+    <string name="playback_history_retry">Retry</string>
+    <string name="playback_history_delete">Delete this record</string>
+    <string name="playback_history_deleted">Record deleted</string>
+    <string name="playback_history_clear">Clear playback history</string>
+    <string name="playback_history_clear_detail">Delete all listening records, including those outside these filters? Listening stats and the activity heatmap will also reset. Your music and playlists will be kept. This cannot be undone.</string>
+    <string name="playback_history_cleared">Playback history cleared</string>
+    <string name="playback_history_cancel">Cancel</string>
+    <string name="playback_history_action_error">Could not complete this action. Try again.</string>
+</resources>

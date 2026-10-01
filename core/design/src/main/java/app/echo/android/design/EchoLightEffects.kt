@@ -13,6 +13,8 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -103,7 +105,8 @@ fun EchoAmbientLight(
     val mode = LocalEchoEffectivePerformanceMode.current
     if (!active || mode.isLightweight || !LocalWindowInfo.current.isWindowFocused) return
     val dark = LocalEchoDarkTheme.current
-    val drift = rememberInfiniteTransition(label = "ambient-light").animateFloat(
+    // Balanced keeps the artwork wash without scheduling continuous redraws.
+    val drift: State<Float> = if (mode.isHighPerformance) rememberInfiniteTransition(label = "ambient-light").animateFloat(
         initialValue = -1f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
@@ -111,7 +114,7 @@ fun EchoAmbientLight(
             RepeatMode.Reverse,
         ),
         label = "ambient-drift",
-    )
+    ) else rememberUpdatedState(0f)
     Crossfade(
         targetState = color,
         modifier = modifier.clipToBounds(),

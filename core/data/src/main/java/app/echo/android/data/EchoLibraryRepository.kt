@@ -50,11 +50,11 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.coroutineContext
 
 class EchoLibraryRepository(
-    private val database: EchoLibraryDatabase,
+    internal val database: EchoLibraryDatabase,
     private val scanner: MediaStoreTrackScanner,
     private val documentTreeScanner: DocumentTreeTrackScanner,
     private val tagWriter: EmbeddedTagWriter? = null,
-    private val appContext: Context,
+    internal val appContext: Context,
 ) {
     private fun text(@StringRes id: Int, vararg args: Any): String =
         if (args.isEmpty()) appContext.getString(id) else appContext.getString(id, *args)
@@ -95,7 +95,7 @@ class EchoLibraryRepository(
         LibraryHygieneResult(missingRemoved = missing.size, duplicatesRemoved = duplicates.sumOf { it.removeIds.size })
     }
 
-    private fun localUriExists(uri: String): Boolean {
+    internal fun localUriExists(uri: String): Boolean {
         if (uri.isBlank()) return false
         return runCatching {
             val parsed = android.net.Uri.parse(uri)
@@ -251,7 +251,7 @@ class EchoLibraryRepository(
         }
         return LocalLibrarySearchResults(
             tracks = tracks,
-            albums = dao.searchAlbums(trimmedQuery, limitPerType),
+            albums = dao.searchAlbums(trimmedQuery, limitPerType) + dao.searchRemoteAlbumSummaries(trimmedQuery),
             artists = dao.searchArtists(trimmedQuery, limitPerType),
         )
     }
@@ -295,13 +295,17 @@ class EchoLibraryRepository(
             database.playlistDao().observeFavoriteTrackIds(),
             database.playlistDao().observeFavoriteAlbums(1),
             database.trackDao().observeSmartPlaylistStats(),
-        ) { playlists, favoriteIds, favoriteAlbums, smartStats ->
+            combine(database.experienceDao().observeSmartPlaylists(), database.experienceDao().observeHomePins()) { rows, ids ->
+                val pins = ids.toSet()
+                rows.map { it.toEchoPlaylist().copy(pinnedToHome = it.id in pins) }
+            },
+        ) { playlists, favoriteIds, favoriteAlbums, smartStats, customSmart ->
             val liked = LibraryFavoritePolicy.likedSongsPlaylist(
                 trackCount = favoriteIds.size,
                 artworkUri = favoriteAlbums.firstOrNull()?.artworkUri,
             )
             val pinned = LibrarySmartPlaylistPolicy.pinned(smartStats)
-            listOf(liked) + pinned + playlists.map { it.toEchoPlaylist() }
+            listOf(liked) + pinned + customSmart + playlists.map { it.toEchoPlaylist() }
                 .filterNot { it.isLikedSongs || it.isSmartPlaylist }
         }.flowOn(Dispatchers.IO)
 
@@ -318,7 +322,9 @@ class EchoLibraryRepository(
         Pager(
             config = defaultPagingConfig(),
             pagingSourceFactory = {
-                when (LibrarySmartPlaylistKind.fromId(playlistId)) {
+                if (playlistId.startsWith(app.echo.android.model.library.EchoSmartPlaylistRule.IdPrefix)) {
+                    database.experienceDao().pageRuleTracks(smartPlaylistQuery(playlistId))
+                } else when (LibrarySmartPlaylistKind.fromId(playlistId)) {
                     LibrarySmartPlaylistKind.Recent -> database.trackDao().pageRecentlyPlayedTracks()
                     LibrarySmartPlaylistKind.Frequent -> database.trackDao().pageFrequentlyPlayedTracks()
                     LibrarySmartPlaylistKind.Never -> database.trackDao().pageNeverPlayedTracks()
@@ -356,8 +362,11 @@ class EchoLibraryRepository(
         val dao = database.playlistDao()
         return dao.getPlaylistsBySource(LibrarySource.MediaStore.id).map { playlist ->
             val tracks = dao.getPlaylistTracksForPlayback(playlist.id, 10_000)
+            val rule = database.experienceDao().rule(playlist.id)
             app.echo.android.model.backup.EchoBackupPlaylist(
                 name = playlist.name,
+                smartRule = rule?.toRule(),
+                pinnedToHome = rule?.pinned ?: false,
                 tracks = tracks.map { track ->
                     app.echo.android.model.backup.EchoBackupTrackRef(
                         title = track.title,
@@ -401,7 +410,9 @@ class EchoLibraryRepository(
         playlists: List<app.echo.android.model.backup.EchoBackupPlaylist>,
         favorites: List<app.echo.android.model.backup.EchoBackupTrackRef>,
     ): app.echo.android.model.backup.EchoBackupRestoreResult {
-        val rows = database.trackDao().getLocalM3uMatchRows()
+        val rows = withContext(Dispatchers.IO) {
+            resolveLibraryFileNames(appContext.contentResolver, database.trackDao().getLocalM3uMatchRows())
+        }
         var matched = 0
         var missing = 0
         fun resolve(track: app.echo.android.model.backup.EchoBackupTrackRef): String? {
@@ -416,13 +427,21 @@ class EchoLibraryRepository(
         var playlistsRestored = 0
         val existing = database.playlistDao().getPlaylistsBySource(LibrarySource.MediaStore.id)
         playlists.forEach { playlist ->
+            val smartRule = playlist.smartRule
+            if (smartRule != null) {
+                val current = existing.firstOrNull { it.name.equals(playlist.name, true) && it.id.startsWith(app.echo.android.model.library.EchoSmartPlaylistRule.IdPrefix) }
+                val restored = saveSmartPlaylist(current?.id, playlist.name, smartRule)
+                if (playlist.pinnedToHome) pinSmartPlaylistToHome(restored.id, true)
+                playlistsRestored++
+                return@forEach
+            }
             val trackIds = playlist.tracks.mapNotNull(::resolve)
-            val current = existing.firstOrNull { it.name.equals(playlist.name, ignoreCase = true) }
+            val current = existing.firstOrNull { it.name.equals(playlist.name, ignoreCase = true) && !it.id.startsWith(app.echo.android.model.library.EchoSmartPlaylistRule.IdPrefix) }
             val record = if (current != null) {
                 LibraryPlaylistRecord(
                     id = current.id,
                     name = current.name,
-                    trackIds = trackIds,
+                    trackIds = (database.playlistDao().getPlaylistTrackIds(current.id) + trackIds).distinct(),
                     artworkUri = current.artworkUri,
                     updatedAtEpochMs = System.currentTimeMillis(),
                 )
@@ -485,6 +504,13 @@ class EchoLibraryRepository(
     }
 
     suspend fun deleteLocalPlaylist(playlistId: String): Boolean {
+        if (playlistId.startsWith(app.echo.android.model.library.EchoSmartPlaylistRule.IdPrefix)) {
+            database.withTransaction {
+                database.experienceDao().deleteRule(playlistId)
+                database.playlistDao().deletePlaylist(playlistId)
+            }
+            return true
+        }
         if (!isLocalManagedPlaylist(playlistId)) return false
         val catalog = loadPlaylistCatalog(playlistId) ?: return false
         val next = LibraryPlaylistPolicy.delete(catalog, playlistId)
@@ -836,7 +862,8 @@ class EchoLibraryRepository(
             rebuildSummariesIfNeeded(dao, summaryKeys)
         }
         val target = if (indexChanged) updated else current
-        val fileWrite = writeEmbeddedTags(target, update.toAudioTagFields())
+        val fileWrite = writeEmbeddedTags(target, update.toAudioTagFields().copy(genre = target.genre, composer = target.composer,
+            genreModified = update.genre != null, composerModified = update.composer != null))
         persistWrittenFileStats(dao, target, fileWrite)
         return TrackMetadataUpdateResult(indexUpdated = true, fileWrite = fileWrite)
     }
@@ -929,6 +956,23 @@ class EchoLibraryRepository(
         tagWriter?.fieldsForWrite(track, lyricsText, artworkUri)
             ?: track.toAudioTagFields().copy(lyrics = lyricsText)
 
+    suspend fun collectionTracksForPlayback(
+        origin: app.echo.android.model.library.LibraryPlaybackOrigin,
+        anchorId: String,
+        limit: Int = AGGREGATION_QUEUE_LIMIT,
+    ): List<LibraryTrackEntity> {
+        val dao = database.trackDao()
+        if (origin is app.echo.android.model.library.LibraryPlaybackOrigin.Playlist &&
+            origin.playlistId.startsWith(app.echo.android.model.library.EchoSmartPlaylistRule.IdPrefix)) {
+            val first = dao.queryTracks(smartPlaylistQuery(origin.playlistId, limit))
+            return if (first.any { it.id == anchorId }) first
+                else dao.queryTracks(smartPlaylistQuery(origin.playlistId, limit, anchorId))
+        }
+        val first = dao.getAlbumTracksForPlayback(LibraryCollectionPlaybackQuery.build(origin, null, limit))
+        if (first.any { it.id == anchorId }) return first
+        return dao.getAlbumTracksForPlayback(LibraryCollectionPlaybackQuery.build(origin, anchorId, limit))
+    }
+
     suspend fun albumTracksForPlayback(
         albumKey: String,
         limit: Int = AGGREGATION_QUEUE_LIMIT,
@@ -977,6 +1021,9 @@ class EchoLibraryRepository(
         limit: Int = AGGREGATION_QUEUE_LIMIT,
     ): List<LibraryTrackEntity> {
         val safeLimit = limit.coerceAtLeast(1)
+        if (playlistId.startsWith(app.echo.android.model.library.EchoSmartPlaylistRule.IdPrefix)) {
+            return database.trackDao().queryTracks(smartPlaylistQuery(playlistId, safeLimit))
+        }
         return when (LibrarySmartPlaylistKind.fromId(playlistId)) {
             LibrarySmartPlaylistKind.Recent ->
                 database.trackDao().getRecentlyPlayedTracksForPlayback(safeLimit)
@@ -1998,19 +2045,18 @@ class EchoLibraryRepository(
     suspend fun exportM3uPlaylist(playlistId: String): String? {
         val tracks = playlistTracksForPlayback(playlistId, limit = 2_000)
         if (tracks.isEmpty()) return null
+        val locations = withContext(Dispatchers.IO) {
+            resolveLibraryFileNames(appContext.contentResolver, tracks.map {
+                M3uMatchRow(it.id, it.title, it.artist, it.relativePath, it.contentUri, it.fileName)
+            }).associate { it.id to (it.fileLocation() ?: it.contentUri) }
+        }
         return M3uPlaylistCodec.write(
             tracks.map { track ->
                 M3uExportTrack(
                     title = track.title,
                     artist = track.artist,
                     durationMs = track.durationMs,
-                    location = track.relativePath
-                        ?.takeIf { it.isNotBlank() }
-                        ?.let { path ->
-                            val fileName = track.contentUri.substringAfterLast('/').takeIf { it.isNotBlank() }
-                            if (fileName != null && !path.endsWith(fileName)) "$path/$fileName" else path
-                        }
-                        ?: track.title,
+                    location = if (CueSheetPolicy.isCueTrackId(track.id)) track.contentUri else locations.getValue(track.id),
                 )
             },
         )
@@ -2280,7 +2326,7 @@ class EchoLibraryRepository(
             """
             SELECT * FROM library_tracks
             WHERE (source = 'mediastore' OR source = 'saf')
-              AND artistKey = ?
+              AND id IN (SELECT trackId FROM library_track_artists WHERE artistKey = ?)
             ORDER BY
                 album COLLATE NOCASE ASC,
                 CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
@@ -2419,7 +2465,10 @@ class EchoLibraryRepository(
             dao.getSummaryKeyRows(chunk).forEach { row ->
                 summaryKeys += row.toSummaryKeySet()
             }
-            dao.deleteScanBatch(chunk)
+            database.withTransaction {
+                archiveMissingLocalTracks(chunk)
+                dao.deleteScanBatch(chunk)
+            }
             yield()
         }
         return LibraryScanDeletion(deletedCount = ids.size, summaryKeys = summaryKeys)
@@ -2521,7 +2570,7 @@ private fun LibraryTrackEntity.hasSameUserMetadata(other: LibraryTrackEntity): B
         trackNumber == other.trackNumber &&
         discNumber == other.discNumber &&
         year == other.year &&
-        composer == other.composer
+        composer == other.composer && genre == other.genre
 
 private data class RemoteAlbumKey(
     val source: String,

@@ -10,6 +10,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 @Database(
     entities = [
         LibraryTrackEntity::class,
+        LibraryTrackArtistEntity::class,
         LibraryTrackFtsEntity::class,
         LibraryPlaylistEntity::class,
         LibraryPlaylistTrackEntity::class,
@@ -22,8 +23,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LibraryOfflinePinEntity::class,
         LibraryOfflineFileEntity::class,
         LibraryPlayEventEntity::class,
+        LibrarySmartRuleEntity::class,
+        LibraryBookmarkEntity::class,
+        LibraryRepairArchiveEntity::class,
     ],
-    version = 18,
+    version = 21,
     exportSchema = true,
 )
 abstract class EchoLibraryDatabase : RoomDatabase() {
@@ -31,6 +35,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
     abstract fun playlistDao(): LibraryPlaylistDao
     abstract fun offlineDao(): LibraryOfflineDao
     abstract fun playEventDao(): LibraryPlayEventDao
+    abstract fun experienceDao(): LibraryExperienceDao
 
     companion object {
         @Volatile
@@ -62,9 +67,41 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                         Migration15To16,
                         Migration16To17,
                         Migration17To18,
+                        Migration18To19,
+                        Migration19To20,
+                        Migration20To21,
                     )
                     .build()
                     .also { instance = it }
+            }
+        }
+
+        internal val Migration20To21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                listOf("matchAny INTEGER NOT NULL DEFAULT 0", "album TEXT NOT NULL DEFAULT ''",
+                    "folder TEXT NOT NULL DEFAULT ''", "format TEXT NOT NULL DEFAULT ''",
+                    "minimumDurationSeconds INTEGER NOT NULL DEFAULT 0", "maximumDurationSeconds INTEGER NOT NULL DEFAULT 0",
+                    "excludeText TEXT NOT NULL DEFAULT ''").forEach { column ->
+                    db.execSQL("ALTER TABLE library_smart_rules ADD COLUMN $column")
+                }
+                listOf("titleSnapshot TEXT NOT NULL DEFAULT ''", "artistSnapshot TEXT NOT NULL DEFAULT ''",
+                    "uriSnapshot TEXT NOT NULL DEFAULT ''", "durationSnapshot INTEGER NOT NULL DEFAULT 0").forEach {
+                    db.execSQL("ALTER TABLE library_bookmarks ADD COLUMN $it")
+                }
+                db.execSQL("""UPDATE library_bookmarks SET
+                    titleSnapshot = COALESCE((SELECT title FROM library_tracks WHERE id = trackId), ''),
+                    artistSnapshot = COALESCE((SELECT artist FROM library_tracks WHERE id = trackId), ''),
+                    uriSnapshot = COALESCE((SELECT contentUri FROM library_tracks WHERE id = trackId), ''),
+                    durationSnapshot = COALESCE((SELECT durationMs FROM library_tracks WHERE id = trackId), 0)""")
+            }
+        }
+
+        internal val Migration19To20 = object : Migration(19, 20) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS library_smart_rules (playlistId TEXT NOT NULL PRIMARY KEY, artist TEXT NOT NULL, genre TEXT NOT NULL, favoriteOnly INTEGER NOT NULL, notPlayedDays INTEGER NOT NULL, minimumYear INTEGER NOT NULL, maximumYear INTEGER NOT NULL, sort TEXT NOT NULL, pinned INTEGER NOT NULL DEFAULT 0)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS library_bookmarks (id TEXT NOT NULL PRIMARY KEY, trackId TEXT NOT NULL, positionMs INTEGER NOT NULL, label TEXT NOT NULL)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_library_bookmarks_trackId ON library_bookmarks(trackId)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS library_repair_archive (id TEXT NOT NULL PRIMARY KEY, payload TEXT NOT NULL, archivedAt INTEGER NOT NULL)")
             }
         }
 
@@ -394,6 +431,43 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                 )
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_library_offline_files_pinId ON library_offline_files(pinId)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_library_offline_files_status ON library_offline_files(status)")
+            }
+        }
+
+        internal val Migration18To19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE library_tracks ADD COLUMN fileName TEXT DEFAULT NULL")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS library_track_artists (
+                        trackId TEXT NOT NULL, artistKey TEXT NOT NULL, name TEXT NOT NULL, pinyinName TEXT,
+                        PRIMARY KEY(trackId, artistKey),
+                        FOREIGN KEY(trackId) REFERENCES library_tracks(id) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_library_track_artists_artistKey ON library_track_artists(artistKey)")
+                val pinyinCache = HashMap<String, String>()
+                db.compileStatement("INSERT OR IGNORE INTO library_track_artists(trackId, artistKey, name, pinyinName) VALUES (?, ?, ?, ?)").use { insert ->
+                    db.query("SELECT id, artist FROM library_tracks WHERE source IN ('mediastore', 'saf')").use { cursor ->
+                        while (cursor.moveToNext()) {
+                            val id = cursor.getString(0)
+                            LibraryArtistPolicy.names(cursor.getString(1)).ifEmpty { listOf(canonicalUnknownArtist()) }.forEach { name ->
+                                val pinyin = pinyinCache[name] ?: ChinesePinyin.toPinyin(name).also {
+                                    if (pinyinCache.size >= 256) pinyinCache.clear()
+                                    pinyinCache[name] = it
+                                }
+                                insert.bindString(1, id)
+                                insert.bindString(2, libraryArtistKey(name.normalizedForSearch()))
+                                insert.bindString(3, name)
+                                insert.bindString(4, pinyin)
+                                insert.executeInsert()
+                            }
+                        }
+                    }
+                }
+                db.execSQL("DELETE FROM library_artist_summaries")
+                db.execSQL(LibraryArtistIndexSql.Rebuild)
+                db.execSQL("DELETE FROM library_genre_summaries")
+                db.execSQL(RebuildGenreSummariesSql)
             }
         }
 

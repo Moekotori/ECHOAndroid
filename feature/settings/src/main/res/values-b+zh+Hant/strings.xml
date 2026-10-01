@@ -32,7 +32,7 @@
     <string name="settings_custom_saved_themes">已儲存的主題</string>
     <string name="settings_custom_detail">深淺色都會保持可讀。系統配色仍會給控制項上色。</string>
     <string name="settings_dynamic_color">系統配色</string>
-    <string name="settings_dynamic_color_detail">用桌布顏色給控制項上色，ECHO 玻璃質感保留。需 Android 12+</string>
+    <string name="settings_dynamic_color_detail">控制項跟隨桌布顏色</string>
     <string name="settings_dynamic_color_unavailable">需要 Android 12 或更高版本</string>
     <string name="settings_playback_haptics">播放觸感</string>
     <string name="settings_playback_haptics_detail">播放、暫停和切歌時的點一下與輕觸回饋</string>
@@ -79,7 +79,7 @@
     <string name="settings_pause_on_disconnect_detail">耳機、藍牙或 USB DAC 斷開時暫停</string>
     <string name="settings_resume_on_reconnect">重連後繼續</string>
     <string name="settings_resume_on_reconnect_detail">僅在因斷開而暫停後，接回耳機、藍牙或車載時續播</string>
-    <string name="settings_replay_gain">ReplayGain</string>
+    <string name="settings_replay_gain">音量統一</string>
     <string name="settings_replay_gain_detail">依標籤統一音量</string>
     <string name="settings_replay_gain_bypass">已儲存，bit-perfect 下不生效</string>
     <string name="settings_replay_gain_mode">ReplayGain 模式</string>

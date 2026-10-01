@@ -19,6 +19,12 @@ import androidx.compose.runtime.State
 import app.echo.android.model.playback.PlaybackPositionState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import app.echo.android.model.settings.EchoHomeLayout
+import app.echo.android.model.settings.EchoHomeSection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.res.stringResource
 import app.echo.android.model.playback.EchoAudioErrorKind
@@ -40,6 +46,9 @@ import java.time.LocalDate
 
 @Composable
 fun HomeScreen(
+    pinnedPlaylists: List<app.echo.android.model.library.EchoPlaylist> = emptyList(),
+    onOpenPlaylist: (app.echo.android.model.library.EchoPlaylist) -> Unit = {},
+    onPlayPlaylist: (app.echo.android.model.library.EchoPlaylist) -> Unit = {},
     status: EchoPlaybackStatus,
     trackCount: Int,
     albumCount: Int,
@@ -70,7 +79,12 @@ fun HomeScreen(
     onResumePlayback: () -> Unit = onPlayPause,
     recentPlayedTracks: List<app.echo.android.model.library.EchoTrack> = emptyList(),
     onPlayTrack: (app.echo.android.model.library.EchoTrack) -> Unit = {},
+    homeLayout: EchoHomeLayout = EchoHomeLayout(),
+    onHomeLayoutChange: ((EchoHomeLayout) -> Unit)? = null,
+    onOpenPlaybackHistory: (() -> Unit)? = null,
 ) {
+    var editingLayout by rememberSaveable { mutableStateOf(false) }
+    val layout = remember(homeLayout) { homeLayout.normalized() }
     val configuration = LocalConfiguration.current
     val compactViewport = configuration.screenHeightDp < 620 ||
         configuration.screenWidthDp > configuration.screenHeightDp
@@ -89,6 +103,11 @@ fun HomeScreen(
         heatmapDays.any { it.playCount > 0 && it.epochDay in firstDay..today.toEpochDay() }
     }
     HomeAppearance {
+        if (editingLayout && onHomeLayoutChange != null) HomeLayoutEditor(
+            layout = layout,
+            onDismiss = { editingLayout = false },
+            onApply = onHomeLayoutChange,
+        )
         val base = MaterialTheme.colorScheme.background
         val background = base.copy(alpha = if (LocalEchoCustomBackgroundActive.current) 0.94f else 1f)
         Box(Modifier.fillMaxSize().background(background)) {
@@ -97,7 +116,13 @@ fun HomeScreen(
                 contentPadding = PaddingValues(top = 12.dp, bottom = bottomInset + 24.dp),
                 verticalArrangement = Arrangement.spacedBy(if (compactViewport) 24.dp else 28.dp),
             ) {
-                item(key = "header") { HomeSectionEntrance(0) { HomeHeader(onOpenSearch) } }
+                item(key = "header") {
+                    HomeSectionEntrance(0) {
+                        HomeHeader(onOpenSearch, onEditLayout = if (onHomeLayoutChange != null) {
+                            { editingLayout = true }
+                        } else null, onOpenHistory = onOpenPlaybackHistory)
+                    }
+                }
                 if (status.state == EchoPlaybackState.Error &&
                     status.diagnostics.lastError?.kind == EchoAudioErrorKind.FileMissing) {
                     item(key = "missing-file") {
@@ -109,63 +134,74 @@ fun HomeScreen(
                         )
                     }
                 }
-                if (status.track != null && status.state != EchoPlaybackState.Error) {
-                    item(key = "resume-listening") {
-                        HomeSectionEntrance(1) { HomeResumeSection(status, positionState, onResumePlayback) }
-                    }
-                }
                 if (trackCount == 0 && !hasRecentMusic && dailyAlbums.isEmpty()) {
                     item(key = "empty-library") {
                         HomeEmptyLibrary(scanState, onOpenLibrary)
                     }
                 }
-                if (hasRecentMusic) {
-                    item(key = "recent") {
-                        HomeSectionEntrance(2) {
-                            RoonRecentActivitySection(
-                                recentPlayedAlbums = recentPlayedAlbums,
-                                recentlyAddedAlbums = recentlyAddedAlbums,
-                                recentPlayedTracks = recentPlayedTracks,
-                                onOpenAlbum = onOpenAlbum,
-                                onOpenLibrary = onOpenLibrary,
-                                onPlayTrack = onPlayTrack,
-                            )
+                if (pinnedPlaylists.isNotEmpty()) item(key = "pinned-playlists") {
+                    HomePinnedPlaylists(pinnedPlaylists, onOpenPlaylist, onPlayPlaylist)
+                }
+                layout.order.forEach { section ->
+                    if (section in layout.hidden) return@forEach
+                    when (section) {
+                        EchoHomeSection.Resume -> if (status.track != null && status.state != EchoPlaybackState.Error) {
+                            item(key = section.id) {
+                                HomeSectionEntrance(1) { HomeResumeSection(status, positionState, onResumePlayback) }
+                            }
+                        }
+                        EchoHomeSection.Recent -> if (hasRecentMusic) {
+                            item(key = section.id) {
+                                HomeSectionEntrance(2) {
+                                    RoonRecentActivitySection(
+                                        recentPlayedAlbums = recentPlayedAlbums,
+                                        recentlyAddedAlbums = recentlyAddedAlbums,
+                                        recentPlayedTracks = recentPlayedTracks,
+                                        onOpenAlbum = onOpenAlbum,
+                                        onOpenLibrary = onOpenLibrary,
+                                        onPlayTrack = onPlayTrack,
+                                    )
+                                }
+                            }
+                        }
+                        EchoHomeSection.DailyAlbum -> if (dailyAlbums.isNotEmpty()) {
+                            item(key = section.id) {
+                                HomeSectionEntrance(3) { HomeDailyAlbumSection(dailyAlbums, onPlayAlbum, onOpenAlbum) }
+                            }
+                        }
+                        EchoHomeSection.Recommended -> if (distinctRecommendations.isNotEmpty()) {
+                            item(key = section.id) {
+                                HomeAlbumRecommendationsSection(distinctRecommendations, onRefreshRecommendations, onOpenLibrary, onOpenAlbum)
+                            }
+                        }
+                        EchoHomeSection.Favorites -> if (favoriteAlbums.isNotEmpty()) {
+                            item(key = section.id) { HomeFavoriteAlbumsSection(favoriteAlbums, onOpenAlbum, onOpenLibrary) }
+                        }
+                        EchoHomeSection.Rediscover -> if (rediscoveredAlbums.isNotEmpty()) {
+                            item(key = section.id) { HomeRediscoverySection(rediscoveredAlbums, onOpenAlbum) }
+                        }
+                        EchoHomeSection.Artists -> if (topArtists.isNotEmpty()) {
+                            item(key = section.id) { HomeArtistRankingSection(topArtists, onOpenArtist, onOpenLibrary) }
+                        }
+                        EchoHomeSection.ListeningSummary -> if (hasListeningHistory) {
+                            item(key = section.id) {
+                                Box(Modifier.padding(horizontal = 24.dp)) {
+                                    HomeListeningSummary(heatmapDays, onOpenLibrary, onOpenListeningStats)
+                                }
+                            }
+                        }
+                        EchoHomeSection.Overview -> if (trackCount > 0 || hasRecentMusic) {
+                            item(key = section.id) {
+                                Box(Modifier.padding(horizontal = 24.dp)) {
+                                    LibraryOverview(trackCount, albumCount, artistCount, scanState, onOpenLibrary)
+                                }
+                            }
                         }
                     }
                 }
-                if (dailyAlbums.isNotEmpty()) {
-                    item(key = "daily-album") {
-                        HomeSectionEntrance(3) { HomeDailyAlbumSection(dailyAlbums, onPlayAlbum, onOpenAlbum) }
-                    }
-                }
-                if (distinctRecommendations.isNotEmpty()) {
-                    item(key = "recommended") {
-                        HomeAlbumRecommendationsSection(distinctRecommendations, onRefreshRecommendations, onOpenLibrary, onOpenAlbum)
-                    }
-                }
-                if (favoriteAlbums.isNotEmpty()) {
-                    item(key = "favorites") {
-                        HomeFavoriteAlbumsSection(favoriteAlbums, onOpenAlbum, onOpenLibrary)
-                    }
-                }
-                if (rediscoveredAlbums.isNotEmpty()) {
-                    item(key = "rediscover") { HomeRediscoverySection(rediscoveredAlbums, onOpenAlbum) }
-                }
-                if (topArtists.isNotEmpty()) {
-                    item(key = "artists") { HomeArtistRankingSection(topArtists, onOpenArtist, onOpenLibrary) }
-                }
-                if (hasListeningHistory) {
-                    item(key = "listening-summary") {
-                        Box(Modifier.padding(horizontal = 24.dp)) {
-                            HomeListeningSummary(heatmapDays, onOpenLibrary, onOpenListeningStats)
-                        }
-                    }
-                }
-                if (trackCount > 0 || hasRecentMusic) {
-                    item(key = "overview") {
-                        Box(Modifier.padding(horizontal = 24.dp)) {
-                            LibraryOverview(trackCount, albumCount, artistCount, scanState, onOpenLibrary)
-                        }
+                if (layout.hidden.size == EchoHomeSection.entries.size && (trackCount > 0 || hasRecentMusic)) {
+                    item(key = "hidden-sections") {
+                        HomeLayoutHiddenNotice(onRestore = { onHomeLayoutChange?.invoke(EchoHomeLayout()) })
                     }
                 }
             }

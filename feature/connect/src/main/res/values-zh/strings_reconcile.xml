@@ -1,0 +1,18 @@
+<resources>
+    <string name="reconcile_title">核对两端的修改</string>
+    <string name="reconcile_hint">对比各设备上次同步后的状态。双方都修改过时，先选择保留哪一份，再应用。</string>
+    <string name="reconcile_error">修改未全部应用，已完成的步骤会保留。请刷新预览后重试。</string>
+    <string name="reconcile_legacy">使用兼容的追加合并</string>
+    <string name="reconcile_counts">手机 %1$d 首 · 电脑 %2$d 首</string>
+    <string name="reconcile_side">手机：%1$s（%2$d 首）
+电脑：%3$s（%4$d 首）</string>
+    <string name="reconcile_conflict">两台设备都修改过这份内容，请选择处理方式。</string>
+    <string name="reconcile_phone">保留手机</string>
+    <string name="reconcile_pc">保留电脑</string>
+    <string name="reconcile_merge">合并曲目</string>
+    <string name="reconcile_changes">拟移除曲目 · 手机 %1$d 首 · 电脑 %2$d 首</string>
+    <string name="reconcile_delete">此选择会删除歌单，音频文件仍保留。</string>
+    <string name="reconcile_apply">应用已核对的修改</string>
+    <string name="reconcile_result">匹配 %1$d 项 · 未匹配 %2$d 项</string>
+    <string name="reconcile_kept">有歌曲无法匹配，已保留现有曲目，不执行相关移除与重排。</string>
+</resources>

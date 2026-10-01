@@ -67,6 +67,7 @@ class EchoLinkRequestPolicyTest {
 
     @Test
     fun commandFailuresDisconnectOnlyOnAuthRejection() {
+        assertFalse(EchoLinkRequestPolicy.shouldDisconnectOnCommandFailure(409))
         assertFalse(EchoLinkRequestPolicy.shouldDisconnectOnCommandFailure(null))
         assertFalse(EchoLinkRequestPolicy.shouldDisconnectOnCommandFailure(500))
         assertTrue(EchoLinkRequestPolicy.shouldDisconnectOnCommandFailure(401))

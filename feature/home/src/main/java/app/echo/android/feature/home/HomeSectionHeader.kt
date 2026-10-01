@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
 
 @Composable
 internal fun HomeSectionHeader(
@@ -19,7 +20,8 @@ internal fun HomeSectionHeader(
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(title, modifier = Modifier.weight(1f).semantics { heading() },
-            style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+            style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface)
         action?.invoke()
     }
 }

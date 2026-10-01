@@ -1,7 +1,6 @@
 package app.echo.android.feature.settings
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowOutward
 import androidx.compose.material.icons.rounded.BugReport
@@ -37,10 +36,8 @@ internal fun SettingsAboutIdentity(appVersionLabel: String) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(appVersionLabel, fontFamily = brandFont, style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Normal, color = colors.onSurfaceVariant)
-            Surface(color = colors.primary.copy(alpha = 0.08f), shape = RoundedCornerShape(6.dp)) {
-                Text("Beta", fontFamily = brandFont, modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
-                    style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium, color = colors.primary)
-            }
+            Text("Beta", fontFamily = brandFont,
+                style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium, color = colors.primary)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.settings_about_author), style = MaterialTheme.typography.bodySmall,
@@ -53,7 +50,7 @@ internal fun SettingsAboutIdentity(appVersionLabel: String) {
 
 @Composable
 internal fun SettingsAboutPanel(content: @Composable ColumnScope.() -> Unit) {
-    Surface(shape = RoundedCornerShape(20.dp), color = settingsPanelColor()) {
+    Surface(shape = SettingsShape, color = settingsPanelColor()) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), content = content)
     }
 }

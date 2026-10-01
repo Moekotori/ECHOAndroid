@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_section_listening">播放習慣</string>
+    <string name="settings_section_runtime">效能與省電</string>
+    <string name="settings_section_transition">歌曲銜接</string>
+    <string name="settings_section_volume">音量處理</string>
+    <string name="settings_section_schedule">自動深色</string>
+    <string name="settings_section_readability">文字大小</string>
+    <string name="settings_section_background_adjustments">背景微調</string>
+</resources>

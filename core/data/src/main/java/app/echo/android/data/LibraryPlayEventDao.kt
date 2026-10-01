@@ -3,6 +3,10 @@ package app.echo.android.data
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Embedded
+import androidx.room.RawQuery
+import androidx.paging.PagingSource
+import androidx.sqlite.db.SupportSQLiteQuery
 import kotlinx.coroutines.flow.Flow
 
 data class PlayEventDayCountRow(
@@ -30,10 +34,30 @@ data class PlayEventRankRow(
     val listenedMs: Long,
 )
 
+data class PlayEventHistoryRow(
+    @Embedded val event: LibraryPlayEventEntity,
+    val canReplay: Boolean,
+)
+
 @Dao
 interface LibraryPlayEventDao {
+    @RawQuery(observedEntities = [LibraryPlayEventEntity::class, LibraryTrackEntity::class])
+    fun pageHistory(query: SupportSQLiteQuery): PagingSource<Int, PlayEventHistoryRow>
+
+    @Query("DELETE FROM library_play_events WHERE id = :id")
+    suspend fun deleteEvent(id: Long)
+
     @Insert
     suspend fun insert(event: LibraryPlayEventEntity): Long
+
+    @Query("SELECT * FROM library_play_events ORDER BY playedAtEpochMs, id LIMIT 100001")
+    suspend fun backupEvents(): List<LibraryPlayEventEntity>
+
+    @Query("SELECT * FROM library_play_events WHERE playedAtEpochMs BETWEEN :from AND :to ORDER BY playedAtEpochMs")
+    suspend fun migrationEvents(from: Long,to: Long): List<LibraryPlayEventEntity>
+
+    @Query("SELECT id FROM library_play_events WHERE playedAtEpochMs = :played AND title = :title AND artist = :artist AND album IS :album LIMIT 1")
+    suspend fun matchingEvent(played: Long, title: String, artist: String, album: String?): Long?
 
     @Query("UPDATE library_play_events SET listenedMs = :listenedMs WHERE id = :id AND listenedMs < :listenedMs")
     suspend fun raiseListenedMs(id: Long, listenedMs: Long): Int

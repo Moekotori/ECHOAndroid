@@ -1,0 +1,23 @@
+<resources>
+    <string name="sync_title">同步收藏与歌单</string>
+    <string name="sync_hint">选择发送或接收的内容，再预览匹配结果。只有主动开始同步时，才会向已配对的电脑发送歌曲信息。</string>
+    <string name="sync_matching_hint">按歌名、艺术家、专辑和时长匹配，缺失或存在多个匹配的歌曲会跳过，不传输音频文件。</string>
+    <string name="sync_conflicts">合并只添加歌曲，保留原有顺序与名称，不移除任何收藏或歌单歌曲。智能歌单规则保留在原设备。</string>
+    <string name="sync_favorites">我的收藏</string>
+    <plurals name="sync_from_pc"><item quantity="other">电脑 → 手机 · %1$d 首</item></plurals>
+    <plurals name="sync_to_pc"><item quantity="other">手机 → 电脑 · %1$d 首</item></plurals>
+    <string name="sync_loading">正在读取收藏与歌单…</string>
+    <string name="sync_working">正在分批匹配与合并…</string>
+    <string name="sync_preview_button">预览同步</string>
+    <string name="sync_preview">%1$d 个匹配 · %2$d 个缺失或存在歧义</string>
+    <string name="sync_apply">合并选中的内容</string>
+    <string name="sync_change_selection">重新选择</string>
+    <string name="sync_done">同步完成 · %1$d 个匹配 · 跳过 %2$d 个</string>
+    <string name="sync_close">完成</string>
+    <string name="sync_cancel">取消</string>
+    <string name="sync_retry">重试</string>
+    <string name="sync_limit">请减少选择的歌单，每次同步最多预览 10,000 条歌曲引用。</string>
+    <string name="sync_error">同步已停止，已完成的批次会保留。可以安全重试，不会重复添加歌曲。</string>
+    <string name="sync_unsupported">这台电脑的版本暂不支持曲库同步，请更新 ECHOSteam 后重试。</string>
+    <string name="sync_pairing_required">请先完成电脑配对。局域网直连可以浏览曲库，同步收藏与歌单需要配对授权。</string>
+</resources>

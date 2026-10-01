@@ -9,7 +9,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.sharp.Star
 import androidx.compose.material.icons.sharp.StarBorder
@@ -44,9 +43,10 @@ internal fun PixelHandheldCoverPage(status: EchoPlaybackStatus, position: State<
     val fullTitle = track?.title ?: stringResource(R.string.feature_player_not_playing_d72324)
     val (title, edition) = remember(fullTitle) { recordSleeveTitleParts(fullTitle) }
     val formats = remember(status.diagnostics) { playbackFormatChips(status.diagnostics, ::formatSampleRate).joinToString(" · ") }
-    BoxWithConstraints(modifier.background(paper)) {
-        val height = maxOf(maxHeight, (740f * LocalDensity.current.fontScale.coerceAtLeast(1f)).dp)
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).height(height)) {
+    PlayerCoverLayout(
+        minimumPortraitHeight = (740f * LocalDensity.current.fontScale.coerceAtLeast(1f)).dp,
+        modifier = modifier.background(paper),
+        artwork = {
             Column(Modifier.fillMaxWidth().weight(1f).border(3.dp, ink, PixelFrameShape).padding(3.dp)) {
                 Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
                     BasicText(title,
@@ -68,6 +68,8 @@ internal fun PixelHandheldCoverPage(status: EchoPlaybackStatus, position: State<
                 }
                 ExpressiveProgress(true, track?.id, position, duration, actions.seek)
             }
+        },
+        details = {
             Spacer(Modifier.height(14.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -90,6 +92,6 @@ internal fun PixelHandheldCoverPage(status: EchoPlaybackStatus, position: State<
             Spacer(Modifier.height(12.dp))
             ExpressiveUtilities(true, status, castActive, actions)
             Spacer(Modifier.height(6.dp))
-        }
-    }
+        },
+    )
 }

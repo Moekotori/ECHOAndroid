@@ -1,18 +1,15 @@
 package app.echo.android.feature.settings
 
 import app.echo.android.design.backgroundMaxBlur
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
@@ -62,7 +59,6 @@ internal fun SettingsAppearanceContent(
     onCustomBackgroundStyleChange: (EchoBackgroundStyle) -> Unit,
     onUiFontFamilyChange: (String) -> Unit,
     onUiFontScaleChange: (Float) -> Unit,
-    onUiDensityScaleChange: (Float) -> Unit,
     onLyricsFontFamilyChange: (String) -> Unit,
     onLyricsFontScaleChange: (Float) -> Unit,
     onImportUiFont: () -> Unit,
@@ -78,32 +74,15 @@ internal fun SettingsAppearanceContent(
     onScheduledDarkStartMinuteChange: (Int) -> Unit,
     onScheduledDarkEndMinuteChange: (Int) -> Unit,
 ) {
-    var advancedTheme by rememberSaveable { mutableStateOf(scheduledDarkModeEnabled) }
-    var customBackgroundAdvancedExpanded by rememberSaveable { mutableStateOf(false) }
-    val searchFocus = LocalSettingsSearchFocus.current
-    val themeAdvancedTargets = setOf(
-        stringResource(R.string.settings_scheduled_dark),
-        stringResource(R.string.settings_dark_start),
-        stringResource(R.string.settings_dark_end),
-    )
-    val backgroundAdvancedTargets = setOf(
-        stringResource(R.string.settings_blur),
-        stringResource(R.string.settings_brightness),
-        stringResource(R.string.settings_glass),
-        stringResource(R.string.settings_scale),
-    )
-    LaunchedEffect(searchFocus) {
-        searchFocus?.title?.let { title ->
-            if (title in themeAdvancedTargets) advancedTheme = true
-            if (title in backgroundAdvancedTargets) customBackgroundAdvancedExpanded = true
-        }
-    }
-    SettingsSectionCard(
-        title = stringResource(R.string.settings_section_theme),
+    Column(
+        modifier = Modifier.fillMaxWidth()
+            .settingsSearchAnchor(stringResource(R.string.settings_section_theme))
+            .padding(horizontal = SettingsContentInset),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        SettingsAppearancePreview(uiFontFamily, importedFontFamily, uiFontScale, uiDensityScale)
         ThemeModeSelector(
             selectedMode = themeMode,
-            customColors = customColors,
             onSelect = onThemeModeChange,
         )
         ThemePaletteSelector(
@@ -132,44 +111,11 @@ internal fun SettingsAppearanceContent(
             onCheckedChange = onDynamicColorEnabledChange,
             enabled = dynamicColorAvailable,
         )
-        SettingsDisclosureRow(
-            title = stringResource(R.string.settings_advanced),
-            detail = stringResource(R.string.settings_scheduled_dark),
-            expanded = advancedTheme,
-            onExpandedChange = { advancedTheme = it },
-        )
-        if (advancedTheme) {
-            SettingsSwitchRow(
-                title = stringResource(R.string.settings_scheduled_dark),
-                detail = stringResource(
-                    R.string.settings_scheduled_dark_detail,
-                    formatMinuteOfDay(scheduledDarkStartMinute),
-                    formatMinuteOfDay(scheduledDarkEndMinute),
-                ),
-                checked = scheduledDarkModeEnabled,
-                onCheckedChange = onScheduledDarkModeEnabledChange,
-            )
-            if (scheduledDarkModeEnabled) {
-                SettingsSliderRow(
-                    title = stringResource(R.string.settings_dark_start),
-                    valueLabel = { formatMinuteOfDay(it.roundToInt()) },
-                    value = scheduledDarkStartMinute.toFloat(),
-                    valueRange = 0f..1439f,
-                    steps = 95,
-                    onValueChange = { onScheduledDarkStartMinuteChange(it.roundToQuarterHour()) },
-                )
-                SettingsSliderRow(
-                    title = stringResource(R.string.settings_dark_end),
-                    valueLabel = { formatMinuteOfDay(it.roundToInt()) },
-                    value = scheduledDarkEndMinute.toFloat(),
-                    valueRange = 0f..1439f,
-                    steps = 95,
-                    onValueChange = { onScheduledDarkEndMinuteChange(it.roundToQuarterHour()) },
-                )
-            }
-        }
     }
 
+    val backgroundDisabled = customBackgroundMode == "video" &&
+        LocalEchoEffectivePerformanceMode.current.isLightweight
+    val maxBlur = LocalEchoEffectivePerformanceMode.current.backgroundMaxBlur
     SettingsSectionCard(
         title = stringResource(R.string.settings_section_background),
         persistentContent = {
@@ -182,9 +128,6 @@ internal fun SettingsAppearanceContent(
             )
         },
     ) {
-        val backgroundDisabled = customBackgroundMode == "video" &&
-            LocalEchoEffectivePerformanceMode.current.isLightweight
-        val maxBlur = LocalEchoEffectivePerformanceMode.current.backgroundMaxBlur
         if (customBackgroundMode != "default" && !customBackgroundUri.isNullOrBlank() && !backgroundDisabled) {
             val selectedStyle = EchoBackgroundStyle.entries.firstOrNull {
                 it.matches(customBackgroundBlur, customBackgroundBrightness, customBackgroundGlass,
@@ -207,50 +150,64 @@ internal fun SettingsAppearanceContent(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        if (customBackgroundMode != "default" && !customBackgroundUri.isNullOrBlank() && !backgroundDisabled) SettingsDisclosureRow(
-            title = stringResource(R.string.settings_advanced),
-            detail = stringResource(R.string.settings_advanced_detail),
-            expanded = customBackgroundAdvancedExpanded,
-            onExpandedChange = { customBackgroundAdvancedExpanded = it },
-        )
         if (backgroundDisabled) {
             Text(stringResource(R.string.settings_bg_video_disabled), style = MaterialTheme.typography.bodySmall)
         }
-        if (customBackgroundAdvancedExpanded && customBackgroundMode != "default" &&
-            !customBackgroundUri.isNullOrBlank() && !backgroundDisabled) {
-            if (customBackgroundMode == "image") {
-                SettingsSliderRow(
-                    title = stringResource(R.string.settings_blur),
-                    valueLabel = { "${it.roundToInt()} dp" },
-                    value = customBackgroundBlur.coerceIn(0f, maxBlur),
-                    valueRange = 0f..maxBlur,
-                    steps = maxBlur.toInt() - 1,
-                    onValueChange = onCustomBackgroundBlurChange,
-                )
-            }
+
+    }
+
+    if (customBackgroundMode != "default" && !customBackgroundUri.isNullOrBlank() && !backgroundDisabled) {
+        SettingsSectionCard(title = stringResource(R.string.settings_section_background_adjustments), secondary = true) {
+            SettingsBackgroundAdjustments(
+                uri = customBackgroundUri,
+                isVideo = customBackgroundMode == "video",
+                blur = customBackgroundBlur.coerceIn(0f, maxBlur),
+                brightness = customBackgroundBrightness,
+                glass = customBackgroundGlass,
+                scale = customBackgroundScale,
+                maxBlur = maxBlur,
+                onBlurChange = onCustomBackgroundBlurChange,
+                onBrightnessChange = onCustomBackgroundBrightnessChange,
+                onGlassChange = onCustomBackgroundGlassChange,
+                onScaleChange = onCustomBackgroundScaleChange,
+            )
+        }
+    }
+
+    SettingsTypographyContent(
+        importedFontFamily, uiFontFamily, uiFontScale, lyricsFontFamily, lyricsFontScale,
+        importedFontUri, onUiFontFamilyChange, onUiFontScaleChange,
+        onLyricsFontFamilyChange, onLyricsFontScaleChange,
+        onImportUiFont, onImportLyricsFont, onClearImportedFont,
+    )
+
+    SettingsSectionCard(title = stringResource(R.string.settings_section_schedule), secondary = true) {
+        SettingsSwitchRow(
+            title = stringResource(R.string.settings_scheduled_dark),
+            detail = stringResource(
+                R.string.settings_scheduled_dark_detail,
+                formatMinuteOfDay(scheduledDarkStartMinute),
+                formatMinuteOfDay(scheduledDarkEndMinute),
+            ),
+            checked = scheduledDarkModeEnabled,
+            onCheckedChange = onScheduledDarkModeEnabledChange,
+        )
+        if (scheduledDarkModeEnabled) {
             SettingsSliderRow(
-                title = stringResource(R.string.settings_brightness),
-                valueLabel = { "${(it * 100f).roundToInt()}%" },
-                value = customBackgroundBrightness,
-                valueRange = 0.35f..1.15f,
-                steps = 15,
-                onValueChange = onCustomBackgroundBrightnessChange,
+                title = stringResource(R.string.settings_dark_start),
+                valueLabel = { formatMinuteOfDay(it.roundToInt()) },
+                value = scheduledDarkStartMinute.toFloat(),
+                valueRange = 0f..1439f,
+                steps = 95,
+                onValueChange = { onScheduledDarkStartMinuteChange(it.roundToQuarterHour()) },
             )
             SettingsSliderRow(
-                title = stringResource(R.string.settings_glass),
-                valueLabel = { "${(it * 100f).roundToInt()}%" },
-                value = customBackgroundGlass,
-                valueRange = 0.08f..0.90f,
-                steps = 13,
-                onValueChange = onCustomBackgroundGlassChange,
-            )
-            SettingsSliderRow(
-                title = stringResource(R.string.settings_scale),
-                valueLabel = { "${(it * 100f).roundToInt()}%" },
-                value = customBackgroundScale,
-                valueRange = 1.00f..1.40f,
-                steps = 15,
-                onValueChange = onCustomBackgroundScaleChange,
+                title = stringResource(R.string.settings_dark_end),
+                valueLabel = { formatMinuteOfDay(it.roundToInt()) },
+                value = scheduledDarkEndMinute.toFloat(),
+                valueRange = 0f..1439f,
+                steps = 95,
+                onValueChange = { onScheduledDarkEndMinuteChange(it.roundToQuarterHour()) },
             )
         }
     }
@@ -261,96 +218,4 @@ internal fun SettingsAppearanceContent(
         onClear = onClearStartupBackground,
     )
 
-    SettingsSectionCard(
-        title = stringResource(R.string.settings_section_fonts),
-    ) {
-        SettingsChoiceGroupRow(
-            title = stringResource(R.string.settings_ui_font),
-            detail = fontDetail(uiFontFamily, importedFontUri),
-            options = fontOptions(importedFontUri),
-            selectedValue = uiFontFamily,
-            onOptionSelected = { value ->
-                if (value == "imported" && importedFontUri.isNullOrBlank()) {
-                    onImportUiFont()
-                } else {
-                    onUiFontFamilyChange(value)
-                }
-            },
-        )
-        SettingsSliderRow(
-            title = stringResource(R.string.settings_ui_font_size),
-            valueLabel = { "${(it * 100f).roundToInt()}%" },
-            value = uiFontScale,
-            valueRange = 0.88f..1.18f,
-            steps = 14,
-            onValueChange = onUiFontScaleChange,
-            preview = { scale ->
-                SettingsFontPreview(uiFontFamily, importedFontFamily, scale, lyrics = false)
-            },
-        )
-        SettingsSliderRow(
-            title = stringResource(R.string.settings_ui_density),
-            valueLabel = { "${(it * 100f).roundToInt()}%" },
-            value = uiDensityScale,
-            valueRange = 0.90f..1.12f,
-            steps = 10,
-            onValueChange = onUiDensityScaleChange,
-        )
-        HorizontalDivider(
-            modifier = Modifier.padding(vertical = 6.dp),
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-        )
-        SettingsChoiceGroupRow(
-            title = stringResource(R.string.settings_lyrics_font),
-            detail = fontDetail(lyricsFontFamily, importedFontUri),
-            options = fontOptions(importedFontUri),
-            selectedValue = lyricsFontFamily,
-            onOptionSelected = { value ->
-                if (value == "imported" && importedFontUri.isNullOrBlank()) {
-                    onImportLyricsFont()
-                } else {
-                    onLyricsFontFamilyChange(value)
-                }
-            },
-        )
-        SettingsSliderRow(
-            title = stringResource(R.string.settings_lyrics_font_size),
-            valueLabel = { "${(it * 100f).roundToInt()}%" },
-            value = lyricsFontScale,
-            valueRange = 0.82f..1.28f,
-            steps = 22,
-            onValueChange = onLyricsFontScaleChange,
-            preview = { scale ->
-                SettingsFontPreview(lyricsFontFamily, importedFontFamily, scale, lyrics = true)
-            },
-        )
-        HorizontalDivider(
-            modifier = Modifier.padding(vertical = 6.dp),
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-        )
-        SettingsActionRow(
-            title = stringResource(if (importedFontUri.isNullOrBlank()) R.string.settings_import_font else R.string.settings_reselect_font),
-            detail = if (importedFontUri.isNullOrBlank()) {
-                stringResource(R.string.settings_import_font_detail)
-            } else {
-                stringResource(
-                    R.string.settings_import_font_current,
-                    importedFontUri.substringAfterLast('/').takeLast(28),
-                )
-            },
-            onClick = onImportUiFont,
-        )
-        SettingsActionRow(
-            title = stringResource(R.string.settings_clear_font),
-            detail = if (importedFontUri.isNullOrBlank()) {
-                stringResource(R.string.settings_clear_font_empty)
-            } else {
-                stringResource(R.string.settings_clear_font_detail)
-            },
-            enabled = !importedFontUri.isNullOrBlank(),
-            actionLabel = stringResource(R.string.settings_clear_action),
-            disabledLabel = stringResource(R.string.settings_unavailable),
-            onClick = onClearImportedFont,
-        )
-    }
 }

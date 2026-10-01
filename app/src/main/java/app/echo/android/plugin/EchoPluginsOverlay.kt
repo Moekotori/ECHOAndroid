@@ -6,10 +6,6 @@ import android.os.Handler
 import android.os.Looper
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -37,10 +33,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.echo.android.EchoAndroidViewModel
-import app.echo.android.design.EchoMotion
-import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.EchoPageOverlay
 import app.echo.android.feature.plugins.PluginsHost
-import app.echo.android.ui.shell.motionDuration
 import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -133,22 +127,8 @@ internal fun EchoPluginsOverlay(
             }
         }
     }
-    val performance = LocalEchoEffectivePerformanceMode.current
-    AnimatedVisibility(
+    EchoPageOverlay(
         visible = visible,
-        enter = if (performance.isLightweight) {
-            fadeIn(tween(motionDuration(90, performance)))
-        } else {
-            EchoMotion.overlayEnter(
-                enterMs = motionDuration(EchoMotion.OverlayMs, performance),
-                fadeMs = motionDuration(EchoMotion.OverlayFadeMs, performance),
-            )
-        },
-        exit = if (performance.isLightweight) {
-            fadeOut(tween(motionDuration(90, performance)))
-        } else {
-            EchoMotion.overlayExit(exitMs = motionDuration(EchoMotion.OverlayExitMs, performance))
-        },
     ) {
         val snapshot by plugins.snapshot.collectAsStateWithLifecycle()
         val blockPager = remember {
@@ -172,6 +152,7 @@ internal fun EchoPluginsOverlay(
                 .navigationBarsPadding(),
         ) {
             PluginsHost(
+                isActive = visible,
                 snapshot = snapshot,
                 notice = notice,
                 onImport = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) },

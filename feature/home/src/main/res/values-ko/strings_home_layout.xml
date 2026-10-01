@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_layout_title">홈 편집</string>
+    <string name="home_layout_detail">화살표로 순서를 바꾸고 사용하지 않는 항목을 숨기세요. 데이터가 없는 항목은 데이터가 준비되면 표시됩니다.</string>
+    <string name="home_layout_move_up">%1$s 위로 이동</string>
+    <string name="home_layout_move_down">%1$s 아래로 이동</string>
+    <string name="home_layout_reset">기본값 복원</string>
+    <string name="home_layout_cancel">취소</string>
+    <string name="home_layout_apply">완료</string>
+    <string name="home_layout_overview">라이브러리 개요</string>
+    <string name="home_layout_hidden">모든 홈 항목이 숨겨져 있습니다.</string>
+</resources>

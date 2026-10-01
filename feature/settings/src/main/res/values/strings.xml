@@ -32,7 +32,7 @@
     <string name="settings_custom_saved_themes">Saved themes</string>
     <string name="settings_custom_detail">Light and dark each stay readable. System colors still tint controls.</string>
     <string name="settings_dynamic_color">System colors</string>
-    <string name="settings_dynamic_color_detail">Use wallpaper colors for controls. Echo glass stays. Android 12+</string>
+    <string name="settings_dynamic_color_detail">Match controls to wallpaper colors</string>
     <string name="settings_dynamic_color_unavailable">Needs Android 12 or newer</string>
     <string name="settings_playback_haptics">Playback haptics</string>
     <string name="settings_playback_haptics_detail">Click and tick feedback on play, pause, and skip</string>
@@ -85,7 +85,7 @@
     <string name="settings_pause_on_disconnect_detail">Pause if headphones, Bluetooth, or a USB DAC disconnect</string>
     <string name="settings_resume_on_reconnect">Resume when reconnected</string>
     <string name="settings_resume_on_reconnect_detail">Continue only after a disconnect pause</string>
-    <string name="settings_replay_gain">ReplayGain</string>
+    <string name="settings_replay_gain">Normalize volume</string>
     <string name="settings_replay_gain_detail">Match volume with ReplayGain tags</string>
     <string name="settings_replay_gain_bypass">Saved, unused in bit-perfect</string>
     <string name="settings_replay_gain_mode">ReplayGain mode</string>

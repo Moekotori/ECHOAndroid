@@ -18,11 +18,30 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class EchoBackupCodecTest {
+    @Test fun migrationFieldsAndAdvancedRulesRoundTrip() {
+        val document = EchoBackupDocument(settings = EchoBackupSettings(homeLayout = app.echo.android.model.settings.EchoHomeLayout(),playerPageStyle = "type_poster",playerTextScale = 1.1f),
+            playlists = listOf(EchoBackupPlaylist("Any",smartRule = app.echo.android.model.library.EchoSmartPlaylistRule(matchAny=true,album="A",folder="Music/",format="flac",minimumDurationSeconds=60,maximumDurationSeconds=300,excludeText="Live"))),
+            history = listOf(app.echo.android.model.backup.EchoBackupHistoryEvent(EchoBackupTrackRef("Song","Artist",album="Album"),1000,1000,0,0,"saf")),
+            lyrics = listOf(app.echo.android.model.backup.EchoBackupLyrics(EchoBackupTrackRef("Song","Artist"),null,50)),
+            assets = listOf(app.echo.android.model.backup.EchoBackupAsset("font","assets/font.ttf")))
+        assertEquals(document,EchoBackupCodec.decode(EchoBackupCodec.encode(document)))
+    }
+    @Test
+    fun smartRulesAndMomentsRoundTripAndVersionOneRemainsReadable() {
+        val rule = app.echo.android.model.library.EchoSmartPlaylistRule(artist = "A", favoriteOnly = true, notPlayedDays = 30)
+        val document = EchoBackupDocument(playlists = listOf(EchoBackupPlaylist("Rediscover", smartRule = rule, pinnedToHome = true)),
+            bookmarks = listOf(app.echo.android.model.backup.EchoBackupBookmark(EchoBackupTrackRef("Song", "A", durationMs = 120000), 12345, "Bridge")))
+        assertEquals(document, EchoBackupCodec.decode(EchoBackupCodec.encode(document)))
+        val old = EchoBackupCodec.decode("{\"version\":1,\"playlists\":[{\"name\":\"Old\",\"tracks\":[]}],\"favorites\":[]}")
+        assertEquals("Old", old.playlists.single().name)
+        assertTrue(old.bookmarks.isEmpty())
+    }
     @Test
     fun lyricStyleRoundTripsWithItsCustomizations() {
         val settings = EchoAppSettings(
             lyricsPageStyle = "paper", lyricsFontFamily = "imported",
             lyricsFontScale = 1.2f, lyricsAlignment = "start", lyricsShowTranslation = false,
+            lyricsEstimatedWordHighlightEnabled = true,
         ).toBackupSettings()
         val decoded = EchoBackupCodec.decode(EchoBackupCodec.encode(EchoBackupDocument(settings = settings))).settings
         assertEquals("paper", decoded.lyricsPageStyle)
@@ -30,6 +49,10 @@ class EchoBackupCodecTest {
         assertEquals(1.2f, decoded.lyricsFontScale)
         assertEquals("start", decoded.lyricsAlignment)
         assertEquals(false, decoded.lyricsShowTranslation)
+        assertEquals(true, decoded.lyricsEstimatedWordHighlightEnabled)
+        val disabled = EchoAppSettings(lyricsEstimatedWordHighlightEnabled = false).toBackupSettings()
+        assertEquals(false, EchoBackupCodec.decode(
+            EchoBackupCodec.encode(EchoBackupDocument(settings = disabled))).settings.lyricsEstimatedWordHighlightEnabled)
     }
 
     @Test
@@ -39,7 +62,9 @@ class EchoBackupCodecTest {
         ).settings
         assertEquals(null, decoded.lyricsPageStyle)
         assertEquals("center", decoded.lyricsAlignment)
-        assertEquals("mist", EchoAppSettings().lyricsPageStyle)
+        assertTrue(app.echo.android.model.settings.EchoLyricsPageStyle.entries.any { it.id == EchoAppSettings().lyricsPageStyle })
+        assertEquals(null, decoded.lyricsEstimatedWordHighlightEnabled)
+        assertFalse(EchoAppSettings().lyricsEstimatedWordHighlightEnabled)
     }
 
     @Test

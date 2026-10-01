@@ -21,7 +21,7 @@
 :feature:home -> :core:design :core:model
 :feature:library -> :core:design :core:model
 :feature:listening -> :core:design :core:model
-:feature:player -> :core:design :core:model
+:feature:player -> :core:design :core:model :core:lyrics
 :feature:plugins -> :core:design :core:plugin
 :feature:settings -> :core:design :core:model
 

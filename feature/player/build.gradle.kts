@@ -22,7 +22,10 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.kotlinx.coroutines.android)
     implementation(project(":core:model"))
+    implementation(project(":core:lyrics"))
     implementation(project(":core:design"))
 
     implementation(libs.androidx.activity.compose)

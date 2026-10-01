@@ -16,6 +16,9 @@ data class AudioTagFields(
     val artworkBytes: ByteArray? = null,
     val artworkMime: String? = null,
     val replayGainTrackGainDb: Float? = null,
+    val genre: String? = null,
+    val genreModified: Boolean = false,
+    val composerModified: Boolean = false,
 )
 
 fun readLocalAudioTags(input: InputStream): AudioTagFields? =
@@ -35,6 +38,7 @@ internal fun EchoTrackMetadataUpdate.toAudioTagFields(): AudioTagFields =
         year = year?.takeIf { it > 0 },
         composer = composer?.trim()?.takeIf { it.isNotBlank() },
         lyrics = lyrics,
+        genre = genre,
     )
 
 internal fun LibraryTrackEntity.toAudioTagFields(): AudioTagFields =
@@ -47,6 +51,7 @@ internal fun LibraryTrackEntity.toAudioTagFields(): AudioTagFields =
         discNumber = discNumber,
         year = year,
         composer = composer,
+        genre = genre,
     )
 
 internal fun AudioTagFields.isBlank(): Boolean =
@@ -57,7 +62,7 @@ internal fun AudioTagFields.isBlank(): Boolean =
         trackNumber == null &&
         discNumber == null &&
         year == null &&
-        composer.isNullOrBlank()
+        composer.isNullOrBlank() && genre.isNullOrBlank()
 
 internal fun mergeAudioTags(preferred: AudioTagFields?, fallback: AudioTagFields?): AudioTagFields? {
     if (preferred == null || preferred.isBlank()) return fallback?.takeUnless { it.isBlank() }
@@ -75,6 +80,7 @@ internal fun mergeAudioTags(preferred: AudioTagFields?, fallback: AudioTagFields
         artworkBytes = preferred.artworkBytes ?: fallback.artworkBytes,
         artworkMime = preferred.artworkMime ?: fallback.artworkMime,
         replayGainTrackGainDb = preferred.replayGainTrackGainDb ?: fallback.replayGainTrackGainDb,
+        genre = preferred.genre?.takeIf { it.isNotBlank() } ?: fallback.genre,
     )
 }
 
@@ -90,7 +96,7 @@ internal fun LibraryTrackEntity.withAudioTags(tags: AudioTagFields?): LibraryTra
         next.trackNumber == trackNumber &&
         next.discNumber == discNumber &&
         next.year == year &&
-        next.composer == composer
+        next.composer == composer && next.genre == genre
     ) {
         return this
     }
@@ -103,6 +109,7 @@ internal fun LibraryTrackEntity.withAudioTags(tags: AudioTagFields?): LibraryTra
         discNumber = next.discNumber,
         year = next.year,
         composer = next.composer ?: composer,
+        genre = next.genre ?: genre,
     )
 }
 

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="queue_actions">Действия с очередью</string>
+    <string name="queue_keep_offline">Сохранить очередь офлайн</string>
+</resources>

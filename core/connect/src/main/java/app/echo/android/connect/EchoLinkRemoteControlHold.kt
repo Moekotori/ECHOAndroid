@@ -1,8 +1,8 @@
 package app.echo.android.connect
 
 object EchoLinkRemoteControlHold {
-    const val PositionToleranceMs = 2_000L
-    const val VolumeTolerance = 0.04f
+    const val PositionToleranceMs = 500L
+    const val VolumeTolerance = 0.005f
     const val HoldTimeoutMs = 5_000L
 
     fun shouldHoldCommittedPosition(

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="playback_more_settings">その他の再生設定</string>
     <string name="playback_keep_pitch">音程を維持</string>
     <string name="playback_reset_speed">1× に戻す</string>
     <string name="playback_lyrics_earlier">← 早める</string>

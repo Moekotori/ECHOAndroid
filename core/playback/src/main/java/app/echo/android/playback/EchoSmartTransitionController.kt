@@ -38,7 +38,8 @@ internal class EchoSmartTransitionController(
             combine(EchoPlaybackRuntimeOptionsStore.options,
                 EchoPlaybackProcessRuntime.bitPerfectStates,
                 EchoPlaybackCachePolicy.transitionModes,
-                EchoPlaybackProcessRuntime.sleepTransitionModes) { _, _, _, _ -> Unit }
+                EchoPlaybackProcessRuntime.sleepTransitionModes,
+                EchoPlaybackProcessRuntime.abLoop) { _, _, _, _, _ -> Unit }
                 .collect { refresh() }
         }
     }
@@ -85,7 +86,7 @@ internal class EchoSmartTransitionController(
         loopJob?.cancel()
         loopJob = null
         disarm()
-        val enabled = EchoSmartTransitionPolicy.mixerPassthroughEnabled(
+        val enabled = !EchoPlaybackProcessRuntime.abLoop.value.active && EchoSmartTransitionPolicy.mixerPassthroughEnabled(
             EchoPlaybackRuntimeOptionsStore.options.value.trackTransitions,
             EchoPlaybackCachePolicy.effectiveMode, EchoPlaybackProcessRuntime.usbExclusiveEnabled,
             EchoPlaybackProcessRuntime.usbBitPerfectEnabled)

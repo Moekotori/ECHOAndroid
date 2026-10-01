@@ -1,6 +1,9 @@
 package app.echo.android.feature.connect
 
 import android.os.SystemClock
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
@@ -11,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import app.echo.android.connect.EchoLinkRemoteControlHold
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
@@ -38,7 +42,7 @@ internal fun RemoteSeekControl(
     LaunchedEffect(anchor, active, isPlaying, committedAt, lightweight) {
         now = SystemClock.elapsedRealtime()
         while (active && (isPlaying || committed != null)) {
-            delay(if (lightweight) 1_000L else 400L)
+            delay(if (lightweight) 1_000L else 100L)
             now = SystemClock.elapsedRealtime()
             if (!EchoLinkRemoteControlHold.shouldHoldCommittedPosition(committed, committedAt, positionMs, now)) {
                 committed = null
@@ -50,9 +54,17 @@ internal fun RemoteSeekControl(
     val shown = EchoLinkRemoteControlHold.displayedPositionMs(positionMs, live, committed, committedAt, now, dragging)
         .coerceIn(0L, duration)
     val label = stringResource(R.string.remote_seek)
+    val smooth by animateFloatAsState(
+        targetValue = shown.toFloat(),
+        animationSpec = tween(
+            durationMillis = if (active && isPlaying && !lightweight && dragging == null && committed == null) 100 else 0,
+            easing = LinearEasing,
+        ),
+        label = "remoteProgress",
+    )
     Column {
         Slider(
-            value = shown.toFloat(),
+            value = if (dragging != null) shown.toFloat() else smooth,
             onValueChange = { dragging = it.toLong() },
             onValueChangeFinished = {
                 dragging?.let { target ->
@@ -67,8 +79,10 @@ internal fun RemoteSeekControl(
             modifier = Modifier.fillMaxWidth().semantics { contentDescription = label },
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(formatDuration(shown), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(formatDuration(duration), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(formatDuration(shown), style = MaterialTheme.typography.labelMedium, fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(formatDuration(duration), style = MaterialTheme.typography.labelMedium, fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -101,6 +115,7 @@ internal fun RemoteVolumeControl(volume: Float, enabled: Boolean, onVolume: (Flo
                 dragging = null
             })
         Text("${(shown * 100).roundToInt()}%", style = MaterialTheme.typography.labelMedium,
+            fontFamily = FontFamily.Monospace,
             modifier = Modifier.widthIn(min = 36.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

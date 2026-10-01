@@ -1,8 +1,10 @@
 package app.echo.android.feature.player
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -36,6 +38,7 @@ internal fun LyricsLineItem(
     highlightColor: Color,
     lyricsWordHighlightIntensity: Float,
     wordHighlightEnabled: Boolean,
+    estimatedWordHighlightEnabled: Boolean,
     focusGlowEnabled: Boolean,
     showTranslation: Boolean,
     showRomanization: Boolean,
@@ -46,6 +49,9 @@ internal fun LyricsLineItem(
     onLongClick: () -> Unit,
 ) {
     val transitionDuration = if (animateFocus) 320 else 0
+    val contextMotion = if (animateFocus) spring<Float>(dampingRatio = 1f,
+        stiffness = 260f - 110f * motionIntensity.coerceIn(0f, 1f), visibilityThreshold = 0.001f)
+    else tween(0)
     val textAlign = lyricsTextAlign(lyricsAlignment)
     val horizontalAlignment = lyricsHorizontalAlignment(lyricsAlignment)
     val markerAlpha = animateFloatAsState(if (focused) 1f else 0f,
@@ -54,59 +60,58 @@ internal fun LyricsLineItem(
         0 -> 1f
         else -> if (immersive) 0.08f else when (focusDistance) {
             1 -> 0.78f
-            2 -> if (paper) 0.70f else 0.58f
-            3 -> if (paper) 0.62f else 0.40f
-            else -> if (paper) 0.54f else 0.28f
+            2 -> if (paper) 0.76f else 0.58f
+            3 -> if (paper) 0.74f else 0.40f
+            else -> if (paper) 0.72f else 0.28f
         }
     }
     val secondaryAlpha = when (focusDistance) {
         0 -> 0.84f
         else -> if (immersive) 0f else when (focusDistance) {
-            1 -> 0.64f
-            2 -> if (paper) 0.60f else 0.48f
-            3 -> if (paper) 0.54f else 0.34f
-            else -> if (paper) 0.48f else 0.24f
+            1 -> if (paper) 0.74f else 0.64f
+            2 -> if (paper) 0.72f else 0.48f
+            3 -> if (paper) 0.72f else 0.34f
+            else -> if (paper) 0.72f else 0.24f
         }
     }
-    val animatedPrimaryAlpha by animateFloatAsState(
+    val animatedPrimaryAlpha = animateFloatAsState(
         targetValue = primaryAlpha,
-        animationSpec = tween(durationMillis = transitionDuration, easing = LyricsSettingsMotionEasing),
+        animationSpec = contextMotion,
         label = "lyrics-line-alpha",
     )
-    val animatedSecondaryAlpha by animateFloatAsState(
+    val animatedSecondaryAlpha = animateFloatAsState(
         targetValue = secondaryAlpha,
-        animationSpec = tween(transitionDuration, easing = LyricsSettingsMotionEasing),
+        animationSpec = contextMotion,
         label = "lyrics-secondary-alpha",
     )
-    val lineScale = animateFloatAsState(
-        targetValue = if (focused) 1f + 0.036f * motionIntensity else 1f,
-        animationSpec = tween(durationMillis = transitionDuration, easing = LyricsSettingsMotionEasing),
-        label = "lyrics-line-scale",
+    val textScale = animateFloatAsState(
+        // Focus changes the visual type size even with motion disabled.
+        targetValue = if (focused) 1f else when (focusDistance) { 1 -> 0.90f; 2 -> 0.85f; else -> 0.82f },
+        animationSpec = contextMotion,
+        label = "lyrics-text-scale",
     )
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .graphicsLayer {
-                scaleX = lineScale.value
-                scaleY = lineScale.value
-                transformOrigin = TransformOrigin(if (lyricsAlignment == "start") 0f else 0.5f, 0f)
-            }
             .drawBehind {
                 if (paper && markerAlpha.value > 0f) {
-                    // Keep the marker inside the viewport when centered text grows around its midpoint.
-                    val origin = if (lyricsAlignment == "start") 0f else 0.5f
-                    val markerX = size.width * origin * (1f - 1f / lineScale.value) + 1.dp.toPx()
                     drawLine(
-                        highlightColor.copy(alpha = animatedPrimaryAlpha * markerAlpha.value),
-                        Offset(markerX, 6.dp.toPx()),
-                        Offset(markerX, size.height - 6.dp.toPx()),
+                        highlightColor.copy(alpha = animatedPrimaryAlpha.value * markerAlpha.value),
+                        Offset(1.dp.toPx(), 6.dp.toPx()),
+                        Offset(1.dp.toPx(), size.height - 6.dp.toPx()),
                         strokeWidth = 1.dp.toPx(), cap = StrokeCap.Round,
                     )
                 }
             }
             .then(
                 if (onClick != null) {
-                    Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                    Modifier.combinedClickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        // Keep seeking and calibration free of a full-row ripple/background.
+                        indication = null,
+                        onClick = onClick,
+                        onLongClick = onLongClick,
+                    )
                 } else {
                     Modifier
                 },
@@ -115,17 +120,6 @@ internal fun LyricsLineItem(
         horizontalAlignment = horizontalAlignment,
         verticalArrangement = Arrangement.spacedBy((5f * spacing).dp),
     ) {
-        val activeShadow = if (active && focusGlowEnabled) {
-            Shadow(
-                color = Color.Black.copy(alpha = 0.22f),
-                offset = Offset(0f, 2f),
-                blurRadius = 8f,
-            )
-        } else {
-            Shadow(
-                color = Color.Transparent,
-            )
-        }
         if (line.speaker != null || line.isBackground) {
             Text(text = if (line.isBackground) stringResource(L10nR.string.lyrics_backing_vocals) else line.speaker.orEmpty(),
                 color = lyricAccent.copy(alpha = 0.6f), style = MaterialTheme.typography.labelSmall)
@@ -135,21 +129,29 @@ internal fun LyricsLineItem(
             lineEndMs = lineEndMs,
             active = active,
             enabled = wordHighlightEnabled,
+            estimatedWordHighlightEnabled = estimatedWordHighlightEnabled,
             animationsVisible = animateFocus,
+            glowEnabled = focusGlowEnabled && !paper,
+            motionIntensity = motionIntensity,
             position = positionMsState,
-            color = lyricAccent.copy(alpha = animatedPrimaryAlpha),
-            highlightColor = highlightColor.copy(alpha = animatedPrimaryAlpha),
+            color = lyricAccent,
+            highlightColor = highlightColor,
             unhighlightedAlpha = if (paper) 0.72f else null,
             intensity = lyricsWordHighlightIntensity,
-            modifier = Modifier.fillMaxWidth(),
-            // Keep glyph metrics stable across focus changes: resizing here
-            // rewraps long lines and moves the scroll target during animation.
+            modifier = Modifier.fillMaxWidth().graphicsLayer {
+                alpha = animatedPrimaryAlpha.value
+                scaleX = textScale.value
+                scaleY = textScale.value
+                transformOrigin = TransformOrigin(if (lyricsAlignment == "start") 0f else 0.5f, 0.5f)
+            },
+            // Reserve the focused size and scale only the main lyric in drawing:
+            // long lines keep their wraps and the follow-scroll anchor stays stable.
             style = MaterialTheme.typography.titleLarge.copy(
                 fontFamily = lyricsFontFamily ?: FontFamily.SansSerif,
-                fontSize = ((if (paper) 24f else 26f) * scale).sp,
-                lineHeight = ((if (paper) 33f else 36f) * scale * spacing).sp,
+                fontSize = ((if (paper) 28f else 30f) * scale).sp,
+                lineHeight = maxOf((if (paper) 38f else 41f) * scale * spacing,
+                    (if (paper) 28f else 30f) * scale * 1.1f).sp,
                 letterSpacing = 0.sp,
-                shadow = activeShadow,
             ),
             weight = FontWeight.Medium,
             align = textAlign,
@@ -157,12 +159,12 @@ internal fun LyricsLineItem(
         line.translation?.takeIf { showTranslation && it.isNotBlank() }?.let { translation ->
             Text(
                 text = translation,
-                modifier = Modifier.fillMaxWidth(),
-                color = lyricAccent.copy(alpha = animatedSecondaryAlpha),
+                modifier = Modifier.fillMaxWidth().graphicsLayer { alpha = animatedSecondaryAlpha.value },
+                color = lyricAccent,
                 style = MaterialTheme.typography.bodyMedium.copy(
                     fontFamily = FontFamily.SansSerif,
                     fontSize = (14f * scale).sp,
-                    lineHeight = (21f * scale * spacing).sp,
+                    lineHeight = maxOf(21f * scale * spacing, 14f * scale * 1.1f).sp,
                     letterSpacing = 0.sp,
                 ),
                 fontWeight = FontWeight.Normal,
@@ -172,12 +174,12 @@ internal fun LyricsLineItem(
         line.romanization?.takeIf { showRomanization && it.isNotBlank() }?.let { romanization ->
             Text(
                 text = romanization,
-                modifier = Modifier.fillMaxWidth(),
-                color = lyricAccent.copy(alpha = animatedSecondaryAlpha * 0.92f),
+                modifier = Modifier.fillMaxWidth().graphicsLayer { alpha = animatedSecondaryAlpha.value * 0.92f },
+                color = lyricAccent,
                 style = MaterialTheme.typography.bodySmall.copy(
                     fontFamily = FontFamily.SansSerif,
                     fontSize = (12f * scale).sp,
-                    lineHeight = (18f * scale * spacing).sp,
+                    lineHeight = maxOf(18f * scale * spacing, 12f * scale * 1.1f).sp,
                 ),
                 fontWeight = FontWeight.Normal,
                 textAlign = textAlign,

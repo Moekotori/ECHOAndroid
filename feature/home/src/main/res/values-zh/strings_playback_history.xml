@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playback_history_title">播放历史</string>
+    <string name="playback_history_subtitle">按时间回顾你的收听记录</string>
+    <string name="playback_history_more">更多操作</string>
+    <string name="playback_history_search">搜索歌曲、艺术家或专辑</string>
+    <string name="playback_history_reset_search">清除搜索</string>
+    <string name="playback_history_today">今天</string>
+    <string name="playback_history_yesterday">昨天</string>
+    <string name="playback_history_listened">已收听 %1$s</string>
+    <string name="playback_history_unavailable">歌曲已不在曲库中</string>
+    <string name="playback_history_empty">还没有播放历史</string>
+    <string name="playback_history_no_results">没有符合筛选条件的记录</string>
+    <string name="playback_history_reset_filters">查看全部历史</string>
+    <string name="playback_history_load_error">无法加载播放历史</string>
+    <string name="playback_history_retry">重试</string>
+    <string name="playback_history_delete">删除这条记录</string>
+    <string name="playback_history_deleted">记录已删除</string>
+    <string name="playback_history_clear">清空播放历史</string>
+    <string name="playback_history_clear_detail">删除所有收听记录，包括当前筛选之外的记录？听歌统计和活动热力图也会清零。音乐文件和歌单会保留，此操作无法撤销。</string>
+    <string name="playback_history_cleared">播放历史已清空</string>
+    <string name="playback_history_cancel">取消</string>
+    <string name="playback_history_action_error">操作未完成，请重试。</string>
+</resources>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_appearance_preview">效果预览</string>
+    <string name="settings_background_preview_unavailable">此背景暂时无法预览。</string>
+    <string name="settings_background_preview_loading">正在加载预览…</string>
+    <string name="settings_background_preview_still">视频背景在这里以静态画面预览。</string>
+    <string name="settings_background_preview_legacy_blur">此设备的模糊预览会在松手后更新。</string>
+</resources>

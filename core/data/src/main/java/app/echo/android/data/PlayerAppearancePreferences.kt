@@ -8,7 +8,7 @@ import app.echo.android.model.settings.EchoLyricsPageStyle
 
 /** Player-only presentation preferences; no playback-engine state lives here. */
 internal object PlayerAppearancePreferences {
-    /** 沉浸风格. Missing or unknown values use this dark page, paired with 雾夜沉浸. */
+    /** The artwork page follows the app palette; saved styles keep their own presentation. */
     const val DefaultStyle = "classic"
 
     /** Light page used when 素笺阅读 is chosen from the dark song style. */
@@ -22,9 +22,20 @@ internal object PlayerAppearancePreferences {
     fun textScale(preferences: Preferences): Float = normalizeScale(preferences[TextScale], 0.8f, 1.2f)
     fun artworkScale(preferences: Preferences): Float = normalizeScale(preferences[ArtworkScale], 0.7f, 1f)
 
-    /** Dark song page uses the dark lyric base; every light song page uses the light lyric page. */
-    fun boundLyricsStyle(playerStyle: String): EchoLyricsPageStyle =
-        if (normalizeStyle(playerStyle) == DefaultStyle) EchoLyricsPageStyle.Mist else EchoLyricsPageStyle.Paper
+    private val LyricsStyle = stringPreferencesKey("lyrics_page_style")
+    private val ThemeMode = stringPreferencesKey("theme_mode")
+
+    /** Only missing choices follow the theme. Explicit covers retain their established lyric binding. */
+    fun lyricsStyle(preferences: Preferences, themeMode: String): EchoLyricsPageStyle {
+        preferences[LyricsStyle]?.let { return EchoLyricsPageStyle.fromId(it) }
+        if (preferences[Style] != null) return boundLyricsStyle(style(preferences))
+        return if (themeMode == EchoThemeMode.Dark) EchoLyricsPageStyle.Mist else EchoLyricsPageStyle.Paper
+    }
+
+    /** Afterglow is independent; existing dark/light cover-to-lyric binding is otherwise unchanged. */
+    fun boundLyricsStyle(playerStyle: String, current: EchoLyricsPageStyle = EchoLyricsPageStyle.Mist): EchoLyricsPageStyle =
+        if (current.isAfterglow) current
+        else if (normalizeStyle(playerStyle) == DefaultStyle) EchoLyricsPageStyle.Mist else EchoLyricsPageStyle.Paper
 
     /**
      * Keep the current light page when lyrics are already light.
@@ -32,6 +43,7 @@ internal object PlayerAppearancePreferences {
      */
     fun boundPlayerStyle(lyrics: EchoLyricsPageStyle, playerStyle: String): String {
         val player = normalizeStyle(playerStyle)
+        if (lyrics.isAfterglow) return player
         val darkPlayer = player == DefaultStyle
         val darkLyrics = lyrics == EchoLyricsPageStyle.Mist
         return when {
@@ -42,7 +54,12 @@ internal object PlayerAppearancePreferences {
     }
 
     fun write(preferences: MutablePreferences, style: String, textScale: Float, artworkScale: Float) {
-        preferences[Style] = normalizeStyle(style)
+        val next = normalizeStyle(style)
+        if (next == this.style(preferences)) {
+            // A size-only edit must not change the implicit lyric default when the cover is saved.
+            preferences[LyricsStyle] = lyricsStyle(preferences, normalizeThemeMode(preferences[ThemeMode])).id
+        }
+        preferences[Style] = next
         preferences[TextScale] = normalizeScale(textScale, 0.8f, 1.2f)
         preferences[ArtworkScale] = normalizeScale(artworkScale, 0.7f, 1f)
     }

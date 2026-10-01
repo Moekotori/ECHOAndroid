@@ -7,7 +7,12 @@ enum class EchoLyricsPageStyle(
     val defaultAlignment: String,
 ) {
     Mist("mist", "system", "start"),
-    Paper("paper", "serif", "center");
+    Paper("paper", "serif", "center"),
+    AfterglowMist("afterglow_mist", "serif", "center"),
+    AfterglowNight("afterglow_night", "system", "center");
+
+    val isAfterglow: Boolean
+        get() = this == AfterglowMist || this == AfterglowNight
 
     companion object {
         fun fromId(value: String?): EchoLyricsPageStyle =

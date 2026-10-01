@@ -3,7 +3,6 @@ package app.echo.android.design
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
@@ -38,6 +37,26 @@ object EchoMotion {
     const val LocaleOutMs = 180
     const val LocaleInMs = 260
     const val LocaleLightweightMs = 90
+    const val PageLightweightMs = 90
+    const val PageDepthScale = 0.94f
+    const val PageDepthAlpha = 0.86f
+    const val PageCornerDp = 22f
+
+    fun pageFadeIn(lightweight: Boolean) = tween<Float>(
+        durationMillis = if (lightweight) PageLightweightMs else FadeMs,
+        easing = Silk,
+    )
+
+    fun pageFadeOut(lightweight: Boolean) = tween<Float>(
+        durationMillis = if (lightweight) PageLightweightMs else FadeExitMs,
+        easing = SilkExit,
+    )
+
+    fun pageFade(lightweight: Boolean = false): ContentTransform = ContentTransform(
+        targetContentEnter = fadeIn(pageFadeIn(lightweight)),
+        initialContentExit = fadeOut(pageFadeOut(lightweight)),
+        sizeTransform = null,
+    )
 
     fun stateChange(): ContentTransform = ContentTransform(
         targetContentEnter = fadeIn(tween(FadeMs, easing = Silk)),
@@ -179,23 +198,18 @@ object EchoMotion {
         enterMs: Int = PageMs,
         exitMs: Int = PageExitMs,
     ): ContentTransform {
-        val enter = slideInHorizontally(silkOffset(enterMs)) { it / 5 } +
-            fadeIn(tween(durationMillis = 240, easing = Silk)) +
-            scaleIn(
-                initialScale = 0.978f,
-                animationSpec = silkFloat(enterMs),
-            )
-        val exit = slideOutHorizontally(silkOffset(exitMs)) { -it / 8 } +
-            fadeOut(tween(durationMillis = 180, easing = SilkExit)) +
+        val enter = slideInHorizontally(silkOffset(enterMs)) { it } +
+            fadeIn(tween(durationMillis = 220, easing = Silk), initialAlpha = 0.92f)
+        val exit = fadeOut(silkFloat(exitMs), targetAlpha = PageDepthAlpha) +
             scaleOut(
-                targetScale = 0.992f,
+                targetScale = PageDepthScale,
                 animationSpec = silkFloat(exitMs),
             )
         return ContentTransform(
             targetContentEnter = enter,
             initialContentExit = exit,
             targetContentZIndex = 1f,
-            sizeTransform = SizeTransform(clip = false),
+            sizeTransform = null,
         )
     }
 
@@ -203,23 +217,17 @@ object EchoMotion {
         enterMs: Int = PageMs,
         exitMs: Int = PageMs,
     ): ContentTransform {
-        val enter = slideInHorizontally(silkOffset(enterMs)) { -it / 8 } +
-            fadeIn(tween(durationMillis = 240, delayMillis = 36, easing = Silk)) +
+        val enter = fadeIn(tween(durationMillis = 240, easing = Silk), initialAlpha = PageDepthAlpha) +
             scaleIn(
-                initialScale = 0.99f,
+                initialScale = PageDepthScale,
                 animationSpec = silkFloat(enterMs),
             )
-        val exit = slideOutHorizontally(silkOffset(exitMs)) { it / 5 } +
-            fadeOut(tween(durationMillis = 200, easing = SilkExit)) +
-            scaleOut(
-                targetScale = 0.978f,
-                animationSpec = silkFloat(exitMs),
-            )
+        val exit = slideOutHorizontally(silkOffset(exitMs)) { it }
         return ContentTransform(
             targetContentEnter = enter,
             initialContentExit = exit,
             targetContentZIndex = 0f,
-            sizeTransform = SizeTransform(clip = false),
+            sizeTransform = null,
         )
     }
 
@@ -239,7 +247,7 @@ object EchoMotion {
         return ContentTransform(
             targetContentEnter = enter,
             initialContentExit = exit,
-            sizeTransform = SizeTransform(clip = false),
+            sizeTransform = null,
         )
     }
 }

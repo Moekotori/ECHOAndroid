@@ -15,7 +15,6 @@ internal fun SettingsPlaybackContent(
     status: EchoPlaybackStatus,
     playbackHapticsEnabled: Boolean,
     effectivePerformanceMode: String,
-    showLyricsControlDeck: Boolean,
     onlineLyricsEnabled: Boolean,
     lockScreenLyricsEnabled: Boolean,
     floatingLyrics: app.echo.android.model.settings.EchoFloatingLyricsSettings,
@@ -31,7 +30,6 @@ internal fun SettingsPlaybackContent(
     replayGainPreampDb: Float,
     usbExclusiveTestResult: String,
     onPlaybackHapticsEnabledChange: (Boolean) -> Unit,
-    onShowLyricsControlDeckChange: (Boolean) -> Unit,
     onOnlineLyricsEnabledChange: (Boolean) -> Unit,
     onLockScreenLyricsEnabledChange: (Boolean) -> Unit,
     onFloatingLyricsChange: (app.echo.android.model.settings.EchoFloatingLyricsSettings) -> Unit,
@@ -47,15 +45,59 @@ internal fun SettingsPlaybackContent(
     onTestUsbExclusiveDriver: () -> Unit,
     notificationPermissionGranted: Boolean = true,
     onRequestNotificationPermission: () -> Unit = {},
-    onPinQueueOffline: () -> Unit = {},
 ) {
-    SettingsSectionCard(
-        title = stringResource(R.string.settings_section_playback),
-    ) {
-        SettingsInfoRow(
-            title = stringResource(R.string.settings_gapless),
-            detail = stringResource(R.string.settings_gapless_detail),
+    SettingsSectionCard(title = stringResource(R.string.settings_section_listening)) {
+        SettingsSwitchRow(
+            title = stringResource(R.string.settings_pause_on_disconnect),
+            detail = stringResource(R.string.settings_pause_on_disconnect_detail),
+            checked = pauseOnAudioDisconnect,
+            onCheckedChange = onPauseOnAudioDisconnectChange,
         )
+        SettingsSwitchRow(
+            title = stringResource(R.string.settings_resume_on_reconnect),
+            detail = stringResource(R.string.settings_resume_on_reconnect_detail),
+            checked = resumeOnAudioReconnect,
+            onCheckedChange = onResumeOnAudioReconnectChange,
+            enabled = pauseOnAudioDisconnect,
+        )
+        SettingsSwitchRow(
+            title = stringResource(R.string.settings_playback_haptics),
+            detail = stringResource(R.string.settings_playback_haptics_detail),
+            checked = playbackHapticsEnabled,
+            onCheckedChange = onPlaybackHapticsEnabledChange,
+        )
+    }
+    SettingsSectionCard(title = stringResource(R.string.settings_section_lyrics)) {
+        SettingsSwitchRow(
+            title = stringResource(R.string.settings_online_lyrics),
+            detail = stringResource(R.string.settings_online_lyrics_detail),
+            checked = onlineLyricsEnabled,
+            onCheckedChange = onOnlineLyricsEnabledChange,
+        )
+        SettingsSwitchRow(
+            title = stringResource(R.string.settings_lock_lyrics),
+            detail = stringResource(R.string.settings_lock_lyrics_detail),
+            checked = lockScreenLyricsEnabled,
+            onCheckedChange = onLockScreenLyricsEnabledChange,
+        )
+        SettingsFloatingLyricsRows(
+            settings = floatingLyrics,
+            permissionGranted = floatingLyricsPermissionGranted,
+            onChange = onFloatingLyricsChange,
+            onRequestPermission = onRequestFloatingLyricsPermission,
+        )
+        val notificationRuntimePermission =
+            LocalEchoPlatformCapabilities.current.notificationRuntimePermission
+        if (notificationRuntimePermission && !notificationPermissionGranted) {
+            SettingsActionRow(
+                title = stringResource(R.string.settings_notification_permission),
+                detail = stringResource(R.string.settings_notification_denied),
+                actionLabel = stringResource(R.string.settings_allow),
+                onClick = onRequestNotificationPermission,
+            )
+        }
+    }
+    SettingsSectionCard(title = stringResource(R.string.settings_section_transition), secondary = true) {
         SettingsSwitchRow(
             title = stringResource(R.string.settings_track_fade),
             detail = stringResource(if (usbBitPerfectEnabled) R.string.settings_track_fade_bypass else R.string.settings_track_fade_detail),
@@ -85,19 +127,8 @@ internal fun SettingsPlaybackContent(
             checked = trackTransitions.smartEnabled,
             onCheckedChange = { onTrackTransitionsChange(trackTransitions.copy(smartEnabled = it)) },
         )
-        SettingsSwitchRow(
-            title = stringResource(R.string.settings_pause_on_disconnect),
-            detail = stringResource(R.string.settings_pause_on_disconnect_detail),
-            checked = pauseOnAudioDisconnect,
-            onCheckedChange = onPauseOnAudioDisconnectChange,
-        )
-        SettingsSwitchRow(
-            title = stringResource(R.string.settings_resume_on_reconnect),
-            detail = stringResource(R.string.settings_resume_on_reconnect_detail),
-            checked = resumeOnAudioReconnect,
-            onCheckedChange = onResumeOnAudioReconnectChange,
-            enabled = pauseOnAudioDisconnect,
-        )
+    }
+    SettingsSectionCard(title = stringResource(R.string.settings_section_volume), secondary = true) {
         SettingsSwitchRow(
             title = stringResource(R.string.settings_replay_gain),
             detail = stringResource(
@@ -128,93 +159,10 @@ internal fun SettingsPlaybackContent(
                 onValueChange = { onReplayGainChange(true, it) },
             )
         }
-        SettingsSwitchRow(
-            title = stringResource(R.string.settings_playback_haptics),
-            detail = stringResource(R.string.settings_playback_haptics_detail),
-            checked = playbackHapticsEnabled,
-            onCheckedChange = onPlaybackHapticsEnabledChange,
-        )
     }
-    SettingsSectionCard(title = stringResource(R.string.settings_section_lyrics)) {
-        SettingsSwitchRow(
-            title = stringResource(R.string.settings_lyrics_sync_tools),
-            detail = stringResource(R.string.settings_lyrics_sync_tools_detail),
-            checked = showLyricsControlDeck,
-            onCheckedChange = onShowLyricsControlDeckChange,
-        )
-        SettingsSwitchRow(
-            title = stringResource(R.string.settings_online_lyrics),
-            detail = stringResource(R.string.settings_online_lyrics_detail),
-            checked = onlineLyricsEnabled,
-            onCheckedChange = onOnlineLyricsEnabledChange,
-        )
-        SettingsSwitchRow(
-            title = stringResource(R.string.settings_lock_lyrics),
-            detail = stringResource(R.string.settings_lock_lyrics_detail),
-            checked = lockScreenLyricsEnabled,
-            onCheckedChange = onLockScreenLyricsEnabledChange,
-        )
-        SettingsFloatingLyricsRows(
-            settings = floatingLyrics,
-            permissionGranted = floatingLyricsPermissionGranted,
-            onChange = onFloatingLyricsChange,
-            onRequestPermission = onRequestFloatingLyricsPermission,
-        )
-        val notificationRuntimePermission =
-            LocalEchoPlatformCapabilities.current.notificationRuntimePermission
-        if (!notificationRuntimePermission || notificationPermissionGranted) {
-            SettingsInfoRow(
-                title = stringResource(R.string.settings_notification_permission),
-                detail = stringResource(
-                    if (!notificationRuntimePermission) R.string.settings_notification_not_required
-                    else R.string.settings_notification_granted,
-                ),
-            )
-        } else {
-            SettingsActionRow(
-                title = stringResource(R.string.settings_notification_permission),
-                detail = stringResource(R.string.settings_notification_denied),
-                actionLabel = stringResource(R.string.settings_allow),
-                onClick = onRequestNotificationPermission,
-            )
-        }
-    }
-    SettingsSectionCard(title = stringResource(R.string.settings_section_usb)) {
-        SettingsSwitchRow(
-            title = stringResource(R.string.settings_usb_exclusive),
-            detail = usbExclusiveDetail(status),
-            checked = usbExclusiveEnabled,
-            onCheckedChange = onUsbExclusiveEnabledChange,
-        )
-        SettingsSwitchRow(
-            title = stringResource(R.string.settings_usb_bitperfect),
-            detail = stringResource(R.string.settings_usb_bitperfect_detail),
-            checked = usbBitPerfectEnabled,
-            onCheckedChange = onUsbBitPerfectEnabledChange,
-        )
-        SettingsSwitchRow(
-            title = stringResource(R.string.settings_usb_auto_request),
-            detail = if (usbExclusiveAutoRequestOnStartup) {
-                stringResource(R.string.settings_usb_auto_request_on)
-            } else {
-                stringResource(R.string.settings_usb_auto_request_off)
-            },
-            checked = usbExclusiveAutoRequestOnStartup,
-            onCheckedChange = onUsbExclusiveAutoRequestOnStartupChange,
-        )
-        SettingsActionRow(
-            title = stringResource(R.string.settings_test_usb),
-            detail = usbExclusiveTestDetail(status, usbExclusiveTestResult),
-            enabled = status.diagnostics.usbConnected,
-            actionLabel = stringResource(R.string.settings_test),
-            onClick = onTestUsbExclusiveDriver,
-        )
-    }
-    SettingsSectionCard(title = stringResource(R.string.settings_section_offline)) {
-        SettingsActionRow(
-            title = stringResource(R.string.settings_pin_queue_offline),
-            detail = stringResource(R.string.settings_pin_queue_offline_detail),
-            onClick = onPinQueueOffline,
-        )
-    }
+    SettingsUsbContent(
+        status, usbExclusiveEnabled, usbBitPerfectEnabled, usbExclusiveAutoRequestOnStartup,
+        usbExclusiveTestResult, onUsbExclusiveEnabledChange, onUsbBitPerfectEnabledChange,
+        onUsbExclusiveAutoRequestOnStartupChange, onTestUsbExclusiveDriver,
+    )
 }

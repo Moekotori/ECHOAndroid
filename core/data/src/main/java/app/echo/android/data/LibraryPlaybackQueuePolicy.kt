@@ -21,7 +21,7 @@ object LibraryPlaybackQueuePolicy {
     }
 
     fun startIndex(queueIds: List<String>, tappedTrackId: String): Int =
-        queueIds.indexOfFirst { it == tappedTrackId }.takeIf { it >= 0 } ?: 0
+        queueIds.indexOfFirst { it == tappedTrackId }
 
     fun usesLocalTrackQueue(selectedLibrarySource: String): Boolean =
         selectedLibrarySource != EchoLibrarySelectedSource.Cloud
@@ -48,7 +48,8 @@ object LibraryPlaybackQueuePolicy {
         if (!trackMatchesSelectedLibrarySource(anchor.source, selectedLibrarySource)) {
             return listOf(anchor)
         }
-        if (matching.any { it.id == anchor.id }) return matching.take(safeLimit)
+        val anchorIndex = matching.indexOfFirst { it.id == anchor.id }
+        if (anchorIndex >= 0) return matching.drop(if (anchorIndex >= safeLimit) anchorIndex else 0).take(safeLimit)
         return (listOf(anchor) + matching.filterNot { it.id == anchor.id }).take(safeLimit)
     }
 

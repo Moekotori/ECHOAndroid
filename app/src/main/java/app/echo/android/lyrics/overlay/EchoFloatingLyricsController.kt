@@ -59,10 +59,11 @@ internal class EchoFloatingLyricsController(
         settings = state.settings
         val currentLine = state.snapshot.current?.text?.trim()?.takeIf { it.isNotEmpty() }
         val nextLine = state.snapshot.next?.text?.trim()?.takeIf { it.isNotEmpty() }
+        val shownLine = currentLine ?: nextLine.takeIf { state.snapshot.previous == null }
         val shouldShow = state.settings.enabled &&
             !state.appVisible &&
             state.playing &&
-            (currentLine != null || nextLine != null) &&
+            shownLine != null &&
             Settings.canDrawOverlays(app)
         if (!shouldShow) {
             hide()
@@ -70,7 +71,7 @@ internal class EchoFloatingLyricsController(
         }
         val shown = view ?: show(state.settings) ?: return
         shown.bind(
-            currentLine = currentLine ?: nextLine,
+            currentLine = shownLine,
             nextLine = if (currentLine != null) nextLine else null,
             fontScale = state.settings.fontScale,
             accent = CURRENT_LINE_COLOR,

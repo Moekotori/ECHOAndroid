@@ -1,13 +1,11 @@
 package app.echo.android.feature.settings
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Extension
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -56,73 +54,50 @@ internal fun SettingsSearchField(query: String, onQueryChange: (String) -> Unit)
             focusManager.clearFocus()
             keyboardController?.hide()
         }),
-        shape = RoundedCornerShape(16.dp),
+        shape = SettingsShape,
         colors = TextFieldDefaults.colors(
             focusedContainerColor = panelColor,
             unfocusedContainerColor = panelColor,
-            focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
+            focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+            unfocusedIndicatorColor = MaterialTheme.colorScheme.outlineVariant,
         ),
     )
 }
 
 @Composable
-internal fun SettingsSearchResults(
-    results: List<SettingsSearchResult>,
-    onSelect: (SettingsSearchResult) -> Unit,
+internal fun SettingsSearchEmpty() {
+    Text(stringResource(R.string.settings_search_empty),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = SettingsContentInset, vertical = 24.dp),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+@Composable
+internal fun SettingsSearchResultRow(
+    result: SettingsSearchResult,
+    showDivider: Boolean,
+    onSelect: () -> Unit,
 ) {
-    if (results.isEmpty()) {
-        Text(
-            stringResource(R.string.settings_search_empty),
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 24.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Normal,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        return
-    }
-    Surface(shape = RoundedCornerShape(20.dp), color = settingsPanelColor()) {
+    Surface(shape = SettingsShape, color = settingsPanelColor()) {
         Column {
-            results.forEachIndexed { index, result ->
-                if (index > 0) HorizontalDivider(
-                    modifier = Modifier.padding(start = 52.dp, end = 16.dp),
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-                )
-                Surface(onClick = { onSelect(result) }, color = Color.Transparent) {
-                    Row(
-                        Modifier.fillMaxWidth().heightIn(min = 62.dp)
-                            .padding(horizontal = 16.dp, vertical = 9.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            result.item.category?.icon ?: Icons.Rounded.Extension,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(
-                                result.title,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Text(
-                                result.categoryTitle,
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Normal,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Icon(
-                            Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+            if (showDivider) HorizontalDivider(
+                modifier = Modifier.padding(start = SettingsContentInset + 32.dp, end = SettingsContentInset),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            Surface(onClick = onSelect, shape = SettingsShape, color = Color.Transparent) {
+                Row(Modifier.fillMaxWidth().heightIn(min = 64.dp)
+                    .padding(horizontal = SettingsContentInset, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Icon(result.item.category?.icon ?: SettingsCategoryIcons.Plugins, null,
+                        Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(result.title, style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(result.categoryTitle, style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                    Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }

@@ -52,6 +52,9 @@ class EchoApplication : Application(), ImageLoaderFactory {
     val echoLinkSession by lazy { EchoLinkSession(this) }
     val listening by lazy { app.echo.android.listening.EchoListeningRuntime(this) }
     internal val lyricsSession: EchoNowPlayingLyricsSession by lazy { EchoNowPlayingLyricsSession(this) }
+    internal val scrobbleSession by lazy {
+        EchoScrobbleSession(EchoPlaybackProcessRuntime.scope, EchoPlaybackProcessRuntime.surface)
+    }
     val listeningHistory by lazy { ListeningHistoryRepository(EchoLibraryDatabase.create(this)) }
     private val listeningHistoryRecorder by lazy {
         ListeningHistoryRecorder(EchoPlaybackProcessRuntime.scope, listeningHistory)
@@ -107,6 +110,7 @@ class EchoApplication : Application(), ImageLoaderFactory {
         bindPlaybackDspSettings(settingsStore)
         EchoPlaybackProcessRuntime.setSessionStore(EchoSettingsPlaybackSessionStore(settingsStore))
         lyricsSession.start(settingsStore)
+        scrobbleSession.start(settingsStore.appSettings)
         offlineDownloads.start()
         listeningHistoryRecorder.start(EchoPlaybackProcessRuntime.surface)
         app.echo.android.lyrics.overlay.EchoFloatingLyricsController(this, settingsStore).start()

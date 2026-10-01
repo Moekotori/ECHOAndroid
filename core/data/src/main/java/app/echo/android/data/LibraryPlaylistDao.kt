@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface LibraryPlaylistDao {
+    @Query("SELECT id, name, source, trackCount, artworkUri, updatedAtEpochMs FROM library_playlists WHERE name LIKE '%' || :query || '%' ORDER BY name COLLATE NOCASE LIMIT 30")
+    suspend fun searchEveryPlaylist(query: String): List<PlaylistSummaryRow>
     @Query(
         """
         SELECT id, name, source, trackCount, artworkUri, updatedAtEpochMs

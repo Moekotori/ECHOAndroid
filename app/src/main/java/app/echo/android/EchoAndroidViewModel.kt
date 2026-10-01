@@ -16,6 +16,7 @@ import app.echo.android.connect.EchoLinkLanBrowser
 import app.echo.android.data.EchoErrorLogRepository
 import app.echo.android.data.EchoLibraryDatabase
 import app.echo.android.data.EchoLibraryRepository
+import app.echo.android.data.batchTags
 import app.echo.android.model.error.EchoErrorLog
 import app.echo.android.model.error.EchoErrorRecord
 import app.echo.android.model.error.EchoErrorSource
@@ -117,6 +118,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         appContext = application,
     )
     private val errorLog = EchoErrorLogRepository.create(application)
+    internal val libraryExperience = LibraryExperienceController(repository, application)
+    internal val unifiedSearch = UnifiedSearchController(repository)
+    internal val librarySync = LibrarySyncController(repository)
+    internal fun reconcile(session: app.echo.android.connect.EchoLibrarySyncSession,peerId: String) = LibraryReconcileController(getApplication<Application>(),repository,session,peerId)
     private val settingsStore = EchoSettingsStore(application)
     private val echoLinkLanBrowser = EchoLinkLanBrowser(application)
     private val lanRendererBrowser = EchoLanRendererBrowser(application)
@@ -134,6 +139,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         appContext = application,
     )
     private val lyricsController = (application as EchoApplication).lyricsSession.controller
+    internal val libraryMigration = LibraryMigrationController(application, repository, settingsStore, lyricsController)
     private val playbackController = PlaybackController(
         application = application,
         settingsStore = settingsStore,
@@ -148,15 +154,9 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         libraryController.startWatchingMediaStore(application.contentResolver)
     }
     private val lastFmClient = LastFmClient()
-    private val lastFmController = LastFmScrobbleController(
-        scope = EchoPlaybackProcessRuntime.scope,
-        client = lastFmClient,
-    )
+    private val lastFmController = (application as EchoApplication).scrobbleSession.lastFm
     private val listenBrainzClient = ListenBrainzClient()
-    private val listenBrainzController = ListenBrainzScrobbleController(
-        scope = EchoPlaybackProcessRuntime.scope,
-        client = listenBrainzClient,
-    )
+    private val listenBrainzController = (application as EchoApplication).scrobbleSession.listenBrainz
 
     private var pendingLastFmAuthToken: String? = null
     private var usbStartupPolicyApplied = false
@@ -195,6 +195,15 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     val playbackStatus: StateFlow<EchoPlaybackStatus> = playbackController.playbackStatus
     val playbackMetadata: StateFlow<PlaybackMetadataState> = playbackController.playbackMetadata
     val playbackPosition: StateFlow<PlaybackPositionState> = playbackController.playbackPosition
+    val abLoop = app.echo.android.playback.EchoPlaybackProcessRuntime.abLoop
+    fun currentPlaybackPositionMs(): Long = playbackController.currentPositionMs()
+    internal suspend fun saveEditedLyrics(trackId: String, lyrics: app.echo.android.model.lyrics.EchoLyrics) {
+        val track = playbackStatus.value.track?.takeIf { it.id == trackId }
+        val enriched = if (track == null) lyrics else lyrics.copy(metadata = lyrics.metadata + mapOf(
+            "echo_title" to track.title, "echo_artist" to track.artist, "echo_album" to track.album.orEmpty(), "echo_duration_ms" to track.durationMs.toString()))
+        lyricsController.saveEditedLyrics(trackId, enriched)
+    }
+    suspend fun setAbLoop(trackId: String?, startMs: Long, endMs: Long) = playbackController.setAbLoop(trackId, startMs, endMs)
     val playbackControls: StateFlow<PlaybackControlsState> = playbackController.playbackControls
     val playbackQueue: StateFlow<PlaybackQueueState> = playbackController.playbackQueue
     val playbackDiagnostics: StateFlow<PlaybackDiagnosticsState> = playbackController.playbackDiagnostics
@@ -240,6 +249,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     private val _recentPlaybackArtists = MutableStateFlow<List<ArtistSummary>>(emptyList())
     val recentPlaybackArtists: StateFlow<List<ArtistSummary>> = _recentPlaybackArtists.asStateFlow()
     private val listeningHistory = (application as EchoApplication).listeningHistory
+    internal val playbackHistory = PlaybackHistoryController(viewModelScope, listeningHistory, repository, ::play)
     val recentPlaybackHeatmap: StateFlow<List<PlaybackHeatmapDay>> = listeningHistory
         .observeHeatmap(HOME_HEATMAP_VISIBLE_DAYS)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), emptyList())
@@ -264,16 +274,6 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     private val albumPlaybackCounts = mutableMapOf<String, Int>()
     private val artistPlaybackCounts = mutableMapOf<String, Int>()
     init {
-        lastFmController.start(
-            settingsFlow = settingsStore.appSettings,
-            playbackStatus = playbackController.playbackStatus,
-            playbackPosition = playbackController.playbackPosition,
-        )
-        listenBrainzController.start(
-            settingsFlow = settingsStore.appSettings,
-            playbackStatus = playbackController.playbackStatus,
-            playbackPosition = playbackController.playbackPosition,
-        )
         EchoSubsonicListen.startFromPlayback(
             playbackStatus = playbackController.playbackStatus,
             playbackPosition = playbackController.playbackPosition,
@@ -495,16 +495,11 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             val source = selectedLibrarySource.ifBlank { EchoLibrarySelectedSource.Local }
             if (LibraryPlaybackQueuePolicy.usesCollectionQueue(origin)) {
-                val collectionKey = LibraryPlaybackQueuePolicy.collectionKey(origin) ?: return@launch
-                val queue = when (origin) {
-                    is LibraryPlaybackOrigin.Album -> libraryController.albumTracksForPlayback(collectionKey)
-                    is LibraryPlaybackOrigin.Artist -> libraryController.artistTracksForPlayback(collectionKey)
-                    is LibraryPlaybackOrigin.Folder -> libraryController.folderTracksForPlayback(collectionKey)
-                    is LibraryPlaybackOrigin.Playlist -> libraryController.playlistTracksForPlayback(collectionKey)
-                    LibraryPlaybackOrigin.Songs -> emptyList()
-                }
+                val queue = libraryController.collectionTracksForPlayback(origin, track.id)
                 if (queue.isEmpty()) return@launch
-                playbackController.playQueue(queue, LibraryPlaybackQueuePolicy.startIndex(queue.map { it.id }, track.id), source = when (origin) {
+                val startIndex = LibraryPlaybackQueuePolicy.startIndex(queue.map { it.id }, track.id)
+                if (startIndex < 0) return@launch
+                playbackController.playQueue(queue, startIndex, source = when (origin) {
                     is LibraryPlaybackOrigin.Album -> track.album
                     is LibraryPlaybackOrigin.Artist -> track.artist
                     is LibraryPlaybackOrigin.Playlist -> libraryController.localPlaylists.value.firstOrNull { it.id == origin.playlistId }?.name
@@ -515,7 +510,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             }
             val queue = libraryController.queueAroundTrack(track.id, source)
             if (queue.isEmpty()) return@launch
-            playQueue(queue, LibraryPlaybackQueuePolicy.startIndex(queue.map { it.id }, track.id))
+            val startIndex = LibraryPlaybackQueuePolicy.startIndex(queue.map { it.id }, track.id)
+            if (startIndex >= 0) playQueue(queue, startIndex)
         }
     }
 
@@ -524,7 +520,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             val source = selectedLibrarySource.ifBlank { EchoLibrarySelectedSource.Local }
             val queue = libraryController.queueAroundTrack(trackId, source)
             val startIndex = LibraryPlaybackQueuePolicy.startIndex(queue.map { it.id }, trackId)
-            if (queue.isNotEmpty()) playQueue(queue, startIndex)
+            if (queue.isNotEmpty() && startIndex >= 0) playQueue(queue, startIndex)
         }
     }
 
@@ -538,6 +534,28 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                 result = libraryController.updateTrackMetadata(update).fileWrite,
             )
         }
+    }
+
+    internal suspend fun batchTags(ids: List<String>, patch: app.echo.android.model.library.EchoBatchTagPatch, progress: (Int) -> Unit) =
+        repository.batchTags(ids, patch, progress) { update ->
+            withContext(Dispatchers.Main.immediate) {
+                var result: app.echo.android.data.TrackMetadataUpdateResult? = null
+                withReleasedPlaybackFile(update.trackId) { result = libraryController.updateTrackMetadata(update) }
+                checkNotNull(result)
+            }
+        }
+
+    internal suspend fun batchQueue(tracks: List<EchoTrack>, mode: Int) {
+        require(tracks.size <= 200)
+        val ordered = if (mode == 1) tracks.asReversed() else tracks
+        for (track in ordered) {
+            when (mode) { 1 -> playbackController.playNext(track); 2 -> playbackController.addNextUp(track); else -> playbackController.enqueue(track) }
+            kotlinx.coroutines.yield()
+        }
+    }
+
+    internal fun playMoment(moment: app.echo.android.model.library.EchoSavedMoment) {
+        playbackController.playAt(moment.track, moment.bookmark.positionMs)
     }
 
     fun onEmbeddedTagWriteAccessResult(granted: Boolean) {
@@ -782,46 +800,24 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun exportBackup(uri: Uri) {
         viewModelScope.launch {
-            runCatching {
-                val document = EchoBackupDocument(
-                    version = EchoBackupDocument.CurrentVersion,
-                    exportedAtEpochMs = System.currentTimeMillis(),
-                    settings = settingsStore.appSettings.first().toBackupSettings(),
-                    playlists = libraryController.exportBackupPlaylists(),
-                    favorites = libraryController.exportBackupFavorites(),
-                )
-                val text = EchoBackupCodec.encode(document)
-                withContext(Dispatchers.IO) {
-                    getApplication<Application>().contentResolver.openOutputStream(uri)?.use { output ->
-                        output.write(text.toByteArray(java.nio.charset.StandardCharsets.UTF_8))
-                    } ?: error("Could not write backup")
-                }
-                _backupNotice.value = app.echo.android.model.backup.EchoBackupNotice.Exported
-            }.onFailure { error ->
-                _backupNotice.value = app.echo.android.model.backup.EchoBackupNotice.Failed(
-                    error.message ?: "Backup failed",
-                )
-            }
+            try { libraryMigration.export(uri); _backupNotice.value = app.echo.android.model.backup.EchoBackupNotice.Exported }
+            catch (error: kotlinx.coroutines.CancellationException) { throw error }
+            catch (error: Exception) { _backupNotice.value = app.echo.android.model.backup.EchoBackupNotice.Failed(error.message ?: "Backup failed") }
         }
     }
-
     fun importBackup(uri: Uri) {
+        tryTakePersistableReadPermission(getApplication<Application>(), uri)
         viewModelScope.launch {
-            runCatching {
-                val text = withContext(Dispatchers.IO) {
-                    getApplication<Application>().contentResolver.openInputStream(uri)
-                        ?.bufferedReader()
-                        ?.use { it.readText() }
-                } ?: error("Could not read backup")
-                val document = EchoBackupCodec.decode(text)
-                settingsStore.applyBackupSettings(document.settings)
-                val restored = libraryController.restoreBackupCatalog(document.playlists, document.favorites)
-                _backupNotice.value = app.echo.android.model.backup.EchoBackupNotice.Restored(restored)
-            }.onFailure { error ->
-                _backupNotice.value = app.echo.android.model.backup.EchoBackupNotice.Failed(
-                    (error as? EchoBackupException)?.message ?: error.message ?: "Restore failed",
-                )
-            }
+            try { libraryMigration.prepare(uri) }
+            catch (error: kotlinx.coroutines.CancellationException) { throw error }
+            catch (error: Exception) { _backupNotice.value = app.echo.android.model.backup.EchoBackupNotice.Failed(error.message ?: "Backup failed") }
+        }
+    }
+    fun applyMigrationBackup() {
+        viewModelScope.launch {
+            try { _backupNotice.value = app.echo.android.model.backup.EchoBackupNotice.Restored(libraryMigration.apply()) }
+            catch (error: kotlinx.coroutines.CancellationException) { throw error }
+            catch (error: Exception) { _backupNotice.value = app.echo.android.model.backup.EchoBackupNotice.Failed(error.message ?: "Restore failed") }
         }
     }
 
@@ -1176,6 +1172,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         updateSettings {
             setLockScreenLyricsEnabled(enabled)
         }
+    }
+
+    fun setLyricsOptions(value: app.echo.android.model.settings.EchoLyricsOptions) {
+        updateSettings { setLyricsOptions(value) }
     }
 
     fun setFloatingLyrics(value: app.echo.android.model.settings.EchoFloatingLyricsSettings) {
@@ -1535,6 +1535,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun setHomeLayout(value: app.echo.android.model.settings.EchoHomeLayout) {
+        updateSettings { setHomeLayout(value) }
+    }
+
     fun setUiDensityScale(value: Float) {
         updateSettings {
             setUiDensityScale(value)
@@ -1584,6 +1588,12 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun setLyricsWordHighlightEnabled(enabled: Boolean) {
         updateSettings {
             setLyricsWordHighlightEnabled(enabled)
+        }
+    }
+
+    fun setLyricsEstimatedWordHighlightEnabled(enabled: Boolean) {
+        updateSettings {
+            setLyricsEstimatedWordHighlightEnabled(enabled)
         }
     }
 
@@ -2078,10 +2088,9 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     override fun onCleared() {
         libraryController.clear()
-        lyricsController.clear()
+        // The Application owns loading; only dismiss this UI session's search.
+        lyricsController.cancelSearch()
         playbackController.clear()
-        lastFmController.clear()
-        listenBrainzController.clear()
         echoLinkLanBrowser.stop()
         lanRendererBrowser.stop()
         EchoSubsonicListen.startFromSurface()

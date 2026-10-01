@@ -244,6 +244,7 @@ internal fun TrackRow(
     modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val selection = LocalLibraryBatchSelection.current
     val dark = LocalEchoDarkTheme.current
     val subtitle = trackSubtitle(track)
     val duration = remember(track.durationMs) { formatDuration(track.durationMs) }
@@ -257,7 +258,8 @@ internal fun TrackRow(
 
     TrackContextMenu(
         track = track,
-        onPlay = onClick,
+        onPlay = { if (selection?.selected?.isNotEmpty() == true) selection.toggle(track) else onClick() },
+        onLongPress = selection?.let { { it.toggle(track) } },
         onUpdateTrackMetadata = onUpdateTrackMetadata,
         onImportLyrics = onImportLyrics,
         onPickArtwork = onPickArtwork,
@@ -289,11 +291,12 @@ internal fun TrackRow(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
+                if (selection?.selected?.isNotEmpty() == true) androidx.compose.material3.Checkbox(track.id in selection.selected, { selection.toggle(track) })
                 ArtworkTile(
                     track.artworkUri,
                     Modifier.size(52.dp),
                     accent = rememberLibraryArtworkAccent(),
-                    cornerRadius = 4.dp,
+                    cornerRadius = 6.dp,
                     elevation = 0.dp,
                 )
                 Column(
@@ -305,7 +308,7 @@ internal fun TrackRow(
                         color = if (dark) Color.White.copy(alpha = 0.98f) else scheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Text(
@@ -374,6 +377,7 @@ private enum class TrackSheetMode {
 internal fun TrackContextMenu(
     track: EchoTrack,
     onPlay: () -> Unit,
+    onLongPress: (() -> Unit)? = null,
     onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
@@ -408,7 +412,7 @@ internal fun TrackContextMenu(
     Box(modifier = modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) {
-                content(Modifier.echoCombinedClickable(onClick = onPlay, onLongClick = { sheetMode = TrackSheetMode.Actions }))
+                content(Modifier.echoCombinedClickable(onClick = onPlay, onLongClick = { if (onLongPress != null) onLongPress() else sheetMode = TrackSheetMode.Actions }))
             }
             if (onPlayOnPc != null) IconButton(onClick = onPlayOnPc) {
                 Icon(
