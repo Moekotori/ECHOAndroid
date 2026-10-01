@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="player_appearance_title">Apariencia de la página</string>
-    <string name="player_appearance_detail">Los cambios se muestran al instante y se guardan al terminar el ajuste.</string>
+    <string name="player_appearance_title">Estilo de canción y letra</string>
+    <string name="player_appearance_detail">Un mismo estilo para los detalles de la canción y la letra. Se guarda automáticamente.</string>
     <string name="player_appearance_reset">Restablecer</string>
     <string name="player_appearance_record_sleeve">Funda de disco</string>
     <string name="player_appearance_classic">Inmersivo</string>

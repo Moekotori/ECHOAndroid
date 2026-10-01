@@ -36,7 +36,7 @@
     <string name="echo_link_tap_to_pair">Tap to pair</string>
     <string name="artist_album_count">%1$d albums</string>
     <string name="playback_widget_name">ECHO playback</string>
-    <string name="playback_widget_description">Play, pause, and skip the current track from the home screen</string>
+    <string name="playback_widget_description">Play, pause, and skip from the home screen or supported lock screens</string>
     <string name="playback_widget_preview_title">ECHO Mobile</string>
     <string name="qs_tile_play_pause">ECHO play/pause</string>
     <string name="qs_tile_playing">Playing</string>

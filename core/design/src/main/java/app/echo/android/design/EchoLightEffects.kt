@@ -46,17 +46,19 @@ fun Modifier.echoEdgeLight(
     cornerRadius: Dp,
     drawEdge: Boolean = true,
 ): Modifier = composed {
-    val pressed by interactionSource.collectIsPressedAsState()
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    // Do not install collectors, animation state or gradient caches in the reduced mode.
+    if (lightweight) return@composed Modifier
+    val pressed by interactionSource.collectIsPressedAsState()
     var pressPosition by remember(interactionSource) { mutableStateOf(Offset.Unspecified) }
-    LaunchedEffect(interactionSource, lightweight) {
-        if (!lightweight) interactionSource.interactions.collect { interaction ->
+    LaunchedEffect(interactionSource) {
+        interactionSource.interactions.collect { interaction ->
             if (interaction is PressInteraction.Press) pressPosition = interaction.pressPosition
         }
     }
     val light = animateFloatAsState(
-        if (pressed && !lightweight) 1f else 0f,
-        tween(if (lightweight) 0 else if (pressed) 100 else 340, easing = EchoMotion.Silk),
+        if (pressed) 1f else 0f,
+        tween(if (pressed) 100 else 340, easing = EchoMotion.Silk),
         label = "edge-light",
     )
     drawWithCache {

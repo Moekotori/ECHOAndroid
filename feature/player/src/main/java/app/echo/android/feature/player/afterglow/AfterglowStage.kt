@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFontFamilyResolver
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
@@ -49,6 +50,7 @@ internal fun AfterglowStage(
     val budget = AfterglowBudget.forMode(LocalEchoEffectivePerformanceMode.current)
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
     val renderActive = visible && lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
+    val windowFocused = LocalWindowInfo.current.isWindowFocused
     val motion = budget.glyphMotion && motionMode != "calm"
     val result by produceState<AfterglowPlanResult?>(null, lyrics, durationMs) {
         value = null
@@ -69,7 +71,7 @@ internal fun AfterglowStage(
     var chosenScene by rememberSaveable(style) { mutableStateOf<String?>(null) }
     val palette = AfterglowPalette.forStyle(style, variant)
     LaunchedEffect(palette) { onStagePalette(palette) }
-    val clock = rememberAfterglowPosition(hostPosition, trackKey, playing, speed, visible,
+    val clock = rememberAfterglowPosition(hostPosition, trackKey, playing, speed, renderActive && windowFocused,
         if (plan != null && textFits && (motion || wordHighlight && budget.glyphMotion && timedInk)) budget.framesPerSecond else 0)
     val index by remember(plan, clock, lyrics.offsetMs) {
         derivedStateOf(structuralEqualityPolicy()) { plan?.indexAt(clock.value + lyrics.offsetMs) ?: -1 }

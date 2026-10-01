@@ -3,23 +3,17 @@ package app.echo.android.feature.player
 import app.echo.android.feature.player.R as L10nR
 import androidx.compose.ui.res.stringResource
 
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import app.echo.android.design.echoClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -31,9 +25,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -52,10 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.lifecycle.Lifecycle
@@ -66,17 +55,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoPlayerArtwork
-import app.echo.android.design.echoAccentColor
+import app.echo.android.design.echoChromeColors
 import app.echo.android.design.EchoMotion
-import app.echo.android.design.echoEdgeLight
-import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.design.progressFraction
-import app.echo.android.design.echoTheme
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.PlaybackPositionState
@@ -104,16 +89,16 @@ fun MiniPlayer(
     onNext: (() -> Unit)? = null,
     onPrevious: (() -> Unit)? = null,
     animationsVisible: Boolean = true,
+    dockExpansion: State<Float>? = null,
 ) {
     val scope = rememberCoroutineScope()
     val haptics = rememberEchoHapticPerformer()
-    val scheme = MaterialTheme.colorScheme
-    val theme = echoTheme()
-    val dark = LocalEchoDarkTheme.current
+    val chrome = echoChromeColors()
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
-    val marqueeActive = animationsVisible && status.isPlaying && !lightweight &&
+    val motionEnabled = animationsVisible &&
         LocalWindowInfo.current.isWindowFocused && lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
+    val marqueeActive = motionEnabled && status.isPlaying && !lightweight
     val dragOffset = remember { mutableFloatStateOf(0f) }
     var settleJob by remember { mutableStateOf<Job?>(null) }
     val trackEntrance = remember { Animatable(1f) }
@@ -134,12 +119,21 @@ fun MiniPlayer(
     val compactDock = onShowDock != null || onOpenQueue != null
     val progressAlpha = animateFloatAsState(
         targetValue = if (activeDurationMs > 0L) 1f else 0.42f,
-        animationSpec = tween(durationMillis = miniPlayerMotionDuration(220, lightweight), easing = MiniPlayerMotionEasing),
+        animationSpec = if (!motionEnabled) snap() else tween(durationMillis = miniPlayerMotionDuration(220, lightweight), easing = MiniPlayerMotionEasing),
         label = "mini-player-progress-alpha",
     )
     val playbackDescription = stringResource(L10nR.string.feature_player_play_or_pause_37a70f)
-    LaunchedEffect(status.track?.id, lightweight) {
-        if (lightweight) {
+    LaunchedEffect(motionEnabled) {
+        if (!motionEnabled) {
+            settleJob?.cancel()
+            dragOffset.floatValue = 0f
+        }
+    }
+    var previousTrackId by remember { mutableStateOf(status.track?.id) }
+    LaunchedEffect(status.track?.id, lightweight, motionEnabled) {
+        val changed = previousTrackId != status.track?.id
+        previousTrackId = status.track?.id
+        if (!changed || lightweight || !motionEnabled) {
             trackEntrance.snapTo(1f)
             return@LaunchedEffect
         }
@@ -152,18 +146,24 @@ fun MiniPlayer(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = 64.dp)
-            .padding(
-                start = 16.dp,
-                top = 6.dp,
-                end = 8.dp,
-                bottom = 0.dp,
-            ),
+            .defaultMinSize(minHeight = 64.dp),
     ) {
+        LinearProgressIndicator(
+            // Read progress during drawing; ticks do not rebuild the playback row.
+            progress = {
+                val positionMs = positionState?.value?.positionMs ?: statusState.value.positionMs
+                progressFraction(positionMs, activeDurationMs)
+            },
+            modifier = Modifier.fillMaxWidth().height(1.dp)
+                .graphicsLayer { alpha = progressAlpha.value },
+            color = chrome.secondary,
+            trackColor = chrome.separator,
+            gapSize = 0.dp,
+            drawStopIndicator = {},
+        )
         Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Box(
                 modifier = Modifier.weight(1f)
@@ -175,9 +175,9 @@ fun MiniPlayer(
                     modifier = Modifier.fillMaxWidth()
                         .graphicsLayer {
                             translationX = dragOffset.floatValue
-                            alpha = (0.65f + 0.35f * trackEntrance.value) *
+                            alpha = (0.82f + 0.18f * trackEntrance.value) *
                                 (1f - 0.55f * (abs(dragOffset.floatValue) / (widthPx * MiniPlayerSwipeCommitFraction)).coerceIn(0f, 1f))
-                            translationY = (1f - trackEntrance.value) * 4.dp.toPx()
+                            translationY = (1f - trackEntrance.value) * 2.dp.toPx()
                         }
                         .clip(RoundedCornerShape(12.dp))
                         .echoClickable(enabled = onExpand != null) { onExpand?.invoke() }
@@ -212,14 +212,15 @@ fun MiniPlayer(
                             },
                         ),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     EchoPlayerArtwork(
                         artworkUri = status.track?.artworkUri,
                         trackId = status.track?.id,
                         expandedArtwork = false,
+                        restingCornerRadius = 8.dp,
                         contentDescription = null,
-                        modifier = Modifier.size(44.dp),
+                        modifier = Modifier.size(40.dp),
                     )
                     Column(
                         modifier = Modifier.weight(1f),
@@ -234,16 +235,16 @@ fun MiniPlayer(
                             ),
                             maxLines = 1,
                             overflow = if (marqueeActive) TextOverflow.Clip else TextOverflow.Ellipsis,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (dark) Color.White.copy(alpha = 0.96f) else scheme.onSurface,
+                            fontWeight = FontWeight.Medium,
+                            color = chrome.content,
                             style = MaterialTheme.typography.titleSmall,
                         )
                         Text(
                             status.track?.artist ?: stringResource(L10nR.string.feature_player_ready_97b946),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            color = if (dark) Color.White.copy(alpha = 0.60f) else scheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.labelMedium,
+                            color = chrome.secondary,
+                            style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Normal,
                         )
                     }
@@ -262,6 +263,7 @@ fun MiniPlayer(
                     .semantics { contentDescription = playbackDescription }
                     .clip(RoundedCornerShape(12.dp))
                     .miniPlayerPress(
+                        motionEnabled = motionEnabled,
                         enabled = status.state != EchoPlaybackState.Idle || status.track != null,
                         onClick = {
                             haptics.confirm()
@@ -270,22 +272,14 @@ fun MiniPlayer(
                     ),
                 contentAlignment = Alignment.Center,
             ) {
-                Crossfade(targetState = status.isPlaying, animationSpec = tween(miniPlayerMotionDuration(140, lightweight)), modifier = Modifier.size(28.dp), label = "mini-play-pause") { playing ->
-                    Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = if (playing) PlayerControlIcons.Pause else PlayerControlIcons.Play,
-                            contentDescription = null,
-                            tint = if (dark) theme.accent else scheme.primary,
-                            modifier = Modifier.size(28.dp),
-                        )
-                    }
-                }
+                MiniPlayerPlayPauseIcon(status.isPlaying, motionEnabled)
             }
             if (onOpenQueue != null) {
                 MiniPlayerActionButton(
                     icon = PlayerControlIcons.Queue,
                     description = stringResource(L10nR.string.feature_player_queue_37fa6a),
                     onClick = onOpenQueue,
+                    motionEnabled = motionEnabled,
                 )
             }
             if (onShowDock != null || onHideDock != null) {
@@ -294,86 +288,10 @@ fun MiniPlayer(
                     description = stringResource(if (onShowDock != null) L10nR.string.feature_player_show_bottom_bar_bf2549 else L10nR.string.feature_player_hide_bottom_bar_e918c8),
                     onClick = { (onShowDock ?: onHideDock)?.invoke() },
                     rotation = if (onShowDock != null) 180f else 0f,
+                    motionEnabled = motionEnabled,
+                    dockExpansion = dockExpansion,
                 )
             }
         }
-        LinearProgressIndicator(
-            // Read progress during drawing; ticks do not rebuild the playback row.
-            progress = {
-                val positionMs = positionState?.value?.positionMs ?: statusState.value.positionMs
-                progressFraction(positionMs, activeDurationMs)
-            },
-            modifier = Modifier.fillMaxWidth().padding(end = 8.dp).height(2.dp)
-                .graphicsLayer { alpha = progressAlpha.value },
-            color = scheme.primary,
-            trackColor = scheme.outlineVariant.copy(alpha = 0.65f),
-            gapSize = 0.dp,
-            drawStopIndicator = {},
-        )
-    }
-}
-
-private fun miniPlayerMotionDuration(defaultMs: Int, lightweight: Boolean): Int =
-    if (lightweight) (defaultMs * 0.48f).toInt().coerceIn(90, defaultMs) else defaultMs
-
-@Composable
-private fun MiniPlayerActionButton(
-    icon: ImageVector,
-    description: String,
-    onClick: () -> Unit,
-    rotation: Float = 0f,
-) {
-    val scheme = MaterialTheme.colorScheme
-    val dark = LocalEchoDarkTheme.current
-    val iconRotation = animateFloatAsState(
-        targetValue = rotation,
-        animationSpec = tween(miniPlayerMotionDuration(220, LocalEchoEffectivePerformanceMode.current.isLightweight), easing = MiniPlayerMotionEasing),
-        label = "mini-dock-chevron",
-    )
-    val tint by animateColorAsState(
-        targetValue = if (dark) Color.White.copy(alpha = 0.76f) else scheme.onSurfaceVariant,
-        animationSpec = tween(durationMillis = 180, easing = MiniPlayerMotionEasing),
-        label = "mini-player-action-tint",
-    )
-    Box(
-        modifier = Modifier
-            .size(48.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .miniPlayerPress(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = description,
-            tint = tint,
-            modifier = Modifier.size(22.dp).graphicsLayer { rotationZ = iconRotation.value },
-        )
-    }
-}
-
-/** Animate only the visual layer; the 48 dp hit target and button semantics stay intact. */
-@Composable
-private fun Modifier.miniPlayerPress(
-    enabled: Boolean = true,
-    onClick: () -> Unit,
-): Modifier {
-    val source = remember { MutableInteractionSource() }
-    val pressed by source.collectIsPressedAsState()
-    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
-    val scale = animateFloatAsState(
-        targetValue = if (pressed && !lightweight) 0.88f else 1f,
-        animationSpec = tween(if (pressed) 80 else 180, easing = MiniPlayerMotionEasing),
-        label = "mini-control-press",
-    )
-    return echoEdgeLight(source, echoTheme().accent, 12.dp, drawEdge = false).clickable(
-        interactionSource = source,
-        indication = null,
-        enabled = enabled,
-        role = Role.Button,
-        onClick = onClick,
-    ).graphicsLayer {
-        scaleX = scale.value
-        scaleY = scale.value
-        alpha = if (!enabled) 0.38f else if (pressed) 0.70f else 1f
     }
 }

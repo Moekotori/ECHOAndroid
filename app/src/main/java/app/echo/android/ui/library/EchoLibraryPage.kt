@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.collectAsLazyPagingItems
 import app.echo.android.EchoAndroidViewModel
+import app.echo.android.EchoLinkPlaybackRouter
 import app.echo.android.connect.EchoRemoteClient
 import app.echo.android.data.EchoAppSettings
 import app.echo.android.feature.library.LibraryScreen
@@ -35,6 +36,7 @@ import app.echo.android.model.library.LibraryOfflinePolicy
 internal fun EchoLibraryPage(
     viewModel: EchoAndroidViewModel,
     remoteClient: EchoRemoteClient,
+    playbackRouter: EchoLinkPlaybackRouter,
     remoteStatus: EchoRemoteStatus,
     appSettings: EchoAppSettings,
     hasAudioPermission: Boolean,
@@ -45,7 +47,7 @@ internal fun EchoLibraryPage(
     selectedPlaylist: EchoPlaylist?,
     onRequestPermission: () -> Unit,
     onScanFolder: (LibraryScanOptions) -> Unit,
-    onScanAll: (LibraryScanOptions) -> Unit,
+    onAddMusic: () -> Unit,
     onImportLyricsForTrack: (EchoTrack) -> Unit,
     onPickTrackArtwork: (EchoTrack) -> Unit,
     onOpenAlbum: (AlbumSummary) -> Unit,
@@ -270,9 +272,7 @@ internal fun EchoLibraryPage(
             onAlbumSortModeChange = viewModel::updateLibraryAlbumSortMode,
             onArtistSortModeChange = viewModel::updateLibraryArtistSortMode,
             onFolderSortModeChange = viewModel::updateLibraryFolderSortMode,
-            onScanFolder = onScanFolder,
-            onScanAll = onScanAll,
-            initialScanOptions = appSettings.libraryScanOptions,
+            onAddMusic = onAddMusic,
             onCancelScan = viewModel::cancelScan,
             onRefreshLinkedLibrary = { query -> remoteClient.refreshLibrary(query) },
             onLoadMoreLinkedTracks = remoteClient::loadMoreTracks,
@@ -286,7 +286,7 @@ internal fun EchoLibraryPage(
                     tracks = listOf(track),
                     startIndex = 0,
                     viewModel = viewModel,
-                    remoteClient = remoteClient,
+                    playbackRouter = playbackRouter,
                 )
             },
             onPlayLinkedQueue = { tracks, startIndex ->
@@ -294,10 +294,11 @@ internal fun EchoLibraryPage(
                     tracks = tracks,
                     startIndex = startIndex,
                     viewModel = viewModel,
-                    remoteClient = remoteClient,
+                    playbackRouter = playbackRouter,
                 )
             },
             onPlayLinkedQueueOnPc = { tracks, startIndex ->
+                playbackRouter.selectRemoteMode(true)
                 remoteClient.playQueueOnPc(tracks, startIndex)
             },
             onPlayTrack = { track, origin -> viewModel.playFromLibrary(track, origin) },
@@ -397,12 +398,12 @@ private fun playLinkedEchoTracks(
     tracks: List<EchoRemoteTrack>,
     startIndex: Int,
     viewModel: EchoAndroidViewModel,
-    remoteClient: EchoRemoteClient,
+    playbackRouter: EchoLinkPlaybackRouter,
 ) {
-    remoteClient.playTracksOnPhone(
+    playbackRouter.play(
         tracks = tracks,
         startIndex = startIndex,
-        onQueueReady = viewModel::playQueue,
-        onLyricsReady = viewModel::setEchoLinkLyrics,
+        onPhoneQueueReady = viewModel::playQueue,
+        onPhoneLyricsReady = viewModel::setEchoLinkLyrics,
     )
 }

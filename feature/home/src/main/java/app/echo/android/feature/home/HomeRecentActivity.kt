@@ -214,7 +214,7 @@ private fun SingleRecentAlbum(album: AlbumSummary, onOpen: (AlbumSummary) -> Uni
             accent = echoAccentColor(), cornerRadius = 4.dp, elevation = 0.dp)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(album.title, style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Medium,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(album.albumArtist ?: album.artist ?: stringResource(L10nR.string.feature_home_unknown_artist_85ee30),
                 style = MaterialTheme.typography.bodyMedium, color = homeBodyColor(),

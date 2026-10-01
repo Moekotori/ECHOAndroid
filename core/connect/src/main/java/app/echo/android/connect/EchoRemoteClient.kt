@@ -950,6 +950,13 @@ class EchoRemoteClient internal constructor(
         )
     }
 
+    /** Invalidate an in-flight stream resolve without disconnecting or clearing the PC library. */
+    fun cancelPhonePlaybackRequest() {
+        playOnPhoneGeneration += 1
+        phonePlaybackJob?.cancel()
+        phonePlaybackJob = null
+    }
+
     fun playTracksOnPhone(
         tracks: List<EchoRemoteTrack>,
         startIndex: Int,

@@ -1,0 +1,35 @@
+<resources>
+    <string name="signal_value_range">范围：%1$s–%2$s %3$s</string>
+    <string name="signal_about_control">关于%1$s</string>
+    <string name="signal_close_help">知道了</string>
+    <string name="signal_stereo_controls">立体声调整</string>
+    <string name="signal_input">输入</string>
+    <string name="signal_output">输出</string>
+    <string name="signal_routing_preview">显示已配置的声道映射。声像、增益、极性和音色在单声道映射前处理，延迟在其后处理。图示用于预览，不是实时信号监测。</string>
+    <string name="signal_stereo">立体声</string>
+    <string name="signal_mono_sum">合并左右</string>
+    <string name="signal_left_only">仅左</string>
+    <string name="signal_right_only">仅右</string>
+    <string name="signal_pan_law_short">曲线</string>
+    <string name="signal_polarity_short">极性</string>
+    <string name="signal_tone_short">音色</string>
+    <string name="signal_delay_short">延迟</string>
+    <string name="signal_constant_power">恒定功率</string>
+    <string name="signal_linear_pan">线性衰减</string>
+    <string name="signal_preset_while_off">已关闭 · 开启后应用参数</string>
+    <string name="signal_reset_section">复位此项</string>
+    <string name="signal_dsp_enabled_count">%1$d / 3 项已开启</string>
+    <string name="signal_reset_dsp">重置 DSP</string>
+    <string name="signal_crossfeed_summary">混合 %1$s%% · 立体声耳机</string>
+    <string name="signal_loudness_tag">响度标签</string>
+    <string name="signal_no_loudness_tag">暂无数据</string>
+    <string name="signal_analyzing_loudness">正在分析曲目响度…</string>
+    <string name="signal_scan_local_only">请选择本地曲目后再分析响度。</string>
+    <string name="signal_scan_unsupported">此文件格式不支持写入 ReplayGain 标签。</string>
+    <string name="signal_scan_decode_failed">无法解码此曲目，请确认本地文件可以正常播放。</string>
+    <string name="signal_scan_write_failed">响度标签未能保存，请检查文件写入权限后重试。</string>
+    <string name="signal_scan_select_track">先选择本地曲目，再分析并保存响度标签。</string>
+    <string name="signal_constant_power_note">以曲线控制左右衰减，居中时两侧各为 0 dB。</string>
+    <string name="signal_bypass_locked">bit-perfect · 参数锁定</string>
+    <string name="signal_bypass_detail">USB bit-perfect 模式已启用，请退出该模式后调整声道和 DSP。</string>
+</resources>

@@ -4,6 +4,7 @@ import androidx.compose.foundation.MutatePriority
 import androidx.compose.foundation.gestures.DragScope
 import androidx.compose.foundation.gestures.DraggableState
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.ScrollScope
 import androidx.compose.foundation.gestures.TargetedFlingBehavior
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.pager.PagerState
@@ -29,11 +30,7 @@ internal fun rememberDockSwipeModifier(
                 val pageSize = pager.layoutInfo.pageSize.toFloat()
                 if (pageSize <= 0f) return 0f
                 val position = pager.currentPage + pager.currentPageOffsetFraction
-                val target = (position - pixels / tabWidth[0]).coerceIn(
-                    EchoPagerPage.Now.ordinal.toFloat(),
-                    EchoPagerPage.Diagnostics.ordinal.toFloat(),
-                )
-                return (target - position) * pageSize
+                return boundedDockScrollDelta(position, -pixels * pageSize / tabWidth[0], pageSize)
             }
 
             override suspend fun drag(
@@ -61,12 +58,29 @@ internal fun rememberDockSwipeModifier(
             state = state,
             orientation = Orientation.Horizontal,
             reverseDirection = rtl,
+            startDragImmediately = pager.isScrollInProgress,
             onDragStopped = { velocity ->
                 val pageSize = pager.layoutInfo.pageSize.toFloat().coerceAtLeast(1f)
                 val pageVelocity = -velocity * pageSize / tabWidth[0]
                 pager.scroll {
-                    with(flingBehavior) { performFling(pageVelocity) }
+                    val pagerScope = this
+                    // Fling shares the same bounds as dragging, including the Settings edge.
+                    val boundedScope = object : ScrollScope {
+                        override fun scrollBy(pixels: Float): Float {
+                            val position = pager.currentPage + pager.currentPageOffsetFraction
+                            return pagerScope.scrollBy(boundedDockScrollDelta(position, pixels, pageSize))
+                        }
+                    }
+                    with(flingBehavior) { boundedScope.performFling(pageVelocity) }
                 }
             },
         )
+}
+
+internal fun boundedDockScrollDelta(position: Float, pixels: Float, pageSize: Float): Float {
+    if (pageSize <= 0f) return 0f
+    val target = (position + pixels / pageSize).coerceIn(
+        EchoPagerPage.Now.ordinal.toFloat(), EchoPagerPage.Diagnostics.ordinal.toFloat(),
+    )
+    return (target - position) * pageSize
 }

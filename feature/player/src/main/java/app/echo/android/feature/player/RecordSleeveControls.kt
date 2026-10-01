@@ -17,7 +17,7 @@ import androidx.compose.material.icons.automirrored.outlined.QueueMusic
 import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.RepeatOne
 import androidx.compose.material.icons.outlined.Shuffle
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -44,6 +44,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.echo.android.design.drawEchoControlRail
+import app.echo.android.design.drawEchoControlThumb
 import app.echo.android.design.formatDuration
 import app.echo.android.design.progressFraction
 import app.echo.android.design.rememberEchoHapticPerformer
@@ -69,21 +71,21 @@ internal fun RecordSleeveTransport(
     ) {
         RecordSleeveIconButton(
             Icons.Outlined.Shuffle, stringResource(R.string.feature_player_shuffle),
-            onClick = onToggleShuffle, selected = shuffleEnabled,
+            onClick = onToggleShuffle, selected = shuffleEnabled, iconSize = 20.dp,
         )
         RecordSleeveIconButton(
             PlayerControlIcons.Previous, stringResource(R.string.feature_player_previous_af0264),
-            onClick = { haptics.tick(); onPrevious() }, iconSize = 34.dp,
+            onClick = { haptics.tick(); onPrevious() }, iconSize = 28.dp,
         )
         PlayerControlButton(
             icon = if (isPlaying) PlayerControlIcons.Pause else PlayerControlIcons.Play,
             description = stringResource(R.string.feature_player_play_or_pause_37a70f),
             onClick = { haptics.confirm(); onPlayPause() },
-            touchSize = 64.dp, iconSize = 40.dp, tint = RecordSleeveStyle.Wine,
+            touchSize = 64.dp, iconSize = 48.dp, tint = RecordSleeveStyle.Wine,
         )
         RecordSleeveIconButton(
             PlayerControlIcons.Next, stringResource(R.string.feature_player_next_d67904),
-            onClick = { haptics.tick(); onNext() }, iconSize = 34.dp,
+            onClick = { haptics.tick(); onNext() }, iconSize = 28.dp,
         )
         RecordSleeveIconButton(
             if (repeatMode == EchoRepeatMode.One) Icons.Outlined.RepeatOne else Icons.Outlined.Repeat,
@@ -92,7 +94,7 @@ internal fun RecordSleeveTransport(
                 EchoRepeatMode.All -> R.string.feature_player_repeat_all_751078
                 EchoRepeatMode.One -> R.string.feature_player_repeat_one_3df94f
             }),
-            onClick = onCycleRepeatMode, selected = repeatMode != EchoRepeatMode.Off,
+            onClick = onCycleRepeatMode, selected = repeatMode != EchoRepeatMode.Off, iconSize = 20.dp,
         )
     }
 }
@@ -106,13 +108,13 @@ internal fun RecordSleeveUtilities(onOpenQueue: () -> Unit, onCast: (() -> Unit)
     ) {
         RecordSleeveIconButton(
             Icons.AutoMirrored.Outlined.QueueMusic, stringResource(R.string.feature_player_queue_37fa6a),
-            onClick = onOpenQueue,
+            onClick = onOpenQueue, iconSize = 20.dp,
         )
         if (onCast != null) {
             RecordSleeveIconButton(
                 PlayerControlIcons.Cast,
                 stringResource(if (castActive) R.string.feature_player_cast_active else R.string.feature_player_cast),
-                onClick = onCast, selected = castActive,
+                onClick = onCast, selected = castActive, iconSize = 22.dp,
             )
         }
     }
@@ -134,7 +136,7 @@ internal fun RecordSleeveIconButton(
         modifier = modifier.size(48.dp).semantics { selected?.let { this.selected = it } },
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
+            EchoIcon(
                 icon, contentDescription = description,
                 tint = RecordSleeveStyle.Wine.copy(alpha = if (enabled) 1f else 0.38f),
                 modifier = Modifier.size(iconSize),
@@ -169,6 +171,7 @@ internal fun RecordSleeveScrubber(
         RecordSleeveSeekBar(
             trackKey = trackKey,
             fraction = shown,
+            engaged = scrubFraction != null,
             enabled = duration > 0,
             onPreview = { scrubFraction = it },
             onCommit = {
@@ -191,6 +194,7 @@ internal fun RecordSleeveScrubber(
 private fun RecordSleeveSeekBar(
     trackKey: String?,
     fraction: Float,
+    engaged: Boolean,
     enabled: Boolean,
     onPreview: (Float) -> Unit,
     onCommit: (Float) -> Unit,
@@ -199,7 +203,8 @@ private fun RecordSleeveSeekBar(
     val preview by rememberUpdatedState(onPreview)
     val commit by rememberUpdatedState(onCommit)
     val cancel by rememberUpdatedState(onCancel)
-    Canvas(Modifier.fillMaxWidth().height(32.dp)
+    val face = RecordSleeveStyle.Paper
+    Canvas(Modifier.fillMaxWidth().height(48.dp)
         .semantics {
             progressBarRangeInfo = ProgressBarRangeInfo(fraction.coerceIn(0f, 1f), 0f..1f)
             if (!enabled) disabled()
@@ -210,7 +215,7 @@ private fun RecordSleeveSeekBar(
         }
         .pointerInput(trackKey, enabled) {
             if (enabled) detectTapGestures {
-                commit((it.x / size.width.coerceAtLeast(1)).coerceIn(0f, 1f))
+                commit(((it.x - 12.dp.toPx()) / (size.width - 24.dp.toPx()).coerceAtLeast(1f)).coerceIn(0f, 1f))
             }
         }
         .pointerInput(trackKey, enabled) {
@@ -218,12 +223,12 @@ private fun RecordSleeveSeekBar(
                 var target = 0f
                 detectHorizontalDragGestures(
                     onDragStart = {
-                        target = (it.x / size.width.coerceAtLeast(1)).coerceIn(0f, 1f)
+                        target = ((it.x - 12.dp.toPx()) / (size.width - 24.dp.toPx()).coerceAtLeast(1f)).coerceIn(0f, 1f)
                         preview(target)
                     },
                     onHorizontalDrag = { change, _ ->
                         change.consume()
-                        target = (change.position.x / size.width.coerceAtLeast(1)).coerceIn(0f, 1f)
+                        target = ((change.position.x - 12.dp.toPx()) / (size.width - 24.dp.toPx()).coerceAtLeast(1f)).coerceIn(0f, 1f)
                         preview(target)
                     },
                     onDragEnd = { commit(target) },
@@ -231,10 +236,12 @@ private fun RecordSleeveSeekBar(
                 )
             }
         }) {
-        val x = size.width * fraction.coerceIn(0f, 1f)
-        val wine = if (enabled) RecordSleeveStyle.Wine else RecordSleeveStyle.Track
-        drawLine(RecordSleeveStyle.Track, Offset(0f, center.y), Offset(size.width, center.y), 1.5.dp.toPx(), StrokeCap.Round)
-        drawLine(wine, Offset(0f, center.y), Offset(x, center.y), 1.5.dp.toPx(), StrokeCap.Round)
-        drawCircle(wine, 5.dp.toPx(), Offset(x, center.y))
+        val inset = 12.dp.toPx().coerceAtMost(size.width / 2f)
+        val left = Offset(inset, center.y)
+        val right = Offset(size.width - inset, center.y)
+        val thumb = Offset(inset + (size.width - inset * 2f) * fraction.coerceIn(0f, 1f), center.y)
+        val accent = if (enabled) RecordSleeveStyle.Wine else RecordSleeveStyle.Track
+        drawEchoControlRail(left, right, left, thumb, accent, RecordSleeveStyle.Track)
+        drawEchoControlThumb(thumb, accent, face, engaged, enabled)
     }
 }

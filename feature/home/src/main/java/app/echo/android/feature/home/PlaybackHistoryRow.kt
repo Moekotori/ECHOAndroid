@@ -1,5 +1,7 @@
 package app.echo.android.feature.home
 
+import app.echo.android.design.EchoIcon
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -52,13 +54,13 @@ internal fun PlaybackHistoryRow(
                 shape = RoundedCornerShape(6.dp), sizeClass = EchoArtworkSize.Thumbnail)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(entry.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 2,
+                Text(entry.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium, maxLines = 2,
                     overflow = TextOverflow.Ellipsis)
                 Text(listOfNotNull(entry.artist.takeIf { it.isNotBlank() }, entry.album?.takeIf { it.isNotBlank() })
                     .joinToString(" · "), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (entry.canReplay) Icon(Icons.Rounded.Headphones, null, Modifier.size(11.dp),
+                    if (entry.canReplay) EchoIcon(Icons.Rounded.Headphones, null, Modifier.size(11.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(if (entry.canReplay) stringResource(R.string.playback_history_listened, historyDuration(entry.listenedMs))
                         else stringResource(R.string.playback_history_unavailable), style = MaterialTheme.typography.labelSmall,
@@ -68,12 +70,12 @@ internal fun PlaybackHistoryRow(
         }
         Box {
             IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(40.dp)) {
-                Icon(Icons.Rounded.MoreHoriz, stringResource(R.string.playback_history_more),
+                EchoIcon(Icons.Rounded.MoreHoriz, stringResource(R.string.playback_history_more),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
             }
             DropdownMenu(menuOpen, onDismissRequest = { menuOpen = false }) {
                 DropdownMenuItem(text = { Text(stringResource(R.string.playback_history_delete)) },
-                    leadingIcon = { Icon(Icons.Rounded.DeleteOutline, null) },
+                    leadingIcon = { EchoIcon(Icons.Rounded.DeleteOutline, null) },
                     onClick = { menuOpen = false; onDelete() })
             }
         }

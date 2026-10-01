@@ -1,5 +1,7 @@
 package app.echo.android.feature.library
 
+import app.echo.android.design.EchoIcon
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.material3.*
@@ -206,14 +208,14 @@ private fun ArtistTrackTools(query: String, sort: LibraryTrackSortMode, onQueryC
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedTextField(value = query, onValueChange = onQueryChange,
             placeholder = { Text(stringResource(L10nR.string.artist_search_tracks), style = MaterialTheme.typography.bodyMedium) },
-            leadingIcon = { Icon(Icons.Rounded.Search, null, modifier = Modifier.size(20.dp)) },
+            leadingIcon = { EchoIcon(Icons.Rounded.Search, null, modifier = Modifier.size(20.dp)) },
             trailingIcon = { if (query.isNotEmpty()) IconButton(onClick = { onQueryChange("") }) {
-                Icon(Icons.Rounded.Close, stringResource(L10nR.string.artist_clear_search))
+                EchoIcon(Icons.Rounded.Close, stringResource(L10nR.string.artist_clear_search))
             } },
             singleLine = true, shape = RoundedCornerShape(18.dp), modifier = Modifier.weight(1f),
             colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .4f)))
         Box {
-            IconButton(onClick = { showSort = true }) { Icon(Icons.AutoMirrored.Rounded.Sort, stringResource(L10nR.string.artist_sort_tracks)) }
+            IconButton(onClick = { showSort = true }) { EchoIcon(Icons.AutoMirrored.Rounded.Sort, stringResource(L10nR.string.artist_sort_tracks)) }
             DropdownMenu(expanded = showSort, onDismissRequest = { showSort = false }) {
                 listOf(LibraryTrackSortMode.Album, LibraryTrackSortMode.Title, LibraryTrackSortMode.Duration).forEach { mode ->
                     DropdownMenuItem(text = { Text(stringResource(when (mode) {

@@ -48,6 +48,7 @@ class EchoLinkSession(private val application: Application) {
         },
     )
     val client = EchoRemoteClient(scope, application).apply { setForeground(false) }
+    val playbackRouter = EchoLinkPlaybackRouter(client)
     private val castPeerHost = AtomicReference<String?>(null)
     val castServer = EchoLinkCastServer(
         openBody = EchoLinkCastMediaOpener(application.contentResolver),

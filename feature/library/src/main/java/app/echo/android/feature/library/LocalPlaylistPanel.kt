@@ -28,7 +28,7 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -284,7 +284,7 @@ private fun LocalPlaylistHeader(
             Text(stringResource(L10nR.string.feature_library_import_m3u_2b9c10))
         }
         TextButton(onClick = onCreatePlaylist) {
-            Icon(Icons.Rounded.Add, contentDescription = null, Modifier.size(18.dp))
+            EchoIcon(Icons.Rounded.Add, contentDescription = null, Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
             Text(stringResource(L10nR.string.feature_library_new_playlist_22cdbd))
         }
@@ -312,11 +312,11 @@ private fun LocalPlaylistRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         androidx.compose.material3.IconButton(onClick = onPlay) {
-            Icon(Icons.Rounded.PlayArrow, contentDescription = stringResource(L10nR.string.feature_library_play_38419a))
+            EchoIcon(Icons.Rounded.PlayArrow, contentDescription = stringResource(L10nR.string.feature_library_play_38419a))
         }
         Box {
             androidx.compose.material3.IconButton(onClick = { menuOpen = true }) {
-                Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(L10nR.string.library_playlist_actions))
+                EchoIcon(Icons.Rounded.MoreVert, contentDescription = stringResource(L10nR.string.library_playlist_actions))
             }
             androidx.compose.material3.DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 if (playlist.isCustomSmartPlaylist) androidx.compose.material3.DropdownMenuItem(
@@ -353,7 +353,7 @@ private fun IconButtonLite(
         shape = RoundedCornerShape(12.dp),
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
+            EchoIcon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
         }
     }
 }

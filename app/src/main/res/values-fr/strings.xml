@@ -36,7 +36,7 @@
     <string name="echo_link_tap_to_pair">Appuyez pour appairer</string>
     <string name="artist_album_count">%1$d albums</string>
     <string name="playback_widget_name">Lecture ECHO</string>
-    <string name="playback_widget_description">Lire, Pause et passer le titre en cours depuis l\'écran d\'accueil</string>
+    <string name="playback_widget_description">Lire, mettre en pause et changer de piste depuis les écrans de démarrage ou de verrouillage compatibles</string>
     <string name="playback_widget_preview_title">ECHO Mobile</string>
     <string name="qs_tile_play_pause">ECHO Lire/Pause</string>
     <string name="qs_tile_playing">En lecture</string>

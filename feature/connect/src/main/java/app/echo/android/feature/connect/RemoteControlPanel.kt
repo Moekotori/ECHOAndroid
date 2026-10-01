@@ -1,5 +1,7 @@
 package app.echo.android.feature.connect
 
+import app.echo.android.design.EchoIcon
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -91,13 +93,13 @@ internal fun RemoteNowPlaying(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             FilledTonalButton(onOpenLibrary, Modifier.weight(1f).heightIn(min = 52.dp), enabled = controlsEnabled,
                 shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(horizontal = 12.dp)) {
-                Icon(Icons.Rounded.LibraryMusic, null, Modifier.size(20.dp))
+                EchoIcon(Icons.Rounded.LibraryMusic, null, Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.remote_choose_music), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             OutlinedButton(onOpenQueue, Modifier.weight(1f).heightIn(min = 52.dp), enabled = controlsEnabled,
                 shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(horizontal = 12.dp)) {
-                Icon(Icons.AutoMirrored.Rounded.QueueMusic, null, Modifier.size(20.dp))
+                EchoIcon(Icons.AutoMirrored.Rounded.QueueMusic, null, Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.remote_queue_count, queueCount), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
@@ -108,7 +110,7 @@ internal fun RemoteNowPlaying(
                 style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
             TextButton(onStop, enabled = controlsEnabled && hasTrack) {
-                Icon(Icons.Rounded.Stop, null, Modifier.size(18.dp))
+                EchoIcon(Icons.Rounded.Stop, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(4.dp))
                 Text(stringResource(R.string.remote_stop))
             }

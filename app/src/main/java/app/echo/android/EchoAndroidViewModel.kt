@@ -17,6 +17,7 @@ import app.echo.android.data.EchoErrorLogRepository
 import app.echo.android.data.EchoLibraryDatabase
 import app.echo.android.data.EchoLibraryRepository
 import app.echo.android.data.batchTags
+import app.echo.android.data.libraryHealthStats
 import app.echo.android.model.error.EchoErrorLog
 import app.echo.android.model.error.EchoErrorRecord
 import app.echo.android.model.error.EchoErrorSource
@@ -87,6 +88,7 @@ import app.echo.android.model.playback.EchoReplayGainScanFailure
 import app.echo.android.model.playback.EchoReplayGainScanState
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -180,12 +182,32 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     val favoriteTrackIds: StateFlow<Set<String>> = libraryController.favoriteTrackIds
     val favoriteAlbums: StateFlow<List<AlbumSummary>> = libraryController.favoriteAlbums
     val libraryStats: StateFlow<LibraryStats> = libraryController.libraryStats
+    internal suspend fun libraryHealthStats() = repository.libraryHealthStats()
+
+    private val libraryLyricsInspector by lazy {
+        app.echo.android.lyrics.LibraryLyricsInspector(
+            getApplication(), repository,
+            isPlaying = { playbackController.playbackControls.value.isPlaying },
+            awaitPlaybackIdle = { playbackController.playbackControls.first { !it.isPlaying } },
+        )
+    }
+
+    internal suspend fun inspectLibraryLyrics(report: (app.echo.android.model.library.LibraryLyricsInspection) -> Unit) {
+        libraryLyricsInspector.inspect(report)
+    }
     val recommendedTracks: StateFlow<List<EchoTrack>> = libraryController.recommendedTracks
     val recentlyAddedAlbums: StateFlow<List<AlbumSummary>> = libraryController.recentlyAddedAlbums
     val recentlyPlayedTracks: StateFlow<List<EchoTrack>> = libraryController.recentlyPlayedTracks
     val recommendedAlbums: StateFlow<List<AlbumSummary>> = libraryController.recommendedAlbums
     val rediscoveredAlbums: StateFlow<List<AlbumSummary>> = libraryController.rediscoveredAlbums
     val scanState: StateFlow<LibraryScanProgress> = libraryController.scanState
+    internal val watchedLibraryTrees = settingsStore.watchedLibraryTreesFlow
+
+    internal suspend fun saveLibraryScanOptions(options: LibraryScanOptions) =
+        settingsStore.setLibraryScanOptions(options)
+
+    internal suspend fun removeWatchedLibraryTree(uri: String) =
+        settingsStore.removeWatchedLibraryTree(uri)
     val remoteScanState: StateFlow<LibraryScanProgress> = libraryController.remoteScanState
     val echoLinkDiscoveryState = echoLinkLanBrowser.state
     val echoLinkLanDevices = echoLinkLanBrowser.devices
@@ -780,13 +802,37 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun importM3uPlaylist(uri: Uri) {
         viewModelScope.launch {
+            try { importM3uPlaylistWithResult(uri) }
+            catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (error: Exception) {
+                EchoErrorLog.record(EchoErrorSource.Library, "Playlist import failed", detail = error.message)
+            }
+        }
+    }
+
+    internal suspend fun importM3uPlaylistWithResult(uri: Uri): EchoPlaylist? {
             val text = withContext(Dispatchers.IO) {
                 getApplication<Application>().contentResolver.openInputStream(uri)?.use { input ->
-                    val bytes = input.readBytes()
+                    // A playlist is text, not audio. Bound provider reads even when its reported size is absent.
+                    val limit = 256 * 1024
+                    val buffer = ByteArray(limit + 1)
+                    var size = 0
+                    while (size < buffer.size) {
+                        kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                        val count = input.read(buffer, size, buffer.size - size)
+                        if (count < 0) break
+                        if (count == 0) break
+                        size += count
+                    }
+                    require(size <= limit) { "Playlist is larger than 256 KiB" }
+                    val bytes = buffer.copyOf(size)
                     decodeLegacyTagText(bytes) ?: bytes.toString(java.nio.charset.StandardCharsets.UTF_8)
                 }
-            } ?: return@launch
-            if (text.isBlank()) return@launch
+            } ?: return null
+            if (text.isBlank()) return null
+            require(text.lineSequence().count { it.isNotBlank() && !it.trimStart().startsWith("#") } <= 2_000) {
+                "Playlist contains more than 2,000 entries"
+            }
             val name = uri.lastPathSegment
                 ?.substringAfterLast('/')
                 ?.substringBeforeLast('.')
@@ -794,8 +840,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                 ?.trim()
                 ?.takeIf { it.isNotBlank() }
                 ?: "M3U"
-            libraryController.importM3uPlaylist(name, text)
-        }
+            return libraryController.importM3uPlaylist(name, text)
     }
 
     fun exportBackup(uri: Uri) {

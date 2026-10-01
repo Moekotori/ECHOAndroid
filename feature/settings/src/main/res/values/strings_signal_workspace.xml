@@ -1,0 +1,35 @@
+<resources>
+    <string name="signal_value_range">Range: %1$s–%2$s %3$s</string>
+    <string name="signal_about_control">About %1$s</string>
+    <string name="signal_close_help">Got it</string>
+    <string name="signal_stereo_controls">Stereo controls</string>
+    <string name="signal_input">Input</string>
+    <string name="signal_output">Output</string>
+    <string name="signal_routing_preview">Configured channel mapping. Pan, gain, polarity and tone are applied before mono mapping; channel delay follows it. This diagram is a preview, not live signal monitoring.</string>
+    <string name="signal_stereo">Stereo</string>
+    <string name="signal_mono_sum">Sum</string>
+    <string name="signal_left_only">Left only</string>
+    <string name="signal_right_only">Right only</string>
+    <string name="signal_pan_law_short">Pan law</string>
+    <string name="signal_polarity_short">Polarity</string>
+    <string name="signal_tone_short">Tone</string>
+    <string name="signal_delay_short">Delay</string>
+    <string name="signal_constant_power">Constant power</string>
+    <string name="signal_linear_pan">Linear</string>
+    <string name="signal_preset_while_off">Off · settings will apply when enabled</string>
+    <string name="signal_reset_section">Reset this processor</string>
+    <string name="signal_dsp_enabled_count">%1$d / 3 processors enabled</string>
+    <string name="signal_reset_dsp">Reset DSP</string>
+    <string name="signal_crossfeed_summary">Mix %1$s%% · stereo headphones</string>
+    <string name="signal_loudness_tag">ReplayGain tag</string>
+    <string name="signal_no_loudness_tag">No tag</string>
+    <string name="signal_analyzing_loudness">Analyzing track loudness…</string>
+    <string name="signal_scan_local_only">Select a local track to analyze its loudness.</string>
+    <string name="signal_scan_unsupported">This file format does not support writing ReplayGain tags.</string>
+    <string name="signal_scan_decode_failed">Could not decode this track. Check that the local file can be played.</string>
+    <string name="signal_scan_write_failed">Could not save the tag. Check file write access and try again.</string>
+    <string name="signal_scan_select_track">Select a local track to analyze and save its loudness tag.</string>
+    <string name="signal_constant_power_note">Curved left/right attenuation; both channels are at 0 dB in the center.</string>
+    <string name="signal_bypass_locked">bit-perfect · controls locked</string>
+    <string name="signal_bypass_detail">USB bit-perfect mode is enabled. Exit this mode to adjust channels and DSP.</string>
+</resources>

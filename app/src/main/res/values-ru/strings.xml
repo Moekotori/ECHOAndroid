@@ -36,7 +36,7 @@
     <string name="echo_link_tap_to_pair">Нажмите для сопряжения</string>
     <string name="artist_album_count">%1$d альбомов</string>
     <string name="playback_widget_name">Воспроизведение ECHO</string>
-    <string name="playback_widget_description">Воспроизведение, пауза и переход к следующему треку с главного экрана</string>
+    <string name="playback_widget_description">Воспроизведение, пауза и переключение треков с главного экрана или поддерживаемого экрана блокировки</string>
     <string name="playback_widget_preview_title">ECHO Mobile</string>
     <string name="qs_tile_play_pause">ECHO воспроизведение/пауза</string>
     <string name="qs_tile_playing">Играет</string>

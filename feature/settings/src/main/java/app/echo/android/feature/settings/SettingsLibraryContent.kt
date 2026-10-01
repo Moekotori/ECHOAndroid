@@ -8,6 +8,15 @@ import app.echo.android.model.library.LibraryOfflinePolicy
 
 @Composable
 internal fun SettingsLibraryContent(
+    isActive: Boolean,
+    isScanning: Boolean,
+    onLoadHealth: suspend () -> app.echo.android.model.library.LibraryHealthStats,
+    onInspectLyrics: suspend ((app.echo.android.model.library.LibraryLyricsInspection) -> Unit) -> Unit,
+    trackCount: Int,
+    albumCount: Int,
+    artistCount: Int,
+    durationMs: Long,
+    localSizeBytes: Long,
     trackAudioInfoTagsVisible: Boolean,
     watchedFolderRescanEnabled: Boolean,
     offlineWifiOnly: Boolean,
@@ -20,6 +29,24 @@ internal fun SettingsLibraryContent(
     onCleanupLocalLibrary: suspend () -> Pair<Int, Int> = { 0 to 0 },
 ) {
     val context = LocalContext.current
+    SettingsLibraryOverview(
+        trackCount = trackCount,
+        albumCount = albumCount,
+        artistCount = artistCount,
+        durationMs = durationMs,
+        localSizeBytes = localSizeBytes,
+        offlineSizeBytes = offlineUsedBytes,
+        onOpenLibrary = onOpenLibrary,
+    )
+    SettingsLibraryHealthContent(
+        isActive = isActive,
+        isScanning = isScanning,
+        trackCount = trackCount,
+        durationMs = durationMs,
+        sizeBytes = localSizeBytes,
+        onLoadHealth = onLoadHealth,
+        onInspectLyrics = onInspectLyrics,
+    )
     SettingsSectionCard(
         title = stringResource(R.string.settings_section_library),
     ) {

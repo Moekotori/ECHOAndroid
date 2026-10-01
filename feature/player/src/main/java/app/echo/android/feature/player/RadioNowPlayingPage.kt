@@ -44,6 +44,11 @@ internal fun RadioNowPlayingPage(
     val bitrateKbps = status.diagnostics.bitrate?.takeIf { it > 0 }?.div(1000)
     BoxWithConstraints(modifier) {
         val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
+        if (maxWidth >= 540.dp && maxWidth > maxHeight && maxHeight < 600.dp) {
+            RadioLandscapePage(status, presentation, bitrateKbps, onPlayPause, onNext, onPrevious,
+                onOpenQueue, onCast, castActive, onSetSleepTimer, onCancelSleepTimer)
+            return@BoxWithConstraints
+        }
         val frequencyWidth = maxOf(80.dp, maxWidth - 105.dp * fontScale)
         // Let short windows / large text scroll, without shrinking transport touch areas.
         val pageHeight = maxOf(maxHeight, (672f * fontScale).dp)
@@ -99,7 +104,7 @@ private fun RadioRule(colors: RadioPlayerColors) {
     Box(Modifier.fillMaxWidth().height(0.5.dp).background(colors.rule))
 }
 
-private fun radioStatusLabel(status: EchoPlaybackStatus): Int = when {
+internal fun radioStatusLabel(status: EchoPlaybackStatus): Int = when {
     status.state == EchoPlaybackState.Error -> R.string.radio_state_error
     status.state == EchoPlaybackState.Buffering -> R.string.radio_state_buffering
     status.state == EchoPlaybackState.Loading || status.state == EchoPlaybackState.Seeking -> R.string.radio_state_connecting

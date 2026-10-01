@@ -36,7 +36,7 @@
     <string name="echo_link_tap_to_pair">Toca para emparejar</string>
     <string name="artist_album_count">%1$d álbumes</string>
     <string name="playback_widget_name">Reproducción de ECHO</string>
-    <string name="playback_widget_description">Reproduce, pausa y salta la canción actual desde la pantalla de inicio</string>
+    <string name="playback_widget_description">Reproduce, pausa y cambia de pista desde la pantalla de inicio o las pantallas de bloqueo compatibles</string>
     <string name="playback_widget_preview_title">ECHO Mobile</string>
     <string name="qs_tile_play_pause">ECHO reproducir/pausar</string>
     <string name="qs_tile_playing">Reproduciendo</string>

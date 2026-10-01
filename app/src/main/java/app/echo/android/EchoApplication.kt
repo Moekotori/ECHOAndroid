@@ -114,6 +114,10 @@ class EchoApplication : Application(), ImageLoaderFactory {
         offlineDownloads.start()
         listeningHistoryRecorder.start(EchoPlaybackProcessRuntime.surface)
         app.echo.android.lyrics.overlay.EchoFloatingLyricsController(this, settingsStore).start()
+        EchoPlaybackProcessRuntime.scope.launch {
+            settingsStore.appSettings.map { it.lyricsOptions }.distinctUntilChanged()
+                .collect(EchoPlaybackProcessRuntime::setLyricsOptions)
+        }
         // Playback preferences and remote stream signing remain live when only the
         // service/media buttons are running (no ViewModel).
         EchoPlaybackProcessRuntime.scope.launch {

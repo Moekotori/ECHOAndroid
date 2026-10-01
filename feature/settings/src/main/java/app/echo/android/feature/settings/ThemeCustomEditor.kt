@@ -13,7 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextField
@@ -256,10 +256,10 @@ private fun SavedColorThemeRow(
             overflow = TextOverflow.Ellipsis,
         )
         if (active) {
-            Icon(Icons.Rounded.Check, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(18.dp))
+            EchoIcon(Icons.Rounded.Check, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(18.dp))
         }
         IconButton(onClick = onDelete) {
-            Icon(
+            EchoIcon(
                 Icons.Outlined.Delete,
                 contentDescription = stringResource(R.string.settings_custom_delete),
                 tint = scheme.error,

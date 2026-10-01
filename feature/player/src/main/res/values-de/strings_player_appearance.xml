@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="player_appearance_title">Seitendarstellung</string>
-    <string name="player_appearance_detail">Änderungen werden sofort angezeigt und nach dem Anpassen gespeichert.</string>
+    <string name="player_appearance_title">Song- und Liedtextstil</string>
+    <string name="player_appearance_detail">Ein Stil für Songdetails und Liedtexte. Änderungen werden automatisch gespeichert.</string>
     <string name="player_appearance_reset">Zurücksetzen</string>
     <string name="player_appearance_record_sleeve">Plattenhülle</string>
     <string name="player_appearance_classic">Immersiv</string>

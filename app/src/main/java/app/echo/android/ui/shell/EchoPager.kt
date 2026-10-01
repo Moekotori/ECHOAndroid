@@ -58,7 +58,7 @@ internal fun dockNavigationMotionSpec(
     val distance = (toPage - fromPage).absoluteValue.coerceAtLeast(1)
     val duration = when {
         effectivePerformanceMode.isLightweight -> 100
-        else -> (340 + (distance - 1) * 35).coerceAtMost(440)
+        else -> (280 + (distance - 1) * 30).coerceAtMost(340)
     }
     return tween(durationMillis = duration, easing = EchoMotion.Silk)
 }

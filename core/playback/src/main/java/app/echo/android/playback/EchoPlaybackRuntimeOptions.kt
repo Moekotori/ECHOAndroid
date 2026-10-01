@@ -195,6 +195,12 @@ object EchoPlaybackProcessRuntime {
     internal fun publishAbLoop(value: app.echo.android.model.playback.EchoAbLoopState) { _abLoop.value = value }
     val surface: StateFlow<EchoPlaybackSurfaceSnapshot> = _surface.asStateFlow()
 
+    private val _lyricsOptions = MutableStateFlow(app.echo.android.model.settings.EchoLyricsOptions())
+    val lyricsOptions = _lyricsOptions.asStateFlow()
+    fun setLyricsOptions(value: app.echo.android.model.settings.EchoLyricsOptions) {
+        _lyricsOptions.value = value.normalized
+    }
+
     private val _notificationLyrics = MutableStateFlow<EchoNotificationLyricDocument?>(null)
     val notificationLyrics: StateFlow<EchoNotificationLyricDocument?> = _notificationLyrics.asStateFlow()
 

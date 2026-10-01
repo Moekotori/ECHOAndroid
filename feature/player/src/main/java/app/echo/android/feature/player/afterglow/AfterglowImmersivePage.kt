@@ -1,5 +1,7 @@
 package app.echo.android.feature.player.afterglow
 
+import app.echo.android.design.EchoIcon
+
 import android.os.SystemClock
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -7,6 +9,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -126,25 +130,30 @@ private fun AfterglowChromeOverlay(
     onQueue: () -> Unit, onCast: (() -> Unit)?, castActive: Boolean, sceneControls: @Composable () -> Unit,
 ) {
     val fadeMs = if (lightweight) 0 else 160
-    Box(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
+    val shortLandscape = maxWidth >= 480.dp && maxWidth > maxHeight && maxHeight < 600.dp
+    val controlsMaxHeight = maxOf(96.dp, maxHeight - 88.dp)
     AnimatedVisibility(shown, modifier = Modifier.align(Alignment.TopCenter), enter = fadeIn(tween(fadeMs)), exit = fadeOut(tween(fadeMs))) {
         Row(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.72f), Color.Transparent)))
-            .statusBarsPadding().padding(horizontal = 12.dp, vertical = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onDismiss) { Icon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.feature_player_close_player_d23966), tint = Color.White) }
+            .statusBarsPadding().padding(horizontal = 12.dp, vertical = if (shortLandscape) 6.dp else 18.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onDismiss) { EchoIcon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.feature_player_close_player_d23966), tint = Color.White) }
             Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                 Text(status.track?.title.orEmpty(), color = Color.White, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(status.track?.artist.orEmpty(), color = Color.White.copy(alpha = 0.65f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            IconButton(onClick = onSettings) { Icon(Icons.Rounded.MoreHoriz, stringResource(R.string.feature_player_lyrics_settings_843bc9), tint = Color.White) }
+            IconButton(onClick = onSettings) { EchoIcon(Icons.Rounded.MoreHoriz, stringResource(R.string.feature_player_lyrics_settings_843bc9), tint = Color.White) }
         }
     }
-    AnimatedVisibility(shown, modifier = Modifier.align(Alignment.BottomCenter), enter = fadeIn(tween(fadeMs)), exit = fadeOut(tween(fadeMs))) {
-        Column(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.82f))))
-            .navigationBarsPadding().padding(horizontal = 22.dp, vertical = 20.dp)) {
+    AnimatedVisibility(shown, modifier = Modifier.align(if (shortLandscape) Alignment.BottomEnd else Alignment.BottomCenter), enter = fadeIn(tween(fadeMs)), exit = fadeOut(tween(fadeMs))) {
+        Column(Modifier.then(if (shortLandscape) Modifier.width(320.dp).heightIn(max = controlsMaxHeight) else Modifier.fillMaxWidth())
+            .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.82f))))
+            .navigationBarsPadding().then(if (shortLandscape) Modifier.verticalScroll(rememberScrollState()) else Modifier)
+            .padding(horizontal = 22.dp, vertical = if (shortLandscape) 8.dp else 20.dp)) {
             sceneControls()
             Spacer(Modifier.height(12.dp))
             LyricsScrubber(status.track?.id, position, duration, onSeek)
-            LyricsTransportControls(status.isPlaying, onPlayPause, onNext, onPrevious, onQueue, onSettings, onCast, castActive)
+            LyricsTransportControls(status.isPlaying, onPlayPause, onNext, onPrevious, onQueue, onSettings, onCast, castActive,
+                landscape = shortLandscape)
         }
     }
     }

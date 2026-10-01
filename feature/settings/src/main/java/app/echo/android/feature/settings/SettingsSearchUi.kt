@@ -8,7 +8,7 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -41,11 +41,11 @@ internal fun SettingsSearchField(query: String, onQueryChange: (String) -> Unit)
         placeholder = {
             Text(stringResource(R.string.settings_search_hint), fontWeight = FontWeight.Normal)
         },
-        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+        leadingIcon = { EchoIcon(Icons.Rounded.Search, contentDescription = null) },
         trailingIcon = if (query.isNotEmpty()) {
             {
                 IconButton(onClick = { onQueryChange("") }) {
-                    Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.settings_search_clear))
+                    EchoIcon(Icons.Rounded.Close, contentDescription = stringResource(R.string.settings_search_clear))
                 }
             }
         } else null,
@@ -88,7 +88,7 @@ internal fun SettingsSearchResultRow(
                     .padding(horizontal = SettingsContentInset, vertical = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    Icon(result.item.category?.icon ?: SettingsCategoryIcons.Plugins, null,
+                    EchoIcon(result.item.category?.icon ?: SettingsCategoryIcons.Plugins, null,
                         Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(result.title, style = MaterialTheme.typography.bodyLarge,
@@ -96,7 +96,7 @@ internal fun SettingsSearchResultRow(
                         Text(result.categoryTitle, style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, Modifier.size(20.dp),
+                    EchoIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, Modifier.size(20.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }

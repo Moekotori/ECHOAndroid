@@ -1,5 +1,7 @@
 package app.echo.android.feature.connect
 
+import app.echo.android.design.EchoIcon
+
 import app.echo.android.feature.connect.R as L10nR
 import androidx.compose.ui.res.stringResource
 
@@ -29,7 +31,7 @@ internal val ConnectControlShape = RoundedCornerShape(4.dp)
 
 @Composable
 internal fun ConnectNote(text: String, error: Boolean = false) {
-    Text(text, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold,
+    Text(text, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal,
         color = if (error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
@@ -39,7 +41,7 @@ internal fun ConnectSection(title: String, subtitle: String? = null, action: (@C
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
                 if (!subtitle.isNullOrBlank()) ConnectNote(subtitle)
             }
             action?.invoke()
@@ -72,7 +74,7 @@ internal fun ConnectInput(
         keyboardActions = KeyboardActions(onDone = { onDone?.invoke() }),
         trailingIcon = if (secret) { {
             IconButton(onClick = { visible = !visible }, enabled = enabled) {
-                Icon(if (visible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                EchoIcon(if (visible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
                     contentDescription = if (visible) stringResource(L10nR.string.feature_connect_hide_password_3ea7f9) else stringResource(L10nR.string.feature_connect_show_password_211a6d))
             }
         } } else null,
@@ -83,7 +85,7 @@ internal fun ConnectInput(
 internal fun ConnectPreference(title: String, detail: String, checked: Boolean, enabled: Boolean = true, onChange: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth().heightIn(min = 64.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+            Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
             ConnectNote(detail)
         }
         EchoSwitch(checked, onCheckedChange = onChange, enabled = enabled, modifier = Modifier.semantics { contentDescription = title })

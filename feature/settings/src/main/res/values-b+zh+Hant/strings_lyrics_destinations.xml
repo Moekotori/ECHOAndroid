@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_lyrics_interface">歌詞介面</string>
+    <string name="settings_lyrics_interface_detail">開啟歌詞頁，在頁內設定樣式、字型與對齊。</string>
+    <string name="settings_lyrics_source_order">歌詞取得順序</string>
+    <string name="settings_lyrics_source_order_detail">依順序嘗試本機來源；手動選定始終優先，缺少或解析失敗則嘗試下一項。線上比對仍由獨立開關控制。</string>
+    <string name="settings_lyrics_source_spl">SPL</string>
+    <string name="settings_lyrics_source_sidecar">LRC / 其他同名歌詞檔案</string>
+    <string name="settings_lyrics_source_embedded">內嵌歌詞</string>
+    <string name="settings_lyrics_source_up">上移</string>
+    <string name="settings_lyrics_source_down">下移</string>
+    <string name="settings_lyrics_apply">完成</string>
+    <string name="settings_lyrics_cancel">取消</string>
+    <string name="settings_notification_lyrics">通知列歌詞</string>
+    <string name="settings_notification_lyrics_detail">在媒體通知中顯示目前歌詞；部分 Android 版本會使用系統媒體中繼資料顯示。</string>
+    <string name="settings_status_overlay_lyrics">懸浮窗狀態列歌詞</string>
+    <string name="settings_status_overlay_lyrics_detail">在螢幕頂部顯示可點擊穿透的迷你歌詞，需要懸浮窗權限。系統狀態列可能遮住視窗，可將位置調整到狀態列下方。</string>
+    <string name="settings_status_lyrics_layout">狀態列歌詞位置與大小</string>
+    <string name="settings_status_lyrics_layout_detail">調整寬度、字級與位置，避開時間、鏡頭與系統圖示。</string>
+    <string name="settings_system_status_lyrics">系統級狀態列歌詞</string>
+    <string name="settings_system_status_lyrics_detail">Flyme 實驗性相容，預設關閉。需要系統支援；如媒體通知顯示異常，請關閉。</string>
+    <string name="settings_system_status_lyrics_unsupported">目前原生狀態列歌詞適配魅族 Flyme，此裝置可使用懸浮窗狀態列歌詞。</string>
+    <string name="settings_status_lyrics_hide_translation">狀態列歌詞不顯示翻譯</string>
+    <string name="settings_status_lyrics_hide_translation_detail">同時作用於兩種狀態列模式；使用已解析的翻譯，包括同時間戳的翻譯行。</string>
+    <string name="settings_status_lyrics_preview">下一句，繼續唱</string>
+    <string name="settings_status_lyrics_font">字級</string>
+    <string name="settings_status_lyrics_width">視窗寬度</string>
+    <string name="settings_status_lyrics_x">距左邊緣</string>
+    <string name="settings_status_lyrics_y">距狀態列下緣</string>
+    <string name="settings_status_lyrics_reset">重設狀態列歌詞配置</string>
+</resources>

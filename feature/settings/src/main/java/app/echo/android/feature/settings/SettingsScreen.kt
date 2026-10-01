@@ -6,10 +6,7 @@ import androidx.compose.ui.text.font.FontFamily
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoReplayGainMode
 import app.echo.android.model.settings.EchoBackgroundStyle
-import app.echo.android.model.settings.EchoCustomColors
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
-import app.echo.android.model.settings.EchoSavedColorTheme
-import app.echo.android.model.settings.EchoSavedColorThemeResult
 
 @Composable
 fun SettingsScreen(
@@ -19,11 +16,17 @@ fun SettingsScreen(
     trackCount: Int,
     albumCount: Int,
     artistCount: Int,
+    libraryDurationMs: Long = 0L,
+    librarySizeBytes: Long = 0L,
+    libraryScanning: Boolean = false,
+    onLoadLibraryHealth: suspend () -> app.echo.android.model.library.LibraryHealthStats = {
+        app.echo.android.model.library.LibraryHealthStats()
+    },
+    onInspectLibraryLyrics: suspend ((app.echo.android.model.library.LibraryLyricsInspection) -> Unit) -> Unit = {},
     appVersionLabel: String,
     updateContent: @Composable () -> Unit = {},
     dynamicArtworkEnabled: Boolean,
     compactModeEnabled: Boolean,
-    dynamicColorEnabled: Boolean,
     playbackHapticsEnabled: Boolean,
     performanceMode: String,
     effectivePerformanceMode: String,
@@ -37,6 +40,9 @@ fun SettingsScreen(
     floatingLyrics: app.echo.android.model.settings.EchoFloatingLyricsSettings =
         app.echo.android.model.settings.EchoFloatingLyricsSettings(),
     floatingLyricsPermissionGranted: Boolean = false,
+    lyricsOptions: app.echo.android.model.settings.EchoLyricsOptions = app.echo.android.model.settings.EchoLyricsOptions(),
+    onLyricsOptionsChange: (app.echo.android.model.settings.EchoLyricsOptions) -> Unit = {},
+    onOpenLyricsInterface: () -> Unit = {},
     usbExclusiveEnabled: Boolean,
     usbBitPerfectEnabled: Boolean,
     trackTransitions: app.echo.android.model.playback.EchoTrackTransitionOptions,
@@ -61,10 +67,6 @@ fun SettingsScreen(
     lyricsFontScale: Float,
     importedFontUri: String?,
     themeMode: String,
-    colorTheme: String,
-    customColors: EchoCustomColors = EchoCustomColors.Default,
-    savedColorThemes: List<EchoSavedColorTheme> = emptyList(),
-    appliedSavedColorThemeId: String? = null,
     appLanguage: String,
     scheduledDarkModeEnabled: Boolean,
     scheduledDarkStartMinute: Int,
@@ -86,7 +88,6 @@ fun SettingsScreen(
     setlistFmApiKeyLocked: Boolean = false,
     onDynamicArtworkEnabledChange: (Boolean) -> Unit,
     onCompactModeEnabledChange: (Boolean) -> Unit,
-    onDynamicColorEnabledChange: (Boolean) -> Unit,
     onPlaybackHapticsEnabledChange: (Boolean) -> Unit,
     onPerformanceModeChange: (String) -> Unit,
     onTrackAudioInfoTagsVisibleChange: (Boolean) -> Unit,
@@ -125,11 +126,6 @@ fun SettingsScreen(
     onImportLyricsFont: () -> Unit,
     onClearImportedFont: () -> Unit,
     onThemeModeChange: (String) -> Unit,
-    onColorThemeChange: (String) -> Unit,
-    onCustomColorsChange: (EchoCustomColors) -> Unit = {},
-    onSaveCustomColorTheme: (String, (EchoSavedColorThemeResult) -> Unit) -> Unit = { _, _ -> },
-    onApplySavedColorTheme: (String) -> Unit = {},
-    onDeleteSavedColorTheme: (String) -> Unit = {},
     onAppLanguageChange: (String) -> Unit,
     onScheduledDarkModeEnabledChange: (Boolean) -> Unit,
     onScheduledDarkStartMinuteChange: (Int) -> Unit,
@@ -186,7 +182,7 @@ fun SettingsScreen(
                 "dark" -> R.string.settings_theme_dark
                 "light" -> R.string.settings_theme_light
                 else -> R.string.settings_theme_system
-            }) + " · " + colorThemeLabel(colorTheme) + " · " + stringResource(when (customBackgroundMode) {
+            }) + " · " + stringResource(when (customBackgroundMode) {
                 "image" -> R.string.settings_summary_bg_image
                 "video" -> R.string.settings_summary_bg_video
                 else -> R.string.settings_summary_bg_default
@@ -201,7 +197,6 @@ fun SettingsScreen(
         when (category) {
                 SettingsCategory.Appearance -> SettingsAppearanceContent(
                     importedFontFamily = importedFontFamily,
-                    dynamicColorEnabled = dynamicColorEnabled,
                     customBackgroundMode = customBackgroundMode,
                     customBackgroundUri = customBackgroundUri,
                     startupBackgroundUri = startupBackgroundUri,
@@ -216,14 +211,9 @@ fun SettingsScreen(
                     lyricsFontScale = lyricsFontScale,
                     importedFontUri = importedFontUri,
                     themeMode = themeMode,
-                    colorTheme = colorTheme,
-                    customColors = customColors,
-                    savedColorThemes = savedColorThemes,
-                    appliedSavedColorThemeId = appliedSavedColorThemeId,
                     scheduledDarkModeEnabled = scheduledDarkModeEnabled,
                     scheduledDarkStartMinute = scheduledDarkStartMinute,
                     scheduledDarkEndMinute = scheduledDarkEndMinute,
-                    onDynamicColorEnabledChange = onDynamicColorEnabledChange,
                     onPickImageBackground = onPickImageBackground,
                     onPickStartupBackground = onPickStartupBackground,
                     onClearStartupBackground = onClearStartupBackground,
@@ -242,11 +232,6 @@ fun SettingsScreen(
                     onImportLyricsFont = onImportLyricsFont,
                     onClearImportedFont = onClearImportedFont,
                     onThemeModeChange = onThemeModeChange,
-                    onColorThemeChange = onColorThemeChange,
-                    onCustomColorsChange = onCustomColorsChange,
-                    onSaveCustomColorTheme = onSaveCustomColorTheme,
-                    onApplySavedColorTheme = onApplySavedColorTheme,
-                    onDeleteSavedColorTheme = onDeleteSavedColorTheme,
                     onScheduledDarkModeEnabledChange = onScheduledDarkModeEnabledChange,
                     onScheduledDarkStartMinuteChange = onScheduledDarkStartMinuteChange,
                     onScheduledDarkEndMinuteChange = onScheduledDarkEndMinuteChange,
@@ -270,6 +255,9 @@ fun SettingsScreen(
                     effectivePerformanceMode = effectivePerformanceMode,
                     onlineLyricsEnabled = onlineLyricsEnabled,
                     lockScreenLyricsEnabled = lockScreenLyricsEnabled,
+                    lyricsOptions = lyricsOptions,
+                    onLyricsOptionsChange = onLyricsOptionsChange,
+                    onOpenLyricsInterface = onOpenLyricsInterface,
                     floatingLyrics = floatingLyrics,
                     floatingLyricsPermissionGranted = floatingLyricsPermissionGranted,
                     usbExclusiveEnabled = usbExclusiveEnabled,
@@ -328,6 +316,15 @@ fun SettingsScreen(
                     onSaveSetlistFmApiKey = onSaveSetlistFmApiKey,
                 )
                 SettingsCategory.Library -> SettingsLibraryContent(
+                    isActive = isActive,
+                    isScanning = libraryScanning,
+                    onLoadHealth = onLoadLibraryHealth,
+                    onInspectLyrics = onInspectLibraryLyrics,
+                    trackCount = trackCount,
+                    albumCount = albumCount,
+                    artistCount = artistCount,
+                    durationMs = libraryDurationMs,
+                    localSizeBytes = librarySizeBytes,
                     trackAudioInfoTagsVisible = trackAudioInfoTagsVisible,
                     watchedFolderRescanEnabled = watchedFolderRescanEnabled,
                     offlineWifiOnly = offlineWifiOnly,

@@ -22,10 +22,10 @@ internal fun ChannelLevelCard(
     modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
-    Column(modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(modifier.padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(label, style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant)
-        Text(formatEqGain(value), style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold, color = scheme.primary)
+        SignalNumericValue(label, value, EchoChannelBalance.MinGainDb..EchoChannelBalance.MaxGainDb, enabled,
+            { onValueChange(snapEqGain(it)) }, valueLabel = formatEqGain(value))
         ChannelValueSlider(label = label, value = value, onValueChange = { onValueChange(snapEqGain(it)) },
             valueRange = EchoChannelBalance.MinGainDb..EchoChannelBalance.MaxGainDb,
             enabled = enabled, showReadout = false)

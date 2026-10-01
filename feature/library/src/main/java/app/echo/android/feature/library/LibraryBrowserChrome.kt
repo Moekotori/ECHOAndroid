@@ -1,5 +1,7 @@
 package app.echo.android.feature.library
 
+import app.echo.android.design.EchoIcon
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -26,7 +28,7 @@ import app.echo.android.design.echoPageBackgroundColor
 internal fun LibraryBrowserFrame(
     query: String,
     onQueryChange: (String) -> Unit,
-    sources: @Composable () -> Unit,
+    sourcePicker: @Composable () -> Unit,
     actions: @Composable RowScope.() -> Unit = {},
     searchPlaceholder: String = stringResource(R.string.feature_library_search_songs_artists_albums_14dc2c),
     content: @Composable ColumnScope.() -> Unit,
@@ -52,22 +54,25 @@ internal fun LibraryBrowserFrame(
                             onQueryChange("")
                             searchExpanded = false
                         }) {
-                            Icon(Icons.AutoMirrored.Rounded.ArrowBack,
+                            EchoIcon(Icons.AutoMirrored.Rounded.ArrowBack,
                                 stringResource(R.string.feature_library_close_search_50a720))
                         }
                         LibraryInlineSearch(query, onQueryChange,
                             Modifier.weight(1f).focusRequester(searchFocus), searchPlaceholder)
                     } else {
-                        Text(stringResource(R.string.feature_library_library_848e9b), Modifier.weight(1f),
-                            style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                            Text(stringResource(R.string.feature_library_library_848e9b), Modifier.weight(1f, fill = false),
+                                style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Spacer(Modifier.width(8.dp))
+                            sourcePicker()
+                        }
                         IconButton(onClick = { searchExpanded = true }) {
-                            Icon(Icons.Rounded.Search, stringResource(R.string.feature_library_search_library_80ef90))
+                            EchoIcon(Icons.Rounded.Search, stringResource(R.string.feature_library_search_library_80ef90))
                         }
                         actions()
                     }
                 }
-                Box(Modifier.padding(end = 24.dp)) { sources() }
                 content()
             }
         }
@@ -88,7 +93,7 @@ internal fun LibraryInlineSearch(
 @Composable
 internal fun LibraryCollectionEmpty(title: String, detail: String? = null, actionLabel: String? = null, onAction: (() -> Unit)? = null) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 40.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Icon(Icons.Rounded.LibraryMusic, contentDescription = null, Modifier.size(36.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
+        EchoIcon(Icons.Rounded.LibraryMusic, contentDescription = null, Modifier.size(36.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
         Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         if (detail != null) Text(detail, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Normal,
             color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)

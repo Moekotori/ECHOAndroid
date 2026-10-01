@@ -1,5 +1,7 @@
 package app.echo.android.feature.settings
 
+import app.echo.android.design.EchoIcon
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ExpandLess
@@ -38,15 +40,15 @@ internal fun SignalChannelBalance(
             EchoChannelBalance.writeBalanceGains(state.balance, state.leftGainDb, state.rightGainDb, it, state.constantPower)
         }
     }
-    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.signal_stereo_controls), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                     SignalLiveDot(active = live)
                     Text(stringResource(when {
-                        bypassed -> R.string.eq_bypassed
-                        !state.enabled -> R.string.channel_balance_disabled
+                        bypassed -> R.string.signal_bypass_locked
+                        !state.enabled -> R.string.eq_status_off
                         !playing -> R.string.channel_balance_waiting
                         !state.affectsSignal -> R.string.channel_balance_idle
                         !live -> R.string.channel_balance_waiting
@@ -55,21 +57,27 @@ internal fun SignalChannelBalance(
                         color = if (live) scheme.primary else scheme.onSurfaceVariant)
                 }
             }
+            TextButton(onClick = onReset, enabled = controlsEnabled) { Text(stringResource(R.string.feature_settings_reset_1106f5)) }
             EchoSwitch(checked = state.enabled, enabled = controlsEnabled,
                 onCheckedChange = { onStateChange(state.copy(enabled = it)) },
                 modifier = Modifier.semantics { contentDescription = title })
         }
-        if (!state.enabled && !bypassed) SignalNote(stringResource(R.string.channel_edit_while_off))
         if (live) SignalNote(stringResource(R.string.channel_processing_rate, formatSampleRate(state.processingSampleRateHz!!)))
+        if (bypassed) SignalNote(stringResource(R.string.signal_bypass_detail))
 
-        SignalSection(stringResource(R.string.channel_pan_title), stringResource(R.string.channel_pan_hint)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(formatBalanceBias(state.balance), Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold)
-                TextButton(onClick = { onStateChange(state.copy(balance = 0f)) },
-                    enabled = controlsEnabled && state.balance != 0f) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.5f))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.channel_pan_title), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+                SignalNumericValue(stringResource(R.string.channel_pan_title), state.balance,
+                    EchoChannelBalance.MinBalance..EchoChannelBalance.MaxBalance, controlsEnabled,
+                    { onStateChange(state.copy(balance = it)) },
+                    valueLabel = formatBalanceBias(state.balance), unit = "%", scale = 100f, decimals = 0)
+                if (state.balance != 0f) TextButton(onClick = { onStateChange(state.copy(balance = 0f)) }, enabled = controlsEnabled,
+                    contentPadding = PaddingValues(horizontal = 0.dp)) {
                     Text(stringResource(R.string.channel_balance_center))
                 }
+                SignalHelpButton(stringResource(R.string.channel_pan_title), stringResource(R.string.channel_pan_hint) + "\n\n" + stringResource(R.string.channel_edit_while_off))
             }
             ChannelValueSlider(
                 label = stringResource(R.string.channel_pan_title), value = state.balance,
@@ -78,9 +86,13 @@ internal fun SignalChannelBalance(
                 onValueChange = { onStateChange(state.copy(balance = (it * 100f).roundToInt() / 100f)) },
                 startLabel = stringResource(R.string.channel_balance_left), endLabel = stringResource(R.string.channel_balance_right),
                 showReadout = false,
+                unit = "%", scale = 100f, decimals = 0,
             )
             HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.5f))
-            Text(stringResource(R.string.channel_trim_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.channel_trim_title), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+                SignalHelpButton(stringResource(R.string.channel_trim_title), stringResource(R.string.channel_gain_estimate_note))
+            }
             // Stack narrow layouts and large type so gain labels and sliders retain usable width.
             BoxWithConstraints(Modifier.fillMaxWidth()) {
                 val stacked = maxWidth < 320.dp || androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.2f
@@ -102,16 +114,16 @@ internal fun SignalChannelBalance(
                     right(Modifier.weight(1f))
                 }
             }
-            SignalNote(stringResource(R.string.channel_gain_estimate_note))
             if (state.clippingRisk) SignalNote(stringResource(R.string.channel_balance_clipping), error = true)
         }
 
-        SignalSection(stringResource(R.string.channel_routing_title), stringResource(R.string.channel_routing_hint)) {
-            ChannelToggleRow(stringResource(R.string.channel_balance_swap), state.swapLeftRight, controlsEnabled,
-                onClick = { onStateChange(state.copy(swapLeftRight = !state.swapLeftRight)) },
-                detail = stringResource(R.string.channel_swap_hint))
-            HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.5f))
+        SignalSection(stringResource(R.string.channel_routing_title), action = {
+            SignalHelpButton(stringResource(R.string.channel_routing_title), stringResource(R.string.signal_routing_preview) + "\n\n" + stringResource(R.string.channel_swap_hint))
+        }) {
             ChannelMonoChoices(state.monoMode, controlsEnabled) { onStateChange(state.copy(monoMode = it)) }
+            SignalChannelRouting(state.swapLeftRight, state.monoMode, state.enabled && !bypassed)
+            ChannelToggleRow(stringResource(R.string.channel_balance_swap), state.swapLeftRight, controlsEnabled,
+                onClick = { onStateChange(state.copy(swapLeftRight = !state.swapLeftRight)) })
             SignalNote(stringResource(when (state.monoMode) {
                 EchoChannelBalanceMonoMode.Off -> R.string.channel_stereo_hint
                 EchoChannelBalanceMonoMode.Sum -> R.string.channel_sum_hint
@@ -129,15 +141,12 @@ internal fun SignalChannelBalance(
                     Text(stringResource(if (state.hasAdvancedSettings) R.string.channel_advanced_custom else R.string.channel_advanced_hint),
                         style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
                 }
-                Icon(if (showAdvanced) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                EchoIcon(if (showAdvanced) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
                     contentDescription = stringResource(if (showAdvanced) R.string.channel_balance_hide_advanced else R.string.channel_balance_show_advanced))
             }
             EchoExpand(showAdvanced) {
                 ChannelAdvancedControls(state, controlsEnabled, onStateChange)
             }
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = onReset, enabled = controlsEnabled) { Text(stringResource(R.string.channel_reset_all)) }
         }
     }
 }

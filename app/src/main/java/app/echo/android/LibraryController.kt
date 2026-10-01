@@ -494,8 +494,7 @@ internal class LibraryController(
                 excludeNonMusicFolders = options.excludeNonMusicFolders,
                 excludeHiddenFolders = options.excludeHiddenFolders,
             )
-            val current = settingsStore.watchedLibraryTrees()
-            settingsStore.setWatchedLibraryTrees(LibraryFolderWatchPolicy.remember(current, incoming))
+            settingsStore.rememberWatchedLibraryTree(incoming)
         }
     }
 
@@ -506,11 +505,7 @@ internal class LibraryController(
                 .filter { it.isReadPermission }
                 .map { it.uri.toString() }
                 .toSet()
-            val stored = withContext(Dispatchers.IO) { settingsStore.watchedLibraryTrees() }
-            val pruned = LibraryFolderWatchPolicy.pruneRevoked(stored, granted)
-            if (pruned != stored) {
-                withContext(Dispatchers.IO) { settingsStore.setWatchedLibraryTrees(pruned) }
-            }
+            val pruned = withContext(Dispatchers.IO) { settingsStore.pruneWatchedLibraryTrees(granted) }
             val due = LibraryFolderWatchPolicy.treesDueForAutoScan(
                 trees = pruned,
                 nowEpochMs = System.currentTimeMillis(),
@@ -519,16 +514,15 @@ internal class LibraryController(
                 enabled = settingsStore.watchedFolderRescanEnabled(),
             )
             val globalOptions = settingsStore.libraryScanOptions()
-            var watched = pruned
             for (tree in due) {
                 if (playbackOccupiesStorage()) break
+                if (settingsStore.watchedLibraryTrees().none { it.uri == tree.uri }) continue
                 val uri = runCatching { Uri.parse(tree.uri) }.getOrNull() ?: continue
                 val folder = MediaStoreAudioFolder.fromTreeUri(uri) ?: continue
                 if (folder.treeUri == null) continue
                 scanDocumentTree(folder, globalOptions, quiet = true)
                 val now = System.currentTimeMillis()
-                watched = LibraryFolderWatchPolicy.markScanned(watched, tree.uri, now)
-                withContext(Dispatchers.IO) { settingsStore.setWatchedLibraryTrees(watched) }
+                withContext(Dispatchers.IO) { settingsStore.markWatchedLibraryTreeScanned(tree.uri, now) }
             }
         }
     }

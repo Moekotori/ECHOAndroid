@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.sharp.Album
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -47,7 +47,7 @@ internal fun PixelArtwork(uri: String?, description: String?, modifier: Modifier
             .build()
     }
     Box(modifier.background(ExpressivePlayerStyle.PixelPaper), contentAlignment = Alignment.Center) {
-        Icon(Icons.Sharp.Album, contentDescription = null, tint = ExpressivePlayerStyle.PixelInk)
+        EchoIcon(Icons.Sharp.Album, contentDescription = null, tint = ExpressivePlayerStyle.PixelInk)
         AsyncImage(
             model = request, contentDescription = description,
             contentScale = ContentScale.Crop, filterQuality = FilterQuality.None,

@@ -1,5 +1,7 @@
 package app.echo.android.feature.library
 
+import app.echo.android.design.EchoIcon
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -87,7 +89,7 @@ internal fun ArtistOnlineHeading(title: String, loading: Boolean, onRefresh: () 
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
         if (loading) CircularProgressIndicator(Modifier.padding(12.dp).size(20.dp), strokeWidth = 2.dp)
-        else IconButton(onClick = onRefresh) { Icon(Icons.Rounded.Refresh, stringResource(R.string.album_online_refresh)) }
+        else IconButton(onClick = onRefresh) { EchoIcon(Icons.Rounded.Refresh, stringResource(R.string.album_online_refresh)) }
     }
 }
 

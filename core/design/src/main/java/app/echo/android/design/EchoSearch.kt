@@ -1,5 +1,7 @@
 package app.echo.android.design
 
+import app.echo.android.design.EchoIcon
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -25,9 +27,9 @@ fun EchoSearchField(query: String, onQuery: (String) -> Unit, placeholder: Strin
     TextField(query, onQuery, modifier.fillMaxWidth(), singleLine = true,
         shape = RoundedCornerShape(10.dp), textStyle = MaterialTheme.typography.bodyMedium,
         placeholder = { Text(placeholder, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        leadingIcon = { Icon(Icons.Rounded.Search, null, Modifier.size(20.dp)) },
+        leadingIcon = { EchoIcon(Icons.Rounded.Search, null, Modifier.size(20.dp)) },
         trailingIcon = if (query.isNotEmpty()) ({
-            IconButton(onClick = { onQuery("") }) { Icon(Icons.Rounded.Close, clearDescription, Modifier.size(18.dp)) }
+            IconButton(onClick = { onQuery("") }) { EchoIcon(Icons.Rounded.Close, clearDescription, Modifier.size(18.dp)) }
         }) else null,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(onSearch = { keyboard?.hide() }),
@@ -47,7 +49,7 @@ fun EchoSearchButton(placeholder: String, onClick: () -> Unit, modifier: Modifie
         color = MaterialTheme.colorScheme.surfaceContainer) {
         Row(Modifier.heightIn(min = 56.dp).padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Icon(Icons.Rounded.Search, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            EchoIcon(Icons.Rounded.Search, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(placeholder, style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }

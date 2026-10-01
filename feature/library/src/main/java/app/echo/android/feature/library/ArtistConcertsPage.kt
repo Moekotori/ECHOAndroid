@@ -81,10 +81,10 @@ private fun ArtistConcertRow(
                 horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(event.date.take(4), style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant)
                 Text(event.date.substring(5).replace('-', '/'), style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+                    fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 4.dp))
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(event.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(event.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
                 val location = listOfNotNull(event.city, event.venue).distinct().joinToString(" · ")
                 if (location.isNotBlank()) Text(location, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                 event.time?.let { Text(stringResource(R.string.artist_concert_local_time, it), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant) }

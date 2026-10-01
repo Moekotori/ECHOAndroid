@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -73,7 +73,7 @@ fun EchoIconBadge(
         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.20f)),
     ) {
-        Icon(
+        EchoIcon(
             icon,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
@@ -103,7 +103,7 @@ fun EchoMetricTile(
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = scheme.primary)
-            Text(value, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold, color = if (dark) Color.White.copy(alpha = 0.94f) else scheme.onSurface)
+            Text(value, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, color = if (dark) Color.White.copy(alpha = 0.94f) else scheme.onSurface)
             if (detail != null) {
                 Text(
                     detail,
@@ -167,7 +167,7 @@ fun EchoSectionTitle(
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
     Column(modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = if (dark) Color.White.copy(alpha = 0.96f) else scheme.onSurface)
+        Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, color = if (dark) Color.White.copy(alpha = 0.96f) else scheme.onSurface)
         Text(subtitle, color = if (dark) Color.White.copy(alpha = 0.72f) else scheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }

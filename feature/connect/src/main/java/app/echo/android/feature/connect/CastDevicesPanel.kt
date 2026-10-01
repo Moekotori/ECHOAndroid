@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Computer
 import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -72,7 +72,7 @@ internal fun CastDevicesPanel(
             Text(
                 stringResource(L10nR.string.echo_link_cast_title),
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
             )
             ConnectNote(stringResource(L10nR.string.echo_link_cast_subtitle))
         }
@@ -95,7 +95,7 @@ internal fun CastDevicesPanel(
                         sizeClass = EchoArtworkSize.Thumbnail,
                     )
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
                         phoneTrackArtist?.trim()?.takeIf { it.isNotEmpty() }?.let { ConnectNote(it) }
                         phoneTrackFormat?.takeIf { it.isNotBlank() }?.let { ConnectNote(it) }
                         if (phoneTrackLossless) {
@@ -274,7 +274,7 @@ private fun CastDeviceRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(Icons.Rounded.Computer, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        EchoIcon(Icons.Rounded.Computer, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         Column(Modifier.weight(1f)) {
             Text(name, style = MaterialTheme.typography.bodyMedium)
             ConnectNote(

@@ -2,6 +2,13 @@ package app.echo.android.lyrics.overlay
 
 import android.app.Activity
 import android.app.Application
+import android.app.KeyguardManager
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.PowerManager
+import androidx.core.content.ContextCompat
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.os.Bundle
@@ -36,6 +43,15 @@ internal class EchoFloatingLyricsController(
     private val settingsStore: EchoSettingsStore,
 ) {
     private val windowManager = app.getSystemService(WindowManager::class.java)
+    private val power = app.getSystemService(PowerManager::class.java)
+    private val keyguard = app.getSystemService(KeyguardManager::class.java)
+    private val screenVisible = MutableStateFlow(power.isInteractive && !keyguard.isKeyguardLocked)
+    private val screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            screenVisible.value = intent.action != Intent.ACTION_SCREEN_OFF &&
+                power.isInteractive && !keyguard.isKeyguardLocked
+        }
+    }
     private val appVisible = MutableStateFlow(false)
     private var startedActivities = 0
     private var view: EchoFloatingLyricsView? = null
@@ -44,10 +60,15 @@ internal class EchoFloatingLyricsController(
 
     fun start() {
         app.registerActivityLifecycleCallbacks(VisibilityCallbacks())
+        ContextCompat.registerReceiver(app, screenReceiver, IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_USER_PRESENT)
+        }, ContextCompat.RECEIVER_NOT_EXPORTED)
         EchoPlaybackProcessRuntime.scope.launch(Dispatchers.Main.immediate) {
             combine(
                 settingsStore.appSettings.map { it.floatingLyrics }.distinctUntilChanged(),
-                appVisible,
+                combine(appVisible, screenVisible) { foreground, screen -> foreground || !screen },
                 EchoPlaybackProcessRuntime.surface.map { it.isPlaying }.distinctUntilChanged(),
                 EchoPlaybackProcessRuntime.lyricDisplaySnapshot,
             ) { floating, visible, playing, snapshot -> FloatingState(floating, visible, playing, snapshot) }
@@ -180,7 +201,7 @@ internal class EchoFloatingLyricsController(
         const val BASE_FLAGS = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-        const val LOCKED_WINDOW_ALPHA = 0.8f
+        const val LOCKED_WINDOW_ALPHA = 0.6f
         const val DEFAULT_OFFSET_FRACTION = 0.12f
         val CURRENT_LINE_COLOR = Color.rgb(0xFF, 0xE0, 0x8A)
     }

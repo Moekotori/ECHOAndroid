@@ -28,8 +28,11 @@ internal object EchoSplParser {
                 }
                 return@forEach
             }
+            var prefixEnd = 0
             val starts = tags.takeWhile { tag ->
-                tag.value.startsWith('[') && raw.substring(0, tag.range.first).replace(time, "").isEmpty()
+                (tag.value.startsWith('[') && tag.range.first == prefixEnd).also { contiguous ->
+                    if (contiguous) prefixEnd = tag.range.last + 1
+                }
             }.map { EchoLyricsParser.parseClockMs(it.groupValues[1]) }
             if (starts.isEmpty()) return@forEach
             val body = raw.replace(time, "")

@@ -1,5 +1,7 @@
 package app.echo.android.feature.settings
 
+import app.echo.android.design.EchoIcon
+
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
@@ -132,7 +134,7 @@ internal fun SettingsBackgroundPreview(
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(glassColors)))
             Column(Modifier.align(Alignment.BottomStart).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.onSurface)
+                EchoIcon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.onSurface)
                 Text(stringResource(if (unavailable) R.string.settings_background_preview_unavailable
                     else if (isVideo && poster.loading) R.string.settings_background_preview_loading
                     else R.string.settings_font_preview_ui),

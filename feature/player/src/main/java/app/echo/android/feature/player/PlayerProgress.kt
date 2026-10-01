@@ -10,8 +10,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
@@ -22,8 +20,11 @@ import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import app.echo.android.design.drawEchoControlRail
+import app.echo.android.design.drawEchoControlThumb
 import app.echo.android.design.formatDuration
 import app.echo.android.design.progressFraction
+import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.model.radio.EchoRadioStation
 
 /** Clock reads stay in this leaf; seeking never rebuilds the cover or control row. */
@@ -49,6 +50,7 @@ internal fun NowPlayingScrubber(
         LinearPlayerSeekBar(
             trackKey = trackKey,
             fraction = shown,
+            engaged = scrubFraction != null,
             enabled = durationMs > 0L,
             onPreview = { scrubFraction = it },
             onCommit = { fraction ->
@@ -66,19 +68,22 @@ internal fun NowPlayingScrubber(
     }
 }
 
-/** A continuous rounded track without a thumb, inside a full 48 dp seek target. */
+/** Shared rail and thumb treatment, inside a full 48 dp seek target. */
 @Composable
 private fun LinearPlayerSeekBar(
     trackKey: String?,
     fraction: Float,
+    engaged: Boolean,
     enabled: Boolean,
     onPreview: (Float) -> Unit,
     onCommit: (Float) -> Unit,
     onCancel: () -> Unit,
 ) {
-    val preview by rememberUpdatedState(onPreview)
-    val commit by rememberUpdatedState(onCommit)
-    val cancel by rememberUpdatedState(onCancel)
+    val haptics by rememberUpdatedState(rememberEchoHapticPerformer())
+    val preview by rememberUpdatedState<(Float) -> Unit>({ onPreview(it); haptics.seek(it) })
+    val commit by rememberUpdatedState<(Float) -> Unit>({ onCommit(it); haptics.endSeek(committed = true) })
+    val cancel by rememberUpdatedState<() -> Unit>({ onCancel(); haptics.endSeek(committed = false) })
+    val face = MaterialTheme.colorScheme.surface
     val played = MaterialTheme.colorScheme.primary
     val unplayed = OnArt.copy(alpha = 0.10f)
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
@@ -93,7 +98,7 @@ private fun LinearPlayerSeekBar(
         }
         .pointerInput(trackKey, enabled, rtl) {
             if (enabled) detectTapGestures { point ->
-                val inset = 4.dp.toPx()
+                val inset = 12.dp.toPx()
                 val normalized = ((point.x - inset) / (size.width - 2f * inset).coerceAtLeast(1f)).coerceIn(0f, 1f)
                 commit(if (rtl) 1f - normalized else normalized)
             }
@@ -102,13 +107,13 @@ private fun LinearPlayerSeekBar(
             if (enabled) {
                 var target = 0f
                 fun fractionAt(x: Float): Float {
-                    val inset = 4.dp.toPx()
+                    val inset = 12.dp.toPx()
                     val normalized = ((x - inset) / (size.width - 2f * inset).coerceAtLeast(1f)).coerceIn(0f, 1f)
                     return if (rtl) 1f - normalized else normalized
                 }
                 detectDragGestures(
                     orientationLock = Orientation.Horizontal,
-                    onDragStart = { _, change, _ -> target = fractionAt(change.position.x); preview(target) },
+                    onDragStart = { _, change, _ -> haptics.grab(); target = fractionAt(change.position.x); preview(target) },
                     onDrag = { change, _ ->
                         change.consume()
                         target = fractionAt(change.position.x)
@@ -120,7 +125,7 @@ private fun LinearPlayerSeekBar(
                 )
             }
         }) {
-        val inset = 4.dp.toPx().coerceAtMost(size.width / 2f)
+        val inset = 12.dp.toPx().coerceAtMost(size.width / 2f)
         val left = inset
         val right = size.width - inset
         val start = if (rtl) right else left
@@ -128,16 +133,8 @@ private fun LinearPlayerSeekBar(
         val fillFraction = fraction.coerceIn(0f, 1f)
         val x = start + (end - start) * fillFraction
         val y = size.height - 14.dp.toPx()
-        val height = 2.5.dp.toPx()
-        drawLine(unplayed, Offset(left, y), Offset(right, y), height, StrokeCap.Round)
-        if (enabled && fillFraction > 0f) {
-            // Clip the full pill so the progress boundary stays flush with the remaining track.
-            clipRect(
-                left = if (rtl && fillFraction < 1f) x else 0f,
-                right = if (!rtl && fillFraction < 1f) x else size.width,
-            ) {
-                drawLine(played, Offset(left, y), Offset(right, y), height, StrokeCap.Round)
-            }
-        }
+        val accent = if (enabled) played else played.copy(alpha = 0.38f)
+        drawEchoControlRail(Offset(left, y), Offset(right, y), Offset(start, y), Offset(x, y), accent, unplayed)
+        drawEchoControlThumb(Offset(x, y), accent, face, engaged, enabled)
     }
 }

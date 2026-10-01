@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_lyrics_interface">Lyrics interface</string>
+    <string name="settings_lyrics_interface_detail">Open lyrics; use its settings to adjust style, type and alignment.</string>
+    <string name="settings_lyrics_source_order">Lyrics source order</string>
+    <string name="settings_lyrics_source_order_detail">Try local sources in this order. Manual selections stay first; unavailable or invalid sources are skipped. Online matching keeps its own switch.</string>
+    <string name="settings_lyrics_source_spl">SPL</string>
+    <string name="settings_lyrics_source_sidecar">LRC / other sidecar files</string>
+    <string name="settings_lyrics_source_embedded">Embedded lyrics</string>
+    <string name="settings_lyrics_source_up">Move earlier</string>
+    <string name="settings_lyrics_source_down">Move later</string>
+    <string name="settings_lyrics_apply">Done</string>
+    <string name="settings_lyrics_cancel">Cancel</string>
+    <string name="settings_notification_lyrics">Notification lyrics</string>
+    <string name="settings_notification_lyrics_detail">Show the current lyric in the media notification. Some Android versions use system-rendered media metadata instead.</string>
+    <string name="settings_status_overlay_lyrics">Floating status bar lyrics</string>
+    <string name="settings_status_overlay_lyrics_detail">Compact, touch-through lyrics near the top of the screen. Requires overlay permission. The system status bar may cover this window; adjust its position below the bar.</string>
+    <string name="settings_status_lyrics_layout">Status lyrics position and size</string>
+    <string name="settings_status_lyrics_layout_detail">Adjust width, text size and position to avoid the clock, camera and system icons.</string>
+    <string name="settings_system_status_lyrics">System status bar lyrics</string>
+    <string name="settings_system_status_lyrics_detail">Experimental Flyme compatibility, off by default. Requires system support; turn it off if the media notification looks abnormal.</string>
+    <string name="settings_system_status_lyrics_unsupported">Native status lyrics are currently adapted for Meizu Flyme. Use floating status lyrics on this device.</string>
+    <string name="settings_status_lyrics_hide_translation">Hide status lyrics translation</string>
+    <string name="settings_status_lyrics_hide_translation_detail">Applies to both status modes. Uses the parsed translation, including lines with the same timestamp.</string>
+    <string name="settings_status_lyrics_preview">The next line of our song</string>
+    <string name="settings_status_lyrics_font">Text size</string>
+    <string name="settings_status_lyrics_width">Window width</string>
+    <string name="settings_status_lyrics_x">Distance from left</string>
+    <string name="settings_status_lyrics_y">Distance below status bar</string>
+    <string name="settings_status_lyrics_reset">Reset status lyrics layout</string>
+</resources>

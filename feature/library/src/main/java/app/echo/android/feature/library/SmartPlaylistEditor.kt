@@ -1,5 +1,6 @@
 package app.echo.android.feature.library
 
+import app.echo.android.design.EchoSwitch
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,6 +10,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -69,8 +72,10 @@ internal fun SmartPlaylistEditor(playlist: EchoPlaylist?, actions: LibraryExperi
                 SmartDurationField(rule.maximumDurationSeconds, R.string.smart_duration_to, Modifier.weight(1f)) { rule = rule.copy(maximumDurationSeconds = it) }
             } }
             item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(stringResource(R.string.smart_favorites), Modifier.weight(1f).padding(top = 12.dp))
-                Switch(rule.favoriteOnly, { rule = rule.copy(favoriteOnly = it) }, enabled = !saving)
+                val favoritesLabel = stringResource(R.string.smart_favorites)
+                Text(favoritesLabel, Modifier.weight(1f).padding(top = 12.dp))
+                EchoSwitch(rule.favoriteOnly, { rule = rule.copy(favoriteOnly = it) }, enabled = !saving,
+                    modifier = Modifier.semantics { contentDescription = favoritesLabel })
             } }
             item {
                 Text(stringResource(R.string.smart_not_played), style = MaterialTheme.typography.labelLarge)

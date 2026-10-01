@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Headphones
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -56,7 +56,7 @@ internal fun HomeListeningSummary(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(Icons.Rounded.Headphones, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(20.dp))
+            EchoIcon(Icons.Rounded.Headphones, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(20.dp))
             Text(stringResource(R.string.home_listening_journal), style = MaterialTheme.typography.titleSmall, color = scheme.onSurface)
         }
         Text(

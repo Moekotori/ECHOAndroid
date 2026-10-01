@@ -1,5 +1,7 @@
 package app.echo.android.feature.home
 
+import app.echo.android.design.EchoIcon
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -25,7 +27,7 @@ internal fun HomeEmptyLibrary(scanState: LibraryScanProgress, onOpenLibrary: () 
     Surface(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
         shape = RectangleShape, color = Color.Transparent) {
         Column(Modifier.padding(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Icon(Icons.Rounded.LibraryMusic, contentDescription = null,
+            EchoIcon(Icons.Rounded.LibraryMusic, contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(40.dp))
             HomeSectionHeader(stringResource(L10nR.string.feature_home_start_with_local_music_9875f9))
             if (scanState.isScanning) {
@@ -99,7 +101,7 @@ private fun HomeLibraryScanHint(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Icon(
+        EchoIcon(
             imageVector = Icons.Rounded.LibraryMusic,
             contentDescription = null,
             tint = echoAccentColor(),
@@ -110,7 +112,7 @@ private fun HomeLibraryScanHint(
                 text = stringResource(L10nR.string.feature_home_scanning_library_d0b14c),
                 color = homeTitleColor(),
                 style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Medium,
             )
             Text(
                 text = if (detail == progress) progress else "$progress · $detail",

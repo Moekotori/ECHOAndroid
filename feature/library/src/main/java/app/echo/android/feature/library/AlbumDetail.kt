@@ -34,7 +34,7 @@ import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
@@ -506,7 +506,7 @@ private fun ArtistHero(artist: ArtistSummary, palette: ArtworkPalette) {
             displayMetadataOrUnknown(artist.name, unknownArtistLabel()),
             color = colors.content,
             style = MaterialTheme.typography.headlineSmall.copy(shadow = AlbumTextShadow),
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
@@ -539,7 +539,7 @@ internal fun AlbumDetailTopBar(onBack: () -> Unit) {
                 .echoClickable(onClick = onBack),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
+            EchoIcon(
                 Icons.AutoMirrored.Rounded.ArrowBack,
                 contentDescription = stringResource(L10nR.string.feature_library_back_49093c),
                 tint = colors.content,
@@ -578,7 +578,7 @@ private fun AlbumHero(
             displayMetadataOrUnknown(album.title, unknownAlbumLabel()),
             color = titleColor,
             style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Start,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
@@ -701,7 +701,7 @@ private fun AlbumDetailActionButton(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
+        EchoIcon(
             icon,
             contentDescription = null,
             tint = contentColor,
@@ -712,7 +712,7 @@ private fun AlbumDetailActionButton(
             label,
             color = contentColor,
             style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -747,7 +747,7 @@ internal fun AlbumInformation(
     }
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text(stringResource(L10nR.string.album_information_title), color = colors.content,
-            style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
         if (tracks.size < album.trackCount) {
             Text(stringResource(L10nR.string.album_information_partial, tracks.size, album.trackCount),
                 color = colors.muted, style = MaterialTheme.typography.bodySmall)
@@ -776,7 +776,7 @@ internal fun AlbumInformation(
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
         Spacer(Modifier.height(4.dp))
         Text(stringResource(L10nR.string.album_information_audio), color = colors.content,
-            style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
         if (facts.sources.isNotEmpty()) {
             AlbumInformationRow(stringResource(L10nR.string.feature_library_source_4aff16), facts.sources.map { sourceLabel(it) }.joinToString(" / "))
         }
@@ -853,7 +853,7 @@ private fun AlbumDetailInsights(
     if (refined) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Rounded.MusicNote, contentDescription = null, tint = colors.muted, modifier = Modifier.size(16.dp))
+                EchoIcon(Icons.Rounded.MusicNote, contentDescription = null, tint = colors.muted, modifier = Modifier.size(16.dp))
                 Text(source.primary, color = colors.muted, style = MaterialTheme.typography.bodySmall)
                 Text("·", color = colors.muted, style = MaterialTheme.typography.bodySmall)
                 Text(info.primary, color = colors.muted, style = MaterialTheme.typography.labelMedium)
@@ -933,7 +933,7 @@ private fun DetailInsightCell(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
+        EchoIcon(
             icon,
             contentDescription = null,
             tint = iconTint,
@@ -944,7 +944,7 @@ private fun DetailInsightCell(
                 insight.title,
                 color = titleColor,
                 style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -952,7 +952,7 @@ private fun DetailInsightCell(
                 insight.primary,
                 color = colors.content,
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -985,7 +985,7 @@ internal fun AlbumTracksHeader(
             stringResource(L10nR.string.feature_library_tracks_2d80e8),
             color = resolvedTitleColor,
             style = if (LocalAlbumDetail.current) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
+            fontWeight = if (LocalAlbumDetail.current) FontWeight.Medium else FontWeight.SemiBold,
         )
         Text(
             libraryTrackCountLabel(count),
@@ -1203,7 +1203,7 @@ internal fun AlbumTrackRow(
                 text = (track.trackNumber ?: (index + 1)).toString().padStart(2, '0'),
                 color = if (refined) colors.muted else accent,
                 style = if (refined) MaterialTheme.typography.labelMedium else MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Medium,
                 modifier = Modifier.width(26.dp),
                 textAlign = TextAlign.Center,
             )
@@ -1212,7 +1212,7 @@ internal fun AlbumTrackRow(
                     displayMetadataOrUnknown(track.title, unknownTrackLabel()),
                     color = colors.content,
                     style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -1309,7 +1309,7 @@ private fun AlbumDiscHeader(discNumber: Int, isFirst: Boolean) {
         stringResource(L10nR.string.album_disc_number, discNumber),
         color = colors.muted,
         style = MaterialTheme.typography.labelLarge,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.Medium,
         modifier = Modifier.padding(start = 4.dp, top = if (isFirst) 4.dp else 16.dp, bottom = 4.dp),
     )
 }

@@ -36,7 +36,7 @@
     <string name="echo_link_tap_to_pair">点按配对</string>
     <string name="artist_album_count">%1$d 张专辑</string>
     <string name="playback_widget_name">ECHO 播放</string>
-    <string name="playback_widget_description">在主屏幕播放、暂停和切歌</string>
+    <string name="playback_widget_description">在主屏幕或支持的锁屏上播放、暂停和切歌</string>
     <string name="playback_widget_preview_title">ECHO 移动端</string>
     <string name="qs_tile_play_pause">ECHO 播放/暂停</string>
     <string name="qs_tile_playing">播放中</string>

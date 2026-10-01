@@ -26,20 +26,30 @@ class EchoStartupThemeSnapshotTest {
         assertEquals(EchoColorTheme.Default.id, EchoAppSettings().colorTheme)
         assertEquals(EchoCustomColors.Default, EchoAppSettings().customColors)
         assertNull(EchoStartupThemeSnapshot().startupBackgroundUri)
-        assertEquals("paper", EchoStartupThemeSnapshot().toAppSettings().lyricsPageStyle)
+        assertEquals("mist", EchoStartupThemeSnapshot().toAppSettings().lyricsPageStyle)
         assertEquals("mist", EchoStartupThemeSnapshot(themeMode = EchoThemeMode.Dark).toAppSettings().lyricsPageStyle)
     }
 
     @Test
-    fun customColorsSurviveStartupSnapshotButSavedThemesDoNot() {
+    fun legacyPalettesFallBackToFixedColorsWithoutChangingDarkMode() {
         val colors = EchoCustomColors(0xFFFF0000.toInt(), 0xFF00FF00.toInt(), 0xFF0000FF.toInt())
-        val restored = EchoAppSettings(
-            colorTheme = EchoColorTheme.Custom.id,
-            customColors = colors,
-        ).toStartupThemeSnapshot().toAppSettings()
-        assertEquals(EchoColorTheme.Custom.id, restored.colorTheme)
-        assertEquals(colors, restored.customColors)
-        assertEquals(emptyList<app.echo.android.model.settings.EchoSavedColorTheme>(), restored.savedColorThemes)
+        for (theme in EchoColorTheme.entries) {
+            val snapshot = EchoAppSettings(
+                themeMode = EchoThemeMode.Dark,
+                colorTheme = theme.id,
+                customColors = colors,
+                dynamicColorEnabled = true,
+            ).toStartupThemeSnapshot()
+            assertEquals(EchoColorTheme.Default.id, snapshot.colorTheme)
+            assertEquals(EchoCustomColors.Default, snapshot.customColors)
+            // Also cover a directly constructed legacy launch snapshot.
+            val restored = snapshot.copy(colorTheme = theme.id, customColors = colors).toAppSettings()
+            assertEquals(EchoThemeMode.Dark, restored.themeMode)
+            assertEquals(EchoColorTheme.Default.id, restored.colorTheme)
+            assertEquals(EchoCustomColors.Default, restored.customColors)
+            assertEquals(false, restored.dynamicColorEnabled)
+            assertEquals(emptyList<app.echo.android.model.settings.EchoSavedColorTheme>(), restored.savedColorThemes)
+        }
     }
 
     @Test

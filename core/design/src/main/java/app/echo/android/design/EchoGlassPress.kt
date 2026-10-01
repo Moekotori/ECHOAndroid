@@ -17,6 +17,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 /** Observe presses without consuming input owned by buttons, dock paging or track swipes. */
 @Composable
 internal fun Modifier.echoGlassPress(): Modifier {
+    if (LocalEchoEffectivePerformanceMode.current.isLightweight) return this
     var pressed by remember { mutableStateOf(false) }
     val compression = animateFloatAsState(
         targetValue = if (pressed) 1f else 0f,

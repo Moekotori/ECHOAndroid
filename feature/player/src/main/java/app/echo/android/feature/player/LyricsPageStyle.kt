@@ -2,22 +2,15 @@ package app.echo.android.feature.player
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoTheme
 import app.echo.android.design.ArtworkPalette
-import app.echo.android.design.echoThemeTokens
-import app.echo.android.model.settings.EchoColorTheme
 import app.echo.android.model.settings.EchoLyricsPageStyle
+import app.echo.android.model.settings.EchoPlayerPageStyle
 
 internal val LocalLyricsPageStyle = staticCompositionLocalOf { EchoLyricsPageStyle.Mist }
 
@@ -39,7 +32,7 @@ internal fun LyricsPageBackdrop(
     }
 }
 
-/** Scope the lyric palette without changing the app theme or the cover page. */
+/** Both pages share the selected palette; nested previews inherit the same choice. */
 @Composable
 internal fun LyricsPageTheme(
     style: EchoLyricsPageStyle,
@@ -50,8 +43,10 @@ internal fun LyricsPageTheme(
         content()
         return
     }
-    val dark = style != EchoLyricsPageStyle.Paper
-    val tokens = remember(dark) { echoThemeTokens(EchoColorTheme.Echo, dark) }
+    val shared = LocalPlayerPageStyle.current
+    val pageStyle = if (shared.lyricsPreset == style) shared else EchoPlayerPageStyle.fromId(style.id)
+    val dark = !pageStyle.isLight
+    val tokens = remember(pageStyle) { playerPageTokens(pageStyle) }
     val scheme = remember(tokens) {
         val base = if (dark) darkColorScheme() else lightColorScheme()
         base.copy(
@@ -72,60 +67,25 @@ internal fun LyricsPageTheme(
             surfaceTint = tokens.accent,
         )
     }
+    val inheritedTypography = MaterialTheme.typography
+    val typography = remember(pageStyle, inheritedTypography) {
+        val display = pageStyle.displayFont
+        val body = pageStyle.bodyFont
+        inheritedTypography.copy(
+            titleLarge = inheritedTypography.titleLarge.copy(fontFamily = display ?: inheritedTypography.titleLarge.fontFamily),
+            titleMedium = inheritedTypography.titleMedium.copy(fontFamily = display ?: inheritedTypography.titleMedium.fontFamily),
+            titleSmall = inheritedTypography.titleSmall.copy(fontFamily = display ?: inheritedTypography.titleSmall.fontFamily),
+            bodyLarge = inheritedTypography.bodyLarge.copy(fontFamily = body ?: inheritedTypography.bodyLarge.fontFamily),
+            bodyMedium = inheritedTypography.bodyMedium.copy(fontFamily = body ?: inheritedTypography.bodyMedium.fontFamily),
+            bodySmall = inheritedTypography.bodySmall.copy(fontFamily = body ?: inheritedTypography.bodySmall.fontFamily),
+        )
+    }
     CompositionLocalProvider(
         LocalLyricsPageStyle provides style,
         LocalEchoDarkTheme provides dark,
         LocalEchoTheme provides tokens,
         LocalContentColor provides tokens.onSurface,
     ) {
-        MaterialTheme(colorScheme = scheme, typography = MaterialTheme.typography, content = content)
-    }
-}
-
-@Composable
-internal fun LyricsPageStyleSelector(style: EchoLyricsPageStyle, onSelect: (String) -> Unit) {
-    Column(Modifier.fillMaxWidth().selectableGroup()) {
-        Text(stringResource(R.string.lyrics_page_style), style = MaterialTheme.typography.titleSmall)
-        Spacer(Modifier.height(10.dp))
-        // Temporarily hide Afterglow choices while retaining saved style compatibility.
-        EchoLyricsPageStyle.entries.filterNot { it.isAfterglow }.chunked(2).forEach { options ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                options.forEach { option ->
-                    val selected = style == option
-                    Column(
-                        Modifier.weight(1f)
-                            .selectable(selected = selected, role = Role.RadioButton, onClick = { onSelect(option.id) })
-                            .padding(vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(5.dp),
-                    ) {
-                        Text(
-                            stringResource(when (option) {
-                                EchoLyricsPageStyle.Mist -> R.string.lyrics_style_mist
-                                EchoLyricsPageStyle.Paper -> R.string.lyrics_style_paper
-                                EchoLyricsPageStyle.AfterglowMist -> R.string.afterglow_mist
-                                EchoLyricsPageStyle.AfterglowNight -> R.string.afterglow_night
-                            }),
-                            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Text(
-                            stringResource(when (option) {
-                                EchoLyricsPageStyle.Mist -> R.string.lyrics_style_mist_detail
-                                EchoLyricsPageStyle.Paper -> R.string.lyrics_style_paper_detail
-                                EchoLyricsPageStyle.AfterglowMist -> R.string.afterglow_mist_detail
-                                EchoLyricsPageStyle.AfterglowNight -> R.string.afterglow_night_detail
-                            }),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                        Spacer(Modifier.height(7.dp))
-                        Box(Modifier.fillMaxWidth().height(2.dp).background(
-                            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-                        ))
-                      }
-                  }
-                }
-        }
+        MaterialTheme(colorScheme = scheme, typography = typography, content = content)
     }
 }

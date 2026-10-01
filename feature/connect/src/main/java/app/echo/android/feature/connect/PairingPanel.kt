@@ -1,5 +1,8 @@
 package app.echo.android.feature.connect
 
+import app.echo.android.design.EchoIcon
+import app.echo.android.design.EchoLinkModeSwitch
+
 import app.echo.android.feature.connect.R as L10nR
 
 import app.echo.android.connect.EchoLinkDiscoveryState
@@ -77,6 +80,11 @@ internal fun PcLinkPanel(
     onLoadMorePcLibrary: () -> Unit = {},
     active: Boolean = true,
     onOpenListening: (() -> Unit)? = null,
+    remoteMode: Boolean = true,
+    onRemoteModeChange: (Boolean) -> Unit = {},
+    onOpenPcLibrary: () -> Unit = {},
+    openQueueNonce: Int = 0,
+    onQueueRequestHandled: () -> Unit = {},
 ) {
     var showLibrarySync by remember { mutableStateOf(false) }
     var legacySync by remember { mutableStateOf(false) }
@@ -95,6 +103,13 @@ internal fun PcLinkPanel(
     var manual by rememberSaveable { mutableStateOf(savedPcAddress.isNullOrBlank()) }
     var confirmForget by rememberSaveable { mutableStateOf(false) }
     var musicPicker by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(openQueueNonce) {
+        if (openQueueNonce > 0 && connected && remoteMode) {
+            musicPicker = "queue"
+            onQueueRequestHandled()
+        }
+    }
+    LaunchedEffect(remoteMode) { if (!remoteMode) musicPicker = null }
     val hasSaved = !savedPcAddress.isNullOrBlank()
     val endpoint = remember(address, token) { EchoPairingParser.parseManual(address, token) }
     val validAddress = remember(address) { EchoPairingParser.parseManual(address, "validation-token") != null }
@@ -139,6 +154,7 @@ internal fun PcLinkPanel(
             ListenTogetherEntry(onOpen = onOpenListening)
         }
         remoteError?.takeIf { it.isNotBlank() }?.let { ConnectNote(it, error = true) }
+        if (connected || hasSaved) EchoLinkModeSwitch(remoteMode, onRemoteModeChange)
         if (connected && librarySyncActions != null) OutlinedButton(onClick = { showLibrarySync = true }, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(L10nR.string.sync_title))
         }
@@ -149,6 +165,7 @@ internal fun PcLinkPanel(
                 TextButton(onClick = onDisconnect) { Text(stringResource(L10nR.string.feature_connect_cancel_connection_fd085f)) }
             }
             connected -> {
+                if (remoteMode) {
                 RemoteNowPlaying(
                     title = trackTitle,
                     artist = trackArtist,
@@ -178,6 +195,11 @@ internal fun PcLinkPanel(
                         Text(stringResource(L10nR.string.echo_link_handoff_phone))
                     }
                 }
+                } else {
+                    Button(onClick = onOpenPcLibrary, modifier = Modifier.fillMaxWidth(), shape = ConnectControlShape) {
+                        Text(stringResource(L10nR.string.echo_link_open_pc_library))
+                    }
+                }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     if (onOpenListening != null) {
                         TextButton(onClick = onOpenListening) {
@@ -197,7 +219,7 @@ internal fun PcLinkPanel(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
-                                Icon(Icons.Rounded.Computer, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                EchoIcon(Icons.Rounded.Computer, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                                 Column(Modifier.weight(1f)) {
                                     Text(pc.name, style = MaterialTheme.typography.bodyMedium)
                                     ConnectNote(pc.address)
@@ -245,7 +267,7 @@ internal fun PcLinkPanel(
                             selectPc(EchoLinkDiscoveryPolicy.addressLabel(device), selectedToken, device.requiresPairing)
                             onSelectLanDevice(device)
                         }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Icon(Icons.Rounded.Computer, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            EchoIcon(Icons.Rounded.Computer, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             Column(Modifier.weight(1f)) {
                                 Text(device.name, style = MaterialTheme.typography.bodyMedium)
                                 ConnectNote(EchoLinkDiscoveryPolicy.addressLabel(device))
@@ -257,7 +279,7 @@ internal fun PcLinkPanel(
                 Column {
                     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).echoClickable(role = Role.Button) { keyboard?.hide(); manual = !manual }, verticalAlignment = Alignment.CenterVertically) {
                         Text(stringResource(L10nR.string.echo_link_pairing_entry), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
-                        Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = null, Modifier.echoExpandIndicator(manual))
+                        EchoIcon(Icons.Rounded.KeyboardArrowDown, contentDescription = null, Modifier.echoExpandIndicator(manual))
                     }
                     EchoExpand(manual) {
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -298,12 +320,12 @@ private fun ListenTogetherEntry(onOpen: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(Icons.Rounded.Headphones, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        EchoIcon(Icons.Rounded.Headphones, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 stringResource(L10nR.string.feature_connect_listen_together_title),
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Medium,
             )
             ConnectNote(stringResource(L10nR.string.feature_connect_listen_together_detail))
         }

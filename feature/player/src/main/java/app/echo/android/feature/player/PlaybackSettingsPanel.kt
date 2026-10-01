@@ -294,7 +294,7 @@ private fun PlaybackSettingsSheet(
                             stringResource(L10nR.string.feature_player_playback_settings_651436),
                             color = titleColor,
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Medium,
                         )
                         Text(
                             playbackSettingsSummary(status),
@@ -599,7 +599,7 @@ private fun PlaybackSettingsSheet(
                                     ),
                                     color = if (dark) Color.White.copy(alpha = 0.62f) else echoTheme().muted,
                                     style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.SemiBold,
+                                    fontWeight = FontWeight.Medium,
                                 )
                                 TextButton(
                                     onClick = onScanReplayGain,

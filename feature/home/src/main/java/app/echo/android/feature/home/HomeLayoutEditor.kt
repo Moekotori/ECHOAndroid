@@ -1,5 +1,8 @@
 package app.echo.android.feature.home
 
+import app.echo.android.design.EchoSwitch
+import app.echo.android.design.EchoIcon
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -57,14 +60,14 @@ internal fun HomeLayoutEditor(
                         Text(label, Modifier.weight(1f).padding(end = 4.dp),
                             style = MaterialTheme.typography.bodyLarge)
                         IconButton(onClick = { draft = draft.move(section, -1) }, enabled = index > 0) {
-                            Icon(Icons.Rounded.KeyboardArrowUp,
+                            EchoIcon(Icons.Rounded.KeyboardArrowUp,
                                 stringResource(R.string.home_layout_move_up, label))
                         }
                         IconButton(onClick = { draft = draft.move(section, 1) }, enabled = index < draft.order.lastIndex) {
-                            Icon(Icons.Rounded.KeyboardArrowDown,
+                            EchoIcon(Icons.Rounded.KeyboardArrowDown,
                                 stringResource(R.string.home_layout_move_down, label))
                         }
-                        Switch(checked = section !in draft.hidden,
+                        EchoSwitch(checked = section !in draft.hidden,
                             onCheckedChange = { draft = draft.withVisibility(section, it) },
                             modifier = Modifier.semantics { contentDescription = label })
                     }

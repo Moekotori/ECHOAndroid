@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="player_appearance_title">Apparence de la page</string>
-    <string name="player_appearance_detail">Les changements sont visibles immédiatement et enregistrés après le réglage.</string>
+    <string name="player_appearance_title">Style du morceau et des paroles</string>
+    <string name="player_appearance_detail">Un même style pour les détails du morceau et les paroles. Enregistrement automatique.</string>
     <string name="player_appearance_reset">Réinitialiser</string>
     <string name="player_appearance_record_sleeve">Pochette</string>
     <string name="player_appearance_classic">Immersif</string>

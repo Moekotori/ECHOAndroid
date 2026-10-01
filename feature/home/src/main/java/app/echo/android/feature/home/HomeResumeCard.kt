@@ -1,5 +1,7 @@
 package app.echo.android.feature.home
 
+import app.echo.android.design.EchoIcon
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -46,7 +48,7 @@ internal fun HomeResumeSection(
                 }
             }
             IconButton(onClick = onResume, modifier = Modifier.size(48.dp)) {
-                Icon(if (status.isPlaying) Icons.AutoMirrored.Rounded.ArrowForward else Icons.Rounded.PlayArrow,
+                EchoIcon(if (status.isPlaying) Icons.AutoMirrored.Rounded.ArrowForward else Icons.Rounded.PlayArrow,
                     contentDescription = action, tint = MaterialTheme.colorScheme.primary)
             }
         }

@@ -1,5 +1,7 @@
 package app.echo.android.feature.library
 
+import app.echo.android.design.EchoIcon
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -45,7 +47,7 @@ internal fun RadioLibraryPanel(
         Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.radio_hint), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
             TextButton(onClick = { editing = null; editorOpen = true }, enabled = !loadFailed) {
-                Icon(Icons.Rounded.Add, null)
+                EchoIcon(Icons.Rounded.Add, null)
                 Text(stringResource(R.string.radio_add))
             }
         }
@@ -64,16 +66,16 @@ internal fun RadioLibraryPanel(
                 items(stations, key = { "saved:${it.id}" }) { station ->
                     ListItem(
                         modifier = Modifier.clickable { onPlay(station) },
-                        leadingContent = { Icon(Icons.Rounded.Radio, stringResource(R.string.radio_play)) },
+                        leadingContent = { EchoIcon(Icons.Rounded.Radio, stringResource(R.string.radio_play)) },
                         headlineContent = { Text(station.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         supportingContent = { Text(station.url, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         trailingContent = {
                             Row {
                                 IconButton(onClick = { editing = station; editorOpen = true }) {
-                                    Icon(Icons.Rounded.Edit, stringResource(R.string.radio_edit))
+                                    EchoIcon(Icons.Rounded.Edit, stringResource(R.string.radio_edit))
                                 }
                                 IconButton(onClick = { deleting = station }) {
-                                    Icon(Icons.Rounded.Delete, stringResource(R.string.radio_delete))
+                                    EchoIcon(Icons.Rounded.Delete, stringResource(R.string.radio_delete))
                                 }
                             }
                         },
@@ -165,12 +167,12 @@ private fun DirectoryStationRow(
         .ifBlank { station.url }
     ListItem(
         modifier = Modifier.clickable(onClick = onPlay),
-        leadingContent = { Icon(Icons.Rounded.Radio, stringResource(R.string.radio_play)) },
+        leadingContent = { EchoIcon(Icons.Rounded.Radio, stringResource(R.string.radio_play)) },
         headlineContent = { Text(station.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         supportingContent = { Text(detail, maxLines = 2, overflow = TextOverflow.Ellipsis) },
         trailingContent = {
             IconButton(onClick = onSave) {
-                Icon(Icons.Rounded.Add, stringResource(R.string.radio_directory_save))
+                EchoIcon(Icons.Rounded.Add, stringResource(R.string.radio_directory_save))
             }
         },
         colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),

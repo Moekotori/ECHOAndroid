@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="player_appearance_title">Page appearance</string>
-    <string name="player_appearance_detail">Preview changes here; settings are saved when you finish adjusting.</string>
+    <string name="player_appearance_title">Song &amp; lyrics style</string>
+    <string name="player_appearance_detail">One style for song details and lyrics. Changes save automatically.</string>
     <string name="player_appearance_reset">Reset</string>
     <string name="player_appearance_record_sleeve">Record sleeve</string>
     <string name="player_appearance_classic">Immersive</string>

@@ -894,6 +894,35 @@ class EchoRemoteClientTest {
     }
 
     @Test
+    fun destinationSwitchCancelsPhoneResolveAndKeepsPcConnection() = runBlocking {
+        val blocker = CompletableDeferred<Unit>()
+        val transport = FakeEchoLinkTransport(streamBlocker = blocker)
+        val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
+        client.connect(endpoint, refreshLibraryOnConnect = false)
+        delay(20)
+        val library = client.library.value
+        var phoneStarted = false
+        client.playTrackOnPhone(remoteTrack("song"), onTrackReady = { phoneStarted = true })
+        delay(20)
+        assertEquals(1, transport.streamCalls)
+
+        client.cancelPhonePlaybackRequest()
+        blocker.complete(Unit)
+        delay(20)
+        assertFalse(phoneStarted)
+        assertEquals(1, transport.cancelledStreams)
+        assertEquals(EchoRemoteConnectionState.Connected, client.status.value.connectionState)
+        assertEquals(library, client.library.value)
+
+        // Returning to normal mode can start a new resolve with the same PC session.
+        client.playTrackOnPhone(remoteTrack("song"), onTrackReady = { phoneStarted = true })
+        delay(20)
+        assertTrue(phoneStarted)
+        assertEquals(2, transport.streamCalls)
+        client.disconnect()
+    }
+
+    @Test
     fun v2EventsUpdatePlaybackWithoutWaitingForPoll() = runBlocking {
         val transport = FakeEchoLinkTransport()
         val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0, statusPollIntervalMs = 5_000)

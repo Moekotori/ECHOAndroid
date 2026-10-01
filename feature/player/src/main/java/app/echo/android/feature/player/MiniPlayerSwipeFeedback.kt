@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.material3.Icon
+import androidx.compose.material3.Icon as ChromeIcon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,6 +23,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.echoChromeColors
 
 internal const val MiniPlayerSwipeCommitFraction = 0.22f
 
@@ -34,8 +35,9 @@ internal fun MiniPlayerSwipeFeedback(
     modifier: Modifier = Modifier,
 ) {
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
-    val tint = MaterialTheme.colorScheme.primary
-    val surface = MaterialTheme.colorScheme.surface
+    val chrome = echoChromeColors()
+    val tint = chrome.content
+    val surface = chrome.surface
     Box(modifier.clearAndSetSemantics {}) {
         // Directions are physical, matching the player's existing left=next gesture in RTL too.
         for (next in listOf(false, true)) {
@@ -63,7 +65,7 @@ internal fun MiniPlayerSwipeFeedback(
                 horizontalArrangement = Arrangement.spacedBy(3.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(
+                ChromeIcon(
                     if (next) PlayerControlIcons.Next else PlayerControlIcons.Previous,
                     contentDescription = null, tint = tint, modifier = Modifier.size(15.dp),
                 )

@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import app.echo.android.design.LocalEchoContentMaxWidth
+import app.echo.android.design.echoShortLandscape
+import androidx.compose.ui.text.style.TextOverflow
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.echoPageBackgroundColor
 import app.echo.android.design.animateSilkToPage
@@ -132,6 +134,12 @@ fun ConnectScreen(
     onSearchPcLibrary: (String) -> Unit = {},
     onLoadMorePcLibrary: () -> Unit = {},
     remoteControlsActive: Boolean = true,
+    remoteMode: Boolean = true,
+    onRemoteModeChange: (Boolean) -> Unit = {},
+    onOpenPcLibrary: () -> Unit = {},
+    openPcTabNonce: Int = 0,
+    openPcQueueNonce: Int = 0,
+    onPcQueueOpened: () -> Unit = {},
 ) {
     val pagerState = rememberPagerState { 3 }
     val scrollStates = listOf(rememberScrollState(), rememberScrollState(), rememberScrollState())
@@ -149,17 +157,24 @@ fun ConnectScreen(
     LaunchedEffect(openCastTabNonce) {
         if (openCastTabNonce > 0) pagerState.animateSilkToPage(2, lightweight)
     }
+    LaunchedEffect(openPcTabNonce, openPcQueueNonce) {
+        if (openPcTabNonce > 0 || openPcQueueNonce > 0) pagerState.animateSilkToPage(1, lightweight)
+    }
     val tabs = listOf(
         stringResource(L10nR.string.feature_connect_library_sources_09e6db),
         stringResource(L10nR.string.feature_connect_pc_link_4ca6bd),
         stringResource(L10nR.string.echo_link_cast_tab),
     )
+    val shortLandscape = echoShortLandscape()
     Surface(Modifier.fillMaxSize(), color = echoPageBackgroundColor(), contentColor = scheme.onBackground) {
         Column(Modifier.statusBarsPadding().imePadding(), horizontalAlignment = Alignment.CenterHorizontally) {
-            Column(Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxWidth()) {
+            val heading: @Composable () -> Unit = {
                 Text(stringResource(L10nR.string.feature_connect_connect_c7c091),
-                    Modifier.padding(horizontal = 24.dp, vertical = 20.dp),
-                    style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+                    Modifier.padding(horizontal = 24.dp, vertical = if (shortLandscape) 8.dp else 20.dp),
+                    style = if (shortLandscape) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
+            }
+            val tabRow: @Composable () -> Unit = {
                 SecondaryTabRow(
                     selectedTabIndex = pagerState.currentPage,
                     containerColor = echoPageBackgroundColor(),
@@ -168,8 +183,21 @@ fun ConnectScreen(
                     tabs.forEachIndexed { index, label ->
                         Tab(selected = pagerState.currentPage == index, onClick = { selectTab(index) },
                             unselectedContentColor = scheme.onSurfaceVariant,
-                            text = { Text(label, fontWeight = if (pagerState.currentPage == index) FontWeight.Bold else FontWeight.SemiBold) })
+                            text = { Text(label, style = MaterialTheme.typography.labelLarge,
+                                fontWeight = if (pagerState.currentPage == index) FontWeight.Medium else FontWeight.Normal) })
                     }
+                }
+            }
+            if (shortLandscape) {
+                Row(Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.widthIn(max = 160.dp)) { heading() }
+                    Box(Modifier.weight(1f)) { tabRow() }
+                }
+            } else {
+                Column(Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxWidth()) {
+                    heading()
+                    tabRow()
                 }
             }
             HorizontalPager(
@@ -264,6 +292,11 @@ fun ConnectScreen(
                                 onLoadMorePcLibrary = onLoadMorePcLibrary,
                                 active = remoteControlsActive && pagerState.settledPage == 1,
                                 onOpenListening = onOpenListening,
+                                remoteMode = remoteMode,
+                                onRemoteModeChange = onRemoteModeChange,
+                                onOpenPcLibrary = onOpenPcLibrary,
+                                openQueueNonce = openPcQueueNonce,
+                                onQueueRequestHandled = onPcQueueOpened,
                             )
                             else -> CastDevicesPanel(
                                 phoneTrackTitle = phoneTrackTitle,

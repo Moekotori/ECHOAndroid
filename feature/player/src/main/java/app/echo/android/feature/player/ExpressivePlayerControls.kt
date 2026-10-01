@@ -8,7 +8,7 @@ import androidx.compose.material.icons.automirrored.sharp.QueueMusic
 import androidx.compose.material.icons.sharp.Repeat
 import androidx.compose.material.icons.sharp.RepeatOne
 import androidx.compose.material.icons.sharp.Shuffle
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -52,7 +52,7 @@ internal fun ExpressiveTransport(pixel: Boolean, isPlaying: Boolean, actions: Ex
     val previousLabel = stringResource(R.string.feature_player_previous_af0264)
     val nextLabel = stringResource(R.string.feature_player_next_d67904)
     if (pixel) {
-        Row(Modifier.fillMaxWidth().height(150.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(Modifier.fillMaxWidth().height(if (LocalPlayerCoverLandscape.current) 100.dp else 150.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             TransportTile(pauseIcon, playLabel, actions.playPause, paper, ink,
                 Modifier.weight(1f).fillMaxHeight(), large = true, pixel = true)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -82,7 +82,10 @@ private fun TransportTile(icon: ImageVector, label: String, click: () -> Unit, t
         onDrawBehind { translate(4.dp.toPx(), 4.dp.toPx()) { drawOutline(outline, Color(0xFF94B471)) } }
     }.clip(PixelFrameShape) else Modifier
     Box(modifier.then(surface).background(background).clickable(role = Role.Button, onClick = click), contentAlignment = Alignment.Center) {
-        Icon(icon, label, tint = tint, modifier = Modifier.size(if (pixel) { if (large) 96.dp else 60.dp } else if (large) 62.dp else 42.dp))
+        EchoIcon(icon, label, tint = tint, modifier = Modifier.size(if (pixel) {
+            if (LocalPlayerCoverLandscape.current) { if (large) 64.dp else 40.dp }
+            else if (large) 96.dp else 60.dp
+        } else if (large) 62.dp else 42.dp))
     }
 }
 
@@ -110,7 +113,7 @@ internal fun ExpressiveUtilities(pixel: Boolean, status: EchoPlaybackStatus, cas
 private fun UtilityIcon(icon: ImageVector, label: String, ink: Color, active: Boolean, onClick: () -> Unit) {
     IconButton(onClick, modifier = Modifier.size(48.dp).semantics { selected = active }) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(icon, label, tint = ink, modifier = Modifier.size(30.dp))
+            EchoIcon(icon, label, tint = ink, modifier = Modifier.size(30.dp))
             Box(Modifier.size(3.dp).background(if (active) ink else Color.Transparent))
         }
     }

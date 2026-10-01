@@ -1,5 +1,7 @@
 package app.echo.android.feature.settings
 
+import app.echo.android.design.EchoIcon
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -25,14 +27,14 @@ internal fun SignalPathStep(stage: SignalPathStage, index: Int, last: Boolean, e
             }, horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
-                Icon(stage.icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = tint)
+                EchoIcon(stage.icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = tint)
             }
             Text((index + 1).toString().padStart(2, '0'), Modifier.padding(top = 4.dp),
                 style = MaterialTheme.typography.labelSmall, fontFamily = FontFamily.Monospace, color = scheme.onSurfaceVariant)
         }
         Column(Modifier.weight(1f).padding(bottom = if (last) 0.dp else 24.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(stage.label, style = MaterialTheme.typography.labelMedium, color = tint)
-            Text(stage.value, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            Text(stage.value, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
             if (!stage.detail.isNullOrBlank()) SignalNote(stage.detail)
             if (expanded && stage.facts.isNotEmpty()) {
                 Column(Modifier.padding(top = 5.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -1,5 +1,7 @@
 package app.echo.android.feature.home
 
+import app.echo.android.design.EchoIcon
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -40,7 +42,7 @@ internal fun HomeAlbumRecommendationsSection(
     ) {
         HomeSectionHeader(stringResource(L10nR.string.feature_home_recommended_for_you_8335d9), Modifier.padding(horizontal = 24.dp)) {
             IconButton(onClick = onRefresh, enabled = albums.isNotEmpty(), modifier = Modifier.size(48.dp)) {
-                Icon(Icons.Rounded.Refresh, contentDescription = stringResource(L10nR.string.feature_home_refresh_828c69),
+                EchoIcon(Icons.Rounded.Refresh, contentDescription = stringResource(L10nR.string.feature_home_refresh_828c69),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
             }
         }
@@ -159,7 +161,7 @@ private fun ArtistRankRow(
                 stringResource(L10nR.string.feature_home_artist_trackcount_tracks_durationlabel_3431c6, (artist.trackCount).toString(), (durationLabel).toString()),
                 color = scheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

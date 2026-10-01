@@ -5,7 +5,6 @@ import androidx.annotation.RequiresApi
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -20,12 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 import app.echo.android.model.platform.EchoPlatformCapabilities
 import app.echo.android.model.settings.EchoColorTheme
 import app.echo.android.model.settings.EchoCustomColors
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.isSpecified
-import androidx.compose.ui.unit.sp
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
 
 object EchoColors {
@@ -136,47 +130,6 @@ fun echoFontFamilyForMode(
     "imported" -> importedFontFamily ?: FontFamily.Default
     else -> FontFamily.Default
 }
-
-private fun echoTypography(
-    fontFamily: FontFamily,
-    fontScale: Float,
-): Typography = Typography().let { typography ->
-    val display = FontWeight.Bold
-    val title = FontWeight.SemiBold
-    val body = FontWeight.Normal
-    val label = FontWeight.Medium
-    typography.copy(
-        displayLarge = typography.displayLarge.echoFont(fontFamily, display, fontScale),
-        displayMedium = typography.displayMedium.echoFont(fontFamily, display, fontScale),
-        displaySmall = typography.displaySmall.echoFont(fontFamily, display, fontScale),
-        headlineLarge = typography.headlineLarge.echoFont(fontFamily, title, fontScale),
-        headlineMedium = typography.headlineMedium.echoFont(fontFamily, title, fontScale),
-        headlineSmall = typography.headlineSmall.echoFont(fontFamily, title, fontScale),
-        titleLarge = typography.titleLarge.echoFont(fontFamily, title, fontScale),
-        titleMedium = typography.titleMedium.echoFont(fontFamily, title, fontScale),
-        titleSmall = typography.titleSmall.echoFont(fontFamily, title, fontScale),
-        bodyLarge = typography.bodyLarge.echoFont(fontFamily, body, fontScale),
-        bodyMedium = typography.bodyMedium.echoFont(fontFamily, body, fontScale),
-        bodySmall = typography.bodySmall.echoFont(fontFamily, body, fontScale),
-        labelLarge = typography.labelLarge.echoFont(fontFamily, label, fontScale),
-        labelMedium = typography.labelMedium.echoFont(fontFamily, label, fontScale),
-        labelSmall = typography.labelSmall.echoFont(fontFamily, label, fontScale),
-    )
-}
-
-private fun TextStyle.echoFont(
-    fontFamily: FontFamily,
-    fontWeight: FontWeight,
-    fontScale: Float,
-): TextStyle = copy(
-    fontFamily = fontFamily,
-    fontWeight = fontWeight,
-    fontSize = fontSize.scale(fontScale),
-    lineHeight = lineHeight.scale(fontScale),
-)
-
-private fun TextUnit.scale(scale: Float): TextUnit =
-    if (isSpecified) (value * scale).sp else this
 
 @Composable
 fun EchoMobileTheme(

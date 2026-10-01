@@ -1,5 +1,6 @@
 package app.echo.android.feature.player
 
+import app.echo.android.design.EchoSlider
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,7 +9,6 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -22,6 +22,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
+import app.echo.android.model.settings.EchoPlayerPageStyle
 
 @Composable
 internal fun PlayerAppearanceSettings(
@@ -33,12 +34,7 @@ internal fun PlayerAppearanceSettings(
     PlaybackSettingsSection(
         icon = Icons.Rounded.Palette,
         title = stringResource(R.string.player_appearance_title),
-        detail = stringResource(when (appearance.style) {
-            "record_sleeve" -> R.string.player_appearance_record_sleeve
-            "pixel_handheld" -> R.string.player_appearance_pixel_handheld
-            "type_poster" -> R.string.player_appearance_type_poster
-            else -> R.string.player_appearance_classic
-        }),
+        detail = stringResource(playerPageStyleLabel(EchoPlayerPageStyle.fromId(appearance.style))),
         expanded = expanded,
         onToggleExpanded = { expanded = !expanded },
         framed = false,
@@ -48,24 +44,8 @@ internal fun PlayerAppearanceSettings(
             }
         },
     ) {
-        Column(Modifier.fillMaxWidth().selectableGroup(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            val styles = listOf(
-                "classic" to R.string.player_appearance_classic,
-                "record_sleeve" to R.string.player_appearance_record_sleeve,
-                "pixel_handheld" to R.string.player_appearance_pixel_handheld,
-                "type_poster" to R.string.player_appearance_type_poster,
-            )
-            styles.chunked(2).forEach { row ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    row.forEach { (id, label) ->
-                        PlaybackChoiceChip(
-                            text = stringResource(label), selected = appearance.style == id,
-                            onClick = { onPreview(appearance.copy(style = id)); onCommit() },
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
-            }
+        PlayerPageStyleSelector(EchoPlayerPageStyle.fromId(appearance.style)) { id ->
+            onPreview(appearance.copy(style = id)); onCommit()
         }
         AppearanceScaleSlider(
             label = stringResource(R.string.player_appearance_text_size),
@@ -86,6 +66,31 @@ internal fun PlayerAppearanceSettings(
     }
 }
 
+internal fun playerPageStyleLabel(style: EchoPlayerPageStyle): Int = when (style) {
+    EchoPlayerPageStyle.Classic -> R.string.player_appearance_classic
+    EchoPlayerPageStyle.RecordSleeve -> R.string.player_appearance_record_sleeve
+    EchoPlayerPageStyle.PixelHandheld -> R.string.player_appearance_pixel_handheld
+    EchoPlayerPageStyle.TypePoster -> R.string.player_appearance_type_poster
+    EchoPlayerPageStyle.AfterglowMist -> R.string.afterglow_mist
+    EchoPlayerPageStyle.AfterglowNight -> R.string.afterglow_night
+}
+
+@Composable
+internal fun PlayerPageStyleSelector(style: EchoPlayerPageStyle, onSelect: (String) -> Unit) {
+    Column(Modifier.fillMaxWidth().selectableGroup(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(stringResource(R.string.player_appearance_detail),
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        EchoPlayerPageStyle.entries.chunked(2).forEach { row ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                row.forEach { option ->
+                    PlaybackChoiceChip(text = stringResource(playerPageStyleLabel(option)),
+                        selected = style == option, onClick = { onSelect(option.id) }, modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun AppearanceScaleSlider(
     label: String,
@@ -101,7 +106,7 @@ private fun AppearanceScaleSlider(
             Text(stringResource(R.string.player_appearance_percent, (value * 100).roundToInt()),
                 style = MaterialTheme.typography.labelLarge)
         }
-        Slider(
+        EchoSlider(
             value = value,
             onValueChange = onPreview,
             onValueChangeFinished = onCommit,

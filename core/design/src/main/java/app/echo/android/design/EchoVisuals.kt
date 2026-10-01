@@ -26,7 +26,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -198,7 +198,7 @@ fun GlassIconButton(
     GlassSurface(modifier = Modifier.size(46.dp)) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             IconButton(onClick = onClick) {
-                Icon(icon, contentDescription = description, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(25.dp))
+                EchoIcon(icon, contentDescription = description, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(25.dp))
             }
         }
     }
@@ -369,7 +369,6 @@ fun PageChrome(
                             Text(
                                 title,
                                 style = titleStyle,
-                                fontWeight = FontWeight.Bold,
                                 color = if (dark) Color.White.copy(alpha = 0.96f) else scheme.onSurface,
                             )
                         }
@@ -399,7 +398,7 @@ fun PageChrome(
                 }
                 if (showBrand) {
                     Spacer(Modifier.height(headerGap))
-                    Text(title, style = titleStyle, fontWeight = FontWeight.Bold, color = if (dark) Color.White.copy(alpha = 0.96f) else scheme.onSurface)
+                    Text(title, style = titleStyle, color = if (dark) Color.White.copy(alpha = 0.96f) else scheme.onSurface)
                 }
                 if (subtitle != null) {
                     Text(

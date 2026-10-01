@@ -19,6 +19,9 @@ internal fun SettingsPlaybackContent(
     lockScreenLyricsEnabled: Boolean,
     floatingLyrics: app.echo.android.model.settings.EchoFloatingLyricsSettings,
     floatingLyricsPermissionGranted: Boolean,
+    lyricsOptions: app.echo.android.model.settings.EchoLyricsOptions,
+    onLyricsOptionsChange: (app.echo.android.model.settings.EchoLyricsOptions) -> Unit,
+    onOpenLyricsInterface: () -> Unit,
     usbExclusiveEnabled: Boolean,
     usbBitPerfectEnabled: Boolean,
     trackTransitions: app.echo.android.model.playback.EchoTrackTransitionOptions,
@@ -68,6 +71,12 @@ internal fun SettingsPlaybackContent(
         )
     }
     SettingsSectionCard(title = stringResource(R.string.settings_section_lyrics)) {
+        SettingsActionRow(
+            title = stringResource(R.string.settings_lyrics_interface),
+            detail = stringResource(R.string.settings_lyrics_interface_detail),
+            onClick = onOpenLyricsInterface,
+        )
+        SettingsLyricsSourceRow(lyricsOptions, onLyricsOptionsChange)
         SettingsSwitchRow(
             title = stringResource(R.string.settings_online_lyrics),
             detail = stringResource(R.string.settings_online_lyrics_detail),
@@ -84,6 +93,12 @@ internal fun SettingsPlaybackContent(
             settings = floatingLyrics,
             permissionGranted = floatingLyricsPermissionGranted,
             onChange = onFloatingLyricsChange,
+            onRequestPermission = onRequestFloatingLyricsPermission,
+        )
+        SettingsStatusLyricsRows(
+            options = lyricsOptions,
+            permissionGranted = floatingLyricsPermissionGranted,
+            onChange = onLyricsOptionsChange,
             onRequestPermission = onRequestFloatingLyricsPermission,
         )
         val notificationRuntimePermission =

@@ -31,7 +31,7 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -112,7 +112,7 @@ private fun SearchTopBar(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         IconButton(onClick = onBack) {
-            Icon(
+            EchoIcon(
                 imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                 contentDescription = stringResource(L10nR.string.feature_home_back_49093c),
                 tint = homeBodyColor(),
@@ -132,7 +132,7 @@ private fun SearchTopBar(
                 )
             },
             leadingIcon = {
-                Icon(
+                EchoIcon(
                     imageVector = Icons.Rounded.Search,
                     contentDescription = null,
                     tint = homeBodyColor().copy(alpha = 0.5f),
@@ -141,7 +141,7 @@ private fun SearchTopBar(
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
                     IconButton(onClick = { onSearchQueryChange("") }) {
-                        Icon(
+                        EchoIcon(
                             imageVector = Icons.Rounded.Close,
                             contentDescription = stringResource(L10nR.string.feature_home_clear_819f71),
                             tint = homeBodyColor().copy(alpha = 0.5f),
@@ -273,7 +273,7 @@ private fun SearchResultItemFull(
                     .background(homeBodyColor().copy(alpha = 0.08f)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
+                EchoIcon(
                     imageVector = when (result.type) {
                         SearchResultType.Track -> Icons.Rounded.MusicNote
                         SearchResultType.Album -> Icons.Rounded.Album
@@ -319,7 +319,7 @@ private fun SearchResultItemFull(
             var actionsVisible by remember { mutableStateOf(false) }
             Box {
                 IconButton(onClick = { actionsVisible = true }) {
-                    Icon(Icons.Rounded.Queue, contentDescription = stringResource(L10nR.string.queue_actions))
+                    EchoIcon(Icons.Rounded.Queue, contentDescription = stringResource(L10nR.string.queue_actions))
                 }
                 DropdownMenu(expanded = actionsVisible, onDismissRequest = { actionsVisible = false }) {
                     DropdownMenuItem(text = { Text(stringResource(L10nR.string.queue_add_next_up)) }, onClick = {

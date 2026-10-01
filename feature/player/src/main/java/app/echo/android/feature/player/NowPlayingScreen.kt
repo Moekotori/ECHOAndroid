@@ -99,10 +99,11 @@ import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.TextFields
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.UploadFile
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
@@ -114,6 +115,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -162,6 +165,7 @@ import app.echo.android.design.progressFraction
 import app.echo.android.design.rememberArtworkPalette
 import app.echo.android.design.echoTheme
 import app.echo.android.model.settings.EchoLyricsPageStyle
+import app.echo.android.model.settings.EchoPlayerPageStyle
 import app.echo.android.model.lyrics.EchoLyricLine
 import app.echo.android.model.lyrics.EchoLyrics
 import app.echo.android.model.lyrics.EchoLyricsFormat
@@ -282,12 +286,14 @@ fun NowPlayingScreen(
     val effectivePerformanceMode = LocalEchoEffectivePerformanceMode.current
     val effectiveLyricsFocusGlowEnabled = lyricsFocusGlowEnabled && !effectivePerformanceMode.isLightweight
     val palette = rememberArtworkPalette(track?.artworkUri, seedKey = track?.id)
+    var splitNowPlaying by remember { mutableStateOf(false) }
     val pagerState = rememberPagerState(
         // A direct lyrics opening has its own outer entrance; do not add a simultaneous page slide.
         initialPage = if (openLyricsRequestId > 0 && !isRadio) NowPlayingPage.Lyrics.ordinal else NowPlayingPage.Cover.ordinal,
         pageCount = { if (isRadio) 1 else NowPlayingPage.entries.size },
     )
     val pageScope = rememberCoroutineScope()
+    val pageStates = rememberSaveableStateHolder()
     // 进度以 State 引用下发,根页不读取具体值:进度 tick 只重组真正显示进度的叶子
     // (scrubber/当前歌词行),封面、玻璃、背景等子树保持可跳过。
     val statusState = rememberUpdatedState(status)
@@ -319,15 +325,18 @@ fun NowPlayingScreen(
     var handledLyricsRequestId by rememberSaveable { mutableStateOf(openLyricsRequestId) }
     // Opening the drawer can interrupt a horizontal fling. Settle the cover before
     // a style changes its page width, so controls cannot remain partly off-screen.
-    LaunchedEffect(playbackSettingsVisible, appearance.style) {
-        if (playbackSettingsVisible) pagerState.scrollToPage(NowPlayingPage.Cover.ordinal)
+    LaunchedEffect(playbackSettingsVisible, appearance.style, splitNowPlaying, isRadio) {
+        if (playbackSettingsVisible) {
+            if (splitNowPlaying || isRadio) pagerState.requestScrollToPage(NowPlayingPage.Cover.ordinal)
+            else pagerState.scrollToPage(NowPlayingPage.Cover.ordinal)
+        }
     }
-    LaunchedEffect(openLyricsRequestId, isRadio) {
+    LaunchedEffect(openLyricsRequestId, isRadio, splitNowPlaying) {
         if (isRadio) {
-            pagerState.scrollToPage(NowPlayingPage.Cover.ordinal)
+            pagerState.requestScrollToPage(NowPlayingPage.Cover.ordinal)
             lyricsSettingsVisible = false
         } else if (openLyricsRequestId > handledLyricsRequestId) {
-            if (EchoLyricsPageStyle.fromId(lyricsPageStyle).isAfterglow) pagerState.requestScrollToPage(NowPlayingPage.Lyrics.ordinal)
+            if (splitNowPlaying || EchoPlayerPageStyle.fromId(appearance.style).lyricsPreset.isAfterglow) pagerState.requestScrollToPage(NowPlayingPage.Lyrics.ordinal)
             else pagerState.animateSilkToPage(NowPlayingPage.Lyrics.ordinal, effectivePerformanceMode.isLightweight)
             handledLyricsRequestId = openLyricsRequestId
         }
@@ -391,28 +400,26 @@ fun NowPlayingScreen(
         derivedStateOf { currentDismissOffsetPx() < 12f }
     }
 
-    val lyricStyle = EchoLyricsPageStyle.fromId(lyricsPageStyle)
+    val sharedStyle = EchoPlayerPageStyle.fromId(appearance.style)
+    val lyricStyle = sharedStyle.lyricsPreset
+    val styledLyricsFont = if (lyricsFontMode == "system")
+        sharedStyle.displayFont ?: lyricsFontFamily else lyricsFontFamily
     val configuration = LocalConfiguration.current
     val shortLandscape = configuration.screenWidthDp > configuration.screenHeightDp &&
         configuration.screenHeightDp < 600
-    val splitNowPlaying = LocalEchoWidthSizeClass.current.prefersNowPlayingSplit && !shortLandscape && !lyricStyle.isAfterglow
+    val fold by rememberPlayerFold(presentationExpanded)
+    val preferSplit = LocalEchoWidthSizeClass.current.prefersNowPlayingSplit && !shortLandscape && !lyricStyle.isAfterglow
     val lyricsSurfaceVisible = !isRadio && pagerState.currentPage == NowPlayingPage.Lyrics.ordinal
-    val immersiveAfterglow = !isRadio && lyricStyle.isAfterglow && lyricsSurfaceVisible && !pagerState.isScrollInProgress
+    val immersiveAfterglow = !isRadio && fold == null && !splitNowPlaying && lyricStyle.isAfterglow && lyricsSurfaceVisible && !pagerState.isScrollInProgress
     val sleeveTopBar = !isRadio && appearance.usesFlatSurface && !splitNowPlaying && pagerState.currentPage == NowPlayingPage.Cover.ordinal
-    val drawLyricsBackdrop by remember(pagerState, splitNowPlaying, appearance.usesFlatSurface, isRadio) {
-        derivedStateOf { !isRadio && (!appearance.usesFlatSurface || splitNowPlaying || lyricsReveal() > 0f) }
-    }
+    val drawLyricsBackdrop = !isRadio && !appearance.usesFlatSurface
     RecordSleeveSystemBars(
-        enabled = presentationExpanded && !immersiveAfterglow && (isRadio || sleeveTopBar || (!splitNowPlaying && lyricsSurfaceVisible)),
-        darkIcons = when {
-            isRadio -> !LocalEchoDarkTheme.current
-            sleeveTopBar -> true
-            lyricsSurfaceVisible && !splitNowPlaying -> lyricStyle == EchoLyricsPageStyle.Paper
-            else -> !LocalEchoDarkTheme.current
-        },
+        enabled = presentationExpanded && !immersiveAfterglow,
+        darkIcons = if (isRadio) !LocalEchoDarkTheme.current else sharedStyle.isLight,
     )
 
-    LyricsPageTheme(lyricStyle, enabled = lyricsSurfaceVisible && !splitNowPlaying) {
+    CompositionLocalProvider(LocalPlayerPageStyle provides sharedStyle) {
+    LyricsPageTheme(lyricStyle, enabled = !isRadio) {
         Box(
             modifier = modifier
                 .fillMaxSize()
@@ -430,12 +437,12 @@ fun NowPlayingScreen(
                 .background(radioColors?.background ?: appearance.background),
             contentAlignment = Alignment.Center,
         ) {
-            Box(Modifier.fillMaxSize().echoSheetUnderlay(overlayBlocking)) {
+            Box(Modifier.fillMaxSize().echoSheetUnderlay(overlayBlocking), contentAlignment = Alignment.TopCenter) {
             if (immersiveAfterglow) {
                 app.echo.android.feature.player.afterglow.AfterglowImmersivePage(
                     status = status, lyricsState = lyricsState, style = lyricStyle,
                     position = positionMsState, duration = durationMsState,
-                    fontFamily = lyricsFontFamily, fontScale = lyricsFontScale, lineSpacing = lyricsLineSpacing,
+                    fontFamily = styledLyricsFont, fontScale = lyricsFontScale, lineSpacing = lyricsLineSpacing,
                     motionMode = lyricsMotionMode, showTranslation = lyricsShowTranslation,
                     showRomanization = lyricsShowRomanization, wordHighlight = lyricsWordHighlightEnabled,
                     estimatedHighlight = lyricsEstimatedWordHighlightEnabled, highlightIntensity = lyricsWordHighlightIntensity,
@@ -448,24 +455,18 @@ fun NowPlayingScreen(
                 )
             } else {
             if (drawLyricsBackdrop) {
-                val backdropModifier = Modifier.fillMaxSize().graphicsLayer {
-                    alpha = if (!appearance.usesFlatSurface || splitNowPlaying) 1f else lyricsReveal()
-                }
-                if (lyricsSurfaceVisible && !splitNowPlaying) {
-                    LyricsPageBackdrop(track?.artworkUri, palette, lyricsReveal, presentationExpanded, backdropModifier)
-                } else {
-                    NowPlayingBackdrop(track?.artworkUri, palette, lyricsReveal, backdropModifier,
-                        animationsVisible = presentationExpanded && !lyricsSurfaceVisible)
-                }
+                val backdropModifier = Modifier.fillMaxSize()
+                LyricsPageBackdrop(track?.artworkUri, palette, lyricsReveal, presentationExpanded, backdropModifier)
             }
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
                     .safeDrawingPadding()
-                    .widthIn(max = if (shortLandscape) 960.dp else if (splitNowPlaying) LocalEchoContentMaxWidth.current else 560.dp)
+                    .widthIn(max = if (fold != null) configuration.screenWidthDp.dp else if (shortLandscape) 960.dp else if (preferSplit) LocalEchoContentMaxWidth.current else 560.dp)
+                    .fillMaxSize()
                     .padding(horizontal = if (isRadio) 26.dp else if (splitNowPlaying) 20.dp else when (appearance.style) { "record_sleeve" -> 30.dp; "pixel_handheld" -> 18.dp; "type_poster" -> 24.dp; else -> 26.dp }),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
+                HingeSafePlayerHeader(fold) { Column {
                 NowPlayingTopBar(
                     onDismiss = onDismiss,
                     onHandleDrag = { delta ->
@@ -514,26 +515,10 @@ fun NowPlayingScreen(
                     )
                 }
 
-                if (isRadio) {
-                    RadioNowPlayingPage(
-                        status = status,
-                        onPlayPause = onPlayPause,
-                        onNext = onNext,
-                        onPrevious = onPrevious,
-                        onOpenQueue = onOpenQueue,
-                        onCast = onCast,
-                        castActive = castActive,
-                        onSetSleepTimer = onSetSleepTimer,
-                        onCancelSleepTimer = onCancelSleepTimer,
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                    )
-                } else if (splitNowPlaying) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(18.dp),
-                    ) {
+                } }
+
+                val coverRenderer: @Composable () -> Unit = {
+                    pageStates.SaveableStateProvider("cover") {
                         PlayerCoverPage(
                             appearance = appearance,
                             palette = palette,
@@ -552,80 +537,9 @@ fun NowPlayingScreen(
                             onCycleRepeatMode = onCycleRepeatMode,
                             isCurrentTrackFavorite = isCurrentTrackFavorite,
                             onToggleFavorite = onToggleFavorite,
-                            onOpenLyrics = {},
-                            onOpenArtist = onOpenArtist,
-                            modifier = Modifier.weight(1f).fillMaxHeight(),
-                        )
-                        NowPlayingLyricsPage(
-                            animationsVisible = presentationExpanded,
-                            status = status,
-                            lyricsState = lyricsState,
-                            lyricsPageStyle = lyricStyle,
-                            palette = palette,
-                            showBackdrop = splitNowPlaying,
-                            showLyricsControlDeck = showLyricsControlDeck,
-                            lyricsFontFamily = lyricsFontFamily,
-                            lyricsFontScale = lyricsFontScale,
-                            lyricsColorMode = lyricsColorMode,
-                            lyricsAlignment = lyricsAlignment,
-                            lyricsLineSpacing = lyricsLineSpacing,
-                            lyricsBackgroundDim = lyricsBackgroundDim,
-                            lyricsWordHighlightEnabled = lyricsWordHighlightEnabled,
-                            lyricsEstimatedWordHighlightEnabled = lyricsEstimatedWordHighlightEnabled,
-                            lyricsWordHighlightIntensity = lyricsWordHighlightIntensity,
-                            lyricsImmersiveModeEnabled = lyricsImmersiveModeEnabled,
-                            lyricsMotionMode = lyricsMotionMode,
-                            lyricsShowTranslation = lyricsShowTranslation,
-                            lyricsShowRomanization = lyricsShowRomanization,
-                            lyricsFocusGlowEnabled = effectiveLyricsFocusGlowEnabled,
-                            onPlayPause = onPlayPause,
-                            onNext = onNext,
-                            onPrevious = onPrevious,
-                            onSeek = onSeek,
-                            onOpenQueue = onOpenQueue,
-                            onCast = onCast,
-                            castActive = castActive,
-                            positionMsState = positionMsState,
-                            durationMsState = durationMsState,
-                            onImportLyrics = onImportLyrics,
-                            onAdjustLyricsOffset = onAdjustLyricsOffset,
-                            onResetLyricsOffset = onResetLyricsOffset,
-                            onOpenLyricsSettings = { lyricsSettingsVisible = true },
-                            onOpenArtist = onOpenArtist,
-                            showTransportDock = false,
-                            modifier = Modifier.weight(1f).fillMaxHeight(),
-                        )
-                    }
-                } else HorizontalPager(
-                    state = pagerState,
-                    beyondViewportPageCount = 0,
-                    userScrollEnabled = pagerScrollEnabled,
-                    flingBehavior = rememberSilkPagerFlingBehavior(pagerState),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                ) { page ->
-                    when (NowPlayingPage.entries[page]) {
-                        NowPlayingPage.Cover -> PlayerCoverPage(
-                            appearance = appearance,
-                            palette = palette,
-                            presentationExpanded = presentationExpanded,
-                            status = status,
-                            positionMsState = positionMsState,
-                            durationMsState = durationMsState,
-                            onPlayPause = onPlayPause,
-                            onNext = onNext,
-                            onPrevious = onPrevious,
-                            onSeek = onSeek,
-                            onOpenQueue = onOpenQueue,
-                            onCast = onCast,
-                            castActive = castActive,
-                            onToggleShuffle = onToggleShuffle,
-                            onCycleRepeatMode = onCycleRepeatMode,
-                            isCurrentTrackFavorite = isCurrentTrackFavorite,
-                            onToggleFavorite = onToggleFavorite,
                             onOpenLyrics = {
-                                pageScope.launch {
+                                if (splitNowPlaying) pagerState.requestScrollToPage(NowPlayingPage.Lyrics.ordinal)
+                                else pageScope.launch {
                                     if (lyricStyle.isAfterglow) pagerState.requestScrollToPage(NowPlayingPage.Lyrics.ordinal)
                                     else pagerState.animateSilkToPage(NowPlayingPage.Lyrics.ordinal, effectivePerformanceMode.isLightweight)
                                 }
@@ -633,15 +547,19 @@ fun NowPlayingScreen(
                             onOpenArtist = onOpenArtist,
                             modifier = Modifier.fillMaxSize(),
                         )
-                        NowPlayingPage.Lyrics -> NowPlayingLyricsPage(
-                            animationsVisible = presentationExpanded && pagerState.currentPage == NowPlayingPage.Lyrics.ordinal,
+                    }
+                }
+                val lyricsRenderer: @Composable (Boolean) -> Unit = { split ->
+                    pageStates.SaveableStateProvider("lyrics") {
+                        NowPlayingLyricsPage(
+                            animationsVisible = presentationExpanded && (split || pagerState.currentPage == NowPlayingPage.Lyrics.ordinal),
                             status = status,
                             lyricsState = lyricsState,
                             lyricsPageStyle = lyricStyle,
                             palette = palette,
-                            showBackdrop = splitNowPlaying,
+                            showBackdrop = split,
                             showLyricsControlDeck = showLyricsControlDeck,
-                            lyricsFontFamily = lyricsFontFamily,
+                            lyricsFontFamily = styledLyricsFont,
                             lyricsFontScale = lyricsFontScale,
                             lyricsColorMode = lyricsColorMode,
                             lyricsAlignment = lyricsAlignment,
@@ -669,20 +587,61 @@ fun NowPlayingScreen(
                             onResetLyricsOffset = onResetLyricsOffset,
                             onOpenLyricsSettings = { lyricsSettingsVisible = true },
                             onOpenArtist = onOpenArtist,
+                            showTransportDock = !split,
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
                 }
+                val latestCoverRenderer = rememberUpdatedState(coverRenderer)
+                val latestLyricsRenderer = rememberUpdatedState(lyricsRenderer)
+                val coverPage = remember { movableContentOf { latestCoverRenderer.value() } }
+                val lyricsPage = remember { movableContentOf { split: Boolean -> latestLyricsRenderer.value(split) } }
+                AdaptivePlayerPanes(
+                    fold = fold, preferSplit = preferSplit, allowSplit = !isRadio,
+                    onSplitChanged = { if (splitNowPlaying != it) splitNowPlaying = it },
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    cover = coverPage,
+                    lyrics = { lyricsPage(true) },
+                    singlePage = {
+                        if (isRadio) {
+                    RadioNowPlayingPage(
+                        status = status,
+                        onPlayPause = onPlayPause,
+                        onNext = onNext,
+                        onPrevious = onPrevious,
+                        onOpenQueue = onOpenQueue,
+                        onCast = onCast,
+                        castActive = castActive,
+                        onSetSleepTimer = onSetSleepTimer,
+                        onCancelSleepTimer = onCancelSleepTimer,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+
+                        } else HorizontalPager(
+                            state = pagerState, beyondViewportPageCount = 0,
+                            userScrollEnabled = pagerScrollEnabled,
+                            flingBehavior = rememberSilkPagerFlingBehavior(pagerState),
+                            modifier = Modifier.fillMaxSize(),
+                        ) { page ->
+                            if (NowPlayingPage.entries[page] == NowPlayingPage.Cover) coverPage()
+                            else lyricsPage(false)
+                        }
+                    },
+                )
             }
             }
             }
             LyricsSettingsDrawer(
                 visible = lyricsSettingsVisible,
-                lyricsFontFamily = lyricsFontFamily,
+                lyricsFontFamily = styledLyricsFont,
                 lyricsPageStyle = lyricStyle,
+                playerPageStyle = appearance.style,
                 onLyricsPageStyleChange = { next ->
-                    onLyricsPageStyleChange(next)
-                    if (EchoLyricsPageStyle.fromId(next).isAfterglow) {
+                    val updated = appearance.copy(style = next)
+                    appearanceDraft.current = updated
+                    appearance = updated
+                    onPlayerAppearanceChange(next, updated.textScale, updated.artworkScale)
+                    if (EchoPlayerPageStyle.fromId(next).lyricsPreset.isAfterglow) {
                         lyricsSettingsVisible = false
                         pagerState.requestScrollToPage(NowPlayingPage.Lyrics.ordinal)
                     }
@@ -767,6 +726,7 @@ fun NowPlayingScreen(
                 modifier = Modifier.fillMaxSize(),
             )
         }
+    }
     }
 }
 
@@ -897,6 +857,7 @@ private fun LyricsSettingsDrawer(
     visible: Boolean,
     lyricsFontFamily: FontFamily?,
     lyricsPageStyle: EchoLyricsPageStyle,
+    playerPageStyle: String,
     onLyricsPageStyleChange: (String) -> Unit,
     lyricsFontMode: String,
     importedFontUri: String?,
@@ -945,6 +906,7 @@ private fun LyricsSettingsDrawer(
         LyricsSettingsPanel(
             lyricsFontFamily = lyricsFontFamily,
             lyricsPageStyle = lyricsPageStyle,
+            playerPageStyle = playerPageStyle,
             onLyricsPageStyleChange = onLyricsPageStyleChange,
             lyricsFontMode = lyricsFontMode,
             importedFontUri = importedFontUri,
@@ -1018,7 +980,7 @@ internal fun LyricsEmptyState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Icon(
+        EchoIcon(
             Icons.Rounded.Lyrics,
             contentDescription = null,
             tint = OnArtMuted,
@@ -1028,7 +990,7 @@ internal fun LyricsEmptyState(
             text = message,
             color = OnArtMuted,
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Medium,
         )
         onImportLyrics?.let { onClick ->
             Row(
@@ -1040,7 +1002,7 @@ internal fun LyricsEmptyState(
                 horizontalArrangement = Arrangement.spacedBy(7.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(
+                EchoIcon(
                     Icons.Rounded.UploadFile,
                     contentDescription = null,
                     tint = OnArt,
@@ -1050,7 +1012,7 @@ internal fun LyricsEmptyState(
                     text = stringResource(L10nR.string.feature_player_import_lyrics_e7494e),
                     color = OnArt,
                     style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Medium,
                 )
             }
         }
@@ -1100,7 +1062,7 @@ internal fun LyricsControlDeck(
                         text = source,
                         color = OnArtMuted,
                         style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -1130,7 +1092,7 @@ internal fun LyricsControlDeck(
                     text = formatLyricsOffset(userOffsetMs),
                     color = OnArtMuted,
                     style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Medium,
                 )
             }
             Row(
@@ -1170,6 +1132,7 @@ internal fun LyricsControlDeck(
 }
 
 private fun EchoLyricsFormat.label(): String = when (this) {
+    EchoLyricsFormat.Spl -> "SPL"
     EchoLyricsFormat.Lrc -> "LRC"
     EchoLyricsFormat.EnhancedLrc -> "Enhanced LRC"
     EchoLyricsFormat.Ttml -> "TTML"
@@ -1216,7 +1179,7 @@ private fun NowPlayingErrorBanner(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Icon(
+        EchoIcon(
             Icons.Rounded.ErrorOutline,
             contentDescription = null,
             tint = Color(0xFFFFC7CE),
@@ -1227,13 +1190,13 @@ private fun NowPlayingErrorBanner(
                 title,
                 color = Color.White,
                 style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.Medium,
             )
             Text(
                 detail,
                 color = Color.White.copy(alpha = 0.82f),
                 style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Medium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -1271,7 +1234,7 @@ private fun FormatChip(text: String, highlight: Boolean) {
             text,
             color = if (highlight) OnArt.copy(alpha = 0.98f) else OnArt.copy(alpha = 0.78f),
             style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Medium,
         )
     }
 }
@@ -1313,7 +1276,7 @@ internal fun GlyphButton(
             dark = LocalEchoDarkTheme.current,
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = description, tint = tint, modifier = Modifier.size(iconSize))
+            EchoIcon(icon, contentDescription = description, tint = tint, modifier = Modifier.size(iconSize))
         }
     } else {
         Box(
@@ -1325,7 +1288,7 @@ internal fun GlyphButton(
                 .then(clickMod),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = description, tint = tint, modifier = Modifier.size(iconSize))
+            EchoIcon(icon, contentDescription = description, tint = tint, modifier = Modifier.size(iconSize))
         }
     }
 }

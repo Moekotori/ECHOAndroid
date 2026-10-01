@@ -22,18 +22,21 @@ private val ScanExtensions = listOf(
 @Composable
 internal fun LibraryScanFormatOptions(
     selectedExtensions: Set<String>,
+    enabled: Boolean = true,
     onSelectionChange: (Set<String>) -> Unit,
 ) {
     Column {
         Text(stringResource(R.string.scan_audio_formats), style = MaterialTheme.typography.labelMedium)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(
+                enabled = enabled,
                 selected = selectedExtensions.isEmpty(),
                 onClick = { onSelectionChange(emptySet()) },
                 label = { Text(stringResource(R.string.scan_all_formats)) },
             )
             ScanExtensions.forEach { extension ->
                 FilterChip(
+                    enabled = enabled,
                     selected = extension in selectedExtensions,
                     onClick = {
                         onSelectionChange(

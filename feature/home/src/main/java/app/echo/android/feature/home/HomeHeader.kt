@@ -1,5 +1,7 @@
 package app.echo.android.feature.home
 
+import app.echo.android.design.EchoIcon
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -25,11 +27,11 @@ internal fun HomeHeader(onOpenSearch: () -> Unit, onEditLayout: (() -> Unit)? = 
             Text(stringResource(R.string.home_page_title), style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             if (onOpenHistory != null) IconButton(onClick = onOpenHistory) {
-                Icon(Icons.Rounded.History, stringResource(R.string.playback_history_title),
+                EchoIcon(Icons.Rounded.History, stringResource(R.string.playback_history_title),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (onEditLayout != null) IconButton(onClick = onEditLayout) {
-                Icon(Icons.Rounded.Tune, stringResource(R.string.home_layout_title),
+                EchoIcon(Icons.Rounded.Tune, stringResource(R.string.home_layout_title),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }

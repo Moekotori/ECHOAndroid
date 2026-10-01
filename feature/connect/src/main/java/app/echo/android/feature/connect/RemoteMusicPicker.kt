@@ -1,5 +1,7 @@
 package app.echo.android.feature.connect
 
+import app.echo.android.design.EchoIcon
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -105,7 +107,7 @@ internal fun RemoteMusicPicker(
                     Text(stringResource(R.string.remote_picker_destination, pcTitle),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                IconButton(onDismiss) { Icon(Icons.Rounded.Close, stringResource(R.string.remote_close)) }
+                IconButton(onDismiss) { EchoIcon(Icons.Rounded.Close, stringResource(R.string.remote_close)) }
             }
             SecondaryTabRow(selectedTabIndex = if (showQueue) 1 else 0) {
                 Tab(selected = !showQueue, onClick = { showQueue = false }, text = { Text(stringResource(R.string.remote_pc_library)) })
@@ -116,9 +118,9 @@ internal fun RemoteMusicPicker(
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
                 label = { Text(stringResource(R.string.remote_search)) },
-                leadingIcon = { Icon(Icons.Rounded.Search, null) },
+                leadingIcon = { EchoIcon(Icons.Rounded.Search, null) },
                 trailingIcon = if (query.isNotEmpty()) {
-                    { IconButton({ query = "" }) { Icon(Icons.Rounded.Close, stringResource(R.string.remote_clear_search)) } }
+                    { IconButton({ query = "" }) { EchoIcon(Icons.Rounded.Close, stringResource(R.string.remote_clear_search)) } }
                 } else null,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             )

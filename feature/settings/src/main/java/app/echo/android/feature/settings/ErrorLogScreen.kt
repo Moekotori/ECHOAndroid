@@ -28,7 +28,7 @@ import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -107,13 +107,13 @@ fun ErrorLogScreen(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null)
+                    EchoIcon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null)
                 }
                 Column(Modifier.weight(1f)) {
                     Text(
                         stringResource(R.string.error_log_title),
                         style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                     )
                     Text(
                         stringResource(R.string.error_log_subtitle),
@@ -127,7 +127,7 @@ fun ErrorLogScreen(
                     },
                     enabled = filtered.isNotEmpty(),
                 ) {
-                    Icon(Icons.Rounded.Share, contentDescription = stringResource(R.string.error_log_share))
+                    EchoIcon(Icons.Rounded.Share, contentDescription = stringResource(R.string.error_log_share))
                 }
                 IconButton(
                     onClick = {
@@ -136,13 +136,13 @@ fun ErrorLogScreen(
                     },
                     enabled = filtered.isNotEmpty(),
                 ) {
-                    Icon(Icons.Rounded.ContentCopy, contentDescription = stringResource(R.string.error_log_copy_all))
+                    EchoIcon(Icons.Rounded.ContentCopy, contentDescription = stringResource(R.string.error_log_copy_all))
                 }
                 IconButton(
                     onClick = { confirmClear = true },
                     enabled = records.isNotEmpty(),
                 ) {
-                    Icon(Icons.Rounded.DeleteSweep, contentDescription = stringResource(R.string.error_log_clear))
+                    EchoIcon(Icons.Rounded.DeleteSweep, contentDescription = stringResource(R.string.error_log_clear))
                 }
             }
             if (copiedNotice) {
@@ -292,7 +292,7 @@ private fun ErrorLogRow(
                 stringResource(sourceLabelRes(record.source)),
                 color = if (crash) scheme.onErrorContainer else scheme.primary,
                 style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Medium,
             )
             Spacer(Modifier.weight(1f))
             Text(
@@ -346,7 +346,7 @@ private fun ErrorLogRow(
                 TextButton(onClick = onCopy) { Text(stringResource(R.string.error_log_copy)) }
                 TextButton(onClick = onShare) { Text(stringResource(R.string.error_log_share)) }
                 TextButton(onClick = onDelete) {
-                    Icon(Icons.Rounded.Delete, contentDescription = null)
+                    EchoIcon(Icons.Rounded.Delete, contentDescription = null)
                     Text(stringResource(R.string.error_log_delete))
                 }
             }

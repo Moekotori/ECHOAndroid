@@ -49,7 +49,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -308,7 +308,7 @@ internal fun TrackRow(
                         color = if (dark) Color.White.copy(alpha = 0.98f) else scheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Medium,
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Text(
@@ -415,14 +415,14 @@ internal fun TrackContextMenu(
                 content(Modifier.echoCombinedClickable(onClick = onPlay, onLongClick = { if (onLongPress != null) onLongPress() else sheetMode = TrackSheetMode.Actions }))
             }
             if (onPlayOnPc != null) IconButton(onClick = onPlayOnPc) {
-                Icon(
+                EchoIcon(
                     Icons.Rounded.Computer,
                     contentDescription = stringResource(L10nR.string.feature_library_play_on_pc_7c21a4),
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
             if (showMoreAction) IconButton(onClick = { sheetMode = TrackSheetMode.Actions }) {
-                Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(L10nR.string.library_track_actions),
+                EchoIcon(Icons.Rounded.MoreVert, contentDescription = stringResource(L10nR.string.library_track_actions),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
@@ -434,7 +434,7 @@ internal fun TrackContextMenu(
             DropdownMenuItem(
                 text = { Text(stringResource(L10nR.string.feature_library_play_38419a)) },
                 leadingIcon = {
-                    Icon(Icons.Rounded.PlayArrow, contentDescription = null)
+                    EchoIcon(Icons.Rounded.PlayArrow, contentDescription = null)
                 },
                 onClick = {
                     expanded = false
@@ -444,7 +444,7 @@ internal fun TrackContextMenu(
             DropdownMenuItem(
                 text = { Text(stringResource(L10nR.string.feature_library_edit_tags_c8ec75)) },
                 leadingIcon = {
-                    Icon(Icons.Rounded.Edit, contentDescription = null)
+                    EchoIcon(Icons.Rounded.Edit, contentDescription = null)
                 },
                 enabled = canEditMetadata,
                 onClick = {
@@ -473,7 +473,7 @@ internal fun TrackContextMenu(
             DropdownMenuItem(
                 text = { Text(stringResource(L10nR.string.feature_library_track_info_36a07b)) },
                 leadingIcon = {
-                    Icon(Icons.Rounded.Info, contentDescription = null)
+                    EchoIcon(Icons.Rounded.Info, contentDescription = null)
                 },
                 onClick = {
                     expanded = false
@@ -796,7 +796,7 @@ private fun TrackActionRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Icon(
+            EchoIcon(
                 icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary.copy(alpha = alpha),
@@ -847,7 +847,7 @@ private fun TrackMetadataEditorSheet(
                 modifier = Modifier.weight(1f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                fontWeight = FontWeight.ExtraBold,
+                fontWeight = FontWeight.SemiBold,
                 style = MaterialTheme.typography.titleLarge,
             )
             TextButton(onClick = onDismiss, enabled = !saving) {
@@ -1235,7 +1235,7 @@ private fun TrackInfoLine(
             modifier = Modifier.widthIn(min = 76.dp, max = 96.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Medium,
             maxLines = 1,
         )
         Text(
@@ -1264,7 +1264,7 @@ private fun TrackInfoTag(
         text = text,
         modifier = Modifier.padding(end = 6.dp),
         color = colors.content,
-        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, lineHeight = 12.sp),
+        style = MaterialTheme.typography.labelSmall,
         fontWeight = FontWeight.Normal,
         maxLines = 1,
     )

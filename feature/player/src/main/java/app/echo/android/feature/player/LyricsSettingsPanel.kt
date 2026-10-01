@@ -1,5 +1,7 @@
 package app.echo.android.feature.player
 
+import app.echo.android.design.EchoIcon
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -38,6 +40,7 @@ import app.echo.android.feature.player.R as L10nR
 internal fun LyricsSettingsPanel(
     lyricsFontFamily: FontFamily?,
     lyricsPageStyle: EchoLyricsPageStyle,
+    playerPageStyle: String,
     onLyricsPageStyleChange: (String) -> Unit,
     lyricsFontMode: String,
     importedFontUri: String?,
@@ -99,7 +102,7 @@ internal fun LyricsSettingsPanel(
                 LyricsSettingsHandle(onDismiss)
                 Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Icon(Icons.Rounded.Lyrics, null, tint = app.echo.android.design.echoAccentColor(), modifier = Modifier.size(28.dp))
+                    EchoIcon(Icons.Rounded.Lyrics, null, tint = app.echo.android.design.echoAccentColor(), modifier = Modifier.size(28.dp))
                     Column(Modifier.weight(1f)) {
                         Text(heading, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = titleColor)
                         Text(stringResource(L10nR.string.feature_player_font_color_and_display_b51a7b),
@@ -124,7 +127,8 @@ internal fun LyricsSettingsPanel(
             androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides titleColor) {
                 Column(Modifier.fillMaxWidth().weight(1f, fill = false).verticalScroll(rememberScrollState())
                     .padding(start = 20.dp, end = 20.dp, bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    LyricsPageStyleSelector(lyricsPageStyle, onLyricsPageStyleChange)
+                    Text(stringResource(L10nR.string.player_appearance_title), style = MaterialTheme.typography.titleSmall)
+                    PlayerPageStyleSelector(app.echo.android.model.settings.EchoPlayerPageStyle.fromId(playerPageStyle), onLyricsPageStyleChange)
                     PlaybackSettingsSection(Icons.Rounded.TextFields,
                         stringResource(L10nR.string.lyrics_setting_typography),
                         "${lyricsFontDetail(lyricsFontMode, importedFontUri)} · ${(lyricsFontScale * 100).roundToInt()}%",

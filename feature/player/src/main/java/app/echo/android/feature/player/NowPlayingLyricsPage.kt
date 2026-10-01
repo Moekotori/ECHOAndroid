@@ -3,12 +3,12 @@ package app.echo.android.feature.player
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -65,26 +65,30 @@ internal fun NowPlayingLyricsPage(
 ) {
     LyricsPageTheme(lyricsPageStyle) {
         val paper = lyricsPageStyle == EchoLyricsPageStyle.Paper
+        val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
         val readyLyrics = (lyricsState as? EchoLyricsLoadState.Ready)?.lyrics
+        val syncedLyrics = remember(readyLyrics) { readyLyrics?.isSynced == true }
         val displayPosition = rememberLyricsDisplayPosition(
             positionMsState, status.track?.id, status.isPlaying, status.playbackSpeed,
-            animationsVisible && !lyricsPageStyle.isAfterglow && !LocalEchoEffectivePerformanceMode.current.isLightweight,
+            animationsVisible && syncedLyrics && !lyricsPageStyle.isAfterglow && !lightweight,
         )
         val lyricAccent = lyricsColorForMode(lyricsColorMode)
-        val lyricsDimAlpha by animateFloatAsState(
+        val lyricsDimAlpha = animateFloatAsState(
             targetValue = lyricsBackgroundDim.coerceIn(0f, 0.78f),
-            animationSpec = tween(durationMillis = 240, easing = LyricsSettingsMotionEasing),
+            animationSpec = tween(durationMillis = if (lightweight) 0 else 240, easing = LyricsSettingsMotionEasing),
             label = "lyrics-page-dim",
         )
+        val dimColor = if (LocalEchoDarkTheme.current) Color.Black else MaterialTheme.colorScheme.surface
         Box(modifier = modifier.fillMaxWidth()) {
             if (showBackdrop) LyricsPageBackdrop(status.track?.artworkUri, palette, { 1f }, animationsVisible, Modifier.fillMaxSize())
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background((if (LocalEchoDarkTheme.current) Color.Black else MaterialTheme.colorScheme.surface).copy(alpha = lyricsDimAlpha)),
+                    .drawBehind { drawRect(dimColor.copy(alpha = lyricsDimAlpha.value)) },
             )
             LyricsPageLayout(
-                heading = { LyricsTrackHeading(status.track, paper, onOpenArtist) },
+                supportingPane = !showTransportDock,
+                heading = { landscape -> LyricsTrackHeading(status.track, paper, onOpenArtist, landscape) },
                 lyrics = {
                     Box(
                         modifier = Modifier
@@ -167,14 +171,15 @@ internal fun NowPlayingLyricsPage(
                     }
                 },
                 controls = { landscape ->
+                    val controlDeck: @Composable () -> Unit = {
                     AnimatedVisibility(
                         visible = showLyricsControlDeck && readyLyrics != null,
-                        enter = expandVertically(
+                        enter = if (lightweight) fadeIn(EchoMotion.pageFadeIn(true)) else expandVertically(
                             expandFrom = Alignment.Top,
                             animationSpec = EchoMotion.silkSize(360),
                         ) + fadeIn(tween(durationMillis = 220, delayMillis = 40, easing = LyricsSettingsMotionEasing)) +
                             slideInVertically(EchoMotion.silkOffset(360)) { -it / 4 },
-                        exit = shrinkVertically(
+                        exit = if (lightweight) fadeOut(EchoMotion.pageFadeOut(true)) else shrinkVertically(
                             shrinkTowards = Alignment.Top,
                             animationSpec = EchoMotion.silkSize(240),
                         ) + fadeOut(tween(durationMillis = 160, easing = LyricsSettingsMotionEasing)) +
@@ -183,8 +188,7 @@ internal fun NowPlayingLyricsPage(
                         readyLyrics?.let { lyrics ->
                             Column(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .animateContentSize(tween(durationMillis = 260, easing = LyricsSettingsMotionEasing)),
+                                    .fillMaxWidth().padding(top = if (landscape) 12.dp else 0.dp),
                             ) {
                                 LyricsControlDeck(
                                     lyrics = lyrics,
@@ -196,6 +200,8 @@ internal fun NowPlayingLyricsPage(
                             }
                         }
                     }
+                    }
+                    if (!landscape) controlDeck()
                     if (showTransportDock) {
                         Box(modifier = Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(top = 12.dp, bottom = 4.dp)) {
@@ -223,6 +229,7 @@ internal fun NowPlayingLyricsPage(
                                     onOpenQueue = onOpenQueue,
                                     onCast = onCast,
                                     castActive = castActive,
+                                    landscape = landscape,
                                 )
                             }
                         }
@@ -235,6 +242,7 @@ internal fun NowPlayingLyricsPage(
                         )
                         Spacer(Modifier.height(10.dp))
                     }
+                    if (landscape) controlDeck()
                 },
             )
         }

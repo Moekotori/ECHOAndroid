@@ -1,6 +1,8 @@
 package app.echo.android.feature.settings
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -28,11 +30,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -46,11 +45,12 @@ import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.LocalEchoEffectivePerformanceMode
-import app.echo.android.design.echoTheme
+import app.echo.android.design.drawEchoControlRail
+import app.echo.android.design.drawEchoControlThumb
 import app.echo.android.model.playback.EchoEqResponsePoint
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -99,35 +99,48 @@ internal fun SignalEqPlot(
     minGainDb: Float = -12f,
     maxGainDb: Float = 12f,
     onMarkerDrag: ((index: Int, frequencyHz: Float, gainDb: Float) -> Unit)? = null,
+    selectedMarkerIndex: Int = -1,
+    onMarkerSelected: ((Int) -> Unit)? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val theme = echoTheme()
-    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
-    val stroke = if (live) scheme.primary else scheme.onSurfaceVariant.copy(alpha = 0.55f)
+    val stroke = if (live) scheme.primary else scheme.onSurfaceVariant.copy(alpha = 0.75f)
     val grid = scheme.outlineVariant
-    val zero = scheme.onSurface.copy(alpha = 0.42f)
+    val zero = scheme.onSurface.copy(alpha = 0.22f)
     val description = stringResource(R.string.eq_curve_reference)
     val range = maxOf(12f, ceil((points.maxOfOrNull { abs(it.gainDb) } ?: 0f) / 6f) * 6f).coerceAtMost(48f)
     val interactive = onMarkerDrag != null &&
         markerFrequenciesHz.isNotEmpty() &&
         markerGainsDb.size == markerFrequenciesHz.size
     val dragCallback = rememberUpdatedState(onMarkerDrag)
+    val selectCallback = rememberUpdatedState(onMarkerSelected)
+    val frequencies = rememberUpdatedState(markerFrequenciesHz)
+    val gains = rememberUpdatedState(markerGainsDb)
     var dragIndex by remember { mutableIntStateOf(-1) }
     var localFreq by remember { mutableFloatStateOf(0f) }
     var localGain by remember { mutableFloatStateOf(0f) }
-    Box(modifier.semantics { contentDescription = description }) {
+    Box(modifier.background(scheme.surfaceContainerLow.copy(alpha = 0.65f), RoundedCornerShape(6.dp)).semantics { contentDescription = description }) {
         val bottomPad = if (showFrequencyLabels) 22.dp else 10.dp
         Canvas(
             Modifier
                 .fillMaxSize()
-                .padding(start = 10.dp, end = 10.dp, top = 22.dp, bottom = bottomPad)
+                .padding(start = 34.dp, end = 12.dp, top = 30.dp, bottom = bottomPad)
+                .then(if (onMarkerSelected == null || markerGainsDb.size != markerFrequenciesHz.size) Modifier else Modifier.pointerInput(markerFrequenciesHz.size, range) {
+                    detectTapGestures { position ->
+                        val index = frequencies.value.indices.minByOrNull { index ->
+                            (position - Offset(eqLogX(frequencies.value[index].toFloat(), size.width.toFloat()), eqGainY(gains.value[index], size.height.toFloat(), range))).getDistance()
+                        }
+                        if (index != null) {
+                            val center = Offset(eqLogX(frequencies.value[index].toFloat(), size.width.toFloat()), eqGainY(gains.value[index], size.height.toFloat(), range))
+                            if ((position - center).getDistance() <= 28.dp.toPx()) selectCallback.value?.invoke(index)
+                        }
+                    }
+                })
                 .then(
                     if (!interactive) {
                         Modifier
                     } else {
                         Modifier.pointerInput(
-                            markerFrequenciesHz,
-                            markerGainsDb,
+                            markerFrequenciesHz.size,
                             lockMarkerFrequency,
                             minGainDb,
                             maxGainDb,
@@ -139,8 +152,8 @@ internal fun SignalEqPlot(
                                 var bestDist = hit
                                 val width = size.width.toFloat()
                                 val height = size.height.toFloat()
-                                markerFrequenciesHz.forEachIndexed { index, frequencyHz ->
-                                    val gain = if (dragIndex == index) localGain else markerGainsDb[index]
+                                frequencies.value.forEachIndexed { index, frequencyHz ->
+                                    val gain = if (dragIndex == index) localGain else gains.value[index]
                                     val freq = if (dragIndex == index) localFreq else frequencyHz.toFloat()
                                     val x = eqLogX(freq, width)
                                     val y = eqGainY(gain, height, range)
@@ -157,8 +170,9 @@ internal fun SignalEqPlot(
                                     val index = nearest(offset)
                                     if (index < 0) return@detectDragGestures
                                     dragIndex = index
-                                    localFreq = markerFrequenciesHz[index].toFloat()
-                                    localGain = markerGainsDb[index]
+                                    selectCallback.value?.invoke(index)
+                                    localFreq = frequencies.value[index].toFloat()
+                                    localGain = gains.value[index]
                                 },
                                 onDragEnd = { dragIndex = -1 },
                                 onDragCancel = { dragIndex = -1 },
@@ -169,7 +183,7 @@ internal fun SignalEqPlot(
                                     val width = size.width.toFloat()
                                     val height = size.height.toFloat()
                                     val nextFreq = if (lockMarkerFrequency) {
-                                        markerFrequenciesHz[index].toFloat()
+                                        frequencies.value[index].toFloat()
                                     } else {
                                         eqFreqFromX(change.position.x, width)
                                     }
@@ -187,23 +201,14 @@ internal fun SignalEqPlot(
                 ),
         ) {
             val zeroY = eqGainY(0f, size.height, range)
-            if (!lightweight && live) {
-                drawRect(
-                    brush = Brush.radialGradient(
-                        colors = listOf(stroke.copy(alpha = 0.16f), Color.Transparent),
-                        center = Offset(size.width * 0.42f, 0f),
-                        radius = size.width * 0.72f,
-                    ),
-                )
-            }
             for (line in 0..4) {
                 val y = size.height * line / 4f
                 val center = line == 2
                 drawLine(
-                    color = if (center) zero else grid.copy(alpha = if (theme.dark) 0.55f else 0.80f),
+                    color = if (center) zero else grid.copy(alpha = 0.55f),
                     start = Offset(0f, y),
                     end = Offset(size.width, y),
-                    strokeWidth = if (center) 1.6.dp.toPx() else 1.dp.toPx(),
+                    strokeWidth = 1.dp.toPx(),
                 )
             }
             listOf(EqMinHz, 200f, 2_000f, EqMaxHz).forEach { frequencyHz ->
@@ -235,22 +240,15 @@ internal fun SignalEqPlot(
                     area,
                     Brush.verticalGradient(
                         colors = listOf(
-                            stroke.copy(alpha = if (live) 0.40f else 0.16f),
-                            stroke.copy(alpha = if (live) 0.08f else 0.03f),
+                            stroke.copy(alpha = if (live) 0.16f else 0.08f),
+                            stroke.copy(alpha = 0.02f),
                         ),
                     ),
                 )
-                if (!lightweight && live) {
-                    drawPath(
-                        line,
-                        stroke.copy(alpha = 0.24f),
-                        style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round),
-                    )
-                }
                 drawPath(
                     line,
                     stroke,
-                    style = Stroke(width = 2.8.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round),
+                    style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round),
                 )
             }
             if (markerGainsDb.size == markerFrequenciesHz.size) {
@@ -258,18 +256,23 @@ internal fun SignalEqPlot(
                     val freq = if (dragIndex == index) localFreq else frequencyHz.toFloat()
                     val gain = if (dragIndex == index) localGain else markerGainsDb[index]
                     val center = Offset(eqLogX(freq, size.width), eqGainY(gain, size.height, range))
-                    drawCircle(color = stroke.copy(alpha = 0.22f), radius = 10.dp.toPx(), center = center)
-                    drawCircle(color = stroke, radius = 5.dp.toPx(), center = center)
-                    drawCircle(color = scheme.surface, radius = 2.dp.toPx(), center = center)
+                    val selected = index == selectedMarkerIndex || index == dragIndex
+                    if (selected) drawCircle(stroke.copy(alpha = 0.12f), 11.dp.toPx(), center)
+                    drawCircle(scheme.surface, if (selected) 6.dp.toPx() else 4.dp.toPx(), center)
+                    drawCircle(stroke, if (selected) 6.dp.toPx() else 4.dp.toPx(), center, style = Stroke(if (selected) 2.dp.toPx() else 1.5.dp.toPx()))
+                    if (selected) drawCircle(stroke, 2.dp.toPx(), center)
                 }
             }
         }
+        Text("dB", Modifier.align(Alignment.TopStart).padding(start = 6.dp, top = 8.dp), style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
         Text(
-            "+${range.toInt()} dB",
-            modifier = Modifier.align(Alignment.TopStart).padding(horizontal = 12.dp, vertical = 8.dp),
+            "+${range.toInt()}",
+            modifier = Modifier.align(Alignment.TopStart).padding(start = 6.dp, top = 28.dp),
             style = MaterialTheme.typography.labelSmall,
             color = scheme.onSurfaceVariant.copy(alpha = 0.86f),
         )
+        Text("0", Modifier.align(Alignment.CenterStart).padding(start = 12.dp, top = 8.dp), style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant, fontFamily = FontFamily.Monospace)
+        Text("−${range.toInt()}", Modifier.align(Alignment.BottomStart).padding(start = 6.dp, bottom = bottomPad), style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant, fontFamily = FontFamily.Monospace)
         Text(
             description,
             modifier = Modifier.align(Alignment.TopEnd).padding(horizontal = 12.dp, vertical = 8.dp),
@@ -280,7 +283,7 @@ internal fun SignalEqPlot(
         )
         if (showFrequencyLabels) {
             Row(
-                Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(start = 34.dp, end = 12.dp, bottom = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 listOf("20 Hz", "200 Hz", "2 kHz", "20 kHz").forEach { label ->
@@ -377,7 +380,7 @@ internal fun SignalEqFader(
                 .pointerInput(enabled, minGainDb, maxGainDb) {
                     detectTapGestures { offset ->
                         if (!enabled) return@detectTapGestures
-                        val inset = 8.dp.toPx()
+                        val inset = 12.dp.toPx()
                         val next = snapEqGain(
                             eqLinearValue(offset.y, size.height.toFloat(), maxGainDb, minGainDb, inset),
                         )
@@ -390,7 +393,7 @@ internal fun SignalEqFader(
                         onDragStart = { offset ->
                             if (!enabled) return@detectVerticalDragGestures
                             dragging = true
-                            val inset = 8.dp.toPx()
+                            val inset = 12.dp.toPx()
                             val next = snapEqGain(
                                 eqLinearValue(offset.y, size.height.toFloat(), maxGainDb, minGainDb, inset),
                             )
@@ -400,7 +403,7 @@ internal fun SignalEqFader(
                         onVerticalDrag = { change, _ ->
                             if (!enabled) return@detectVerticalDragGestures
                             change.consume()
-                            val inset = 8.dp.toPx()
+                            val inset = 12.dp.toPx()
                             val dragged = snapEqGain(
                                 eqLinearValue(change.position.y, size.height.toFloat(), maxGainDb, minGainDb, inset),
                             )
@@ -414,14 +417,14 @@ internal fun SignalEqFader(
         ) {
             Canvas(Modifier.fillMaxSize().padding(horizontal = 4.dp)) {
                 val x = size.width / 2f
-                val inset = 8.dp.toPx()
+                val inset = 12.dp.toPx()
                 val zeroY = eqLinearPosition(0f, size.height, maxGainDb, minGainDb, inset)
                 val gainY = eqLinearPosition(display, size.height, maxGainDb, minGainDb, inset)
                 drawLine(
                     color = scheme.outlineVariant,
                     start = Offset(x, inset),
                     end = Offset(x, size.height - inset),
-                    strokeWidth = 3.dp.toPx(),
+                    strokeWidth = 4.dp.toPx(),
                     cap = StrokeCap.Round,
                 )
                 drawLine(
@@ -434,11 +437,10 @@ internal fun SignalEqFader(
                     color = active,
                     start = Offset(x, zeroY),
                     end = Offset(x, gainY),
-                    strokeWidth = 3.dp.toPx(),
+                    strokeWidth = 6.dp.toPx(),
                     cap = StrokeCap.Round,
                 )
-                drawCircle(color = active, radius = 8.dp.toPx(), center = Offset(x, gainY))
-                drawCircle(color = scheme.surface, radius = 2.dp.toPx(), center = Offset(x, gainY))
+                drawEchoControlThumb(Offset(x, gainY), active, scheme.surface, dragging, enabled)
             }
         }
         Text(
@@ -463,8 +465,7 @@ internal fun SignalGainStrip(
     snap: (Float) -> Float = ::snapEqGain,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val theme = echoTheme()
-    val track = if (theme.dark) Color.Black.copy(alpha = 0.32f) else scheme.outlineVariant.copy(alpha = 0.70f)
+    val track = scheme.onSurface.copy(alpha = if (enabled) 0.14f else 0.07f)
     val active = if (enabled) scheme.primary else scheme.onSurface.copy(alpha = 0.38f)
     var dragging by remember { mutableStateOf(false) }
     var localValue by remember { mutableFloatStateOf(value) }
@@ -492,7 +493,7 @@ internal fun SignalGainStrip(
             .pointerInput(enabled, min, max) {
                 detectTapGestures { offset ->
                     if (!enabled) return@detectTapGestures
-                    val next = snap(eqLinearValue(offset.x, size.width.toFloat(), min, max, 9.dp.toPx()))
+                    val next = snap(eqLinearValue(offset.x, size.width.toFloat(), min, max, 12.dp.toPx()))
                     localValue = next
                     onValueChange(next)
                 }
@@ -502,14 +503,14 @@ internal fun SignalGainStrip(
                     onDragStart = { offset ->
                         if (!enabled) return@detectHorizontalDragGestures
                         dragging = true
-                        val next = snap(eqLinearValue(offset.x, size.width.toFloat(), min, max, 9.dp.toPx()))
+                        val next = snap(eqLinearValue(offset.x, size.width.toFloat(), min, max, 12.dp.toPx()))
                         localValue = next
                         onValueChange(next)
                     },
                     onHorizontalDrag = { change, _ ->
                         if (!enabled) return@detectHorizontalDragGestures
                         change.consume()
-                        val next = snap(eqLinearValue(change.position.x, size.width.toFloat(), min, max, 9.dp.toPx()))
+                        val next = snap(eqLinearValue(change.position.x, size.width.toFloat(), min, max, 12.dp.toPx()))
                         localValue = next
                         onValueChange(next)
                     },
@@ -520,40 +521,20 @@ internal fun SignalGainStrip(
         contentAlignment = Alignment.CenterStart,
     ) {
         Canvas(Modifier.fillMaxWidth().height(28.dp)) {
-            val trackHeight = 8.dp.toPx()
-            val top = (size.height - trackHeight) / 2f
-            val thumbW = 20.dp.toPx()
-            val thumbH = 12.dp.toPx()
-            val inset = thumbW / 2f
+            val inset = 12.dp.toPx().coerceAtMost(size.width / 2f)
             val x = eqLinearPosition(display, size.width, min, max, inset)
             val zeroX = eqLinearPosition(0f, size.width, min, max, inset)
-            drawRoundRect(
-                color = track,
-                topLeft = Offset(0f, top),
-                size = Size(size.width, trackHeight),
-                cornerRadius = CornerRadius(trackHeight / 2f),
-            )
-            val fillLeft = minOf(zeroX, x)
-            val fillWidth = abs(zeroX - x).coerceAtLeast(trackHeight)
-            drawRoundRect(
-                color = active.copy(alpha = 0.78f),
-                topLeft = Offset(fillLeft, top),
-                size = Size(fillWidth, trackHeight),
-                cornerRadius = CornerRadius(trackHeight / 2f),
+            drawEchoControlRail(
+                Offset(inset, center.y), Offset(size.width - inset, center.y),
+                Offset(zeroX, center.y), Offset(x, center.y), active, track,
             )
             drawLine(
                 color = scheme.onSurface.copy(alpha = 0.32f),
-                start = Offset(zeroX, top - 3.dp.toPx()),
-                end = Offset(zeroX, top + trackHeight + 3.dp.toPx()),
-                strokeWidth = 1.2.dp.toPx(),
-                cap = StrokeCap.Round,
+                start = Offset(zeroX, center.y - 6.dp.toPx()),
+                end = Offset(zeroX, center.y + 6.dp.toPx()),
+                strokeWidth = 1.dp.toPx(), cap = StrokeCap.Round,
             )
-            drawRoundRect(
-                color = active,
-                topLeft = Offset(x - thumbW / 2f, (size.height - thumbH) / 2f),
-                size = Size(thumbW, thumbH),
-                cornerRadius = CornerRadius(thumbH / 2f),
-            )
+            drawEchoControlThumb(Offset(x, center.y), active, scheme.surface, dragging, enabled)
         }
     }
 }

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_library_overview_title">My library</string>
+    <string name="settings_library_overview_manage">Manage</string>
+    <string name="settings_library_overview_storage">Music storage</string>
+    <string name="settings_library_overview_tracks">Tracks</string>
+    <string name="settings_library_overview_duration">Total track duration</string>
+    <string name="settings_library_overview_hours_minutes">%1$s h %2$s min</string>
+    <string name="settings_library_overview_local">Local music files</string>
+    <string name="settings_library_overview_offline">Offline music cache</string>
+    <string name="settings_library_overview_scope">Counts and duration cover indexed local music. The ring shows local file sizes and cached remote music, excluding artwork and other app data.</string>
+    <string name="settings_library_overview_empty">No local music indexed yet. Tap Manage to scan a music folder. The ring also includes any cached remote music.</string>
+</resources>

@@ -1,5 +1,7 @@
 package app.echo.android.feature.home
 
+import app.echo.android.design.EchoIcon
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -31,7 +33,7 @@ internal fun HomePinnedPlaylists(playlists: List<EchoPlaylist>, onOpen: (EchoPla
                             Modifier.weight(1f).padding(top = 12.dp), style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         IconButton(onClick = { onPlay(playlist) }, enabled = playlist.trackCount > 0) {
-                            Icon(Icons.Rounded.PlayArrow, stringResource(R.string.home_play_pinned))
+                            EchoIcon(Icons.Rounded.PlayArrow, stringResource(R.string.home_play_pinned))
                         }
                     }
                 }

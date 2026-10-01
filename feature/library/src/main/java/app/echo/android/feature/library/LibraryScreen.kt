@@ -1,6 +1,5 @@
 package app.echo.android.feature.library
 
-import app.echo.android.model.library.LibraryScanOptions
 import app.echo.android.feature.library.R as L10nR
 import androidx.compose.ui.res.stringResource
 
@@ -43,7 +42,6 @@ import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.Audiotrack
 import androidx.compose.material.icons.rounded.CloudQueue
-import androidx.compose.material.icons.rounded.Devices
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
@@ -53,7 +51,7 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -169,22 +167,6 @@ private fun LinkedLibraryMode.label(): String = when (this) {
     LinkedLibraryMode.Folders -> stringResource(L10nR.string.feature_library_folders_cc514a)
 }
 
-private enum class LibrarySourceMode(
-    val id: String,
-    val icon: ImageVector,
-) {
-    Local(LibrarySourceIds.Local, Icons.Rounded.LibraryMusic),
-    PcEcho(LibrarySourceIds.PcEcho, Icons.Rounded.Devices),
-    Cloud(LibrarySourceIds.Cloud, Icons.Rounded.CloudQueue),
-}
-
-@Composable
-private fun LibrarySourceMode.label(): String = when (this) {
-    LibrarySourceMode.Local -> stringResource(L10nR.string.feature_library_local_9b5178)
-    LibrarySourceMode.PcEcho -> stringResource(L10nR.string.feature_library_pc_echo_e0a2d4)
-    LibrarySourceMode.Cloud -> stringResource(L10nR.string.feature_library_cloud_466e60)
-}
-
 @Composable
 internal fun LibraryTrackSortMode.label(): String = when (this) {
     LibraryTrackSortMode.Title -> stringResource(L10nR.string.feature_library_song_title_fedd5e)
@@ -249,12 +231,6 @@ internal fun libraryAlbumCountLabel(count: Int): String =
 internal fun libraryMinutesLabel(minutes: Int): String =
     stringResource(L10nR.string.feature_library_minutes_min_777a53, (minutes).toString())
 
-private object LibrarySourceIds {
-    const val Local = "local"
-    const val PcEcho = "pc_echo"
-    const val Cloud = "cloud"
-}
-
 @Composable
 fun LibraryScreen(
     hasPermission: Boolean,
@@ -300,9 +276,7 @@ fun LibraryScreen(
     onAlbumSortModeChange: (AlbumSortMode) -> Unit,
     onArtistSortModeChange: (ArtistSortMode) -> Unit,
     onFolderSortModeChange: (FolderSortMode) -> Unit,
-    onScanFolder: (LibraryScanOptions) -> Unit,
-    onScanAll: (LibraryScanOptions) -> Unit,
-    initialScanOptions: LibraryScanOptions = LibraryScanOptions(),
+    onAddMusic: () -> Unit,
     onCancelScan: () -> Unit,
     onRefreshLinkedLibrary: (String) -> Unit,
     onOpenLinkedPlaylist: (EchoRemotePlaylist) -> Unit,
@@ -449,13 +423,6 @@ fun LibraryScreen(
 
     @Composable
     fun LocalLibraryBody(displayedSource: LibrarySourceMode) {
-        var showEmptyScanOptions by remember { mutableStateOf(false) }
-        if (showEmptyScanOptions) LibraryScanOptionsDialog(
-            initialOptions = initialScanOptions,
-            onDismiss = { showEmptyScanOptions = false },
-            onScanFolder = { options -> showEmptyScanOptions = false; onScanFolder(options) },
-            onScanAll = { options -> showEmptyScanOptions = false; onScanAll(options) },
-        )
         Column(Modifier.fillMaxSize()) {
                 Column(Modifier.padding(end = 24.dp)) {
                     if (scanState.isScanning) LibraryScanStatus(scanState, onCancelScan)
@@ -532,7 +499,7 @@ fun LibraryScreen(
                                         title = stringResource(if (libraryQuery.isNotBlank()) L10nR.string.library_no_matches else L10nR.string.library_start_collection),
                                         detail = stringResource(if (libraryQuery.isNotBlank()) L10nR.string.library_search_hint else L10nR.string.library_import_hint),
                                         actionLabel = stringResource(if (libraryQuery.isNotBlank()) L10nR.string.library_clear_search else L10nR.string.library_add_music),
-                                        onAction = if (libraryQuery.isNotBlank()) ({ onLibraryQueryChange("") }) else ({ showEmptyScanOptions = true }),
+                                        onAction = if (libraryQuery.isNotBlank()) ({ onLibraryQueryChange("") }) else onAddMusic,
                                     )
                                     else -> Box(Modifier.fillMaxSize()) {
                                         TrackList(
@@ -586,7 +553,7 @@ fun LibraryScreen(
                                     cloudConfigured = cloudLibraryConfigured,
                                     query = libraryQuery,
                                     onClearSearch = { onLibraryQueryChange("") },
-                                    onAddMusic = { showEmptyScanOptions = true },
+                                    onAddMusic = onAddMusic,
                                     onOpenConnect = onOpenConnect,
                                     modifier = Modifier.fillMaxSize(),
                                 )
@@ -620,7 +587,7 @@ fun LibraryScreen(
                                 cloudConfigured = cloudLibraryConfigured,
                                 query = libraryQuery,
                                 onClearSearch = { onLibraryQueryChange("") },
-                                onAddMusic = { showEmptyScanOptions = true },
+                                onAddMusic = onAddMusic,
                                 onOpenConnect = onOpenConnect,
                                 modifier = Modifier.fillMaxSize(),
                             )
@@ -656,15 +623,11 @@ fun LibraryScreen(
                     L10nR.string.feature_library_search_songs_artists_albums_14dc2c
                 },
             ),
-            sources = { LibrarySourceStrip(selectedSource, linkedLibraryAvailable, ::selectSource) },
+            sourcePicker = { LibrarySourcePicker(selectedSource, ::selectSource) },
             actions = {
                 when (selectedSource) {
                     LibrarySourceMode.Local -> if (selectedMode != LibraryViewMode.Radio) {
-                        LibrarySourceScanButton(
-                            selectedSource, linkedLibraryAvailable, ::selectSource,
-                            hasPermission, scanState, onRequestPermission, onScanFolder, onScanAll, onCancelScan,
-                            initialScanOptions = initialScanOptions,
-                        )
+                        LibrarySourceScanButton(onAddMusic)
                     }
                     LibrarySourceMode.PcEcho -> if (linkedLibraryAvailable) {
                         LinkedLibraryRefreshAction(
@@ -1032,31 +995,14 @@ private fun LibrarySplitPlaceholder() {
 
 @Composable
 private fun LibrarySourceScanButton(
-    selectedSource: LibrarySourceMode,
-    linkedLibraryAvailable: Boolean,
-    onSelectSource: (LibrarySourceMode) -> Unit,
-    hasPermission: Boolean,
-    scanState: LibraryScanProgress,
-    onRequestPermission: () -> Unit,
-    onScanFolder: (LibraryScanOptions) -> Unit,
-    onScanAll: (LibraryScanOptions) -> Unit,
-    onCancelScan: () -> Unit,
-    initialScanOptions: LibraryScanOptions = LibraryScanOptions(),
+    onAddMusic: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var showScanOptions by remember { mutableStateOf(false) }
     IconButton(
-        onClick = { showScanOptions = true },
-        enabled = !scanState.isScanning, modifier = modifier,
+        onClick = onAddMusic, modifier = modifier,
     ) {
-        Icon(Icons.Rounded.Add, contentDescription = stringResource(L10nR.string.library_add_music))
+        EchoIcon(Icons.Rounded.Add, contentDescription = stringResource(L10nR.string.library_add_music))
     }
-    if (showScanOptions) LibraryScanOptionsDialog(
-        initialOptions = initialScanOptions,
-        onDismiss = { showScanOptions = false },
-        onScanFolder = { options -> showScanOptions = false; onScanFolder(options) },
-        onScanAll = { options -> showScanOptions = false; onScanAll(options) },
-    )
 }
 
 private fun librarySourceModeFromId(
@@ -1077,25 +1023,11 @@ private fun LinkedLibraryRefreshAction(
 ) {
     val linkedState by state.collectAsState()
     IconButton(onClick = onRefresh, enabled = !linkedState.isLoading) {
-        Icon(
+        EchoIcon(
             Icons.Rounded.Refresh,
             contentDescription = stringResource(L10nR.string.feature_library_refresh_pc_echo_library_5b6275),
         )
     }
-}
-
-@Composable
-private fun LibrarySourceStrip(
-    selectedSource: LibrarySourceMode,
-    linkedLibraryAvailable: Boolean,
-    onSelectSource: (LibrarySourceMode) -> Unit,
-) {
-    LibraryTextTabs(
-        labels = LibrarySourceMode.entries.map { it.label() },
-        selectedIndex = selectedSource.ordinal,
-        onSelect = { onSelectSource(LibrarySourceMode.entries[it]) },
-        compact = true,
-    )
 }
 
 @Composable
@@ -1488,7 +1420,7 @@ private fun LinkedPlaylistRow(
                 playlist.name,
                 color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -1507,7 +1439,7 @@ private fun LinkedPlaylistRow(
             shape = RoundedCornerShape(12.dp),
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(
+                EchoIcon(
                     Icons.Rounded.PlayArrow,
                     contentDescription = null,
                     tint = accent,
@@ -1533,7 +1465,7 @@ private fun LinkedPlaylistTracksPage(
     LibraryDetailFrame(
         actions = {
             IconButton(onClick = onBack) {
-                Icon(
+                EchoIcon(
                     Icons.Rounded.Close,
                     contentDescription = stringResource(L10nR.string.feature_library_back_to_pc_echo_playlists_499312),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1562,7 +1494,7 @@ private fun LinkedPlaylistTracksPage(
                         playlist.name,
                         color = MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -1666,7 +1598,7 @@ private fun LinkedAlbumTracksPage(
         LibraryDetailFrame(
             actions = {
                 IconButton(onClick = onBack) {
-                    Icon(
+                    EchoIcon(
                         Icons.Rounded.Close,
                         contentDescription = stringResource(L10nR.string.feature_library_back_to_pc_echo_playlists_499312),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1756,7 +1688,7 @@ private fun LinkedFolderBrowser(
     Column(modifier.fillMaxSize()) {
         if (path.isNotBlank()) {
             TextButton(onClick = { onOpenFolder(parentPath) }) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null, modifier = Modifier.size(18.dp))
+                EchoIcon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(L10nR.string.feature_library_open_parent_folder_2a11c0))
             }
@@ -1920,7 +1852,7 @@ private fun <T> LibrarySortMenu(
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
-            Icon(
+            EchoIcon(
                 Icons.AutoMirrored.Rounded.Sort,
                 contentDescription = contentDescription,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1939,7 +1871,7 @@ private fun <T> LibrarySortMenu(
                     },
                     trailingIcon = {
                         if (mode == selected) {
-                            Icon(
+                            EchoIcon(
                                 Icons.Rounded.Check,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,

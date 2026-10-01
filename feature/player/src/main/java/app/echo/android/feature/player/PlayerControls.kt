@@ -15,7 +15,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -70,7 +70,7 @@ internal fun PlayerControlButton(
             contentAlignment = Alignment.Center,
             label = "player-control-icon",
         ) { current ->
-            Icon(current, contentDescription = description, tint = tint,
+            EchoIcon(current, contentDescription = description, tint = tint,
                 modifier = Modifier.size(iconSize).graphicsLayer { scaleX = scale.value; scaleY = scale.value })
         }
     }

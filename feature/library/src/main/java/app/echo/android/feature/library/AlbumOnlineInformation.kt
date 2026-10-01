@@ -74,7 +74,7 @@ internal fun AlbumOnlineInformation(album: AlbumSummary) {
     CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides colors.onSurface) {
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.album_online_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.album_online_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
                 if (loading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                 else TextButton(onClick = { attempt++ }) { Text(stringResource(R.string.album_online_refresh)) }
             }
@@ -101,7 +101,7 @@ internal fun AlbumOnlineInformation(album: AlbumSummary) {
                     } else if (!result.partial) {
                         Text(stringResource(R.string.album_online_no_wiki), color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     }
-                    Text(stringResource(R.string.album_online_release), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.album_online_release), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
                     Text("${result.releaseTitle} · ${result.artist}", style = MaterialTheme.typography.bodyMedium)
                     Text(stringResource(R.string.album_online_release_note), color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     result.date?.let { OnlineFact(stringResource(R.string.album_online_date), it) }
@@ -109,7 +109,7 @@ internal fun AlbumOnlineInformation(album: AlbumSummary) {
                     if (result.labels.isNotEmpty()) OnlineFact(stringResource(R.string.album_online_label), result.labels.joinToString(" / "))
                     if (result.catalogNumbers.isNotEmpty()) OnlineFact(stringResource(R.string.album_online_catalog), result.catalogNumbers.joinToString(" / "))
                     if (result.credits.isNotEmpty()) {
-                        Text(stringResource(R.string.album_online_credits), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.album_online_credits), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
                         result.credits.take(if (showCredits) 24 else 4).forEach { credit ->
                             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(credit.name, style = MaterialTheme.typography.bodyMedium)

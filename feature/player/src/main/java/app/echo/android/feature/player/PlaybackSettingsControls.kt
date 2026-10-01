@@ -29,7 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Remove
 
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -88,15 +88,15 @@ internal fun PlaybackSettingsSection(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Icon(icon, null, tint = echoAccentColor(), modifier = Modifier.size(20.dp))
+            EchoIcon(icon, null, tint = echoAccentColor(), modifier = Modifier.size(20.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(title, color = if (dark) Color.White else echoTheme().heading,
-                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
                 if (detail.isNotBlank()) Text(detail, color = if (dark) Color.White.copy(alpha = 0.65f) else echoTheme().muted,
                     style = MaterialTheme.typography.bodySmall)
             }
             trailing()
-            if (onToggleExpanded != null) Icon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+            if (onToggleExpanded != null) EchoIcon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
                 contentDescription = stringResource(if (expanded) L10nR.string.playback_collapse else L10nR.string.playback_expand),
                 tint = echoTheme().muted, modifier = Modifier.size(20.dp))
         }
@@ -174,7 +174,7 @@ internal fun PlaybackChoiceChip(
             text = text,
             color = if (dark) Color.White else echoTheme().heading,
             style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
@@ -230,7 +230,7 @@ internal fun PlaybackIconChoice(
         contentAlignment = Alignment.Center,
     ) {
         Box(Modifier.size(22.dp), contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = description, tint = iconTint, modifier = Modifier.size(22.dp))
+            EchoIcon(icon, contentDescription = description, tint = iconTint, modifier = Modifier.size(22.dp))
             if (slashed) {
                 Canvas(Modifier.matchParentSize()) {
                     drawLine(
@@ -292,7 +292,7 @@ internal fun PlaybackToggleChip(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Icon(
+        EchoIcon(
             icon,
             contentDescription = null,
             tint = if (dark) Color.White.copy(alpha = if (selected) 0.96f else 0.78f) else echoTheme().heading,
@@ -302,7 +302,7 @@ internal fun PlaybackToggleChip(
             text,
             color = if (dark) Color.White else echoTheme().heading,
             style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -365,7 +365,7 @@ internal fun PlaybackToggleRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Icon(
+        EchoIcon(
             icon,
             contentDescription = null,
             tint = (if (dark) Color.White else echoTheme().heading).copy(alpha = if (enabled) 1f else 0.38f),
@@ -376,7 +376,7 @@ internal fun PlaybackToggleRow(
             modifier = Modifier.weight(1f),
             color = (if (dark) Color.White else echoTheme().heading).copy(alpha = if (enabled) 1f else 0.38f),
             style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -419,14 +419,14 @@ internal fun PlaybackActionRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Icon(icon, contentDescription = null, tint = if (dark) Color.White else echoTheme().heading, modifier = Modifier.size(18.dp))
+        EchoIcon(icon, contentDescription = null, tint = if (dark) Color.White else echoTheme().heading, modifier = Modifier.size(18.dp))
         Column(Modifier.weight(1f).padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(text, color = if (dark) Color.White else echoTheme().heading,
                 style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
             if (!detail.isNullOrBlank()) Text(detail, color = if (dark) Color.White.copy(alpha = 0.65f) else echoTheme().muted,
                 style = MaterialTheme.typography.bodySmall)
         }
-        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null,
+        EchoIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null,
             tint = echoTheme().muted, modifier = Modifier.size(20.dp))
 
     }
@@ -457,7 +457,7 @@ internal fun PlaybackActionChip(
             text,
             color = if (dark) Color.White else echoTheme().heading,
             style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Medium,
         )
     }
 }
@@ -550,7 +550,7 @@ internal fun PlaybackStepperButton(
             .echoClickable(enabled = enabled, onClickLabel = description, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
+        EchoIcon(
             icon,
             contentDescription = description,
             tint = (if (dark) Color.White else echoTheme().heading).copy(alpha = if (enabled) 0.92f else 0.28f),

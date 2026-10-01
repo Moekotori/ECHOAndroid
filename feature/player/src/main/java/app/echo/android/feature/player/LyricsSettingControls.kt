@@ -1,9 +1,6 @@
 package app.echo.android.feature.player
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -14,6 +11,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import app.echo.android.design.EchoSlider
 import app.echo.android.design.EchoSwitch
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.echoTheme
@@ -45,13 +43,11 @@ internal fun LyricsSettingSlider(
                 modifier = Modifier.semantics { contentDescription = "$label · $resetLabel" },
             ) { Text(resetLabel) }
         }
-        Slider(
+        EchoSlider(
             value = displayed,
             onValueChange = { dragging = true; draft = (it * 100f).roundToInt() / 100f },
             onValueChangeFinished = { onCommit(draft.coerceIn(range)); dragging = false },
             valueRange = range,
-            thumb = { Box(Modifier.size(18.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary)) },
-            track = { state -> SliderDefaults.Track(state, modifier = Modifier.height(6.dp)) },
             modifier = Modifier.fillMaxWidth().semantics { contentDescription = label },
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

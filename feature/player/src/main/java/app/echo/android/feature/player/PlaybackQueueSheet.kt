@@ -7,14 +7,11 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import app.echo.android.design.echoClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -36,24 +33,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Shuffle
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
@@ -78,22 +69,20 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoMotion
-import app.echo.android.design.echoAccentColor
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
-import app.echo.android.design.formatDuration
 import app.echo.android.design.echoTheme
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoRepeatMode
 import app.echo.android.model.playback.EchoRemotePinPolicy
-import app.echo.android.model.playback.EchoTrackRef
 import app.echo.android.model.playback.PlaybackQueueState
 import kotlinx.coroutines.launch
 
@@ -294,7 +283,6 @@ private fun QueueSheetSurface(
     val dark = LocalEchoDarkTheme.current
     val empty = queueState.items.isEmpty()
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
-    val shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
     val contentLiftPx = with(LocalDensity.current) { 16.dp.toPx() }
 
     Box(
@@ -304,12 +292,7 @@ private fun QueueSheetSurface(
             .widthIn(max = 560.dp)
             .then(if (empty) Modifier.wrapContentHeight() else Modifier.fillMaxHeight(0.74f))
             .then(if (lightweight) Modifier else Modifier.animateContentSize(EchoMotion.silkSize(360)))
-            .clip(shape)
-            .background(if (dark) echoTheme().panel else Color(0xFFF4F1F3))
-            .border(
-                BorderStroke(1.dp, if (dark) Color.White.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.72f)),
-                shape,
-            )
+            .background(queueSurfaceColor())
             .navigationBarsPadding(),
     ) {
         Column(
@@ -335,7 +318,7 @@ private fun QueueSheetSurface(
                 contentAlignment = Alignment.Center,
             ) {
                 Box(Modifier.size(width = 42.dp, height = 5.dp).clip(CircleShape)
-                    .background(echoTheme().muted.copy(alpha = 0.35f)))
+                    .background(app.echo.android.design.echoIconColor().copy(alpha = 0.22f)))
             }
             QueueSheetHeader(
                 queueState = queueState,
@@ -355,7 +338,7 @@ private fun QueueSheetSurface(
             if (queueState.items.isEmpty()) {
                 QueueEmptyState()
             } else {
-                NextUpQueueList(queueState, onPlayItem, onRemoveItem, onMoveItem, onClearNextUp)
+                NextUpQueueList(queueState, status.isPlaying, onPlayItem, onRemoveItem, onMoveItem, onClearNextUp)
             }
         }
     }
@@ -370,8 +353,8 @@ private fun QueueSheetHeader(
     onPinQueueOffline: (() -> Unit)?,
 ) {
     val dark = LocalEchoDarkTheme.current
-    val titleColor = if (dark) Color.White else echoTheme().heading
-    val mutedColor = if (dark) Color.White.copy(alpha = 0.65f) else echoTheme().muted
+    val titleColor = app.echo.android.design.echoIconColor()
+    val mutedColor = titleColor.copy(alpha = 0.58f)
     var menuExpanded by remember { mutableStateOf(false) }
     val canPin = remember(queueState.items) {
         queueState.items.any { EchoRemotePinPolicy.canPin(it.sourceId, it.id, it.uri) }
@@ -386,7 +369,7 @@ private fun QueueSheetHeader(
                 text = stringResource(L10nR.string.feature_player_queue_37fa6a),
                 color = titleColor,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Medium,
                 letterSpacing = 0.15.sp,
             )
             Text(
@@ -401,7 +384,7 @@ private fun QueueSheetHeader(
         if (queueState.items.isNotEmpty()) {
             Box {
                 GlyphButton(
-                    icon = Icons.Rounded.MoreVert,
+                    icon = Icons.Rounded.MoreHoriz,
                     description = stringResource(L10nR.string.queue_actions),
                     touchSize = 44.dp,
                     iconSize = 22.dp,
@@ -412,12 +395,12 @@ private fun QueueSheetHeader(
                 DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                     if (canPin && onPinQueueOffline != null) DropdownMenuItem(
                         text = { Text(stringResource(L10nR.string.queue_keep_offline)) },
-                        leadingIcon = { Icon(Icons.Rounded.Download, contentDescription = null) },
+                        leadingIcon = { EchoIcon(Icons.Rounded.Download, contentDescription = null) },
                         onClick = { menuExpanded = false; onPinQueueOffline() },
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(L10nR.string.feature_player_clear_queue_eae952)) },
-                        leadingIcon = { Icon(Icons.Rounded.DeleteOutline, contentDescription = null) },
+                        leadingIcon = { EchoIcon(Icons.Rounded.DeleteOutline, contentDescription = null) },
                         onClick = { menuExpanded = false; onClearQueue() },
                     )
                 }
@@ -446,15 +429,19 @@ private fun QueueModeControls(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(9.dp),
     ) {
-        QueuePillButton(
-            icon = if (repeatMode == EchoRepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
+        QueueModeButton(
+            icon = when (repeatMode) {
+                EchoRepeatMode.Off -> Icons.Rounded.Repeat
+                EchoRepeatMode.All -> Icons.Rounded.Repeat
+                EchoRepeatMode.One -> Icons.Rounded.RepeatOne
+            },
             title = repeatModeLabel(repeatMode),
             selected = repeatMode != EchoRepeatMode.Off,
             onClick = onCycleRepeatMode,
             modifier = Modifier.weight(1f),
         )
-        QueuePillButton(
-            icon = Icons.Rounded.Shuffle,
+        QueueModeButton(
+            icon = if (shuffleEnabled) Icons.Rounded.Shuffle else Icons.AutoMirrored.Rounded.QueueMusic,
             title = if (shuffleEnabled) {
                 stringResource(L10nR.string.feature_player_shuffle_on_c7c5c4)
             } else {
@@ -463,124 +450,6 @@ private fun QueueModeControls(
             selected = shuffleEnabled,
             onClick = onToggleShuffle,
             modifier = Modifier.weight(1f),
-        )
-    }
-}
-
-@Composable
-internal fun QueueTrackRow(
-    track: EchoTrackRef,
-    index: Int,
-    lastIndex: Int,
-    active: Boolean,
-    onPlay: () -> Unit,
-    onRemove: () -> Unit,
-    onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit,
-    modifier: Modifier = Modifier,
-    dropTarget: Boolean = false,
-    interactive: Boolean = true,
-) {
-    val scheme = MaterialTheme.colorScheme
-    val containerColor by animateColorAsState(
-        targetValue = if (active) {
-            scheme.primary.copy(alpha = if (LocalEchoDarkTheme.current) 0.30f else 0.13f)
-        } else {
-            if (LocalEchoDarkTheme.current) echoTheme().panel.copy(alpha = 0.64f) else scheme.surface.copy(alpha = 0.62f)
-        },
-        animationSpec = tween(durationMillis = 220, easing = QueueSheetMotionEasing),
-        label = "queue-row-container",
-    )
-    val borderColor by animateColorAsState(
-        targetValue = if (active) {
-            scheme.primary.copy(alpha = 0.34f)
-        } else {
-            if (LocalEchoDarkTheme.current) echoTheme().glassBorder else scheme.outlineVariant.copy(alpha = 0.22f)
-        },
-        animationSpec = tween(durationMillis = 220, easing = QueueSheetMotionEasing),
-        label = "queue-row-border",
-    )
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(containerColor)
-            .border(
-                BorderStroke(if (dropTarget) 2.dp else 1.dp, if (dropTarget) scheme.primary else borderColor),
-                RoundedCornerShape(18.dp),
-            )
-            .then(if (interactive) Modifier.echoClickable(onClick = onPlay) else Modifier)
-            .padding(horizontal = 10.dp, vertical = 9.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Text(
-            text = (index + 1).toString().padStart(2, '0'),
-            color = if (active) scheme.primary else scheme.onSurfaceVariant,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Black,
-        )
-        ArtworkTile(
-            artworkUri = track.artworkUri,
-            modifier = Modifier.size(46.dp),
-            accent = echoAccentColor(),
-            showSignal = active,
-            cornerRadius = 13.dp,
-            elevation = if (active) 4.dp else 1.dp,
-            placeholderIconSize = 22.dp,
-        )
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                if (active) {
-                    Icon(
-                        imageVector = Icons.Rounded.MusicNote,
-                        contentDescription = null,
-                        tint = scheme.primary,
-                        modifier = Modifier.size(16.dp),
-                    )
-                }
-                Text(
-                    text = track.title,
-                    color = scheme.onSurface,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Text(
-                text = queueTrackDetail(track),
-                color = scheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        if (interactive && index > 0) {
-            QueueIconButton(
-                icon = Icons.Rounded.KeyboardArrowUp,
-                description = stringResource(L10nR.string.feature_player_move_up_e6d961),
-                onClick = onMoveUp,
-                compact = true,
-            )
-        }
-        if (interactive && index < lastIndex) {
-            QueueIconButton(
-                icon = Icons.Rounded.KeyboardArrowDown,
-                description = stringResource(L10nR.string.feature_player_move_down_cf81ae),
-                onClick = onMoveDown,
-                compact = true,
-            )
-        }
-        if (interactive) QueueIconButton(
-            icon = if (active) Icons.Rounded.PlayArrow else Icons.Rounded.DeleteOutline,
-            description = if (active) {
-                stringResource(L10nR.string.feature_player_now_playing_214a7c)
-            } else {
-                stringResource(L10nR.string.feature_player_remove_track_60c516)
-            },
-            onClick = if (active) onPlay else onRemove,
-            compact = true,
         )
     }
 }
@@ -610,18 +479,18 @@ private fun Modifier.queueSheetHandleDrag(
 @Composable
 private fun QueueEmptyState() {
     val dark = LocalEchoDarkTheme.current
-    val titleColor = if (dark) Color.White else echoTheme().heading
-    val mutedColor = if (dark) Color.White.copy(alpha = 0.68f) else echoTheme().muted
+    val titleColor = app.echo.android.design.echoIconColor()
+    val mutedColor = titleColor.copy(alpha = 0.58f)
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 20.dp, bottom = 28.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Icon(
+        EchoIcon(
             imageVector = Icons.Rounded.MusicNote,
             contentDescription = null,
-            tint = echoAccentColor(),
+            tint = titleColor,
             modifier = Modifier.size(28.dp),
         )
         Spacer(Modifier.height(14.dp))
@@ -629,7 +498,7 @@ private fun QueueEmptyState() {
             text = stringResource(L10nR.string.feature_player_queue_is_empty_1b4178),
             color = titleColor,
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Medium,
             letterSpacing = 0.2.sp,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
@@ -651,88 +520,28 @@ private fun QueueEmptyState() {
 }
 
 @Composable
-private fun QueuePillButton(
+private fun QueueModeButton(
     icon: ImageVector,
     title: String,
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val dark = LocalEchoDarkTheme.current
-    val accent = echoAccentColor()
-    val titleColor = if (dark) Color.White else echoTheme().heading
-    val mutedColor = if (dark) Color.White.copy(alpha = 0.72f) else echoTheme().muted
-    val containerColor by animateColorAsState(
-        targetValue = if (selected) {
-            accent.copy(alpha = if (dark) 0.22f else 0.16f)
-        } else {
-            if (dark) Color.White.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.72f)
-        },
-        animationSpec = tween(durationMillis = 220, easing = QueueSheetMotionEasing),
-        label = "queue-pill-container",
-    )
+    val ink = app.echo.android.design.echoIconColor()
     Row(
         modifier = modifier
-            .heightIn(min = 46.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(containerColor)
-            .border(
-                BorderStroke(
-                    1.dp,
-                    if (selected) {
-                        accent.copy(alpha = 0.55f)
-                    } else if (dark) {
-                        Color.White.copy(alpha = 0.08f)
-                    } else {
-                        Color.Transparent
-                    },
-                ),
-                RoundedCornerShape(14.dp),
-            )
-            .echoClickable(onClick = onClick)
-            .padding(horizontal = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = title,
-            tint = if (selected) accent else mutedColor,
-            modifier = Modifier.size(18.dp),
-        )
-        Spacer(Modifier.size(8.dp))
-        Text(
-            text = title,
-            color = if (selected) titleColor else mutedColor,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 0.15.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-@Composable
-private fun QueueIconButton(
-    icon: ImageVector,
-    description: String,
-    onClick: () -> Unit,
-    compact: Boolean = false,
-) {
-    val scheme = MaterialTheme.colorScheme
-    Box(
-        modifier = Modifier
-            .size(if (compact) 30.dp else 40.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .heightIn(min = 48.dp)
+            .semantics { this.selected = selected }
             .echoClickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = description,
-            tint = scheme.onSurfaceVariant,
-            modifier = Modifier.size(if (compact) 18.dp else 22.dp),
+        EchoIcon(icon, null, Modifier.size(21.dp), tint = ink)
+        Text(
+            title, color = ink.copy(alpha = if (selected) 1f else 0.65f),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -745,14 +554,6 @@ private fun queueSubtitle(queueState: PlaybackQueueState, status: EchoPlaybackSt
     val current = (queueState.currentIndex + 1).coerceAtLeast(0)
     val size = queueState.items.size
     return stringResource(L10nR.string.feature_player_size_tracks_now_playing_current_7d4647, (size).toString(), (current).toString())
-}
-
-@Composable
-private fun queueTrackDetail(track: EchoTrackRef): String {
-    val album = track.album?.takeIf { it.isNotBlank() }
-    val duration = track.durationMs.takeIf { it > 0L }?.let(::formatDuration)
-    return listOfNotNull(track.artist.takeIf { it.isNotBlank() }, album, duration).joinToString(" · ")
-        .ifBlank { stringResource(L10nR.string.feature_player_local_queue_c7d54b) }
 }
 
 @Composable

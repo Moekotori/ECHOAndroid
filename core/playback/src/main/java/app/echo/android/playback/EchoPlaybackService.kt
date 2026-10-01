@@ -20,6 +20,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -33,6 +35,7 @@ class EchoPlaybackService : MediaLibraryService() {
     private var smartTransitions: EchoSmartTransitionController? = null
     private var sessionCallback: EchoPlaybackLibrarySessionCallback? = null
     private var sessionRestorer: EchoPlaybackSessionRestorer? = null
+    private var statusLyricsOverlay: EchoStatusLyricsOverlay? = null
     private var notificationLyrics: EchoNotificationLyricController? = null
     private var audioRoutePlayback: EchoAudioRoutePlaybackController? = null
     private var surfaceProgressJob: Job? = null
@@ -196,18 +199,32 @@ class EchoPlaybackService : MediaLibraryService() {
         EchoPlaybackProcessRuntime.publishSurface(exoPlayer.toPlaybackSurfaceSnapshot())
         updateSurfaceProgress(exoPlayer)
         setMediaNotificationProvider(EchoMediaNotificationProvider(this))
+        statusLyricsOverlay = EchoStatusLyricsOverlay(this, serviceScope)
         notificationLyrics = EchoNotificationLyricController(
             player = exoPlayer,
             scope = serviceScope,
             onLine = { line ->
-                if (EchoPlaybackProcessRuntime.setNotificationLyricLine(line)) {
+                if (EchoPlaybackProcessRuntime.setNotificationLyricLine(line) &&
+                    (EchoPlaybackProcessRuntime.lyricsOptions.value.notificationEnabled ||
+                        EchoPlaybackProcessRuntime.lyricsOptions.value.systemStatusBarEnabled)) {
                     mediaSession?.let { session -> onUpdateNotification(session, false) }
                 }
             },
             onSnapshot = { snapshot ->
+                val previous = EchoPlaybackProcessRuntime.lyricDisplaySnapshot.value
                 EchoPlaybackProcessRuntime.setLyricDisplaySnapshot(snapshot)
+                if (previous.isPlaying != snapshot.isPlaying &&
+                    EchoPlaybackProcessRuntime.lyricsOptions.value.systemStatusBarEnabled) {
+                    mediaSession?.let { onUpdateNotification(it, false) }
+                }
             },
         )
+        serviceScope.launch {
+            EchoPlaybackProcessRuntime.lyricsOptions
+                .map { Triple(it.notificationEnabled, it.systemStatusBarEnabled, it.statusHideTranslation) }
+                .distinctUntilChanged()
+                .collect { mediaSession?.let { onUpdateNotification(it, false) } }
+        }
         serviceScope.launch {
             combine(
                 EchoPlaybackProcessRuntime.notificationLyrics,
@@ -242,6 +259,8 @@ class EchoPlaybackService : MediaLibraryService() {
         trackTransitions = null
         smartTransitions?.close()
         smartTransitions = null
+        statusLyricsOverlay?.close()
+        statusLyricsOverlay = null
         notificationLyrics?.close()
         notificationLyrics = null
         audioRoutePlayback?.stop()

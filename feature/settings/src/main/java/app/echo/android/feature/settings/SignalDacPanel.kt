@@ -15,7 +15,7 @@ import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -115,18 +115,18 @@ internal fun SignalDacPanel(status: EchoPlaybackStatus, onDiagnostics: () -> Uni
                 contentPadding = PaddingValues(horizontal = 0.dp, vertical = 10.dp)) {
                 Text(stringResource(R.string.feature_settings_view_diagnostics_31fcec), modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(6.dp))
-                Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
+                EchoIcon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
             }
             TextButton(onClick = { clipboard.setText(AnnotatedString(report)); copiedReport = report },
                 modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 0.dp, vertical = 10.dp)) {
-                Icon(if (copiedReport == report) Icons.Rounded.Check else Icons.Rounded.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                EchoIcon(if (copiedReport == report) Icons.Rounded.Check else Icons.Rounded.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(stringResource(if (copiedReport == report) R.string.dac_report_copied else R.string.dac_copy_report), modifier = Modifier.weight(1f))
             }
         }
         HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.55f))
         TextButton(onClick = { expanded = !expanded }, contentPadding = PaddingValues(horizontal = 0.dp)) {
-            Icon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, contentDescription = null)
+            EchoIcon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, contentDescription = null)
             Text(stringResource(if (expanded) R.string.dac_hide_capabilities else R.string.dac_show_capabilities))
         }
         if (expanded) {

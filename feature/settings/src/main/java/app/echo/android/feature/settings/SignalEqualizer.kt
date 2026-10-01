@@ -12,6 +12,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -20,6 +25,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -31,7 +37,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.EchoExpand
+import app.echo.android.design.EchoIcon
 import app.echo.android.design.EchoSwitch
 import app.echo.android.design.EchoTextButton
 import app.echo.android.model.playback.EchoEqualizerPreset
@@ -63,67 +69,63 @@ internal fun SignalEqualizer(
     onBindToOutput: () -> Unit = {},
     onUnbindFromOutput: () -> Unit = {},
 ) {
-    var showEditor by remember { mutableStateOf(false) }
-    var showFilters by remember(state.filters) { mutableStateOf(false) }
+    var modeMenu by remember { mutableStateOf(false) }
+    var selectedBand by remember { mutableIntStateOf(0) }
+    val activeBand = selectedBand.coerceIn(0, (state.filters.size - 1).coerceAtLeast(0))
     val title = stringResource(L10nR.string.feature_settings_equalizer_7ccb03)
     val scheme = MaterialTheme.colorScheme
     val live = state.enabled && !bypassed
     val fadersEnabled = state.enabled && state.supported
     val status = stringResource(when {
         bypassed -> L10nR.string.eq_bypassed
-        !state.enabled -> L10nR.string.eq_disabled
+        !state.enabled -> L10nR.string.eq_status_off
         !playing -> L10nR.string.eq_waiting_audio
         state.processingSampleRateHz == null -> L10nR.string.eq_waiting_pipeline
         else -> L10nR.string.eq_processing
     })
-    val subtitle = stringResource(
-        when {
-            state.parametric -> L10nR.string.eq_parametric_mode
-            state.presetId == EchoEqualizerPreset.Harman -> L10nR.string.eq_preset_harman_detail
-            else -> L10nR.string.eq_graphic_mode
-        },
-    )
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            SignalLiveDot(active = live && playing && state.processingSampleRateHz != null)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    if (state.parametric) state.sourceLabel ?: subtitle else subtitle,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = scheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    status,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = when {
-                        bypassed -> scheme.error
-                        live && playing -> scheme.primary
-                        else -> scheme.onSurfaceVariant
-                    },
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Box {
+                    TextButton(onClick = { modeMenu = true }, enabled = !bypassed, contentPadding = PaddingValues(0.dp)) {
+                        Text(stringResource(if (state.parametric) L10nR.string.eq_mode_parametric else L10nR.string.eq_mode_graphic), color = scheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        EchoIcon(Icons.Default.KeyboardArrowDown, null, Modifier.size(18.dp).padding(start = 4.dp))
+                    }
+                    DropdownMenu(modeMenu, { modeMenu = false }) {
+                        DropdownMenuItem(text = { Text(stringResource(L10nR.string.eq_mode_parametric)) }, onClick = {
+                            modeMenu = false
+                            if (!state.parametric) onParametricChange(state.bands.map { app.echo.android.model.playback.OpraEqBand("peak_dip", it.frequencyHz.toFloat(), it.gainDb, 1f, null) })
+                        })
+                        DropdownMenuItem(text = { Text(stringResource(L10nR.string.eq_use_graphic)) }, onClick = {
+                            modeMenu = false
+                            if (state.parametric) onPresetSelected(EchoEqualizerPreset.Flat)
+                        })
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    SignalLiveDot(active = live && playing && state.processingSampleRateHz != null)
+                    Text(
+                        status,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = when {
+                            bypassed -> scheme.error
+                            live && playing -> scheme.primary
+                            else -> scheme.onSurfaceVariant
+                        },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            if (state.parametric) {
+                Text(stringResource(L10nR.string.eq_filter_count, state.filters.size), style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
             }
             EchoSwitch(checked = state.enabled, onCheckedChange = onEnabledChange, modifier = Modifier.semantics { contentDescription = title })
         }
-        TextButton(onClick = {
-            if (!state.parametric) onParametricChange(state.bands.map { app.echo.android.model.playback.OpraEqBand("peak_dip", it.frequencyHz.toFloat(), it.gainDb, 1f, null) })
-            showEditor = !showEditor
-        }, enabled = !bypassed) { Text(stringResource(L10nR.string.dsp_peq)) }
         state.warning?.let { SignalNote(it, error = true) }
-
-        if (!state.parametric) {
-            SignalEqPresetPicker(state.presetId, onPresetSelected)
-        }
+        if (!state.parametric) SignalEqPresetPicker(state.presetId, onPresetSelected)
+        if (state.parametric) state.sourceLabel?.takeIf { it.isNotBlank() }?.let { SignalNote(it) }
+        if (!state.parametric && state.presetId == EchoEqualizerPreset.Harman) SignalNote(stringResource(L10nR.string.eq_preset_harman_detail))
 
         if (state.parametric) {
             SignalEqPlot(
@@ -135,6 +137,8 @@ internal fun SignalEqualizer(
                 lockMarkerFrequency = false,
                 minGainDb = app.echo.android.model.playback.EchoParametricEq.MinGainDb,
                 maxGainDb = app.echo.android.model.playback.EchoParametricEq.MaxGainDb,
+                selectedMarkerIndex = activeBand,
+                onMarkerSelected = { selectedBand = it },
                 onMarkerDrag = if (!bypassed && state.enabled) {
                     { index, frequencyHz, gainDb ->
                         onParametricChange(
@@ -147,42 +151,16 @@ internal fun SignalEqualizer(
                 } else {
                     null
                 },
-                modifier = Modifier.fillMaxWidth().height(if (showEditor) 128.dp else 168.dp),
+                modifier = Modifier.fillMaxWidth().height(192.dp),
             )
-            if (!showEditor) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SignalNote(stringResource(L10nR.string.eq_parametric_kept, state.filters.size))
-                    TextButton(
-                        onClick = { showFilters = !showFilters },
-                        contentPadding = PaddingValues(horizontal = 0.dp),
-                    ) {
-                        Text(stringResource(if (showFilters) L10nR.string.eq_hide_filters else L10nR.string.eq_show_filters))
-                    }
-                    EchoExpand(showFilters) {
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            state.filters.forEach { band ->
-                                SignalReadout(
-                                    "${formatEqFrequency(band.frequencyHz.toInt())} · ${band.type}",
-                                    "${formatEqGain(band.gainDb)} · ${band.q?.let { "Q $it" } ?: "${band.slope ?: 12f} dB/oct"}",
-                                )
-                            }
-                        }
-                    }
-                    TextButton(
-                        onClick = { onPresetSelected(EchoEqualizerPreset.Flat) },
-                        contentPadding = PaddingValues(horizontal = 0.dp),
-                    ) {
-                        Text(stringResource(L10nR.string.eq_use_graphic))
-                    }
-                }
-            }
+            SignalPeqEditor(state.filters, !bypassed, onParametricChange, activeBand) { selectedBand = it }
         } else {
             SignalEqPlot(
                 points = state.responseCurve,
                 markerFrequenciesHz = state.bands.map { it.frequencyHz },
                 markerGainsDb = state.bands.map { it.gainDb },
                 live = live,
-                showFrequencyLabels = false,
+                showFrequencyLabels = true,
                 lockMarkerFrequency = true,
                 minGainDb = state.bands.firstOrNull()?.minGainDb ?: -12f,
                 maxGainDb = state.bands.firstOrNull()?.maxGainDb ?: 12f,
@@ -191,7 +169,7 @@ internal fun SignalEqualizer(
                 } else {
                     null
                 },
-                modifier = Modifier.fillMaxWidth().height(112.dp),
+                modifier = Modifier.fillMaxWidth().height(184.dp),
             )
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 184.dp),
@@ -209,10 +187,6 @@ internal fun SignalEqualizer(
                     )
                 }
             }
-        }
-
-        EchoExpand(showEditor && state.parametric) {
-            SignalPeqEditor(state.filters, !bypassed, onParametricChange)
         }
 
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {

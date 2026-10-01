@@ -22,19 +22,19 @@ data class EchoStartupThemeSnapshot(
 ) {
     fun toAppSettings(): EchoAppSettings {
         val mode = normalizeThemeMode(themeMode)
-        val lyrics = if (mode == EchoThemeMode.Dark) EchoLyricsPageStyle.Mist else EchoLyricsPageStyle.Paper
+        val lyrics = EchoLyricsPageStyle.Mist
         return EchoAppSettings(
             themeMode = mode,
             lyricsPageStyle = lyrics.id,
             lyricsFontFamily = lyrics.defaultFontFamily,
             lyricsAlignment = lyrics.defaultAlignment,
-            colorTheme = EchoColorTheme.fromId(colorTheme).id,
+            colorTheme = EchoColorTheme.Default.id,
             appLanguage = EchoAppLanguage.fromId(appLanguage),
             scheduledDarkModeEnabled = scheduledDarkModeEnabled,
             scheduledDarkStartMinute = scheduledDarkStartMinute.coerceMinuteOfDay(),
             scheduledDarkEndMinute = scheduledDarkEndMinute.coerceMinuteOfDay(),
             startupBackgroundUri = startupBackgroundUri,
-            customColors = customColors.normalized(),
+            customColors = EchoCustomColors.Default,
         )
     }
 }
@@ -46,7 +46,7 @@ fun Context.readEchoStartupThemeSnapshot(): EchoStartupThemeSnapshot {
     )
     return EchoStartupThemeSnapshot(
         themeMode = normalizeThemeMode(preferences.getString(KeyThemeMode, null)),
-        colorTheme = EchoColorTheme.fromId(preferences.getString(KeyColorTheme, null)).id,
+        colorTheme = EchoColorTheme.Default.id,
         appLanguage = EchoAppLanguage.fromId(preferences.getString(KeyAppLanguage, null)),
         scheduledDarkModeEnabled = preferences.getBoolean(KeyScheduledDarkModeEnabled, false),
         scheduledDarkStartMinute = preferences
@@ -56,11 +56,7 @@ fun Context.readEchoStartupThemeSnapshot(): EchoStartupThemeSnapshot {
             .getInt(KeyScheduledDarkEndMinute, DefaultScheduledDarkEndMinute)
             .coerceMinuteOfDay(),
         startupBackgroundUri = preferences.getString(KeyStartupBackgroundUri, null)?.takeIf { it.isNotBlank() },
-        customColors = EchoCustomColors.fromStored(
-            preferences.storedColor(KeyCustomAccent),
-            preferences.storedColor(KeyCustomSecondary),
-            preferences.storedColor(KeyCustomBackground),
-        ),
+        customColors = EchoCustomColors.Default,
     )
 }
 
@@ -114,13 +110,13 @@ internal fun Context.writeEchoStartupThemeSnapshot(
 internal fun EchoAppSettings.toStartupThemeSnapshot(): EchoStartupThemeSnapshot =
     EchoStartupThemeSnapshot(
         themeMode = normalizeThemeMode(themeMode),
-        colorTheme = EchoColorTheme.fromId(colorTheme).id,
+        colorTheme = EchoColorTheme.Default.id,
         appLanguage = EchoAppLanguage.fromId(appLanguage),
         scheduledDarkModeEnabled = scheduledDarkModeEnabled,
         scheduledDarkStartMinute = scheduledDarkStartMinute.coerceMinuteOfDay(),
         scheduledDarkEndMinute = scheduledDarkEndMinute.coerceMinuteOfDay(),
         startupBackgroundUri = startupBackgroundUri,
-        customColors = customColors.normalized(),
+        customColors = EchoCustomColors.Default,
     )
 
 internal fun normalizeThemeMode(value: String?): String =
@@ -136,12 +132,12 @@ internal fun normalizeThemeMode(value: String?): String =
 private fun EchoStartupThemeSnapshot.normalized(): EchoStartupThemeSnapshot =
     copy(
         themeMode = normalizeThemeMode(themeMode),
-        colorTheme = EchoColorTheme.fromId(colorTheme).id,
+        colorTheme = EchoColorTheme.Default.id,
         appLanguage = EchoAppLanguage.fromId(appLanguage),
         scheduledDarkStartMinute = scheduledDarkStartMinute.coerceMinuteOfDay(),
         scheduledDarkEndMinute = scheduledDarkEndMinute.coerceMinuteOfDay(),
         startupBackgroundUri = startupBackgroundUri?.takeIf { it.isNotBlank() },
-        customColors = customColors.normalized(),
+        customColors = EchoCustomColors.Default,
     )
 
 private fun Int.coerceMinuteOfDay(): Int = coerceIn(0, 23 * 60 + 59)
@@ -172,8 +168,6 @@ private const val KeyCustomAccent = "custom_accent"
 private const val KeyCustomSecondary = "custom_secondary"
 private const val KeyCustomBackground = "custom_background"
 
-private fun android.content.SharedPreferences.storedColor(key: String): Int? =
-    if (contains(key)) getInt(key, 0) else null
 private const val KeyThemeDefaultVersion = "theme_default_version"
 private const val CurrentThemeDefaultVersion = 3
 private const val DefaultScheduledDarkStartMinute = 22 * 60

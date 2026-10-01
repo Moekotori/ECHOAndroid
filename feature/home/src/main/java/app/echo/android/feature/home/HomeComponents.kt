@@ -40,7 +40,7 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -161,7 +161,7 @@ private fun SearchResultItem(result: SearchResult, onClick: (SearchResult) -> Un
                     .background(homeBodyColor().copy(alpha = 0.08f)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
+                EchoIcon(
                     imageVector = when (result.type) {
                         SearchResultType.Track -> Icons.Rounded.MusicNote
                         SearchResultType.Album -> Icons.Rounded.Album
@@ -224,7 +224,7 @@ internal fun RecentPlayedAlbumsTab() {
                 stringResource(L10nR.string.feature_home_played_ef0258),
                 color = scheme.primary,
                 style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Medium,
                 maxLines = 1,
             )
         }
@@ -251,7 +251,7 @@ private fun RecentActivityEmptyAlbumCard(
                 .background(homePanelColor(0.88f)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
+            EchoIcon(
                 Icons.Rounded.LibraryMusic,
                 contentDescription = null,
                 tint = echoAccentColor(),
@@ -262,14 +262,14 @@ private fun RecentActivityEmptyAlbumCard(
             title,
             color = homeTitleColor(),
             style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Medium,
             maxLines = 1,
         )
         Text(
             subtitle,
             color = homeBodyColor(),
             style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -296,7 +296,7 @@ internal fun EmptyRecentAlbumsCard(
                 .background(homePanelColor(0.74f)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
+            EchoIcon(
                 Icons.Rounded.LibraryMusic,
                 contentDescription = null,
                 tint = echoAccentColor(),
@@ -307,7 +307,7 @@ internal fun EmptyRecentAlbumsCard(
             title,
             color = homeTitleColor(),
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Medium,
             maxLines = 1,
         )
         Text(
@@ -355,7 +355,7 @@ internal fun RoonRecentActivitySection(
                     stringResource(L10nR.string.feature_home_recent_activity_581ef8),
                     color = homeTitleColor(),
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                 )
                 RecentActivityTabs()
             }
@@ -426,7 +426,7 @@ internal fun RecentActivityTab(
             label,
             color = if (selected) scheme.primary else homeBodyColor(),
             style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Medium,
             maxLines = 1,
         )
     }
@@ -465,7 +465,7 @@ internal fun RoonRecentActivityCard(
                 color = Color.White.copy(alpha = 0.92f),
                 border = BorderStroke(1.dp, Color.White),
             ) {
-                Icon(
+                EchoIcon(
                     Icons.Rounded.GraphicEq,
                     contentDescription = null,
                     tint = echoAccentColor(),
@@ -479,7 +479,7 @@ internal fun RoonRecentActivityCard(
             title,
             color = homeTitleColor(),
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Medium,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
@@ -521,7 +521,7 @@ internal fun HomeRecommendationsSection(
                 stringResource(L10nR.string.feature_home_recommended_for_you_8335d9),
                 color = homeTitleColor(),
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
             )
             val dark = LocalEchoDarkTheme.current
             Surface(
@@ -537,12 +537,12 @@ internal fun HomeRecommendationsSection(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Icon(Icons.Rounded.Refresh, contentDescription = null, tint = homeBodyColor(), modifier = Modifier.size(16.dp))
+                    EchoIcon(Icons.Rounded.Refresh, contentDescription = null, tint = homeBodyColor(), modifier = Modifier.size(16.dp))
                     Text(
                         stringResource(L10nR.string.feature_home_refresh_828c69),
                         color = homeBodyColor(),
                         style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Medium,
                     )
                 }
             }
@@ -567,7 +567,7 @@ internal fun HomeRecommendationsSection(
                         Text(
                             stringResource(L10nR.string.feature_home_scan_to_generate_recommendations_16383a),
                             color = homeTitleColor(),
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.Medium,
                             style = MaterialTheme.typography.titleMedium,
                         )
                         Text(
@@ -621,7 +621,7 @@ internal fun RecommendationCard(
             track.title,
             color = homeTitleColor(),
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Medium,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
@@ -652,13 +652,13 @@ internal fun RoonListenLaterPanel(onOpenConnect: () -> Unit) {
             stringResource(L10nR.string.feature_home_listen_later_d52083),
             color = homeTitleColor(),
             style = MaterialTheme.typography.displaySmall,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.SemiBold,
         )
         Text(
             stringResource(L10nR.string.feature_home_leave_a_trail_through_your_local_library_298736),
             color = homeTitleColor(),
             style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.SemiBold,
         )
         Text(
             stringResource(L10nR.string.feature_home_park_the_albums_artists_and_tracks_you_want_b2f171),
@@ -680,7 +680,7 @@ internal fun RoonListenLaterPanel(onOpenConnect: () -> Unit) {
                 stringResource(L10nR.string.feature_home_connect_pc_echo_bcfead),
                 modifier = Modifier.padding(horizontal = 28.dp, vertical = 14.dp),
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Medium,
             )
         }
     }
@@ -709,7 +709,7 @@ internal fun HomeTopChrome(onOpenLibrary: () -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Rounded.Search, contentDescription = null, tint = homeBodyColor(), modifier = Modifier.size(20.dp))
+                EchoIcon(Icons.Rounded.Search, contentDescription = null, tint = homeBodyColor(), modifier = Modifier.size(20.dp))
                 Text(
                     stringResource(L10nR.string.feature_home_search_local_music_b9c195),
                     color = homeBodyColor(),
@@ -728,13 +728,13 @@ internal fun HomeGreeting(status: EchoPlaybackStatus) {
             "Good Evening",
             color = Color.White.copy(alpha = 0.68f),
             style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Medium,
         )
         Text(
             status.track?.artist?.takeIf { it.isNotBlank() } ?: "ECHO Mobile",
             color = Color.White,
             style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -746,7 +746,7 @@ internal fun HomeGreeting(status: EchoPlaybackStatus) {
             },
             color = Color.White,
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Medium,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
@@ -795,7 +795,7 @@ internal fun DailyRecommendationCard(
                 },
                 color = Color.White,
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
             )
             Text(
                 status.track?.title ?: stringResource(L10nR.string.feature_home_discover_great_music_c63445),
@@ -875,7 +875,7 @@ internal fun HomeModeChip(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Icon(icon, contentDescription = label, tint = if (selected) echoAccentColor() else Color.White.copy(alpha = 0.82f), modifier = Modifier.size(21.dp))
+            EchoIcon(icon, contentDescription = label, tint = if (selected) echoAccentColor() else Color.White.copy(alpha = 0.82f), modifier = Modifier.size(21.dp))
             Text(label, color = Color.White.copy(alpha = 0.82f), style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
@@ -1049,7 +1049,7 @@ internal fun PlaybackModeButton(
             horizontalArrangement = Arrangement.spacedBy(9.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
+            EchoIcon(
                 icon,
                 contentDescription = title,
                 tint = if (selected) scheme.primary else scheme.onSurfaceVariant,
@@ -1093,7 +1093,7 @@ internal fun QueuePreviewItem(
                 shape = RoundedCornerShape(8.dp),
                 color = scheme.primary.copy(alpha = if (active) 0.18f else 0.12f),
             ) {
-                Icon(
+                EchoIcon(
                     icon,
                     contentDescription = null,
                     tint = scheme.primary,
@@ -1101,7 +1101,7 @@ internal fun QueuePreviewItem(
                 )
             }
             Column(Modifier.weight(1f)) {
-                Text(label, color = scheme.primary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                Text(label, color = scheme.primary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Medium)
                 Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
                 Text(
                     detail,
@@ -1141,7 +1141,7 @@ internal fun PlaybackHandoffFlow(active: Boolean) {
                     },
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Medium,
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -1171,8 +1171,8 @@ internal fun HandoffStep(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text(number, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-            Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
+            Text(number, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
+            Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
         }
     }
 }
@@ -1197,8 +1197,8 @@ internal fun PlaybackActionCard(
             Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
-            Text(title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            EchoIcon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+            Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
                 detail,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1265,7 +1265,7 @@ internal fun NowPlayingHero(
                     stringResource(L10nR.string.feature_home_this_device_8463b7),
                     style = MaterialTheme.typography.labelSmall,
                     color = echoAccentColor(),
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Medium,
                 )
                 Text(
                     playbackStateLabel(status.state),
@@ -1286,7 +1286,7 @@ internal fun NowPlayingHero(
             Text(
                 status.track?.title ?: stringResource(L10nR.string.feature_home_nothing_playing_b290fe),
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
                 color = homeTitleColor(),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -1352,7 +1352,7 @@ internal fun CompactNowPlayingHero(
                             stringResource(L10nR.string.feature_home_this_device_8463b7),
                             style = MaterialTheme.typography.labelSmall,
                             color = echoAccentColor(),
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.Medium,
                         )
                         Text(
                             playbackStateLabel(status.state),
@@ -1370,7 +1370,7 @@ internal fun CompactNowPlayingHero(
                 Text(
                     status.track?.title ?: stringResource(L10nR.string.feature_home_nothing_playing_b290fe),
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     color = homeTitleColor(),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -1438,7 +1438,7 @@ internal fun TransportControls(
             },
             modifier = Modifier.size(44.dp),
         ) {
-            Icon(
+            EchoIcon(
                 Icons.Rounded.SkipPrevious,
                 contentDescription = stringResource(L10nR.string.feature_home_previous_af0264),
                 tint = echoAccentColor(),
@@ -1459,7 +1459,7 @@ internal fun TransportControls(
                 ),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
+            EchoIcon(
                 if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                 contentDescription = stringResource(L10nR.string.feature_home_play_or_pause_37a70f),
                 tint = echoOnAccentColor(),
@@ -1473,7 +1473,7 @@ internal fun TransportControls(
             },
             modifier = Modifier.size(44.dp),
         ) {
-            Icon(
+            EchoIcon(
                 Icons.Rounded.SkipNext,
                 contentDescription = stringResource(L10nR.string.feature_home_next_d67904),
                 tint = echoAccentColor(),
@@ -1560,11 +1560,11 @@ internal fun HomeLibraryNotice(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Rounded.LibraryMusic, contentDescription = null,
+        EchoIcon(Icons.Rounded.LibraryMusic, contentDescription = null,
             tint = echoAccentColor(), modifier = Modifier.size(28.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(title, color = homeTitleColor(), style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold)
+                fontWeight = FontWeight.Medium)
             Text(subtitle, color = homeBodyColor(), style = MaterialTheme.typography.bodySmall)
         }
     }

@@ -1,5 +1,7 @@
 package app.echo.android.feature.player.afterglow
 
+import app.echo.android.design.EchoIcon
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.NavigateBefore
@@ -30,33 +32,33 @@ internal fun AfterglowControls(
     FlowRow(Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
         Row {
             IconButton(onClick = { onInteraction(); plan?.lines?.getOrNull(index - 1)?.let { onSeek((it.startMs - offsetMs).coerceAtLeast(0L)) } }, enabled = index > 0) {
-                Icon(Icons.AutoMirrored.Rounded.NavigateBefore, stringResource(R.string.afterglow_previous_line))
+                EchoIcon(Icons.AutoMirrored.Rounded.NavigateBefore, stringResource(R.string.afterglow_previous_line))
             }
             IconButton(onClick = { onInteraction(); plan?.lines?.getOrNull(index + 1)?.let { onSeek((it.startMs - offsetMs).coerceAtLeast(0L)) } },
                 enabled = plan != null && index + 1 < plan.lines.size) {
-                Icon(Icons.AutoMirrored.Rounded.NavigateNext, stringResource(R.string.afterglow_next_line))
+                EchoIcon(Icons.AutoMirrored.Rounded.NavigateNext, stringResource(R.string.afterglow_next_line))
             }
         }
         Row {
             Box {
                 IconButton(onClick = { onInteraction(); menuOpen = true }) {
-                    Icon(Icons.Rounded.Landscape, stringResource(R.string.afterglow_scene) + " · " + stringResource(scene.title))
+                    EchoIcon(Icons.Rounded.Landscape, stringResource(R.string.afterglow_scene) + " · " + stringResource(scene.title))
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(text = { Text(stringResource(R.string.afterglow_scene_auto)) },
                         modifier = Modifier.semantics { selected = chosenScene == null },
-                        trailingIcon = { if (chosenScene == null) Icon(Icons.Rounded.Check, null) },
+                        trailingIcon = { if (chosenScene == null) EchoIcon(Icons.Rounded.Check, null) },
                         onClick = { onInteraction(); onScene(null); menuOpen = false })
                     AfterglowScene.forStyle(style).forEach { choice ->
                         DropdownMenuItem(text = { Text(stringResource(choice.title)) },
                             modifier = Modifier.semantics { selected = chosenScene == choice.pcId },
-                            trailingIcon = { if (chosenScene == choice.pcId) Icon(Icons.Rounded.Check, null) },
+                            trailingIcon = { if (chosenScene == choice.pcId) EchoIcon(Icons.Rounded.Check, null) },
                             onClick = { onInteraction(); onScene(choice.pcId); menuOpen = false })
                     }
                 }
             }
             TextButton(onClick = { onInteraction(); onPalette() }) { Text(stringResource(R.string.afterglow_palette)) }
-            IconButton(onClick = { onInteraction(); onRandomize() }) { Icon(Icons.Rounded.Shuffle, stringResource(R.string.afterglow_randomize)) }
+            IconButton(onClick = { onInteraction(); onRandomize() }) { EchoIcon(Icons.Rounded.Shuffle, stringResource(R.string.afterglow_randomize)) }
         }
     }
 }

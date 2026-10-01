@@ -1,5 +1,7 @@
 package app.echo.android.feature.home
 
+import app.echo.android.design.EchoIcon
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.lazy.LazyRow
@@ -62,7 +64,7 @@ internal fun HomeDailyAlbumSection(
                     Spacer(Modifier.height(6.dp))
                     FilledTonalButton(onClick = { onPlay(album) }, shape = RoundedCornerShape(4.dp),
                         contentPadding = PaddingValues(horizontal = 12.dp), modifier = Modifier.heightIn(min = 48.dp)) {
-                        Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
+                        EchoIcon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(6.dp))
                         Text(stringResource(R.string.home_daily_album_play), style = MaterialTheme.typography.labelLarge)
                     }

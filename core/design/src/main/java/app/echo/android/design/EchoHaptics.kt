@@ -2,9 +2,9 @@ package app.echo.android.design
 
 import android.content.Context
 import android.os.Build
-import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.os.SystemClock
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -14,53 +14,66 @@ import app.echo.android.model.platform.EchoPlatformCapabilities
 enum class EchoHapticKind {
     Confirm,
     Tick,
+    Seek,
+    Grab,
+    Drop,
 }
 
 val LocalEchoHapticsEnabled = staticCompositionLocalOf { true }
 
 fun Context.performEchoHaptic(kind: EchoHapticKind) {
-    val vibrator = currentVibrator() ?: return
-    if (!vibrator.hasVibrator()) return
-    if (Build.VERSION.SDK_INT >= EchoPlatformCapabilities.HapticPrimitivesSdk) {
-        val primitive = when (kind) {
-            EchoHapticKind.Confirm -> VibrationEffect.Composition.PRIMITIVE_CLICK
-            EchoHapticKind.Tick -> VibrationEffect.Composition.PRIMITIVE_TICK
-        }
-        if (vibrator.areAllPrimitivesSupported(primitive)) {
-            val scale = if (kind == EchoHapticKind.Confirm) 0.72f else 0.42f
-            vibrator.vibrate(
-                VibrationEffect.startComposition()
-                    .addPrimitive(primitive, scale)
-                    .compose(),
-            )
-            return
-        }
-    }
-    val durationMs = if (kind == EchoHapticKind.Confirm) 18L else 10L
-    vibrator.vibrate(VibrationEffect.createOneShot(durationMs, VibrationEffect.DEFAULT_AMPLITUDE))
+    EchoHapticEngine(applicationContext).play(kind)
 }
 
 class EchoHapticPerformer(
-    private val context: Context,
+    context: Context,
     private val enabled: Boolean,
+    private val continuousFeedbackEnabled: Boolean = true,
 ) {
+    private val appContext = context.applicationContext
+    private val engine by lazy(LazyThreadSafetyMode.NONE) {
+        EchoHapticEngine(appContext, richFeedbackEnabled = continuousFeedbackEnabled)
+    }
+    private val seekGate = EchoSeekHapticGate()
+
     fun confirm() {
-        if (enabled) context.performEchoHaptic(EchoHapticKind.Confirm)
+        if (enabled) engine.play(EchoHapticKind.Confirm)
     }
 
     fun tick() {
-        if (enabled) context.performEchoHaptic(EchoHapticKind.Tick)
+        if (enabled) engine.play(EchoHapticKind.Tick)
+    }
+
+    fun grab() { if (enabled) engine.play(EchoHapticKind.Grab) }
+    fun drop() { if (enabled) engine.play(EchoHapticKind.Drop) }
+
+    /** Called only by pointer gestures, never by playback-clock updates. */
+    fun seek(fraction: Float) {
+        if (enabled && continuousFeedbackEnabled && seekGate.shouldPulse(fraction, SystemClock.uptimeMillis()))
+            engine.play(EchoHapticKind.Seek)
+    }
+
+    /** Queue rows have their own detents, independent of the number of tracks. */
+    fun seekStep(step: Int) {
+        if (enabled && continuousFeedbackEnabled && seekGate.shouldPulseStep(step, SystemClock.uptimeMillis()))
+            engine.play(EchoHapticKind.Seek)
+    }
+
+    fun endSeek(committed: Boolean) {
+        seekGate.reset()
+        if (committed) drop()
     }
 }
 
 @Composable
 fun rememberEchoHapticPerformer(): EchoHapticPerformer {
-    val context = LocalContext.current
+    val context = LocalContext.current.applicationContext
     val enabled = LocalEchoHapticsEnabled.current
-    return remember(context, enabled) { EchoHapticPerformer(context, enabled) }
+    val continuous = !LocalEchoEffectivePerformanceMode.current.isLightweight
+    return remember(context, enabled, continuous) { EchoHapticPerformer(context, enabled, continuous) }
 }
 
-private fun Context.currentVibrator(): Vibrator? =
+internal fun Context.currentEchoVibrator(): Vibrator? =
     if (Build.VERSION.SDK_INT >= EchoPlatformCapabilities.HapticPrimitivesSdk) {
         getSystemService(VibratorManager::class.java)?.defaultVibrator
     } else {

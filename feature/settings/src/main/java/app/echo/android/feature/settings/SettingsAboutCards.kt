@@ -1,5 +1,7 @@
 package app.echo.android.feature.settings
 
+import app.echo.android.design.EchoIcon
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowOutward
@@ -78,11 +80,11 @@ private fun AboutLinkRow(icon: ImageVector, title: String, detail: String?, onCl
             .heightIn(min = 60.dp).padding(horizontal = 4.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, null, Modifier.size(21.dp), tint = colors.onSurfaceVariant)
+        EchoIcon(icon, null, Modifier.size(21.dp), tint = colors.onSurfaceVariant)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Normal, color = colors.onSurface)
             if (detail != null) Text(detail, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal, color = colors.onSurfaceVariant)
         }
-        Icon(Icons.Rounded.ArrowOutward, null, Modifier.size(18.dp), tint = colors.onSurfaceVariant)
+        EchoIcon(Icons.Rounded.ArrowOutward, null, Modifier.size(18.dp), tint = colors.onSurfaceVariant)
     }
 }

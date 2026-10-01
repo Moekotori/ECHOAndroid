@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_library_health_title">曲库完整度</string>
+    <string name="settings_library_health_refresh">更新统计</string>
+    <string name="settings_library_health_folders">已收录文件夹</string>
+    <string name="settings_library_health_cover">缺封面</string>
+    <string name="settings_library_health_album">缺专辑信息</string>
+    <string name="settings_library_health_artist">缺艺术家信息</string>
+    <string name="settings_library_health_genre">缺流派</string>
+    <string name="settings_library_health_year">缺年份</string>
+    <string name="settings_library_health_duration">时长未知</string>
+    <string name="settings_library_health_size">文件大小未知</string>
+    <string name="settings_library_health_count">%1$d 项</string>
+    <string name="settings_library_health_metadata_scope">封面与标签按曲库已记录的本地音乐信息统计，不解码封面，也不重新读取音频文件。</string>
+    <string name="settings_library_health_lyrics_title">歌词完整度</string>
+    <string name="settings_library_health_lyrics_found">有可用歌词</string>
+    <string name="settings_library_health_lyrics_missing">缺歌词（未找到可用歌词）</string>
+    <string name="settings_library_health_lyrics_unverified">无法确认</string>
+    <string name="settings_library_health_lyrics_pending">尚未检查</string>
+    <string name="settings_library_health_not_checked">未检查</string>
+    <string name="settings_library_health_check_lyrics">检查设备内歌词</string>
+    <string name="settings_library_health_stop">停止检查</string>
+    <string name="settings_library_health_progress">已检查 %1$d / %2$d 首</string>
+    <string name="settings_library_health_playback_wait">为避免与播放争用存储，播放期间暂停检查；暂停或停止播放后自动继续。</string>
+    <string name="settings_library_health_checked_at">最近检查：%1$s</string>
+    <string name="settings_library_health_lyrics_scope">检查应用支持的内嵌、旁置、导入与缓存歌词，不联网。无法读取的文件、无权访问的文件夹及超出检查上限的内容单独计为「无法确认」。结果是一次检查的快照，修改后可重新检查；离开此页会停止检查。</string>
+    <string name="settings_library_health_scanning">正在扫描曲库，完成后更新统计。</string>
+    <string name="settings_library_health_loading">正在读取曲库统计…</string>
+    <string name="settings_library_health_error">统计更新失败，点击「更新统计」重试。</string>
+    <string name="settings_library_health_lyrics_error">检查已中断，已检查的结果仍会显示，可以重新检查。</string>
+</resources>

@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.MaterialTheme
@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -130,7 +131,11 @@ private fun ColorThemeSwatch(
             val h = size.height
             drawRect(
                 brush = Brush.linearGradient(
-                    colors = listOf(tokens.bgTop, tokens.bgMid, tokens.bgBottom),
+                    colors = listOf(
+                        lerp(tokens.bgTop, tokens.accent, 0.12f),
+                        tokens.bgMid,
+                        lerp(tokens.bgBottom, tokens.secondary, 0.12f),
+                    ),
                 ),
             )
             drawCircle(
@@ -150,7 +155,7 @@ private fun ColorThemeSwatch(
             )
         }
         if (selected) {
-            Icon(
+            EchoIcon(
                 Icons.Rounded.Check,
                 contentDescription = null,
                 tint = scheme.onPrimary,

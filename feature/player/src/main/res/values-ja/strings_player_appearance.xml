@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="player_appearance_title">ページの外観</string>
-    <string name="player_appearance_detail">変更をすぐにプレビューし、調整後に保存します。</string>
+    <string name="player_appearance_title">楽曲・歌詞のスタイル</string>
+    <string name="player_appearance_detail">楽曲の詳細と歌詞に同じスタイルを適用し、自動保存します。</string>
     <string name="player_appearance_reset">リセット</string>
     <string name="player_appearance_record_sleeve">レコードジャケット</string>
     <string name="player_appearance_classic">イマーシブ</string>

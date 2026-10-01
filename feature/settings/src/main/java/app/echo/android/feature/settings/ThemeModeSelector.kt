@@ -1,18 +1,17 @@
 package app.echo.android.feature.settings
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -38,17 +37,22 @@ internal fun ThemeModeSelector(
                 "system" to R.string.settings_theme_system,
             ).forEach { (mode, label) ->
                 val selected = selectedMode == mode
-                Row(
+                Box(
                     Modifier.weight(1f)
-                        .background(if (selected) scheme.primary.copy(alpha = 0.10f) else Color.Transparent)
                         .selectable(selected = selected, role = Role.RadioButton, onClick = { onSelect(mode) })
+                        .drawBehind {
+                            if (selected) {
+                                val width = 24.dp.toPx()
+                                val height = 2.dp.toPx()
+                                drawRoundRect(scheme.primary,
+                                    topLeft = Offset((size.width - width) / 2f, size.height - height),
+                                    size = Size(width, height), cornerRadius = CornerRadius(height / 2f))
+                            }
+                        }
                         .heightIn(min = 48.dp).padding(horizontal = 4.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
-                    verticalAlignment = Alignment.CenterVertically,
+                    contentAlignment = Alignment.Center,
                 ) {
-                    if (selected) Icon(Icons.Rounded.Check, null, Modifier.size(16.dp), tint = scheme.primary)
                     Text(stringResource(label), textAlign = TextAlign.Center,
-                        modifier = Modifier.weight(1f, fill = false),
                         color = if (selected) scheme.primary else scheme.onSurfaceVariant,
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)

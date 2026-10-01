@@ -77,6 +77,7 @@ fun DiagnosticsScreen(
     val pagerState = rememberPagerState { 3 }
     var soundPanel by rememberSaveable { mutableIntStateOf(0) }
     val scrollStates = listOf(rememberScrollState(), rememberScrollState(), rememberScrollState())
+    val soundScrollStates = listOf(rememberScrollState(), rememberScrollState(), rememberScrollState(), rememberScrollState())
     val scope = rememberCoroutineScope()
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val innerFling = rememberSilkPagerFlingBehavior(pagerState)
@@ -122,100 +123,104 @@ fun DiagnosticsScreen(
                 flingBehavior = innerFling,
                 pageNestedScrollConnection = innerNestedScroll,
             ) { tab ->
-                Column(
-                    Modifier.fillMaxSize()
-                        .verticalScroll(scrollStates[tab]).padding(horizontal = 24.dp)
-                        .padding(top = 20.dp, bottom = 188.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp),
-                ) {
-                    val error = status.diagnostics.lastError?.message ?: status.diagnostics.usbLastRequestError?.message
-                    if (error != null && tab != 2) {
-                        Row(
-                            Modifier.fillMaxWidth().background(scheme.errorContainer.copy(alpha = 0.24f), RoundedCornerShape(16.dp)).padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Text(error, Modifier.weight(1f), color = scheme.error, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal)
-                            TextButton(onClick = { selectTab(2) }) { Text(labels[2], color = scheme.error) }
-                        }
+                Column(Modifier.fillMaxSize()) {
+                    if (tab == 1) Box(Modifier.padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 16.dp)) {
+                        SignalSoundTabs(
+                            selectedIndex = soundPanel,
+                            labels = listOf(
+                                stringResource(L10nR.string.feature_settings_equalizer_7ccb03),
+                                stringResource(L10nR.string.feature_settings_headphone_correction_491ce5),
+                                stringResource(L10nR.string.channel_balance),
+                                stringResource(L10nR.string.dsp_title),
+                            ),
+                            onSelect = { soundPanel = it },
+                        )
                     }
-                    when (tab) {
-                        0 -> SignalOverview(status, equalizerState, channelBalanceState, dspSettings, onAdjust = { selectTab(1) }, onDiagnostics = { selectTab(2) })
-                        1 -> {
-                            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                SignalSoundTabs(
-                                    selectedIndex = soundPanel,
-                                    labels = listOf(
-                                        stringResource(L10nR.string.feature_settings_equalizer_7ccb03),
-                                        stringResource(L10nR.string.feature_settings_headphone_correction_491ce5),
-                                        stringResource(L10nR.string.channel_balance),
-                                        stringResource(L10nR.string.dsp_title),
-                                    ),
-                                    onSelect = { soundPanel = it },
-                                )
-                                AnimatedContent(
-                                    targetState = soundPanel,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    transitionSpec = { EchoMotion.tabSwitch(targetState > initialState) },
-                                    label = "SignalSoundPanel",
-                                ) { panel ->
-                                    if (panel == 0) SignalEqualizer(
-                                        state = equalizerState,
-                                        bypassed = status.diagnostics.usbBitPerfectEnabled,
-                                        playing = status.isPlaying,
-                                        userPresets = userPresets,
-                                        activeUserPresetId = activeUserPresetId,
-                                        onPreampChange = onEqualizerPreampChange,
-                                        onEnabledChange = onEqualizerEnabledChange,
-                                        onPresetSelected = onEqualizerPresetSelected,
-                                        onBandGainChange = onEqualizerBandGainChange,
-                                        onReset = onEqualizerReset,
-                                        onParametricChange = onParametricChange,
-                                        onSaveUserPreset = onSaveUserPreset,
-                                        onUpdateUserPreset = onUpdateUserPreset,
-                                        onApplyUserPreset = onApplyUserPreset,
-                                        onRenameUserPreset = onRenameUserPreset,
-                                        onDeleteUserPreset = onDeleteUserPreset,
-                                        onImportShareCode = onImportShareCode,
-                                        outputDeviceLabel = outputDeviceLabel,
-                                        outputBound = outputPresetBound,
-                                        onBindToOutput = onBindPresetToOutput,
-                                        onUnbindFromOutput = onUnbindPresetFromOutput,
-                                    )
-                                    else if (panel == 1) SignalHeadphoneCorrection(
-                                        state = opraState,
-                                        equalizer = equalizerState,
-                                        bypassed = status.diagnostics.usbBitPerfectEnabled,
-                                        userPresets = userPresets,
-                                        lastQuery = opraLastQuery,
-                                        onBrandSelected = onOpraBrandSelected,
-                                        onQueryChange = onOpraQueryChange,
-                                        onSearch = onOpraSearch,
-                                        onRefresh = onOpraRefresh,
-                                        onPresetSelected = onOpraPresetSelected,
-                                        onApplySelected = onOpraApplySelected,
-                                        onToggleFavorite = onToggleOpraFavorite,
-                                        onApplyUserPreset = onApplyUserPreset,
-                                    )
-                                    else if (panel == 2) SignalChannelBalance(
-                                        state = channelBalanceState,
-                                        bypassed = status.diagnostics.usbBitPerfectEnabled,
-                                        playing = status.isPlaying,
-                                        onStateChange = onChannelBalanceChange,
-                                        onReset = onChannelBalanceReset,
-                                    )
-                                    else SignalDspPanel(dspSettings, status, replayGainScan, onDspSettings, onReplayGain, onReplayGainMode, onReplayGainScan)
-                                }
+                    Column(
+                        Modifier.fillMaxWidth().weight(1f)
+                            .verticalScroll(if (tab == 1) soundScrollStates[soundPanel] else scrollStates[tab]).padding(horizontal = 24.dp)
+                            .padding(top = if (tab == 1) 0.dp else 20.dp, bottom = 188.dp),
+                        verticalArrangement = Arrangement.spacedBy(20.dp),
+                    ) {
+                        val error = status.diagnostics.lastError?.message ?: status.diagnostics.usbLastRequestError?.message
+                        if (error != null && tab != 2) {
+                            Row(
+                                Modifier.fillMaxWidth().background(scheme.errorContainer.copy(alpha = 0.24f), RoundedCornerShape(16.dp)).padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Text(error, Modifier.weight(1f), color = scheme.error, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal)
+                                TextButton(onClick = { selectTab(2) }) { Text(labels[2], color = scheme.error) }
                             }
                         }
-                        else -> {
-                            HealthPanel(
-                                status = status,
-                                bluetoothCodecNeedsPermission = bluetoothCodecNeedsPermission,
-                                onRequestBluetoothCodecPermission = onRequestBluetoothCodecPermission,
-                            )
-                            UsbOutputPanel(status)
-                            CurrentStreamPanel(status, positionFlow)
+                        when (tab) {
+                            0 -> SignalOverview(status, equalizerState, channelBalanceState, dspSettings, onAdjust = { selectTab(1) }, onDiagnostics = { selectTab(2) })
+                            1 -> {
+                                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                    AnimatedContent(
+                                        targetState = soundPanel,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        transitionSpec = { EchoMotion.tabSwitch(targetState > initialState) },
+                                        label = "SignalSoundPanel",
+                                    ) { panel ->
+                                        if (panel == 0) SignalEqualizer(
+                                            state = equalizerState,
+                                            bypassed = status.diagnostics.usbBitPerfectEnabled,
+                                            playing = status.isPlaying,
+                                            userPresets = userPresets,
+                                            activeUserPresetId = activeUserPresetId,
+                                            onPreampChange = onEqualizerPreampChange,
+                                            onEnabledChange = onEqualizerEnabledChange,
+                                            onPresetSelected = onEqualizerPresetSelected,
+                                            onBandGainChange = onEqualizerBandGainChange,
+                                            onReset = onEqualizerReset,
+                                            onParametricChange = onParametricChange,
+                                            onSaveUserPreset = onSaveUserPreset,
+                                            onUpdateUserPreset = onUpdateUserPreset,
+                                            onApplyUserPreset = onApplyUserPreset,
+                                            onRenameUserPreset = onRenameUserPreset,
+                                            onDeleteUserPreset = onDeleteUserPreset,
+                                            onImportShareCode = onImportShareCode,
+                                            outputDeviceLabel = outputDeviceLabel,
+                                            outputBound = outputPresetBound,
+                                            onBindToOutput = onBindPresetToOutput,
+                                            onUnbindFromOutput = onUnbindPresetFromOutput,
+                                        )
+                                        else if (panel == 1) SignalHeadphoneCorrection(
+                                            state = opraState,
+                                            equalizer = equalizerState,
+                                            bypassed = status.diagnostics.usbBitPerfectEnabled,
+                                            userPresets = userPresets,
+                                            lastQuery = opraLastQuery,
+                                            onBrandSelected = onOpraBrandSelected,
+                                            onQueryChange = onOpraQueryChange,
+                                            onSearch = onOpraSearch,
+                                            onRefresh = onOpraRefresh,
+                                            onPresetSelected = onOpraPresetSelected,
+                                            onApplySelected = onOpraApplySelected,
+                                            onToggleFavorite = onToggleOpraFavorite,
+                                            onApplyUserPreset = onApplyUserPreset,
+                                        )
+                                        else if (panel == 2) SignalChannelBalance(
+                                            state = channelBalanceState,
+                                            bypassed = status.diagnostics.usbBitPerfectEnabled,
+                                            playing = status.isPlaying,
+                                            onStateChange = onChannelBalanceChange,
+                                            onReset = onChannelBalanceReset,
+                                        )
+                                        else SignalDspPanel(dspSettings, status, replayGainScan, onDspSettings, onReplayGain, onReplayGainMode, onReplayGainScan)
+                                    }
+                                }
+                            }
+                            else -> {
+                                HealthPanel(
+                                    status = status,
+                                    bluetoothCodecNeedsPermission = bluetoothCodecNeedsPermission,
+                                    onRequestBluetoothCodecPermission = onRequestBluetoothCodecPermission,
+                                )
+                                UsbOutputPanel(status)
+                                CurrentStreamPanel(status, positionFlow)
+                            }
                         }
                     }
                 }

@@ -27,6 +27,7 @@ import app.echo.android.model.playback.EchoReplayGainMode
 import app.echo.android.model.playback.EchoTrackRef
 import app.echo.android.model.settings.EchoAppLanguage
 import app.echo.android.model.settings.EchoLyricsPageStyle
+import app.echo.android.model.settings.EchoPlayerPageStyle
 import app.echo.android.model.settings.EchoColorTheme
 import app.echo.android.model.settings.EchoCustomColors
 import app.echo.android.model.settings.EchoSavedColorTheme
@@ -37,6 +38,7 @@ import app.echo.android.model.settings.EchoPerformanceMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import org.json.JSONArray
 import org.json.JSONObject
@@ -95,11 +97,11 @@ data class EchoAppSettings(
     val uiFontFamily: String = EchoFontFamilyMode.System,
     val uiFontScale: Float = 1f,
     val uiDensityScale: Float = 1f,
-    val lyricsPageStyle: String = EchoLyricsPageStyle.Paper.id,
-    val lyricsFontFamily: String = EchoLyricsPageStyle.Paper.defaultFontFamily,
+    val lyricsPageStyle: String = EchoLyricsPageStyle.Mist.id,
+    val lyricsFontFamily: String = EchoLyricsPageStyle.Mist.defaultFontFamily,
     val lyricsFontScale: Float = 1f,
     val lyricsColorMode: String = EchoLyricsColorMode.White,
-    val lyricsAlignment: String = EchoLyricsPageStyle.Paper.defaultAlignment,
+    val lyricsAlignment: String = EchoLyricsPageStyle.Mist.defaultAlignment,
     val lyricsLineSpacing: Float = 1f,
     val lyricsBackgroundDim: Float = 0f,
     val lyricsWordHighlightEnabled: Boolean = true,
@@ -240,16 +242,16 @@ class EchoSettingsStore(
 
     val appSettings: Flow<EchoAppSettings> =
         context.echoSettings.data.map { preferences ->
-            val savedColorThemes = EchoSavedColorThemeCodec.decode(preferences[Keys.SavedColorThemes])
             val themeMode = normalizeThemeMode(preferences[Keys.ThemeMode])
-            val lyricsStyle = PlayerAppearancePreferences.lyricsStyle(preferences, themeMode)
+            val lyricsStyle = PlayerAppearancePreferences.lyricsStyle(preferences)
             EchoAppSettings(
                 homeLayout = HomeLayoutPreferences.read(preferences),
                 preferOffload = preferences[Keys.PreferOffload] ?: true,
                 lastOutputRoute = preferences[Keys.LastOutputRoute] ?: "system",
                 dynamicArtworkEnabled = preferences[Keys.DynamicArtworkEnabled] ?: true,
                 compactModeEnabled = preferences[Keys.CompactModeEnabled] ?: false,
-                dynamicColorEnabled = preferences[Keys.DynamicColorEnabled] ?: false,
+                // Legacy palette preferences remain stored, but no longer affect appearance.
+                dynamicColorEnabled = false,
                 playbackHapticsEnabled = preferences[Keys.PlaybackHapticsEnabled] ?: true,
                 performanceMode = EchoPerformanceMode.fromId(preferences[Keys.PerformanceMode]).id,
                 trackAudioInfoTagsVisible = preferences[Keys.TrackAudioInfoTagsVisible] ?: true,
@@ -334,7 +336,7 @@ class EchoSettingsStore(
                 uiDensityScale = (preferences[Keys.UiDensityScale] ?: 1f).coerceIn(0.90f, 1.12f),
                 lyricsPageStyle = lyricsStyle.id,
                 lyricsFontFamily = normalizeFontFamilyMode(preferences[Keys.LyricsFontFamily]
-                    ?: lyricsStyle.defaultFontFamily),
+                    ?: EchoPlayerPageStyle.fromId(PlayerAppearancePreferences.style(preferences)).defaultFontFamily),
                 lyricsFontScale = (preferences[Keys.LyricsFontScale] ?: 1f).coerceIn(0.50f, 1.28f),
                 lyricsColorMode = preferences[Keys.LyricsColorMode] ?: EchoLyricsColorMode.White,
                 lyricsAlignment = normalizeLyricsAlignment(preferences[Keys.LyricsAlignment]
@@ -351,11 +353,10 @@ class EchoSettingsStore(
                 lyricsFocusGlowEnabled = preferences[Keys.LyricsFocusGlowEnabled] ?: false,
                 importedFontUri = preferences[Keys.ImportedFontUri],
                 themeMode = themeMode,
-                colorTheme = EchoColorTheme.fromId(preferences[Keys.ColorTheme]).id,
-                customColors = readCustomColors(preferences),
-                savedColorThemes = savedColorThemes,
-                appliedSavedColorThemeId = preferences[Keys.AppliedSavedColorThemeId]
-                    ?.takeIf { id -> savedColorThemes.any { it.id == id } },
+                colorTheme = EchoColorTheme.Default.id,
+                customColors = EchoCustomColors.Default,
+                savedColorThemes = emptyList(),
+                appliedSavedColorThemeId = null,
                 appLanguage = context.echoAppLanguage(EchoAppLanguage.fromId(preferences[Keys.AppLanguage])),
                 scheduledDarkModeEnabled = preferences[Keys.ScheduledDarkModeEnabled] ?: false,
                 scheduledDarkStartMinute = (preferences[Keys.ScheduledDarkStartMinute] ?: 22 * 60).coerceIn(0, 23 * 60 + 59),
@@ -493,18 +494,7 @@ class EchoSettingsStore(
 
     suspend fun setPlayerAppearance(style: String, textScale: Float, artworkScale: Float) {
         context.echoSettings.edit { preferences ->
-            val previous = PlayerAppearancePreferences.style(preferences)
-            val previousLyrics = PlayerAppearancePreferences.lyricsStyle(preferences, normalizeThemeMode(preferences[Keys.ThemeMode]))
-            // Keep the old resolved style until the cover-to-lyrics binding applies its full layout.
-            preferences[Keys.LyricsPageStyle] = previousLyrics.id
             PlayerAppearancePreferences.write(preferences, style, textScale, artworkScale)
-            val next = PlayerAppearancePreferences.style(preferences)
-            // Cover changes retie ordinary lyrics; Afterglow and same-style scale edits keep their choice.
-            if (next != previous) {
-                writeLyricsPageStyle(preferences, PlayerAppearancePreferences.boundLyricsStyle(
-                    next, previousLyrics,
-                ))
-            }
         }
     }
 
@@ -840,33 +830,12 @@ class EchoSettingsStore(
     }
 
     suspend fun setLyricsPageStyle(value: String) {
-        val style = EchoLyricsPageStyle.fromId(value)
+        // Legacy callers select the same shared style as the song-details control.
+        val style = EchoPlayerPageStyle.fromId(value)
         context.echoSettings.edit { preferences ->
-            val previous = PlayerAppearancePreferences.lyricsStyle(preferences, normalizeThemeMode(preferences[Keys.ThemeMode]))
-            writeLyricsPageStyle(preferences, style)
-            if (previous != style) {
-                val player = PlayerAppearancePreferences.style(preferences)
-                val bound = PlayerAppearancePreferences.boundPlayerStyle(style, player)
-                if (bound != player) {
-                    PlayerAppearancePreferences.write(
-                        preferences,
-                        bound,
-                        PlayerAppearancePreferences.textScale(preferences),
-                        PlayerAppearancePreferences.artworkScale(preferences),
-                    )
-                }
-            }
+            PlayerAppearancePreferences.write(preferences, style.id,
+                PlayerAppearancePreferences.textScale(preferences), PlayerAppearancePreferences.artworkScale(preferences))
         }
-    }
-
-    private fun writeLyricsPageStyle(preferences: MutablePreferences, style: EchoLyricsPageStyle) {
-        // Apply the layout together so a switch never flashes a mixed preset.
-        if (PlayerAppearancePreferences.lyricsStyle(preferences, normalizeThemeMode(preferences[Keys.ThemeMode])) != style) {
-            preferences[Keys.LyricsFontFamily] = style.defaultFontFamily
-            preferences[Keys.LyricsAlignment] = style.defaultAlignment
-            preferences[Keys.LyricsColorMode] = EchoLyricsColorMode.White
-        }
-        preferences[Keys.LyricsPageStyle] = style.id
     }
 
     suspend fun setLyricsFontFamily(value: String) {
@@ -1263,6 +1232,42 @@ class EchoSettingsStore(
     suspend fun watchedLibraryTrees(): List<WatchedLibraryTree> =
         parseWatchedLibraryTrees(context.echoSettings.data.first()[Keys.WatchedLibraryTrees])
 
+    val watchedLibraryTreesFlow: Flow<List<WatchedLibraryTree>> = context.echoSettings.data
+        .map { parseWatchedLibraryTrees(it[Keys.WatchedLibraryTrees]) }
+        .distinctUntilChanged()
+
+    suspend fun removeWatchedLibraryTree(uri: String) {
+        context.echoSettings.edit { prefs ->
+            val remaining = parseWatchedLibraryTrees(prefs[Keys.WatchedLibraryTrees]).filterNot { it.uri == uri }
+            if (remaining.isEmpty()) prefs.remove(Keys.WatchedLibraryTrees)
+            else prefs[Keys.WatchedLibraryTrees] = formatWatchedLibraryTrees(remaining)
+        }
+    }
+
+    suspend fun rememberWatchedLibraryTree(tree: WatchedLibraryTree) {
+        context.echoSettings.edit { prefs ->
+            prefs[Keys.WatchedLibraryTrees] = formatWatchedLibraryTrees(
+                LibraryFolderWatchPolicy.remember(parseWatchedLibraryTrees(prefs[Keys.WatchedLibraryTrees]), tree),
+            )
+        }
+    }
+
+    suspend fun pruneWatchedLibraryTrees(grantedUris: Set<String>): List<WatchedLibraryTree> {
+        var remaining = emptyList<WatchedLibraryTree>()
+        context.echoSettings.edit { prefs ->
+            remaining = LibraryFolderWatchPolicy.pruneRevoked(parseWatchedLibraryTrees(prefs[Keys.WatchedLibraryTrees]), grantedUris)
+            prefs[Keys.WatchedLibraryTrees] = formatWatchedLibraryTrees(remaining)
+        }
+        return remaining
+    }
+
+    suspend fun markWatchedLibraryTreeScanned(uri: String, epochMs: Long) {
+        context.echoSettings.edit { prefs ->
+            val current = parseWatchedLibraryTrees(prefs[Keys.WatchedLibraryTrees])
+            prefs[Keys.WatchedLibraryTrees] = formatWatchedLibraryTrees(LibraryFolderWatchPolicy.markScanned(current, uri, epochMs))
+        }
+    }
+
     suspend fun setWatchedLibraryTrees(trees: List<WatchedLibraryTree>) {
         val encoded = formatWatchedLibraryTrees(trees)
         context.echoSettings.edit { prefs ->
@@ -1512,8 +1517,8 @@ class EchoSettingsStore(
         context.echoSettings.edit { prefs ->
             backup.themeMode?.let { prefs[Keys.ThemeMode] = it }
             backup.homeLayout?.let { HomeLayoutPreferences.write(prefs, it) }
-            if (backup.playerPageStyle != null || backup.playerTextScale != null || backup.playerArtworkScale != null) PlayerAppearancePreferences.write(prefs,
-                backup.playerPageStyle ?: PlayerAppearancePreferences.style(prefs), backup.playerTextScale ?: PlayerAppearancePreferences.textScale(prefs), backup.playerArtworkScale ?: PlayerAppearancePreferences.artworkScale(prefs))
+            PlayerAppearancePreferences.restore(prefs, backup.playerPageStyle, backup.lyricsPageStyle,
+                backup.playerTextScale, backup.playerArtworkScale)
             backup.backgroundBlur?.let { prefs[Keys.CustomBackgroundBlur] = it.coerceIn(0f,80f) }
             backup.backgroundBrightness?.let { prefs[Keys.CustomBackgroundBrightness] = it.coerceIn(.35f,1.15f) }
             backup.backgroundGlass?.let { prefs[Keys.CustomBackgroundGlass] = it.coerceIn(.08f,.9f) }
@@ -1591,7 +1596,6 @@ class EchoSettingsStore(
                 prefs[Keys.ChannelBalanceLeftDelayMs] = state.leftDelayMs
                 prefs[Keys.ChannelBalanceRightDelayMs] = state.rightDelayMs
             }
-            backup.lyricsPageStyle?.let { prefs[Keys.LyricsPageStyle] = EchoLyricsPageStyle.fromId(it).id }
             backup.lyricsFontFamily?.let { prefs[Keys.LyricsFontFamily] = it }
             backup.lyricsFontScale?.let { prefs[Keys.LyricsFontScale] = it }
             backup.lyricsColorMode?.let { prefs[Keys.LyricsColorMode] = it }

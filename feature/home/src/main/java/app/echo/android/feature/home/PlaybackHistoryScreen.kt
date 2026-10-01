@@ -1,5 +1,7 @@
 package app.echo.android.feature.home
 
+import app.echo.android.design.EchoIcon
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -50,12 +52,11 @@ fun PlaybackHistoryScreen(
     val todayLabel = stringResource(R.string.playback_history_today)
     val yesterdayLabel = stringResource(R.string.playback_history_yesterday)
     val weekdayFormat = remember(locale) { DateTimeFormatter.ofPattern("EEEE", locale) }
-    val compact = LocalConfiguration.current.screenHeightDp < 620
 
     HomeAppearance {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), contentAlignment = Alignment.TopCenter) {
             Column(Modifier.widthIn(max = 560.dp).fillMaxSize().statusBarsPadding().imePadding()) {
-                PlaybackHistoryHeader(query, range, busy, compact, onQuery, onRange,
+                PlaybackHistoryHeader(query, range, busy, onQuery, onRange,
                     onClear = { clearConfirmation = true }, onStats = onStats, onBack = onBack)
                 val refresh = entries.loadState.refresh
                 when {
@@ -121,7 +122,7 @@ fun PlaybackHistoryScreen(
 private fun ColumnScope.HistoryMessage(title: String, detail: String, action: (() -> Unit)?) {
     Column(Modifier.weight(1f).fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(Icons.Rounded.History, null, Modifier.size(44.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.65f))
+        EchoIcon(Icons.Rounded.History, null, Modifier.size(44.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.65f))
         Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 20.dp))
         if (action == null) Text(detail, style = MaterialTheme.typography.bodyMedium,

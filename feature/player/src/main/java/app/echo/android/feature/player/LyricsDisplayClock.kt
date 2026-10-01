@@ -2,9 +2,12 @@ package app.echo.android.feature.player
 
 import android.os.SystemClock
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
+import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.model.settings.EchoEffectivePerformanceMode
 import kotlinx.coroutines.isActive
 import kotlin.math.abs
 
@@ -40,24 +43,54 @@ internal class LyricsDisplayClock {
     }
 }
 
+internal fun lyricsInterpolationFps(mode: EchoEffectivePerformanceMode): Int = when (mode) {
+    EchoEffectivePerformanceMode.Lightweight -> 0
+    EchoEffectivePerformanceMode.Balanced -> 60
+    EchoEffectivePerformanceMode.HighPerformance -> 120
+}
+
+/** Keep a deadline rather than counting vsyncs, including on 90 Hz displays. */
+internal class LyricsFrameGate(fps: Int) {
+    private val intervalNs = 1_000_000_000L / fps.coerceIn(1, 120)
+    private var nextNs = Long.MIN_VALUE
+
+    fun accept(frameNs: Long): Boolean {
+        if (nextNs == Long.MIN_VALUE) {
+            nextNs = frameNs + intervalNs
+            return true
+        }
+        val lateNs = frameNs - nextNs + 500_000L
+        if (lateNs < 0L) return false
+        // Skip missed deadlines after a stall; never emit a burst of catch-up updates.
+        nextNs += (lateNs / intervalNs + 1L) * intervalNs
+        return true
+    }
+}
+
 @Composable
 internal fun rememberLyricsDisplayPosition(
     host: State<Long>, trackKey: String?, playing: Boolean, speed: Float, enabled: Boolean,
 ): State<Long> {
-    val displayed = remember(trackKey) { mutableLongStateOf(host.value) }
+    val displayed = remember(host, trackKey) { mutableLongStateOf(host.value) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(host, trackKey, playing, speed, enabled, lifecycle) {
+    val focused = LocalWindowInfo.current.isWindowFocused
+    val fps = lyricsInterpolationFps(LocalEchoEffectivePerformanceMode.current)
+    val interpolate = enabled && playing && focused && fps > 0
+    LaunchedEffect(host, trackKey, speed, interpolate, fps, lifecycle) {
         displayed.longValue = host.value
-        if (enabled && playing) {
-            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+        if (interpolate) {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 val clock = LyricsDisplayClock()
+                val gate = LyricsFrameGate(fps)
                 while (isActive) {
-                    withFrameNanos {
-                        displayed.longValue = clock.position(host.value, SystemClock.elapsedRealtime(), true, speed)
+                    withFrameNanos { frameNs ->
+                        if (gate.accept(frameNs)) {
+                            displayed.longValue = clock.position(host.value, SystemClock.elapsedRealtime(), true, speed)
+                        }
                     }
                 }
             }
         }
     }
-    return if (enabled && playing) displayed else host
+    return if (interpolate) displayed else host
 }

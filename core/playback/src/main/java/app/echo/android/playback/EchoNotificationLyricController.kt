@@ -32,13 +32,14 @@ internal class EchoNotificationLyricController(
 
     fun setDocument(document: EchoNotificationLyricDocument?, lyrics: EchoLyrics? = null) {
         val trackChanged = this.document?.trackId != document?.trackId
+        if (this.document !== document || this.lyrics !== lyrics) lastSnapshotKey = null
         this.document = document
         this.lyrics = lyrics
         if (trackChanged) {
             lastPublishElapsedRealtime = 0L
             lastSnapshotKey = null
-            publish(null)
             publishSnapshot(EchoLyricDisplaySnapshot())
+            publish(null)
         }
         refresh()
     }
@@ -63,9 +64,9 @@ internal class EchoNotificationLyricController(
         val mediaId = player.currentMediaItem?.mediaId
         val lines = document?.takeIf { it.trackId == mediaId }?.lines.orEmpty()
         if (mediaId.isNullOrBlank() || lines.isEmpty()) {
-            publish(null)
             lastSnapshotKey = null
             publishSnapshot(EchoLyricDisplaySnapshot(trackId = mediaId))
+            publish(null)
             return
         }
         job = scope.launch {
@@ -75,8 +76,8 @@ internal class EchoNotificationLyricController(
                     ?.let(EchoNotificationLyricPolicy::clampText)
                 val elapsed = SystemClock.elapsedRealtime() - lastPublishElapsedRealtime
                 if (EchoNotificationLyricPolicy.shouldPublish(lastText, text, elapsed)) {
-                    publish(text)
                     publishCurrentSnapshot()
+                    publish(text)
                 } else if (lastText != text) {
                     val wait = (EchoNotificationLyricPolicy.MinUpdateIntervalMs - elapsed)
                         .coerceAtLeast(EchoNotificationLyricPolicy.MinScheduleDelayMs)
@@ -84,8 +85,8 @@ internal class EchoNotificationLyricController(
                     if (!isActive) return@launch
                     val later = EchoNotificationLyricPolicy.primaryText(lines, player.currentPosition.coerceAtLeast(0L))
                         ?.let(EchoNotificationLyricPolicy::clampText)
-                    publish(later)
                     publishCurrentSnapshot()
+                    publish(later)
                 } else {
                     publishCurrentSnapshot()
                 }

@@ -118,6 +118,8 @@ CI（`.github/workflows/ci.yml`）跑同样的 `checkModules`、单元测试和 
 
 ### Compose 与列表
 
+- UI 图标统一使用 `:core:design` 的 `EchoIcon` 和中性前景色，不随主题强调色染色；深浅模式可调整对比度。封面上的固定对比色、警告/错误等语义色可保留。
+
 - Composable 函数体内不执行 I/O、解析、大集合过滤排序或带副作用的业务操作；把工作放到所属状态持有者，副作用使用具有正确 key 和清理逻辑的 effect。
 - 按职责拆分状态读取范围；缓存昂贵派生结果时使用完整依赖 key。`remember`、`derivedStateOf` 应解决具体重复工作，不机械套用；不要用不真实的 `@Stable` / `@Immutable` 掩盖可变状态。
 - 长列表使用惰性布局和稳定、唯一的 item key；避免嵌套同方向无界滚动，避免每次重组复制整份列表或重新解码封面。

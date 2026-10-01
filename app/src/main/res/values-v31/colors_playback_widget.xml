@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="playback_widget_background">@android:color/system_neutral1_50</color>
+    <color name="playback_widget_foreground">@android:color/system_neutral1_900</color>
+    <color name="playback_widget_secondary">@android:color/system_neutral2_700</color>
+</resources>

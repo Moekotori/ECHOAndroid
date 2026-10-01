@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 internal fun EchoUnifiedSearchHost(viewModel: EchoAndroidViewModel, pc: EchoRemoteClient,
+    playbackRouter: app.echo.android.EchoLinkPlaybackRouter,
     query: String, active: Boolean, endpointKey: String, onQuery: (String) -> Unit, onClose: () -> Unit,
     onAlbum: (AlbumSummary) -> Unit, onArtist: (ArtistSummary) -> Unit, onPlaylist: (EchoPlaylist) -> Unit) {
     var momentsVisible by rememberSaveable { mutableStateOf(false) }
@@ -35,6 +36,7 @@ internal fun EchoUnifiedSearchHost(viewModel: EchoAndroidViewModel, pc: EchoRemo
         onTrack = { onClose(); viewModel.play(it) }, onAlbum, onArtist, onPlaylist,
         onMoment = { onClose(); viewModel.playMoment(it) }, onPcTrack = { track ->
             onClose()
-            pc.playTracksOnPhone(listOf(track), 0, onQueueReady = viewModel::playQueue, onLyricsReady = viewModel::setEchoLinkLyrics)
+            playbackRouter.play(listOf(track), 0,
+                onPhoneQueueReady = viewModel::playQueue, onPhoneLyricsReady = viewModel::setEchoLinkLyrics)
         })
 }

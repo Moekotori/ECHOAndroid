@@ -11,6 +11,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Density
 import app.echo.android.design.ArtworkPalette
 import app.echo.android.model.playback.EchoPlaybackStatus
+import app.echo.android.model.settings.EchoPlayerPageStyle
 
 internal data class PlayerAppearance(
     val style: String = DefaultPlayerStyle,
@@ -19,16 +20,9 @@ internal data class PlayerAppearance(
 ) {
     val isRecordSleeve: Boolean get() = style == "record_sleeve"
     val usesFlatSurface: Boolean get() = style != "classic"
-    val background get() = when (style) {
-        "pixel_handheld" -> ExpressivePlayerStyle.PixelPaper
-        "type_poster" -> ExpressivePlayerStyle.PosterPaper
-        else -> RecordSleeveStyle.Paper
-    }
-    val headerInk get() = when (style) {
-        "pixel_handheld" -> ExpressivePlayerStyle.PixelInk
-        "type_poster" -> ExpressivePlayerStyle.PosterInk
-        else -> RecordSleeveStyle.Wine
-    }
+    private val tokens = playerPageTokens(EchoPlayerPageStyle.fromId(style))
+    val background get() = tokens.bgTop
+    val headerInk get() = tokens.accent
 }
 
 @Composable

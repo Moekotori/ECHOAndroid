@@ -36,7 +36,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -137,7 +137,7 @@ fun EchoPermissionDialog(
                 Text(
                     text = stringResource(R.string.permission_welcome).uppercase(),
                     style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Medium,
                     letterSpacing = 1.8.sp,
                     color = scheme.primary,
                 )
@@ -147,7 +147,7 @@ fun EchoPermissionDialog(
                 Text(
                     text = stringResource(R.string.permission_title),
                     style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     color = theme.heading,
                     textAlign = TextAlign.Center,
                 )
@@ -352,7 +352,7 @@ private fun PermissionRow(
                 .background(badgeColor),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
+            EchoIcon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = iconTint,
@@ -369,7 +369,7 @@ private fun PermissionRow(
             Text(
                 text = label,
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Medium,
                 color = theme.heading,
             )
             Text(
@@ -393,7 +393,7 @@ private fun PermissionRow(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Icon(
+                    EchoIcon(
                         imageVector = Icons.Rounded.Check,
                         contentDescription = null,
                         tint = successColor,
@@ -402,7 +402,7 @@ private fun PermissionRow(
                     Text(
                         text = stringResource(R.string.permission_granted),
                         style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Medium,
                         color = successColor,
                     )
                 }
@@ -418,7 +418,7 @@ private fun PermissionRow(
                     text = stringResource(R.string.permission_allow),
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
                     style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Medium,
                     color = scheme.primary,
                 )
             }
@@ -459,8 +459,7 @@ private fun ContinueButton(
     ) {
         Text(
             text = text,
-            fontWeight = FontWeight.Bold,
-            fontSize = 16.sp,
+            style = MaterialTheme.typography.labelLarge,
             color = theme.onAccent,
         )
     }

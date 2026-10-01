@@ -27,7 +27,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -143,7 +143,7 @@ internal fun SignalHeadphoneCorrection(
                     keyboardActions = KeyboardActions(onSearch = { search() }),
                     trailingIcon = {
                         IconButton(onClick = search, enabled = !state.loading && state.query.isNotBlank()) {
-                            Icon(Icons.Default.Search, contentDescription = stringResource(L10nR.string.diag_search))
+                            EchoIcon(Icons.Default.Search, contentDescription = stringResource(L10nR.string.diag_search))
                         }
                     },
                 )
@@ -177,7 +177,7 @@ internal fun SignalHeadphoneCorrection(
         if (favorites.isNotEmpty()) {
             SignalEqWell(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(stringResource(L10nR.string.opra_favorites), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(L10nR.string.opra_favorites), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
                     favorites.forEach { preset ->
                         SignalEqUserPresetRow(
                             preset = preset,
@@ -218,7 +218,7 @@ internal fun SignalHeadphoneCorrection(
                             size = 44.dp,
                         )
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(preset.productName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text(preset.productName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
                             Text(preset.author, style = MaterialTheme.typography.titleSmall, color = scheme.onSurfaceVariant)
                             preset.details?.let { SignalNote(it) }
                             SignalNote(stringResource(L10nR.string.opra_filter_summary, preset.bands.size, formatEqGain(preset.preampDb)))
@@ -246,7 +246,7 @@ internal fun SignalHeadphoneCorrection(
                             enabled = !state.loading && canStar,
                             modifier = Modifier.semantics { contentDescription = starLabel },
                         ) {
-                            Icon(
+                            EchoIcon(
                                 if (starred) Icons.Filled.Star else Icons.Outlined.StarBorder,
                                 contentDescription = null,
                                 tint = if (starred) scheme.primary else scheme.onSurfaceVariant,
@@ -285,10 +285,10 @@ internal fun SignalHeadphoneCorrection(
                                     size = 36.dp,
                                 )
                                 Column(Modifier.weight(1f)) {
-                                    Text(product.productName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                                    Text(product.productName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
                                     SignalNote("${product.vendorName} · ${product.presets.size}")
                                 }
-                                Icon(
+                                EchoIcon(
                                     Icons.Default.ExpandMore,
                                     contentDescription = null,
                                     modifier = Modifier.echoExpandIndicator(expanded),

@@ -19,7 +19,7 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -78,7 +78,7 @@ internal fun SignalEqUserPresets(
                 stringResource(R.string.eq_user_presets),
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Medium,
             )
             if (activeId != null) {
                 EchoTextButton(
@@ -220,14 +220,14 @@ internal fun SignalEqUserPresetRow(
         }
         if (showActions) {
             IconButton(onClick = onShare, enabled = enabled, modifier = Modifier.semantics { contentDescription = shareLabel }) {
-                Icon(Icons.Outlined.Share, contentDescription = null)
+                EchoIcon(Icons.Outlined.Share, contentDescription = null)
             }
             if (showEditDelete) {
                 IconButton(onClick = onRename, enabled = enabled, modifier = Modifier.semantics { contentDescription = renameLabel }) {
-                    Icon(Icons.Outlined.Edit, contentDescription = null)
+                    EchoIcon(Icons.Outlined.Edit, contentDescription = null)
                 }
                 IconButton(onClick = onDelete, enabled = enabled, modifier = Modifier.semantics { contentDescription = deleteLabel }) {
-                    Icon(Icons.Outlined.Delete, contentDescription = null, tint = if (enabled) scheme.error else scheme.onSurfaceVariant)
+                    EchoIcon(Icons.Outlined.Delete, contentDescription = null, tint = if (enabled) scheme.error else scheme.onSurfaceVariant)
                 }
             }
         }

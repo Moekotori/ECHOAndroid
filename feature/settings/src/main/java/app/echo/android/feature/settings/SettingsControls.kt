@@ -15,6 +15,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
+import app.echo.android.design.EchoSlider
 import app.echo.android.design.EchoSwitch
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,12 +28,10 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -206,7 +205,7 @@ internal fun SettingsDisclosureRow(
         detail = detail,
         modifier = Modifier.echoClickable { onExpandedChange(!expanded) },
     ) {
-        Icon(
+        EchoIcon(
             imageVector = if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
             contentDescription = null,
             tint = if (dark) Color.White.copy(alpha = 0.62f) else scheme.onSurfaceVariant,
@@ -228,21 +227,13 @@ internal fun SettingsBackgroundSourceRow(
         modifier = Modifier
             .settingsSearchAnchor(stringResource(R.string.settings_bg_source))
             .fillMaxWidth()
-            .heightIn(min = 56.dp)
-            .padding(vertical = if (LocalSettingsCompactMode.current) 10.dp else 14.dp),
+            .heightIn(min = 48.dp)
+            .padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                stringResource(R.string.settings_bg_source),
-                color = scheme.onSurface,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
+            if (mode != "default" || !uri.isNullOrBlank()) Text(
                 backgroundDetail(mode, uri),
                 color = scheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium,
@@ -296,7 +287,7 @@ internal fun BackgroundSourceAction(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (selected) Icon(Icons.Rounded.Check, null, Modifier.size(16.dp), tint = accent)
+        if (selected) EchoIcon(Icons.Rounded.Check, null, Modifier.size(16.dp), tint = accent)
         Text(
             label,
             color = accent,
@@ -346,7 +337,7 @@ internal fun SettingsActionRow(
             .alpha(if (enabled) 1f else 0.55f),
     ) {
         if (enabled && actionLabel == null) {
-            Icon(
+            EchoIcon(
                 Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                 contentDescription = null,
                 modifier = Modifier.size(20.dp),
@@ -421,7 +412,7 @@ internal fun SettingsOptionChip(
     ) {
         // Reserve the mark's width so selecting another option does not reflow the group.
         Box(Modifier.size(16.dp), contentAlignment = Alignment.Center) {
-            if (selected) Icon(Icons.Rounded.Check, null, Modifier.size(16.dp), tint = settingsControlColor())
+            if (selected) EchoIcon(Icons.Rounded.Check, null, Modifier.size(16.dp), tint = settingsControlColor())
         }
         Text(
             label,
@@ -445,8 +436,6 @@ internal fun SettingsSliderRow(
     onPreviewValueChange: (Float) -> Unit = {},
 ) {
     val scheme = MaterialTheme.colorScheme
-    val dark = LocalEchoDarkTheme.current
-    val controlColor = settingsControlColor()
     var localValue by rememberSaveable(title) { mutableFloatStateOf(value.coerceIn(valueRange)) }
     var dragging by remember(title) { mutableStateOf(false) }
     LaunchedEffect(value, valueRange) { if (!dragging) localValue = value.coerceIn(valueRange) }
@@ -480,7 +469,7 @@ internal fun SettingsSliderRow(
                 )
             }
             preview?.invoke(localValue)
-            Slider(
+            EchoSlider(
                 value = localValue.coerceIn(valueRange),
                 onValueChange = { dragging = true; localValue = it; onPreviewValueChange(it) },
                 onValueChangeFinished = { onValueChange(localValue); dragging = false },
@@ -490,33 +479,6 @@ internal fun SettingsSliderRow(
                     .semantics { contentDescription = title },
                 valueRange = valueRange,
                 steps = steps,
-                colors = SliderDefaults.colors(
-                    thumbColor = controlColor,
-                    activeTrackColor = controlColor.copy(alpha = 0.65f),
-                    inactiveTrackColor = if (dark) Color.White.copy(alpha = 0.12f) else scheme.outlineVariant.copy(alpha = 0.46f),
-                    activeTickColor = Color.Transparent,
-                    inactiveTickColor = Color.Transparent,
-                ),
-                thumb = {
-                    Box(
-                        Modifier
-                            .size(20.dp)
-                            .clip(CircleShape)
-                            .background(controlColor),
-                    )
-                },
-                track = { sliderState ->
-                    SliderDefaults.Track(
-                        sliderState = sliderState,
-                        modifier = Modifier.height(4.dp),
-                        colors = SliderDefaults.colors(
-                            activeTrackColor = controlColor.copy(alpha = 0.65f),
-                            inactiveTrackColor = if (dark) Color.White.copy(alpha = 0.10f) else scheme.outlineVariant.copy(alpha = 0.40f),
-                            activeTickColor = Color.Transparent,
-                            inactiveTickColor = Color.Transparent,
-                        ),
-                    )
-                },
             )
         }
     }

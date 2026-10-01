@@ -36,7 +36,7 @@
     <string name="echo_link_tap_to_pair">Tippen zum Koppeln</string>
     <string name="artist_album_count">%1$d Alben</string>
     <string name="playback_widget_name">ECHO-Wiedergabe</string>
-    <string name="playback_widget_description">Aktuellen Titel vom Startbildschirm wiedergeben, pausieren und überspringen</string>
+    <string name="playback_widget_description">Wiedergabe, Pause und Titelwechsel auf dem Startbildschirm oder unterstützten Sperrbildschirmen</string>
     <string name="playback_widget_preview_title">ECHO Mobile</string>
     <string name="qs_tile_play_pause">ECHO Wiedergeben/Pause</string>
     <string name="qs_tile_playing">Wiedergabe</string>

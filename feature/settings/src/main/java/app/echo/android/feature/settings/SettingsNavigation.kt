@@ -1,5 +1,7 @@
 package app.echo.android.feature.settings
 
+import app.echo.android.design.EchoIcon
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.core.tween
@@ -128,13 +130,13 @@ internal fun SettingsNavigation(
                                     selected = null
                                     searchFocus = null
                                 }) {
-                                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.settings_back), tint = MaterialTheme.colorScheme.onSurface)
+                                    EchoIcon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.settings_back), tint = MaterialTheme.colorScheme.onSurface)
                                 }
                                 Text(
                                     stringResource(category?.title ?: R.string.settings_title),
                                     modifier = Modifier.weight(1f).semantics { heading() },
                                     color = MaterialTheme.colorScheme.onSurface,
-                                    style = MaterialTheme.typography.headlineSmall,
+                                    style = MaterialTheme.typography.headlineMedium,
                                     fontWeight = FontWeight.SemiBold,
                                 )
                             }
@@ -169,7 +171,8 @@ internal fun SettingsNavigation(
                                     else if (compactMode) 20.dp else 28.dp,
                                 ),
                             ) {
-                                if (category != SettingsCategory.About && category != SettingsCategory.Appearance) Text(
+                                if (category != SettingsCategory.About && category != SettingsCategory.Appearance &&
+                                    category != SettingsCategory.Library) Text(
                                     stringResource(category.description),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,

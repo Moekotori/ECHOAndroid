@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_library_overview_title">我的曲库</string>
+    <string name="settings_library_overview_manage">管理</string>
+    <string name="settings_library_overview_storage">音乐占用</string>
+    <string name="settings_library_overview_tracks">歌曲</string>
+    <string name="settings_library_overview_duration">歌曲总时长</string>
+    <string name="settings_library_overview_hours_minutes">%1$s 小时 %2$s 分钟</string>
+    <string name="settings_library_overview_local">本地音乐文件</string>
+    <string name="settings_library_overview_offline">离线音乐缓存</string>
+    <string name="settings_library_overview_scope">数量与时长统计已收录的本地音乐。圆环显示本地文件与已缓存远程音乐的大小，不包含封面等应用数据。</string>
+    <string name="settings_library_overview_empty">还没有收录本地音乐，点击「管理」扫描音乐文件夹。圆环也会显示已缓存的远程音乐。</string>
+</resources>

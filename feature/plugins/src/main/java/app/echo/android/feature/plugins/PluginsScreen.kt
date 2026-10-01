@@ -11,7 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -112,7 +112,7 @@ internal fun PluginsScreen(
                                     Text(failure, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                                 }
                             }
-                            Icon(
+                            EchoIcon(
                                 Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                                 null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,

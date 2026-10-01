@@ -1,5 +1,8 @@
 package app.echo.android.feature.connect
 
+import app.echo.android.design.EchoSlider
+import app.echo.android.design.EchoIcon
+
 import android.os.SystemClock
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -63,7 +66,7 @@ internal fun RemoteSeekControl(
         label = "remoteProgress",
     )
     Column {
-        Slider(
+        EchoSlider(
             value = if (dragging != null) shown.toFloat() else smooth,
             onValueChange = { dragging = it.toLong() },
             onValueChangeFinished = {
@@ -103,8 +106,8 @@ internal fun RemoteVolumeControl(volume: Float, enabled: Boolean, onVolume: (Flo
     val shown = (dragging ?: committed ?: volume).coerceIn(0f, 1f)
     val label = stringResource(R.string.feature_connect_volume_8f3a19)
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Icon(Icons.AutoMirrored.Rounded.VolumeUp, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        Slider(shown, { dragging = it }, Modifier.weight(1f).semantics { contentDescription = label },
+        EchoIcon(Icons.AutoMirrored.Rounded.VolumeUp, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        EchoSlider(shown, { dragging = it }, Modifier.weight(1f).semantics { contentDescription = label },
             enabled = enabled,
             onValueChangeFinished = {
                 dragging?.let {

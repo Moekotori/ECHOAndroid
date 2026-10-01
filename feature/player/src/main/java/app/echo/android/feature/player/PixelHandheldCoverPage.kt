@@ -12,7 +12,7 @@ import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.sharp.Star
 import androidx.compose.material.icons.sharp.StarBorder
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -82,7 +82,7 @@ internal fun PixelHandheldCoverPage(status: EchoPlaybackStatus, position: State<
                 IconButton(actions.favorite, enabled = track != null, modifier = Modifier.size(48.dp)
                     .background(if (isFavorite) ink.copy(alpha = 0.15f) else Color.Transparent, PixelFrameShape)
                     .semantics { selected = isFavorite }) {
-                    Icon(PixelPlayerIcons.Star,
+                    EchoIcon(PixelPlayerIcons.Star,
                         stringResource(if (isFavorite) R.string.feature_player_unfavorite_3a27e4 else R.string.feature_player_favorite_b5d1f5),
                         tint = ink, modifier = Modifier.size(32.dp))
                 }

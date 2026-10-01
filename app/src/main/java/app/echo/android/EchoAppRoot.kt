@@ -114,6 +114,7 @@ import app.echo.android.design.EchoExpandedPlayer
 import app.echo.android.design.rememberEchoBackProgress
 import app.echo.android.ui.shell.EchoOverlayBackHandler
 import app.echo.android.ui.shell.EchoBottomDockHost
+import app.echo.android.ui.shell.EchoAdaptiveShell
 import app.echo.android.ui.shell.EchoPagerPage
 import app.echo.android.ui.shell.dockTab
 import app.echo.android.ui.shell.pagerPage
@@ -377,6 +378,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
 
     val echoLinkSession = (context.applicationContext as EchoApplication).echoLinkSession
     val remoteClient = echoLinkSession.client
+    val echoLinkPlaybackRouter = echoLinkSession.playbackRouter
+    val remoteMode by echoLinkPlaybackRouter.remoteMode.collectAsStateWithLifecycle()
     LaunchedEffect(remoteClient) {
         viewModel.setEchoLinkPlaybackResolver { ref ->
             val trackId = EchoLinkPlaybackUri.trackId(ref.id, ref.uri) ?: return@setEchoLinkPlaybackResolver ref
@@ -406,6 +409,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     var pendingCast by remember { mutableStateOf<Pair<String, String>?>(null) }
     var sendingCastAddress by remember { mutableStateOf<String?>(null) }
     var openCastTabNonce by remember { mutableIntStateOf(0) }
+    var openPcTabNonce by remember { mutableIntStateOf(0) }
+    var openPcQueueNonce by remember { mutableIntStateOf(0) }
     var castSetupError by remember { mutableStateOf<String?>(null) }
     val castSessionActive by echoLinkSession.castActive.collectAsStateWithLifecycle()
     val castSessionName by echoLinkSession.castTargetName.collectAsStateWithLifecycle()
@@ -737,22 +742,23 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         ?: LastFmApiConfig.API_KEY.takeIf { it.isNotBlank() }
     val lastFmSharedSecret = appSettings.lastFmSharedSecret?.takeIf { it.isNotBlank() }
         ?: LastFmApiConfig.SHARED_SECRET.takeIf { it.isNotBlank() }
-    var selectedAlbum by remember { mutableStateOf<AlbumSummary?>(null) }
-    var selectedArtist by remember { mutableStateOf<ArtistSummary?>(null) }
-    var selectedGenre by remember { mutableStateOf<app.echo.android.model.library.GenreSummary?>(null) }
-    var selectedFolder by remember { mutableStateOf<FolderSummary?>(null) }
-    var selectedPlaylist by remember { mutableStateOf<EchoPlaylist?>(null) }
-    var detailReturnPage by remember { mutableStateOf<EchoPagerPage?>(null) }
-    var searchVisible by remember { mutableStateOf(false) }
+    var selectedAlbum by rememberSaveable(stateSaver = AlbumNavigationSaver) { mutableStateOf<AlbumSummary?>(null) }
+    var selectedArtist by rememberSaveable(stateSaver = ArtistNavigationSaver) { mutableStateOf<ArtistSummary?>(null) }
+    var selectedGenre by rememberSaveable(stateSaver = GenreNavigationSaver) { mutableStateOf<app.echo.android.model.library.GenreSummary?>(null) }
+    var selectedFolder by rememberSaveable(stateSaver = FolderNavigationSaver) { mutableStateOf<FolderSummary?>(null) }
+    var selectedPlaylist by rememberSaveable(stateSaver = PlaylistNavigationSaver) { mutableStateOf<EchoPlaylist?>(null) }
+    var detailReturnPage by rememberSaveable { mutableStateOf<EchoPagerPage?>(null) }
+    var searchVisible by rememberSaveable { mutableStateOf(false) }
     var listeningVisible by rememberSaveable { mutableStateOf(false) }
     var listeningStatsVisible by rememberSaveable { mutableStateOf(false) }
     var playbackHistoryVisible by rememberSaveable { mutableStateOf(false) }
+    var addMusicVisible by rememberSaveable { mutableStateOf(false) }
     var listeningDraft by rememberSaveable { mutableStateOf("") }
-    var searchQuery by remember { mutableStateOf("") }
-    var errorLogVisible by remember { mutableStateOf(false) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var errorLogVisible by rememberSaveable { mutableStateOf(false) }
     var pluginsVisible by rememberSaveable { mutableStateOf(false) }
-    var selectedTab by remember { mutableIntStateOf(EchoTab.Now.ordinal) }
-    var bottomDockExpanded by remember { mutableStateOf(true) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(EchoTab.Now.ordinal) }
+    var bottomDockExpanded by rememberSaveable { mutableStateOf(true) }
     var bottomDockHeightPx by remember { mutableIntStateOf(0) }
     val bottomDockInset = with(LocalDensity.current) { bottomDockHeightPx.toDp() }
     var nowPlayingExpanded by rememberSaveable { mutableStateOf(false) }
@@ -763,8 +769,14 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         nowPlayingExpanded = true
     }
     var lyricsLaunchToken by rememberSaveable { mutableIntStateOf(0) }
-    var queueSheetVisible by remember { mutableStateOf(false) }
-    var castSheetVisible by remember { mutableStateOf(false) }
+    var queueSheetVisible by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(remoteMode) {
+        if (remoteMode) {
+            nowPlayingExpanded = false
+            queueSheetVisible = false
+        }
+    }
+    var castSheetVisible by rememberSaveable { mutableStateOf(false) }
     var queueDragProgress by remember { mutableFloatStateOf(0f) }
     val queueBack = rememberEchoBackProgress(effectivePerformanceMode.isLightweight)
     LaunchedEffect(queueSheetVisible) {
@@ -937,6 +949,24 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         }
     }
     fun selectDockTab(tab: EchoTab) = navigateToPage(tab.pagerPage)
+    fun selectEchoLinkMode(remote: Boolean) {
+        if (remoteMode == remote) return
+        echoLinkPlaybackRouter.selectRemoteMode(remote)
+        nowPlayingExpanded = false
+        queueSheetVisible = false
+        openPcQueueNonce = 0
+        viewModel.setLibrarySelectedSource("pc_echo")
+    }
+    fun openPcLibrary() {
+        viewModel.setLibrarySelectedSource("pc_echo")
+        if (remoteClient.library.value.tracks.isEmpty()) remoteClient.refreshLibrary()
+        selectDockTab(EchoTab.Library)
+    }
+    fun openPcControls(queue: Boolean = false) {
+        openPcTabNonce += 1
+        if (queue) openPcQueueNonce += 1
+        selectDockTab(EchoTab.Connect)
+    }
     fun onNowPlayingCast() {
         castSheetVisible = true
     }
@@ -1002,16 +1032,19 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             }
         }
     }
-    LaunchedEffect(tabPagerState.settledPage) {
-        EchoPagerPage.entries[tabPagerState.settledPage].dockTab?.let { settledTab ->
-            if (settledTab.ordinal != selectedTab) selectedTab = settledTab.ordinal
+    LaunchedEffect(tabPagerState.settledPage, tabPagerState.isScrollInProgress) {
+        if (!tabPagerState.isScrollInProgress) {
+            EchoPagerPage.entries[tabPagerState.settledPage].dockTab?.let { settledTab ->
+                if (settledTab.ordinal != selectedTab) selectedTab = settledTab.ordinal
+            }
         }
     }
 
-    LaunchedEffect(remoteStatus.connectionState, appSettings.echoLinkPreferLinkedLibrary) {
+    LaunchedEffect(remoteStatus.connectionState, appSettings.echoLinkPreferLinkedLibrary, remoteMode) {
         if (
             remoteStatus.connectionState == EchoRemoteConnectionState.Connected &&
             appSettings.echoLinkPreferLinkedLibrary &&
+            !remoteMode &&
             tabPagerState.currentPage == EchoPagerPage.Connect.ordinal
         ) {
             selectDockTab(EchoTab.Library)
@@ -1054,7 +1087,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         onCancel = { nowPlayingBack.restore() },
         onDismiss = { nowPlayingExpanded = false },
     )
-    val shellOverlayOpen = searchVisible || listeningVisible || listeningStatsVisible || playbackHistoryVisible || errorLogVisible || queueSheetVisible || castSheetVisible || nowPlayingExpanded || pluginsVisible
+    EchoOverlayBackHandler(enabled = addMusicVisible && !pluginsVisible) {
+        addMusicVisible = false
+    }
+    val shellOverlayOpen = searchVisible || listeningVisible || listeningStatsVisible || playbackHistoryVisible || errorLogVisible || queueSheetVisible || castSheetVisible || nowPlayingExpanded || pluginsVisible || addMusicVisible
     val connectPageSettled = appVisible && screenInteractive && !shellOverlayOpen &&
         tabPagerState.settledPage == EchoPagerPage.Connect.ordinal
     // One owner for discovery: closing either surface must not stop the other.
@@ -1116,12 +1152,18 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     }
                 },
             )
-            Box(
+            EchoAdaptiveShell(
+                selectedTab = selectedTab,
+                selectedTabProgress = {
+                    (tabPagerState.currentPage + tabPagerState.currentPageOffsetFraction - EchoPagerPage.Now.ordinal)
+                        .coerceIn(0f, EchoTab.entries.lastIndex.toFloat())
+                },
+                onSelectTab = { selectDockTab(EchoTab.entries[it]) },
                 modifier = Modifier.fillMaxSize()
-                    .echoPageUnderlay(searchVisible || errorLogVisible || listeningStatsVisible || playbackHistoryVisible || listeningVisible || pluginsVisible)
+                    .echoPageUnderlay(searchVisible || errorLogVisible || listeningStatsVisible || playbackHistoryVisible || listeningVisible || pluginsVisible || addMusicVisible)
                     .echoPlayerDepth(nowPlayingExpanded) { maxOf(nowPlayingBack.value, nowPlayingDragProgress) }
                     .echoSheetDepth(queueSheetVisible) { maxOf(queueBack.value, queueDragProgress) },
-            ) {
+            ) { sideNavigation ->
                 val tabPagerFling = rememberSilkPagerFlingBehavior(tabPagerState)
                 val enteringInnerTabPage =
                     (selectedTab == EchoTab.Connect.ordinal || selectedTab == EchoTab.Diagnostics.ordinal) &&
@@ -1150,6 +1192,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             EchoPagerPage.Library -> EchoLibraryPage(
                                 viewModel = viewModel,
                                 remoteClient = remoteClient,
+                                playbackRouter = echoLinkPlaybackRouter,
                                 remoteStatus = remoteStatus,
                                 appSettings = appSettings,
                                 hasAudioPermission = hasAudioPermission,
@@ -1163,15 +1206,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                     pendingScanOptions = options
                                     folderScanLauncher.launch(null)
                                 },
-                                onScanAll = { options ->
-                                    pendingScanOptions = options
-                                    if (ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED) {
-                                        viewModel.refreshLibrary(options)
-                                    } else {
-                                        scanAllAfterPermission = true
-                                        permissionLauncher.launch(permission)
-                                    }
-                                },
+                                onAddMusic = { addMusicVisible = true },
                                 onImportLyricsForTrack = { track ->
                                     lyricsImportTrackId = track.id
                                     lyricsImportLauncher.launch(LyricsDocumentMimeTypes)
@@ -1265,6 +1300,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
 
                             EchoPagerPage.Settings -> {
                             val libraryStats by viewModel.libraryStats.collectAsStateWithLifecycle(LibraryStats())
+                            val libraryScanProgress by viewModel.scanState.collectAsStateWithLifecycle()
                             val lastFmState by viewModel.lastFmState.collectAsStateWithLifecycle()
                             val listenBrainzState by viewModel.listenBrainzState.collectAsStateWithLifecycle()
                             val usbExclusiveTestResult by viewModel.usbExclusiveTestResult.collectAsStateWithLifecycle()
@@ -1281,6 +1317,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 trackCount = libraryStats.trackCount,
                                 albumCount = libraryStats.albumCount,
                                 artistCount = libraryStats.artistCount,
+                                libraryDurationMs = libraryStats.durationMs,
+                                librarySizeBytes = libraryStats.totalSizeBytes,
+                                libraryScanning = libraryScanProgress.isScanning,
+                                onLoadLibraryHealth = viewModel::libraryHealthStats,
+                                onInspectLibraryLyrics = viewModel::inspectLibraryLyrics,
                                 appVersionLabel = BuildConfig.VERSION_NAME,
                                 updateContent = {
                                     app.echo.android.feature.settings.SettingsUpdateRow {
@@ -1289,7 +1330,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 },
                                 dynamicArtworkEnabled = appSettings.dynamicArtworkEnabled,
                                 compactModeEnabled = appSettings.compactModeEnabled,
-                                dynamicColorEnabled = appSettings.dynamicColorEnabled,
                                 playbackHapticsEnabled = appSettings.playbackHapticsEnabled,
                                 performanceMode = appSettings.performanceMode,
                                 effectivePerformanceMode = effectivePerformanceMode.id,
@@ -1300,6 +1340,13 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 pcHandoffEnabled = appSettings.pcHandoffEnabled,
                                 onlineLyricsEnabled = appSettings.onlineLyricsEnabled,
                                 lockScreenLyricsEnabled = appSettings.lockScreenLyricsEnabled,
+                                lyricsOptions = appSettings.lyricsOptions,
+                                onLyricsOptionsChange = viewModel::setLyricsOptions,
+                                onOpenLyricsInterface = {
+                                    expandNowPlaying()
+                                    lyricsLaunchToken += 1
+                                    viewModel.setShowLyricsControlDeck(true)
+                                },
                                 floatingLyrics = appSettings.floatingLyrics,
                                 floatingLyricsPermissionGranted = hasOverlayPermission,
                                 onFloatingLyricsChange = viewModel::setFloatingLyrics,
@@ -1337,10 +1384,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 lyricsFontScale = appSettings.lyricsFontScale,
                                 importedFontUri = appSettings.importedFontUri,
                                 themeMode = appSettings.themeMode,
-                                colorTheme = appSettings.colorTheme,
-                                customColors = appSettings.customColors,
-                                savedColorThemes = appSettings.savedColorThemes,
-                                appliedSavedColorThemeId = appSettings.appliedSavedColorThemeId,
                                 appLanguage = appSettings.appLanguage,
                                 scheduledDarkModeEnabled = appSettings.scheduledDarkModeEnabled,
                                 scheduledDarkStartMinute = appSettings.scheduledDarkStartMinute,
@@ -1367,7 +1410,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 setlistFmApiKeyLocked = SetlistFmApiConfig.HAS_API_KEY,
                                 onDynamicArtworkEnabledChange = viewModel::setDynamicArtworkEnabled,
                                 onCompactModeEnabledChange = viewModel::setCompactModeEnabled,
-                                onDynamicColorEnabledChange = viewModel::setDynamicColorEnabled,
                                 onPlaybackHapticsEnabledChange = viewModel::setPlaybackHapticsEnabled,
                                 onPerformanceModeChange = viewModel::setPerformanceMode,
                                 onTrackAudioInfoTagsVisibleChange = viewModel::setTrackAudioInfoTagsVisible,
@@ -1414,11 +1456,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                     viewModel.setImportedFontUri(null)
                                 },
                                 onThemeModeChange = viewModel::setThemeMode,
-                                onColorThemeChange = viewModel::setColorTheme,
-                                onCustomColorsChange = viewModel::setCustomColors,
-                                onSaveCustomColorTheme = viewModel::saveCustomColorTheme,
-                                onApplySavedColorTheme = viewModel::applySavedColorTheme,
-                                onDeleteSavedColorTheme = viewModel::deleteSavedColorTheme,
                                 onAppLanguageChange = ::changeAppLanguage,
                                 onScheduledDarkModeEnabledChange = viewModel::setScheduledDarkModeEnabled,
                                 onScheduledDarkStartMinuteChange = viewModel::setScheduledDarkStartMinute,
@@ -1484,6 +1521,12 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             val lanRenderers by viewModel.lanRenderers.collectAsStateWithLifecycle()
                             val lanRendererState by viewModel.lanRendererDiscoveryState.collectAsStateWithLifecycle()
                             ConnectScreen(
+                                remoteMode = remoteMode,
+                                onRemoteModeChange = ::selectEchoLinkMode,
+                                onOpenPcLibrary = ::openPcLibrary,
+                                openPcTabNonce = openPcTabNonce,
+                                openPcQueueNonce = openPcQueueNonce,
+                                onPcQueueOpened = { openPcQueueNonce = 0 },
                                 librarySyncActions = app.echo.android.ui.connect.rememberLibrarySyncActions(viewModel, remoteClient),
                                 remoteState = remoteStatus.connectionState,
                                 pcTitle = remoteStatus.endpoint?.name ?: "PC ECHO",
@@ -1579,6 +1622,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 ),
                                 onDisconnect = remoteClient::disconnect,
                                 onForgetPc = {
+                                    echoLinkPlaybackRouter.selectRemoteMode(false)
                                     remoteClient.disconnect()
                                     viewModel.clearEchoLinkPcEndpoint()
                                 },
@@ -1681,7 +1725,33 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     }
                 }
                 EchoBottomDockHost(
+                    abovePlayer = if (remoteMode || remoteStatus.connectionState == EchoRemoteConnectionState.Connected) {
+                        {
+                            app.echo.android.design.EchoLinkModeSwitch(
+                                remoteMode = remoteMode,
+                                onRemoteModeChange = ::selectEchoLinkMode,
+                                modifier = Modifier.widthIn(max = app.echo.android.design.LocalEchoContentMaxWidth.current)
+                                    .fillMaxWidth().padding(horizontal = 16.dp),
+                                showDescription = false,
+                            )
+                        }
+                    } else null,
+                    playerOverride = if (remoteMode) {
+                        {
+                            app.echo.android.feature.connect.EchoLinkRemoteMiniPlayer(
+                                playback = remoteStatus.playback,
+                                connected = remoteStatus.connectionState == EchoRemoteConnectionState.Connected,
+                                pcTitle = remoteStatus.endpoint?.name ?: "PC ECHO",
+                                onExpand = { openPcControls() },
+                                onPlayPause = { remoteClient.send(EchoRemoteCommand.PlayPause) },
+                                onNext = { remoteClient.send(EchoRemoteCommand.Next) },
+                                onOpenQueue = { openPcControls(queue = true) },
+                                modifier = Modifier.widthIn(max = app.echo.android.design.LocalEchoContentMaxWidth.current),
+                            )
+                        }
+                    } else null,
                     animationsVisible = !shellOverlayOpen,
+                    showNavigation = !sideNavigation,
                     viewModel = viewModel,
                     pagerState = tabPagerState,
                     playbackStatus = shellPlaybackStatus,
@@ -1800,7 +1870,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     modifier = Modifier.fillMaxSize(),
             )
             EchoPageOverlay(visible = searchVisible, onHidden = { searchQuery = "" }) {
-                app.echo.android.ui.home.EchoUnifiedSearchHost(viewModel, remoteClient, searchQuery, searchVisible,
+                app.echo.android.ui.home.EchoUnifiedSearchHost(viewModel, remoteClient, echoLinkPlaybackRouter, searchQuery, searchVisible,
                     "${remoteStatus.endpoint?.id}:${remoteStatus.connectionState}",
                     onQuery = { searchQuery = it }, onClose = { searchVisible = false },
                     onAlbum = { album ->
@@ -1816,6 +1886,26 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                         selectedAlbum = null; selectedArtist = null; selectedFolder = null; selectedGenre = null
                         selectedPlaylist = playlist; selectDockTab(EchoTab.Library)
                     })
+            }
+            EchoPageOverlay(visible = addMusicVisible) {
+                app.echo.android.ui.library.EchoAddMusicPage(
+                    viewModel = viewModel,
+                    settings = appSettings,
+                    onBack = { addMusicVisible = false },
+                    onScanFolder = { options ->
+                        pendingScanOptions = options
+                        folderScanLauncher.launch(null)
+                    },
+                    onScanAll = { options ->
+                        pendingScanOptions = options
+                        if (ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED) {
+                            viewModel.refreshLibrary(options)
+                        } else {
+                            scanAllAfterPermission = true
+                            permissionLauncher.launch(permission)
+                        }
+                    },
+                )
             }
             EchoPageOverlay(visible = playbackHistoryVisible) {
                 app.echo.android.ui.home.EchoPlaybackHistoryPage(

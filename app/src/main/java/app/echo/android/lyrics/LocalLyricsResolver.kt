@@ -108,7 +108,7 @@ class LocalLyricsResolver(
             ?.use { cursor ->
                 val idIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
                 val nameIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
-                val matches = mutableListOf<Pair<Int, Uri>>()
+                val matches = linkedMapOf<Int, Uri>()
                 while (cursor.moveToNext()) {
                     val id = cursor.getLong(idIndex)
                     val displayName = cursor.getString(nameIndex)
@@ -122,9 +122,9 @@ class LocalLyricsResolver(
                         continue
                     }
                     val lyricsUri = Uri.withAppendedPath(collection, id.toString())
-                    matches += candidateLookup.getValue(displayName.normalizedLyricsName()) to lyricsUri
+                    matches.putIfAbsent(candidateLookup.getValue(displayName.normalizedLyricsName()), lyricsUri)
                 }
-                matches.sortedBy { it.first }.firstNotNullOfOrNull { (rank, uri) ->
+                matches.entries.sortedBy { it.key }.firstNotNullOfOrNull { (rank, uri) ->
                     readText(uri)?.let { runCatching { EchoLyricsParser.parse(it, sourceLabel = candidates[rank]) }.getOrNull() }
                         ?.takeIf { parsed -> parsed.lines.any { it.text.isNotBlank() } }
                 }

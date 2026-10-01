@@ -9,7 +9,7 @@ import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,7 +33,7 @@ internal fun RadioListeningActions(
     Row(Modifier.fillMaxWidth().heightIn(min = 58.dp), verticalAlignment = Alignment.CenterVertically) {
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Icon(Icons.Outlined.Headphones, contentDescription = null, tint = colors.ink, modifier = Modifier.size(28.dp))
+            EchoIcon(Icons.Outlined.Headphones, contentDescription = null, tint = colors.ink, modifier = Modifier.size(28.dp))
             Text(stringResource(R.string.radio_online), color = colors.ink,
                 fontFamily = RecordSleeveStyle.BodyFont, fontSize = 14.sp, lineHeight = 20.sp)
         }
@@ -93,7 +93,7 @@ private fun RadioTextAction(icon: ImageVector, label: String, tint: Color, onCli
         role = Role.Button, onClick = onClick,
     ).padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(27.dp))
+        EchoIcon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(27.dp))
         Text(label, color = tint, fontFamily = RecordSleeveStyle.BodyFont, fontSize = 14.sp, lineHeight = 20.sp)
     }
 }

@@ -9,6 +9,15 @@ import org.junit.Test
 
 class EchoPlaybackWidgetLayoutTest {
     @Test
+    fun tallLockScreenSizeRequiresBothDimensions() {
+        assertEquals(EchoPlaybackWidgetMode.Tall, EchoPlaybackWidgetLayout.mode(250, 180))
+        assertEquals(EchoPlaybackWidgetMode.Expanded, EchoPlaybackWidgetLayout.mode(250, 179))
+        assertEquals(EchoPlaybackWidgetMode.Compact, EchoPlaybackWidgetLayout.mode(249, 180))
+        assertEquals(EchoPlaybackWidgetMode.Wide, EchoPlaybackWidgetLayout.mode(300, 72))
+        assertEquals(EchoPlaybackWidgetMode.Compact, EchoPlaybackWidgetLayout.mode(300, 56))
+    }
+
+    @Test
     fun threeByOneStaysCompact() {
         assertFalse(
             EchoPlaybackWidgetLayout.isExpanded(

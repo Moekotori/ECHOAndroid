@@ -36,7 +36,7 @@
     <string name="echo_link_tap_to_pair">タップしてペアリング</string>
     <string name="artist_album_count">アルバム %1$d 枚</string>
     <string name="playback_widget_name">ECHO 再生</string>
-    <string name="playback_widget_description">ホーム画面から再生、一時停止、曲送りができます</string>
+    <string name="playback_widget_description">ホーム画面や対応するロック画面から再生、一時停止、曲送り</string>
     <string name="playback_widget_preview_title">ECHO モバイル</string>
     <string name="qs_tile_play_pause">ECHO 再生/一時停止</string>
     <string name="qs_tile_playing">再生中</string>

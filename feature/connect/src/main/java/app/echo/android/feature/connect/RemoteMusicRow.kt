@@ -1,5 +1,7 @@
 package app.echo.android.feature.connect
 
+import app.echo.android.design.EchoIcon
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -37,14 +39,14 @@ internal fun RemoteMusicRow(track: EchoRemoteTrack, current: Boolean, onClick: (
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(track.title, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = if (current) FontWeight.Bold else FontWeight.Medium)
+                    fontWeight = if (current) FontWeight.Medium else FontWeight.Normal)
                 Text(listOfNotNull(track.artist.takeIf(String::isNotBlank), track.album?.takeIf(String::isNotBlank)).joinToString(" · "),
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
             }
             if (track.durationMs > 0L) Text(formatDuration(track.durationMs),
                 style = MaterialTheme.typography.labelSmall, fontFamily = FontFamily.Monospace, color = scheme.onSurfaceVariant)
-            Icon(if (current) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow,
+            EchoIcon(if (current) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow,
                 stringResource(if (current) R.string.remote_current_track else R.string.feature_connect_play_on_pc_aa41d1),
                 Modifier.size(20.dp), tint = when {
                     track.id.isNullOrBlank() -> scheme.onSurface.copy(alpha = 0.38f)

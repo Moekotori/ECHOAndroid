@@ -51,7 +51,7 @@ import androidx.compose.material.icons.rounded.Scanner
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -211,7 +211,7 @@ private fun FolderRow(folder: FolderSummary, onClick: () -> Unit) {
             Text(libraryTrackCountLabel(folder.trackCount), style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        EchoIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -229,7 +229,7 @@ private fun FolderMetaChip(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
+        EchoIcon(
             icon,
             contentDescription = null,
             tint = if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.72f) else colors.muted,
@@ -239,7 +239,7 @@ private fun FolderMetaChip(
             text,
             color = colors.content,
             style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Medium,
             maxLines = 1,
         )
     }
@@ -316,7 +316,7 @@ internal fun LibraryMetric(
 ) {
     val colors = rememberLibraryGlassColors()
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(value, color = colors.content, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(value, color = colors.content, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         Text(label, color = colors.muted, style = MaterialTheme.typography.labelMedium)
     }
 }
@@ -349,7 +349,7 @@ internal fun LibraryViewSwitcher(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(
+                EchoIcon(
                     mode.icon,
                     contentDescription = mode.label(),
                     tint = if (selected) accent else colors.muted,
@@ -360,7 +360,7 @@ internal fun LibraryViewSwitcher(
                     mode.label(),
                     color = if (selected) colors.content else colors.muted,
                     style = MaterialTheme.typography.labelMedium,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                    fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -387,7 +387,7 @@ internal fun LibraryViewModeMenu(
                 .echoClickable { expanded = true },
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
+            EchoIcon(
                 selectedMode.icon,
                 contentDescription = stringResource(L10nR.string.feature_library_switch_library_view_f99a55),
                 tint = accent,
@@ -405,11 +405,12 @@ internal fun LibraryViewModeMenu(
                         Text(
                             mode.label(),
                             color = if (mode == selectedMode) accent else colors.content,
-                            fontWeight = if (mode == selectedMode) FontWeight.Bold else FontWeight.SemiBold,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = if (mode == selectedMode) FontWeight.Medium else FontWeight.Normal,
                         )
                     },
                     leadingIcon = {
-                        Icon(
+                        EchoIcon(
                             mode.icon,
                             contentDescription = null,
                             tint = if (mode == selectedMode) accent else colors.muted,
@@ -804,7 +805,7 @@ internal fun LibraryBootstrapState() {
                     stringResource(L10nR.string.feature_library_no_local_songs_yet_fa3b6a),
                     color = colors.content,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Medium,
                 )
                 Text(
                     stringResource(L10nR.string.feature_library_scan_local_music_from_the_top_right_corner_584da2),
@@ -859,7 +860,7 @@ internal fun LibraryDetailPage(
                             title,
                             color = colors.content,
                             style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )

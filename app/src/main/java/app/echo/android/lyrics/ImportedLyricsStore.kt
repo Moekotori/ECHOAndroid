@@ -69,12 +69,21 @@ class ImportedLyricsStore(
     }
 
     @Synchronized
-    fun readSaved(trackId: String, selected: Boolean): EchoLyrics? {
+    fun readSaved(trackId: String, selected: Boolean, touchLastAccess: Boolean = true): EchoLyrics? {
         val file = storedFile(trackId, selected)
         if (!file.isFile || file.length() > MAX_BYTES) return null
         return runCatching { EchoLyricsJson.decode(file.readText()) }.getOrNull()?.also {
-            file.setLastModified(System.currentTimeMillis())
+            if (touchLastAccess) file.setLastModified(System.currentTimeMillis())
         }
+    }
+
+    /** One bounded preferences snapshot per inspection, rather than parsing it for every song. */
+    suspend fun inspectionBindings(): Map<String, Uri> {
+        val raw = context.echoImportedLyrics.data.first()[Keys.BINDINGS] ?: return emptyMap()
+        require(raw.length <= MAX_BYTES)
+        val bindings = JSONObject(raw)
+        require(bindings.length() <= 10_000)
+        return bindings.keys().asSequence().associateWith { Uri.parse(bindings.getString(it)) }
     }
 
     @Synchronized

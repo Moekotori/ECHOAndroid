@@ -39,7 +39,7 @@ import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -209,13 +209,13 @@ internal fun PlaylistDetailPage(
                             stringResource(L10nR.string.feature_library_tracks_2d80e8),
                             color = colors.content,
                             style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                         )
                         Text(
                             libraryTrackCountLabel(playlist.trackCount),
                             color = colors.muted,
                             style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Medium,
                         )
                     }
                     Spacer(Modifier.height(10.dp))
@@ -404,7 +404,7 @@ private fun PlaylistDetailTopBar(
                 ) {
                     DropdownMenuItem(
                         text = { Text(stringResource(L10nR.string.feature_library_rename_d1a28e)) },
-                        leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
+                        leadingIcon = { EchoIcon(Icons.Rounded.Edit, contentDescription = null) },
                         onClick = {
                             menuOpen = false
                             onRename()
@@ -412,7 +412,7 @@ private fun PlaylistDetailTopBar(
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(L10nR.string.feature_library_delete_138ccf)) },
-                        leadingIcon = { Icon(Icons.Rounded.DeleteOutline, contentDescription = null) },
+                        leadingIcon = { EchoIcon(Icons.Rounded.DeleteOutline, contentDescription = null) },
                         onClick = {
                             menuOpen = false
                             onDelete()
@@ -440,7 +440,7 @@ private fun PlaylistRoundButton(
             .echoClickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = description, tint = colors.content, modifier = Modifier.size(22.dp))
+        EchoIcon(icon, contentDescription = description, tint = colors.content, modifier = Modifier.size(22.dp))
     }
 }
 
@@ -472,7 +472,7 @@ private fun PlaylistHero(
             playlistDisplayName(playlist),
             color = colors.content,
             style = MaterialTheme.typography.headlineSmall.copy(shadow = if (dark) PlaylistTitleShadow else null),
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
@@ -565,7 +565,7 @@ private fun PlaylistLikedCover(accent: Color) {
             ),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
+        EchoIcon(
             Icons.Rounded.Favorite,
             contentDescription = null,
             tint = Color.White.copy(alpha = 0.94f),
@@ -610,7 +610,7 @@ private fun MosaicCell(
                     .background(accent.copy(alpha = 0.22f)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
+                EchoIcon(
                     Icons.AutoMirrored.Rounded.QueueMusic,
                     contentDescription = null,
                     tint = accent.copy(alpha = 0.72f),
@@ -653,13 +653,13 @@ private fun PlaylistActionButton(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(if (filled) 24.dp else 22.dp))
+        EchoIcon(icon, contentDescription = null, tint = content, modifier = Modifier.size(if (filled) 24.dp else 22.dp))
         Spacer(Modifier.width(8.dp))
         Text(
             label,
             color = content,
             style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -747,14 +747,14 @@ private fun PlaylistInsightCell(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, tint = accent.copy(alpha = 0.86f), modifier = Modifier.size(20.dp))
+        EchoIcon(icon, contentDescription = null, tint = accent.copy(alpha = 0.86f), modifier = Modifier.size(20.dp))
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(label, color = colors.muted, style = MaterialTheme.typography.labelMedium, maxLines = 1)
             Text(
                 value,
                 color = colors.content,
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -823,7 +823,7 @@ private fun PlaylistTrackRow(
                 text = (index + 1).toString().padStart(2, '0'),
                 color = accent.copy(alpha = 0.86f),
                 style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.Medium,
                 modifier = Modifier.width(28.dp),
             )
             ArtworkTile(
@@ -839,7 +839,7 @@ private fun PlaylistTrackRow(
                     displayMetadataOrUnknown(track.title, unknownTrackLabel()),
                     color = colors.content,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -855,7 +855,7 @@ private fun PlaylistTrackRow(
                 formatDuration(track.durationMs),
                 color = colors.muted,
                 style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Medium,
             )
         }
     }

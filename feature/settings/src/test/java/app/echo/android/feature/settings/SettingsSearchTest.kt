@@ -58,6 +58,8 @@ class SettingsSearchTest {
         assertFalse(R.string.settings_lyrics_sync_tools in titles)
         assertFalse(R.string.settings_pin_queue_offline in titles)
         assertFalse(R.string.settings_connect_pc in titles)
+        assertFalse(R.string.settings_color_theme in titles)
+        assertFalse(R.string.settings_dynamic_color in titles)
         // Secondary controls remain searchable without changing their saved values.
         assertTrue(R.string.settings_performance_mode in titles)
         assertTrue(R.string.settings_usb_bitperfect in titles)

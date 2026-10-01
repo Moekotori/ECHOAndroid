@@ -1,5 +1,8 @@
 package app.echo.android.feature.player
 
+import app.echo.android.design.EchoRangeSlider
+import app.echo.android.design.EchoIcon
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -9,6 +12,8 @@ import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.echo.android.model.library.*
@@ -55,7 +60,8 @@ fun TrackToolsSheet(track: EchoTrack, position: () -> Long, loop: EchoAbLoopStat
                 Text(track.artist, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             item {
-                Text(stringResource(R.string.track_loop_title), style = MaterialTheme.typography.titleLarge)
+                val loopLabel = stringResource(R.string.track_loop_title)
+                Text(loopLabel, style = MaterialTheme.typography.titleLarge)
                 Text(stringResource(R.string.track_loop_hint), style = MaterialTheme.typography.bodySmall)
                 if (!loopAvailable) Text(stringResource(R.string.track_loop_external), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -69,9 +75,10 @@ fun TrackToolsSheet(track: EchoTrack, position: () -> Long, loop: EchoAbLoopStat
                         Text(stringResource(R.string.track_loop_mark_b, trackToolsTime(b)))
                     }
                 }
-                if (track.durationMs > 0) RangeSlider(
+                if (track.durationMs > 0) EchoRangeSlider(
                     value = a.toFloat().coerceAtMost(b.toFloat())..b.toFloat().coerceAtLeast(a.toFloat()),
                     onValueChange = { a = it.start.toLong(); b = it.endInclusive.toLong() },
+                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = loopLabel },
                     valueRange = 0f..track.durationMs.toFloat(), enabled = !busy && loopAvailable)
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Button(onClick = { busy = true; scope.launch {
@@ -107,7 +114,7 @@ fun TrackToolsSheet(track: EchoTrack, position: () -> Long, loop: EchoAbLoopStat
                     IconButton(onClick = { scope.launch {
                         try { actions.deleteBookmark(bookmark.id) }
                         catch (e: CancellationException) { throw e } catch (_: Exception) { error = true }
-                    } }) { Icon(Icons.Rounded.DeleteOutline, stringResource(R.string.track_bookmark_delete)) }
+                    } }) { EchoIcon(Icons.Rounded.DeleteOutline, stringResource(R.string.track_bookmark_delete)) }
                 }
             }
             item {

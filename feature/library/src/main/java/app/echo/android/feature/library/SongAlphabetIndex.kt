@@ -21,7 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.em
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -63,9 +63,9 @@ internal fun SongAlphabetIndex(
                 Text(
                     text = letter.toString(),
                     color = colors.onSurfaceVariant,
-                    fontSize = 10.sp,
-                    lineHeight = 10.sp,
+                    style = MaterialTheme.typography.labelSmall.copy(lineHeight = 1.em),
                     fontWeight = FontWeight.Medium,
+                    maxLines = 1,
                 )
             }
         }

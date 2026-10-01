@@ -9,7 +9,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -33,14 +33,14 @@ internal fun SignalEqPresetPicker(selectedId: String, onSelect: (String) -> Unit
             contentPadding = PaddingValues(horizontal = 0.dp, vertical = 10.dp),
         ) {
             Text(eqPresetLabel(selectedId), Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
+            EchoIcon(Icons.Default.KeyboardArrowDown, contentDescription = null)
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             EchoEqualizerPresets.presets.forEach { preset ->
                 DropdownMenuItem(
                     text = { Text(eqPresetLabel(preset.id)) },
                     trailingIcon = {
-                        if (selectedId == preset.id) Icon(Icons.Default.Check, contentDescription = null)
+                        if (selectedId == preset.id) EchoIcon(Icons.Default.Check, contentDescription = null)
                     },
                     onClick = { expanded = false; onSelect(preset.id) },
                 )

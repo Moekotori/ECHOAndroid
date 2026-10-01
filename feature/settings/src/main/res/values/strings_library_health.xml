@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_library_health_title">Library completeness</string>
+    <string name="settings_library_health_refresh">Refresh statistics</string>
+    <string name="settings_library_health_folders">Indexed folders</string>
+    <string name="settings_library_health_cover">Missing cover artwork</string>
+    <string name="settings_library_health_album">Missing album information</string>
+    <string name="settings_library_health_artist">Missing artist information</string>
+    <string name="settings_library_health_genre">Missing genre</string>
+    <string name="settings_library_health_year">Missing year</string>
+    <string name="settings_library_health_duration">Unknown duration</string>
+    <string name="settings_library_health_size">Unknown file size</string>
+    <string name="settings_library_health_count">%1$d</string>
+    <string name="settings_library_health_metadata_scope">Cover and tag counts use indexed local music records. Covers are not decoded and music files are not reopened for these statistics.</string>
+    <string name="settings_library_health_lyrics_title">Lyrics completeness</string>
+    <string name="settings_library_health_lyrics_found">Available lyrics</string>
+    <string name="settings_library_health_lyrics_missing">No usable lyrics found</string>
+    <string name="settings_library_health_lyrics_unverified">Could not verify</string>
+    <string name="settings_library_health_lyrics_pending">Not checked yet</string>
+    <string name="settings_library_health_not_checked">Not checked</string>
+    <string name="settings_library_health_check_lyrics">Check device lyrics</string>
+    <string name="settings_library_health_stop">Stop checking</string>
+    <string name="settings_library_health_progress">Checked %1$d / %2$d tracks</string>
+    <string name="settings_library_health_playback_wait">Checking is paused during playback to avoid competing for storage. It resumes when playback stops.</string>
+    <string name="settings_library_health_checked_at">Last checked: %1$s</string>
+    <string name="settings_library_health_lyrics_scope">Checks supported embedded, sidecar, imported and cached lyrics without network requests. Unreadable files, inaccessible folders and inspection limits remain unverified. Results are a snapshot; run the check again after changes. Leaving this page stops the check.</string>
+    <string name="settings_library_health_scanning">Statistics will update when the library scan finishes.</string>
+    <string name="settings_library_health_loading">Reading library statistics…</string>
+    <string name="settings_library_health_error">Could not refresh statistics. Tap Refresh statistics to try again.</string>
+    <string name="settings_library_health_lyrics_error">The check stopped. Results already checked remain visible; try again.</string>
+</resources>

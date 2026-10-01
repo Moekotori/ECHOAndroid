@@ -1,5 +1,6 @@
 package app.echo.android.feature.plugins
 
+import app.echo.android.design.EchoSwitch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,7 +11,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -20,6 +20,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -36,6 +38,7 @@ internal fun PluginDetailScreen(
     onDelete: () -> Unit,
 ) {
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
+    val enabledLabel = stringResource(R.string.plugins_enabled)
     val canOpen = plugin.enabled && PluginCapability.UiPage in plugin.grants
     PluginChrome(title = plugin.name, onBack = onBack) {
         if (plugin.summary.isNotBlank()) {
@@ -54,8 +57,9 @@ internal fun PluginDetailScreen(
                 Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(stringResource(R.string.plugins_enabled), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-                Switch(checked = plugin.enabled, onCheckedChange = onEnable)
+                Text(enabledLabel, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                EchoSwitch(checked = plugin.enabled, onCheckedChange = onEnable,
+                    modifier = Modifier.semantics { contentDescription = enabledLabel })
             }
         }
         Text(stringResource(R.string.plugins_permissions), style = MaterialTheme.typography.titleMedium)
@@ -64,6 +68,7 @@ internal fun PluginDetailScreen(
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 plugin.requested.forEach { capability ->
+                    val capabilityLabel = capability.title()
                     Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f)) {
                         Row(
                             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
@@ -71,15 +76,16 @@ internal fun PluginDetailScreen(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(capability.title(), style = MaterialTheme.typography.bodyLarge)
+                                Text(capabilityLabel, style = MaterialTheme.typography.bodyLarge)
                                 Text(
                                     capability.detail(),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
-                            Switch(
+                            EchoSwitch(
                                 checked = capability in plugin.grants,
+                                modifier = Modifier.semantics { contentDescription = capabilityLabel },
                                 onCheckedChange = { onGrant(capability, it) },
                             )
                         }

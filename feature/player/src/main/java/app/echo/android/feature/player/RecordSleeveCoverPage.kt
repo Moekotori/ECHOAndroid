@@ -69,6 +69,7 @@ internal fun RecordSleeveCoverPage(
         minimumPortraitHeight = (720f * LocalDensity.current.fontScale.coerceAtLeast(1f)).dp,
         modifier = modifier.background(RecordSleeveStyle.Paper),
         artwork = {
+            if (!LocalPlayerCoverLandscape.current) {
             Box(Modifier.fillMaxWidth().height(48.dp), contentAlignment = Alignment.Center) {
                 Text(
                     text = track?.album.orEmpty().uppercase(java.util.Locale.ROOT),
@@ -82,6 +83,7 @@ internal fun RecordSleeveCoverPage(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(horizontal = 36.dp),
                 )
+            }
             }
             BoxWithConstraints(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                 NowPlayingTrackTransition(
@@ -102,9 +104,10 @@ internal fun RecordSleeveCoverPage(
             }
         },
         details = {
-            Spacer(Modifier.height(14.dp))
+            val landscape = LocalPlayerCoverLandscape.current
+            Spacer(Modifier.height(if (landscape) 4.dp else 14.dp))
             Box(Modifier.fillMaxWidth().height(1.dp).background(RecordSleeveStyle.Rule))
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(if (landscape) 4.dp else 10.dp))
             NowPlayingTrackTransition(track, previousRequestedFrom, Modifier.fillMaxWidth()) { displayedTrack ->
                 val fullTitle = displayedTrack?.title ?: stringResource(R.string.feature_player_not_playing_d72324)
                 val (title, edition) = remember(fullTitle) { recordSleeveTitleParts(fullTitle) }
@@ -119,8 +122,9 @@ internal fun RecordSleeveCoverPage(
                                 lineHeight = 1.08.em,
                                 letterSpacing = (-0.5).sp,
                             ),
-                            autoSize = TextAutoSize.StepBased(minFontSize = 28.sp, maxFontSize = 46.sp, stepSize = 1.sp),
-                            maxLines = 3,
+                            autoSize = TextAutoSize.StepBased(minFontSize = if (landscape) 20.sp else 28.sp,
+                                maxFontSize = if (landscape) 26.sp else 46.sp, stepSize = 1.sp),
+                            maxLines = if (landscape) 2 else 3,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
@@ -139,24 +143,41 @@ internal fun RecordSleeveCoverPage(
                             fontFamily = RecordSleeveStyle.BodyFont,
                             fontSize = 12.sp,
                             lineHeight = 17.sp,
+                            maxLines = if (landscape) 1 else Int.MAX_VALUE,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(if (landscape) 2.dp else 8.dp))
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         displayedTrack?.artist ?: stringResource(R.string.feature_player_pick_a_song_to_start_68b6af),
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .weight(1f)
                             .openArtistWhen(displayedTrack?.id, displayedTrack?.artist, onOpenArtist),
                         color = RecordSleeveStyle.Ink,
                         fontFamily = RecordSleeveStyle.BodyFont,
-                        fontSize = 20.sp,
-                        lineHeight = 26.sp,
+                        fontSize = if (landscape) 16.sp else 20.sp,
+                        lineHeight = if (landscape) 20.sp else 26.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    if (landscape && !displayedTrack?.album.isNullOrBlank()) {
+                        Text(
+                            displayedTrack?.album.orEmpty().uppercase(java.util.Locale.ROOT),
+                            modifier = Modifier.weight(1f).padding(start = 12.dp),
+                            color = RecordSleeveStyle.Ink.copy(alpha = 0.6f),
+                            fontFamily = RecordSleeveStyle.BodyFont,
+                            fontSize = 11.sp,
+                            letterSpacing = 1.sp,
+                            textAlign = TextAlign.End,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    }
                 }
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(if (landscape) 4.dp else 12.dp))
             val formatLabels = remember(status.diagnostics) {
                 playbackFormatChips(status.diagnostics, ::formatSampleRate)
             }
@@ -172,7 +193,7 @@ internal fun RecordSleeveCoverPage(
             )
             Spacer(Modifier.height(6.dp))
             RecordSleeveScrubber(track?.id, positionMsState, durationMsState, onSeek)
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(if (landscape) 0.dp else 8.dp))
             RecordSleeveTransport(
                 isPlaying = status.isPlaying,
                 shuffleEnabled = status.shuffleEnabled,
@@ -183,9 +204,9 @@ internal fun RecordSleeveCoverPage(
                 onPlayPause = onPlayPause,
                 onNext = { previousRequestedFrom = null; onNext() },
             )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(if (landscape) 0.dp else 4.dp))
             RecordSleeveUtilities(onOpenQueue, onCast, castActive)
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(if (landscape) 0.dp else 8.dp))
         },
     )
 }

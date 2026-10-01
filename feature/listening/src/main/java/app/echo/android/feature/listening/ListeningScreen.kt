@@ -1,5 +1,6 @@
 package app.echo.android.feature.listening
 
+import app.echo.android.design.EchoSlider
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -26,12 +27,11 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
+import app.echo.android.design.EchoIcon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -43,6 +43,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -84,9 +86,9 @@ fun ListeningScreen(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.listening_back))
+                EchoIcon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.listening_back))
             }
-            Text(stringResource(R.string.listening_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.listening_title), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
             if (state.connection != EchoListeningConnection.Offline) {
                 TextButton(onClick = onDisconnect, enabled = !state.busy) { Text(stringResource(R.string.listening_disconnect)) }
             }
@@ -297,8 +299,10 @@ private fun ListeningRoom(
             Text(stringResource(R.string.listening_yielded), style = MaterialTheme.typography.bodyMedium)
             TextButton(onClick = onResumeAudio) { Text(stringResource(R.string.listening_resume)) }
         }
-        Text(stringResource(R.string.listening_volume), style = MaterialTheme.typography.labelLarge)
-        Slider(value = state.volume, onValueChange = onVolume)
+        val volumeLabel = stringResource(R.string.listening_volume)
+        Text(volumeLabel, style = MaterialTheme.typography.labelLarge)
+        EchoSlider(value = state.volume, onValueChange = onVolume,
+            modifier = Modifier.fillMaxWidth().semantics { contentDescription = volumeLabel })
         Text(stringResource(R.string.listening_members), style = MaterialTheme.typography.labelLarge)
         Text(membersLabel(room.members), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(bottom = 8.dp))
         if (room.track?.lines.isNullOrEmpty().not()) {

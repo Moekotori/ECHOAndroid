@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="player_appearance_title">頁面外觀</string>
-    <string name="player_appearance_detail">調整即時預覽，放開後自動儲存。</string>
+    <string name="player_appearance_title">歌曲與歌詞樣式</string>
+    <string name="player_appearance_detail">歌曲詳情與歌詞共用一種樣式，選擇後自動儲存。</string>
     <string name="player_appearance_reset">還原預設</string>
     <string name="player_appearance_record_sleeve">唱片內頁</string>
     <string name="player_appearance_classic">沉浸風格</string>

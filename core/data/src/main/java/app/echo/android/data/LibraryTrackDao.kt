@@ -51,6 +51,34 @@ data class TrackIdPathRow(
 interface LibraryTrackDao {
     @Query(
         """
+        SELECT COUNT(*) AS trackCount,
+            COALESCE(SUM(CASE WHEN artworkUri IS NULL OR TRIM(artworkUri) = '' THEN 1 ELSE 0 END), 0) AS missingCoverCount,
+            COALESCE(SUM(CASE WHEN album IS NULL OR TRIM(album) = '' OR LOWER(TRIM(album)) IN ('<unknown>', 'unknown album', '未知专辑', '不明なアルバム') THEN 1 ELSE 0 END), 0) AS missingAlbumCount,
+            COALESCE(SUM(CASE WHEN TRIM(artist) = '' OR LOWER(TRIM(artist)) IN ('<unknown>', 'unknown artist', '未知艺术家', '不明なアーティスト') THEN 1 ELSE 0 END), 0) AS missingArtistCount,
+            COALESCE(SUM(CASE WHEN genre IS NULL OR TRIM(genre) = '' THEN 1 ELSE 0 END), 0) AS missingGenreCount,
+            COALESCE(SUM(CASE WHEN year IS NULL OR year <= 0 THEN 1 ELSE 0 END), 0) AS missingYearCount,
+            COALESCE(SUM(CASE WHEN durationMs <= 0 THEN 1 ELSE 0 END), 0) AS unknownDurationCount,
+            COALESCE(SUM(CASE WHEN sizeBytes <= 0 THEN 1 ELSE 0 END), 0) AS unknownSizeCount,
+            (SELECT COUNT(*) FROM library_folder_summaries) AS folderCount
+        FROM library_tracks WHERE source = 'mediastore' OR source = 'saf'
+        """,
+    )
+    suspend fun localHealthStats(): app.echo.android.model.library.LibraryHealthStats
+
+    @Query(
+        """
+        SELECT id, contentUri, title, artist, album, durationMs, relativePath, fileName FROM library_tracks
+        WHERE (source = 'mediastore' OR source = 'saf') AND id > :afterId AND id <= :lastId
+        ORDER BY id LIMIT 64
+        """,
+    )
+    suspend fun lyricsInspectionBatch(afterId: String, lastId: String): List<LibraryLyricsInspectionTrack>
+
+    @Query("SELECT MAX(id) FROM library_tracks WHERE source = 'mediastore' OR source = 'saf'")
+    suspend fun lyricsInspectionLastId(): String?
+
+    @Query(
+        """
         SELECT * FROM library_tracks
         ORDER BY title COLLATE NOCASE ASC
         """,

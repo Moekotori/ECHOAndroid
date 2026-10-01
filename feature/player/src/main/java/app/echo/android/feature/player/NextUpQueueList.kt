@@ -1,5 +1,6 @@
 package app.echo.android.feature.player
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
@@ -18,6 +19,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import app.echo.android.model.playback.PlaybackQueueState
+import app.echo.android.design.rememberEchoHapticPerformer
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -27,6 +29,7 @@ private data class QueueDragTarget(val queueIndex: Int, val row: Int, val lastRo
 @Composable
 internal fun NextUpQueueList(
     queue: PlaybackQueueState,
+    playing: Boolean,
     onPlay: (Int) -> Unit,
     onRemove: (Int) -> Unit,
     onMove: (Int, Int) -> Unit,
@@ -40,6 +43,7 @@ internal fun NextUpQueueList(
     }
     var showPrevious by rememberSaveable { mutableStateOf(false) }
     val state = rememberLazyListState()
+    val haptics by rememberUpdatedState(rememberEchoHapticPerformer())
     val dragTargets = remember(queue, nextUp, continuation) {
         buildMap<Any, QueueDragTarget> {
             nextUp.forEachIndexed { row, index ->
@@ -61,9 +65,11 @@ internal fun NextUpQueueList(
 
     fun updateDropTarget() {
         val group = dragSource?.group ?: return
-        dropTarget = state.layoutInfo.visibleItemsInfo.mapNotNull { info ->
+        val next = state.layoutInfo.visibleItemsInfo.mapNotNull { info ->
             dragTargets[info.key]?.takeIf { it.group == group }?.let { it to info }
         }.minByOrNull { (_, info) -> abs(info.offset + info.size / 2f - pointerY) }?.first
+        if (next != null && next != dropTarget) haptics.seekStep(next.row)
+        dropTarget = next
     }
 
     LaunchedEffect(dragSource) {
@@ -97,6 +103,8 @@ internal fun NextUpQueueList(
                     pointerY = offset.y
                     grabOffsetY = offset.y - info.offset
                     rowHeight = info.size
+                    haptics.grab()
+                    haptics.seekStep(target.row)
                 },
                 onDrag = { change, amount ->
                     if (dragSource != null) {
@@ -110,21 +118,25 @@ internal fun NextUpQueueList(
                     val to = dropTarget?.queueIndex
                     dragSource = null
                     dropTarget = null
-                    if (from != null && to != null && from != to) onMove(from, to)
+                    if (from != null && to != null && from != to) {
+                        onMove(from, to)
+                        haptics.endSeek(committed = true)
+                    } else haptics.endSeek(committed = false)
                 },
                 onDragCancel = {
+                    haptics.endSeek(committed = false)
                     dragSource = null
                     dropTarget = null
                 },
             )
         },
         contentPadding = PaddingValues(bottom = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(9.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
         queue.currentItem?.let { track ->
             item(key = "now-label") { QueueSectionTitle(stringResource(R.string.feature_player_now_playing_214a7c)) }
             item(key = "now") {
-                QueueTrackRow(track, 0, 0, true, { onPlay(queue.currentIndex) }, {}, {}, {})
+                QueueTrackRow(track, 0, 0, true, { onPlay(queue.currentIndex) }, {}, {}, {}, playing = playing)
             }
         }
         if (nextUp.isNotEmpty()) {
@@ -165,7 +177,7 @@ internal fun NextUpQueueList(
             }
             if (showPrevious) {
                 itemsIndexed(previous, key = { _, index -> queue.items[index].queueContext?.entryId ?: "previous-$index" }) { _, index ->
-                    QueueTrackRow(queue.items[index], 0, 0, false, { onPlay(index) }, { onRemove(index) }, {}, {})
+                    QueueTrackRow(queue.items[index], 0, 0, false, { onPlay(index) }, { onRemove(index) }, {}, {}, reorderable = false)
                 }
             }
         }
@@ -176,11 +188,7 @@ internal fun NextUpQueueList(
                 modifier = Modifier
                     .offset { IntOffset(0, (pointerY - grabOffsetY).roundToInt()) }
                     .height(with(density) { rowHeight.toDp() })
-                    .graphicsLayer {
-                        shadowElevation = 12.dp.toPx()
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)
-                        clip = true
-                    },
+                    .background(queueSurfaceColor()),
                 interactive = false)
         }
     }
@@ -189,6 +197,6 @@ internal fun NextUpQueueList(
 
 @Composable
 private fun QueueSectionTitle(title: String) {
-    Text(title, Modifier.padding(top = 8.dp, bottom = 4.dp), style = MaterialTheme.typography.titleSmall,
+    Text(title, Modifier.padding(top = 16.dp, bottom = 6.dp), color = app.echo.android.design.echoIconColor().copy(alpha = 0.65f), style = MaterialTheme.typography.labelLarge,
         maxLines = 1, overflow = TextOverflow.Ellipsis)
 }
