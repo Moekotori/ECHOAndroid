@@ -1,5 +1,6 @@
 package app.echo.android
 
+import app.echo.android.connect.hasEchoLocalNetworkAccess
 import android.app.Application
 import android.os.SystemClock
 import app.echo.android.connect.EchoCastMediaStatus
@@ -48,6 +49,7 @@ class EchoLinkSession(private val application: Application) {
         },
     )
     val client = EchoRemoteClient(scope, application).apply { setForeground(false) }
+    val phoneLibrary = EchoPhoneLibrarySession(application, client, scope)
     val playbackRouter = EchoLinkPlaybackRouter(client)
     private val castPeerHost = AtomicReference<String?>(null)
     val castServer = EchoLinkCastServer(
@@ -59,6 +61,22 @@ class EchoLinkSession(private val application: Application) {
     private val settings = EchoSettingsStore(application)
     private var persistedKey: Pair<String?, String>? = null
     private var attemptedKey: Pair<String?, String>? = null
+    private val localNetworkAccess = MutableStateFlow(application.hasEchoLocalNetworkAccess())
+
+    fun refreshLocalNetworkAccess() {
+        val granted = application.hasEchoLocalNetworkAccess()
+        if (localNetworkAccess.value == granted) return
+        if (!granted) {
+            val endpoint = client.status.value.endpoint
+            if (endpoint != null && app.echo.android.connect.echoAddressNeedsLocalNetworkAccess(
+                    EchoLinkCastPolicy.advertisedBaseUrl(endpoint.host, endpoint.port))) {
+                attemptedKey = null
+                client.disconnect()
+            }
+            stopLocalCast()
+        }
+        localNetworkAccess.value = granted
+    }
     private val _castActive = MutableStateFlow(false)
     val castActive: StateFlow<Boolean> = _castActive.asStateFlow()
     private val _castTargetName = MutableStateFlow<String?>(null)
@@ -86,11 +104,12 @@ class EchoLinkSession(private val application: Application) {
 
     init {
         scope.launch {
-            settings.appSettings.collect { saved ->
+            kotlinx.coroutines.flow.combine(settings.appSettings, localNetworkAccess) { saved, allowed -> saved to allowed }.collect { (saved, allowed) ->
                 val key = saved.echoLinkPcAddress to saved.echoLinkPcToken.orEmpty()
                 if (!saved.echoLinkAutoReconnectEnabled) {
                     attemptedKey = null
-                } else if (key != attemptedKey && !key.first.isNullOrBlank()) {
+                } else if ((allowed || !app.echo.android.connect.echoAddressNeedsLocalNetworkAccess(key.first.orEmpty())) &&
+                    key != attemptedKey && !key.first.isNullOrBlank()) {
                     attemptedKey = key
                     client.connectManual(
                         address = key.first!!,
@@ -104,6 +123,7 @@ class EchoLinkSession(private val application: Application) {
         scope.launch {
             var lastConnectionError: String? = null
             client.status.collect { status ->
+                phoneLibrary.connectionChanged(status.endpoint, status.connectionState == EchoRemoteConnectionState.Connected)
                 val endpoint = status.endpoint
                 if (status.connectionState == EchoRemoteConnectionState.Connected && endpoint != null && !endpoint.needsV2PairExchange) {
                     val address = "${endpoint.scheme}://${if (':' in endpoint.host) "[${endpoint.host}]" else endpoint.host}:${endpoint.port}"

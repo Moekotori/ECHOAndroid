@@ -1,0 +1,3 @@
+<resources>
+    <string name="connect_local_network_permission">請允許區域網路存取權限，然後重新連線。</string>
+</resources>

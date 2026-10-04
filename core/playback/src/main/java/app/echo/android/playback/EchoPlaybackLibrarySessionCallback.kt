@@ -205,12 +205,9 @@ internal class EchoPlaybackLibrarySessionCallback(
         playWhenReady: Boolean,
     ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> =
         scope.future {
-            val snapshot = restorer.restore(userRequestedPlay = playWhenReady)
+            val snapshot = restorer.restore(userRequestedPlay = false)
             withContext(Dispatchers.Main.immediate) {
                 val live = player()
-                if (playWhenReady) {
-                    live?.play()
-                }
                 if (live != null && live.mediaItemCount > 0) {
                     MediaSession.MediaItemsWithStartPosition(
                         (0 until live.mediaItemCount).map { live.getMediaItemAt(it) },

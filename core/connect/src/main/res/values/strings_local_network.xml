@@ -1,0 +1,3 @@
+<resources>
+    <string name="connect_local_network_permission">Allow local network access in app permissions, then reconnect.</string>
+</resources>

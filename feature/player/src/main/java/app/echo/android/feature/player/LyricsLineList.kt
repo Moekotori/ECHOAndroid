@@ -93,7 +93,10 @@ internal fun LyricsLineList(
         val immersive = lyricsImmersiveModeEnabled && synced
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize().lyricsViewportFade(!lightweight),
+            modifier = Modifier.fillMaxSize().lyricsViewportFade(!lightweight).lyricsFrameRate(
+                visible = animationsVisible, continuousMotion = false,
+                scrolling = listState.isScrollInProgress, lightweight = lightweight,
+            ),
             contentPadding = PaddingValues(
                 top = if (synced) maxHeight * 0.36f else 16.dp,
                 bottom = if (synced) maxHeight * 0.64f else 16.dp,

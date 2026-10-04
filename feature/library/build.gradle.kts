@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "app.echo.android.feature.library"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 26

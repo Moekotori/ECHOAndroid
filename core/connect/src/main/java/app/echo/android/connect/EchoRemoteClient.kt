@@ -52,6 +52,15 @@ class EchoRemoteClient internal constructor(
     private val queueBrowser = EchoLinkRemoteQueue(scope, transport, { endpoint },
         { _status.value.playback.queue }, { it.userMessage() })
     val remoteQueue = queueBrowser.state
+    fun isPhoneLibraryUnsupported(error: Throwable): Boolean =
+        (error as? EchoLinkHttpException)?.statusCode in listOf(404, 405, 501)
+
+    suspend fun registerPhoneLibrary(target: app.echo.android.model.connect.EchoRemoteEndpoint,
+        registration: app.echo.android.model.connect.EchoPhoneLibraryRegistration) = transport.registerPhoneLibrary(target, registration)
+
+    suspend fun unregisterPhoneLibrary(target: app.echo.android.model.connect.EchoRemoteEndpoint, sessionId: String) =
+        transport.unregisterPhoneLibrary(target, sessionId)
+
     fun refreshQueue() { queueBrowser.startWatching(); queueBrowser.refresh() }
     fun loadMoreQueue() = queueBrowser.loadMore()
     fun loadPreviousQueue() = queueBrowser.loadPrevious()
@@ -177,6 +186,13 @@ class EchoRemoteClient internal constructor(
     }
 
     fun connect(nextEndpoint: EchoRemoteEndpoint, refreshLibraryOnConnect: Boolean = true) {
+        if (appContext != null && echoAddressNeedsLocalNetworkAccess("${nextEndpoint.scheme}://${if (':' in nextEndpoint.host) "[${nextEndpoint.host}]" else nextEndpoint.host}:${nextEndpoint.port}") &&
+            !appContext.hasEchoLocalNetworkAccess()) {
+            disconnect()
+            _status.update { it.copy(connectionState = EchoRemoteConnectionState.Error,
+                error = text(R.string.connect_local_network_permission)) }
+            return
+        }
         authRejected = false
         refreshOnForeground = false
         pollFailures = 0

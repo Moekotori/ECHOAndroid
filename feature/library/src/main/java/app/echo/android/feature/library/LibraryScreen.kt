@@ -758,7 +758,7 @@ fun LibraryScreen(
         else -> LibraryDetailTransitionTarget.Browser
     }
 
-    val splitDetails = prefersSplit && selectedSource != LibrarySourceMode.PcEcho
+    val splitDetails = prefersSplit
 
     @Composable
     fun DetailContent(target: LibraryDetailTransitionTarget) {

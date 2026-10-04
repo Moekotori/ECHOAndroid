@@ -49,12 +49,16 @@ data class EchoLinkCastPublication(
     val format: EchoRemoteAudioFormat? = null,
 )
 
+data class EchoLinkHttpReply(val status: Int = 200, val body: String)
+
 class EchoLinkCastServer(
     private val openBody: EchoLinkCastBodyFactory,
     private val allowedPeerHost: () -> String? = { null },
     private val bindHost: String = "0.0.0.0",
     private val bindPort: Int = 0,
     private val nowMs: () -> Long = { System.currentTimeMillis() },
+    private val metadata: ((String, Map<String, String>) -> EchoLinkHttpReply?)? = null,
+    private val resolvePublication: ((String) -> Pair<EchoLinkCastPublication, Boolean>?)? = null,
 ) {
     private val publications = ConcurrentHashMap<String, EchoLinkCastPublication>()
     private val running = AtomicBoolean(false)
@@ -203,7 +207,16 @@ class EchoLinkCastServer(
             reply(output, 405, "Method Not Allowed", 0)
             return
         }
-        val located = locatePublication(request.path)
+        metadata?.invoke(request.path, request.headers)?.let { response ->
+            val bytes = response.body.toByteArray(Charsets.UTF_8)
+            writeStatus(output, response.status, if (response.status == 200) "OK" else "Request Failed",
+                "application/json; charset=utf-8", bytes.size.toLong(), "Cache-Control: no-store\r\n")
+            if (method != "HEAD") output.write(bytes)
+            output.flush()
+            lastActivityMs.set(nowMs())
+            return
+        }
+        val located = locatePublication(request.path) ?: resolvePublication?.invoke(request.path)
         if (located == null) {
             reply(output, 404, "Not Found", 0)
             return
@@ -251,7 +264,7 @@ class EchoLinkCastServer(
                 null
             }
             val format = EchoLinkCastFormat.merge(publication.format, sniffed)
-            if (format != null && format != publication.format) {
+            if (format != null && format != publication.format && publications.containsKey(publication.token)) {
                 publications[publication.token] = publication.copy(format = format)
             }
             val end = range?.second ?: totalLength?.minus(1L)

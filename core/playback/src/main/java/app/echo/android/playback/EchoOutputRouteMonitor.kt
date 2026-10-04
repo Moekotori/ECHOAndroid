@@ -28,6 +28,22 @@ class EchoOutputRouteMonitor(context: Context) {
     private val _route = MutableStateFlow(EchoOutputRoute())
     val route: StateFlow<EchoOutputRoute> = _route.asStateFlow()
 
+    private var routeOwner: Any? = null
+    private var actualDevices: List<AudioDeviceInfo> = emptyList()
+
+    internal fun setActualRoutes(owner: Any, devices: List<AudioDeviceInfo>) {
+        routeOwner = owner
+        actualDevices = devices.toList()
+        refresh()
+    }
+
+    internal fun clearActualRoutes(owner: Any) {
+        if (routeOwner !== owner) return
+        routeOwner = null
+        actualDevices = emptyList()
+        refresh()
+    }
+
     private var a2dp: BluetoothA2dp? = null
     private var profileRequested = false
     private var started = false
@@ -90,7 +106,8 @@ class EchoOutputRouteMonitor(context: Context) {
 
     private fun scan(): EchoOutputRoute {
         val preferUsb = EchoPlaybackProcessRuntime.usbExclusiveEnabled
-        val devices = outputDevices().map { device ->
+        val verified = actualDevices.isNotEmpty()
+        val devices = (if (verified) actualDevices else outputDevices()).map { device ->
             EchoOutputDeviceCandidate(
                 type = device.type,
                 name = device.productName?.toString()?.trim()?.takeIf { it.isNotEmpty() },
@@ -107,6 +124,8 @@ class EchoOutputRouteMonitor(context: Context) {
             deviceName = picked.name,
             bluetoothCodec = codec,
             address = picked.address,
+            verified = verified,
+            deviceNames = if (verified) devices.map { it.name ?: EchoOutputRoutePolicy.routeLabel(EchoOutputRoutePolicy.kind(it.type), null, null) }.distinct() else emptyList(),
         )
     }
 

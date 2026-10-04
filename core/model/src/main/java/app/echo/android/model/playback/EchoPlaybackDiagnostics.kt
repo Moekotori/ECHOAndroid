@@ -11,6 +11,8 @@ data class EchoPlaybackDiagnostics(
     val outputDeviceKind: String = EchoOutputDeviceKind.System.id,
     val outputDeviceName: String? = null,
     val bluetoothCodec: String? = null,
+    val outputRouteVerified: Boolean = false,
+    val routedDeviceNames: List<String> = emptyList(),
     val offloadActive: Boolean = false,
     val usbExclusiveEnabled: Boolean = false,
     val usbConnected: Boolean = false,

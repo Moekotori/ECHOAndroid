@@ -35,6 +35,7 @@ private val settingsGroups = listOf(
 @Composable
 internal fun SettingsHome(
     query: String,
+    selectedCategory: SettingsCategory? = null,
     compactMode: Boolean,
     summaries: Map<SettingsCategory, String>,
     availability: SettingsSearchAvailability,
@@ -76,11 +77,11 @@ internal fun SettingsHome(
                 item(key = "music-shortcuts", contentType = "settings-group") {
                     Column {
                         SettingsHomeRow(Icons.Rounded.FolderOpen,
-                            stringResource(R.string.settings_quick_scan), "", compactMode, onScanMusic)
+                            stringResource(R.string.settings_quick_scan), "", compactMode, onClick = onScanMusic)
                         SettingsHomeRow(SettingsCategoryIcons.Services,
-                            stringResource(R.string.settings_quick_connect), "", compactMode, onOpenConnect)
+                            stringResource(R.string.settings_quick_connect), "", compactMode, onClick = onOpenConnect)
                         SettingsHomeRow(Icons.Rounded.GraphicEq,
-                            stringResource(R.string.settings_quick_sound), soundSummary, compactMode, onOpenSound)
+                            stringResource(R.string.settings_quick_sound), soundSummary, compactMode, onClick = onOpenSound)
                     }
                 }
                 settingsGroups.forEach { (title, entries) ->
@@ -98,11 +99,12 @@ internal fun SettingsHome(
                                 if (title == R.string.settings_group_app) {
                                     SettingsHomeRow(SettingsCategoryIcons.Plugins,
                                         stringResource(R.string.settings_plugins),
-                                        stringResource(R.string.settings_plugins_summary), compactMode, onOpenPlugins)
+                                        stringResource(R.string.settings_plugins_summary), compactMode, onClick = onOpenPlugins)
+                                    SettingsHomeDivider()
                                 }
                                 entries.forEach { entry ->
                                     SettingsHomeRow(entry.icon, stringResource(entry.title),
-                                        summaries[entry].orEmpty(), compactMode) { onOpenCategory(entry) }
+                                        summaries[entry].orEmpty(), compactMode, selected = entry == selectedCategory) { onOpenCategory(entry) }
                                 }
                             }
                         }
@@ -121,14 +123,16 @@ private fun SettingsHomeDivider() {
 
 @Composable
 private fun SettingsHomeRow(icon: ImageVector, title: String, summary: String,
-    compactMode: Boolean, onClick: () -> Unit) {
+    compactMode: Boolean, selected: Boolean = false, onClick: () -> Unit) {
     Surface(onClick = onClick, shape = androidx.compose.ui.graphics.RectangleShape, color = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface, modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.heightIn(min = if (compactMode) 56.dp else 62.dp)
             .padding(horizontal = SettingsContentInset, vertical = if (compactMode) 6.dp else 8.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             EchoIcon(icon, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium,
+            Text(title, style = MaterialTheme.typography.bodyLarge,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f), maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (summary.isNotBlank()) Text(summary, style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.weight(0.8f), textAlign = TextAlign.End,

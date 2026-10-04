@@ -102,15 +102,16 @@ internal fun signalPathStages(
         ))
         add(SignalPathStage(
             label = stringResource(R.string.diag_output_end),
-            value = outputName ?: outputDeviceKindLabel(outputKind.id),
-            detail = if (outputName != null) outputDeviceKindLabel(outputKind.id) else stringResource(R.string.path_route_note),
+            value = if (d.outputRouteVerified && d.routedDeviceNames.isNotEmpty()) d.routedDeviceNames.joinToString(" · ")
+                else outputName ?: outputDeviceKindLabel(outputKind.id),
+            detail = stringResource(if (d.outputRouteVerified) R.string.path_route_verified else R.string.path_route_pending),
             icon = when (outputKind) {
                 EchoOutputDeviceKind.Usb -> Icons.Rounded.Usb
                 EchoOutputDeviceKind.Bluetooth -> Icons.Rounded.Bluetooth
                 EchoOutputDeviceKind.Wired -> Icons.Rounded.Headphones
                 else -> Icons.Rounded.Speaker
             },
-            highlighted = live && d.usbExclusiveStreaming,
+            highlighted = live && d.outputRouteVerified,
             facts = listOf(
                 stringResource(R.string.path_output_clock) to
                     (d.bitPerfectSampleRateHz?.takeIf {

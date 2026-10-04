@@ -1,0 +1,5 @@
+<resources>
+    <string name="phone_library_notification_title">Sharing phone library</string>
+    <string name="phone_library_notification_text">Your connected PC can browse and play local music.</string>
+    <string name="phone_library_notification_stop">Stop sharing</string>
+</resources>

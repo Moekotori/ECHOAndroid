@@ -121,6 +121,23 @@ interface LibraryTrackDao {
     @Query("SELECT trackId FROM library_tracks_fts WHERE library_tracks_fts MATCH :matchQuery LIMIT 1")
     suspend fun validateFtsQuery(matchQuery: String): String?
 
+    @Query("""
+        SELECT * FROM library_tracks
+        WHERE source IN ('mediastore', 'saf') AND clipStartMs = 0 AND clipEndMs = 0 AND id NOT LIKE '%#cue:%'
+          AND (contentUri LIKE 'content:%' OR contentUri LIKE 'file:%')
+          AND (:query = '' OR title LIKE :pattern ESCAPE '\' OR artist LIKE :pattern ESCAPE '\' OR album LIKE :pattern ESCAPE '\')
+        ORDER BY title COLLATE NOCASE, id LIMIT :limit OFFSET :offset
+    """)
+    suspend fun sharedLocalTracks(query: String, pattern: String, limit: Int, offset: Int): List<LibraryTrackEntity>
+
+    @Query("""
+        SELECT COUNT(*) FROM library_tracks
+        WHERE source IN ('mediastore', 'saf') AND clipStartMs = 0 AND clipEndMs = 0 AND id NOT LIKE '%#cue:%'
+          AND (contentUri LIKE 'content:%' OR contentUri LIKE 'file:%')
+          AND (:query = '' OR title LIKE :pattern ESCAPE '\' OR artist LIKE :pattern ESCAPE '\' OR album LIKE :pattern ESCAPE '\')
+    """)
+    suspend fun sharedLocalTrackCount(query: String, pattern: String): Int
+
     @Query("SELECT * FROM library_tracks WHERE id = :trackId LIMIT 1")
     suspend fun getTrackById(trackId: String): LibraryTrackEntity?
 

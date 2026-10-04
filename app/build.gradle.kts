@@ -59,12 +59,12 @@ the<org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension>().compilerOpt
 
 android {
     namespace = "app.echo.android"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "app.echo.android"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 37
         versionName = echoVersionName
         versionCode = echoVersionCode
         buildConfigField(

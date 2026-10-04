@@ -6,6 +6,7 @@ import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.audio.AudioOutput
 import androidx.media3.exoplayer.audio.AudioOutputProvider
+import androidx.media3.exoplayer.audio.AudioTrackAudioOutput
 import androidx.media3.exoplayer.audio.AudioTrackAudioOutputProvider
 import androidx.media3.exoplayer.audio.ForwardingAudioOutputProvider
 import app.echo.android.model.error.EchoErrorLog
@@ -22,6 +23,7 @@ import app.echo.android.usbaudio.UsbPcmSourceEncoding
 internal class EchoAudioOutputProvider(
     context: Context,
 ) : ForwardingAudioOutputProvider(AudioTrackAudioOutputProvider.Builder(context).build()) {
+    private val routes = EchoPlaybackProcessRuntime.outputRouteMonitor(context)
     private val probe = UsbAudioProbe(context)
     private val usbOutput = UsbExclusivePcmOutput(context)
 
@@ -46,7 +48,8 @@ internal class EchoAudioOutputProvider(
             exclusiveOutputOrNull(outputConfig)?.let { return it }
         }
         EchoPlaybackProcessRuntime.setUsbExclusiveSinkStatus(null)
-        return super.getAudioOutput(outputConfig)
+        val output = super.getAudioOutput(outputConfig)
+        return if (output is AudioTrackAudioOutput) EchoRoutingAudioOutput(output, routes) else output
     }
 
     private fun exclusiveConfigOrNull(

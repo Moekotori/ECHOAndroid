@@ -1,0 +1,4 @@
+<resources>
+    <string name="path_route_verified">目前音訊路徑已回報實際輸出裝置</string>
+    <string name="path_route_pending">候選輸出裝置，尚未回報實際播放路由</string>
+</resources>

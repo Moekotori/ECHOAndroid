@@ -6,6 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -61,7 +62,15 @@ internal fun LyricsSettingsPreview(
             horizontalAlignment = lyricsHorizontalAlignment(alignment),
             verticalArrangement = Arrangement.spacedBy(lineGap),
         ) {
-            Text(
+            if (alignment == "vertical") {
+                VerticalLyricText(
+                    line = app.echo.android.model.lyrics.EchoLyricLine(-1, text = stringResource(R.string.lyrics_vertical_preview)),
+                    lineEndMs = null, active = false, position = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0L) },
+                    wordHighlight = false, estimatedHighlight = false, fontFamily = fontFamily, fontScale = fontScale * 0.7f,
+                    spacing = lineSpacing, color = accent, highlight = accent,
+                    modifier = Modifier.fillMaxWidth().then(Modifier.height(100.dp)),
+                )
+            } else Text(
                 text = stringResource(when (motionMode) {
                     "stage" -> R.string.feature_player_each_line_lifts_with_the_beat_ddb972
                     "calm" -> R.string.feature_player_lyrics_rest_quietly_in_the_center_810bd7

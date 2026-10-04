@@ -1,0 +1,10 @@
+<resources>
+    <string name="phone_library_share_title">Share phone library with PC</string>
+    <string name="phone_library_share_description">Let the connected PC browse and play local audio files. Turn off to revoke access. CUE clips are excluded.</string>
+    <string name="phone_library_share_unsupported">Update ECHOSteam to access the phone library.</string>
+    <string name="phone_library_share_error">Sharing failed. Check the local network and retry.</string>
+    <string name="phone_library_share_starting">Starting sharing…</string>
+    <string name="phone_library_share_active">Sharing with the connected PC</string>
+    <string name="phone_library_share_connect_first">Connect to a PC first</string>
+    <string name="phone_library_share_off">Sharing is off</string>
+</resources>

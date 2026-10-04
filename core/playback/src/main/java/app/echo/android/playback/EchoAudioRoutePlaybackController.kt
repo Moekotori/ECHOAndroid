@@ -20,6 +20,7 @@ class EchoAudioRoutePlaybackController(
     context: Context,
     private val player: Player,
     private val scope: CoroutineScope,
+    private val canInteractWithAudio: () -> Boolean = { true },
 ) {
     private val appContext = context.applicationContext
     private var started = false
@@ -116,7 +117,7 @@ class EchoAudioRoutePlaybackController(
         resumeJob?.cancel()
         resumeJob = scope.launch {
             delay(RESUME_DEBOUNCE_MS)
-            if (!pausedByDisconnect || !canResume()) return@launch
+            if (!pausedByDisconnect || !canResume() || !canInteractWithAudio()) return@launch
             acting = true
             pausedByDisconnect = false
             if (player.playbackState == Player.STATE_IDLE) player.prepare()
