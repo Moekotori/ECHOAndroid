@@ -1,0 +1,11 @@
+<resources>
+    <string name="library_multiselect">Выбрать несколько</string>
+    <string name="batch_selection_limit">До %1$d треков</string>
+    <string name="batch_clear_selection">Снять выделение</string>
+    <plurals name="batch_selected_count">
+        <item quantity="one">Выбран %1$d трек</item>
+        <item quantity="few">Выбрано %1$d трека</item>
+        <item quantity="many">Выбрано %1$d треков</item>
+        <item quantity="other">Выбрано %1$d трека</item>
+    </plurals>
+</resources>

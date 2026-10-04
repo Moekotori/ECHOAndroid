@@ -91,6 +91,20 @@ object EchoPlaybackProcessRuntime {
 
     fun setUsbBitPerfectEnabled(enabled: Boolean) = setUsbOutputMode(usbExclusiveEnabled, enabled)
 
+    @Volatile
+    var usbOutputOptions = app.echo.android.model.playback.EchoUsbOutputOptions()
+        private set
+
+    fun setUsbOutputOptions(options: app.echo.android.model.playback.EchoUsbOutputOptions) {
+        val next = options.normalized
+        val previous = usbOutputOptions
+        if (next == previous) return
+        usbOutputOptions = next
+        if (usbExclusiveEnabled && next.needsRebuild(previous, usbBitPerfectEnabled)) {
+            reconfigureAudioPipeline(forceSinkReset = true)
+        }
+    }
+
     fun setUsbOutputMode(exclusive: Boolean, strict: Boolean) {
         val changed = usbBitPerfectEnabled != strict || usbExclusiveEnabled != exclusive
         if (!changed) return

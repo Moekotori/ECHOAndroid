@@ -19,6 +19,16 @@ internal fun interface UsbAudioControlTransfer {
         payload: ByteArray, length: Int, timeoutMs: Int): Int
 }
 
+internal data class UsbAudioClockConfiguration(
+    val requestedHz: Int,
+    val setSucceeded: Boolean = false,
+    val readBackHz: Int? = null,
+    val clockId: Int? = null,
+) {
+    val accepted: Boolean get() = UsbAudioClock.accepted(requestedHz, setSucceeded, readBackHz)
+    val verified: Boolean get() = requestedHz > 0 && readBackHz == requestedHz
+}
+
 object UsbAudioClock {
     fun setSampleRate(connection: UsbDeviceConnection, format: UsbAudioStreamingFormat, sampleRateHz: Int): Boolean =
         setSampleRate(UsbAudioControlTransfer(connection::controlTransfer), format, sampleRateHz)
@@ -33,23 +43,48 @@ object UsbAudioClock {
         connection: UsbAudioControlTransfer,
         format: UsbAudioStreamingFormat,
         sampleRateHz: Int,
-    ): Boolean {
-        val rate = sampleRateHz.takeIf { it > 0 } ?: return false
-        val ranges = getSupportedSampleRates(connection, format)
-        if (ranges.isNotEmpty() && !supportsRate(ranges, rate)) return false
-        return when (format.audioClassVersion) {
-            UsbAudioClassVersion.Uac2,
-            UsbAudioClassVersion.Uac3,
-            -> setUac2ClockRate(connection, format, rate) || setUac1EndpointRate(connection, format, rate)
-            else -> setUac1EndpointRate(connection, format, rate) || setUac2ClockRate(connection, format, rate)
-        }
+    ): Boolean = configureSampleRate(connection, format, sampleRateHz).accepted
+
+    internal fun configureSampleRate(
+        connection: UsbAudioControlTransfer,
+        format: UsbAudioStreamingFormat,
+        sampleRateHz: Int,
+        afterRateSet: () -> Unit = {},
+    ): UsbAudioClockConfiguration {
+        if (sampleRateHz <= 0) return UsbAudioClockConfiguration(sampleRateHz)
+        val uac2 = format.audioClassVersion == UsbAudioClassVersion.Uac2 ||
+            format.audioClassVersion == UsbAudioClassVersion.Uac3
+        // Resolve once: RANGE, SET and readback must address the same active source.
+        val clockId = if (uac2) resolveClockSource(connection, format)
+            ?: return UsbAudioClockConfiguration(sampleRateHz) else null
+        val resolved = if (clockId != null) format.copy(
+            clockSourceIds = listOf(clockId), clockSelectorSources = emptyMap(),
+        ) else format
+        val ranges = getSupportedSampleRates(connection, resolved)
+        if (ranges.isNotEmpty() && !supportsRate(ranges, sampleRateHz))
+            return UsbAudioClockConfiguration(sampleRateHz, clockId = clockId)
+        val payload = if (uac2) sampleRateHz.toUac2RateBytes() else sampleRateHz.toUac1RateBytes()
+        val index = if (clockId != null) clockIndex(clockId, format.acInterfaceNumber)
+            else format.endpointAddress ?: return UsbAudioClockConfiguration(sampleRateHz)
+        val transferred = connection.controlTransfer(
+            if (uac2) UAC2_INTERFACE_SET else UAC1_ENDPOINT_SET,
+            SET_CUR, CS_SAM_FREQ shl 8, index, payload, payload.size, TIMEOUT_MS,
+        )
+        val setSucceeded = transferred == payload.size
+        if (setSucceeded) afterRateSet()
+        val readBack = if (clockId != null) getUac2ClockRate(connection, resolved, clockId)
+            else getUac1EndpointRate(connection, resolved)
+        return UsbAudioClockConfiguration(sampleRateHz, setSucceeded, readBack, clockId)
     }
 
     internal fun getSampleRate(
         connection: UsbAudioControlTransfer,
         format: UsbAudioStreamingFormat,
-    ): Int? =
-        getUac2ClockRate(connection, format) ?: getUac1EndpointRate(connection, format)
+    ): Int? = when (format.audioClassVersion) {
+        UsbAudioClassVersion.Uac2, UsbAudioClassVersion.Uac3 ->
+            resolveClockSource(connection, format)?.let { getUac2ClockRate(connection, format, it) }
+        else -> getUac1EndpointRate(connection, format)
+    }
 
     internal fun getSupportedSampleRates(
         connection: UsbAudioControlTransfer,
@@ -67,18 +102,17 @@ object UsbAudioClock {
             return format.sampleRates.map { UsbAudioClockRange(it, it, 0) }
         }
         val payload = ByteArray(RANGE_BUFFER_BYTES)
-        return clockIdsFor(format).firstNotNullOfOrNull { clockId ->
-            val transferred = connection.controlTransfer(
-                UAC2_INTERFACE_GET,
-                UAC2_RANGE,
-                UAC2_CS_SAM_FREQ shl 8,
-                clockIndex(clockId, format.acInterfaceNumber),
-                payload,
-                payload.size,
-                TIMEOUT_MS,
-            )
-            parseRangePayload(payload, transferred).takeIf { it.isNotEmpty() }
-        }.orEmpty()
+        val clockId = resolveClockSource(connection, format) ?: return emptyList()
+        val transferred = connection.controlTransfer(
+            UAC2_INTERFACE_GET,
+            UAC2_RANGE,
+            UAC2_CS_SAM_FREQ shl 8,
+            clockIndex(clockId, format.acInterfaceNumber),
+            payload,
+            payload.size,
+            TIMEOUT_MS,
+        )
+        return parseRangePayload(payload, transferred)
     }
 
     fun supportsRate(ranges: List<UsbAudioClockRange>, rateHz: Int): Boolean =
@@ -107,27 +141,6 @@ object UsbAudioClock {
         }
     }
 
-    private fun setUac1EndpointRate(
-        connection: UsbAudioControlTransfer,
-        format: UsbAudioStreamingFormat,
-        sampleRateHz: Int,
-    ): Boolean {
-        val endpoint = format.endpointAddress ?: return false
-        val payload = sampleRateHz.toUac1RateBytes()
-        val transferred = connection.controlTransfer(
-            UAC1_ENDPOINT_SET,
-            SET_CUR,
-            CS_SAM_FREQ shl 8,
-            endpoint,
-            payload,
-            payload.size,
-            TIMEOUT_MS,
-        )
-        if (transferred != payload.size) return false
-        val read = getUac1EndpointRate(connection, format)
-        return accepted(sampleRateHz, setSucceeded = true, readBackHz = read)
-    }
-
     private fun getUac1EndpointRate(
         connection: UsbAudioControlTransfer,
         format: UsbAudioStreamingFormat,
@@ -147,51 +160,41 @@ object UsbAudioClock {
         return payload.toUac1Rate()
     }
 
-    private fun setUac2ClockRate(
-        connection: UsbAudioControlTransfer,
-        format: UsbAudioStreamingFormat,
-        sampleRateHz: Int,
-    ): Boolean {
-        val payload = sampleRateHz.toUac2RateBytes()
-        return clockIdsFor(format).any { clockId ->
-            val transferred = connection.controlTransfer(
-                UAC2_INTERFACE_SET,
-                UAC2_CUR,
-                UAC2_CS_SAM_FREQ shl 8,
-                clockIndex(clockId, format.acInterfaceNumber),
-                payload,
-                payload.size,
-                TIMEOUT_MS,
-            )
-            if (transferred != payload.size) return@any false
-            val read = getUac2ClockRate(connection, format, clockId)
-            accepted(sampleRateHz, setSucceeded = true, readBackHz = read)
-        }
-    }
-
     private fun getUac2ClockRate(
         connection: UsbAudioControlTransfer,
         format: UsbAudioStreamingFormat,
-        clockId: Int? = null,
+        clockId: Int,
     ): Int? {
         val payload = ByteArray(4)
-        val clocks = if (clockId != null) listOf(clockId) else clockIdsFor(format)
-        return clocks.firstNotNullOfOrNull { id ->
-            val transferred = connection.controlTransfer(
-                UAC2_INTERFACE_GET,
-                UAC2_CUR,
-                UAC2_CS_SAM_FREQ shl 8,
-                clockIndex(id, format.acInterfaceNumber),
-                payload,
-                payload.size,
-                TIMEOUT_MS,
-            )
-            if (transferred == payload.size) payload.toUac2Rate() else null
-        }
+        val transferred = connection.controlTransfer(
+            UAC2_INTERFACE_GET,
+            UAC2_CUR,
+            UAC2_CS_SAM_FREQ shl 8,
+            clockIndex(clockId, format.acInterfaceNumber),
+            payload,
+            payload.size,
+            TIMEOUT_MS,
+        )
+        return if (transferred == payload.size) payload.toUac2Rate() else null
     }
 
-    private fun clockIdsFor(format: UsbAudioStreamingFormat): List<Int> =
-        format.clockSourceIds.filter { it > 0 }.ifEmpty { listOf(1, 2, 3, 4, 5) }
+    private fun resolveClockSource(connection: UsbAudioControlTransfer, format: UsbAudioStreamingFormat): Int? {
+        var id = format.clockSourceIds.singleOrNull()?.takeIf { it in 1..255 } ?: return null
+        val visited = mutableSetOf<Int>()
+        while (visited.add(id)) {
+            val sources = format.clockSelectorSources[id] ?: return id
+            if (sources.isEmpty()) return null
+            val pin = if (sources.size == 1) 1 else {
+                val payload = ByteArray(1)
+                val transferred = connection.controlTransfer(UAC2_INTERFACE_GET, UAC2_CUR,
+                    CS_SAM_FREQ shl 8, clockIndex(id, format.acInterfaceNumber), payload, 1, TIMEOUT_MS)
+                if (transferred != 1) return null
+                payload[0].toInt() and 0xff
+            }
+            id = sources.getOrNull(pin - 1)?.takeIf { it in 1..255 } ?: return null
+        }
+        return null
+    }
 
     private fun clockIndex(clockId: Int, acInterfaceNumber: Int?): Int =
         ((clockId and 0xff) shl 8) or ((acInterfaceNumber ?: 0) and 0xff)

@@ -1,70 +1,56 @@
 package app.echo.android.feature.settings
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+
 import app.echo.android.feature.settings.R as L10nR
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.StarBorder
-import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import app.echo.android.design.EchoIcon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.EchoExpand
-import app.echo.android.design.EchoMotion
-import app.echo.android.design.echoClickable
-import app.echo.android.design.echoExpandIndicator
-import app.echo.android.design.echoItemMotion
 import app.echo.android.model.playback.EchoEqualizerState
 import app.echo.android.model.playback.EchoEqualizerUserPresets
 import app.echo.android.model.playback.OpraHeadphoneCorrectionState
-import kotlin.math.abs
+
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.text.style.TextOverflow
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 @Composable
 internal fun SignalHeadphoneCorrection(
@@ -82,101 +68,107 @@ internal fun SignalHeadphoneCorrection(
     onToggleFavorite: () -> Unit,
     onApplyUserPreset: (String) -> Unit,
 ) {
-    LaunchedEffect(Unit) {
-        if (state.status.source == "empty" && !state.loading) onBrandSelected(null)
-    }
     val keyboard = LocalSoftwareKeyboardController.current
     val uriHandler = LocalUriHandler.current
     val scheme = MaterialTheme.colorScheme
-    val search = { if (!state.loading && state.query.isNotBlank()) { keyboard?.hide(); onSearch() } }
+    val currentSearch by rememberUpdatedState(onSearch)
+    var submittedQuery by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        if (state.status.source == "empty" && !state.loading && state.query.isBlank()) onBrandSelected(null)
+    }
+    // The existing controller cancels replaced requests. Brand browsing filters its loaded models locally.
+    LaunchedEffect(state.query, state.selectedBrandId) {
+        if (state.selectedBrandId == null && state.query.isNotBlank()) {
+            delay(350)
+            if (submittedQuery != state.query) {
+                submittedQuery = state.query
+                currentSearch()
+            }
+        }
+    }
+    val search = {
+        if (!state.loading && state.query.isNotBlank()) {
+            submittedQuery = state.query
+            keyboard?.hide()
+            onSearch()
+        }
+    }
     val favorites = remember(userPresets) { EchoEqualizerUserPresets.opraFavorites(userPresets) }
-    val starredEqId = state.selectedEqId?.let { eqId -> favorites.firstOrNull { it.opraEqId == eqId }?.opraEqId }
-    var expandedProduct by remember(state.results) { mutableStateOf<String?>(null) }
     var shareFavorite by remember { mutableStateOf<app.echo.android.model.playback.EchoEqualizerUserPreset?>(null) }
     val selectedBrandName = state.brands.firstOrNull { it.id == state.selectedBrandId }?.name
-    val searchPlaceholder = if (selectedBrandName != null) {
-        stringResource(L10nR.string.opra_search_in_brand, selectedBrandName)
-    } else {
-        stringResource(L10nR.string.opra_search_examples)
-    }
-    val logosByVendorName = remember(state.brands) { state.brands.associate { it.name to it.logoUrl } }
-    val visibleResults = remember(state.results, state.query, state.selectedBrandId) {
-        val needle = state.query.trim()
-        if (state.selectedBrandId == null || needle.isEmpty()) {
-            state.results
-        } else {
-            state.results.filter { product ->
-                product.productName.contains(needle, ignoreCase = true) ||
-                    product.productId.contains(needle, ignoreCase = true)
-            }
+    val visibleResults by produceState(state.results, state.results, state.query, state.selectedBrandId) {
+        value = withContext(Dispatchers.Default) {
+            val needle = state.query.trim()
+            if (state.selectedBrandId == null || needle.isEmpty()) state.results
+            else state.results.filter { it.productName.contains(needle, ignoreCase = true) || it.productId.contains(needle, ignoreCase = true) }
         }
     }
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            SignalLiveDot(active = equalizer.parametric && equalizer.enabled && !bypassed)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(
-                    if (equalizer.parametric) {
-                        equalizer.sourceLabel ?: stringResource(L10nR.string.opra_current)
-                    } else {
-                        stringResource(L10nR.string.feature_settings_headphone_correction_491ce5)
-                    },
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                SignalNote(stringResource(L10nR.string.opra_browse_workflow))
-                if (bypassed) SignalNote(stringResource(L10nR.string.eq_bypassed), error = true)
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        TextField(
+            value = state.query,
+            onValueChange = {
+                submittedQuery = null
+                onQueryChange(it)
+                if (it.isBlank() && state.selectedBrandId == null) onSearch()
+            },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            placeholder = { Text(
+                if (selectedBrandName != null) stringResource(L10nR.string.opra_search_in_brand, selectedBrandName)
+                else stringResource(L10nR.string.opra_search_hint),
+                style = MaterialTheme.typography.bodyMedium,
+            ) },
+            shape = RoundedCornerShape(14.dp),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = scheme.surfaceContainer,
+                unfocusedContainerColor = scheme.surfaceContainer,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+            ),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { search() }),
+            leadingIcon = {
+                IconButton(onClick = search, enabled = !state.loading && state.query.isNotBlank()) {
+                    EchoIcon(Icons.Default.Search, contentDescription = stringResource(L10nR.string.diag_search))
+                }
+            },
+            trailingIcon = if (state.query.isNotEmpty()) ({
+                IconButton(onClick = {
+                    submittedQuery = null
+                    onQueryChange("")
+                    if (state.selectedBrandId == null) onSearch()
+                }) { EchoIcon(Icons.Default.Close, contentDescription = stringResource(L10nR.string.opra_clear_search)) }
+            }) else null,
+        )
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                if (state.status.eqCount > 0) stringResource(L10nR.string.opra_catalog_summary, state.status.productCount, state.status.eqCount)
+                else stringResource(L10nR.string.opra_browse_workflow),
+                modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSurfaceVariant,
+            )
+            IconButton(onClick = onRefresh, enabled = !state.loading) {
+                EchoIcon(Icons.Default.Refresh, contentDescription = stringResource(L10nR.string.diag_refresh_library))
             }
         }
-        SignalEqWell(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = state.query,
-                    onValueChange = { onQueryChange(it); if (it.isBlank()) onSearch() },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    enabled = !state.loading,
-                    label = { Text(stringResource(L10nR.string.diag_headphone_model)) },
-                    placeholder = { Text(searchPlaceholder) },
-                    shape = RoundedCornerShape(16.dp),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { search() }),
-                    trailingIcon = {
-                        IconButton(onClick = search, enabled = !state.loading && state.query.isNotBlank()) {
-                            EchoIcon(Icons.Default.Search, contentDescription = stringResource(L10nR.string.diag_search))
-                        }
-                    },
-                )
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.weight(1f).padding(end = 8.dp)) {
-                        if (state.status.eqCount > 0) {
-                            val source = stringResource(if (state.status.source == "network") L10nR.string.opra_online else L10nR.string.opra_cached)
-                            SignalNote(stringResource(L10nR.string.diag_opra_stats, state.status.vendorCount, state.status.productCount, state.status.eqCount, source))
-                        }
-                    }
-                    TextButton(onClick = onRefresh, enabled = !state.loading) { Text(stringResource(L10nR.string.diag_refresh_library)) }
-                }
-                if (lastQuery.isNotBlank() && state.selectedBrandId == null) {
-                    TextButton(
-                        onClick = {
-                            if (state.query != lastQuery) onQueryChange(lastQuery)
-                            onSearch()
-                        },
-                        enabled = !state.loading,
-                        contentPadding = PaddingValues(horizontal = 0.dp),
-                    ) { Text(stringResource(L10nR.string.opra_last_used, lastQuery)) }
-                }
-                if (state.loading) {
-                    LinearProgressIndicator(Modifier.fillMaxWidth(), color = scheme.primary, trackColor = scheme.outlineVariant)
-                    SignalNote(stringResource(L10nR.string.opra_first_download))
-                }
-                state.message?.let { SignalNote(it) }
+        if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+        state.message?.let { SignalNote(it) }
+        if (bypassed) SignalNote(stringResource(L10nR.string.eq_bypassed), error = true)
+        if (equalizer.parametric && equalizer.sourceLabel != null) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SignalLiveDot(active = equalizer.enabled && !bypassed)
+                Text(equalizer.sourceLabel.orEmpty(), style = MaterialTheme.typography.bodySmall,
+                    color = scheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
-        OpraBrandBrowser(state, onBrandSelected)
-        if (favorites.isNotEmpty()) {
+        if (lastQuery.isNotBlank() && state.query.isBlank() && state.selectedBrandId == null) {
+            TextButton(onClick = { onQueryChange(lastQuery) }, contentPadding = PaddingValues(0.dp)) {
+                Text(stringResource(L10nR.string.opra_last_used, lastQuery))
+            }
+        }
+        if (favorites.isNotEmpty() && state.query.isBlank() && state.selectedBrandId == null) {
             SignalEqWell(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(stringResource(L10nR.string.opra_favorites), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
                     favorites.forEach { preset ->
                         SignalEqUserPresetRow(
@@ -195,169 +187,17 @@ internal fun SignalHeadphoneCorrection(
         shareFavorite?.let { preset ->
             EqShareCodeDialog(preset = preset, onDismiss = { shareFavorite = null })
         }
-        // Keep the selected curve and apply action above the potentially long result list.
-        AnimatedContent(
-            targetState = state.selectedPreset,
-            transitionSpec = { EchoMotion.stateChange() },
-            contentKey = { it?.eqId },
-            label = "opra-preset",
-        ) { preset ->
-            if (preset != null) {
-            val current = equalizer.parametric && equalizer.enabled && equalizer.sourceLabel == preset.displayName &&
-                equalizer.filters == preset.bands && abs(equalizer.preampDb - preset.preampDb) < 0.05f
-            SignalEqWell(Modifier.fillMaxWidth()) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(
-                        Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        OpraBrandLogo(
-                            name = preset.vendorName,
-                            logoUrl = logosByVendorName[preset.vendorName],
-                            size = 44.dp,
-                        )
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(preset.productName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
-                            Text(preset.author, style = MaterialTheme.typography.titleSmall, color = scheme.onSurfaceVariant)
-                            preset.details?.let { SignalNote(it) }
-                            SignalNote(stringResource(L10nR.string.opra_filter_summary, preset.bands.size, formatEqGain(preset.preampDb)))
-                        }
-                    }
-                    SignalEqCurve(state.previewCurve, live = !bypassed, showFrequencyLabels = true)
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Button(
-                            onClick = onApplySelected,
-                            enabled = !state.loading && !current,
-                            modifier = Modifier.weight(1f).height(48.dp),
-                            shape = RoundedCornerShape(16.dp),
-                        ) {
-                            Text(stringResource(if (current) L10nR.string.opra_applied else L10nR.string.diag_apply_approx))
-                        }
-                        val starred = starredEqId != null
-                        val canStar = starred || userPresets.size < EchoEqualizerUserPresets.MaxCount
-                        val starLabel = stringResource(if (starred) L10nR.string.opra_unfavorite else L10nR.string.opra_favorite)
-                        IconButton(
-                            onClick = onToggleFavorite,
-                            enabled = !state.loading && canStar,
-                            modifier = Modifier.semantics { contentDescription = starLabel },
-                        ) {
-                            EchoIcon(
-                                if (starred) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                                contentDescription = null,
-                                tint = if (starred) scheme.primary else scheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                    preset.sourceUrl?.takeIf { it.startsWith("https://") || it.startsWith("http://") }?.let { link ->
-                        TextButton(
-                            onClick = { runCatching { uriHandler.openUri(link) } },
-                            modifier = Modifier.padding(start = 4.dp, end = 16.dp, bottom = 8.dp),
-                        ) { Text(stringResource(L10nR.string.opra_source)) }
-                    }
-                }
-            }
-            }
+        OpraCorrectionPreview(state, equalizer, bypassed, userPresets, onApplySelected, onToggleFavorite)
+        OpraBrandBrowser(state, onBrandSelected)
+        OpraModelResults(state, visibleResults) {
+            keyboard?.hide()
+            onPresetSelected(it)
         }
-        if (visibleResults.isNotEmpty()) {
-            SignalEqWell(Modifier.fillMaxWidth()) {
-                LazyColumn(Modifier.height(360.dp).padding(8.dp).selectableGroup(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    items(visibleResults, key = { it.productId }) { product ->
-                        val expanded = expandedProduct == product.productId
-                        Column(echoItemMotion()) {
-                            Row(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .defaultMinSize(minHeight = 48.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .echoClickable { expandedProduct = if (expanded) null else product.productId }
-                                    .padding(horizontal = 8.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            ) {
-                                OpraBrandLogo(
-                                    name = product.vendorName,
-                                    logoUrl = logosByVendorName[product.vendorName],
-                                    size = 36.dp,
-                                )
-                                Column(Modifier.weight(1f)) {
-                                    Text(product.productName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
-                                    SignalNote("${product.vendorName} · ${product.presets.size}")
-                                }
-                                EchoIcon(
-                                    Icons.Default.ExpandMore,
-                                    contentDescription = null,
-                                    modifier = Modifier.echoExpandIndicator(expanded),
-                                    tint = scheme.onSurfaceVariant,
-                                )
-                            }
-                            EchoExpand(expanded) {
-                                Column {
-                                    product.presets.forEach { preset ->
-                                        val selected = preset.eqId == state.selectedEqId
-                                        Row(
-                                            Modifier
-                                                .fillMaxWidth()
-                                                .defaultMinSize(minHeight = 52.dp)
-                                                .clip(RoundedCornerShape(12.dp))
-                                                .background(if (selected) scheme.primary.copy(alpha = 0.14f) else Color.Transparent)
-                                                .selectable(
-                                                    selected = selected,
-                                                    enabled = !state.loading,
-                                                    role = Role.RadioButton,
-                                                    onClick = { onPresetSelected(preset.eqId) },
-                                                )
-                                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                        ) {
-                                            Box(
-                                                Modifier
-                                                    .width(2.dp)
-                                                    .height(28.dp)
-                                                    .clip(RoundedCornerShape(1.dp))
-                                                    .background(if (selected) scheme.primary else Color.Transparent),
-                                            )
-                                            Column(Modifier.weight(1f)) {
-                                                Text(
-                                                    preset.author,
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    fontWeight = FontWeight.Medium,
-                                                    color = if (selected) scheme.primary else scheme.onSurface,
-                                                )
-                                                preset.details?.let { SignalNote(it) }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        } else if (state.results.isNotEmpty() && state.query.isNotBlank()) {
-            SignalNote(stringResource(L10nR.string.opra_no_matching_models))
-        }
-        HorizontalDivider(color = scheme.outlineVariant)
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Image(
-                painterResource(L10nR.drawable.opra_logo),
-                contentDescription = "OPRA",
-                modifier = Modifier
-                    .width(88.dp)
-                    .height(32.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Color.White)
-                    .padding(4.dp),
-            )
-            SignalNote(stringResource(L10nR.string.opra_attribution))
-        }
-        TextButton(onClick = { uriHandler.openUri("https://github.com/opra-project/OPRA") }) {
-            Text(stringResource(L10nR.string.opra_project))
+        HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.5f))
+        TextButton(onClick = { uriHandler.openUri("https://github.com/opra-project/OPRA") },
+            contentPadding = PaddingValues(0.dp)) {
+            Text(stringResource(L10nR.string.opra_attribution), style = MaterialTheme.typography.labelSmall,
+                color = scheme.onSurfaceVariant)
         }
     }
 }

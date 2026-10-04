@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="usb_param_auto">Automatic</string>
+    <string name="usb_param_mono">Mono</string>
+    <string name="usb_param_stereo">Stereo</string>
+    <string name="usb_param_format">Output format</string>
+    <string name="usb_param_strict_locked">Strict passthrough follows the source rate, precision and channels. Your processing preferences remain saved.</string>
+    <string name="usb_param_capabilities_note">Options follow reported device capabilities. Formats are converted in processing mode; a higher setting cannot restore source detail.</string>
+    <string name="usb_param_saved_note">Connect and authorize a DAC to apply these parameters. Settings are saved for the next connection.</string>
+    <string name="usb_param_volume">Digital volume</string>
+    <string name="usb_param_volume_note">App attenuation only; the DAC hardware volume is unchanged.</string>
+    <string name="usb_param_volume_fixed">Strict passthrough fixes digital volume at 100%.</string>
+    <string name="usb_param_transport">USB transport</string>
+    <string name="usb_param_buffer">Buffer profile</string>
+    <string name="usb_buffer_responsive">Responsive</string>
+    <string name="usb_buffer_balanced">Balanced</string>
+    <string name="usb_buffer_stable">Stable</string>
+    <string name="usb_param_buffer_note">Choose Stable if playback breaks up. These profiles change queue depth, not the DAC hardware latency.</string>
+    <string name="usb_param_keep_alive">Keep DAC awake while paused</string>
+    <string name="usb_param_keep_alive_note">Continue silent USB transfers to keep the connection warm. Turn off to reduce paused background work.</string>
+    <string name="usb_param_reset">Reset output parameters</string>
+    <string name="usb_param_reset_note">Automatic format, full digital volume and balanced buffering. Output mode is kept.</string>
+    <string name="usb_mode_strict">Integer passthrough</string>
+    <string name="usb_mode_processing">Processing</string>
+    <string name="usb_mode_processing_note">Adjust rate, precision, channels and digital volume. EQ and headphone correction remain available.</string>
+    <string name="usb_param_transfer_rate">USB transfer rate</string>
+    <string name="usb_param_buffer_capacity">Transfer queue capacity: about %1$d ms</string>
+</resources>
+

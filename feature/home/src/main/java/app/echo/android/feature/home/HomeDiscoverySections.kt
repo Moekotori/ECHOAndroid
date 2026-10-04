@@ -78,7 +78,7 @@ internal fun HomeDailyAlbumSection(
 internal fun HomeRediscoverySection(albums: List<AlbumSummary>, onOpen: (AlbumSummary) -> Unit) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         HomeSectionHeader(stringResource(R.string.home_rediscover), Modifier.padding(horizontal = 24.dp))
-        LazyRow(modifier = Modifier.homeCarouselScroll(), contentPadding = PaddingValues(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        LazyRow(modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             items(albums, key = { it.albumKey }) { album ->
                 RecommendedAlbumCard(album, onClick = { onOpen(album) })
             }

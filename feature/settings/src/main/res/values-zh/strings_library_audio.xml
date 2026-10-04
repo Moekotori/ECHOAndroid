@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_library_overview_local_short">音乐\n存储</string>
+    <string name="settings_library_audio_title">音频质量</string>
+    <string name="settings_library_audio_lossless">无损格式</string>
+    <string name="settings_library_audio_lossy">有损格式</string>
+    <string name="settings_library_audio_dsd">DSD</string>
+    <string name="settings_library_audio_unconfirmed">待确认</string>
+    <string name="settings_library_audio_formats">文件格式</string>
+    <string name="settings_library_audio_rates">采样率分布</string>
+    <string name="settings_library_audio_high_rate">高于 48 kHz · %1$s 首（不含 DSD）</string>
+    <string name="settings_library_audio_unknown">未知</string>
+    <string name="settings_library_audio_other_rate">其他采样率</string>
+    <string name="settings_library_audio_dsd_rate">DSD 采样</string>
+    <string name="settings_library_audio_khz">%1$s kHz</string>
+    <string name="settings_library_audio_empty">从「管理」扫描音乐后，这里会显示格式和采样率。</string>
+    <string name="settings_library_audio_scope">统计已收录的本地文件。FLAC、ALAC、APE 归为无损格式；M4A、Ogg、WAV、AIFF、WMA 和 WavPack 需确认具体编码。未知采样率表示扫描时未记录。</string>
+    <string name="settings_library_audio_depth_bitrate">曲库暂未记录位深和码率。高采样率不能单独确认 Hi-Res 音质，也不代表设备实际输出质量。</string>
+    <string name="settings_library_audio_depth">位深</string>
+    <string name="settings_library_audio_bitrate">码率</string>
+    <string name="settings_library_audio_not_recorded">未记录</string>
+</resources>

@@ -36,7 +36,7 @@ class EchoPhoneLibrarySession(
         job = scope.launch {
             var ownedServer: EchoLinkCastServer? = null
             try {
-                val host = withContext(Dispatchers.IO) { EchoLinkLanAddresses.ipv4(application) }
+                val host = withContext(Dispatchers.IO) { EchoLinkLanAddresses.ipv4ForPeer(endpoint.host, endpoint.port) }
                     ?: error("no_lan")
                 val token = EchoLinkCastPolicy.newToken()
                 val catalog = EchoSharedLocalLibrary(EchoLibraryDatabase.create(application))

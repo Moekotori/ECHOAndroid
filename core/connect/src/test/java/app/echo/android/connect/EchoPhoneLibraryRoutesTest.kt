@@ -53,4 +53,38 @@ class EchoPhoneLibraryRoutesTest {
             assertEquals(0, server.localPort)
         } finally { server.stop() }
     }
+
+    @Test fun clampsOversizedRangesForAudioAndArtworkIncludingHead() {
+        val bytes = byteArrayOf(1, 2, 3, 4, 5)
+        val artRow = row.copy(artworkUrl = "file:///cover.jpg")
+        val routes = EchoPhoneLibraryRoutes(token, "http://127.0.0.1",
+            { _, _, _ -> EchoPhoneLibraryPage(listOf(artRow), 1) }, { artRow })
+        val server = EchoLinkCastServer(EchoLinkCastBodyFactory { _, start ->
+            EchoLinkCastBody(bytes.inputStream().apply { skip(start) }, bytes.size.toLong(), "audio/mpeg")
+        }, bindHost = "127.0.0.1", resolvePublication = routes::publication)
+        try {
+            val port = server.start()
+            val id = Base64.getUrlEncoder().withoutPadding().encodeToString(row.trackId.toByteArray())
+            val client = OkHttpClient()
+            for (route in listOf("phone-stream", "phone-art")) {
+                val url = "http://127.0.0.1:$port/echo-link/$route/$token/$id"
+                for (method in listOf("GET", "HEAD")) {
+                    client.newCall(Request.Builder().url(url).method(method, null)
+                        .header("Range", "bytes=2-999").build()).execute().use {
+                        assertEquals(206, it.code)
+                        assertEquals("bytes 2-4/5", it.header("Content-Range"))
+                        assertEquals("3", it.header("Content-Length"))
+                        assertArrayEquals(if (method == "HEAD") byteArrayOf() else byteArrayOf(3, 4, 5), it.body!!.bytes())
+                    }
+                }
+                client.newCall(Request.Builder().url(url).header("Range", "bytes=5-999").build()).execute().use {
+                    assertEquals(416, it.code)
+                    assertEquals("bytes */5", it.header("Content-Range"))
+                }
+                client.newCall(Request.Builder().url(url).header("Range", "invalid").build()).execute().use {
+                    assertEquals(416, it.code)
+                }
+            }
+        } finally { server.stop() }
+    }
 }

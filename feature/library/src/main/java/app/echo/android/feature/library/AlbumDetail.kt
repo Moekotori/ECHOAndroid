@@ -188,7 +188,7 @@ internal fun AlbumDetailPage(
                     ) { index ->
                         tracks[index]?.let { track ->
                             Box(
-                                modifier = Modifier
+                                modifier = libraryTrackItemMotion()
                                     .fillMaxWidth()
                                     .widthIn(max = EchoContentMaxWidth)
                                     .padding(horizontal = 24.dp),
@@ -298,7 +298,7 @@ internal fun AlbumDetailListPage(
                         key = { _, track -> track.id },
                     ) { index, track ->
                         Box(
-                            modifier = Modifier
+                            modifier = libraryTrackItemMotion()
                                 .fillMaxWidth()
                                 .widthIn(max = EchoContentMaxWidth)
                                 .padding(horizontal = 24.dp),
@@ -414,7 +414,7 @@ internal fun GenreTrackDetailPage(
                 ) { index ->
                     tracks[index]?.let { track ->
                         Box(
-                            modifier = Modifier
+                            modifier = libraryTrackItemMotion()
                                 .fillMaxWidth()
                                 .widthIn(max = EchoContentMaxWidth)
                                 .padding(horizontal = 20.dp),

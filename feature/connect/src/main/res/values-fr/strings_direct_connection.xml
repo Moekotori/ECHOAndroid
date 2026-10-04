@@ -2,4 +2,6 @@
 <resources>
     <string name="echo_link_direct_address_hint">Activez Echo Link dans ECHOSteam, puis sélectionnez un PC proche ou saisissez son adresse IP sur le même réseau local. Les PC sans connexion directe peuvent toujours utiliser un lien complet d’appairage.</string>
     <string name="echo_link_pairing_entry">Adresse du PC ou lien d’appairage</string>
+    <string name="echo_link_steam_edition_title">Édition Steam d’ECHO</string>
+    <string name="echo_link_steam_edition_requirement">La liaison avec le PC nécessite l’édition Steam d’ECHO. Elle est indisponible dans l’édition communautaire.</string>
 </resources>

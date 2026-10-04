@@ -16,6 +16,7 @@ internal object UsbIsochronousNative {
         feedbackEndpointAddress: Int = 0,
         feedbackMaxPacketSize: Int = 0,
         endpointInterval: Int = 1,
+        transferCount: Int = 16,
     ): Long {
         if (!available || fileDescriptor < 0) return 0L
         return nativeCreate(
@@ -29,6 +30,7 @@ internal object UsbIsochronousNative {
             feedbackEndpointAddress,
             feedbackMaxPacketSize,
             endpointInterval,
+            transferCount.coerceIn(8, 32),
         )
     }
 
@@ -69,6 +71,7 @@ internal object UsbIsochronousNative {
         feedbackEndpointAddress: Int,
         feedbackMaxPacketSize: Int,
         endpointInterval: Int,
+        transferCount: Int,
     ): Long
 
     @JvmStatic

@@ -1,0 +1,8 @@
+<resources>
+    <string name="library_multiselect">多选</string>
+    <string name="batch_selection_limit">最多 %1$d 首</string>
+    <string name="batch_clear_selection">清空选择</string>
+    <plurals name="batch_selected_count">
+        <item quantity="other">已选 %1$d 首</item>
+    </plurals>
+</resources>

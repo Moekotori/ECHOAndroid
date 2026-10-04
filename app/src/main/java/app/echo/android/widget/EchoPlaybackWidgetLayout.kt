@@ -12,8 +12,11 @@ object EchoPlaybackWidgetLayout {
     const val WideHeightDp = 72
     const val TallWidthDp = 250
     const val TallHeightDp = 180
+    const val SquareWidthDp = 250
+    const val SquareHeightDp = 260
 
     fun mode(widthDp: Int, heightDp: Int): EchoPlaybackWidgetMode = when {
+        widthDp >= SquareWidthDp && heightDp >= SquareHeightDp -> EchoPlaybackWidgetMode.Square
         widthDp >= TallWidthDp && heightDp >= TallHeightDp -> EchoPlaybackWidgetMode.Tall
         isExpanded(widthDp, heightDp) -> EchoPlaybackWidgetMode.Expanded
         widthDp >= WideWidthDp && heightDp >= WideHeightDp -> EchoPlaybackWidgetMode.Wide
@@ -36,7 +39,7 @@ object EchoPlaybackWidgetLayout {
         )
 }
 
-enum class EchoPlaybackWidgetMode { Compact, Wide, Expanded, Tall }
+enum class EchoPlaybackWidgetMode { Compact, Wide, Expanded, Tall, Square }
 
 data class EchoPlaybackWidgetChrome(
     val title: String,

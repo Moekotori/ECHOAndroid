@@ -411,6 +411,8 @@ class DocumentTreeTrackScanner(
             trackNumber = metadata.trackNumber,
             discNumber = metadata.discNumber,
             year = metadata.year,
+            genre = metadata.genre,
+            composer = metadata.composer,
             mimeType = mimeType,
             sizeBytes = sizeBytes,
             sampleRateHz = metadata.sampleRateHz,
@@ -448,6 +450,8 @@ class DocumentTreeTrackScanner(
                     trackNumber = dsd.tags?.trackNumber ?: fileTags?.trackNumber,
                     discNumber = dsd.tags?.discNumber ?: fileTags?.discNumber,
                     year = dsd.tags?.year ?: fileTags?.year,
+                    genre = dsd.tags?.genre ?: fileTags?.genre,
+                    composer = dsd.tags?.composer ?: fileTags?.composer,
                     sampleRateHz = if (readSampleRate) dsd.sampleRateHz.takeIf { it > 0 } else null,
                     artworkUri = persistArtwork(dsd.tags?.artworkBytes ?: fileTags?.artworkBytes),
                 )
@@ -466,6 +470,10 @@ class DocumentTreeTrackScanner(
                         ?: retriever.metadata(MediaMetadataRetriever.METADATA_KEY_ALBUM),
                     albumArtist = fileTags?.albumArtist?.takeIf { it.isNotBlank() }
                         ?: retriever.metadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST),
+                    genre = fileTags?.genre?.takeIf { it.isNotBlank() }
+                        ?: retriever.metadata(MediaMetadataRetriever.METADATA_KEY_GENRE),
+                    composer = fileTags?.composer?.takeIf { it.isNotBlank() }
+                        ?: retriever.metadata(MediaMetadataRetriever.METADATA_KEY_COMPOSER),
                     durationMs = retriever.metadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
                         ?.toLongOrNull()
                         ?.coerceAtLeast(0L)
@@ -518,6 +526,8 @@ class DocumentTreeTrackScanner(
             trackNumber = this?.trackNumber,
             discNumber = this?.discNumber,
             year = this?.year,
+            genre = this?.genre,
+            composer = this?.composer,
         )
 
     private data class DocumentTreeDirectory(
@@ -567,6 +577,8 @@ class DocumentTreeTrackScanner(
         val year: Int? = null,
         val sampleRateHz: Int? = null,
         val artworkUri: String? = null,
+        val genre: String? = null,
+        val composer: String? = null,
     )
 
     private companion object {

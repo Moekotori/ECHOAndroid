@@ -1,5 +1,8 @@
 package app.echo.android.feature.settings
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -10,22 +13,20 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,12 +37,10 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoMotion
-import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.echoClickable
 import app.echo.android.design.echoItemMotion
 import app.echo.android.design.rememberEchoContentMotion
@@ -49,11 +48,17 @@ import app.echo.android.model.playback.OpraHeadphoneBrand
 import app.echo.android.model.playback.OpraHeadphoneCorrectionState
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import app.echo.android.design.EchoIcon
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 internal fun OpraBrandBrowser(state: OpraHeadphoneCorrectionState, onBrandSelected: (String?) -> Unit) {
-    val filteredBrands = remember(state.brands, state.query) {
-        filterOpraBrands(state.brands, state.query)
+    val filteredBrands by produceState(emptyList<OpraHeadphoneBrand>(), state.brands, state.query) {
+        value = withContext(Dispatchers.Default) { filterOpraBrands(state.brands, state.query) }
     }
     val motion = rememberEchoContentMotion()
     AnimatedContent(
@@ -79,18 +84,14 @@ internal fun OpraBrandBrowser(state: OpraHeadphoneCorrectionState, onBrandSelect
             }
         } else if (filteredBrands.isNotEmpty()) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (state.query.isBlank()) {
-                    Text(stringResource(R.string.opra_choose_brand), style = MaterialTheme.typography.titleMedium)
-                }
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(108.dp),
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 440.dp),
+                Text(stringResource(R.string.opra_choose_brand), style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp),
                     contentPadding = PaddingValues(bottom = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(filteredBrands, key = { it.id }) { brand ->
-                        OpraBrandTile(
+                        OpraBrandRow(
                             brand = brand,
                             enabled = !state.loading,
                             modifier = echoItemMotion(),
@@ -99,33 +100,27 @@ internal fun OpraBrandBrowser(state: OpraHeadphoneCorrectionState, onBrandSelect
                     }
                 }
             }
-        } else if (state.brands.isNotEmpty() && state.query.isNotBlank()) {
-            SignalNote(stringResource(R.string.opra_no_matching_models))
         }
     }
 }
 
 @Composable
 private fun OpraSelectedBrand(brand: OpraHeadphoneBrand, enabled: Boolean, onBack: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         TextButton(onClick = onBack, enabled = enabled, contentPadding = PaddingValues(horizontal = 0.dp)) {
+            EchoIcon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null, modifier = Modifier.size(18.dp))
             Text(stringResource(R.string.opra_all_brands))
         }
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            OpraBrandLogo(name = brand.name, logoUrl = brand.logoUrl, size = 56.dp)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(brand.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                Text(brand.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 SignalNote(pluralStringResource(R.plurals.opra_brand_models, brand.productCount, brand.productCount))
             }
-        }
     }
 }
 
 @Composable
-private fun OpraBrandTile(
+private fun OpraBrandRow(
     brand: OpraHeadphoneBrand,
     enabled: Boolean,
     onClick: () -> Unit,
@@ -133,26 +128,24 @@ private fun OpraBrandTile(
 ) {
     val scheme = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(16.dp)
-    Column(
+    Row(
         modifier
             .fillMaxWidth()
-            .height(148.dp)
+            .heightIn(min = 64.dp)
             .clip(shape)
-            .background(scheme.surfaceContainerHigh)
             .echoClickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = 4.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        OpraBrandLogo(name = brand.name, logoUrl = brand.logoUrl, size = 64.dp)
+        OpraBrandLogo(name = brand.name, logoUrl = brand.logoUrl, size = 36.dp)
         Text(
             brand.name,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Medium,
-            textAlign = TextAlign.Center,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.weight(1f),
         )
         Text(
             pluralStringResource(R.plurals.opra_brand_models, brand.productCount, brand.productCount),
@@ -161,13 +154,16 @@ private fun OpraBrandTile(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+        EchoIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null,
+            modifier = Modifier.size(18.dp), tint = scheme.onSurfaceVariant)
     }
+    HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.45f))
 }
 
 @Composable
 internal fun OpraBrandLogo(name: String, logoUrl: String?, size: Dp) {
     val scheme = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(14.dp)
+    val shape = RoundedCornerShape(8.dp)
     val initial = remember(name) { name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?" }
     var failed by remember(logoUrl) { mutableStateOf(false) }
     val showImage = !logoUrl.isNullOrBlank() && !failed
@@ -175,18 +171,17 @@ internal fun OpraBrandLogo(name: String, logoUrl: String?, size: Dp) {
         Modifier
             .size(size)
             .clip(shape)
-            .background(if (showImage) Color.White else scheme.primaryContainer)
+            .background(if (showImage) Color.White else scheme.surfaceContainerHigh)
             .then(if (showImage) Modifier.border(1.dp, scheme.outlineVariant.copy(alpha = 0.45f), shape) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
         if (showImage) {
             val context = LocalContext.current
-            val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
-            val request = remember(context, logoUrl, lightweight) {
+                        val request = remember(context, logoUrl, size) {
                 ImageRequest.Builder(context)
                     .data(logoUrl)
-                    .size(if (lightweight) 128 else 256)
-                    .crossfade(!lightweight)
+                    .size(with(context.resources.displayMetrics) { (size.value * density).toInt().coerceIn(32, 192) })
+                    .crossfade(false)
                     .setHeader("User-Agent", "ECHOAndroid/1.0")
                     .build()
             }
@@ -202,7 +197,7 @@ internal fun OpraBrandLogo(name: String, logoUrl: String?, size: Dp) {
                 initial,
                 style = if (size < 40.dp) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = scheme.onPrimaryContainer,
+                color = scheme.onSurfaceVariant,
             )
         }
     }

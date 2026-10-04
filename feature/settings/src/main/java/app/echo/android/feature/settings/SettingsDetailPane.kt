@@ -23,7 +23,8 @@ internal fun SettingsDetailPane(
         verticalArrangement = Arrangement.spacedBy(
             if (category == SettingsCategory.Appearance || compactMode) 20.dp else 28.dp,
         )) {
-        if (category != SettingsCategory.About && category != SettingsCategory.Appearance && category != SettingsCategory.Library) {
+        if (category != SettingsCategory.About && category != SettingsCategory.Appearance &&
+            category != SettingsCategory.Library && category != SettingsCategory.Usb) {
             Text(stringResource(category.description), style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = SettingsContentInset))
         }

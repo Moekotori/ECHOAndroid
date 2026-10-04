@@ -10,19 +10,21 @@ import app.echo.android.usbaudio.UsbPcmFormatSpec
 class EchoUsbExclusiveDriverTester(context: Context) {
     private val output = UsbExclusivePcmOutput(context.applicationContext)
 
-    fun testOpen(diagnostics: EchoPlaybackDiagnostics): String {
-        val sampleRate = diagnostics.sampleRateHz
+    fun testOpen(diagnostics: EchoPlaybackDiagnostics,
+        options: app.echo.android.model.playback.EchoUsbOutputOptions = app.echo.android.model.playback.EchoUsbOutputOptions()): String {
+        val sampleRate = options.sampleRateHz.takeIf { it > 0 } ?: diagnostics.sampleRateHz
             ?: diagnostics.usbLastRequestedSampleRateHz
             ?: diagnostics.usbSupportedSampleRates.firstOrNull()
             ?: 48_000
-        val channelCount = diagnostics.channelCount?.takeIf { it > 0 } ?: 2
-        val bitDepth = diagnostics.bitDepth?.takeIf { it > 0 } ?: 24
+        val channelCount = options.channelCount.takeIf { it > 0 } ?: diagnostics.channelCount?.takeIf { it in 1..2 } ?: 2
+        val bitDepth = options.bitDepth.takeIf { it > 0 } ?: diagnostics.bitDepth?.takeIf { it > 0 } ?: 24
         val spec = UsbPcmFormatSpec(
             sampleRateHz = sampleRate,
             channelCount = channelCount,
             bitDepth = bitDepth,
         )
-        val session = output.open(spec)
+        val session = output.open(spec, transferCount = options.bufferMode.transferCount,
+            keepAliveOnPause = options.keepAliveOnPause)
         return try {
             val result = session.openResult
             val format = result.selectedFormat

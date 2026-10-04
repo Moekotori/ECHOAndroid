@@ -1,0 +1,5 @@
+<resources>
+    <string name="batch_deleting">正在刪除…</string>
+    <string name="batch_playlists_empty">暫無可編輯的歌單，先到歌單頁新增一個吧。</string>
+    <string name="batch_playlist_added">已加入「%1$s」</string>
+</resources>

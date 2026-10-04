@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="opra_search_hint">Marke oder Modell suchen</string>
+    <string name="opra_clear_search">Suche löschen</string>
+    <string name="opra_catalog_summary">%1$d Modelle · %2$d Korrekturen</string>
+    <plurals name="opra_model_curves">
+        <item quantity="one">%1$d Kurve</item>
+        <item quantity="other">%1$d Kurven</item>
+    </plurals>
+</resources>

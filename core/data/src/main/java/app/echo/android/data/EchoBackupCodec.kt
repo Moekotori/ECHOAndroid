@@ -134,6 +134,7 @@ object EchoBackupCodec {
         putOptNullableBoolean("lockScreenLyricsEnabled", settings.lockScreenLyricsEnabled)
         putOptNullableBoolean("usbExclusiveEnabled", settings.usbExclusiveEnabled)
         putOptNullableBoolean("usbBitPerfectEnabled", settings.usbBitPerfectEnabled)
+        settings.usbOutputOptions?.let { put("usbOutputOptions", JSONObject(EchoUsbOutputOptionsCodec.encode(it))) }
         putOptNullableBoolean("usbExclusiveAutoRequestOnStartup", settings.usbExclusiveAutoRequestOnStartup)
         putOptNullableBoolean("pauseOnAudioDisconnect", settings.pauseOnAudioDisconnect)
         putOptNullableBoolean("resumeOnAudioReconnect", settings.resumeOnAudioReconnect)
@@ -151,6 +152,7 @@ object EchoBackupCodec {
             )
         }
         putOptNullableBoolean("equalizerEnabled", settings.equalizerEnabled)
+        settings.mseb?.let { put("mseb", JSONObject(EchoMsebCodec.encode(it))) }
         putOpt("equalizerPreset", settings.equalizerPreset)
         settings.equalizerBandGains?.let { put("equalizerBandGains", JSONArray(it)) }
         settings.equalizerPreampDb?.let { put("equalizerPreampDb", it.toDouble()) }
@@ -239,6 +241,7 @@ object EchoBackupCodec {
             lockScreenLyricsEnabled = json.optionalBoolean("lockScreenLyricsEnabled"),
             usbExclusiveEnabled = json.optionalBoolean("usbExclusiveEnabled"),
             usbBitPerfectEnabled = json.optionalBoolean("usbBitPerfectEnabled"),
+            usbOutputOptions = json.optJSONObject("usbOutputOptions")?.let { EchoUsbOutputOptionsCodec.decode(it.toString()) },
             usbExclusiveAutoRequestOnStartup = json.optionalBoolean("usbExclusiveAutoRequestOnStartup"),
             pauseOnAudioDisconnect = json.optionalBoolean("pauseOnAudioDisconnect"),
             resumeOnAudioReconnect = json.optionalBoolean("resumeOnAudioReconnect"),
@@ -248,6 +251,7 @@ object EchoBackupCodec {
             replayGainPreampDb = json.optionalFloat("replayGainPreampDb"),
             trackTransitions = transitions,
             equalizerEnabled = json.optionalBoolean("equalizerEnabled"),
+            mseb = json.optJSONObject("mseb")?.let { EchoMsebCodec.decode(it.toString()) },
             equalizerPreset = json.optionalString("equalizerPreset"),
             equalizerBandGains = json.optJSONArray("equalizerBandGains")?.floats(),
             equalizerPreampDb = json.optionalFloat("equalizerPreampDb"),

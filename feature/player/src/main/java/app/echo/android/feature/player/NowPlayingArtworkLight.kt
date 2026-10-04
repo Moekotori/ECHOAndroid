@@ -25,14 +25,14 @@ import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.echoTheme
 
-/** Local, finite light treatment: no extra artwork request, blur texture or idle ticker. */
+/** A finite cover rim. Keep lighting inside the cover; outward halos form clipped haze. */
 @Composable
 internal fun NowPlayingArtworkLight(
     palette: ArtworkPalette,
     expanded: Boolean,
     gestureStrength: () -> Float,
     modifier: Modifier = Modifier,
-    /** Idle / missing cover must not spill theme-accent halos into empty now-playing. */
+    /** Idle / missing cover must not draw a decorative rim. */
     enabled: Boolean = true,
     trackKey: String? = null,
     content: @Composable BoxScope.() -> Unit,
@@ -66,29 +66,8 @@ internal fun NowPlayingArtworkLight(
         lerp(palette.vibrant, theme.accent, if (dark) 0.18f else 0.35f),
         tween(if (lightweight) 0 else EchoMotion.LightHandoffMs), label = "cover-light-color",
     )
-    val softGlow by animateColorAsState(
-        lerp(palette.soft, theme.accent, 0.30f),
-        tween(if (lightweight) 0 else EchoMotion.LightHandoffMs), label = "cover-soft-light-color",
-    )
     Box(
         modifier = modifier.drawWithCache {
-            val center = Offset(size.width * 0.5f, size.height * 0.52f)
-            val radius = size.minDimension * 0.78f
-            val halo = Brush.radialGradient(
-                0f to Color.Transparent,
-                0.44f to glow.copy(alpha = if (dark) 0.26f else 0.12f),
-                0.66f to glow.copy(alpha = if (dark) 0.13f else 0.055f),
-                1f to Color.Transparent,
-                center = center,
-                radius = radius.coerceAtLeast(1f),
-            )
-            val lowerCenter = Offset(size.width * 0.48f, size.height * 0.88f)
-            val lowerRadius = size.minDimension * 0.54f
-            val lowerHalo = Brush.radialGradient(
-                listOf(softGlow.copy(alpha = if (dark) 0.14f else 0.045f), Color.Transparent),
-                center = lowerCenter,
-                radius = lowerRadius.coerceAtLeast(1f),
-            )
             val rim = Brush.linearGradient(
                 0f to Color.White.copy(alpha = if (dark) 0.38f else 0.76f),
                 0.34f to Color.White.copy(alpha = if (dark) 0.09f else 0.20f),
@@ -103,8 +82,6 @@ internal fun NowPlayingArtworkLight(
             onDrawWithContent {
                 // Read changing values in the draw phase; cached brushes and image composition stay intact.
                 val strength = if (lightweight) 0.5f else presence.value * handoff.value * gestureStrength().coerceIn(0f, 1f)
-                drawCircle(halo, radius, center, alpha = strength)
-                if (!lightweight) drawCircle(lowerHalo, lowerRadius, lowerCenter, alpha = strength)
                 drawContent()
                 drawRoundRect(rim, Offset(inset, inset), rimSize, corner, alpha = if (lightweight) 0.5f else 0.65f + 0.35f * strength, style = stroke)
             }

@@ -31,6 +31,8 @@ data class EchoEqualizerState(
     val responseCurve: List<EchoEqResponsePoint> = emptyList(),
     val suggestedPreampDb: Float = 0f,
     val processingSampleRateHz: Int? = null,
+    val mseb: EchoMsebState = EchoMsebState(),
+    val msebHeadroomDb: Float = 0f,
 ) {
     val active: Boolean
         get() = enabled &&

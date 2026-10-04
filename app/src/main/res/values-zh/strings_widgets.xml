@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_mini_name">ECHO · 迷你播放条</string>
+    <string name="widget_mini_description">小封面与紧凑的播放控制</string>
+    <string name="widget_cover_name">ECHO · 唱片封面</string>
+    <string name="widget_cover_description">大封面、歌曲信息与播放按钮</string>
+    <string name="widget_lyrics_name">ECHO · 歌词卡片</string>
+    <string name="widget_lyrics_description">当前歌词、歌曲信息与播放控制</string>
+    <string name="widget_lyrics_hint">播放音乐，歌词将在这里显示</string>
+    <string name="widget_lyrics_unavailable">暂无歌词</string>
+    <string name="widget_lyrics_label">歌词</string>
+</resources>

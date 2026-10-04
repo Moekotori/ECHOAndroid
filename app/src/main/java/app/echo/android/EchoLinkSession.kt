@@ -18,6 +18,7 @@ import app.echo.android.connect.EchoLanCastFollowPolicy
 import app.echo.android.connect.EchoLinkLanAddresses
 import app.echo.android.connect.EchoRemoteClient
 import app.echo.android.data.EchoSettingsStore
+import app.echo.android.data.EchoLibrarySelectedSource
 import app.echo.android.model.connect.EchoLanRenderer
 import app.echo.android.model.connect.EchoLanRendererKind
 import app.echo.android.model.connect.EchoRemoteCommand
@@ -38,6 +39,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -103,6 +105,14 @@ class EchoLinkSession(private val application: Application) {
     }
 
     init {
+        scope.launch {
+            observeEchoLinkLocalFallback(
+                connectionStates = client.status.map { it.connectionState },
+                librarySources = settings.appSettings.map { it.librarySelectedSource },
+                selectPhonePlayback = { playbackRouter.selectRemoteMode(false) },
+                selectLocalLibrary = { settings.setLibrarySelectedSource(EchoLibrarySelectedSource.Local) },
+            )
+        }
         scope.launch {
             kotlinx.coroutines.flow.combine(settings.appSettings, localNetworkAccess) { saved, allowed -> saved to allowed }.collect { (saved, allowed) ->
                 val key = saved.echoLinkPcAddress to saved.echoLinkPcToken.orEmpty()

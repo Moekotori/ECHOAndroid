@@ -1,0 +1,8 @@
+<resources>
+    <string name="library_multiselect">여러 곡 선택</string>
+    <string name="batch_selection_limit">최대 %1$d곡</string>
+    <string name="batch_clear_selection">선택 지우기</string>
+    <plurals name="batch_selected_count">
+        <item quantity="other">%1$d곡 선택됨</item>
+    </plurals>
+</resources>

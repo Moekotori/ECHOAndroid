@@ -6,7 +6,9 @@ import app.echo.android.model.library.LibrarySmartPlaylistKind
 
 /** A bounded queue starting at an anchor, using row-value comparisons supported since Android 8. */
 internal object LibraryCollectionPlaybackQuery {
-    fun build(origin: LibraryPlaybackOrigin, anchorId: String?, limit: Int): SimpleSQLiteQuery {
+    fun build(origin: LibraryPlaybackOrigin, anchorId: String?, limit: Int?,
+        playlistOrder: app.echo.android.model.library.PlaylistTrackOrder = app.echo.android.model.library.PlaylistTrackOrder(),
+    ): SimpleSQLiteQuery {
         var from = "library_tracks t"
         val args = ArrayList<Any>()
         val local = "t.source IN ('mediastore', 'saf')"
@@ -65,6 +67,9 @@ internal object LibraryCollectionPlaybackQuery {
             }
             LibraryPlaybackOrigin.Songs -> error("Songs use the library queue query")
         }
+        if (origin is LibraryPlaybackOrigin.Playlist && !playlistOrder.isManual) {
+            return PlaylistOrderingQuery.build(from, where, args, playlistOrder, limit, anchorId)
+        }
         val anchor = if (anchorId == null) "" else {
             val keys = order.joinToString(", ")
             val filter = " AND ($keys) >= (SELECT $keys FROM $from WHERE ($where) AND t.id = ?)"
@@ -72,7 +77,7 @@ internal object LibraryCollectionPlaybackQuery {
             args += anchorId
             filter
         }
-        args += limit.coerceAtLeast(1)
-        return SimpleSQLiteQuery("SELECT t.* FROM $from WHERE ($where)$anchor ORDER BY ${order.joinToString(", ")} LIMIT ?", args.toTypedArray())
+        val limitSql = if (limit == null) "" else " LIMIT ?".also { args += limit.coerceAtLeast(1) }
+        return SimpleSQLiteQuery("SELECT t.* FROM $from WHERE ($where)$anchor ORDER BY ${order.joinToString(", ")}$limitSql", args.toTypedArray())
     }
 }

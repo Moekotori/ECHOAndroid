@@ -148,6 +148,34 @@
                 android:resource="@xml/echo_playback_widget_info" />
         </receiver>
 
+        <receiver
+            android:name=".widget.EchoMiniPlaybackWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_mini_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/echo_mini_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.EchoCoverPlaybackWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_cover_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/echo_cover_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.EchoLyricsPlaybackWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_lyrics_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/echo_lyrics_widget_info" />
+        </receiver>
+
         <service
             android:name=".tile.EchoPlaybackTileService"
             android:exported="true"

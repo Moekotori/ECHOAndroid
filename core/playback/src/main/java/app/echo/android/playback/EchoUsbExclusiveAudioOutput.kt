@@ -58,8 +58,11 @@ internal class EchoUsbExclusiveAudioOutput(
                 streaming = true,
                 transport = transport,
                 sampleRateHz = sampleRateHz,
-                bitDepth = destBytesPerSample * 8,
+                bitDepth = session.bitResolution,
                 message = "USB exclusive $transport ${sampleRateHz}Hz",
+                bufferCapacityFrames = session.capacityFrames().takeIf {
+                    session.transport == app.echo.android.usbaudio.UsbEndpointTransferType.Isochronous
+                },
             ),
         )
     }
@@ -193,7 +196,8 @@ internal class EchoUsbExclusiveAudioOutput(
     override fun setPreferredDevice(preferredDevice: AudioDeviceInfo?) = Unit
 
     private fun mixedVolume(): Float =
-        volume * EchoPlaybackProcessRuntime.exclusiveMakeupGain
+        volume * EchoPlaybackProcessRuntime.exclusiveMakeupGain *
+            (EchoPlaybackProcessRuntime.usbOutputOptions.volumePercent / 100f)
 
     private fun drainPending(): Boolean {
         if (pendingBytes <= 0) return true
@@ -263,4 +267,5 @@ data class EchoUsbExclusiveSinkStatus(
     val sampleRateHz: Int?,
     val bitDepth: Int?,
     val message: String?,
+    val bufferCapacityFrames: Long? = null,
 )

@@ -3,7 +3,6 @@ package app.echo.android.feature.settings
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import app.echo.android.design.LocalEchoPlatformCapabilities
-import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoReplayGainMode
 import app.echo.android.model.playback.EchoReplayGainPreampMaxDb
 import app.echo.android.model.playback.EchoReplayGainPreampMinDb
@@ -12,7 +11,6 @@ import kotlin.math.roundToInt
 
 @Composable
 internal fun SettingsPlaybackContent(
-    status: EchoPlaybackStatus,
     playbackHapticsEnabled: Boolean,
     effectivePerformanceMode: String,
     onlineLyricsEnabled: Boolean,
@@ -25,27 +23,21 @@ internal fun SettingsPlaybackContent(
     usbExclusiveEnabled: Boolean,
     usbBitPerfectEnabled: Boolean,
     trackTransitions: app.echo.android.model.playback.EchoTrackTransitionOptions,
-    usbExclusiveAutoRequestOnStartup: Boolean,
     pauseOnAudioDisconnect: Boolean,
     resumeOnAudioReconnect: Boolean,
     replayGainEnabled: Boolean,
     replayGainMode: String,
     replayGainPreampDb: Float,
-    usbExclusiveTestResult: String,
     onPlaybackHapticsEnabledChange: (Boolean) -> Unit,
     onOnlineLyricsEnabledChange: (Boolean) -> Unit,
     onLockScreenLyricsEnabledChange: (Boolean) -> Unit,
     onFloatingLyricsChange: (app.echo.android.model.settings.EchoFloatingLyricsSettings) -> Unit,
     onRequestFloatingLyricsPermission: () -> Unit,
-    onUsbExclusiveEnabledChange: (Boolean) -> Unit,
-    onUsbBitPerfectEnabledChange: (Boolean) -> Unit,
     onTrackTransitionsChange: (app.echo.android.model.playback.EchoTrackTransitionOptions) -> Unit,
-    onUsbExclusiveAutoRequestOnStartupChange: (Boolean) -> Unit,
     onPauseOnAudioDisconnectChange: (Boolean) -> Unit,
     onResumeOnAudioReconnectChange: (Boolean) -> Unit,
     onReplayGainChange: (Boolean, Float) -> Unit,
     onReplayGainModeChange: (EchoReplayGainMode) -> Unit,
-    onTestUsbExclusiveDriver: () -> Unit,
     notificationPermissionGranted: Boolean = true,
     onRequestNotificationPermission: () -> Unit = {},
 ) {
@@ -175,9 +167,4 @@ internal fun SettingsPlaybackContent(
             )
         }
     }
-    SettingsUsbContent(
-        status, usbExclusiveEnabled, usbBitPerfectEnabled, usbExclusiveAutoRequestOnStartup,
-        usbExclusiveTestResult, onUsbExclusiveEnabledChange, onUsbBitPerfectEnabledChange,
-        onUsbExclusiveAutoRequestOnStartupChange, onTestUsbExclusiveDriver,
-    )
 }

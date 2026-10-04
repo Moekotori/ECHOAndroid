@@ -86,13 +86,14 @@ class SettingsSearchTest {
     }
 
     @Test
-    fun usbDetailsSearchLeadsToTheVisibleOptInBeforeConfigurationIsAvailable() {
-        val unavailable = availability()
-        val available = unavailable.copy(usbConfigurationVisible = true)
-        val bitPerfect = availableSettingsSearchItems(unavailable).single {
-            it.titleRes == R.string.settings_usb_bitperfect
+    fun usbControlsSearchOpensTheirIndependentPageWithoutAConnectedDac() {
+        val state = availability()
+        val items = availableSettingsSearchItems(state)
+        listOf(R.string.settings_usb_exclusive, R.string.settings_usb_bitperfect,
+            R.string.settings_usb_auto_request, R.string.settings_test_usb).forEach { title ->
+            val item = items.single { it.titleRes == title }
+            assertEquals(SettingsCategory.Usb, item.category)
+            assertEquals(title, settingsSearchAnchorResource(item, state))
         }
-        assertEquals(R.string.settings_usb_exclusive, settingsSearchAnchorResource(bitPerfect, unavailable))
-        assertEquals(R.string.settings_usb_bitperfect, settingsSearchAnchorResource(bitPerfect, available))
     }
 }

@@ -1,0 +1,5 @@
+<resources>
+    <string name="batch_deleting">Eliminando…</string>
+    <string name="batch_playlists_empty">No hay listas editables. Crea una en la pestaña Listas primero.</string>
+    <string name="batch_playlist_added">Añadido a «%1$s»</string>
+</resources>

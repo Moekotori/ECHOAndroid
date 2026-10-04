@@ -6,6 +6,8 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.RawQuery
+import androidx.sqlite.db.SupportSQLiteQuery
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.LibrarySource
@@ -13,6 +15,44 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface LibraryPlaylistDao {
+    @RawQuery(observedEntities = [LibraryTrackEntity::class, LibraryPlaylistTrackEntity::class,
+        LibraryFavoriteEntity::class, LibraryPlaybackStatsEntity::class, LibrarySmartRuleEntity::class])
+    fun observeStats(query: SupportSQLiteQuery): Flow<app.echo.android.model.library.PlaylistStats>
+
+    @RawQuery(observedEntities = [LibraryTrackEntity::class, LibraryPlaylistTrackEntity::class,
+        LibraryFavoriteEntity::class, LibraryPlaybackStatsEntity::class])
+    fun pageOrderedTracks(query: SupportSQLiteQuery): PagingSource<Int, LibraryTrackEntity>
+
+    @Query("SELECT * FROM library_playlist_tracks WHERE playlistId = :id AND trackId = :trackId LIMIT 1")
+    suspend fun membership(id: String, trackId: String): LibraryPlaylistTrackEntity?
+
+    @Query("SELECT * FROM library_playlist_tracks WHERE playlistId = :id AND position < :position ORDER BY position DESC LIMIT 1")
+    suspend fun previousMembership(id: String, position: Int): LibraryPlaylistTrackEntity?
+
+    @Query("SELECT * FROM library_playlist_tracks WHERE playlistId = :id AND position > :position ORDER BY position ASC LIMIT 1")
+    suspend fun nextMembership(id: String, position: Int): LibraryPlaylistTrackEntity?
+
+    @Query("UPDATE library_playlist_tracks SET position = :position WHERE playlistId = :id AND trackId = :trackId")
+    suspend fun setPosition(id: String, trackId: String, position: Int)
+
+    @Query("SELECT COALESCE(MAX(position), -1) FROM library_playlist_tracks WHERE playlistId = :id")
+    suspend fun lastPosition(id: String): Int
+
+    @Query("SELECT trackId FROM library_playlist_tracks WHERE playlistId = :id AND trackId IN (:ids)")
+    suspend fun existingMembers(id: String, ids: List<String>): List<String>
+
+    @Query("UPDATE library_playlists SET trackCount = (SELECT COUNT(*) FROM library_playlist_tracks WHERE playlistId = :id), artworkUri = COALESCE(artworkUri, (SELECT t.artworkUri FROM library_tracks t JOIN library_playlist_tracks p ON p.trackId = t.id WHERE p.playlistId = :id AND t.artworkUri IS NOT NULL ORDER BY p.position LIMIT 1)), updatedAtEpochMs = :now WHERE id = :id")
+    suspend fun refreshMembershipSummary(id: String, now: Long)
+
+    @Query("DELETE FROM library_playlist_tracks WHERE playlistId = :id AND trackId = :trackId")
+    suspend fun removeMember(id: String, trackId: String): Int
+
+    @Query("UPDATE library_playlists SET artworkUri = :uri, updatedAtEpochMs = :now WHERE id = :id")
+    suspend fun setArtwork(id: String, uri: String, now: Long)
+
+    @Query("UPDATE library_playlists SET name = :name, updatedAtEpochMs = :now WHERE id = :id")
+    suspend fun setName(id: String, name: String, now: Long)
+
     @Query("SELECT id, name, source, trackCount, artworkUri, updatedAtEpochMs FROM library_playlists WHERE name LIKE '%' || :query || '%' ORDER BY name COLLATE NOCASE LIMIT 30")
     suspend fun searchEveryPlaylist(query: String): List<PlaylistSummaryRow>
     @Query(

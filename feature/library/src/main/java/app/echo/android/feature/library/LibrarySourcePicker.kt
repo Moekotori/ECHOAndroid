@@ -14,8 +14,10 @@ import androidx.compose.material.icons.rounded.CloudQueue
 import androidx.compose.material.icons.rounded.Devices
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.LibraryMusic
+import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -61,9 +63,11 @@ private fun LibrarySourceMode.label(): String = stringResource(
 internal fun LibrarySourcePicker(
     selectedSource: LibrarySourceMode,
     onSelectSource: (LibrarySourceMode) -> Unit,
+    radioSelected: Boolean,
+    onSelectRadio: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val sourceLabel = selectedSource.label()
+    val sourceLabel = if (radioSelected) stringResource(R.string.radio_title) else selectedSource.label()
     val libraryLabel = stringResource(R.string.feature_library_source_4aff16)
     Box {
         TextButton(
@@ -84,7 +88,7 @@ internal fun LibrarySourcePicker(
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false },
             modifier = Modifier.widthIn(min = 176.dp)) {
             LibrarySourceMode.entries.forEach { source ->
-                val isSelected = source == selectedSource
+                val isSelected = !radioSelected && source == selectedSource
                 DropdownMenuItem(
                     text = {
                         Text(source.label(), fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal)
@@ -100,6 +104,22 @@ internal fun LibrarySourcePicker(
                     },
                 )
             }
+            HorizontalDivider()
+            DropdownMenuItem(
+                text = {
+                    Text(stringResource(R.string.radio_title),
+                        fontWeight = if (radioSelected) FontWeight.SemiBold else FontWeight.Normal)
+                },
+                onClick = {
+                    expanded = false
+                    onSelectRadio()
+                },
+                modifier = Modifier.semantics { selected = radioSelected },
+                leadingIcon = { EchoIcon(Icons.Rounded.Radio, contentDescription = null, Modifier.size(20.dp)) },
+                trailingIcon = {
+                    if (radioSelected) EchoIcon(Icons.Rounded.Check, contentDescription = null, Modifier.size(18.dp))
+                },
+            )
         }
     }
 }

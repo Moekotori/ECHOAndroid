@@ -45,7 +45,7 @@ internal class EchoRenderersFactory(
             // Custom DSP uses internal float buffers and preserves the negotiated output encoding.
             .setEnableFloatOutput(false)
             .setEnableAudioOutputPlaybackParameters(enableAudioTrackPlaybackParams)
-            .setAudioProcessors(arrayOf(processor))
+            .setAudioProcessors(arrayOf(processor, EchoUsbFormatAudioProcessor(context)))
             .setAudioOutputProvider(EchoAudioOutputProvider(context))
             .build()
         return EchoTransitionClockAudioSink(sink, processor)

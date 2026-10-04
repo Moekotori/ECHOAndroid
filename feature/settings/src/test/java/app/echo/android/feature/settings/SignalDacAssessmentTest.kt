@@ -63,6 +63,12 @@ class SignalDacAssessmentTest {
             val status = direct.copy(diagnostics = direct.diagnostics.copy(bitPerfectState = state))
             assertEquals(assessment, assessDac(status))
             assertFalse(status.hasVerifiedUsbDirect())
+            val failed = status.copy(state = EchoPlaybackState.Error, isPlaying = false,
+                diagnostics = status.diagnostics.copy(usbExclusiveStreaming = false))
+            assertEquals(assessment, assessDac(failed))
+            assertFalse(failed.hasVerifiedUsbDirect())
+            assertEquals(DacAssessment.PlaybackError, assessDac(failed.copy(
+                diagnostics = failed.diagnostics.copy(usbBitPerfectEnabled = false))))
         }
     }
 

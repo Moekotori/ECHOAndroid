@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="opra_search_hint">브랜드 또는 모델 검색</string>
+    <string name="opra_clear_search">검색 지우기</string>
+    <string name="opra_catalog_summary">모델 %1$d개 · 보정 %2$d개</string>
+    <plurals name="opra_model_curves">
+        <item quantity="other">곡선 %1$d개</item>
+    </plurals>
+</resources>

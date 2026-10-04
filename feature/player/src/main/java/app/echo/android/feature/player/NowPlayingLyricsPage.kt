@@ -62,6 +62,7 @@ internal fun NowPlayingLyricsPage(
     showTransportDock: Boolean = true,
     modifier: Modifier = Modifier,
     animationsVisible: Boolean = true,
+    pageReveal: () -> Float = { 1f },
 ) {
     LyricsPageTheme(lyricsPageStyle) {
         val paper = lyricsPageStyle == EchoLyricsPageStyle.Paper
@@ -95,12 +96,17 @@ internal fun NowPlayingLyricsPage(
             )
             LyricsPageLayout(
                 supportingPane = !showTransportDock,
-                heading = { landscape -> LyricsTrackHeading(status.track, paper, onOpenArtist, landscape) },
+                heading = { landscape ->
+                    Box(Modifier.fillMaxWidth().lyricsPageEntrance(pageReveal, lightweight, travelDp = 10f)) {
+                        LyricsTrackHeading(status.track, paper, onOpenArtist, landscape)
+                    }
+                },
                 lyrics = {
                     Box(
                         modifier = Modifier
                         .fillMaxWidth()
                         .fillMaxHeight()
+                        .lyricsPageEntrance(pageReveal, lightweight, travelDp = 24f, start = 0.06f)
                         .padding(top = 8.dp, bottom = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -189,6 +195,9 @@ internal fun NowPlayingLyricsPage(
                     }
                 },
                 controls = { landscape ->
+                    Column(Modifier.fillMaxWidth().lyricsPageEntrance(
+                        pageReveal, lightweight, travelDp = 8f, start = 0.12f,
+                    )) {
                     val controlDeck: @Composable () -> Unit = {
                     AnimatedVisibility(
                         visible = showLyricsControlDeck && readyLyrics != null,
@@ -261,6 +270,7 @@ internal fun NowPlayingLyricsPage(
                         Spacer(Modifier.height(10.dp))
                     }
                     if (landscape) controlDeck()
+                    }
                 },
             )
         }

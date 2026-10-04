@@ -1,13 +1,11 @@
 package app.echo.android.feature.settings
 
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Add
@@ -35,30 +32,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import app.echo.android.model.playback.EchoEqFilterType
 import app.echo.android.model.playback.EchoParametricEq
 import app.echo.android.model.playback.OpraEqBand
-import kotlinx.coroutines.delay
-import java.util.Locale
 
 @Composable
 internal fun SignalPeqEditor(
@@ -129,22 +115,8 @@ private fun PeqBandEditor(
     onCommit: (OpraEqBand) -> Unit,
     onDelete: () -> Unit,
 ) {
-    var frequency by remember { mutableStateOf(formatPeqField(band.frequencyHz)) }
-    var gain by remember { mutableStateOf(formatPeqField(band.gainDb)) }
-    var q by remember { mutableStateOf(formatPeqField(band.q ?: 0.707f)) }
-    var type by remember { mutableStateOf(band.type) }
-    var slope by remember { mutableFloatStateOf(EchoParametricEq.snapSlope(band.slope)) }
     var typeMenu by remember { mutableStateOf(false) }
-    var editing by remember { mutableStateOf(false) }
-    val commit = rememberUpdatedState(onCommit)
-    LaunchedEffect(band) {
-        if (editing) return@LaunchedEffect
-        frequency = formatPeqField(band.frequencyHz)
-        gain = formatPeqField(band.gainDb)
-        q = formatPeqField(band.q ?: 0.707f)
-        type = band.type
-        slope = EchoParametricEq.snapSlope(band.slope)
-    }
+    var slopeMenu by remember { mutableStateOf(false) }
     val types = listOf(
         EchoEqFilterType.PeakDip to R.string.dsp_peak,
         EchoEqFilterType.LowShelf to R.string.dsp_low_shelf,
@@ -154,30 +126,8 @@ private fun PeqBandEditor(
         EchoEqFilterType.BandStop to R.string.dsp_notch,
         EchoEqFilterType.BandPass to R.string.dsp_band_pass,
     )
+    val type = app.echo.android.model.playback.EchoEqFilterType.normalize(band.type)
     val pass = EchoParametricEq.isPass(type)
-    val f = frequency.toFloatOrNull()
-    val g = gain.toFloatOrNull()
-    val quality = q.toFloatOrNull()
-    val valid = f != null && f in EchoParametricEq.MinFrequencyHz..EchoParametricEq.MaxFrequencyHz &&
-        g != null && g in EchoParametricEq.MinGainDb..EchoParametricEq.MaxGainDb &&
-        (pass || (quality != null && quality in EchoParametricEq.MinQ..EchoParametricEq.MaxQ))
-    val draft = if (!valid) {
-        null
-    } else {
-        band.copy(
-            type = type,
-            frequencyHz = if (frequency == formatPeqField(band.frequencyHz)) band.frequencyHz else f!!,
-            gainDb = if (gain == formatPeqField(band.gainDb)) band.gainDb else g!!,
-            q = if (pass) null else if (q == formatPeqField(band.q ?: 0.707f)) band.q ?: 0.707f else quality,
-            slope = if (pass) slope else null,
-        )
-    }
-    LaunchedEffect(draft, enabled, band, editing) {
-        if (!editing || !enabled || draft == null || draft == band) return@LaunchedEffect
-        delay(220)
-        commit.value(draft)
-        editing = false
-    }
     val removeLabel = stringResource(R.string.dsp_remove)
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -189,94 +139,37 @@ private fun PeqBandEditor(
                 }
                 DropdownMenu(typeMenu, { typeMenu = false }) {
                     types.forEach { (value, label) ->
-                        DropdownMenuItem(
-                            text = { Text(stringResource(label)) },
-                            onClick = { editing = true; type = value; typeMenu = false },
-                        )
+                        DropdownMenuItem(text = { Text(stringResource(label)) }, onClick = {
+                            typeMenu = false
+                            val nextPass = EchoParametricEq.isPass(value)
+                            val hasGain = value == EchoEqFilterType.PeakDip || value == EchoEqFilterType.LowShelf || value == EchoEqFilterType.HighShelf
+                            onCommit(band.copy(type = value, gainDb = if (hasGain) band.gainDb else 0f,
+                                q = if (nextPass) null else band.q ?: 0.707f,
+                                slope = if (nextPass) EchoParametricEq.snapSlope(band.slope) else null))
+                        })
                     }
                 }
             }
-            IconButton(onClick = onDelete, enabled = enabled && canDelete, modifier = Modifier.semantics { contentDescription = removeLabel }) {
+            IconButton(onClick = onDelete, enabled = enabled && canDelete,
+                modifier = Modifier.semantics { contentDescription = removeLabel }) {
                 EchoIcon(Icons.Outlined.Delete, null, Modifier.size(18.dp))
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PeqValueField(frequency, { editing = true; frequency = it }, "Hz", enabled,
-                f == null || f !in EchoParametricEq.MinFrequencyHz..EchoParametricEq.MaxFrequencyHz, Modifier.weight(1.2f))
-            PeqValueField(gain, { editing = true; gain = it }, "dB", enabled,
-                g == null || g !in EchoParametricEq.MinGainDb..EchoParametricEq.MaxGainDb, Modifier.weight(1f))
-            if (!pass) {
-                PeqValueField(q, { editing = true; q = it }, "Q", enabled,
-                    quality == null || quality !in EchoParametricEq.MinQ..EchoParametricEq.MaxQ, Modifier.weight(1f))
-            }
-        }
+        PeqBandControls(band, enabled, onCommit)
         if (pass) {
-            var slopeMenu by remember { mutableStateOf(false) }
             Box {
                 TextButton(onClick = { slopeMenu = true }, enabled = enabled, contentPadding = PaddingValues(0.dp)) {
-                    Text(stringResource(R.string.dsp_slope_oct, slope.toInt().toString()))
+                    Text(stringResource(R.string.dsp_slope_oct, EchoParametricEq.snapSlope(band.slope).toInt().toString()))
                     Spacer(Modifier.width(6.dp))
-                    EchoIcon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(18.dp))
+                    EchoIcon(Icons.Default.KeyboardArrowDown, null, Modifier.size(18.dp))
                 }
                 DropdownMenu(slopeMenu, { slopeMenu = false }) {
                     EchoParametricEq.PassSlopesDb.forEach { option ->
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.dsp_slope_oct, option.toInt().toString())) },
-                            onClick = {
-                                editing = true
-                                slope = option
-                                slopeMenu = false
-                            },
-                        )
+                        DropdownMenuItem(text = { Text(stringResource(R.string.dsp_slope_oct, option.toInt().toString())) },
+                            onClick = { slopeMenu = false; onCommit(band.copy(slope = option)) })
                     }
                 }
             }
         }
-        if (!valid) {
-            Text(
-                stringResource(R.string.dsp_peq_range),
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-            )
-        }
     }
 }
-
-@Composable
-private fun PeqValueField(
-    value: String,
-    onChange: (String) -> Unit,
-    unit: String,
-    enabled: Boolean,
-    error: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    val scheme = MaterialTheme.colorScheme
-    val focus = remember { FocusRequester() }
-    val keyboard = LocalSoftwareKeyboardController.current
-    Column(
-        modifier.background(scheme.surfaceContainerLow, RoundedCornerShape(6.dp))
-            .clickable(enabled = enabled) { focus.requestFocus(); keyboard?.show() }
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Text(unit, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
-        BasicTextField(
-            value = value,
-            onValueChange = onChange,
-            enabled = enabled,
-            singleLine = true,
-            textStyle = MaterialTheme.typography.titleLarge.copy(
-                fontFamily = FontFamily.Monospace,
-                color = when { error -> scheme.error; enabled -> scheme.onSurface; else -> scheme.onSurfaceVariant },
-            ),
-            cursorBrush = SolidColor(scheme.primary),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            modifier = Modifier.fillMaxWidth().focusRequester(focus).semantics { contentDescription = unit },
-        )
-    }
-}
-
-private fun formatPeqField(value: Float): String =
-    if (value % 1f == 0f) value.toInt().toString()
-    else String.format(Locale.ROOT, "%.2f", value).trimEnd('0').trimEnd('.')

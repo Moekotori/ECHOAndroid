@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_mini_name">ECHO · ミニプレーヤー</string>
+    <string name="widget_mini_description">小さなジャケットとコンパクトな再生操作</string>
+    <string name="widget_cover_name">ECHO · アルバムジャケット</string>
+    <string name="widget_cover_description">大きなジャケットと曲情報、再生ボタン</string>
+    <string name="widget_lyrics_name">ECHO · 歌詞</string>
+    <string name="widget_lyrics_description">現在の歌詞と曲情報、再生操作</string>
+    <string name="widget_lyrics_hint">音楽を再生すると歌詞がここに表示されます</string>
+    <string name="widget_lyrics_unavailable">歌詞がありません</string>
+    <string name="widget_lyrics_label">歌詞</string>
+</resources>

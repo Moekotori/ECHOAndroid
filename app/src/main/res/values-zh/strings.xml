@@ -3,7 +3,7 @@
     <string name="tab_home">我的音乐</string>
     <string name="tab_library">曲库</string>
     <string name="tab_connect">互联</string>
-    <string name="tab_diagnostics">信号</string>
+    <string name="tab_diagnostics">音频</string>
     <string name="permission_welcome">欢迎使用 ECHO</string>
     <string name="permission_title">权限申请</string>
     <string name="permission_subtitle">ECHO 需要以下权限以提供完整的音乐体验</string>

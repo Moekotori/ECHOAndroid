@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_mini_name">ECHO · Мини-плеер</string>
+    <string name="widget_mini_description">Компактное управление с небольшой обложкой</string>
+    <string name="widget_cover_name">ECHO · Обложка</string>
+    <string name="widget_cover_description">Обложка с информацией о треке и кнопкой воспроизведения</string>
+    <string name="widget_lyrics_name">ECHO · Текст песни</string>
+    <string name="widget_lyrics_description">Текущий текст песни, информация о треке и управление</string>
+    <string name="widget_lyrics_hint">Включите музыку, чтобы увидеть текст песни</string>
+    <string name="widget_lyrics_unavailable">Текст песни недоступен</string>
+    <string name="widget_lyrics_label">Текст песни</string>
+</resources>

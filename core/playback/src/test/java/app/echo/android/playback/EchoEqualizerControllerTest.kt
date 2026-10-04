@@ -9,6 +9,43 @@ import org.junit.Test
 
 @UnstableApi
 class EchoEqualizerControllerTest {
+    @Test fun parametricResetKeepsPeqModeAndMsebWithoutLeavingPassFiltersActive() {
+        val controller = EchoEqualizerController()
+        controller.setConfig(true, EchoEqualizerPreset.Custom, emptyList(), -6f,
+            listOf(OpraEqBand("high_pass", 120f, 0f, null, 24f)), "Correction")
+        val mseb = app.echo.android.model.playback.EchoMsebState(true)
+            .withValue(app.echo.android.model.playback.EchoMsebParameter.Air, 30f)
+        controller.setMseb(mseb)
+        controller.reset()
+        val state = controller.state.value
+        assertTrue(state.parametric)
+        assertTrue(state.enabled)
+        assertEquals(EchoEqualizerPreset.Custom, state.presetId)
+        assertEquals(1, state.filters.size)
+        assertEquals("peak_dip", state.filters.single().type)
+        assertEquals(0f, state.preampDb, 0f)
+        assertFalse(state.active)
+        assertNull(state.sourceLabel)
+        assertEquals(mseb, state.mseb)
+        assertTrue(controller.processingRuntime().shouldProcess)
+        val restored = EchoEqualizerController()
+        restored.setConfig(state.enabled, state.presetId, state.gainsDb, state.preampDb, state.filters, mseb = state.mseb)
+        assertEquals(controller.processingRuntime(), restored.processingRuntime())
+        controller.setEnabled(false)
+        controller.reset()
+        assertFalse(controller.state.value.enabled)
+        assertTrue(controller.state.value.parametric)
+    }
+
+    @Test fun graphicResetStillUsesFlatGraphicMode() {
+        val controller = EchoEqualizerController()
+        controller.setConfig(true, EchoEqualizerPreset.Bass, emptyList(), -6f)
+        controller.reset()
+        assertFalse(controller.state.value.parametric)
+        assertEquals(EchoEqualizerPreset.Flat, controller.state.value.presetId)
+        assertFalse(controller.processingRuntime().shouldProcess)
+    }
+
     @Test fun graphicPreampSurvivesBandChangesAndRestoration() {
         val controller = EchoEqualizerController()
         controller.setConfig(true, EchoEqualizerPreset.Bass, listOf(4f, 2f, 0f, 0f, 0f), -6f)

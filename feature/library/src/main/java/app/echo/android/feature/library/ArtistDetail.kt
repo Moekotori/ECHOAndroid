@@ -10,6 +10,9 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.background
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.Alignment
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -61,17 +64,18 @@ internal fun ArtistDetailPage(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .wrapContentWidth(Alignment.CenterHorizontally)
                         .widthIn(max = EchoContentMaxWidth)
                         .padding(horizontal = 24.dp),
                 ) {
-                    ArtistProfileHeader(artist, palette)
+                    ArtistProfileHeader(artist)
                     Spacer(Modifier.height(20.dp))
                     ArtistPlaybackActions(artist.trackCount > 0, onPlayAll, onShuffle)
                     Spacer(Modifier.height(24.dp))
                     if (albums != null) ArtistAlbums(albums, palette, albumListState, onOpenAlbum)
                     Spacer(Modifier.height(22.dp))
                     ArtistTracksHeading(count = artist.trackCount)
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(10.dp))
                     ArtistTrackTools(query, sort, onQueryChange, onSortChange)
                     Spacer(Modifier.height(10.dp))
                 }
@@ -95,13 +99,13 @@ internal fun ArtistDetailPage(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .wrapContentWidth(Alignment.CenterHorizontally)
                                 .widthIn(max = EchoContentMaxWidth)
                                 .padding(horizontal = 24.dp),
                         ) {
-                            AlbumTrackRow(
-                                index = index,
+                            TrackRow(
                                 track = track,
-                                accent = palette.vibrant,
+                                showAudioInfoTags = false,
                                 onClick = { onPlayTrack(track) },
                                 onUpdateTrackMetadata = onUpdateTrackMetadata,
                                 onImportLyrics = onImportLyrics,
@@ -144,7 +148,6 @@ internal fun ArtistDetailListPage(
     onOpenTrackAlbum: ((EchoTrack) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    val palette = rememberArtworkPalette(artist.artworkUri, seedKey = artist.artistKey)
     val onlineQuery = remember(artist.artistKey, artist.name, tracks) {
         ArtistOnlineQuery(artist.name, tracks.take(24).mapNotNull { it.album }.distinct().take(3))
     }
@@ -157,10 +160,11 @@ internal fun ArtistDetailListPage(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .wrapContentWidth(Alignment.CenterHorizontally)
                         .widthIn(max = EchoContentMaxWidth)
                         .padding(horizontal = 24.dp),
                 ) {
-                    ArtistProfileHeader(artist, palette)
+                    ArtistProfileHeader(artist)
                     Spacer(Modifier.height(18.dp))
                     ArtistPlaybackActions(tracks.isNotEmpty(), onPlayAll, onShuffle, onPlayOnPc)
                     Spacer(Modifier.height(24.dp))
@@ -177,17 +181,17 @@ internal fun ArtistDetailListPage(
                 itemsIndexed(
                     items = tracks,
                     key = { _, track -> track.id },
-                ) { index, track ->
+                ) { _, track ->
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .wrapContentWidth(Alignment.CenterHorizontally)
                             .widthIn(max = EchoContentMaxWidth)
                             .padding(horizontal = 24.dp),
                     ) {
-                        AlbumTrackRow(
-                            index = index,
+                        TrackRow(
                             track = track,
-                            accent = palette.vibrant,
+                            showAudioInfoTags = false,
                             onClick = { onPlayTrack(track) },
                             onUpdateTrackMetadata = onUpdateTrackMetadata,
                             onImportLyrics = onImportLyrics,
@@ -205,15 +209,35 @@ internal fun ArtistDetailListPage(
 @Composable
 private fun ArtistTrackTools(query: String, sort: LibraryTrackSortMode, onQueryChange: (String) -> Unit, onSortChange: (LibraryTrackSortMode) -> Unit) {
     var showSort by remember { mutableStateOf(false) }
+    val scheme = MaterialTheme.colorScheme
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(value = query, onValueChange = onQueryChange,
-            placeholder = { Text(stringResource(L10nR.string.artist_search_tracks), style = MaterialTheme.typography.bodyMedium) },
-            leadingIcon = { EchoIcon(Icons.Rounded.Search, null, modifier = Modifier.size(20.dp)) },
-            trailingIcon = { if (query.isNotEmpty()) IconButton(onClick = { onQueryChange("") }) {
-                EchoIcon(Icons.Rounded.Close, stringResource(L10nR.string.artist_clear_search))
-            } },
-            singleLine = true, shape = RoundedCornerShape(18.dp), modifier = Modifier.weight(1f),
-            colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .4f)))
+        BasicTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(color = scheme.onSurface),
+            cursorBrush = SolidColor(scheme.primary),
+            modifier = Modifier.weight(1f),
+            decorationBox = { innerTextField ->
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        .background(scheme.surfaceContainerLow, RoundedCornerShape(10.dp))
+                        .padding(start = 12.dp, end = if (query.isEmpty()) 12.dp else 0.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    EchoIcon(Icons.Rounded.Search, null, modifier = Modifier.size(20.dp), tint = scheme.onSurfaceVariant)
+                    Box(Modifier.weight(1f).padding(vertical = 12.dp)) {
+                        if (query.isEmpty()) Text(stringResource(L10nR.string.artist_search_tracks),
+                            style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
+                        innerTextField()
+                    }
+                    if (query.isNotEmpty()) IconButton(onClick = { onQueryChange("") }) {
+                        EchoIcon(Icons.Rounded.Close, stringResource(L10nR.string.artist_clear_search), modifier = Modifier.size(18.dp))
+                    }
+                }
+            },
+        )
         Box {
             IconButton(onClick = { showSort = true }) { EchoIcon(Icons.AutoMirrored.Rounded.Sort, stringResource(L10nR.string.artist_sort_tracks)) }
             DropdownMenu(expanded = showSort, onDismissRequest = { showSort = false }) {

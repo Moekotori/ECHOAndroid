@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_mini_name">ECHO · Mini player</string>
+    <string name="widget_mini_description">Compact playback controls with a small album cover</string>
+    <string name="widget_cover_name">ECHO · Album cover</string>
+    <string name="widget_cover_description">Album artwork with track information and a play button</string>
+    <string name="widget_lyrics_name">ECHO · Lyrics</string>
+    <string name="widget_lyrics_description">Current lyrics with track information and playback controls</string>
+    <string name="widget_lyrics_hint">Play music to see the lyrics here</string>
+    <string name="widget_lyrics_unavailable">No lyrics available</string>
+    <string name="widget_lyrics_label">Lyrics</string>
+</resources>

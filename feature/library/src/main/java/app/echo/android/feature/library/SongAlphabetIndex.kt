@@ -36,37 +36,44 @@ internal fun SongAlphabetIndex(
     var jumpJob by remember { mutableStateOf<Job?>(null) }
     val colors = MaterialTheme.colorScheme
 
-    Column(
+    Box(
         modifier = modifier
             .width(28.dp)
             .fillMaxHeight()
             .padding(top = 8.dp, bottom = LibraryBottomControlsPadding),
-        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        for (letter in 'A'..'Z') {
-            val label = stringResource(R.string.library_jump_to_letter, letter.toString())
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .clickable(onClickLabel = label) {
-                        jumpJob?.cancel()
-                        jumpJob = scope.launch {
-                            val index = findIndex(letter)
-                            if (itemCount > 0) {
-                                listState.scrollToItem(index.coerceIn(0, itemCount - 1))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.92f)
+                .align(Alignment.CenterEnd),
+        ) {
+            for (letter in 'A'..'Z') {
+                val label = stringResource(R.string.library_jump_to_letter, letter.toString())
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .clickable(onClickLabel = label) {
+                            jumpJob?.cancel()
+                            jumpJob = scope.launch {
+                                val index = findIndex(letter)
+                                if (itemCount > 0) {
+                                    listState.scrollToItem(index.coerceIn(0, itemCount - 1))
+                                }
                             }
-                        }
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = letter.toString(),
-                    color = colors.onSurfaceVariant,
-                    style = MaterialTheme.typography.labelSmall.copy(lineHeight = 1.em),
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                )
+                        },
+                    contentAlignment = Alignment.CenterEnd,
+                ) {
+                    Text(
+                        text = letter.toString(),
+                        modifier = Modifier.padding(end = 4.dp),
+                        color = colors.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelSmall.copy(lineHeight = 1.em),
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                    )
+                }
             }
         }
     }

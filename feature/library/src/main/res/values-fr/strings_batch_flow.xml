@@ -1,0 +1,5 @@
+<resources>
+    <string name="batch_deleting">Suppression…</string>
+    <string name="batch_playlists_empty">Aucune playlist modifiable. Créez-en une dans l’onglet Playlists.</string>
+    <string name="batch_playlist_added">Ajouté à « %1$s »</string>
+</resources>

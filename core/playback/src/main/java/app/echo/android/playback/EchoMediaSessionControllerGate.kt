@@ -1,6 +1,8 @@
 package app.echo.android.playback
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.os.Process
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSession
@@ -57,6 +59,37 @@ object EchoMediaSessionControllerGate {
         ) {
             return true
         }
-        return isAllowedPackage(packageName)
+        return isAllowedPackage(packageName) || isInstalledXiaomiMediaController(context, controllerInfo)
     }
+
+    private fun isInstalledXiaomiMediaController(
+        context: Context,
+        controllerInfo: MediaSession.ControllerInfo,
+    ): Boolean {
+        if (controllerInfo.packageName != XiaomiMediaControllerPackage) return false
+        // Accept the preinstalled MiPlay service even when it is not marked trusted.
+        // A package name alone must not grant access to the playback session/library.
+        val info = try {
+            context.packageManager.getApplicationInfo(controllerInfo.packageName, 0)
+        } catch (_: PackageManager.NameNotFoundException) {
+            return false
+        }
+        return isPreinstalledXiaomiMediaController(
+            packageName = controllerInfo.packageName,
+            controllerUid = controllerInfo.uid,
+            installedUid = info.uid,
+            applicationFlags = info.flags,
+        )
+    }
+
+    internal fun isPreinstalledXiaomiMediaController(
+        packageName: String,
+        controllerUid: Int,
+        installedUid: Int,
+        applicationFlags: Int,
+    ): Boolean = packageName == XiaomiMediaControllerPackage &&
+        controllerUid >= 0 && controllerUid == installedUid &&
+        applicationFlags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+
+    private const val XiaomiMediaControllerPackage = "com.milink.service"
 }

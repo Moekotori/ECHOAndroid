@@ -60,6 +60,9 @@ the<org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension>().compilerOpt
 android {
     namespace = "app.echo.android"
     compileSdk = 37
+    // Pin the strip tool as well as the native modules' compiler; otherwise an
+    // app without externalNativeBuild can package the libraries unstripped.
+    ndkVersion = "27.2.12479018"
 
     defaultConfig {
         applicationId = "app.echo.android"
@@ -87,6 +90,12 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    buildTypes.getByName("release") {
+        isMinifyEnabled = true
+        isShrinkResources = true
+        proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
     }
 
     if (releaseSigningProperties.isNotEmpty()) {
@@ -119,6 +128,9 @@ android {
             excludes += setOf(
                 "META-INF/versions/9/OSGI-INF/MANIFEST.MF",
                 "META-INF/versions/*/module-info.class",
+                // SMBJ uses BC's lightweight SMB ciphers, not the Picnic PQC
+                // implementation. R8 removes its code; exclude its data too.
+                "org/bouncycastle/pqc/crypto/picnic/*.bin.properties",
             )
         }
     }

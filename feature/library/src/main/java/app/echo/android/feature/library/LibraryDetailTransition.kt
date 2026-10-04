@@ -1,5 +1,8 @@
 package app.echo.android.feature.library
 
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -10,6 +13,7 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.paging.compose.LazyPagingItems
 import app.echo.android.design.EchoPageContent
+import app.echo.android.design.rememberEchoContentMotion
 import app.echo.android.model.connect.EchoRemotePlaylist
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
@@ -52,9 +56,11 @@ private val LibraryDetailTransitionTarget.pageKey: String
 internal fun LibraryDetailTransition(
     targetState: LibraryDetailTransitionTarget,
     split: Boolean,
+    outerNavigationOwnsTransition: Boolean = false,
     modifier: Modifier = Modifier,
     content: @Composable (LibraryDetailTransitionTarget) -> Unit,
 ) {
+    val motion = rememberEchoContentMotion()
     val savedState = rememberSaveableStateHolder()
     var retainedKeys by rememberSaveable { mutableStateOf(emptyMap<String, String>()) }
     LaunchedEffect(targetState.pageKey) {
@@ -74,7 +80,20 @@ internal fun LibraryDetailTransition(
                 (initial is LibraryDetailTransitionTarget.AlbumDetail && target is LibraryDetailTransitionTarget.ArtistDetail) ||
                 (initial is LibraryDetailTransitionTarget.LinkedAlbum && target is LibraryDetailTransitionTarget.LinkedArtist)
         },
-        fadeOnly = split,
+        // Cross-tab navigation already moves the whole library page. Keep its detail
+        // ready underneath, without a second slide, scale, or staggered reveal.
+        fadeOnly = split || outerNavigationOwnsTransition,
+        transitionSpec = if (outerNavigationOwnsTransition) {
+            {
+                if (initialState == LibraryDetailTransitionTarget.Browser ||
+                    this.targetState == LibraryDetailTransitionTarget.Browser
+                ) {
+                    ContentTransform(EnterTransition.None, ExitTransition.None, sizeTransform = null)
+                } else {
+                    motion.pageFade()
+                }
+            }
+        } else null,
         modifier = modifier,
         label = "library-detail-transition",
     ) { target ->

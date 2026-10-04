@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_library_overview_local_short">音樂\n儲存</string>
+    <string name="settings_library_audio_title">音訊品質</string>
+    <string name="settings_library_audio_lossless">無損格式</string>
+    <string name="settings_library_audio_lossy">有損格式</string>
+    <string name="settings_library_audio_dsd">DSD</string>
+    <string name="settings_library_audio_unconfirmed">待確認</string>
+    <string name="settings_library_audio_formats">檔案格式</string>
+    <string name="settings_library_audio_rates">取樣率分布</string>
+    <string name="settings_library_audio_high_rate">高於 48 kHz · %1$s 首（不含 DSD）</string>
+    <string name="settings_library_audio_unknown">未知</string>
+    <string name="settings_library_audio_other_rate">其他取樣率</string>
+    <string name="settings_library_audio_dsd_rate">DSD 取樣</string>
+    <string name="settings_library_audio_khz">%1$s kHz</string>
+    <string name="settings_library_audio_empty">從「管理」掃描音樂後，這裡會顯示格式和取樣率。</string>
+    <string name="settings_library_audio_scope">統計已收錄的本機檔案。FLAC、ALAC、APE 歸為無損格式；M4A、Ogg、WAV、AIFF、WMA 和 WavPack 需確認具體編碼。未知取樣率表示掃描時未記錄。</string>
+    <string name="settings_library_audio_depth_bitrate">曲庫尚未記錄位元深度和位元率。高取樣率不能單獨確認 Hi-Res 音質，也不代表裝置實際輸出品質。</string>
+    <string name="settings_library_audio_depth">位元深度</string>
+    <string name="settings_library_audio_bitrate">位元率</string>
+    <string name="settings_library_audio_not_recorded">未記錄</string>
+</resources>

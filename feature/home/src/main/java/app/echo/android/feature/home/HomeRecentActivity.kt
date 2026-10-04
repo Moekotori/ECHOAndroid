@@ -55,7 +55,6 @@ internal fun RoonRecentActivitySection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .homeCarouselScroll()
             .padding(top = 4.dp, bottom = 4.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {

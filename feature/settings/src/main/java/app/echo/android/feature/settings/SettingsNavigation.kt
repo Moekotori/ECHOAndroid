@@ -39,6 +39,7 @@ internal enum class SettingsCategory(val title: Int, val description: Int, val i
     Appearance(R.string.settings_category_appearance, R.string.settings_category_appearance_detail, SettingsCategoryIcons.Appearance),
     Interface(R.string.settings_category_interface, R.string.settings_category_interface_detail, SettingsCategoryIcons.Interface),
     Playback(R.string.settings_category_playback, R.string.settings_category_playback_detail, SettingsCategoryIcons.Playback),
+    Usb(R.string.settings_usb_exclusive, R.string.usb_page_description, SettingsCategoryIcons.Usb),
     Services(R.string.settings_category_services, R.string.settings_category_services_detail, SettingsCategoryIcons.Services),
     Library(R.string.settings_section_library, R.string.settings_category_library_detail, SettingsCategoryIcons.Library),
     About(R.string.settings_section_about, R.string.settings_category_about_detail, SettingsCategoryIcons.About),

@@ -362,7 +362,7 @@ internal fun RoonRecentActivitySection(
         }
         Row(
             modifier = Modifier
-                .homeCarouselScroll()
+                .fillMaxWidth()
                 .horizontalScroll(rememberScrollState())
                 .padding(horizontal = 18.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -582,7 +582,7 @@ internal fun HomeRecommendationsSection(
         } else {
             Row(
                 modifier = Modifier
-                    .homeCarouselScroll()
+                    .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
                     .padding(horizontal = 18.dp),
                 horizontalArrangement = Arrangement.spacedBy(18.dp),

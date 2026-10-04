@@ -100,12 +100,13 @@ internal object EchoDsdMetadata {
                     if (!skipExact(input, padded)) return null
                 }
                 "ID3 " -> {
-                    if (size in 10L..1_048_576L) {
-                        val payload = input.readExact(size.toInt()) ?: return null
+                    if (size in 10L..64L * 1024 * 1024) {
+                        val slice = TagSliceInput(input, size)
                         tags = mergeAudioTags(
                             preferred = tags,
-                            fallback = readLocalAudioTags(ByteArrayInputStream(payload)),
+                            fallback = readLocalAudioTags(slice),
                         )
+                        if (!slice.skipTagBytes(slice.remaining)) return null
                         if (padded > size && !skipExact(input, padded - size)) return null
                     } else if (!skipExact(input, padded)) {
                         return null

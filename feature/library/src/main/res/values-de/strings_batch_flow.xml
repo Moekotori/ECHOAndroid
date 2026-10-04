@@ -1,0 +1,5 @@
+<resources>
+    <string name="batch_deleting">Wird gelöscht…</string>
+    <string name="batch_playlists_empty">Noch keine bearbeitbaren Playlists. Erstelle zuerst eine im Tab Playlists.</string>
+    <string name="batch_playlist_added">Zu „%1$s“ hinzugefügt</string>
+</resources>

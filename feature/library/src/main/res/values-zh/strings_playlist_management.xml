@@ -1,0 +1,48 @@
+<resources>
+    <string name="playlist_sort_default">默认顺序</string>
+    <string name="playlist_sort_manual">手动顺序</string>
+    <string name="playlist_sort_artist">艺术家</string>
+    <string name="playlist_sort_album">专辑</string>
+    <string name="playlist_sort_ascending">升序</string>
+    <string name="playlist_sort_descending">降序</string>
+    <string name="playlist_sort">排序</string>
+    <string name="playlist_edit_tracks">编辑曲目</string>
+    <string name="playlist_add_tracks">添加歌曲</string>
+    <string name="playlist_copy">复制为可编辑歌单</string>
+    <string name="playlist_copy_name">%1$s 的副本</string>
+    <string name="playlist_copy_hint">按当前顺序创建用户歌单，支持最多 10,000 首歌曲。</string>
+    <string name="playlist_change_cover">更换封面</string>
+    <string name="playlist_action_error">未能保存修改，请重试。</string>
+    <string name="playlist_manual_hint">切回手动顺序后可以调整歌曲位置。</string>
+    <string name="playlist_search">搜索歌单</string>
+    <string name="playlist_list_recent">最近修改</string>
+    <string name="playlist_list_name">名称</string>
+    <string name="playlist_list_count">歌曲数量</string>
+    <string name="playlist_no_search_results">没有找到匹配的歌单</string>
+    <string name="playlist_user_section">我的歌单</string>
+    <string name="playlist_smart_section">智能歌单</string>
+    <string name="playlist_import">导入歌单</string>
+    <string name="playlist_import_hint">支持 M3U、M3U8、PLS；匹配当前曲库中的歌曲，不下载音频。</string>
+    <string name="playlist_import_reading">正在匹配歌曲…</string>
+    <string name="playlist_import_summary">%1$d 首可导入 · 共 %2$d 条记录</string>
+    <string name="playlist_import_name">歌单名称</string>
+    <string name="playlist_import_saving">正在保存…</string>
+    <string name="playlist_import_confirm">导入已匹配歌曲</string>
+    <string name="playlist_import_empty">文件中没有歌单记录。</string>
+    <string name="playlist_import_failed">无法读取这个歌单文件。</string>
+    <string name="playlist_import_no_matches">没有找到匹配的歌曲，请先扫描音乐文件，再重新导入。</string>
+    <string name="playlist_import_too_large">请选择不超过 256 KiB 的歌单文件。</string>
+    <string name="playlist_import_too_many">单个文件最多包含 2,000 条记录。</string>
+    <string name="playlist_import_save_failed">未能创建歌单，歌曲可能已被移出曲库。</string>
+    <string name="playlist_import_view">查看歌单</string>
+    <string name="playlist_exported">歌单已导出</string>
+    <string name="playlist_export_failed">无法导出歌单，请检查保存位置和 10,000 首歌曲的数量限制。</string>
+    <string name="playlist_selection_limit">一次最多选择 2,000 首歌曲。</string>
+    <string name="playlist_add_no_matches">没有找到匹配的歌曲</string>
+    <plurals name="playlist_added"><item quantity="other">已加入 %1$d 首歌曲</item></plurals>
+    <plurals name="playlist_import_duplicates"><item quantity="other">已跳过 %1$d 条重复记录</item></plurals>
+    <plurals name="playlist_import_missing"><item quantity="other">%1$d 首未找到</item></plurals>
+    <plurals name="playlist_import_ambiguous"><item quantity="other">%1$d 条匹配不唯一，已跳过</item></plurals>
+    <plurals name="playlist_imported"><item quantity="other">已导入 %1$d 首歌曲</item></plurals>
+    <plurals name="playlist_selected"><item quantity="other">已选 %1$d 首</item></plurals>
+</resources>

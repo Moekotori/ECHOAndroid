@@ -1,6 +1,7 @@
 package app.echo.android
 
 import app.echo.android.connect.EchoRemoteClient
+import app.echo.android.model.connect.EchoRemoteConnectionState
 import app.echo.android.model.connect.EchoRemoteLyrics
 import app.echo.android.model.connect.EchoRemoteTrack
 import app.echo.android.model.library.EchoTrack
@@ -13,6 +14,7 @@ class EchoLinkPlaybackRouter(private val client: EchoRemoteClient) {
     val remoteMode = selectedRemoteMode.asStateFlow()
 
     fun selectRemoteMode(remote: Boolean) {
+        if (remote && client.status.value.connectionState != EchoRemoteConnectionState.Connected) return
         if (selectedRemoteMode.value == remote) return
         client.cancelPhonePlaybackRequest()
         selectedRemoteMode.value = remote

@@ -14,6 +14,7 @@ target_link_libraries(echo_dsp android log)
 target_link_options(echo_dsp PRIVATE "-Wl,-z,max-page-size=16384")
 
 add_library(ffmpegJNI SHARED ../../../third_party/media3-ffmpeg/jni/ffmpeg_jni.cc)
+target_sources(ffmpegJNI PRIVATE echo_usb_resample.cpp)
 target_include_directories(ffmpegJNI PRIVATE "${ffmpeg_prefix}/include")
 target_link_libraries(ffmpegJNI PRIVATE avcodec swresample avutil android log)
 target_link_options(ffmpegJNI PRIVATE "-Wl,-z,max-page-size=16384")

@@ -8,16 +8,22 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
-fun smartPlaylistQuery(id: String, limit: Int? = null, anchorId: String? = null, offset: Int = 0): SimpleSQLiteQuery {
+fun smartPlaylistQuery(id: String, limit: Int? = null, anchorId: String? = null, offset: Int = 0,
+    playlistOrder: PlaylistTrackOrder = PlaylistTrackOrder(),
+): SimpleSQLiteQuery {
     val order = "CASE r.sort WHEN 'RecentlyAdded' THEN -t.dateModifiedSeconds WHEN 'LeastPlayed' THEN COALESCE(s.playCount,0) WHEN 'MostPlayed' THEN -COALESCE(s.playCount,0) ELSE 0 END, t.title COLLATE NOCASE, t.id"
     val from = "library_tracks t JOIN library_smart_rules r LEFT JOIN library_playback_stats s ON s.trackId = t.id"
+    if (!playlistOrder.isManual) {
+        return PlaylistOrderingQuery.build(from, "r.playlistId = ? AND ($SmartRuleMatchSql)",
+            listOf(id), playlistOrder, limit, anchorId)
+    }
     val args = mutableListOf<Any>(id)
     val anchor = if (anchorId == null) "" else {
         args.add(id); args.add(anchorId)
         " AND ($order) >= (SELECT $order FROM $from WHERE r.playlistId = ? AND t.id = ?)"
     }
     return SimpleSQLiteQuery("SELECT t.* FROM $from WHERE r.playlistId = ? AND ($SmartRuleMatchSql)$anchor ORDER BY $order" +
-        if (limit != null) " LIMIT ${limit.coerceIn(1, 10000)} OFFSET ${offset.coerceAtLeast(0)}" else "", args.toTypedArray())
+        if (limit != null) " LIMIT ${limit.coerceIn(1, 10_001)} OFFSET ${offset.coerceAtLeast(0)}" else "", args.toTypedArray())
 }
 
 suspend fun EchoLibraryRepository.saveSmartPlaylist(id: String?, name: String, rule: EchoSmartPlaylistRule): EchoPlaylist =

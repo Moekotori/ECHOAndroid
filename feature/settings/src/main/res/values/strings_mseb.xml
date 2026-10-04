@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mseb_title">MSEB</string>
+    <string name="mseb_detail">Shape your sound with ten listening controls. Zero keeps the original tone; EQ can be used alongside MSEB.</string>
+    <string name="mseb_neutral">Neutral</string>
+    <string name="mseb_warm">Warm</string>
+    <string name="mseb_vocal">Vocal</string>
+    <string name="mseb_bass">Bass</string>
+    <string name="mseb_clear">Clear</string>
+    <string name="mseb_headroom">Automatic headroom</string>
+    <string name="mseb_reset">Reset all to zero</string>
+    <string name="mseb_integrity">Sound adjusted by MSEB</string>
+    <string name="mseb_temperature">Overall temperature</string>
+    <string name="mseb_bass_extension">Bass extension</string>
+    <string name="mseb_bass_texture">Bass texture</string>
+    <string name="mseb_note_thickness">Note thickness</string>
+    <string name="mseb_voice">Vocal position</string>
+    <string name="mseb_female_overtones">Female overtones</string>
+    <string name="mseb_sibilance_lf">Lower sibilance</string>
+    <string name="mseb_sibilance_hf">Upper sibilance</string>
+    <string name="mseb_impulse_response">Transient feel</string>
+    <string name="mseb_air">Air</string>
+    <string name="mseb_cool">Cool / bright</string>
+    <string name="mseb_warm_dark">Warm / dark</string>
+    <string name="mseb_light">Light</string>
+    <string name="mseb_deep">Deep</string>
+    <string name="mseb_tight">Tight</string>
+    <string name="mseb_thumpy">Thumpy</string>
+    <string name="mseb_crisp">Crisp</string>
+    <string name="mseb_thick">Thick</string>
+    <string name="mseb_recessed">Recessed</string>
+    <string name="mseb_forward">Forward</string>
+    <string name="mseb_smooth">Smooth</string>
+    <string name="mseb_vivid">Vivid</string>
+    <string name="mseb_soft">Soft</string>
+    <string name="mseb_musical">Soft / musical</string>
+    <string name="mseb_fast">Fast / sharp</string>
+    <string name="mseb_open">Open</string>
+</resources>

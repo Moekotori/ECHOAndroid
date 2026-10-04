@@ -23,7 +23,7 @@ data class M3uMatchRow(
 )
 
 object M3uPlaylistCodec {
-    fun parse(text: String): List<M3uEntry> {
+    fun parse(text: String, maxEntries: Int = Int.MAX_VALUE): List<M3uEntry> {
         val entries = ArrayList<M3uEntry>()
         var pendingTitle: String? = null
         var pendingDuration: Int? = null
@@ -43,6 +43,7 @@ object M3uPlaylistCodec {
                 return@forEach
             }
             if (line.startsWith("#")) return@forEach
+            require(entries.size < maxEntries) { "Too many playlist entries" }
             entries += M3uEntry(
                 location = normalizeM3uLocation(line),
                 title = pendingTitle,
@@ -107,9 +108,12 @@ internal fun M3uMatchRow.fileLocation(): String? {
 internal fun normalizeM3uLocation(raw: String): String {
     var value = raw.trim().replace('\\', '/')
     if (value.startsWith("file:", ignoreCase = true)) {
-        value = value.removePrefix("file://").removePrefix("file:")
+        value = value.substring(5)
+        value = runCatching {
+            java.net.URLDecoder.decode(value.replace("+", "%2B"), "UTF-8")
+        }.getOrDefault(value)
     }
-    while (value.startsWith("//")) value = value.removePrefix("/")
+    value = value.replace('\\', '/').trimStart('/')
     if (value.length >= 2 && value[1] == ':' && value[0].isLetter()) {
         value = value.substring(2)
     }

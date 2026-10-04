@@ -17,7 +17,9 @@ import app.echo.android.data.EchoErrorLogRepository
 import app.echo.android.data.EchoLibraryDatabase
 import app.echo.android.data.EchoLibraryRepository
 import app.echo.android.data.batchTags
+import app.echo.android.data.deleteSelectedTracks
 import app.echo.android.data.libraryHealthStats
+import app.echo.android.data.libraryAudioProfile
 import app.echo.android.model.error.EchoErrorLog
 import app.echo.android.model.error.EchoErrorRecord
 import app.echo.android.model.error.EchoErrorSource
@@ -121,6 +123,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     )
     private val errorLog = EchoErrorLogRepository.create(application)
     internal val libraryExperience = LibraryExperienceController(repository, application)
+    internal val playlistTools = PlaylistManagementController(application, repository, viewModelScope)
     internal val unifiedSearch = UnifiedSearchController(repository)
     internal val librarySync = LibrarySyncController(repository)
     internal fun reconcile(session: app.echo.android.connect.EchoLibrarySyncSession,peerId: String) = LibraryReconcileController(getApplication<Application>(),repository,session,peerId)
@@ -183,6 +186,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     val favoriteAlbums: StateFlow<List<AlbumSummary>> = libraryController.favoriteAlbums
     val libraryStats: StateFlow<LibraryStats> = libraryController.libraryStats
     internal suspend fun libraryHealthStats() = repository.libraryHealthStats()
+    internal suspend fun libraryAudioProfile() = repository.libraryAudioProfile()
 
     private val libraryLyricsInspector by lazy {
         app.echo.android.lyrics.LibraryLyricsInspector(
@@ -320,6 +324,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                 } else {
                     settings.usbExclusiveEnabled
                 }
+                playbackController.setUsbOutputOptions(settings.usbOutputOptions)
                 playbackController.setUsbOutputMode(shouldEnableUsbExclusive, settings.usbBitPerfectEnabled)
                 if (settings.channelBalance != lastChannelBalance) {
                     lastChannelBalance = settings.channelBalance
@@ -521,6 +526,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                 if (queue.isEmpty()) return@launch
                 val startIndex = LibraryPlaybackQueuePolicy.startIndex(queue.map { it.id }, track.id)
                 if (startIndex < 0) return@launch
+                if (origin is LibraryPlaybackOrigin.Album) {
+                    playbackController.playAlbumQueue(queue, startIndex)
+                    return@launch
+                }
                 playbackController.playQueue(queue, startIndex, source = when (origin) {
                     is LibraryPlaybackOrigin.Album -> track.album
                     is LibraryPlaybackOrigin.Artist -> track.artist
@@ -573,6 +582,15 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         for (track in ordered) {
             when (mode) { 1 -> playbackController.playNext(track); 2 -> playbackController.addNextUp(track); else -> playbackController.enqueue(track) }
             kotlinx.coroutines.yield()
+        }
+    }
+
+    internal suspend fun batchDeleteTracks(
+        tracks: List<EchoTrack>, deleteOriginals: Boolean,
+        authorize: suspend (android.content.IntentSender) -> Boolean,
+    ) = repository.deleteSelectedTracks(tracks, deleteOriginals, authorize) { deletedUris ->
+        withContext(Dispatchers.Main.immediate) {
+            playbackController.removeDeletedFiles(deletedUris)
         }
     }
 
@@ -679,7 +697,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun playAlbum(albumKey: String) {
         viewModelScope.launch {
             val queue = libraryController.albumTracksForPlayback(albumKey)
-            if (queue.isNotEmpty()) playbackController.playQueue(queue, 0)
+            if (queue.isNotEmpty()) playbackController.playAlbumQueue(queue, 0)
         }
     }
 
@@ -687,7 +705,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             val queue = libraryController.albumTracksForPlayback(albumKey)
             if (queue.isNotEmpty()) {
-                playbackController.playQueue(
+                playbackController.playAlbumQueue(
                     queue = queue,
                     startIndex = queue.indices.random(),
                     intent = PlaybackQueueReplaceIntent.Shuffle,
@@ -801,47 +819,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun importM3uPlaylist(uri: Uri) {
-        viewModelScope.launch {
-            try { importM3uPlaylistWithResult(uri) }
-            catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
-            catch (error: Exception) {
-                EchoErrorLog.record(EchoErrorSource.Library, "Playlist import failed", detail = error.message)
-            }
-        }
+        playlistTools.prepare(uri)
     }
 
-    internal suspend fun importM3uPlaylistWithResult(uri: Uri): EchoPlaylist? {
-            val text = withContext(Dispatchers.IO) {
-                getApplication<Application>().contentResolver.openInputStream(uri)?.use { input ->
-                    // A playlist is text, not audio. Bound provider reads even when its reported size is absent.
-                    val limit = 256 * 1024
-                    val buffer = ByteArray(limit + 1)
-                    var size = 0
-                    while (size < buffer.size) {
-                        kotlinx.coroutines.currentCoroutineContext().ensureActive()
-                        val count = input.read(buffer, size, buffer.size - size)
-                        if (count < 0) break
-                        if (count == 0) break
-                        size += count
-                    }
-                    require(size <= limit) { "Playlist is larger than 256 KiB" }
-                    val bytes = buffer.copyOf(size)
-                    decodeLegacyTagText(bytes) ?: bytes.toString(java.nio.charset.StandardCharsets.UTF_8)
-                }
-            } ?: return null
-            if (text.isBlank()) return null
-            require(text.lineSequence().count { it.isNotBlank() && !it.trimStart().startsWith("#") } <= 2_000) {
-                "Playlist contains more than 2,000 entries"
-            }
-            val name = uri.lastPathSegment
-                ?.substringAfterLast('/')
-                ?.substringBeforeLast('.')
-                ?.replace('+', ' ')
-                ?.trim()
-                ?.takeIf { it.isNotBlank() }
-                ?: "M3U"
-            return libraryController.importM3uPlaylist(name, text)
-    }
+    internal suspend fun importM3uPlaylistWithResult(uri: Uri): EchoPlaylist? = playlistTools.importImmediately(uri)
 
     fun exportBackup(uri: Uri) {
         viewModelScope.launch {
@@ -866,16 +847,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    fun exportM3uPlaylist(playlistId: String, uri: Uri) {
-        viewModelScope.launch {
-            val text = libraryController.exportM3uPlaylist(playlistId) ?: return@launch
-            withContext(Dispatchers.IO) {
-                getApplication<Application>().contentResolver.openOutputStream(uri)?.use { output ->
-                    output.write(text.toByteArray(java.nio.charset.StandardCharsets.UTF_8))
-                }
-            }
-        }
-    }
+    fun exportM3uPlaylist(playlistId: String, uri: Uri) = playlistTools.export(playlistId, uri)
 
     fun reorderLocalPlaylistTracks(playlistId: String, fromIndex: Int, toIndex: Int) {
         viewModelScope.launch {
@@ -1279,6 +1251,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         updateSettings { setUsbBitPerfectEnabled(enabled) }
     }
 
+    fun setUsbOutputOptions(options: app.echo.android.model.playback.EchoUsbOutputOptions) {
+        updateSettings { setUsbOutputOptions(options) }
+    }
+
     fun setUsbExclusiveAutoRequestOnStartup(enabled: Boolean) {
         updateSettings {
             setUsbExclusiveAutoRequestOnStartup(enabled)
@@ -1301,6 +1277,12 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun setEqualizerPreamp(gainDb: Float) {
         playbackController.setEqualizerPreamp(gainDb)
         updateSettings { setEqualizerPreamp(gainDb) }
+    }
+
+    fun setMseb(state: app.echo.android.model.playback.EchoMsebState) {
+        val normalized = state.normalized
+        EchoPlaybackProcessRuntime.equalizerController().setMseb(normalized)
+        updateSettings { setMseb(normalized) }
     }
 
     fun setEqualizerEnabled(enabled: Boolean) {
@@ -1329,8 +1311,13 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun resetEqualizer() {
         playbackController.resetEqualizer()
+        val selected = playbackController.equalizerState.value
         updateSettings {
-            resetEqualizer()
+            if (selected.parametric) {
+                setEqualizerParametricConfig(selected.gainsDb, selected.preampDb, selected.filters,
+                    selected.sourceLabel, enabled = selected.enabled)
+                setEqualizerActiveUserPresetId(null)
+            } else resetEqualizer()
         }
     }
 

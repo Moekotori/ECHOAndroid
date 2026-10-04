@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="opra_search_hint">Поиск бренда или модели</string>
+    <string name="opra_clear_search">Очистить поиск</string>
+    <string name="opra_catalog_summary">%1$d моделей · %2$d коррекций</string>
+    <plurals name="opra_model_curves">
+        <item quantity="one">%1$d кривая</item>
+        <item quantity="few">%1$d кривые</item>
+        <item quantity="many">%1$d кривых</item>
+        <item quantity="other">%1$d кривой</item>
+    </plurals>
+</resources>

@@ -61,6 +61,7 @@ internal fun EchoBottomDockHost(
     onOpenQueue: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
+    onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier,
     animationsVisible: Boolean = true,
     showNavigation: Boolean = true,
@@ -134,6 +135,7 @@ internal fun EchoBottomDockHost(
             onExpand = onExpand,
             onNext = onNext,
             onPrevious = onPrevious,
+            onSeek = onSeek,
             modifier = Modifier
                 .widthIn(max = LocalEchoContentMaxWidth.current)
                 .fillMaxWidth(),

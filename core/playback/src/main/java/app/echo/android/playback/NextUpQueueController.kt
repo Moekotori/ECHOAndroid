@@ -14,6 +14,26 @@ internal class NextUpQueueController(private val player: ExoPlayer) : Player.Lis
 
     init { player.addListener(this) }
 
+    fun playAlbum(items: List<MediaItem>, startIndex: Int, shuffle: Boolean) = change {
+        if (items.isEmpty()) return@change
+        val retained = AlbumQueuePolicy.retainedIndices(
+            existingIds = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId },
+            nextUpIndices = manualIndices().toSet(),
+            albumIds = items.map { it.mediaId },
+            currentIndex = player.currentMediaItemIndex,
+        ).map(player::getMediaItemAt)
+        val start = startIndex.coerceIn(items.indices)
+        player.shuffleModeEnabled = shuffle
+        player.repeatMode = Player.REPEAT_MODE_OFF
+        player.setMediaItems(retained + items, retained.size + start, 0L)
+        // Keep older albums in the previous section even when the new album is shuffled.
+        val albumOrder = items.indices.toList().let { if (shuffle) it.shuffled() else it }
+        val order = retained.indices.toList() + albumOrder.map { retained.size + it }
+        player.setShuffleOrder(ShuffleOrder.DefaultShuffleOrder(order.toIntArray(), 0L))
+        player.prepare()
+        player.play()
+    }
+
     fun add(item: MediaItem, first: Boolean) = change {
         val current = player.currentMediaItemIndex
         val pending = manualIndices().filter { it != current }
@@ -29,6 +49,16 @@ internal class NextUpQueueController(private val player: ExoPlayer) : Player.Lis
     fun clearPending() = change {
         val current = player.currentMediaItemIndex
         manualIndices().filter { it != current }.asReversed().forEach(player::removeMediaItem)
+    }
+
+    fun removeDeletedFiles(uris: Set<String>) = change {
+        val ranges = DeletedQueueFilesPolicy.removalRanges(
+            player.mediaItemCount,
+            { player.getMediaItemAt(it).localConfiguration?.uri?.toString() },
+            uris,
+        )
+        // Reverse ranges keep indices valid and suppress per-item Next Up reconciliation.
+        applyDeletedQueueRanges(player, ranges)
     }
 
     fun edit(action: String, entry: String, target: String?) = change {

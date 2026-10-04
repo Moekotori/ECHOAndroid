@@ -3,6 +3,7 @@ package app.echo.android.usbaudio
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class UsbAudioClockTest {
@@ -82,6 +83,73 @@ class UsbAudioClockTest {
         assertTrue(UsbAudioClock.accepted(48_000, setSucceeded = true, readBackHz = null))
         assertFalse(UsbAudioClock.accepted(48_000, setSucceeded = true, readBackHz = 44_100))
         assertFalse(UsbAudioClock.accepted(48_000, setSucceeded = false, readBackHz = null))
+    }
+
+    @Test fun selectedClockIsSetAndReadOnlyAfterStreamingInterfaceIsReapplied() {
+        val selected = uac2.copy(clockSourceIds = listOf(0x20),
+            clockSelectorSources = mapOf(0x20 to listOf(0x11, 0x12)))
+        val events = mutableListOf<String>()
+        var activated = false
+        val connection = UsbAudioControlTransfer { type, request, _, index, payload, length, _ ->
+            if (index == 0x2003) {
+                assertEquals(0xA1, type)
+                assertEquals(1, length)
+                events += "selector"
+                payload[0] = 2
+                1
+            } else {
+                // Never address inactive source 0x11 or send a frequency to selector 0x20.
+                assertEquals(0x1203, index)
+                when {
+                    request == 2 -> { events += "range"; -1 }
+                    type == 0x21 -> { events += "set"; 4 }
+                    else -> {
+                        events += "read"
+                        assertTrue(activated)
+                        byteArrayOf(0x44, 0xAC.toByte(), 0, 0).copyInto(payload)
+                        4
+                    }
+                }
+            }
+        }
+        val result = UsbAudioClock.configureSampleRate(connection, selected, 44_100) {
+            events += "interface"
+            activated = true
+        }
+        assertTrue(result.verified)
+        assertEquals(0x12, result.clockId)
+        assertEquals(listOf("selector", "range", "set", "interface", "read"), events)
+    }
+
+    @Test fun missingOrMismatchedReadbackCannotVerifyStrictOutput() {
+        listOf<Int?>(null, 48_000).forEach { rate ->
+            val connection = UsbAudioControlTransfer { type, request, _, _, payload, _, _ ->
+                when {
+                    request == 2 -> -1
+                    type == 0x21 -> 4
+                    rate == null -> -1
+                    else -> { byteArrayOf(0x80.toByte(), 0xBB.toByte(), 0, 0).copyInto(payload); 4 }
+                }
+            }
+            val result = UsbAudioClock.configureSampleRate(connection, uac2, 44_100)
+            assertTrue(result.setSucceeded)
+            assertFalse(result.verified)
+            assertEquals(rate == null, result.accepted)
+        }
+    }
+
+    @Test fun unknownAmbiguousOrCyclicClocksAreNeverGuessed() {
+        val noTransfers = UsbAudioControlTransfer { _, _, _, _, _, _, _ ->
+            throw AssertionError("Must not probe unrelated clocks or endpoints")
+        }
+        listOf(
+            uac2.copy(clockSourceIds = emptyList()),
+            uac2.copy(clockSourceIds = listOf(0x11, 0x12)),
+            uac2.copy(clockSelectorSources = mapOf(0x12 to listOf(0x12))),
+        ).forEach {
+            assertNull(UsbAudioClock.getSampleRate(noTransfers, it))
+            assertFalse(UsbAudioClock.configureSampleRate(noTransfers, it, 44_100).verified)
+        }
     }
 
     @Test

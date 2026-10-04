@@ -25,26 +25,30 @@ internal fun EchoPlaybackStatus.hasVerifiedUsbDirect(): Boolean =
 /** Choose one actionable obstacle; a requested rate or stale direct state is never proof. */
 internal fun assessDac(status: EchoPlaybackStatus): DacAssessment {
     val d = status.diagnostics
+    val strictFailure = if (d.usbBitPerfectEnabled) when (d.bitPerfectState) {
+        EchoBitPerfectState.UnsupportedSource -> DacAssessment.UnsupportedSource
+        EchoBitPerfectState.UnsupportedFormat -> DacAssessment.UnsupportedFormat
+        EchoBitPerfectState.ClockUnverified -> DacAssessment.ClockUnverified
+        EchoBitPerfectState.VolumeChanged -> DacAssessment.VolumeChanged
+        EchoBitPerfectState.TransportError, EchoBitPerfectState.UsbUnavailable -> DacAssessment.TransportError
+        else -> null
+    } else null
     return when {
-        status.state == EchoPlaybackState.Error -> DacAssessment.PlaybackError
+        status.state == EchoPlaybackState.Error -> strictFailure ?: DacAssessment.PlaybackError
         !d.usbConnected -> if (EchoOutputDeviceKind.fromId(d.outputDeviceKind) == EchoOutputDeviceKind.Bluetooth)
             DacAssessment.Bluetooth else DacAssessment.NoUsb
         !d.usbExclusiveEnabled -> DacAssessment.ExclusiveDisabled
         d.usbHostPermissionPending -> DacAssessment.PermissionPending
         !d.usbHostPermissionGranted -> DacAssessment.PermissionRequired
         !status.isPlaying || status.state != EchoPlaybackState.Playing -> DacAssessment.WaitingPlayback
+        strictFailure != null -> strictFailure
         !d.usbExclusiveStreaming -> if (d.usbLastRequestError != null || d.usbAudioDescriptorError != null)
             DacAssessment.TransportError else DacAssessment.ExclusivePending
         !d.usbBitPerfectEnabled -> DacAssessment.Processing
         else -> when (d.bitPerfectState) {
             EchoBitPerfectState.Direct -> DacAssessment.Direct
-            EchoBitPerfectState.UnsupportedSource -> DacAssessment.UnsupportedSource
-            EchoBitPerfectState.UnsupportedFormat -> DacAssessment.UnsupportedFormat
-            EchoBitPerfectState.ClockUnverified -> DacAssessment.ClockUnverified
-            EchoBitPerfectState.VolumeChanged -> DacAssessment.VolumeChanged
-            EchoBitPerfectState.TransportError, EchoBitPerfectState.UsbUnavailable -> DacAssessment.TransportError
             EchoBitPerfectState.PlaybackError -> DacAssessment.PlaybackError
-            EchoBitPerfectState.Off, EchoBitPerfectState.Waiting -> DacAssessment.BitPerfectPending
+            else -> DacAssessment.BitPerfectPending
         }
     }
 }

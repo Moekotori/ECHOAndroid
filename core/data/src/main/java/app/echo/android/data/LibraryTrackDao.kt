@@ -49,6 +49,9 @@ data class TrackIdPathRow(
 
 @Dao
 interface LibraryTrackDao {
+    @Query(LibraryAudioProfileQuery)
+    suspend fun localAudioProfile(): List<LibraryAudioProfileBucket>
+
     @Query(
         """
         SELECT COUNT(*) AS trackCount,
@@ -150,6 +153,9 @@ interface LibraryTrackDao {
     )
     suspend fun getLocalM3uMatchRows(): List<M3uMatchRow>
 
+    @Query("SELECT id, title, artist, relativePath, contentUri, fileName FROM library_tracks WHERE id > :after ORDER BY id LIMIT 512")
+    suspend fun playlistMatchBatch(after: String): List<M3uMatchRow>
+
     @Query("SELECT id FROM library_tracks WHERE id > :after ORDER BY id LIMIT 500")
     suspend fun backupIdsAfter(after: String): List<String>
 
@@ -158,6 +164,9 @@ interface LibraryTrackDao {
 
     @Query("SELECT * FROM library_tracks WHERE contentUri IN (:contentUris)")
     suspend fun getTracksByContentUris(contentUris: List<String>): List<LibraryTrackEntity>
+
+    @RawQuery
+    suspend fun trackIdsForDeletion(query: SupportSQLiteQuery): List<String>
 
     @Query("SELECT * FROM library_tracks WHERE source = :source AND metadataEditedAtEpochMs IS NOT NULL")
     suspend fun getMetadataEditedTracks(source: String): List<LibraryTrackEntity>
@@ -998,7 +1007,7 @@ interface LibraryTrackDao {
     @Query("SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs FROM library_tracks WHERE id LIKE 'saf:%' AND source IN ('saf', 'mediastore')")
     suspend fun getDocumentFingerprints(): List<TrackFingerprint>
 
-    @Query("SELECT DISTINCT artworkUri FROM library_tracks WHERE source IN ('saf', 'mediastore') AND artworkUri LIKE 'file:%'")
+    @Query("SELECT DISTINCT artworkUri FROM library_tracks WHERE artworkUri LIKE 'file:%'")
     suspend fun getLocalFileArtworkUris(): List<String>
 
     @Query(
@@ -1045,7 +1054,9 @@ interface LibraryTrackDao {
                 'audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave',
                 'audio/flac', 'audio/x-flac', 'application/flac', 'application/x-flac',
                 'audio/mpeg', 'audio/mp3', 'audio/x-mp3', 'audio/mp2', 'audio/aac', 'audio/aac-adts',
-                'audio/dsf', 'audio/dff', 'audio/x-dsf', 'audio/x-dff'
+                'audio/dsf', 'audio/dff', 'audio/x-dsf', 'audio/x-dff',
+                'audio/mp4', 'audio/x-m4a', 'audio/m4a', 'video/mp4', 'application/mp4',
+                'audio/ogg', 'application/ogg', 'audio/vorbis', 'audio/opus'
             )
             OR lower(ifnull(contentUri, '')) LIKE '%.wav'
             OR lower(ifnull(contentUri, '')) LIKE '%.wav%'
@@ -1056,6 +1067,12 @@ interface LibraryTrackDao {
             OR lower(ifnull(contentUri, '')) LIKE '%.adts%'
             OR lower(ifnull(contentUri, '')) LIKE '%.dsf%'
             OR lower(ifnull(contentUri, '')) LIKE '%.dff%'
+            OR lower(ifnull(contentUri, '')) LIKE '%.m4a%'
+            OR lower(ifnull(contentUri, '')) LIKE '%.m4b%'
+            OR lower(ifnull(contentUri, '')) LIKE '%.mp4%'
+            OR lower(ifnull(contentUri, '')) LIKE '%.ogg%'
+            OR lower(ifnull(contentUri, '')) LIKE '%.oga%'
+            OR lower(ifnull(contentUri, '')) LIKE '%.opus%'
           )
         """,
     )

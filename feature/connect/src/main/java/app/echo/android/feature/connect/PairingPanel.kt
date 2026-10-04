@@ -152,6 +152,9 @@ internal fun PcLinkPanel(
                 ConnectNote(stringResource(L10nR.string.feature_connect_control_pc_playback_from_your_phone_or_browse_20f8b5))
             }
         }
+        if (!connected && !busy) {
+            EchoSteamNotice()
+        }
         if (onOpenListening != null && !connected) {
             ListenTogetherEntry(onOpen = onOpenListening)
         }

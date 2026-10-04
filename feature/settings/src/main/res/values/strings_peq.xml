@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="peq_workspace_title" translatable="false">EQ / PEQ</string>
+    <string name="peq_neutral">Neutral · preview only</string>
+    <string name="peq_editor_detail">Up to 32 filters. Tap a value for precise entry, or use the sliders. Save a preset before switching to graphic EQ, which replaces the filters.</string>
+</resources>

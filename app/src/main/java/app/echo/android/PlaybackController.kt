@@ -227,6 +227,9 @@ internal class PlaybackController(
     fun setUsbExclusiveEnabled(enabled: Boolean) =
         setUsbOutputMode(enabled, enabled && EchoPlaybackProcessRuntime.usbBitPerfectEnabled)
 
+    fun setUsbOutputOptions(options: app.echo.android.model.playback.EchoUsbOutputOptions) =
+        EchoPlaybackProcessRuntime.setUsbOutputOptions(options)
+
     fun setUsbOutputMode(exclusive: Boolean, strict: Boolean) {
         usbAudioMonitor.setExclusiveEnabled(exclusive)
         EchoPlaybackProcessRuntime.setUsbOutputMode(exclusive, strict)
@@ -290,12 +293,17 @@ internal class PlaybackController(
         equalizerController.applyOpraPreset(preset)
 
     fun testUsbExclusiveDriver(): String {
-        val playingToUsb = _playbackControls.value.isPlaying &&
-            usbAudioMonitor.status.value.exclusiveEnabled
+        val playingToUsb = _playbackControls.value.isPlaying ||
+            _playbackDiagnostics.value.diagnostics.usbExclusiveStreaming ||
+            _playbackControls.value.state in listOf(EchoPlaybackState.Loading, EchoPlaybackState.Seeking, EchoPlaybackState.Buffering)
         if (!PlaybackSessionPolicy.shouldClaimUsbInterfaceForDriverTest(playingToUsb)) {
             return "Skipped: stop playback before claiming the USB interface"
         }
-        return usbExclusiveDriverTester.testOpen(_playbackDiagnostics.value.diagnostics)
+        val options = EchoPlaybackProcessRuntime.usbOutputOptions.let {
+            if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled) it.copy(sampleRateHz = 0, bitDepth = 0, channelCount = 0)
+            else it
+        }
+        return usbExclusiveDriverTester.testOpen(_playbackDiagnostics.value.diagnostics, options)
     }
 
     fun play(track: EchoTrack) {
@@ -371,6 +379,31 @@ internal class PlaybackController(
             val insertAt = index.coerceIn(0, mediaItemCount)
             addMediaItem(insertAt, track.toMediaItem().asQueueEntry(source = currentMediaItem?.queueContext()?.source))
             updatePlaybackCore(this)
+        }
+    }
+
+    fun playAlbumQueue(
+        queue: List<EchoTrack>,
+        startIndex: Int,
+        intent: PlaybackQueueReplaceIntent = PlaybackQueueReplaceIntent.PlayAll,
+    ) {
+        if (queue.isEmpty()) return
+        val safeStartIndex = startIndex.coerceIn(queue.indices)
+        resetStickyPlaybackError()
+        val source = queue.first().album
+        val items = ArrayList(queue.map { it.toMediaItem().asQueueEntry(source = source).toBundleIncludeLocalConfiguration() })
+        usbAudioMonitor.prepareForTrack(queue[safeStartIndex].sampleRateHz)
+        withController {
+            queue.forEach { track ->
+                sampleRatesByMediaId[track.id] = track.sampleRateHz
+                replayGainUrisByMediaId[track.id] = track.uri
+                enginePolicy.mergeQueueLookups(track)
+            }
+            sendCustomCommand(EchoPlaybackSessionCommands.playAlbum, android.os.Bundle().apply {
+                putParcelableArrayList("items", items)
+                putInt("startIndex", safeStartIndex)
+                putBoolean("shuffle", PlaybackSessionPolicy.shuffleEnabledForQueueReplace(intent))
+            })
         }
     }
 
@@ -533,6 +566,18 @@ internal class PlaybackController(
             removeMediaItems(0, mediaItemCount)
             replaceQueueLookups(emptyList())
             updatePlaybackCore(this)
+        }
+    }
+
+    fun removeDeletedFiles(uris: Set<String>) {
+        if (uris.isEmpty()) return
+        require(uris.size <= 200)
+        // Queue the receipt behind saved-session restoration when reconnecting to the service.
+        withController {
+            sendCustomCommand(EchoPlaybackSessionCommands.editQueue, android.os.Bundle().apply {
+                putString("action", EchoPlaybackSessionCommands.EDIT_REMOVE_DELETED_FILES)
+                putStringArrayList("uris", ArrayList(uris))
+            })
         }
     }
 

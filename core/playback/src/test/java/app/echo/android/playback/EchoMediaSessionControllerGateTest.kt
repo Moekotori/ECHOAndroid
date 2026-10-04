@@ -1,5 +1,6 @@
 package app.echo.android.playback
 
+import android.content.pm.ApplicationInfo
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSession
 import org.junit.Assert.assertFalse
@@ -50,5 +51,27 @@ class EchoMediaSessionControllerGateTest {
     fun randomPackagesStayBlocked() {
         assertFalse(EchoMediaSessionControllerGate.isAllowedPackage("com.random.app"))
         assertFalse(EchoMediaSessionControllerGate.isAllowedPackage(""))
+    }
+
+    @Test
+    fun xiaomiMediaControllerRequiresMatchingUidAndSystemInstallation() {
+        for (flags in listOf(ApplicationInfo.FLAG_SYSTEM, ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) {
+            assertTrue(EchoMediaSessionControllerGate.isPreinstalledXiaomiMediaController(
+                "com.milink.service", 10_123, 10_123, flags,
+            ))
+        }
+        assertFalse(EchoMediaSessionControllerGate.isAllowedPackage("com.milink.service"))
+        assertFalse(EchoMediaSessionControllerGate.isPreinstalledXiaomiMediaController(
+            "com.milink.service", 10_123, 10_123, 0,
+        ))
+        assertFalse(EchoMediaSessionControllerGate.isPreinstalledXiaomiMediaController(
+            "com.milink.service", 10_124, 10_123, ApplicationInfo.FLAG_SYSTEM,
+        ))
+        assertFalse(EchoMediaSessionControllerGate.isPreinstalledXiaomiMediaController(
+            "com.milink.service", -1, -1, ApplicationInfo.FLAG_SYSTEM,
+        ))
+        assertFalse(EchoMediaSessionControllerGate.isPreinstalledXiaomiMediaController(
+            "com.milink.service.fake", 10_123, 10_123, ApplicationInfo.FLAG_SYSTEM,
+        ))
     }
 }

@@ -4,7 +4,6 @@ import android.app.Application
 import android.content.ComponentName
 import android.content.Context
 import android.service.quicksettings.TileService
-import androidx.glance.appwidget.updateAll
 import androidx.media3.common.util.UnstableApi
 import app.echo.android.playback.EchoPlaybackProcessRuntime
 import app.echo.android.tile.EchoFavoriteTileService
@@ -12,7 +11,8 @@ import app.echo.android.tile.EchoPlaybackTileService
 import app.echo.android.tile.EchoSkipNextTileService
 import app.echo.android.tile.EchoSleepTimerTileService
 import app.echo.android.tile.EchoUsbExclusiveTileService
-import app.echo.android.widget.EchoPlaybackWidget
+import app.echo.android.widget.EchoPlaybackWidgets
+import app.echo.android.widget.EchoPlaybackWidgetChrome
 import app.echo.android.widget.EchoPlaybackWidgetLayout
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
@@ -42,12 +42,14 @@ object EchoPlaybackSurfaces {
         binding = EchoPlaybackProcessRuntime.scope.launch {
             coroutineScope {
                 launch(Dispatchers.Default) {
+                    var previous: EchoPlaybackWidgetChrome? = null
                     combine(EchoPlaybackProcessRuntime.surface, EchoPlaybackProcessRuntime.notificationLyricLine) {
                         snapshot, lyric -> EchoPlaybackWidgetLayout.chrome(snapshot, lyric)
-                    }.distinctUntilChanged().conflate().collect {
-                        try { EchoPlaybackWidget().updateAll(application) }
+                    }.distinctUntilChanged().conflate().collect { next ->
+                        try { EchoPlaybackWidgets.updateChanged(application, previous, next) }
                         catch (cancelled: CancellationException) { throw cancelled }
                         catch (_: Exception) { /* A removed/unsupported host must not end the collector. */ }
+                        previous = next
                         // Burst updates share the latest state; no idle polling or position-tick refreshes.
                         delay(250)
                     }

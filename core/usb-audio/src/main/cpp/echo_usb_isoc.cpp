@@ -12,7 +12,7 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-#define URB_COUNT 16
+#define URB_COUNT 32
 #define FEEDBACK_URB_COUNT 4
 #define KEEPALIVE_URB_COUNT 4
 #define USBDEVFS_URB_TYPE_ISO 0
@@ -35,6 +35,7 @@ struct Writer {
     int fd;
     uint8_t endpoint;
     int packets_per_urb;
+    int urb_count;
     int max_packet;
     int sample_rate;
     int channels;
@@ -156,7 +157,7 @@ static void reap(Writer* writer) {
             LOGE("REAPURB failed: %s", strerror(errno));
             return;
         }
-        for (int i = 0; i < URB_COUNT; ++i) {
+        for (int i = 0; i < writer->urb_count; ++i) {
             if (writer->slots[i].urb == urb) {
                 if (is_fatal_urb_status(urb->status)) writer->fatal = 1;
                 mark_completed(writer, &writer->slots[i]);
@@ -186,7 +187,7 @@ static void reap(Writer* writer) {
 
 static int inflight_count(const Writer* writer) {
     int count = 0;
-    for (int i = 0; i < URB_COUNT; ++i) {
+    for (int i = 0; i < writer->urb_count; ++i) {
         if (writer->slots[i].in_flight) count += 1;
     }
     for (int i = 0; i < FEEDBACK_URB_COUNT; ++i) {
@@ -196,7 +197,7 @@ static int inflight_count(const Writer* writer) {
 }
 
 static void discard_inflight(Writer* writer) {
-    for (int i = 0; i < URB_COUNT; ++i) {
+    for (int i = 0; i < writer->urb_count; ++i) {
         if (writer->slots[i].in_flight && writer->slots[i].urb != nullptr) {
             ioctl(writer->fd, USBDEVFS_DISCARDURB, writer->slots[i].urb);
         }
@@ -211,7 +212,7 @@ static void discard_inflight(Writer* writer) {
         if (inflight_count(writer) == 0) break;
         usleep(2000);
     }
-    for (int i = 0; i < URB_COUNT; ++i) {
+    for (int i = 0; i < writer->urb_count; ++i) {
         writer->slots[i].in_flight = 0;
         writer->slots[i].frames = 0;
         writer->slots[i].is_silence = 0;
@@ -224,7 +225,7 @@ static void discard_inflight(Writer* writer) {
 static void free_writer(Writer* writer) {
     if (writer == nullptr) return;
     discard_inflight(writer);
-    for (int i = 0; i < URB_COUNT; ++i) {
+    for (int i = 0; i < writer->urb_count; ++i) {
         free(writer->slots[i].urb);
         free(writer->slots[i].buffer);
     }
@@ -294,7 +295,7 @@ static int fill_and_submit_silence(Writer* writer, int slot_index) {
 
 static int inflight_out_count(const Writer* writer) {
     int count = 0;
-    for (int i = 0; i < URB_COUNT; ++i) {
+    for (int i = 0; i < writer->urb_count; ++i) {
         if (writer->slots[i].in_flight) count += 1;
     }
     return count;
@@ -303,7 +304,7 @@ static int inflight_out_count(const Writer* writer) {
 static void fill_keepalive(Writer* writer) {
     if (writer->fatal) return;
     int needed = KEEPALIVE_URB_COUNT - inflight_out_count(writer);
-    for (int i = 0; i < URB_COUNT && needed > 0; ++i) {
+    for (int i = 0; i < writer->urb_count && needed > 0; ++i) {
         if (writer->slots[i].in_flight) continue;
         if (fill_and_submit_silence(writer, i) == 0) {
             needed -= 1;
@@ -347,13 +348,15 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeCreate(
         jint packets_per_second,
         jint feedback_endpoint,
         jint feedback_max_packet,
-        jint endpoint_interval) {
+        jint endpoint_interval,
+        jint transfer_count) {
     if (fd < 0 || sample_rate_hz <= 0 || channel_count <= 0 || bytes_per_sample <= 0 ||
         endpoint_interval < 1 || endpoint_interval > 16) {
         return 0;
     }
     auto* writer = (Writer*)calloc(1, sizeof(Writer));
     if (writer == nullptr) return 0;
+    writer->urb_count = transfer_count == 8 || transfer_count == 32 ? transfer_count : 16;
     writer->fd = fd;
     writer->endpoint = (uint8_t)endpoint_address;
     writer->max_packet = max_packet_size > 0 ? max_packet_size : 192;
@@ -370,7 +373,7 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeCreate(
     writer->feedback_ep = (uint8_t)feedback_endpoint;
     writer->feedback_max = feedback_max_packet > 0 ? feedback_max_packet : (writer->high_speed ? 4 : 3);
     const int buffer_bytes = writer->max_packet * writer->packets_per_urb;
-    for (int i = 0; i < URB_COUNT; ++i) {
+    for (int i = 0; i < writer->urb_count; ++i) {
         writer->slots[i].urb = (struct usbdevfs_urb*)calloc(1, urb_alloc_size(writer->packets_per_urb));
         writer->slots[i].buffer = (uint8_t*)malloc((size_t)buffer_bytes);
         if (writer->slots[i].urb == nullptr || writer->slots[i].buffer == nullptr) {
@@ -418,7 +421,7 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeWrite(
     int consumed = 0;
     while (consumed < length) {
         int free_slot = -1;
-        for (int i = 0; i < URB_COUNT; ++i) {
+        for (int i = 0; i < writer->urb_count; ++i) {
             if (!writer->slots[i].in_flight) {
                 free_slot = i;
                 break;
@@ -538,7 +541,7 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeCapacityFrames(JNIEnv*
     const int samples = (int)(((int64_t)writer->sample_rate * writer->service_interval +
                                writer->pps - 1) / writer->pps);
     const int per_urb = (samples > 0 ? samples : 1) * writer->packets_per_urb;
-    return (jlong)per_urb * URB_COUNT;
+    return (jlong)per_urb * writer->urb_count;
 }
 
 extern "C" JNIEXPORT void JNICALL

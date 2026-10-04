@@ -13,12 +13,13 @@ data class EchoEqualizerRuntime(
     val enabled: Boolean = false,
     val preampDb: Float = 0f,
     val filters: List<OpraEqBand> = emptyList(),
+    val msebActive: Boolean = false,
 ) {
     val preampLinear: Float
         get() = 10.0.pow((preampDb / 20.0)).toFloat()
 
     val shouldProcess: Boolean
-        get() = EchoEqualizerEngine.shouldProcess(enabled, preampDb, filters)
+        get() = enabled && (msebActive || EchoEqualizerEngine.shouldProcess(enabled, preampDb, filters))
 }
 
 object EchoEqualizerEngine {

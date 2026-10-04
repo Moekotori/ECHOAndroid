@@ -9,6 +9,35 @@ import org.junit.Test
 
 class EchoPlaybackWidgetLayoutTest {
     @Test
+    fun lyricChangesOnlyRefreshStylesThatDisplayLyrics() {
+        val previous = EchoPlaybackWidgetLayout.chrome(EchoPlaybackSurfaceSnapshot(title = "Song", hasTrack = true), "first")
+        val next = previous.copy(lyricLine = "second")
+        assertTrue(EchoWidgetStyle.Player.needsRefresh(previous, next))
+        assertTrue(EchoWidgetStyle.Lyrics.needsRefresh(previous, next))
+        assertFalse(EchoWidgetStyle.Mini.needsRefresh(previous, next))
+        assertFalse(EchoWidgetStyle.Cover.needsRefresh(previous, next))
+    }
+
+    @Test
+    fun allStylesRefreshOnTrackAndPlaybackChangesAndInitialPlacement() {
+        val previous = EchoPlaybackWidgetLayout.chrome(EchoPlaybackSurfaceSnapshot(title = "Song", hasTrack = true), "line")
+        for (style in EchoWidgetStyle.entries) {
+            assertTrue(style.needsRefresh(null, previous))
+            assertTrue(style.needsRefresh(previous, previous.copy(title = "Next song")))
+            assertTrue(style.needsRefresh(previous, previous.copy(isPlaying = !previous.isPlaying)))
+            assertFalse(style.needsRefresh(previous, previous))
+        }
+    }
+
+    @Test
+    fun squareUsesCoverLayoutWithoutChangingShorterWidgets() {
+        assertEquals(EchoPlaybackWidgetMode.Square, EchoPlaybackWidgetLayout.mode(250, 260))
+        assertEquals(EchoPlaybackWidgetMode.Square, EchoPlaybackWidgetLayout.mode(360, 340))
+        assertEquals(EchoPlaybackWidgetMode.Tall, EchoPlaybackWidgetLayout.mode(360, 259))
+        assertEquals(EchoPlaybackWidgetMode.Compact, EchoPlaybackWidgetLayout.mode(249, 340))
+    }
+
+    @Test
     fun tallLockScreenSizeRequiresBothDimensions() {
         assertEquals(EchoPlaybackWidgetMode.Tall, EchoPlaybackWidgetLayout.mode(250, 180))
         assertEquals(EchoPlaybackWidgetMode.Expanded, EchoPlaybackWidgetLayout.mode(250, 179))

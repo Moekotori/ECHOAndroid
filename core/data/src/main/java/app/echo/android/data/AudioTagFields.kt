@@ -62,7 +62,8 @@ internal fun AudioTagFields.isBlank(): Boolean =
         trackNumber == null &&
         discNumber == null &&
         year == null &&
-        composer.isNullOrBlank() && genre.isNullOrBlank()
+        composer.isNullOrBlank() && genre.isNullOrBlank() &&
+        lyrics.isNullOrBlank() && (artworkBytes == null || artworkBytes.isEmpty()) && replayGainTrackGainDb == null
 
 internal fun mergeAudioTags(preferred: AudioTagFields?, fallback: AudioTagFields?): AudioTagFields? {
     if (preferred == null || preferred.isBlank()) return fallback?.takeUnless { it.isBlank() }

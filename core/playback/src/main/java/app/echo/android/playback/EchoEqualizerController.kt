@@ -4,6 +4,7 @@ import androidx.media3.common.util.UnstableApi
 import app.echo.android.model.playback.EchoEqualizerPreset
 import app.echo.android.model.playback.EchoEqualizerPresets
 import app.echo.android.model.playback.EchoEqualizerState
+import app.echo.android.model.playback.EchoMsebState
 import app.echo.android.model.playback.EchoEqualizerUserPreset
 import app.echo.android.model.playback.EchoEqualizerUserPresets
 import app.echo.android.model.playback.EchoParametricEq
@@ -33,9 +34,12 @@ class EchoEqualizerController {
     private var desiredParametric: Boolean = false
     private var desiredFilters: List<OpraEqBand> = emptyList()
     private var desiredSourceLabel: String? = null
+    private var desiredMseb = EchoMsebState()
     private var lastShouldProcess: Boolean = false
     private var curveFilters: List<OpraEqBand>? = null
     private var filterCurve = emptyList<app.echo.android.model.playback.EchoEqResponsePoint>()
+    private var combinedCurveFilters: List<OpraEqBand>? = null
+    private var combinedBoostDb = 0f
 
     fun setConfig(
         enabled: Boolean,
@@ -44,7 +48,9 @@ class EchoEqualizerController {
         preampDb: Float = 0f,
         filters: List<OpraEqBand> = emptyList(),
         sourceLabel: String? = null,
+        mseb: EchoMsebState = desiredMseb,
     ) {
+        desiredMseb = mseb.normalized
         desiredEnabled = enabled
         desiredPresetId = EchoEqualizerPresets.normalizePresetId(presetId)
         if (desiredPresetId != EchoEqualizerPreset.Custom) {
@@ -71,6 +77,13 @@ class EchoEqualizerController {
     fun setPreamp(gainDb: Float) {
         if (!gainDb.isFinite()) return
         desiredPreampDb = gainDb.coerceIn(-24f, 12f)
+        publish()
+    }
+
+    fun setMseb(state: EchoMsebState) {
+        val next = state.normalized
+        if (next == desiredMseb) return
+        desiredMseb = next
         publish()
     }
 
@@ -118,9 +131,16 @@ class EchoEqualizerController {
     }
 
     fun reset() {
-        desiredPresetId = EchoEqualizerPreset.Flat
         desiredGainsDb = EchoEqualizerPresets.gainsForPreset(EchoEqualizerPreset.Flat)
-        clearParametric()
+        if (desiredParametric) {
+            desiredPresetId = EchoEqualizerPreset.Custom
+            desiredFilters = listOf(OpraEqBand("peak_dip", 1000f, 0f, 1f, null))
+            desiredPreampDb = 0f
+            desiredSourceLabel = null
+        } else {
+            desiredPresetId = EchoEqualizerPreset.Flat
+            clearParametric()
+        }
         publish()
     }
 
@@ -171,11 +191,7 @@ class EchoEqualizerController {
         // adjusted gains remain explicit user settings; only selecting a preset chooses a new default.
         if (applySuggestedPreamp) desiredPreampDb = suggestedPreamp
         val processingPreampDb = desiredPreampDb
-        val runtime = EchoEqualizerRuntime(
-            enabled = desiredEnabled,
-            preampDb = processingPreampDb,
-            filters = processingFilters,
-        )
+        val runtime = processingRuntime(processingFilters)
         processor.setRuntime(runtime)
         if (runtime.shouldProcess != lastShouldProcess) {
             lastShouldProcess = runtime.shouldProcess
@@ -197,8 +213,27 @@ class EchoEqualizerController {
             warning = null,
             responseCurve = filterCurve.map { it.copy(gainDb = it.gainDb + processingPreampDb) },
             suggestedPreampDb = suggestedPreamp,
+            mseb = desiredMseb,
+            msebHeadroomDb = if (desiredMseb.active) runtime.preampDb - (if (desiredEnabled) desiredPreampDb else 0f) else 0f,
         )
         _state.update { nextState.copy(processingSampleRateHz = it.processingSampleRateHz) }
+    }
+
+    // EQ and MSEB keep independent settings and share one PCM filter pass.
+    internal fun processingRuntime(eqFilters: List<OpraEqBand> = EchoEqualizerEngine.processingFilters(
+        desiredParametric, desiredFilters, desiredGainsDb,
+    )): EchoEqualizerRuntime {
+        val msebFilters = EchoMsebEngine.filters(desiredMseb)
+        val eqPreamp = if (desiredEnabled) desiredPreampDb else 0f
+        val combined = (if (desiredEnabled) eqFilters else emptyList()) + msebFilters
+        val preamp = if (msebFilters.isEmpty()) eqPreamp else {
+            if (combinedCurveFilters != combined) {
+                combinedCurveFilters = combined
+                combinedBoostDb = EchoEqualizerEngine.responseCurve(combined).maxOfOrNull { it.gainDb }?.coerceAtLeast(0f) ?: 0f
+            }
+            minOf(eqPreamp, if (combinedBoostDb < 0.05f) 0f else -(ceil(combinedBoostDb * 10f) / 10f + 0.5f))
+        }
+        return EchoEqualizerRuntime(desiredEnabled || msebFilters.isNotEmpty(), preamp, combined, msebActive = msebFilters.isNotEmpty())
     }
 
     private fun currentBands() = _state.value.bands.ifEmpty { EchoEqualizerPresets.defaultBands(desiredGainsDb) }

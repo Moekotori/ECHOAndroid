@@ -6,9 +6,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.Orientation
 import app.echo.android.design.echoDrag
@@ -21,17 +19,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -60,7 +55,6 @@ import app.echo.android.design.echoChromeColors
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.rememberEchoHapticPerformer
-import app.echo.android.design.progressFraction
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.PlaybackPositionState
@@ -89,6 +83,7 @@ fun MiniPlayer(
     onPrevious: (() -> Unit)? = null,
     animationsVisible: Boolean = true,
     dockExpansion: State<Float>? = null,
+    onSeek: ((Long) -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
     val haptics = rememberEchoHapticPerformer()
@@ -103,24 +98,12 @@ fun MiniPlayer(
     val trackEntrance = remember { Animatable(1f) }
     var widthPx by remember { mutableStateOf(1f) }
     val canSwitch = onNext != null && onPrevious != null && status.track != null
-    // 进度经 State 引用传入,tick 不重组整卡:进度条用 progress lambda 在绘制期读值
-    val statusState = rememberUpdatedState(status)
-    val activeDurationMs by remember(positionState) {
-        derivedStateOf {
-            positionState?.value?.durationMs?.takeIf { it > 0L } ?: statusState.value.durationMs
-        }
-    }
     val density = LocalDensity.current
     val flingThresholdPx = with(density) { 780.dp.toPx() }
     val minimumFlingDistancePx = with(density) { 12.dp.toPx() }
     val nextAction by rememberUpdatedState(onNext)
     val previousAction by rememberUpdatedState(onPrevious)
     val compactDock = onShowDock != null || onOpenQueue != null
-    val progressAlpha = animateFloatAsState(
-        targetValue = if (activeDurationMs > 0L) 1f else 0.42f,
-        animationSpec = if (!motionEnabled) snap() else tween(durationMillis = miniPlayerMotionDuration(220, lightweight), easing = MiniPlayerMotionEasing),
-        label = "mini-player-progress-alpha",
-    )
     val playbackDescription = stringResource(L10nR.string.feature_player_play_or_pause_37a70f)
     LaunchedEffect(motionEnabled) {
         if (!motionEnabled) {
@@ -146,26 +129,13 @@ fun MiniPlayer(
             animationSpec = tween(durationMillis = 220, easing = MiniPlayerMotionEasing),
         )
     }
-    Column(
+    Box(
         modifier = modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 64.dp),
     ) {
-        LinearProgressIndicator(
-            // Read progress during drawing; ticks do not rebuild the playback row.
-            progress = {
-                val positionMs = positionState?.value?.positionMs ?: statusState.value.positionMs
-                progressFraction(positionMs, activeDurationMs)
-            },
-            modifier = Modifier.fillMaxWidth().height(1.dp)
-                .graphicsLayer { alpha = progressAlpha.value },
-            color = chrome.secondary,
-            trackColor = chrome.separator,
-            gapSize = 0.dp,
-            drawStopIndicator = {},
-        )
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 7.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
@@ -301,5 +271,13 @@ fun MiniPlayer(
                 )
             }
         }
+        // Overlay only the upper edge; the dock keeps its existing height and row gestures.
+        MiniPlayerProgress(
+            status = status,
+            positionState = positionState,
+            onSeek = onSeek,
+            motionEnabled = motionEnabled,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
     }
 }

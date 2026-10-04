@@ -1,0 +1,9 @@
+<resources>
+    <string name="library_multiselect">Selección múltiple</string>
+    <string name="batch_selection_limit">Hasta %1$d canciones</string>
+    <string name="batch_clear_selection">Borrar selección</string>
+    <plurals name="batch_selected_count">
+        <item quantity="one">%1$d seleccionada</item>
+        <item quantity="other">%1$d seleccionadas</item>
+    </plurals>
+</resources>

@@ -1,34 +1,23 @@
 package app.echo.android.feature.settings
 
-import app.echo.android.design.EchoIcon
-
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.rounded.FolderOpen
-import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
-private val settingsGroups = listOf(
-    R.string.settings_group_personal to listOf(SettingsCategory.Appearance, SettingsCategory.Interface),
-    R.string.settings_group_music to listOf(SettingsCategory.Playback, SettingsCategory.Services, SettingsCategory.Library),
-    R.string.settings_group_app to listOf(SettingsCategory.About),
+private val settingsMenuCategories = listOf(
+    SettingsCategory.Appearance,
+    SettingsCategory.Playback,
+    SettingsCategory.Usb,
+    SettingsCategory.Interface,
+    SettingsCategory.Services,
+    SettingsCategory.Library,
 )
 
 /** Keep search and its index scoped to the home screen; compose only visible results. */
@@ -65,7 +54,7 @@ internal fun SettingsHome(
             modifier = Modifier.weight(1f).fillMaxWidth(),
             state = listState,
             contentPadding = PaddingValues(top = 8.dp, bottom = 172.dp),
-            verticalArrangement = Arrangement.spacedBy(if (searching) 0.dp else if (compactMode) 8.dp else 12.dp),
+            verticalArrangement = Arrangement.Top,
         ) {
             if (searching) {
                 if (results.isEmpty()) item(key = "empty-search") { SettingsSearchEmpty() }
@@ -74,41 +63,41 @@ internal fun SettingsHome(
                     SettingsSearchResultRow(result, showDivider = index > 0) { onSearchSelect(result) }
                 }
             } else {
-                item(key = "music-shortcuts", contentType = "settings-group") {
-                    Column {
-                        SettingsHomeRow(Icons.Rounded.FolderOpen,
-                            stringResource(R.string.settings_quick_scan), "", compactMode, onClick = onScanMusic)
-                        SettingsHomeRow(SettingsCategoryIcons.Services,
-                            stringResource(R.string.settings_quick_connect), "", compactMode, onClick = onOpenConnect)
-                        SettingsHomeRow(Icons.Rounded.GraphicEq,
-                            stringResource(R.string.settings_quick_sound), soundSummary, compactMode, onClick = onOpenSound)
-                    }
+                item(key = "connect", contentType = "menu-row") {
+                    SettingsMenuRow(SettingsCategoryIcons.Connect,
+                        stringResource(R.string.settings_quick_connect), compactMode = compactMode, onClick = onOpenConnect)
                 }
-                settingsGroups.forEach { (title, entries) ->
-                    item(key = title, contentType = "settings-group") {
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            SettingsHomeDivider()
-                            Text(
-                                stringResource(title),
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = SettingsContentInset, vertical = 10.dp).semantics { heading() },
-                            )
-                            Column {
-                                if (title == R.string.settings_group_app) {
-                                    SettingsHomeRow(SettingsCategoryIcons.Plugins,
-                                        stringResource(R.string.settings_plugins),
-                                        stringResource(R.string.settings_plugins_summary), compactMode, onClick = onOpenPlugins)
-                                    SettingsHomeDivider()
-                                }
-                                entries.forEach { entry ->
-                                    SettingsHomeRow(entry.icon, stringResource(entry.title),
-                                        summaries[entry].orEmpty(), compactMode, selected = entry == selectedCategory) { onOpenCategory(entry) }
-                                }
-                            }
+                item(key = "scan", contentType = "menu-row") {
+                    SettingsMenuRow(SettingsCategoryIcons.Scan,
+                        stringResource(R.string.settings_quick_scan), compactMode = compactMode, onClick = onScanMusic)
+                }
+                item(key = "tools-divider", contentType = "divider") { SettingsMenuDivider() }
+                settingsMenuCategories.forEach { entry ->
+                    item(key = entry.name, contentType = "menu-row") {
+                        SettingsMenuRow(entry.icon, stringResource(entry.title),
+                            summary = when (entry) {
+                                SettingsCategory.Appearance, SettingsCategory.Interface -> summaries[entry].orEmpty()
+                                SettingsCategory.Usb -> summaries[entry].orEmpty()
+                                else -> ""
+                            },
+                            compactMode = compactMode, selected = entry == selectedCategory) { onOpenCategory(entry) }
+                    }
+                    if (entry == SettingsCategory.Appearance) {
+                        item(key = "sound", contentType = "menu-row") {
+                            SettingsMenuRow(SettingsCategoryIcons.Sound,
+                                stringResource(R.string.settings_quick_sound), soundSummary, compactMode, onClick = onOpenSound)
                         }
                     }
+                }
+                item(key = "plugins", contentType = "menu-row") {
+                    SettingsMenuRow(SettingsCategoryIcons.Plugins,
+                        stringResource(R.string.settings_plugins), compactMode = compactMode, onClick = onOpenPlugins)
+                }
+                item(key = "about-divider", contentType = "divider") { SettingsMenuDivider() }
+                item(key = "about", contentType = "menu-row") {
+                    val entry = SettingsCategory.About
+                    SettingsMenuRow(entry.icon, stringResource(entry.title), summaries[entry].orEmpty(),
+                        compactMode, selected = entry == selectedCategory) { onOpenCategory(entry) }
                 }
             }
         }
@@ -116,29 +105,7 @@ internal fun SettingsHome(
 }
 
 @Composable
-private fun SettingsHomeDivider() {
-    HorizontalDivider(Modifier.padding(horizontal = SettingsContentInset),
+private fun SettingsMenuDivider() {
+    HorizontalDivider(Modifier.padding(horizontal = SettingsContentInset, vertical = 10.dp),
         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-}
-
-@Composable
-private fun SettingsHomeRow(icon: ImageVector, title: String, summary: String,
-    compactMode: Boolean, selected: Boolean = false, onClick: () -> Unit) {
-    Surface(onClick = onClick, shape = androidx.compose.ui.graphics.RectangleShape, color = Color.Transparent,
-        contentColor = MaterialTheme.colorScheme.onSurface, modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.heightIn(min = if (compactMode) 56.dp else 62.dp)
-            .padding(horizontal = SettingsContentInset, vertical = if (compactMode) 6.dp else 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            EchoIcon(icon, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(title, style = MaterialTheme.typography.bodyLarge,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f), maxLines = 2, overflow = TextOverflow.Ellipsis)
-            if (summary.isNotBlank()) Text(summary, style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.weight(0.8f), textAlign = TextAlign.End,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            EchoIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
 }

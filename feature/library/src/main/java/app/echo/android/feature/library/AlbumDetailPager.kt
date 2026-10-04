@@ -29,6 +29,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.animateSilkToPage
+import app.echo.android.design.echoPagerEdgeSwipe
 import app.echo.android.design.rememberSilkPagerFlingBehavior
 import app.echo.android.design.rememberContentPagerNestedScroll
 import app.echo.android.model.library.AlbumSummary
@@ -71,7 +72,10 @@ internal fun AlbumDetailPager(
         }
         HorizontalPager(
             state = pager,
-            modifier = Modifier.weight(1f).fillMaxWidth(),
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .echoPagerEdgeSwipe(pager, onPrevious = onBack),
             beyondViewportPageCount = 1,
             flingBehavior = fling,
             pageNestedScrollConnection = nestedScroll,

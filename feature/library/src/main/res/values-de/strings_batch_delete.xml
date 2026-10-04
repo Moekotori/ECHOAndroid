@@ -1,0 +1,18 @@
+<resources>
+    <string name="batch_delete">Ausgewählte Titel löschen</string>
+    <string name="batch_remove_index">Aus Bibliothek entfernen</string>
+    <string name="batch_delete_files">Originaldateien löschen</string>
+    <string name="batch_delete_originals">Auch lokale Originaldateien löschen</string>
+    <string name="batch_delete_index_hint">Diese Titel werden aus Bibliothek, Favoriten und Playlists entfernt. Werden die Dateien behalten, können Scan oder Synchronisierung sie wieder hinzufügen.</string>
+    <string name="batch_delete_file_hint">Originaldateien werden endgültig gelöscht. Alle Titel mit derselben Audiodatei sind betroffen.</string>
+    <string name="batch_delete_file_unavailable">Nur normale lokale Titel unterstützen das Löschen von Dateien. Entfernte Titel und CUE-Segmente können aus der Bibliothek entfernt werden.</string>
+    <string name="batch_delete_partial">Entfernt: %1$d · Nicht entfernt: %2$d</string>
+    <plurals name="batch_delete_confirm">
+        <item quantity="one">%1$d Titel löschen?</item>
+        <item quantity="other">%1$d Titel löschen?</item>
+    </plurals>
+    <plurals name="batch_delete_done">
+        <item quantity="one">%1$d Titel entfernt</item>
+        <item quantity="other">%1$d Titel entfernt</item>
+    </plurals>
+</resources>

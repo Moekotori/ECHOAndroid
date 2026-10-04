@@ -69,6 +69,7 @@ internal class EchoPlaybackLibrarySessionCallback(
             .add(EchoPlaybackSessionCommands.editQueue)
             .add(EchoPlaybackSessionCommands.setAbLoop)
             .add(EchoPlaybackSessionCommands.addNextUp)
+            .add(EchoPlaybackSessionCommands.playAlbum)
             .add(EchoPlaybackSessionCommands.clearNextUp)
             .add(EchoPlaybackSessionCommands.toggleFavorite)
             .add(EchoPlaybackSessionCommands.cycleRepeat)
@@ -231,12 +232,35 @@ internal class EchoPlaybackLibrarySessionCallback(
         args: Bundle,
     ): ListenableFuture<SessionResult> {
         return when (customCommand.customAction) {
+            EchoPlaybackSessionCommands.PLAY_ALBUM -> {
+                val queue = nextUpQueue()
+                val items = args.getParcelableArrayList<Bundle>("items")?.mapNotNull {
+                    runCatching { MediaItem.fromBundle(it) }.getOrNull()
+                }.orEmpty()
+                if (queue == null || items.isEmpty() || items.any { it.localConfiguration?.uri == null }) {
+                    Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
+                } else {
+                    queue.playAlbum(items, args.getInt("startIndex"), args.getBoolean("shuffle"))
+                    Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                }
+            }
             EchoPlaybackSessionCommands.SET_AB_LOOP -> {
                 val accepted = abLoop()?.set(args.getString("trackId"), args.getLong("startMs"), args.getLong("endMs")) == true
                 Futures.immediateFuture(SessionResult(if (accepted) SessionResult.RESULT_SUCCESS else SessionResult.RESULT_ERROR_BAD_VALUE))
             }
             EchoPlaybackSessionCommands.EDIT_QUEUE -> {
                 val queue = nextUpQueue()
+                if (args.getString("action") == EchoPlaybackSessionCommands.EDIT_REMOVE_DELETED_FILES) {
+                    if (controller.uid != android.os.Process.myUid()) {
+                        return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_PERMISSION_DENIED))
+                    }
+                    val uris = args.getStringArrayList("uris").orEmpty()
+                    if (queue == null || !DeletedQueueFilesPolicy.validSources(uris)) {
+                        return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
+                    }
+                    queue.removeDeletedFiles(uris.toSet())
+                    return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                }
                 if (args.getString("action") == "restore_order") queue?.restoreOrder(args.getIntArray("order")?.toList().orEmpty())
                 else queue?.edit(args.getString("action").orEmpty(), args.getString("entry").orEmpty(), args.getString("target"))
                 Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))

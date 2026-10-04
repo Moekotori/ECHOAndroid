@@ -1,0 +1,5 @@
+<resources>
+    <string name="batch_deleting">삭제 중…</string>
+    <string name="batch_playlists_empty">편집 가능한 재생목록이 없습니다. 먼저 재생목록 탭에서 만들어 주세요.</string>
+    <string name="batch_playlist_added">“%1$s”에 추가했습니다</string>
+</resources>

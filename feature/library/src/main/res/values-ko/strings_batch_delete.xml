@@ -1,0 +1,16 @@
+<resources>
+    <string name="batch_delete">선택한 곡 삭제</string>
+    <string name="batch_remove_index">라이브러리에서 제거</string>
+    <string name="batch_delete_files">원본 파일 삭제</string>
+    <string name="batch_delete_originals">기기의 원본 파일도 삭제</string>
+    <string name="batch_delete_index_hint">선택한 곡을 라이브러리, 즐겨찾기, 재생목록에서 제거합니다. 파일을 유지하면 스캔이나 동기화 시 다시 추가될 수 있습니다.</string>
+    <string name="batch_delete_file_hint">원본 파일이 영구적으로 삭제되며 같은 오디오 파일을 사용하는 모든 곡에 영향을 줍니다.</string>
+    <string name="batch_delete_file_unavailable">일반 로컬 곡만 원본 파일을 삭제할 수 있습니다. 원격 곡과 CUE 분할 곡은 라이브러리에서 제거할 수 있습니다.</string>
+    <string name="batch_delete_partial">제거됨: %1$d곡 · 제거되지 않음: %2$d곡</string>
+    <plurals name="batch_delete_confirm">
+        <item quantity="other">선택한 %1$d곡을 삭제할까요?</item>
+    </plurals>
+    <plurals name="batch_delete_done">
+        <item quantity="other">%1$d곡을 제거했습니다</item>
+    </plurals>
+</resources>

@@ -25,7 +25,7 @@ fun smbEndpointFrom(serverUrl: String?, username: String?, password: String?): E
     )
 }
 
-/** 与 WebDAV 一致：不读文件标签，标题取文件名，专辑取上级目录名。 */
+/** Filename/directory fallback; the snapshot owner overlays bounded embedded file tags. */
 internal fun EchoSmbFileEntry.toLibraryTrackEntity(
     endpoint: EchoSmbEndpoint,
     scanRunId: Long,

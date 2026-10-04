@@ -1,0 +1,5 @@
+<resources>
+    <string name="batch_deleting">削除中…</string>
+    <string name="batch_playlists_empty">編集できるプレイリストがありません。先にプレイリストのタブで作成してください。</string>
+    <string name="batch_playlist_added">「%1$s」に追加しました</string>
+</resources>

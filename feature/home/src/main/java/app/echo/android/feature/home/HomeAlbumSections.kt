@@ -47,7 +47,7 @@ internal fun HomeAlbumRecommendationsSection(
             }
         }
         LazyRow(
-            modifier = Modifier.homeCarouselScroll(),
+            modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
@@ -223,7 +223,7 @@ internal fun HomeFavoriteAlbumsSection(
                 )
         } else {
             LazyRow(
-                modifier = Modifier.homeCarouselScroll(),
+                modifier = Modifier.fillMaxWidth(),
                 contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
@@ -264,4 +264,3 @@ private fun artistReadableDuration(durationMs: Long): String {
         formatDuration(durationMs)
     }
 }
-

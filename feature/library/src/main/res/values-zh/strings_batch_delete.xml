@@ -1,0 +1,16 @@
+<resources>
+    <string name="batch_delete">删除所选歌曲</string>
+    <string name="batch_remove_index">从曲库移除</string>
+    <string name="batch_delete_files">删除原文件</string>
+    <string name="batch_delete_originals">同时删除本地原文件</string>
+    <string name="batch_delete_index_hint">所选歌曲将从曲库、收藏和歌单中移除。保留原文件时，扫描或同步可能重新加入。</string>
+    <string name="batch_delete_file_hint">原文件将永久删除，会影响引用同一音频文件的全部曲目。</string>
+    <string name="batch_delete_file_unavailable">仅普通本地歌曲支持删除原文件。远程歌曲和 CUE 分轨可以从曲库移除。</string>
+    <string name="batch_delete_partial">已移除 %1$d 首 · 未移除 %2$d 首</string>
+    <plurals name="batch_delete_confirm">
+        <item quantity="other">删除所选 %1$d 首歌曲？</item>
+    </plurals>
+    <plurals name="batch_delete_done">
+        <item quantity="other">已移除 %1$d 首歌曲</item>
+    </plurals>
+</resources>

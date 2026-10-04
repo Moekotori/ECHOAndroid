@@ -102,6 +102,24 @@ class UsbAudioDescriptorParserTest {
         assertEquals(0x83, info.streamingFormats.first().feedbackEndpointAddress)
     }
 
+    @Test fun retainsSelectorTopologyForTheStreamingTerminal() {
+        val raw = bytes(
+            9, 4, 3, 0, 0, 1, 1, 0x20, 0,
+            8, 36, 0x0A, 0x11, 1, 3, 0, 0,
+            8, 36, 0x0A, 0x12, 1, 3, 0, 0,
+            9, 36, 0x0B, 0x20, 2, 0x11, 0x12, 3, 0,
+            12, 36, 2, 1, 1, 1, 0, 0x20, 0, 0, 0, 0,
+            9, 4, 2, 1, 1, 1, 2, 0x20, 0,
+            16, 36, 1, 1, 0, 1, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0,
+            6, 36, 2, 1, 3, 24,
+            9, 5, 2, 5, 0, 4, 1, 0, 0,
+        )
+        val format = parser.parse(raw).streamingFormats.single()
+        assertEquals(3, format.acInterfaceNumber)
+        assertEquals(listOf(0x20), format.clockSourceIds)
+        assertEquals(mapOf(0x20 to listOf(0x11, 0x12)), format.clockSelectorSources)
+    }
+
     private fun bytes(vararg values: Int): ByteArray =
         values.map { it.toByte() }.toByteArray()
 }

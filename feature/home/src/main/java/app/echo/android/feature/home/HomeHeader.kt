@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material3.*
@@ -33,6 +34,10 @@ internal fun HomeHeader(onOpenSearch: () -> Unit, onEditLayout: (() -> Unit)? = 
             }
             if (onEditLayout != null) IconButton(onClick = onEditLayout) {
                 EchoIcon(Icons.Rounded.Tune, stringResource(R.string.home_layout_title),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (onOpenSettings != null) IconButton(onClick = onOpenSettings) {
+                EchoIcon(Icons.Rounded.Settings, stringResource(R.string.home_open_settings),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }

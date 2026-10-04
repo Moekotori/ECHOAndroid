@@ -68,6 +68,7 @@ internal fun PlaybackSettingsSection(
     expanded: Boolean = true,
     onToggleExpanded: (() -> Unit)? = null,
     framed: Boolean = true,
+    showDivider: Boolean = true,
     trailing: @Composable () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
@@ -75,7 +76,7 @@ internal fun PlaybackSettingsSection(
     Column(
         Modifier.fillMaxWidth().echoPageSection().then(
             if (framed) Modifier.clip(RoundedCornerShape(22.dp))
-                .background(if (dark) Color.White.copy(alpha = 0.05f) else Color.White.copy(alpha = 0.62f))
+                .background(if (dark) Color.White.copy(alpha = 0.05f) else MaterialTheme.colorScheme.surfaceContainerLow)
                 .padding(horizontal = 14.dp, vertical = 12.dp)
             else Modifier.padding(vertical = 4.dp),
         ),
@@ -88,7 +89,7 @@ internal fun PlaybackSettingsSection(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            EchoIcon(icon, null, tint = echoAccentColor(), modifier = Modifier.size(20.dp))
+            EchoIcon(icon, null, tint = echoTheme().heading, modifier = Modifier.size(20.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(title, color = if (dark) Color.White else echoTheme().heading,
                     style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
@@ -103,7 +104,7 @@ internal fun PlaybackSettingsSection(
         EchoExpand(expanded) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { content() }
         }
-        if (!framed) HorizontalDivider(color = echoTheme().muted.copy(alpha = 0.16f))
+        if (!framed && showDivider) HorizontalDivider(color = echoTheme().muted.copy(alpha = 0.16f))
     }
 }
 
@@ -139,13 +140,13 @@ internal fun PlaybackChoiceChip(
         targetValue = if (selected) {
             accent.copy(alpha = if (dark) 0.22f else 0.16f)
         } else {
-            if (dark) echoTheme().panel.copy(alpha = 0.46f) else Color.White.copy(alpha = 0.56f)
+            if (dark) echoTheme().panel.copy(alpha = 0.46f) else MaterialTheme.colorScheme.surfaceContainerLow
         },
         animationSpec = tween(durationMillis = if (app.echo.android.design.LocalEchoEffectivePerformanceMode.current.isLightweight) 0 else 180, easing = LyricsSettingsMotionEasing),
         label = "playback-choice-container",
     )
     val borderColor by animateColorAsState(
-        targetValue = if (selected) accent.copy(alpha = 0.72f) else if (dark) echoTheme().glassBorder else Color.Transparent,
+        targetValue = if (selected) accent.copy(alpha = 0.72f) else if (dark) echoTheme().glassBorder else MaterialTheme.colorScheme.outlineVariant,
         animationSpec = tween(durationMillis = if (app.echo.android.design.LocalEchoEffectivePerformanceMode.current.isLightweight) 0 else 180, easing = LyricsSettingsMotionEasing),
         label = "playback-choice-border",
     )
@@ -200,13 +201,13 @@ internal fun PlaybackIconChoice(
         targetValue = if (selected) {
             accent.copy(alpha = if (dark) 0.22f else 0.16f)
         } else {
-            if (dark) echoTheme().panel.copy(alpha = 0.46f) else Color.White.copy(alpha = 0.56f)
+            if (dark) echoTheme().panel.copy(alpha = 0.46f) else MaterialTheme.colorScheme.surfaceContainerLow
         },
         animationSpec = tween(durationMillis = if (app.echo.android.design.LocalEchoEffectivePerformanceMode.current.isLightweight) 0 else 180, easing = LyricsSettingsMotionEasing),
         label = "playback-icon-choice-container",
     )
     val borderColor by animateColorAsState(
-        targetValue = if (selected) accent.copy(alpha = 0.72f) else if (dark) echoTheme().glassBorder else Color.Transparent,
+        targetValue = if (selected) accent.copy(alpha = 0.72f) else if (dark) echoTheme().glassBorder else MaterialTheme.colorScheme.outlineVariant,
         animationSpec = tween(durationMillis = if (app.echo.android.design.LocalEchoEffectivePerformanceMode.current.isLightweight) 0 else 180, easing = LyricsSettingsMotionEasing),
         label = "playback-icon-choice-border",
     )
@@ -263,7 +264,7 @@ internal fun PlaybackToggleChip(
         targetValue = if (selected) {
             accent.copy(alpha = if (dark) 0.24f else 0.18f)
         } else {
-            if (dark) echoTheme().panel.copy(alpha = 0.46f) else Color.White.copy(alpha = 0.56f)
+            if (dark) echoTheme().panel.copy(alpha = 0.46f) else MaterialTheme.colorScheme.surfaceContainerLow
         },
         animationSpec = tween(durationMillis = if (app.echo.android.design.LocalEchoEffectivePerformanceMode.current.isLightweight) 0 else 180, easing = LyricsSettingsMotionEasing),
         label = "playback-toggle-container",
@@ -274,7 +275,7 @@ internal fun PlaybackToggleChip(
             .clip(RoundedCornerShape(14.dp))
             .background(containerColor)
             .border(
-                BorderStroke(1.dp, if (selected) accent.copy(alpha = 0.72f) else if (dark) echoTheme().glassBorder else Color.Transparent),
+                BorderStroke(1.dp, if (selected) accent.copy(alpha = 0.72f) else if (dark) echoTheme().glassBorder else MaterialTheme.colorScheme.outlineVariant),
                 RoundedCornerShape(14.dp),
             )
             .echoPressFeedback(interactionSource)
@@ -328,7 +329,7 @@ internal fun PlaybackToggleRow(
         } else if (checked) {
             accent.copy(alpha = if (dark) 0.22f else 0.16f)
         } else {
-            if (dark) echoTheme().panel.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.48f)
+            if (dark) echoTheme().panel.copy(alpha = 0.50f) else MaterialTheme.colorScheme.surfaceContainerLow
         },
         animationSpec = tween(durationMillis = if (app.echo.android.design.LocalEchoEffectivePerformanceMode.current.isLightweight) 0 else 180, easing = LyricsSettingsMotionEasing),
         label = "playback-toggle-row",
@@ -344,7 +345,7 @@ internal fun PlaybackToggleRow(
                     Modifier.border(
                         BorderStroke(
                             1.dp,
-                            if (checked) accent.copy(alpha = 0.62f) else if (dark) echoTheme().glassBorder else Color.Transparent,
+                            if (checked) accent.copy(alpha = 0.62f) else if (dark) echoTheme().glassBorder else MaterialTheme.colorScheme.outlineVariant,
                         ),
                         RoundedCornerShape(14.dp),
                     )
@@ -402,12 +403,12 @@ internal fun PlaybackActionRow(
             .background(
                 if (!framed) Color.Transparent
                 else if (dark) echoTheme().panel.copy(alpha = 0.50f)
-                else Color.White.copy(alpha = 0.48f),
+                else MaterialTheme.colorScheme.surfaceContainerLow,
             )
             .then(
                 if (framed) {
                     Modifier.border(
-                        if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, Color.Transparent),
+                        if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                         RoundedCornerShape(14.dp),
                     )
                 } else {
@@ -484,9 +485,9 @@ internal fun PlaybackStepper(
             .fillMaxWidth()
             .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(if (dark) echoTheme().panel.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.48f))
+            .background(if (dark) echoTheme().panel.copy(alpha = 0.50f) else MaterialTheme.colorScheme.surfaceContainerLow)
             .border(
-                if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, Color.Transparent),
+                if (dark) echoDarkGlassBorder() else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                 RoundedCornerShape(14.dp),
             )
             .padding(horizontal = 4.dp),

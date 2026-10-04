@@ -9,6 +9,7 @@ class UsbAudioDescriptorParser {
         val audioStreamingInterfaces = mutableSetOf<Int>()
         val clockSourceIds = linkedSetOf<Int>()
         val terminalClocks = mutableMapOf<Int, Int>()
+        val clockSelectors = mutableMapOf<Int, List<Int>>()
         var acInterfaceNumber: Int? = null
         var currentInterface: InterfaceContext? = null
         var feedbackEndpointFound = false
@@ -112,6 +113,7 @@ class UsbAudioDescriptorParser {
                                 context,
                                 clockSourceIds,
                                 terminalClocks,
+                                clockSelectors,
                             )
                         }
                         AUDIO_SUBCLASS_STREAMING -> {
@@ -143,8 +145,10 @@ class UsbAudioDescriptorParser {
                         clockSourceIds = when {
                             format.clockSourceIds.isNotEmpty() -> format.clockSourceIds
                             linkedClock != null -> listOf(linkedClock)
-                            else -> clockSourceIds.toList()
+                            clockSourceIds.size == 1 -> clockSourceIds.toList()
+                            else -> emptyList()
                         },
+                        clockSelectorSources = clockSelectors.toMap(),
                     )
                 }
                 .distinctBy { "${it.interfaceNumber}:${it.alternateSetting}:${it.endpointAddress}" },
@@ -214,15 +218,22 @@ class UsbAudioDescriptorParser {
         context: InterfaceContext,
         clockSourceIds: MutableSet<Int>,
         terminalClocks: MutableMap<Int, Int>,
+        clockSelectors: MutableMap<Int, List<Int>>,
     ) {
         if (length < 4) return
         val subtype = raw[offset + 2].u8()
         val uac2 = context.version == UsbAudioClassVersion.Uac2 ||
             context.version == UsbAudioClassVersion.Uac3
+        if (!uac2) return
         when (subtype) {
-            AC_CLOCK_SOURCE,
-            AC_CLOCK_SELECTOR,
-            -> raw[offset + 3].u8().takeIf { it > 0 }?.let(clockSourceIds::add)
+            AC_CLOCK_SOURCE -> raw[offset + 3].u8().takeIf { it > 0 }?.let(clockSourceIds::add)
+            AC_CLOCK_SELECTOR -> {
+                val id = raw[offset + 3].u8()
+                // Preserve even malformed selectors so they cannot be queried as sources.
+                val pins = if (length >= 5) raw[offset + 4].u8() else 0
+                clockSelectors[id] = if (pins > 0 && length >= 7 + pins)
+                    (0 until pins).map { raw[offset + 5 + it].u8() } else emptyList()
+            }
             AC_INPUT_TERMINAL -> if (uac2 && length > 7) {
                 recordTerminalClock(
                     terminalId = raw[offset + 3].u8(),

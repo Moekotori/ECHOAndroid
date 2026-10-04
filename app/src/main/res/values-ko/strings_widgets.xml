@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_mini_name">ECHO · 미니 플레이어</string>
+    <string name="widget_mini_description">작은 앨범 커버와 간결한 재생 컨트롤</string>
+    <string name="widget_cover_name">ECHO · 앨범 커버</string>
+    <string name="widget_cover_description">큰 앨범 커버, 곡 정보와 재생 버튼</string>
+    <string name="widget_lyrics_name">ECHO · 가사</string>
+    <string name="widget_lyrics_description">현재 가사, 곡 정보와 재생 컨트롤</string>
+    <string name="widget_lyrics_hint">음악을 재생하면 여기에 가사가 표시됩니다</string>
+    <string name="widget_lyrics_unavailable">가사 없음</string>
+    <string name="widget_lyrics_label">가사</string>
+</resources>

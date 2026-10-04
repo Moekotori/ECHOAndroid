@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="usb_page_description">USB DAC、独占输出与整数直通。</string>
+    <string name="usb_page_clock_unverified">时钟未验证</string>
+    <string name="usb_page_output_stopped">输出已停止</string>
+    <string name="usb_page_waiting_playback">等待播放</string>
+    <string name="usb_page_connect_title">连接你的 USB DAC</string>
+    <string name="usb_page_connect_note">用 OTG 线连接 DAC，开启独占并允许 USB 访问。</string>
+    <string name="usb_page_verified_note">当前 USB 直通链路已验证。这代表应用传输状态，并非对 DAC 的外部硬件测量。</string>
+    <string name="usb_page_streaming_note">USB 正在接收音频，时钟和精度需由严格链路验证。</string>
+    <string name="usb_page_step_device">设备</string>
+    <string name="usb_page_step_permission">授权</string>
+    <string name="usb_page_step_output">输出</string>
+    <string name="usb_page_step_done">已就绪</string>
+    <string name="usb_page_step_pending">待就绪</string>
+    <string name="usb_page_output_mode">输出模式</string>
+    <string name="usb_page_exclusive_note">绕过 Android 混音，直接向 DAC 发送音频。</string>
+    <string name="usb_page_bitperfect_note">保留整数样本，旁路均衡器与增益；不支持的格式会停止播放。</string>
+    <string name="usb_page_volume_note">开启 Bit-perfect 前先调低 DAC 硬件音量，数字音量将固定为 100%。</string>
+    <string name="usb_page_connection_preferences">连接偏好</string>
+    <string name="usb_page_checks">检查与诊断</string>
+    <string name="usb_page_test_pause">停止 USB 输出或关闭独占后再测试，避免打断当前连接。</string>
+    <string name="usb_page_test_note">检查设备能否建立独占连接，不代表已验证直通。</string>
+    <string name="usb_page_show_details">设备详情与诊断</string>
+    <string name="usb_page_hide_details">收起设备详情</string>
+    <string name="usb_page_details_note">查看采样率、精度、端点与当前错误。</string>
+    <string name="usb_page_sound_note">查看均衡器、耳机校正与信号链路。</string>
+    <string name="usb_page_device_details">设备与输出</string>
+    <string name="usb_page_current_error">当前错误</string>
+    <string name="usb_page_test_result">驱动测试结果</string>
+</resources>
+

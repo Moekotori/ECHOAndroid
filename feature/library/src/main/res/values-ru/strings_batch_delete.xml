@@ -1,0 +1,22 @@
+<resources>
+    <string name="batch_delete">Удалить выбранные треки</string>
+    <string name="batch_remove_index">Убрать из медиатеки</string>
+    <string name="batch_delete_files">Удалить исходные файлы</string>
+    <string name="batch_delete_originals">Также удалить локальные исходные файлы</string>
+    <string name="batch_delete_index_hint">Треки будут убраны из медиатеки, избранного и плейлистов. Если сохранить файлы, сканирование или синхронизация могут добавить их снова.</string>
+    <string name="batch_delete_file_hint">Исходные файлы будут удалены безвозвратно. Это затронет все треки, использующие тот же аудиофайл.</string>
+    <string name="batch_delete_file_unavailable">Удаление файлов доступно только для обычных локальных треков. Удалённые треки и CUE-сегменты можно убрать из медиатеки.</string>
+    <string name="batch_delete_partial">Убрано: %1$d · Не убрано: %2$d</string>
+    <plurals name="batch_delete_confirm">
+        <item quantity="one">Удалить %1$d трек?</item>
+        <item quantity="few">Удалить %1$d трека?</item>
+        <item quantity="many">Удалить %1$d треков?</item>
+        <item quantity="other">Удалить %1$d трека?</item>
+    </plurals>
+    <plurals name="batch_delete_done">
+        <item quantity="one">Убран %1$d трек</item>
+        <item quantity="few">Убрано %1$d трека</item>
+        <item quantity="many">Убрано %1$d треков</item>
+        <item quantity="other">Убрано %1$d трека</item>
+    </plurals>
+</resources>

@@ -735,7 +735,9 @@ class MediaStoreTrackScanner(
                 return entity.copy(
                     durationMs = dsd.durationMs.takeIf { it > 0L } ?: durationMs,
                     sampleRateHz = dsd.sampleRateHz.takeIf { it > 0 } ?: sampleRateHz,
-                ).withAudioTags(dsd.tags).withFingerprint()
+                ).withAudioTags(dsd.tags).copy(
+                    artworkUri = persistLocalArtwork(dsd.tags?.artworkBytes) ?: entity.artworkUri,
+                ).withFingerprint()
             }
         }
         val tagged = if (LocalAudioTagReadPolicy.prefersFileTags(mimeType, fileName ?: contentUri)) {
@@ -906,7 +908,7 @@ class MediaStoreTrackScanner(
     }
 
     private fun localFileTagBackfillMarker(): java.io.File =
-        java.io.File(appContext.filesDir, "local-file-tag-backfill-v5")
+        java.io.File(appContext.filesDir, "local-file-tag-backfill-v6")
 
     private fun aggregationKeyBackfillMarker(): java.io.File =
         java.io.File(appContext.filesDir, "library-aggregation-keys-v4")

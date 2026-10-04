@@ -22,6 +22,9 @@ fun SettingsScreen(
     onLoadLibraryHealth: suspend () -> app.echo.android.model.library.LibraryHealthStats = {
         app.echo.android.model.library.LibraryHealthStats()
     },
+    onLoadLibraryAudioProfile: suspend () -> app.echo.android.model.library.LibraryAudioProfile = {
+        app.echo.android.model.library.LibraryAudioProfile()
+    },
     onInspectLibraryLyrics: suspend ((app.echo.android.model.library.LibraryLyricsInspection) -> Unit) -> Unit = {},
     appVersionLabel: String,
     updateContent: @Composable () -> Unit = {},
@@ -45,6 +48,7 @@ fun SettingsScreen(
     onOpenLyricsInterface: () -> Unit = {},
     usbExclusiveEnabled: Boolean,
     usbBitPerfectEnabled: Boolean,
+    usbOutputOptions: app.echo.android.model.playback.EchoUsbOutputOptions = app.echo.android.model.playback.EchoUsbOutputOptions(),
     trackTransitions: app.echo.android.model.playback.EchoTrackTransitionOptions,
     usbExclusiveAutoRequestOnStartup: Boolean,
     pauseOnAudioDisconnect: Boolean,
@@ -100,6 +104,7 @@ fun SettingsScreen(
     onRequestFloatingLyricsPermission: () -> Unit = {},
     onUsbExclusiveEnabledChange: (Boolean) -> Unit,
     onUsbBitPerfectEnabledChange: (Boolean) -> Unit,
+    onUsbOutputOptionsChange: (app.echo.android.model.playback.EchoUsbOutputOptions) -> Unit = {},
     onTrackTransitionsChange: (app.echo.android.model.playback.EchoTrackTransitionOptions) -> Unit,
     onUsbExclusiveAutoRequestOnStartupChange: (Boolean) -> Unit,
     onPauseOnAudioDisconnectChange: (Boolean) -> Unit,
@@ -182,21 +187,16 @@ fun SettingsScreen(
             importedFont = !importedFontUri.isNullOrBlank(),
             notificationPermissionNeeded = app.echo.android.design.LocalEchoPlatformCapabilities.current
                 .notificationRuntimePermission && !notificationPermissionGranted,
-            usbConfigurationVisible = status.diagnostics.usbConnected || usbExclusiveEnabled || usbBitPerfectEnabled ||
-                usbExclusiveAutoRequestOnStartup,
         ),
         summaries = mapOf(
-            SettingsCategory.Appearance to (stringResource(when (themeMode) {
+            SettingsCategory.Appearance to stringResource(when (themeMode) {
                 "dark" -> R.string.settings_theme_dark
                 "light" -> R.string.settings_theme_light
                 else -> R.string.settings_theme_system
-            }) + " · " + stringResource(when (customBackgroundMode) {
-                "image" -> R.string.settings_summary_bg_image
-                "video" -> R.string.settings_summary_bg_video
-                else -> R.string.settings_summary_bg_default
-            })),
+            }),
             SettingsCategory.Interface to languageDetail(appLanguage),
             SettingsCategory.Playback to stringResource(if (usbExclusiveEnabled) R.string.settings_usb_exclusive else R.string.settings_section_lyrics),
+            SettingsCategory.Usb to stringResource(status.usbOutputPresentation().headlineResource()),
             SettingsCategory.Services to (lastFmStatusLabel + " · " + listenBrainzStatusLabel),
             SettingsCategory.Library to stringResource(R.string.settings_library_summary, trackCount, albumCount, artistCount),
             SettingsCategory.About to appVersionLabel,
@@ -258,7 +258,6 @@ fun SettingsScreen(
                     onAppLanguageChange = onAppLanguageChange,
                 )
                 SettingsCategory.Playback -> SettingsPlaybackContent(
-                    status = status,
                     playbackHapticsEnabled = playbackHapticsEnabled,
                     effectivePerformanceMode = effectivePerformanceMode,
                     onlineLyricsEnabled = onlineLyricsEnabled,
@@ -271,29 +270,41 @@ fun SettingsScreen(
                     usbExclusiveEnabled = usbExclusiveEnabled,
                     usbBitPerfectEnabled = usbBitPerfectEnabled,
                     trackTransitions = trackTransitions,
-                    usbExclusiveAutoRequestOnStartup = usbExclusiveAutoRequestOnStartup,
                     pauseOnAudioDisconnect = pauseOnAudioDisconnect,
                     resumeOnAudioReconnect = resumeOnAudioReconnect,
                     replayGainEnabled = replayGainEnabled,
                     replayGainMode = replayGainMode,
                     replayGainPreampDb = replayGainPreampDb,
-                    usbExclusiveTestResult = usbExclusiveTestResult,
                     onPlaybackHapticsEnabledChange = onPlaybackHapticsEnabledChange,
                     onOnlineLyricsEnabledChange = onOnlineLyricsEnabledChange,
                     onLockScreenLyricsEnabledChange = onLockScreenLyricsEnabledChange,
                     onFloatingLyricsChange = onFloatingLyricsChange,
                     onRequestFloatingLyricsPermission = onRequestFloatingLyricsPermission,
-                    onUsbExclusiveEnabledChange = onUsbExclusiveEnabledChange,
-                    onUsbBitPerfectEnabledChange = onUsbBitPerfectEnabledChange,
                     onTrackTransitionsChange = onTrackTransitionsChange,
-                    onUsbExclusiveAutoRequestOnStartupChange = onUsbExclusiveAutoRequestOnStartupChange,
                     onPauseOnAudioDisconnectChange = onPauseOnAudioDisconnectChange,
                     onResumeOnAudioReconnectChange = onResumeOnAudioReconnectChange,
                     onReplayGainChange = onReplayGainChange,
                     onReplayGainModeChange = onReplayGainModeChange,
-                    onTestUsbExclusiveDriver = onTestUsbExclusiveDriver,
                     notificationPermissionGranted = notificationPermissionGranted,
                     onRequestNotificationPermission = onRequestNotificationPermission,
+                )
+                SettingsCategory.Usb -> SettingsUsbContent(
+                    status = status,
+                    usbExclusiveEnabled = usbExclusiveEnabled,
+                    usbBitPerfectEnabled = usbBitPerfectEnabled,
+                    options = usbOutputOptions,
+                    onOptionsChange = onUsbOutputOptionsChange,
+                    usbExclusiveAutoRequestOnStartup = usbExclusiveAutoRequestOnStartup,
+                    usbExclusiveTestResult = usbExclusiveTestResult,
+                    onUsbExclusiveEnabledChange = onUsbExclusiveEnabledChange,
+                    onUsbBitPerfectEnabledChange = onUsbBitPerfectEnabledChange,
+                    onUsbExclusiveAutoRequestOnStartupChange = onUsbExclusiveAutoRequestOnStartupChange,
+                    onTestUsbExclusiveDriver = onTestUsbExclusiveDriver,
+                    onOpenSound = onOpenSound,
+                    pauseOnDisconnect = pauseOnAudioDisconnect,
+                    resumeOnReconnect = resumeOnAudioReconnect,
+                    onPauseOnDisconnect = onPauseOnAudioDisconnectChange,
+                    onResumeOnReconnect = onResumeOnAudioReconnectChange,
                 )
                 SettingsCategory.Services -> SettingsServicesContent(
                     pcHandoffEnabled = pcHandoffEnabled,
@@ -327,6 +338,7 @@ fun SettingsScreen(
                     isActive = isActive,
                     isScanning = libraryScanning,
                     onLoadHealth = onLoadLibraryHealth,
+                    onLoadAudioProfile = onLoadLibraryAudioProfile,
                     onInspectLyrics = onInspectLibraryLyrics,
                     trackCount = trackCount,
                     albumCount = albumCount,

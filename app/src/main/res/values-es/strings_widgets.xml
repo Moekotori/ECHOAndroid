@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_mini_name">ECHO · Minirreproductor</string>
+    <string name="widget_mini_description">Controles compactos con una pequeña portada</string>
+    <string name="widget_cover_name">ECHO · Portada</string>
+    <string name="widget_cover_description">Portada con información de la pista y botón de reproducción</string>
+    <string name="widget_lyrics_name">ECHO · Letras</string>
+    <string name="widget_lyrics_description">Letra actual con información de la pista y controles de reproducción</string>
+    <string name="widget_lyrics_hint">Reproduce música para ver la letra aquí</string>
+    <string name="widget_lyrics_unavailable">Letra no disponible</string>
+    <string name="widget_lyrics_label">Letras</string>
+</resources>

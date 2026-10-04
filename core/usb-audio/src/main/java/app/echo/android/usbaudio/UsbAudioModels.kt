@@ -68,6 +68,7 @@ data class UsbAudioStreamingFormat(
     val acInterfaceNumber: Int? = null,
     val terminalLink: Int? = null,
     val clockSourceIds: List<Int> = emptyList(),
+    val clockSelectorSources: Map<Int, List<Int>> = emptyMap(),
 ) {
     val isIsochronousOut: Boolean
         get() = endpointDirection == UsbEndpointDirection.Out &&

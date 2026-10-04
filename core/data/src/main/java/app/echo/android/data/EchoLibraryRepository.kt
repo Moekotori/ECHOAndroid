@@ -42,6 +42,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -56,11 +57,15 @@ class EchoLibraryRepository(
     private val tagWriter: EmbeddedTagWriter? = null,
     internal val appContext: Context,
 ) {
+    internal val playlistOrderStore by lazy { PlaylistOrderStore(appContext) }
     private fun text(@StringRes id: Int, vararg args: Any): String =
         if (args.isEmpty()) appContext.getString(id) else appContext.getString(id, *args)
     private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val documentListings by lazy {
         DocumentTreeListingCache(java.io.File(appContext.cacheDir, "scan-saf-listings-v1.json"))
+    }
+    private val embeddedLyricsStore by lazy {
+        EmbeddedLyricsStore(java.io.File(appContext.cacheDir, "remote-embedded-lyrics-v1"))
     }
 
     private val maintenanceJob = repositoryScope.launch {
@@ -318,25 +323,7 @@ class EchoLibraryRepository(
         database.playlistDao().observeFavoriteAlbums(limit.coerceAtLeast(1))
             .flowOn(Dispatchers.IO)
 
-    fun pagedPlaylistTracks(playlistId: String): Flow<PagingData<LibraryTrackEntity>> =
-        Pager(
-            config = defaultPagingConfig(),
-            pagingSourceFactory = {
-                if (playlistId.startsWith(app.echo.android.model.library.EchoSmartPlaylistRule.IdPrefix)) {
-                    database.experienceDao().pageRuleTracks(smartPlaylistQuery(playlistId))
-                } else when (LibrarySmartPlaylistKind.fromId(playlistId)) {
-                    LibrarySmartPlaylistKind.Recent -> database.trackDao().pageRecentlyPlayedTracks()
-                    LibrarySmartPlaylistKind.Frequent -> database.trackDao().pageFrequentlyPlayedTracks()
-                    LibrarySmartPlaylistKind.Never -> database.trackDao().pageNeverPlayedTracks()
-                    LibrarySmartPlaylistKind.Added -> database.trackDao().pageRecentlyAddedTracks()
-                    null -> if (LibraryFavoritePolicy.isLikedSongsId(playlistId)) {
-                        database.playlistDao().pageFavoriteTracks()
-                    } else {
-                        database.playlistDao().pagePlaylistTracks(playlistId)
-                    }
-                }
-            },
-        ).flow
+    fun pagedPlaylistTracks(playlistId: String): Flow<PagingData<LibraryTrackEntity>> = orderedPlaylistPaging(playlistId)
 
     suspend fun toggleFavorite(trackId: String): Boolean {
         val id = trackId.trim()
@@ -489,18 +476,14 @@ class EchoLibraryRepository(
     }
 
     suspend fun renameLocalPlaylist(playlistId: String, name: String): Boolean {
-        if (!isLocalManagedPlaylist(playlistId)) return false
-        val catalog = loadPlaylistCatalog(playlistId) ?: return false
-        val next = LibraryPlaylistPolicy.rename(
-            catalog = catalog,
-            playlistId = playlistId,
-            name = name,
-            nowEpochMs = System.currentTimeMillis(),
-        )
-        val renamed = next.playlists.singleOrNull() ?: return false
-        if (renamed.name == catalog.playlists.single().name) return false
-        persistPlaylistRecord(renamed)
-        return true
+        val normalized = LibraryPlaylistPolicy.normalizeName(name) ?: return false
+        return database.withTransaction {
+            val dao = database.playlistDao()
+            val playlist = dao.getPlaylist(playlistId) ?: return@withTransaction false
+            if (!EchoPlaylist(playlist.id, playlist.name, source = playlist.source).canEdit || playlist.name == normalized) return@withTransaction false
+            dao.setName(playlistId, normalized, System.currentTimeMillis())
+            true
+        }
     }
 
     suspend fun deleteLocalPlaylist(playlistId: String): Boolean {
@@ -541,18 +524,7 @@ class EchoLibraryRepository(
             if (database.playlistDao().isFavorite(id)) return false
             return toggleFavorite(id)
         }
-        if (!isLocalManagedPlaylist(playlistId)) return false
-        val catalog = loadPlaylistCatalog(playlistId) ?: return false
-        val next = LibraryPlaylistPolicy.addTrack(
-            catalog = catalog,
-            playlistId = playlistId,
-            trackId = trackId,
-            nowEpochMs = System.currentTimeMillis(),
-        )
-        val updated = next.playlists.singleOrNull() ?: return false
-        if (updated.trackIds == catalog.playlists.single().trackIds) return false
-        persistPlaylistRecord(updated)
-        return true
+        return addTracksToPlaylist(playlistId, listOf(trackId.trim())) > 0
     }
 
     suspend fun removeTrackFromLocalPlaylist(playlistId: String, trackId: String): Boolean {
@@ -563,18 +535,14 @@ class EchoLibraryRepository(
             toggleFavorite(id)
             return true
         }
-        if (!isLocalManagedPlaylist(playlistId)) return false
-        val catalog = loadPlaylistCatalog(playlistId) ?: return false
-        val next = LibraryPlaylistPolicy.removeTrack(
-            catalog = catalog,
-            playlistId = playlistId,
-            trackId = trackId,
-            nowEpochMs = System.currentTimeMillis(),
-        )
-        val updated = next.playlists.singleOrNull() ?: return false
-        if (updated.trackIds == catalog.playlists.single().trackIds) return false
-        persistPlaylistRecord(updated)
-        return true
+        return database.withTransaction {
+            val dao = database.playlistDao()
+            val playlist = dao.getPlaylist(playlistId) ?: return@withTransaction false
+            if (!EchoPlaylist(playlist.id, playlist.name, source = playlist.source).canEdit) return@withTransaction false
+            val changed = dao.removeMember(playlistId, trackId.trim()) > 0
+            if (changed) dao.refreshMembershipSummary(playlistId, System.currentTimeMillis())
+            changed
+        }
     }
 
     suspend fun reorderLocalPlaylistTracks(
@@ -828,16 +796,23 @@ class EchoLibraryRepository(
         return ids.mapNotNull { found[it]?.toEchoTrack() }
     }
 
-    suspend fun readEmbeddedLyrics(trackId: String): String? {
-        val track = database.trackDao().getTrackById(trackId) ?: return null
+    suspend fun readEmbeddedLyrics(trackId: String): String? = withContext(LibraryScanDispatchers.Limited) {
+        val track = database.trackDao().getTrackById(trackId) ?: return@withContext null
+        if (track.source.startsWith("smb:") || track.source.startsWith("webdav:")) {
+            return@withContext embeddedLyricsStore.read(track)
+        }
         val uri = android.net.Uri.parse(
             app.echo.android.model.library.CueSheetPolicy.playbackUri(track.contentUri),
         )
-        return runCatching {
+        try {
             appContext.contentResolver.openInputStream(uri)?.use { input ->
                 readLocalAudioTags(input)?.lyrics?.takeIf { it.isNotBlank() }
             }
-        }.getOrNull()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            null
+        }
     }
 
     suspend fun trackByContentUri(contentUri: String): LibraryTrackEntity? =
@@ -962,11 +937,11 @@ class EchoLibraryRepository(
         limit: Int = AGGREGATION_QUEUE_LIMIT,
     ): List<LibraryTrackEntity> {
         val dao = database.trackDao()
-        if (origin is app.echo.android.model.library.LibraryPlaybackOrigin.Playlist &&
-            origin.playlistId.startsWith(app.echo.android.model.library.EchoSmartPlaylistRule.IdPrefix)) {
-            val first = dao.queryTracks(smartPlaylistQuery(origin.playlistId, limit))
+        if (origin is app.echo.android.model.library.LibraryPlaybackOrigin.Playlist) {
+            val order = observePlaylistOrder(origin.playlistId).first()
+            val first = dao.queryTracks(playlistTrackQuery(origin.playlistId, order, limit))
             return if (first.any { it.id == anchorId }) first
-                else dao.queryTracks(smartPlaylistQuery(origin.playlistId, limit, anchorId))
+                else dao.queryTracks(playlistTrackQuery(origin.playlistId, order, limit, anchorId))
         }
         val first = dao.getAlbumTracksForPlayback(LibraryCollectionPlaybackQuery.build(origin, null, limit))
         if (first.any { it.id == anchorId }) return first
@@ -1020,25 +995,8 @@ class EchoLibraryRepository(
         playlistId: String,
         limit: Int = AGGREGATION_QUEUE_LIMIT,
     ): List<LibraryTrackEntity> {
-        val safeLimit = limit.coerceAtLeast(1)
-        if (playlistId.startsWith(app.echo.android.model.library.EchoSmartPlaylistRule.IdPrefix)) {
-            return database.trackDao().queryTracks(smartPlaylistQuery(playlistId, safeLimit))
-        }
-        return when (LibrarySmartPlaylistKind.fromId(playlistId)) {
-            LibrarySmartPlaylistKind.Recent ->
-                database.trackDao().getRecentlyPlayedTracksForPlayback(safeLimit)
-            LibrarySmartPlaylistKind.Frequent ->
-                database.trackDao().getFrequentlyPlayedTracksForPlayback(safeLimit)
-            LibrarySmartPlaylistKind.Never ->
-                database.trackDao().getNeverPlayedTracksForPlayback(safeLimit)
-            LibrarySmartPlaylistKind.Added ->
-                database.trackDao().getRecentlyAddedTracksForPlayback(safeLimit)
-            null -> if (LibraryFavoritePolicy.isLikedSongsId(playlistId)) {
-                database.playlistDao().listFavoriteTracksForBrowse(safeLimit, 0)
-            } else {
-                database.playlistDao().getPlaylistTracksForPlayback(playlistId, safeLimit)
-            }
-        }
+        val order = observePlaylistOrder(playlistId).first()
+        return database.trackDao().queryTracks(playlistTrackQuery(playlistId, order, limit.coerceAtLeast(1)))
     }
 
     suspend fun backfillMissingSampleRates(
@@ -1746,6 +1704,7 @@ class EchoLibraryRepository(
             scanningText = text(R.string.library_webdav_scanning),
             failedText = text(R.string.library_webdav_sync_failed),
             batchSize = batchSize,
+            fileTagReader = RemoteFileTagReader(endpoint, SharedWebDavHttpClient),
         ) { onTrack ->
             client.scanAudioFiles { file -> onTrack(file.toLibraryTrackEntity(endpoint, scanRunId)) }
         }
@@ -1763,6 +1722,7 @@ class EchoLibraryRepository(
             scanningText = text(R.string.library_smb_scanning),
             failedText = text(R.string.library_smb_sync_failed),
             batchSize = batchSize,
+            fileTagReader = RemoteFileTagReader(),
         ) { onTrack ->
             scanner.scanAudio(endpoint) { file -> onTrack(file.toLibraryTrackEntity(endpoint, scanRunId)) }
         }
@@ -1778,6 +1738,7 @@ class EchoLibraryRepository(
         scanningText: String,
         failedText: String,
         batchSize: Int,
+        fileTagReader: RemoteFileTagReader,
         scan: suspend (onTrack: suspend (LibraryTrackEntity) -> Unit) -> RemoteSyncVisit,
     ): Flow<LibraryScanProgress> = flow {
         val dao = database.trackDao()
@@ -1790,6 +1751,13 @@ class EchoLibraryRepository(
         var lastProgressEmitAtMs = 0L
         var changedSummaries = LibrarySummaryKeySet()
         val pending = ArrayList<LibraryTrackEntity>(batchSize)
+
+        val scanContext = coroutineContext
+        val tagScan = RemoteFileTagScan(appContext.filesDir, source,
+            reader = { track -> fileTagReader.read(track) { scanContext.ensureActive() } },
+            persistArtwork = scanner::persistLocalArtwork,
+            persistLyrics = embeddedLyricsStore::store,
+        )
 
         suspend fun emitProgress(
             phase: LibraryScanPhase = progress.phase,
@@ -1846,7 +1814,7 @@ class EchoLibraryRepository(
                     )
                 }
                 if (pending.size >= batchSize) {
-                    val written = writeRemoteBatch(dao, pending, existingFingerprints, editedTracks)
+                    val written = writeRemoteBatch(dao, pending, existingFingerprints, editedTracks, tagScan::enrich)
                     insertedCount += written.insertedCount
                     updatedCount += written.updatedCount
                     seenIds.addAll(written.seenIds)
@@ -1857,7 +1825,7 @@ class EchoLibraryRepository(
                 }
             }
             if (pending.isNotEmpty()) {
-                val written = writeRemoteBatch(dao, pending, existingFingerprints, editedTracks)
+                val written = writeRemoteBatch(dao, pending, existingFingerprints, editedTracks, tagScan::enrich)
                 insertedCount += written.insertedCount
                 updatedCount += written.updatedCount
                 seenIds.addAll(written.seenIds)
@@ -1878,6 +1846,10 @@ class EchoLibraryRepository(
             )
             deletedCount = deletion.deletedCount
             rebuildSummariesIfNeeded(dao, changedSummaries + deletion.summaryKeys)
+            if (!visit.incomplete) {
+                tagScan.complete()
+                scanner.pruneLocalArtwork(dao)
+            }
             emitProgress(phase = LibraryScanPhase.Completed, currentTitle = null, isCompleted = true)
         } catch (error: CancellationException) {
             emitProgress(phase = LibraryScanPhase.Cancelled, currentTitle = null, isCompleted = true)
@@ -2030,26 +2002,13 @@ class EchoLibraryRepository(
     }.flowOn(LibraryScanDispatchers.Limited)
 
     suspend fun importM3uPlaylist(name: String, text: String): EchoPlaylist? {
-        val entries = M3uPlaylistCodec.parse(text)
-        if (entries.isEmpty()) return null
-        val rows = database.trackDao().getLocalM3uMatchRows()
-        val trackIds = entries.mapNotNull { M3uPlaylistCodec.matchTrackId(it, rows) }.distinct()
-        if (trackIds.isEmpty()) return null
-        val created = createLocalPlaylist(name) ?: return null
-        trackIds.forEach { trackId -> addTrackToLocalPlaylist(created.id, trackId) }
-        return database.playlistDao().getPlaylist(created.id)?.let { entity ->
-            LibraryPlaylistRecord(
-                id = entity.id,
-                name = entity.name,
-                trackIds = database.playlistDao().getPlaylistTrackIds(entity.id),
-                artworkUri = entity.artworkUri,
-                updatedAtEpochMs = entity.updatedAtEpochMs,
-            ).toEchoPlaylist()
-        } ?: created
+        val preview = preparePlaylistImport(text)
+        return createImportedPlaylist(name, preview)
     }
 
     suspend fun exportM3uPlaylist(playlistId: String): String? {
-        val tracks = playlistTracksForPlayback(playlistId, limit = 2_000)
+        val tracks = playlistTracksForPlayback(playlistId, limit = 10_001)
+        require(tracks.size <= 10_000) { "Playlist exceeds 10,000 tracks" }
         if (tracks.isEmpty()) return null
         val locations = withContext(Dispatchers.IO) {
             resolveLibraryFileNames(appContext.contentResolver, tracks.map {
@@ -2193,7 +2152,9 @@ class EchoLibraryRepository(
                 coroutineContext.ensureActive()
                 if (track.metadataEditedAtEpochMs != null) continue
                 val tags = scanner.readAudioTagsFromUri(track.contentUri, track.mimeType) ?: continue
-                val next = track.withAudioTags(tags)
+                val next = track.withAudioTags(tags).copy(
+                    artworkUri = scanner.persistLocalArtwork(tags.artworkBytes) ?: track.artworkUri,
+                )
                 if (next.hasSameUserMetadata(track)) continue
                 pending += next.withScanMetadata()
                 if (pending.size >= DATABASE_BATCH_SIZE) flushPending()
@@ -2619,6 +2580,7 @@ private suspend fun writeRemoteBatch(
     tracks: List<LibraryTrackEntity>,
     existingFingerprints: Map<String, TrackFingerprint>,
     editedTracks: Map<String, LibraryTrackEntity>,
+    enrichFileTags: ((LibraryTrackEntity, LibraryTrackEntity?) -> LibraryTrackEntity)? = null,
 ): RemoteBatchWriteResult {
     val inserts = ArrayList<LibraryTrackEntity>(tracks.size)
     val updates = ArrayList<LibraryTrackEntity>(tracks.size)
@@ -2630,7 +2592,8 @@ private suspend fun writeRemoteBatch(
         }
     }
     tracks.forEach { track ->
-        val remapped = remapRemoteTrackIdentity(track, existingByContentUri)
+        val enriched = enrichFileTags?.invoke(track, existingByContentUri[track.contentUri]) ?: track
+        val remapped = remapRemoteTrackIdentity(enriched, existingByContentUri)
         val preserved = remapped.prepareRemoteSyncTrack(editedTracks[remapped.id])
         seenIds += preserved.id
         val existingFingerprint = existingFingerprints[preserved.id]?.fingerprint

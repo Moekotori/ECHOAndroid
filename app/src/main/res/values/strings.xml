@@ -3,7 +3,7 @@
     <string name="tab_home">My music</string>
     <string name="tab_library">Library</string>
     <string name="tab_connect">Link</string>
-    <string name="tab_diagnostics">Signal</string>
+    <string name="tab_diagnostics">Audio</string>
     <string name="permission_welcome">Welcome to ECHO</string>
     <string name="permission_title">Permissions</string>
     <string name="permission_subtitle">ECHO needs these permissions for the full listening experience</string>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="usb_page_description">USB DAC, exclusive output and integer passthrough.</string>
+    <string name="usb_page_clock_unverified">Clock unverified</string>
+    <string name="usb_page_output_stopped">Output stopped</string>
+    <string name="usb_page_waiting_playback">Waiting for playback</string>
+    <string name="usb_page_connect_title">Connect your USB DAC</string>
+    <string name="usb_page_connect_note">Connect the DAC with an OTG cable, enable exclusive output and allow USB access.</string>
+    <string name="usb_page_verified_note">The live USB path is verified. This confirms the app transport, not an external measurement of the DAC.</string>
+    <string name="usb_page_streaming_note">USB is receiving audio. Clock and precision require verification by the strict path.</string>
+    <string name="usb_page_step_device">Device</string>
+    <string name="usb_page_step_permission">Access</string>
+    <string name="usb_page_step_output">Output</string>
+    <string name="usb_page_step_done">Ready</string>
+    <string name="usb_page_step_pending">Pending</string>
+    <string name="usb_page_output_mode">Output mode</string>
+    <string name="usb_page_exclusive_note">Send audio directly to the DAC, bypassing the Android mixer.</string>
+    <string name="usb_page_bitperfect_note">Preserve integer samples and bypass EQ and gain. Unsupported formats stop playback.</string>
+    <string name="usb_page_volume_note">Before enabling Bit-perfect, lower the DAC hardware volume. Digital volume will be fixed at 100%.</string>
+    <string name="usb_page_connection_preferences">Connection</string>
+    <string name="usb_page_checks">Checks and diagnostics</string>
+    <string name="usb_page_test_pause">Stop USB output or turn off exclusive mode before testing, to avoid interrupting the connection.</string>
+    <string name="usb_page_test_note">Check whether an exclusive connection can open. This does not verify bit-perfect output.</string>
+    <string name="usb_page_show_details">Device details and diagnostics</string>
+    <string name="usb_page_hide_details">Hide device details</string>
+    <string name="usb_page_details_note">Sample rates, precision, endpoints and current errors.</string>
+    <string name="usb_page_sound_note">Equalizer, headphone correction and the signal path.</string>
+    <string name="usb_page_device_details">Device and output</string>
+    <string name="usb_page_current_error">Current error</string>
+    <string name="usb_page_test_result">Driver test result</string>
+</resources>
+

@@ -146,9 +146,7 @@ internal val LibraryWallVerticalSpacing = 16.dp
 
 @Composable
 internal fun LibraryPagerTabs(selectedMode: LibraryViewMode, onSelectMode: (LibraryViewMode) -> Unit, cloudOnly: Boolean = false) {
-    val modes = if (cloudOnly) listOf(LibraryViewMode.Albums) else listOf(
-        LibraryViewMode.Songs, LibraryViewMode.Albums, LibraryViewMode.Artists, LibraryViewMode.Folders, LibraryViewMode.Playlists, LibraryViewMode.Radio,
-    )
+    val modes = libraryPagerModes(cloudOnly)
     LibraryTextTabs(modes.map { it.label() }, modes.indexOf(selectedMode), { onSelectMode(modes[it]) })
 }
 

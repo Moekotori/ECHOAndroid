@@ -71,11 +71,13 @@ data class EchoAppSettings(
         app.echo.android.model.settings.EchoFloatingLyricsSettings(),
     val usbExclusiveEnabled: Boolean = false,
     val usbBitPerfectEnabled: Boolean = false,
+    val usbOutputOptions: app.echo.android.model.playback.EchoUsbOutputOptions = app.echo.android.model.playback.EchoUsbOutputOptions(),
     val usbExclusiveAutoRequestOnStartup: Boolean = true,
     val pauseOnAudioDisconnect: Boolean = true,
     val resumeOnAudioReconnect: Boolean = false,
     val dsp: app.echo.android.model.playback.EchoDspSettings = app.echo.android.model.playback.EchoDspSettings(),
     val equalizerEnabled: Boolean = false,
+    val mseb: app.echo.android.model.playback.EchoMsebState = app.echo.android.model.playback.EchoMsebState(),
     val equalizerPreset: String = EchoEqualizerPreset.Flat,
     val equalizerBandGains: List<Float> = EchoEqualizerPresets.gainsForPreset(EchoEqualizerPreset.Flat),
     val equalizerPreampDb: Float = 0f,
@@ -282,6 +284,7 @@ class EchoSettingsStore(
                 ).normalized,
                 usbExclusiveEnabled = preferences[Keys.UsbExclusiveEnabled] ?: false,
                 usbBitPerfectEnabled = preferences[Keys.UsbBitPerfectEnabled] ?: false,
+                usbOutputOptions = EchoUsbOutputOptionsCodec.decode(preferences[Keys.UsbOutputOptions]),
                 trackTransitions = app.echo.android.model.playback.EchoTrackTransitionOptions(
                     fadeEnabled = preferences[Keys.TrackFadeEnabled] ?: false,
                     fadeDurationMs = preferences[Keys.TrackFadeDurationMs] ?: 1500,
@@ -297,6 +300,7 @@ class EchoSettingsStore(
                     preferences[Keys.DspCrossfeedAmount] ?: 0.3f,
                 ).normalized,
                 equalizerEnabled = preferences[Keys.EqualizerEnabled] ?: false,
+                mseb = EchoMsebCodec.decode(preferences[Keys.Mseb]),
                 equalizerPreset = EchoEqualizerPresets.normalizePresetId(preferences[Keys.EqualizerPreset]),
                 equalizerBandGains = parseEqualizerBandGains(
                     preferences[Keys.EqualizerBandGains],
@@ -548,6 +552,10 @@ class EchoSettingsStore(
         }
     }
 
+    suspend fun setUsbOutputOptions(options: app.echo.android.model.playback.EchoUsbOutputOptions) {
+        context.echoSettings.edit { it[Keys.UsbOutputOptions] = EchoUsbOutputOptionsCodec.encode(options) }
+    }
+
     suspend fun setUsbBitPerfectEnabled(enabled: Boolean) {
         context.echoSettings.edit {
             it[Keys.UsbBitPerfectEnabled] = enabled
@@ -571,6 +579,10 @@ class EchoSettingsStore(
 
     suspend fun setEqualizerEnabled(enabled: Boolean) {
         context.echoSettings.edit { it[Keys.EqualizerEnabled] = enabled }
+    }
+
+    suspend fun setMseb(state: app.echo.android.model.playback.EchoMsebState) {
+        context.echoSettings.edit { it[Keys.Mseb] = EchoMsebCodec.encode(state) }
     }
 
     suspend fun setEqualizerPreset(presetId: String, preampDb: Float) {
@@ -1549,6 +1561,7 @@ class EchoSettingsStore(
             backup.lockScreenLyricsEnabled?.let { prefs[Keys.LockScreenLyricsEnabled] = it }
             backup.usbExclusiveEnabled?.let { prefs[Keys.UsbExclusiveEnabled] = it }
             backup.usbBitPerfectEnabled?.let { prefs[Keys.UsbBitPerfectEnabled] = it }
+            backup.usbOutputOptions?.let { prefs[Keys.UsbOutputOptions] = EchoUsbOutputOptionsCodec.encode(it) }
             backup.usbExclusiveAutoRequestOnStartup?.let { prefs[Keys.UsbExclusiveAutoRequestOnStartup] = it }
             backup.pauseOnAudioDisconnect?.let { prefs[Keys.PauseOnAudioDisconnect] = it }
             backup.resumeOnAudioReconnect?.let { prefs[Keys.ResumeOnAudioReconnect] = it }
@@ -1562,6 +1575,7 @@ class EchoSettingsStore(
                 prefs[Keys.TrackSmartTransitionEnabled] = transitions.smartEnabled
             }
             backup.equalizerEnabled?.let { prefs[Keys.EqualizerEnabled] = it }
+            backup.mseb?.let { prefs[Keys.Mseb] = EchoMsebCodec.encode(it) }
             backup.equalizerPreset?.let { prefs[Keys.EqualizerPreset] = it }
             backup.equalizerBandGains?.let { prefs[Keys.EqualizerBandGains] = formatEqualizerBandGains(it) }
             backup.equalizerPreampDb?.let { prefs[Keys.EqualizerPreampDb] = it }
@@ -1646,6 +1660,7 @@ class EchoSettingsStore(
         val FloatingLyricsFontScale = floatPreferencesKey("floating_lyrics_font_scale")
         val FloatingLyricsOffsetY = intPreferencesKey("floating_lyrics_offset_y")
         val UsbExclusiveEnabled = booleanPreferencesKey("usb_exclusive_enabled")
+        val UsbOutputOptions = stringPreferencesKey("usb_output_options")
         val UsbBitPerfectEnabled = booleanPreferencesKey("usb_bit_perfect_enabled")
         val TrackFadeEnabled = booleanPreferencesKey("track_fade_enabled")
         val TrackFadeDurationMs = intPreferencesKey("track_fade_duration_ms")
@@ -1658,6 +1673,7 @@ class EchoSettingsStore(
         val DspCrossfeedEnabled = booleanPreferencesKey("dsp_crossfeed_enabled")
         val DspCrossfeedAmount = floatPreferencesKey("dsp_crossfeed_amount")
         val EqualizerEnabled = booleanPreferencesKey("equalizer_enabled")
+        val Mseb = stringPreferencesKey("mseb")
         val EqualizerPreset = stringPreferencesKey("equalizer_preset")
         val EqualizerBandGains = stringPreferencesKey("equalizer_band_gains")
         val EqualizerPreampDb = floatPreferencesKey("equalizer_preamp_db")
@@ -1892,6 +1908,7 @@ fun EchoAppSettings.toBackupSettings(): app.echo.android.model.backup.EchoBackup
         lockScreenLyricsEnabled = lockScreenLyricsEnabled,
         usbExclusiveEnabled = usbExclusiveEnabled,
         usbBitPerfectEnabled = usbBitPerfectEnabled,
+        usbOutputOptions = usbOutputOptions,
         usbExclusiveAutoRequestOnStartup = usbExclusiveAutoRequestOnStartup,
         pauseOnAudioDisconnect = pauseOnAudioDisconnect,
         resumeOnAudioReconnect = resumeOnAudioReconnect,
@@ -1901,6 +1918,7 @@ fun EchoAppSettings.toBackupSettings(): app.echo.android.model.backup.EchoBackup
         replayGainPreampDb = replayGainPreampDb,
         trackTransitions = trackTransitions,
         equalizerEnabled = equalizerEnabled,
+        mseb = mseb,
         equalizerPreset = equalizerPreset,
         equalizerBandGains = equalizerBandGains,
         equalizerPreampDb = equalizerPreampDb,

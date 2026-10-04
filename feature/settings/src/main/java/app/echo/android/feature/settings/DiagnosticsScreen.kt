@@ -76,6 +76,7 @@ fun DiagnosticsScreen(
     onRequestBluetoothCodecPermission: () -> Unit = {},
     onSwipeToConnect: () -> Unit = {},
     soundRequestId: Int = 0,
+    onMsebChange: (EchoMsebState) -> Unit = {},
 ) {
     val pagerState = rememberPagerState { 3 }
     var soundPanel by rememberSaveable { mutableIntStateOf(0) }
@@ -88,7 +89,7 @@ fun DiagnosticsScreen(
         }
     }
     val scrollStates = listOf(rememberScrollState(), rememberScrollState(), rememberScrollState())
-    val soundScrollStates = listOf(rememberScrollState(), rememberScrollState(), rememberScrollState(), rememberScrollState())
+    val soundScrollStates = listOf(rememberScrollState(), rememberScrollState(), rememberScrollState(), rememberScrollState(), rememberScrollState())
     val scope = rememberCoroutineScope()
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val innerFling = rememberSilkPagerFlingBehavior(pagerState)
@@ -135,14 +136,15 @@ fun DiagnosticsScreen(
                 pageNestedScrollConnection = innerNestedScroll,
             ) { tab ->
                 Column(Modifier.fillMaxSize()) {
-                    if (tab == 1) Box(Modifier.padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 16.dp)) {
+                    if (tab == 1) Box(Modifier.padding(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 12.dp)) {
                         SignalSoundTabs(
                             selectedIndex = soundPanel,
                             labels = listOf(
-                                stringResource(L10nR.string.feature_settings_equalizer_7ccb03),
+                                stringResource(L10nR.string.peq_workspace_title),
                                 stringResource(L10nR.string.feature_settings_headphone_correction_491ce5),
                                 stringResource(L10nR.string.channel_balance),
                                 stringResource(L10nR.string.dsp_title),
+                                stringResource(L10nR.string.mseb_title),
                             ),
                             onSelect = { soundPanel = it },
                         )
@@ -219,7 +221,8 @@ fun DiagnosticsScreen(
                                             onStateChange = onChannelBalanceChange,
                                             onReset = onChannelBalanceReset,
                                         )
-                                        else SignalDspPanel(dspSettings, status, replayGainScan, onDspSettings, onReplayGain, onReplayGainMode, onReplayGainScan)
+                                        else if (panel == 3) SignalDspPanel(dspSettings, status, replayGainScan, onDspSettings, onReplayGain, onReplayGainMode, onReplayGainScan)
+                                        else SignalMsebPanel(equalizerState, status, onMsebChange)
                                     }
                                 }
                             }

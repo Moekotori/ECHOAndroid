@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="home_open_settings">Réglages</string>
     <string name="home_page_guide_settings">Glissez à droite · Réglages</string>
     <string name="home_page_guide_library">Glissez à gauche · Bibliothèque</string>
 </resources>

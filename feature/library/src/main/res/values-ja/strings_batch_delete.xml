@@ -1,0 +1,16 @@
+<resources>
+    <string name="batch_delete">選択した曲を削除</string>
+    <string name="batch_remove_index">ライブラリから削除</string>
+    <string name="batch_delete_files">元のファイルを削除</string>
+    <string name="batch_delete_originals">端末内の元のファイルも削除</string>
+    <string name="batch_delete_index_hint">選択した曲をライブラリ、お気に入り、プレイリストから削除します。ファイルを残すと、スキャンや同期で再び追加される場合があります。</string>
+    <string name="batch_delete_file_hint">元のファイルは完全に削除され、同じ音声ファイルを使うすべての曲に影響します。</string>
+    <string name="batch_delete_file_unavailable">元のファイルを削除できるのは通常のローカル曲のみです。リモート曲と CUE 分割曲はライブラリから削除できます。</string>
+    <string name="batch_delete_partial">削除済み：%1$d 曲 · 未削除：%2$d 曲</string>
+    <plurals name="batch_delete_confirm">
+        <item quantity="other">選択した %1$d 曲を削除しますか？</item>
+    </plurals>
+    <plurals name="batch_delete_done">
+        <item quantity="other">%1$d 曲を削除しました</item>
+    </plurals>
+</resources>

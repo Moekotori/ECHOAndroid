@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="usb_param_auto">自动</string>
+    <string name="usb_param_mono">单声道</string>
+    <string name="usb_param_stereo">立体声</string>
+    <string name="usb_param_format">输出格式</string>
+    <string name="usb_param_strict_locked">严格直通跟随音源采样率、精度和声道，兼容模式的参数会保留。</string>
+    <string name="usb_param_capabilities_note">选项按设备已报告能力筛选。兼容模式会转换格式；更高的设置无法恢复音源细节。</string>
+    <string name="usb_param_saved_note">连接并授权 DAC 后应用这些参数，设置会保留到下次连接。</string>
+    <string name="usb_param_volume">数字音量</string>
+    <string name="usb_param_volume_note">仅调整应用增益，不改变 DAC 硬件音量。</string>
+    <string name="usb_param_volume_fixed">严格直通的数字音量固定为 100%。</string>
+    <string name="usb_param_transport">USB 传输</string>
+    <string name="usb_param_buffer">缓冲策略</string>
+    <string name="usb_buffer_responsive">响应优先</string>
+    <string name="usb_buffer_balanced">均衡</string>
+    <string name="usb_buffer_stable">稳定优先</string>
+    <string name="usb_param_buffer_note">出现断声时可选稳定优先。这些档位调整队列深度，不代表 DAC 硬件延迟。</string>
+    <string name="usb_param_keep_alive">暂停时保持 DAC 唤醒</string>
+    <string name="usb_param_keep_alive_note">继续发送静音以保持连接；关闭可减少暂停时的后台工作。</string>
+    <string name="usb_param_reset">恢复输出参数</string>
+    <string name="usb_param_reset_note">恢复自动格式、完整数字音量和均衡缓冲，保留输出模式。</string>
+    <string name="usb_mode_strict">整数直通</string>
+    <string name="usb_mode_processing">兼容输出</string>
+    <string name="usb_mode_processing_note">可调采样率、精度、声道与数字音量，也可使用均衡器和耳机校正。</string>
+    <string name="usb_param_transfer_rate">USB 传输采样率</string>
+    <string name="usb_param_buffer_capacity">传输队列容量约 %1$d ms</string>
+</resources>
+

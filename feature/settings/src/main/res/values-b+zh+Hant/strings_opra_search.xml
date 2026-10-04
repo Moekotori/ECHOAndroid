@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="opra_search_hint">搜尋品牌或型號</string>
+    <string name="opra_clear_search">清除搜尋</string>
+    <string name="opra_catalog_summary">%1$d 個型號 · %2$d 條校正</string>
+    <plurals name="opra_model_curves">
+        <item quantity="other">%1$d 條曲線</item>
+    </plurals>
+</resources>

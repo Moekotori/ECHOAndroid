@@ -23,16 +23,16 @@
     <string name="dac_help_no_usb">Connect a USB DAC to inspect its capabilities. The current route has no verified USB direct output; ordinary playback remains available.</string>
     <string name="dac_help_bluetooth">The current output is Bluetooth. Its codec is shown in diagnostics; source resolution does not verify a USB direct path. Connect a USB DAC to check direct output.</string>
     <string name="dac_help_permission_pending">Confirm the Android USB access dialog, then start playback to check the actual output.</string>
-    <string name="dac_help_permission_required">USB access is not granted. In Settings → Playback, enable USB exclusive output and confirm access. If no dialog appears, reconnect the DAC.</string>
-    <string name="dac_help_exclusive_disabled">The DAC is connected, but exclusive output is off. Enable USB exclusive output in Settings → Playback if you want to bypass the system mixer.</string>
+    <string name="dac_help_permission_required">USB access is not granted. In Settings → USB exclusive output, enable USB exclusive output and confirm access. If no dialog appears, reconnect the DAC.</string>
+    <string name="dac_help_exclusive_disabled">The DAC is connected, but exclusive output is off. Enable USB exclusive output in Settings → USB exclusive output if you want to bypass the system mixer.</string>
     <string name="dac_help_waiting_playback">Start or resume a track to check active output. Paused, buffering and previous output facts do not verify the current direct path.</string>
-    <string name="dac_help_transport_error">The exclusive path is unavailable or reported an error. Open diagnostics for the USB error, reconnect the DAC, or run the USB driver test in Settings → Playback.</string>
+    <string name="dac_help_transport_error">The exclusive path is unavailable or reported an error. Open diagnostics for the USB error, reconnect the DAC, or run the USB driver test in Settings → USB exclusive output.</string>
     <string name="dac_help_exclusive_pending">Exclusive output is enabled, but no active USB stream is reported. Check USB diagnostics; the switch alone does not verify takeover.</string>
     <string name="dac_help_unsupported_source">The strict path cannot preserve this source. Try a supported local lossless PCM track; use ordinary playback for this source when direct output is unavailable.</string>
     <string name="dac_help_unsupported_format">The DAC or strict decoder cannot accept this format. Compare source precision with the reported USB capabilities and try a supported track; increasing the requested rate will not resolve this.</string>
     <string name="dac_help_clock_unverified">The output clock could not be verified. Open USB diagnostics and reconnect the DAC. A matching requested rate is not enough to claim direct output.</string>
     <string name="dac_help_volume_changed">Digital volume changed the samples. Check the volume warning in diagnostics and use the DAC volume control when available; protect your listening level before changing gain.</string>
     <string name="dac_help_direct">Active USB streaming and the strict decoder report a direct path. ECHO processing is bypassed in this mode; use the DAC volume control when available.</string>
-    <string name="dac_help_processing">The exclusive path is active; Bit-perfect mode is off. Sound processing may be used. To preserve samples, enable USB Bit-perfect in Settings → Playback; it bypasses ECHO sound processing.</string>
+    <string name="dac_help_processing">The exclusive path is active; Bit-perfect mode is off. Sound processing may be used. To preserve samples, enable USB Bit-perfect in Settings → USB exclusive output; it bypasses ECHO sound processing.</string>
     <string name="dac_help_bitperfect_pending">Bit-perfect is enabled, but the strict path has not reported direct output. Wait for playback to settle and inspect diagnostics if this persists.</string>
 </resources>

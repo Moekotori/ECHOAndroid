@@ -13,7 +13,8 @@ class UsbExclusivePcmOutput(context: Context) {
     private val usbManager = appContext.getSystemService(Context.USB_SERVICE) as UsbManager
     private val probe = UsbAudioProbe(appContext)
 
-    fun open(spec: UsbPcmFormatSpec, bitPerfect: Boolean = false): UsbExclusivePcmSession {
+    fun open(spec: UsbPcmFormatSpec, bitPerfect: Boolean = false, transferCount: Int = 16,
+        keepAliveOnPause: Boolean = true): UsbExclusivePcmSession {
         val device = probe.findBestDevice()
             ?: return UsbExclusivePcmSession.closed(
                 UsbExclusiveOpenResult(
@@ -80,11 +81,19 @@ class UsbExclusivePcmOutput(context: Context) {
             if (!connection.setInterface(audioInterface)) {
                 error("Unable to select USB streaming alternate setting ${selectedFormat.alternateSetting}")
             }
-            if (!UsbAudioClock.setSampleRate(connection, selectedFormat, spec.sampleRateHz)) {
-                error("USB audio clock rejected ${spec.sampleRateHz}Hz")
+            val clock = UsbAudioClock.configureSampleRate(
+                UsbAudioControlTransfer(connection::controlTransfer), selectedFormat, spec.sampleRateHz,
+            ) {
+                // TEAC needs the streaming alternate setting reapplied after changing rate.
+                if (device.vendorId == 0x0644 && !connection.setInterface(audioInterface)) {
+                    error("Unable to reselect TEAC USB streaming interface after setting sample rate")
+                }
             }
-            if (bitPerfect && UsbAudioClock.getSampleRate(connection, selectedFormat) != spec.sampleRateHz) {
-                error("bit-perfect:clock-unverified")
+            if ((bitPerfect && !clock.verified) || !clock.accepted) {
+                val reason = if (bitPerfect) "bit-perfect:clock-unverified" else "USB audio clock rejected rate"
+                error("$reason (requested=${clock.requestedHz}Hz, read=${clock.readBackHz ?: "unavailable"}, " +
+                    "set=${clock.setSucceeded}, clock=${clock.clockId ?: "endpoint"}, " +
+                    "ac=${selectedFormat.acInterfaceNumber}, endpoint=${selectedFormat.endpointAddress})")
             }
             val session = UsbExclusivePcmSession(
                 connection = connection,
@@ -94,6 +103,8 @@ class UsbExclusivePcmOutput(context: Context) {
                 spec = spec,
                 selectedFormat = selectedFormat,
                 usbVersion = snapshot.descriptor.usbVersion,
+                transferCount = transferCount.coerceIn(8, 32),
+                keepAliveOnPause = keepAliveOnPause,
                 openResult = UsbExclusiveOpenResult(
                     state = UsbExclusiveOutputState.Ready,
                     selectedFormat = selectedFormat,
@@ -157,6 +168,8 @@ class UsbExclusivePcmSession internal constructor(
     private val spec: UsbPcmFormatSpec? = null,
     private val selectedFormat: UsbAudioStreamingFormat? = null,
     private val usbVersion: Int? = null,
+    private val transferCount: Int = 16,
+    private val keepAliveOnPause: Boolean = true,
     val openResult: UsbExclusiveOpenResult,
 ) : AutoCloseable {
     private val lock = Any()
@@ -214,6 +227,7 @@ class UsbExclusivePcmSession internal constructor(
             feedbackEndpointAddress = format.feedbackEndpointAddress ?: 0,
             feedbackMaxPacketSize = format.feedbackMaxPacketSize ?: 0,
             endpointInterval = format.endpointInterval ?: endpoint.interval,
+            transferCount = transferCount,
         )
         if (nativeHandle == 0L) {
             error("Unable to start native isochronous writer")
@@ -228,15 +242,16 @@ class UsbExclusivePcmSession internal constructor(
     }
 
     fun setKeepAlive(enabled: Boolean) {
+        val requested = enabled && keepAliveOnPause
         synchronized(lock) {
             if (closed) return
-            keepAlive = enabled
-            if (enabled && nativeHandle != 0L) {
+            keepAlive = requested
+            if (requested && nativeHandle != 0L) {
                 UsbIsochronousNative.prime(nativeHandle)
                 startKeepAliveLocked()
             }
         }
-        if (!enabled) {
+        if (!requested) {
             keepAliveThread?.interrupt()
         }
     }

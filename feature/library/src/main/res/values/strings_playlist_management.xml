@@ -1,0 +1,48 @@
+<resources>
+    <string name="playlist_sort_default">Default order</string>
+    <string name="playlist_sort_manual">Manual order</string>
+    <string name="playlist_sort_artist">Artist</string>
+    <string name="playlist_sort_album">Album</string>
+    <string name="playlist_sort_ascending">Ascending</string>
+    <string name="playlist_sort_descending">Descending</string>
+    <string name="playlist_sort">Sort</string>
+    <string name="playlist_edit_tracks">Edit tracks</string>
+    <string name="playlist_add_tracks">Add songs</string>
+    <string name="playlist_copy">Copy as editable playlist</string>
+    <string name="playlist_copy_name">Copy of %1$s</string>
+    <string name="playlist_copy_hint">Creates a user playlist in the current order. Supports up to 10,000 songs.</string>
+    <string name="playlist_change_cover">Change cover</string>
+    <string name="playlist_action_error">Could not save the change. Try again.</string>
+    <string name="playlist_manual_hint">Switch to manual order to move songs.</string>
+    <string name="playlist_search">Search playlists</string>
+    <string name="playlist_list_recent">Recently updated</string>
+    <string name="playlist_list_name">Name</string>
+    <string name="playlist_list_count">Song count</string>
+    <string name="playlist_no_search_results">No matching playlists</string>
+    <string name="playlist_user_section">Your playlists</string>
+    <string name="playlist_smart_section">Smart playlists</string>
+    <string name="playlist_import">Import playlist</string>
+    <string name="playlist_import_hint">M3U, M3U8 or PLS · Matches songs already in your library. No audio is downloaded.</string>
+    <string name="playlist_import_reading">Matching songs…</string>
+    <string name="playlist_import_summary">%1$d matched · %2$d total</string>
+    <string name="playlist_import_name">Playlist name</string>
+    <string name="playlist_import_saving">Saving…</string>
+    <string name="playlist_import_confirm">Import matched songs</string>
+    <string name="playlist_import_empty">This file contains no playlist entries.</string>
+    <string name="playlist_import_failed">Could not read this playlist file.</string>
+    <string name="playlist_import_no_matches">No songs matched. Scan the music files first, then import again.</string>
+    <string name="playlist_import_too_large">Choose a playlist file up to 256 KiB.</string>
+    <string name="playlist_import_too_many">A file can contain up to 2,000 entries.</string>
+    <string name="playlist_import_save_failed">Could not create the playlist. The songs may have been removed from the library.</string>
+    <string name="playlist_import_view">Open playlist</string>
+    <string name="playlist_exported">Playlist exported</string>
+    <string name="playlist_export_failed">Could not export the playlist. Check the destination and the 10,000-song limit.</string>
+    <string name="playlist_selection_limit">Select up to 2,000 songs at a time.</string>
+    <string name="playlist_add_no_matches">No matching songs</string>
+    <plurals name="playlist_added"><item quantity="one">Added %1$d song</item><item quantity="other">Added %1$d songs</item></plurals>
+    <plurals name="playlist_import_duplicates"><item quantity="one">%1$d duplicate skipped</item><item quantity="other">%1$d duplicates skipped</item></plurals>
+    <plurals name="playlist_import_missing"><item quantity="one">%1$d song not found</item><item quantity="other">%1$d songs not found</item></plurals>
+    <plurals name="playlist_import_ambiguous"><item quantity="one">%1$d ambiguous match skipped</item><item quantity="other">%1$d ambiguous matches skipped</item></plurals>
+    <plurals name="playlist_imported"><item quantity="one">Imported %1$d song</item><item quantity="other">Imported %1$d songs</item></plurals>
+    <plurals name="playlist_selected"><item quantity="one">%1$d selected</item><item quantity="other">%1$d selected</item></plurals>
+</resources>

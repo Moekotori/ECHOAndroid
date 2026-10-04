@@ -62,7 +62,8 @@ internal class EchoAudioOutputProvider(
         val channelCount = formatConfig.format.channelCount.takeIf { it > 0 } ?: 2
         if (channelCount > 2) return null
         val sourceEncoding = sourceEncoding(formatConfig.format.pcmEncoding) ?: return null
-        val requestedBitDepth = bitDepthOf(sourceEncoding)
+        val requestedBitDepth = EchoPlaybackProcessRuntime.usbOutputOptions.bitDepth.takeIf { it > 0 }
+            ?: bitDepthOf(sourceEncoding)
         val spec = UsbPcmFormatSpec(
             sampleRateHz = sampleRate,
             channelCount = channelCount,
@@ -95,13 +96,15 @@ internal class EchoAudioOutputProvider(
     private fun exclusiveOutputOrNull(outputConfig: AudioOutputProvider.OutputConfig): AudioOutput? {
         val sourceEncoding = sourceEncoding(outputConfig.encoding) ?: return null
         val channelCount = Integer.bitCount(outputConfig.channelMask).coerceAtLeast(1)
-        val bitDepth = bitDepthOf(sourceEncoding)
+        val options = EchoPlaybackProcessRuntime.usbOutputOptions
+        val bitDepth = options.bitDepth.takeIf { it > 0 } ?: bitDepthOf(sourceEncoding)
         val spec = UsbPcmFormatSpec(
             sampleRateHz = outputConfig.sampleRate,
             channelCount = channelCount,
             bitDepth = bitDepth,
         )
-        val session = usbOutput.open(spec)
+        val session = usbOutput.open(spec, transferCount = options.bufferMode.transferCount,
+            keepAliveOnPause = options.keepAliveOnPause)
         if (!session.openResult.isReady) {
             recordUsbOpenFailure(session.openResult.state, session.openResult.message)
             val snapshot = probe.snapshot()

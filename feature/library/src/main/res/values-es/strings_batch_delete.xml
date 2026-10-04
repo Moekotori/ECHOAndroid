@@ -1,0 +1,18 @@
+<resources>
+    <string name="batch_delete">Eliminar canciones seleccionadas</string>
+    <string name="batch_remove_index">Quitar de la biblioteca</string>
+    <string name="batch_delete_files">Eliminar archivos originales</string>
+    <string name="batch_delete_originals">Eliminar también los archivos locales originales</string>
+    <string name="batch_delete_index_hint">Estas canciones se quitarán de la biblioteca, favoritos y listas. Si conservas los archivos, el escaneo o la sincronización pueden volver a añadirlas.</string>
+    <string name="batch_delete_file_hint">Los archivos originales se eliminarán permanentemente y afectará a todas las canciones que usen el mismo archivo de audio.</string>
+    <string name="batch_delete_file_unavailable">Solo las canciones locales normales permiten eliminar archivos. Las canciones remotas y segmentos CUE se pueden quitar de la biblioteca.</string>
+    <string name="batch_delete_partial">Quitadas: %1$d · Sin quitar: %2$d</string>
+    <plurals name="batch_delete_confirm">
+        <item quantity="one">¿Eliminar %1$d canción?</item>
+        <item quantity="other">¿Eliminar %1$d canciones?</item>
+    </plurals>
+    <plurals name="batch_delete_done">
+        <item quantity="one">Se quitó %1$d canción</item>
+        <item quantity="other">Se quitaron %1$d canciones</item>
+    </plurals>
+</resources>

@@ -23,7 +23,7 @@ preamble = r'''
 #include <cassert>
 #include <cerrno>
 #include <vector>
-#define URB_COUNT 16
+#define URB_COUNT 32
 #define FEEDBACK_URB_COUNT 4
 #define WRITE_FATAL -2
 #define JNIEXPORT
@@ -64,14 +64,14 @@ static int submit_filled_urb(Writer* w,int i,int used,int packets){
 main = r'''
 struct Fixture {
  Writer w{}; JNIEnv env;
- usbdevfs_urb urbs[16]{}; uint8_t storage[16][8192]{};
+ usbdevfs_urb urbs[32]{}; uint8_t storage[32][8192]{};
  Fixture(int rate,int interval,int sample_bytes=2,int max_packet=1024) {
-  w.channels=2; w.bytes_per_sample=sample_bytes; w.sample_rate=rate; w.max_packet=max_packet;
+  w.urb_count=16; w.channels=2; w.bytes_per_sample=sample_bytes; w.sample_rate=rate; w.max_packet=max_packet;
   apply_bus_speed(&w,8000,interval);
   assert(packet_fits(&w));
   w.nominal_q16=((int64_t)rate<<16)/w.pps;
   w.feedback_q16=w.nominal_q16;
-  for(int i=0;i<16;i++){w.slots[i].urb=&urbs[i];w.slots[i].buffer=storage[i];}
+  for(int i=0;i<32;i++){w.slots[i].urb=&urbs[i];w.slots[i].buffer=storage[i];}
   transmitted.clear(); complete_usb=true;
  }
  int write(std::vector<jbyte>& data,int offset,int length,bool end=false) {
@@ -146,7 +146,12 @@ int main() {
   assert(next_packet_samples(&f.w)==48); // bInterval 4 means one packet per millisecond.
   f.w.max_packet=191; assert(!packet_fits(&f.w));
  }
- puts("PASS: tail/EOS, backpressure, exact PCM bytes, interval 1-4, feedback and bus speed");
+ for(int depth:{8,16,32}) {
+  Fixture f(48000,1); f.w.urb_count=depth;
+  assert(Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeCapacityFrames(
+   nullptr,nullptr,(jlong)&f.w)==48*depth);
+ }
+ puts("PASS: tail/EOS, backpressure, exact PCM bytes, interval 1-4, feedback, bus speed and 8/16/32 transfer capacity");
 }
 '''
 code = (preamble + section('struct UrbSlot', 'static size_t urb_alloc_size') + stubs
@@ -154,6 +159,8 @@ code = (preamble + section('struct UrbSlot', 'static size_t urb_alloc_size') + s
         + section('static void apply_bus_speed', 'extern "C" JNIEXPORT jlong JNICALL')
         + section('extern "C" JNIEXPORT jint JNICALL\nJava_app_echo_android_usbaudio_UsbIsochronousNative_nativeWrite',
                   'extern "C" JNIEXPORT void JNICALL\nJava_app_echo_android_usbaudio_UsbIsochronousNative_nativePrime')
+        + section('extern "C" JNIEXPORT jlong JNICALL\nJava_app_echo_android_usbaudio_UsbIsochronousNative_nativeCapacityFrames',
+                  'extern "C" JNIEXPORT void JNICALL\nJava_app_echo_android_usbaudio_UsbIsochronousNative_nativeClose')
         + main)
 with tempfile.TemporaryDirectory(prefix='echo-usb-regression-') as directory:
     cpp = Path(directory) / 'regression.cpp'

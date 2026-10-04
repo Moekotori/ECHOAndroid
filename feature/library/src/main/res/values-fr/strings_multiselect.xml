@@ -1,0 +1,9 @@
+<resources>
+    <string name="library_multiselect">Sélection multiple</string>
+    <string name="batch_selection_limit">Jusqu’à %1$d titres</string>
+    <string name="batch_clear_selection">Effacer la sélection</string>
+    <plurals name="batch_selected_count">
+        <item quantity="one">%1$d sélectionné</item>
+        <item quantity="other">%1$d sélectionnés</item>
+    </plurals>
+</resources>

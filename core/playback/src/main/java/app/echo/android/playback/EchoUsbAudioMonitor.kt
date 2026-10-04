@@ -92,6 +92,8 @@ data class EchoUsbAudioStatus(
     val endpointSummary: String? = null,
     val descriptorError: String? = null,
     val supportedSampleRates: List<Int> = emptyList(),
+    val supportedBitDepths: List<Int> = emptyList(),
+    val supportedChannelCounts: List<Int> = emptyList(),
     val bitPerfectSupported: Boolean = false,
     val bitPerfectActive: Boolean = false,
     val lastRequestedSampleRateHz: Int? = null,
@@ -240,6 +242,8 @@ class EchoUsbAudioMonitor(context: Context) {
                 endpointSummary = usbSnapshot.endpointSummary(),
                 descriptorError = usbSnapshot.descriptorError,
                 supportedSampleRates = usbSnapshot.sampleRates,
+                supportedBitDepths = usbSnapshot.descriptor.streamingFormats.mapNotNull { it.bitResolution }.distinct().sorted(),
+                supportedChannelCounts = usbSnapshot.descriptor.streamingFormats.mapNotNull { it.channelCount }.distinct().sorted(),
             )
         }
 
@@ -275,6 +279,8 @@ class EchoUsbAudioMonitor(context: Context) {
                 .distinct()
                 .sorted(),
             bitPerfectSupported = supportedAttributes.any { it.isBitPerfect() },
+            supportedBitDepths = usbSnapshot.descriptor.streamingFormats.mapNotNull { it.bitResolution }.distinct().sorted(),
+            supportedChannelCounts = usbSnapshot.descriptor.streamingFormats.mapNotNull { it.channelCount }.distinct().sorted(),
             bitPerfectActive = preferredAttributes?.isBitPerfect() == true,
         )
     }
@@ -467,7 +473,14 @@ fun EchoPlaybackDiagnostics.withUsbAudioStatus(status: EchoUsbAudioStatus): Echo
         usbExclusiveStreaming = exclusiveStreaming,
         usbExclusiveTransport = exclusive?.transport,
         usbSupportedSampleRates = status.supportedSampleRates,
-        usbLastRequestedSampleRateHz = status.lastRequestedSampleRateHz,
+        usbSupportedBitDepths = status.supportedBitDepths,
+        usbSupportedChannelCounts = status.supportedChannelCounts,
+        usbOutputSampleRateHz = exclusive?.sampleRateHz,
+        usbOutputBitDepth = exclusive?.bitDepth,
+        usbBufferCapacityFrames = exclusive?.bufferCapacityFrames,
+        usbLastRequestedSampleRateHz = exclusive?.sampleRateHz ?: EchoPlaybackProcessRuntime.usbOutputOptions.sampleRateHz
+            .takeIf { status.exclusiveEnabled && !EchoPlaybackProcessRuntime.usbBitPerfectEnabled && it > 0 }
+            ?: status.lastRequestedSampleRateHz,
         usbLastRequestError = status.lastRequestError,
     )
 }

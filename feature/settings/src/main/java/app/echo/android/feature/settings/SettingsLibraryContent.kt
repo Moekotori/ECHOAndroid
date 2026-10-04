@@ -11,6 +11,7 @@ internal fun SettingsLibraryContent(
     isActive: Boolean,
     isScanning: Boolean,
     onLoadHealth: suspend () -> app.echo.android.model.library.LibraryHealthStats,
+    onLoadAudioProfile: suspend () -> app.echo.android.model.library.LibraryAudioProfile,
     onInspectLyrics: suspend ((app.echo.android.model.library.LibraryLyricsInspection) -> Unit) -> Unit,
     trackCount: Int,
     albumCount: Int,
@@ -45,6 +46,7 @@ internal fun SettingsLibraryContent(
         durationMs = durationMs,
         sizeBytes = localSizeBytes,
         onLoadHealth = onLoadHealth,
+        onLoadAudioProfile = onLoadAudioProfile,
         onInspectLyrics = onInspectLyrics,
     )
     SettingsSectionCard(

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="home_open_settings">Einstellungen</string>
     <string name="home_page_guide_settings">Nach rechts · Einstellungen</string>
     <string name="home_page_guide_library">Nach links · Mediathek</string>
 </resources>

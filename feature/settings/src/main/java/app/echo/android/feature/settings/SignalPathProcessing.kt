@@ -19,6 +19,7 @@ internal fun signalProcessingStage(
     val enabled = stringResource(R.string.path_enabled)
     val effects = buildList {
         if (equalizer.active) add(stringResource(R.string.feature_settings_equalizer_7ccb03))
+        if (equalizer.mseb.active) add(stringResource(R.string.mseb_title))
         if (balance.active) add(stringResource(R.string.channel_balance))
         if (status.replayGainEnabled) add(stringResource(R.string.dsp_loudness))
         if (dsp.limiterEnabled) add(stringResource(R.string.dsp_limiter))
@@ -26,6 +27,12 @@ internal fun signalProcessingStage(
         if (status.playbackSpeed != 1f || status.playbackPitch != 1f) add(stringResource(R.string.path_speed_pitch))
     }
     val facts = buildList {
+        add(stringResource(R.string.mseb_title) to if (equalizer.mseb.enabled) enabled else off)
+        if (equalizer.mseb.active) {
+            add(stringResource(R.string.mseb_headroom) to formatEqGain(equalizer.msebHeadroomDb))
+            if (!equalizer.enabled) add(stringResource(R.string.path_processing_rate) to
+                (equalizer.processingSampleRateHz?.takeIf { it > 0 }?.let(::formatSampleRate) ?: unknown))
+        }
         add(stringResource(R.string.feature_settings_equalizer_7ccb03) to when {
             !equalizer.enabled -> off
             !equalizer.available || !equalizer.supported -> stringResource(R.string.eq_waiting_pipeline)

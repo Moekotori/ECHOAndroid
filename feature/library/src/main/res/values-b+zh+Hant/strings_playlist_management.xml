@@ -1,0 +1,48 @@
+<resources>
+    <string name="playlist_sort_default">預設順序</string>
+    <string name="playlist_sort_manual">手動順序</string>
+    <string name="playlist_sort_artist">藝人</string>
+    <string name="playlist_sort_album">專輯</string>
+    <string name="playlist_sort_ascending">遞增</string>
+    <string name="playlist_sort_descending">遞減</string>
+    <string name="playlist_sort">排序</string>
+    <string name="playlist_edit_tracks">編輯曲目</string>
+    <string name="playlist_add_tracks">加入歌曲</string>
+    <string name="playlist_copy">複製為可編輯歌單</string>
+    <string name="playlist_copy_name">%1$s 的副本</string>
+    <string name="playlist_copy_hint">依目前順序建立使用者歌單，支援最多 10,000 首歌曲。</string>
+    <string name="playlist_change_cover">更換封面</string>
+    <string name="playlist_action_error">無法儲存修改，請重試。</string>
+    <string name="playlist_manual_hint">切回手動順序後可以調整歌曲位置。</string>
+    <string name="playlist_search">搜尋歌單</string>
+    <string name="playlist_list_recent">最近修改</string>
+    <string name="playlist_list_name">名稱</string>
+    <string name="playlist_list_count">歌曲數量</string>
+    <string name="playlist_no_search_results">找不到符合的歌單</string>
+    <string name="playlist_user_section">我的歌單</string>
+    <string name="playlist_smart_section">智慧歌單</string>
+    <string name="playlist_import">匯入歌單</string>
+    <string name="playlist_import_hint">支援 M3U、M3U8、PLS；比對目前曲庫中的歌曲，不下載音訊。</string>
+    <string name="playlist_import_reading">正在比對歌曲…</string>
+    <string name="playlist_import_summary">%1$d 首可匯入 · 共 %2$d 筆記錄</string>
+    <string name="playlist_import_name">歌單名稱</string>
+    <string name="playlist_import_saving">正在儲存…</string>
+    <string name="playlist_import_confirm">匯入已比對歌曲</string>
+    <string name="playlist_import_empty">檔案中沒有歌單記錄。</string>
+    <string name="playlist_import_failed">無法讀取這個歌單檔案。</string>
+    <string name="playlist_import_no_matches">找不到符合的歌曲，請先掃描音樂檔案，再重新匯入。</string>
+    <string name="playlist_import_too_large">請選擇不超過 256 KiB 的歌單檔案。</string>
+    <string name="playlist_import_too_many">單一檔案最多包含 2,000 筆記錄。</string>
+    <string name="playlist_import_save_failed">無法建立歌單，歌曲可能已移出曲庫。</string>
+    <string name="playlist_import_view">查看歌單</string>
+    <string name="playlist_exported">歌單已匯出</string>
+    <string name="playlist_export_failed">無法匯出歌單，請檢查儲存位置與 10,000 首歌曲的數量限制。</string>
+    <string name="playlist_selection_limit">一次最多選擇 2,000 首歌曲。</string>
+    <string name="playlist_add_no_matches">找不到符合的歌曲</string>
+    <plurals name="playlist_added"><item quantity="other">已加入 %1$d 首歌曲</item></plurals>
+    <plurals name="playlist_import_duplicates"><item quantity="other">已略過 %1$d 筆重複記錄</item></plurals>
+    <plurals name="playlist_import_missing"><item quantity="other">%1$d 首未找到</item></plurals>
+    <plurals name="playlist_import_ambiguous"><item quantity="other">%1$d 筆比對不唯一，已略過</item></plurals>
+    <plurals name="playlist_imported"><item quantity="other">已匯入 %1$d 首歌曲</item></plurals>
+    <plurals name="playlist_selected"><item quantity="other">已選 %1$d 首</item></plurals>
+</resources>

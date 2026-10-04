@@ -4,9 +4,9 @@ import app.echo.android.feature.library.R as L10nR
 import androidx.compose.ui.res.stringResource
 
 import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
-import app.echo.android.design.echoItemMotion
 import app.echo.android.design.echoClickable
 import app.echo.android.design.echoCombinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -31,6 +32,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.Checklist
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Edit
@@ -73,6 +75,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -83,6 +88,7 @@ import androidx.paging.compose.LazyPagingItems
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoColors
 import app.echo.android.design.LocalEchoDarkTheme
+import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.displayMetadataOrUnknown
 import app.echo.android.design.formatDuration
 import app.echo.android.model.library.EchoTrack
@@ -137,7 +143,7 @@ internal fun TrackList(
         ) { index: Int ->
             tracks[index]?.let { track ->
                 TrackRow(
-                    modifier = echoItemMotion(),
+                    modifier = libraryTrackItemMotion(),
                     track = track,
                     onClick = { onPlayTrack(track) },
                     onUpdateTrackMetadata = onUpdateTrackMetadata,
@@ -196,7 +202,7 @@ internal fun TrackList(
         ) { index ->
             val track = tracks[index]
             TrackRow(
-                modifier = echoItemMotion(),
+                modifier = libraryTrackItemMotion(),
                 track = track,
                 onClick = { onPlayTrack(track) },
                 onUpdateTrackMetadata = onUpdateTrackMetadata,
@@ -244,7 +250,6 @@ internal fun TrackRow(
     modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val selection = LocalLibraryBatchSelection.current
     val dark = LocalEchoDarkTheme.current
     val subtitle = trackSubtitle(track)
     val duration = remember(track.durationMs) { formatDuration(track.durationMs) }
@@ -258,8 +263,7 @@ internal fun TrackRow(
 
     TrackContextMenu(
         track = track,
-        onPlay = { if (selection?.selected?.isNotEmpty() == true) selection.toggle(track) else onClick() },
-        onLongPress = selection?.let { { it.toggle(track) } },
+        onPlay = onClick,
         onUpdateTrackMetadata = onUpdateTrackMetadata,
         onImportLyrics = onImportLyrics,
         onPickArtwork = onPickArtwork,
@@ -277,7 +281,7 @@ internal fun TrackRow(
         showMoreAction = true,
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp),
+            .padding(start = 4.dp),
     ) { pressModifier ->
         Column(
             modifier = Modifier
@@ -291,7 +295,6 @@ internal fun TrackRow(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                if (selection?.selected?.isNotEmpty() == true) androidx.compose.material3.Checkbox(track.id in selection.selected, { selection.toggle(track) })
                 ArtworkTile(
                     track.artworkUri,
                     Modifier.size(52.dp),
@@ -377,7 +380,6 @@ private enum class TrackSheetMode {
 internal fun TrackContextMenu(
     track: EchoTrack,
     onPlay: () -> Unit,
-    onLongPress: (() -> Unit)? = null,
     onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
@@ -396,6 +398,14 @@ internal fun TrackContextMenu(
     modifier: Modifier = Modifier,
     content: @Composable (Modifier) -> Unit,
 ) {
+    val selection = LocalLibraryBatchSelection.current
+    val selecting = selection?.active == true
+    val selected = selecting && track.id in selection.selected
+    val canSelect = selection?.locked != true && (!selecting || selected || selection.selected.size < LibraryBatchSelection.Limit)
+    val selectionProgress = rememberLibrarySelectionProgress(selected)
+    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    val onSelectForBatch = selection?.let { { it.start(track) } }
+    val actionScope = rememberCoroutineScope()
     var expanded by remember(track.id) { mutableStateOf(false) }
     var sheetMode by remember(track.id) { mutableStateOf<TrackSheetMode?>(null) }
     var showInfo by remember(track.id) { mutableStateOf(false) }
@@ -409,10 +419,27 @@ internal fun TrackContextMenu(
     )
     val canEditMetadata = onUpdateTrackMetadata != null && track.source.isLocalAudioFile
 
-    Box(modifier = modifier) {
+    Box(modifier = modifier
+        .libraryDeletionFeedback(track.id in selection?.deletingIds.orEmpty())
+        .librarySelectionBackground(selectionProgress, MaterialTheme.colorScheme.primary)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            LibraryTrackSelection(
+                active = selecting,
+                selected = selected,
+                enabled = canSelect,
+                progress = selectionProgress,
+                label = displayMetadataOrUnknown(track.title, unknownTrackLabel()),
+                onToggle = { selection?.toggle(track) },
+            )
             Box(Modifier.weight(1f)) {
-                content(Modifier.echoCombinedClickable(onClick = onPlay, onLongClick = { if (onLongPress != null) onLongPress() else sheetMode = TrackSheetMode.Actions }))
+                content(Modifier.echoCombinedClickable(
+                    enabled = !selecting || canSelect,
+                    role = if (selecting) Role.Checkbox else null,
+                    onClick = { if (selecting) selection.toggle(track) else onPlay() },
+                    onLongClick = { if (selecting) selection.toggle(track) else sheetMode = TrackSheetMode.Actions },
+                ).then(if (selecting) Modifier.semantics {
+                    toggleableState = if (selected) ToggleableState.On else ToggleableState.Off
+                } else Modifier))
             }
             if (onPlayOnPc != null) IconButton(onClick = onPlayOnPc) {
                 EchoIcon(
@@ -421,9 +448,16 @@ internal fun TrackContextMenu(
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
-            if (showMoreAction) IconButton(onClick = { sheetMode = TrackSheetMode.Actions }) {
-                EchoIcon(Icons.Rounded.MoreVert, contentDescription = stringResource(L10nR.string.library_track_actions),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            AnimatedVisibility(
+                visible = showMoreAction && !selecting,
+                enter = librarySelectionEnter(lightweight),
+                exit = librarySelectionExit(lightweight),
+            ) {
+                IconButton(onClick = { sheetMode = TrackSheetMode.Actions }) {
+                    EchoIcon(Icons.Rounded.MoreVert, contentDescription = stringResource(L10nR.string.library_track_actions),
+                        modifier = Modifier.offset(x = 8.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
         DropdownMenu(
@@ -564,6 +598,16 @@ internal fun TrackContextMenu(
                         sheetMode = null
                         showInfo = true
                     },
+                    onSelectForBatch = onSelectForBatch?.let { select ->
+                        {
+                            actionScope.launch {
+                                sheetState.hide()
+                                sheetMode = null
+                                select()
+                            }
+                            Unit
+                        }
+                    },
                 )
 
                 TrackSheetMode.Editor -> if (onUpdateTrackMetadata != null) {
@@ -645,15 +689,20 @@ private fun TrackActionSheet(
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
     onInfo: () -> Unit,
+    onSelectForBatch: (() -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp)
             .padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         TrackSheetHeader(track)
+        if (onSelectForBatch != null) {
+            TrackActionRow(stringResource(L10nR.string.library_multiselect), Icons.Rounded.Checklist, enabled = true, onClick = onSelectForBatch)
+        }
         TrackActionRow(stringResource(L10nR.string.feature_library_play_38419a), Icons.Rounded.PlayArrow, enabled = true, onClick = onPlay)
         if (canPlayOnPc) {
             TrackActionRow(
@@ -799,7 +848,7 @@ private fun TrackActionRow(
             EchoIcon(
                 icon,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = alpha),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
                 modifier = Modifier.size(22.dp),
             )
             Text(

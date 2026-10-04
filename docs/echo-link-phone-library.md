@@ -2,7 +2,7 @@
 
 PC counterpart: https://github.com/moekotori/echosteam. Both applications must include this extension.
 
-Connect the phone to the PC over LAN, then enable **Share phone library with PC** in Android Connect → PC Link. In ECHOSteam Connect → Mobile, use **Phone library** to search, browse pages and play a selected song on the PC. Sharing starts disabled and is not restored across process restarts. The phone exposes only complete MediaStore / SAF local files, excluding remote sources and CUE clips. PC playback uses the original file; no import, copy, transcoding or metadata synchronization is performed. Unsupported playback formats follow the existing phone-stream player rules.
+Connect the phone to the PC over LAN, then enable **Share phone library with PC** in Android Connect → PC Link. In ECHOSteam, open the window's top-right **More → Switch library** menu and select the shared phone. The main song view supports search, paging and selected-track playback; the same menu can switch back to local music or configured cloud libraries. Sharing starts disabled and is not restored across process restarts. The phone exposes only complete MediaStore / SAF local files, excluding remote sources and CUE clips. PC playback uses the original file; no import, copy, transcoding or metadata synchronization is performed. Unsupported playback formats follow the existing phone-stream player rules.
 
 ## Session registration
 
@@ -33,3 +33,10 @@ Focused checks cover auth/peer gates, bounded paging, response size, credential-
 - ECHOSteam: seven selected tests passed, including real local HTTP registration → browse → playback relay; quick main/preload/renderer build and Steam distribution bundle check passed.
 - Browser component preview: light at 1000 px and dark at 380 px, selected-track play and paging passed with no horizontal overflow. This used fixture data, not a native PC or phone connection.
 - Full PC typecheck was stopped at its 30-second limit, so remains unverified. Global theme-colour check reports existing untouched stylesheets; the new phone stylesheet has no reported findings. Checks ran with local Node 24; the project's declared Node 22 runtime and native playback remain outside this acceptance.
+
+## Windows repair checks (2026-10-04)
+
+- Android sharing now selects its bind address using a bounded TCP connection to the selected PC instead of the first enumerated LAN/VPN interface. Original-file and artwork Range responses clamp their end to the actual file length, including HEAD responses; invalid/out-of-bounds requests return 416.
+- Android: 12 selected connect tests and `:app:compileDebugKotlin` passed. No APK or real-phone acceptance was performed.
+- ECHOSteam: added the missing phone-library registration and session manager and typed IPC/preload extension in the Steam repository. The initial standalone Connect panel was replaced by the top-right library switch and the main song-list view. Local HTTP registration → browse → selected-track playback relay, paired compatibility, cancellation/expiry/limits and component interactions passed (8 selected tests), alongside 11 existing Connect IPC tests. The new source selector/main-list behavior and existing titlebar tests passed (19 tests). Focused manager/source-selection typechecks, quick main/preload/renderer build and Steam distribution check passed using Node 22.
+- The top-right source menu and main phone song list were inspected in light/dark, with cloud-to-phone switching, paging and selected-row playback relay using synthetic data. Full PC typecheck was stopped; the global theme-colour check still reports unrelated existing stylesheets. Real LAN/firewall, screen-off continuity and native audio/seek remain unverified.

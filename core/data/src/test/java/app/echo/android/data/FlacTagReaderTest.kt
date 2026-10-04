@@ -70,7 +70,7 @@ class FlacTagReaderTest {
         assertTrue(LocalAudioTagReadPolicy.prefersFileTags("audio/mpeg", "song.mp3"))
         assertTrue(LocalAudioTagReadPolicy.prefersFileTags("application/flac", null))
         assertTrue(LocalAudioTagReadPolicy.prefersFileTags(null, "song.WAVE"))
-        assertFalse(LocalAudioTagReadPolicy.prefersFileTags("audio/mp4", "song.m4a"))
+        assertTrue(LocalAudioTagReadPolicy.prefersFileTags("audio/mp4", "song.m4a"))
     }
 
     private fun comments(vararg values: String): ByteArray = ByteArrayOutputStream().apply {

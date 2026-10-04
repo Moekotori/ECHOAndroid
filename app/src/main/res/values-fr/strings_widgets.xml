@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_mini_name">ECHO · Mini lecteur</string>
+    <string name="widget_mini_description">Commandes compactes avec une petite pochette</string>
+    <string name="widget_cover_name">ECHO · Pochette</string>
+    <string name="widget_cover_description">Pochette avec les informations du titre et un bouton de lecture</string>
+    <string name="widget_lyrics_name">ECHO · Paroles</string>
+    <string name="widget_lyrics_description">Paroles actuelles avec les informations du titre et les commandes</string>
+    <string name="widget_lyrics_hint">Lancez la musique pour voir les paroles ici</string>
+    <string name="widget_lyrics_unavailable">Aucune parole disponible</string>
+    <string name="widget_lyrics_label">Paroles</string>
+</resources>

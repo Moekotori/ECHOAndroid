@@ -7,10 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.compose.currentStateAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -21,7 +17,6 @@ import androidx.compose.ui.draw.drawWithCache
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.ArtworkPalette
-import app.echo.android.design.EchoAmbientLight
 import app.echo.android.design.BlurredArtworkBackground
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.echoTheme
@@ -34,9 +29,6 @@ internal fun NowPlayingBackdrop(
     modifier: Modifier = Modifier,
     animationsVisible: Boolean = true,
 ) {
-    val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
-    val lightActive = animationsVisible && !artworkUri.isNullOrBlank() &&
-        lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
     if (!LocalEchoDarkTheme.current) {
         val scheme = MaterialTheme.colorScheme
         // Carry the cover's colors across the whole light surface, including the controls.
@@ -57,7 +49,6 @@ internal fun NowPlayingBackdrop(
                 overlayMidAlpha = 0.32f,
                 overlayEndAlpha = 0.58f,
             )
-            EchoAmbientLight(palette.vibrant, lightActive, Modifier.fillMaxSize(), strength = { 0.5f - 0.25f * reveal() })
         }
         return
     }
@@ -70,7 +61,7 @@ internal fun NowPlayingBackdrop(
             artworkUri = artworkUri,
             palette = palette.asNowPlayingWash(echoTheme().night),
             modifier = Modifier.fillMaxSize().graphicsLayer {
-                val scale = if (lightweight) 1f else 1f + 0.06f * reveal()
+                val scale = if (lightweight || !animationsVisible) 1f else 1f + 0.06f * reveal()
                 scaleX = scale
                 scaleY = scale
             },
@@ -81,7 +72,6 @@ internal fun NowPlayingBackdrop(
             overlayMidAlpha = 0.58f,
             overlayEndAlpha = 0.90f,
         )
-        EchoAmbientLight(palette.vibrant, lightActive, Modifier.fillMaxSize(), strength = { 1f - 0.5f * reveal() })
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)

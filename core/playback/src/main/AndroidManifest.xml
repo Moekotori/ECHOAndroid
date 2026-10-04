@@ -1,1 +1,6 @@
-<manifest />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <queries>
+        <!-- Verify the preinstalled MiPlay controller before accepting its session connection. -->
+        <package android:name="com.milink.service" />
+    </queries>
+</manifest>

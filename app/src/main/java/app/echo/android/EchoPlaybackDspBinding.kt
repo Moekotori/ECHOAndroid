@@ -3,6 +3,7 @@ package app.echo.android
 import androidx.media3.common.util.UnstableApi
 import app.echo.android.data.EchoSettingsStore
 import app.echo.android.model.playback.EchoDspSettings
+import app.echo.android.model.playback.EchoMsebState
 import app.echo.android.model.playback.OpraEqBand
 import app.echo.android.playback.EchoPlaybackProcessRuntime
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -17,11 +18,12 @@ internal fun bindPlaybackDspSettings(store: EchoSettingsStore) {
             StoredPlaybackDsp(settings.dsp, settings.equalizerEnabled, settings.equalizerPreset,
                 settings.equalizerBandGains, settings.equalizerPreampDb,
                 if (settings.equalizerParametric) settings.equalizerFilters else emptyList(),
-                settings.equalizerSourceLabel)
+                settings.equalizerSourceLabel, settings.mseb)
         }.distinctUntilChanged().collect { state ->
             EchoPlaybackProcessRuntime.setDspSettings(state.dsp)
             EchoPlaybackProcessRuntime.equalizerController().setConfig(
                 state.enabled, state.preset, state.gains, state.preamp, state.filters, state.source,
+                mseb = state.mseb,
             )
         }
     }
@@ -35,4 +37,5 @@ private data class StoredPlaybackDsp(
     val preamp: Float,
     val filters: List<OpraEqBand>,
     val source: String?,
+    val mseb: EchoMsebState,
 )

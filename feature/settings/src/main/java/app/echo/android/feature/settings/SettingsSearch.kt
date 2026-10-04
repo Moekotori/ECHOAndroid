@@ -11,7 +11,7 @@ import java.util.Locale
 internal enum class SettingsSearchRequirement {
     Always, DarkTime, CustomBackground, BackgroundAdvanced, ImageBackground,
     TrackFade, ReplayGain, LastFm, LastFmConnected, ListenBrainz, ListenBrainzConnected,
-    SetlistFmEditable, NotificationPermission, UsbConfiguration,
+    SetlistFmEditable, NotificationPermission,
 }
 
 internal data class SettingsSearchAvailability(
@@ -27,7 +27,6 @@ internal data class SettingsSearchAvailability(
     val setlistFmLocked: Boolean,
     val importedFont: Boolean,
     val notificationPermissionNeeded: Boolean = false,
-    val usbConfigurationVisible: Boolean = false,
 )
 
 internal data class SettingsSearchItem(
@@ -132,7 +131,7 @@ private val indexedSettings = listOf(
     item(SettingsCategory.Playback, R.string.settings_section_transition),
     item(SettingsCategory.Playback, R.string.settings_section_volume),
     item(SettingsCategory.Playback, R.string.settings_section_lyrics),
-    item(SettingsCategory.Playback, R.string.settings_section_usb),
+    item(SettingsCategory.Usb, R.string.settings_section_usb, anchor = R.string.settings_usb_exclusive),
     item(SettingsCategory.Playback, R.string.settings_track_fade,
         keywords = *intArrayOf(R.string.settings_track_fade_detail)),
     item(SettingsCategory.Playback, R.string.settings_track_fade_duration,
@@ -164,16 +163,20 @@ private val indexedSettings = listOf(
         keywords = *intArrayOf(R.string.settings_lock_lyrics_detail)),
     item(SettingsCategory.Playback, R.string.settings_floating_lyrics,
         keywords = *intArrayOf(R.string.settings_floating_lyrics_detail)),
-    item(SettingsCategory.Playback, R.string.settings_usb_exclusive),
-    item(SettingsCategory.Playback, R.string.settings_usb_bitperfect,
-        requirement = SettingsSearchRequirement.UsbConfiguration, fallback = R.string.settings_usb_exclusive,
+    item(SettingsCategory.Usb, R.string.settings_usb_exclusive,
+        keywords = *intArrayOf(R.string.usb_page_description, R.string.dac_check_title)),
+    item(SettingsCategory.Usb, R.string.settings_usb_bitperfect,
         keywords = *intArrayOf(R.string.settings_usb_bitperfect_detail)),
-    item(SettingsCategory.Playback, R.string.settings_usb_auto_request,
-        requirement = SettingsSearchRequirement.UsbConfiguration, fallback = R.string.settings_usb_exclusive),
+    item(SettingsCategory.Usb, R.string.settings_usb_auto_request),
     item(SettingsCategory.Playback, R.string.settings_notification_permission,
         requirement = SettingsSearchRequirement.NotificationPermission),
-    item(SettingsCategory.Playback, R.string.settings_test_usb,
-        requirement = SettingsSearchRequirement.UsbConfiguration, fallback = R.string.settings_usb_exclusive),
+    item(SettingsCategory.Usb, R.string.settings_test_usb),
+    item(SettingsCategory.Usb, R.string.diag_sample_rate),
+    item(SettingsCategory.Usb, R.string.path_output_bits),
+    item(SettingsCategory.Usb, R.string.diag_channels),
+    item(SettingsCategory.Usb, R.string.usb_param_volume),
+    item(SettingsCategory.Usb, R.string.usb_param_buffer),
+    item(SettingsCategory.Usb, R.string.usb_param_keep_alive),
 
     item(SettingsCategory.Services, R.string.settings_category_services,
         keywords = *intArrayOf(R.string.settings_category_services_detail)),
@@ -267,7 +270,6 @@ internal fun settingsSearchAnchorResource(item: SettingsSearchItem, availability
         SettingsSearchRequirement.ListenBrainz -> !availability.listenBrainzEnabled
         SettingsSearchRequirement.ListenBrainzConnected -> !availability.listenBrainzConnected
         SettingsSearchRequirement.SetlistFmEditable -> availability.setlistFmLocked
-        SettingsSearchRequirement.UsbConfiguration -> !availability.usbConfigurationVisible
     }
     return if (fallback) item.fallbackRes else anchorRes
 }

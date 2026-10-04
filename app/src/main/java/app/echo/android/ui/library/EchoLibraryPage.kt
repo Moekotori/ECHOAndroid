@@ -45,6 +45,7 @@ internal fun EchoLibraryPage(
     selectedGenre: app.echo.android.model.library.GenreSummary? = null,
     selectedFolder: FolderSummary?,
     selectedPlaylist: EchoPlaylist?,
+    outerNavigationOwnsTransition: Boolean,
     onRequestPermission: () -> Unit,
     onScanFolder: (LibraryScanOptions) -> Unit,
     onAddMusic: () -> Unit,
@@ -59,6 +60,7 @@ internal fun EchoLibraryPage(
     onLinkedLibraryPageOpenChanged: (Boolean) -> Unit,
     linkedDetailBackEnabled: Boolean,
     onOpenConnect: () -> Unit,
+    pageInteractive: Boolean,
 ) {
     var repairFileResult by remember { mutableStateOf<kotlinx.coroutines.CompletableDeferred<android.net.Uri?>?>(null) }
     val repairFilePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -89,15 +91,37 @@ internal fun EchoLibraryPage(
     val libraryFolderSortMode by viewModel.libraryFolderSortMode.collectAsStateWithLifecycle()
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
     val localPlaylists by viewModel.localPlaylists.collectAsStateWithLifecycle()
+    var playlistCoverTarget by rememberSaveable { mutableStateOf<String?>(null) }
+    val playlistCoverPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        val id = playlistCoverTarget
+        playlistCoverTarget = null
+        if (uri != null && id != null) viewModel.playlistTools.setArtwork(id, uri)
+    }
+    val playlistManagement = remember(viewModel, playlistCoverPicker) {
+        val tools = viewModel.playlistTools
+        app.echo.android.feature.library.PlaylistManagementActions(
+            order = tools::order, stats = tools::stats, sort = tools::sort, candidates = tools::candidates,
+            add = tools::add, remove = tools::remove, move = tools::move, copy = tools::copy,
+            pickArtwork = { id -> playlistCoverTarget = id; playlistCoverPicker.launch(arrayOf("image/*")) },
+        )
+    }
+    val playlistImportState by viewModel.playlistTools.importState.collectAsStateWithLifecycle()
+    app.echo.android.feature.library.PlaylistImportDialog(playlistImportState,
+        onConfirm = viewModel.playlistTools::confirm, onDismiss = viewModel.playlistTools::dismiss,
+        onOpen = onOpenPlaylist)
     val batchContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
     var batchConsent by remember { mutableStateOf<kotlinx.coroutines.CompletableDeferred<Boolean>?>(null) }
     val batchWriteLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
         batchConsent?.complete(it.resultCode == android.app.Activity.RESULT_OK)
     }
-    val batchActions = remember(viewModel, localPlaylists, batchWriteLauncher) {
+    val batchDelete = rememberLibraryBatchDelete(viewModel)
+    val batchActions = remember(viewModel, localPlaylists, batchWriteLauncher, batchDelete) {
         app.echo.android.feature.library.LibraryBatchActions(localPlaylists,
             viewModel.libraryExperience::favorites, viewModel.libraryExperience::addToPlaylist,
-            viewModel::batchQueue, viewModel::batchTags, writeAccess = { selected ->
+            viewModel::batchQueue, viewModel::batchTags,
+            delete = batchDelete,
+            canDeleteOriginals = app.echo.android.data.LibraryTrackDeletionPolicy::canDeleteOriginals,
+            writeAccess = { selected ->
                 val uris = selected.map { android.net.Uri.parse(it.uri) }.filter { it.authority == "media" }
                 if (android.os.Build.VERSION.SDK_INT < 30 || uris.isEmpty()) true else {
                     val response = kotlinx.coroutines.CompletableDeferred<Boolean>()
@@ -220,7 +244,7 @@ internal fun EchoLibraryPage(
         loader = app.echo.android.feature.library.EmbeddedLyricsLoader { viewModel.loadEmbeddedLyrics(it) },
     ) {
     app.echo.android.feature.library.AlbumOnlineInfoProvider(application.albumOnlineInfo) {
-    app.echo.android.feature.library.LibraryBatchProvider(batchActions) {
+    app.echo.android.feature.library.LibraryBatchProvider(batchActions, pageInteractive = pageInteractive) {
         LibraryScreen(
             radioStations = radioStations,
             radioLoadFailed = radioLoadFailed,
@@ -256,6 +280,7 @@ internal fun EchoLibraryPage(
             selectedGenre = selectedGenre,
             selectedFolder = selectedFolder,
             selectedPlaylist = selectedPlaylist,
+            outerNavigationOwnsTransition = outerNavigationOwnsTransition,
             albumDetailTracks = albumDetailTracks,
             artistDetailTracks = artistDetailTracks,
             artistDetailAlbums = artistDetailAlbums,
@@ -332,6 +357,7 @@ internal fun EchoLibraryPage(
             onShufflePlaylist = { playlist -> viewModel.shufflePlaylist(playlist.id) },
             onCreatePlaylist = { name -> viewModel.createLocalPlaylist(name) },
             experienceActions = experienceActions,
+            playlistManagement = playlistManagement,
             onRenamePlaylist = { playlist, name -> viewModel.renameLocalPlaylist(playlist.id, name) },
             onDeletePlaylist = { playlist ->
                 viewModel.deleteLocalPlaylist(playlist.id)
@@ -376,6 +402,8 @@ internal fun EchoLibraryPage(
                         "audio/mpegurl",
                         "application/vnd.apple.mpegurl",
                         "application/x-mpegurl",
+                        "audio/x-scpls",
+                        "application/pls+xml",
                         "text/plain",
                         "*/*",
                     ),
@@ -383,7 +411,7 @@ internal fun EchoLibraryPage(
             },
             onExportM3uPlaylist = { playlist ->
                 pendingM3uExportPlaylist = playlist
-                val fileName = playlist.name.trim().ifBlank { "playlist" }.replace('/', '-')
+                val fileName = playlist.name.trim().ifBlank { "playlist" }.replace(Regex("[\\\\/:*?\"<>|]"), "-")
                 exportM3uLauncher.launch("$fileName.m3u")
             },
             albumOfflinePin = albumOfflinePin,

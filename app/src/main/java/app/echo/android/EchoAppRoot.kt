@@ -108,7 +108,6 @@ import app.echo.android.ui.library.EchoLibraryPage
 import app.echo.android.playback.EchoPlaybackProcessRuntime
 import app.echo.android.ui.playback.EchoNowPlayingHost
 import app.echo.android.ui.shell.echoPlayerDepth
-import app.echo.android.ui.shell.echoSheetDepth
 import app.echo.android.design.EchoPlayerTransitionRoot
 import app.echo.android.design.EchoExpandedPlayer
 import app.echo.android.design.rememberEchoBackProgress
@@ -121,7 +120,6 @@ import app.echo.android.ui.shell.pagerPage
 import app.echo.android.design.rememberSilkPagerFlingBehavior
 import app.echo.android.ui.shell.outerPagerUserScrollEnabled
 import app.echo.android.ui.shell.rememberHomeSafePagerNestedScroll
-import app.echo.android.ui.shell.routeMotionSpec
 import app.echo.android.ui.shell.dockNavigationMotionSpec
 import app.echo.android.data.EchoBackgroundMode
 import app.echo.android.data.EchoFontFamilyMode
@@ -793,7 +791,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         }
     }
     var castSheetVisible by rememberSaveable { mutableStateOf(false) }
-    var queueDragProgress by remember { mutableFloatStateOf(0f) }
     val queueBack = rememberEchoBackProgress(effectivePerformanceMode.isLightweight)
     LaunchedEffect(queueSheetVisible) {
         if (queueSheetVisible) queueBack.restore()
@@ -1031,7 +1028,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             if (needsPagerSettle(targetPage)) {
                 tabPagerState.animateScrollToPage(
                     page = targetPage,
-                    animationSpec = routeMotionSpec(tabPagerState.currentPage, targetPage, effectivePerformanceMode),
+                    animationSpec = dockNavigationMotionSpec(tabPagerState.currentPage, targetPage, effectivePerformanceMode),
                 )
             }
             // A cancelled return must not clear a detail opened by the next navigation.
@@ -1178,8 +1175,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                 onSelectTab = { selectDockTab(EchoTab.entries[it]) },
                 modifier = Modifier.fillMaxSize()
                     .echoPageUnderlay(searchVisible || errorLogVisible || listeningStatsVisible || playbackHistoryVisible || listeningVisible || pluginsVisible || addMusicVisible)
-                    .echoPlayerDepth(nowPlayingExpanded) { maxOf(nowPlayingBack.value, nowPlayingDragProgress) }
-                    .echoSheetDepth(queueSheetVisible) { maxOf(queueBack.value, queueDragProgress) },
+                    .echoPlayerDepth(nowPlayingExpanded) { maxOf(nowPlayingBack.value, nowPlayingDragProgress) },
             ) { sideNavigation ->
                 val tabPagerFling = rememberSilkPagerFlingBehavior(tabPagerState)
                 val enteringInnerTabPage =
@@ -1214,6 +1210,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                         when (EchoPagerPage.entries[page]) {
                             EchoPagerPage.Library -> EchoLibraryPage(
                                 viewModel = viewModel,
+                                pageInteractive = appVisible && !shellOverlayOpen &&
+                                    tabPagerState.settledPage == EchoPagerPage.Library.ordinal &&
+                                    tabPagerState.targetPage == EchoPagerPage.Library.ordinal &&
+                                    !tabPagerState.isScrollInProgress,
                                 remoteClient = remoteClient,
                                 playbackRouter = echoLinkPlaybackRouter,
                                 remoteStatus = remoteStatus,
@@ -1224,6 +1224,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 selectedGenre = selectedGenre,
                                 selectedFolder = selectedFolder,
                                 selectedPlaylist = selectedPlaylist,
+                                outerNavigationOwnsTransition = detailReturnPage != null &&
+                                    detailReturnPage != EchoPagerPage.Library,
                                 onRequestPermission = { permissionLauncher.launch(permission) },
                                 onScanFolder = { options ->
                                     pendingScanOptions = options
@@ -1342,7 +1344,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                     settingsSoundRequestId++
                                     navigateToPage(EchoPagerPage.Diagnostics)
                                 },
-                                soundSummary = stringResource(
+                                soundSummary = (if (settingsEqualizerState.mseb.enabled)
+                                    stringResource(app.echo.android.feature.settings.R.string.mseb_title) + " · " else "") + stringResource(
                                     if (settingsEqualizerState.enabled)
                                         app.echo.android.feature.settings.R.string.settings_quick_eq_on
                                     else app.echo.android.feature.settings.R.string.settings_quick_eq_off,
@@ -1359,6 +1362,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 librarySizeBytes = libraryStats.totalSizeBytes,
                                 libraryScanning = libraryScanProgress.isScanning,
                                 onLoadLibraryHealth = viewModel::libraryHealthStats,
+                                onLoadLibraryAudioProfile = viewModel::libraryAudioProfile,
                                 onInspectLibraryLyrics = viewModel::inspectLibraryLyrics,
                                 appVersionLabel = BuildConfig.VERSION_NAME,
                                 updateContent = {
@@ -1400,6 +1404,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 },
                                 usbExclusiveEnabled = appSettings.usbExclusiveEnabled,
                                 usbBitPerfectEnabled = appSettings.usbBitPerfectEnabled,
+                                usbOutputOptions = appSettings.usbOutputOptions,
                                 trackTransitions = appSettings.trackTransitions,
                                 usbExclusiveAutoRequestOnStartup = appSettings.usbExclusiveAutoRequestOnStartup,
                                 pauseOnAudioDisconnect = appSettings.pauseOnAudioDisconnect,
@@ -1458,6 +1463,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onLockScreenLyricsEnabledChange = viewModel::setLockScreenLyricsEnabled,
                                 onUsbExclusiveEnabledChange = viewModel::setUsbExclusiveEnabled,
                                 onUsbBitPerfectEnabledChange = viewModel::setUsbBitPerfectEnabled,
+                                onUsbOutputOptionsChange = viewModel::setUsbOutputOptions,
                                 onTrackTransitionsChange = viewModel::setTrackTransitions,
                                 onUsbExclusiveAutoRequestOnStartupChange = viewModel::setUsbExclusiveAutoRequestOnStartup,
                                 onPauseOnAudioDisconnectChange = viewModel::setPauseOnAudioDisconnect,
@@ -1739,6 +1745,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                     onEqualizerBandGainChange = viewModel::setEqualizerBandGain,
                                     onEqualizerReset = viewModel::resetEqualizer,
                                     onEqualizerPreampChange = viewModel::setEqualizerPreamp,
+                                    onMsebChange = viewModel::setMseb,
                                     onChannelBalanceChange = viewModel::setChannelBalance,
                                     onChannelBalanceReset = viewModel::resetChannelBalance,
                                     onOpraBrandSelected = viewModel::browseOpraBrand,
@@ -1827,6 +1834,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     onOpenQueue = { queueSheetVisible = true },
                     onNext = ::routedSkipNext,
                     onPrevious = ::routedSkipPrevious,
+                    onSeek = ::routedSeek,
                     modifier = Modifier.align(Alignment.BottomCenter)
                         .onSizeChanged { bottomDockHeightPx = it.height },
                 )
@@ -1835,7 +1843,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             EchoExpandedPlayer(
                 visible = nowPlayingExpanded,
                 onHidden = { nowPlayingBack.reset() },
-                modifier = Modifier.echoSheetDepth(queueSheetVisible) { maxOf(queueBack.value, queueDragProgress) },
             ) {
                 EchoNowPlayingHost(
                     viewModel = viewModel,
@@ -1966,7 +1973,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     status = playbackStatus,
                     queueState = playbackQueue,
                     onDismiss = { queueSheetVisible = false },
-                    onDragProgress = { queueDragProgress = it },
                     onPlayItem = viewModel::playQueueItem,
                     onRemoveItem = viewModel::removeQueueItem,
                     onMoveItem = viewModel::moveQueueItem,

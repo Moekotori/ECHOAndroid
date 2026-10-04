@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mseb_title">MSEB</string>
+    <string name="mseb_detail">用十项听感调整声音。归零保留原有音色，可与 EQ 同时使用。</string>
+    <string name="mseb_neutral">中性</string>
+    <string name="mseb_warm">温暖</string>
+    <string name="mseb_vocal">人声</string>
+    <string name="mseb_bass">低音</string>
+    <string name="mseb_clear">通透</string>
+    <string name="mseb_headroom">自动增益余量</string>
+    <string name="mseb_reset">全部归零</string>
+    <string name="mseb_integrity">MSEB 已调整声音</string>
+    <string name="mseb_temperature">整体冷暖</string>
+    <string name="mseb_bass_extension">低频延伸</string>
+    <string name="mseb_bass_texture">低频质感</string>
+    <string name="mseb_note_thickness">音符厚度</string>
+    <string name="mseb_voice">人声位置</string>
+    <string name="mseb_female_overtones">女声泛音</string>
+    <string name="mseb_sibilance_lf">低段齿音</string>
+    <string name="mseb_sibilance_hf">高段齿音</string>
+    <string name="mseb_impulse_response">瞬态感</string>
+    <string name="mseb_air">空气感</string>
+    <string name="mseb_cool">冷亮</string>
+    <string name="mseb_warm_dark">暖暗</string>
+    <string name="mseb_light">轻盈</string>
+    <string name="mseb_deep">深沉</string>
+    <string name="mseb_tight">紧致</string>
+    <string name="mseb_thumpy">饱满</string>
+    <string name="mseb_crisp">清脆</string>
+    <string name="mseb_thick">厚实</string>
+    <string name="mseb_recessed">靠后</string>
+    <string name="mseb_forward">靠前</string>
+    <string name="mseb_smooth">柔顺</string>
+    <string name="mseb_vivid">鲜活</string>
+    <string name="mseb_soft">柔和</string>
+    <string name="mseb_musical">柔和舒缓</string>
+    <string name="mseb_fast">快速锐利</string>
+    <string name="mseb_open">开阔</string>
+</resources>

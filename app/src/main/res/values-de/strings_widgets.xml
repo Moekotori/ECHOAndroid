@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_mini_name">ECHO · Mini-Player</string>
+    <string name="widget_mini_description">Kompakte Wiedergabesteuerung mit kleinem Albumcover</string>
+    <string name="widget_cover_name">ECHO · Albumcover</string>
+    <string name="widget_cover_description">Albumcover mit Titelinformationen und Wiedergabetaste</string>
+    <string name="widget_lyrics_name">ECHO · Liedtext</string>
+    <string name="widget_lyrics_description">Aktueller Liedtext mit Titelinformationen und Wiedergabesteuerung</string>
+    <string name="widget_lyrics_hint">Musik abspielen, um hier den Liedtext zu sehen</string>
+    <string name="widget_lyrics_unavailable">Kein Liedtext verfügbar</string>
+    <string name="widget_lyrics_label">Liedtext</string>
+</resources>

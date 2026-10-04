@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_library_overview_local_short">Music\nstorage</string>
+    <string name="settings_library_audio_title">Audio quality</string>
+    <string name="settings_library_audio_lossless">Lossless formats</string>
+    <string name="settings_library_audio_lossy">Lossy formats</string>
+    <string name="settings_library_audio_dsd">DSD</string>
+    <string name="settings_library_audio_unconfirmed">Unconfirmed</string>
+    <string name="settings_library_audio_formats">File formats</string>
+    <string name="settings_library_audio_rates">Sample rates</string>
+    <string name="settings_library_audio_high_rate">Above 48 kHz · %1$s tracks (excluding DSD)</string>
+    <string name="settings_library_audio_unknown">Unknown</string>
+    <string name="settings_library_audio_other_rate">Other rates</string>
+    <string name="settings_library_audio_dsd_rate">DSD sampling</string>
+    <string name="settings_library_audio_khz">%1$s kHz</string>
+    <string name="settings_library_audio_empty">Scan music from Manage to see its formats and sample rates.</string>
+    <string name="settings_library_audio_scope">Based on indexed local files. FLAC, ALAC and APE count as lossless formats; M4A, Ogg, WAV, AIFF, WMA and WavPack need codec confirmation. Unknown rates were not recorded by the scan.</string>
+    <string name="settings_library_audio_depth_bitrate">Bit depth and bitrate are not stored in the library yet. High sample rates alone do not confirm Hi-Res quality or device output quality.</string>
+    <string name="settings_library_audio_depth">Bit depth</string>
+    <string name="settings_library_audio_bitrate">Bitrate</string>
+    <string name="settings_library_audio_not_recorded">Not recorded</string>
+</resources>

@@ -1,0 +1,18 @@
+<resources>
+    <string name="batch_delete">Supprimer les titres sélectionnés</string>
+    <string name="batch_remove_index">Retirer de la bibliothèque</string>
+    <string name="batch_delete_files">Supprimer les fichiers originaux</string>
+    <string name="batch_delete_originals">Supprimer aussi les fichiers locaux originaux</string>
+    <string name="batch_delete_index_hint">Ces titres seront retirés de la bibliothèque, des favoris et des playlists. Si les fichiers sont conservés, une analyse ou une synchronisation peut les ajouter à nouveau.</string>
+    <string name="batch_delete_file_hint">Les fichiers originaux seront supprimés définitivement. Tous les titres utilisant le même fichier audio seront affectés.</string>
+    <string name="batch_delete_file_unavailable">Seuls les titres locaux ordinaires permettent de supprimer les fichiers. Les titres distants et les segments CUE peuvent être retirés de la bibliothèque.</string>
+    <string name="batch_delete_partial">Retirés : %1$d · Non retirés : %2$d</string>
+    <plurals name="batch_delete_confirm">
+        <item quantity="one">Supprimer %1$d titre ?</item>
+        <item quantity="other">Supprimer %1$d titres ?</item>
+    </plurals>
+    <plurals name="batch_delete_done">
+        <item quantity="one">%1$d titre retiré</item>
+        <item quantity="other">%1$d titres retirés</item>
+    </plurals>
+</resources>

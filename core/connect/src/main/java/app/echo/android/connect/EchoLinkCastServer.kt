@@ -267,7 +267,7 @@ class EchoLinkCastServer(
             if (format != null && format != publication.format && publications.containsKey(publication.token)) {
                 publications[publication.token] = publication.copy(format = format)
             }
-            val end = range?.second ?: totalLength?.minus(1L)
+            val end = rangeEnd(range, totalLength)
             val mime = EchoLinkCastPolicy.mimeTypeForUri(
                 publication.uri,
                 format?.mimeType ?: publication.mimeType ?: opened.mimeType,
@@ -336,6 +336,10 @@ class EchoLinkCastServer(
             return
         }
         val range = EchoLinkCastPolicy.parseRange(rangeHeader, null)
+        if (rangeHeader != null && range == null) {
+            reply(output, 416, "Range Not Satisfiable", 0)
+            return
+        }
         val start = range?.first ?: 0L
         val body = openBody.open(uri, start) ?: run {
             reply(output, 404, "Not Found", 0)
@@ -343,7 +347,11 @@ class EchoLinkCastServer(
         }
         body.use { opened ->
             val totalLength = opened.totalLength
-            val end = range?.second ?: totalLength?.minus(1L)
+            if (totalLength != null && start >= totalLength) {
+                reply(output, 416, "Range Not Satisfiable", 0, extraHeaders = rangeUnsatisfiable(totalLength))
+                return
+            }
+            val end = rangeEnd(range, totalLength)
             val mime = EchoLinkCastPolicy.imageMimeType(uri)
             val contentLength = when {
                 end != null -> (end - start + 1L).coerceAtLeast(0L)
@@ -454,6 +462,10 @@ class EchoLinkCastServer(
 
     private fun rangeUnsatisfiable(totalLength: Long?): String =
         if (totalLength != null) "Content-Range: bytes */$totalLength\r\n" else ""
+
+    private fun rangeEnd(range: Pair<Long, Long?>?, totalLength: Long?): Long? =
+        if (totalLength != null) minOf(range?.second ?: Long.MAX_VALUE, totalLength - 1L)
+        else range?.second
 
     private fun newWorkers() = Executors.newFixedThreadPool(EchoLinkCastPolicy.MaxConnections) { runnable ->
         Thread(runnable, "echo-link-cast-io").apply { isDaemon = true }

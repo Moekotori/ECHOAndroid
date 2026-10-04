@@ -173,7 +173,7 @@ internal data class WebDavEntry(
     val lastModifiedSeconds: Long,
 )
 
-private val SharedWebDavHttpClient: OkHttpClient =
+internal val SharedWebDavHttpClient: OkHttpClient =
     OkHttpClient.Builder()
         .connectTimeout(5, TimeUnit.SECONDS)
         .readTimeout(12, TimeUnit.SECONDS)

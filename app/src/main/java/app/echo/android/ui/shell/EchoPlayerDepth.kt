@@ -10,7 +10,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
-import app.echo.android.design.echoSheetUnderlay
 
 /** Read animation and predictive-back progress in the layer, not the page composition. */
 @Composable
@@ -35,10 +34,4 @@ internal fun Modifier.echoPlayerDepth(
         shape = RoundedCornerShape((24f * progress).dp)
         clip = progress > 0f
     }
-}
-
-/** Keep the visible page behind the queue; cancelled drags restore the same depth. */
-@Composable
-internal fun Modifier.echoSheetDepth(visible: Boolean, dragProgress: () -> Float): Modifier {
-    return echoSheetUnderlay(visible, dragProgress)
 }

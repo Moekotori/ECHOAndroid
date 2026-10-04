@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="opra_search_hint">ブランド・モデルを検索</string>
+    <string name="opra_clear_search">検索をクリア</string>
+    <string name="opra_catalog_summary">%1$d モデル · %2$d 件の補正</string>
+    <plurals name="opra_model_curves">
+        <item quantity="other">%1$d 件のカーブ</item>
+    </plurals>
+</resources>

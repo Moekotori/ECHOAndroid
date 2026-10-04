@@ -1,0 +1,5 @@
+<resources>
+    <string name="batch_deleting">Удаление…</string>
+    <string name="batch_playlists_empty">Пока нет редактируемых плейлистов. Сначала создайте плейлист на вкладке «Плейлисты».</string>
+    <string name="batch_playlist_added">Добавлено в «%1$s»</string>
+</resources>

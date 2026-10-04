@@ -94,6 +94,7 @@ internal fun EchoPlaybackDiagnostics.signalIntegrityLabel(
 ): String =
     when {
         usbBitPerfectEnabled -> bitPerfectReadout(equalizerState)
+        equalizerState.mseb.active -> stringResource(R.string.mseb_integrity)
         equalizerState.active && channelBalance.active -> stringResource(R.string.diag_integrity_eq_balance)
         equalizerState.active -> stringResource(R.string.diag_integrity_eq)
         channelBalance.active -> stringResource(R.string.diag_integrity_balance)
@@ -193,4 +194,3 @@ internal fun formatEqNumber(value: Float): String =
     } else {
         value.toString()
     }
-

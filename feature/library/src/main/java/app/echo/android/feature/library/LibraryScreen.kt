@@ -309,6 +309,7 @@ fun LibraryScreen(
     onShufflePlaylist: (EchoPlaylist) -> Unit,
     onCreatePlaylist: (String) -> Unit,
     experienceActions: LibraryExperienceActions? = null,
+    playlistManagement: PlaylistManagementActions? = null,
     onRenamePlaylist: (EchoPlaylist, String) -> Unit,
     onDeletePlaylist: (EchoPlaylist) -> Unit,
     onAddTrackToPlaylist: (EchoPlaylist, EchoTrack) -> Unit,
@@ -324,6 +325,7 @@ fun LibraryScreen(
     onOpenFolder: (FolderSummary) -> Unit,
     onOpenPlaylist: (EchoPlaylist) -> Unit,
     onCloseDetail: () -> Unit,
+    outerNavigationOwnsTransition: Boolean = false,
     onLinkedLibraryPageOpenChanged: (Boolean) -> Unit = {},
     linkedDetailBackEnabled: Boolean = true,
     onOpenConnect: () -> Unit = {},
@@ -403,6 +405,10 @@ fun LibraryScreen(
     }
 
     fun selectSource(source: LibrarySourceMode) {
+        if (selectedMode == LibraryViewMode.Radio) {
+            selectedModeIndex = LibraryViewMode.Songs.ordinal
+            onLibraryQueryChange("")
+        }
         if (selectedSource == source) return
         selectedSource = source
         onLibrarySourceChange(source.id)
@@ -453,13 +459,11 @@ fun LibraryScreen(
                     )
                 }
                     Box(modifier = Modifier.weight(1f)) {
-                        val libraryTabMotion = rememberEchoContentMotion()
-                        AnimatedContent(
-                            targetState = selectedMode,
-                            transitionSpec = {
-                                libraryTabMotion.tabSwitch(targetState.ordinal > initialState.ordinal)
-                            },
-                            label = "library-mode-transition",
+                        LibraryCategoryPager(
+                            modes = if (selectedMode == LibraryViewMode.Radio) listOf(LibraryViewMode.Radio)
+                                else libraryPagerModes(displayedSource == LibrarySourceMode.Cloud),
+                            selectedMode = selectedMode,
+                            onSelectMode = { selectedModeIndex = it.ordinal },
                             modifier = Modifier.fillMaxSize(),
                         ) { mode ->
                         val showAlphabetIndex = mode == LibraryViewMode.Songs &&
@@ -489,15 +493,23 @@ fun LibraryScreen(
                                 val showInitialTrackError =
                                     trackItems.itemCount == 0 &&
                                         trackItems.loadState.refresh is LoadState.Error
+                                val lightweightDeletion = app.echo.android.design.LocalEchoEffectivePerformanceMode.current.isLightweight
+                                // Retain the outgoing lazy layout so its last item can finish departing.
+                                AnimatedContent(
+                                    targetState = trackItems.itemCount == 0,
+                                    transitionSpec = { libraryEmptyTransition(lightweightDeletion) },
+                                    modifier = Modifier.fillMaxSize(),
+                                    label = "library-song-empty-transition",
+                                ) { empty ->
                                 when {
-                                    showInitialTrackLoading -> LibraryCollectionEmpty(
+                                    empty && showInitialTrackLoading -> LibraryCollectionEmpty(
                                         stringResource(L10nR.string.feature_library_loading_library_a77123),
                                     )
-                                    showInitialTrackError -> LibraryCollectionEmpty(
+                                    empty && showInitialTrackError -> LibraryCollectionEmpty(
                                         title = stringResource(L10nR.string.feature_library_library_query_failed_f9c538),
                                         actionLabel = stringResource(L10nR.string.library_retry), onAction = { trackItems.retry() },
                                     )
-                                    trackItems.itemCount == 0 -> LibraryCollectionEmpty(
+                                    empty -> LibraryCollectionEmpty(
                                         title = stringResource(if (libraryQuery.isNotBlank()) L10nR.string.library_no_matches else L10nR.string.library_start_collection),
                                         detail = stringResource(if (libraryQuery.isNotBlank()) L10nR.string.library_search_hint else L10nR.string.library_import_hint),
                                         actionLabel = stringResource(if (libraryQuery.isNotBlank()) L10nR.string.library_clear_search else L10nR.string.library_add_music),
@@ -533,6 +545,7 @@ fun LibraryScreen(
                                             )
                                         }
                                     }
+                                }
                                 }
                             }
 
@@ -625,7 +638,20 @@ fun LibraryScreen(
                     L10nR.string.feature_library_search_songs_artists_albums_14dc2c
                 },
             ),
-            sourcePicker = { LibrarySourcePicker(selectedSource, ::selectSource) },
+            sourcePicker = {
+                LibrarySourcePicker(
+                    selectedSource = selectedSource,
+                    onSelectSource = ::selectSource,
+                    radioSelected = selectedSource == LibrarySourceMode.Local && selectedMode == LibraryViewMode.Radio,
+                    onSelectRadio = {
+                        if (selectedSource != LibrarySourceMode.Local || selectedMode != LibraryViewMode.Radio) {
+                            selectSource(LibrarySourceMode.Local)
+                            onLibraryQueryChange("")
+                            selectedModeIndex = LibraryViewMode.Radio.ordinal
+                        }
+                    },
+                )
+            },
             actions = {
                 when (selectedSource) {
                     LibrarySourceMode.Local -> if (selectedMode != LibraryViewMode.Radio) {
@@ -879,6 +905,10 @@ fun LibraryScreen(
                 },
                 onRemoveTrack = { track -> onRemoveTrackFromPlaylist(target.playlist, track) },
                 onMoveTrack = { from, to -> onReorderPlaylistTracks(target.playlist, from, to) },
+                management = playlistManagement,
+                experienceActions = experienceActions,
+                onCopyCreated = onOpenPlaylist,
+                onExport = { name -> onExportM3uPlaylist(target.playlist.copy(name = name)) },
                 onUpdateTrackMetadata = onUpdateTrackMetadata,
                 onImportLyrics = onImportLyricsForTrack,
                 onPickArtwork = onPickTrackArtwork,
@@ -969,6 +999,7 @@ fun LibraryScreen(
             LibraryDetailTransition(
                 targetState = detailTransitionTarget,
                 split = true,
+                outerNavigationOwnsTransition = outerNavigationOwnsTransition,
                 modifier = Modifier.weight(0.58f).fillMaxHeight(),
                 content = { DetailContent(it) },
             )
@@ -977,6 +1008,7 @@ fun LibraryScreen(
         LibraryDetailTransition(
             targetState = detailTransitionTarget,
             split = false,
+            outerNavigationOwnsTransition = outerNavigationOwnsTransition,
             modifier = Modifier.fillMaxSize(),
             content = { DetailContent(it) },
         )
@@ -1937,6 +1969,7 @@ private fun LibraryBrowserHeader(
     if (showScanResultBanner) {
         LibraryScanResultBanner(scanState)
     }
+    if (selectedMode == LibraryViewMode.Radio) return
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.weight(1f)) {
             LibraryPagerTabs(selectedMode, onSelectMode, cloudOnly = selectedSource == LibrarySourceMode.Cloud)

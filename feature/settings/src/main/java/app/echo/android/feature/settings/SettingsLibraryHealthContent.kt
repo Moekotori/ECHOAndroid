@@ -25,6 +25,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.echo.android.model.library.LibraryHealthStats
+import app.echo.android.model.library.LibraryAudioProfile
 import app.echo.android.model.library.LibraryLyricsInspection
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -38,15 +39,19 @@ internal fun SettingsLibraryHealthContent(
     durationMs: Long,
     sizeBytes: Long,
     onLoadHealth: suspend () -> LibraryHealthStats,
+    onLoadAudioProfile: suspend () -> LibraryAudioProfile,
     onInspectLyrics: suspend ((LibraryLyricsInspection) -> Unit) -> Unit,
 ) {
     var health by remember { mutableStateOf<LibraryHealthStats?>(null) }
+    var audio by remember { mutableStateOf<LibraryAudioProfile?>(null) }
+    var audioFailed by remember { mutableStateOf(false) }
     var lyrics by remember { mutableStateOf<LibraryLyricsInspection?>(null) }
     var requested by remember { mutableStateOf(false) }
     var healthFailed by remember { mutableStateOf(false) }
     var lyricsFailed by remember { mutableStateOf(false) }
     var refresh by remember { mutableIntStateOf(0) }
     val load by rememberUpdatedState(onLoadHealth)
+    val loadAudio by rememberUpdatedState(onLoadAudioProfile)
     val inspect by rememberUpdatedState(onInspectLyrics)
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     var foreground by remember(lifecycle) { mutableStateOf(lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) }
@@ -67,6 +72,10 @@ internal fun SettingsLibraryHealthContent(
         try { health = load() }
         catch (cancelled: CancellationException) { throw cancelled }
         catch (_: Exception) { healthFailed = true }
+        audioFailed = false
+        try { audio = loadAudio() }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (_: Exception) { audioFailed = true }
     }
     LaunchedEffect(visible, isScanning, requested, trackCount, durationMs, sizeBytes) {
         if (!visible || isScanning || !requested) {
@@ -81,20 +90,18 @@ internal fun SettingsLibraryHealthContent(
         finally { requested = false }
     }
 
+    SettingsLibraryAudioProfile(audio, isScanning, audioFailed, onRefresh = { refresh++ })
     SettingsSectionCard(stringResource(R.string.settings_library_health_title)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = { refresh++ }, enabled = !isScanning && !requested) {
-                Text(stringResource(R.string.settings_library_health_refresh))
-            }
-        }
         if (isScanning) HealthNote(stringResource(R.string.settings_library_health_scanning))
         else if (healthFailed) HealthNote(stringResource(R.string.settings_library_health_error))
         else if (health == null) HealthNote(stringResource(R.string.settings_library_health_loading))
         health?.let { snapshot ->
             HealthCount(R.string.settings_library_health_folders, snapshot.folderCount)
-            HealthCount(R.string.settings_library_health_cover, snapshot.missingCoverCount)
-            HealthCount(R.string.settings_library_health_album, snapshot.missingAlbumCount)
-            HealthCount(R.string.settings_library_health_artist, snapshot.missingArtistCount)
+            LibraryTintPanel(libraryPalette().rose, Modifier.padding(vertical = 8.dp)) {
+                HealthCount(R.string.settings_library_health_cover, snapshot.missingCoverCount, emphasize = true)
+                HealthCount(R.string.settings_library_health_album, snapshot.missingAlbumCount, emphasize = true)
+                HealthCount(R.string.settings_library_health_artist, snapshot.missingArtistCount, emphasize = true)
+            }
             HealthCount(R.string.settings_library_health_genre, snapshot.missingGenreCount)
             HealthCount(R.string.settings_library_health_year, snapshot.missingYearCount)
             HealthCount(R.string.settings_library_health_duration, snapshot.unknownDurationCount)
@@ -127,14 +134,15 @@ internal fun SettingsLibraryHealthContent(
 }
 
 @Composable
-private fun HealthCount(label: Int, count: Int?) {
+private fun HealthCount(label: Int, count: Int?, emphasize: Boolean = false) {
     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(label), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(if (count == null) stringResource(R.string.settings_library_health_not_checked)
             else stringResource(R.string.settings_library_health_count, count),
             style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface)
+            color = if (emphasize && count != null && count > 0) libraryPalette().rose
+                else if (emphasize && count == 0) libraryPalette().teal else MaterialTheme.colorScheme.onSurface)
     }
 }
 

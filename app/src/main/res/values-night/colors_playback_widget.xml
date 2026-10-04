@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="playback_widget_background">#29272D</color>
-    <color name="playback_widget_foreground">#E6E1E5</color>
-    <color name="playback_widget_secondary">#CAC4D0</color>
+    <color name="playback_widget_background">#242428</color>
+    <color name="playback_widget_foreground">#F1F1F3</color>
+    <color name="playback_widget_secondary">#ADADB5</color>
+    <color name="playback_widget_artwork_background">#39393F</color>
 </resources>
