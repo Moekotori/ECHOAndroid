@@ -36,6 +36,7 @@ class DocumentTreeTrackScanner(
         onUnchangedIds: suspend (List<String>) -> Unit = {},
         listings: DocumentTreeListingCache? = null,
         reuseDirectoryListings: Boolean = true,
+        persistArtwork: (ByteArray?) -> String? = { null },
         onBatch: suspend (List<LibraryTrackEntity>) -> Unit,
         onProgress: suspend (scannedCount: Int, currentTrack: LibraryTrackEntity?) -> Unit,
     ): MediaStoreScanOutcome {
@@ -208,6 +209,7 @@ class DocumentTreeTrackScanner(
                         // An unchanged file whose cue sheet appeared or disappeared still needs a real duration.
                         existingTrack = if (fileUnchanged) null else existingTrack,
                         readSampleRate = readSampleRate,
+                        persistArtwork = persistArtwork,
                     )
                 }.onSuccess { track ->
                     // One unreadable file stays in the library and is retried. It must not block
@@ -359,6 +361,7 @@ class DocumentTreeTrackScanner(
         relativePath: String,
         existingTrack: TrackFingerprint?,
         readSampleRate: Boolean,
+        persistArtwork: (ByteArray?) -> String?,
     ): LibraryTrackEntity {
         val dateModifiedSeconds = lastModifiedMs.toEpochSeconds()
         if (
@@ -392,7 +395,7 @@ class DocumentTreeTrackScanner(
                 source = LibraryScanPolicy.SafSourceId,
             )
         }
-        val metadata = readMetadata(this, readSampleRate, mimeType, displayName)
+        val metadata = readMetadata(this, readSampleRate, mimeType, displayName, persistArtwork)
         val title = localAudioTitle(metadata.title, displayName)
         val artist = metadata.artist.takeUnlessUnknownMetadata() ?: canonicalUnknownArtist()
         return LibraryTrackEntity(
@@ -403,7 +406,7 @@ class DocumentTreeTrackScanner(
             artist = artist,
             album = metadata.album.takeUnlessUnknownMetadata(),
             albumArtist = metadata.albumArtist.takeUnlessUnknownMetadata(),
-            artworkUri = null,
+            artworkUri = metadata.artworkUri,
             durationMs = metadata.durationMs,
             trackNumber = metadata.trackNumber,
             discNumber = metadata.discNumber,
@@ -424,6 +427,7 @@ class DocumentTreeTrackScanner(
         readSampleRate: Boolean,
         mimeType: String?,
         displayName: String,
+        persistArtwork: (ByteArray?) -> String?,
     ): DocumentAudioMetadata {
         val fileTags = if (LocalAudioTagReadPolicy.prefersFileTags(mimeType, displayName)) {
             runCatching { contentResolver.openInputStream(uri)?.use(::readLocalAudioTags) }.getOrNull()
@@ -445,6 +449,7 @@ class DocumentTreeTrackScanner(
                     discNumber = dsd.tags?.discNumber ?: fileTags?.discNumber,
                     year = dsd.tags?.year ?: fileTags?.year,
                     sampleRateHz = if (readSampleRate) dsd.sampleRateHz.takeIf { it > 0 } else null,
+                    artworkUri = persistArtwork(dsd.tags?.artworkBytes ?: fileTags?.artworkBytes),
                 )
             }
         }
@@ -486,13 +491,18 @@ class DocumentTreeTrackScanner(
                     } else {
                         null
                     },
+                    artworkUri = persistArtwork(fileTags?.artworkBytes ?: runCatching { retriever.embeddedPicture }.getOrNull()),
                 )
-            } ?: fileTags.toDocumentMetadata(readSucceeded = false)
+            } ?: fileTags.toDocumentMetadata(readSucceeded = false).copy(
+                artworkUri = persistArtwork(fileTags?.artworkBytes),
+            )
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
             Log.d(TAG, "Unable to read document tree audio metadata for $uri.", error)
-            fileTags.toDocumentMetadata(readSucceeded = false)
+            fileTags.toDocumentMetadata(readSucceeded = false).copy(
+                artworkUri = persistArtwork(fileTags?.artworkBytes),
+            )
         } finally {
             retriever.release()
         }
@@ -556,6 +566,7 @@ class DocumentTreeTrackScanner(
         val discNumber: Int? = null,
         val year: Int? = null,
         val sampleRateHz: Int? = null,
+        val artworkUri: String? = null,
     )
 
     private companion object {

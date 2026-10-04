@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_quick_scan">음악 스캔</string>
+    <string name="settings_quick_connect">Echo Link</string>
+    <string name="settings_quick_sound">사운드 조절</string>
+    <string name="settings_quick_eq_on">EQ 켜짐</string>
+    <string name="settings_quick_eq_off">EQ 꺼짐</string>
+</resources>

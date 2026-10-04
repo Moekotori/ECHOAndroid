@@ -84,25 +84,34 @@ class EchoThemeTokensTest {
     @Test
     fun defaultStartupWindowMatchesLightPageAndPreservesDarkSplash() {
         assertEquals(0xFF080B12.toInt(), echoStartupWindowColor(EchoColorTheme.Echo, dark = true))
-        assertEquals(0xFFFFFFFF.toInt(), echoStartupWindowColor(EchoColorTheme.Echo, dark = false))
+        assertEquals(0xFFF5F5F3.toInt(), echoStartupWindowColor(EchoColorTheme.Echo, dark = false))
     }
 
     @Test
-    fun lightPresetsUseWhitePagesAndNeutralSurfaces() {
+    fun lightPresetsUseSoftPagesAndNeutralSurfaces() {
+        val page = Color(0xFFF5F5F3)
+        val surface = Color(0xFFFAFAF8)
         for (theme in EchoColorTheme.entries.filter { it != EchoColorTheme.Custom }) {
             val tokens = echoThemeTokens(theme, dark = false)
             val scheme = echoColorScheme(tokens)
-            for (color in listOf(tokens.bgTop, tokens.bgMid, tokens.bgBottom, tokens.panel, tokens.glassWash,
-                scheme.background, scheme.surface, scheme.surfaceContainerLow)) {
-                assertEquals("${theme.id} white base", Color.White, color)
+            for (color in listOf(tokens.bgTop, tokens.bgMid, tokens.bgBottom, tokens.night, scheme.background)) {
+                assertEquals("${theme.id} soft page", page, color)
+            }
+            for (color in listOf(tokens.panel, tokens.ink, tokens.surface, tokens.glassWash,
+                scheme.surface, scheme.surfaceBright, scheme.surfaceContainerLowest, scheme.surfaceContainerLow)) {
+                assertEquals("${theme.id} soft surface", surface, color)
             }
             for (color in listOf(tokens.mist, tokens.glassBorder, tokens.softLine, tokens.outlineVariant,
-                scheme.surfaceContainer, scheme.surfaceContainerHigh, scheme.surfaceContainerHighest)) {
+                scheme.surfaceVariant, scheme.surfaceDim, scheme.surfaceContainer,
+                scheme.surfaceContainerHigh, scheme.surfaceContainerHighest)) {
                 assertEquals("${theme.id} neutral surface red/green", color.red, color.green, 0.0001f)
-                assertEquals("${theme.id} neutral surface green/blue", color.green, color.blue, 0.0001f)
+                assertTrue("${theme.id} slight warmth", color.red >= color.blue && color.red - color.blue <= 0.01f)
+                assertTrue("${theme.id} below paper brightness", relativeLuminance(color) < relativeLuminance(page))
             }
-            assertEquals("${theme.id} startup matches page", 0xFFFFFFFF.toInt(), echoStartupWindowColor(theme, false))
+            assertEquals("${theme.id} startup matches page", 0xFFF5F5F3.toInt(), echoStartupWindowColor(theme, false))
             assertEquals("${theme.id} keeps accent", tokens.accent, scheme.primary)
+            assertTrue("${theme.id} body on page", contrastRatio(tokens.onSurface, page) >= 4.5f)
+            assertTrue("${theme.id} secondary text on page", contrastRatio(tokens.muted, page) >= 4.5f)
         }
     }
 

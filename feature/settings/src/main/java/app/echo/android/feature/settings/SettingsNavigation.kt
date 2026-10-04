@@ -52,6 +52,10 @@ internal fun SettingsNavigation(
     summaries: Map<SettingsCategory, String>,
     searchAvailability: SettingsSearchAvailability,
     onOpenPlugins: () -> Unit,
+    onScanMusic: () -> Unit,
+    onOpenConnect: () -> Unit,
+    onOpenSound: () -> Unit,
+    soundSummary: String,
     content: @Composable (SettingsCategory) -> Unit,
 ) {
     var selected by rememberSaveable { mutableStateOf<SettingsCategory?>(null) }
@@ -150,6 +154,10 @@ internal fun SettingsNavigation(
                                 availability = searchAvailability,
                                 onQueryChange = { searchQuery = it },
                                 onOpenPlugins = onOpenPlugins,
+                                onScanMusic = onScanMusic,
+                                onOpenConnect = onOpenConnect,
+                                onOpenSound = onOpenSound,
+                                soundSummary = soundSummary,
                                 onOpenCategory = { searchFocus = null; selected = it },
                                 onSearchSelect = { result ->
                                     focusManager.clearFocus()

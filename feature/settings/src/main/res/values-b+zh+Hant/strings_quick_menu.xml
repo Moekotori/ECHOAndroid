@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_quick_scan">檔案掃描</string>
+    <string name="settings_quick_connect">Echo Link</string>
+    <string name="settings_quick_sound">聲音調整</string>
+    <string name="settings_quick_eq_on">均衡器開啟</string>
+    <string name="settings_quick_eq_off">均衡器關閉</string>
+</resources>

@@ -10,6 +10,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoSlider
 import app.echo.android.design.EchoSwitch
@@ -33,15 +35,19 @@ internal fun LyricsSettingSlider(
     val displayed = if (dragging) draft else value.coerceIn(range)
     val valueText = "${(displayed * 100f).roundToInt()}%"
     val resetLabel = stringResource(R.string.lyrics_setting_reset)
-    Column {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    val mutedColor = if (LocalEchoDarkTheme.current) androidx.compose.ui.graphics.Color.White.copy(alpha = 0.65f) else echoTheme().muted
+    Column(Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 8.dp)) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-            Text(valueText, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            Text(valueText, Modifier.widthIn(min = 48.dp), style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold, textAlign = TextAlign.End)
             TextButton(
                 onClick = { dragging = false; onCommit(defaultValue) },
                 enabled = abs(displayed - defaultValue) > 0.005f,
                 modifier = Modifier.semantics { contentDescription = "$label · $resetLabel" },
-            ) { Text(resetLabel) }
+                contentPadding = PaddingValues(horizontal = 8.dp),
+            ) { Text(resetLabel, style = MaterialTheme.typography.labelMedium) }
         }
         EchoSlider(
             value = displayed,
@@ -51,8 +57,8 @@ internal fun LyricsSettingSlider(
             modifier = Modifier.fillMaxWidth().semantics { contentDescription = label },
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("${(range.start * 100f).roundToInt()}%", style = MaterialTheme.typography.labelSmall)
-            Text("${(range.endInclusive * 100f).roundToInt()}%", style = MaterialTheme.typography.labelSmall)
+            Text("${(range.start * 100f).roundToInt()}%", style = MaterialTheme.typography.labelSmall, color = mutedColor)
+            Text("${(range.endInclusive * 100f).roundToInt()}%", style = MaterialTheme.typography.labelSmall, color = mutedColor)
         }
     }
 }
@@ -64,19 +70,19 @@ internal fun LyricsSettingToggle(
     onCheckedChange: (Boolean) -> Unit,
     hint: String? = null,
 ) {
-    Row(
-        Modifier.fillMaxWidth().heightIn(min = 56.dp)
+    Column(
+        Modifier.fillMaxWidth()
             .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
-            .padding(horizontal = 2.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(horizontal = 2.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = MaterialTheme.typography.bodyMedium)
-            if (hint != null) Text(hint, style = MaterialTheme.typography.bodySmall,
-                color = if (LocalEchoDarkTheme.current) androidx.compose.ui.graphics.Color.White.copy(alpha = 0.65f) else echoTheme().muted)
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(title, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+            EchoSwitch(checked, onCheckedChange = null)
         }
-        EchoSwitch(checked, onCheckedChange = null)
+        if (!hint.isNullOrBlank()) Text(hint, Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodySmall,
+            color = if (LocalEchoDarkTheme.current) androidx.compose.ui.graphics.Color.White.copy(alpha = 0.65f) else echoTheme().muted)
     }
 }
 

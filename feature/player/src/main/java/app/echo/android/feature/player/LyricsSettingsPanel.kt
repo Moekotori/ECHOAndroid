@@ -86,6 +86,7 @@ internal fun LyricsSettingsPanel(
     val dark = LocalEchoDarkTheme.current
     val titleColor = if (dark) Color.White else echoTheme().heading
     val mutedColor = if (dark) Color.White.copy(alpha = 0.65f) else echoTheme().muted
+    var appearanceExpanded by remember { mutableStateOf(false) }
     var typeExpanded by remember { mutableStateOf(true) }
     var colorExpanded by remember { mutableStateOf(false) }
     var motionExpanded by remember { mutableStateOf(false) }
@@ -102,7 +103,7 @@ internal fun LyricsSettingsPanel(
                 LyricsSettingsHandle(onDismiss)
                 Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    EchoIcon(Icons.Rounded.Lyrics, null, tint = app.echo.android.design.echoAccentColor(), modifier = Modifier.size(28.dp))
+                    EchoIcon(Icons.Rounded.Lyrics, null, tint = titleColor, modifier = Modifier.size(24.dp))
                     Column(Modifier.weight(1f)) {
                         Text(heading, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = titleColor)
                         Text(stringResource(L10nR.string.feature_player_font_color_and_display_b51a7b),
@@ -126,13 +127,16 @@ internal fun LyricsSettingsPanel(
             )
             androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides titleColor) {
                 Column(Modifier.fillMaxWidth().weight(1f, fill = false).verticalScroll(rememberScrollState())
-                    .padding(start = 20.dp, end = 20.dp, bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(stringResource(L10nR.string.player_appearance_title), style = MaterialTheme.typography.titleSmall)
-                    PlayerPageStyleSelector(app.echo.android.model.settings.EchoPlayerPageStyle.fromId(playerPageStyle), onLyricsPageStyleChange)
+                    .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    PlaybackSettingsSection(Icons.Rounded.Palette,
+                        stringResource(L10nR.string.player_appearance_title), detail = "", framed = false,
+                        expanded = appearanceExpanded, onToggleExpanded = { appearanceExpanded = !appearanceExpanded }) {
+                        PlayerPageStyleSelector(app.echo.android.model.settings.EchoPlayerPageStyle.fromId(playerPageStyle), onLyricsPageStyleChange)
+                    }
                     PlaybackSettingsSection(Icons.Rounded.TextFields,
                         stringResource(L10nR.string.lyrics_setting_typography),
                         "${lyricsFontDetail(lyricsFontMode, importedFontUri)} · ${(lyricsFontScale * 100).roundToInt()}%",
-                        expanded = typeExpanded, onToggleExpanded = { typeExpanded = !typeExpanded }) {
+                        framed = false, expanded = typeExpanded, onToggleExpanded = { typeExpanded = !typeExpanded }) {
                         androidx.compose.foundation.layout.FlowRow(
                             Modifier.fillMaxWidth().selectableGroup(),
                             horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -161,7 +165,7 @@ internal fun LyricsSettingsPanel(
                     }
                     PlaybackSettingsSection(Icons.Rounded.ColorLens,
                         stringResource(L10nR.string.lyrics_setting_color_background), lyricsColorLabel(lyricsColorMode),
-                        expanded = colorExpanded, onToggleExpanded = { colorExpanded = !colorExpanded }) {
+                        framed = false, expanded = colorExpanded, onToggleExpanded = { colorExpanded = !colorExpanded }) {
                         Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             LyricsColorOptions.forEach { option ->
                                 LyricsColorSwatch(option, selected = option.value == lyricsColorMode,
@@ -173,7 +177,7 @@ internal fun LyricsSettingsPanel(
                     }
                     PlaybackSettingsSection(Icons.Rounded.Lyrics,
                         stringResource(L10nR.string.lyrics_setting_motion), lyricsMotionLabel(lyricsMotionMode),
-                        expanded = motionExpanded, onToggleExpanded = { motionExpanded = !motionExpanded }) {
+                        framed = false, expanded = motionExpanded, onToggleExpanded = { motionExpanded = !motionExpanded }) {
                         Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             LyricsMotionOptions.forEach { option ->
                                 PlaybackChoiceChip(text = lyricsMotionLabel(option.value), selected = lyricsMotionMode == option.value,
@@ -182,21 +186,24 @@ internal fun LyricsSettingsPanel(
                         }
                         LyricsSettingToggle(stringResource(L10nR.string.lyrics_setting_word_highlight), lyricsWordHighlightEnabled, onLyricsWordHighlightEnabledChange)
                         app.echo.android.design.EchoExpand(lyricsWordHighlightEnabled) {
-                            LyricsSettingToggle(
-                                stringResource(L10nR.string.lyrics_setting_estimated_word_highlight),
-                                lyricsEstimatedWordHighlightEnabled,
-                                onLyricsEstimatedWordHighlightEnabledChange,
-                                hint = stringResource(L10nR.string.lyrics_setting_estimated_word_highlight_hint),
-                            )
-                            LyricsSettingSlider(stringResource(L10nR.string.lyrics_setting_highlight_strength), lyricsWordHighlightIntensity,
-                                0.45f..1.35f, 1f, onLyricsWordHighlightIntensityChange)
+                            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                HorizontalDivider(color = mutedColor.copy(alpha = 0.16f))
+                                LyricsSettingToggle(
+                                    stringResource(L10nR.string.lyrics_setting_estimated_word_highlight),
+                                    lyricsEstimatedWordHighlightEnabled,
+                                    onLyricsEstimatedWordHighlightEnabledChange,
+                                    hint = stringResource(L10nR.string.lyrics_setting_estimated_word_highlight_hint),
+                                )
+                                LyricsSettingSlider(stringResource(L10nR.string.lyrics_setting_highlight_strength), lyricsWordHighlightIntensity,
+                                    0.45f..1.35f, 1f, onLyricsWordHighlightIntensityChange)
+                            }
                         }
                         LyricsSettingToggle(stringResource(L10nR.string.feature_player_immersive_d86793), lyricsImmersiveModeEnabled, onLyricsImmersiveModeChange)
                     }
                     PlaybackSettingsSection(Icons.Rounded.Translate,
                         stringResource(L10nR.string.lyrics_setting_content),
                         stringResource(L10nR.string.lyrics_setting_content_summary),
-                        expanded = contentExpanded, onToggleExpanded = { contentExpanded = !contentExpanded }) {
+                        framed = false, expanded = contentExpanded, onToggleExpanded = { contentExpanded = !contentExpanded }) {
                         val noContent = stringResource(L10nR.string.lyrics_setting_no_content)
                         LyricsSettingToggle(stringResource(L10nR.string.feature_player_translation_53c7ce), showTranslation,
                             onLyricsShowTranslationChange, hint = if (!hasTranslation) noContent else null)
@@ -206,9 +213,9 @@ internal fun LyricsSettingsPanel(
                         LyricsSettingToggle(stringResource(L10nR.string.feature_player_online_lyrics_21c928), onlineLyricsEnabled, onOnlineLyricsEnabledChange)
                     }
                     PlaybackActionRow(Icons.Rounded.UploadFile, stringResource(L10nR.string.feature_player_import_lyrics_e7494e),
-                        onClick = { onDismiss(); onImportLyrics() })
+                        framed = false, onClick = { onDismiss(); onImportLyrics() })
                     PlaybackActionRow(Icons.Rounded.Album, stringResource(L10nR.string.feature_player_back_to_cover_815543),
-                        onClick = { onDismiss(); onCloseLyrics() })
+                        framed = false, onClick = { onDismiss(); onCloseLyrics() })
                 }
             }
         }
@@ -230,7 +237,7 @@ private fun LyricsColorSwatch(
     )
     Column(
         modifier = modifier
-            .height(78.dp)
+            .heightIn(min = 78.dp)
             .clip(RoundedCornerShape(12.dp))
             .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
             .padding(top = 5.dp, bottom = 8.dp),
@@ -259,8 +266,8 @@ private fun LyricsColorSwatch(
             color = if (dark) Color.White.copy(alpha = 0.9f) else echoTheme().heading,
             style = MaterialTheme.typography.labelSmall.copy(lineHeight = 14.sp),
             fontWeight = FontWeight.Medium,
-            maxLines = 1,
-            overflow = TextOverflow.Visible,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

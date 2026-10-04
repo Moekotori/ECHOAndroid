@@ -411,6 +411,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     var openCastTabNonce by remember { mutableIntStateOf(0) }
     var openPcTabNonce by remember { mutableIntStateOf(0) }
     var openPcQueueNonce by remember { mutableIntStateOf(0) }
+    var settingsSoundRequestId by rememberSaveable { mutableIntStateOf(0) }
     var castSetupError by remember { mutableStateOf<String?>(null) }
     val castSessionActive by echoLinkSession.castActive.collectAsStateWithLifecycle()
     val castSessionName by echoLinkSession.castTargetName.collectAsStateWithLifecycle()
@@ -1298,6 +1299,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onOpenLibrary = { selectDockTab(EchoTab.Library) },
                                 onOpenConnect = { selectDockTab(EchoTab.Connect) },
                                 onOpenSearch = { searchVisible = true },
+                                onOpenSettings = { navigateToPage(EchoPagerPage.Settings) },
                                 onOpenListeningStats = { listeningStatsVisible = true },
                                 onOpenPlaybackHistory = { playbackHistoryVisible = true },
                                 onResumePlayback = {
@@ -1316,7 +1318,19 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             val backupNotice by viewModel.backupNotice.collectAsStateWithLifecycle()
                             val offlineUsedBytes by remember(viewModel) { viewModel.observeOfflineUsedBytes() }
                                 .collectAsStateWithLifecycle(0L)
+                            val settingsEqualizerState by viewModel.equalizerState.collectAsStateWithLifecycle()
                             SettingsScreen(
+                                onScanMusic = { addMusicVisible = true },
+                                onOpenConnect = { selectDockTab(EchoTab.Connect) },
+                                onOpenSound = {
+                                    settingsSoundRequestId++
+                                    navigateToPage(EchoPagerPage.Diagnostics)
+                                },
+                                soundSummary = stringResource(
+                                    if (settingsEqualizerState.enabled)
+                                        app.echo.android.feature.settings.R.string.settings_quick_eq_on
+                                    else app.echo.android.feature.settings.R.string.settings_quick_eq_off,
+                                ),
                                 importedFontFamily = importedFontFamily,
                                 isPageVisible = tabPagerState.currentPage == EchoPagerPage.Settings.ordinal,
                                 isActive = tabPagerState.currentPage == EchoPagerPage.Settings.ordinal &&
@@ -1676,6 +1690,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 val opraState by viewModel.opraState.collectAsStateWithLifecycle()
                                 val replayGainScan by viewModel.replayGainScanState.collectAsStateWithLifecycle()
                                 DiagnosticsScreen(
+                                    soundRequestId = settingsSoundRequestId,
                                     onSwipeToConnect = { navigateToPage(EchoPagerPage.Connect) },
                                     status = playbackStatus,
                                     positionFlow = viewModel.playbackPosition,

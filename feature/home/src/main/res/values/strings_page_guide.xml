@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_page_guide_settings">Swipe right · Settings</string>
+    <string name="home_page_guide_library">Swipe left · Library</string>
+</resources>

@@ -55,6 +55,7 @@ internal fun RoonRecentActivitySection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .homeCarouselScroll()
             .padding(top = 4.dp, bottom = 4.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -78,7 +79,6 @@ internal fun RoonRecentActivitySection(
                 )
             } else {
                 LazyRow(
-                    modifier = Modifier.homeCarouselScroll(),
                     contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
@@ -110,8 +110,6 @@ internal fun RoonRecentActivitySection(
                     SingleRecentAlbum(visibleAlbums.first(), onOpenAlbum)
                 } else {
                     LazyRow(
-                        modifier = Modifier
-                            .homeCarouselScroll(),
                         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                     ) {

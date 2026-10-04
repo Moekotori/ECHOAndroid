@@ -83,7 +83,18 @@ internal fun relativeLuminance(color: Color): Float {
 }
 
 private const val EchoDefaultStartupDarkArgb = 0xFF080B12.toInt()
-private const val EchoDefaultStartupLightArgb = 0xFFFFFFFF.toInt()
+private const val EchoDefaultStartupLightArgb = EchoLightSurfaces.BackgroundArgb
+
+// Shared near-white roles keep built-in pages, panels and chrome in the same light palette.
+internal object EchoLightSurfaces {
+    const val BackgroundArgb = 0xFFF5F5F3.toInt()
+    val Background = Color(BackgroundArgb)
+    val Surface = Color(0xFFFAFAF8)
+    val Container = Color(0xFFF0F0EE)
+    val ContainerHigh = Color(0xFFECECEA)
+    val ContainerHighest = Color(0xFFE6E6E4)
+    val Outline = Color(0xFFE2E2E0)
+}
 
 private val EchoDefaultDark = EchoThemeTokens(
     id = EchoColorTheme.Echo.id,
@@ -123,20 +134,20 @@ private val EchoDefaultLight = EchoThemeTokens(
     heading = Color(0xFF27272D),
     muted = Color(0xFF686870),
     onSurface = Color(0xFF27272D),
-    bgTop = Color.White,
-    bgMid = Color.White,
-    bgBottom = Color.White,
-    night = Color.White,
-    ink = Color.White,
-    panel = Color.White,
-    mist = Color(0xFFFAFAFA),
-    glassBorder = Color(0xFFE7E7E7),
-    softLine = Color(0xFFE7E7E7),
-    glassWash = Color.White,
+    bgTop = EchoLightSurfaces.Background,
+    bgMid = EchoLightSurfaces.Background,
+    bgBottom = EchoLightSurfaces.Background,
+    night = EchoLightSurfaces.Background,
+    ink = EchoLightSurfaces.Surface,
+    panel = EchoLightSurfaces.Surface,
+    mist = EchoLightSurfaces.Container,
+    glassBorder = EchoLightSurfaces.Outline,
+    softLine = EchoLightSurfaces.Outline,
+    glassWash = EchoLightSurfaces.Surface,
     outline = Color(0xFF85858E),
-    outlineVariant = Color(0xFFE7E7E7),
+    outlineVariant = EchoLightSurfaces.Outline,
     onSurfaceVariant = Color(0xFF686870),
-    surface = Color.White,
+    surface = EchoLightSurfaces.Surface,
 )
 
 private val TwilightLight = themedPalette(
@@ -150,11 +161,11 @@ private val TwilightLight = themedPalette(
     heading = Color(0xFF27272D),
     muted = Color(0xFF686870),
     onSurface = Color(0xFF27272D),
-    bgTop = Color.White,
-    bgMid = Color.White,
-    bgBottom = Color.White,
-    panel = Color.White,
-    mist = Color(0xFFFAFAFA),
+    bgTop = EchoLightSurfaces.Background,
+    bgMid = EchoLightSurfaces.Background,
+    bgBottom = EchoLightSurfaces.Background,
+    panel = EchoLightSurfaces.Surface,
+    mist = EchoLightSurfaces.Container,
 )
 
 private val TwilightDark = themedPalette(
@@ -186,11 +197,11 @@ private val RosewoodLight = themedPalette(
     heading = Color(0xFF27272D),
     muted = Color(0xFF686870),
     onSurface = Color(0xFF27272D),
-    bgTop = Color.White,
-    bgMid = Color.White,
-    bgBottom = Color.White,
-    panel = Color.White,
-    mist = Color(0xFFFAFAFA),
+    bgTop = EchoLightSurfaces.Background,
+    bgMid = EchoLightSurfaces.Background,
+    bgBottom = EchoLightSurfaces.Background,
+    panel = EchoLightSurfaces.Surface,
+    mist = EchoLightSurfaces.Container,
 )
 
 private val RosewoodDark = themedPalette(
@@ -222,11 +233,11 @@ private val AmberLight = themedPalette(
     heading = Color(0xFF27272D),
     muted = Color(0xFF686870),
     onSurface = Color(0xFF27272D),
-    bgTop = Color.White,
-    bgMid = Color.White,
-    bgBottom = Color.White,
-    panel = Color.White,
-    mist = Color(0xFFFAFAFA),
+    bgTop = EchoLightSurfaces.Background,
+    bgMid = EchoLightSurfaces.Background,
+    bgBottom = EchoLightSurfaces.Background,
+    panel = EchoLightSurfaces.Surface,
+    mist = EchoLightSurfaces.Container,
 )
 
 private val AmberDark = themedPalette(
@@ -258,11 +269,11 @@ private val OceanLight = themedPalette(
     heading = Color(0xFF27272D),
     muted = Color(0xFF686870),
     onSurface = Color(0xFF27272D),
-    bgTop = Color.White,
-    bgMid = Color.White,
-    bgBottom = Color.White,
-    panel = Color.White,
-    mist = Color(0xFFFAFAFA),
+    bgTop = EchoLightSurfaces.Background,
+    bgMid = EchoLightSurfaces.Background,
+    bgBottom = EchoLightSurfaces.Background,
+    panel = EchoLightSurfaces.Surface,
+    mist = EchoLightSurfaces.Container,
 )
 
 private val OceanDark = themedPalette(
@@ -294,11 +305,11 @@ private val GraphiteLight = themedPalette(
     heading = Color(0xFF27272D),
     muted = Color(0xFF686870),
     onSurface = Color(0xFF27272D),
-    bgTop = Color.White,
-    bgMid = Color.White,
-    bgBottom = Color.White,
-    panel = Color.White,
-    mist = Color(0xFFFAFAFA),
+    bgTop = EchoLightSurfaces.Background,
+    bgMid = EchoLightSurfaces.Background,
+    bgBottom = EchoLightSurfaces.Background,
+    panel = EchoLightSurfaces.Surface,
+    mist = EchoLightSurfaces.Container,
 )
 
 private val GraphiteDark = themedPalette(
@@ -330,11 +341,11 @@ private val IndigoLight = themedPalette(
     heading = Color(0xFF27272D),
     muted = Color(0xFF686870),
     onSurface = Color(0xFF27272D),
-    bgTop = Color.White,
-    bgMid = Color.White,
-    bgBottom = Color.White,
-    panel = Color.White,
-    mist = Color(0xFFFAFAFA),
+    bgTop = EchoLightSurfaces.Background,
+    bgMid = EchoLightSurfaces.Background,
+    bgBottom = EchoLightSurfaces.Background,
+    panel = EchoLightSurfaces.Surface,
+    mist = EchoLightSurfaces.Container,
 )
 
 private val IndigoDark = themedPalette(
@@ -366,11 +377,11 @@ private val PlumLight = themedPalette(
     heading = Color(0xFF27272D),
     muted = Color(0xFF686870),
     onSurface = Color(0xFF27272D),
-    bgTop = Color.White,
-    bgMid = Color.White,
-    bgBottom = Color.White,
-    panel = Color.White,
-    mist = Color(0xFFFAFAFA),
+    bgTop = EchoLightSurfaces.Background,
+    bgMid = EchoLightSurfaces.Background,
+    bgBottom = EchoLightSurfaces.Background,
+    panel = EchoLightSurfaces.Surface,
+    mist = EchoLightSurfaces.Container,
 )
 
 private val PlumDark = themedPalette(
@@ -402,11 +413,11 @@ private val CopperLight = themedPalette(
     heading = Color(0xFF27272D),
     muted = Color(0xFF686870),
     onSurface = Color(0xFF27272D),
-    bgTop = Color.White,
-    bgMid = Color.White,
-    bgBottom = Color.White,
-    panel = Color.White,
-    mist = Color(0xFFFAFAFA),
+    bgTop = EchoLightSurfaces.Background,
+    bgMid = EchoLightSurfaces.Background,
+    bgBottom = EchoLightSurfaces.Background,
+    panel = EchoLightSurfaces.Surface,
+    mist = EchoLightSurfaces.Container,
 )
 
 private val CopperDark = themedPalette(
@@ -438,11 +449,11 @@ private val FrostLight = themedPalette(
     heading = Color(0xFF27272D),
     muted = Color(0xFF686870),
     onSurface = Color(0xFF27272D),
-    bgTop = Color.White,
-    bgMid = Color.White,
-    bgBottom = Color.White,
-    panel = Color.White,
-    mist = Color(0xFFFAFAFA),
+    bgTop = EchoLightSurfaces.Background,
+    bgMid = EchoLightSurfaces.Background,
+    bgBottom = EchoLightSurfaces.Background,
+    panel = EchoLightSurfaces.Surface,
+    mist = EchoLightSurfaces.Container,
 )
 
 private val FrostDark = themedPalette(
@@ -503,13 +514,13 @@ internal fun themedPalette(
         panel = panel,
         mist = mist,
         glassBorder = if (dark) Color.White.copy(alpha = 0.10f)
-            else if (neutralLight) Color(0xFFE7E7E7) else lerp(mist, accent, 0.16f),
+            else if (neutralLight) EchoLightSurfaces.Outline else lerp(mist, accent, 0.16f),
         softLine = if (dark) Color.White.copy(alpha = 0.08f)
-            else if (neutralLight) Color(0xFFE7E7E7) else lerp(mist, heading, 0.14f),
+            else if (neutralLight) EchoLightSurfaces.Outline else lerp(mist, heading, 0.14f),
         glassWash = if (dark) lerp(panel, secondary, 0.12f)
-            else if (neutralLight) Color.White else lerp(mist, secondary, 0.10f),
+            else if (neutralLight) EchoLightSurfaces.Surface else lerp(mist, secondary, 0.10f),
         outline = lerp(onSurface, surface, if (dark) 0.58f else 0.42f),
-        outlineVariant = if (neutralLight) Color(0xFFE7E7E7)
+        outlineVariant = if (neutralLight) EchoLightSurfaces.Outline
             else lerp(onSurface, surface, if (dark) 0.78f else 0.72f),
         onSurfaceVariant = muted,
         surface = surface,

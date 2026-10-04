@@ -75,9 +75,18 @@ fun DiagnosticsScreen(
     bluetoothCodecNeedsPermission: Boolean = false,
     onRequestBluetoothCodecPermission: () -> Unit = {},
     onSwipeToConnect: () -> Unit = {},
+    soundRequestId: Int = 0,
 ) {
     val pagerState = rememberPagerState { 3 }
     var soundPanel by rememberSaveable { mutableIntStateOf(0) }
+    var handledSoundRequestId by rememberSaveable { mutableIntStateOf(0) }
+    LaunchedEffect(soundRequestId) {
+        if (soundRequestId != 0 && soundRequestId != handledSoundRequestId) {
+            soundPanel = 0
+            pagerState.scrollToPage(1)
+            handledSoundRequestId = soundRequestId
+        }
+    }
     val scrollStates = listOf(rememberScrollState(), rememberScrollState(), rememberScrollState())
     val soundScrollStates = listOf(rememberScrollState(), rememberScrollState(), rememberScrollState(), rememberScrollState())
     val scope = rememberCoroutineScope()

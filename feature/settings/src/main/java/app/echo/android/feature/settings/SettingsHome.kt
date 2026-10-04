@@ -8,6 +8,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -20,6 +22,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
 private val settingsGroups = listOf(
@@ -37,6 +40,10 @@ internal fun SettingsHome(
     availability: SettingsSearchAvailability,
     onQueryChange: (String) -> Unit,
     onOpenPlugins: () -> Unit,
+    onScanMusic: () -> Unit,
+    onOpenConnect: () -> Unit,
+    onOpenSound: () -> Unit,
+    soundSummary: String,
     onOpenCategory: (SettingsCategory) -> Unit,
     onSearchSelect: (SettingsSearchResult) -> Unit,
 ) {
@@ -66,25 +73,34 @@ internal fun SettingsHome(
                     SettingsSearchResultRow(result, showDivider = index > 0) { onSearchSelect(result) }
                 }
             } else {
+                item(key = "music-shortcuts", contentType = "settings-group") {
+                    Column {
+                        SettingsHomeRow(Icons.Rounded.FolderOpen,
+                            stringResource(R.string.settings_quick_scan), "", compactMode, onScanMusic)
+                        SettingsHomeRow(SettingsCategoryIcons.Services,
+                            stringResource(R.string.settings_quick_connect), "", compactMode, onOpenConnect)
+                        SettingsHomeRow(Icons.Rounded.GraphicEq,
+                            stringResource(R.string.settings_quick_sound), soundSummary, compactMode, onOpenSound)
+                    }
+                }
                 settingsGroups.forEach { (title, entries) ->
                     item(key = title, contentType = "settings-group") {
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            SettingsHomeDivider()
                             Text(
                                 stringResource(title),
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = SettingsContentInset).semantics { heading() },
+                                modifier = Modifier.padding(horizontal = SettingsContentInset, vertical = 10.dp).semantics { heading() },
                             )
                             Column {
                                 if (title == R.string.settings_group_app) {
                                     SettingsHomeRow(SettingsCategoryIcons.Plugins,
                                         stringResource(R.string.settings_plugins),
                                         stringResource(R.string.settings_plugins_summary), compactMode, onOpenPlugins)
-                                    SettingsHomeDivider()
                                 }
-                                entries.forEachIndexed { index, entry ->
-                                    if (index > 0) SettingsHomeDivider()
+                                entries.forEach { entry ->
                                     SettingsHomeRow(entry.icon, stringResource(entry.title),
                                         summaries[entry].orEmpty(), compactMode) { onOpenCategory(entry) }
                                 }
@@ -99,24 +115,24 @@ internal fun SettingsHome(
 
 @Composable
 private fun SettingsHomeDivider() {
-    HorizontalDivider(Modifier.padding(start = SettingsContentInset + 34.dp, end = SettingsContentInset),
+    HorizontalDivider(Modifier.padding(horizontal = SettingsContentInset),
         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 }
 
 @Composable
 private fun SettingsHomeRow(icon: ImageVector, title: String, summary: String,
     compactMode: Boolean, onClick: () -> Unit) {
-    Surface(onClick = onClick, shape = SettingsShape, color = Color.Transparent,
+    Surface(onClick = onClick, shape = androidx.compose.ui.graphics.RectangleShape, color = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface, modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.heightIn(min = if (compactMode) 56.dp else 62.dp)
             .padding(horizontal = SettingsContentInset, vertical = if (compactMode) 6.dp else 8.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            EchoIcon(icon, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                if (summary.isNotBlank()) Text(summary, style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
+            EchoIcon(icon, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium,
+                modifier = Modifier.weight(1f), maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (summary.isNotBlank()) Text(summary, style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.weight(0.8f), textAlign = TextAlign.End,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             EchoIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, Modifier.size(20.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }

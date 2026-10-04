@@ -17,8 +17,11 @@ internal object LibraryAlbumGrouping {
             )) }
             .groupBy(::groupingIdentity)
             .flatMap { (identity, group) ->
-                val winner = if (identity.canReconcile && group.size >= 2 &&
-                    identity.folder?.substringAfterLast('/') !in SharedFolderNames) winningAlbumKey(identity.album, group) else null
+                val winner = if (identity.canReconcile && group.size >= 2) winningAlbumKey(
+                    identity.album,
+                    group,
+                    sharedFolder = identity.folder?.substringAfterLast('/') in SharedFolderNames,
+                ) else null
                 if (winner == null) group else group.map { it.copy(albumKey = winner) }
             }
             .associateBy { it.id }
@@ -63,27 +66,66 @@ internal object LibraryAlbumGrouping {
         )
     }
 
-    private fun winningAlbumKey(album: String, group: List<LibraryTrackEntity>): String? {
+    private fun winningAlbumKey(
+        album: String,
+        group: List<LibraryTrackEntity>,
+        sharedFolder: Boolean,
+    ): String? {
         val keys = group.mapTo(linkedSetOf()) { it.albumKey }
         if (keys.size <= 1) return null
         val albumArtists = group.mapNotNull { track ->
             track.normalizedAlbumArtist?.takeIf { it.isNotBlank() }
                 ?: track.albumArtist?.normalizedForSearch()?.takeIf { it.isNotBlank() }
         }.mapNotNull(::canonicalAlbumArtistKey).distinct()
-        // Explicit conflicting owners are separate releases, even in a shared download folder.
-        if (albumArtists.size > 1) return null
+        val commonArtist = commonCreditedArtist(group)
+        // Some files copy the song's changing guest credits into ALBUMARTIST. Only repair
+        // that case when every owner matches its song credits and they share an artist.
+        // Distinct release owners and manually edited tags remain authoritative.
+        if (albumArtists.size > 1) {
+            if (commonArtist == null || group.any { track ->
+                    track.metadataEditedAtEpochMs != null ||
+                        canonicalAlbumArtistKey(track.albumArtist?.normalizedForSearch())?.let { owner ->
+                            owner != canonicalAlbumArtistKey(track.artist.normalizedForSearch())
+                        } == true
+                }) return null
+            return libraryAlbumKey(album, commonArtist, null)
+        }
         if (albumArtists.isNotEmpty()) {
             val preferred = albumArtists.single()
+            if (sharedFolder && commonArtist != preferred) return null
             return libraryAlbumKey(album, preferred, group.first().normalizedArtist)
         }
-        val credited = group.map { LibraryArtistPolicy.keys(it.artist) }
-        val common = credited.reduce { first, next -> first.intersect(next) }
-        if (common.size == 1) return libraryAlbumKey(album, common.single(), null)
+        if (commonArtist != null) return libraryAlbumKey(album, commonArtist, null)
+        // Same title alone is insufficient evidence in a general Music/Download folder.
+        if (sharedFolder) return null
         val artistKeys = group.mapTo(linkedSetOf()) { it.artistKey }
         if (artistKeys.size > 1) {
             return libraryAlbumKey(album, VariousArtistsKey, null)
         }
         return keys.first()
+    }
+
+    private fun commonCreditedArtist(group: List<LibraryTrackEntity>): String? {
+        val credited = group.map { LibraryArtistPolicy.keys(it.artist) }
+        val common = credited.reduce { first, next -> first.intersect(next) }
+            .filterNot(LibraryMetadataSentinels::isUnknown)
+        if (common.size == 1) return common.single()
+        if (common.isNotEmpty() || credited.any { it.size != 1 }) return null
+
+        // Slash credits are ambiguous (AC/DC is also a band name). Do not split artist
+        // identities globally: within this album/folder only, keep the longest shared
+        // leading credit, including embedded slashes when the full band name is shared.
+        val values = credited.map { it.single() }
+        var prefix = values.first()
+        while (prefix.isNotBlank()) {
+            if (!LibraryMetadataSentinels.isUnknown(prefix) && values.all { value ->
+                    value == prefix || value.startsWith("$prefix/")
+                }) return prefix
+            val separator = prefix.lastIndexOf('/')
+            if (separator < 0) break
+            prefix = prefix.substring(0, separator).trimEnd()
+        }
+        return null
     }
 
     private data class GroupIdentity(

@@ -151,12 +151,20 @@ fun SettingsScreen(
     onRequestNotificationPermission: () -> Unit = {},
     onOpenPlugins: () -> Unit = {},
     isPageVisible: Boolean = isActive,
+    onScanMusic: () -> Unit = onOpenLibrary,
+    onOpenConnect: () -> Unit = {},
+    onOpenSound: () -> Unit = {},
+    soundSummary: String = "",
 ) {
     SettingsNavigation(
         isActive = isActive,
         isPageVisible = isPageVisible,
         compactMode = compactModeEnabled,
         onOpenPlugins = onOpenPlugins,
+        onScanMusic = onScanMusic,
+        onOpenConnect = onOpenConnect,
+        onOpenSound = onOpenSound,
+        soundSummary = soundSummary,
         searchAvailability = SettingsSearchAvailability(
             scheduledDarkEnabled = scheduledDarkModeEnabled,
             customBackgroundMode = customBackgroundMode,

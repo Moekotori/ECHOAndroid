@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_quick_scan">Scanner la musique</string>
+    <string name="settings_quick_connect">Echo Link</string>
+    <string name="settings_quick_sound">Réglages audio</string>
+    <string name="settings_quick_eq_on">EQ activé</string>
+    <string name="settings_quick_eq_off">EQ désactivé</string>
+</resources>

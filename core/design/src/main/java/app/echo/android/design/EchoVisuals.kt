@@ -73,9 +73,9 @@ val EchoContentMaxWidth = 560.dp
 val EchoAccent = Color(0xFFD3A9B5)
 val EchoAccentText = Color(0xFFE4C4CC)
 val EchoAccentDeep = Color(0xFF9B5B6A)
-val EchoBgTop = Color.White
-val EchoBgMid = Color.White
-val EchoBgBottom = Color.White
+val EchoBgTop = EchoLightSurfaces.Background
+val EchoBgMid = EchoLightSurfaces.Background
+val EchoBgBottom = EchoLightSurfaces.Background
 val RoonInk = Color(0xFF27272D)
 val RoonMuted = Color(0xFF686870)
 val EchoHomeBlue = EchoAccent
@@ -141,7 +141,7 @@ fun echoGlassContainerBrush(
             )
         } else {
             listOf(
-                Color.White.copy(alpha = 0.98f),
+                (if (theme.id == EchoColorTheme.Custom.id) Color.White else theme.panel).copy(alpha = 0.98f),
                 theme.glassWash,
                 theme.mist.copy(alpha = 0.92f),
             )
@@ -167,7 +167,7 @@ fun echoGlassRowBrush(
             )
         } else {
             listOf(
-                Color.White.copy(alpha = 0.98f),
+                (if (theme.id == EchoColorTheme.Custom.id) Color.White else theme.panel).copy(alpha = 0.98f),
                 theme.mist.copy(alpha = 0.82f),
                 if (selected) wash.copy(alpha = 0.08f) else theme.glassWash,
             )
@@ -209,7 +209,7 @@ fun EchoGlassBackground(modifier: Modifier = Modifier) {
     val theme = echoTheme()
     val scheme = MaterialTheme.colorScheme
     val dark = theme.dark
-    // Light presets keep a white canvas; color belongs to controls and artwork.
+    // Light presets keep a soft neutral canvas; color belongs to controls and artwork.
     if (!dark && theme.id != EchoColorTheme.Custom.id) {
         Box(modifier = modifier.background(scheme.background))
         return
@@ -314,7 +314,7 @@ fun PageChrome(
         } else {
             Brush.verticalGradient(
                 listOf(
-                    Color.White.copy(alpha = 0.36f),
+                    (if (theme.id == EchoColorTheme.Custom.id) Color.White else theme.panel).copy(alpha = 0.36f),
                     theme.mist.copy(alpha = 0.28f),
                     theme.mist.copy(alpha = 0.22f),
                 ),

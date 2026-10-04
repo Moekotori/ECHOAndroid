@@ -15,10 +15,10 @@ data class EchoChromeColors(
 )
 
 private val LightChrome = EchoChromeColors(
-    surface = Color.White,
+    surface = EchoLightSurfaces.Surface,
     content = Color(0xFF242529),
     secondary = Color(0xFF74767D),
-    separator = Color(0xFFECEDEF),
+    separator = EchoLightSurfaces.Outline,
     onContent = Color.White,
 )
 

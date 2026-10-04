@@ -205,12 +205,21 @@ object EchoRemotePlaybackAuthRegistry {
                 .filter { it.first.lowercase() in sensitiveCacheQueryNames }
                 .sortedWith(compareBy<Pair<String, String>> { it.first.lowercase() }.thenBy { it.second })
         }
-        return remotePlaybackCacheNamespace(
+        val namespace = remotePlaybackCacheNamespace(
             credentialIdentity = credentialIdentity,
             userInfoIdentity = userInfoIdentity,
             authorizationHeaders = authorizationHeaders,
             sensitiveQueryValues = sensitiveQueryValues,
         )
+        if (!isSubsonicStreamUrl(url)) return namespace
+        // A prefetch supplies an explicit media key, so the resource URL alone cannot
+        // separate original audio from the MP3 fallback. Version only these streams
+        // to leave cached responses from the previous server-selected format behind.
+        val params = subsonicStreamParameters(parseQueryParameters(url))
+            .filter { it.first.lowercase() in subsonicStreamVariantQueryNames }
+            .map { it.first.lowercase() to it.second.lowercase() }
+            .sortedWith(compareBy<Pair<String, String>> { it.first }.thenBy { it.second })
+        return sha256("$namespace:subsonic-stream-v1:$params")
     }
 
     private fun matchingWebDavCredential(uri: Uri): EchoWebDavPlaybackCredential? =
@@ -503,9 +512,7 @@ private fun stripHttpUserInfo(uri: String): String {
 }
 
 internal fun subsonicUnsupportedFormatFallbackUrl(url: String): String? {
-    if (!isSubsonicRestUrl(url)) return null
-    val path = runCatching { URI(url).path }.getOrNull()?.lowercase() ?: return null
-    if (!path.contains("/stream")) return null
+    if (!isSubsonicStreamUrl(url)) return null
     val params = parseQueryParameters(url)
     val format = params.firstOrNull { it.first.equals("format", ignoreCase = true) }?.second
     if (!format.isNullOrBlank() && !format.equals("raw", ignoreCase = true)) return null
@@ -524,6 +531,7 @@ internal fun applySubsonicTokenAuth(
     val token = md5Hex(credential.password + salt)
     val kept = parseQueryParameters(url)
         .filterNot { it.first.lowercase() in subsonicAuthQueryNames }
+        .let { if (isSubsonicStreamUrl(url)) subsonicStreamParameters(it) else it }
     val auth = listOf(
         "u" to credential.username.trim(),
         "t" to token,
@@ -538,6 +546,19 @@ private fun isSubsonicRestUrl(url: String): Boolean {
     val path = runCatching { URI(url).path }.getOrNull() ?: return false
     val lower = path.lowercase()
     return lower.contains("/rest/") || lower.endsWith("/rest")
+}
+
+private fun isSubsonicStreamUrl(url: String): Boolean {
+    if (!isSubsonicRestUrl(url)) return false
+    val endpoint = runCatching { URI(url).path }.getOrNull()?.substringAfterLast('/')
+    return endpoint.equals("stream", ignoreCase = true) || endpoint.equals("stream.view", ignoreCase = true)
+}
+
+private fun subsonicStreamParameters(params: List<Pair<String, String>>): List<Pair<String, String>> {
+    if (params.any { it.first.equals("format", ignoreCase = true) && it.second.isNotBlank() }) return params
+    // The stream API otherwise uses the server's player transcode profile. Request
+    // original audio first; unsupported containers still use the bounded MP3 retry.
+    return params.filterNot { it.first.equals("format", ignoreCase = true) } + ("format" to "raw")
 }
 
 internal fun isJellyfinMediaUrl(url: String): Boolean {
@@ -719,6 +740,8 @@ private const val SubsonicPlaybackApiVersion = "1.16.1"
 private const val SubsonicPlaybackClientId = "ECHOAndroid"
 
 private val subsonicAuthQueryNames = setOf("u", "t", "s", "p", "v", "c", "f")
+
+private val subsonicStreamVariantQueryNames = setOf("format", "maxbitrate", "timeoffset")
 
 private val sensitiveCacheQueryNames = setOf(
     "access_token",

@@ -6,6 +6,67 @@ import org.junit.Test
 
 class LibraryAlbumGroupingTest {
     @Test
+    fun slashGuestCreditsInSharedMusicFolderJoinImaginalia() {
+        val tracks = imaginaliaTracks("Music/")
+        val changes = LibraryAlbumGrouping.reconcile(tracks).associateBy { it.id }
+        val reconciled = tracks.map { changes[it.id] ?: it }
+
+        assertEquals(setOf("イマジナリア::森羅万象"), reconciled.map { it.albumKey }.toSet())
+        assertEquals(tracks.map { it.artist }, reconciled.map { it.artist })
+        assertTrue(LibraryAlbumGrouping.reconcile(reconciled).isEmpty())
+    }
+
+    @Test
+    fun albumArtistCopiedFromGuestCreditsDoesNotSplitRelease() {
+        val tracks = imaginaliaTracks("Music/イマジナリア/").map {
+            it.copy(albumArtist = it.artist).withComputedSearchMetadata()
+        }
+        val changes = LibraryAlbumGrouping.reconcile(tracks).associateBy { it.id }
+        val reconciled = tracks.map { changes[it.id] ?: it }
+
+        assertEquals(setOf("イマジナリア::森羅万象"), reconciled.map { it.albumKey }.toSet())
+        assertEquals(tracks.map { it.albumArtist }, reconciled.map { it.albumArtist })
+        assertTrue(LibraryAlbumGrouping.reconcile(reconciled).isEmpty())
+    }
+
+    @Test
+    fun explicitReleaseOwnersAndUserEditsStaySeparateDespiteCommonSongArtist() {
+        val tracks = imaginaliaTracks("Music/イマジナリア/")
+        val distinctOwners = tracks.mapIndexed { index, track ->
+            track.copy(albumArtist = "Release owner $index").withComputedSearchMetadata()
+        }
+        assertTrue(LibraryAlbumGrouping.reconcile(distinctOwners).isEmpty())
+        val edited = tracks.map {
+            it.copy(albumArtist = it.artist, metadataEditedAtEpochMs = 1L).withComputedSearchMetadata()
+        }
+        assertTrue(LibraryAlbumGrouping.reconcile(edited).isEmpty())
+    }
+
+    @Test
+    fun sharedFolderWithoutCommonArtistDoesNotMergeSameTitle() {
+        val tracks = listOf("Queen", "ABBA").mapIndexed { index, artist ->
+            track("$index", "Greatest Hits", artist, path = "Download/").withComputedSearchMetadata()
+        }
+        assertTrue(LibraryAlbumGrouping.reconcile(tracks).isEmpty())
+    }
+
+    @Test
+    fun sharedSlashBandNameIsKeptWhole() {
+        val tracks = listOf("AC/DC", "AC/DC/Guest").mapIndexed { index, artist ->
+            track("$index", "Live", artist, path = "Music/Live/").withComputedSearchMetadata()
+        }
+        val changes = LibraryAlbumGrouping.reconcile(tracks).associateBy { it.id }
+        assertEquals(setOf("live::ac/dc"), tracks.map { (changes[it.id] ?: it).albumKey }.toSet())
+        assertEquals(listOf("AC/DC"), LibraryArtistPolicy.names("AC/DC"))
+    }
+
+    private fun imaginaliaTracks(path: String): List<LibraryTrackEntity> =
+        listOf("森羅万象/あよ/棗いつき", "森羅万象/ななひら", "森羅万象/ちょこ", "森羅万象/nayuta")
+            .mapIndexed { index, artist ->
+                track("$index", "イマジナリア", artist, path = path).withComputedSearchMetadata()
+            }
+
+    @Test
     fun discSuffixDoesNotSplitAlbumKey() {
         val disc1 = track(
             id = "1",

@@ -1197,6 +1197,9 @@ class EchoLibraryRepository(
             val liveIds = HashSet<String>(existingFingerprints.size + seenIds.size)
             liveIds.addAll(existingFingerprints.keys)
             liveIds.addAll(seenIds)
+            // SAF rows are still live while MediaStore finishes indexing the same files.
+            // They must participate in reconciliation even on the first MediaStore scan.
+            liveIds.addAll(documentFingerprints.map { it.id })
             coroutineContext.ensureActive()
             collapseIndexedDuplicates(dao, scanOutcome.fileIdentities, liveIds, seenIds)
             mergeDuplicateAliases(
@@ -1261,6 +1264,7 @@ class EchoLibraryRepository(
             if (scanOutcome.querySucceeded) {
                 reconcileChangedAlbumGrouping(dao, changedGroupingFolders)
             }
+            scanner.pruneLocalArtwork(dao)
             emitProgress(
                 phase = if (scanOutcome.querySucceeded) LibraryScanPhase.Completed else LibraryScanPhase.Error,
                 error = if (scanOutcome.failedReadCount > 0 || !scanOutcome.querySucceeded) {
@@ -1386,6 +1390,7 @@ class EchoLibraryRepository(
                 onUnchangedIds = { ids -> seenIds.addAll(ids) },
                 listings = documentListings,
                 reuseDirectoryListings = reuseDirectoryListings,
+                persistArtwork = scanner::persistLocalArtwork,
                 onDuplicate = { oldId, targetId ->
                     if (oldId in existingFingerprints) duplicateAliases[oldId] = targetId
                 },
@@ -1480,6 +1485,7 @@ class EchoLibraryRepository(
             if (scanOutcome.querySucceeded) {
                 reconcileChangedAlbumGrouping(dao, changedGroupingFolders)
             }
+            scanner.pruneLocalArtwork(dao)
             emitProgress(
                 phase = if (scanOutcome.querySucceeded) LibraryScanPhase.Completed else LibraryScanPhase.Error,
                 error = when {

@@ -37,4 +37,5 @@ dependencies {
     implementation("com.belerweb:pinyin4j:2.5.1")
 
     debugImplementation(libs.androidx.compose.ui.tooling)
+    testImplementation(libs.junit)
 }

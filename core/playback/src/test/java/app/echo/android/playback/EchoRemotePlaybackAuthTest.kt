@@ -42,6 +42,7 @@ class EchoRemotePlaybackAuthTest {
         val query = queryMap(resolved)
 
         assertEquals("s1", query["id"])
+        assertEquals("raw", query["format"])
         assertEquals("alice", query["u"])
         assertFalse(query["s"].isNullOrBlank())
         assertEquals(md5Hex("secret${query["s"]}"), query["t"])
@@ -129,6 +130,43 @@ class EchoRemotePlaybackAuthTest {
         assertTrue(fallback.contains("maxBitRate=320"))
         assertEquals("s1", queryMap(fallback)["id"])
         assertEquals(null, subsonicUnsupportedFormatFallbackUrl(fallback))
+    }
+
+    @Test
+    fun streamSigningDefaultsToRawButPreservesExplicitTranscoding() {
+        val credential = EchoSubsonicPlaybackCredential("https://navidrome.example", "alice", "secret")
+        val base = "https://navidrome.example/music/rest/stream.view?id=s1"
+        assertEquals("raw", queryMap(applySubsonicTokenAuth("$base&format=", credential, "salt"))["format"])
+        val fallback = requireNotNull(subsonicUnsupportedFormatFallbackUrl(base))
+        val signedFallback = queryMap(applySubsonicTokenAuth(fallback, credential, "salt"))
+        assertEquals("mp3", signedFallback["format"])
+        assertEquals("320", signedFallback["maxBitRate"])
+        assertEquals("opus", queryMap(applySubsonicTokenAuth("$base&format=opus", credential, "salt"))["format"])
+        val extensionless = "https://navidrome.example/rest/stream?id=s1"
+        assertEquals("raw", queryMap(applySubsonicTokenAuth(extensionless, credential, "salt"))["format"])
+        assertNull(queryMap(applySubsonicTokenAuth("https://navidrome.example/rest/getCoverArt.view?id=c1", credential, "salt"))["format"])
+        assertNull(subsonicUnsupportedFormatFallbackUrl("https://navidrome.example/rest/streamSomething.view?id=s1"))
+    }
+
+    @Test
+    fun cacheNamespaceSeparatesOriginalAndTranscodedStreams() {
+        EchoRemotePlaybackAuthRegistry.replaceSubsonicCredentials(
+            listOf(EchoSubsonicPlaybackCredential("https://navidrome.example", "alice", "secret")),
+        )
+        val base = "https://navidrome.example/rest/stream.view?id=s1"
+        val original = EchoRemotePlaybackAuthRegistry.cacheIdentity(base, emptyMap())
+        assertEquals(original, EchoRemotePlaybackAuthRegistry.cacheIdentity("$base&format=raw", emptyMap()))
+        val fallback = requireNotNull(subsonicUnsupportedFormatFallbackUrl(base))
+        val mp3 = EchoRemotePlaybackAuthRegistry.cacheIdentity(fallback, emptyMap())
+        assertNotEquals(original, mp3)
+        assertEquals(
+            mp3,
+            EchoRemotePlaybackAuthRegistry.cacheIdentity(
+                EchoRemotePlaybackAuthRegistry.resolveSubsonicUrl(fallback), emptyMap(),
+            ),
+        )
+        assertNotEquals(mp3, EchoRemotePlaybackAuthRegistry.cacheIdentity("$base&format=mp3&maxBitRate=128", emptyMap()))
+        assertNotEquals(original, EchoRemotePlaybackAuthRegistry.cacheIdentity("$base&format=raw&timeOffset=20", emptyMap()))
     }
 
     @Test

@@ -25,6 +25,13 @@ class MediaStoreTrackScanner(
 ) {
     private val appContext = context.applicationContext
     private val contentResolver: ContentResolver = appContext.contentResolver
+    private val localArtworkStore = LocalArtworkStore(java.io.File(appContext.filesDir, "local-library-artwork"))
+
+    internal fun persistLocalArtwork(bytes: ByteArray?): String? = localArtworkStore.store(bytes)
+
+    internal suspend fun pruneLocalArtwork(dao: LibraryTrackDao) {
+        if (localArtworkStore.exists()) localArtworkStore.prune(dao.getLocalFileArtworkUris().toSet())
+    }
     internal val rejectedFileCache by lazy { LocalScanFilterCache(java.io.File(appContext.cacheDir, "scan-rejected-v1.json")) }
     private var includeSampleRateColumn =
         LibraryScanPolicy.mediaStoreSampleRateColumnAvailable(Build.VERSION.SDK_INT)
@@ -732,7 +739,10 @@ class MediaStoreTrackScanner(
             }
         }
         val tagged = if (LocalAudioTagReadPolicy.prefersFileTags(mimeType, fileName ?: contentUri)) {
-            entity.withAudioTags(readAudioTagsFromUri(contentUri)).withFingerprint()
+            val tags = readAudioTagsFromUri(contentUri)
+            entity.withAudioTags(tags).copy(
+                artworkUri = persistLocalArtwork(tags?.artworkBytes) ?: entity.artworkUri,
+            ).withFingerprint()
         } else {
             entity
         }
@@ -899,7 +909,7 @@ class MediaStoreTrackScanner(
         java.io.File(appContext.filesDir, "local-file-tag-backfill-v5")
 
     private fun aggregationKeyBackfillMarker(): java.io.File =
-        java.io.File(appContext.filesDir, "library-aggregation-keys-v3")
+        java.io.File(appContext.filesDir, "library-aggregation-keys-v4")
 
     internal fun readSampleRateHz(contentUri: String): Int? =
         runCatching {

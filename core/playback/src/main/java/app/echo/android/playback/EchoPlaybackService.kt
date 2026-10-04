@@ -245,7 +245,7 @@ class EchoPlaybackService : MediaLibraryService() {
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? =
         mediaSession.takeIf {
-            EchoMediaSessionControllerGate.isAllowed(
+            EchoMediaSessionControllerGate.isAllowedServiceRequest(
                 context = this,
                 controllerInfo = controllerInfo,
                 session = it,

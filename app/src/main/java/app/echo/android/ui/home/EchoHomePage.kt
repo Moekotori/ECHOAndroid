@@ -25,6 +25,7 @@ internal fun EchoHomePage(
     onResumePlayback: () -> Unit,
     bottomInset: Dp,
     homeLayout: app.echo.android.model.settings.EchoHomeLayout,
+    onOpenSettings: () -> Unit,
 ) {
     val libraryStats by viewModel.libraryStats.collectAsStateWithLifecycle()
     val playlists by viewModel.localPlaylists.collectAsStateWithLifecycle()
@@ -71,6 +72,7 @@ internal fun EchoHomePage(
         onOpenLibrary = onOpenLibrary,
         onOpenConnect = onOpenConnect,
         onOpenSearch = onOpenSearch,
+        onOpenSettings = onOpenSettings,
         onOpenListeningStats = onOpenListeningStats,
         onOpenPlaybackHistory = onOpenPlaybackHistory,
         recentPlayedTracks = recentlyPlayedTracks,

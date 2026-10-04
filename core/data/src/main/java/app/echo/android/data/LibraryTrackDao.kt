@@ -981,6 +981,9 @@ interface LibraryTrackDao {
     @Query("SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs FROM library_tracks WHERE id LIKE 'saf:%' AND source IN ('saf', 'mediastore')")
     suspend fun getDocumentFingerprints(): List<TrackFingerprint>
 
+    @Query("SELECT DISTINCT artworkUri FROM library_tracks WHERE source IN ('saf', 'mediastore') AND artworkUri LIKE 'file:%'")
+    suspend fun getLocalFileArtworkUris(): List<String>
+
     @Query(
         """
         SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs
@@ -1355,7 +1358,8 @@ interface LibraryTrackDao {
         val old = getTrackById(oldId) ?: return
         val target = getTrackById(targetId) ?: return
         val edited = if ((old.metadataEditedAtEpochMs ?: 0L) > (target.metadataEditedAtEpochMs ?: 0L)) old else target
-        val merged = target.withPreservedUserMetadata(edited).withScanMetadata()
+        val merged = target.copy(artworkUri = target.artworkUri ?: old.artworkUri)
+            .withPreservedUserMetadata(edited).withScanMetadata()
         mergeFavoriteReference(oldId, targetId)
         deleteMergedFavorite(oldId)
         mergePlaylistReferences(oldId, targetId)
