@@ -1,0 +1,4 @@
+<resources>
+    <string name="path_route_verified">Actual output reported by the active audio path</string>
+    <string name="path_route_pending">Output candidate; actual route has not been reported</string>
+</resources>

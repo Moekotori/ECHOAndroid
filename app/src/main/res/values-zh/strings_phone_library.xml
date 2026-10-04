@@ -1,0 +1,5 @@
+<resources>
+    <string name="phone_library_notification_title">正在共享手机曲库</string>
+    <string name="phone_library_notification_text">已连接的电脑可以浏览并播放本地音乐。</string>
+    <string name="phone_library_notification_stop">停止共享</string>
+</resources>

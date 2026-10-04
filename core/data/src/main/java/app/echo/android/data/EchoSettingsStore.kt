@@ -182,6 +182,7 @@ object EchoLyricsColorMode {
 }
 
 object EchoLyricsAlignment {
+    const val Vertical = "vertical"
     const val Start = "start"
     const val Center = "center"
     const val Dynamic = "dynamic"
@@ -1767,7 +1768,8 @@ private fun normalizeLyricsAlignment(value: String?): String =
     when (value) {
         EchoLyricsAlignment.Start,
         EchoLyricsAlignment.Center,
-        EchoLyricsAlignment.Dynamic -> value
+        EchoLyricsAlignment.Dynamic,
+        EchoLyricsAlignment.Vertical -> value
         else -> EchoLyricsAlignment.Center
     }
 

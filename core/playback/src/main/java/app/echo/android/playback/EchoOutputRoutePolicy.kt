@@ -14,6 +14,8 @@ data class EchoOutputRoute(
     val kind: String = EchoOutputDeviceKind.System.id,
     val deviceName: String? = null,
     val bluetoothCodec: String? = null,
+    val verified: Boolean = false,
+    val deviceNames: List<String> = emptyList(),
     val address: String? = null,
 )
 

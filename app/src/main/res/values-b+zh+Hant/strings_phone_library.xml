@@ -1,0 +1,5 @@
+<resources>
+    <string name="phone_library_notification_title">正在共享手機曲庫</string>
+    <string name="phone_library_notification_text">已連線的電腦可以瀏覽並播放本地音樂。</string>
+    <string name="phone_library_notification_stop">停止共享</string>
+</resources>

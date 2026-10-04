@@ -4,7 +4,7 @@ plugins {
 
 android {
     namespace = "app.echo.android.lyrics"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 26

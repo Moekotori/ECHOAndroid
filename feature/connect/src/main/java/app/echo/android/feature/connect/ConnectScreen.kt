@@ -142,6 +142,9 @@ fun ConnectScreen(
     onPcQueueOpened: () -> Unit = {},
     onOpenFullQueue: (() -> Unit)? = null,
     queueTotalCount: Int = queueItems.size,
+    networkPermissionContent: @Composable () -> Unit = {},
+    phoneLibraryShareStatus: String = "off",
+    onPhoneLibraryShareChange: (Boolean) -> Unit = {},
 ) {
     val pagerState = rememberPagerState { 3 }
     val scrollStates = listOf(rememberScrollState(), rememberScrollState(), rememberScrollState())
@@ -202,6 +205,7 @@ fun ConnectScreen(
                     tabRow()
                 }
             }
+            networkPermissionContent()
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxWidth().weight(1f).connectPagerEdgeSwipe(
@@ -249,7 +253,10 @@ fun ConnectScreen(
                                 onClearJellyfin = onClearJellyfinCredentials,
                                 onCancel = onCancelRemoteSync,
                             )
-                            1 -> PcLinkPanel(
+                            1 -> {
+                            PhoneLibraryShareControl(phoneLibraryShareStatus,
+                                remoteState == EchoRemoteConnectionState.Connected, onPhoneLibraryShareChange)
+                            PcLinkPanel(
                                 librarySyncActions = librarySyncActions,
                                 remoteState = remoteState,
                                 pcTitle = pcTitle,
@@ -302,6 +309,7 @@ fun ConnectScreen(
                                 openQueueNonce = openPcQueueNonce,
                                 onQueueRequestHandled = onPcQueueOpened,
                             )
+                            }
                             else -> CastDevicesPanel(
                                 phoneTrackTitle = phoneTrackTitle,
                                 phoneTrackArtist = phoneTrackArtist,

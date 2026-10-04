@@ -56,6 +56,10 @@ class EchoLanRendererBrowser(
     }
 
     fun start() {
+        if (!appContext.hasEchoLocalNetworkAccess()) {
+            _state.value = EchoLinkDiscoveryState.Failed
+            return
+        }
         if (!started.compareAndSet(false, true)) return
         _state.value = EchoLinkDiscoveryState.Searching
         val epoch = ++generation

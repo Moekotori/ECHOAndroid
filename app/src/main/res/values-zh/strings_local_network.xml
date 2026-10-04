@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="local_network_permission_title">局域网访问</string>
+    <string name="local_network_permission_detail">允许访问附近设备，以发现和连接 PC ECHO、投屏设备及局域网音乐库。</string>
+    <string name="local_network_permission_settings">打开设置</string>
+    <string name="local_network_permission_later">稍后</string>
+    <string name="local_network_permission_allow">允许访问</string>
+</resources>

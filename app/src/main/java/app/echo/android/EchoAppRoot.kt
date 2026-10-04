@@ -174,6 +174,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     LaunchedEffect(lyricsActionError) {
         lyricsActionError?.let { android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_LONG).show() }
     }
+    val localNetwork = rememberEchoLocalNetworkPermission()
     val permissionActivity = remember(context) { context.findActivity() }
     val prefs = remember(context) { context.getSharedPreferences("echo_prefs", Context.MODE_PRIVATE) }
     val permission = remember { audioPermissionName() }
@@ -379,6 +380,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     val echoLinkSession = (context.applicationContext as EchoApplication).echoLinkSession
     val remoteClient = echoLinkSession.client
     val echoLinkPlaybackRouter = echoLinkSession.playbackRouter
+    LaunchedEffect(localNetwork.granted) { echoLinkSession.refreshLocalNetworkAccess() }
     val remoteMode by echoLinkPlaybackRouter.remoteMode.collectAsStateWithLifecycle()
     LaunchedEffect(remoteClient) {
         viewModel.setEchoLinkPlaybackResolver { ref ->
@@ -412,6 +414,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     var openPcTabNonce by remember { mutableIntStateOf(0) }
     var openPcQueueNonce by remember { mutableIntStateOf(0) }
     var castSetupError by remember { mutableStateOf<String?>(null) }
+    val phoneLibraryShareStatus by echoLinkSession.phoneLibrary.status.collectAsStateWithLifecycle()
     val castSessionActive by echoLinkSession.castActive.collectAsStateWithLifecycle()
     val castSessionName by echoLinkSession.castTargetName.collectAsStateWithLifecycle()
     val dlnaRenderer by echoLinkSession.dlnaRenderer.collectAsStateWithLifecycle()
@@ -527,6 +530,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         }
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
+    DisposableEffect(appVisible) {
+        app.echo.android.playback.EchoPlaybackProcessRuntime.setUiVisible(appVisible)
+        onDispose { app.echo.android.playback.EchoPlaybackProcessRuntime.setUiVisible(false) }
+    }
     DisposableEffect(remoteClient, appVisible) {
         remoteClient.setForeground(appVisible)
         onDispose { remoteClient.setForeground(false) }
@@ -535,10 +542,12 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         viewModel.setEffectivePerformanceMode(effectivePerformanceMode)
     }
     fun connectEchoLinkEndpoint(endpoint: EchoRemoteEndpoint) {
-        remoteClient.connect(
-            nextEndpoint = endpoint,
-            refreshLibraryOnConnect = appSettings.echoLinkPreferLinkedLibrary,
-        )
+        localNetwork.runForAddress(app.echo.android.connect.EchoLinkCastPolicy.advertisedBaseUrl(endpoint.host, endpoint.port)) {
+            remoteClient.connect(
+                nextEndpoint = endpoint,
+                refreshLibraryOnConnect = appSettings.echoLinkPreferLinkedLibrary,
+            )
+        }
     }
 
     fun connectEchoLinkAddress(address: String, token: String) {
@@ -546,11 +555,13 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         if (endpoint != null) {
             connectEchoLinkEndpoint(endpoint)
         } else {
-            remoteClient.connectManual(
-                address = address,
-                token = token,
-                refreshLibraryOnConnect = appSettings.echoLinkPreferLinkedLibrary,
-            )
+            localNetwork.runForAddress(address) {
+                remoteClient.connectManual(
+                    address = address,
+                    token = token,
+                    refreshLibraryOnConnect = appSettings.echoLinkPreferLinkedLibrary,
+                )
+            }
         }
     }
 
@@ -1091,10 +1102,15 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         addMusicVisible = false
     }
     val shellOverlayOpen = searchVisible || listeningVisible || listeningStatsVisible || playbackHistoryVisible || errorLogVisible || queueSheetVisible || remotePlayerSheetVisible || remoteQueueSheetVisible || castSheetVisible || nowPlayingExpanded || pluginsVisible || addMusicVisible
+    EchoDesktopShortcuts(
+        navigationEnabled = appVisible && !shellOverlayOpen,
+        onSelectTab = ::selectDockTab, onSettings = { navigateToPage(EchoPagerPage.Settings) },
+        onPlayPause = ::routedPlayPause,
+    )
     val connectPageSettled = appVisible && screenInteractive && !shellOverlayOpen &&
         tabPagerState.settledPage == EchoPagerPage.Connect.ordinal
     // One owner for discovery: closing either surface must not stop the other.
-    val discoverCastDevices = appVisible && screenInteractive && (connectPageSettled || castSheetVisible)
+    val discoverCastDevices = appVisible && screenInteractive && (connectPageSettled || castSheetVisible) && localNetwork.granted
     DisposableEffect(viewModel, discoverCastDevices) {
         if (discoverCastDevices) viewModel.startEchoLinkDiscovery()
         onDispose { if (discoverCastDevices) viewModel.stopEchoLinkDiscovery() }
@@ -1529,6 +1545,12 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                             val lanRenderers by viewModel.lanRenderers.collectAsStateWithLifecycle()
                             val lanRendererState by viewModel.lanRendererDiscoveryState.collectAsStateWithLifecycle()
                             ConnectScreen(
+                                phoneLibraryShareStatus = phoneLibraryShareStatus,
+                                onPhoneLibraryShareChange = { enabled ->
+                                    if (enabled) localNetwork.run { echoLinkSession.phoneLibrary.start() }
+                                    else echoLinkSession.phoneLibrary.stop()
+                                },
+                                networkPermissionContent = { EchoLocalNetworkPermissionNotice(localNetwork) },
                                 remoteMode = remoteMode,
                                 onRemoteModeChange = ::selectEchoLinkMode,
                                 onOpenPcLibrary = ::openPcLibrary,
@@ -1571,7 +1593,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 smbServerUrl = appSettings.smbServerUrl,
                                 smbUsername = appSettings.smbUsername,
                                 smbPassword = appSettings.smbPassword,
-                                onSyncSmbLibrary = viewModel::syncSmbLibrary,
+                                onSyncSmbLibrary = { url, user, pass ->
+                                    localNetwork.runForAddress(url) { viewModel.syncSmbLibrary(url, user, pass) }
+                                },
                                 onSaveSmbCredentials = viewModel::saveSmbCredentials,
                                 onClearSmbCredentials = viewModel::clearSmbCredentials,
                                 jellyfinServerUrl = appSettings.jellyfinServerUrl,
@@ -1593,7 +1617,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                     playbackStatus.track != null &&
                                     phoneCastPlan !is EchoLinkCastPlan.Blocked
                                 ) {
-                                    { performPhoneCast() }
+                                    { localNetwork.run { performPhoneCast() } }
                                 } else null,
                                 phoneTrackTitle = playbackStatus.track?.title,
                                 phoneTrackArtist = playbackStatus.track?.artist,
@@ -1610,18 +1634,18 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                         .removePrefix("http://")
                                         .removePrefix("https://")
                                 },
-                                onCastToAddress = ::requestPhoneCast,
+                                onCastToAddress = { address, token -> localNetwork.run { requestPhoneCast(address, token) } },
                                 onCastToConnected = if (
                                     remoteStatus.connectionState == EchoRemoteConnectionState.Connected &&
                                     phoneCastPlan !is EchoLinkCastPlan.Blocked
                                 ) {
-                                    { performPhoneCast() }
+                                    { localNetwork.run { performPhoneCast() } }
                                 } else null,
                                 onStopCast = ::stopPhoneCast,
                                 lanRenderers = lanRenderers,
                                 lanRendererState = lanRendererState,
                                 activeRendererId = dlnaRenderer?.id,
-                                onCastToRenderer = ::performDlnaCast,
+                                onCastToRenderer = { renderer -> localNetwork.run { performDlnaCast(renderer) } },
                                 onSwipeToLibrary = { navigateToPage(EchoPagerPage.Library) },
                                 onSwipeToDiagnostics = { navigateToPage(EchoPagerPage.Diagnostics) },
                                 openCastTabNonce = openCastTabNonce,
@@ -1643,13 +1667,19 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                         remoteClient.refreshLibrary()
                                     }
                                 },
-                                onSyncSubsonicLibrary = viewModel::syncSubsonicLibrary,
+                                onSyncSubsonicLibrary = { url, user, pass ->
+                                    localNetwork.runForAddress(url) { viewModel.syncSubsonicLibrary(url, user, pass) }
+                                },
                                 onSaveSubsonicCredentials = viewModel::saveSubsonicCredentials,
                                 onClearSubsonicCredentials = viewModel::clearSubsonicCredentials,
-                                onSyncWebDavLibrary = viewModel::syncWebDavLibrary,
+                                onSyncWebDavLibrary = { url, user, pass ->
+                                    localNetwork.runForAddress(url) { viewModel.syncWebDavLibrary(url, user, pass) }
+                                },
                                 onSaveWebDavCredentials = viewModel::saveWebDavCredentials,
                                 onClearWebDavCredentials = viewModel::clearWebDavCredentials,
-                                onSyncJellyfinLibrary = viewModel::syncJellyfinLibrary,
+                                onSyncJellyfinLibrary = { url, user, pass ->
+                                    localNetwork.runForAddress(url) { viewModel.syncJellyfinLibrary(url, user, pass) }
+                                },
                                 onSaveJellyfinCredentials = { url, user, pass ->
                                     viewModel.saveJellyfinCredentials(url, user, pass)
                                 },
@@ -1665,7 +1695,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onCancelRemoteSync = viewModel::cancelRemoteSync,
                                 discoveredLanDevices = echoLinkLanDevices,
                                 discoveryState = discoveryState,
-                                onRefreshLanDevices = viewModel::refreshEchoLinkDiscovery,
+                                onRefreshLanDevices = { localNetwork.run { viewModel.refreshEchoLinkDiscovery() } },
                                 onOpenListening = { listeningVisible = true },
                             )
                             }
@@ -1897,9 +1927,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     sendingAddress = sendingCastAddress,
                     castSetupError = castSetupError,
                     activeRendererId = dlnaRenderer?.id,
-                    onCastToAddress = ::requestPhoneCast,
+                    onCastToAddress = { address, token -> localNetwork.run { requestPhoneCast(address, token) } },
                     onCastToConnected = ::performPhoneCast,
-                    onCastToRenderer = ::performDlnaCast,
+                    onCastToRenderer = { renderer -> localNetwork.run { performDlnaCast(renderer) } },
                     onStopCast = ::stopPhoneCast,
                     onDismiss = { castSheetVisible = false },
                 )

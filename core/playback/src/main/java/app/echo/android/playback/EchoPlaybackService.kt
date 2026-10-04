@@ -111,6 +111,7 @@ class EchoPlaybackService : MediaLibraryService() {
 
     override fun onCreate() {
         super.onCreate()
+        EchoPlaybackProcessRuntime.setAudioInteractionGate { isPlaybackOngoing }
         val smartMixer = EchoPlaybackProcessRuntime.smartTransitionMixer()
         val exoPlayer = ExoPlayer.Builder(this)
             .setRenderersFactory(
@@ -147,7 +148,9 @@ class EchoPlaybackService : MediaLibraryService() {
 
         player = exoPlayer
         abLoop = EchoAbLoopController(exoPlayer, serviceScope)
-        audioRoutePlayback = EchoAudioRoutePlaybackController(this, exoPlayer, serviceScope).also { it.start() }
+        audioRoutePlayback = EchoAudioRoutePlaybackController(this, exoPlayer, serviceScope,
+            canInteractWithAudio = EchoPlaybackProcessRuntime::canContinueAudioInteraction,
+        ).also { it.start() }
         trackTransitions = EchoTrackTransitionController(exoPlayer, serviceScope, EchoPlaybackProcessRuntime::setTrackFadeGain)
         val decoder = EchoSmartTransitionDecoder(this)
         smartTransitions = EchoSmartTransitionController(
@@ -253,6 +256,7 @@ class EchoPlaybackService : MediaLibraryService() {
         }
 
     override fun onDestroy() {
+        EchoPlaybackProcessRuntime.setAudioInteractionGate(null)
         abLoop?.close()
         abLoop = null
         trackTransitions?.close()

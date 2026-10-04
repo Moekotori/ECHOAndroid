@@ -103,7 +103,7 @@ internal class EchoPlaybackSessionRestorer(
                 null
             }
             pendingPlayUntilRemoteAuth = shouldPendRestorePlayUntilRemoteAuth(
-                savedPlayWhenReady = snapshot.playWhenReady,
+                savedPlayWhenReady = userRequestedPlay,
                 unresolvedEchoLink = unresolvedEchoLink,
                 queueRequiresWebDavAuth = requiresWebDavAuth,
                 webDavAuthReady = webDavAuthReady,
@@ -153,7 +153,7 @@ internal class EchoPlaybackSessionRestorer(
                 current
             } ?: return@launch
             withContext(Dispatchers.Main.immediate) {
-                if (player() === live) live.play()
+                if (player() === live && EchoPlaybackProcessRuntime.canContinueAudioInteraction()) live.play()
             }
         }
     }

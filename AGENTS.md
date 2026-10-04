@@ -1,6 +1,6 @@
 # ECHOAndroid
 
-Android 多模块播放器。包名 `app.echo.android`。JDK 21，compileSdk 36。
+Android 多模块播放器。包名 `app.echo.android`。JDK 21，compileSdk / targetSdk 37。
 
 PC 端是独立产品 **ECHOSteam**，仓库永远是 [https://github.com/moekotori/echosteam](https://github.com/moekotori/echosteam)。不要用其他 GitHub 地址、镜像、旧目录名或本地盘符（例如 `G:\ECHO-main`）代替。
 
@@ -44,8 +44,8 @@ CI（`.github/workflows/ci.yml`）跑同样的 `checkModules`、单元测试和 
 ## Echo PC / Echo Link
 
 - PC 仓库：**永远** `https://github.com/moekotori/echosteam`
-- Android 是客户端：发现、配对、拉曲库预览、遥控、拉流播放
-- PC 是服务端：LAN HTTP、配对 token、曲库查询、PCM/流、PC 本机播放
+- Android 默认是客户端：发现、配对、拉曲库预览、遥控、拉流播放；用户开启手机曲库共享时，也提供有界、只读的 LAN 曲库与原文件流服务（见 `docs/echo-link-phone-library.md`）
+- PC 是服务端：LAN HTTP、配对 token、曲库查询、PCM/流、PC 本机播放；手机主动登记共享后，PC 可作为客户端访问手机曲库
 - 协议形状放 `:core:model` 的 connect 包；传输与解析放 `:core:connect`；Connect UI 放 `:feature:connect`；会话接线放 `:app`
 - 改协议默认向后兼容。破坏性变更必须先写进计划，并写清 echosteam 对应改动；不要只改手机端让 PC 静默坏掉
 - `ECHO_LINK_PC_PROMPT.md` / `ECHO_LINK_PC_PHASE2_PROMPT.md` 是给 PC 仓库看的契约草稿。其中旧本地路径作废，PC 仓库以 GitHub 为准

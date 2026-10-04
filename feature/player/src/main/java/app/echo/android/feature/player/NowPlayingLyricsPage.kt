@@ -70,7 +70,7 @@ internal fun NowPlayingLyricsPage(
         val syncedLyrics = remember(readyLyrics) { readyLyrics?.isSynced == true }
         val displayPosition = rememberLyricsDisplayPosition(
             positionMsState, status.track?.id, status.isPlaying, status.playbackSpeed,
-            animationsVisible && syncedLyrics && !lyricsPageStyle.isAfterglow && !lightweight,
+            animationsVisible && syncedLyrics && (!lyricsPageStyle.isAfterglow || lyricsAlignment == "vertical") && !lightweight,
         )
         val lyricAccent = lyricsColorForMode(lyricsColorMode)
         val lyricsDimAlpha = animateFloatAsState(
@@ -79,7 +79,14 @@ internal fun NowPlayingLyricsPage(
             label = "lyrics-page-dim",
         )
         val dimColor = if (LocalEchoDarkTheme.current) Color.Black else MaterialTheme.colorScheme.surface
-        Box(modifier = modifier.fillMaxWidth()) {
+        val performance = LocalEchoEffectivePerformanceMode.current
+        Box(modifier = modifier.fillMaxWidth().lyricsFrameRate(
+            visible = animationsVisible,
+            continuousMotion = status.isPlaying && syncedLyrics &&
+                (lyricsWordHighlightEnabled || lyricsPageStyle.isAfterglow),
+            lightweight = lightweight,
+            highPerformance = performance.isHighPerformance,
+        )) {
             if (showBackdrop) LyricsPageBackdrop(status.track?.artworkUri, palette, { 1f }, animationsVisible, Modifier.fillMaxSize())
             Box(
                 modifier = Modifier
@@ -139,7 +146,18 @@ internal fun NowPlayingLyricsPage(
                                             .padding(horizontal = 4.dp),
                                     )
                                 }
-                                if (lyricsPageStyle.isAfterglow) {
+                                if (lyricsAlignment == "vertical") {
+                                    VerticalLyricsList(
+                                        lyrics = lyricsState.lyrics, position = displayPosition,
+                                        durationMs = durationMsState.value, onSeek = onSeek, onAdjustOffset = onAdjustLyricsOffset,
+                                        fontFamily = lyricsFontFamily, fontScale = lyricsFontScale, spacing = lyricsLineSpacing,
+                                        color = lyricAccent, highlight = MaterialTheme.colorScheme.primary,
+                                        wordHighlight = lyricsWordHighlightEnabled, estimatedHighlight = lyricsEstimatedWordHighlightEnabled,
+                                        highlightIntensity = lyricsWordHighlightIntensity,
+                                        showTranslation = lyricsShowTranslation, showRomanization = lyricsShowRomanization,
+                                        visible = animationsVisible, modifier = Modifier.fillMaxSize(),
+                                    )
+                                } else if (lyricsPageStyle.isAfterglow) {
                                     key(status.track?.id) {
                                         AfterglowStage(
                                             lyrics = lyricsState.lyrics,

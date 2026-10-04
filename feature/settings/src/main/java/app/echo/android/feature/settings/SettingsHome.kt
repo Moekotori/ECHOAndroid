@@ -32,6 +32,7 @@ private val settingsGroups = listOf(
 @Composable
 internal fun SettingsHome(
     query: String,
+    selectedCategory: SettingsCategory? = null,
     compactMode: Boolean,
     summaries: Map<SettingsCategory, String>,
     availability: SettingsSearchAvailability,
@@ -80,13 +81,13 @@ internal fun SettingsHome(
                                 if (title == R.string.settings_group_app) {
                                     SettingsHomeRow(SettingsCategoryIcons.Plugins,
                                         stringResource(R.string.settings_plugins),
-                                        stringResource(R.string.settings_plugins_summary), compactMode, onOpenPlugins)
+                                        stringResource(R.string.settings_plugins_summary), compactMode, onClick = onOpenPlugins)
                                     SettingsHomeDivider()
                                 }
                                 entries.forEachIndexed { index, entry ->
                                     if (index > 0) SettingsHomeDivider()
                                     SettingsHomeRow(entry.icon, stringResource(entry.title),
-                                        summaries[entry].orEmpty(), compactMode) { onOpenCategory(entry) }
+                                        summaries[entry].orEmpty(), compactMode, selected = entry == selectedCategory) { onOpenCategory(entry) }
                                 }
                             }
                         }
@@ -105,7 +106,7 @@ private fun SettingsHomeDivider() {
 
 @Composable
 private fun SettingsHomeRow(icon: ImageVector, title: String, summary: String,
-    compactMode: Boolean, onClick: () -> Unit) {
+    compactMode: Boolean, selected: Boolean = false, onClick: () -> Unit) {
     Surface(onClick = onClick, shape = SettingsShape, color = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface, modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.heightIn(min = if (compactMode) 56.dp else 62.dp)
@@ -113,7 +114,8 @@ private fun SettingsHomeRow(icon: ImageVector, title: String, summary: String,
             horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             EchoIcon(icon, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
                 if (summary.isNotBlank()) Text(summary, style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }

@@ -150,10 +150,10 @@ internal fun LyricsSettingsPanel(
                         }
                         Text(stringResource(L10nR.string.feature_player_alignment_66dbdb), style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
-                        Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        FlowRow(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             LyricsAlignmentOptions.forEach { option ->
                                 PlaybackChoiceChip(text = lyricsAlignmentLabel(option.value), selected = lyricsAlignment == option.value,
-                                    onClick = { onLyricsAlignmentChange(option.value) }, modifier = Modifier.weight(1f))
+                                    onClick = { onLyricsAlignmentChange(option.value) }, fillWidth = false)
                             }
                         }
                         LyricsSettingSlider(stringResource(L10nR.string.feature_player_type_size_8ff7ee), lyricsFontScale, 0.50f..1.28f, 1f, onLyricsFontScaleChange)
@@ -278,6 +278,7 @@ private fun lyricsColorLabel(mode: String): String = when (mode) {
 private fun lyricsAlignmentLabel(mode: String): String = when (mode) {
     "start" -> stringResource(L10nR.string.feature_player_left_f9d864)
     "dynamic" -> stringResource(L10nR.string.feature_player_stage_fffe7d)
+    "vertical" -> stringResource(L10nR.string.lyrics_alignment_vertical)
     else -> stringResource(L10nR.string.feature_player_center_3e4c92)
 }
 
@@ -332,6 +333,7 @@ private val LyricsAlignmentOptions = listOf(
     LyricsTextOption("center"),
     LyricsTextOption("start"),
     LyricsTextOption("dynamic"),
+    LyricsTextOption("vertical"),
 )
 
 private val LyricsMotionOptions = listOf(

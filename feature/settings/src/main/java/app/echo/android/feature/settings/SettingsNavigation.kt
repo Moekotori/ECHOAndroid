@@ -74,6 +74,36 @@ internal fun SettingsNavigation(
         keyboardController?.hide()
         searchQuery = ""
     }
+    val wide = app.echo.android.design.LocalEchoWidthSizeClass.current == app.echo.android.model.settings.EchoWidthSizeClass.Expanded
+    val home: @Composable () -> Unit = {
+        SettingsHome(
+            query = searchQuery, selectedCategory = selected.takeIf { wide }, compactMode = compactMode, summaries = summaries, availability = searchAvailability,
+            onQueryChange = { searchQuery = it }, onOpenPlugins = onOpenPlugins,
+            onOpenCategory = { searchFocus = null; selected = it },
+            onSearchSelect = { result ->
+                focusManager.clearFocus(); keyboardController?.hide()
+                if (result.item.opensPlugins) onOpenPlugins() else {
+                    searchRequestId++
+                    searchFocus = SettingsSearchFocus(result.anchorTitle, searchRequestId)
+                    selected = result.item.category
+                }
+            },
+        )
+    }
+    if (wide) {
+        SettingsStyle(compactMode) {
+            EchoPageEntrance(active = isPageVisible) {
+                SettingsWideNavigation(selected, home = {
+                    stateHolder.SaveableStateProvider("home") { home() }
+                }, detail = {
+                    selected?.let { category -> stateHolder.SaveableStateProvider(category.name) {
+                        SettingsDetailPane(category, compactMode, searchFocus, content)
+                    } }
+                })
+            }
+        }
+        return
+    }
     // PageChrome draws its own background without providing a content color.
     SettingsStyle(compactMode) {
         EchoPageEntrance(active = isPageVisible) {
@@ -143,45 +173,9 @@ internal fun SettingsNavigation(
                         },
                     ) {
                         if (category == null) {
-                            SettingsHome(
-                                query = searchQuery,
-                                compactMode = compactMode,
-                                summaries = summaries,
-                                availability = searchAvailability,
-                                onQueryChange = { searchQuery = it },
-                                onOpenPlugins = onOpenPlugins,
-                                onOpenCategory = { searchFocus = null; selected = it },
-                                onSearchSelect = { result ->
-                                    focusManager.clearFocus()
-                                    keyboardController?.hide()
-                                    if (result.item.opensPlugins) onOpenPlugins() else {
-                                        searchRequestId++
-                                        searchFocus = SettingsSearchFocus(result.anchorTitle, searchRequestId)
-                                        selected = result.item.category
-                                    }
-                                },
-                            )
+                            home()
                         } else {
-                            // Keep detail anchors composed so search can reveal controls below the fold.
-                            Column(
-                                Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                                    .padding(top = 8.dp, bottom = 172.dp),
-                                verticalArrangement = Arrangement.spacedBy(
-                                    if (category == SettingsCategory.Appearance) 20.dp
-                                    else if (compactMode) 20.dp else 28.dp,
-                                ),
-                            ) {
-                                if (category != SettingsCategory.About && category != SettingsCategory.Appearance &&
-                                    category != SettingsCategory.Library) Text(
-                                    stringResource(category.description),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = SettingsContentInset),
-                                )
-                                CompositionLocalProvider(LocalSettingsSearchFocus provides searchFocus) {
-                                    content(category)
-                                }
-                            }
+                            SettingsDetailPane(category, compactMode, searchFocus, content)
                         }
                     }
                 }

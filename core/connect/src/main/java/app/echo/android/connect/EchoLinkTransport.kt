@@ -75,6 +75,10 @@ internal interface EchoLinkTransport {
         throw app.echo.android.model.connect.EchoSyncUnsupportedException()
     suspend fun syncImportBatch(endpoint: EchoRemoteEndpoint, batch: app.echo.android.model.connect.EchoSyncBatch, preview: Boolean): app.echo.android.model.connect.EchoSyncBatchResult =
         throw app.echo.android.model.connect.EchoSyncUnsupportedException()
+    suspend fun registerPhoneLibrary(endpoint: EchoRemoteEndpoint, registration: app.echo.android.model.connect.EchoPhoneLibraryRegistration) {
+        throw EchoLinkHttpException("phone_library_unsupported", 404)
+    }
+    suspend fun unregisterPhoneLibrary(endpoint: EchoRemoteEndpoint, sessionId: String) {}
     suspend fun completePairing(endpoint: EchoRemoteEndpoint): EchoRemoteEndpoint
     suspend fun fetchStatus(endpoint: EchoRemoteEndpoint): EchoLinkStatusResponse
     suspend fun createEventTicket(endpoint: EchoRemoteEndpoint): EchoLinkEventTicket
@@ -105,6 +109,18 @@ internal class OkHttpEchoLinkTransport(
         .build(),
     private val responseDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : EchoLinkTransport {
+    override suspend fun registerPhoneLibrary(endpoint: EchoRemoteEndpoint, registration: app.echo.android.model.connect.EchoPhoneLibraryRegistration) {
+        val body = JSONObject().put("version", 1).put("sessionId", registration.sessionId)
+            .put("baseUrl", registration.baseUrl).put("token", registration.token).put("name", registration.name)
+        executeJson(Request.Builder().url(endpoint.versionedUrl(1, "phone-library"))
+            .authorized(endpoint).post(body.toString().toRequestBody(JsonMediaType)).build())
+    }
+
+    override suspend fun unregisterPhoneLibrary(endpoint: EchoRemoteEndpoint, sessionId: String) {
+        executeJson(Request.Builder().url(endpoint.versionedUrl(1, "phone-library", sessionId))
+            .authorized(endpoint).delete().build())
+    }
+
     // The PC sends idle heartbeats every 15 s. Reuse pools, but allow missed heartbeats.
     private val eventClient = client.newBuilder().readTimeout(45, TimeUnit.SECONDS).build()
     override suspend fun syncSnapshot(endpoint: EchoRemoteEndpoint,key: String) = withContext(responseDispatcher) {

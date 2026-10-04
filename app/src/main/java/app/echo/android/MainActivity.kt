@@ -23,6 +23,7 @@ import app.echo.android.playback.EchoPlaybackIntents
 
 class MainActivity : ComponentActivity() {
     private var highRefreshRateRequested = false
+    internal var desktopShortcutHandler: ((Int) -> Boolean)? = null
 
     override fun attachBaseContext(newBase: Context) {
         val language = newBase.readEchoStartupThemeSnapshot().appLanguage
@@ -66,6 +67,18 @@ class MainActivity : ComponentActivity() {
     /** 投送到 DLNA / Chromecast 时，音量键调的是远端设备，不是手机。 */
     @OptIn(UnstableApi::class)
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (event?.isCtrlPressed == true && event.repeatCount == 0 && !event.isAltPressed && !event.isShiftPressed) {
+            val command = when (keyCode) {
+                KeyEvent.KEYCODE_1 -> 0
+                KeyEvent.KEYCODE_2 -> 1
+                KeyEvent.KEYCODE_3 -> 2
+                KeyEvent.KEYCODE_4 -> 3
+                KeyEvent.KEYCODE_COMMA -> 4
+                KeyEvent.KEYCODE_SPACE -> 5
+                else -> -1
+            }
+            if (command >= 0 && desktopShortcutHandler?.invoke(command) == true) return true
+        }
         val delta = when (keyCode) {
             KeyEvent.KEYCODE_VOLUME_UP -> CAST_VOLUME_STEP
             KeyEvent.KEYCODE_VOLUME_DOWN -> -CAST_VOLUME_STEP
@@ -89,6 +102,11 @@ class MainActivity : ComponentActivity() {
         } else {
             clearRefreshRatePreference()
         }
+    }
+
+    override fun onPause() {
+        clearRefreshRatePreference()
+        super.onPause()
     }
 
     fun setHighRefreshRateRequested(enabled: Boolean) {
@@ -117,6 +135,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestHighRefreshRate() {
+        // ARR negotiates per-layer hints from Compose; a fixed window mode defeats that policy.
+        if (Build.VERSION.SDK_INT >= 36 && display?.hasArrSupport() == true) {
+            clearRefreshRatePreference()
+            return
+        }
         val preferredMode = bestSupportedHighRefreshMode() ?: return
 
         val attributes = window.attributes

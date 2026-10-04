@@ -45,6 +45,14 @@ fun interface EchoPlaybackStreamResolver {
 
 @UnstableApi
 object EchoPlaybackProcessRuntime {
+    @Volatile private var uiVisible = false
+    private var audioInteractionGate: (() -> Boolean)? = null
+    fun setUiVisible(visible: Boolean) { uiVisible = visible }
+    internal fun setAudioInteractionGate(gate: (() -> Boolean)?) { audioInteractionGate = gate }
+    /** Main-thread callers only; Media3's live FGS preserves an ongoing user playback intent. */
+    fun canContinueAudioInteraction(): Boolean =
+        android.os.Build.VERSION.SDK_INT < 37 || uiVisible || audioInteractionGate?.invoke() == true
+
     @Volatile var dspSettings = app.echo.android.model.playback.EchoDspSettings()
         private set
     @Volatile internal var dspReplayGainDb = 0f

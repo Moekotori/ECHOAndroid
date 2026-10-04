@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="local_network_permission_title">Local network access</string>
+    <string name="local_network_permission_detail">Allow nearby device access to discover and connect to PC ECHO, cast receivers, and network music libraries.</string>
+    <string name="local_network_permission_settings">Open settings</string>
+    <string name="local_network_permission_later">Later</string>
+    <string name="local_network_permission_allow">Allow access</string>
+</resources>

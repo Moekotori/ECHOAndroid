@@ -1,0 +1,10 @@
+<resources>
+    <string name="phone_library_share_title">向電腦共享手機曲庫</string>
+    <string name="phone_library_share_description">允許已連線的電腦瀏覽並播放本地音訊檔案，關閉即撤銷存取。暫不包含 CUE 分段。</string>
+    <string name="phone_library_share_unsupported">請更新 ECHOSteam 以存取手機曲庫。</string>
+    <string name="phone_library_share_error">共享失敗，請檢查區域網路後重試。</string>
+    <string name="phone_library_share_starting">正在開啟共享…</string>
+    <string name="phone_library_share_active">已向連線的電腦共享</string>
+    <string name="phone_library_share_connect_first">請先連線電腦</string>
+    <string name="phone_library_share_off">共享已關閉</string>
+</resources>

@@ -478,6 +478,8 @@ fun EchoPlaybackDiagnostics.withOutputRoute(route: EchoOutputRoute): EchoPlaybac
             outputDeviceKind = EchoOutputDeviceKind.Usb.id,
             outputDeviceName = usbDeviceName ?: route.deviceName,
             bluetoothCodec = null,
+            outputRouteVerified = true,
+            routedDeviceNames = listOfNotNull(usbDeviceName),
         )
     }
     val kind = EchoOutputDeviceKind.fromId(route.kind)
@@ -487,5 +489,7 @@ fun EchoPlaybackDiagnostics.withOutputRoute(route: EchoOutputRoute): EchoPlaybac
         outputDeviceKind = kind.id,
         outputDeviceName = route.deviceName,
         bluetoothCodec = route.bluetoothCodec,
+        outputRouteVerified = route.verified,
+        routedDeviceNames = route.deviceNames,
     )
 }

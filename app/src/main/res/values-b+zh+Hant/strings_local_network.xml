@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="local_network_permission_title">區域網路存取</string>
+    <string name="local_network_permission_detail">允許存取附近裝置，以探索及連線至 PC ECHO、投放裝置與區域網路音樂庫。</string>
+    <string name="local_network_permission_settings">開啟設定</string>
+    <string name="local_network_permission_later">稍後</string>
+    <string name="local_network_permission_allow">允許存取</string>
+</resources>

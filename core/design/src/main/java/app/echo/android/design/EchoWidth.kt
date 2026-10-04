@@ -16,7 +16,9 @@ val LocalEchoContentMaxWidth = staticCompositionLocalOf { EchoContentMaxWidth }
 
 @Composable
 fun rememberEchoWidthSizeClass(): EchoWidthSizeClass {
-    val widthDp = LocalConfiguration.current.screenWidthDp
+    val window = LocalWindowInfo.current.containerSize
+    val density = LocalDensity.current.density
+    val widthDp = if (window.width > 0) (window.width / density).toInt() else LocalConfiguration.current.screenWidthDp
     return remember(widthDp) { EchoWidthSizeClass.fromWidthDp(widthDp) }
 }
 

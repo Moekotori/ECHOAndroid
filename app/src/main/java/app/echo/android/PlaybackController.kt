@@ -616,7 +616,7 @@ internal class PlaybackController(
 
     fun notifyRemotePlaybackAuthReady() {
         EchoPlaybackProcessRuntime.notifyRemoteAuthReady()
-        if (!pendingRestorePlayUntilWebDavAuth) return
+        if (!pendingRestorePlayUntilWebDavAuth || !EchoPlaybackProcessRuntime.canContinueAudioInteraction()) return
         val uris = pendingRestoreQueueUris.ifEmpty { currentQueueUris() }
         val requiresWebDavAuth = queueRequiresWebDavAuth(uris)
         val webDavAuthReady = EchoRemotePlaybackAuthRegistry.isWebDavAuthReadyForUris(uris)

@@ -414,9 +414,9 @@ fun NowPlayingScreen(
     val shortLandscape = configuration.screenWidthDp > configuration.screenHeightDp &&
         configuration.screenHeightDp < 600
     val fold by rememberPlayerFold(presentationExpanded)
-    val preferSplit = LocalEchoWidthSizeClass.current.prefersNowPlayingSplit && !shortLandscape && !lyricStyle.isAfterglow
+    val preferSplit = LocalEchoWidthSizeClass.current.prefersNowPlayingSplit && !shortLandscape && (!lyricStyle.isAfterglow || lyricsAlignment == "vertical")
     val lyricsSurfaceVisible = !isRadio && pagerState.currentPage == NowPlayingPage.Lyrics.ordinal
-    val immersiveAfterglow = !isRadio && fold == null && !splitNowPlaying && lyricStyle.isAfterglow && lyricsSurfaceVisible && !pagerState.isScrollInProgress
+    val immersiveAfterglow = lyricsAlignment != "vertical" && !isRadio && fold == null && !splitNowPlaying && lyricStyle.isAfterglow && lyricsSurfaceVisible && !pagerState.isScrollInProgress
     val sleeveTopBar = !isRadio && appearance.usesFlatSurface && !splitNowPlaying && pagerState.currentPage == NowPlayingPage.Cover.ordinal
     val drawLyricsBackdrop = !isRadio && !appearance.usesFlatSurface
     RecordSleeveSystemBars(

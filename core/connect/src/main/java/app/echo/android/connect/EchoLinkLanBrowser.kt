@@ -51,6 +51,10 @@ class EchoLinkLanBrowser(
     }
 
     fun start() {
+        if (!appContext.hasEchoLocalNetworkAccess()) {
+            _state.value = EchoLinkDiscoveryState.Failed
+            return
+        }
         if (started) return
         val manager = nsdManager ?: run { _state.value = EchoLinkDiscoveryState.Failed; return }
         started = true
