@@ -112,7 +112,7 @@ fun EchoPageOverlay(
         ) { if (it == EnterExitState.PreEnter) 0f else 1f }
         CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
             EchoPageSurface(active = visible) {
-                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
+                EchoLayoutBounds(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
                     .pointerInput(Unit) { detectTapGestures(onTap = {}) }) {
                     EchoPageRevealProvider(reveal, enabled = !lightweight, content = content)

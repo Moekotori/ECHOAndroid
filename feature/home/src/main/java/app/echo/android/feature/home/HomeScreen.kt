@@ -1,8 +1,6 @@
 package app.echo.android.feature.home
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Alignment
@@ -13,8 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.runtime.State
 import app.echo.android.model.playback.PlaybackPositionState
 import androidx.compose.runtime.Composable
@@ -30,7 +27,6 @@ import androidx.compose.ui.res.stringResource
 import app.echo.android.model.playback.EchoAudioErrorKind
 import app.echo.android.model.playback.EchoPlaybackState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
@@ -82,9 +78,6 @@ fun HomeScreen(
 ) {
     var editingLayout by rememberSaveable { mutableStateOf(false) }
     val layout = remember(homeLayout) { homeLayout.normalized() }
-    val configuration = LocalConfiguration.current
-    val compactViewport = configuration.screenHeightDp < 620 ||
-        configuration.screenWidthDp > configuration.screenHeightDp
     val distinctRecommendations = remember(recommendedAlbums, recentPlayedAlbums, recentlyAddedAlbums) {
         val recentKeys = (recentPlayedAlbums + recentlyAddedAlbums).mapTo(hashSetOf()) { it.albumKey }
         recommendedAlbums.filterNot { it.albumKey in recentKeys }
@@ -107,23 +100,19 @@ fun HomeScreen(
         )
         val base = MaterialTheme.colorScheme.background
         val background = base.copy(alpha = if (LocalEchoCustomBackgroundActive.current) 0.94f else 1f)
-        Box(Modifier.fillMaxSize().background(background)) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().statusBarsPadding(),
-                contentPadding = PaddingValues(top = 12.dp, bottom = bottomInset + 24.dp),
-                verticalArrangement = Arrangement.spacedBy(if (compactViewport) 24.dp else 28.dp),
-            ) {
-                item(key = "header") {
+        Box(Modifier.fillMaxSize().background(background), contentAlignment = Alignment.TopCenter) {
+            HomeAdaptiveFeed(bottomInset) {
+                item(key = "header", span = { GridItemSpan(maxLineSpan) }) {
                     HomeSectionEntrance(0) {
                         HomeHeader(onOpenSearch, onEditLayout = if (onHomeLayoutChange != null) {
                             { editingLayout = true }
                         } else null, onOpenHistory = onOpenPlaybackHistory,
-                            onOpenSettings = onOpenSettings, onOpenLibrary = onOpenLibrary)
+                            onOpenSettings = onOpenSettings)
                     }
                 }
                 if (status.state == EchoPlaybackState.Error &&
                     status.diagnostics.lastError?.kind == EchoAudioErrorKind.FileMissing) {
-                    item(key = "missing-file") {
+                    item(key = "missing-file", span = { GridItemSpan(maxLineSpan) }) {
                         HomeLibraryNotice(
                             title = stringResource(R.string.home_missing_file_title),
                             subtitle = stringResource(R.string.home_missing_file_detail),
@@ -133,18 +122,18 @@ fun HomeScreen(
                     }
                 }
                 if (trackCount == 0 && !hasRecentMusic && dailyAlbums.isEmpty()) {
-                    item(key = "empty-library") {
+                    item(key = "empty-library", span = { GridItemSpan(maxLineSpan) }) {
                         HomeEmptyLibrary(scanState, onOpenLibrary)
                     }
                 }
-                if (pinnedPlaylists.isNotEmpty()) item(key = "pinned-playlists") {
+                if (pinnedPlaylists.isNotEmpty()) item(key = "pinned-playlists", span = { GridItemSpan(maxLineSpan) }) {
                     HomePinnedPlaylists(pinnedPlaylists, onOpenPlaylist, onPlayPlaylist)
                 }
                 layout.order.forEach { section ->
                     if (section in layout.hidden) return@forEach
                     when (section) {
                         EchoHomeSection.Resume -> if (status.track != null && status.state != EchoPlaybackState.Error) {
-                            item(key = section.id) {
+                            item(key = section.id, span = { GridItemSpan(maxLineSpan) }) {
                                 HomeSectionEntrance(1) { HomeResumeSection(status, positionState, onResumePlayback) }
                             }
                         }
@@ -198,7 +187,7 @@ fun HomeScreen(
                     }
                 }
                 if (layout.hidden.size == EchoHomeSection.entries.size && (trackCount > 0 || hasRecentMusic)) {
-                    item(key = "hidden-sections") {
+                    item(key = "hidden-sections", span = { GridItemSpan(maxLineSpan) }) {
                         HomeLayoutHiddenNotice(onRestore = { onHomeLayoutChange?.invoke(EchoHomeLayout()) })
                     }
                 }

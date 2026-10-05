@@ -434,11 +434,15 @@ internal fun SettingsSliderRow(
     onValueChange: (Float) -> Unit,
     preview: (@Composable (Float) -> Unit)? = null,
     onPreviewValueChange: (Float) -> Unit = {},
+    enabled: Boolean = true,
 ) {
     val scheme = MaterialTheme.colorScheme
     var localValue by rememberSaveable(title) { mutableFloatStateOf(value.coerceIn(valueRange)) }
     var dragging by remember(title) { mutableStateOf(false) }
-    LaunchedEffect(value, valueRange) { if (!dragging) localValue = value.coerceIn(valueRange) }
+    LaunchedEffect(value, valueRange, enabled) {
+        if (!enabled) dragging = false
+        if (!dragging) localValue = value.coerceIn(valueRange)
+    }
     Row(
         modifier = Modifier
             .settingsSearchAnchor(title)
@@ -472,7 +476,8 @@ internal fun SettingsSliderRow(
             EchoSlider(
                 value = localValue.coerceIn(valueRange),
                 onValueChange = { dragging = true; localValue = it; onPreviewValueChange(it) },
-                onValueChangeFinished = { onValueChange(localValue); dragging = false },
+                onValueChangeFinished = { if (enabled) onValueChange(localValue); dragging = false },
+                enabled = enabled,
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 48.dp)

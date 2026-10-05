@@ -43,14 +43,13 @@ import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.Audiotrack
 import androidx.compose.material.icons.rounded.CloudQueue
 import androidx.compose.material.icons.rounded.FolderOpen
-import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import app.echo.android.design.EchoDropdownMenu
+import app.echo.android.design.EchoDropdownMenuItem
 import app.echo.android.design.EchoIcon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -66,6 +65,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -87,7 +88,6 @@ import app.echo.android.design.EchoContentMaxWidth
 import app.echo.android.design.EchoPanel
 import app.echo.android.design.EmptyState
 import app.echo.android.design.LocalEchoDarkTheme
-import app.echo.android.design.LocalEchoWidthSizeClass
 import app.echo.android.design.PageChrome
 import app.echo.android.design.echoTheme
 import app.echo.android.model.connect.EchoRemoteAlbum
@@ -343,6 +343,8 @@ fun LibraryScreen(
     onRadioDirectoryQuery: (String) -> Unit = {},
     albumOfflinePin: LibraryOfflinePin? = null,
     playlistOfflinePin: LibraryOfflinePin? = null,
+    onPinAlbumShortcut: ((AlbumSummary, Boolean) -> Unit)? = null,
+    onPinPlaylistShortcut: ((EchoPlaylist, Boolean) -> Unit)? = null,
     onPinAlbumOffline: (AlbumSummary) -> Unit = {},
     onPinPlaylistOffline: (EchoPlaylist) -> Unit = {},
     onUnpinOffline: (String) -> Unit = {},
@@ -356,10 +358,13 @@ fun LibraryScreen(
     val playNext = onPlayNext
     val enqueueTrack = onEnqueueTrack
     var selectedModeIndex by rememberSaveable { mutableIntStateOf(LibraryViewMode.Songs.ordinal) }
-    val selectedMode = LibraryViewMode.entries[selectedModeIndex]
     var selectedSource by remember {
         mutableStateOf(librarySourceModeFromId(selectedLibrarySourceId, linkedLibraryActive))
     }
+    val selectedMode = restoredLibraryViewMode(
+        selectedModeIndex,
+        cloudOnly = selectedSource == LibrarySourceMode.Cloud,
+    )
     var linkedMode by rememberSaveable { mutableStateOf(LinkedLibraryMode.Songs) }
     var selectedLinkedAlbum by remember { mutableStateOf<AlbumSummary?>(null) }
     var selectedLinkedArtist by remember { mutableStateOf<ArtistSummary?>(null) }
@@ -396,6 +401,10 @@ fun LibraryScreen(
 
     LaunchedEffect(selectedLibrarySourceId, linkedLibraryActive) {
         val persistedSource = librarySourceModeFromId(selectedLibrarySourceId, linkedLibraryActive)
+        selectedModeIndex = restoredLibraryViewMode(
+            selectedModeIndex,
+            cloudOnly = persistedSource == LibrarySourceMode.Cloud,
+        ).ordinal
         if (persistedSource != selectedSource) {
             selectedSource = persistedSource
             selectedLinkedAlbum = null
@@ -427,7 +436,7 @@ fun LibraryScreen(
         }
     }
 
-    val prefersSplit = LocalEchoWidthSizeClass.current.prefersLibrarySplit
+    val prefersSplit = app.echo.android.design.LocalEchoLayout.current.supportsTwoPanes()
 
     @Composable
     fun LocalLibraryBody(displayedSource: LibrarySourceMode) {
@@ -609,6 +618,7 @@ fun LibraryScreen(
 
                             LibraryViewMode.Playlists -> LocalPlaylistPanel(
                                 playlists = playlists,
+                                query = libraryQuery,
                                 onOpenPlaylist = onOpenPlaylist,
                                 onPlayPlaylist = onPlayPlaylist,
                                 onCreatePlaylist = onCreatePlaylist,
@@ -632,10 +642,10 @@ fun LibraryScreen(
             query = libraryQuery,
             onQueryChange = onLibraryQueryChange,
             searchPlaceholder = stringResource(
-                if (selectedSource == LibrarySourceMode.Local && selectedMode == LibraryViewMode.Radio) {
-                    L10nR.string.radio_search
-                } else {
-                    L10nR.string.feature_library_search_songs_artists_albums_14dc2c
+                when {
+                    selectedSource == LibrarySourceMode.Local && selectedMode == LibraryViewMode.Radio -> L10nR.string.radio_search
+                    selectedSource == LibrarySourceMode.Local && selectedMode == LibraryViewMode.Playlists -> L10nR.string.playlist_search
+                    else -> L10nR.string.feature_library_search_songs_artists_albums_14dc2c
                 },
             ),
             sourcePicker = {
@@ -654,7 +664,7 @@ fun LibraryScreen(
             },
             actions = {
                 when (selectedSource) {
-                    LibrarySourceMode.Local -> if (selectedMode != LibraryViewMode.Radio) {
+                    LibrarySourceMode.Local -> if (selectedMode != LibraryViewMode.Radio && selectedMode != LibraryViewMode.Playlists) {
                         LibrarySourceScanButton(onAddMusic)
                     }
                     LibrarySourceMode.PcEcho -> if (linkedLibraryAvailable) {
@@ -785,6 +795,9 @@ fun LibraryScreen(
     }
 
     val splitDetails = prefersSplit
+    val browserRenderer: @Composable () -> Unit = { SharedLibraryBrowser() }
+    val latestBrowserRenderer = rememberUpdatedState(browserRenderer)
+    val browserPane = remember { movableContentOf { latestBrowserRenderer.value() } }
 
     @Composable
     fun DetailContent(target: LibraryDetailTransitionTarget) {
@@ -794,6 +807,7 @@ fun LibraryScreen(
                 tracks = target.tracks,
                 onBack = onCloseDetail,
                 onPlayAll = { onPlayAlbum(target.album) },
+                onPinShortcut = onPinAlbumShortcut?.let { pin -> { play -> pin(target.album, play) } },
                 onShuffle = { onShuffleAlbum(target.album) },
                 onPlayTrack = { track ->
                     onPlayTrack(track, LibraryPlaybackOrigin.Album(target.album.albumKey))
@@ -894,6 +908,7 @@ fun LibraryScreen(
                 tracks = target.tracks,
                 onBack = onCloseDetail,
                 onPlayAll = { onPlayPlaylist(target.playlist) },
+                onPinShortcut = onPinPlaylistShortcut?.let { pin -> { play -> pin(target.playlist, play) } },
                 onShuffle = { onShufflePlaylist(target.playlist) },
                 onPlayTrack = { track ->
                     onPlayTrack(track, LibraryPlaybackOrigin.Playlist(target.playlist.id))
@@ -986,32 +1001,36 @@ fun LibraryScreen(
                 )
             }
             LibraryDetailTransitionTarget.Browser -> {
-                if (splitDetails) LibrarySplitPlaceholder() else SharedLibraryBrowser()
+                if (splitDetails) LibrarySplitPlaceholder() else browserPane()
             }
         }
     }
 
-    if (splitDetails) {
-        Row(Modifier.fillMaxSize()) {
-            Box(Modifier.weight(0.42f).fillMaxHeight()) { SharedLibraryBrowser() }
-            Box(Modifier.width(1.dp).fillMaxHeight()
-                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f)))
-            LibraryDetailTransition(
-                targetState = detailTransitionTarget,
-                split = true,
-                outerNavigationOwnsTransition = outerNavigationOwnsTransition,
-                modifier = Modifier.weight(0.58f).fillMaxHeight(),
-                content = { DetailContent(it) },
-            )
-        }
-    } else {
+    val detailRenderer: @Composable () -> Unit = {
         LibraryDetailTransition(
             targetState = detailTransitionTarget,
-            split = false,
+            split = splitDetails,
             outerNavigationOwnsTransition = outerNavigationOwnsTransition,
             modifier = Modifier.fillMaxSize(),
             content = { DetailContent(it) },
         )
+    }
+    val latestDetailRenderer = rememberUpdatedState(detailRenderer)
+    val detailPane = remember { movableContentOf { latestDetailRenderer.value() } }
+
+    if (splitDetails) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+            Row(Modifier.widthIn(max = 1440.dp).fillMaxSize()) {
+                app.echo.android.design.EchoLayoutBounds(Modifier.weight(0.42f).fillMaxHeight()) { browserPane() }
+                Box(Modifier.width(1.dp).fillMaxHeight()
+                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f)))
+                app.echo.android.design.EchoLayoutBounds(Modifier.weight(0.58f).fillMaxHeight()) {
+                    detailPane()
+                }
+            }
+        }
+    } else {
+        detailPane()
     }
 
     addToPlaylistTrack?.let { track ->
@@ -1908,25 +1927,17 @@ private fun <T> LibrarySortMenu(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        DropdownMenu(
+        EchoDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
         ) {
             options.forEach { mode ->
-                DropdownMenuItem(
+                EchoDropdownMenuItem(
                     text = { Text(label(mode)) },
+                    selected = mode == selected,
                     onClick = {
                         expanded = false
                         onSelect(mode)
-                    },
-                    trailingIcon = {
-                        if (mode == selected) {
-                            EchoIcon(
-                                Icons.Rounded.Check,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                        }
                     },
                 )
             }

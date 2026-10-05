@@ -1,4 +1,10 @@
 <resources>
+    <string name="signal_sound_back">返回聲音調整</string>
+    <string name="signal_sound_eq_summary">頻段增益與參數均衡</string>
+    <string name="signal_sound_headphones_summary">耳機頻響補償</string>
+    <string name="signal_sound_channels_summary">左右平衡、路由與校準</string>
+    <string name="signal_sound_dsp_summary">響度、交叉饋送與限幅</string>
+    <string name="signal_sound_mseb_summary">冷暖、低頻與人聲聽感</string>
     <string name="signal_value_range">範圍：%1$s–%2$s %3$s</string>
     <string name="signal_about_control">關於%1$s</string>
     <string name="signal_close_help">知道了</string>

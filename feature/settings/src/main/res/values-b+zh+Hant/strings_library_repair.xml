@@ -1,0 +1,4 @@
+<resources>
+    <string name="settings_library_repair">曲庫修復</string>
+    <string name="settings_library_repair_detail">檢查無法存取的歌曲，重新關聯本機檔案，保留收藏與歌單。</string>
+</resources>

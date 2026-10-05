@@ -1,0 +1,5 @@
+<resources>
+    <string name="library_desktop_shortcut">Add to home screen</string>
+    <string name="library_desktop_open">Open album or playlist</string>
+    <string name="library_desktop_play">Play directly</string>
+</resources>

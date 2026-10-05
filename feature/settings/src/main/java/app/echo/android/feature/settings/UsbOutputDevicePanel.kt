@@ -1,7 +1,6 @@
 package app.echo.android.feature.settings
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -35,14 +34,13 @@ internal fun UsbOutputDevicePanel(output: UsbOutputPresentation) {
     val scheme = MaterialTheme.colorScheme
     val headline = stringResource(output.headlineResource())
     Surface(Modifier.fillMaxWidth().padding(horizontal = SettingsContentInset, vertical = 4.dp),
-        shape = RoundedCornerShape(20.dp), color = scheme.surfaceContainerLow,
-        border = BorderStroke(1.dp, scheme.outlineVariant.copy(alpha = 0.45f))) {
+        shape = RoundedCornerShape(28.dp), color = scheme.surfaceContainer) {
     Column(
         Modifier.fillMaxWidth().padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(18.dp), verticalAlignment = Alignment.CenterVertically) {
-            Surface(shape = RoundedCornerShape(14.dp), color = scheme.onSurface.copy(alpha = 0.045f)) {
+            Surface(shape = RoundedCornerShape(18.dp), color = scheme.onSurface.copy(alpha = 0.045f)) {
                 EchoIcon(SettingsCategoryIcons.Usb, null, Modifier.padding(14.dp).size(30.dp),
                     tint = scheme.onSurfaceVariant)
             }

@@ -101,6 +101,23 @@ class ListeningHistoryRepository(
         clearedThroughEpochMs = now()
     }
 
+    suspend fun monthlyRecap(year: Int, month: Int): app.echo.android.model.playback.EchoMonthlyRecap =
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val period = MonthlyRecapPeriod.of(year, month)
+            val current = java.time.YearMonth.from(Instant.ofEpochMilli(now()).atZone(zone()))
+            require(java.time.YearMonth.of(year, month) <= current)
+            database.withTransaction {
+                val totals = dao.monthlyTotals(period.fromDay, period.untilDay)
+                val hours = IntArray(24)
+                dao.monthlyHours(period.fromDay, period.untilDay).forEach { if (it.hour in 0..23) hours[it.hour] = it.playCount }
+                app.echo.android.model.playback.EchoMonthlyRecap(year, month, java.time.YearMonth.of(year, month) == current,
+                    totals.plays, totals.listenedMs, totals.activeDays,
+                    dao.monthlyNewArtistCount(period.fromDay, period.untilDay),
+                    dao.monthlyNewArtists(period.fromDay, period.untilDay, 5).map(PlayEventRankRow::toEntry),
+                    dao.monthlyAlbums(period.fromDay, period.untilDay, 5).map(PlayEventRankRow::toEntry), hours.toList())
+            }
+        }
+
     private companion object {
         const val DEFAULT_RANK_LIMIT = 10
     }

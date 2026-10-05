@@ -132,7 +132,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -156,7 +155,6 @@ import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.echoSharedPlayerArtwork
-import app.echo.android.design.LocalEchoWidthSizeClass
 import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.design.rememberSilkPagerFlingBehavior
 import app.echo.android.design.rememberContentPagerNestedScroll
@@ -412,11 +410,11 @@ fun NowPlayingScreen(
     val lyricStyle = sharedStyle.lyricsPreset
     val styledLyricsFont = if (lyricsFontMode == "system")
         sharedStyle.displayFont ?: lyricsFontFamily else lyricsFontFamily
-    val configuration = LocalConfiguration.current
-    val shortLandscape = configuration.screenWidthDp > configuration.screenHeightDp &&
-        configuration.screenHeightDp < 600
+    val windowLayout = app.echo.android.design.rememberEchoWindowLayout()
+    val shortLandscape = windowLayout.shortLandscape
     val fold by rememberPlayerFold(presentationExpanded)
-    val preferSplit = LocalEchoWidthSizeClass.current.prefersNowPlayingSplit && !shortLandscape && (!lyricStyle.isAfterglow || lyricsAlignment == "vertical")
+    val preferSplit = windowLayout.supportsTwoPanes() && !shortLandscape && (!lyricStyle.isAfterglow || lyricsAlignment == "vertical")
+    val wideSinglePage = windowLayout.widthDp >= 840f
     val lyricsSurfaceVisible = !isRadio && pagerState.currentPage == NowPlayingPage.Lyrics.ordinal
     val immersiveAfterglow = lyricsAlignment != "vertical" && !isRadio && fold == null && !splitNowPlaying && lyricStyle.isAfterglow && lyricsSurfaceVisible && !pagerState.isScrollInProgress
     val sleeveTopBar = !isRadio && appearance.usesFlatSurface && !splitNowPlaying && pagerState.currentPage == NowPlayingPage.Cover.ordinal
@@ -480,7 +478,7 @@ fun NowPlayingScreen(
             Column(
                 modifier = Modifier
                     .safeDrawingPadding()
-                    .widthIn(max = if (fold != null) configuration.screenWidthDp.dp else if (shortLandscape) 960.dp else if (preferSplit) LocalEchoContentMaxWidth.current else 560.dp)
+                    .widthIn(max = if (fold != null) windowLayout.widthDp.dp else if (preferSplit) 1280.dp else if (shortLandscape || wideSinglePage) 960.dp else 560.dp)
                     .fillMaxSize()
                     .padding(horizontal = if (isRadio) 26.dp else if (splitNowPlaying) 20.dp else when (appearance.style) { "record_sleeve" -> 30.dp; "pixel_handheld" -> 18.dp; "type_poster" -> 24.dp; else -> 26.dp }),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -526,6 +524,8 @@ fun NowPlayingScreen(
                     onToggleFavorite = { if (track != null) onToggleFavorite() },
                     lyricsPage = lyricsSurfaceVisible && !splitNowPlaying,
                     lyricsReveal = lyricsReveal,
+                    onCast = onCast,
+                    castActive = castActive,
                     onOpenPlaybackSettings = {
                         if (lyricsSurfaceVisible && !splitNowPlaying) lyricsSettingsVisible = true
                         else playbackSettingsVisible = true
@@ -548,7 +548,8 @@ fun NowPlayingScreen(
                         PlayerCoverPage(
                             appearance = appearance,
                             palette = palette,
-                            presentationExpanded = presentationExpanded,
+                            presentationExpanded = presentationExpanded &&
+                                (splitNowPlaying || pagerState.currentPage == NowPlayingPage.Cover.ordinal),
                             status = status,
                             positionMsState = positionMsState,
                             durationMsState = durationMsState,
@@ -605,8 +606,6 @@ fun NowPlayingScreen(
                             onPrevious = onPrevious,
                             onSeek = onSeek,
                             onOpenQueue = onOpenQueue,
-                            onCast = onCast,
-                            castActive = castActive,
                             positionMsState = positionMsState,
                             durationMsState = durationMsState,
                             onImportLyrics = onImportLyrics,
@@ -647,12 +646,20 @@ fun NowPlayingScreen(
                         } else {
                             val pageFling = rememberSilkPagerFlingBehavior(pagerState)
                             val pageNestedScroll = rememberContentPagerNestedScroll(pagerState, pageFling)
+                            val adjacentPages = rememberNowPlayingAdjacentPages(
+                                pagerState, presentationExpanded, effectivePerformanceMode.isLightweight,
+                            )
                             HorizontalPager(
-                            state = pagerState, beyondViewportPageCount = 0,
+                            state = pagerState, beyondViewportPageCount = adjacentPages,
                             userScrollEnabled = pagerScrollEnabled,
                             flingBehavior = pageFling,
                             pageNestedScrollConnection = pageNestedScroll,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize().lyricsFrameRate(
+                                visible = presentationExpanded,
+                                continuousMotion = false,
+                                scrolling = pagerState.isScrollInProgress,
+                                lightweight = effectivePerformanceMode.isLightweight,
+                            ),
                         ) { page ->
                             Box(
                                 Modifier.fillMaxSize().nowPlayingPageDepth(
@@ -795,6 +802,8 @@ private fun NowPlayingTopBar(
     lyricsReveal: () -> Float = { 0f },
     radioColors: RadioPlayerColors? = null,
     onOpenPlaybackSettings: () -> Unit,
+    onCast: (() -> Unit)?,
+    castActive: Boolean,
 ) {
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val headerInk = radioColors?.ink ?: if (editorial) appearance.headerInk else OnArt
@@ -820,7 +829,7 @@ private fun NowPlayingTopBar(
                     else if (editorial || radioColors != null) PlayerControlIcons.Collapse else Icons.Rounded.KeyboardArrowDown,
                 description = stringResource(L10nR.string.feature_player_close_player_d23966),
                 touchSize = 44.dp,
-                iconSize = 30.dp,
+                iconSize = if (lyricsPage) 26.dp else 30.dp,
                 tint = headerInk.copy(alpha = 0.88f),
                 background = Color.Transparent,
                 onClick = onDismiss,
@@ -872,7 +881,13 @@ private fun NowPlayingTopBar(
                     modifier = Modifier.align(Alignment.CenterEnd).padding(end = 48.dp),
                 )
             }
-            GlyphButton(
+            if (lyricsPage) LyricsPageActions(
+                onOpenSettings = onOpenPlaybackSettings,
+                onCast = onCast,
+                castActive = castActive,
+                tint = headerInk,
+                modifier = Modifier.align(Alignment.CenterEnd),
+            ) else GlyphButton(
                 icon = if (radioColors != null) Icons.Rounded.MoreVert
                     else if (editorial && appearance.style == "pixel_handheld") PixelPlayerIcons.More else Icons.Rounded.MoreHoriz,
                 description = stringResource(if (lyricsPage) L10nR.string.feature_player_lyrics_settings_843bc9

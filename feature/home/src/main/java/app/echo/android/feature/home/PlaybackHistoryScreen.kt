@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material3.*
@@ -73,31 +74,43 @@ fun PlaybackHistoryScreen(
                     else -> key(query, range) {
                         val listState = rememberLazyListState()
                         LazyColumn(Modifier.weight(1f), state = listState,
-                            contentPadding = PaddingValues(start = 24.dp, end = 16.dp, bottom = 32.dp)) {
+                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)) {
                             items(entries.itemCount, key = entries.itemKey { it.id }) { index ->
                                 val entry = entries[index]
                                 if (entry != null) {
                                     val dateTime = remember(entry.playedAtEpochMs, zone) { Instant.ofEpochMilli(entry.playedAtEpochMs).atZone(zone) }
                                     val date = dateTime.toLocalDate()
                                     val previous = if (index > 0) entries.peek(index - 1) else null
-                                    val previousDate = previous?.let { Instant.ofEpochMilli(it.playedAtEpochMs).atZone(zone).toLocalDate() }
-                                    if (date != previousDate) PlaybackHistoryDateHeader(when (date) {
+                                    val next = if (index + 1 < entries.itemCount) entries.peek(index + 1) else null
+                                    val previousDate = remember(previous?.playedAtEpochMs, zone) {
+                                        previous?.let { Instant.ofEpochMilli(it.playedAtEpochMs).atZone(zone).toLocalDate() }
+                                    }
+                                    val nextDate = remember(next?.playedAtEpochMs, zone) {
+                                        next?.let { Instant.ofEpochMilli(it.playedAtEpochMs).atZone(zone).toLocalDate() }
+                                    }
+                                    val firstInDay = date != previousDate
+                                    if (firstInDay) PlaybackHistoryDateHeader(when (date) {
                                         today -> todayLabel
                                         today.minusDays(1) -> yesterdayLabel
                                         else -> dateFormat.format(date)
                                     }, if (date == today || date == today.minusDays(1)) dateFormat.format(date) else weekdayFormat.format(date))
-                                    PlaybackHistoryRow(entry, timeFormat.format(dateTime), onPlay = { onPlay(entry) },
+                                    val time = remember(dateTime, timeFormat) { timeFormat.format(dateTime) }
+                                    PlaybackHistoryRow(entry, time, firstInDay = firstInDay, lastInDay = date != nextDate,
+                                        busy = busy, onPlay = { onPlay(entry) },
                                         onDelete = { if (!busy) deleting = entry })
                                 }
                             }
                             if (refresh is LoadState.Error || entries.loadState.append is LoadState.Error) item(key = "retry") {
-                                TextButton(onClick = entries::retry) { Text(stringResource(R.string.playback_history_retry)) }
+                                Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+                                    TextButton(onClick = entries::retry) { Text(stringResource(R.string.playback_history_retry)) }
+                                }
                             }
                             if (entries.loadState.append is LoadState.Loading) item(key = "loading") {
                                 Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
                                     CircularProgressIndicator(Modifier.size(24.dp))
                                 }
                             }
+                            item(key = "bottom_spacing") { Spacer(Modifier.height(24.dp)) }
                         }
                     }
                 }
@@ -122,7 +135,11 @@ fun PlaybackHistoryScreen(
 private fun ColumnScope.HistoryMessage(title: String, detail: String, action: (() -> Unit)?) {
     Column(Modifier.weight(1f).fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally) {
-        EchoIcon(Icons.Rounded.History, null, Modifier.size(44.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.65f))
+        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)) {
+            Box(Modifier.size(72.dp), contentAlignment = Alignment.Center) {
+                EchoIcon(Icons.Rounded.History, null, Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
         Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 20.dp))
         if (action == null) Text(detail, style = MaterialTheme.typography.bodyMedium,

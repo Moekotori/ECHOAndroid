@@ -1,0 +1,24 @@
+<resources>
+    <string name="output_audio_profile_title">Device audio profile</string>
+    <string name="output_audio_profile_hint">Save EQ, ReplayGain, channel balance and track transitions for this output. Other outputs restore your general settings.</string>
+    <string name="output_audio_profile_bypassed">Bit-perfect output bypasses audio processing. Profiles resume when you leave this mode.</string>
+    <string name="output_audio_profile_update">Update device profile</string>
+    <string name="output_audio_profile_save">Save current settings</string>
+    <string name="output_audio_profile_remove">Remove binding</string>
+    <string name="widget_config_title">Your playback widget</string>
+    <string name="widget_config_hint">Settings apply only to this widget. Preview the content below before saving.</string>
+    <string name="widget_config_artwork">Show artwork</string>
+    <string name="widget_config_lyrics">Show lyrics</string>
+    <string name="widget_config_controls">Previous and next buttons</string>
+    <string name="widget_config_opacity">Background opacity · %1$d%%</string>
+    <string name="widget_config_playlist">Playlist shortcut</string>
+    <string name="widget_config_playlist_hint">Adds a separate playlist button; play and pause continue to control the current queue. The cover style keeps artwork opaque for readability.</string>
+    <string name="widget_config_none">No playlist shortcut</string>
+    <string name="widget_config_search">Search playlists</string>
+    <string name="widget_config_empty">No matching playlists</string>
+    <string name="widget_config_error">Could not load or save. Please try again.</string>
+    <string name="widget_config_cancel">Cancel</string>
+    <string name="widget_config_save">Save widget</string>
+    <string name="widget_config_lyrics_preview">Your current lyrics appear here</string>
+    <string name="widget_config_playlist_preview">Play playlist · %1$s</string>
+</resources>

@@ -19,10 +19,10 @@ import app.echo.android.playback.EchoPlaybackSurfaceSnapshot
 
 /** Large current-line typography without parsing, scrolling, animation, or position polling. */
 @Composable
-internal fun EchoLyricsWidgetContent(context: Context, snapshot: EchoPlaybackSurfaceSnapshot, artwork: Bitmap?, lyricLine: String?) {
+internal fun EchoLyricsWidgetContent(context: Context, snapshot: EchoPlaybackSurfaceSnapshot, artwork: Bitmap?, lyricLine: String?, availableHeightDp: Float) {
     val size = LocalSize.current
-    val tall = size.height >= 260.dp
-    val header = size.height >= 180.dp
+    val tall = availableHeightDp >= 260
+    val header = availableHeightDp >= 180
     val largeText = context.resources.configuration.fontScale > 1.25f
     val intent = widgetLaunchIntent(context)
     val title = snapshot.title.ifBlank { context.getString(R.string.app_name) }
@@ -30,9 +30,9 @@ internal fun EchoLyricsWidgetContent(context: Context, snapshot: EchoPlaybackSur
         if (snapshot.hasTrack) "" else context.getString(R.string.playback_widget_idle)
     }
     val lyric = lyricLine?.takeIf { snapshot.hasTrack && it.isNotBlank() }
-    val text = lyric ?: context.getString(if (snapshot.hasTrack) R.string.widget_lyrics_unavailable else R.string.widget_lyrics_hint)
+    val text = if (!LocalWidgetOptions.current.showLyrics) title else lyric ?: context.getString(if (snapshot.hasTrack) R.string.widget_lyrics_unavailable else R.string.widget_lyrics_hint)
     Column(
-        GlanceModifier.fillMaxSize().background(ColorProvider(R.color.playback_widget_background))
+        GlanceModifier.fillMaxSize().background(widgetBackground(context))
             .cornerRadius(24.dp).clickable(actionStartActivity(intent)).padding(if (header) 16.dp else 12.dp),
     ) {
         if (header && !largeText) {

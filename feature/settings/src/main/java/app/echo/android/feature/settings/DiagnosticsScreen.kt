@@ -2,6 +2,7 @@ package app.echo.android.feature.settings
 
 import app.echo.android.feature.settings.R as L10nR
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,7 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.EchoMotion
+import app.echo.android.design.rememberEchoContentMotion
 import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.echoPageBackgroundColor
@@ -64,6 +65,9 @@ fun DiagnosticsScreen(
     onUnbindPresetFromOutput: () -> Unit = {},
     outputDeviceLabel: String? = null,
     outputPresetBound: Boolean = false,
+    outputAudioProfileBound: Boolean = false,
+    onSaveOutputAudioProfile: () -> Unit = {},
+    onRemoveOutputAudioProfile: () -> Unit = {},
     onToggleOpraFavorite: () -> Unit = {},
     dspSettings: EchoDspSettings,
     replayGainScan: EchoReplayGainScanState,
@@ -79,11 +83,12 @@ fun DiagnosticsScreen(
     onMsebChange: (EchoMsebState) -> Unit = {},
 ) {
     val pagerState = rememberPagerState { 3 }
-    var soundPanel by rememberSaveable { mutableIntStateOf(0) }
+    // -1 is the sound-tool list; controls are mounted only after choosing a tool.
+    var soundPanel by rememberSaveable { mutableIntStateOf(-1) }
     var handledSoundRequestId by rememberSaveable { mutableIntStateOf(0) }
     LaunchedEffect(soundRequestId) {
         if (soundRequestId != 0 && soundRequestId != handledSoundRequestId) {
-            soundPanel = 0
+            soundPanel = -1
             pagerState.scrollToPage(1)
             handledSoundRequestId = soundRequestId
         }
@@ -92,10 +97,15 @@ fun DiagnosticsScreen(
     val soundScrollStates = listOf(rememberScrollState(), rememberScrollState(), rememberScrollState(), rememberScrollState(), rememberScrollState())
     val scope = rememberCoroutineScope()
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    val contentMotion = rememberEchoContentMotion()
     val innerFling = rememberSilkPagerFlingBehavior(pagerState)
     val innerNestedScroll = rememberContentPagerNestedScroll(pagerState, innerFling)
     fun selectTab(index: Int) {
+        if (index == 1) soundPanel = -1
         scope.launch { pagerState.animateSilkToPage(index, lightweight) }
+    }
+    BackHandler(enabled = pagerState.currentPage == 1 && soundPanel >= 0) {
+        soundPanel = -1
     }
     val labels = listOf(
         stringResource(L10nR.string.feature_settings_signal_path_2fed34),
@@ -103,6 +113,13 @@ fun DiagnosticsScreen(
         stringResource(L10nR.string.feature_settings_diagnostics_b6e487),
     )
     val scheme = MaterialTheme.colorScheme
+    val soundLabels = listOf(
+        stringResource(L10nR.string.peq_workspace_title),
+        stringResource(L10nR.string.feature_settings_headphone_correction_491ce5),
+        stringResource(L10nR.string.channel_balance),
+        stringResource(L10nR.string.dsp_title),
+        stringResource(L10nR.string.mseb_title),
+    )
     CompositionLocalProvider(LocalContentColor provides scheme.onBackground) {
         Column(
             Modifier.fillMaxSize().background(echoPageBackgroundColor()).statusBarsPadding(),
@@ -135,24 +152,14 @@ fun DiagnosticsScreen(
                 flingBehavior = innerFling,
                 pageNestedScrollConnection = innerNestedScroll,
             ) { tab ->
-                Column(Modifier.fillMaxSize()) {
-                    if (tab == 1) Box(Modifier.padding(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 12.dp)) {
-                        SignalSoundTabs(
-                            selectedIndex = soundPanel,
-                            labels = listOf(
-                                stringResource(L10nR.string.peq_workspace_title),
-                                stringResource(L10nR.string.feature_settings_headphone_correction_491ce5),
-                                stringResource(L10nR.string.channel_balance),
-                                stringResource(L10nR.string.dsp_title),
-                                stringResource(L10nR.string.mseb_title),
-                            ),
-                            onSelect = { soundPanel = it },
-                        )
+                Column(Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxSize()) {
+                    if (tab == 1 && soundPanel >= 0) Box(Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+                        SignalSoundToolHeader(soundLabels[soundPanel], onBack = { soundPanel = -1 })
                     }
                     Column(
                         Modifier.fillMaxWidth().weight(1f)
-                            .verticalScroll(if (tab == 1) soundScrollStates[soundPanel] else scrollStates[tab]).padding(horizontal = 24.dp)
-                            .padding(top = if (tab == 1) 0.dp else 20.dp, bottom = 188.dp),
+                            .verticalScroll(if (tab == 1 && soundPanel >= 0) soundScrollStates[soundPanel] else scrollStates[tab]).padding(horizontal = 24.dp)
+                            .padding(top = if (tab == 1 && soundPanel >= 0) 0.dp else 20.dp, bottom = 188.dp),
                         verticalArrangement = Arrangement.spacedBy(20.dp),
                     ) {
                         val error = status.diagnostics.lastError?.message ?: status.diagnostics.usbLastRequestError?.message
@@ -170,13 +177,16 @@ fun DiagnosticsScreen(
                             0 -> SignalOverview(status, equalizerState, channelBalanceState, dspSettings, onAdjust = { selectTab(1) }, onDiagnostics = { selectTab(2) })
                             1 -> {
                                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                    OutputAudioProfileControl(outputDeviceLabel, outputAudioProfileBound,
+                                        status.diagnostics.usbBitPerfectEnabled, onSaveOutputAudioProfile, onRemoveOutputAudioProfile)
                                     AnimatedContent(
                                         targetState = soundPanel,
                                         modifier = Modifier.fillMaxWidth(),
-                                        transitionSpec = { EchoMotion.tabSwitch(targetState > initialState) },
+                                        transitionSpec = { contentMotion.tabSwitch(targetState >= 0) },
                                         label = "SignalSoundPanel",
                                     ) { panel ->
-                                        if (panel == 0) SignalEqualizer(
+                                        if (panel < 0) SignalSoundMenu(soundLabels, onSelect = { soundPanel = it })
+                                        else if (panel == 0) SignalEqualizer(
                                             state = equalizerState,
                                             bypassed = status.diagnostics.usbBitPerfectEnabled,
                                             playing = status.isPlaying,

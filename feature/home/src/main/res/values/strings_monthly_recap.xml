@@ -1,0 +1,26 @@
+<resources>
+    <string name="recap_title">Monthly recap</string>
+    <string name="recap_back">Back</string>
+    <string name="recap_share">Share card</string>
+    <string name="recap_previous">Previous month</string>
+    <string name="recap_next">Next month</string>
+    <string name="recap_load_error">Could not load this month.</string>
+    <string name="recap_retry">Retry</string>
+    <string name="recap_empty">No listening records for this month yet.</string>
+    <string name="recap_partial">This month so far</string>
+    <string name="recap_minutes_value">%1$d minutes of music</string>
+    <string name="recap_totals_value">%1$d listens · %2$d active days</string>
+    <string name="recap_hours">When you listened</string>
+    <string name="recap_albums">Most replayed albums</string>
+    <string name="recap_no_albums">No replayed albums this month yet.</string>
+    <string name="recap_new_artists">%1$d newly discovered artists</string>
+    <string name="recap_no_new_artists">A month with familiar voices.</string>
+    <string name="recap_basis">Based on retained listening history. New artists first appear in these records during this month. Dates and hours use the time zone at each listen; time is attributed to the starting date. Replays exclude each track\'s first retained listen.</string>
+    <string name="recap_card_basis">Based on retained listening records</string>
+    <string name="recap_card_paper">Paper</string>
+    <string name="recap_card_midnight">Midnight</string>
+    <string name="recap_card_preview">Monthly recap card preview</string>
+    <string name="recap_share_error">Could not create or save the image. Try again.</string>
+    <string name="recap_export">Save image</string>
+    <plurals name="recap_plays"><item quantity="one">%1$d listen</item><item quantity="other">%1$d listens</item></plurals>
+</resources>

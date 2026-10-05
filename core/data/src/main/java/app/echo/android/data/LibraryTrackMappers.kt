@@ -273,8 +273,11 @@ internal fun LibraryTrackEntity.toSummaryKeySet(): LibrarySummaryKeySet {
     )
 }
 
-internal fun Iterable<LibraryTrackEntity>.toSummaryKeySet(): LibrarySummaryKeySet =
-    fold(LibrarySummaryKeySet()) { acc, track -> acc + track.toSummaryKeySet() }
+internal fun Iterable<LibraryTrackEntity>.toSummaryKeySet(): LibrarySummaryKeySet {
+    val keys = LibrarySummaryKeyAccumulator()
+    forEach { keys.add(it.toSummaryKeySet()) }
+    return keys.build()
+}
 
 private fun String?.normalizedNullableMetadata(): String? =
     this?.trim()?.takeIf { it.isNotBlank() }

@@ -1141,6 +1141,25 @@ interface LibraryTrackDao {
     @Query("SELECT * FROM library_tracks")
     suspend fun getAllTracksForFtsRebuild(): List<LibraryTrackEntity>
 
+    @Query("SELECT * FROM library_tracks ORDER BY id LIMIT :limit")
+    suspend fun getAggregationBackfillFirstTracks(limit: Int): List<LibraryTrackEntity>
+
+    @Query("SELECT * FROM library_tracks WHERE id > :afterId ORDER BY id LIMIT :limit")
+    suspend fun getAggregationBackfillTracksAfter(afterId: String, limit: Int): List<LibraryTrackEntity>
+
+    @Query("""
+        SELECT id, normalizedAlbum, album, relativePath FROM library_tracks
+        WHERE source IN ('mediastore', 'saf') ORDER BY id LIMIT :limit
+    """)
+    suspend fun getLocalAlbumGroupingFirstRows(limit: Int): List<LibraryAlbumGroupingRow>
+
+    @Query("""
+        SELECT id, normalizedAlbum, album, relativePath FROM library_tracks
+        WHERE source IN ('mediastore', 'saf') AND id > :afterId
+        ORDER BY id LIMIT :limit
+    """)
+    suspend fun getLocalAlbumGroupingRowsAfter(afterId: String, limit: Int): List<LibraryAlbumGroupingRow>
+
     @Query("SELECT * FROM library_tracks WHERE source = 'mediastore' OR source = 'saf'")
     suspend fun getLocalLibraryTracks(): List<LibraryTrackEntity>
 
@@ -1208,6 +1227,26 @@ interface LibraryTrackDao {
         """,
     )
     suspend fun searchTracks(query: String, limit: Int): List<LibraryTrackEntity>
+
+    @Query("""
+        SELECT * FROM library_tracks
+        WHERE instr(lower(title), lower(:title)) > 0
+          AND (:artist = '' OR instr(lower(artist), lower(:artist)) > 0)
+          AND (:album = '' OR instr(lower(album), lower(:album)) > 0)
+        ORDER BY CASE WHEN lower(title) = lower(:title) THEN 0 ELSE 1 END,
+                 title COLLATE NOCASE, id
+        LIMIT :limit
+    """)
+    suspend fun searchVoiceTracks(title: String, artist: String, album: String, limit: Int): List<LibraryTrackEntity>
+
+    @Query("""
+        SELECT genreKey, name, artworkUri, albumCount, trackCount, durationMs
+        FROM library_genre_summaries
+        WHERE instr(lower(name), lower(:query)) > 0
+        ORDER BY CASE WHEN lower(name) = lower(:query) THEN 0 ELSE 1 END, name COLLATE NOCASE
+        LIMIT :limit
+    """)
+    suspend fun searchVoiceGenres(query: String, limit: Int): List<app.echo.android.model.library.GenreSummary>
 
     @Query(
         """
@@ -1314,8 +1353,10 @@ interface LibraryTrackDao {
     @Transaction
     suspend fun upsertScanBatch(tracks: List<LibraryTrackEntity>) {
         if (tracks.isEmpty()) return
-        var keys = tracks.toSummaryKeySet()
-        getSummaryKeyRows(tracks.map { it.id }).forEach { keys += it.toSummaryKeySet() }
+        val accumulator = LibrarySummaryKeyAccumulator()
+        accumulator.add(tracks.toSummaryKeySet())
+        getSummaryKeyRows(tracks.map { it.id }).forEach { accumulator.add(it.toSummaryKeySet()) }
+        val keys = accumulator.build()
         upsertBatchWithFts(tracks)
         rebuildLibrarySummariesForKeys(keys.albumKeys, keys.artistKeys, keys.folderKeys, keys.genreKeys)
     }
@@ -1343,8 +1384,9 @@ interface LibraryTrackDao {
     @Transaction
     suspend fun deleteScanBatch(ids: List<String>) {
         if (ids.isEmpty()) return
-        var keys = LibrarySummaryKeySet()
-        getSummaryKeyRows(ids).forEach { keys += it.toSummaryKeySet() }
+        val accumulator = LibrarySummaryKeyAccumulator()
+        getSummaryKeyRows(ids).forEach { accumulator.add(it.toSummaryKeySet()) }
+        val keys = accumulator.build()
         val playlistIds = playlistIdsReferencingTracks(ids)
         deleteFavoritesByTrackIds(ids)
         deletePlaybackStatsByTrackIds(ids)

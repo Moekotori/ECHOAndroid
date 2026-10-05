@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_welcome">每个人听音乐的方式都不同，选让你舒服的设置就好。</string>
+    <string name="accessibility_lyrics_reading">读歌词更轻松</string>
+    <string name="accessibility_lyrics_spacing">歌词行距</string>
+    <string name="accessibility_translation">显示译文</string>
+    <string name="accessibility_translation_detail">歌曲有译文时，用熟悉的语言读懂歌词。</string>
+    <string name="accessibility_romanization">显示音译</string>
+    <string name="accessibility_romanization_detail">歌词有音译时，跟着发音一起唱。</string>
+    <string name="accessibility_listening">按自己的方式聆听</string>
+    <string name="accessibility_mono">合并左右声道</string>
+    <string name="accessibility_mono_detail">把左右声道合在一起，方便只戴一只耳机时聆听。</string>
+    <string name="accessibility_balance">左右声道平衡</string>
+    <string name="accessibility_balance_reset">声音回到中间</string>
+    <string name="accessibility_balance_detail">调整到自己舒服的位置，其他声音设置会保留。</string>
+    <string name="accessibility_balance_mono_detail">单声道模式下，左右输出使用同一份声音。切回立体声后可调整平衡。</string>
+    <string name="accessibility_processing_limited">USB 直出模式</string>
+    <string name="accessibility_processing_limited_detail">严格直出会绕过声道调整和音量均衡。切换输出模式后可使用这些设置。</string>
+    <string name="accessibility_replay_gain_detail">根据歌曲已有的音量信息，减少切歌时的音量差。</string>
+    <string name="accessibility_disconnect_detail">耳机断开时暂停，避免音乐突然从扬声器播放。</string>
+    <string name="accessibility_reconnect_detail">如果希望自己决定何时播放，可以关闭自动继续。</string>
+    <string name="accessibility_rest">安心休息</string>
+    <string name="accessibility_rest_timer">自动暂停</string>
+    <string name="accessibility_rest_detail">休息时，让音乐到点暂停。随时可以取消计时。</string>
+    <string name="accessibility_rest_end_detail">听完当前这首歌，音乐就会暂停。</string>
+    <plurals name="accessibility_rest_remaining">
+        <item quantity="other">大约 %1$d 分钟后暂停播放。</item>
+    </plurals>
+    <string name="accessibility_rest_off">关闭</string>
+    <string name="accessibility_rest_minutes">%1$d 分钟</string>
+    <string name="accessibility_rest_end">听完这首歌</string>
+    <string name="accessibility_title">无障碍</string>
+    <string name="accessibility_detail">字号、动效、振动与系统辅助</string>
+    <string name="accessibility_spacious_layout">宽松布局</string>
+    <string name="accessibility_spacious_layout_detail">关闭紧凑布局，为文字和操作留出更多空间。</string>
+    <string name="accessibility_motion_feedback">动效与触感</string>
+    <string name="accessibility_word_highlight">逐字高亮</string>
+    <string name="accessibility_word_highlight_detail">关闭歌词的逐字高亮，减少文字动效。</string>
+    <string name="accessibility_lyrics_motion">歌词滚动</string>
+    <string name="accessibility_lyrics_motion_detail">选择「平静」，让歌词跟随动效更简洁。</string>
+    <string name="accessibility_motion_calm">平静</string>
+    <string name="accessibility_motion_smooth">顺滑</string>
+    <string name="accessibility_motion_stage">舞台</string>
+    <string name="accessibility_system">系统辅助</string>
+    <string name="accessibility_screen_reader">屏幕朗读</string>
+    <string name="accessibility_screen_reader_on">触摸探索已开启。可在系统无障碍设置中管理朗读反馈。</string>
+    <string name="accessibility_screen_reader_off">触摸探索未开启。前往系统无障碍设置使用 TalkBack 等辅助工具。</string>
+    <string name="accessibility_screen_reader_unknown">前往系统无障碍设置管理 TalkBack 等辅助工具。</string>
+    <string name="accessibility_system_display">系统字号与显示大小</string>
+    <string name="accessibility_system_display_detail">系统字号：%1$d%%。前往显示设置放大文字和操作区域。</string>
+    <string name="accessibility_system_unavailable">暂时无法打开此设置页，请在手机设置中调整无障碍或显示大小。</string>
+</resources>

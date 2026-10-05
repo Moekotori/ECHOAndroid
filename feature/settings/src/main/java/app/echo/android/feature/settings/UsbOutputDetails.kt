@@ -56,7 +56,6 @@ internal fun UsbOutputDetails(d: EchoPlaybackDiagnostics, output: UsbOutputPrese
             ?.takeIf { output.verified && it > 0 }?.let { "$it bit" } ?: unknown),
         stringResource(R.string.dac_reported_rates) to rates.ifBlank { unknown },
     )
-    Text(stringResource(R.string.usb_page_device_details), style = MaterialTheme.typography.titleSmall)
     rows.forEach { (label, value) -> SignalReadout(label, value) }
     if (output.connected) {
         output.audioClass?.let { SignalReadout("UAC", it) }

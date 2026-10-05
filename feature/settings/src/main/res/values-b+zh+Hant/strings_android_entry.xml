@@ -1,0 +1,24 @@
+<resources>
+    <string name="output_audio_profile_title">裝置音效設定</string>
+    <string name="output_audio_profile_hint">為此裝置儲存均衡器、ReplayGain、聲道平衡及切歌設定；其他裝置恢復通用設定。</string>
+    <string name="output_audio_profile_bypassed">位元完美輸出略過音效處理，離開此模式後恢復裝置設定。</string>
+    <string name="output_audio_profile_update">更新裝置設定</string>
+    <string name="output_audio_profile_save">儲存目前設定</string>
+    <string name="output_audio_profile_remove">解除綁定</string>
+    <string name="widget_config_title">設定播放小工具</string>
+    <string name="widget_config_hint">設定僅套用至目前小工具，可以先預覽再儲存。</string>
+    <string name="widget_config_artwork">顯示封面</string>
+    <string name="widget_config_lyrics">顯示歌詞</string>
+    <string name="widget_config_controls">上一首與下一首按鈕</string>
+    <string name="widget_config_opacity">背景不透明度 · %1$d%%</string>
+    <string name="widget_config_playlist">歌單捷徑</string>
+    <string name="widget_config_playlist_hint">加入獨立的歌單播放按鈕；播放及暫停仍控制目前佇列。封面樣式保留不透明圖片以確保可讀性。</string>
+    <string name="widget_config_none">不綁定歌單</string>
+    <string name="widget_config_search">搜尋歌單</string>
+    <string name="widget_config_empty">沒有符合的歌單</string>
+    <string name="widget_config_error">載入或儲存失敗，請重試。</string>
+    <string name="widget_config_cancel">取消</string>
+    <string name="widget_config_save">儲存小工具</string>
+    <string name="widget_config_lyrics_preview">目前歌詞會顯示在這裡</string>
+    <string name="widget_config_playlist_preview">播放歌單 · %1$s</string>
+</resources>

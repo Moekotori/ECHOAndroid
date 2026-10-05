@@ -21,6 +21,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -28,6 +29,7 @@ import kotlinx.coroutines.withContext
 
 data class EchoPlaybackRuntimeOptions(
     val trackTransitions: app.echo.android.model.playback.EchoTrackTransitionOptions = app.echo.android.model.playback.EchoTrackTransitionOptions(),
+    val shuffleOptions: app.echo.android.model.playback.EchoShuffleOptions = app.echo.android.model.playback.EchoShuffleOptions(),
 )
 
 object EchoPlaybackRuntimeOptionsStore {
@@ -35,7 +37,11 @@ object EchoPlaybackRuntimeOptionsStore {
     val options: StateFlow<EchoPlaybackRuntimeOptions> = _options.asStateFlow()
 
     fun setTrackTransitions(options: app.echo.android.model.playback.EchoTrackTransitionOptions) {
-        _options.value = _options.value.copy(trackTransitions = options.normalized())
+        _options.update { it.copy(trackTransitions = options.normalized()) }
+    }
+
+    fun setShuffleOptions(options: app.echo.android.model.playback.EchoShuffleOptions) {
+        _options.update { it.copy(shuffleOptions = options.normalized) }
     }
 }
 

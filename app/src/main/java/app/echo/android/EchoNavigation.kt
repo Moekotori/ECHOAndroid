@@ -11,7 +11,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.selection.selectable
@@ -40,6 +45,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.echoPressFeedback
@@ -117,10 +123,12 @@ internal fun EchoNavigationRail(
     selectedTab: Int,
     onSelectTab: (Int) -> Unit,
     selectedTabProgress: () -> Float = { selectedTab.toFloat() },
+    showLabels: Boolean = false,
 ) {
     val chrome = echoChromeColors()
     Column(
-        modifier = Modifier.fillMaxHeight().safeDrawingPadding()
+        modifier = Modifier.fillMaxHeight()
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Vertical))
             .verticalScroll(rememberScrollState()).padding(horizontal = 4.dp, vertical = 12.dp)
             .selectableGroup(),
         verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
@@ -132,6 +140,7 @@ internal fun EchoNavigationRail(
                 activeColor = chrome.content,
                 idleColor = chrome.secondary,
                 progress = selectedTabProgress,
+                showLabel = showLabels,
                 onClick = { onSelectTab(tab.ordinal) },
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -139,7 +148,7 @@ internal fun EchoNavigationRail(
     }
 }
 
-/** Landscape navigation is a quiet icon strip; labels remain available to accessibility. */
+/** Short windows use icons; tablet navigation keeps visible labels as well. */
 @Composable
 private fun RailItem(
     tab: EchoTab,
@@ -147,6 +156,7 @@ private fun RailItem(
     activeColor: Color,
     idleColor: Color,
     progress: () -> Float,
+    showLabel: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -155,7 +165,7 @@ private fun RailItem(
     val interaction = remember { MutableInteractionSource() }
     val haptics = rememberEchoHapticPerformer()
     Box(
-        modifier.height(48.dp).clip(DockItemShape)
+        modifier.heightIn(min = if (showLabel) 64.dp else 48.dp).clip(DockItemShape)
             .echoPressFeedback(interaction)
             .selectable(
                 selected = selected,
@@ -166,23 +176,29 @@ private fun RailItem(
             ).semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(Modifier.fillMaxWidth().height(48.dp)) {
-            val active = (1f - abs(progress() - tab.ordinal)).coerceIn(0f, 1f)
-            val iconSize = 22.dp.toPx()
-            val color = lerp(idleColor.copy(alpha = 0.7f), activeColor, active)
-            drawRoundRect(
-                color = activeColor.copy(alpha = active),
-                topLeft = androidx.compose.ui.geometry.Offset(0f, (size.height - 16.dp.toPx()) / 2f),
-                size = androidx.compose.ui.geometry.Size(2.dp.toPx(), 16.dp.toPx()),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(1.dp.toPx()),
-            )
-            withTransform({
-                translate((size.width - iconSize) / 2f, (size.height - iconSize) / 2f)
-            }) {
-                with(painter) {
-                    draw(androidx.compose.ui.geometry.Size(iconSize, iconSize), colorFilter = ColorFilter.tint(color))
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Canvas(Modifier.fillMaxWidth().height(48.dp)) {
+                val active = (1f - abs(progress() - tab.ordinal)).coerceIn(0f, 1f)
+                val iconSize = 22.dp.toPx()
+                val color = lerp(idleColor.copy(alpha = 0.7f), activeColor, active)
+                drawRoundRect(
+                    color = activeColor.copy(alpha = active),
+                    topLeft = androidx.compose.ui.geometry.Offset(0f, (size.height - 16.dp.toPx()) / 2f),
+                    size = androidx.compose.ui.geometry.Size(2.dp.toPx(), 16.dp.toPx()),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(1.dp.toPx()),
+                )
+                withTransform({
+                    translate((size.width - iconSize) / 2f, (size.height - iconSize) / 2f)
+                }) {
+                    with(painter) {
+                        draw(androidx.compose.ui.geometry.Size(iconSize, iconSize), colorFilter = ColorFilter.tint(color))
+                    }
                 }
             }
+            if (showLabel) Text(label, style = MaterialTheme.typography.labelSmall,
+                color = if (selected) activeColor else idleColor,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp).clearAndSetSemantics { })
         }
     }
 }

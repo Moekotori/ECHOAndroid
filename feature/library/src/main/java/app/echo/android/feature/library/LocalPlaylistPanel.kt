@@ -6,8 +6,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import app.echo.android.design.echoClickable
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -59,6 +57,7 @@ import app.echo.android.model.library.EchoPlaylist
 @Composable
 internal fun LocalPlaylistPanel(
     playlists: List<EchoPlaylist>,
+    query: String,
     onOpenPlaylist: (EchoPlaylist) -> Unit,
     onPlayPlaylist: (EchoPlaylist) -> Unit,
     onCreatePlaylist: (String) -> Unit,
@@ -72,15 +71,13 @@ internal fun LocalPlaylistPanel(
     var createVisible by remember { mutableStateOf(false) }
     var smartEditorVisible by remember { mutableStateOf(false) }
     var editingSmart by remember { mutableStateOf<EchoPlaylist?>(null) }
-    var repairVisible by remember { mutableStateOf(false) }
     val toolsScope = rememberCoroutineScope()
     var toolsError by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<EchoPlaylist?>(null) }
     var deleting by remember { mutableStateOf<EchoPlaylist?>(null) }
-    var playlistQuery by rememberSaveable { mutableStateOf("") }
     var sortName by rememberSaveable { mutableStateOf(PlaylistCatalogSort.Updated.name) }
     val sort = PlaylistCatalogSort.entries.firstOrNull { it.name == sortName } ?: PlaylistCatalogSort.Updated
-    val sections by rememberPlaylistCatalog(playlists, playlistQuery, sort)
+    val sections by rememberPlaylistCatalog(playlists, query, sort)
 
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
@@ -90,17 +87,15 @@ internal fun LocalPlaylistPanel(
         item {
             LocalPlaylistHeader(
                 playlistCount = playlists.size,
+                sort = sort,
+                onSort = { sortName = it.name },
                 onCreatePlaylist = { createVisible = true },
                 onImportM3uPlaylist = onImportM3uPlaylist,
+                onCreateSmartPlaylist = experienceActions?.let { { editingSmart = null; smartEditorVisible = true } },
             )
-            PlaylistCatalogControls(playlistQuery, { playlistQuery = it }, sort, { sortName = it.name })
-            if (experienceActions != null) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = { editingSmart = null; smartEditorVisible = true }) { Text(stringResource(L10nR.string.smart_create)) }
-                TextButton(onClick = { repairVisible = true }) { Text(stringResource(L10nR.string.repair_title)) }
-            }
             if (toolsError) Text(stringResource(L10nR.string.smart_pin_error), color = MaterialTheme.colorScheme.error)
         }
-        if (sections.isEmpty() && playlistQuery.isNotBlank()) {
+        if (sections.isEmpty() && query.isNotBlank()) {
             item {
                 EmptyState(stringResource(L10nR.string.playlist_no_search_results))
             }
@@ -138,7 +133,6 @@ internal fun LocalPlaylistPanel(
     }
 
     if (smartEditorVisible && experienceActions != null) SmartPlaylistEditor(editingSmart, experienceActions) { smartEditorVisible = false }
-    if (repairVisible && experienceActions != null) LibraryRepairSheet(experienceActions) { repairVisible = false }
     if (createVisible) {
         PlaylistNameDialog(
             title = stringResource(L10nR.string.feature_library_new_playlist_22cdbd),
@@ -293,19 +287,37 @@ internal fun PlaylistNameDialog(
 @Composable
 private fun LocalPlaylistHeader(
     playlistCount: Int,
+    sort: PlaylistCatalogSort,
+    onSort: (PlaylistCatalogSort) -> Unit,
     onCreatePlaylist: () -> Unit,
     onImportM3uPlaylist: () -> Unit,
+    onCreateSmartPlaylist: (() -> Unit)?,
 ) {
+    var menuOpen by remember { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(stringResource(L10nR.string.feature_library_playlistcount_playlists_220ceb, playlistCount.toString()),
             Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        TextButton(onClick = onImportM3uPlaylist) {
-            Text(stringResource(L10nR.string.playlist_import))
-        }
-        TextButton(onClick = onCreatePlaylist) {
-            EchoIcon(Icons.Rounded.Add, contentDescription = null, Modifier.size(18.dp))
-            Spacer(Modifier.width(6.dp))
-            Text(stringResource(L10nR.string.feature_library_new_playlist_22cdbd))
+        PlaylistCatalogSortControl(sort, onSort)
+        Box {
+            androidx.compose.material3.IconButton(onClick = { menuOpen = true }) {
+                EchoIcon(Icons.Rounded.Add, contentDescription = stringResource(L10nR.string.feature_library_new_playlist_22cdbd))
+            }
+            app.echo.android.design.EchoDropdownMenu(menuOpen, onDismissRequest = { menuOpen = false }) {
+                androidx.compose.material3.DropdownMenuItem(
+                    text = { Text(stringResource(L10nR.string.feature_library_new_playlist_22cdbd)) },
+                    onClick = { menuOpen = false; onCreatePlaylist() },
+                )
+                onCreateSmartPlaylist?.let { createSmart ->
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text(stringResource(L10nR.string.smart_create)) },
+                        onClick = { menuOpen = false; createSmart() },
+                    )
+                }
+                androidx.compose.material3.DropdownMenuItem(
+                    text = { Text(stringResource(L10nR.string.playlist_import)) },
+                    onClick = { menuOpen = false; onImportM3uPlaylist() },
+                )
+            }
         }
     }
 }

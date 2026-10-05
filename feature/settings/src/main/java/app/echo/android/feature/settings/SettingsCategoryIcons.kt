@@ -88,6 +88,15 @@ internal object SettingsCategoryIcons {
         moveTo(14f, 14f); verticalLineTo(20f)
     }
 
+    val Accessibility = outline("SettingsAccessibility") {
+        moveTo(14f, 4f)
+        curveTo(14f, 6.7f, 10f, 6.7f, 10f, 4f)
+        curveTo(10f, 1.3f, 14f, 1.3f, 14f, 4f); close()
+        moveTo(4f, 8f); lineTo(12f, 10f); lineTo(20f, 8f)
+        moveTo(12f, 10f); verticalLineTo(15f)
+        moveTo(8f, 21f); lineTo(12f, 15f); lineTo(16f, 21f)
+    }
+
     val Playback = outline("SettingsPlayback") {
         moveTo(4f, 13f); verticalLineTo(11f)
         curveTo(4f, 6.6f, 7.6f, 3f, 12f, 3f)
@@ -139,6 +148,14 @@ internal object SettingsCategoryIcons {
         curveTo(23f, 16f, 23f, 8f, 19f, 10f)
         verticalLineTo(5f); horizontalLineTo(13f)
         curveTo(15f, 1f, 7f, 1f, 9f, 5f); close()
+    }
+
+    val Permissions = outline("SettingsPermissions") {
+        moveTo(12f, 3f); lineTo(20f, 6f); verticalLineTo(12f)
+        curveTo(20f, 16f, 17f, 19f, 12f, 21f)
+        curveTo(7f, 19f, 4f, 16f, 4f, 12f)
+        verticalLineTo(6f); lineTo(12f, 3f); close()
+        moveTo(8f, 12f); lineTo(11f, 15f); lineTo(16f, 9f)
     }
 
     val About = outline("SettingsAbout") {

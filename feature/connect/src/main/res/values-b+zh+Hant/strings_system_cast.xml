@@ -1,0 +1,5 @@
+<resources>
+    <string name="system_cast_output">系統輸出選擇器</string>
+    <string name="system_cast_output_hint">選擇相容的 Cast 裝置，也可從系統媒體面板切回手機。</string>
+    <string name="system_cast_unavailable">系統 Cast 選擇需要 Android 13 或更新版本及可用的 Google Play 服務。仍可使用下方區域網路裝置入口。</string>
+</resources>

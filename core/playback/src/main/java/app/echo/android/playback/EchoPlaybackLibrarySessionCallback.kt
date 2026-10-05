@@ -11,6 +11,8 @@ import androidx.media3.session.MediaLibraryService.LibraryParams
 import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionResult
+import app.echo.android.model.error.EchoErrorLog
+import app.echo.android.model.error.EchoErrorSource
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -62,6 +64,12 @@ internal class EchoPlaybackLibrarySessionCallback(
         controller: MediaSession.ControllerInfo,
     ): MediaSession.ConnectionResult {
         if (!EchoMediaSessionControllerGate.isAllowed(context, controller, session)) {
+            EchoErrorLog.record(
+                EchoErrorSource.Playback,
+                "Media controller connection rejected.",
+                detail = "package=${controller.packageName}, uid=${controller.uid}, " +
+                    "trusted=${controller.isTrusted}, version=${controller.controllerVersion}",
+            )
             return MediaSession.ConnectionResult.reject()
         }
         val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
@@ -167,6 +175,12 @@ internal class EchoPlaybackLibrarySessionCallback(
         startPositionMs: Long,
     ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> =
         scope.future {
+            mediaItems.singleOrNull()?.voiceSearchRequest()?.let { request ->
+                val result = catalog().voiceQueue(request)
+                if (result.items.isEmpty()) throw UnsupportedOperationException(context.getString(R.string.voice_search_no_result))
+                return@future MediaSession.MediaItemsWithStartPosition(
+                    result.items.map { it.toMediaItem().asQueueEntry() }, result.startIndex, 0L)
+            }
             val requestedIds = mediaItems.map { it.mediaId }
             val resolved = resolvePlayableMediaItems(mediaItems)
             val resolvedStart = PlaybackCatalogPolicy.resolvedStartIndex(
@@ -183,6 +197,9 @@ internal class EchoPlaybackLibrarySessionCallback(
 
     private suspend fun resolvePlayableMediaItems(mediaItems: List<MediaItem>): List<MediaItem> =
         mediaItems.flatMap { item ->
+            item.voiceSearchRequest()?.let { request ->
+                return@flatMap catalog().voiceQueue(request).items.map { it.toMediaItem() }
+            }
             val playUri = item.localConfiguration?.uri?.toString()
             if (
                 !PlaybackCatalogPolicy.shouldExpandCatalogQueue(
@@ -363,7 +380,7 @@ internal class EchoPlaybackLibrarySessionCallback(
 
 private fun <T> CoroutineScope.future(block: suspend () -> T): ListenableFuture<T> {
     val result = SettableFuture.create<T>()
-    launch(Dispatchers.IO) {
+    val job = launch(Dispatchers.IO) {
         try {
             result.set(block())
         } catch (cancelled: CancellationException) {
@@ -375,5 +392,6 @@ private fun <T> CoroutineScope.future(block: suspend () -> T): ListenableFuture<
             }
         }
     }
+    result.addListener({ if (result.isCancelled) job.cancel() }, com.google.common.util.concurrent.MoreExecutors.directExecutor())
     return result
 }

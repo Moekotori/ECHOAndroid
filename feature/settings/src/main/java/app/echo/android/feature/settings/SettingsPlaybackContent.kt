@@ -22,6 +22,8 @@ internal fun SettingsPlaybackContent(
     onOpenLyricsInterface: () -> Unit,
     usbExclusiveEnabled: Boolean,
     usbBitPerfectEnabled: Boolean,
+    shuffleOptions: app.echo.android.model.playback.EchoShuffleOptions,
+    onShuffleOptionsChange: (app.echo.android.model.playback.EchoShuffleOptions) -> Unit,
     trackTransitions: app.echo.android.model.playback.EchoTrackTransitionOptions,
     pauseOnAudioDisconnect: Boolean,
     resumeOnAudioReconnect: Boolean,
@@ -41,6 +43,7 @@ internal fun SettingsPlaybackContent(
     notificationPermissionGranted: Boolean = true,
     onRequestNotificationPermission: () -> Unit = {},
 ) {
+    SettingsShuffleModeRow(shuffleOptions, onShuffleOptionsChange)
     SettingsSectionCard(title = stringResource(R.string.settings_section_listening)) {
         SettingsSwitchRow(
             title = stringResource(R.string.settings_pause_on_disconnect),

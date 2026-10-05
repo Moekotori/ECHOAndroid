@@ -100,11 +100,6 @@ internal enum class PlaybackProgressUiVisibility {
     Background,
 }
 
-private data class PendingControllerAction(
-    val replacesQueue: Boolean,
-    val action: MediaController.() -> Unit,
-)
-
 @UnstableApi
 @Suppress("SpellCheckingInspection")
 internal class PlaybackController(
@@ -148,13 +143,14 @@ internal class PlaybackController(
     private var controllerSetupJob: Job? = null
     private var controllerRetryJob: Job? = null
     private var controllerGeneration = 0L
+    private var disconnectionRecoveryAttempts = 0
     private var cleared = false
     private var progressJob: Job? = null
     private var progressUpdateIntervalMs: Long? = MINI_PLAYER_PROGRESS_INTERVAL_MS
     private var usbAudioJob: Job? = null
     private var sleepTimerJob: Job? = null
     private var usbTransitionJob: Job? = null
-    private val pendingControllerActions = ArrayDeque<PendingControllerAction>()
+    private val pendingControllerActions = PendingControllerActions()
     private var replayGainJob: Job? = null
     private var lastTrackId: String? = null
     private var lastActivatedTrackId: String? = null
@@ -215,7 +211,7 @@ internal class PlaybackController(
     }
 
     fun playWhenReadyAfterRestore() {
-        withController { recoverAndPlay() }
+        withController(playWhenReady = true) { recoverAndPlay() }
     }
 
     fun isUsbExclusiveEnabled(): Boolean = usbAudioMonitor.status.value.exclusiveEnabled
@@ -393,7 +389,7 @@ internal class PlaybackController(
         val source = queue.first().album
         val items = ArrayList(queue.map { it.toMediaItem().asQueueEntry(source = source).toBundleIncludeLocalConfiguration() })
         usbAudioMonitor.prepareForTrack(queue[safeStartIndex].sampleRateHz)
-        withController {
+        withController(replacesQueue = true) {
             queue.forEach { track ->
                 sampleRatesByMediaId[track.id] = track.sampleRateHz
                 replayGainUrisByMediaId[track.id] = track.uri
@@ -433,7 +429,7 @@ internal class PlaybackController(
     }
 
     fun pause() {
-        withController { pause() }
+        withController(playWhenReady = false) { pause() }
     }
 
     fun releaseCurrentItemForFileWrite(trackId: String): Boolean {
@@ -460,13 +456,13 @@ internal class PlaybackController(
     }
 
     fun playPause() {
-        val playWhenReady = controller
-            ?.takeIf { !shouldQueueControllerActionUntilSessionReady(sessionReadyForCommands) }
+        val playWhenReady = pendingControllerActions.playWhenReady ?: controller
+            ?.takeIf { it.isConnected && !shouldQueueControllerActionUntilSessionReady(sessionReadyForCommands) }
             ?.playWhenReady
             ?: (_playbackControls.value.isPlaying ||
                 _playbackControls.value.state == EchoPlaybackState.Buffering)
         val shouldPlay = pendingPlayPauseShouldPlay(playWhenReady)
-        withController {
+        withController(playWhenReady = shouldPlay) {
             if (shouldPlay) {
                 recoverAndPlay()
             } else {
@@ -733,8 +729,14 @@ internal class PlaybackController(
         if (cleared) return
         val generation = ++controllerGeneration
         val token = SessionToken(application, ComponentName(application, EchoPlaybackService::class.java))
-        val future = MediaController.Builder(application, token).buildAsync()
-        controllerConnectionCancel = { future.cancel(true) }
+        val future = MediaController.Builder(application, token)
+            .setListener(object : MediaController.Listener {
+                override fun onDisconnected(controller: MediaController) {
+                    handleControllerDisconnected(controller, generation)
+                }
+            })
+            .buildAsync()
+        controllerConnectionCancel = { MediaController.releaseFuture(future) }
         future.addListener(
             {
                 if (generation == controllerGeneration) {
@@ -747,13 +749,18 @@ internal class PlaybackController(
                         runCatching { mediaController.release() }
                         return@success
                     }
+                    if (!mediaController.isConnected) {
+                        mediaController.release()
+                        handleControllerConnectionFailure(generation, attempt)
+                        return@success
+                    }
                     sessionReadyForCommands = false
                     controller = mediaController
                     mediaController.addListener(playerListener)
                     EchoPlaybackProcessRuntime.bindPlayer(mediaController)
                     controllerSetupJob?.cancel()
                     controllerSetupJob = scope.launch {
-                        if (cleared || controller !== mediaController) return@launch
+                        if (cleared || controller !== mediaController || !mediaController.isConnected) return@launch
                         val pendingReplacesQueue = pendingControllerActions.map { it.replacesQueue }
                         if (shouldRestoreSavedSessionBeforeFlushingPending(pendingReplacesQueue)) {
                             restorePlaybackSessionIfNeeded(mediaController)
@@ -761,8 +768,9 @@ internal class PlaybackController(
                             restoredPlaybackSession = true
                         }
                         mergeReplayGainLookupsFromPlayer(mediaController)
-                        if (cleared || controller !== mediaController) return@launch
+                        if (cleared || controller !== mediaController || !mediaController.isConnected) return@launch
                         flushPendingControllerActions(mediaController)
+                        if (cleared || controller !== mediaController || !mediaController.isConnected) return@launch
                         sessionReadyForCommands = true
                         flushPendingControllerActions(mediaController)
                         if (restoredPlaybackSession) {
@@ -775,45 +783,68 @@ internal class PlaybackController(
                             startSleepTimerUiUpdates()
                         }
                     }
-                }.onFailure failure@{ _ ->
-                    if (cleared || generation != controllerGeneration) return@failure
-                    if (attempt < CONTROLLER_CONNECT_MAX_RETRIES) {
-                        controllerRetryJob?.cancel()
-                        controllerRetryJob = scope.launch {
-                            delay(CONTROLLER_CONNECT_RETRY_MS * (attempt + 1))
-                            if (!cleared && generation == controllerGeneration) {
-                                connectController(attempt + 1)
-                            }
-                        }
-                        return@failure
-                    }
-                    val diagnostics = EchoPlaybackDiagnostics(
-                        lastError = EchoPlaybackError(
-                            kind = EchoAudioErrorKind.Unknown,
-                            message = "Media controller connection failed.",
-                            recoverable = true,
-                        ),
-                    )
-                    EchoErrorLog.record(
-                        EchoErrorSource.Playback,
-                        "Media controller connection failed.",
-                    )
-                    updateState(_playbackDiagnostics, PlaybackDiagnosticsState(diagnostics, diagnostics.lastError))
-                    updateState(
-                        _playbackControls,
-                        PlaybackControlsState(state = EchoPlaybackState.Error),
-                    )
-                    updateState(
-                        _playbackStatus,
-                        EchoPlaybackStatus(
-                            state = EchoPlaybackState.Error,
-                            diagnostics = diagnostics,
-                        ).withPlaybackOptions(),
-                    )
+                }.onFailure {
+                    handleControllerConnectionFailure(generation, attempt)
                 }
             },
             ContextCompat.getMainExecutor(application),
         )
+    }
+
+    private fun handleControllerConnectionFailure(generation: Long, attempt: Int) {
+        if (cleared || generation != controllerGeneration) return
+        if (attempt < CONTROLLER_CONNECT_MAX_RETRIES) {
+            controllerRetryJob?.cancel()
+            controllerRetryJob = scope.launch {
+                delay(CONTROLLER_CONNECT_RETRY_MS * (attempt + 1))
+                if (!cleared && generation == controllerGeneration) connectController(attempt + 1)
+            }
+            return
+        }
+        reportControllerConnectionFailure()
+    }
+
+    private fun reportControllerConnectionFailure() {
+        val diagnostics = EchoPlaybackDiagnostics(
+            lastError = EchoPlaybackError(
+                kind = EchoAudioErrorKind.Unknown,
+                message = "Media controller connection failed.",
+                recoverable = true,
+            ),
+        )
+        EchoErrorLog.record(EchoErrorSource.Playback, "Media controller connection failed.")
+        updateState(_playbackDiagnostics, PlaybackDiagnosticsState(diagnostics, diagnostics.lastError))
+        updateState(_playbackControls, PlaybackControlsState(state = EchoPlaybackState.Error))
+        updateState(
+            _playbackStatus,
+            EchoPlaybackStatus(state = EchoPlaybackState.Error, diagnostics = diagnostics).withPlaybackOptions(),
+        )
+    }
+
+    private fun handleControllerDisconnected(disconnected: MediaController, generation: Long) {
+        if (cleared || generation != controllerGeneration || controller !== disconnected) return
+        controller = null
+        controllerGeneration += 1
+        sessionReadyForCommands = false
+        restoredPlaybackSession = false
+        restoreCompleted = false
+        controllerSetupJob?.cancel()
+        controllerSetupJob = null
+        progressJob?.cancel()
+        progressJob = null
+        disconnected.removeListener(playerListener)
+        disconnected.release()
+        // Event-driven recovery has a finite budget; a later user command can retry.
+        if (disconnectionRecoveryAttempts >= CONTROLLER_CONNECT_MAX_RETRIES) {
+            reportControllerConnectionFailure()
+            return
+        }
+        disconnectionRecoveryAttempts += 1
+        controllerRetryJob?.cancel()
+        controllerRetryJob = scope.launch {
+            delay(CONTROLLER_CONNECT_RETRY_MS * disconnectionRecoveryAttempts)
+            if (!cleared && controller == null) connectController()
+        }
     }
 
     private val playerListener = object : Player.Listener {
@@ -1003,21 +1034,31 @@ internal class PlaybackController(
 
     private fun withController(
         replacesQueue: Boolean = false,
+        playWhenReady: Boolean? = if (replacesQueue) true else null,
         action: MediaController.() -> Unit,
     ) {
+        if (cleared) return
         val mediaController = controller
         if (
-            mediaController != null &&
+            mediaController != null && mediaController.isConnected &&
             !shouldQueueControllerActionUntilSessionReady(sessionReadyForCommands)
         ) {
+            disconnectionRecoveryAttempts = 0
             mediaController.action()
         } else {
-            pendingControllerActions.add(PendingControllerAction(replacesQueue, action))
+            pendingControllerActions.add(PendingControllerAction(replacesQueue, playWhenReady, action))
+            if (mediaController != null && !mediaController.isConnected) {
+                handleControllerDisconnected(mediaController, controllerGeneration)
+            }
+            if (controller == null && controllerConnectionCancel == null && controllerRetryJob?.isActive != true) {
+                disconnectionRecoveryAttempts = 0
+                connectController()
+            }
         }
     }
 
     private fun flushPendingControllerActions(mediaController: MediaController) {
-        while (pendingControllerActions.isNotEmpty()) {
+        while (mediaController.isConnected && controller === mediaController && pendingControllerActions.isNotEmpty()) {
             val pending = pendingControllerActions.removeFirst()
             mediaController.run(pending.action)
         }

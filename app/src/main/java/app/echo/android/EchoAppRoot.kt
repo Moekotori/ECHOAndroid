@@ -87,7 +87,6 @@ import app.echo.android.design.echoStartupWindowColor
 import app.echo.android.model.settings.EchoColorTheme
 import app.echo.android.design.EchoPageOverlay
 import app.echo.android.design.echoPageUnderlay
-import app.echo.android.design.LocalEchoWidthSizeClass
 import app.echo.android.design.echoLocaleSwitchLayer
 import app.echo.android.design.runEchoLocaleSwitch
 import app.echo.android.feature.connect.ConnectScreen
@@ -164,7 +163,7 @@ private enum class FontImportTarget {
 @Suppress("SpellCheckingInspection")
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
-fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
+fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean = false) {
     val updater: EchoUpdateViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     EchoUpdateHost(updater)
     val context = LocalContext.current
@@ -393,17 +392,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     }
     val remoteStatus by remoteClient.status.collectAsStateWithLifecycle()
     val playbackStatus by viewModel.playbackStatus.collectAsStateWithLifecycle()
-    LaunchedEffect(
-        playbackStatus.diagnostics.outputDeviceKind,
-        playbackStatus.diagnostics.outputDeviceName,
-        playbackStatus.diagnostics.usbDeviceName,
-        playbackStatus.diagnostics.usbExclusiveStreaming,
-    ) {
-        viewModel.applyOutputDspIfNeeded(
-            playbackStatus.diagnostics.outputDeviceKind,
-            playbackStatus.diagnostics.usbDeviceName ?: playbackStatus.diagnostics.outputDeviceName,
-        )
-    }
     val playbackQueue by viewModel.playbackQueue.collectAsStateWithLifecycle()
     var castingToPc by remember { mutableStateOf(false) }
     var pendingCast by remember { mutableStateOf<Pair<String, String>?>(null) }
@@ -762,7 +750,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     var listeningVisible by rememberSaveable { mutableStateOf(false) }
     var listeningStatsVisible by rememberSaveable { mutableStateOf(false) }
     var playbackHistoryVisible by rememberSaveable { mutableStateOf(false) }
-    var addMusicVisible by rememberSaveable { mutableStateOf(false) }
+    var addMusicVisible by rememberSaveable { mutableStateOf(openAddMusicInitially) }
+    var libraryRepairVisible by rememberSaveable { mutableStateOf(false) }
     var listeningDraft by rememberSaveable { mutableStateOf("") }
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var errorLogVisible by rememberSaveable { mutableStateOf(false) }
@@ -834,6 +823,13 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
         EchoLaunchActions.consumeListeningInvite()
         listeningDraft = code
         listeningVisible = true
+    }
+    val voiceSearchRequest by EchoLaunchActions.voiceSearch.collectAsStateWithLifecycle()
+    LaunchedEffect(voiceSearchRequest) {
+        voiceSearchRequest?.let { request ->
+            EchoLaunchActions.consumeVoiceSearch()
+            viewModel.playVoiceSearch(request)
+        }
     }
     val incomingAudioUris by EchoLaunchActions.incomingAudioUris.collectAsStateWithLifecycle()
     LaunchedEffect(incomingAudioUris) {
@@ -989,6 +985,26 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             EchoLaunchActions.consumeOpenCast()
         }
     }
+    val libraryShortcutRequest by EchoLaunchActions.libraryShortcut.collectAsStateWithLifecycle()
+    LaunchedEffect(libraryShortcutRequest) {
+        val request = libraryShortcutRequest ?: return@LaunchedEffect
+        EchoLaunchActions.consumeLibraryShortcut()
+        val target = viewModel.libraryShortcutTarget(request.mediaId)
+        if (target == null) {
+            app.echo.android.library.EchoLibraryShortcuts.unavailable(context, request)
+            android.widget.Toast.makeText(context, R.string.library_shortcut_missing, android.widget.Toast.LENGTH_SHORT).show()
+            return@LaunchedEffect
+        }
+        selectedAlbum = target.first
+        selectedPlaylist = target.second
+        selectedArtist = null; selectedGenre = null; selectedFolder = null
+        castSheetVisible = false; nowPlayingExpanded = false; searchVisible = false; queueSheetVisible = false
+        selectDockTab(EchoTab.Library)
+        if (request.play) {
+            target.first?.let { viewModel.playAlbum(it.albumKey) }
+            target.second?.let { viewModel.playPlaylist(it.id) }
+        }
+    }
     LaunchedEffect(openLibraryRequest) {
         if (openLibraryRequest) {
             castSheetVisible = false
@@ -1099,7 +1115,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
     EchoOverlayBackHandler(enabled = addMusicVisible && !pluginsVisible) {
         addMusicVisible = false
     }
-    val shellOverlayOpen = searchVisible || listeningVisible || listeningStatsVisible || playbackHistoryVisible || errorLogVisible || queueSheetVisible || remotePlayerSheetVisible || remoteQueueSheetVisible || castSheetVisible || nowPlayingExpanded || pluginsVisible || addMusicVisible
+    val shellOverlayOpen = searchVisible || listeningVisible || listeningStatsVisible || playbackHistoryVisible || errorLogVisible || queueSheetVisible || remotePlayerSheetVisible || remoteQueueSheetVisible || castSheetVisible || nowPlayingExpanded || pluginsVisible || addMusicVisible || libraryRepairVisible
     EchoDesktopShortcuts(
         navigationEnabled = appVisible && !shellOverlayOpen,
         onSelectTab = ::selectDockTab, onSettings = { navigateToPage(EchoPagerPage.Settings) },
@@ -1186,7 +1202,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     tabPagerState.settledPage == EchoPagerPage.Diagnostics.ordinal
                 val detailOwnsGesture = (libraryDetailOpen || linkedLibraryPageOpen) &&
                     tabPagerState.settledPage == EchoPagerPage.Library.ordinal &&
-                    (linkedLibraryPageOpen || !LocalEchoWidthSizeClass.current.prefersLibrarySplit)
+                    (linkedLibraryPageOpen || !app.echo.android.design.LocalEchoLayout.current.supportsTwoPanes())
                 val tabPagerNestedScroll = rememberHomeSafePagerNestedScroll(
                     tabPagerState, innerTabPageSettled || detailOwnsGesture,
                 )
@@ -1195,7 +1211,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     userScrollEnabled = outerPagerUserScrollEnabled(
                         libraryDetailOpen = libraryDetailOpen,
                         linkedLibraryPageOpen = linkedLibraryPageOpen,
-                        prefersLibrarySplit = LocalEchoWidthSizeClass.current.prefersLibrarySplit,
+                        prefersLibrarySplit = app.echo.android.design.LocalEchoLayout.current.supportsTwoPanes(),
                         settledPage = tabPagerState.settledPage,
                         targetPage = tabPagerState.targetPage,
                         scrollInProgress = tabPagerState.isScrollInProgress,
@@ -1338,8 +1354,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 .collectAsStateWithLifecycle(0L)
                             val settingsEqualizerState by viewModel.equalizerState.collectAsStateWithLifecycle()
                             SettingsScreen(
+                                permissionState = rememberEchoSettingsPermissions(
+                                    active = tabPagerState.currentPage == EchoPagerPage.Settings.ordinal,
+                                ),
+                                onOpenPermissionSettings = context::openEchoPermissionSettings,
                                 onScanMusic = { addMusicVisible = true },
-                                onOpenConnect = { selectDockTab(EchoTab.Connect) },
                                 onOpenSound = {
                                     settingsSoundRequestId++
                                     navigateToPage(EchoPagerPage.Diagnostics)
@@ -1405,6 +1424,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 usbExclusiveEnabled = appSettings.usbExclusiveEnabled,
                                 usbBitPerfectEnabled = appSettings.usbBitPerfectEnabled,
                                 usbOutputOptions = appSettings.usbOutputOptions,
+                                shuffleOptions = appSettings.shuffleOptions,
                                 trackTransitions = appSettings.trackTransitions,
                                 usbExclusiveAutoRequestOnStartup = appSettings.usbExclusiveAutoRequestOnStartup,
                                 pauseOnAudioDisconnect = appSettings.pauseOnAudioDisconnect,
@@ -1464,6 +1484,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onUsbExclusiveEnabledChange = viewModel::setUsbExclusiveEnabled,
                                 onUsbBitPerfectEnabledChange = viewModel::setUsbBitPerfectEnabled,
                                 onUsbOutputOptionsChange = viewModel::setUsbOutputOptions,
+                                onShuffleOptionsChange = viewModel::setShuffleOptions,
                                 onTrackTransitionsChange = viewModel::setTrackTransitions,
                                 onUsbExclusiveAutoRequestOnStartupChange = viewModel::setUsbExclusiveAutoRequestOnStartup,
                                 onPauseOnAudioDisconnectChange = viewModel::setPauseOnAudioDisconnect,
@@ -1485,6 +1506,13 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                 onCustomBackgroundStyleChange = viewModel::setCustomBackgroundStyle,
                                 onUiFontFamilyChange = viewModel::setUiFontFamily,
                                 onUiFontScaleChange = viewModel::setUiFontScale,
+                                lyricsMotionMode = appSettings.lyricsMotionMode,
+                                onLyricsMotionModeChange = viewModel::setLyricsMotionMode,
+                                lyricsWordHighlightEnabled = appSettings.lyricsWordHighlightEnabled,
+                                onLyricsWordHighlightEnabledChange = viewModel::setLyricsWordHighlightEnabled,
+                                accessibilityCareContent = {
+                                    EchoAccessibilityCareSettings(viewModel, appSettings, playbackStatus)
+                                },
                                 onUiDensityScaleChange = viewModel::setUiDensityScale,
                                 onLyricsFontFamilyChange = viewModel::setLyricsFontFamily,
                                 onLyricsFontScaleChange = viewModel::setLyricsFontScale,
@@ -1541,6 +1569,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                     }
                                 },
                                 onOpenLibrary = { selectDockTab(EchoTab.Library) },
+                                onOpenLibraryRepair = { libraryRepairVisible = true },
                                 onClearLocalLibraryIndex = viewModel::clearLocalLibraryIndex,
                                 onCleanupLocalLibrary = {
                                     val result = viewModel.cleanupLocalLibrary()
@@ -1763,17 +1792,13 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                                     onRenameUserPreset = viewModel::renameEqualizerUserPreset,
                                     onDeleteUserPreset = viewModel::deleteEqualizerUserPreset,
                                     onImportShareCode = viewModel::importEqualizerShareCode,
+                                    onSaveOutputAudioProfile = viewModel::saveOutputAudioProfile,
+                                    onRemoveOutputAudioProfile = viewModel::removeOutputAudioProfile,
+                                    outputAudioProfileBound = appSettings.outputAudioProfileKeys.contains(viewModel.currentOutputProfileKey()),
                                     onBindPresetToOutput = viewModel::bindActiveEqualizerPresetToOutput,
                                     onUnbindPresetFromOutput = viewModel::unbindEqualizerPresetFromOutput,
-                                    outputDeviceLabel = playbackStatus.diagnostics.usbDeviceName
-                                        ?: playbackStatus.diagnostics.outputDeviceName,
-                                    outputPresetBound = appSettings.equalizerDevicePresetIds.containsKey(
-                                        app.echo.android.model.playback.EchoOutputDspPolicy.deviceKey(
-                                            EchoOutputDeviceKind.fromId(playbackStatus.diagnostics.outputDeviceKind),
-                                            playbackStatus.diagnostics.usbDeviceName
-                                                ?: playbackStatus.diagnostics.outputDeviceName,
-                                        ),
-                                    ),
+                                    outputDeviceLabel = viewModel.currentOutputProfileLabel(),
+                                    outputPresetBound = appSettings.equalizerDevicePresetIds.containsKey(viewModel.currentOutputProfileKey()),
                                     onToggleOpraFavorite = viewModel::toggleStarredOpraPreset,
                                     bluetoothCodecNeedsPermission = !hasBluetoothConnectPermission &&
                                         playbackStatus.diagnostics.outputDeviceKind == EchoOutputDeviceKind.Bluetooth.id,
@@ -1978,9 +2003,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                     onMoveItem = viewModel::moveQueueItem,
                     onClearQueue = viewModel::clearQueue,
                     onClearNextUp = viewModel::clearNextUp,
-                    onCycleRepeatMode = viewModel::cycleRepeatMode,
+                    onSetRepeatMode = viewModel::setRepeatMode,
                     onToggleShuffle = viewModel::toggleShuffle,
                     onPinQueueOffline = viewModel::pinCurrentQueueOffline,
+                    onSetSleepTimerEndOfTrack = viewModel::setSleepTimerEndOfTrack,
+                    onCancelSleepTimer = viewModel::cancelSleepTimer,
                     modifier = Modifier.fillMaxSize(),
             )
             EchoPageOverlay(visible = searchVisible, onHidden = { searchQuery = "" }) {
@@ -2000,6 +2027,16 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
                         selectedAlbum = null; selectedArtist = null; selectedFolder = null; selectedGenre = null
                         selectedPlaylist = playlist; selectDockTab(EchoTab.Library)
                     })
+            }
+            if (libraryRepairVisible) {
+                app.echo.android.ui.library.EchoLibraryRepairHost(
+                    viewModel = viewModel,
+                    onScanFolder = {
+                        pendingScanOptions = appSettings.libraryScanOptions
+                        folderScanLauncher.launch(null)
+                    },
+                    onDismiss = { libraryRepairVisible = false },
+                )
             }
             EchoPageOverlay(visible = addMusicVisible) {
                 app.echo.android.ui.library.EchoAddMusicPage(
@@ -2030,7 +2067,12 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel) {
             }
             EchoPageOverlay(visible = listeningStatsVisible) {
                 val listeningStats by viewModel.listeningStats.collectAsStateWithLifecycle()
+                val monthlyRecap by viewModel.monthlyRecap.collectAsStateWithLifecycle()
+                val monthlyRecapError by viewModel.monthlyRecapError.collectAsStateWithLifecycle()
                 ListeningStatsScreen(
+                    monthlyReport = monthlyRecap,
+                    monthlyError = monthlyRecapError,
+                    onLoadMonthly = viewModel::loadMonthlyRecap,
                     stats = listeningStats,
                     onLoad = viewModel::loadListeningStats,
                     onOpenTrack = { trackId ->

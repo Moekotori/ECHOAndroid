@@ -1,0 +1,4 @@
+<resources>
+    <string name="settings_library_repair">Library repair</string>
+    <string name="settings_library_repair_detail">Find unavailable songs and reconnect them to local files while keeping favorites and playlists.</string>
+</resources>

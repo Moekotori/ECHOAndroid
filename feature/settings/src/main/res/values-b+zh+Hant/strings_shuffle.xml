@@ -1,0 +1,34 @@
+<resources>
+    <string name="settings_shuffle_mode">隨機播放策略</string>
+    <string name="settings_shuffle_pseudo">偽隨機</string>
+    <string name="settings_shuffle_pure">純隨機</string>
+    <string name="settings_shuffle_pseudo_detail">原始佇列每輪每首播放一次。開啟列表循環時，下一輪重新打亂；關閉時，聽完這一輪就停止。</string>
+    <string name="settings_shuffle_pure_detail">每次從符合避讓規則的歌曲中等機率抽取下一首，已聽歌曲也可能再次出現。未開啟列表循環時，播放次數達到原始佇列的歌曲數後停止。</string>
+    <string name="settings_shuffle_scope">作用於手機的隨機播放。修改後保留目前歌曲和進度；切換模式會從目前歌曲開始新一輪。遙控電腦時使用電腦端設定，最近播放記錄僅在目前佇列階段中保留。</string>
+    <string name="settings_shuffle_intro">先選一種聽歌方式，再調節它的規則。開啟隨機播放後，這些偏好就會生效。</string>
+    <string name="settings_shuffle_pseudo_summary">想聽完整份歌單，每輪聽完再重遇。</string>
+    <string name="settings_shuffle_pure_summary">下一首每次重新抽，保留更多偶遇感。</string>
+    <string name="settings_shuffle_recommended">推薦</string>
+    <string name="settings_shuffle_surprise">允許重遇</string>
+    <string name="settings_shuffle_spread_artists">分散同一歌手</string>
+    <string name="settings_shuffle_spread_artists_detail">盡量錯開同一歌手的連續歌曲，仍保證每輪聽完。只有一位歌手時照常播放，缺少歌手標籤的歌曲按一般打亂處理。</string>
+    <string name="settings_shuffle_recent">避開最近播放</string>
+    <string name="settings_shuffle_recent_detail">避開之前聽過的歌曲，目前曲目始終避開。歌曲較少時，從最早的記錄開始放寬，保證有下一首可聽。</string>
+    <string name="settings_shuffle_recent_off">僅避免連播</string>
+    <string name="settings_shuffle_recent_count">最近 %1$d 首</string>
+    <string name="settings_shuffle_rules">規則與生效範圍</string>
+    <string name="settings_shuffle_rules_summary">一輪怎麼結束、插隊怎麼處理、修改何時生效</string>
+    <string name="settings_shuffle_rule_round">一輪與循環</string>
+    <string name="settings_shuffle_rule_fair">抽取機會</string>
+    <string name="settings_shuffle_rule_fair_detail">關閉最近歌曲避讓時，除目前曲目外，每首歌的機會相同。開啟後，剩餘候選歌曲的機會相同。佇列只有同一首歌時，按現有循環設定處理。</string>
+    <string name="settings_shuffle_rule_requests">手動插隊優先</string>
+    <string name="settings_shuffle_rule_requests_detail">「下一首播放」按你加入的順序播放，不參與打亂，播完再回到原始佇列。單曲循環保持不變。</string>
+    <string name="settings_shuffle_rule_apply">修改何時生效</string>
+    <string name="settings_shuffle_reset">恢復推薦設定</string>
+    <string name="settings_shuffle_reset_detail">偽隨機、開啟歌手分散；純隨機保留最近 5 首避讓。不會清空播放佇列。</string>
+    <string name="settings_shuffle_example">順序示意 · A–D 代表不同歌曲</string>
+    <string name="settings_shuffle_example_accessible">播放順序示意：%1$s</string>
+    <string name="settings_shuffle_example_pseudo">這一輪每首出現一次，下一輪重新打亂。</string>
+    <string name="settings_shuffle_example_pure">關閉避讓時，A 可以在還沒聽完全部歌曲前再次出現。</string>
+    <string name="settings_shuffle_example_recent">先避開近期聽過的歌；實際順序取決於佇列規模和避讓範圍。</string>
+</resources>

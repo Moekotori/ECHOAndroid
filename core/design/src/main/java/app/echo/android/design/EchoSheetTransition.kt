@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.safeDrawing
@@ -71,7 +72,8 @@ fun EchoSheetOverlay(
                         onClick = onDismiss,
                     ))
                 Box(Modifier.align(Alignment.BottomCenter)
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)).graphicsLayer {
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
+                    .widthIn(max = 720.dp).graphicsLayer {
                     val progress = sheet.value.coerceIn(0f, 1f)
                     translationY = if (lightweight) 0f else size.height * (1f - progress)
                     alpha = if (lightweight) progress else 1f

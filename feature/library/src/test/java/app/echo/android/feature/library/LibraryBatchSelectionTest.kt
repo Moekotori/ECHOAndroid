@@ -8,6 +8,21 @@ import org.junit.Test
 
 class LibraryBatchSelectionTest {
     @Test
+    fun singleTrackDeletionShowsFeedbackWithoutEnteringSelectionMode() {
+        val selection = LibraryBatchSelection()
+        selection.beginDeletion(setOf("1"))
+        assertEquals(setOf("1"), selection.deletingIds)
+        assertTrue(selection.locked)
+        assertFalse(selection.active)
+        assertTrue(selection.selected.isEmpty())
+        selection.start(track(2))
+        assertFalse(selection.active)
+        selection.finishDeletion()
+        assertTrue(selection.deletingIds.isEmpty())
+        assertFalse(selection.locked)
+    }
+
+    @Test
     fun retainedOffscreenSelectionDoesNotOwnBack() {
         val selection = LibraryBatchSelection()
         selection.start(track(1))

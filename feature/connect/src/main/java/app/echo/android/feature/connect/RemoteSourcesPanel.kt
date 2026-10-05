@@ -63,42 +63,48 @@ internal fun RemoteSourcesPanel(
                 }
             }
         }
-        SourceEditor(
-            title = "Subsonic / Navidrome",
-            description = stringResource(L10nR.string.feature_connect_your_music_server_dd7eb8),
-            placeholder = "https://music.example.com",
-            savedUrl = subsonicServerUrl, savedUsername = subsonicUsername, savedPassword = subsonicPassword,
-            expanded = expandedSource == "subsonic", onExpand = { expandedSource = if (expandedSource == "subsonic") null else "subsonic" },
-            busy = scanState.isScanning, onSave = onSaveSubsonic, onSync = onSyncSubsonic, onClear = onClearSubsonic,
-        )
-        SourceEditor(
-            title = "WebDAV",
-            description = stringResource(L10nR.string.feature_connect_a_nas_or_cloud_music_folder_5525c7),
-            placeholder = "https://dav.example.com/music",
-            savedUrl = webDavServerUrl, savedUsername = webDavUsername, savedPassword = webDavPassword,
-            expanded = expandedSource == "webdav", onExpand = { expandedSource = if (expandedSource == "webdav") null else "webdav" },
-            busy = scanState.isScanning, onSave = onSaveWebDav, onSync = onSyncWebDav, onClear = onClearWebDav,
-        )
-        SourceEditor(
-            title = "SMB",
-            description = stringResource(L10nR.string.connect_smb_description),
-            placeholder = "smb://192.168.1.10/Music",
-            savedUrl = smbServerUrl, savedUsername = smbUsername, savedPassword = smbPassword,
-            expanded = expandedSource == "smb", onExpand = { expandedSource = if (expandedSource == "smb") null else "smb" },
-            busy = scanState.isScanning, onSave = onSaveSmb, onSync = onSyncSmb, onClear = onClearSmb,
-            isValidUrl = ::isSmbAddress,
-            invalidUrlMessage = stringResource(L10nR.string.connect_smb_invalid_address),
-            credentialsOptional = true,
-            usernameHint = stringResource(L10nR.string.connect_smb_username_hint),
-        )
-        SourceEditor(
-            title = "Jellyfin / Emby",
-            description = stringResource(L10nR.string.feature_connect_jellyfin_or_emby_independent_of_echo_link_a8f3c1),
-            placeholder = "http://192.168.1.10:8096",
-            savedUrl = jellyfinServerUrl, savedUsername = jellyfinUsername, savedPassword = jellyfinPassword,
-            expanded = expandedSource == "jellyfin", onExpand = { expandedSource = if (expandedSource == "jellyfin") null else "jellyfin" },
-            busy = scanState.isScanning, onSave = onSaveJellyfin, onSync = onSyncJellyfin, onClear = onClearJellyfin,
-        )
+        ConnectSourceLayout {
+            SourceEditor(
+                modifier = Modifier.weight(1f),
+                title = "Subsonic / Navidrome",
+                description = stringResource(L10nR.string.feature_connect_your_music_server_dd7eb8),
+                placeholder = "https://music.example.com",
+                savedUrl = subsonicServerUrl, savedUsername = subsonicUsername, savedPassword = subsonicPassword,
+                expanded = expandedSource == "subsonic", onExpand = { expandedSource = if (expandedSource == "subsonic") null else "subsonic" },
+                busy = scanState.isScanning, onSave = onSaveSubsonic, onSync = onSyncSubsonic, onClear = onClearSubsonic,
+            )
+            SourceEditor(
+                modifier = Modifier.weight(1f),
+                title = "WebDAV",
+                description = stringResource(L10nR.string.feature_connect_a_nas_or_cloud_music_folder_5525c7),
+                placeholder = "https://dav.example.com/music",
+                savedUrl = webDavServerUrl, savedUsername = webDavUsername, savedPassword = webDavPassword,
+                expanded = expandedSource == "webdav", onExpand = { expandedSource = if (expandedSource == "webdav") null else "webdav" },
+                busy = scanState.isScanning, onSave = onSaveWebDav, onSync = onSyncWebDav, onClear = onClearWebDav,
+            )
+            SourceEditor(
+                modifier = Modifier.weight(1f),
+                title = "SMB",
+                description = stringResource(L10nR.string.connect_smb_description),
+                placeholder = "smb://192.168.1.10/Music",
+                savedUrl = smbServerUrl, savedUsername = smbUsername, savedPassword = smbPassword,
+                expanded = expandedSource == "smb", onExpand = { expandedSource = if (expandedSource == "smb") null else "smb" },
+                busy = scanState.isScanning, onSave = onSaveSmb, onSync = onSyncSmb, onClear = onClearSmb,
+                isValidUrl = ::isSmbAddress,
+                invalidUrlMessage = stringResource(L10nR.string.connect_smb_invalid_address),
+                credentialsOptional = true,
+                usernameHint = stringResource(L10nR.string.connect_smb_username_hint),
+            )
+            SourceEditor(
+                modifier = Modifier.weight(1f),
+                title = "Jellyfin / Emby",
+                description = stringResource(L10nR.string.feature_connect_jellyfin_or_emby_independent_of_echo_link_a8f3c1),
+                placeholder = "http://192.168.1.10:8096",
+                savedUrl = jellyfinServerUrl, savedUsername = jellyfinUsername, savedPassword = jellyfinPassword,
+                expanded = expandedSource == "jellyfin", onExpand = { expandedSource = if (expandedSource == "jellyfin") null else "jellyfin" },
+                busy = scanState.isScanning, onSave = onSaveJellyfin, onSync = onSyncJellyfin, onClear = onClearJellyfin,
+            )
+        }
         ConnectSection(stringResource(L10nR.string.feature_connect_music_on_this_phone_8611a5)) {
             ConnectNote(stringResource(L10nR.string.feature_connect_local_files_are_managed_in_library_no_server_c5274c))
         }
@@ -107,6 +113,7 @@ internal fun RemoteSourcesPanel(
 
 @Composable
 private fun SourceEditor(
+    modifier: Modifier = Modifier,
     title: String, description: String, placeholder: String,
     savedUrl: String?, savedUsername: String?, savedPassword: String?,
     expanded: Boolean, onExpand: () -> Unit, busy: Boolean,
@@ -134,7 +141,7 @@ private fun SourceEditor(
         else username.isNotBlank() && password.isNotBlank()
     )
     val submit = { if (ready && !busy) { keyboard?.hide(); onSync(url.trim(), username.trim(), password) } }
-    Column {
+    Column(modifier) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Row(Modifier.fillMaxWidth().echoClickable(role = Role.Button) { keyboard?.hide(); onExpand() }.padding(vertical = 20.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

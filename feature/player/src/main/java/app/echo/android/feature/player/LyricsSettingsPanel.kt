@@ -1,6 +1,7 @@
 package app.echo.android.feature.player
 
 import app.echo.android.design.EchoIcon
+import androidx.activity.compose.BackHandler
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -15,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -86,34 +88,35 @@ internal fun LyricsSettingsPanel(
     val dark = LocalEchoDarkTheme.current
     val titleColor = if (dark) Color.White else echoTheme().heading
     val mutedColor = if (dark) Color.White.copy(alpha = 0.65f) else echoTheme().muted
-    var appearanceExpanded by remember { mutableStateOf(false) }
-    var typeExpanded by remember { mutableStateOf(true) }
-    var colorExpanded by remember { mutableStateOf(false) }
-    var motionExpanded by remember { mutableStateOf(false) }
-    var contentExpanded by remember { mutableStateOf(false) }
+    var category by remember { mutableStateOf<LyricsSettingsCategory?>(null) }
+    BackHandler(enabled = category != null) { category = null }
     val heading = stringResource(L10nR.string.feature_player_lyrics_settings_843bc9)
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         Column(
-            Modifier.fillMaxWidth().height(maxHeight * 0.88f)
-                .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
-                .background(if (dark) echoTheme().panel else Color(0xFFF4F1F3))
+            Modifier.fillMaxWidth().heightIn(max = minOf(maxHeight * 0.68f, 560.dp))
+                .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                .background(echoTheme().panel)
                 .navigationBarsPadding(),
         ) {
-            Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(Modifier.padding(horizontal = 20.dp)) {
                 LyricsSettingsHandle(onDismiss)
-                Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), verticalAlignment = Alignment.CenterVertically,
+                Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    EchoIcon(Icons.Rounded.Lyrics, null, tint = titleColor, modifier = Modifier.size(24.dp))
+                    if (category != null) GlyphButton(Icons.AutoMirrored.Rounded.ArrowBack, heading,
+                        touchSize = 48.dp, iconSize = 20.dp, tint = titleColor, background = Color.Transparent,
+                        onClick = { category = null })
+                    else EchoIcon(Icons.Rounded.Lyrics, null, tint = titleColor, modifier = Modifier.size(20.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(heading, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = titleColor)
-                        Text(stringResource(L10nR.string.feature_player_font_color_and_display_b51a7b),
+                        Text(category?.let { stringResource(it.titleRes) } ?: heading,
+                            style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = titleColor)
+                        if (category == null) Text(stringResource(L10nR.string.feature_player_font_color_and_display_b51a7b),
                             style = MaterialTheme.typography.bodySmall, color = mutedColor)
                     }
                     GlyphButton(Icons.Rounded.Close, stringResource(L10nR.string.feature_player_close_lyrics_settings_752454),
                         touchSize = 48.dp, iconSize = 22.dp, tint = titleColor, background = Color.Transparent, onClick = onDismiss)
                 }
             }
-            LyricsSettingsPreview(
+            if (category != null && category != LyricsSettingsCategory.Content) LyricsSettingsPreview(
                 pageStyle = lyricsPageStyle,
                 fontFamily = lyricsFontFamily,
                 fontScale = lyricsFontScale,
@@ -126,96 +129,77 @@ internal fun LyricsSettingsPanel(
                 motionMode = lyricsMotionMode,
             )
             androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides titleColor) {
-                Column(Modifier.fillMaxWidth().weight(1f, fill = false).verticalScroll(rememberScrollState())
-                    .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    PlaybackSettingsSection(Icons.Rounded.Palette,
-                        stringResource(L10nR.string.player_appearance_title), detail = "", framed = false,
-                        expanded = appearanceExpanded, onToggleExpanded = { appearanceExpanded = !appearanceExpanded }) {
-                        PlayerPageStyleSelector(app.echo.android.model.settings.EchoPlayerPageStyle.fromId(playerPageStyle), onLyricsPageStyleChange)
-                    }
-                    PlaybackSettingsSection(Icons.Rounded.TextFields,
-                        stringResource(L10nR.string.lyrics_setting_typography),
-                        "${lyricsFontDetail(lyricsFontMode, importedFontUri)} · ${(lyricsFontScale * 100).roundToInt()}%",
-                        framed = false, expanded = typeExpanded, onToggleExpanded = { typeExpanded = !typeExpanded }) {
-                        androidx.compose.foundation.layout.FlowRow(
-                            Modifier.fillMaxWidth().selectableGroup(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            lyricsFontOptions().forEach { (value, label) ->
-                                PlaybackChoiceChip(text = label, selected = lyricsFontMode == value, fillWidth = false, onClick = {
-                                    if (value == "imported" && importedFontUri.isNullOrBlank()) {
-                                        onDismiss(); onImportLyricsFont()
-                                    } else onLyricsFontFamilyChange(value)
-                                })
+                key(category) {
+                    Column(Modifier.fillMaxWidth().weight(1f, fill = false).verticalScroll(rememberScrollState())
+                        .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if (category == null) LyricsSettingsMenu(
+                            typographySummary = "${lyricsFontDetail(lyricsFontMode, importedFontUri)} · ${(lyricsFontScale * 100).roundToInt()}%",
+                            colorSummary = lyricsColorLabel(lyricsColorMode),
+                            motionSummary = lyricsMotionLabel(lyricsMotionMode),
+                            onSelect = { category = it },
+                        )
+                        if (category == LyricsSettingsCategory.Appearance) {
+                            PlayerPageStyleSelector(app.echo.android.model.settings.EchoPlayerPageStyle.fromId(playerPageStyle), onLyricsPageStyleChange)
+                        }
+                        if (category == LyricsSettingsCategory.Typography) {
+                            LyricsSettingChoices(options = lyricsFontOptions(), selected = lyricsFontMode, onSelect = { value ->
+                                if (value == "imported" && importedFontUri.isNullOrBlank()) {
+                                    onDismiss(); onImportLyricsFont()
+                                } else onLyricsFontFamilyChange(value)
+                            })
+                            if (!importedFontUri.isNullOrBlank()) TextButton(onClick = { onDismiss(); onImportLyricsFont() }) {
+                                Text(stringResource(L10nR.string.lyrics_setting_replace_font))
                             }
+                            Text(stringResource(L10nR.string.feature_player_alignment_66dbdb), style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
+                            LyricsSettingChoices(options = LyricsAlignmentOptions.map { it.value to lyricsAlignmentLabel(it.value) },
+                                selected = lyricsAlignment, onSelect = onLyricsAlignmentChange)
+                            LyricsSettingSlider(stringResource(L10nR.string.feature_player_type_size_8ff7ee), lyricsFontScale, 0.50f..1.28f, 1f, onLyricsFontScaleChange)
+                            LyricsSettingSlider(stringResource(L10nR.string.feature_player_line_spacing_ecbb6f), lyricsLineSpacing, 0.50f..1.38f, 1f, onLyricsLineSpacingChange)
                         }
-                        if (!importedFontUri.isNullOrBlank()) TextButton(onClick = { onDismiss(); onImportLyricsFont() }) {
-                            Text(stringResource(L10nR.string.lyrics_setting_replace_font))
-                        }
-                        Text(stringResource(L10nR.string.feature_player_alignment_66dbdb), style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
-                        FlowRow(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            LyricsAlignmentOptions.forEach { option ->
-                                PlaybackChoiceChip(text = lyricsAlignmentLabel(option.value), selected = lyricsAlignment == option.value,
-                                    onClick = { onLyricsAlignmentChange(option.value) }, fillWidth = false)
+                        if (category == LyricsSettingsCategory.Color) {
+                            Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                LyricsColorOptions.forEach { option ->
+                                    LyricsColorSwatch(option, selected = option.value == lyricsColorMode,
+                                        onClick = { onLyricsColorModeChange(option.value) }, modifier = Modifier.weight(1f))
+                                }
                             }
+                            LyricsSettingSlider(stringResource(L10nR.string.feature_player_dim_be8c03), lyricsBackgroundDim, 0f..0.78f, 0f, onLyricsBackgroundDimChange)
+                            LyricsSettingToggle(stringResource(L10nR.string.feature_player_emphasis_6517be), focusGlowEnabled, onLyricsFocusGlowChange)
                         }
-                        LyricsSettingSlider(stringResource(L10nR.string.feature_player_type_size_8ff7ee), lyricsFontScale, 0.50f..1.28f, 1f, onLyricsFontScaleChange)
-                        LyricsSettingSlider(stringResource(L10nR.string.feature_player_line_spacing_ecbb6f), lyricsLineSpacing, 0.50f..1.38f, 1f, onLyricsLineSpacingChange)
-                    }
-                    PlaybackSettingsSection(Icons.Rounded.ColorLens,
-                        stringResource(L10nR.string.lyrics_setting_color_background), lyricsColorLabel(lyricsColorMode),
-                        framed = false, expanded = colorExpanded, onToggleExpanded = { colorExpanded = !colorExpanded }) {
-                        Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            LyricsColorOptions.forEach { option ->
-                                LyricsColorSwatch(option, selected = option.value == lyricsColorMode,
-                                    onClick = { onLyricsColorModeChange(option.value) }, modifier = Modifier.weight(1f))
+                        if (category == LyricsSettingsCategory.Motion) {
+                            LyricsSettingChoices(options = LyricsMotionOptions.map { it.value to lyricsMotionLabel(it.value) },
+                                selected = lyricsMotionMode, onSelect = onLyricsMotionModeChange)
+                            LyricsSettingToggle(stringResource(L10nR.string.lyrics_setting_word_highlight), lyricsWordHighlightEnabled, onLyricsWordHighlightEnabledChange)
+                            app.echo.android.design.EchoExpand(lyricsWordHighlightEnabled) {
+                                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    HorizontalDivider(color = mutedColor.copy(alpha = 0.16f))
+                                    LyricsSettingToggle(
+                                        stringResource(L10nR.string.lyrics_setting_estimated_word_highlight),
+                                        lyricsEstimatedWordHighlightEnabled,
+                                        onLyricsEstimatedWordHighlightEnabledChange,
+                                        hint = stringResource(L10nR.string.lyrics_setting_estimated_word_highlight_hint),
+                                    )
+                                    LyricsSettingSlider(stringResource(L10nR.string.lyrics_setting_highlight_strength), lyricsWordHighlightIntensity,
+                                        0.45f..1.35f, 1f, onLyricsWordHighlightIntensityChange)
+                                }
                             }
+                            LyricsSettingToggle(stringResource(L10nR.string.feature_player_immersive_d86793), lyricsImmersiveModeEnabled, onLyricsImmersiveModeChange)
                         }
-                        LyricsSettingSlider(stringResource(L10nR.string.feature_player_dim_be8c03), lyricsBackgroundDim, 0f..0.78f, 0f, onLyricsBackgroundDimChange)
-                        LyricsSettingToggle(stringResource(L10nR.string.feature_player_emphasis_6517be), focusGlowEnabled, onLyricsFocusGlowChange)
-                    }
-                    PlaybackSettingsSection(Icons.Rounded.Lyrics,
-                        stringResource(L10nR.string.lyrics_setting_motion), lyricsMotionLabel(lyricsMotionMode),
-                        framed = false, expanded = motionExpanded, onToggleExpanded = { motionExpanded = !motionExpanded }) {
-                        Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            LyricsMotionOptions.forEach { option ->
-                                PlaybackChoiceChip(text = lyricsMotionLabel(option.value), selected = lyricsMotionMode == option.value,
-                                    onClick = { onLyricsMotionModeChange(option.value) }, modifier = Modifier.weight(1f))
-                            }
+                        if (category == LyricsSettingsCategory.Content) {
+                            val noContent = stringResource(L10nR.string.lyrics_setting_no_content)
+                            LyricsSettingToggle(stringResource(L10nR.string.feature_player_translation_53c7ce), showTranslation,
+                                onLyricsShowTranslationChange, hint = if (!hasTranslation) noContent else null)
+                            LyricsSettingToggle(stringResource(L10nR.string.feature_player_romaji_6ad0ab), showRomanization,
+                                onLyricsShowRomanizationChange, hint = if (!hasRomanization) noContent else null)
+                            LyricsSettingToggle(stringResource(L10nR.string.feature_player_sync_tools_ef1217), showLyricsControlDeck, onShowLyricsControlDeckChange)
+                            LyricsSettingToggle(stringResource(L10nR.string.feature_player_online_lyrics_21c928), onlineLyricsEnabled, onOnlineLyricsEnabledChange)
+                            PlaybackActionRow(Icons.Rounded.UploadFile, stringResource(L10nR.string.feature_player_import_lyrics_e7494e),
+                                framed = false, onClick = { onDismiss(); onImportLyrics() })
+                            PlaybackActionRow(Icons.Rounded.Album, stringResource(L10nR.string.feature_player_back_to_cover_815543),
+                                framed = false, onClick = { onDismiss(); onCloseLyrics() })
                         }
-                        LyricsSettingToggle(stringResource(L10nR.string.lyrics_setting_word_highlight), lyricsWordHighlightEnabled, onLyricsWordHighlightEnabledChange)
-                        app.echo.android.design.EchoExpand(lyricsWordHighlightEnabled) {
-                            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                HorizontalDivider(color = mutedColor.copy(alpha = 0.16f))
-                                LyricsSettingToggle(
-                                    stringResource(L10nR.string.lyrics_setting_estimated_word_highlight),
-                                    lyricsEstimatedWordHighlightEnabled,
-                                    onLyricsEstimatedWordHighlightEnabledChange,
-                                    hint = stringResource(L10nR.string.lyrics_setting_estimated_word_highlight_hint),
-                                )
-                                LyricsSettingSlider(stringResource(L10nR.string.lyrics_setting_highlight_strength), lyricsWordHighlightIntensity,
-                                    0.45f..1.35f, 1f, onLyricsWordHighlightIntensityChange)
-                            }
-                        }
-                        LyricsSettingToggle(stringResource(L10nR.string.feature_player_immersive_d86793), lyricsImmersiveModeEnabled, onLyricsImmersiveModeChange)
                     }
-                    PlaybackSettingsSection(Icons.Rounded.Translate,
-                        stringResource(L10nR.string.lyrics_setting_content),
-                        stringResource(L10nR.string.lyrics_setting_content_summary),
-                        framed = false, expanded = contentExpanded, onToggleExpanded = { contentExpanded = !contentExpanded }) {
-                        val noContent = stringResource(L10nR.string.lyrics_setting_no_content)
-                        LyricsSettingToggle(stringResource(L10nR.string.feature_player_translation_53c7ce), showTranslation,
-                            onLyricsShowTranslationChange, hint = if (!hasTranslation) noContent else null)
-                        LyricsSettingToggle(stringResource(L10nR.string.feature_player_romaji_6ad0ab), showRomanization,
-                            onLyricsShowRomanizationChange, hint = if (!hasRomanization) noContent else null)
-                        LyricsSettingToggle(stringResource(L10nR.string.feature_player_sync_tools_ef1217), showLyricsControlDeck, onShowLyricsControlDeckChange)
-                        LyricsSettingToggle(stringResource(L10nR.string.feature_player_online_lyrics_21c928), onlineLyricsEnabled, onOnlineLyricsEnabledChange)
-                    }
-                    PlaybackActionRow(Icons.Rounded.UploadFile, stringResource(L10nR.string.feature_player_import_lyrics_e7494e),
-                        framed = false, onClick = { onDismiss(); onImportLyrics() })
-                    PlaybackActionRow(Icons.Rounded.Album, stringResource(L10nR.string.feature_player_back_to_cover_815543),
-                        framed = false, onClick = { onDismiss(); onCloseLyrics() })
                 }
             }
         }

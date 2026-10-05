@@ -7,7 +7,7 @@ import app.echo.android.model.settings.EchoCustomColors
 import app.echo.android.model.settings.EchoLyricsPageStyle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 data class EchoStartupThemeSnapshot(
@@ -60,23 +60,21 @@ fun Context.readEchoStartupThemeSnapshot(): EchoStartupThemeSnapshot {
     )
 }
 
-fun Context.readEchoStartupThemeSnapshotForLaunch(
+suspend fun Context.readEchoStartupThemeSnapshotForLaunch(
     timeoutMillis: Long = StartupThemeDataStoreReadTimeoutMillis,
-): EchoStartupThemeSnapshot {
+): EchoStartupThemeSnapshot = withContext(Dispatchers.IO) {
     val cachedSnapshot = readEchoStartupThemeSnapshot()
-    if (hasEchoStartupThemeSnapshot()) return cachedSnapshot
+    if (hasEchoStartupThemeSnapshot()) return@withContext cachedSnapshot
 
     val appContext = applicationContext
-    return runBlocking(Dispatchers.IO) {
-        withTimeoutOrNull(timeoutMillis) {
-            EchoSettingsStore(appContext)
-                .appSettings
-                .first()
-                .toStartupThemeSnapshot()
-                .also { snapshot ->
-                    appContext.writeEchoStartupThemeSnapshot(snapshot, synchronous = true)
-                }
-        }
+    withTimeoutOrNull(timeoutMillis) {
+        EchoSettingsStore(appContext)
+            .appSettings
+            .first()
+            .toStartupThemeSnapshot()
+            .also { snapshot ->
+                appContext.writeEchoStartupThemeSnapshot(snapshot)
+            }
     } ?: cachedSnapshot
 }
 
@@ -142,7 +140,7 @@ private fun EchoStartupThemeSnapshot.normalized(): EchoStartupThemeSnapshot =
 
 private fun Int.coerceMinuteOfDay(): Int = coerceIn(0, 23 * 60 + 59)
 
-private fun Context.hasEchoStartupThemeSnapshot(): Boolean {
+fun Context.hasEchoStartupThemeSnapshot(): Boolean {
     val preferences = applicationContext.getSharedPreferences(
         StartupThemePreferencesName,
         Context.MODE_PRIVATE,

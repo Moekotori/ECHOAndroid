@@ -1,0 +1,28 @@
+<resources>
+    <string name="scan_rules_back">返回添加音乐</string>
+    <string name="scan_rules_save_hint">保存后应用规则，直接返回会保留原来的设置。</string>
+    <string name="scan_rules_presets">扫描预设</string>
+    <string name="scan_rules_recommended_hint">至少 30 秒、100 KB，跳过隐藏目录和非音乐目录</string>
+    <string name="scan_rules_all_hint">扫描所有支持的音频，不限制时长、大小，也不自动排除目录</string>
+    <string name="scan_rules_lossless_hint">沿用推荐过滤条件，仅扫描 FLAC、WAV、AIFF 和 DSD</string>
+    <string name="scan_rules_file_filters">文件过滤</string>
+    <string name="scan_rules_file_filters_hint">低于任一门槛的文件会被跳过，时长或大小未知时保留。这些门槛和格式选择不会移除已导入的歌曲。</string>
+    <string name="scan_rules_folder_filters">排除非音乐内容</string>
+    <string name="scan_rules_hidden_hint">目录名称以英文句点开头</string>
+    <string name="scan_rules_folder_filters_hint">下次扫描时，排除目录中的歌曲会从曲库移除，设备上的文件保留。</string>
+    <string name="scan_rules_advanced_hint">时长、文件大小和音频格式</string>
+    <string name="scan_rules_intro">避免录音、铃声和语音消息混入曲库。保存后的规则用于后续扫描和自动检查。</string>
+    <string name="scan_rules_non_music">排除录音、铃声和语音消息</string>
+    <string name="scan_rules_non_music_hint">跳过常见录音机、通话录音、铃声、闹钟、通知音和聊天应用的音频目录。漏掉的文件夹可在下方添加。</string>
+    <string name="scan_rules_advanced_summary">时长：%1$s · 大小：%2$s · %3$s</string>
+    <string name="scan_rules_selected_formats">指定格式</string>
+    <string name="scan_rules_excluded_folders_title">不扫描的文件夹</string>
+    <string name="scan_rules_excluded_folders_hint">直接选择不想扫描的文件夹，也会跳过其中的子文件夹。保存后用于下次扫描，手机上的文件不会被删除。</string>
+    <string name="scan_rules_excluded_folders_empty">还没有手动添加的文件夹</string>
+    <string name="scan_rules_add_excluded_folder">添加不扫描的文件夹</string>
+    <string name="scan_rules_remove_excluded_folder">重新允许扫描 %1$s</string>
+    <string name="scan_rules_phone_folder_path">手机存储 / %1$s</string>
+    <string name="scan_rules_external_folder_path">外部存储（%1$s）/ %2$s</string>
+    <string name="scan_rules_folder_unsupported">请选择手机、SD 卡或 USB 存储里的具体文件夹，暂不支持存储根目录和云盘文件夹。</string>
+    <string name="scan_rules_excluded_folders_limit">最多添加 %1$d 个文件夹，移除一个后即可继续添加。</string>
+</resources>

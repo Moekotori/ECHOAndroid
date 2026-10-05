@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="onboarding_skip">略過</string>
+    <string name="onboarding_step">初次見面 · %1$d / %2$d</string>
+    <string name="onboarding_music_title">歡迎來到 ECHO</string>
+    <string name="onboarding_music_body">從你的音樂開始。新增手機裡的歌曲，也可以連接已有的音樂庫。</string>
+    <string name="onboarding_import_title">新增本機音樂</string>
+    <string name="onboarding_import_body">掃描裝置或選擇音樂資料夾，需要存取時再授權。</string>
+    <string name="onboarding_sources_title">也能連接其他曲庫</string>
+    <string name="onboarding_sources_body">在曲庫頁面新增 NAS 或音樂伺服器。</string>
+    <string name="onboarding_player_title">聽歌，也看見音樂</string>
+    <string name="onboarding_player_body">瀏覽曲庫時，正在播放的歌曲始終觸手可及。</string>
+    <string name="onboarding_open_player_title">開啟播放器</string>
+    <string name="onboarding_open_player_body">點選底部播放器，查看封面、播放控制和佇列。</string>
+    <string name="onboarding_lyrics_title">跟著歌詞聽</string>
+    <string name="onboarding_lyrics_body">在播放器中開啟歌詞。支援本機歌詞，也可在設定中開啟線上歌詞。</string>
+    <string name="onboarding_link_title">用 Echo Link 繼續聽</string>
+    <string name="onboarding_link_body">讓手機與電腦上的 ECHOSteam 連接到同一區域網路。</string>
+    <string name="onboarding_pair_title">從「連接」開始配對</string>
+    <string name="onboarding_pair_body">在電腦上開啟 Echo Link，再到手機的「連接」頁面完成配對，瀏覽電腦曲庫。</string>
+    <string name="onboarding_later_title">隨時都能設定</string>
+    <string name="onboarding_later_body">現在就能聽本機音樂，以後再連接電腦也可以。</string>
+    <string name="onboarding_lyrics_preview">讓歌詞陪著音樂</string>
+    <string name="onboarding_player_preview">封面 · 歌詞 · 佇列</string>
+    <string name="onboarding_back">上一步</string>
+    <string name="onboarding_next">下一步</string>
+    <string name="onboarding_add_music">新增音樂</string>
+    <string name="onboarding_explore">先逛逛</string>
+    <string name="onboarding_saving">正在儲存…</string>
+    <string name="onboarding_save_failed">未能儲存，請再試一次。</string>
+</resources>

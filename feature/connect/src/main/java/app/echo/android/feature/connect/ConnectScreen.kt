@@ -152,6 +152,7 @@ fun ConnectScreen(
     val keyboard = LocalSoftwareKeyboardController.current
     val scheme = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
+    var openShareConnectionNonce by remember { mutableIntStateOf(0) }
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val innerFling = rememberSilkPagerFlingBehavior(pagerState)
     val innerNestedScroll = rememberContentPagerNestedScroll(pagerState, innerFling)
@@ -219,7 +220,7 @@ fun ConnectScreen(
             ) { tab ->
                 savedTabs.SaveableStateProvider(tab) {
                     Column(
-                        Modifier.fillMaxSize()
+                        Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxSize()
                             .verticalScroll(scrollStates[tab]).padding(horizontal = 24.dp)
                             .padding(top = 24.dp, bottom = 188.dp),
                         verticalArrangement = Arrangement.spacedBy(24.dp),
@@ -254,8 +255,13 @@ fun ConnectScreen(
                                 onCancel = onCancelRemoteSync,
                             )
                             1 -> {
-                            PhoneLibraryShareControl(phoneLibraryShareStatus,
-                                remoteState == EchoRemoteConnectionState.Connected, onPhoneLibraryShareChange)
+                            PhoneLibraryShareControl(
+                                status = phoneLibraryShareStatus,
+                                connectionState = remoteState,
+                                active = remoteControlsActive && pagerState.settledPage == 1,
+                                onConnectRequested = { openShareConnectionNonce++ },
+                                onChange = onPhoneLibraryShareChange,
+                            )
                             PcLinkPanel(
                                 librarySyncActions = librarySyncActions,
                                 remoteState = remoteState,
@@ -308,6 +314,8 @@ fun ConnectScreen(
                                 onOpenPcLibrary = onOpenPcLibrary,
                                 openQueueNonce = openPcQueueNonce,
                                 onQueueRequestHandled = onPcQueueOpened,
+                                openConnectionNonce = openShareConnectionNonce,
+                                onConnectionRequestHandled = { openShareConnectionNonce = 0 },
                             )
                             }
                             else -> CastDevicesPanel(

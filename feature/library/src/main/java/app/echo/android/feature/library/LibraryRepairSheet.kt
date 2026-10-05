@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun LibraryRepairSheet(actions: LibraryExperienceActions, onDismiss: () -> Unit) {
+fun LibraryRepairSheet(actions: LibraryExperienceActions, onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
     var rows by remember { mutableStateOf<List<EchoLibraryRepairItem>>(emptyList()) }
     var inspecting by remember { mutableStateOf(true) }

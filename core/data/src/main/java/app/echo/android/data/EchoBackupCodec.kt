@@ -142,6 +142,9 @@ object EchoBackupCodec {
         putOptNullableBoolean("replayGainEnabled", settings.replayGainEnabled)
         putOpt("replayGainMode", settings.replayGainMode)
         settings.replayGainPreampDb?.let { put("replayGainPreampDb", it.toDouble()) }
+        putOpt("shuffleMode", settings.shuffleMode)
+        putOptNullableBoolean("shuffleSpreadArtists", settings.shuffleSpreadArtists)
+        settings.shuffleRecentTrackCount?.let { put("shuffleRecentTrackCount", it) }
         settings.trackTransitions?.let { transitions ->
             put(
                 "trackTransitions",
@@ -249,6 +252,9 @@ object EchoBackupCodec {
             replayGainEnabled = json.optionalBoolean("replayGainEnabled"),
             replayGainMode = json.optionalString("replayGainMode"),
             replayGainPreampDb = json.optionalFloat("replayGainPreampDb"),
+            shuffleMode = json.optionalString("shuffleMode"),
+            shuffleSpreadArtists = json.optionalBoolean("shuffleSpreadArtists"),
+            shuffleRecentTrackCount = json.optionalInt("shuffleRecentTrackCount"),
             trackTransitions = transitions,
             equalizerEnabled = json.optionalBoolean("equalizerEnabled"),
             mseb = json.optJSONObject("mseb")?.let { EchoMsebCodec.decode(it.toString()) },

@@ -121,19 +121,6 @@ private fun ArtistRankRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(4.dp))
             .echoClickable(role = Role.Button, onClick = onClick)
-            .background(
-                if (rank == 1) {
-                    Brush.horizontalGradient(
-                        listOf(
-                            scheme.primary.copy(alpha = if (dark) 0.12f else 0.12f),
-                            if (dark) Color.White.copy(alpha = 0.025f) else echoTheme().accentDeep.copy(alpha = 0.10f),
-                            Color.Transparent,
-                        ),
-                    )
-                } else {
-                    Brush.horizontalGradient(listOf(Color.Transparent, Color.Transparent))
-                },
-            )
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),

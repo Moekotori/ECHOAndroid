@@ -6,6 +6,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import java.security.KeyStore
+import java.util.concurrent.atomic.AtomicLong
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -34,6 +35,8 @@ class EchoSecretStore internal constructor(
     private val prefs: SharedPreferences =
         context.applicationContext.getSharedPreferences(PrefsName, Context.MODE_PRIVATE)
 
+    internal val revision: Long get() = changes.get()
+
     fun get(key: String): String? {
         val packed = prefs.getString(key, null) ?: return null
         return cipher.decrypt(packed)
@@ -43,10 +46,12 @@ class EchoSecretStore internal constructor(
         val trimmed = value?.trim()?.takeIf { it.isNotEmpty() }
         if (trimmed == null) {
             prefs.edit().remove(key).apply()
+            changes.incrementAndGet()
             return
         }
         val packed = cipher.encrypt(trimmed) ?: return
         prefs.edit().putString(key, packed).apply()
+        changes.incrementAndGet()
     }
 
     fun takeIfMigrated(key: String, plaintext: String?): String? {
@@ -58,6 +63,7 @@ class EchoSecretStore internal constructor(
 
     private companion object {
         const val PrefsName = "echo_secrets"
+        val changes = AtomicLong()
     }
 }
 

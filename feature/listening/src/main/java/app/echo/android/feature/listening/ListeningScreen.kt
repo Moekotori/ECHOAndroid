@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -81,54 +82,56 @@ fun ListeningScreen(
     LaunchedEffect(state.room?.id) {
         if (state.room != null) passwordRoom = null
     }
-    Column(
-        modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding(),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
-            IconButton(onClick = onBack) {
-                EchoIcon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.listening_back))
+    androidx.compose.foundation.layout.Box(modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        Column(
+            Modifier.widthIn(max = 960.dp).fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding(),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+                IconButton(onClick = onBack) {
+                    EchoIcon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.listening_back))
+                }
+                Text(stringResource(R.string.listening_title), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
+                if (state.connection != EchoListeningConnection.Offline) {
+                    TextButton(onClick = onDisconnect, enabled = !state.busy) { Text(stringResource(R.string.listening_disconnect)) }
+                }
             }
-            Text(stringResource(R.string.listening_title), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
-            if (state.connection != EchoListeningConnection.Offline) {
-                TextButton(onClick = onDisconnect, enabled = !state.busy) { Text(stringResource(R.string.listening_disconnect)) }
+            state.error?.let { error ->
+                if (error != EchoListeningError.WrongPassword) {
+                    Text(
+                        error.label(),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                    )
+                }
             }
-        }
-        state.error?.let { error ->
-            if (error != EchoListeningError.WrongPassword) {
-                Text(
-                    error.label(),
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+            if (state.room != null) {
+                ListeningRoom(
+                    state = state,
+                    onLeave = onLeave,
+                    onChat = onChat,
+                    onVolume = onVolume,
+                    onResumeAudio = onResumeAudio,
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
+                ListeningLobby(
+                    state = state,
+                    initialInput = initialInput,
+                    defaultName = defaultName,
+                    onConnect = onConnect,
+                    onRefresh = onRefresh,
+                    onJoin = { room ->
+                        if (room.locked) {
+                            passwordRoom = room
+                            passwordText = ""
+                        } else {
+                            onJoin(room.id, null)
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
                 )
             }
-        }
-        if (state.room != null) {
-            ListeningRoom(
-                state = state,
-                onLeave = onLeave,
-                onChat = onChat,
-                onVolume = onVolume,
-                onResumeAudio = onResumeAudio,
-                modifier = Modifier.weight(1f),
-            )
-        } else {
-            ListeningLobby(
-                state = state,
-                initialInput = initialInput,
-                defaultName = defaultName,
-                onConnect = onConnect,
-                onRefresh = onRefresh,
-                onJoin = { room ->
-                    if (room.locked) {
-                        passwordRoom = room
-                        passwordText = ""
-                    } else {
-                        onJoin(room.id, null)
-                    }
-                },
-                modifier = Modifier.weight(1f),
-            )
         }
     }
     val passwordRoomId = passwordRoom?.id ?: state.passwordRoomId
@@ -275,82 +278,87 @@ private fun ListeningRoom(
 ) {
     val room = state.room ?: return
     var draft by rememberSaveable { mutableStateOf("") }
-    Column(modifier.padding(horizontal = 24.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(room.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            TextButton(onClick = onLeave) { Text(stringResource(R.string.listening_leave)) }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
-            val cover = remember(room.track?.coverWebp) { room.track?.coverWebp.toImageBitmap() }
-            if (cover != null) {
-                Image(cover, contentDescription = null, modifier = Modifier.size(72.dp))
-                Spacer(Modifier.width(12.dp))
+    ListeningRoomLayout(modifier.padding(horizontal = 24.dp), summary = {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(room.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                TextButton(onClick = onLeave) { Text(stringResource(R.string.listening_leave)) }
             }
-            Column(Modifier.weight(1f)) {
-                Text(room.track?.title?.ifBlank { room.title }.orEmpty().ifBlank { stringResource(R.string.listening_title) }, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                val artist = room.track?.artist.orEmpty()
-                if (artist.isNotEmpty()) {
-                    Text(artist, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
+                val cover = remember(room.track?.coverWebp) { room.track?.coverWebp.toImageBitmap() }
+                if (cover != null) {
+                    Image(cover, contentDescription = null, modifier = Modifier.size(72.dp))
+                    Spacer(Modifier.width(12.dp))
                 }
-                Text(audioLabel(state, room.programme), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Column(Modifier.weight(1f)) {
+                    Text(room.track?.title?.ifBlank { room.title }.orEmpty().ifBlank { stringResource(R.string.listening_title) }, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    val artist = room.track?.artist.orEmpty()
+                    if (artist.isNotEmpty()) {
+                        Text(artist, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    Text(audioLabel(state, room.programme), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
-        }
-        if (state.yieldedToLocal) {
-            Text(stringResource(R.string.listening_yielded), style = MaterialTheme.typography.bodyMedium)
-            TextButton(onClick = onResumeAudio) { Text(stringResource(R.string.listening_resume)) }
-        }
-        val volumeLabel = stringResource(R.string.listening_volume)
-        Text(volumeLabel, style = MaterialTheme.typography.labelLarge)
-        EchoSlider(value = state.volume, onValueChange = onVolume,
-            modifier = Modifier.fillMaxWidth().semantics { contentDescription = volumeLabel })
-        Text(stringResource(R.string.listening_members), style = MaterialTheme.typography.labelLarge)
-        Text(membersLabel(room.members), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(bottom = 8.dp))
-        if (room.track?.lines.isNullOrEmpty().not()) {
-            Text(
-                room.track?.lines?.take(8)?.joinToString("\n") { it.text }.orEmpty(),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 6,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
-        }
-        HorizontalDivider()
-        LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(state.chat, key = { it.id }) { message ->
+            if (state.yieldedToLocal) {
+                Text(stringResource(R.string.listening_yielded), style = MaterialTheme.typography.bodyMedium)
+                TextButton(onClick = onResumeAudio) { Text(stringResource(R.string.listening_resume)) }
+            }
+            val volumeLabel = stringResource(R.string.listening_volume)
+            Text(volumeLabel, style = MaterialTheme.typography.labelLarge)
+            EchoSlider(value = state.volume, onValueChange = onVolume,
+                modifier = Modifier.fillMaxWidth().semantics { contentDescription = volumeLabel })
+            Text(stringResource(R.string.listening_members), style = MaterialTheme.typography.labelLarge)
+            Text(membersLabel(room.members), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(bottom = 8.dp))
+            if (room.track?.lines.isNullOrEmpty().not()) {
                 Text(
-                    stringResource(R.string.listening_chat_line, message.name, message.text),
-                    style = MaterialTheme.typography.bodyMedium,
+                    room.track?.lines?.take(8)?.joinToString("\n") { it.text }.orEmpty(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 6,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(bottom = 8.dp),
                 )
             }
+            HorizontalDivider()
         }
-        if (state.chatEnabled) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = draft,
-                    onValueChange = { draft = it.take(500) },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text(stringResource(R.string.listening_chat_hint)) },
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(onSend = {
-                        if (draft.isNotBlank()) {
+    }, chat = {
+        Column(Modifier.fillMaxSize()) {
+            LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(state.chat, key = { it.id }) { message ->
+                    Text(
+                        stringResource(R.string.listening_chat_line, message.name, message.text),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+            if (state.chatEnabled) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = draft,
+                        onValueChange = { draft = it.take(500) },
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text(stringResource(R.string.listening_chat_hint)) },
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(onSend = {
+                            if (draft.isNotBlank()) {
+                                onChat(draft)
+                                draft = ""
+                            }
+                        }),
+                        maxLines = 3,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Button(
+                        onClick = {
                             onChat(draft)
                             draft = ""
-                        }
-                    }),
-                    maxLines = 3,
-                )
-                Spacer(Modifier.width(8.dp))
-                Button(
-                    onClick = {
-                        onChat(draft)
-                        draft = ""
-                    },
-                    enabled = draft.isNotBlank(),
-                ) { Text(stringResource(R.string.listening_send)) }
+                        },
+                        enabled = draft.isNotBlank(),
+                    ) { Text(stringResource(R.string.listening_send)) }
+                }
             }
         }
-    }
+    })
 }
 
 @Composable

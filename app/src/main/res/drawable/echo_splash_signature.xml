@@ -1,0 +1,11 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Android owns the footer placement. Keep the lettering quiet within its slot. -->
+    <item android:width="200dp" android:height="80dp" android:gravity="center">
+        <inset
+            android:insetLeft="35%"
+            android:insetRight="35%"
+            android:insetTop="40%"
+            android:insetBottom="40%"
+            android:drawable="@drawable/echo_splash_wordmark" />
+    </item>
+</layer-list>

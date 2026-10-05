@@ -86,6 +86,29 @@ class SettingsSearchTest {
     }
 
     @Test
+    fun accessibilityControlsHaveUniqueDestinationsAndVisibleAnchors() {
+        val state = availability()
+        val items = availableSettingsSearchItems(state)
+        listOf(R.string.settings_ui_font_size, R.string.settings_lyrics_font_size,
+            R.string.accessibility_spacious_layout, R.string.accessibility_lyrics_motion,
+            R.string.accessibility_word_highlight,
+            R.string.accessibility_lyrics_spacing, R.string.accessibility_translation,
+            R.string.accessibility_romanization, R.string.accessibility_mono,
+            R.string.accessibility_balance, R.string.accessibility_balance_reset,
+            R.string.accessibility_rest_timer,
+            R.string.settings_playback_haptics, R.string.accessibility_screen_reader,
+            R.string.accessibility_system_display).forEach { title ->
+            val item = items.single { it.titleRes == title }
+            assertEquals(SettingsCategory.Accessibility, item.category)
+            assertEquals(title, settingsSearchAnchorResource(item, state))
+        }
+        val category = items.single { it.titleRes == R.string.accessibility_title }
+        assertEquals(R.string.settings_section_readability, settingsSearchAnchorResource(category, state))
+        val reader = items.single { it.titleRes == R.string.accessibility_screen_reader }
+        assertTrue(R.string.accessibility_screen_reader_unknown in reader.keywords)
+    }
+
+    @Test
     fun usbControlsSearchOpensTheirIndependentPageWithoutAConnectedDac() {
         val state = availability()
         val items = availableSettingsSearchItems(state)

@@ -36,12 +36,17 @@ internal fun EchoCastSheetHost(
     onStopCast: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val systemCast = (androidx.compose.ui.platform.LocalContext.current.applicationContext as app.echo.android.EchoApplication).echoLinkSession.systemCast
+    val systemAvailable by systemCast.available.collectAsStateWithLifecycle()
+    val systemError by systemCast.error.collectAsStateWithLifecycle()
     val discoveryState by viewModel.echoLinkDiscoveryState.collectAsStateWithLifecycle()
     val devices by viewModel.echoLinkLanDevices.collectAsStateWithLifecycle()
     val renderers by viewModel.lanRenderers.collectAsStateWithLifecycle()
     val rendererState by viewModel.lanRendererDiscoveryState.collectAsStateWithLifecycle()
     val connected = remoteStatus.connectionState == EchoRemoteConnectionState.Connected
     CastDevicesSheet(
+        onSystemOutputSelector = systemCast::showOutputSwitcher,
+        systemOutputAvailable = systemAvailable,
         phoneTrackTitle = playbackStatus.track?.title,
         phoneTrackArtist = playbackStatus.track?.artist,
         phoneTrackArtworkUrl = playbackStatus.track?.artworkUri,
@@ -52,7 +57,7 @@ internal fun EchoCastSheetHost(
         castSessionActive = castSessionActive,
         castSessionName = castSessionName,
         sendingAddress = sendingAddress,
-        remoteError = castSetupError ?: remoteStatus.error,
+        remoteError = castSetupError ?: systemError ?: remoteStatus.error,
         discoveryState = discoveryState,
         discoveredLanDevices = devices,
         savedPcs = appSettings.echoLinkSavedPcs,

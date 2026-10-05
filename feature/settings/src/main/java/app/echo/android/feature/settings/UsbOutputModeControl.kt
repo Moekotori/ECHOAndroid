@@ -24,10 +24,10 @@ import androidx.compose.ui.unit.dp
 internal fun UsbOutputModeControl(strict: Boolean, onChange: (Boolean) -> Unit) {
     Column(Modifier.fillMaxWidth().settingsSearchAnchor(stringResource(R.string.settings_usb_bitperfect)),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Surface(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f), shape = RoundedCornerShape(12.dp)) {
+        Surface(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f), shape = RoundedCornerShape(16.dp)) {
             Row(Modifier.fillMaxWidth().padding(4.dp).selectableGroup(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 listOf(false, true).forEach { value ->
-                    Surface(shape = RoundedCornerShape(9.dp),
+                    Surface(shape = RoundedCornerShape(12.dp),
                         color = if (strict == value) MaterialTheme.colorScheme.surface else androidx.compose.ui.graphics.Color.Transparent,
                         modifier = Modifier.weight(1f)) {
                         Column(Modifier.heightIn(min = 48.dp).selectable(selected = strict == value,

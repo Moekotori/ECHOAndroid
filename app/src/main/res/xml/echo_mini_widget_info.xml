@@ -6,6 +6,8 @@
     android:minResizeHeight="56dp"
     android:targetCellWidth="3"
     android:targetCellHeight="1"
+    android:configure="app.echo.android.widget.EchoWidgetConfigurationActivity"
+    android:widgetFeatures="reconfigurable"
     android:updatePeriodMillis="0"
     android:resizeMode="horizontal"
     android:widgetCategory="home_screen|keyguard"

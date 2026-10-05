@@ -1,0 +1,26 @@
+<resources>
+    <string name="permissions_title">Permissions &amp; reminders</string>
+    <string name="permissions_detail">Check permissions if a feature stops working. Changes made in system settings appear when you return.</string>
+    <string name="permissions_attention">Needs attention</string>
+    <string name="permissions_ready">Ready</string>
+    <string name="permissions_common">Music &amp; notifications</string>
+    <string name="permissions_optional">Optional features</string>
+    <string name="permissions_audio">Music access</string>
+    <string name="permissions_audio_detail">Allows scanning and reading music on this device. If disabled, local tracks may become unavailable. Folders chosen separately retain their own access.</string>
+    <string name="permissions_notifications">Notifications</string>
+    <string name="permissions_notifications_detail">Allows playback notifications and notification lyrics. Check both the app switch and the playback notification category.</string>
+    <string name="permissions_overlay">Floating lyrics</string>
+    <string name="permissions_overlay_detail">Allows lyrics to appear over other apps. Only needed when floating lyrics are enabled.</string>
+    <string name="permissions_bluetooth">Bluetooth devices</string>
+    <string name="permissions_bluetooth_detail">Used to read Bluetooth device and codec details. Only enable it if you need this information.</string>
+    <string name="permissions_network">Local network</string>
+    <string name="permissions_network_detail">Used to discover and connect to Echo Link devices on your Wi-Fi network. Enable it when using Echo Link.</string>
+    <string name="permissions_allowed">Allowed</string>
+    <string name="permissions_disabled">Disabled · affects this feature</string>
+    <string name="permissions_on_demand">Enable when needed</string>
+    <string name="permissions_manage">Open system settings</string>
+    <string name="permissions_auto_reset">Automatic permission removal</string>
+    <string name="permissions_auto_reset_detail">Android may remove permissions when an app is unused for a while. If you rely on ECHO, review the “Pause app activity if unused” option in its app settings. The option name varies by device.</string>
+    <string name="permissions_app_settings">Open app settings</string>
+    <string name="permissions_settings_unavailable">Open your device settings and find ECHO to manage permissions.</string>
+</resources>

@@ -55,6 +55,13 @@ class EchoRemoteClient internal constructor(
     fun isPhoneLibraryUnsupported(error: Throwable): Boolean =
         (error as? EchoLinkHttpException)?.statusCode in listOf(404, 405, 501)
 
+    fun phoneLibraryFailureStatus(error: Throwable): String = when {
+        isPhoneLibraryUnsupported(error) -> "unsupported"
+        (error as? EchoLinkHttpException)?.statusCode in listOf(401, 403) -> "auth_error"
+        error is java.io.IOException && error !is EchoLinkHttpException -> "network_error"
+        else -> "error"
+    }
+
     suspend fun registerPhoneLibrary(target: app.echo.android.model.connect.EchoRemoteEndpoint,
         registration: app.echo.android.model.connect.EchoPhoneLibraryRegistration) = transport.registerPhoneLibrary(target, registration)
 

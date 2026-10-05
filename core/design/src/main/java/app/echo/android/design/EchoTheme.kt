@@ -147,6 +147,7 @@ fun EchoMobileTheme(
 ) {
     val context = LocalContext.current
     val widthClass = rememberEchoWidthSizeClass()
+    val windowLayout = rememberEchoWindowLayout()
     val tokens = remember(colorTheme, darkTheme, customColors) {
         echoThemeTokens(colorTheme, darkTheme, customColors)
     }
@@ -169,6 +170,7 @@ fun EchoMobileTheme(
         LocalEchoEffectivePerformanceMode provides effectivePerformanceMode,
         LocalEchoPlatformCapabilities provides platformCapabilities,
         LocalEchoWidthSizeClass provides widthClass,
+        LocalEchoLayout provides windowLayout,
         LocalEchoContentMaxWidth provides widthClass.contentMaxWidth(),
         LocalEchoHapticsEnabled provides playbackHapticsEnabled,
     ) {

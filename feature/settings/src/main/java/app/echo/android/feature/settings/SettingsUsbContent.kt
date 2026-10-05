@@ -1,8 +1,5 @@
 package app.echo.android.feature.settings
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -41,7 +38,7 @@ internal fun SettingsUsbContent(
     var showDetails by rememberSaveable { mutableStateOf(false) }
     var showTestResult by rememberSaveable { mutableStateOf(false) }
     UsbOutputDevicePanel(output)
-    SettingsSectionCard(title = stringResource(R.string.usb_page_output_mode)) {
+    UsbSettingsSection(title = stringResource(R.string.usb_page_output_mode), contentSpacing = 8.dp) {
         SettingsSwitchRow(
             title = stringResource(R.string.settings_usb_exclusive),
             detail = stringResource(R.string.usb_page_exclusive_note),
@@ -51,7 +48,7 @@ internal fun SettingsUsbContent(
         UsbOutputModeControl(usbBitPerfectEnabled, onUsbBitPerfectEnabledChange)
     }
     UsbOutputFormatControls(options, status.diagnostics, usbBitPerfectEnabled, onOptionsChange)
-    SettingsSectionCard(stringResource(R.string.usb_param_transport), secondary = true) {
+    UsbSettingsSection(stringResource(R.string.usb_param_transport), secondary = true) {
         val bufferLabel = stringResource(when (options.bufferMode) {
             EchoUsbBufferMode.Responsive -> R.string.usb_buffer_responsive
             EchoUsbBufferMode.Balanced -> R.string.usb_buffer_balanced
@@ -69,7 +66,7 @@ internal fun SettingsUsbContent(
             stringResource(R.string.usb_param_keep_alive_note), options.keepAliveOnPause,
             onCheckedChange = { onOptionsChange(options.copy(keepAliveOnPause = it)) })
     }
-    SettingsSectionCard(title = stringResource(R.string.usb_page_connection_preferences), secondary = true) {
+    UsbSettingsSection(title = stringResource(R.string.usb_page_connection_preferences), secondary = true) {
         SettingsSwitchRow(
             title = stringResource(R.string.settings_usb_auto_request),
             detail = if (usbExclusiveAutoRequestOnStartup) {
@@ -87,7 +84,7 @@ internal fun SettingsUsbContent(
             stringResource(R.string.settings_resume_on_reconnect_detail), resumeOnReconnect,
             onCheckedChange = onResumeOnReconnect, enabled = pauseOnDisconnect)
     }
-    SettingsSectionCard(title = stringResource(R.string.usb_page_checks), secondary = true) {
+    UsbSettingsSection(title = stringResource(R.string.usb_page_checks), secondary = true) {
         SettingsActionRow(
             title = stringResource(R.string.settings_test_usb),
             detail = stringResource(when {
@@ -116,8 +113,7 @@ internal fun SettingsUsbContent(
             onClick = { onOptionsChange(EchoUsbOutputOptions()) })
     }
     if (showDetails) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = SettingsContentInset),
-            verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        UsbSettingsSection(stringResource(R.string.usb_page_device_details), secondary = true, contentSpacing = 16.dp) {
             UsbOutputDetails(status.diagnostics, output)
         }
     }

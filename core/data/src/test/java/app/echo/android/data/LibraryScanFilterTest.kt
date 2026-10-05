@@ -43,6 +43,20 @@ class LibraryScanFilterTest {
         assertTrue(defaults.accepts(60_000, 200_000, "Music/Telegram Covers/"))
     }
 
+    @Test fun commonRecorderFoldersAreExcludedWithoutMatchingAlbumNames() {
+        val paths = listOf(
+            "MIUI/sound_recorder/call_rec/", "Sounds/Voice_Recorder/", "Record/Call_Recordings/",
+            "Audio/SoundRecorder/", "录音机/通话录音/", "錄音機/通話錄音/",
+            "Android/media/WhatsApp Voice Notes/", "Messages/Voice_Notes/",
+        )
+        paths.forEach { path ->
+            assertFalse(path, defaults.includesDirectory(path))
+            assertTrue(path, defaults.copy(excludeNonMusicFolders = false).includesDirectory(path))
+        }
+        assertTrue(defaults.includesDirectory("Music/Sound Recorder Sessions/"))
+        assertTrue(defaults.includesDirectory("Music/Live Recordings/"))
+    }
+
     @Test fun filteredRescanPreservesExistingSongsWhileRejectingNewNoise() {
         val existing = track("existing", 1000)
         val noise = track("new-noise", 1000)

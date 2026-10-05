@@ -68,6 +68,7 @@ internal fun PlaylistDetailPage(
     onOpenAlbum: ((EchoTrack) -> Unit)? = null,
     offlinePin: LibraryOfflinePin? = null,
     onToggleOffline: (() -> Unit)? = null,
+    onPinShortcut: ((Boolean) -> Unit)? = null,
     management: PlaylistManagementActions? = null,
     experienceActions: LibraryExperienceActions? = null,
     onCopyCreated: (EchoPlaylist) -> Unit = {},
@@ -147,6 +148,7 @@ internal fun PlaylistDetailPage(
                 )
             }
             item(key = "playlist-tools", contentType = "tools") {
+                onPinShortcut?.let { LibraryDesktopShortcutButton(it) }
                 PlaylistDetailToolbar(playlist, order, editing, busy,
                     onSort = management?.let { actions -> { next -> perform { actions.sort(playlist.id, next) } } },
                     onEdit = management?.takeIf { playlist.canRemoveTracks }?.let { { editing = !editing } },

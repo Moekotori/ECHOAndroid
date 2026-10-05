@@ -1,0 +1,34 @@
+<resources>
+    <string name="settings_shuffle_mode">Shuffle strategy</string>
+    <string name="settings_shuffle_pseudo">Pseudo-random</string>
+    <string name="settings_shuffle_pure">Pure random</string>
+    <string name="settings_shuffle_pseudo_detail">Play each original queue entry once per round. With playlist repeat, shuffle again for the next round; otherwise stop at the end.</string>
+    <string name="settings_shuffle_pure_detail">Draw equally from eligible songs for each next selection. Played songs can return. Without playlist repeat, stop after as many selections as there are songs in the original queue.</string>
+    <string name="settings_shuffle_scope">Applies to shuffle playback on this phone. Changes keep the current song and position; switching modes starts a new round. PC remote playback uses PC settings. Recent history is kept only for the current queue session.</string>
+    <string name="settings_shuffle_intro">Choose how you want to listen, then fine-tune the rules. These preferences apply when shuffle is on.</string>
+    <string name="settings_shuffle_pseudo_summary">Hear the whole playlist before songs come around again.</string>
+    <string name="settings_shuffle_pure_summary">Draw the next song again each time, with more surprises.</string>
+    <string name="settings_shuffle_recommended">Recommended</string>
+    <string name="settings_shuffle_surprise">Can revisit songs</string>
+    <string name="settings_shuffle_spread_artists">Spread out the same artist</string>
+    <string name="settings_shuffle_spread_artists_detail">Try to separate songs by the same artist within a round. A single-artist queue still plays every song; missing artist tags use ordinary shuffle.</string>
+    <string name="settings_shuffle_recent">Avoid recently played songs</string>
+    <string name="settings_shuffle_recent_detail">Avoid the previous songs as well as the current song. In small queues, relax the oldest exclusions first so playback can continue.</string>
+    <string name="settings_shuffle_recent_off">Current song only</string>
+    <string name="settings_shuffle_recent_count">Last %1$d songs</string>
+    <string name="settings_shuffle_rules">How these rules work</string>
+    <string name="settings_shuffle_rules_summary">Rounds, repeats, Play Next, and when changes apply</string>
+    <string name="settings_shuffle_rule_round">Rounds and repeat</string>
+    <string name="settings_shuffle_rule_fair">Equal chances</string>
+    <string name="settings_shuffle_rule_fair_detail">With recent-song avoidance off, every song except the current one has an equal chance. With avoidance on, the remaining eligible songs have an equal chance. A queue containing only one distinct song follows the repeat setting.</string>
+    <string name="settings_shuffle_rule_requests">Play Next stays first</string>
+    <string name="settings_shuffle_rule_requests_detail">Songs you add with Play Next keep their order and are not shuffled. Afterward, the original queue resumes. Single-song repeat stays unchanged.</string>
+    <string name="settings_shuffle_rule_apply">When changes apply</string>
+    <string name="settings_shuffle_reset">Restore recommended settings</string>
+    <string name="settings_shuffle_reset_detail">Pseudo-random, artist spacing on, and a 5-song avoidance window for pure random. Your queue stays intact.</string>
+    <string name="settings_shuffle_example">Illustrative order · A–D are different songs</string>
+    <string name="settings_shuffle_example_accessible">Illustrative playback order: %1$s</string>
+    <string name="settings_shuffle_example_pseudo">Each song appears once in this round. A new shuffle starts with the next round.</string>
+    <string name="settings_shuffle_example_pure">With avoidance off, A can return before every song has played.</string>
+    <string name="settings_shuffle_example_recent">Recent songs are held back first. The actual order depends on the queue and avoidance window.</string>
+</resources>

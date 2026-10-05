@@ -1,0 +1,24 @@
+<resources>
+    <string name="output_audio_profile_title">设备音效配置</string>
+    <string name="output_audio_profile_hint">为此设备保存均衡器、ReplayGain、声道平衡和切歌设置；其他设备恢复通用设置。</string>
+    <string name="output_audio_profile_bypassed">位完美输出绕过音效处理，退出此模式后恢复设备配置。</string>
+    <string name="output_audio_profile_update">更新设备配置</string>
+    <string name="output_audio_profile_save">保存当前配置</string>
+    <string name="output_audio_profile_remove">解除绑定</string>
+    <string name="widget_config_title">配置播放小组件</string>
+    <string name="widget_config_hint">设置仅用于当前小组件，可以先预览再保存。</string>
+    <string name="widget_config_artwork">显示封面</string>
+    <string name="widget_config_lyrics">显示歌词</string>
+    <string name="widget_config_controls">上一首与下一首按钮</string>
+    <string name="widget_config_opacity">背景不透明度 · %1$d%%</string>
+    <string name="widget_config_playlist">歌单快捷入口</string>
+    <string name="widget_config_playlist_hint">增加独立的歌单播放按钮；播放和暂停仍控制当前队列。封面样式保留不透明图片以确保可读性。</string>
+    <string name="widget_config_none">不绑定歌单</string>
+    <string name="widget_config_search">搜索歌单</string>
+    <string name="widget_config_empty">没有匹配的歌单</string>
+    <string name="widget_config_error">加载或保存失败，请重试。</string>
+    <string name="widget_config_cancel">取消</string>
+    <string name="widget_config_save">保存小组件</string>
+    <string name="widget_config_lyrics_preview">当前歌词会显示在这里</string>
+    <string name="widget_config_playlist_preview">播放歌单 · %1$s</string>
+</resources>

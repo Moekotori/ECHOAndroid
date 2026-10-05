@@ -32,8 +32,10 @@ internal suspend fun followLyricsLine(
     if (!motion.anchored || list.layoutInfo.visibleItemsInfo.none { it.index == index }) {
         // Initial content / a far seek should not fly past an entire song's lyrics.
         motion.velocity = 0f
-        list.scrollToItem(index)
-        withFrameNanos { }
+        if (list.firstVisibleItemIndex != index || list.firstVisibleItemScrollOffset != 0) {
+            list.scrollToItem(index)
+            withFrameNanos { }
+        }
         motion.anchored = true
     }
     val distance = list.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }?.offset?.toFloat() ?: return

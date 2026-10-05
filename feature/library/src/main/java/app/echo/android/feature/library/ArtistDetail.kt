@@ -1,6 +1,8 @@
 package app.echo.android.feature.library
 
 import app.echo.android.design.EchoIcon
+import app.echo.android.design.EchoDropdownMenu
+import app.echo.android.design.EchoDropdownMenuItem
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
@@ -240,13 +242,14 @@ private fun ArtistTrackTools(query: String, sort: LibraryTrackSortMode, onQueryC
         )
         Box {
             IconButton(onClick = { showSort = true }) { EchoIcon(Icons.AutoMirrored.Rounded.Sort, stringResource(L10nR.string.artist_sort_tracks)) }
-            DropdownMenu(expanded = showSort, onDismissRequest = { showSort = false }) {
+            EchoDropdownMenu(expanded = showSort, onDismissRequest = { showSort = false }) {
                 listOf(LibraryTrackSortMode.Album, LibraryTrackSortMode.Title, LibraryTrackSortMode.Duration).forEach { mode ->
-                    DropdownMenuItem(text = { Text(stringResource(when (mode) {
+                    EchoDropdownMenuItem(text = { Text(stringResource(when (mode) {
                         LibraryTrackSortMode.Title -> L10nR.string.artist_sort_title
                         LibraryTrackSortMode.Duration -> L10nR.string.artist_sort_duration
                         else -> L10nR.string.artist_sort_album
-                    }), color = if (mode == sort) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface) },
+                    })) },
+                        selected = mode == sort,
                         onClick = { onSortChange(mode); showSort = false })
                 }
             }

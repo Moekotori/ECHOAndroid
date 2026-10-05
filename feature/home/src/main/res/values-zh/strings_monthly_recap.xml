@@ -1,0 +1,26 @@
+<resources>
+    <string name="recap_title">听歌月报</string>
+    <string name="recap_back">返回</string>
+    <string name="recap_share">分享卡片</string>
+    <string name="recap_previous">上个月</string>
+    <string name="recap_next">下个月</string>
+    <string name="recap_load_error">未能加载本月记录。</string>
+    <string name="recap_retry">重试</string>
+    <string name="recap_empty">这个月还没有听歌记录。</string>
+    <string name="recap_partial">本月进行中</string>
+    <string name="recap_minutes_value">听了 %1$d 分钟音乐</string>
+    <string name="recap_totals_value">%1$d 次收听 · %2$d 天听歌</string>
+    <string name="recap_hours">你的听歌时段</string>
+    <string name="recap_albums">重听最多的专辑</string>
+    <string name="recap_no_albums">这个月还没有重听的专辑。</string>
+    <string name="recap_new_artists">新发现 %1$d 位歌手</string>
+    <string name="recap_no_new_artists">这个月，继续听熟悉的声音。</string>
+    <string name="recap_basis">根据当前保留的听歌历史统计。新发现指本月首次出现在这些记录中的歌手；日期和时段沿用收听时的本地时间，时长归入开始收听的日期。重听排行不计每首曲目的首次记录。</string>
+    <string name="recap_card_basis">依据当前保留的听歌记录</string>
+    <string name="recap_card_paper">浅色</string>
+    <string name="recap_card_midnight">深色</string>
+    <string name="recap_card_preview">听歌月报卡片预览</string>
+    <string name="recap_share_error">图片生成或保存失败，请重试。</string>
+    <string name="recap_export">保存图片</string>
+    <plurals name="recap_plays"><item quantity="other">%1$d 次收听</item></plurals>
+</resources>

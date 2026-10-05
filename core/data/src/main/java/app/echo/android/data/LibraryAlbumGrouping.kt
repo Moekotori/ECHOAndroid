@@ -57,12 +57,15 @@ internal object LibraryAlbumGrouping {
         }
     }
 
-    private fun groupingIdentity(track: LibraryTrackEntity): GroupIdentity {
-        val album = albumNameForKey(track.normalizedAlbum ?: track.album?.normalizedForSearch())
+    private fun groupingIdentity(track: LibraryTrackEntity): GroupIdentity =
+        groupingIdentity(track.normalizedAlbum, track.album, track.relativePath)
+
+    internal fun groupingIdentity(normalizedAlbum: String?, albumName: String?, relativePath: String?): GroupIdentity {
+        val album = albumNameForKey(normalizedAlbum ?: albumName?.normalizedForSearch())
             .orEmpty()
         return GroupIdentity(
             album = album,
-            folder = groupingFolder(track.relativePath),
+            folder = groupingFolder(relativePath),
         )
     }
 
@@ -128,7 +131,7 @@ internal object LibraryAlbumGrouping {
         return null
     }
 
-    private data class GroupIdentity(
+    internal data class GroupIdentity(
         val album: String,
         val folder: String?,
     ) {

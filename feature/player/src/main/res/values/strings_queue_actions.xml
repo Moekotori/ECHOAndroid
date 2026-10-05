@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="queue_locate_current">Go to current track</string>
+    <string name="queue_stop_after_current">Stop after this track</string>
+    <string name="queue_clear_confirmation">Remove all tracks from the queue and stop playback?</string>
+    <string name="queue_end_reached">You have reached the end of the queue</string>
+    <string name="queue_reorder_hint">Hold to reorder</string>
+</resources>

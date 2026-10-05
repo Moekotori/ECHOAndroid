@@ -1,0 +1,8 @@
+<resources>
+    <string name="library_shortcut_unsupported">目前桌面不支援加入捷徑</string>
+    <string name="library_shortcut_missing">此專輯或歌單已無法使用</string>
+    <string name="library_shortcut_play_label">播放 %1$s</string>
+    <string name="library_shortcut_open_label">開啟 %1$s</string>
+    <string name="widget_bound_play">播放歌單 · %1$s</string>
+    <string name="output_profile_current_output">目前輸出裝置</string>
+</resources>

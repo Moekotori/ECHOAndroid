@@ -129,11 +129,11 @@ internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>) 
     private fun syncSmartMixer() {
         val format = inputAudioFormat
         if (format == AudioProcessor.AudioFormat.NOT_SET || format.channelCount !in 1..2) return
-        val internalFormat = AudioProcessor.AudioFormat(format.sampleRate, format.channelCount, C.ENCODING_PCM_FLOAT)
         for (stage in stages) {
             if (stage !is EchoSmartTransitionMixer) continue
             if (stage.enabled == stage.isActive) continue
             runCatching {
+                val internalFormat = AudioProcessor.AudioFormat(format.sampleRate, format.channelCount, C.ENCODING_PCM_FLOAT)
                 stage.configure(internalFormat)
                 if (stage.isActive) stage.flush(AudioProcessor.StreamMetadata(
                     streamOffsetUs + streamFrames * 1_000_000L / format.sampleRate))

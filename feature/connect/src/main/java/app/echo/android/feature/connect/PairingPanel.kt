@@ -9,6 +9,8 @@ import app.echo.android.connect.EchoLinkDiscoveryState
 import androidx.compose.ui.res.stringResource
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Computer
 import androidx.compose.material.icons.rounded.Headphones
@@ -87,6 +89,8 @@ internal fun PcLinkPanel(
     onOpenPcLibrary: () -> Unit = {},
     openQueueNonce: Int = 0,
     onQueueRequestHandled: () -> Unit = {},
+    openConnectionNonce: Int = 0,
+    onConnectionRequestHandled: () -> Unit = {},
 ) {
     var showLibrarySync by remember { mutableStateOf(false) }
     var legacySync by remember { mutableStateOf(false) }
@@ -103,6 +107,15 @@ internal fun PcLinkPanel(
     var address by rememberSaveable(savedPcAddress) { mutableStateOf(savedPcAddress.orEmpty()) }
     var token by rememberSaveable(savedPcToken) { mutableStateOf(savedPcToken.orEmpty()) }
     var manual by rememberSaveable { mutableStateOf(savedPcAddress.isNullOrBlank()) }
+    val connectionEntry = remember { BringIntoViewRequester() }
+    LaunchedEffect(openConnectionNonce) {
+        if (openConnectionNonce > 0 && !connected && !busy) {
+            manual = true
+            withFrameNanos { }
+            connectionEntry.bringIntoView()
+        }
+        if (openConnectionNonce > 0) onConnectionRequestHandled()
+    }
     var confirmForget by rememberSaveable { mutableStateOf(false) }
     var musicPicker by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(openQueueNonce) {
@@ -281,7 +294,7 @@ internal fun PcLinkPanel(
                         }
                     }
                 }
-                Column {
+                Column(Modifier.bringIntoViewRequester(connectionEntry)) {
                     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).echoClickable(role = Role.Button) { keyboard?.hide(); manual = !manual }, verticalAlignment = Alignment.CenterVertically) {
                         Text(stringResource(L10nR.string.echo_link_pairing_entry), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
                         EchoIcon(Icons.Rounded.KeyboardArrowDown, contentDescription = null, Modifier.echoExpandIndicator(manual))

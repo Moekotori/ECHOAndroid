@@ -49,6 +49,7 @@ fun SettingsScreen(
     usbExclusiveEnabled: Boolean,
     usbBitPerfectEnabled: Boolean,
     usbOutputOptions: app.echo.android.model.playback.EchoUsbOutputOptions = app.echo.android.model.playback.EchoUsbOutputOptions(),
+    shuffleOptions: app.echo.android.model.playback.EchoShuffleOptions = app.echo.android.model.playback.EchoShuffleOptions(),
     trackTransitions: app.echo.android.model.playback.EchoTrackTransitionOptions,
     usbExclusiveAutoRequestOnStartup: Boolean,
     pauseOnAudioDisconnect: Boolean,
@@ -105,6 +106,7 @@ fun SettingsScreen(
     onUsbExclusiveEnabledChange: (Boolean) -> Unit,
     onUsbBitPerfectEnabledChange: (Boolean) -> Unit,
     onUsbOutputOptionsChange: (app.echo.android.model.playback.EchoUsbOutputOptions) -> Unit = {},
+    onShuffleOptionsChange: (app.echo.android.model.playback.EchoShuffleOptions) -> Unit = {},
     onTrackTransitionsChange: (app.echo.android.model.playback.EchoTrackTransitionOptions) -> Unit,
     onUsbExclusiveAutoRequestOnStartupChange: (Boolean) -> Unit,
     onPauseOnAudioDisconnectChange: (Boolean) -> Unit,
@@ -145,6 +147,7 @@ fun SettingsScreen(
     onDisconnectListenBrainz: () -> Unit,
     onSaveSetlistFmApiKey: (String?) -> Unit = {},
     onOpenLibrary: () -> Unit,
+    onOpenLibraryRepair: () -> Unit = {},
     onClearLocalLibraryIndex: suspend () -> Boolean,
     onCleanupLocalLibrary: suspend () -> Pair<Int, Int> = { 0 to 0 },
     errorLogCount: Int = 0,
@@ -157,9 +160,15 @@ fun SettingsScreen(
     onOpenPlugins: () -> Unit = {},
     isPageVisible: Boolean = isActive,
     onScanMusic: () -> Unit = onOpenLibrary,
-    onOpenConnect: () -> Unit = {},
     onOpenSound: () -> Unit = {},
     soundSummary: String = "",
+    permissionState: SettingsPermissionState = SettingsPermissionState(),
+    onOpenPermissionSettings: (SettingsPermissionTarget) -> Unit = {},
+    lyricsMotionMode: String = "smooth",
+    onLyricsMotionModeChange: (String) -> Unit = {},
+    lyricsWordHighlightEnabled: Boolean = true,
+    onLyricsWordHighlightEnabledChange: (Boolean) -> Unit = {},
+    accessibilityCareContent: @Composable () -> Unit = {},
 ) {
     SettingsNavigation(
         isActive = isActive,
@@ -167,7 +176,6 @@ fun SettingsScreen(
         compactMode = compactModeEnabled,
         onOpenPlugins = onOpenPlugins,
         onScanMusic = onScanMusic,
-        onOpenConnect = onOpenConnect,
         onOpenSound = onOpenSound,
         soundSummary = soundSummary,
         searchAvailability = SettingsSearchAvailability(
@@ -189,6 +197,9 @@ fun SettingsScreen(
                 .notificationRuntimePermission && !notificationPermissionGranted,
         ),
         summaries = mapOf(
+            SettingsCategory.Permissions to stringResource(
+                if (permissionState.needsAttention(floatingLyrics.enabled)) R.string.permissions_attention
+                else R.string.permissions_ready),
             SettingsCategory.Appearance to stringResource(when (themeMode) {
                 "dark" -> R.string.settings_theme_dark
                 "light" -> R.string.settings_theme_light
@@ -203,6 +214,9 @@ fun SettingsScreen(
         ),
     ) { category ->
         when (category) {
+                SettingsCategory.Permissions -> SettingsPermissionsContent(
+                    permissionState, floatingLyrics.enabled, onOpenPermissionSettings,
+                )
                 SettingsCategory.Appearance -> SettingsAppearanceContent(
                     importedFontFamily = importedFontFamily,
                     customBackgroundMode = customBackgroundMode,
@@ -244,6 +258,25 @@ fun SettingsScreen(
                     onScheduledDarkStartMinuteChange = onScheduledDarkStartMinuteChange,
                     onScheduledDarkEndMinuteChange = onScheduledDarkEndMinuteChange,
                 )
+                SettingsCategory.Accessibility -> SettingsAccessibilityContent(
+                    isActive = isActive && isPageVisible,
+                    importedFontFamily = importedFontFamily,
+                    uiFontFamily = uiFontFamily,
+                    uiFontScale = uiFontScale,
+                    lyricsFontFamily = lyricsFontFamily,
+                    lyricsFontScale = lyricsFontScale,
+                    compactModeEnabled = compactModeEnabled,
+                    lyricsWordHighlightEnabled = lyricsWordHighlightEnabled,
+                    lyricsMotionMode = lyricsMotionMode,
+                    playbackHapticsEnabled = playbackHapticsEnabled,
+                    onUiFontScaleChange = onUiFontScaleChange,
+                    onLyricsFontScaleChange = onLyricsFontScaleChange,
+                    onCompactModeEnabledChange = onCompactModeEnabledChange,
+                    onLyricsWordHighlightEnabledChange = onLyricsWordHighlightEnabledChange,
+                    careContent = accessibilityCareContent,
+                    onLyricsMotionModeChange = onLyricsMotionModeChange,
+                    onPlaybackHapticsEnabledChange = onPlaybackHapticsEnabledChange,
+                )
                 SettingsCategory.Interface -> SettingsInterfaceContent(
                     dynamicArtworkEnabled = dynamicArtworkEnabled,
                     compactModeEnabled = compactModeEnabled,
@@ -269,6 +302,8 @@ fun SettingsScreen(
                     floatingLyricsPermissionGranted = floatingLyricsPermissionGranted,
                     usbExclusiveEnabled = usbExclusiveEnabled,
                     usbBitPerfectEnabled = usbBitPerfectEnabled,
+                    shuffleOptions = shuffleOptions,
+                    onShuffleOptionsChange = onShuffleOptionsChange,
                     trackTransitions = trackTransitions,
                     pauseOnAudioDisconnect = pauseOnAudioDisconnect,
                     resumeOnAudioReconnect = resumeOnAudioReconnect,
@@ -353,6 +388,7 @@ fun SettingsScreen(
                     onWatchedFolderRescanEnabledChange = onWatchedFolderRescanEnabledChange,
                     onOfflineWifiOnlyChange = onOfflineWifiOnlyChange,
                     onOpenLibrary = onOpenLibrary,
+                    onOpenLibraryRepair = onOpenLibraryRepair,
                     onClearLocalLibraryIndex = onClearLocalLibraryIndex,
                     onCleanupLocalLibrary = onCleanupLocalLibrary,
                 )

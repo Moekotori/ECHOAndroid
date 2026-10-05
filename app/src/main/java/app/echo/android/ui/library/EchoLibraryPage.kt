@@ -62,28 +62,8 @@ internal fun EchoLibraryPage(
     onOpenConnect: () -> Unit,
     pageInteractive: Boolean,
 ) {
-    var repairFileResult by remember { mutableStateOf<kotlinx.coroutines.CompletableDeferred<android.net.Uri?>?>(null) }
-    val repairFilePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        repairFileResult?.complete(uri)
-    }
-    val repairScanFolder = androidx.compose.runtime.rememberUpdatedState { onScanFolder(appSettings.libraryScanOptions) }
-    val experienceActions = remember(viewModel, repairFilePicker) {
-        val tools = viewModel.libraryExperience
-        app.echo.android.feature.library.LibraryExperienceActions(
-            preview = tools::preview, rule = tools::rule, save = tools::save,
-            pin = tools::pin,
-            inspect = tools::inspect, candidates = tools::candidates, relink = tools::relink,
-            rescanFolder = { repairScanFolder.value() },
-            chooseFile = {
-                val result = kotlinx.coroutines.CompletableDeferred<android.net.Uri?>()
-                repairFileResult = result
-                try {
-                    repairFilePicker.launch(arrayOf("audio/*", "application/ogg", "application/flac"))
-                    result.await()?.let { tools.readFile(it) }
-                } finally { repairFileResult = null }
-            },
-        )
-    }
+    val experienceActions = rememberLibraryExperienceActions(viewModel) { onScanFolder(appSettings.libraryScanOptions) }
+    val shortcutContext = androidx.compose.ui.platform.LocalContext.current
     val libraryQuery by viewModel.libraryQuery.collectAsStateWithLifecycle()
     val libraryTrackSortMode by viewModel.libraryTrackSortMode.collectAsStateWithLifecycle()
     val libraryAlbumSortMode by viewModel.libraryAlbumSortMode.collectAsStateWithLifecycle()
@@ -335,6 +315,10 @@ internal fun EchoLibraryPage(
             onUpdateTrackMetadata = viewModel::updateTrackMetadata,
             onImportLyricsForTrack = onImportLyricsForTrack,
             onPickTrackArtwork = onPickTrackArtwork,
+            onPinAlbumShortcut = { album, play -> app.echo.android.library.EchoLibraryShortcuts.pin(shortcutContext,
+                app.echo.android.playback.EchoPlaybackLibraryIds.album(album.albumKey), album.title, play) },
+            onPinPlaylistShortcut = { playlist, play -> app.echo.android.library.EchoLibraryShortcuts.pin(shortcutContext,
+                app.echo.android.playback.EchoPlaybackLibraryIds.playlist(playlist.id), playlist.name, play) },
             onPlayAlbum = { album -> viewModel.playAlbum(album.albumKey) },
             onShuffleAlbum = { album -> viewModel.shuffleAlbum(album.albumKey) },
             onPlayArtist = { artist -> viewModel.playArtist(artist.artistKey) },

@@ -1507,7 +1507,7 @@ class EchoLibraryRepository(
         var scannedCount = 0
         var totalCount: Int? = null
         var deletedCount = 0
-        var changedSummaries = LibrarySummaryKeySet()
+        val changedSummaries = LibrarySummaryKeyAccumulator()
 
         suspend fun emitProgress(
             phase: LibraryScanPhase = progress.phase,
@@ -1576,7 +1576,7 @@ class EchoLibraryRepository(
                 insertedCount += written.insertedCount
                 updatedCount += written.updatedCount
                 seenIds.addAll(written.seenIds)
-                changedSummaries += written.summaryKeys
+                changedSummaries.add(written.summaryKeys)
                 pending.clear()
                 emitProgress(phase = LibraryScanPhase.WritingDatabase, currentTitle = title)
                 yield()
@@ -1677,7 +1677,8 @@ class EchoLibraryRepository(
                 missingIds = { LibraryScanPolicy.unseenIds(existingFingerprints.keys, seenIds) },
             )
             deletedCount = deletion.deletedCount
-            rebuildSummariesIfNeeded(dao, changedSummaries + deletion.summaryKeys)
+            changedSummaries.add(deletion.summaryKeys)
+            rebuildSummariesIfNeeded(dao, changedSummaries.build())
             emitProgress(phase = LibraryScanPhase.Completed, currentTitle = null, isCompleted = true)
         } catch (error: CancellationException) {
             emitProgress(phase = LibraryScanPhase.Cancelled, currentTitle = null, isCompleted = true)
@@ -1749,7 +1750,7 @@ class EchoLibraryRepository(
         var deletedCount = 0
         var lastProgressEmitCount = 0
         var lastProgressEmitAtMs = 0L
-        var changedSummaries = LibrarySummaryKeySet()
+        val changedSummaries = LibrarySummaryKeyAccumulator()
         val pending = ArrayList<LibraryTrackEntity>(batchSize)
 
         val scanContext = coroutineContext
@@ -1818,7 +1819,7 @@ class EchoLibraryRepository(
                     insertedCount += written.insertedCount
                     updatedCount += written.updatedCount
                     seenIds.addAll(written.seenIds)
-                    changedSummaries += written.summaryKeys
+                    changedSummaries.add(written.summaryKeys)
                     pending.clear()
                     emitProgress(phase = LibraryScanPhase.WritingDatabase, currentTitle = track.title)
                     yield()
@@ -1829,7 +1830,7 @@ class EchoLibraryRepository(
                 insertedCount += written.insertedCount
                 updatedCount += written.updatedCount
                 seenIds.addAll(written.seenIds)
-                changedSummaries += written.summaryKeys
+                changedSummaries.add(written.summaryKeys)
                 pending.clear()
             }
 
@@ -1845,7 +1846,8 @@ class EchoLibraryRepository(
                 missingIds = { LibraryScanPolicy.unseenIds(existingFingerprints.keys, seenIds) },
             )
             deletedCount = deletion.deletedCount
-            rebuildSummariesIfNeeded(dao, changedSummaries + deletion.summaryKeys)
+            changedSummaries.add(deletion.summaryKeys)
+            rebuildSummariesIfNeeded(dao, changedSummaries.build())
             if (!visit.incomplete) {
                 tagScan.complete()
                 scanner.pruneLocalArtwork(dao)
@@ -1885,7 +1887,7 @@ class EchoLibraryRepository(
         var scannedCount = 0
         var totalCount: Int? = null
         var deletedCount = 0
-        var changedSummaries = LibrarySummaryKeySet()
+        val changedSummaries = LibrarySummaryKeyAccumulator()
         val pending = ArrayList<LibraryTrackEntity>(batchSize)
 
         suspend fun emitProgress(
@@ -1950,7 +1952,7 @@ class EchoLibraryRepository(
                         insertedCount += written.insertedCount
                         updatedCount += written.updatedCount
                         seenIds.addAll(written.seenIds)
-                        changedSummaries += written.summaryKeys
+                        changedSummaries.add(written.summaryKeys)
                         pending.clear()
                         emitProgress(phase = LibraryScanPhase.WritingDatabase, currentTitle = item.title)
                         yield()
@@ -1972,7 +1974,7 @@ class EchoLibraryRepository(
                 insertedCount += written.insertedCount
                 updatedCount += written.updatedCount
                 seenIds.addAll(written.seenIds)
-                changedSummaries += written.summaryKeys
+                changedSummaries.add(written.summaryKeys)
             }
             emitProgress(phase = LibraryScanPhase.CleaningRemoved, currentTitle = null)
             val deletion = deleteMissingIfComplete(
@@ -1986,7 +1988,8 @@ class EchoLibraryRepository(
                 missingIds = { LibraryScanPolicy.unseenIds(existingFingerprints.keys, seenIds) },
             )
             deletedCount = deletion.deletedCount
-            rebuildSummariesIfNeeded(dao, changedSummaries + deletion.summaryKeys)
+            changedSummaries.add(deletion.summaryKeys)
+            rebuildSummariesIfNeeded(dao, changedSummaries.build())
             emitProgress(phase = LibraryScanPhase.Completed, currentTitle = null, isCompleted = true)
         } catch (error: CancellationException) {
             emitProgress(phase = LibraryScanPhase.Cancelled, currentTitle = null, isCompleted = true)
@@ -2168,44 +2171,15 @@ class EchoLibraryRepository(
     private suspend fun backfillAggregationKeys() = withContext(LibraryScanDispatchers.Limited) {
         if (scanner.isAggregationKeyBackfillComplete()) return@withContext
         val dao = database.trackDao()
-        val tracks = dao.getAllTracksForFtsRebuild()
-        val pending = ArrayList<LibraryTrackEntity>()
-        var changed = false
-        suspend fun flushPending() {
-            if (pending.isEmpty()) return
-            dao.upsertBatchWithFts(pending.toList())
-            pending.clear()
-            changed = true
-            yield()
-        }
-        for (track in tracks) {
-            coroutineContext.ensureActive()
-            val cleaned = track.copy(
+        val changed = backfillLibraryAggregationKeys(dao, DATABASE_BATCH_SIZE) { track ->
+            track.copy(
                 title = track.title.takeUnlessUnknownMetadata() ?: UnknownTrackTitle,
                 artist = track.artist.takeUnlessUnknownMetadata() ?: canonicalUnknownArtist(),
                 album = track.album.takeUnlessUnknownMetadata(),
                 albumArtist = track.albumArtist.takeUnlessUnknownMetadata(),
             ).withScanMetadata()
-            if (
-                cleaned.title == track.title &&
-                cleaned.artist == track.artist &&
-                cleaned.album == track.album &&
-                cleaned.albumArtist == track.albumArtist &&
-                cleaned.albumKey == track.albumKey &&
-                cleaned.artistKey == track.artistKey &&
-                cleaned.normalizedTitle == track.normalizedTitle &&
-                cleaned.normalizedArtist == track.normalizedArtist &&
-                cleaned.normalizedAlbum == track.normalizedAlbum &&
-                cleaned.normalizedAlbumArtist == track.normalizedAlbumArtist
-            ) {
-                continue
-            }
-            pending += cleaned
-            if (pending.size >= DATABASE_BATCH_SIZE) flushPending()
         }
-        flushPending()
-        val regrouped = reconcileLocalAlbumGrouping(dao, dao.getLocalLibraryTracks())
-        if (changed || regrouped.isNotEmpty()) dao.rebuildLibrarySummaries()
+        if (changed) dao.rebuildLibrarySummaries()
         scanner.markAggregationKeyBackfillComplete()
     }
 
@@ -2245,16 +2219,16 @@ class EchoLibraryRepository(
         val changed = LibraryAlbumGrouping.reconcile(tracks)
         if (changed.isEmpty()) return emptyList()
         val before = tracks.associateBy { it.id }
-        var summaryKeys = LibrarySummaryKeySet()
+        val summaryKeys = LibrarySummaryKeyAccumulator()
         changed.forEach { next ->
-            before[next.id]?.let { summaryKeys += it.toSummaryKeySet() }
-            summaryKeys += next.toSummaryKeySet()
+            before[next.id]?.let { summaryKeys.add(it.toSummaryKeySet()) }
+            summaryKeys.add(next.toSummaryKeySet())
         }
         changed.chunked(DATABASE_BATCH_SIZE).forEach { chunk ->
             dao.upsertBatchWithFts(chunk)
             yield()
         }
-        rebuildSummariesIfNeeded(dao, summaryKeys)
+        rebuildSummariesIfNeeded(dao, summaryKeys.build())
         return changed
     }
 
@@ -2427,10 +2401,10 @@ class EchoLibraryRepository(
         }
         val ids = missingIds()
         if (ids.isEmpty()) return LibraryScanDeletion()
-        var summaryKeys = LibrarySummaryKeySet()
+        val summaryKeys = LibrarySummaryKeyAccumulator()
         ids.chunked(DATABASE_BATCH_SIZE).forEach { chunk ->
             dao.getSummaryKeyRows(chunk).forEach { row ->
-                summaryKeys += row.toSummaryKeySet()
+                summaryKeys.add(row.toSummaryKeySet())
             }
             database.withTransaction {
                 archiveMissingLocalTracks(chunk)
@@ -2438,7 +2412,7 @@ class EchoLibraryRepository(
             }
             yield()
         }
-        return LibraryScanDeletion(deletedCount = ids.size, summaryKeys = summaryKeys)
+        return LibraryScanDeletion(deletedCount = ids.size, summaryKeys = summaryKeys.build())
     }
 
     private fun classifyScanBatch(

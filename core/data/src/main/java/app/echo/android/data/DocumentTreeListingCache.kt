@@ -17,16 +17,21 @@ data class DocumentTreeCachedChild(
 class DocumentTreeListingCache(
     private val file: File? = null,
     private val capacity: Int = DefaultCapacity,
+    private val maxChildren: Int = DefaultMaxChildren,
+    private val maxMemoryBytes: Long = DefaultMaxMemoryBytes,
 ) {
     private data class Entry(
         val key: String,
         val lastModifiedMs: Long,
         val children: List<DocumentTreeCachedChild>,
+        val memoryBytes: Long,
     )
 
     private val entries = LinkedHashMap<String, Entry>(16, 0.75f, true)
     private var loaded = false
     private var dirty = false
+    private var retainedChildren = 0
+    private var retainedBytes = 0L
 
     fun listing(
         treeUri: String,
@@ -38,7 +43,7 @@ class DocumentTreeListingCache(
         val key = cacheKey(treeUri, documentId) ?: return null
         val entry = entries[key] ?: return null
         if (!LibraryScanPolicy.shouldReuseCachedDocumentListing(entry.lastModifiedMs, lastModifiedMs, isTreeRoot)) {
-            entries.remove(key)
+            removeEntry(key)
             dirty = true
             return null
         }
@@ -57,11 +62,14 @@ class DocumentTreeListingCache(
         if (children.size > MaxChildrenPerDirectory) return
         val key = cacheKey(treeUri, documentId) ?: return
         if (children.any { !it.isPersistable() }) return
-        val entry = Entry(key, lastModifiedMs, children)
+        val memoryBytes = estimatedMemoryBytes(key, children)
+        if (children.size > maxChildren || memoryBytes > maxMemoryBytes) {
+            if (removeEntry(key) != null) dirty = true
+            return
+        }
+        val entry = Entry(key, lastModifiedMs, children, memoryBytes)
         if (entries[key] == entry) return
-        entries[key] = entry
-        while (entries.size > capacity) entries.remove(entries.keys.first())
-        dirty = true
+        putEntry(entry)
     }
 
     fun flush() {
@@ -109,6 +117,7 @@ class DocumentTreeListingCache(
                 val lastModifiedMs = row.getLong(1)
                 val childrenJson = row.getJSONArray(2)
                 if (key.length > MaxKeyLength || lastModifiedMs <= 0L) continue
+                if (childrenJson.length() > MaxChildrenPerDirectory || childrenJson.length() > maxChildren) continue
                 val children = ArrayList<DocumentTreeCachedChild>(childrenJson.length())
                 var persistable = true
                 for (childIndex in 0 until childrenJson.length()) {
@@ -127,14 +136,42 @@ class DocumentTreeListingCache(
                     children += child
                 }
                 if (persistable && children.size <= MaxChildrenPerDirectory) {
-                    entries[key] = Entry(key, lastModifiedMs, children)
+                    val bytes = estimatedMemoryBytes(key, children)
+                    if (bytes <= maxMemoryBytes) putEntry(Entry(key, lastModifiedMs, children, bytes))
                 }
             }
-        }.onFailure { entries.clear() }
+        }.onFailure {
+            entries.clear()
+            retainedChildren = 0
+            retainedBytes = 0L
+        }
+    }
+
+    private fun removeEntry(key: String): Entry? = entries.remove(key)?.also {
+        retainedChildren -= it.children.size
+        retainedBytes -= it.memoryBytes
+    }
+
+    private fun putEntry(entry: Entry) {
+        removeEntry(entry.key)
+        entries[entry.key] = entry
+        retainedChildren += entry.children.size
+        retainedBytes += entry.memoryBytes
+        val iterator = entries.entries.iterator()
+        while (iterator.hasNext() &&
+            (entries.size > capacity || retainedChildren > maxChildren || retainedBytes > maxMemoryBytes)) {
+            val oldest = iterator.next().value
+            retainedChildren -= oldest.children.size
+            retainedBytes -= oldest.memoryBytes
+            iterator.remove()
+        }
+        dirty = true
     }
 
     private companion object {
         const val DefaultCapacity = 2_000
+        const val DefaultMaxChildren = 20_000
+        const val DefaultMaxMemoryBytes = 8L * 1024 * 1024
         const val MaxFileBytes = 4 * 1024 * 1024
         const val MaxKeyLength = 2_048
         const val MaxChildrenPerDirectory = 2_000
@@ -155,5 +192,11 @@ class DocumentTreeListingCache(
 
         fun Entry.encodedSize(): Int =
             key.length + 32 + children.sumOf { it.documentId.length + it.name.length + 48 }
+
+        // Includes child/list/string overhead as well as UTF-16 content, not just JSON size.
+        fun estimatedMemoryBytes(key: String, children: List<DocumentTreeCachedChild>): Long =
+            160L + key.length * 2L + children.sumOf {
+                160L + (it.documentId.length.toLong() + it.name.length + (it.mimeType?.length ?: 0)) * 2L
+            }
     }
 }

@@ -1,0 +1,5 @@
+<resources>
+    <string name="library_desktop_shortcut">加入桌面</string>
+    <string name="library_desktop_open">開啟專輯或歌單</string>
+    <string name="library_desktop_play">直接播放</string>
+</resources>

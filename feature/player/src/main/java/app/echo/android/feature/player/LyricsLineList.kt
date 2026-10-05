@@ -60,7 +60,10 @@ internal fun LyricsLineList(
             if (synced) timeline.contextAt(positionMsState.value) else -1
         } }
         val focusIndex = if (activeIndex >= 0) activeIndex else contextIndex
-        val listState = remember(lyrics) { androidx.compose.foundation.lazy.LazyListState() }
+        // The first measured frame already contains the current verse, even on a cold opening.
+        val listState = remember(lyrics) {
+            androidx.compose.foundation.lazy.LazyListState(firstVisibleItemIndex = focusIndex.coerceAtLeast(0))
+        }
         val followMotion = remember(lyrics) { LyricsFollowMotion() }
         val dragging by listState.interactionSource.collectIsDraggedAsState()
         var following by remember(lyrics) { mutableStateOf(true) }
@@ -79,10 +82,18 @@ internal fun LyricsLineList(
         LaunchedEffect(focusIndex, lyrics, following, animationsVisible, lightweight, lyricsMotionMode,
             lyricsFontFamily, lyricsFontScale, lyricsLineSpacing, showTranslation, showRomanization,
             maxWidth, maxHeight) {
-            if (synced && focusIndex >= 0 && following && animationsVisible) {
-                // Let typography/translation/viewport changes finish layout before reading the anchor.
-                withFrameNanos { }
-                followLyricsLine(listState, focusIndex, followMotion, lightweight, lyricsMotionMode)
+            if (synced && focusIndex >= 0 && following) {
+                if (animationsVisible) {
+                    // Let typography/translation/viewport changes finish layout before reading the anchor.
+                    withFrameNanos { }
+                    followLyricsLine(listState, focusIndex, followMotion, lightweight, lyricsMotionMode)
+                } else {
+                    // Park the prepared page at the current verse. No hidden scroll animation or ticker.
+                    if (listState.firstVisibleItemIndex != focusIndex || listState.firstVisibleItemScrollOffset != 0) {
+                        listState.scrollToItem(focusIndex)
+                    }
+                    followMotion.reset()
+                }
             } else {
                 followMotion.reset()
             }

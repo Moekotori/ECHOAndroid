@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home_open_settings">Настройки</string>
-    <string name="home_page_guide_settings">Свайп вправо · Настройки</string>
-    <string name="home_page_guide_library">Свайп влево · Медиатека</string>
 </resources>

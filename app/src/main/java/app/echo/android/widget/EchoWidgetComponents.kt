@@ -30,14 +30,19 @@ import app.echo.android.playback.EchoPlaybackSurfaceSnapshot
 internal val widgetForeground = ColorProvider(R.color.playback_widget_foreground)
 internal val widgetSecondary = ColorProvider(R.color.playback_widget_secondary)
 
-internal fun widgetLaunchIntent(context: Context) = Intent(context, MainActivity::class.java).apply {
+@Composable
+internal fun widgetLaunchIntent(context: Context): Intent {
+    LocalWidgetOptions.current.playlistMediaId?.let { return app.echo.android.library.EchoLibraryShortcuts.intent(context, it, true) }
+    return Intent(context, MainActivity::class.java).apply {
     action = Intent.ACTION_MAIN
     addCategory(Intent.CATEGORY_LAUNCHER)
     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
 }
+}
 
 @Composable
 internal fun WidgetArtwork(artwork: Bitmap?, size: Dp) {
+    if (!LocalWidgetOptions.current.showArtwork) return
     Box(
         GlanceModifier.size(size).background(ColorProvider(R.color.playback_widget_artwork_background))
             .cornerRadius(if (size >= 72.dp) 14.dp else 8.dp),
@@ -93,7 +98,7 @@ internal fun WidgetTransport(
     gap: Dp = 8.dp,
     onArtwork: Boolean = false,
 ) {
-    if (full) {
+    if (full && LocalWidgetOptions.current.fullControls) {
         WidgetIconButton(R.drawable.echo_ic_skip_previous, context.getString(R.string.playback_widget_previous),
             if (hasTrack) actionRunCallback<EchoPlaybackWidgetPreviousAction>() else null, size)
         Spacer(GlanceModifier.width(gap))
@@ -102,7 +107,7 @@ internal fun WidgetTransport(
         context.getString(if (!hasTrack) R.string.app_name else if (isPlaying) R.string.playback_widget_pause else R.string.playback_widget_play),
         if (hasTrack) actionRunCallback<EchoPlaybackWidgetPlayPauseAction>() else actionStartActivity(intent),
         size, prominent = true, onArtwork = onArtwork)
-    if (full) {
+    if (full && LocalWidgetOptions.current.fullControls) {
         Spacer(GlanceModifier.width(gap))
         WidgetIconButton(R.drawable.echo_ic_skip_next, context.getString(R.string.playback_widget_next),
             if (hasTrack) actionRunCallback<EchoPlaybackWidgetNextAction>() else null, size)

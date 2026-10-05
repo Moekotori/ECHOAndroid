@@ -44,7 +44,8 @@ internal fun RadioNowPlayingPage(
     val bitrateKbps = status.diagnostics.bitrate?.takeIf { it > 0 }?.div(1000)
     BoxWithConstraints(modifier) {
         val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
-        if (maxWidth >= 540.dp && maxWidth > maxHeight && maxHeight < 600.dp) {
+        if (maxWidth >= 540.dp * fontScale &&
+            ((maxWidth > maxHeight && maxHeight < 600.dp) || maxWidth >= 720.dp * fontScale)) {
             RadioLandscapePage(status, presentation, bitrateKbps, onPlayPause, onNext, onPrevious,
                 onOpenQueue, onCast, castActive, onSetSleepTimer, onCancelSleepTimer)
             return@BoxWithConstraints

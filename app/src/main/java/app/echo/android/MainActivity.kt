@@ -12,14 +12,19 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.OptIn
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.util.UnstableApi
 import app.echo.android.i18n.initializeEchoAppLocale
 import app.echo.android.data.readEchoStartupThemeSnapshot
 import app.echo.android.data.readEchoStartupThemeSnapshotForLaunch
+import app.echo.android.data.hasEchoStartupThemeSnapshot
+import app.echo.android.data.EchoStartupThemeSnapshot
 import app.echo.android.design.echoStartupWindowColor
 import app.echo.android.model.settings.EchoColorTheme
 import app.echo.android.i18n.wrapEchoAppLocale
 import app.echo.android.playback.EchoPlaybackIntents
+import app.echo.android.library.voiceLaunchRequest
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private var highRefreshRateRequested = false
@@ -32,8 +37,9 @@ class MainActivity : ComponentActivity() {
 
     @OptIn(UnstableApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
-        val startupThemeSnapshot = applicationContext.readEchoStartupThemeSnapshotForLaunch()
-        applicationContext.initializeEchoAppLocale(startupThemeSnapshot.appLanguage)
+        val startupThemeSnapshot = applicationContext.readEchoStartupThemeSnapshot()
+        var startupReady = applicationContext.hasEchoStartupThemeSnapshot()
+        if (startupReady) applicationContext.initializeEchoAppLocale(startupThemeSnapshot.appLanguage)
         val startupDarkTheme = resolveEchoDarkTheme(
             systemDarkTheme = applicationContext.isEchoSystemDarkTheme(),
             themeMode = startupThemeSnapshot.themeMode,
@@ -45,11 +51,7 @@ class MainActivity : ComponentActivity() {
         setTheme(R.style.Theme_EchoAndroid_Splash)
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
-        splashScreen.installEchoExitTransition(
-            activity = this,
-            restored = savedInstanceState != null,
-            startupBackgroundUri = startupThemeSnapshot.startupBackgroundUri,
-        )
+        splashScreen.setKeepOnScreenCondition { !startupReady }
         window.decorView.setBackgroundColor(
             echoStartupWindowColor(
                 EchoColorTheme.fromId(startupThemeSnapshot.colorTheme),
@@ -58,8 +60,33 @@ class MainActivity : ComponentActivity() {
             ),
         )
         applyEdgeToEdge(startupDarkTheme)
-        setContent {
-            EchoMobileApp()
+        fun showContent(snapshot: EchoStartupThemeSnapshot) {
+            if (!startupReady) {
+                applicationContext.initializeEchoAppLocale(snapshot.appLanguage)
+                val dark = resolveEchoDarkTheme(
+                    systemDarkTheme = applicationContext.isEchoSystemDarkTheme(),
+                    themeMode = snapshot.themeMode,
+                    scheduledDarkModeEnabled = snapshot.scheduledDarkModeEnabled,
+                    scheduledStartMinute = snapshot.scheduledDarkStartMinute,
+                    scheduledEndMinute = snapshot.scheduledDarkEndMinute,
+                    currentMinute = currentMinuteOfDayNow(),
+                )
+                window.decorView.setBackgroundColor(echoStartupWindowColor(
+                    EchoColorTheme.fromId(snapshot.colorTheme), dark, snapshot.customColors,
+                ))
+                applyEdgeToEdge(dark)
+            }
+            splashScreen.installEchoExitTransition(this, savedInstanceState != null, snapshot.startupBackgroundUri)
+            setContent { EchoMobileApp() }
+            startupReady = true
+        }
+        if (startupReady) {
+            showContent(startupThemeSnapshot)
+        } else {
+            // Keep the existing splash while migrating; no main-thread wait or intermediate theme frame.
+            lifecycleScope.launch {
+                showContent(applicationContext.readEchoStartupThemeSnapshotForLaunch())
+            }
         }
         consumeLaunchIntent(intent)
     }
@@ -180,6 +207,16 @@ class MainActivity : ComponentActivity() {
 
     private fun consumeLaunchIntent(intent: Intent?) {
         if (intent == null) return
+        app.echo.android.library.EchoLibraryShortcuts.request(intent)?.let {
+            EchoLaunchActions.requestLibraryShortcut(it)
+            intent.action = Intent.ACTION_MAIN
+            return
+        }
+        intent.voiceLaunchRequest()?.let {
+            EchoLaunchActions.requestVoiceSearch(it)
+            intent.action = Intent.ACTION_MAIN
+            return
+        }
         val openLyrics = intent.action == EchoPlaybackIntents.ACTION_OPEN_LYRICS ||
             intent.getBooleanExtra(EchoPlaybackIntents.EXTRA_OPEN_LYRICS, false)
         if (openLyrics) {

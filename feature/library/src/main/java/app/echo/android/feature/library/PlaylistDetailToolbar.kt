@@ -3,7 +3,6 @@ package app.echo.android.feature.library
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Sort
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -12,6 +11,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoIcon
+import app.echo.android.design.EchoDropdownMenu
+import app.echo.android.design.EchoDropdownMenuItem
+import app.echo.android.design.EchoDropdownMenuDivider
 import app.echo.android.model.library.*
 
 @Composable
@@ -38,17 +40,17 @@ internal fun PlaylistDetailToolbar(
                     Text(playlistSortLabel(order.sort, playlist.canEdit), color = colors.content,
                         style = MaterialTheme.typography.labelMedium)
                 }
-                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                EchoDropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     PlaylistTrackSort.entries.forEach { sort ->
-                        DropdownMenuItem(text = { Text(playlistSortLabel(sort, playlist.canEdit)) },
-                            trailingIcon = { if (sort == order.sort) EchoIcon(Icons.Rounded.Check, null, Modifier.size(18.dp)) },
+                        EchoDropdownMenuItem(text = { Text(playlistSortLabel(sort, playlist.canEdit)) },
+                            selected = sort == order.sort,
                             onClick = { menu = false; onSort(PlaylistTrackOrder(sort, sort == PlaylistTrackSort.RecentlyAdded)) })
                     }
                     if (!order.isManual) {
-                        HorizontalDivider()
+                        EchoDropdownMenuDivider()
                         listOf(false, true).forEach { descending ->
-                            DropdownMenuItem(text = { Text(stringResource(if (descending) R.string.playlist_sort_descending else R.string.playlist_sort_ascending)) },
-                                trailingIcon = { if (descending == order.descending) EchoIcon(Icons.Rounded.Check, null, Modifier.size(18.dp)) },
+                            EchoDropdownMenuItem(text = { Text(stringResource(if (descending) R.string.playlist_sort_descending else R.string.playlist_sort_ascending)) },
+                                selected = descending == order.descending,
                                 onClick = { menu = false; onSort(order.copy(descending = descending)) })
                         }
                     }

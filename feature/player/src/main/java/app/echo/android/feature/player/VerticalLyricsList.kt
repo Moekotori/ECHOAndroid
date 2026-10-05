@@ -44,7 +44,7 @@ internal fun VerticalLyricsList(
     val active by remember(timeline, position) { derivedStateOf { if (synced) timeline.activeAt(position.value) else emptySet() } }
     val context by remember(timeline, position) { derivedStateOf { if (synced) timeline.contextAt(position.value) else -1 } }
     val focus = active.minOrNull() ?: context
-    val list = remember(lyrics) { LazyListState() }
+    val list = remember(lyrics) { LazyListState(firstVisibleItemIndex = focus.coerceAtLeast(0)) }
     val dragged by list.interactionSource.collectIsDraggedAsState()
     var following by remember(lyrics) { mutableStateOf(true) }
     var pendingSeek by remember(lyrics) { mutableStateOf<Int?>(null) }
@@ -56,9 +56,10 @@ internal fun VerticalLyricsList(
     BoxWithConstraints(modifier) {
         val width = maxWidth
         LaunchedEffect(focus, following, visible, width, fontScale, spacing, showTranslation, showRomanization, performance.isLightweight) {
-            if (following && visible && focus >= 0) {
-                if (performance.isLightweight) list.scrollToItem(focus)
-                else list.animateScrollToItem(focus)
+            if (following && focus >= 0) {
+                if (!visible || performance.isLightweight || list.layoutInfo.visibleItemsInfo.none { it.index == focus }) {
+                    if (list.firstVisibleItemIndex != focus || list.firstVisibleItemScrollOffset != 0) list.scrollToItem(focus)
+                } else list.animateScrollToItem(focus)
             }
         }
         LazyRow(

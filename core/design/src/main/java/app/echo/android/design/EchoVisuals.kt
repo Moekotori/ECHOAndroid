@@ -52,8 +52,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -291,15 +289,11 @@ fun PageChrome(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     key(title) {
-        val windowInfo = LocalWindowInfo.current
-        val density = LocalDensity.current
         val densityScale = LocalEchoDensityScale.current
         val theme = echoTheme()
         val dark = theme.dark
         val scheme = MaterialTheme.colorScheme
-        val heightDp = (windowInfo.containerSize.height / density.density).dp
-        val widthDp = (windowInfo.containerSize.width / density.density).dp
-        val compactChrome = heightDp < 620.dp || widthDp > heightDp
+        val compactChrome = LocalEchoLayout.current.compactHeader
         val resolvedBadge = badge ?: stringResource(R.string.chrome_badge_mobile)
         val contentScroll = if (scrollable) Modifier.verticalScroll(rememberScrollState()) else Modifier
         val chromeGradient = if (dark) {

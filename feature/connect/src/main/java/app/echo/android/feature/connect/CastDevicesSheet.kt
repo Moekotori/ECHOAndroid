@@ -52,6 +52,8 @@ fun CastDevicesSheet(
     onStopCast: () -> Unit,
     onRefreshLanDevices: () -> Unit,
     onDismiss: () -> Unit,
+    onSystemOutputSelector: (() -> Unit)? = null,
+    systemOutputAvailable: Boolean = false,
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -63,6 +65,7 @@ fun CastDevicesSheet(
                 .verticalScroll(rememberScrollState())
                 .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
         ) {
+            SystemCastOutputEntry(onSystemOutputSelector, systemOutputAvailable)
             CastDevicesPanel(
                 phoneTrackTitle = phoneTrackTitle,
                 phoneTrackArtist = phoneTrackArtist,

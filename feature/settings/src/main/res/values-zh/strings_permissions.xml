@@ -1,0 +1,26 @@
+<resources>
+    <string name="permissions_title">权限与提醒</string>
+    <string name="permissions_detail">功能无法使用时，先检查权限。从系统设置返回后，状态会自动刷新。</string>
+    <string name="permissions_attention">需要处理</string>
+    <string name="permissions_ready">状态正常</string>
+    <string name="permissions_common">音乐与通知</string>
+    <string name="permissions_optional">按需开启</string>
+    <string name="permissions_audio">读取音乐</string>
+    <string name="permissions_audio_detail">用于扫描、读取手机上的音乐。关闭后，本地歌曲可能无法访问；单独选择的文件夹使用各自的授权。</string>
+    <string name="permissions_notifications">通知</string>
+    <string name="permissions_notifications_detail">用于播放通知和通知歌词。请同时检查应用通知总开关与播放通知分类。</string>
+    <string name="permissions_overlay">悬浮歌词</string>
+    <string name="permissions_overlay_detail">允许歌词显示在其他应用上方。使用悬浮歌词时才需要开启。</string>
+    <string name="permissions_bluetooth">蓝牙设备</string>
+    <string name="permissions_bluetooth_detail">用于读取蓝牙设备与编码信息。需要查看这些信息时再开启。</string>
+    <string name="permissions_network">局域网</string>
+    <string name="permissions_network_detail">用于发现、连接同一 Wi-Fi 下的 Echo Link 设备。使用 Echo Link 时再开启。</string>
+    <string name="permissions_allowed">已允许</string>
+    <string name="permissions_disabled">已关闭 · 影响此功能</string>
+    <string name="permissions_on_demand">按需开启</string>
+    <string name="permissions_manage">前往系统设置</string>
+    <string name="permissions_auto_reset">权限自动移除</string>
+    <string name="permissions_auto_reset_detail">长期未使用时，Android 可能自动移除权限。如果你经常依赖 ECHO，可在应用信息中检查「未使用时暂停应用活动」选项。不同手机的名称可能不同。</string>
+    <string name="permissions_app_settings">打开应用信息</string>
+    <string name="permissions_settings_unavailable">请在手机系统设置中找到 ECHO，管理应用权限。</string>
+</resources>

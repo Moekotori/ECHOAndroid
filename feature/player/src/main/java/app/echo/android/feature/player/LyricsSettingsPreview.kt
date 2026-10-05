@@ -1,10 +1,8 @@
 package app.echo.android.feature.player
 
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
@@ -26,7 +23,7 @@ import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.echoPageSection
 import app.echo.android.model.settings.EchoLyricsPageStyle
 
-/** Pinned above the controls: changing typography stays visible even while scrolling the settings. */
+/** A small sample stays visible while editing a single visual category. */
 @Composable
 internal fun LyricsSettingsPreview(
     pageStyle: EchoLyricsPageStyle,
@@ -46,11 +43,6 @@ internal fun LyricsSettingsPreview(
         animationSpec = tween(if (lightweight) 0 else 240, easing = EchoMotion.Silk),
         label = "lyrics-preview-scale",
     )
-    val lineGap by animateDpAsState(
-        targetValue = (6f * lineSpacing.coerceIn(0.50f, 1.38f)).dp,
-        animationSpec = tween(if (lightweight) 0 else 180, easing = EchoMotion.Silk),
-        label = "lyrics-preview-spacing",
-    )
     LyricsPageTheme(pageStyle) {
         val scheme = MaterialTheme.colorScheme
         val accent = lyricsColorForMode(colorMode)
@@ -58,9 +50,8 @@ internal fun LyricsSettingsPreview(
         Column(
             Modifier.fillMaxWidth().echoPageSection()
                 .background(scheme.background.copy(alpha = 0.55f + backgroundDim.coerceIn(0f, 0.78f) * 0.4f))
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+                .padding(horizontal = 20.dp, vertical = 8.dp),
             horizontalAlignment = lyricsHorizontalAlignment(alignment),
-            verticalArrangement = Arrangement.spacedBy(lineGap),
         ) {
             if (alignment == "vertical") {
                 VerticalLyricText(
@@ -68,7 +59,7 @@ internal fun LyricsSettingsPreview(
                     lineEndMs = null, active = false, position = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0L) },
                     wordHighlight = false, estimatedHighlight = false, fontFamily = fontFamily, fontScale = fontScale * 0.7f,
                     spacing = lineSpacing, color = accent, highlight = accent,
-                    modifier = Modifier.fillMaxWidth().then(Modifier.height(100.dp)),
+                    modifier = Modifier.fillMaxWidth().height(64.dp),
                 )
             } else Text(
                 text = stringResource(when (motionMode) {
@@ -82,18 +73,9 @@ internal fun LyricsSettingsPreview(
                 },
                 color = accent.copy(alpha = emphasis),
                 fontFamily = fontFamily,
-                fontSize = (20f * fontScale.coerceIn(0.50f, 1.28f)).sp,
-                lineHeight = (26f * fontScale.coerceIn(0.50f, 1.28f)).sp,
+                fontSize = (18f * fontScale.coerceIn(0.50f, 1.28f)).sp,
+                lineHeight = ((18f + 6f * lineSpacing.coerceIn(0.50f, 1.38f)) * fontScale.coerceIn(0.50f, 1.28f)).sp,
                 fontWeight = FontWeight.Bold,
-                textAlign = lyricsTextAlign(alignment),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = stringResource(R.string.feature_player_translation_romaji_appear_when_the_current_lyrics_include_3b41d9),
-                modifier = Modifier.fillMaxWidth(),
-                color = scheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodySmall,
                 textAlign = lyricsTextAlign(alignment),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,

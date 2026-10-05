@@ -61,4 +61,33 @@ class DocumentTreeListingCacheTest {
         assertNull(cache.listing("tree-b", "primary:Music/Album", 50L, false))
         assertTrue(cache.listing("tree-a", "primary:Music/Album", 50L, false)?.isNotEmpty() == true)
     }
+
+    @Test
+    fun totalChildrenBudgetEvictsTheLeastRecentlyUsedDirectory() {
+        val cache = DocumentTreeListingCache(maxChildren = 2)
+        cache.remember("tree", "one", 1L, false, listOf(child))
+        cache.remember("tree", "two", 1L, false, listOf(child))
+        assertEquals(listOf(child), cache.listing("tree", "one", 1L, false))
+        cache.remember("tree", "three", 1L, false, listOf(child))
+        assertNull(cache.listing("tree", "two", 1L, false))
+        assertEquals(listOf(child), cache.listing("tree", "one", 1L, false))
+        // Invalidating a directory returns its budget to the cache.
+        assertNull(cache.listing("tree", "one", 2L, false))
+        cache.remember("tree", "four", 1L, false, listOf(child))
+        assertEquals(listOf(child), cache.listing("tree", "three", 1L, false))
+    }
+
+    @Test
+    fun byteBudgetAndRestartApplyToTotalMemoryInsteadOfDirectoryCount() {
+        val file = temporary.newFile("bounded.json")
+        val cache = DocumentTreeListingCache(file)
+        cache.remember("tree", "one", 1L, false, listOf(child))
+        cache.remember("tree", "two", 1L, false, listOf(child))
+        cache.flush()
+        val restored = DocumentTreeListingCache(file, maxMemoryBytes = 600L)
+        assertNull(restored.listing("tree", "one", 1L, false))
+        assertEquals(listOf(child), restored.listing("tree", "two", 1L, false))
+        restored.remember("tree", "two", 1L, false, listOf(child.copy(name = "x".repeat(512))))
+        assertNull(restored.listing("tree", "two", 1L, false))
+    }
 }

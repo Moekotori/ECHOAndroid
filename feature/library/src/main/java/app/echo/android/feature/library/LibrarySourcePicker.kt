@@ -9,15 +9,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CloudQueue
 import androidx.compose.material.icons.rounded.Devices
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Radio
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -28,15 +24,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoIcon
+import app.echo.android.design.EchoDropdownMenu
+import app.echo.android.design.EchoDropdownMenuItem
+import app.echo.android.design.EchoDropdownMenuDivider
 
 internal object LibrarySourceIds {
     const val Local = "local"
@@ -75,8 +73,12 @@ internal fun LibrarySourcePicker(
             modifier = Modifier.widthIn(max = 136.dp).heightIn(min = 48.dp).semantics {
                 contentDescription = "$libraryLabel: $sourceLabel"
             },
-            shape = RoundedCornerShape(4.dp),
-            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.textButtonColors(
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                containerColor = if (expanded) MaterialTheme.colorScheme.surfaceContainerHigh
+                    else Color.Transparent,
+            ),
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp),
         ) {
             Text(sourceLabel, Modifier.weight(1f, fill = false),
@@ -85,40 +87,28 @@ internal fun LibrarySourcePicker(
             Spacer(Modifier.width(4.dp))
             EchoIcon(Icons.Rounded.KeyboardArrowDown, contentDescription = null, Modifier.size(18.dp))
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false },
-            modifier = Modifier.widthIn(min = 176.dp)) {
+        EchoDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             LibrarySourceMode.entries.forEach { source ->
                 val isSelected = !radioSelected && source == selectedSource
-                DropdownMenuItem(
-                    text = {
-                        Text(source.label(), fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal)
-                    },
+                EchoDropdownMenuItem(
+                    text = { Text(source.label()) },
+                    selected = isSelected,
                     onClick = {
                         expanded = false
                         onSelectSource(source)
                     },
-                    modifier = Modifier.semantics { selected = isSelected },
                     leadingIcon = { EchoIcon(source.icon, contentDescription = null, Modifier.size(20.dp)) },
-                    trailingIcon = {
-                        if (isSelected) EchoIcon(Icons.Rounded.Check, contentDescription = null, Modifier.size(18.dp))
-                    },
                 )
             }
-            HorizontalDivider()
-            DropdownMenuItem(
-                text = {
-                    Text(stringResource(R.string.radio_title),
-                        fontWeight = if (radioSelected) FontWeight.SemiBold else FontWeight.Normal)
-                },
+            EchoDropdownMenuDivider()
+            EchoDropdownMenuItem(
+                text = { Text(stringResource(R.string.radio_title)) },
+                selected = radioSelected,
                 onClick = {
                     expanded = false
                     onSelectRadio()
                 },
-                modifier = Modifier.semantics { selected = radioSelected },
                 leadingIcon = { EchoIcon(Icons.Rounded.Radio, contentDescription = null, Modifier.size(20.dp)) },
-                trailingIcon = {
-                    if (radioSelected) EchoIcon(Icons.Rounded.Check, contentDescription = null, Modifier.size(18.dp))
-                },
             )
         }
     }

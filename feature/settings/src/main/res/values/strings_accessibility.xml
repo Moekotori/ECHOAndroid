@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_welcome">Everyone listens differently. Choose the settings that feel comfortable for you.</string>
+    <string name="accessibility_lyrics_reading">Read lyrics comfortably</string>
+    <string name="accessibility_lyrics_spacing">Lyrics line spacing</string>
+    <string name="accessibility_translation">Show translations</string>
+    <string name="accessibility_translation_detail">Read along in a familiar language when a translation is available.</string>
+    <string name="accessibility_romanization">Show pronunciation</string>
+    <string name="accessibility_romanization_detail">Follow along with romanization when the lyrics include it.</string>
+    <string name="accessibility_listening">Listen your way</string>
+    <string name="accessibility_mono">Combine left and right audio</string>
+    <string name="accessibility_mono_detail">Bring both channels together for listening with one earbud.</string>
+    <string name="accessibility_balance">Left and right balance</string>
+    <string name="accessibility_balance_reset">Center the sound</string>
+    <string name="accessibility_balance_detail">Choose the balance that feels comfortable. Other sound adjustments stay as you set them.</string>
+    <string name="accessibility_balance_mono_detail">Both outputs carry the same sound in mono mode. Switch back to stereo to adjust left and right balance.</string>
+    <string name="accessibility_processing_limited">USB direct output</string>
+    <string name="accessibility_processing_limited_detail">Strict direct output bypasses channel adjustments and volume normalization. Switch output mode to use these controls.</string>
+    <string name="accessibility_replay_gain_detail">Use existing loudness information in songs to reduce volume changes between tracks.</string>
+    <string name="accessibility_disconnect_detail">Pause when headphones disconnect to avoid unexpected speaker playback.</string>
+    <string name="accessibility_reconnect_detail">Keep this off if you prefer to start playback yourself after reconnecting.</string>
+    <string name="accessibility_rest">Rest comfortably</string>
+    <string name="accessibility_rest_timer">Pause automatically</string>
+    <string name="accessibility_rest_detail">Let the music pause while you rest. You can cancel the timer at any time.</string>
+    <string name="accessibility_rest_end_detail">Playback will pause at the end of the current track.</string>
+    <plurals name="accessibility_rest_remaining">
+        <item quantity="one">Playback will pause in about %1$d minute.</item>
+        <item quantity="other">Playback will pause in about %1$d minutes.</item>
+    </plurals>
+    <string name="accessibility_rest_off">Off</string>
+    <string name="accessibility_rest_minutes">%1$d min</string>
+    <string name="accessibility_rest_end">End of this track</string>
+    <string name="accessibility_title">Accessibility</string>
+    <string name="accessibility_detail">Text size, motion, haptics and system assistance</string>
+    <string name="accessibility_spacious_layout">Spacious layout</string>
+    <string name="accessibility_spacious_layout_detail">Turn off compact layout for more room between controls.</string>
+    <string name="accessibility_motion_feedback">Motion and feedback</string>
+    <string name="accessibility_word_highlight">Word highlighting</string>
+    <string name="accessibility_word_highlight_detail">Turn off word-by-word highlighting to reduce text motion in lyrics.</string>
+    <string name="accessibility_lyrics_motion">Lyrics scrolling</string>
+    <string name="accessibility_lyrics_motion_detail">Choose Calm for simpler motion while following lyrics.</string>
+    <string name="accessibility_motion_calm">Calm</string>
+    <string name="accessibility_motion_smooth">Smooth</string>
+    <string name="accessibility_motion_stage">Stage</string>
+    <string name="accessibility_system">System assistance</string>
+    <string name="accessibility_screen_reader">Screen reading</string>
+    <string name="accessibility_screen_reader_on">Touch exploration is on. Manage spoken feedback in system accessibility settings.</string>
+    <string name="accessibility_screen_reader_off">Touch exploration is off. Open system accessibility settings for TalkBack and other tools.</string>
+    <string name="accessibility_screen_reader_unknown">Manage TalkBack and other tools in system accessibility settings.</string>
+    <string name="accessibility_system_display">System text and display size</string>
+    <string name="accessibility_system_display_detail">System text size: %1$d%%. Open display settings for larger text and controls.</string>
+    <string name="accessibility_system_unavailable">This settings page is unavailable. Open your device settings to adjust accessibility or display size.</string>
+</resources>

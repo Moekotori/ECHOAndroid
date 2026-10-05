@@ -1,0 +1,11 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="288"
+    android:viewportHeight="288">
+    <!-- A contact shadow beneath the box, rather than a badge behind the character. -->
+    <path
+        android:fillColor="@color/echo_splash_ink"
+        android:fillAlpha="0.07"
+        android:pathData="M92,216a52,4 0,1 0,104 0a52,4 0,1 0,-104 0" />
+</vector>

@@ -18,6 +18,26 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class EchoBackupCodecTest {
+    @Test fun shuffleModeRoundTripsAndOldSettingsKeepTheDefault() {
+        val mode = app.echo.android.model.playback.EchoShuffleMode.PureRandom
+        val settings = EchoAppSettings(shuffleOptions = app.echo.android.model.playback.EchoShuffleOptions(
+            mode = mode, spreadArtists = false, recentTrackCount = 10,
+        )).toBackupSettings()
+        val decoded = EchoBackupCodec.decode(
+            EchoBackupCodec.encode(EchoBackupDocument(settings = settings)),
+        ).settings
+        assertEquals(mode.id, decoded.shuffleMode)
+        assertEquals(false, decoded.shuffleSpreadArtists)
+        assertEquals(10, decoded.shuffleRecentTrackCount)
+        val old = EchoBackupCodec.decode("{\"version\":1,\"settings\":{}}").settings
+        assertEquals(null, old.shuffleMode)
+        assertEquals(null, old.shuffleSpreadArtists)
+        assertEquals(null, old.shuffleRecentTrackCount)
+        assertEquals(app.echo.android.model.playback.EchoShuffleMode.PseudoRandom,
+            app.echo.android.model.playback.EchoShuffleMode.fromId("future_mode"))
+        assertEquals(app.echo.android.model.playback.EchoShuffleMode.PseudoRandom, EchoAppSettings().shuffleOptions.mode)
+    }
+
     @Test fun migrationFieldsAndAdvancedRulesRoundTrip() {
         val document = EchoBackupDocument(settings = EchoBackupSettings(homeLayout = app.echo.android.model.settings.EchoHomeLayout(),playerPageStyle = "type_poster",playerTextScale = 1.1f),
             playlists = listOf(EchoBackupPlaylist("Any",smartRule = app.echo.android.model.library.EchoSmartPlaylistRule(matchAny=true,album="A",folder="Music/",format="flac",minimumDurationSeconds=60,maximumDurationSeconds=300,excludeText="Live"))),

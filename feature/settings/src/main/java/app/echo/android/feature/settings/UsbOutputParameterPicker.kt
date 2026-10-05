@@ -9,10 +9,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -26,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoIcon
+import app.echo.android.design.EchoDropdownMenu
+import app.echo.android.design.EchoDropdownMenuItem
 
 internal data class UsbParameterChoice(val id: String, val label: String)
 
@@ -35,6 +35,7 @@ internal fun UsbOutputParameterPicker(title: String, value: String, selected: St
     var expanded by remember { mutableStateOf(false) }
     Box(Modifier.fillMaxWidth().settingsSearchAnchor(title)) {
         Surface(onClick = { expanded = true }, enabled = enabled, color = androidx.compose.ui.graphics.Color.Transparent,
+            shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth().alpha(if (enabled) 1f else 0.5f)) {
             Row(Modifier.heightIn(min = 60.dp).padding(vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -45,13 +46,11 @@ internal fun UsbOutputParameterPicker(title: String, value: String, selected: St
                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        DropdownMenu(expanded = expanded && enabled, onDismissRequest = { expanded = false },
+        EchoDropdownMenu(expanded = expanded && enabled, onDismissRequest = { expanded = false },
             modifier = Modifier.widthIn(min = 220.dp, max = 320.dp)) {
             choices.forEach { choice ->
-                DropdownMenuItem(text = { Text(choice.label) }, onClick = { expanded = false; onSelect(choice.id) },
-                    trailingIcon = if (choice.id == selected) ({
-                        EchoIcon(Icons.Rounded.Check, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurface)
-                    }) else null)
+                EchoDropdownMenuItem(text = { Text(choice.label) }, onClick = { expanded = false; onSelect(choice.id) },
+                    selected = choice.id == selected)
             }
         }
     }

@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home_open_settings">设置</string>
-    <string name="home_page_guide_settings">右滑打开设置</string>
-    <string name="home_page_guide_library">左滑浏览曲库</string>
 </resources>

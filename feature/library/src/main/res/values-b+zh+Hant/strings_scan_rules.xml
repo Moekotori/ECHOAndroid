@@ -1,0 +1,28 @@
+<resources>
+    <string name="scan_rules_back">返回新增音樂</string>
+    <string name="scan_rules_save_hint">儲存後套用規則，直接返回會保留原來的設定。</string>
+    <string name="scan_rules_presets">掃描預設</string>
+    <string name="scan_rules_recommended_hint">至少 30 秒、100 KB，略過隱藏目錄和非音樂目錄</string>
+    <string name="scan_rules_all_hint">掃描所有支援的音訊，不限制時長、大小，也不自動排除目錄</string>
+    <string name="scan_rules_lossless_hint">沿用推薦過濾條件，僅掃描 FLAC、WAV、AIFF 和 DSD</string>
+    <string name="scan_rules_file_filters">檔案過濾</string>
+    <string name="scan_rules_file_filters_hint">低於任一門檻的檔案會被略過，時長或大小未知時保留。這些門檻和格式選擇不會移除已匯入的歌曲。</string>
+    <string name="scan_rules_folder_filters">排除非音樂內容</string>
+    <string name="scan_rules_hidden_hint">目錄名稱以英文句點開頭</string>
+    <string name="scan_rules_folder_filters_hint">下次掃描時，排除目錄中的歌曲會從音樂庫移除，裝置上的檔案保留。</string>
+    <string name="scan_rules_advanced_hint">時長、檔案大小和音訊格式</string>
+    <string name="scan_rules_intro">避免錄音、鈴聲和語音訊息混入音樂庫。儲存後的規則用於後續掃描和自動檢查。</string>
+    <string name="scan_rules_non_music">排除錄音、鈴聲和語音訊息</string>
+    <string name="scan_rules_non_music_hint">略過常見錄音機、通話錄音、鈴聲、鬧鐘、通知音和聊天應用程式的音訊目錄。遺漏的資料夾可在下方新增。</string>
+    <string name="scan_rules_advanced_summary">時長：%1$s · 大小：%2$s · %3$s</string>
+    <string name="scan_rules_selected_formats">指定格式</string>
+    <string name="scan_rules_excluded_folders_title">不掃描的資料夾</string>
+    <string name="scan_rules_excluded_folders_hint">直接選擇不想掃描的資料夾，也會略過其中的子資料夾。儲存後用於下次掃描，手機上的檔案不會被刪除。</string>
+    <string name="scan_rules_excluded_folders_empty">還沒有手動新增的資料夾</string>
+    <string name="scan_rules_add_excluded_folder">新增不掃描的資料夾</string>
+    <string name="scan_rules_remove_excluded_folder">重新允許掃描 %1$s</string>
+    <string name="scan_rules_phone_folder_path">手機儲存空間 / %1$s</string>
+    <string name="scan_rules_external_folder_path">外部儲存空間（%1$s）/ %2$s</string>
+    <string name="scan_rules_folder_unsupported">請選擇手機、SD 卡或 USB 儲存空間裡的具體資料夾，暫不支援儲存根目錄和雲端資料夾。</string>
+    <string name="scan_rules_excluded_folders_limit">最多新增 %1$d 個資料夾，移除一個後即可繼續新增。</string>
+</resources>

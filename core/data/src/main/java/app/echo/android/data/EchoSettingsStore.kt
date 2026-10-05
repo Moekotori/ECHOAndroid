@@ -22,6 +22,8 @@ import app.echo.android.model.playback.EchoEqualizerUserPreset
 import app.echo.android.model.playback.EchoEqualizerUserPresets
 import app.echo.android.model.playback.EchoOutputDspPolicy
 import app.echo.android.model.playback.OpraEqBand
+import app.echo.android.model.playback.EchoShuffleMode
+import app.echo.android.model.playback.EchoShuffleOptions
 import app.echo.android.model.playback.EchoRepeatMode
 import app.echo.android.model.playback.EchoReplayGainMode
 import app.echo.android.model.playback.EchoTrackRef
@@ -45,12 +47,13 @@ import org.json.JSONObject
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 
-private val Context.echoSettings by preferencesDataStore(name = "echo-settings")
+internal val Context.echoSettings by preferencesDataStore(name = "echo-settings")
 private val Context.echoPlaybackResumeSettings by preferencesDataStore(name = "echo-playback-resume")
 private val PlaybackResumeKey = stringPreferencesKey("playback_resume")
 data class EchoAppSettings(
     val libraryScanOptions: LibraryScanOptions = LibraryScanOptions(),
     val trackTransitions: app.echo.android.model.playback.EchoTrackTransitionOptions = app.echo.android.model.playback.EchoTrackTransitionOptions(),
+    val shuffleOptions: EchoShuffleOptions = EchoShuffleOptions(),
     val preferOffload: Boolean = true,
     val lastOutputRoute: String = "system",
     val dynamicArtworkEnabled: Boolean = true,
@@ -87,6 +90,7 @@ data class EchoAppSettings(
     val equalizerUserPresets: List<EchoEqualizerUserPreset> = emptyList(),
     val equalizerActiveUserPresetId: String? = null,
     val equalizerDevicePresetIds: Map<String, String> = emptyMap(),
+    val outputAudioProfileKeys: Set<String> = emptySet(),
     val opraLastQuery: String = "",
     val channelBalance: EchoChannelBalanceState = EchoChannelBalanceState(),
     val customBackgroundMode: String = EchoBackgroundMode.Default,
@@ -244,7 +248,11 @@ class EchoSettingsStore(
     }
 
     val appSettings: Flow<EchoAppSettings> =
-        context.echoSettings.data.map { preferences ->
+        context.echoSettings.data.mapSettingsSnapshot(
+            revision = { preferences ->
+                secrets.revision to context.echoAppLanguage(EchoAppLanguage.fromId(preferences[Keys.AppLanguage]))
+            },
+        ) { preferences ->
             val themeMode = normalizeThemeMode(preferences[Keys.ThemeMode])
             val lyricsStyle = PlayerAppearancePreferences.lyricsStyle(preferences)
             EchoAppSettings(
@@ -285,6 +293,11 @@ class EchoSettingsStore(
                 usbExclusiveEnabled = preferences[Keys.UsbExclusiveEnabled] ?: false,
                 usbBitPerfectEnabled = preferences[Keys.UsbBitPerfectEnabled] ?: false,
                 usbOutputOptions = EchoUsbOutputOptionsCodec.decode(preferences[Keys.UsbOutputOptions]),
+                shuffleOptions = EchoShuffleOptions(
+                    mode = EchoShuffleMode.fromId(preferences[Keys.ShuffleMode]),
+                    spreadArtists = preferences[Keys.ShuffleSpreadArtists] ?: true,
+                    recentTrackCount = preferences[Keys.ShuffleRecentTrackCount] ?: 5,
+                ).normalized,
                 trackTransitions = app.echo.android.model.playback.EchoTrackTransitionOptions(
                     fadeEnabled = preferences[Keys.TrackFadeEnabled] ?: false,
                     fadeDurationMs = preferences[Keys.TrackFadeDurationMs] ?: 1500,
@@ -313,6 +326,7 @@ class EchoSettingsStore(
                 equalizerUserPresets = EchoEqualizerUserPresetCodec.decode(preferences[Keys.EqualizerUserPresets]),
                 equalizerActiveUserPresetId = preferences[Keys.EqualizerActiveUserPresetId]?.trim()?.takeIf { it.isNotEmpty() },
                 equalizerDevicePresetIds = EchoOutputDspCodec.decode(preferences[Keys.EqualizerDevicePresetIds]),
+                outputAudioProfileKeys = OutputAudioProfilePreferences.keys(preferences),
                 opraLastQuery = preferences[Keys.OpraLastQuery]?.trim().orEmpty(),
                 channelBalance = EchoChannelBalanceState(
                     enabled = preferences[Keys.ChannelBalanceEnabled] ?: false,
@@ -543,6 +557,15 @@ class EchoSettingsStore(
         }
     }
 
+    suspend fun setShuffleOptions(options: EchoShuffleOptions) {
+        val normalized = options.normalized
+        context.echoSettings.edit {
+            it[Keys.ShuffleMode] = normalized.mode.id
+            it[Keys.ShuffleSpreadArtists] = normalized.spreadArtists
+            it[Keys.ShuffleRecentTrackCount] = normalized.recentTrackCount
+        }
+    }
+
     suspend fun setTrackTransitions(options: app.echo.android.model.playback.EchoTrackTransitionOptions) {
         val normalized = options.normalized()
         context.echoSettings.edit {
@@ -682,6 +705,10 @@ class EchoSettingsStore(
             }
         }
     }
+
+    suspend fun saveOutputAudioProfile(key: String) = OutputAudioProfilePreferences.save(context, key)
+    suspend fun removeOutputAudioProfile(key: String) = OutputAudioProfilePreferences.remove(context, key)
+    suspend fun activateOutputAudioProfile(key: String) = OutputAudioProfilePreferences.activate(context, key)
 
     suspend fun bindEqualizerPresetToDevice(key: String, presetId: String) {
         context.echoSettings.edit {
@@ -1569,6 +1596,9 @@ class EchoSettingsStore(
             backup.replayGainEnabled?.let { prefs[Keys.ReplayGainEnabled] = it }
             backup.replayGainMode?.let { prefs[Keys.ReplayGainMode] = it }
             backup.replayGainPreampDb?.let { prefs[Keys.ReplayGainPreampDb] = it }
+            backup.shuffleMode?.let { prefs[Keys.ShuffleMode] = EchoShuffleMode.fromId(it).id }
+            backup.shuffleSpreadArtists?.let { prefs[Keys.ShuffleSpreadArtists] = it }
+            backup.shuffleRecentTrackCount?.let { prefs[Keys.ShuffleRecentTrackCount] = it.coerceIn(0, EchoShuffleOptions.MaxRecentTracks) }
             backup.trackTransitions?.normalized()?.let { transitions ->
                 prefs[Keys.TrackFadeEnabled] = transitions.fadeEnabled
                 prefs[Keys.TrackFadeDurationMs] = transitions.fadeDurationMs
@@ -1662,6 +1692,9 @@ class EchoSettingsStore(
         val UsbExclusiveEnabled = booleanPreferencesKey("usb_exclusive_enabled")
         val UsbOutputOptions = stringPreferencesKey("usb_output_options")
         val UsbBitPerfectEnabled = booleanPreferencesKey("usb_bit_perfect_enabled")
+        val ShuffleMode = stringPreferencesKey("shuffle_mode")
+        val ShuffleSpreadArtists = booleanPreferencesKey("shuffle_spread_artists")
+        val ShuffleRecentTrackCount = intPreferencesKey("shuffle_recent_track_count")
         val TrackFadeEnabled = booleanPreferencesKey("track_fade_enabled")
         val TrackFadeDurationMs = intPreferencesKey("track_fade_duration_ms")
         val TrackSmartTransitionEnabled = booleanPreferencesKey("track_smart_transition")
@@ -1916,6 +1949,9 @@ fun EchoAppSettings.toBackupSettings(): app.echo.android.model.backup.EchoBackup
         replayGainEnabled = replayGainEnabled,
         replayGainMode = replayGainMode,
         replayGainPreampDb = replayGainPreampDb,
+        shuffleMode = shuffleOptions.mode.id,
+        shuffleSpreadArtists = shuffleOptions.spreadArtists,
+        shuffleRecentTrackCount = shuffleOptions.normalized.recentTrackCount,
         trackTransitions = trackTransitions,
         equalizerEnabled = equalizerEnabled,
         mseb = mseb,

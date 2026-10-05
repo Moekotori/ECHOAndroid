@@ -49,8 +49,8 @@ import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Scanner
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import app.echo.android.design.EchoDropdownMenu
+import app.echo.android.design.EchoDropdownMenuItem
 import app.echo.android.design.EchoIcon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -140,7 +140,7 @@ internal fun rememberLibraryArtworkAccent(): Color {
 }
 
 internal const val LibraryWallColumnCount = 3
-internal val LibraryWallGridCells = GridCells.Fixed(LibraryWallColumnCount)
+internal val LibraryWallGridCells: GridCells = LibraryAdaptiveGridCells
 internal val LibraryWallHorizontalSpacing = 8.dp
 internal val LibraryWallVerticalSpacing = 16.dp
 
@@ -392,26 +392,19 @@ internal fun LibraryViewModeMenu(
                 modifier = Modifier.size(20.dp),
             )
         }
-        DropdownMenu(
+        EchoDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            containerColor = MaterialTheme.colorScheme.surface,
         ) {
             LibraryViewMode.entries.forEach { mode ->
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            mode.label(),
-                            color = if (mode == selectedMode) accent else colors.content,
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = if (mode == selectedMode) FontWeight.Medium else FontWeight.Normal,
-                        )
-                    },
+                EchoDropdownMenuItem(
+                    text = { Text(mode.label()) },
+                    selected = mode == selectedMode,
                     leadingIcon = {
                         EchoIcon(
                             mode.icon,
                             contentDescription = null,
-                            tint = if (mode == selectedMode) accent else colors.muted,
+                            modifier = Modifier.size(20.dp),
                         )
                     },
                     onClick = {

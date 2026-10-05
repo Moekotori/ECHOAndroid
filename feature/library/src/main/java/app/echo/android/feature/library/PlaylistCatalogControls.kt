@@ -1,15 +1,11 @@
 package app.echo.android.feature.library
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
-import app.echo.android.design.EchoIcon
+import app.echo.android.design.EchoDropdownMenu
+import app.echo.android.design.EchoDropdownMenuItem
 import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.LibrarySmartPlaylistKind
 import kotlinx.coroutines.Dispatchers
@@ -52,20 +48,15 @@ internal fun rememberPlaylistCatalog(playlists: List<EchoPlaylist>, query: Strin
 }
 
 @Composable
-internal fun PlaylistCatalogControls(query: String, onQuery: (String) -> Unit, sort: PlaylistCatalogSort, onSort: (PlaylistCatalogSort) -> Unit) {
+internal fun PlaylistCatalogSortControl(sort: PlaylistCatalogSort, onSort: (PlaylistCatalogSort) -> Unit) {
     var menu by remember { mutableStateOf(false) }
-    Column(Modifier.fillMaxWidth()) {
-        OutlinedTextField(query, onValueChange = onQuery, modifier = Modifier.fillMaxWidth(), singleLine = true,
-            placeholder = { Text(stringResource(R.string.playlist_search)) },
-            leadingIcon = { EchoIcon(Icons.Rounded.Search, null, Modifier.size(20.dp)) })
-        Box(Modifier.fillMaxWidth()) {
-            TextButton(onClick = { menu = true }) { Text(stringResource(sort.label), color = MaterialTheme.colorScheme.onSurface) }
-            DropdownMenu(menu, onDismissRequest = { menu = false }) {
-                PlaylistCatalogSort.entries.forEach { item ->
-                    DropdownMenuItem(text = { Text(stringResource(item.label)) },
-                        trailingIcon = { if (item == sort) EchoIcon(Icons.Rounded.Check, null, Modifier.size(18.dp)) },
-                        onClick = { menu = false; onSort(item) })
-                }
+    Box {
+        TextButton(onClick = { menu = true }) { Text(stringResource(sort.label), color = MaterialTheme.colorScheme.onSurface) }
+        EchoDropdownMenu(menu, onDismissRequest = { menu = false }) {
+            PlaylistCatalogSort.entries.forEach { item ->
+                EchoDropdownMenuItem(text = { Text(stringResource(item.label)) },
+                    selected = item == sort,
+                    onClick = { menu = false; onSort(item) })
             }
         }
     }

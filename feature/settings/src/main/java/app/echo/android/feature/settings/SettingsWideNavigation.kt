@@ -9,6 +9,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.PageChrome
+import app.echo.android.design.EchoLayoutBounds
+import app.echo.android.design.LocalEchoLayout
 
 @Composable
 internal fun SettingsWideNavigation(
@@ -16,12 +18,13 @@ internal fun SettingsWideNavigation(
     home: @Composable () -> Unit,
     detail: @Composable () -> Unit,
 ) {
+    val navigationWidth = (LocalEchoLayout.current.widthDp * 0.32f).dp.coerceIn(260.dp, 340.dp)
     Row(Modifier.fillMaxSize().imePadding()) {
-        Box(Modifier.width(320.dp).fillMaxHeight()) {
+        EchoLayoutBounds(Modifier.width(navigationWidth).fillMaxHeight()) {
             PageChrome(title = stringResource(R.string.settings_title), subtitle = null, compactHeader = true, badgeContent = {}) { home() }
         }
         VerticalDivider(Modifier.fillMaxHeight(), color = MaterialTheme.colorScheme.outlineVariant)
-        Box(Modifier.weight(1f).fillMaxHeight()) {
+        EchoLayoutBounds(Modifier.weight(1f).fillMaxHeight()) {
             PageChrome(title = stringResource(category?.title ?: R.string.settings_title), subtitle = null,
                 compactHeader = true, badgeContent = {}) {
                 if (category != null) detail() else Text(stringResource(R.string.settings_select_category), Modifier.padding(24.dp),

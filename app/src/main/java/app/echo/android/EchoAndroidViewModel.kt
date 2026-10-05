@@ -283,6 +283,22 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     val listeningStats: StateFlow<ListeningStats?> = _listeningStats.asStateFlow()
     private var listeningStatsJob: Job? = null
 
+    private val _monthlyRecap = MutableStateFlow<app.echo.android.model.playback.EchoMonthlyRecap?>(null)
+    val monthlyRecap = _monthlyRecap.asStateFlow()
+    private val _monthlyRecapError = MutableStateFlow(false)
+    val monthlyRecapError = _monthlyRecapError.asStateFlow()
+    private var monthlyRecapJob: Job? = null
+    fun loadMonthlyRecap(year: Int, month: Int) {
+        monthlyRecapJob?.cancel()
+        _monthlyRecapError.value = false
+        _monthlyRecap.value = null
+        monthlyRecapJob = viewModelScope.launch {
+            try { _monthlyRecap.value = listeningHistory.monthlyRecap(year, month) }
+            catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (_: Exception) { _monthlyRecapError.value = true }
+        }
+    }
+
     fun loadListeningStats(range: ListeningStatsRange) {
         listeningStatsJob?.cancel()
         listeningStatsJob = viewModelScope.launch {
@@ -694,10 +710,36 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    private var voiceSearchJob: Job? = null
+    fun playVoiceSearch(request: app.echo.android.model.playback.EchoMediaSearchRequest) {
+        voiceSearchJob?.cancel()
+        voiceSearchJob = viewModelScope.launch {
+            val (queue, start) = app.echo.android.library.resolveVoiceLaunchTracks(database, request)
+            if (queue.isEmpty()) android.widget.Toast.makeText(getApplication(),
+                app.echo.android.playback.R.string.voice_search_no_result, android.widget.Toast.LENGTH_SHORT).show()
+            else playbackController.playQueue(queue, start)
+        }
+    }
+
+    suspend fun libraryShortcutTarget(mediaId: String): Pair<AlbumSummary?, EchoPlaylist?>? = withContext(Dispatchers.IO) {
+        app.echo.android.playback.EchoPlaybackLibraryIds.albumKey(mediaId)?.let { key ->
+            return@withContext database.trackDao().getAlbumSummary(key)?.let { it to null }
+        }
+        app.echo.android.playback.EchoPlaybackLibraryIds.playlistId(mediaId)?.let { id ->
+            val item = EchoPlaybackProcessRuntime.catalog().item(mediaId) ?: return@withContext null
+            return@withContext null to EchoPlaylist(id = id, name = item.title, artworkUri = item.artworkUri)
+        }
+        null
+    }
+
     fun playAlbum(albumKey: String) {
         viewModelScope.launch {
             val queue = libraryController.albumTracksForPlayback(albumKey)
-            if (queue.isNotEmpty()) playbackController.playAlbumQueue(queue, 0)
+            if (queue.isNotEmpty()) {
+                playbackController.playAlbumQueue(queue, 0)
+                app.echo.android.library.EchoLibraryShortcuts.rememberCollection(getApplication(),
+                    app.echo.android.playback.EchoPlaybackLibraryIds.album(albumKey))
+            }
         }
     }
 
@@ -761,7 +803,11 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun playPlaylist(playlistId: String) {
         viewModelScope.launch {
             val queue = libraryController.playlistTracksForPlayback(playlistId)
-            if (queue.isNotEmpty()) playbackController.playQueue(queue, 0, source = libraryController.localPlaylists.value.firstOrNull { it.id == playlistId }?.name)
+            if (queue.isNotEmpty()) {
+                playbackController.playQueue(queue, 0, source = libraryController.localPlaylists.value.firstOrNull { it.id == playlistId }?.name)
+                app.echo.android.library.EchoLibraryShortcuts.rememberCollection(getApplication(),
+                    app.echo.android.playback.EchoPlaybackLibraryIds.playlist(playlistId))
+            }
         }
     }
 
@@ -1227,6 +1273,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun setShuffleOptions(options: app.echo.android.model.playback.EchoShuffleOptions) {
+        updateSettings { setShuffleOptions(options) }
+    }
+
     fun setTrackTransitions(options: app.echo.android.model.playback.EchoTrackTransitionOptions) {
         updateSettings { setTrackTransitions(options) }
     }
@@ -1412,47 +1462,38 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    private var lastOutputDspKey: String? = null
+    fun currentOutputProfileKey(): String {
+        val context = getApplication<Application>()
+        val route = EchoPlaybackProcessRuntime.outputRouteMonitor(context).route.value
+        val usbName = EchoPlaybackProcessRuntime.usbAudioMonitor(context).status.value.deviceName
+        return app.echo.android.model.playback.EchoOutputDspPolicy.deviceKey(
+            app.echo.android.model.playback.EchoOutputDeviceKind.fromId(route.kind),
+            if (route.kind == app.echo.android.model.playback.EchoOutputDeviceKind.Usb.id) usbName ?: route.deviceName else route.deviceName)
+    }
+    fun currentOutputProfileLabel(): String {
+        val context = getApplication<Application>()
+        val route = EchoPlaybackProcessRuntime.outputRouteMonitor(context).route.value
+        return if (route.kind == app.echo.android.model.playback.EchoOutputDeviceKind.Usb.id)
+            EchoPlaybackProcessRuntime.usbAudioMonitor(context).status.value.deviceName ?: route.deviceName ?: context.getString(R.string.output_profile_current_output)
+        else route.deviceName ?: context.getString(R.string.output_profile_current_output)
+    }
+    fun saveOutputAudioProfile() { val key = currentOutputProfileKey(); updateSettings { saveOutputAudioProfile(key) } }
+    fun removeOutputAudioProfile() { val key = currentOutputProfileKey(); updateSettings { removeOutputAudioProfile(key) } }
+
 
     fun bindActiveEqualizerPresetToOutput() {
         viewModelScope.launch {
             val presetId = withContext(Dispatchers.IO) {
                 settingsStore.appSettings.first().equalizerActiveUserPresetId
             } ?: return@launch
-            val diagnostics = playbackController.playbackStatus.value.diagnostics
-            val key = app.echo.android.model.playback.EchoOutputDspPolicy.deviceKey(
-                app.echo.android.model.playback.EchoOutputDeviceKind.fromId(diagnostics.outputDeviceKind),
-                diagnostics.usbDeviceName ?: diagnostics.outputDeviceName,
-            )
+            val key = currentOutputProfileKey()
             updateSettings { bindEqualizerPresetToDevice(key, presetId) }
         }
     }
 
     fun unbindEqualizerPresetFromOutput() {
-        val diagnostics = playbackController.playbackStatus.value.diagnostics
-        val key = app.echo.android.model.playback.EchoOutputDspPolicy.deviceKey(
-            app.echo.android.model.playback.EchoOutputDeviceKind.fromId(diagnostics.outputDeviceKind),
-            diagnostics.usbDeviceName ?: diagnostics.outputDeviceName,
-        )
+        val key = currentOutputProfileKey()
         updateSettings { unbindEqualizerPresetFromDevice(key) }
-    }
-
-    fun applyOutputDspIfNeeded(kindId: String, deviceName: String?) {
-        if (playbackController.playbackStatus.value.diagnostics.usbBitPerfectEnabled) return
-        val key = app.echo.android.model.playback.EchoOutputDspPolicy.deviceKey(
-            app.echo.android.model.playback.EchoOutputDeviceKind.fromId(kindId),
-            deviceName,
-        )
-        if (key == lastOutputDspKey) return
-        lastOutputDspKey = key
-        viewModelScope.launch {
-            val settings = withContext(Dispatchers.IO) { settingsStore.appSettings.first() }
-            val presetId = app.echo.android.model.playback.EchoOutputDspPolicy.resolvePresetId(
-                settings.equalizerDevicePresetIds,
-                key,
-            ) ?: return@launch
-            applyEqualizerUserPreset(presetId)
-        }
     }
 
     fun applyEqualizerUserPreset(id: String) {

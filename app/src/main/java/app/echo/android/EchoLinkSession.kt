@@ -53,6 +53,8 @@ class EchoLinkSession(private val application: Application) {
     val client = EchoRemoteClient(scope, application).apply { setForeground(false) }
     val phoneLibrary = EchoPhoneLibrarySession(application, client, scope)
     val playbackRouter = EchoLinkPlaybackRouter(client)
+    internal val systemCast by lazy { EchoSystemCastTransfer(application, this).also { externalCast = it } }
+    private var externalCast: EchoExternalCastController? = null
     private val castPeerHost = AtomicReference<String?>(null)
     val castServer = EchoLinkCastServer(
         openBody = EchoLinkCastMediaOpener(application.contentResolver),
@@ -189,9 +191,10 @@ class EchoLinkSession(private val application: Application) {
     fun publishLocalCast(
         tracks: List<EchoLinkCastSourceTrack>,
         peerHost: String? = null,
+        advertisedHost: String? = null,
     ): List<EchoRemoteStreamItem>? {
         castPeerHost.set(peerHost ?: client.status.value.endpoint?.host)
-        val host = EchoLinkLanAddresses.ipv4(application) ?: return null
+        val host = advertisedHost ?: EchoLinkLanAddresses.ipv4(application) ?: return null
         val port = runCatching { castServer.start() }.getOrNull() ?: return null
         val publications = tracks.map { track ->
             val artworkToken = track.artworkUri
@@ -225,6 +228,19 @@ class EchoLinkSession(private val application: Application) {
             return null
         }
         return items
+    }
+
+    internal suspend fun clearForSystemCast() {
+        val previous = _dlnaRenderer.value
+        if (previous != null) withContext(Dispatchers.IO) { stopRenderer(previous) }
+        stopLocalCast()
+    }
+
+    internal fun updateSystemCastPeer(host: String) { castPeerHost.set(host) }
+
+    internal fun publishSystemCastPlayback(name: String, index: Int, source: EchoLinkCastSourceTrack, state: app.echo.android.connect.EchoSystemCastMediaState) {
+        _castPlayback.value = EchoLanCastPlayback(name, index, source, state.playing, state.durationMs, state.volume)
+        _castPosition.value = PlaybackPositionState(state.positionMs, state.durationMs)
     }
 
     fun markCastStarted(targetName: String?) {
@@ -345,6 +361,7 @@ class EchoLinkSession(private val application: Application) {
     }
 
     fun dlnaPlayPause() {
+        externalCast?.takeIf { it.active }?.let { it.playPause(); return }
         if (chromecastClient.isActive()) {
             scope.launch {
                 val result = withContext(Dispatchers.IO) { runCatching { chromecastClient.togglePause() } }
@@ -371,6 +388,7 @@ class EchoLinkSession(private val application: Application) {
     }
 
     fun dlnaSkip(delta: Int) {
+        externalCast?.takeIf { it.active }?.let { it.skip(delta); return }
         val nextIndex = dlnaIndex + delta
         val items = dlnaItems
         val item = items.getOrNull(nextIndex) ?: return
@@ -402,6 +420,7 @@ class EchoLinkSession(private val application: Application) {
     }
 
     fun dlnaSeek(positionMs: Long) {
+        externalCast?.takeIf { it.active }?.let { it.seek(positionMs); return }
         val renderer = _dlnaRenderer.value ?: return
         val target = positionMs.coerceAtLeast(0L)
         sampleCastPosition(target)
@@ -421,6 +440,7 @@ class EchoLinkSession(private val application: Application) {
      * 避免从一个猜测值起步把远端音量突然调大。
      */
     fun adjustCastVolume(delta: Float): Boolean {
+        externalCast?.takeIf { it.active }?.let { it.adjustVolume(delta); return true }
         val renderer = _dlnaRenderer.value ?: return false
         val current = _castPlayback.value ?: return false
         val volume = current.volume ?: return false
@@ -439,6 +459,7 @@ class EchoLinkSession(private val application: Application) {
     }
 
     fun stopLocalCast() {
+        externalCast?.takeIf { it.active }?.stop()
         runCatching { chromecastClient.close() }
         followJob?.cancel()
         followJob = null
@@ -457,6 +478,7 @@ class EchoLinkSession(private val application: Application) {
     }
 
     fun stopCastPlayback() {
+        externalCast?.takeIf { it.active }?.let { it.stop(); stopLocalCast(); return }
         if (chromecastClient.isActive()) {
             scope.launch {
                 withContext(Dispatchers.IO) { runCatching { chromecastClient.stop() } }

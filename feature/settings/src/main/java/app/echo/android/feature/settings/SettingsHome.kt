@@ -12,12 +12,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 
 private val settingsMenuCategories = listOf(
+    SettingsCategory.Library,
     SettingsCategory.Appearance,
     SettingsCategory.Playback,
     SettingsCategory.Usb,
     SettingsCategory.Interface,
+    SettingsCategory.Accessibility,
     SettingsCategory.Services,
-    SettingsCategory.Library,
 )
 
 /** Keep search and its index scoped to the home screen; compose only visible results. */
@@ -31,7 +32,6 @@ internal fun SettingsHome(
     onQueryChange: (String) -> Unit,
     onOpenPlugins: () -> Unit,
     onScanMusic: () -> Unit,
-    onOpenConnect: () -> Unit,
     onOpenSound: () -> Unit,
     soundSummary: String,
     onOpenCategory: (SettingsCategory) -> Unit,
@@ -63,9 +63,10 @@ internal fun SettingsHome(
                     SettingsSearchResultRow(result, showDivider = index > 0) { onSearchSelect(result) }
                 }
             } else {
-                item(key = "connect", contentType = "menu-row") {
-                    SettingsMenuRow(SettingsCategoryIcons.Connect,
-                        stringResource(R.string.settings_quick_connect), compactMode = compactMode, onClick = onOpenConnect)
+                item(key = "permissions", contentType = "menu-row") {
+                    val entry = SettingsCategory.Permissions
+                    SettingsMenuRow(entry.icon, stringResource(entry.title), summaries[entry].orEmpty(),
+                        compactMode, selected = entry == selectedCategory) { onOpenCategory(entry) }
                 }
                 item(key = "scan", contentType = "menu-row") {
                     SettingsMenuRow(SettingsCategoryIcons.Scan,

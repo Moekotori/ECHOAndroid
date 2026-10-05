@@ -7,7 +7,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalConfiguration
+import app.echo.android.design.LocalEchoLayout
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -34,7 +34,7 @@ internal fun RecommendedAlbumCard(album: AlbumSummary, onClick: () -> Unit) {
 @Composable
 internal fun HomeArtworkCard(artworkUri: String?, title: String, subtitle: String, onClick: () -> Unit) {
     // Two covers plus a glimpse of the next one communicate horizontal scrolling on a phone.
-    val width = ((LocalConfiguration.current.screenWidthDp.dp - 64.dp) / 2.2f).coerceIn(120.dp, 160.dp)
+    val width = ((LocalEchoLayout.current.widthDp.dp - 64.dp) / 2.2f).coerceIn(120.dp, 160.dp)
     Column(
         modifier = Modifier.width(width).clip(RoundedCornerShape(6.dp))
             .homeCardClickable(onClick),

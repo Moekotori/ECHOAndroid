@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home_open_settings">Ajustes</string>
-    <string name="home_page_guide_settings">Desliza a la derecha · Ajustes</string>
-    <string name="home_page_guide_library">Desliza a la izquierda · Biblioteca</string>
 </resources>

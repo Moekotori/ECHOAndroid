@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalDensity
 
 internal val LocalPlayerCoverLandscape = staticCompositionLocalOf { false }
 
@@ -24,9 +25,13 @@ internal fun PlayerCoverLayout(
 ) {
     BoxWithConstraints(modifier) {
         val viewportHeight = maxHeight
+        val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
+        val detailsMinimum = minimumDetailsWidth * fontScale
         // Leave a usable artwork pane even when the style needs a wider transport row.
-        if (maxWidth >= maxOf(480.dp, minimumDetailsWidth + 144.dp + 24.dp) && maxWidth > maxHeight && maxHeight < 600.dp) {
-            val detailsWidth = maxOf((maxWidth - 24.dp) * (1.3f / 2.3f), minimumDetailsWidth)
+        val shortLandscape = maxWidth > maxHeight && maxHeight < 600.dp
+        if (maxWidth >= maxOf(480.dp, detailsMinimum + 144.dp + 24.dp) &&
+            (shortLandscape || maxWidth >= 720.dp * fontScale)) {
+            val detailsWidth = maxOf((maxWidth - 24.dp) * (1.3f / 2.3f), detailsMinimum)
             CompositionLocalProvider(LocalPlayerCoverLandscape provides true) {
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                 Column(

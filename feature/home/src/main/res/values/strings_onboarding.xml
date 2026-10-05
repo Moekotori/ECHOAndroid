@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_step">Getting started · %1$d of %2$d</string>
+    <string name="onboarding_music_title">Welcome to ECHO</string>
+    <string name="onboarding_music_body">Start with your music. Add songs from your phone, or connect a library you already use.</string>
+    <string name="onboarding_import_title">Add local music</string>
+    <string name="onboarding_import_body">Scan your device or select a music folder. ECHO asks for access when you need it.</string>
+    <string name="onboarding_sources_title">Your other libraries, too</string>
+    <string name="onboarding_sources_body">Add a NAS or music server from the library page.</string>
+    <string name="onboarding_player_title">Get closer to the song</string>
+    <string name="onboarding_player_body">Your current song stays within reach while you browse your library.</string>
+    <string name="onboarding_open_player_title">Open the player</string>
+    <string name="onboarding_open_player_body">Tap the bottom player to see artwork, playback controls and your queue.</string>
+    <string name="onboarding_lyrics_title">Follow the lyrics</string>
+    <string name="onboarding_lyrics_body">Open lyrics in the player. Local lyrics are supported; online lyrics can be enabled in settings.</string>
+    <string name="onboarding_link_title">Keep listening with Echo Link</string>
+    <string name="onboarding_link_body">Connect your phone to ECHOSteam on your computer over the same local network.</string>
+    <string name="onboarding_pair_title">Pair from Connect</string>
+    <string name="onboarding_pair_body">Open Echo Link on your computer, then use the Connect page on your phone to pair and browse its library.</string>
+    <string name="onboarding_later_title">Set it up whenever you like</string>
+    <string name="onboarding_later_body">You can listen to local music now and connect a computer later.</string>
+    <string name="onboarding_lyrics_preview">Lyrics with your music</string>
+    <string name="onboarding_player_preview">Artwork · Lyrics · Queue</string>
+    <string name="onboarding_back">Previous step</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_add_music">Add music</string>
+    <string name="onboarding_explore">Explore first</string>
+    <string name="onboarding_saving">Saving…</string>
+    <string name="onboarding_save_failed">Could not save your choice. Try again.</string>
+</resources>

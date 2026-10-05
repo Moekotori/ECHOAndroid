@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home_open_settings">설정</string>
-    <string name="home_page_guide_settings">오른쪽으로 밀기 · 설정</string>
-    <string name="home_page_guide_library">왼쪽으로 밀기 · 라이브러리</string>
 </resources>

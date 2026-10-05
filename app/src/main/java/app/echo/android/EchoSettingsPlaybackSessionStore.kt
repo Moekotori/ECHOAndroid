@@ -11,7 +11,9 @@ class EchoSettingsPlaybackSessionStore(
     private val settingsStore: EchoSettingsStore,
 ) : EchoPlaybackSessionStore {
     override suspend fun load(): EchoPlaybackSessionSnapshot? {
-        EchoPlaybackRuntimeOptionsStore.setTrackTransitions(settingsStore.appSettings.first().trackTransitions)
+        val settings = settingsStore.appSettings.first()
+        EchoPlaybackRuntimeOptionsStore.setTrackTransitions(settings.trackTransitions)
+        EchoPlaybackRuntimeOptionsStore.setShuffleOptions(settings.shuffleOptions)
         return settingsStore.getSavedPlaybackSession()?.toSnapshot()
     }
 

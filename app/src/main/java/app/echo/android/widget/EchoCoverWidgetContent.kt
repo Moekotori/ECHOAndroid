@@ -28,31 +28,41 @@ internal fun EchoCoverWidgetContent(context: Context, snapshot: EchoPlaybackSurf
     val artist = snapshot.artist.ifBlank {
         if (snapshot.hasTrack) "" else context.getString(R.string.playback_widget_idle)
     }
-    val foreground = ColorProvider(Color.White)
-    val secondary = ColorProvider(Color(0xFFDEDEE4))
-    val root = GlanceModifier.fillMaxSize().background(ImageProvider(R.drawable.echo_widget_cover_surface)).cornerRadius(24.dp)
+    val foreground = if (artwork != null) ColorProvider(Color.White) else widgetForeground
+    val secondary = if (artwork != null) ColorProvider(Color(0xFFDEDEE4)) else widgetSecondary
+    val root = GlanceModifier.fillMaxSize().background(widgetBackground(context)).cornerRadius(24.dp)
         .clickable(actionStartActivity(intent))
     Box(root, contentAlignment = Alignment.BottomStart) {
         if (artwork != null) {
             Image(ImageProvider(artwork), null, modifier = GlanceModifier.fillMaxSize(), contentScale = ContentScale.Crop)
-        } else {
+        } else if (LocalWidgetOptions.current.showArtwork) {
             Box(GlanceModifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Image(ImageProvider(R.drawable.media3_notification_small_icon), null,
                     modifier = GlanceModifier.size(56.dp), colorFilter = ColorFilter.tint(secondary))
             }
         }
-        Box(GlanceModifier.fillMaxSize().background(ImageProvider(R.drawable.echo_widget_artwork_scrim))) {}
+        if (artwork != null) Box(GlanceModifier.fillMaxSize().background(ImageProvider(R.drawable.echo_widget_artwork_scrim))) {}
         Column(GlanceModifier.fillMaxWidth().padding(if (wide) 16.dp else 12.dp)) {
             Text(title, maxLines = if (wide || largeText) 1 else 2,
                 style = TextStyle(color = foreground, fontSize = (if (wide) 19 else 16).sp,
                     fontWeight = FontWeight.Bold))
             Spacer(GlanceModifier.height(6.dp))
+            if (wide && LocalWidgetOptions.current.fullControls) {
+                Text(artist, maxLines = 1, style = TextStyle(color = secondary, fontSize = 12.sp))
+                Spacer(GlanceModifier.height(8.dp))
+                Row(GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalAlignment = Alignment.CenterVertically) {
+                    WidgetTransport(context, snapshot.isPlaying, snapshot.hasTrack, intent, 44.dp,
+                        full = true, onArtwork = artwork != null)
+                }
+            } else {
             Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(artist, modifier = GlanceModifier.defaultWeight(), maxLines = 1,
                     style = TextStyle(color = secondary, fontSize = 12.sp))
                 Spacer(GlanceModifier.width(8.dp))
                 WidgetTransport(context, snapshot.isPlaying, snapshot.hasTrack, intent,
-                    if (wide) 48.dp else 44.dp, full = false, onArtwork = true)
+                    if (wide) 48.dp else 44.dp, full = false, onArtwork = artwork != null)
+            }
             }
         }
     }

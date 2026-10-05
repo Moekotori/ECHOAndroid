@@ -7,6 +7,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
 import androidx.glance.LocalSize
+import androidx.glance.layout.*
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
@@ -42,24 +43,39 @@ abstract class EchoPlaybackSurfaceWidget internal constructor(internal val style
         val live = EchoPlaybackProcessRuntime.surfaceSnapshot
         val lyricLine = EchoPlaybackProcessRuntime.notificationLyricLine.value
             .takeIf { live.hasTrack && live.mediaId == snapshot.mediaId }
-        val artwork = EchoWidgetArtwork.load(localized, snapshot, allowRemote = live.hasTrack)
+        val options = app.echo.android.data.EchoWidgetOptionsStore(localized).read(
+            androidx.glance.appwidget.GlanceAppWidgetManager(context).getAppWidgetId(id))
+        val artwork = if (options.showArtwork) EchoWidgetArtwork.load(localized, snapshot, allowRemote = live.hasTrack) else null
         provideContent {
-            val size = LocalSize.current
-            when (style) {
-                EchoWidgetStyle.Player, EchoWidgetStyle.Mini -> EchoPlaybackWidgetContent(
-                    context = localized,
-                    snapshot = snapshot,
-                    artwork = artwork,
-                    lyricLine = if (style == EchoWidgetStyle.Player) lyricLine else null,
-                    mode = if (style == EchoWidgetStyle.Mini) {
-                        if (size.width.value >= 300) EchoPlaybackWidgetMode.Wide
-                        else EchoPlaybackWidgetMode.Compact
-                    } else EchoPlaybackWidgetLayout.mode(size.width.value.roundToInt(), size.height.value.roundToInt()),
-                )
-                EchoWidgetStyle.Cover -> EchoCoverWidgetContent(localized, snapshot, artwork)
-                EchoWidgetStyle.Lyrics -> EchoLyricsWidgetContent(localized, snapshot, artwork, lyricLine)
+            androidx.compose.runtime.CompositionLocalProvider(LocalWidgetOptions provides options) {
+                androidx.glance.layout.Column(androidx.glance.GlanceModifier.fillMaxSize()) {
+                    androidx.glance.layout.Box(androidx.glance.GlanceModifier.fillMaxWidth().defaultWeight()) {
+                        val size = LocalSize.current
+                        val contentHeight = size.height.value - if (options.playlistMediaId != null && size.height.value >= 120) 40 else 0
+                        when (style) {
+                            EchoWidgetStyle.Player, EchoWidgetStyle.Mini -> EchoPlaybackWidgetContent(
+                                context = localized,
+                                snapshot = snapshot,
+                                artwork = artwork,
+                                availableHeightDp = contentHeight,
+                                lyricLine = if (style == EchoWidgetStyle.Player && options.showLyrics) lyricLine else null,
+                                mode = if (style == EchoWidgetStyle.Mini) {
+                                    if (size.width.value >= 300) EchoPlaybackWidgetMode.Wide else EchoPlaybackWidgetMode.Compact
+                                } else EchoPlaybackWidgetLayout.mode(size.width.value.roundToInt(), contentHeight.roundToInt()),
+                            )
+                            EchoWidgetStyle.Cover -> EchoCoverWidgetContent(localized, snapshot, artwork)
+                            EchoWidgetStyle.Lyrics -> EchoLyricsWidgetContent(localized, snapshot, artwork, lyricLine.takeIf { options.showLyrics }, contentHeight)
+                        }
+                    }
+                    WidgetBoundPlaylist(localized, options)
+                }
             }
         }
+    }
+
+    override suspend fun onDelete(context: Context, glanceId: GlanceId) {
+        app.echo.android.data.EchoWidgetOptionsStore(context).remove(
+            androidx.glance.appwidget.GlanceAppWidgetManager(context).getAppWidgetId(glanceId))
     }
 }
 

@@ -1,0 +1,5 @@
+<resources>
+    <string name="system_cast_failed">投放切换未能完成，手机队列已保留。</string>
+    <string name="system_cast_unsupported_format">此来源或格式暂不支持投放到该 Cast 接收端，手机播放已保留。</string>
+    <string name="system_cast_permission">请先允许 ECHO 访问本地网络，再选择 Cast 设备。</string>
+</resources>

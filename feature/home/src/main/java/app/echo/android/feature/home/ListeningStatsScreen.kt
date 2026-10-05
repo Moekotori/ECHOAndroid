@@ -48,7 +48,16 @@ fun ListeningStatsScreen(
     onOpenTrack: (trackId: String) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    monthlyReport: app.echo.android.model.playback.EchoMonthlyRecap? = null,
+    monthlyError: Boolean = false,
+    onLoadMonthly: (Int, Int) -> Unit = { _, _ -> },
 ) {
+    var monthlyVisible by rememberSaveable { mutableStateOf(false) }
+    if (monthlyVisible) {
+        androidx.activity.compose.BackHandler { monthlyVisible = false }
+        MonthlyRecapScreen(monthlyReport, monthlyError, onLoadMonthly, onBack = { monthlyVisible = false }, modifier = modifier)
+        return
+    }
     var range by rememberSaveable { mutableStateOf(ListeningStatsRange.Month) }
     LaunchedEffect(range) { onLoad(range) }
     val current = stats?.takeIf { it.range == range }
@@ -74,7 +83,11 @@ fun ListeningStatsScreen(
                 stringResource(R.string.listening_stats_title),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.weight(1f),
             )
+            androidx.compose.material3.TextButton(onClick = { monthlyVisible = true }) {
+                Text(stringResource(R.string.recap_title))
+            }
         }
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),

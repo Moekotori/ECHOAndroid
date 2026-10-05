@@ -25,6 +25,8 @@ class EchoLinkRequestPolicyTest {
         val rotated = first.copy(token = "bbbbbbbbbbbbbbbb")
         assertFalse(EchoLinkRequestPolicy.isSameEndpoint(first, rotated))
         assertTrue(EchoLinkRequestPolicy.isSameEndpoint(rotated, rotated.copy(id = "other")))
+        assertTrue(EchoLinkRequestPolicy.isSameEndpoint(first, first.copy(name = "Desktop ECHO", supportsV2Events = true)))
+        assertFalse(EchoLinkRequestPolicy.isSameEndpoint(first, first.copy(host = "192.168.1.9")))
     }
 
     @Test

@@ -22,8 +22,7 @@ import app.echo.android.design.EchoSearchButton
 
 @Composable
 internal fun HomeHeader(onOpenSearch: () -> Unit, onEditLayout: (() -> Unit)? = null,
-    onOpenHistory: (() -> Unit)? = null, onOpenSettings: (() -> Unit)? = null,
-    onOpenLibrary: () -> Unit = {}) {
+    onOpenHistory: (() -> Unit)? = null, onOpenSettings: (() -> Unit)? = null) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.home_page_title), style = MaterialTheme.typography.headlineMedium,
@@ -42,6 +41,5 @@ internal fun HomeHeader(onOpenSearch: () -> Unit, onEditLayout: (() -> Unit)? = 
             }
         }
         EchoSearchButton(stringResource(R.string.feature_home_search_songs_albums_and_artists_c46634), onOpenSearch)
-        if (onOpenSettings != null) HomePageGuide(onOpenSettings, onOpenLibrary)
     }
 }

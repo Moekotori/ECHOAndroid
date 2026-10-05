@@ -52,6 +52,18 @@ interface EchoPlaybackCatalog {
 
     suspend fun playableQueue(mediaId: String): List<EchoPlaybackBrowseItem>
 
+    suspend fun voiceQueue(request: app.echo.android.model.playback.EchoMediaSearchRequest): EchoPlaybackSearchResult {
+        if (request.term.isBlank()) return EchoPlaybackSearchResult(playableQueue(EchoPlaybackLibraryIds.TRACKS))
+        val target = EchoVoiceSearchPolicy.select(request, search(request.term, 0, EchoPlaybackLibraryIds.MAX_PAGE_SIZE))
+            ?: return EchoPlaybackSearchResult(emptyList())
+        val queue = playableQueue(target.mediaId)
+        return EchoPlaybackSearchResult(queue, queue.indexOfFirst { it.mediaId == target.mediaId }.coerceAtLeast(0))
+    }
+
+    suspend fun widgetPlaylists(query: String): List<EchoPlaybackBrowseItem> =
+        if (query.isBlank()) children(EchoPlaybackLibraryIds.PLAYLISTS, 0, 100)
+        else search(query, 0, 100).filter { it.kind == EchoPlaybackBrowseKind.Playlist }
+
     suspend fun isFavorite(trackId: String): Boolean
 
     suspend fun toggleFavorite(trackId: String): Boolean?

@@ -45,6 +45,19 @@ class EchoRemoteClientTest {
     )
 
     @Test
+    fun phoneLibraryFailuresDistinguishAuthorizationCompatibilityAndNetwork() = runBlocking {
+        val client = EchoRemoteClient(this, FakeEchoLinkTransport())
+        for (code in listOf(401, 403)) {
+            assertEquals("auth_error", client.phoneLibraryFailureStatus(EchoLinkHttpException("rejected", code)))
+        }
+        for (code in listOf(404, 405, 501)) {
+            assertEquals("unsupported", client.phoneLibraryFailureStatus(EchoLinkHttpException("unsupported", code)))
+        }
+        assertEquals("network_error", client.phoneLibraryFailureStatus(java.net.SocketTimeoutException()))
+        assertEquals("error", client.phoneLibraryFailureStatus(EchoLinkHttpException("server_failed", 500)))
+    }
+
+    @Test
     fun failedSelectedTrackDoesNotPlayAnotherTrackOrPublishLyrics() = runBlocking {
         val transport = FakeEchoLinkTransport(failedStreamIds = setOf("selected"))
         val client = EchoRemoteClient(this, transport)

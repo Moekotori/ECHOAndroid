@@ -107,7 +107,7 @@ class EchoApplication : Application(), ImageLoaderFactory {
             ),
         )
         val settingsStore = EchoSettingsStore(this)
-        bindPlaybackDspSettings(settingsStore)
+        bindPlaybackDspSettings(settingsStore, this)
         EchoPlaybackProcessRuntime.setSessionStore(EchoSettingsPlaybackSessionStore(settingsStore))
         lyricsSession.start(settingsStore)
         scrobbleSession.start(settingsStore.appSettings)
@@ -123,6 +123,10 @@ class EchoApplication : Application(), ImageLoaderFactory {
         EchoPlaybackProcessRuntime.scope.launch {
             settingsStore.appSettings.map { it.setlistFmApiKey }.distinctUntilChanged()
                 .collect { setlistFmApiKey = it }
+        }
+        EchoPlaybackProcessRuntime.scope.launch {
+            settingsStore.appSettings.map { it.shuffleOptions }.distinctUntilChanged()
+                .collect(EchoPlaybackRuntimeOptionsStore::setShuffleOptions)
         }
         EchoPlaybackProcessRuntime.scope.launch {
             settingsStore.appSettings.map { it.trackTransitions }.distinctUntilChanged()
@@ -162,6 +166,7 @@ class EchoApplication : Application(), ImageLoaderFactory {
         }
         EchoSubsonicListen.startFromSurface()
         EchoPlaybackSurfaces.bind(this)
+        echoLinkSession.systemCast.start()
     }
 
     override fun newImageLoader(): ImageLoader = EchoArtworkImageLoader.newImageLoader(this)

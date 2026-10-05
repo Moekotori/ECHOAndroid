@@ -70,10 +70,9 @@ internal fun LibraryTextTabs(
                 }
             }
         }
-        if ((0..selectedIndex).all { widths.containsKey(it) }) {
-            val target = with(density) {
-                ((0 until selectedIndex).sumOf { widths.getValue(it) } + widths.getValue(selectedIndex) / 2f).toDp()
-            } + spacing * selectedIndex - indicatorWidth / 2
+        val centerPx = libraryTabIndicatorCenterPx(widths, selectedIndex, labels.size)
+        if (centerPx != null) {
+            val target = with(density) { centerPx.toDp() } + spacing * selectedIndex - indicatorWidth / 2
             val position = animateDpAsState(target,
                 animationSpec = if (lightweight) snap() else EchoMotion.silkDp(EchoMotion.TabMs),
                 label = "library-tab-indicator")
@@ -82,4 +81,14 @@ internal fun LibraryTextTabs(
                 .width(indicatorWidth).height(2.dp).background(scheme.primary))
         }
     }
+}
+
+internal fun libraryTabIndicatorCenterPx(widths: Map<Int, Int>, selectedIndex: Int, tabCount: Int): Float? {
+    // indexOf returns -1 while a restored category is absent from the source's tabs.
+    // An empty 0..-1 range passes all(), so validate the index before reading widths.
+    if (selectedIndex !in 0 until tabCount) return null
+    var left = 0L
+    for (index in 0 until selectedIndex) left += widths[index] ?: return null
+    val width = widths[selectedIndex] ?: return null
+    return left + width / 2f
 }

@@ -1,25 +1,17 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android"
     android:paddingMode="stack">
-    <!-- Keep the whole identity inside Android's circular splash safe area. -->
-    <item android:drawable="@drawable/echo_splash_halo" />
-    <item>
+    <!-- Keep ECHO's mascot as the focal point, inside the system splash safe area. -->
+    <item android:drawable="@drawable/echo_splash_ground" />
+    <item android:width="288dp" android:height="288dp" android:gravity="center">
         <inset
-            android:insetLeft="27.7778%"
-            android:insetRight="27.7778%"
+            android:insetLeft="22.2222%"
+            android:insetRight="22.2222%"
             android:insetTop="22.2222%"
-            android:insetBottom="33.3333%">
+            android:insetBottom="22.2222%">
             <bitmap
                 android:src="@drawable/echo_startup_still"
                 android:gravity="fill"
                 android:filter="true" />
         </inset>
-    </item>
-    <item>
-        <inset
-            android:insetLeft="34.7222%"
-            android:insetRight="34.7222%"
-            android:insetTop="70.8333%"
-            android:insetBottom="20.8333%"
-            android:drawable="@drawable/echo_splash_wordmark" />
     </item>
 </layer-list>

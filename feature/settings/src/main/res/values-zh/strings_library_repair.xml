@@ -1,0 +1,4 @@
+<resources>
+    <string name="settings_library_repair">曲库修复</string>
+    <string name="settings_library_repair_detail">检查无法访问的歌曲，重新关联本地文件，保留收藏与歌单。</string>
+</resources>

@@ -37,7 +37,7 @@ internal fun UsbOutputFormatControls(options: EchoUsbOutputOptions, d: EchoPlayb
     val stereo = stringResource(R.string.usb_param_stereo)
     val channels = listOf(1, 2).filter { !d.usbConnected || d.usbSupportedChannelCounts.isEmpty() ||
         it in d.usbSupportedChannelCounts }
-    SettingsSectionCard(stringResource(R.string.usb_param_format)) {
+    UsbSettingsSection(stringResource(R.string.usb_param_format)) {
         if (strict) Text(stringResource(R.string.usb_param_strict_locked),
             Modifier.padding(vertical = 8.dp), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -65,7 +65,7 @@ internal fun UsbOutputFormatControls(options: EchoUsbOutputOptions, d: EchoPlayb
             Modifier.padding(top = 8.dp, bottom = 12.dp), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
-    SettingsSectionCard(stringResource(R.string.usb_param_volume)) {
+    UsbSettingsSection(stringResource(R.string.usb_param_volume)) {
         var preview by remember(options.volumePercent, strict) { mutableFloatStateOf(
             if (strict) 100f else options.volumePercent.toFloat()) }
         Column(Modifier.settingsSearchAnchor(stringResource(R.string.usb_param_volume)).padding(vertical = 8.dp),

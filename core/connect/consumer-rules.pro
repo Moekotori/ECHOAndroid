@@ -1,0 +1,1 @@
+-keep class app.echo.android.connect.EchoCastOptionsProvider { public <init>(); }

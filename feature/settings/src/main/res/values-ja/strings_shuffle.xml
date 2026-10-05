@@ -1,0 +1,34 @@
+<resources>
+    <string name="settings_shuffle_mode">シャッフル方式</string>
+    <string name="settings_shuffle_pseudo">疑似ランダム</string>
+    <string name="settings_shuffle_pure">完全ランダム</string>
+    <string name="settings_shuffle_pseudo_detail">元のキューの各曲を1周に1回ずつ再生します。リストのリピートが有効なら次の周で並べ替え、無効なら1周で停止します。</string>
+    <string name="settings_shuffle_pure_detail">次の曲を候補から同じ確率で毎回抽選します。再生済みの曲も戻ることがあります。リストのリピートが無効なら、元の曲数分を再生して停止します。</string>
+    <string name="settings_shuffle_scope">この端末のシャッフル再生に適用します。変更しても現在の曲と位置は保持し、方式の切り替えで新しい周を開始します。PCの遠隔再生はPCの設定を使います。履歴は現在のキューでのみ保持します。</string>
+    <string name="settings_shuffle_intro">聴き方を選んでから、ルールを調整できます。シャッフルを有効にすると適用されます。</string>
+    <string name="settings_shuffle_pseudo_summary">プレイリスト全体を聴いてから曲が戻ります。</string>
+    <string name="settings_shuffle_pure_summary">次の曲を毎回抽選し、偶然の出会いを楽しめます。</string>
+    <string name="settings_shuffle_recommended">おすすめ</string>
+    <string name="settings_shuffle_surprise">再登場あり</string>
+    <string name="settings_shuffle_spread_artists">同じアーティストを分散</string>
+    <string name="settings_shuffle_spread_artists_detail">同じアーティストの連続再生をできるだけ避け、全曲を1周で再生します。1人だけの場合も全曲を再生し、タグがない曲は通常のシャッフルで扱います。</string>
+    <string name="settings_shuffle_recent">最近再生した曲を避ける</string>
+    <string name="settings_shuffle_recent_detail">直前の曲に加えて、最近聴いた曲を避けます。曲数が少ない場合は古い履歴から条件を緩め、次の曲を確保します。</string>
+    <string name="settings_shuffle_recent_off">連続再生のみ回避</string>
+    <string name="settings_shuffle_recent_count">直近%1$d曲</string>
+    <string name="settings_shuffle_rules">ルールと適用範囲</string>
+    <string name="settings_shuffle_rules_summary">1周の終わり、次に再生、変更の適用</string>
+    <string name="settings_shuffle_rule_round">1周とリピート</string>
+    <string name="settings_shuffle_rule_fair">抽選の確率</string>
+    <string name="settings_shuffle_rule_fair_detail">履歴の回避が無効なら現在の曲以外を同じ確率で選びます。有効なら残りの候補を同じ確率で選びます。1曲しかない場合は既存のリピート設定に従います。</string>
+    <string name="settings_shuffle_rule_requests">「次に再生」を優先</string>
+    <string name="settings_shuffle_rule_requests_detail">「次に再生」の曲は追加した順序を保ち、シャッフルしません。その後、元のキューに戻ります。1曲リピートは変わりません。</string>
+    <string name="settings_shuffle_rule_apply">変更の適用</string>
+    <string name="settings_shuffle_reset">おすすめ設定に戻す</string>
+    <string name="settings_shuffle_reset_detail">疑似ランダム、アーティスト分散を有効にし、完全ランダムでは直近5曲を回避します。キューは保持します。</string>
+    <string name="settings_shuffle_example">順序の例 · A〜Dは異なる曲</string>
+    <string name="settings_shuffle_example_accessible">再生順序の例：%1$s</string>
+    <string name="settings_shuffle_example_pseudo">各曲はこの周で1回ずつ登場し、次の周で並べ替えます。</string>
+    <string name="settings_shuffle_example_pure">回避を無効にすると、全曲を聴く前にAが戻ることがあります。</string>
+    <string name="settings_shuffle_example_recent">最近聴いた曲を先に避けます。実際の順序は曲数と回避範囲によって変わります。</string>
+</resources>

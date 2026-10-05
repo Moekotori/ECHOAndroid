@@ -8,6 +8,12 @@
     <string name="settings_library_overview_hours_minutes">%1$s 小時 %2$s 分鐘</string>
     <string name="settings_library_overview_local">本機音樂檔案</string>
     <string name="settings_library_overview_offline">離線音樂快取</string>
-    <string name="settings_library_overview_scope">數量與時長統計已收錄的本機音樂。圓環顯示本機檔案與已快取遠端音樂的大小，不包含封面等應用程式資料。</string>
-    <string name="settings_library_overview_empty">尚未收錄本機音樂，點選「管理」掃描音樂資料夾。圓環也會顯示已快取的遠端音樂。</string>
+    <string name="settings_library_overview_scope">數量與時長統計已收錄的本機音樂。用量包含本機檔案與離線音樂快取，不含封面等應用程式資料。</string>
+    <string name="settings_library_overview_empty">尚未收錄本機音樂，點選「管理」掃描音樂資料夾。</string>
+    <string name="settings_library_storage_details">儲存明細</string>
+    <string name="settings_library_audio_details">格式與取樣率詳情</string>
+    <string name="settings_library_metadata_details">更多曲庫資訊</string>
+    <string name="settings_library_inspection_details">歌詞檢查說明</string>
+    <string name="settings_library_details_expanded">已展開</string>
+    <string name="settings_library_details_collapsed">已收起</string>
 </resources>

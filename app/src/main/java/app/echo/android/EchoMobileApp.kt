@@ -6,6 +6,8 @@ import androidx.media3.common.util.UnstableApi
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
-fun EchoMobileApp(viewModel: EchoAndroidViewModel = viewModel()) {
-    EchoAppRoot(viewModel = viewModel)
+fun EchoMobileApp() {
+    EchoOnboardingHost { openAddMusic ->
+        EchoAppRoot(viewModel = viewModel(), openAddMusicInitially = openAddMusic)
+    }
 }

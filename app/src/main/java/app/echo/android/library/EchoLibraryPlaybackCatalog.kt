@@ -232,6 +232,36 @@ class EchoLibraryPlaybackCatalog(
             }
         }
 
+    override suspend fun widgetPlaylists(query: String): List<EchoPlaybackBrowseItem> = withContext(Dispatchers.IO) {
+        if (query.isBlank()) children(EchoPlaybackLibraryIds.PLAYLISTS, 0, 100) else searchPlaylists(query.take(256), 100)
+    }
+
+    override suspend fun voiceQueue(request: app.echo.android.model.playback.EchoMediaSearchRequest): app.echo.android.playback.EchoPlaybackSearchResult =
+        withContext(Dispatchers.IO) {
+            if (request.term.isBlank()) {
+                val recent = database.trackDao().listRecentlyPlayedTracksForBrowse(EchoPlaybackLibraryIds.PLAYABLE_QUEUE_LIMIT, 0)
+                return@withContext app.echo.android.playback.EchoPlaybackSearchResult(
+                    recent.map { it.toBrowseItem() }.ifEmpty { playableQueue(EchoPlaybackLibraryIds.TRACKS) })
+            }
+            val dao = database.trackDao()
+            val limit = EchoPlaybackLibraryIds.MAX_PAGE_SIZE
+            val kind = request.kind
+            fun includes(target: app.echo.android.model.playback.EchoMediaSearchKind) =
+                kind == target || kind == app.echo.android.model.playback.EchoMediaSearchKind.Any
+            val candidates = buildList {
+                if (includes(app.echo.android.model.playback.EchoMediaSearchKind.Song))
+                    addAll(dao.searchVoiceTracks(request.term, request.artist.orEmpty(), request.album.orEmpty(), limit).map { it.toBrowseItem() })
+                if (includes(app.echo.android.model.playback.EchoMediaSearchKind.Album)) addAll(dao.searchAlbums(request.term, limit).map { it.toBrowseItem() })
+                if (includes(app.echo.android.model.playback.EchoMediaSearchKind.Artist)) addAll(dao.searchArtists(request.term, limit).map { it.toBrowseItem(context) })
+                if (includes(app.echo.android.model.playback.EchoMediaSearchKind.Playlist)) addAll(searchPlaylists(request.term, limit))
+                if (includes(app.echo.android.model.playback.EchoMediaSearchKind.Genre)) addAll(dao.searchVoiceGenres(request.term, limit).map { it.toBrowseItem(context) })
+            }
+            val target = app.echo.android.playback.EchoVoiceSearchPolicy.select(request, candidates)
+                ?: return@withContext app.echo.android.playback.EchoPlaybackSearchResult(emptyList())
+            val queue = playableQueue(target.mediaId)
+            app.echo.android.playback.EchoPlaybackSearchResult(queue, queue.indexOfFirst { it.mediaId == target.mediaId }.coerceAtLeast(0))
+        }
+
     override suspend fun isFavorite(trackId: String): Boolean = withContext(Dispatchers.IO) {
         val id = trackId.trim()
         if (id.isEmpty()) return@withContext false

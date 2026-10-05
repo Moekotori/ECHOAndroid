@@ -174,9 +174,7 @@ class EchoEqualizerAudioProcessor(
         channelCount: Int,
         preampLinear: Float,
     ) {
-        val floatIn = inputBuffer.asFloatBuffer()
-        val floatOut = output.asFloatBuffer()
-        val frameCount = floatIn.remaining() / channelCount
+        val frameCount = inputBuffer.remaining() / (Float.SIZE_BYTES * channelCount)
         ensureDelayLine(channelCount)
         if (EchoDspNative.processEq(
                 input = inputBuffer,
@@ -193,6 +191,8 @@ class EchoEqualizerAudioProcessor(
             output.position(output.position() + frameCount * channelCount * 4)
             return
         }
+        val floatIn = inputBuffer.asFloatBuffer()
+        val floatOut = output.asFloatBuffer()
         val filters = coeffs
         repeat(frameCount) {
             for (channel in 0 until channelCount) {

@@ -1,9 +1,40 @@
 package app.echo.android.feature.player
 
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import kotlin.math.abs
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+
+/** Retain only the other player page, after the outer artwork entrance has settled. */
+@Composable
+internal fun rememberNowPlayingAdjacentPages(
+    pager: PagerState,
+    expanded: Boolean,
+    lightweight: Boolean,
+): Int {
+    var prepared by remember(pager) { mutableStateOf(false) }
+    LaunchedEffect(pager, expanded, lightweight) {
+        if (!expanded || lightweight) {
+            prepared = false
+            return@LaunchedEffect
+        }
+        delay(520)
+        // Do not add the neighbouring composition in the middle of a gesture.
+        snapshotFlow { !pager.isScrollInProgress }.first { it }
+        prepared = true
+    }
+    return if (expanded && !lightweight && prepared) 1 else 0
+}
 
 /** Pager progress drives the layers directly, without clocks or per-frame composition. */
 internal fun Modifier.nowPlayingPageDepth(

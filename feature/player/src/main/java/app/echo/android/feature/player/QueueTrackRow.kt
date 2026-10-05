@@ -1,9 +1,10 @@
 package app.echo.android.feature.player
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.DragHandle
 import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
@@ -14,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -23,7 +25,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoIcon
-import app.echo.android.design.LocalEchoDarkTheme
+import app.echo.android.design.EchoDropdownMenu
+import app.echo.android.design.EchoDropdownMenuItem
 import app.echo.android.design.echoClickable
 import app.echo.android.design.echoIconColor
 import app.echo.android.design.formatDuration
@@ -31,7 +34,7 @@ import app.echo.android.model.playback.EchoTrackRef
 
 @Composable
 internal fun queueSurfaceColor(): Color =
-    if (LocalEchoDarkTheme.current) Color(0xFF202124) else Color(0xFFFAFAFA)
+    MaterialTheme.colorScheme.surface
 
 @Composable
 internal fun QueueTrackRow(
@@ -54,13 +57,15 @@ internal fun QueueTrackRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .then(if (active) Modifier.background(ink.copy(alpha = 0.055f)) else Modifier)
             .drawWithCache {
                 onDrawBehind {
                     if (dropTarget) drawLine(ink, Offset.Zero, Offset(size.width, 0f), 2.dp.toPx())
                 }
             }
             .then(if (interactive) Modifier.echoClickable(onClick = onPlay) else Modifier)
-            .padding(vertical = 8.dp),
+            .padding(horizontal = 10.dp, vertical = if (active) 12.dp else 7.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -80,9 +85,9 @@ internal fun QueueTrackRow(
         }
         ArtworkTile(
             artworkUri = track.artworkUri,
-            modifier = Modifier.size(44.dp),
+            modifier = Modifier.size(if (active) 48.dp else 44.dp),
             accent = ink.copy(alpha = 0.14f),
-            cornerRadius = 0.dp,
+            cornerRadius = 8.dp,
             placeholderIconSize = 20.dp,
         )
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -98,26 +103,30 @@ internal fun QueueTrackRow(
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
         }
+        if (track.durationMs > 0L) Text(
+            formatDuration(track.durationMs), color = ink.copy(alpha = 0.45f),
+            style = MaterialTheme.typography.labelSmall,
+        )
         if (!active) {
-            if (reorderable) EchoIcon(
-                Icons.Rounded.DragHandle, null, Modifier.size(20.dp), tint = ink.copy(alpha = 0.38f),
-            )
             if (interactive) Box {
-                IconButton(onClick = { menuExpanded = true }) {
-                    EchoIcon(Icons.Rounded.MoreHoriz, stringResource(R.string.queue_actions), tint = ink)
+                IconButton(onClick = { menuExpanded = true }, modifier = Modifier.size(48.dp)) {
+                    EchoIcon(Icons.Rounded.MoreHoriz, stringResource(R.string.queue_actions), Modifier.size(20.dp), tint = ink.copy(alpha = 0.6f))
                 }
-                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                    if (reorderable && index > 0) DropdownMenuItem(
+                EchoDropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    if (reorderable && index > 0) EchoDropdownMenuItem(
+                        selected = false,
                         text = { Text(stringResource(R.string.feature_player_move_up_e6d961)) },
                         leadingIcon = { EchoIcon(Icons.Rounded.KeyboardArrowUp, null) },
                         onClick = { menuExpanded = false; onMoveUp() },
                     )
-                    if (reorderable && index < lastIndex) DropdownMenuItem(
+                    if (reorderable && index < lastIndex) EchoDropdownMenuItem(
+                        selected = false,
                         text = { Text(stringResource(R.string.feature_player_move_down_cf81ae)) },
                         leadingIcon = { EchoIcon(Icons.Rounded.KeyboardArrowDown, null) },
                         onClick = { menuExpanded = false; onMoveDown() },
                     )
-                    DropdownMenuItem(
+                    EchoDropdownMenuItem(
+                        selected = false,
                         text = { Text(stringResource(R.string.feature_player_remove_track_60c516)) },
                         leadingIcon = { EchoIcon(Icons.Rounded.DeleteOutline, null) },
                         onClick = { menuExpanded = false; onRemove() },
@@ -131,7 +140,6 @@ internal fun QueueTrackRow(
 @Composable
 private fun queueTrackDetail(track: EchoTrackRef): String {
     val album = track.album?.takeIf { it.isNotBlank() }
-    val duration = track.durationMs.takeIf { it > 0L }?.let(::formatDuration)
-    return listOfNotNull(track.artist.takeIf { it.isNotBlank() }, album, duration).joinToString(" · ")
+    return listOfNotNull(track.artist.takeIf { it.isNotBlank() }, album).joinToString(" · ")
         .ifBlank { stringResource(R.string.feature_player_local_queue_c7d54b) }
 }

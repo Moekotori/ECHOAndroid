@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="queue_locate_current">定位目前歌曲</string>
+    <string name="queue_stop_after_current">播完目前歌曲停止</string>
+    <string name="queue_clear_confirmation">移除佇列中的全部歌曲，並停止播放？</string>
+    <string name="queue_end_reached">已到佇列末尾</string>
+    <string name="queue_reorder_hint">長按拖曳排序</string>
+</resources>

@@ -41,7 +41,7 @@ internal class LibraryBatchSelection {
     fun beginDeletion(ids: Set<String>) {
         check(!locked)
         require(ids.size <= Limit)
-        deletingIds = ids.intersect(selected.keys)
+        deletingIds = if (active) ids.intersect(selected.keys) else ids.toSet()
         locked = true
     }
     fun finishDeletion() {
@@ -86,6 +86,7 @@ internal class LibraryBatchSelection {
     companion object { const val Limit = 200 }
 }
 internal val LocalLibraryBatchSelection = staticCompositionLocalOf<LibraryBatchSelection?> { null }
+internal val LocalLibraryDeleteTrack = staticCompositionLocalOf<((EchoTrack) -> Unit)?> { null }
 
 internal fun LibraryBatchSelection.ownsBack(pageInteractive: Boolean, modalOpen: Boolean): Boolean =
     pageInteractive && active && !modalOpen
@@ -148,7 +149,17 @@ fun LibraryBatchProvider(actions: LibraryBatchActions, pageInteractive: Boolean 
     BackHandler(enabled = ownsBack) {
         if (latestOwnsBack && !busy) { selection.exit(); error = false }
     }
-    CompositionLocalProvider(LocalLibraryBatchSelection provides selection) {
+    val requestTrackDeletion: ((EchoTrack) -> Unit)? = remember(actions.delete, selection) {
+        if (actions.delete != null) {
+            { track ->
+                if (!busy && !selection.locked && deleting == null) deleting = listOf(track)
+            }
+        } else null
+    }
+    CompositionLocalProvider(
+        LocalLibraryBatchSelection provides selection,
+        LocalLibraryDeleteTrack provides requestTrackDeletion,
+    ) {
         val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             content()

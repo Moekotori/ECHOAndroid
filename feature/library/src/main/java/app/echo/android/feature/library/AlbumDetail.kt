@@ -123,6 +123,7 @@ internal fun AlbumDetailPage(
     onOpenTrackArtist: ((EchoTrack) -> Unit)? = null,
     offlinePin: LibraryOfflinePin? = null,
     onToggleOffline: (() -> Unit)? = null,
+    onPinShortcut: ((Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val palette = rememberArtworkPalette(album.artworkUri, seedKey = album.albumKey)
@@ -154,15 +155,13 @@ internal fun AlbumDetailPage(
                         Spacer(Modifier.height(8.dp))
                         AlbumHero(album = album, onOpenArtist = onOpenArtist)
                         Spacer(Modifier.height(18.dp))
-                        AlbumActionBar(
+                        AlbumTracksToolbar(
+                            count = album.trackCount,
                             onPlayAll = onPlayAll,
                             onShuffle = onShuffle,
                             offlinePin = offlinePin,
                             onToggleOffline = onToggleOffline,
-                        )
-                        Spacer(Modifier.height(28.dp))
-                        AlbumTracksHeader(
-                            count = album.trackCount,
+                            onPinShortcut = onPinShortcut,
                         )
                         if (albumHasCueMovements(loadedTracks)) {
                             Spacer(Modifier.height(10.dp))
@@ -275,10 +274,11 @@ internal fun AlbumDetailListPage(
                         Spacer(Modifier.height(8.dp))
                         AlbumHero(album = album, onOpenArtist = onOpenArtist)
                         Spacer(Modifier.height(18.dp))
-                        AlbumActionBar(onPlayAll = onPlayAll, onShuffle = onShuffle, onPlayOnPc = onPlayOnPc)
-                        Spacer(Modifier.height(28.dp))
-                        AlbumTracksHeader(
+                        AlbumTracksToolbar(
                             count = album.trackCount,
+                            onPlayAll = onPlayAll,
+                            onShuffle = onShuffle,
+                            onPlayOnPc = onPlayOnPc,
                         )
                         if (albumHasCueMovements(tracks)) {
                             Spacer(Modifier.height(10.dp))

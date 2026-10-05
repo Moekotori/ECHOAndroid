@@ -84,9 +84,19 @@
                 <data android:mimeType="application/flac" />
                 <data android:mimeType="application/x-flac" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
             <meta-data
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
+        </activity>
+
+        <activity android:name=".widget.EchoWidgetConfigurationActivity"
+            android:exported="true" android:excludeFromRecents="true"
+            android:theme="@style/Theme.EchoAndroid">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" /></intent-filter>
         </activity>
 
         <activity
@@ -226,6 +236,10 @@
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
         </service>
+
+        <meta-data android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
+            android:value="app.echo.android.connect.EchoCastOptionsProvider" />
+        <receiver android:name="androidx.mediarouter.media.MediaTransferReceiver" android:exported="true" />
 
         <meta-data
             android:name="com.google.android.gms.car.application"

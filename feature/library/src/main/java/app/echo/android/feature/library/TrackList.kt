@@ -14,6 +14,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -31,22 +35,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Album
-import androidx.compose.material.icons.rounded.Checklist
-import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.KeyboardArrowUp
-import androidx.compose.material.icons.rounded.Computer
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Queue
-import androidx.compose.material.icons.rounded.SkipNext
-import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
-import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -81,6 +75,7 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.KeyboardOptions
@@ -399,6 +394,7 @@ internal fun TrackContextMenu(
     content: @Composable (Modifier) -> Unit,
 ) {
     val selection = LocalLibraryBatchSelection.current
+    val requestTrackDeletion = LocalLibraryDeleteTrack.current
     val selecting = selection?.active == true
     val selected = selecting && track.id in selection.selected
     val canSelect = selection?.locked != true && (!selecting || selected || selection.selected.size < LibraryBatchSelection.Limit)
@@ -440,13 +436,6 @@ internal fun TrackContextMenu(
                 ).then(if (selecting) Modifier.semantics {
                     toggleableState = if (selected) ToggleableState.On else ToggleableState.Off
                 } else Modifier))
-            }
-            if (onPlayOnPc != null) IconButton(onClick = onPlayOnPc) {
-                EchoIcon(
-                    Icons.Rounded.Computer,
-                    contentDescription = stringResource(L10nR.string.feature_library_play_on_pc_7c21a4),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
             }
             AnimatedVisibility(
                 visible = showMoreAction && !selecting,
@@ -521,6 +510,14 @@ internal fun TrackContextMenu(
         ModalBottomSheet(
             onDismissRequest = { if (!editorSaving) sheetMode = null },
             sheetState = sheetState,
+            // Changing top inset padding during a drag would resize the sheet and move its anchor.
+            contentWindowInsets = {
+                if (mode == TrackSheetMode.Actions) {
+                    WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)
+                } else {
+                    BottomSheetDefaults.windowInsets
+                }
+            },
             containerColor = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp,
             shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
@@ -558,6 +555,12 @@ internal fun TrackContextMenu(
                         onOpenAlbum?.invoke()
                     },
                     onEdit = { sheetMode = TrackSheetMode.Editor },
+                    onDelete = requestTrackDeletion?.let { request ->
+                        {
+                            sheetMode = null
+                            request(track)
+                        }
+                    },
                     onImportLyrics = {
                         sheetMode = null
                         onImportLyrics?.invoke(track)
@@ -659,135 +662,7 @@ internal fun TrackContextMenu(
 }
 
 @Composable
-private fun TrackActionSheet(
-    track: EchoTrack,
-    canEditMetadata: Boolean,
-    canImportLyrics: Boolean,
-    canPickArtwork: Boolean,
-    canAddToPlaylist: Boolean,
-    canPlayNext: Boolean,
-    canAddNextUp: Boolean,
-    canEnqueue: Boolean,
-    canRemoveFromPlaylist: Boolean,
-    canMoveUp: Boolean,
-    canMoveDown: Boolean,
-    canOpenArtist: Boolean,
-    canOpenAlbum: Boolean,
-    canPlayOnPc: Boolean = false,
-    onPlay: () -> Unit,
-    onPlayOnPc: () -> Unit = {},
-    onOpenArtist: () -> Unit,
-    onOpenAlbum: () -> Unit,
-    onEdit: () -> Unit,
-    onImportLyrics: () -> Unit,
-    onPickArtwork: () -> Unit,
-    onAddToPlaylist: () -> Unit,
-    onPlayNext: () -> Unit,
-    onAddNextUp: () -> Unit,
-    onEnqueue: () -> Unit,
-    onRemoveFromPlaylist: () -> Unit,
-    onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit,
-    onInfo: () -> Unit,
-    onSelectForBatch: (() -> Unit)? = null,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp)
-            .padding(bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        TrackSheetHeader(track)
-        if (onSelectForBatch != null) {
-            TrackActionRow(stringResource(L10nR.string.library_multiselect), Icons.Rounded.Checklist, enabled = true, onClick = onSelectForBatch)
-        }
-        TrackActionRow(stringResource(L10nR.string.feature_library_play_38419a), Icons.Rounded.PlayArrow, enabled = true, onClick = onPlay)
-        if (canPlayOnPc) {
-            TrackActionRow(
-                stringResource(L10nR.string.feature_library_play_on_pc_7c21a4),
-                Icons.Rounded.Computer,
-                enabled = true,
-                onClick = onPlayOnPc,
-            )
-        }
-        if (canOpenArtist) {
-            TrackActionRow(
-                stringResource(L10nR.string.feature_library_go_to_artist),
-                Icons.Rounded.Person,
-                enabled = true,
-                onClick = onOpenArtist,
-            )
-        }
-        if (canOpenAlbum) {
-            TrackActionRow(
-                stringResource(L10nR.string.feature_library_go_to_album),
-                Icons.Rounded.Album,
-                enabled = true,
-                onClick = onOpenAlbum,
-            )
-        }
-        if (canAddNextUp) {
-            TrackActionRow(stringResource(L10nR.string.queue_add_next_up), Icons.Rounded.Queue, enabled = true, onClick = onAddNextUp)
-        }
-        if (canPlayNext) {
-            TrackActionRow(
-                stringResource(L10nR.string.feature_library_play_next_a1f73e),
-                Icons.Rounded.SkipNext,
-                enabled = true,
-                onClick = onPlayNext,
-            )
-        }
-        if (canEnqueue) {
-            TrackActionRow(
-                stringResource(L10nR.string.queue_append_original),
-                Icons.Rounded.Queue,
-                enabled = true,
-                onClick = onEnqueue,
-            )
-        }
-        if (canAddToPlaylist) {
-            TrackActionRow(
-                stringResource(L10nR.string.feature_library_add_to_playlist_0f8338),
-                Icons.AutoMirrored.Rounded.PlaylistAdd,
-                enabled = true,
-                onClick = onAddToPlaylist,
-            )
-        }
-        if (canMoveUp) {
-            TrackActionRow(stringResource(L10nR.string.feature_library_move_up_e6d961), Icons.Rounded.KeyboardArrowUp, enabled = true, onClick = onMoveUp)
-        }
-        if (canMoveDown) {
-            TrackActionRow(stringResource(L10nR.string.feature_library_move_down_cf81ae), Icons.Rounded.KeyboardArrowDown, enabled = true, onClick = onMoveDown)
-        }
-        if (canRemoveFromPlaylist) {
-            TrackActionRow(
-                stringResource(L10nR.string.feature_library_remove_from_playlist_f07718),
-                Icons.Rounded.DeleteOutline,
-                enabled = true,
-                onClick = onRemoveFromPlaylist,
-            )
-        }
-        TrackActionRow(stringResource(L10nR.string.feature_library_edit_tags_c8ec75), Icons.Rounded.Edit, enabled = canEditMetadata, onClick = onEdit)
-        TrackActionRow(
-            stringResource(L10nR.string.feature_library_import_lrc_lyrics_8e2810),
-            Icons.Rounded.UploadFile,
-            enabled = canImportLyrics,
-            onClick = onImportLyrics,
-        )
-        TrackActionRow(
-            stringResource(L10nR.string.feature_library_custom_artwork_c8c999),
-            Icons.Rounded.Album,
-            enabled = canPickArtwork,
-            onClick = onPickArtwork,
-        )
-        TrackActionRow(stringResource(L10nR.string.feature_library_track_info_36a07b), Icons.Rounded.Info, enabled = true, onClick = onInfo)
-    }
-}
-
-@Composable
-private fun TrackSheetHeader(track: EchoTrack) {
+internal fun TrackSheetHeader(track: EchoTrack, artworkSize: Dp = 64.dp) {
     val subtitle = trackSubtitle(track)
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -796,7 +671,7 @@ private fun TrackSheetHeader(track: EchoTrack) {
     ) {
         ArtworkTile(
             track.artworkUri,
-            Modifier.size(64.dp),
+            Modifier.size(artworkSize),
             accent = rememberLibraryArtworkAccent(),
             cornerRadius = 4.dp,
             elevation = 0.dp,
@@ -816,48 +691,6 @@ private fun TrackSheetHeader(track: EchoTrack) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Normal,
-            )
-        }
-    }
-}
-
-@Composable
-private fun TrackActionRow(
-    label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    val alpha = if (enabled) 1f else 0.42f
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(52.dp)
-            .echoClickable(enabled = enabled, onClick = onClick),
-        color = Color.Transparent,
-        shape = RoundedCornerShape(0.dp),
-        border = null,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            EchoIcon(
-                icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
-                modifier = Modifier.size(22.dp),
-            )
-            Text(
-                label,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
             )
         }
     }

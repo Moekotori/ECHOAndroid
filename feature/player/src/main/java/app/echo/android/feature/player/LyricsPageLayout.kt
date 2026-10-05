@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalDensity
 
 /** Lyrics retain the full viewport height; short windows scroll only the side controls. */
 @Composable
@@ -18,9 +19,14 @@ internal fun LyricsPageLayout(
 ) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val viewportHeight = maxHeight
-        if (!supportingPane && maxWidth >= 480.dp && maxWidth > maxHeight && maxHeight < 600.dp) {
-            // Controls retain their touch areas while lyrics keep at least 196dp at 480dp.
-            val controlsWidth = minOf(maxWidth * 0.45f, 320.dp).coerceIn(264.dp, maxWidth - 216.dp)
+        val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
+        val controlsMinimum = 264.dp * fontScale
+        val shortLandscape = maxWidth > maxHeight && maxHeight < 600.dp
+        if (!supportingPane && maxWidth >= controlsMinimum + 216.dp + 20.dp &&
+            (shortLandscape || maxWidth >= 720.dp * fontScale)) {
+            // Controls retain touch areas and font scaling while lyrics keep a readable pane.
+            val controlsWidth = minOf(maxWidth * 0.45f, 320.dp * fontScale)
+                .coerceIn(controlsMinimum, maxWidth - 216.dp - 20.dp)
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                 Box(Modifier.weight(1f).fillMaxHeight()) { lyrics() }
                 Column(

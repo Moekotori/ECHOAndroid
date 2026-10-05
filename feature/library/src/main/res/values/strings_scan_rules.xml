@@ -1,0 +1,28 @@
+<resources>
+    <string name="scan_rules_back">Back to add music</string>
+    <string name="scan_rules_save_hint">Save to apply these rules. Going back keeps your previous settings.</string>
+    <string name="scan_rules_presets">Scan preset</string>
+    <string name="scan_rules_recommended_hint">At least 30 sec and 100 KB; skip hidden and non-music folders</string>
+    <string name="scan_rules_all_hint">All supported audio, with no duration, size or automatic folder filters</string>
+    <string name="scan_rules_lossless_hint">Recommended filters, limited to FLAC, WAV, AIFF and DSD</string>
+    <string name="scan_rules_file_filters">File filters</string>
+    <string name="scan_rules_file_filters_hint">Files below either limit are skipped. Unknown duration or size is kept. These limits and format choices do not remove imported songs.</string>
+    <string name="scan_rules_folder_filters">Keep non-music audio out</string>
+    <string name="scan_rules_hidden_hint">Folders whose names begin with a dot</string>
+    <string name="scan_rules_folder_filters_hint">Songs in excluded folders are removed from the library on the next scan. Files on your device are kept.</string>
+    <string name="scan_rules_advanced_hint">Duration, file size and audio formats</string>
+    <string name="scan_rules_intro">Keep recordings, ringtones and voice messages out of your music library. Saved rules apply to future scans and automatic checks.</string>
+    <string name="scan_rules_non_music">Exclude recordings, ringtones and voice messages</string>
+    <string name="scan_rules_non_music_hint">Skip common recorder, call recording, ringtone, alarm, notification and messaging folders. Add any missed folders below.</string>
+    <string name="scan_rules_advanced_summary">Duration: %1$s · Size: %2$s · %3$s</string>
+    <string name="scan_rules_selected_formats">Selected formats</string>
+    <string name="scan_rules_excluded_folders_title">Folders to skip</string>
+    <string name="scan_rules_excluded_folders_hint">Choose folders you do not want to scan. Subfolders are included. Save to apply on the next scan; files on your device are kept.</string>
+    <string name="scan_rules_excluded_folders_empty">No folders added manually</string>
+    <string name="scan_rules_add_excluded_folder">Add folder to skip</string>
+    <string name="scan_rules_remove_excluded_folder">Allow scanning %1$s again</string>
+    <string name="scan_rules_phone_folder_path">Phone storage / %1$s</string>
+    <string name="scan_rules_external_folder_path">External storage (%1$s) / %2$s</string>
+    <string name="scan_rules_folder_unsupported">Choose a folder inside phone storage, an SD card or USB storage. Storage roots and cloud folders are not supported.</string>
+    <string name="scan_rules_excluded_folders_limit">Up to %1$d folders can be added. Remove one to add another.</string>
+</resources>

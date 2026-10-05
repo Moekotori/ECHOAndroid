@@ -36,8 +36,10 @@ import androidx.compose.ui.unit.dp
 import app.echo.android.design.PageChrome
 
 internal enum class SettingsCategory(val title: Int, val description: Int, val icon: ImageVector) {
+    Permissions(R.string.permissions_title, R.string.permissions_detail, SettingsCategoryIcons.Permissions),
     Appearance(R.string.settings_category_appearance, R.string.settings_category_appearance_detail, SettingsCategoryIcons.Appearance),
     Interface(R.string.settings_category_interface, R.string.settings_category_interface_detail, SettingsCategoryIcons.Interface),
+    Accessibility(R.string.accessibility_title, R.string.accessibility_detail, SettingsCategoryIcons.Accessibility),
     Playback(R.string.settings_category_playback, R.string.settings_category_playback_detail, SettingsCategoryIcons.Playback),
     Usb(R.string.settings_usb_exclusive, R.string.usb_page_description, SettingsCategoryIcons.Usb),
     Services(R.string.settings_category_services, R.string.settings_category_services_detail, SettingsCategoryIcons.Services),
@@ -54,7 +56,6 @@ internal fun SettingsNavigation(
     searchAvailability: SettingsSearchAvailability,
     onOpenPlugins: () -> Unit,
     onScanMusic: () -> Unit,
-    onOpenConnect: () -> Unit,
     onOpenSound: () -> Unit,
     soundSummary: String,
     content: @Composable (SettingsCategory) -> Unit,
@@ -79,12 +80,12 @@ internal fun SettingsNavigation(
         keyboardController?.hide()
         searchQuery = ""
     }
-    val wide = app.echo.android.design.LocalEchoWidthSizeClass.current == app.echo.android.model.settings.EchoWidthSizeClass.Expanded
+    val wide = app.echo.android.design.LocalEchoLayout.current.supportsTwoPanes(minimumWidthDp = 760f)
     val home: @Composable () -> Unit = {
         SettingsHome(
             query = searchQuery, selectedCategory = selected.takeIf { wide }, compactMode = compactMode, summaries = summaries, availability = searchAvailability,
             onQueryChange = { searchQuery = it }, onOpenPlugins = onOpenPlugins,
-            onScanMusic = onScanMusic, onOpenConnect = onOpenConnect,
+            onScanMusic = onScanMusic,
             onOpenSound = onOpenSound, soundSummary = soundSummary,
             onOpenCategory = { searchFocus = null; selected = it },
             onSearchSelect = { result ->

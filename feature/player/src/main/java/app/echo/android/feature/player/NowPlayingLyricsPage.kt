@@ -47,8 +47,6 @@ internal fun NowPlayingLyricsPage(
     onPrevious: () -> Unit,
     onSeek: (Long) -> Unit,
     onOpenQueue: () -> Unit,
-    onCast: (() -> Unit)? = null,
-    castActive: Boolean = false,
     positionMsState: State<Long>,
     durationMsState: State<Long>,
     onImportLyrics: () -> Unit,
@@ -231,7 +229,7 @@ internal fun NowPlayingLyricsPage(
                     if (!landscape) controlDeck()
                     if (showTransportDock) {
                         Box(modifier = Modifier.fillMaxWidth()) {
-                            Column(Modifier.padding(top = 12.dp, bottom = 4.dp)) {
+                            Column(Modifier.padding(top = 4.dp, bottom = 4.dp)) {
                                 if (paper && !landscape) {
                                     LyricsTrackIdentity(
                                         status.track,
@@ -246,17 +244,13 @@ internal fun NowPlayingLyricsPage(
                                     durationMsState = durationMsState,
                                     onSeek = onSeek,
                                 )
-                                Spacer(Modifier.height(6.dp))
+                                Spacer(Modifier.height(4.dp))
                                 LyricsTransportControls(
                                     isPlaying = status.isPlaying,
-                                    onOpenSettings = onOpenLyricsSettings,
                                     onPlayPause = onPlayPause,
                                     onNext = onNext,
                                     onPrevious = onPrevious,
                                     onOpenQueue = onOpenQueue,
-                                    onCast = onCast,
-                                    castActive = castActive,
-                                    landscape = landscape,
                                 )
                             }
                         }

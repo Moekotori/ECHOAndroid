@@ -1,0 +1,5 @@
+<resources>
+    <string name="system_cast_failed">Cast transfer could not complete. Your phone queue has been kept.</string>
+    <string name="system_cast_unsupported_format">This source or format cannot be sent to this Cast receiver. Your phone playback has been kept.</string>
+    <string name="system_cast_permission">Allow local network access in ECHO, then select the Cast device again.</string>
+</resources>

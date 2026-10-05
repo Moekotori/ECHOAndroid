@@ -8,6 +8,8 @@ import app.echo.android.data.EchoSharedLocalLibrary
 import app.echo.android.model.connect.EchoPhoneLibraryRegistration
 import app.echo.android.model.connect.EchoRemoteConnectionState
 import app.echo.android.model.connect.EchoRemoteEndpoint
+import app.echo.android.model.error.EchoErrorLog
+import app.echo.android.model.error.EchoErrorSource
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,16 +30,22 @@ class EchoPhoneLibrarySession(
 
     fun start() {
         if (job?.isActive == true) return
-        val endpoint = client.status.value.endpoint ?: return
-        if (client.status.value.connectionState != EchoRemoteConnectionState.Connected) return
+        val connection = client.status.value
+        val endpoint = connection.endpoint
+        if (endpoint == null || connection.connectionState != EchoRemoteConnectionState.Connected) {
+            state.value = "connection_required"
+            return
+        }
         val current = ++generation
         state.value = "starting"
         target = endpoint
         job = scope.launch {
             var ownedServer: EchoLinkCastServer? = null
+            var stage = "route"
             try {
                 val host = withContext(Dispatchers.IO) { EchoLinkLanAddresses.ipv4ForPeer(endpoint.host, endpoint.port) }
                     ?: error("no_lan")
+                stage = "server"
                 val token = EchoLinkCastPolicy.newToken()
                 val catalog = EchoSharedLocalLibrary(EchoLibraryDatabase.create(application))
                 val readyRoutes = java.util.concurrent.atomic.AtomicReference<EchoPhoneLibraryRoutes?>(null)
@@ -64,16 +72,30 @@ class EchoPhoneLibrarySession(
                 }
                 val published = EchoPhoneLibraryRegistration(EchoLinkCastPolicy.newToken(), baseUrl, token, Build.MODEL.take(80))
                 registration = published
+                stage = "service"
                 EchoPhoneLibraryService.start(application, published.sessionId)
+                stage = "registration"
                 while (isActive) {
                     client.registerPhoneLibrary(endpoint, published)
+                    ensureActive()
+                    if (current != generation) return@launch
                     state.value = "sharing"
                     delay(60_000)
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                if (current == generation) state.value = if (client.isPhoneLibraryUnsupported(error)) "unsupported" else "error"
+                if (current == generation) {
+                    val failure = when {
+                        stage == "route" && error.message == "no_lan" -> "no_lan"
+                        stage == "service" -> "service_error"
+                        else -> client.phoneLibraryFailureStatus(error)
+                    }
+                    state.value = failure
+                    // Do not persist exception messages/URLs, which may include session credentials.
+                    EchoErrorLog.record(EchoErrorSource.Connect, "Phone library sharing failed",
+                        detail = "stage=$stage; reason=$failure; type=${error.javaClass.simpleName}")
+                }
             } finally {
                 ownedServer?.stop()
                 if (current == generation) {
@@ -85,7 +107,13 @@ class EchoPhoneLibrarySession(
     }
 
     fun connectionChanged(endpoint: EchoRemoteEndpoint?, connected: Boolean) {
-        if (target != null && (!connected || target != endpoint)) stop()
+        val currentTarget = target ?: return
+        if (!connected || !EchoLinkRequestPolicy.isSameEndpoint(endpoint, currentTarget)) {
+            val wasActive = state.value == "starting" || state.value == "sharing"
+            val previousStatus = state.value
+            stop()
+            state.value = if (wasActive) "connection_lost" else previousStatus
+        }
     }
 
     fun serviceDestroyed(sessionId: String?) {

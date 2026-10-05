@@ -5,6 +5,16 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 object EchoLaunchActions {
+    private val _voiceSearch = MutableStateFlow<app.echo.android.model.playback.EchoMediaSearchRequest?>(null)
+    val voiceSearch = _voiceSearch.asStateFlow()
+    fun requestVoiceSearch(request: app.echo.android.model.playback.EchoMediaSearchRequest) { _voiceSearch.value = request }
+    fun consumeVoiceSearch() { _voiceSearch.value = null }
+
+    private val _libraryShortcut = MutableStateFlow<app.echo.android.library.EchoLibraryShortcutRequest?>(null)
+    val libraryShortcut = _libraryShortcut.asStateFlow()
+    fun requestLibraryShortcut(request: app.echo.android.library.EchoLibraryShortcutRequest) { _libraryShortcut.value = request }
+    fun consumeLibraryShortcut() { _libraryShortcut.value = null }
+
     private val _openLyrics = MutableStateFlow(false)
     val openLyrics: StateFlow<Boolean> = _openLyrics.asStateFlow()
 

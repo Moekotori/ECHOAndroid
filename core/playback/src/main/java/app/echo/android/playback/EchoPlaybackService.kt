@@ -141,6 +141,10 @@ class EchoPlaybackService : MediaLibraryService() {
             .build()
             .also {
                 nextUpQueue = NextUpQueueController(it)
+                serviceScope.launch {
+                    EchoPlaybackRuntimeOptionsStore.options.map { options -> options.shuffleOptions }
+                        .distinctUntilChanged().collect { options -> nextUpQueue?.setShuffleOptions(options) }
+                }
                 EchoPlaybackProcessRuntime.enginePolicy(this).attachTo(it)
                 it.addListener(EchoRadioPlaybackBinding(it))
                 it.addListener(playerListener)

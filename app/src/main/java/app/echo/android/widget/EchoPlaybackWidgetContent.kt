@@ -23,6 +23,7 @@ internal fun EchoPlaybackWidgetContent(
     artwork: Bitmap?,
     lyricLine: String?,
     mode: EchoPlaybackWidgetMode,
+    availableHeightDp: Float,
 ) {
     val largeText = context.resources.configuration.fontScale > 1.25f
     val title = snapshot.title.ifBlank { context.getString(R.string.app_name) }
@@ -31,7 +32,7 @@ internal fun EchoPlaybackWidgetContent(
     }
     val lyric = lyricLine.takeIf { snapshot.hasTrack && !largeText && !it.isNullOrBlank() }
     val intent = widgetLaunchIntent(context)
-    val root = GlanceModifier.fillMaxSize().background(ColorProvider(R.color.playback_widget_background))
+    val root = GlanceModifier.fillMaxSize().background(widgetBackground(context))
         .cornerRadius(24.dp).clickable(actionStartActivity(intent))
     when (mode) {
         EchoPlaybackWidgetMode.Compact, EchoPlaybackWidgetMode.Wide -> Row(
@@ -84,7 +85,7 @@ internal fun EchoPlaybackWidgetContent(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // Responsive sizes are finite; artwork reuses the existing capped bitmap, with no extra decode.
-            val coverSize = (LocalSize.current.height.value - 164f).coerceIn(96f, 136f).dp
+            val coverSize = (availableHeightDp - 164f).coerceIn(72f, 136f).dp
             WidgetArtwork(artwork, coverSize)
             Spacer(GlanceModifier.height(8.dp))
             WidgetTrackText(title, artist, GlanceModifier.fillMaxWidth(), 18, 13, centered = true)

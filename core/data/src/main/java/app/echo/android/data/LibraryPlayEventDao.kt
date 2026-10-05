@@ -145,6 +145,60 @@ interface LibraryPlayEventDao {
     )
     suspend fun topArtists(fromEpochMs: Long, limit: Int): List<PlayEventRankRow>
 
+    @Query("""
+        SELECT COUNT(*) AS plays, COALESCE(SUM(listenedMs), 0) AS listenedMs,
+               COUNT(DISTINCT localEpochDay) AS activeDays
+        FROM library_play_events WHERE localEpochDay >= :fromDay AND localEpochDay < :untilDay
+    """)
+    suspend fun monthlyTotals(fromDay: Long, untilDay: Long): PlayEventTotalsRow
+
+    @Query("""
+        SELECT localHour AS hour, COUNT(*) AS playCount FROM library_play_events
+        WHERE localEpochDay >= :fromDay AND localEpochDay < :untilDay
+        GROUP BY localHour
+    """)
+    suspend fun monthlyHours(fromDay: Long, untilDay: Long): List<PlayEventHourCountRow>
+
+    @Query("""
+        SELECT COUNT(*) FROM (
+            SELECT LOWER(TRIM(artist)) FROM library_play_events WHERE TRIM(artist) != ''
+            GROUP BY LOWER(TRIM(artist)) HAVING MIN(localEpochDay) >= :fromDay AND MIN(localEpochDay) < :untilDay
+        )
+    """)
+    suspend fun monthlyNewArtistCount(fromDay: Long, untilDay: Long): Int
+
+    @Query("""
+        SELECT LOWER(TRIM(artist)) AS rankKey, MAX(artist) AS title, NULL AS subtitle,
+               MAX(CASE WHEN localEpochDay >= :fromDay AND localEpochDay < :untilDay THEN artworkUri END) AS artworkUri,
+               SUM(CASE WHEN localEpochDay >= :fromDay AND localEpochDay < :untilDay THEN 1 ELSE 0 END) AS playCount,
+               COALESCE(SUM(CASE WHEN localEpochDay >= :fromDay AND localEpochDay < :untilDay THEN listenedMs ELSE 0 END), 0) AS listenedMs
+        FROM library_play_events WHERE TRIM(artist) != ''
+        GROUP BY LOWER(TRIM(artist))
+        HAVING MIN(localEpochDay) >= :fromDay AND MIN(localEpochDay) < :untilDay
+        ORDER BY playCount DESC, listenedMs DESC, rankKey LIMIT :limit
+    """)
+    suspend fun monthlyNewArtists(fromDay: Long, untilDay: Long, limit: Int): List<PlayEventRankRow>
+
+    @Query("""
+        WITH first_times AS (
+            SELECT trackId, MIN(playedAtEpochMs) AS firstAt FROM library_play_events GROUP BY trackId
+        ), first_events AS (
+            SELECT e.trackId, MIN(e.id) AS firstId FROM library_play_events e
+            JOIN first_times f ON f.trackId = e.trackId AND f.firstAt = e.playedAtEpochMs GROUP BY e.trackId
+        )
+        SELECT COALESCE(NULLIF(t.albumKey, ''), LOWER(TRIM(e.album)) || char(31) || LOWER(TRIM(e.artist))) AS rankKey,
+               MAX(e.album) AS title, MAX(COALESCE(NULLIF(t.albumArtist, ''), e.artist)) AS subtitle,
+               MAX(e.artworkUri) AS artworkUri,
+               SUM(CASE WHEN e.id != initial_listen.firstId THEN 1 ELSE 0 END) AS playCount,
+               COALESCE(SUM(CASE WHEN e.id != initial_listen.firstId THEN e.listenedMs ELSE 0 END), 0) AS listenedMs
+        FROM library_play_events e JOIN first_events initial_listen ON initial_listen.trackId = e.trackId
+        LEFT JOIN library_tracks t ON t.id = e.trackId
+        WHERE e.localEpochDay >= :fromDay AND e.localEpochDay < :untilDay AND e.album IS NOT NULL AND TRIM(e.album) != ''
+        GROUP BY COALESCE(NULLIF(t.albumKey, ''), LOWER(TRIM(e.album)) || char(31) || LOWER(TRIM(e.artist)))
+        HAVING playCount > 0 ORDER BY playCount DESC, listenedMs DESC, rankKey LIMIT :limit
+    """)
+    suspend fun monthlyAlbums(fromDay: Long, untilDay: Long, limit: Int): List<PlayEventRankRow>
+
     @Query("DELETE FROM library_play_events")
     suspend fun clear()
 }

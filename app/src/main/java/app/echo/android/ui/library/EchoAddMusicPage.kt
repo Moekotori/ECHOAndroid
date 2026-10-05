@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -35,6 +36,8 @@ internal fun EchoAddMusicPage(
     val scope = rememberCoroutineScope()
     var actionBusy by remember { mutableStateOf(false) }
     var actionError by remember { mutableStateOf<String?>(null) }
+    var selectedExcludedFolder by rememberSaveable { mutableStateOf<String?>(null) }
+    val chooseExcludedFolder = rememberExcludedFolderPicker { selectedExcludedFolder = it }
     val folderRows = remember(trees, configuration) {
         val formatter = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, configuration.locales[0])
         trees.orEmpty().map { tree ->
@@ -81,5 +84,8 @@ internal fun EchoAddMusicPage(
         onImportPlaylist = { playlistPicker.launch(arrayOf("audio/x-mpegurl", "audio/mpegurl",
             "application/vnd.apple.mpegurl", "application/x-mpegurl", "text/plain", "*/*")) },
         onCancelScan = viewModel::cancelScan,
+        selectedExcludedFolder = selectedExcludedFolder,
+        onChooseExcludedFolder = chooseExcludedFolder,
+        onExcludedFolderConsumed = { selectedExcludedFolder = null },
     )
 }

@@ -91,9 +91,7 @@ internal fun SplashScreen.installEchoExitTransition(
         startupBackground?.let { surface.background = EchoSplashBackgroundDrawable(it) }
         startupBackground = null
         val lightweight = mode.isLightweight
-        // Keep the hand-off rhythm independent of whether settings finished loading.
-        // Zero slope at both ends avoids a sudden kick from the stationary system icon.
-        val duration = 280L
+        val duration = if (lightweight) 120L else 220L
         val easing = PathInterpolator(0.4f, 0f, 0.2f, 1f)
         var removed = false
         lateinit var observer: DefaultLifecycleObserver
@@ -111,19 +109,17 @@ internal fun SplashScreen.installEchoExitTransition(
         }
         lifecycle.addObserver(observer)
 
-        // Animate the existing icon: identical position, crop and scale at the hand-off.
-        // View properties avoid per-frame layout, Compose recomposition and bitmap decoding.
+        // A small upward departure keeps the mascot recognizable through the hand-off.
+        // Use view properties only; lightweight mode keeps the character stationary.
+        val mascotExit = icon.animate()
+            .alpha(0f)
+            .setStartDelay(0L)
+            .setDuration(if (lightweight) 120L else 180L)
+            .setInterpolator(easing)
         if (!lightweight) {
-            icon.animate()
-                .scaleX(1.025f)
-                .scaleY(1.025f)
-                .setStartDelay(0L)
-                .setDuration(duration)
-                .setInterpolator(easing)
-                .start()
+            mascotExit.translationY(-4f * activity.resources.displayMetrics.density)
         }
-        // Reveal the first frame immediately, with the same easing as the icon so
-        // motion and opacity settle together instead of feeling like two transitions.
+        mascotExit.start()
         surface.animate()
             .alpha(0f)
             .setStartDelay(0L)

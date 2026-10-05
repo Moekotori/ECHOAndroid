@@ -23,6 +23,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.echo.android.design.EchoMotion
@@ -79,7 +80,7 @@ internal fun NowPlayingScrubber(
 
 /** A continuous, thumb-free rail inside a full 48 dp seek target. */
 @Composable
-private fun LinearPlayerSeekBar(
+internal fun LinearPlayerSeekBar(
     trackKey: String?,
     fraction: Float,
     engaged: Boolean,
@@ -87,6 +88,8 @@ private fun LinearPlayerSeekBar(
     onPreview: (Float) -> Unit,
     onCommit: (Float) -> Unit,
     onCancel: () -> Unit,
+    restingThickness: Dp = 3.dp,
+    engagedThickness: Dp = 5.dp,
 ) {
     val haptics by rememberUpdatedState(rememberEchoHapticPerformer())
     val preview by rememberUpdatedState<(Float) -> Unit>({ onPreview(it); haptics.seek(it) })
@@ -99,7 +102,7 @@ private fun LinearPlayerSeekBar(
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     // Read the animated thickness only while drawing, without changing hit geometry.
     val thickness = animateDpAsState(
-        targetValue = if (enabled && (pressed || engaged)) 5.dp else 3.dp,
+        targetValue = if (enabled && (pressed || engaged)) engagedThickness else restingThickness,
         animationSpec = tween(if (lightweight) 0 else 140, easing = EchoMotion.Silk),
         label = "player-seek-thickness",
     )

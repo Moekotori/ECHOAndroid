@@ -1,4 +1,10 @@
 <resources>
+    <string name="signal_sound_back">Back to sound adjustments</string>
+    <string name="signal_sound_eq_summary">Band gains and parametric equalization</string>
+    <string name="signal_sound_headphones_summary">Headphone frequency response correction</string>
+    <string name="signal_sound_channels_summary">Left/right balance, routing and calibration</string>
+    <string name="signal_sound_dsp_summary">Loudness, crossfeed and limiting</string>
+    <string name="signal_sound_mseb_summary">Warmth, bass and vocal character</string>
     <string name="signal_value_range">Range: %1$s–%2$s %3$s</string>
     <string name="signal_about_control">About %1$s</string>
     <string name="signal_close_help">Got it</string>

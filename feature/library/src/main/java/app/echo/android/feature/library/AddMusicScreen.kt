@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.FolderOpen
@@ -44,12 +45,33 @@ fun AddMusicScreen(
     onSaveOptions: (LibraryScanOptions) -> Unit,
     onImportPlaylist: () -> Unit,
     onCancelScan: () -> Unit,
+    selectedExcludedFolder: String?,
+    onChooseExcludedFolder: () -> Unit,
+    onExcludedFolderConsumed: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var options by rememberSaveable { mutableStateOf(initialOptions) }
     var folderToRemove by rememberSaveable { mutableStateOf<String?>(null) }
     var showRules by rememberSaveable { mutableStateOf(false) }
+    val listState = rememberLazyListState()
     val enabled = !scanState.isScanning && !actionBusy
+    if (showRules) {
+        LibraryScanRulesScreen(
+            initialOptions = options,
+            enabled = enabled,
+            selectedExcludedFolder = selectedExcludedFolder,
+            onChooseExcludedFolder = onChooseExcludedFolder,
+            onExcludedFolderConsumed = onExcludedFolderConsumed,
+            onBack = { showRules = false },
+            onSave = { updated ->
+                options = updated
+                showRules = false
+                onSaveOptions(updated)
+            },
+            modifier = modifier,
+        )
+        return
+    }
     Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) {
@@ -59,6 +81,7 @@ fun AddMusicScreen(
                 fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
         }
         LazyColumn(
+            state = listState,
             modifier = Modifier.weight(1f).imePadding().navigationBarsPadding(),
             contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -101,16 +124,6 @@ fun AddMusicScreen(
             }
         }
     }
-    if (showRules) LibraryScanRulesDialog(
-        initialOptions = options,
-        enabled = enabled,
-        onDismiss = { showRules = false },
-        onSave = { updated ->
-            options = updated
-            showRules = false
-            onSaveOptions(updated)
-        },
-    )
     folderToRemove?.let { uri ->
         AlertDialog(
             onDismissRequest = { folderToRemove = null },

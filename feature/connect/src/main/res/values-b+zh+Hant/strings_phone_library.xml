@@ -2,9 +2,16 @@
     <string name="phone_library_share_title">向電腦共享手機曲庫</string>
     <string name="phone_library_share_description">允許已連線的電腦瀏覽並播放本地音訊檔案，關閉即撤銷存取。暫不包含 CUE 分段。</string>
     <string name="phone_library_share_unsupported">請更新 ECHOSteam 以存取手機曲庫。</string>
-    <string name="phone_library_share_error">共享失敗，請檢查區域網路後重試。</string>
+    <string name="phone_library_share_error">共享失敗，請重試或在錯誤記錄中查看原因。</string>
+    <string name="phone_library_share_auth_error">電腦授權已失效或被拒絕，請重新連線電腦後重試。</string>
+    <string name="phone_library_share_network_error">開啟共享時無法存取電腦，請檢查區域網路後重試。</string>
+    <string name="phone_library_share_no_lan">共享需要區域網路 IPv4 連線，請使用電腦的區域網路 IPv4 位址重新連線。</string>
+    <string name="phone_library_share_service_error">無法啟動共享服務，請保持 ECHO 在前台後重試。</string>
+    <string name="phone_library_share_connection_required">電腦連線尚未就緒，請連線電腦後重試。</string>
+    <string name="phone_library_share_connection_lost">連線發生變化，共享已停止，點擊開關可重試。</string>
     <string name="phone_library_share_starting">正在開啟共享…</string>
     <string name="phone_library_share_active">已向連線的電腦共享</string>
-    <string name="phone_library_share_connect_first">請先連線電腦</string>
+    <string name="phone_library_share_connect_first">點擊開關連線電腦並開啟共享</string>
+    <string name="phone_library_share_waiting">連線電腦後將開啟共享，再次點擊開關可取消</string>
     <string name="phone_library_share_off">共享已關閉</string>
 </resources>
