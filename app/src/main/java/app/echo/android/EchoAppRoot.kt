@@ -762,9 +762,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     val bottomDockInset = with(LocalDensity.current) { bottomDockHeightPx.toDp() }
     var nowPlayingExpanded by rememberSaveable { mutableStateOf(false) }
     var nowPlayingDragProgress by remember { mutableFloatStateOf(0f) }
+    var suppressPlayerArtworkFlight by remember { mutableStateOf(false) }
     val nowPlayingBack = rememberEchoBackProgress(effectivePerformanceMode.isLightweight)
     fun expandNowPlaying() {
         nowPlayingBack.restore()
+        suppressPlayerArtworkFlight = false
         nowPlayingExpanded = true
     }
     var lyricsLaunchToken by rememberSaveable { mutableIntStateOf(0) }
@@ -1110,7 +1112,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         enabled = nowPlayingExpanded && !queueSheetVisible && !castSheetVisible && !pluginsVisible,
         onProgress = nowPlayingBack::update,
         onCancel = { nowPlayingBack.restore() },
-        onDismiss = { nowPlayingExpanded = false },
+        onDismiss = {
+            suppressPlayerArtworkFlight = true
+            nowPlayingExpanded = false
+        },
     )
     EchoOverlayBackHandler(enabled = addMusicVisible && !pluginsVisible) {
         addMusicVisible = false
@@ -1157,6 +1162,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     ) {
         EchoPlayerTransitionRoot(
             expanded = nowPlayingExpanded,
+            suppressArtworkFlight = suppressPlayerArtworkFlight,
             // The current record-sleeve cover is square; the compact dock keeps rounded corners.
             expandedArtworkCornerRadius = if (appSettings.playerPageStyle == "classic") 24.dp else 0.dp,
             modifier = Modifier
@@ -1867,7 +1873,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
 
             EchoExpandedPlayer(
                 visible = nowPlayingExpanded,
-                onHidden = { nowPlayingBack.reset() },
+                onHidden = {
+                    nowPlayingBack.reset()
+                    suppressPlayerArtworkFlight = false
+                },
             ) {
                 EchoNowPlayingHost(
                     viewModel = viewModel,
@@ -1879,6 +1888,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     predictiveBackProgress = { nowPlayingBack.value },
                     presentationExpanded = nowPlayingExpanded,
                     onDragProgress = { nowPlayingDragProgress = it },
+                    onSuppressArtworkFlight = { suppressPlayerArtworkFlight = it },
                     onOpenQueue = { queueSheetVisible = true },
                     onCast = ::onNowPlayingCast,
                     castActive = castSessionActive,

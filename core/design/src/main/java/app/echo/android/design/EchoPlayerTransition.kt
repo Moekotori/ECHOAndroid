@@ -31,6 +31,9 @@ private val LocalPlayerSharedScope = compositionLocalOf<SharedTransitionScope?> 
 private val LocalPlayerVisibilityScope = compositionLocalOf<AnimatedVisibilityScope?> { null }
 private val LocalPlayerExpanded = compositionLocalOf { false }
 private val LocalPlayerArtworkCorner = compositionLocalOf<State<Dp>?> { null }
+
+/** Sheet dismiss already moves the window. A second artwork flight to the dock is not part of it. */
+val LocalSuppressPlayerArtworkFlight = compositionLocalOf { false }
 private data class PlayerArtworkKey(val trackId: String)
 
 /** Reuse the expanded image cache while the thumbnail is being drawn at hero size on return. */
@@ -46,13 +49,15 @@ fun EchoPlayerTransitionRoot(
     expanded: Boolean,
     modifier: Modifier = Modifier,
     expandedArtworkCornerRadius: Dp = 24.dp,
+    suppressArtworkFlight: Boolean = false,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     // This state survives mounting/unmounting either endpoint. Read it only in the artwork leaf.
     val corner = animateDpAsState(
         targetValue = if (expanded) expandedArtworkCornerRadius else 10.dp,
-        animationSpec = if (lightweight) snap() else EchoMotion.silkDp(520),
+        // Collapsing used to animate the dock thumbnail through a circle. Snap back instead.
+        animationSpec = if (lightweight || !expanded) snap() else EchoMotion.silkDp(520),
         label = "player-artwork-corner",
     )
     SharedTransitionLayout(modifier) {
@@ -60,6 +65,7 @@ fun EchoPlayerTransitionRoot(
             LocalPlayerSharedScope provides this,
             LocalPlayerExpanded provides expanded,
             LocalPlayerArtworkCorner provides corner,
+            LocalSuppressPlayerArtworkFlight provides suppressArtworkFlight,
         ) {
             Box(Modifier.fillMaxSize(), content = content)
         }
@@ -76,8 +82,13 @@ fun EchoPlayerArtwork(
     modifier: Modifier = Modifier,
     restingCornerRadius: Dp = if (expandedArtwork) 24.dp else 10.dp,
 ) {
-    val corner = if (LocalEchoEffectivePerformanceMode.current.isLightweight) restingCornerRadius
-        else LocalPlayerArtworkCorner.current?.value ?: restingCornerRadius
+    // The dock image is 40dp. The expanded 24dp radius turns it into a circle and
+    // the shared overlay does not receive the row click while that radius animates.
+    val corner = if (expandedArtwork && !LocalEchoEffectivePerformanceMode.current.isLightweight) {
+        LocalPlayerArtworkCorner.current?.value ?: restingCornerRadius
+    } else {
+        restingCornerRadius
+    }
     EchoArtworkImage(
         artworkUri = artworkUri,
         contentDescription = contentDescription,
@@ -119,7 +130,8 @@ fun Modifier.echoSharedPlayerArtwork(trackId: String?, expandedArtwork: Boolean)
     val scope = LocalPlayerSharedScope.current
     val visibility = LocalPlayerVisibilityScope.current
     val expanded = LocalPlayerExpanded.current
-    if (scope == null || trackId == null || LocalEchoEffectivePerformanceMode.current.isLightweight) {
+    if (LocalSuppressPlayerArtworkFlight.current || scope == null || trackId == null ||
+        LocalEchoEffectivePerformanceMode.current.isLightweight) {
         this
     } else with(scope) {
         val state = rememberSharedContentState(PlayerArtworkKey(trackId))

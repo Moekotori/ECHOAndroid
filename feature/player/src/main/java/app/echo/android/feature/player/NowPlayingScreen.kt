@@ -126,8 +126,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
@@ -263,6 +265,7 @@ fun NowPlayingScreen(
     predictiveBackProgress: () -> Float = { 0f },
     presentationExpanded: Boolean = true,
     onDragProgress: (Float) -> Unit = {},
+    onSuppressArtworkFlight: (Boolean) -> Unit = {},
     playerPageStyle: String = DefaultPlayerStyle,
     playerTextScale: Float = 1f,
     playerArtworkScale: Float = 1f,
@@ -361,6 +364,8 @@ fun NowPlayingScreen(
     }
     DisposableEffect(Unit) { onDispose { dragProgressCallback.value(0f) } }
     val dismissFlingPx = remember(density) { with(density) { 1080.dp.toPx() } }
+    var playerHeightPx by remember { mutableFloatStateOf(0f) }
+    val suppressArtworkFlight = rememberUpdatedState(onSuppressArtworkFlight)
     val overlayBlocking = lyricsSettingsVisible || playbackSettingsVisible
     val dismissEnabledState = rememberUpdatedState(presentationExpanded && !overlayBlocking)
     LaunchedEffect(overlayBlocking) {
@@ -372,6 +377,37 @@ fun NowPlayingScreen(
         }
     }
     val onDismissState = rememberUpdatedState(onDismiss)
+    val lightweightDismiss = effectivePerformanceMode.isLightweight
+    fun launchDismiss(velocityY: Float, force: Boolean = false, awaitGesture: Boolean = false) {
+        val gestureResult = if (awaitGesture) dismissGesture.result else null
+        val exitDistancePx = if (playerHeightPx > 0f) playerHeightPx + 8f else 0f
+        dismissDrag.settleJob?.cancel()
+        dismissDrag.settleJob = dismissScope.launch {
+            if (gestureResult != null && gestureResult.await() != true) {
+                restoreNowPlayingDismiss(dismissDrag, lightweight = lightweightDismiss)
+                return@launch
+            }
+            var suppressed = false
+            try {
+                settleNowPlayingDismiss(
+                    dragState = dismissDrag,
+                    velocityY = velocityY,
+                    thresholdPx = dismissThresholdPx,
+                    flingVelocityPx = dismissFlingPx,
+                    onDismiss = onDismissState.value,
+                    lightweight = lightweightDismiss,
+                    exitDistancePx = exitDistancePx,
+                    forceDismiss = force,
+                    onSuppressArtworkFlight = {
+                        suppressed = true
+                        suppressArtworkFlight.value(true)
+                    },
+                )
+            } finally {
+                if (suppressed && dismissDrag.isDragging) suppressArtworkFlight.value(false)
+            }
+        }
+    }
     val nestedScrollConnection = rememberNowPlayingDismissConnection(
         dragState = dismissDrag,
         enabled = dismissEnabledState,
@@ -379,27 +415,9 @@ fun NowPlayingScreen(
         onCrossedThreshold = { crossed ->
             if (crossed) dismissHaptics.tick()
         },
-        onSettle = { velocityY ->
-            val gestureResult = dismissGesture.result
-            dismissDrag.settleJob?.cancel()
-            dismissDrag.settleJob = dismissScope.launch {
-                if (gestureResult?.await() != true) {
-                    restoreNowPlayingDismiss(dismissDrag, lightweight = effectivePerformanceMode.isLightweight)
-                    return@launch
-                }
-                settleNowPlayingDismiss(
-                    dragState = dismissDrag,
-                    velocityY = velocityY,
-                    thresholdPx = dismissThresholdPx,
-                    flingVelocityPx = dismissFlingPx,
-                    onDismiss = onDismissState.value,
-                    lightweight = effectivePerformanceMode.isLightweight,
-                )
-            }
-        },
+        onSettle = { velocityY -> launchDismiss(velocityY, awaitGesture = true) },
     )
-    // 下滑/返回手势的位移、缩放全部在 graphicsLayer 内读取状态:
-    // 只走绘制通道,拖拽时不触发整页重组
+    // 位移和圆角都在 graphicsLayer 里读状态,拖拽时不重组整页。
     fun currentDismissOffsetPx(): Float =
         dismissDrag.offsetPx + predictiveBackProgress().coerceIn(0f, 1f) * dismissThresholdPx * 1.35f
     val pagerScrollEnabled by remember(dismissThresholdPx) {
@@ -439,17 +457,43 @@ fun NowPlayingScreen(
         Box(
             modifier = modifier
                 .fillMaxSize()
+                .onSizeChanged { playerHeightPx = it.height.toFloat() }
                 .observeNowPlayingGesture(dismissGesture)
+                .nowPlayingSurfaceDismiss(
+                    enabled = { dismissEnabledState.value },
+                    onDelta = { delta ->
+                        if (dismissEnabledState.value) {
+                            dismissDrag.applyDelta(delta, dismissThresholdPx) { crossed ->
+                                if (crossed) dismissHaptics.tick()
+                            }
+                        }
+                    },
+                    onStop = { velocityY ->
+                        if (dismissEnabledState.value) launchDismiss(velocityY)
+                    },
+                    onCancel = {
+                        dismissDrag.settleJob?.cancel()
+                        dismissDrag.settleJob = dismissScope.launch {
+                            restoreNowPlayingDismiss(dismissDrag, lightweight = effectivePerformanceMode.isLightweight)
+                        }
+                    },
+                )
                 .nestedScroll(nestedScrollConnection)
                 .graphicsLayer {
                     val dismissOffsetPx = currentDismissOffsetPx()
-                    val settledProgress = (dismissOffsetPx / dismissThresholdPx).coerceIn(0f, 1f)
                     translationY = dismissOffsetPx
-                    val scale = 1f - 0.045f * settledProgress
-                    scaleX = scale
-                    scaleY = scale
-                    alpha = 1f - 0.12f * settledProgress
-                    transformOrigin = TransformOrigin(0.5f, 0.06f)
+                    // 窗口保持不透明,只把露出来的两个顶角收成圆角,避免生硬的矩形透底。
+                    val corner = nowPlayingSheetCornerFraction(dismissOffsetPx, 72.dp.toPx())
+                    if (corner <= 0f) {
+                        shape = RectangleShape
+                        clip = false
+                        shadowElevation = 0f
+                    } else {
+                        shape = RoundedCornerShape(topStart = 28.dp * corner, topEnd = 28.dp * corner)
+                        clip = true
+                        shadowElevation = if (effectivePerformanceMode.isLightweight) 0f else 18.dp.toPx() * corner
+                    }
+                    transformOrigin = TransformOrigin(0.5f, 0f)
                 }
                 .background(radioColors?.background ?: appearance.background),
             contentAlignment = Alignment.Center,
@@ -486,7 +530,7 @@ fun NowPlayingScreen(
             ) {
                 HingeSafePlayerHeader(fold) { Column {
                 NowPlayingTopBar(
-                    onDismiss = onDismiss,
+                    onDismiss = { launchDismiss(0f, force = true) },
                     onHandleDrag = { delta ->
                         if (dismissEnabledState.value) {
                             dismissDrag.applyDelta(delta, dismissThresholdPx) { crossed ->
@@ -495,19 +539,7 @@ fun NowPlayingScreen(
                         }
                     },
                     onHandleDragEnd = { velocityY ->
-                        if (dismissEnabledState.value) {
-                            dismissDrag.settleJob?.cancel()
-                            dismissDrag.settleJob = dismissScope.launch {
-                                settleNowPlayingDismiss(
-                                    dragState = dismissDrag,
-                                    velocityY = velocityY,
-                                    thresholdPx = dismissThresholdPx,
-                                    flingVelocityPx = dismissFlingPx,
-                                    onDismiss = onDismissState.value,
-                                    lightweight = effectivePerformanceMode.isLightweight,
-                                )
-                            }
-                        }
+                        if (dismissEnabledState.value) launchDismiss(velocityY)
                     },
                     onHandleDragCancel = {
                         dismissDrag.settleJob?.cancel()
@@ -854,22 +886,6 @@ private fun NowPlayingTopBar(
                             letterSpacing = if (radioColors != null) 0.sp else if (displayedEditorial && appearance.style == "pixel_handheld") 1.sp else 3.5.sp,
                             modifier = if (displayedEditorial && appearance.style == "type_poster") Modifier.align(Alignment.CenterStart).padding(start = 46.dp)
                                 else Modifier.align(Alignment.Center),
-                        )
-                    } else Column(
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = onDismiss,
-                            ),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(width = 44.dp, height = 5.dp)
-                                .clip(CircleShape)
-                                .background(OnArt.copy(alpha = 0.42f)),
                         )
                     }
                 }

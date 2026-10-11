@@ -7,6 +7,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import app.echo.android.design.LocalEchoCustomBackgroundActive
+import app.echo.android.design.echoPageBackgroundColor
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -98,9 +99,8 @@ fun HomeScreen(
             onDismiss = { editingLayout = false },
             onApply = onHomeLayoutChange,
         )
-        val base = MaterialTheme.colorScheme.background
-        val background = base.copy(alpha = if (LocalEchoCustomBackgroundActive.current) 0.94f else 1f)
-        Box(Modifier.fillMaxSize().background(background), contentAlignment = Alignment.TopCenter) {
+        val customBackground = LocalEchoCustomBackgroundActive.current
+        Box(Modifier.fillMaxSize().background(echoPageBackgroundColor()), contentAlignment = Alignment.TopCenter) {
             HomeAdaptiveFeed(bottomInset) {
                 item(key = "header", span = { GridItemSpan(maxLineSpan) }) {
                     HomeSectionEntrance(0) {
@@ -192,9 +192,10 @@ fun HomeScreen(
                     }
                 }
             }
-            // A static scrim keeps scrolled text from showing through the floating player/dock.
-            // This overlay has no input handlers, so list and carousel gestures remain available.
-            if (bottomInset > 0.dp) {
+            // Without a custom background, a static scrim keeps scrolled text out of the dock.
+            // It has no input handlers, so list and carousel gestures remain available.
+            if (bottomInset > 0.dp && !customBackground) {
+                val base = MaterialTheme.colorScheme.background
                 Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(bottomInset + 32.dp)
                     .background(Brush.verticalGradient(0f to Color.Transparent, 0.10f to base, 1f to base)))
             }

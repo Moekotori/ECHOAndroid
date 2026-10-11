@@ -4,6 +4,8 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import app.echo.android.design.EchoMotion
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
@@ -13,11 +15,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.unit.Velocity
 import app.echo.android.design.echoHorizontalGestureOwnsScroll
+import kotlin.math.abs
 import kotlinx.coroutines.Job
 
 internal class NowPlayingDismissDragState {
@@ -129,22 +136,132 @@ internal suspend fun restoreNowPlayingDismiss(
     dragState.reset()
 }
 
+/** Top corners open over a short travel, then stay rounded for the rest of the slide. */
+internal fun nowPlayingSheetCornerFraction(offsetPx: Float, travelPx: Float): Float {
+    if (offsetPx <= 0f || travelPx <= 0f) return 0f
+    val t = (offsetPx / travelPx).coerceIn(0f, 1f)
+    return 1f - (1f - t) * (1f - t)
+}
+
+/** Zero means the host has not been measured yet, so the finger position is the exit. */
+internal fun nowPlayingDismissExitTarget(offsetPx: Float, exitDistancePx: Float): Float =
+    exitDistancePx.coerceAtLeast(offsetPx)
+
+internal fun nowPlayingShouldDismiss(
+    offsetPx: Float,
+    velocityY: Float,
+    thresholdPx: Float,
+    flingVelocityPx: Float,
+    forceDismiss: Boolean = false,
+): Boolean = forceDismiss || offsetPx >= thresholdPx ||
+    (velocityY >= flingVelocityPx && offsetPx > thresholdPx * 0.28f)
+
 internal suspend fun settleNowPlayingDismiss(
     dragState: NowPlayingDismissDragState,
     velocityY: Float,
     thresholdPx: Float,
     flingVelocityPx: Float,
     lightweight: Boolean = false,
+    exitDistancePx: Float = 0f,
+    forceDismiss: Boolean = false,
+    onSuppressArtworkFlight: () -> Unit = {},
     onDismiss: () -> Unit,
 ) {
     dragState.finishDrag()
-    val shouldDismiss = dragState.offsetPx >= thresholdPx ||
-        (velocityY >= flingVelocityPx && dragState.offsetPx > thresholdPx * 0.28f)
+    val shouldDismiss = nowPlayingShouldDismiss(
+        dragState.offsetPx, velocityY, thresholdPx, flingVelocityPx, forceDismiss,
+    )
     if (shouldDismiss) {
-        // Hold the gesture position while the host carries the page off screen.
-        // Rewinding here would fight the downward exit animation.
+        // Drop the shared-element pair before the window leaves, or the cover restarts from center.
+        onSuppressArtworkFlight()
+        val target = nowPlayingDismissExitTarget(dragState.offsetPx, exitDistancePx)
+        // Carry the release velocity off screen. A zero distance still hands off at the finger.
+        if (target - dragState.offsetPx > 0.5f) {
+            val launchVelocity = if (forceDismiss) velocityY.coerceAtLeast(target * 3.2f) else velocityY.coerceAtLeast(0f)
+            animate(
+                initialValue = dragState.offsetPx,
+                targetValue = target,
+                initialVelocity = launchVelocity,
+                animationSpec = if (lightweight) tween(EchoMotion.PageLightweightMs) else EchoMotion.silkFloat(EchoMotion.OverlayExitMs),
+            ) { value, velocity ->
+                dragState.offsetPx = value.coerceAtLeast(0f)
+                dragState.settleVelocity = velocity
+            }
+        }
         onDismiss()
     } else {
         restoreNowPlayingDismiss(dragState, velocityY, lightweight)
+    }
+}
+
+/**
+ * Downward drags on non-scrolling surface dismiss the player.
+ * A child that already consumed the pointer (pager, lyrics, header) keeps it.
+ */
+@Composable
+internal fun Modifier.nowPlayingSurfaceDismiss(
+    enabled: () -> Boolean,
+    onDelta: (Float) -> Unit,
+    onStop: (Float) -> Unit,
+    onCancel: () -> Unit,
+): Modifier {
+    val enabledState = rememberUpdatedState(enabled)
+    val deltaState = rememberUpdatedState(onDelta)
+    val stopState = rememberUpdatedState(onStop)
+    val cancelState = rememberUpdatedState(onCancel)
+    return pointerInput(Unit) {
+        val tracker = VelocityTracker()
+        var tracking = false
+        try {
+            awaitEachGesture {
+                val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                if (!enabledState.value()) return@awaitEachGesture
+                var dragging = false
+                var accumulated = Offset.Zero
+                tracker.resetTracking()
+                val pointerId = down.id
+                while (true) {
+                    val event = awaitPointerEvent(if (dragging) PointerEventPass.Initial else PointerEventPass.Final)
+                    val change = event.changes.firstOrNull { it.id == pointerId }
+                    val pressedCount = event.changes.count { it.pressed }
+                    if (change == null || !change.pressed || pressedCount > 1 || !enabledState.value()) {
+                        if (dragging) {
+                            dragging = false
+                            tracking = false
+                            if (change != null && !change.pressed && pressedCount <= 1 && enabledState.value()) {
+                                tracker.addPosition(change.uptimeMillis, change.position)
+                                stopState.value(tracker.calculateVelocity().y)
+                            } else {
+                                cancelState.value()
+                            }
+                        }
+                        break
+                    }
+                    if (change.isConsumed && !dragging) break
+                    val delta = change.position - change.previousPosition
+                    if (!dragging) {
+                        accumulated += delta
+                        val slop = viewConfiguration.touchSlop
+                        val downward = accumulated.y > slop && accumulated.y > abs(accumulated.x) * 1.15f
+                        if (accumulated.getDistance() < slop) continue
+                        if (!downward) break
+                        dragging = true
+                        tracking = true
+                        tracker.addPosition(change.uptimeMillis, change.position)
+                        deltaState.value(accumulated.y)
+                        change.consume()
+                    } else {
+                        tracker.addPosition(change.uptimeMillis, change.position)
+                        deltaState.value(delta.y)
+                        change.consume()
+                    }
+                }
+            }
+        } finally {
+            if (tracking) {
+                tracking = false
+                cancelState.value()
+            }
+        }
     }
 }
