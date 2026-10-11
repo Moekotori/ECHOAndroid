@@ -9,7 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.echo.android.model.library.*
@@ -101,7 +101,7 @@ fun LibraryBatchProvider(actions: LibraryBatchActions, pageInteractive: Boolean 
     var error by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<List<EchoTrack>?>(null) }
     val snackbar = remember { SnackbarHostState() }
-    val context = LocalContext.current
+    val resources = LocalResources.current
     fun delete(tracks: List<EchoTrack>, deleteOriginals: Boolean) {
         val operation = actions.delete ?: return
         if (busy || tracks.isEmpty()) return
@@ -116,8 +116,8 @@ fun LibraryBatchProvider(actions: LibraryBatchActions, pageInteractive: Boolean 
                 if (selection.selected.isEmpty()) selection.exit()
                 if (!result.cancelled || removed.isNotEmpty()) {
                     val remaining = tracks.size - removed.size
-                    val message = if (remaining == 0) context.resources.getQuantityString(R.plurals.batch_delete_done, removed.size, removed.size)
-                        else context.getString(R.string.batch_delete_partial, removed.size, remaining)
+                    val message = if (remaining == 0) resources.getQuantityString(R.plurals.batch_delete_done, removed.size, removed.size)
+                        else resources.getString(R.string.batch_delete_partial, removed.size, remaining)
                     snackbar.currentSnackbarData?.dismiss()
                     scope.launch { snackbar.showSnackbar(message) }
                 }
@@ -211,7 +211,7 @@ fun LibraryBatchProvider(actions: LibraryBatchActions, pageInteractive: Boolean 
         onDismiss = { choosingPlaylist = false },
         onSelect = { playlist ->
             choosingPlaylist = false
-            operate(context.getString(R.string.batch_playlist_added, playlist.name)) {
+            operate(resources.getString(R.string.batch_playlist_added, playlist.name)) {
                 actions.addToPlaylist(playlist.id, it.map(EchoTrack::id))
             }
         },

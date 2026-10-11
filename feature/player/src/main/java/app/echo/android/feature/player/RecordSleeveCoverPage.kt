@@ -163,7 +163,7 @@ internal fun RecordSleeveCoverPage(
                     )
                     if (landscape && !displayedTrack?.album.isNullOrBlank()) {
                         Text(
-                            displayedTrack?.album.orEmpty().uppercase(java.util.Locale.ROOT),
+                            displayedTrack.album.orEmpty().uppercase(java.util.Locale.ROOT),
                             modifier = Modifier.weight(1f).padding(start = 12.dp),
                             color = RecordSleeveStyle.Ink.copy(alpha = 0.6f),
                             fontFamily = RecordSleeveStyle.BodyFont,

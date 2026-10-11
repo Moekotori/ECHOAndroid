@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -25,19 +26,22 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun MonthlyRecapShareSheet(report: EchoMonthlyRecap, onDismiss: () -> Unit) {
     val context = LocalContext.current
+    val shareTitle = stringResource(R.string.recap_share)
+    val monthLabel = YearMonth.of(report.year, report.month).format(
+        DateTimeFormatter.ofPattern("LLLL yyyy", LocalConfiguration.current.locales[0]),
+    )
     var style by rememberSaveable { mutableStateOf(MonthlyRecapCardStyle.Paper) }
     var busy by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
     var pendingExportFile by rememberSaveable { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val labels = MonthlyRecapCardLabels(
-        YearMonth.of(report.year, report.month).format(DateTimeFormatter.ofPattern("LLLL yyyy", context.resources.configuration.locales[0])),
+        monthLabel,
         stringResource(if (report.partial) R.string.recap_partial else R.string.recap_title),
         stringResource(R.string.recap_minutes_value, report.listenedMs / 60000),
         stringResource(R.string.recap_totals_value, report.totalPlays, report.activeDays),
@@ -95,7 +99,7 @@ internal fun MonthlyRecapShareSheet(report: EchoMonthlyRecap, onDismiss: () -> U
                 } }, enabled = image != null && !busy) { Text(stringResource(R.string.recap_export)) }
                 Button(onClick = { if (image != null) scope.launch {
                     busy = true; failed = false
-                    try { context.startActivity(android.content.Intent.createChooser(monthlyRecapShareIntent(context, image), context.getString(R.string.recap_share))) }
+                    try { context.startActivity(android.content.Intent.createChooser(monthlyRecapShareIntent(context, image), shareTitle)) }
                     catch (cancelled: CancellationException) { throw cancelled }
                     catch (_: Exception) { failed = true }
                     finally { busy = false }

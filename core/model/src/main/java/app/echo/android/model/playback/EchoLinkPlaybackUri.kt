@@ -41,23 +41,20 @@ object EchoLinkPlaybackUri {
     }
 
     fun requiresStreamResolve(mediaId: String, uri: String): Boolean {
-        if (trackId(mediaId, uri) == null) return false
-        return isOneShotStreamUri(uri) || trackIdFromPersistUri(uri) != null || trackIdFromMediaId(mediaId) != null
+        return trackId(mediaId, uri) != null && (isOneShotStreamUri(uri) || trackIdFromPersistUri(uri) != null || trackIdFromMediaId(mediaId) != null)
     }
 
     fun playUriNeedsResolve(playUri: String, playerUnavailable: Boolean): Boolean {
-        if (trackIdFromPersistUri(playUri) != null) return true
-        return isOneShotStreamUri(playUri) && playerUnavailable
+        return trackIdFromPersistUri(playUri) != null || isOneShotStreamUri(playUri) && playerUnavailable
     }
 
     fun isPcLibrarySource(sourceId: String?, mediaId: String?, uri: String): Boolean {
-        if (sourceId == LibrarySource.EchoLink.id) return true
-        return trackId(mediaId.orEmpty(), uri) != null
+        return sourceId == LibrarySource.EchoLink.id || trackId(mediaId.orEmpty(), uri) != null
     }
 
     private fun encodeSegment(value: String): String =
-        URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20")
+        URLEncoder.encode(value, StandardCharsets.UTF_8.name()).replace("+", "%20")
 
     private fun decodeSegment(value: String): String =
-        URLDecoder.decode(value, StandardCharsets.UTF_8)
+        URLDecoder.decode(value, StandardCharsets.UTF_8.name())
 }

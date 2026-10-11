@@ -1249,7 +1249,7 @@ internal fun formatLyricsOffset(offsetMs: Long): String {
         offsetMs < 0L -> "-"
         else -> ""
     }
-    val seconds = kotlin.math.abs(offsetMs) / 1000f
+    val seconds = abs(offsetMs) / 1000f
     return "$sign${"%.2f".format(seconds)}s"
 }
 

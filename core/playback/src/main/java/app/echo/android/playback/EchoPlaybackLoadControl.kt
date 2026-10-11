@@ -45,10 +45,7 @@ internal class EchoPlaybackLoadControl(
             EchoPlaybackCachePolicy.effectiveMode,
             EchoPlaybackProcessRuntime.usbNetworkEndpointActive,
         )
-        if (!EchoPlaybackLoadControlPolicy.shouldContinueLoading(parameters.bufferedDurationUs, budget.maxBufferMs)) {
-            return false
-        }
-        return delegate.shouldContinueLoading(parameters)
+        return EchoPlaybackLoadControlPolicy.shouldContinueLoading(parameters.bufferedDurationUs, budget.maxBufferMs) && delegate.shouldContinueLoading(parameters)
     }
 
     override fun shouldStartPlayback(parameters: LoadControl.Parameters): Boolean {

@@ -59,7 +59,7 @@ class EchoLinkRemoteQueueTest {
                 }
                 return EchoRemoteQueueState(items = items, totalCount = 1500, revision = revision, currentQueueId = "occurrence-0")
             }
-            override suspend fun sendCommand(endpoint: EchoRemoteEndpoint, command: EchoRemoteCommand): EchoLinkStatusResponse? {
+            override suspend fun sendCommand(endpoint: EchoRemoteEndpoint, command: EchoRemoteCommand): EchoLinkStatusResponse {
                 commands += command
                 revision++
                 return EchoLinkStatusResponse("PC", EchoRemotePlaybackSnapshot(queue = EchoRemotePlaybackQueue(revision = revision)))

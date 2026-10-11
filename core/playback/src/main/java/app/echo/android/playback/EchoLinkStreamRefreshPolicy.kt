@@ -22,7 +22,6 @@ object EchoLinkStreamRefreshPolicy {
         nextUri: String,
         currentMediaId: String?,
     ): Boolean {
-        if (nextMediaId.isNullOrBlank() || nextMediaId == currentMediaId) return false
-        return EchoLinkPlaybackUri.requiresStreamResolve(nextMediaId, nextUri)
+        return !(nextMediaId.isNullOrBlank() || nextMediaId == currentMediaId) && EchoLinkPlaybackUri.requiresStreamResolve(nextMediaId, nextUri)
     }
 }

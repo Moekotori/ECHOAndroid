@@ -56,7 +56,7 @@ internal class EchoRadioMediaSourceFactory(context: Context) : MediaSource.Facto
 
     // Preserve HLS timing/default position for live-edge loading; remove DVR controls.
     private class RadioTimeline(timeline: Timeline) : ForwardingTimeline(timeline) {
-        override fun getWindow(windowIndex: Int, window: Timeline.Window, defaultPositionProjectionUs: Long): Timeline.Window =
+        override fun getWindow(windowIndex: Int, window: Window, defaultPositionProjectionUs: Long): Window =
             super.getWindow(windowIndex, window, defaultPositionProjectionUs).also { it.isSeekable = false }
     }
 }

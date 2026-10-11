@@ -1,8 +1,28 @@
+import com.android.build.api.dsl.ApplicationExtension
+import com.android.build.api.dsl.LibraryExtension
+
 plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.android.library) apply false
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.ksp) apply false
+}
+
+subprojects {
+    pluginManager.withPlugin("com.android.application") {
+        extensions.configure<ApplicationExtension>("android") {
+            lint {
+                lintConfig = rootProject.file("lint.xml")
+            }
+        }
+    }
+    pluginManager.withPlugin("com.android.library") {
+        extensions.configure<LibraryExtension>("android") {
+            lint {
+                lintConfig = rootProject.file("lint.xml")
+            }
+        }
+    }
 }
 
 tasks.register("checkModules") {

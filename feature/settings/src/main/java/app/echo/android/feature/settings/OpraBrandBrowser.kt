@@ -177,10 +177,11 @@ internal fun OpraBrandLogo(name: String, logoUrl: String?, size: Dp) {
     ) {
         if (showImage) {
             val context = LocalContext.current
-                        val request = remember(context, logoUrl, size) {
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            val request = remember(context, logoUrl, size, density) {
                 ImageRequest.Builder(context)
                     .data(logoUrl)
-                    .size(with(context.resources.displayMetrics) { (size.value * density).toInt().coerceIn(32, 192) })
+                    .size(with(density) { size.toPx() }.toInt().coerceIn(32, 192))
                     .crossfade(false)
                     .setHeader("User-Agent", "ECHOAndroid/1.0")
                     .build()

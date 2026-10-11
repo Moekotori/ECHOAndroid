@@ -6,8 +6,7 @@ internal class EchoSeekHapticGate {
     private var lastPulseMs: Long? = null
 
     fun shouldPulse(fraction: Float, nowMs: Long): Boolean {
-        if (!fraction.isFinite()) return false
-        return shouldPulseStep((fraction.coerceIn(0f, 1f) * 20).toInt(), nowMs)
+        return fraction.isFinite() && shouldPulseStep((fraction.coerceIn(0f, 1f) * 20).toInt(), nowMs)
     }
 
     fun shouldPulseStep(next: Int, nowMs: Long): Boolean {

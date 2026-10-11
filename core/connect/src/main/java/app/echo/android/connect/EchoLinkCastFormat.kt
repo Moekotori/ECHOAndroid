@@ -217,8 +217,7 @@ object EchoLinkCastFormat {
     }
 
     private fun ByteArray.startsWith(ascii: String): Boolean {
-        if (size < ascii.length) return false
-        return ascii.indices.all { index -> this[index].toInt().toChar() == ascii[index] }
+        return size >= ascii.length && ascii.indices.all { index -> this[index].toInt().toChar() == ascii[index] }
     }
 
     private fun ByteArray.ascii(offset: Int, length: Int): String {

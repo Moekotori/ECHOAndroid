@@ -21,14 +21,18 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
+import androidx.glance.color.ColorProvider as DayNightColorProvider
 import androidx.glance.unit.ColorProvider
 import app.echo.android.MainActivity
 import app.echo.android.R
 import app.echo.android.playback.EchoPlaybackSurfaceSnapshot
 
+// Day and night match colors_playback_widget.xml. Resource ColorProvider is library-restricted.
+private fun widgetColor(day: Long, night: Long) = DayNightColorProvider(Color(day), Color(night))
+
 // Glance uses RemoteViews; shared drawables follow EchoIcon's neutral palette.
-internal val widgetForeground = ColorProvider(R.color.playback_widget_foreground)
-internal val widgetSecondary = ColorProvider(R.color.playback_widget_secondary)
+internal val widgetForeground = widgetColor(day = 0xFF303036, night = 0xFFF1F1F3)
+internal val widgetSecondary = widgetColor(day = 0xFF6C6C74, night = 0xFFADADB5)
 
 @Composable
 internal fun widgetLaunchIntent(context: Context): Intent {
@@ -44,7 +48,7 @@ internal fun widgetLaunchIntent(context: Context): Intent {
 internal fun WidgetArtwork(artwork: Bitmap?, size: Dp) {
     if (!LocalWidgetOptions.current.showArtwork) return
     Box(
-        GlanceModifier.size(size).background(ColorProvider(R.color.playback_widget_artwork_background))
+        GlanceModifier.size(size).background(widgetColor(day = 0xFFE5E5EA, night = 0xFF39393F))
             .cornerRadius(if (size >= 72.dp) 14.dp else 8.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -126,7 +130,7 @@ internal fun WidgetIconButton(resId: Int, description: String, action: Action?, 
         Image(ImageProvider(resId), description,
             colorFilter = ColorFilter.tint(when {
                 onArtwork -> ColorProvider(Color(0xFF303036))
-                prominent -> ColorProvider(R.color.playback_widget_background)
+                prominent -> widgetColor(day = 0xFFF5F5F7, night = 0xFF242428)
                 action != null -> widgetForeground
                 else -> widgetSecondary
             }),

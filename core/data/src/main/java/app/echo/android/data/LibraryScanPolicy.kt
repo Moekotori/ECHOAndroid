@@ -263,10 +263,9 @@ object LibraryScanPolicy {
 
     fun isPrimaryMediaStoreVolume(volumeName: String?): Boolean {
         val volume = volumeName?.trim().orEmpty()
-        if (volume.isEmpty()) return true
-        return volume.equals(MediaStorePrimaryVolume, ignoreCase = true) ||
-            volume.equals(MediaStoreExternalVolume, ignoreCase = true) ||
-            volume.equals("primary", ignoreCase = true)
+        return volume.isEmpty() || volume.equals(MediaStorePrimaryVolume, ignoreCase = true) ||
+                volume.equals(MediaStoreExternalVolume, ignoreCase = true) ||
+                volume.equals("primary", ignoreCase = true)
     }
 
     fun resolvedMediaStoreVolumeName(

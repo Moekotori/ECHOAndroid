@@ -55,8 +55,7 @@ object EchoLanRendererPolicy {
 
     fun isRendererAdvertisement(st: String?, nt: String?, usn: String?): Boolean {
         val haystack = listOfNotNull(st, nt, usn).joinToString(" ").lowercase()
-        if (haystack.isBlank()) return false
-        return "mediarenderer" in haystack || "avtransport" in haystack
+        return haystack.isNotBlank() && ("mediarenderer" in haystack || "avtransport" in haystack)
     }
 
     fun isLanHttpUrl(url: String): Boolean {
@@ -70,8 +69,7 @@ object EchoLanRendererPolicy {
         if (parts.size == 4) {
             val first = parts[0].toIntOrNull() ?: return false
             val second = parts[1].toIntOrNull() ?: return false
-            if (parts.any { it.toIntOrNull()?.let { n -> n in 0..255 } != true }) return false
-            return first == 10 || first == 192 && second == 168 || first == 172 && second in 16..31
+            return !parts.any { it.toIntOrNull()?.let { n -> n in 0..255 } != true } && (first == 10 || first == 192 && second == 168 || first == 172 && second in 16..31)
         }
         val lower = host.lowercase()
         return lower.startsWith("fd") || lower.startsWith("fe80:")

@@ -1,5 +1,6 @@
 package app.echo.android.feature.player
 
+import android.annotation.SuppressLint
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.os.Build
@@ -62,8 +63,7 @@ internal fun VerticalLyricText(
             val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 textSize = textPx
                 this.typeface = typeface
-                if (nativeVertical) flags = flags or Paint.VERTICAL_TEXT_FLAG
-                else textAlign = Paint.Align.CENTER
+                if (nativeVertical) enableVerticalText(this) else textAlign = Paint.Align.CENTER
             }
             val base = color.toArgb()
             val lit = highlight.toArgb()
@@ -99,4 +99,10 @@ internal fun VerticalLyricText(
             }
         })
     }
+}
+
+/** API 36 flag. It is absent from Paint's older flags IntDef, but the value is the platform constant. */
+@SuppressLint("WrongConstant")
+private fun enableVerticalText(paint: Paint) {
+    paint.flags = paint.flags or Paint.VERTICAL_TEXT_FLAG
 }

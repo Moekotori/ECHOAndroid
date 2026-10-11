@@ -265,6 +265,9 @@ class EchoChromecastClient {
         const val HEARTBEAT_MS = 5_000L
     }
 
+    // Cast devices present a local certificate that public CAs do not sign.
+    // This trust manager is used only for that socket, not for general HTTPS.
+    @android.annotation.SuppressLint("CustomX509TrustManager", "TrustAllX509TrustManager")
     private object LanTrustManager : X509TrustManager {
         override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) = Unit
         override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) = Unit

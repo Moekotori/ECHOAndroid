@@ -15,14 +15,12 @@ object PlaybackQueueInsertPolicy {
 
     fun shouldSkipInsert(existingIds: List<String>, insertIndex: Int, trackId: String): Boolean {
         val id = trackId.trim()
-        if (id.isEmpty()) return true
-        return existingIds.getOrNull(insertIndex.coerceAtLeast(0)) == id
+        return id.isEmpty() || existingIds.getOrNull(insertIndex.coerceAtLeast(0)) == id
     }
 
     fun shouldSkipEnqueue(existingIds: List<String>, trackId: String): Boolean {
         val id = trackId.trim()
-        if (id.isEmpty()) return true
-        return existingIds.lastOrNull() == id
+        return id.isEmpty() || existingIds.lastOrNull() == id
     }
 
     fun moveIndex(fromIndex: Int, toIndex: Int, queueSize: Int): Pair<Int, Int>? {

@@ -113,8 +113,7 @@ class EchoLinkCastServer(
     fun isIdle(nowMs: Long, timeoutMs: Long = EchoLinkCastPolicy.IdleTimeoutMs): Boolean {
         if (!running.get()) return false
         val last = lastActivityMs.get()
-        if (last <= 0L) return false
-        return nowMs - last >= timeoutMs
+        return last > 0L && nowMs - last >= timeoutMs
     }
 
     fun publish(items: List<EchoLinkCastPublication>, host: String, boundPort: Int): List<EchoRemoteStreamItem> {
@@ -326,7 +325,7 @@ class EchoLinkCastServer(
 
     private fun serveArtwork(
         client: Socket,
-        output: java.io.OutputStream,
+        output: OutputStream,
         method: String,
         publication: EchoLinkCastPublication,
         rangeHeader: String?,

@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalResources
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.echo.android.EchoAndroidViewModel
 import app.echo.android.data.EchoAppSettings
@@ -30,6 +31,7 @@ internal fun EchoAddMusicPage(
     onScanAll: (LibraryScanOptions) -> Unit,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val configuration = LocalConfiguration.current
     val trees by viewModel.watchedLibraryTrees.collectAsStateWithLifecycle(initialValue = null)
     val scan by viewModel.scanState.collectAsStateWithLifecycle()
@@ -52,15 +54,15 @@ internal fun EchoAddMusicPage(
         scope.launch {
             try { operation() }
             catch (cancelled: CancellationException) { throw cancelled }
-            catch (_: Exception) { actionError = context.getString(failureMessage) }
+            catch (_: Exception) { actionError = resources.getString(failureMessage) }
             finally { actionBusy = false }
         }
     }
     val playlistPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) updateSettings(LibraryR.string.add_music_playlist_error) {
             val playlist = viewModel.importM3uPlaylistWithResult(uri)
-            if (playlist == null) actionError = context.getString(LibraryR.string.add_music_playlist_no_match)
-            else Toast.makeText(context, context.getString(LibraryR.string.add_music_playlist_imported, playlist.name),
+            if (playlist == null) actionError = resources.getString(LibraryR.string.add_music_playlist_no_match)
+            else Toast.makeText(context, resources.getString(LibraryR.string.add_music_playlist_imported, playlist.name),
                 Toast.LENGTH_SHORT).show()
         }
     }

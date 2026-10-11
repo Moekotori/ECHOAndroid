@@ -332,7 +332,7 @@ internal class LibraryController(
         refreshLibrary(relativePathPrefix = null, options = options)
     }
 
-    fun startWatchingMediaStore(resolver: android.content.ContentResolver) {
+    fun startWatchingMediaStore(resolver: ContentResolver) {
         if (mediaStoreObserver != null) return
         mediaStoreObserver = app.echo.android.data.MediaStoreLibraryObserver(
             resolver = resolver,

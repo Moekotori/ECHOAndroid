@@ -37,21 +37,22 @@ object EchoUsbExclusiveApplyPolicy {
         permissionGranted: Boolean,
         openState: UsbExclusiveOutputState,
     ): Boolean {
-        if (!connected || !permissionGranted) return true
-        return when (openState) {
+        return !connected || !permissionGranted || when (openState) {
             UsbExclusiveOutputState.DeviceUnavailable,
             UsbExclusiveOutputState.PermissionDenied,
-            -> true
+                -> true
+
             UsbExclusiveOutputState.FormatUnavailable,
             UsbExclusiveOutputState.OpenFailed,
             UsbExclusiveOutputState.UnsupportedTransport,
             UsbExclusiveOutputState.Closed,
-            -> false
+                -> false
+
             UsbExclusiveOutputState.Idle,
             UsbExclusiveOutputState.Opening,
             UsbExclusiveOutputState.Ready,
             UsbExclusiveOutputState.Streaming,
-            -> true
+                -> true
         }
     }
 

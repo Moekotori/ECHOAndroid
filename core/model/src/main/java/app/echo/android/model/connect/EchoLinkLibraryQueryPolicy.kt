@@ -60,8 +60,7 @@ object EchoLinkLibraryQueryPolicy {
     fun shouldKeepLoadedTracksForQuery(query: String, previousTrackCount: Int): Boolean {
         if (previousTrackCount <= 0) return false
         val trimmed = query.trim()
-        if (trimmed.isEmpty()) return false
-        return !trimmed.any(::isCjk)
+        return trimmed.isNotEmpty() && !trimmed.any(::isCjk)
     }
 
     fun shouldKeepPreviousTracksOnEmptyRemotePage(
@@ -69,8 +68,7 @@ object EchoLinkLibraryQueryPolicy {
         remoteTrackCount: Int,
         previousTrackCount: Int,
     ): Boolean {
-        if (remoteTrackCount > 0) return false
-        return shouldKeepLoadedTracksForQuery(query, previousTrackCount)
+        return remoteTrackCount <= 0 && shouldKeepLoadedTracksForQuery(query, previousTrackCount)
     }
 
     private fun isCjk(ch: Char): Boolean =

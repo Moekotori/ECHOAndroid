@@ -50,7 +50,7 @@ internal class NextUpQueueController(private val player: ExoPlayer) : Player.Lis
         )
             else items.indices.toList()
         val order = retained.indices.toList() + albumOrder.map { retained.size + it }
-        player.setShuffleOrder(ShuffleOrder.DefaultShuffleOrder(order.toIntArray(), 0L))
+        player.shuffleOrder = ShuffleOrder.DefaultShuffleOrder(order.toIntArray(), 0L)
         reshuffle = false
         spreadUpcoming = false
         player.prepare()
@@ -107,7 +107,7 @@ internal class NextUpQueueController(private val player: ExoPlayer) : Player.Lis
                     order.remove(from)
                     order.add(at, from)
                     rememberNext(order)
-                    player.setShuffleOrder(ShuffleOrder.DefaultShuffleOrder(order.toIntArray(), 0L))
+                    player.shuffleOrder = ShuffleOrder.DefaultShuffleOrder(order.toIntArray(), 0L)
                 } else player.moveMediaItem(from, to)
             }
         }
@@ -116,7 +116,7 @@ internal class NextUpQueueController(private val player: ExoPlayer) : Player.Lis
     fun restoreOrder(order: List<Int>) = change {
         if (NextUpQueuePolicy.validOrder(order, player.mediaItemCount)) {
             rememberNext(order)
-            player.setShuffleOrder(ShuffleOrder.DefaultShuffleOrder(order.toIntArray(), 0L))
+            player.shuffleOrder = ShuffleOrder.DefaultShuffleOrder(order.toIntArray(), 0L)
         }
     }
 
@@ -243,7 +243,7 @@ internal class NextUpQueueController(private val player: ExoPlayer) : Player.Lis
             reshuffle = false
             spreadUpcoming = false
             if (desired != existing) {
-                player.setShuffleOrder(ShuffleOrder.DefaultShuffleOrder(desired.toIntArray(), 0L))
+                player.shuffleOrder = ShuffleOrder.DefaultShuffleOrder(desired.toIntArray(), 0L)
             }
         } finally { changing = false }
     }

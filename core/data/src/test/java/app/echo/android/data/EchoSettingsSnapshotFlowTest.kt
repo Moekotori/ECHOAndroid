@@ -15,7 +15,7 @@ class EchoSettingsSnapshotFlowTest {
         val source = MutableStateFlow(1)
         val caller = Thread.currentThread()
         var decodes = 0
-        val settings = source.mapSettingsSnapshot(revision = { Unit }) {
+        val settings = source.mapSettingsSnapshot(revision = { }) {
             assertNotEquals(caller, Thread.currentThread())
             decodes++
             "settings-$it"

@@ -22,8 +22,7 @@ internal class EchoDffExtractor : Extractor {
 
     override fun sniff(input: ExtractorInput): Boolean {
         val header = ByteArray(16)
-        if (!input.peekFully(header, 0, 16, true)) return false
-        return EchoDffLayout.sniff(header)
+        return input.peekFully(header, 0, 16, true) && EchoDffLayout.sniff(header)
     }
 
     override fun init(output: ExtractorOutput) {

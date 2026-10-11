@@ -102,8 +102,7 @@ internal object EchoSmartTransitionPolicy {
     fun ratesCompatible(outputRateHz: Int?, currentRateHz: Int?, nextRateHz: Int?): Boolean {
         val left = outputRateHz ?: currentRateHz
         val right = nextRateHz
-        if (left == null || right == null) return true
-        return left == right
+        return left == null || right == null || left == right
     }
 
     fun holdFrames(remainingMs: Long, overlapMs: Int, sampleRateHz: Int): Int {
@@ -135,8 +134,7 @@ internal object EchoSmartTransitionPolicy {
             if (source.isLocalAudioFile) return true
         }
         val normalized = uri.trim().lowercase()
-        if (normalized.startsWith("http://") || normalized.startsWith("https://")) return false
-        return normalized.startsWith("content:") || normalized.startsWith("file:")
+        return !(normalized.startsWith("http://") || normalized.startsWith("https://")) && (normalized.startsWith("content:") || normalized.startsWith("file:"))
     }
 
     fun maxOverlapMs(candidate: Candidate): Int {

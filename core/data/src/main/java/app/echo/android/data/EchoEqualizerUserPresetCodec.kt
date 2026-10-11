@@ -40,8 +40,7 @@ object EchoEqualizerUserPresetCodec {
                 val json = array.optJSONObject(index) ?: continue
                 val id = json.optString("id").trim()
                 val name = json.optString("name")
-                val filtersRaw = json.opt("filters")
-                val filters = when (filtersRaw) {
+                val filters = when (val filtersRaw = json.opt("filters")) {
                     is JSONArray -> parseEqualizerFilters(filtersRaw.toString())
                     is String -> parseEqualizerFilters(filtersRaw)
                     else -> emptyList()

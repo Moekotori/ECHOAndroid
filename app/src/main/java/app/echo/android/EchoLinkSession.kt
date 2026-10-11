@@ -531,7 +531,7 @@ class EchoLinkSession(private val application: Application) {
             index = dlnaIndex,
             track = source,
             isPlaying = playing,
-            durationMs = durationMs ?: if (sameTrack) previous!!.durationMs else source.durationMs,
+            durationMs = durationMs ?: if (sameTrack) previous.durationMs else source.durationMs,
             volume = previous?.volume,
         )
         sampleCastPosition(positionMs)

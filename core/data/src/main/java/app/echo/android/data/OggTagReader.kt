@@ -29,7 +29,7 @@ internal object OggTagReader {
                 return@repeat
             }
             if (serial == null) serial = pageSerial
-            if (sequence != null && pageSequence != ((sequence!! + 1) and 0xFFFFFFFFL)) return null
+            if (sequence != null && pageSequence != ((sequence + 1) and 0xFFFFFFFFL)) return null
             sequence = pageSequence
             val continued = header[5].toInt() and 1 != 0
             if (continued != (packet.size() > 0)) return null

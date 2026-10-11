@@ -538,8 +538,7 @@ internal object AudioFileTagRewriter {
     }
 
     private fun isReplayGainTrackTxxx(frame: Id3Frame): Boolean {
-        if (frame.id != "TXXX") return false
-        return txxxDescription(frame.payload).equals("REPLAYGAIN_TRACK_GAIN", ignoreCase = true)
+        return frame.id == "TXXX" && txxxDescription(frame.payload).equals("REPLAYGAIN_TRACK_GAIN", ignoreCase = true)
     }
 
     private fun txxxDescription(payload: ByteArray): String {

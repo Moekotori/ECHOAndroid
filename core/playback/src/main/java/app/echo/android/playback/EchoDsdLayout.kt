@@ -35,8 +35,7 @@ internal data class EchoDsfLayout(
         const val HeaderBytes = 92
 
         fun sniff(header: ByteArray): Boolean {
-            if (header.size < 12) return false
-            return fourcc(header, 0) == "DSD " && u64le(header, 4) == 28L
+            return header.size >= 12 && fourcc(header, 0) == "DSD " && u64le(header, 4) == 28L
         }
 
         fun parse(header: ByteArray): EchoDsfLayout? {
@@ -112,8 +111,7 @@ internal data class EchoDffLayout(
         const val PacketFrames = 4096
 
         fun sniff(header: ByteArray): Boolean {
-            if (header.size < 16) return false
-            return fourcc(header, 0) == "FRM8" && fourcc(header, 12) == "DSD "
+            return header.size >= 16 && fourcc(header, 0) == "FRM8" && fourcc(header, 12) == "DSD "
         }
     }
 }

@@ -51,8 +51,10 @@ class EchoBackGestureTest {
         assertEquals(listOf(0.2f), updates)
     }
 
-    @Test fun staleEnabledCallbackDoesNotEvenCollect() = runBlocking {
-        collectEchoBackGesture(flow { fail("Inactive owner collected"); emit(1f) }, { false }, {},
+    @Test fun inactiveOwnerCollectsWithoutSideEffects() = runBlocking {
+        val updates = mutableListOf<Float>()
+        collectEchoBackGesture(flowOf(0.4f, 1f), { false }, updates::add,
             { fail("Inactive owner restored") }, { fail("Inactive owner committed") })
+        assertTrue(updates.isEmpty())
     }
 }

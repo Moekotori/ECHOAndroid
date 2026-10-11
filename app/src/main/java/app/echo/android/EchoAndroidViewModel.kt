@@ -221,9 +221,9 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     val playbackStatus: StateFlow<EchoPlaybackStatus> = playbackController.playbackStatus
     val playbackMetadata: StateFlow<PlaybackMetadataState> = playbackController.playbackMetadata
     val playbackPosition: StateFlow<PlaybackPositionState> = playbackController.playbackPosition
-    val abLoop = app.echo.android.playback.EchoPlaybackProcessRuntime.abLoop
+    val abLoop = EchoPlaybackProcessRuntime.abLoop
     fun currentPlaybackPositionMs(): Long = playbackController.currentPositionMs()
-    internal suspend fun saveEditedLyrics(trackId: String, lyrics: app.echo.android.model.lyrics.EchoLyrics) {
+    internal suspend fun saveEditedLyrics(trackId: String, lyrics: EchoLyrics) {
         val track = playbackStatus.value.track?.takeIf { it.id == trackId }
         val enriched = if (track == null) lyrics else lyrics.copy(metadata = lyrics.metadata + mapOf(
             "echo_title" to track.title, "echo_artist" to track.artist, "echo_album" to track.album.orEmpty(), "echo_duration_ms" to track.durationMs.toString()))
@@ -603,7 +603,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     internal suspend fun batchDeleteTracks(
         tracks: List<EchoTrack>, deleteOriginals: Boolean,
-        authorize: suspend (android.content.IntentSender) -> Boolean,
+        authorize: suspend (IntentSender) -> Boolean,
     ) = repository.deleteSelectedTracks(tracks, deleteOriginals, authorize) { deletedUris ->
         withContext(Dispatchers.Main.immediate) {
             playbackController.removeDeletedFiles(deletedUris)

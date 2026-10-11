@@ -90,7 +90,7 @@ class EchoLibraryRepository(
         val dao = database.trackDao()
         val missing = LibraryHygienePolicy.missingIds(
             dao.localTrackLocations().map { row ->
-                row.id to app.echo.android.model.library.CueSheetPolicy.playbackUri(row.contentUri)
+                row.id to CueSheetPolicy.playbackUri(row.contentUri)
             },
             exists = ::localUriExists,
         )
@@ -106,8 +106,7 @@ class EchoLibraryRepository(
     }
 
     internal fun localUriExists(uri: String): Boolean {
-        if (uri.isBlank()) return false
-        return runCatching {
+        return uri.isNotBlank() && runCatching {
             val parsed = android.net.Uri.parse(uri)
             when (parsed.scheme) {
                 "file" -> java.io.File(parsed.path.orEmpty()).exists()
@@ -807,7 +806,7 @@ class EchoLibraryRepository(
             return@withContext embeddedLyricsStore.read(track)
         }
         val uri = android.net.Uri.parse(
-            app.echo.android.model.library.CueSheetPolicy.playbackUri(track.contentUri),
+            CueSheetPolicy.playbackUri(track.contentUri),
         )
         try {
             appContext.contentResolver.openInputStream(uri)?.use { input ->
@@ -2064,8 +2063,7 @@ class EchoLibraryRepository(
     }
 
     private suspend fun canUseFts(dao: LibraryTrackDao, matchQuery: String, rawQuery: String): Boolean {
-        if (matchQuery.isBlank() || rawQuery.isBlank()) return false
-        return runCatching { dao.validateFtsQuery(matchQuery) }.isSuccess
+        return !(matchQuery.isBlank() || rawQuery.isBlank()) && runCatching { dao.validateFtsQuery(matchQuery) }.isSuccess
     }
 
     private suspend fun trackQueueCandidates(
@@ -2300,7 +2298,7 @@ class EchoLibraryRepository(
             if (document.id !in liveIds) continue
             val name = runCatching {
                 val uri = android.net.Uri.parse(
-                    app.echo.android.model.library.CueSheetPolicy.playbackUri(document.contentUri),
+                    CueSheetPolicy.playbackUri(document.contentUri),
                 )
                 if (uri.authority != "com.android.externalstorage.documents") return@runCatching null
                 android.provider.DocumentsContract.getDocumentId(uri).substringAfter(':').substringAfterLast('/')
@@ -2320,7 +2318,7 @@ class EchoLibraryRepository(
             aliases += document.id to destination
             for (copy in native.otherCopies(target.id)) {
                 if (copy.id == document.id || copy.id == destination || copy.id !in liveIds) continue
-                val copyDestination = if (destination in liveIds && !app.echo.android.model.library.CueSheetPolicy.isCueTrackId(copy.id)) {
+                val copyDestination = if (destination in liveIds && !CueSheetPolicy.isCueTrackId(copy.id)) {
                     destination
                 } else {
                     LibraryScanPolicy.duplicateMergeTarget(copy.id, target.id, liveIds, cueChildren)

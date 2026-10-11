@@ -53,9 +53,6 @@ object UsbPcmFormatSelector {
         if (format.sampleRates.isNotEmpty()) return sampleRateHz in format.sampleRates
         val minHz = format.sampleRateMinHz
         val maxHz = format.sampleRateMaxHz
-        if (minHz != null && maxHz != null && minHz > 0 && maxHz >= minHz) {
-            return sampleRateHz in minHz..maxHz
-        }
-        return true
+        return !(minHz != null && maxHz != null && minHz > 0 && maxHz >= minHz) || sampleRateHz in minHz..maxHz
     }
 }

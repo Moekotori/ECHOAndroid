@@ -1171,7 +1171,7 @@ private fun formatTrackSampleRate(hz: Int): String =
     if (hz % 1000 == 0) {
         "${hz / 1000}kHz"
     } else {
-        String.format("%.1fkHz", hz / 1000.0)
+        String.format(java.util.Locale.ROOT, "%.1fkHz", hz / 1000.0)
     }
 
 private fun String.toPositiveIntOrNull(): Int? =

@@ -115,7 +115,7 @@ class ImportedLyricsStore(
         val bindings = prefs[Keys.BINDINGS]?.let(::parseBindings) ?: JSONObject()
         val offsets = prefs[Keys.OFFSETS]?.let(::parseBindings) ?: JSONObject()
         val ids = (bindings.keys().asSequence().toList() + offsets.keys().asSequence().toList()).toMutableSet()
-        val files = java.io.File(context.filesDir, "lyrics/selected").listFiles()?.filter { it.extension == "json" }.orEmpty()
+        val files = File(context.filesDir, "lyrics/selected").listFiles()?.filter { it.extension == "json" }.orEmpty()
         require(files.size <= 10000)
         val unknown = mutableMapOf<String,String>()
         val texts = mutableMapOf<String,String>()

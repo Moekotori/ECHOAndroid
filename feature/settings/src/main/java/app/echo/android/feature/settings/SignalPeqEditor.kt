@@ -126,7 +126,7 @@ private fun PeqBandEditor(
         EchoEqFilterType.BandStop to R.string.dsp_notch,
         EchoEqFilterType.BandPass to R.string.dsp_band_pass,
     )
-    val type = app.echo.android.model.playback.EchoEqFilterType.normalize(band.type)
+    val type = EchoEqFilterType.normalize(band.type)
     val pass = EchoParametricEq.isPass(type)
     val removeLabel = stringResource(R.string.dsp_remove)
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {

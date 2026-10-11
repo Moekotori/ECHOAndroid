@@ -154,7 +154,7 @@ internal object EchoSmartTransitionTempoMath {
                 winner = bin
             }
         }
-        if (best / peaks < EchoSmartTransitionTempoMath.MinimumConfidence) return null
+        if (best / peaks < MinimumConfidence) return null
         return winner * periodFrames / bins
     }
 }
