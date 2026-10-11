@@ -539,6 +539,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                 CASE WHEN source = 'mediastore' OR source = 'saf' THEN 0 ELSE 1 END,
                 CASE WHEN album IS NULL OR trim(album) = '' THEN '未知专辑' ELSE album END,
                 CASE
+                    WHEN (source = 'mediastore' OR source = 'saf') AND albumKey LIKE '%::various artists' THEN '群星'
                     WHEN MAX(CASE WHEN albumArtist IS NOT NULL AND trim(albumArtist) != '' THEN albumArtist END) IS NOT NULL
                         THEN MAX(CASE WHEN albumArtist IS NOT NULL AND trim(albumArtist) != '' THEN albumArtist END)
                     WHEN COUNT(DISTINCT artistKey) > 1 THEN '群星'
@@ -615,6 +616,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                 CASE WHEN source = 'mediastore' OR source = 'saf' THEN 0 ELSE 1 END,
                 CASE WHEN album IS NULL OR trim(album) = '' THEN '未知专辑' ELSE album END,
                 CASE
+                    WHEN (source = 'mediastore' OR source = 'saf') AND albumKey LIKE '%::various artists' THEN '群星'
                     WHEN MAX(CASE WHEN albumArtist IS NOT NULL AND trim(albumArtist) != '' THEN albumArtist END) IS NOT NULL
                         THEN MAX(CASE WHEN albumArtist IS NOT NULL AND trim(albumArtist) != '' THEN albumArtist END)
                     WHEN COUNT(DISTINCT artistKey) > 1 THEN '群星'

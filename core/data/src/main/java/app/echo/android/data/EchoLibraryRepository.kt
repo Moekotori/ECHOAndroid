@@ -61,6 +61,11 @@ class EchoLibraryRepository(
     private fun text(@StringRes id: Int, vararg args: Any): String =
         if (args.isEmpty()) appContext.getString(id) else appContext.getString(id, *args)
     private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val albumGroupingMaintenance by lazy {
+        LibraryAlbumGroupingMaintenance(database.trackDao(), DATABASE_BATCH_SIZE) { keys ->
+            rebuildSummariesIfNeeded(database.trackDao(), keys)
+        }
+    }
     private val documentListings by lazy {
         DocumentTreeListingCache(java.io.File(appContext.cacheDir, "scan-saf-listings-v1.json"))
     }
@@ -727,7 +732,7 @@ class EchoLibraryRepository(
             current.copy(
                 trackNumber = row.trackNumber,
                 metadataEditedAtEpochMs = now,
-            ).withScanMetadata()
+            ).withFingerprint()
         }
         if (updates.isEmpty()) return false
         updates.chunked(DATABASE_BATCH_SIZE).forEach { chunk ->
@@ -829,14 +834,20 @@ class EchoLibraryRepository(
         val indexChanged = !current.hasSameUserMetadata(updated)
         if (indexChanged) {
             dao.upsertBatchWithFts(listOf(updated))
-            val albums = listOfNotNull(current.normalizedAlbum, updated.normalizedAlbum).distinct()
-            val siblings = albums.flatMap { album -> dao.getLocalTracksByNormalizedAlbum(album) }
-            var summaryKeys = current.toSummaryKeySet() + updated.toSummaryKeySet() + siblings.toSummaryKeySet()
-            val regrouped = reconcileLocalAlbumGrouping(dao, siblings.ifEmpty { listOf(updated) })
+            var summaryKeys = current.toSummaryKeySet() + updated.toSummaryKeySet()
+            val regrouped = if (updated.albumKey != current.albumKey && LibraryScanPolicy.isLocalLibrarySource(updated.source)) {
+                albumGroupingMaintenance.reconcileAlbums(
+                    listOfNotNull(
+                        LibraryAlbumGrouping.albumNameForKey(current.normalizedAlbum),
+                        LibraryAlbumGrouping.albumNameForKey(updated.normalizedAlbum),
+                    ).toSet(),
+                    LibraryAlbumGrouping.groupingFolders(listOf(current.relativePath, updated.relativePath)),
+                )
+            } else emptyList()
             summaryKeys += regrouped.toSummaryKeySet()
             rebuildSummariesIfNeeded(dao, summaryKeys)
         }
-        val target = if (indexChanged) updated else current
+        val target = if (indexChanged) dao.getTrackById(updated.id) ?: updated else current
         val fileWrite = writeEmbeddedTags(target, update.toAudioTagFields().copy(genre = target.genre, composer = target.composer,
             genreModified = update.genre != null, composerModified = update.composer != null))
         persistWrittenFileStats(dao, target, fileWrite)
@@ -880,13 +891,14 @@ class EchoLibraryRepository(
         fileWrite: EmbeddedTagWriteResult,
     ) {
         val written = fileWrite as? EmbeddedTagWriteResult.Written ?: return
-        val stamped = track.copy(
+        val latest = dao.getTrackById(track.id) ?: return
+        val stamped = latest.copy(
             sizeBytes = written.sizeBytes,
             dateModifiedSeconds = written.dateModifiedSeconds,
-        ).withScanMetadata()
-        if (stamped.fingerprint == track.fingerprint &&
-            stamped.sizeBytes == track.sizeBytes &&
-            stamped.dateModifiedSeconds == track.dateModifiedSeconds
+        ).withFingerprint()
+        if (stamped.fingerprint == latest.fingerprint &&
+            stamped.sizeBytes == latest.sizeBytes &&
+            stamped.dateModifiedSeconds == latest.dateModifiedSeconds
         ) {
             return
         }
@@ -902,7 +914,7 @@ class EchoLibraryRepository(
         val updated = current.copy(
             artworkUri = trimmed,
             metadataEditedAtEpochMs = System.currentTimeMillis(),
-        ).withScanMetadata()
+        ).withFingerprint()
         if (!current.hasSameUserMetadata(updated)) {
             dao.upsertBatchWithFts(listOf(updated))
             rebuildSummariesIfNeeded(dao, current.toSummaryKeySet() + updated.toSummaryKeySet())
@@ -1142,7 +1154,9 @@ class EchoLibraryRepository(
                     insertedCount += classified.inserts.size
                     updatedCount += classified.updates.size
                     changedGroupingFolders += LibraryAlbumGrouping.groupingFolders(
-                        (classified.inserts + classified.updates).map { it.relativePath },
+                        (classified.inserts + classified.updates).flatMap {
+                            listOf(it.relativePath, existingFingerprints[it.id]?.relativePath)
+                        },
                     )
                     lastProgressEmitCount = scannedCount
                     lastProgressEmitAtMs = System.currentTimeMillis()
@@ -1220,7 +1234,7 @@ class EchoLibraryRepository(
                 },
             )
             if (scanOutcome.querySucceeded) {
-                reconcileChangedAlbumGrouping(dao, changedGroupingFolders)
+                albumGroupingMaintenance.reconcileFolders(changedGroupingFolders)
             }
             scanner.pruneLocalArtwork(dao)
             emitProgress(
@@ -1388,7 +1402,9 @@ class EchoLibraryRepository(
                     insertedCount += classified.inserts.size
                     updatedCount += classified.updates.size
                     changedGroupingFolders += LibraryAlbumGrouping.groupingFolders(
-                        (classified.inserts + classified.updates).map { it.relativePath },
+                        (classified.inserts + classified.updates).flatMap {
+                            listOf(it.relativePath, existingFingerprints[it.id]?.relativePath)
+                        },
                     )
                     lastProgressEmitCount = scannedCount
                     lastProgressEmitAtMs = System.currentTimeMillis()
@@ -1441,7 +1457,7 @@ class EchoLibraryRepository(
             )
             deletedCount = deletion.deletedCount
             if (scanOutcome.querySucceeded) {
-                reconcileChangedAlbumGrouping(dao, changedGroupingFolders)
+                albumGroupingMaintenance.reconcileFolders(changedGroupingFolders)
             }
             scanner.pruneLocalArtwork(dao)
             emitProgress(
@@ -2109,11 +2125,7 @@ class EchoLibraryRepository(
     }
 
     private fun LibraryTrackEntity.albumKey(): String =
-        libraryAlbumKey(
-            normalizedAlbum = normalizedAlbum,
-            normalizedAlbumArtist = normalizedAlbumArtist,
-            normalizedArtist = normalizedArtist,
-        )
+        resolvedAlbumKey()
 
     private fun LibraryTrackEntity.artistKey(): String =
         libraryArtistKey(normalizedArtist)
@@ -2181,55 +2193,6 @@ class EchoLibraryRepository(
         }
         if (changed) dao.rebuildLibrarySummaries()
         scanner.markAggregationKeyBackfillComplete()
-    }
-
-    private suspend fun reconcileChangedAlbumGrouping(
-        dao: LibraryTrackDao,
-        groupingFolders: Set<String>,
-    ) {
-        if (groupingFolders.isEmpty()) return
-        val tracks = if (
-            LibraryScanPolicy.shouldRebuildLibrarySummariesIncrementally(
-                changedKeyCount = groupingFolders.size,
-                existingAlbumSummaryCount = dao.countAlbumSummaries(),
-            )
-        ) {
-            val ids = LibraryAlbumGrouping.trackIdsInGroupingFolders(
-                rows = dao.getLocalIdPaths(),
-                folders = groupingFolders,
-            )
-            if (ids.isEmpty()) return
-            val loaded = ArrayList<LibraryTrackEntity>(ids.size)
-            ids.chunked(DATABASE_BATCH_SIZE).forEach { chunk ->
-                coroutineContext.ensureActive()
-                loaded += dao.getTracksByIds(chunk)
-                yield()
-            }
-            loaded
-        } else {
-            dao.getLocalLibraryTracks()
-        }
-        reconcileLocalAlbumGrouping(dao, tracks)
-    }
-
-    private suspend fun reconcileLocalAlbumGrouping(
-        dao: LibraryTrackDao,
-        tracks: List<LibraryTrackEntity>,
-    ): List<LibraryTrackEntity> {
-        val changed = LibraryAlbumGrouping.reconcile(tracks)
-        if (changed.isEmpty()) return emptyList()
-        val before = tracks.associateBy { it.id }
-        val summaryKeys = LibrarySummaryKeyAccumulator()
-        changed.forEach { next ->
-            before[next.id]?.let { summaryKeys.add(it.toSummaryKeySet()) }
-            summaryKeys.add(next.toSummaryKeySet())
-        }
-        changed.chunked(DATABASE_BATCH_SIZE).forEach { chunk ->
-            dao.upsertBatchWithFts(chunk)
-            yield()
-        }
-        rebuildSummariesIfNeeded(dao, summaryKeys.build())
-        return changed
     }
 
     private fun albumPlaybackQuery(albumKey: String, limit: Int): SimpleSQLiteQuery =
@@ -2434,8 +2397,8 @@ class EchoLibraryRepository(
                     incomingFingerprint = incomingFingerprint,
                 )
             ) {
-                LibraryScanRowAction.Insert -> inserts += preserved.withScanMetadata(scanRunId)
-                LibraryScanRowAction.Update -> updates += preserved.withScanMetadata(scanRunId)
+                LibraryScanRowAction.Insert -> inserts += preserved.withScanMetadata(scanRunId, editedTracks[preserved.id])
+                LibraryScanRowAction.Update -> updates += preserved.withScanMetadata(scanRunId, editedTracks[preserved.id])
                 LibraryScanRowAction.RememberSeen -> Unit
             }
         }

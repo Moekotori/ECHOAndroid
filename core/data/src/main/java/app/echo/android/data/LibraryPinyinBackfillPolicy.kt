@@ -23,7 +23,7 @@ internal object LibraryPinyinBackfillPolicy {
             fieldMatchesBackfillQuery(track.album, track.pinyinAlbum, track.normalizedAlbum)
 
     fun apply(track: LibraryTrackEntity): LibraryTrackEntity {
-        val computed = track.withComputedSearchMetadata()
+        val computed = track.withComputedSearchMetadata().withPreservedAlbumGrouping(track)
         return computed.copy(
             pinyinTitle = finalizePinyinField(computed.title, computed.pinyinTitle, computed.normalizedTitle),
             pinyinArtist = finalizePinyinField(computed.artist, computed.pinyinArtist, computed.normalizedArtist),

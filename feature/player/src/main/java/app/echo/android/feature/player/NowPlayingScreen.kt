@@ -473,7 +473,8 @@ fun NowPlayingScreen(
             } else {
             if (drawLyricsBackdrop) {
                 val backdropModifier = Modifier.fillMaxSize()
-                LyricsPageBackdrop(track?.artworkUri, palette, lyricsReveal, presentationExpanded, backdropModifier)
+                LyricsPageBackdrop(palette, lyricsReveal,
+                    presentationExpanded && !overlayBlocking && track != null, backdropModifier)
             }
             Column(
                 modifier = Modifier
@@ -579,7 +580,8 @@ fun NowPlayingScreen(
                 val lyricsRenderer: @Composable (Boolean) -> Unit = { split ->
                     pageStates.SaveableStateProvider("lyrics") {
                         NowPlayingLyricsPage(
-                            animationsVisible = presentationExpanded && (split || pagerState.currentPage == NowPlayingPage.Lyrics.ordinal),
+                            animationsVisible = presentationExpanded && !overlayBlocking &&
+                                (split || pagerState.currentPage == NowPlayingPage.Lyrics.ordinal),
                             pageReveal = if (split) ({ 1f }) else lyricsReveal,
                             status = status,
                             lyricsState = lyricsState,

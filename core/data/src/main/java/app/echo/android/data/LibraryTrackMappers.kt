@@ -59,11 +59,29 @@ fun EchoTrack.toLibraryTrackEntity(): LibraryTrackEntity =
 internal fun LibraryTrackEntity.withFingerprint(): LibraryTrackEntity =
     copy(fingerprint = if (fingerprint == LibraryScanPolicy.PendingDocumentMetadataFingerprint) fingerprint else buildTrackFingerprint(this))
 
-internal fun LibraryTrackEntity.withScanMetadata(scanRunId: Long = lastSeenScanRunId): LibraryTrackEntity =
+internal fun LibraryTrackEntity.withScanMetadata(
+    scanRunId: Long = lastSeenScanRunId,
+    preserveGroupingFrom: LibraryTrackEntity? = null,
+): LibraryTrackEntity =
     copy(
         lastSeenScanRunId = scanRunId,
         fingerprint = if (fingerprint == LibraryScanPolicy.PendingDocumentMetadataFingerprint) fingerprint else buildTrackFingerprint(this),
-    ).withComputedSearchMetadata()
+    ).withComputedSearchMetadata().withPreservedAlbumGrouping(preserveGroupingFrom)
+
+/** File stats and unrelated tag edits cannot discard an already reconciled release. */
+internal fun LibraryTrackEntity.withPreservedAlbumGrouping(previous: LibraryTrackEntity?): LibraryTrackEntity {
+    if (previous == null || previous.albumKey.isBlank() ||
+        !LibraryScanPolicy.isLocalLibrarySource(source) || !LibraryScanPolicy.isLocalLibrarySource(previous.source)
+    ) return this
+    val identity = LibraryAlbumGrouping.groupingIdentity(normalizedAlbum, album, relativePath)
+    val previousIdentity = LibraryAlbumGrouping.groupingIdentity(previous.normalizedAlbum, previous.album, previous.relativePath)
+    return if (identity.canReconcile && identity == previousIdentity &&
+        canonicalAlbumArtistKey(normalizedAlbumArtist ?: albumArtist?.normalizedForSearch()) ==
+            canonicalAlbumArtistKey(previous.normalizedAlbumArtist ?: previous.albumArtist?.normalizedForSearch()) &&
+        canonicalAlbumArtistKey(normalizedArtist ?: artist.normalizedForSearch()) ==
+            canonicalAlbumArtistKey(previous.normalizedArtist ?: previous.artist.normalizedForSearch())
+    ) copy(albumKey = previous.albumKey) else this
+}
 
 internal fun LibraryTrackEntity.withComputedSearchMetadata(): LibraryTrackEntity {
     val nextNormalizedTitle = title.normalizedForSearch()
@@ -92,8 +110,8 @@ internal fun LibraryTrackEntity.withComputedSearchMetadata(): LibraryTrackEntity
 internal fun LibraryTrackEntity.withUserMetadata(
     update: EchoTrackMetadataUpdate,
     editedAtEpochMs: Long,
-): LibraryTrackEntity =
-    copy(
+): LibraryTrackEntity {
+    val updated = copy(
         title = update.title.trim().ifBlank { title },
         artist = update.artist.trim().ifBlank { artist },
         album = update.album.normalizedNullableMetadata(),
@@ -106,6 +124,8 @@ internal fun LibraryTrackEntity.withUserMetadata(
         genre = if (update.genre == null) genre else update.genre.normalizedNullableMetadata(),
         metadataEditedAtEpochMs = editedAtEpochMs,
     ).withScanMetadata()
+    return updated.withPreservedAlbumGrouping(this)
+}
 
 internal fun LibraryTrackEntity.withPreservedUserMetadata(
     editedTrack: LibraryTrackEntity?,

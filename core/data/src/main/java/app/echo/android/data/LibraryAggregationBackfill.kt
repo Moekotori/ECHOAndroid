@@ -18,6 +18,7 @@ internal suspend fun backfillLibraryAggregationKeys(
     prepareTrack: (LibraryTrackEntity) -> LibraryTrackEntity,
 ): Boolean {
     var changed = false
+    val preservedIds = HashSet<String>()
     var afterId: String? = null
     while (true) {
         coroutineContext.ensureActive()
@@ -27,7 +28,9 @@ internal suspend fun backfillLibraryAggregationKeys(
         val updates = ArrayList<LibraryTrackEntity>(rows.size)
         for (track in rows) {
             coroutineContext.ensureActive()
-            val cleaned = prepareTrack(track)
+            val prepared = prepareTrack(track)
+            val cleaned = prepared.withPreservedAlbumGrouping(track)
+            if (cleaned.albumKey != prepared.albumKey) preservedIds += track.id
             if (!track.hasSameAggregationMetadata(cleaned)) updates += cleaned
         }
         if (updates.isNotEmpty()) {
@@ -47,18 +50,22 @@ internal suspend fun backfillLibraryAggregationKeys(
         if (rows.isEmpty()) break
         for (row in rows) {
             val identity = LibraryAlbumGrouping.groupingIdentity(row.normalizedAlbum, row.album, row.relativePath)
-            // Singleton/non-reconcilable groups already received their canonical key above.
+            // Non-reconcilable groups already received their canonical key above.
             if (identity.canReconcile) groups.getOrPut(identity, ::ArrayList).add(row.id)
         }
         afterId = rows.last().id
         yield()
     }
     val iterator = groups.entries.iterator()
+    val singletonIds = ArrayList<String>()
     while (iterator.hasNext()) {
         coroutineContext.ensureActive()
         val ids = iterator.next().value
         iterator.remove()
-        if (ids.size < 2) continue
+        if (ids.size < 2) {
+            ids.singleOrNull()?.takeIf { it in preservedIds }?.let(singletonIds::add)
+            continue
+        }
         val tracks = ArrayList<LibraryTrackEntity>(ids.size)
         ids.chunked(batchSize).forEach { chunk ->
             coroutineContext.ensureActive()
@@ -70,6 +77,16 @@ internal suspend fun backfillLibraryAggregationKeys(
             dao.upsertBatchWithFts(chunk)
             changed = true
             yield()
+        }
+        yield()
+    }
+    // Reset old inferred keys for surviving singletons without one DAO query per album.
+    singletonIds.chunked(batchSize).forEach { ids ->
+        coroutineContext.ensureActive()
+        val updates = LibraryAlbumGrouping.reconcile(dao.getTracksByIds(ids))
+        if (updates.isNotEmpty()) {
+            dao.upsertBatchWithFts(updates)
+            changed = true
         }
         yield()
     }

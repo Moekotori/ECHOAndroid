@@ -1,102 +1,80 @@
 package app.echo.android.feature.player
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.draw.drawWithCache
-import app.echo.android.design.LocalEchoEffectivePerformanceMode
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.nativeCanvas
 import app.echo.android.design.ArtworkPalette
-import app.echo.android.design.BlurredArtworkBackground
 import app.echo.android.design.LocalEchoDarkTheme
+import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.echoTheme
 
+/** One flowing surface behind the cover and lyrics, without decoding another full-screen image. */
 @Composable
 internal fun NowPlayingBackdrop(
-    artworkUri: String?,
     palette: ArtworkPalette,
     reveal: () -> Float,
     modifier: Modifier = Modifier,
     animationsVisible: Boolean = true,
 ) {
-    if (!LocalEchoDarkTheme.current) {
-        val scheme = MaterialTheme.colorScheme
-        // Carry the cover's colors across the whole light surface, including the controls.
-        val lightWash = palette.copy(
-            vibrant = lerp(scheme.background, palette.vibrant, 0.38f),
-            deep = lerp(scheme.background, palette.soft, 0.30f),
-            soft = lerp(scheme.background, palette.soft, 0.26f),
-        )
-        Box(modifier) {
-            BlurredArtworkBackground(
-                artworkUri = artworkUri,
-                palette = lightWash,
-                modifier = Modifier.fillMaxSize(),
-                artworkScale = 1.32f,
-                artworkBlur = 28.dp,
-                artworkAlpha = 0.46f,
-                overlayStartAlpha = 0.24f,
-                overlayMidAlpha = 0.32f,
-                overlayEndAlpha = 0.58f,
-            )
-        }
-        return
-    }
-    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    val dark = LocalEchoDarkTheme.current
+    val mode = LocalEchoEffectivePerformanceMode.current
     val theme = echoTheme()
-    // Read page progress only when updating the layer/drawing the veil. Keep image
-    // composition and the blur radius stable throughout a horizontal gesture.
-    Box(modifier = modifier) {
-        BlurredArtworkBackground(
-            artworkUri = artworkUri,
-            palette = palette.asNowPlayingWash(echoTheme().night),
-            modifier = Modifier.fillMaxSize().graphicsLayer {
-                val scale = if (lightweight || !animationsVisible) 1f else 1f + 0.06f * reveal()
-                scaleX = scale
-                scaleY = scale
-            },
-            artworkScale = 1.16f,
-            artworkBlur = 28.dp,
-            artworkAlpha = 0.58f,
-            overlayStartAlpha = 0.46f,
-            overlayMidAlpha = 0.58f,
-            overlayEndAlpha = 0.90f,
+    val motionEnabled = animationsVisible && !mode.isLightweight
+    val elapsed = rememberFluidBackdropTime(motionEnabled, fluidBackdropFps(mode))
+    val wash = remember(palette, dark, theme) {
+        val anchor = if (dark) theme.night else theme.bgTop
+        palette.copy(
+            vibrant = lerp(palette.vibrant, anchor, if (dark) 0.18f else 0.48f),
+            deep = lerp(palette.deep, anchor, if (dark) 0.22f else 0.68f),
+            soft = lerp(palette.soft, anchor, if (dark) 0.30f else 0.48f),
         )
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .height(170.dp)
-                .background(
-                    Brush.verticalGradient(
-                        0f to theme.night.copy(alpha = 0.34f),
-                        0.48f to theme.ink.copy(alpha = 0.16f),
-                        1f to Color.Transparent,
-                    ),
-                ),
-        )
-        Box(Modifier.fillMaxSize().drawWithCache {
-            onDrawBehind {
-                drawRect(theme.night.copy(alpha = 0.10f * reveal().coerceIn(0f, 1f)))
-            }
-        })
     }
+    val target = remember(wash) { FluidArtworkField(wash) }
+    var layers by remember { mutableStateOf(FluidBackdropLayers(target)) }
+    LaunchedEffect(target, motionEnabled) {
+        if (target !== layers.current) {
+            layers = FluidBackdropLayers(target, if (motionEnabled) layers.current else null, elapsed.value)
+        } else if (!motionEnabled && layers.previous != null) {
+            layers = FluidBackdropLayers(target)
+        }
+    }
+    Box(modifier.drawWithCache {
+        val veil = Brush.verticalGradient(
+            0f to theme.night.copy(alpha = if (dark) 0.24f else 0.02f),
+            0.46f to Color.Transparent,
+            1f to theme.night.copy(alpha = if (dark) 0.62f else 0.16f),
+        )
+        onDrawBehind {
+            // Time and page gestures invalidate drawing only, never the player or its lists.
+            val time = elapsed.value
+            val blend = if (motionEnabled) ((time - layers.changedAtMs) / 1600f).coerceIn(0f, 1f) else 1f
+            val smoothBlend = blend * blend * (3f - 2f * blend)
+            drawIntoCanvas { canvas ->
+                if (blend < 1f) layers.previous?.draw(canvas.nativeCanvas, size.width, size.height, time, 1f)
+                layers.current.draw(canvas.nativeCanvas, size.width, size.height, time,
+                    if (layers.previous == null) 1f else smoothBlend)
+            }
+            drawRect(veil)
+            drawRect(theme.night.copy(alpha = (if (dark) 0.14f else 0.05f) * reveal().coerceIn(0f, 1f)))
+        }
+    }.fillMaxSize())
 }
 
-private fun ArtworkPalette.asNowPlayingWash(night: Color): ArtworkPalette {
-    return copy(
-        vibrant = lerp(vibrant, night, 0.54f),
-        deep = lerp(deep, night, 0.22f),
-        soft = lerp(soft, night, 0.62f),
-    )
-}
+// At most two small sets of shaders, including during rapid track changes.
+private data class FluidBackdropLayers(
+    val current: FluidArtworkField,
+    val previous: FluidArtworkField? = null,
+    val changedAtMs: Long = 0L,
+)

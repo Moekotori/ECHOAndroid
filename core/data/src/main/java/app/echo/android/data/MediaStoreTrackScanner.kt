@@ -911,7 +911,7 @@ class MediaStoreTrackScanner(
         java.io.File(appContext.filesDir, "local-file-tag-backfill-v6")
 
     private fun aggregationKeyBackfillMarker(): java.io.File =
-        java.io.File(appContext.filesDir, "library-aggregation-keys-v4")
+        java.io.File(appContext.filesDir, "library-aggregation-keys-v6")
 
     internal fun readSampleRateHz(contentUri: String): Int? =
         runCatching {

@@ -98,7 +98,7 @@ internal object TagTextDecoder {
                 } else if (latinExt > asciiLetters) {
                     total -= latinExt * 6
                 }
-                val isolated = isolatedLatinHighCount(bytes)
+                val isolated = isolatedLatinByteCount(bytes)
                 if (isolated > 0 && freeAsciiLetters(bytes) > 0) total += isolated * 10
             }
             Family.Gbk, Family.Big5 -> {
@@ -148,12 +148,14 @@ internal object TagTextDecoder {
         return (letters - asciiTrailCount(bytes)).coerceAtLeast(0)
     }
 
-    /** High byte in the Latin-1 letter range, with ASCII on both sides. */
-    private fun isolatedLatinHighCount(bytes: ByteArray): Int {
+    /** Isolated Latin-1 accent or non-breaking space surrounded by ASCII. */
+    private fun isolatedLatinByteCount(bytes: ByteArray): Int {
         var count = 0
         for (index in bytes.indices) {
             val value = bytes[index].toInt() and 0xFF
-            if (value !in 0xC0..0xFF) continue
+            // A0 + an ASCII letter also forms a valid MS949 syllable (e.g. A0 57 -> 쟙).
+            // Keep the Latin separator evidence instead of consuming that next letter.
+            if (value != 0xA0 && value !in 0xC0..0xFF) continue
             val previousAscii = index == 0 || (bytes[index - 1].toInt() and 0xFF) < 0x80
             val nextAscii = index + 1 >= bytes.size || (bytes[index + 1].toInt() and 0xFF) < 0x80
             if (previousAscii && nextAscii) count += 1

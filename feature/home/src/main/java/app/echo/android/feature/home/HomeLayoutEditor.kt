@@ -45,14 +45,22 @@ internal fun HomeLayoutEditor(
     var draft by rememberSaveable(stateSaver = HomeLayoutDraftSaver) { mutableStateOf(layout.normalized()) }
     val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.85f).dp
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(Modifier.fillMaxWidth().heightIn(max = maxHeight).padding(horizontal = 24.dp)) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        // Offset-dependent top padding would resize the sheet and move its expanded anchor.
+        contentWindowInsets = {
+            WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)
+        },
+    ) {
+        // Keep the anchor stable while the lazy list scrolls or sections are reordered.
+        Column(Modifier.fillMaxWidth().height(maxHeight).padding(horizontal = 24.dp)) {
             Text(stringResource(R.string.home_layout_title), style = MaterialTheme.typography.titleLarge)
             Text(stringResource(R.string.home_layout_detail),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 6.dp, bottom = 12.dp))
-            LazyColumn(Modifier.weight(1f, fill = false)) {
+            LazyColumn(Modifier.weight(1f)) {
                 itemsIndexed(draft.order, key = { _, section -> section.id }) { index, section ->
                     val label = stringResource(section.titleResource())
                     Row(Modifier.fillMaxWidth().heightIn(min = 64.dp),

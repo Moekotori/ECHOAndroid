@@ -86,7 +86,7 @@ internal fun NowPlayingLyricsPage(
             lightweight = lightweight,
             highPerformance = performance.isHighPerformance,
         )) {
-            if (showBackdrop) LyricsPageBackdrop(status.track?.artworkUri, palette, { 1f }, animationsVisible, Modifier.fillMaxSize())
+            if (showBackdrop) LyricsPageBackdrop(palette, { 1f }, animationsVisible && status.track != null, Modifier.fillMaxSize())
             Box(
                 modifier = Modifier
                     .fillMaxSize()

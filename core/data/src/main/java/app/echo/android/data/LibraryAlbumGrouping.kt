@@ -1,13 +1,16 @@
 package app.echo.android.data
 
+import java.security.MessageDigest
+
 /**
- * Album keys stay "album + album artist", then a folder pass merges
- * incomplete tags that would otherwise split one release:
- * missing album artist on some tracks, compilations, disc suffixes.
+ * Explicit release owners use "album + album artist". A folder pass repairs
+ * incomplete credits and disc suffixes; inferred compilations carry a folder
+ * scope so unrelated releases with the same title cannot share a synthetic owner.
  */
 internal object LibraryAlbumGrouping {
     fun reconcile(tracks: List<LibraryTrackEntity>): List<LibraryTrackEntity> {
         val changed = ArrayList<LibraryTrackEntity>()
+        val previousKeys = tracks.associate { it.id to it.albumKey }
         val desired = tracks
             .filter { LibraryScanPolicy.isLocalLibrarySource(it.source) }
             .map { track -> track.copy(albumKey = libraryAlbumKey(
@@ -17,12 +20,14 @@ internal object LibraryAlbumGrouping {
             )) }
             .groupBy(::groupingIdentity)
             .flatMap { (identity, group) ->
-                val winner = if (identity.canReconcile && group.size >= 2) winningAlbumKey(
-                    identity.album,
-                    group,
-                    sharedFolder = identity.folder?.substringAfterLast('/') in SharedFolderNames,
-                ) else null
-                if (winner == null) group else group.map { it.copy(albumKey = winner) }
+                if (!identity.canReconcile || group.size < 2) group else {
+                    val winner = winningAlbumKey(identity, group, previousKeys)
+                    if (winner != null) group.map { it.copy(albumKey = winner) }
+                    else if (isSharedFolder(identity.folder)) group.groupBy { it.artworkUri }.values.flatMap { subset ->
+                        val subsetKey = if (subset.size >= 2) winningAlbumKey(identity, subset, previousKeys) else null
+                        if (subsetKey == null) subset else subset.map { it.copy(albumKey = subsetKey) }
+                    } else group
+                }
             }
             .associateBy { it.id }
         tracks.forEach { track ->
@@ -70,50 +75,79 @@ internal object LibraryAlbumGrouping {
     }
 
     private fun winningAlbumKey(
-        album: String,
+        identity: GroupIdentity,
         group: List<LibraryTrackEntity>,
-        sharedFolder: Boolean,
+        previousKeys: Map<String, String>,
     ): String? {
+        val album = identity.album
+        val folder = requireNotNull(identity.folder)
+        val sharedFolder = isSharedFolder(folder)
         val keys = group.mapTo(linkedSetOf()) { it.albumKey }
         if (keys.size <= 1) return null
+        val previousKey = group.map { previousKeys[it.id] }.distinct().singleOrNull()?.takeIf { it.isNotBlank() }
+        val previousCompilationKey = previousKey?.takeIf {
+            it.startsWith("$album::inferred-${folder.albumScopeHash()}::") ||
+                it.startsWith("$album::inferred-${folder.albumScopeHash()}-")
+        }?.takeIf { it.endsWith("::${VariousArtistsKey}") }
         val albumArtists = group.mapNotNull { track ->
             track.normalizedAlbumArtist?.takeIf { it.isNotBlank() }
                 ?: track.albumArtist?.normalizedForSearch()?.takeIf { it.isNotBlank() }
         }.mapNotNull(::canonicalAlbumArtistKey).distinct()
         val commonArtist = commonCreditedArtist(group)
-        // Some files copy the song's changing guest credits into ALBUMARTIST. Only repair
-        // that case when every owner matches its song credits and they share an artist.
+        val hasReleaseEvidence = !sharedFolder || sharedArtwork(group) || previousCompilationKey != null
+        // Some files copy each song's credits into ALBUMARTIST, including compilations
+        // whose songs have no artist in common. The album folder (or shared artwork in a
+        // general folder) supplies the release identity when every owner matches its song.
         // Distinct release owners and manually edited tags remain authoritative.
         if (albumArtists.size > 1) {
-            if (commonArtist == null || group.any { track ->
-                    track.metadataEditedAtEpochMs != null ||
-                        canonicalAlbumArtistKey(track.albumArtist?.normalizedForSearch())?.let { owner ->
+            if ((commonArtist == null && !hasReleaseEvidence) || group.any { track ->
+                    canonicalAlbumArtistKey(
+                            track.normalizedAlbumArtist ?: track.albumArtist?.normalizedForSearch(),
+                        )?.let { owner ->
                             owner != canonicalAlbumArtistKey(track.artist.normalizedForSearch())
                         } == true
                 }) return null
-            return libraryAlbumKey(album, commonArtist, null)
+            val winner = if (commonArtist != null) libraryAlbumKey(album, commonArtist, null)
+                else previousCompilationKey ?: inferredCompilationKey(album, folder, if (sharedFolder) group.first().artworkUri else null)
+            // A title/lyrics/order edit on an already grouped release is not a new owner.
+            // An edited row with a different key still prevents inferred owner repair.
+            if (group.any { it.metadataEditedAtEpochMs != null && previousKeys[it.id] != winner } &&
+                previousKey != winner && previousKey != libraryAlbumKey(album, VariousArtistsKey, null)
+            ) return null
+            return winner
         }
         if (albumArtists.isNotEmpty()) {
             val preferred = albumArtists.single()
-            if (sharedFolder && commonArtist != preferred) return null
+            if (!hasReleaseEvidence && commonArtist != preferred) return null
             return libraryAlbumKey(album, preferred, group.first().normalizedArtist)
         }
         if (commonArtist != null) return libraryAlbumKey(album, commonArtist, null)
         // Same title alone is insufficient evidence in a general Music/Download folder.
-        if (sharedFolder) return null
-        val artistKeys = group.mapTo(linkedSetOf()) { it.artistKey }
-        if (artistKeys.size > 1) {
-            return libraryAlbumKey(album, VariousArtistsKey, null)
-        }
-        return keys.first()
+        if (!hasReleaseEvidence) return null
+        return previousCompilationKey ?: inferredCompilationKey(album, folder, if (sharedFolder) group.first().artworkUri else null)
+    }
+
+    internal fun inferredCompilationKey(album: String, folder: String, artwork: String? = null): String =
+        "$album::inferred-${folder.albumScopeHash()}${artwork?.let { "-${it.albumScopeHash()}" }.orEmpty()}::$VariousArtistsKey"
+
+    private fun isSharedFolder(folder: String?): Boolean {
+        if (folder == null) return true
+        val parts = folder.split('/')
+        return parts.last() in SharedFolderNames ||
+            (parts.size <= 2 && parts.first() == "removable")
+    }
+
+    private fun sharedArtwork(group: List<LibraryTrackEntity>): Boolean {
+        val artwork = group.first().artworkUri?.takeIf { it.isNotBlank() } ?: return false
+        return group.all { it.artworkUri == artwork }
     }
 
     private fun commonCreditedArtist(group: List<LibraryTrackEntity>): String? {
         val credited = group.map { LibraryArtistPolicy.keys(it.artist) }
         val common = credited.reduce { first, next -> first.intersect(next) }
             .filterNot(LibraryMetadataSentinels::isUnknown)
-        if (common.size == 1) return common.single()
-        if (common.isNotEmpty() || credited.any { it.size != 1 }) return null
+        if (common.isNotEmpty()) return common.sorted().joinToString("; ")
+        if (credited.any { it.size != 1 }) return null
 
         // Slash credits are ambiguous (AC/DC is also a band name). Do not split artist
         // identities globally: within this album/folder only, keep the longest shared
@@ -135,7 +169,7 @@ internal object LibraryAlbumGrouping {
         val album: String,
         val folder: String?,
     ) {
-        val canReconcile: Boolean = album.isNotBlank() && folder != null
+        val canReconcile: Boolean = album.isNotBlank() && !LibraryMetadataSentinels.isUnknown(album) && folder != null
     }
 }
 
@@ -145,7 +179,7 @@ internal fun String.stripDiscSuffixForAlbumKey(): String {
 }
 
 private val DiscSuffixRegex = Regex(
-    """[\s\-_]*[\(\[\{]?\s*(?:disc|disk|cd|光盘|碟)\s*\.?\s*\d+\s*[\)\]\}]?\s*$""",
+    """(?:[\s\-_]+[\(\[\{]?\s*|[\(\[\{]\s*)(?:disc|disk|cd|光盘|碟)\s*\.?\s*\d+\s*[\)\]\}]?\s*$""",
     RegexOption.IGNORE_CASE,
 )
 
@@ -155,3 +189,12 @@ private val DiscFolderRegex = Regex(
 )
 
 private val SharedFolderNames = setOf("download", "downloads", "music", "audio", "音乐", "下载")
+
+private fun String.albumScopeHash(): String {
+    val bytes = MessageDigest.getInstance("SHA-256").digest(toByteArray(Charsets.UTF_8))
+    val digits = "0123456789abcdef"
+    return CharArray(bytes.size * 2) { index ->
+        val value = bytes[index / 2].toInt() and 0xff
+        digits[if (index % 2 == 0) value ushr 4 else value and 0x0f]
+    }.concatToString()
+}

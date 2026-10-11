@@ -8,6 +8,20 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class EmbeddedTagReadRegressionTest {
+    @Test fun id3v23LatinTitleWithNonBreakingSpaceAndUtf16ChineseTags() {
+        // Text payloads match the reported Private Wars MP3; no audio fixture is needed.
+        val title = "Private\u00A0Wars"
+        val artist = "RCVO粤语配音组"
+        val album = "Love Live!粤语翻唱系列"
+        val body = frame("TIT2", byteArrayOf(0) + title.toByteArray(Charsets.ISO_8859_1)) +
+            frame("TPE1", byteArrayOf(1, -1, -2) + artist.toByteArray(Charsets.UTF_16LE)) +
+            frame("TALB", byteArrayOf(1, -1, -2) + album.toByteArray(Charsets.UTF_16LE))
+        val tags = read(id3(body, version = 3))!!
+        assertEquals(title, tags.title)
+        assertEquals(artist, tags.artist)
+        assertEquals(album, tags.album)
+    }
+
     @Test fun lyricsOnlyMp3AndFlacAreNotEmptyTags() {
         val lyrics = "[00:01.00]只有歌词 🎵"
         assertEquals(lyrics, read(id3(frame("USLT", byteArrayOf(3) + "eng\u0000$lyrics".toByteArray())) )?.lyrics)

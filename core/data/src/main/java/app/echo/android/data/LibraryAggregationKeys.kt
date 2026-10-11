@@ -12,7 +12,14 @@ internal fun libraryAlbumKey(
 ): String =
     "${normalizedAlbum.normalizedKeyFallback(UnknownAlbumKey)}::" +
         canonicalAlbumArtistKey(normalizedAlbumArtist)
-            .normalizedKeyFallback(normalizedArtist.normalizedKeyFallback(UnknownArtistKey))
+            .normalizedKeyFallback(canonicalAlbumArtistKey(normalizedArtist).normalizedKeyFallback(UnknownArtistKey))
+
+internal fun LibraryTrackEntity.resolvedAlbumKey(): String =
+    albumKey.takeIf { it.isNotBlank() } ?: libraryAlbumKey(
+        LibraryAlbumGrouping.albumNameForKey(normalizedAlbum ?: album?.normalizedForSearch()),
+        normalizedAlbumArtist ?: albumArtist?.normalizedForSearch(),
+        normalizedArtist ?: artist.normalizedForSearch(),
+    )
 
 internal fun libraryArtistKey(normalizedArtist: String?): String =
     normalizedArtist.normalizedKeyFallback(UnknownArtistKey)

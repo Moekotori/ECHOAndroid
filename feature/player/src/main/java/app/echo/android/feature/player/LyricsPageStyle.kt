@@ -16,7 +16,6 @@ internal val LocalLyricsPageStyle = staticCompositionLocalOf { EchoLyricsPageSty
 
 @Composable
 internal fun LyricsPageBackdrop(
-    artworkUri: String?,
     palette: ArtworkPalette,
     reveal: () -> Float,
     animationsVisible: Boolean,
@@ -26,8 +25,7 @@ internal fun LyricsPageBackdrop(
         Box(modifier.background(LocalEchoTheme.current.bgTop))
     } else {
         Box(modifier) {
-            NowPlayingBackdrop(artworkUri, palette, reveal, Modifier.fillMaxSize(), animationsVisible)
-            Box(Modifier.fillMaxSize().background(LocalEchoTheme.current.night.copy(alpha = 0.40f)))
+            NowPlayingBackdrop(palette, reveal, Modifier.fillMaxSize(), animationsVisible)
         }
     }
 }

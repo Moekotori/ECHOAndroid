@@ -1175,6 +1175,13 @@ interface LibraryTrackDao {
     )
     suspend fun getLocalTracksByNormalizedAlbum(normalizedAlbum: String): List<LibraryTrackEntity>
 
+    @Query("""
+        SELECT * FROM library_tracks
+        WHERE source IN ('mediastore', 'saf')
+          AND normalizedAlbum >= :prefix AND normalizedAlbum < :prefixEnd
+    """)
+    suspend fun getLocalAlbumGroupingCandidates(prefix: String, prefixEnd: String): List<LibraryTrackEntity>
+
     @Query(
         """
         SELECT library_tracks.id FROM library_tracks
@@ -1435,7 +1442,7 @@ interface LibraryTrackDao {
         val target = getTrackById(targetId) ?: return
         val edited = if ((old.metadataEditedAtEpochMs ?: 0L) > (target.metadataEditedAtEpochMs ?: 0L)) old else target
         val merged = target.copy(artworkUri = target.artworkUri ?: old.artworkUri)
-            .withPreservedUserMetadata(edited).withScanMetadata()
+            .withPreservedUserMetadata(edited).withScanMetadata(preserveGroupingFrom = edited)
         mergeFavoriteReference(oldId, targetId)
         deleteMergedFavorite(oldId)
         mergePlaylistReferences(oldId, targetId)

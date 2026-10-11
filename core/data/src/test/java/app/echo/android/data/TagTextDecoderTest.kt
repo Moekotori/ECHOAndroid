@@ -54,6 +54,15 @@ class TagTextDecoderTest {
     }
 
     @Test
+    fun latinNonBreakingSpacesDoNotConsumeTheFollowingAsciiLetter() {
+        for (title in listOf("Private\u00A0Wars", "Wonderful\u00A0Rush", "No\u00A0brand\u00A0girls", "Love\u00A0Live!")) {
+            for (charset in listOf(Charsets.ISO_8859_1, Charset.forName("windows-1252"))) {
+                assertEquals("$title / $charset", title, TagTextDecoder.decode(title.toByteArray(charset)))
+            }
+        }
+    }
+
+    @Test
     fun declaredUnicodeRejectsMalformedBytesInsteadOfGuessing() {
         assertNull(TagTextDecoder.decodeDeclared(byteArrayOf(0xE9.toByte()), Charsets.UTF_8))
         assertNull(TagTextDecoder.decodeDeclared(byteArrayOf(0x41), Charsets.UTF_16BE))
