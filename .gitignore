@@ -29,6 +29,7 @@ Thumbs.db
 .codex-temp/
 .mimocode/
 .reasonix/
+/.hot-reload-launch.*.log
 CLAUDE.md
 报错.txt
 

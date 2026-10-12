@@ -14,11 +14,9 @@
     <string name="artist_tracks">曲</string>
     <string name="artist_clear_search">検索をクリア</string>
     <plurals name="artist_album_count">
-        <item quantity="one">%1$d 枚のアルバム</item>
         <item quantity="other">%1$d 枚のアルバム</item>
     </plurals>
     <plurals name="artist_track_count">
-        <item quantity="one">%1$d 曲</item>
         <item quantity="other">%1$d 曲</item>
     </plurals>
 </resources>

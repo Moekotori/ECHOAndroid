@@ -8,6 +8,7 @@
     <string name="opra_no_matching_models">Ningún modelo coincide</string>
     <plurals name="opra_brand_models">
         <item quantity="one">%1$d modelo</item>
+        <item quantity="many">%1$d modelos</item>
         <item quantity="other">%1$d modelos</item>
     </plurals>
 </resources>
