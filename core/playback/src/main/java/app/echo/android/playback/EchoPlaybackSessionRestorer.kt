@@ -40,7 +40,10 @@ internal class EchoPlaybackSessionRestorer(
     suspend fun restore(userRequestedPlay: Boolean): EchoPlaybackSessionSnapshot? =
         mutex.withLock {
             val current = player() ?: return@withLock null
-            if (!shouldRestoreIntoEmptyPlayer(current.mediaItemCount)) {
+            // Media3 requires every Player read to happen on the player's application thread;
+            // callers such as onPlaybackResumption reach here from a background future.
+            val existingItemCount = withContext(Dispatchers.Main.immediate) { current.mediaItemCount }
+            if (!shouldRestoreIntoEmptyPlayer(existingItemCount)) {
                 restoreCompleted = shouldMarkSavedSessionRestoreComplete(sessionLoadFailed = false)
                 if (userRequestedPlay) {
                     withContext(Dispatchers.Main.immediate) {
@@ -48,7 +51,7 @@ internal class EchoPlaybackSessionRestorer(
                     }
                     heldSavedPlayWhenReady = null
                 }
-                return@withLock current.toPlaybackSessionSnapshot()
+                return@withLock withContext(Dispatchers.Main.immediate) { current.toPlaybackSessionSnapshot() }
             }
             val snapshot = try {
                 withContext(Dispatchers.IO) { store().load() }
@@ -131,9 +134,10 @@ internal class EchoPlaybackSessionRestorer(
         scope.launch {
             val live = mutex.withLock {
                 val current = player() ?: return@withLock null
-                val uri = current.currentMediaItem?.localConfiguration?.uri?.toString().orEmpty()
+                val item = withContext(Dispatchers.Main.immediate) { current.currentMediaItem }
+                val uri = item?.localConfiguration?.uri?.toString().orEmpty()
                 if (uri.isBlank()) return@withLock null
-                val uris = if (EchoRadioStation.isRadio(current.currentMediaItem?.mediaId)) emptyList() else listOf(uri)
+                val uris = if (EchoRadioStation.isRadio(item?.mediaId)) emptyList() else listOf(uri)
                 if (
                     !shouldResumePendingRemoteAuthPlay(
                         pendingPlayUntilRemoteAuth = pendingPlayUntilRemoteAuth,

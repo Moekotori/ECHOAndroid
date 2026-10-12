@@ -63,6 +63,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicReference
@@ -232,7 +233,7 @@ internal class LibraryController(
             pendingMediaStoreRefresh = false
             val scans = localScanJobs.toList()
             scans.forEach { it.cancel() }
-            scans.forEach { it.join() }
+            scans.joinAll()
             sampleRateBackfillJob?.cancelAndJoin()
             // Persist before deletion: even an app restart must not silently repopulate the index.
             settingsStore.setLocalLibraryIndexCleared(true)

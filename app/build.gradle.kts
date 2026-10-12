@@ -46,11 +46,11 @@ plugins {
 }
 
 val echoBuildDate = LocalDate.parse(providers.of(EchoCalendarDateSource::class) {}.get())
-val echoVersionName = providers.gradleProperty("echoVersionName").orNull ?: echoCalendarVersionName(echoBuildDate)
+val echoVersionName: String = providers.gradleProperty("echoVersionName").orNull ?: echoCalendarVersionName(echoBuildDate)
 require(echoVersionName.matches(Regex("[0-9]{2}\\.[1-9][0-9]?\\.[1-9][0-9]?")))
 val echoVersionParts = echoVersionName.split(".").map(String::toInt)
 val echoVersionDate = LocalDate.of(2000 + echoVersionParts[0], echoVersionParts[1], echoVersionParts[2])
-val echoVersionCode = providers.gradleProperty("echoVersionCode").orNull?.toInt()
+val echoVersionCode: Int = providers.gradleProperty("echoVersionCode").orNull?.toInt()
     ?: (echoCalendarVersionCode(echoVersionDate) * 100)
 require(echoVersionCode in 1..2_100_000_000)
 
@@ -132,6 +132,13 @@ android {
                 // implementation. R8 removes its code; exclude its data too.
                 "org/bouncycastle/pqc/crypto/picnic/*.bin.properties",
             )
+        }
+    }
+
+    bundle {
+        // Languages switch at runtime via localeConfig; per-language split APKs would ship without them.
+        language {
+            enableSplit = false
         }
     }
 }

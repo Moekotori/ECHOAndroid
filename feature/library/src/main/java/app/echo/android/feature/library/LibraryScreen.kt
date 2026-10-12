@@ -1587,13 +1587,11 @@ private fun LinkedPlaylistTracksPage(
                 stringResource(L10nR.string.feature_library_this_pc_echo_playlist_has_no_playable_tracks_b480ec),
             )
             else -> {
-                if (tracks.isNotEmpty()) {
-                    TextButton(
-                        onClick = { onPlayLinkedQueueOnPc(tracks, 0) },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(stringResource(L10nR.string.feature_library_play_on_pc_7c21a4))
-                    }
+                TextButton(
+                    onClick = { onPlayLinkedQueueOnPc(tracks, 0) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(L10nR.string.feature_library_play_on_pc_7c21a4))
                 }
                 LinkedTrackList(
                     tracks = tracks,

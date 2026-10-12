@@ -234,7 +234,7 @@ class UsbAudioDescriptorParser {
                 clockSelectors[id] = if (pins > 0 && length >= 7 + pins)
                     (0 until pins).map { raw[offset + 5 + it].u8() } else emptyList()
             }
-            AC_INPUT_TERMINAL -> if (uac2 && length > 7) {
+            AC_INPUT_TERMINAL -> if (length > 7) {
                 recordTerminalClock(
                     terminalId = raw[offset + 3].u8(),
                     clockId = raw[offset + 7].u8(),
@@ -242,7 +242,7 @@ class UsbAudioDescriptorParser {
                     terminalClocks = terminalClocks,
                 )
             }
-            AC_OUTPUT_TERMINAL -> if (uac2 && length > 8) {
+            AC_OUTPUT_TERMINAL -> if (length > 8) {
                 recordTerminalClock(
                     terminalId = raw[offset + 3].u8(),
                     clockId = raw[offset + 8].u8(),

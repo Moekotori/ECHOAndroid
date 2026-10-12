@@ -130,7 +130,7 @@ internal fun LinearPlayerSeekBar(
         }
         .pointerInput(trackKey, enabled, rtl) {
             if (enabled) {
-                var target = 0f
+                var target: Float
                 fun fractionAt(x: Float): Float {
                     val inset = 4.dp.toPx().coerceAtMost(size.width / 2f)
                     val normalized = ((x - inset) / (size.width - 2f * inset).coerceAtLeast(1f)).coerceIn(0f, 1f)

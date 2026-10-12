@@ -24,7 +24,6 @@ import app.echo.android.design.EchoSlider
 import app.echo.android.design.EchoSwitch
 import app.echo.android.model.playback.EchoChannelBalanceMonoMode
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ChannelValueSlider(
     label: String,

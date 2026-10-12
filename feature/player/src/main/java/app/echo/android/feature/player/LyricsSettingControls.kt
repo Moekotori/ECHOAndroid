@@ -30,7 +30,6 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /** Keep drag feedback local; persist only the committed value, never every pointer event. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun LyricsSettingSlider(
     label: String,

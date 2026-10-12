@@ -75,12 +75,8 @@ object LibraryScanPolicy {
         cueChildIds: Collection<String>,
         hasCueSheet: Boolean,
     ): List<String>? {
-        if (hasCueSheet) return null
-        if (!hasCueSheet && cueChildIds.isNotEmpty()) return null
-        return ArrayList<String>(cueChildIds.size + 1).apply {
-            add(trackId)
-            addAll(cueChildIds)
-        }
+        if (hasCueSheet || cueChildIds.isNotEmpty()) return null
+        return listOf(trackId)
     }
 
     /** Map a SAF id onto the MediaStore row emitted for the same file, including cue movements. */

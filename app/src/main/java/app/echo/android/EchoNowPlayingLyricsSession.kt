@@ -23,7 +23,7 @@ import kotlin.coroutines.cancellation.CancellationException
 
 /** Process-lifetime lyrics so notification lines survive after the activity is gone. */
 @UnstableApi
-internal class EchoNowPlayingLyricsSession(private val application: Application) {
+internal class EchoNowPlayingLyricsSession(application: Application) {
     private val database = EchoLibraryDatabase.create(application)
     val controller = LyricsController(
         trackForLyrics = { id -> withContext(Dispatchers.IO) { database.trackDao().getTrackById(id) } },

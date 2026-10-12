@@ -152,7 +152,6 @@ private fun ScanRulesHeading(title: String, modifier: Modifier = Modifier) {
     Text(title, modifier, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ScanChoices(title: String, selected: Long, enabled: Boolean, choices: List<Pair<Long, Int>>, onSelect: (Long) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

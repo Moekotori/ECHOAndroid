@@ -3,10 +3,8 @@ package app.echo.android.data
 object LibraryFingerprintPolicy {
     const val StableRemoteDateModifiedSeconds = 0L
 
-    fun remoteDateModifiedSeconds(wallClockEpochMs: Long): Long {
-        wallClockEpochMs // ignore wall clock so re-sync stays stable
-        return StableRemoteDateModifiedSeconds
-    }
+    // wallClockEpochMs is accepted but ignored so re-sync stays byte-stable across device clocks.
+    fun remoteDateModifiedSeconds(wallClockEpochMs: Long): Long = StableRemoteDateModifiedSeconds
 
     fun fingerprint(
         contentUri: String,

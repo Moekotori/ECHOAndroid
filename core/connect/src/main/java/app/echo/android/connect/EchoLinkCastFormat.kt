@@ -123,7 +123,7 @@ object EchoLinkCastFormat {
         val length = ((header[5].toInt() and 0xFF) shl 16) or
             ((header[6].toInt() and 0xFF) shl 8) or
             (header[7].toInt() and 0xFF)
-        if (type != 0 || length < 18 || header.size < 8 + 18) return fromMagic(header)
+        if (type != 0 || length < 18) return fromMagic(header)
         val b0 = header[8 + 10].toInt() and 0xFF
         val b1 = header[8 + 11].toInt() and 0xFF
         val b2 = header[8 + 12].toInt() and 0xFF

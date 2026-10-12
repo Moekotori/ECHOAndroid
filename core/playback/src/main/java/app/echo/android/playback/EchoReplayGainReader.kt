@@ -78,7 +78,6 @@ object EchoReplayGainReader {
             val length = ((header[1].toInt() and 0xFF) shl 16) or
                 ((header[2].toInt() and 0xFF) shl 8) or
                 (header[3].toInt() and 0xFF)
-            if (length < 0) return EchoReplayGainTags()
             if (type == FLAC_VORBIS_COMMENT_BLOCK) {
                 if (length !in 0..MAX_TAG_BYTES) return EchoReplayGainTags()
                 val payload = input.readExactly(length) ?: return EchoReplayGainTags()

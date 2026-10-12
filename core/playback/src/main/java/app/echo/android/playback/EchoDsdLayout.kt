@@ -56,7 +56,6 @@ internal data class EchoDsfLayout(
             if (sampleCount <= 0L) return null
             val blockSize = u32le(header, 72).toInt()
             if (blockSize <= 0 || blockSize > 1_048_576) return null
-            if (blockSize > Int.MAX_VALUE / channelCount) return null
             if (fourcc(header, 80) != "data") return null
             val dataChunkSize = u64le(header, 84)
             if (dataChunkSize < 12L) return null

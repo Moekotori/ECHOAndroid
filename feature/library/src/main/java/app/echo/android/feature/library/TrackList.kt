@@ -6,7 +6,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.background
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ExperimentalFoundationApi
 import app.echo.android.design.echoClickable
 import app.echo.android.design.echoCombinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -370,7 +369,7 @@ private enum class TrackSheetMode {
     Editor,
 }
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun TrackContextMenu(
     track: EchoTrack,

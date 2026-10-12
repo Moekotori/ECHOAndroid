@@ -51,7 +51,7 @@ public final class FfmpegLibrary {
   /**
    * Override the names of the FFmpeg native libraries. If an application wishes to call this
    * method, it must do so before calling any other method defined by this class, and before
-   * instantiating a {@link FfmpegAudioRenderer} or {@link ExperimentalFfmpegVideoRenderer}
+   * instantiating a {@link FfmpegAudioRenderer} or {@code ExperimentalFfmpegVideoRenderer}
    * instance.
    *
    * @param libraries The names of the FFmpeg native libraries.

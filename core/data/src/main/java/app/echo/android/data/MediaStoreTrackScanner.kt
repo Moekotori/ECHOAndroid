@@ -1209,15 +1209,15 @@ class MediaStoreTrackScanner(
             LegacyProjection
         }
         if (LibraryScanPolicy.mediaStoreAlbumArtistColumnAvailable(Build.VERSION.SDK_INT)) {
-            columns = columns + MediaStore.Audio.Media.ALBUM_ARTIST
+            columns += MediaStore.Audio.Media.ALBUM_ARTIST
         }
         if (includeSampleRateColumn) {
-            columns = columns + SampleRateColumn
+            columns += SampleRateColumn
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            columns = columns + MediaStore.Audio.Media.GENRE
+            columns += MediaStore.Audio.Media.GENRE
         }
-        columns = columns + MediaStore.Audio.Media.COMPOSER
+        columns += MediaStore.Audio.Media.COMPOSER
         return columns
     }
 
@@ -1298,8 +1298,7 @@ private fun fallbackFilesSelection(relativePathPrefix: String?): Pair<String, Ar
     val base =
         "$nameSql AND ${MediaStore.Files.FileColumns.MEDIA_TYPE} != ${MediaStore.Files.FileColumns.MEDIA_TYPE_AUDIO}" +
             " AND (${MediaStore.Files.FileColumns.MIME_TYPE} IS NULL OR ${MediaStore.Files.FileColumns.MIME_TYPE} NOT LIKE 'video/%')"
-    val normalized = normalizeRelativePathPrefix(relativePathPrefix)
-    if (normalized == null) return base to nameArgs
+    val normalized = normalizeRelativePathPrefix(relativePathPrefix) ?: return base to nameArgs
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
         @Suppress("DEPRECATION")
         val root = Environment.getExternalStorageDirectory()

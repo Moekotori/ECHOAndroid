@@ -106,7 +106,7 @@ import kotlinx.coroutines.withContext
 
 
 @androidx.annotation.OptIn(UnstableApi::class)
-@Suppress("SpellCheckingInspection", "ConstPropertyName", "unused")
+@Suppress("SpellCheckingInspection", "unused")
 class EchoAndroidViewModel(application: Application) : AndroidViewModel(application) {
     val radioController = app.echo.android.radio.EchoRadioController(
         app.echo.android.data.EchoRadioStore(application),

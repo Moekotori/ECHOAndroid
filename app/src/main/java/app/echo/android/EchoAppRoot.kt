@@ -2371,7 +2371,7 @@ private fun Context.findActivity(): Activity? {
         if (current is Activity) return current
         current = current.baseContext
     }
-    return current as? Activity
+    return null
 }
 
 private const val ECHO_AUDIO_PERMISSION_REQUESTED_KEY = "echo_audio_permission_requested_v1"

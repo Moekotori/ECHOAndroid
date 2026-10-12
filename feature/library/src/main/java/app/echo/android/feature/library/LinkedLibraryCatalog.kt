@@ -40,7 +40,7 @@ internal data class LinkedLibraryCatalog(
             remoteAlbums: List<EchoRemoteAlbum> = emptyList(),
         ): LinkedLibraryCatalog {
             val normalizedQuery = query.trim()
-            remoteQuery
+            // remoteQuery is kept for the call-site contract; local filtering already trims `query`.
             val needsTracks = includeSortedTracks || includeArtists || (includeAlbums && remoteAlbums.isEmpty())
             val filteredTracks = if (!needsTracks) {
                 emptyList()

@@ -14,7 +14,6 @@ import androidx.glance.layout.*
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
-import androidx.glance.unit.ColorProvider
 import app.echo.android.R
 import app.echo.android.playback.EchoPlaybackSurfaceSnapshot
 
@@ -28,8 +27,8 @@ internal fun EchoCoverWidgetContent(context: Context, snapshot: EchoPlaybackSurf
     val artist = snapshot.artist.ifBlank {
         if (snapshot.hasTrack) "" else context.getString(R.string.playback_widget_idle)
     }
-    val foreground = if (artwork != null) ColorProvider(Color.White) else widgetForeground
-    val secondary = if (artwork != null) ColorProvider(Color(0xFFDEDEE4)) else widgetSecondary
+    val foreground = if (artwork != null) widgetSolidColor(Color.White) else widgetForeground
+    val secondary = if (artwork != null) widgetSolidColor(Color(0xFFDEDEE4)) else widgetSecondary
     val root = GlanceModifier.fillMaxSize().background(widgetBackground(context)).cornerRadius(24.dp)
         .clickable(actionStartActivity(intent))
     Box(root, contentAlignment = Alignment.BottomStart) {

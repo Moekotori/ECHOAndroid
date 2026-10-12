@@ -524,7 +524,6 @@ internal fun HomeRecommendationsSection(
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
             )
-            val dark = LocalEchoDarkTheme.current
             Surface(
                 modifier = Modifier
                     .clip(RoundedCornerShape(14.dp))

@@ -87,7 +87,7 @@ tasks.register("checkModules") {
                 errors += "$module has forbidden project dependencies: ${unexpected.sorted().joinToString()}. Allowed: ${permitted.sorted().joinToString().ifEmpty { "(none)" }}"
             }
 
-            actual.filter { it == ":app" }.forEach {
+            if (actual.any { it == ":app" }) {
                 errors += "$module must not depend on :app"
             }
             if (module.startsWith(":feature:") && actual.any { it.startsWith(":feature:") }) {

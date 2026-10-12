@@ -63,9 +63,8 @@ object PlaybackSessionPolicy {
         tracksChanged: Boolean = false,
         playWhenReadyChanged: Boolean = false,
     ): Boolean {
-        isPlayingChanged
-        tracksChanged
-        playWhenReadyChanged
+        // isPlayingChanged / tracksChanged / playWhenReadyChanged are part of the call-site contract
+        // but must not rebuild the queue on their own; only timeline identity forces a full remap.
         return timelineChanged || mediaItemTransitioned
     }
 

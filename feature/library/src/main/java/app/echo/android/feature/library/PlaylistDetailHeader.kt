@@ -150,7 +150,6 @@ internal fun PlaylistHero(
     offlinePin: LibraryOfflinePin? = null,
     onToggleOffline: (() -> Unit)? = null,
 ) {
-    val colors = rememberPlaylistDetailColors()
     val fontScale = LocalDensity.current.fontScale
     Column(Modifier.fillMaxWidth()) {
         BoxWithConstraints(Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 26.dp)) {

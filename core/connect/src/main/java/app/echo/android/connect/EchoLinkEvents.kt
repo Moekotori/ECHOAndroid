@@ -82,11 +82,6 @@ internal fun EchoRemoteEndpoint.resolveEventsUrl(raw: String?): HttpUrl? {
     val value = raw?.trim()?.takeIf { it.isNotBlank() } ?: return null
     value.toHttpUrlOrNull()?.let { return it }
     val relative = if (value.startsWith("/")) value else "/$value"
-    return "http://placeholder.invalid$relative".toHttpUrlOrNull()?.let { parsed ->
-        parsed.newBuilder()
-            .scheme(scheme)
-            .host(host)
-            .port(port)
-            .build()
-    }
+    return "http://placeholder.invalid$relative".toHttpUrlOrNull()
+        ?.newBuilder()?.scheme(scheme)?.host(host)?.port(port)?.build()
 }

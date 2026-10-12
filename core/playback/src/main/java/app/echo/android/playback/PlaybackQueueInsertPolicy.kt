@@ -6,7 +6,7 @@ object PlaybackQueueInsertPolicy {
     fun playNextIndex(
         currentIndex: Int,
         queueSize: Int,
-        @Suppress("UNUSED_PARAMETER") shuffledNextIndex: Int? = null,
+        shuffledNextIndex: Int? = null,
     ): Int {
         if (queueSize <= 0) return 0
         if (currentIndex < 0) return queueSize

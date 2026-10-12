@@ -74,7 +74,7 @@ internal fun lyricsCoverTitleOnlyQuery(request: EchoLyricsSearchRequest): String
     return lyricsSearchTitle(request).takeIf { it.isNotBlank() }
 }
 
-private val CoverToken = """cover|カバー|커버|翻唱|歌ってみた"""
+private const val CoverToken = """cover|カバー|커버|翻唱|歌ってみた"""
 private val CoverPattern = Regex(
     """(?<![a-z])cover(?![a-z])|(?<![\p{L}\p{N}])(?:カバー|커버|翻唱|歌ってみた)(?![\p{L}\p{N}])""",
     RegexOption.IGNORE_CASE,

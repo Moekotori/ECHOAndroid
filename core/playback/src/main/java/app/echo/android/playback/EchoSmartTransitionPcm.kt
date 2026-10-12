@@ -18,18 +18,14 @@ internal object EchoSmartTransitionPcm {
         AudioFormat.ENCODING_PCM_FLOAT -> 4
         AudioFormat.ENCODING_PCM_32BIT -> 4
         AudioFormat.ENCODING_PCM_24BIT_PACKED -> 3
-        else -> when (encoding) {
-            21 -> 3
-            22 -> 4
-            else -> 2
-        }
+        else -> 2
     }
 
     fun readSample(buffer: ByteBuffer, encoding: Int): Float = when (encoding) {
         AudioFormat.ENCODING_PCM_8BIT -> (buffer.get().toInt() and 0xff) / 128f - 1f
         AudioFormat.ENCODING_PCM_FLOAT -> buffer.float
-        AudioFormat.ENCODING_PCM_32BIT, 22 -> buffer.int * (1.0f / 2_147_483_648f)
-        AudioFormat.ENCODING_PCM_24BIT_PACKED, 21 -> {
+        AudioFormat.ENCODING_PCM_32BIT -> buffer.int * (1.0f / 2_147_483_648f)
+        AudioFormat.ENCODING_PCM_24BIT_PACKED -> {
             val b0 = buffer.get().toInt() and 0xff
             val b1 = buffer.get().toInt() and 0xff
             val b2 = buffer.get().toInt() and 0xff

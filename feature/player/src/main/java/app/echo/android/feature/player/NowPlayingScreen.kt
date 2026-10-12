@@ -108,6 +108,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -325,7 +326,7 @@ fun NowPlayingScreen(
     }
     var lyricsSettingsVisible by rememberSaveable { mutableStateOf(false) }
     var playbackSettingsVisible by rememberSaveable { mutableStateOf(false) }
-    var handledLyricsRequestId by rememberSaveable { mutableStateOf(openLyricsRequestId) }
+    var handledLyricsRequestId by rememberSaveable { mutableIntStateOf(openLyricsRequestId) }
     // Opening the drawer can interrupt a horizontal fling. Settle the cover before
     // a style changes its page width, so controls cannot remain partly off-screen.
     LaunchedEffect(playbackSettingsVisible, appearance.style, splitNowPlaying, isRadio) {
@@ -908,8 +909,7 @@ private fun NowPlayingTopBar(
             ) else GlyphButton(
                 icon = if (radioColors != null) Icons.Rounded.MoreVert
                     else if (editorial && appearance.style == "pixel_handheld") PixelPlayerIcons.More else Icons.Rounded.MoreHoriz,
-                description = stringResource(if (lyricsPage) L10nR.string.feature_player_lyrics_settings_843bc9
-                    else L10nR.string.feature_player_expand_playback_settings_cf64a0),
+                description = stringResource(L10nR.string.feature_player_expand_playback_settings_cf64a0),
                 touchSize = 48.dp,
                 iconSize = 26.dp,
                 tint = headerInk,

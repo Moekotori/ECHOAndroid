@@ -23,6 +23,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -95,7 +96,7 @@ internal class EchoOfflineDownloads(
                 }
             }
         }
-        jobs.forEach { it.join() }
+        jobs.joinAll()
         if (store.queuedFiles(1).isNotEmpty() && canDownloadNow()) {
             delay(250)
             wake.tryEmit(Unit)
