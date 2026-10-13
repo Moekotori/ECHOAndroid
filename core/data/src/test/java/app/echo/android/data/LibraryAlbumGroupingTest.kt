@@ -45,6 +45,42 @@ class LibraryAlbumGroupingTest {
     }
 
     @Test
+    fun mixedCompilationOwnersJoinWithoutChangingTags() {
+        for (path in listOf("Music/14 Tracks Documenting/", "Music/")) {
+            val tracks = documentingTracks(path).mapIndexed { index, track ->
+                track.copy(
+                    albumArtist = when (index) {
+                        0 -> "Various Artists"
+                        1 -> "群星"
+                        2 -> null
+                        else -> track.artist
+                    },
+                    artworkUri = "file:///artwork/compilation.jpg",
+                ).withComputedSearchMetadata()
+            }
+            val changes = LibraryAlbumGrouping.reconcile(tracks).associateBy { it.id }
+            val reconciled = tracks.map { changes[it.id] ?: it }
+            assertEquals(setOf("14 tracks documenting::various artists"), reconciled.map { it.albumKey }.toSet())
+            assertEquals(tracks.map { it.artist }, reconciled.map { it.artist })
+            assertEquals(tracks.map { it.albumArtist }, reconciled.map { it.albumArtist })
+            assertTrue(LibraryAlbumGrouping.reconcile(reconciled).isEmpty())
+
+            val otherOwner = tracks.mapIndexed { index, track ->
+                if (index == 3) track.copy(albumArtist = "Other release owner").withComputedSearchMetadata() else track
+            }
+            assertTrue(LibraryAlbumGrouping.reconcile(otherOwner).isEmpty())
+            val edited = tracks.mapIndexed { index, track ->
+                if (index == 3) track.copy(metadataEditedAtEpochMs = 1L) else track
+            }
+            assertTrue(LibraryAlbumGrouping.reconcile(edited).isEmpty())
+        }
+        val withoutEvidence = documentingTracks("Music/").mapIndexed { index, track ->
+            if (index == 0) track.copy(albumArtist = "Various Artists").withComputedSearchMetadata() else track
+        }
+        assertTrue(LibraryAlbumGrouping.reconcile(withoutEvidence).isEmpty())
+    }
+
+    @Test
     fun sharedMusicFolderCompilationRequiresMatchingArtwork() {
         val tracks = documentingTracks("Music/")
         assertTrue(LibraryAlbumGrouping.reconcile(tracks).isEmpty())

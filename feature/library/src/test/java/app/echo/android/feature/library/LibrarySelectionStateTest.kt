@@ -5,6 +5,16 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class LibrarySelectionStateTest {
+    @Test fun pagerUsesTheCustomizedOrderAndCloudKeepsItsSupportedCategory() {
+        val layout = app.echo.android.model.settings.EchoLibraryLayout(
+            order = app.echo.android.model.settings.EchoLibraryCategory.entries.reversed(),
+            hidden = setOf(app.echo.android.model.settings.EchoLibraryCategory.Songs),
+        )
+        assertEquals(listOf(LibraryViewMode.Playlists, LibraryViewMode.Folders, LibraryViewMode.Artists, LibraryViewMode.Albums),
+            libraryPagerModes(false, layout))
+        assertEquals(listOf(LibraryViewMode.Albums), libraryPagerModes(true, layout))
+    }
+
     @Test
     fun coldStartOnCloudResolvesDefaultAndSavedCategoriesToAlbums() {
         for (mode in LibraryViewMode.entries) {

@@ -122,6 +122,10 @@ public final class FfmpegLibrary {
       return dsdCodec;
     }
     switch (mimeType) {
+      case "audio/ape":
+      case "audio/x-ape":
+      case "audio/x-monkeys-audio":
+        return "ape";
       case MimeTypes.AUDIO_AAC:
         return "aac";
       case MimeTypes.AUDIO_MPEG:

@@ -6,6 +6,11 @@ import org.json.*
 
 internal object BackupExperienceCodec {
     fun encodeSettings(json: JSONObject, value: EchoBackupSettings) {
+        value.libraryLayout?.normalized()?.let { layout ->
+            json.put("libraryLayout", JSONObject()
+                .put("order", JSONArray(layout.order.map(EchoLibraryCategory::id)))
+                .put("hidden", JSONArray(layout.hidden.map(EchoLibraryCategory::id))))
+        }
         value.homeLayout?.let { json.put("homeLayout", JSONObject().put("order", JSONArray(it.order.map(EchoHomeSection::id))).put("hidden", JSONArray(it.hidden.map(EchoHomeSection::id)))) }
         json.putOpt("playerPageStyle", value.playerPageStyle).putOpt("playerTextScale", value.playerTextScale)
             .putOpt("playerArtworkScale", value.playerArtworkScale).putOpt("backgroundMode", value.backgroundMode)
@@ -18,6 +23,13 @@ internal object BackupExperienceCodec {
             (0 until array.length()).mapNotNull { EchoHomeSection.fromId(array.optString(it)) }
         }.orEmpty()
         return EchoHomeLayout(sections("order"), sections("hidden").toSet()).normalized()
+    }
+    fun library(json: JSONObject?): EchoLibraryLayout? {
+        val value = json?.optJSONObject("libraryLayout") ?: return null
+        fun categories(name: String): List<EchoLibraryCategory> = value.optJSONArray(name)?.let { array ->
+            (0 until array.length()).mapNotNull { EchoLibraryCategory.fromId(array.optString(it)) }
+        }.orEmpty()
+        return EchoLibraryLayout(categories("order"), categories("hidden").toSet()).normalized()
     }
     fun encode(json: JSONObject, document: EchoBackupDocument) {
         json.put("history", JSONArray().apply { document.history.forEach { event -> put(JSONObject()

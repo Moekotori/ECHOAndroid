@@ -83,9 +83,9 @@ class EchoDsfExtractorTest {
 }
 
 @UnstableApi
-private class BufferExtractorInput(private val data: ByteArray) : ExtractorInput {
-    private var pos = 0
-    private var peek = 0
+internal class BufferExtractorInput(private val data: ByteArray, start: Int = 0) : ExtractorInput {
+    private var pos = start
+    private var peek = start
 
     override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
         if (pos >= data.size) return C.RESULT_END_OF_INPUT
@@ -186,7 +186,7 @@ private class BufferExtractorInput(private val data: ByteArray) : ExtractorInput
 }
 
 @UnstableApi
-private class CaptureOutput : ExtractorOutput {
+internal class CaptureOutput : ExtractorOutput {
     val track = CaptureTrack()
     var seekMap: SeekMap? = null
 
@@ -198,7 +198,7 @@ private class CaptureOutput : ExtractorOutput {
 }
 
 @UnstableApi
-private class CaptureTrack : TrackOutput {
+internal class CaptureTrack : TrackOutput {
     var format: Format? = null
     val sampleTimes = mutableListOf<Long>()
     val sampleBytes = mutableListOf<ByteArray>()

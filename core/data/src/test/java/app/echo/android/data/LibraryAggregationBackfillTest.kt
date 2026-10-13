@@ -45,6 +45,23 @@ class LibraryAggregationBackfillTest {
         assertTrue(!backfillLibraryAggregationKeys(store.dao, 2) { it.withComputedSearchMetadata() })
     }
 
+    @Test fun mixedCompilationOwnersInExistingIndexRegroupAcrossBatches() = runBlocking {
+        val tracks = listOf("Aeron Bergman", "Jasper Leyland", "Thuja", "Geir Jenssen").mapIndexed { index, artist ->
+            track("$index", "14 Tracks Documenting", artist, "Music/")
+                .copy(
+                    albumArtist = if (index == 0) "Various Artists" else artist,
+                    artworkUri = "file:///artwork/compilation.jpg",
+                ).withComputedSearchMetadata()
+        }
+        val store = BackfillDao(tracks)
+        assertTrue(backfillLibraryAggregationKeys(store.dao, 2) { it.withComputedSearchMetadata() })
+        assertEquals(setOf("14 tracks documenting::various artists"), store.rows.values.map { it.albumKey }.toSet())
+        assertEquals(tracks.map { it.albumArtist }, store.rows.values.map { it.albumArtist })
+        assertTrue(store.fullReadSizes.all { it <= 2 })
+        assertTrue(store.writeSizes.all { it <= 2 })
+        assertTrue(!backfillLibraryAggregationKeys(store.dao, 2) { it.withComputedSearchMetadata() })
+    }
+
     @Test fun pagedMigrationPreservesWholeLibraryGroupingAcrossDiscFoldersAndSharedCredits() = runBlocking {
         val tracks = listOf(
             track("9", "Live (Disc 1)", "Band/Guest A", "Music/Live/CD1"),

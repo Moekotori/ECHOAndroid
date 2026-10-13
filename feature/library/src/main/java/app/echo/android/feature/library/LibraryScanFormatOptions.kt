@@ -13,7 +13,7 @@ import androidx.compose.ui.unit.dp
 import java.util.Locale
 
 private val ScanExtensions = listOf(
-    "flac", "wav", "aiff", "aif", "aifc", "dsf", "dff",
+    "flac", "ape", "wav", "aiff", "aif", "aifc", "dsf", "dff",
     "mp3", "mp2", "m4a", "m4b", "aac", "ogg", "oga", "opus", "mka",
     "ac3", "eac3", "dts", "amr",
 )

@@ -2053,6 +2053,15 @@ class EchoLibraryRepository(
         return database.trackDao().countLocalTracksBeforeTitle(letter.toString())
     }
 
+    suspend fun localTrackIndex(trackId: String, query: String, sort: LibraryTrackSortMode): Int? =
+        withContext(Dispatchers.IO) {
+            val trimmed = query.trim()
+            val match = sanitizeFtsQuery(trimmed)
+            val useFts = match != null && canUseFts(database.trackDao(), match, trimmed)
+            val orderedIds = trackPagingQuery(trimmed, match, ftsRankQuery(trimmed), useFts, sort, idsOnly = true)
+            findLibraryTrackIndex(database, orderedIds, trackId)
+        }
+
     suspend fun countTracksFromSource(source: String): Int =
         database.trackDao().countTracksFromSource(source)
 
@@ -2104,12 +2113,14 @@ class EchoLibraryRepository(
         rankQuery: String,
         useFts: Boolean,
         sort: LibraryTrackSortMode,
+        idsOnly: Boolean = false,
     ): SimpleSQLiteQuery {
         val trimmed = query.trim()
         val sql = LibraryTrackQueryBuilder.buildTrackPagingSql(
             query = trimmed,
             useFts = useFts && matchQuery != null,
             sort = sort,
+            idsOnly = idsOnly,
         )
         val args = mutableListOf<Any>()
         if (trimmed.isNotBlank() && useFts && matchQuery != null) {

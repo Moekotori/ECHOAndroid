@@ -78,10 +78,12 @@ class LocalAudioFileTypesTest {
     }
 
     @Test
-    fun apeIsNotImportedBecauseTheDecoderIsNotBuilt() {
-        assertFalse(LocalAudioFileTypes.isSupported("album.ape", null))
-        assertFalse(LocalAudioFileTypes.isSupported("album.ape", "audio/ape"))
-        assertEquals(null, LocalAudioFileTypes.mimeTypeForFileName("album.ape"))
+    fun apeIsImportedFromFilesAndAudioProviders() {
+        assertTrue(LocalAudioFileTypes.isSupported("album.ape", null))
+        assertTrue(LocalAudioFileTypes.isSupported("album.APE", "application/octet-stream"))
+        assertTrue(LocalAudioFileTypes.isSupported("album.ape", "audio/x-monkeys-audio"))
+        assertEquals("audio/ape", LocalAudioFileTypes.mimeTypeForFileName("album.APE"))
+        assertTrue("%.ape" in LocalAudioFileTypes.mediaStoreFallbackNameClause("display_name").second)
     }
 
     @Test

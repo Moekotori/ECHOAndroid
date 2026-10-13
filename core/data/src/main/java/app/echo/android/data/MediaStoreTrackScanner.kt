@@ -725,6 +725,15 @@ class MediaStoreTrackScanner(
             dateModifiedSeconds = dateModifiedSeconds,
             relativePath = relativePath,
         ).withFingerprint()
+        if (EchoApeMetadata.isApe(mimeType, fileName)) {
+            val ape = runCatching {
+                contentResolver.openInputStream(Uri.parse(contentUri))?.use(EchoApeMetadata::read)
+            }.getOrNull()
+            if (ape != null) return entity.copy(
+                durationMs = ape.durationMs,
+                sampleRateHz = ape.sampleRateHz,
+            ).withFingerprint()
+        }
         if (EchoDsdMetadata.isDsd(mimeType, relativePath) || EchoDsdMetadata.isDsd(mimeType, contentUri)) {
             val dsd = runCatching {
                 contentResolver.openInputStream(Uri.parse(contentUri))?.use(EchoDsdMetadata::read)
@@ -911,7 +920,7 @@ class MediaStoreTrackScanner(
         java.io.File(appContext.filesDir, "local-file-tag-backfill-v6")
 
     private fun aggregationKeyBackfillMarker(): java.io.File =
-        java.io.File(appContext.filesDir, "library-aggregation-keys-v6")
+        java.io.File(appContext.filesDir, "library-aggregation-keys-v7")
 
     internal fun readSampleRateHz(contentUri: String): Int? =
         runCatching {

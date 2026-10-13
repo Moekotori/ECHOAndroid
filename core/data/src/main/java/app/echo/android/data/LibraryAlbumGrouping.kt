@@ -100,14 +100,19 @@ internal object LibraryAlbumGrouping {
         // general folder) supplies the release identity when every owner matches its song.
         // Distinct release owners and manually edited tags remain authoritative.
         if (albumArtists.size > 1) {
+            val compilationOwner = VariousArtistsKey.takeIf { it in albumArtists && hasReleaseEvidence }
             if ((commonArtist == null && !hasReleaseEvidence) || group.any { track ->
                     canonicalAlbumArtistKey(
                             track.normalizedAlbumArtist ?: track.albumArtist?.normalizedForSearch(),
                         )?.let { owner ->
-                            owner != canonicalAlbumArtistKey(track.artist.normalizedForSearch())
+                            owner != compilationOwner &&
+                                owner != canonicalAlbumArtistKey(track.artist.normalizedForSearch())
                         } == true
                 }) return null
-            val winner = if (commonArtist != null) libraryAlbumKey(album, commonArtist, null)
+            // A partially tagged compilation can mix Various Artists, missing owners,
+            // and owners copied from individual songs. Keep the explicit compilation owner.
+            val winner = if (compilationOwner != null) libraryAlbumKey(album, compilationOwner, null)
+                else if (commonArtist != null) libraryAlbumKey(album, commonArtist, null)
                 else previousCompilationKey ?: inferredCompilationKey(album, folder, if (sharedFolder) group.first().artworkUri else null)
             // A title/lyrics/order edit on an already grouped release is not a new owner.
             // An edited row with a different key still prevents inferred owner repair.

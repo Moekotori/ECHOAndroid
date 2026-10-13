@@ -109,6 +109,7 @@ fun EmbeddedLyricsLoaderProvider(
 @Composable
 internal fun TrackList(
     tracks: LazyPagingItems<EchoTrack>,
+    playingTrackId: String? = null,
     onPlayTrack: (EchoTrack) -> Unit,
     onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
@@ -138,7 +139,11 @@ internal fun TrackList(
         ) { index: Int ->
             tracks[index]?.let { track ->
                 TrackRow(
-                    modifier = libraryTrackItemMotion(),
+                    modifier = libraryTrackItemMotion().then(
+                        if (track.id == playingTrackId) Modifier.background(
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), RoundedCornerShape(8.dp),
+                        ) else Modifier,
+                    ),
                     track = track,
                     onClick = { onPlayTrack(track) },
                     onUpdateTrackMetadata = onUpdateTrackMetadata,
@@ -160,7 +165,7 @@ internal fun TrackList(
                     },
                     showAudioInfoTags = showAudioInfoTags,
                 )
-            }
+            } ?: Spacer(Modifier.fillMaxWidth().height(84.dp))
         }
     }
 }

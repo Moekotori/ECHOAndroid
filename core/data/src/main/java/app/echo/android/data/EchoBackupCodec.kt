@@ -223,6 +223,7 @@ object EchoBackupCodec {
         }
         return EchoBackupSettings(
             homeLayout = BackupExperienceCodec.home(json),
+            libraryLayout = BackupExperienceCodec.library(json),
             playerPageStyle = json.optionalString("playerPageStyle"), playerTextScale = json.optionalFloat("playerTextScale"), playerArtworkScale = json.optionalFloat("playerArtworkScale"),
             backgroundMode = json.optionalString("backgroundMode"), backgroundStyle = json.optionalString("backgroundStyle"),
             backgroundBlur = json.optionalFloat("backgroundBlur"), backgroundBrightness = json.optionalFloat("backgroundBrightness"),

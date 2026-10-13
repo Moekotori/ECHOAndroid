@@ -83,7 +83,8 @@ public final class FfmpegAudioDecoder
     nativeContext =
         ffmpegInitialize(codecName, extraData,
             encoding == C.ENCODING_PCM_32BIT ? 2 : (encoding == C.ENCODING_PCM_FLOAT ? 1 : 0),
-            format.sampleRate, format.channelCount);
+            format.sampleRate, format.channelCount,
+            "ape".equals(codecName) ? Util.getPcmFrameSize(format.pcmEncoding, 1) * 8 : -1);
     if (nativeContext == 0) {
       throw new FfmpegDecoderException("Initialization failed.");
     }
@@ -209,6 +210,10 @@ public final class FfmpegAudioDecoder
   @Nullable
   private static byte[] getExtraData(String mimeType, List<byte[]> initializationData) {
     switch (mimeType) {
+      case "audio/ape":
+      case "audio/x-ape":
+      case "audio/x-monkeys-audio":
+        return initializationData.get(0);
       case MimeTypes.AUDIO_AAC:
       case MimeTypes.AUDIO_OPUS:
         return initializationData.get(0);
@@ -320,7 +325,8 @@ public final class FfmpegAudioDecoder
       @Nullable byte[] extraData,
       int outputMode,
       int rawSampleRate,
-      int rawChannelCount);
+      int rawChannelCount,
+      int rawBitDepth);
 
   private native int ffmpegDecode(
       long context,

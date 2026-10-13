@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoIcon
 import app.echo.android.model.library.LibraryScanOptions
 
-private val LosslessScanExtensions = setOf("flac", "wav", "aiff", "aif", "aifc", "dsf", "dff")
+private val LosslessScanExtensions = setOf("flac", "ape", "wav", "aiff", "aif", "aifc", "dsf", "dff")
 private val DurationScanChoices = listOf(0L to R.string.scan_any, 30_000L to R.string.scan_30_seconds, 60_000L to R.string.scan_60_seconds)
 private val SizeScanChoices = listOf(0L to R.string.scan_any, 102_400L to R.string.scan_100_kb, 1_048_576L to R.string.scan_1_mb)
 

@@ -11,6 +11,6 @@ internal class EchoExtractorsFactory : ExtractorsFactory {
 
     override fun createExtractors(): Array<Extractor> {
         val fallback = defaults.createExtractors()
-        return arrayOf(EchoDsfExtractor(), EchoDffExtractor(), *fallback)
+        return arrayOf(EchoApeExtractor(), EchoDsfExtractor(), EchoDffExtractor(), *fallback)
     }
 }

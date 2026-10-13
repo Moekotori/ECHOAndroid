@@ -30,6 +30,7 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavutil/channel_layout.h>
 #include <libavutil/error.h>
+#include <libavutil/intreadwrite.h>
 #include <libavutil/mem.h>
 #include <libavutil/opt.h>
 #include <libswresample/swresample.h>
@@ -125,7 +126,7 @@ const AVCodec* getCodecByName(JNIEnv* env, jstring codecName);
  */
 AVCodecContext* createContext(JNIEnv* env, const AVCodec* codec,
                               jbyteArray extraData, jint outputMode,
-                              jint rawSampleRate, jint rawChannelCount);
+                              jint rawSampleRate, jint rawChannelCount, jint rawBitDepth);
 
 struct GrowOutputBufferCallback {
   uint8_t* operator()(int requiredSize) const;
@@ -196,14 +197,14 @@ LIBRARY_FUNC(jboolean, ffmpegHasDecoder, jstring codecName) {
 
 AUDIO_DECODER_FUNC(jlong, ffmpegInitialize, jstring codecName,
                    jbyteArray extraData, jint outputMode,
-                   jint rawSampleRate, jint rawChannelCount) {
+                   jint rawSampleRate, jint rawChannelCount, jint rawBitDepth) {
   const AVCodec* codec = getCodecByName(env, codecName);
   if (!codec) {
     LOGE("Codec not found.");
     return 0L;
   }
   return (jlong)createContext(env, codec, extraData, outputMode, rawSampleRate,
-                              rawChannelCount);
+                              rawChannelCount, rawBitDepth);
 }
 
 AUDIO_DECODER_FUNC(jint, ffmpegDecode, jlong context, jobject inputData,
@@ -298,7 +299,7 @@ AUDIO_DECODER_FUNC(jlong, ffmpegReset, jlong jContext, jbyteArray extraData) {
     }
     return (jlong)createContext(env, codec, extraData, outputMode,
                                 /* rawSampleRate= */ -1,
-                                /* rawChannelCount= */ -1);
+                                /* rawChannelCount= */ -1, /* rawBitDepth= */ -1);
   }
 
   free_resampler_swr(resampler_state(context));
@@ -324,7 +325,7 @@ const AVCodec* getCodecByName(JNIEnv* env, jstring codecName) {
 
 AVCodecContext* createContext(JNIEnv* env, const AVCodec* codec,
                               jbyteArray extraData, jint outputMode,
-                              jint rawSampleRate, jint rawChannelCount) {
+                              jint rawSampleRate, jint rawChannelCount, jint rawBitDepth) {
   AVCodecContext* context = avcodec_alloc_context3(codec);
   if (!context) {
     LOGE("Failed to allocate context.");
@@ -348,9 +349,13 @@ AVCodecContext* createContext(JNIEnv* env, const AVCodec* codec,
   }
   if (context->codec_id == AV_CODEC_ID_PCM_MULAW ||
       context->codec_id == AV_CODEC_ID_PCM_ALAW ||
+      context->codec_id == AV_CODEC_ID_APE ||
       is_dsd_codec(codec)) {
     context->sample_rate = rawSampleRate;
     av_channel_layout_default(&context->ch_layout, rawChannelCount);
+  }
+  if (context->codec_id == AV_CODEC_ID_APE) {
+    context->bits_per_coded_sample = rawBitDepth;
   }
   context->err_recognition = outputMode == 2 ? (AV_EF_CRCCHECK | AV_EF_EXPLODE) : AV_EF_IGNORE_ERR;
   int result = avcodec_open2(context, codec, NULL);
@@ -377,6 +382,19 @@ int decodePacket(AVCodecContext* context, AVPacket* packet,
                  uint8_t* outputBuffer, int outputSize,
                  GrowOutputBufferCallback growBuffer) {
   int result = 0;
+  // APE emits many PCM blocks per packet. Reserve once, before draining them.
+  if (context->codec_id == AV_CODEC_ID_APE) {
+    if (packet->size < 8) return AUDIO_DECODER_ERROR_INVALID_DATA;
+    uint32_t samples = AV_RL32(packet->data);
+    if (!samples || samples > 73728 * 4) return AUDIO_DECODER_ERROR_INVALID_DATA;
+    int required = samples * context->ch_layout.nb_channels *
+        av_get_bytes_per_sample(context->request_sample_fmt);
+    if (required > outputSize) {
+      outputBuffer = growBuffer(required);
+      if (!outputBuffer) return AUDIO_DECODER_ERROR_OTHER;
+      outputSize = required;
+    }
+  }
   // Queue input data.
   result = avcodec_send_packet(context, packet);
   if (result) {
@@ -452,12 +470,13 @@ int decodePacket(AVCodecContext* context, AVPacket* packet,
           "reallocating buffer.",
           outputSize, outSize + bufferOutSize);
       outputSize = outSize + bufferOutSize;
-      outputBuffer = growBuffer(outputSize);
-      if (!outputBuffer) {
+      uint8_t* grownBuffer = growBuffer(outputSize);
+      if (!grownBuffer) {
         LOGE("Failed to reallocate output buffer.");
         av_frame_free(&frame);
         return AUDIO_DECODER_ERROR_OTHER;
       }
+      outputBuffer = grownBuffer + outSize;
     }
     if (rateChange) {
       result = swr_convert(resampleContext, &outputBuffer, outSamples,

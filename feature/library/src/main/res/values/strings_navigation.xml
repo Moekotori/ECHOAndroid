@@ -1,0 +1,6 @@
+<resources>
+    <string name="library_locate_playing_song">Locate current song</string>
+    <string name="library_back_to_top">Back to top</string>
+    <string name="library_playing_song_not_found">The current song is no longer in this list</string>
+    <string name="library_locate_song_failed">Could not locate the song. Try again.</string>
+</resources>

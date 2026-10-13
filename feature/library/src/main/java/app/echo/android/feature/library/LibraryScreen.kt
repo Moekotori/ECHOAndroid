@@ -110,6 +110,8 @@ import app.echo.android.model.library.LibraryPlaybackOrigin
 import app.echo.android.model.library.LibraryScanPhase
 import app.echo.android.model.library.LibraryScanProgress
 import app.echo.android.model.library.LibrarySource
+import app.echo.android.model.settings.EchoLibraryLayout
+import app.echo.android.model.settings.EchoLibraryCategory
 import app.echo.android.model.library.LibraryTrackSortMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -273,6 +275,8 @@ fun LibraryScreen(
     onLibrarySourceChange: (String) -> Unit,
     onTrackSortModeChange: (LibraryTrackSortMode) -> Unit,
     onFindSongLetterIndex: suspend (Char) -> Int,
+    playingTrackId: String? = null,
+    onFindPlayingSongIndex: (suspend (String) -> Int?)? = null,
     onAlbumSortModeChange: (AlbumSortMode) -> Unit,
     onArtistSortModeChange: (ArtistSortMode) -> Unit,
     onFolderSortModeChange: (FolderSortMode) -> Unit,
@@ -348,6 +352,8 @@ fun LibraryScreen(
     onPinAlbumOffline: (AlbumSummary) -> Unit = {},
     onPinPlaylistOffline: (EchoPlaylist) -> Unit = {},
     onUnpinOffline: (String) -> Unit = {},
+    libraryLayout: EchoLibraryLayout = EchoLibraryLayout(),
+    onLibraryLayoutChange: ((EchoLibraryLayout) -> Unit)? = null,
 ) {
     val artistListState = rememberSaveable(selectedArtist?.artistKey, saver = androidx.compose.foundation.lazy.LazyListState.Saver) {
         androidx.compose.foundation.lazy.LazyListState()
@@ -357,13 +363,29 @@ fun LibraryScreen(
     }
     val playNext = onPlayNext
     val enqueueTrack = onEnqueueTrack
-    var selectedModeIndex by rememberSaveable { mutableIntStateOf(LibraryViewMode.Songs.ordinal) }
+    var selectedModeIndex by rememberSaveable { mutableIntStateOf(libraryPagerModes(false, libraryLayout).first().ordinal) }
     var selectedSource by remember {
         mutableStateOf(librarySourceModeFromId(selectedLibrarySourceId, linkedLibraryActive))
     }
-    val selectedMode = restoredLibraryViewMode(
+    val layout = remember(libraryLayout) { libraryLayout.normalized() }
+    var editingLayout by rememberSaveable { mutableStateOf(false) }
+    val customizeLayout: (() -> Unit)? = if (onLibraryLayoutChange != null) ({ editingLayout = true }) else null
+    val localModes = remember(layout) { libraryPagerModes(false, layout) }
+    val restoredMode = restoredLibraryViewMode(
         selectedModeIndex,
         cloudOnly = selectedSource == LibrarySourceMode.Cloud,
+    )
+    val selectedMode = when {
+        selectedSource == LibrarySourceMode.Cloud -> LibraryViewMode.Albums
+        restoredMode == LibraryViewMode.Radio -> LibraryViewMode.Radio
+        restoredMode in localModes -> restoredMode
+        else -> localModes.first()
+    }
+    LaunchedEffect(selectedMode) { selectedModeIndex = selectedMode.ordinal }
+    if (editingLayout && onLibraryLayoutChange != null) LibraryLayoutEditor(
+        layout = layout,
+        onDismiss = { editingLayout = false },
+        onApply = onLibraryLayoutChange,
     )
     var linkedMode by rememberSaveable { mutableStateOf(LinkedLibraryMode.Songs) }
     var selectedLinkedAlbum by remember { mutableStateOf<AlbumSummary?>(null) }
@@ -450,6 +472,8 @@ fun LibraryScreen(
                         linkedLibraryAvailable = linkedLibraryAvailable,
                         onSelectSource = ::selectSource,
                         selectedMode = selectedMode,
+                        modes = libraryPagerModes(displayedSource == LibrarySourceMode.Cloud, layout),
+                        onCustomize = customizeLayout,
                         selectedSortMode = trackSortMode,
                         albumSortMode = albumSortMode,
                         artistSortMode = artistSortMode,
@@ -470,7 +494,7 @@ fun LibraryScreen(
                     Box(modifier = Modifier.weight(1f)) {
                         LibraryCategoryPager(
                             modes = if (selectedMode == LibraryViewMode.Radio) listOf(LibraryViewMode.Radio)
-                                else libraryPagerModes(displayedSource == LibrarySourceMode.Cloud),
+                                else libraryPagerModes(displayedSource == LibrarySourceMode.Cloud, layout),
                             selectedMode = selectedMode,
                             onSelectMode = { selectedModeIndex = it.ordinal },
                             modifier = Modifier.fillMaxSize(),
@@ -541,6 +565,7 @@ fun LibraryScreen(
                                             onOpenAlbum = onOpenTrackAlbum,
                                             showAudioInfoTags = showTrackAudioInfoTags,
                                             listState = songListState,
+                                            playingTrackId = playingTrackId,
                                             modifier = Modifier.fillMaxSize().then(
                                                 if (showAlphabetIndex) Modifier.padding(end = 28.dp) else Modifier,
                                             ),
@@ -553,6 +578,16 @@ fun LibraryScreen(
                                                 modifier = Modifier.align(Alignment.CenterEnd),
                                             )
                                         }
+                                        SongListNavigation(
+                                            tracks = trackItems,
+                                            listState = songListState,
+                                            playingTrackId = playingTrackId,
+                                            queryKey = libraryQuery to trackSortMode,
+                                            findIndex = onFindPlayingSongIndex,
+                                            modifier = Modifier.align(Alignment.BottomEnd)
+                                                .padding(end = if (showAlphabetIndex) 36.dp else 8.dp,
+                                                    bottom = LibraryBottomControlsPadding),
+                                        )
                                     }
                                 }
                                 }
@@ -688,10 +723,25 @@ fun LibraryScreen(
                 when {
                     displayedSource == LibrarySourceMode.PcEcho && linkedLibraryAvailable -> {
                         val linkedState by linkedLibraryState.collectAsState()
+                        val linkedModes = remember(layout, linkedState.foldersUnavailable) {
+                            val available = EchoLibraryCategory.entries.filterNot {
+                                it == EchoLibraryCategory.Folders && linkedState.foldersUnavailable
+                            }
+                            layout.visibleCategories(available).map { LinkedLibraryMode.valueOf(it.name) }
+                        }
+                        val effectiveLinkedMode = linkedMode.takeIf { it in linkedModes } ?: linkedModes.first()
+                        LaunchedEffect(effectiveLinkedMode) {
+                            linkedMode = effectiveLinkedMode
+                            if (effectiveLinkedMode == LinkedLibraryMode.Folders) {
+                                onRefreshLinkedFolders(linkedLibraryState.value.folderPath)
+                            }
+                        }
                         LinkedEchoLibraryPage(
                             state = linkedState,
                             query = libraryQuery,
-                            selectedMode = linkedMode,
+                            selectedMode = effectiveLinkedMode,
+                            modes = linkedModes,
+                            onCustomize = customizeLayout,
                             selectedSource = displayedSource,
                             selectedSortMode = trackSortMode,
                             albumSortMode = albumSortMode,
@@ -708,9 +758,6 @@ fun LibraryScreen(
                                 selectedLinkedAlbum = null
                                 selectedLinkedArtist = null
                                 selectedLinkedPlaylist = null
-                                if (mode == LinkedLibraryMode.Folders) {
-                                    onRefreshLinkedFolders(linkedLibraryState.value.folderPath)
-                                }
                             },
                             onOpenAlbum = { album ->
                                 selectedLinkedAlbum = album
@@ -1104,6 +1151,8 @@ private fun LinkedEchoLibraryPage(
     state: EchoRemoteLibraryState,
     query: String,
     selectedMode: LinkedLibraryMode,
+    modes: List<LinkedLibraryMode>,
+    onCustomize: (() -> Unit)?,
     selectedSource: LibrarySourceMode,
     selectedSortMode: LibraryTrackSortMode,
     albumSortMode: AlbumSortMode,
@@ -1183,11 +1232,7 @@ private fun LinkedEchoLibraryPage(
             onRefresh(queryToSend)
         }
     }
-    LaunchedEffect(state.foldersUnavailable, selectedMode) {
-        if (state.foldersUnavailable && selectedMode == LinkedLibraryMode.Folders) {
-            onSelectMode(LinkedLibraryMode.Songs)
-        }
-    }
+
     var lastEmptyAutoRefreshQuery by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(
         normalizedQuery,
@@ -1216,11 +1261,12 @@ private fun LinkedEchoLibraryPage(
             selectedSource = selectedSource,
             linkedLibraryAvailable = true,
             selectedMode = selectedMode,
+            modes = modes,
+            onCustomize = onCustomize,
             selectedSortMode = selectedSortMode,
             albumSortMode = albumSortMode,
             artistSortMode = artistSortMode,
             folderSortMode = folderSortMode,
-            foldersAvailable = !state.foldersUnavailable,
             onSelectSource = onSelectSource,
             onSelectMode = onSelectMode,
             onSortModeChange = onSortModeChange,
@@ -1361,11 +1407,12 @@ private fun LinkedLibraryHeader(
     selectedSource: LibrarySourceMode,
     linkedLibraryAvailable: Boolean,
     selectedMode: LinkedLibraryMode,
+    modes: List<LinkedLibraryMode>,
+    onCustomize: (() -> Unit)?,
     selectedSortMode: LibraryTrackSortMode,
     albumSortMode: AlbumSortMode,
     artistSortMode: ArtistSortMode,
     folderSortMode: FolderSortMode,
-    foldersAvailable: Boolean,
     onSelectSource: (LibrarySourceMode) -> Unit,
     onSelectMode: (LinkedLibraryMode) -> Unit,
     onSortModeChange: (LibraryTrackSortMode) -> Unit,
@@ -1373,22 +1420,17 @@ private fun LinkedLibraryHeader(
     onArtistSortModeChange: (ArtistSortMode) -> Unit,
     onFolderSortModeChange: (FolderSortMode) -> Unit,
 ) {
-    val modes = if (foldersAvailable) {
-        LinkedLibraryMode.entries
-    } else {
-        LinkedLibraryMode.entries.filter { it != LinkedLibraryMode.Folders }
-    }
     val selectedIndex = modes.indexOf(selectedMode).coerceAtLeast(0)
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.weight(1f)) {
             LibraryTextTabs(modes.map { it.label() }, selectedIndex, { onSelectMode(modes[it]) })
         }
         when (selectedMode) {
-            LinkedLibraryMode.Songs -> LibraryTrackSortMenu(selectedSortMode, onSortModeChange)
-            LinkedLibraryMode.Albums -> LibraryAlbumSortMenu(albumSortMode, onAlbumSortModeChange)
-            LinkedLibraryMode.Artists -> LibraryArtistSortMenu(artistSortMode, onArtistSortModeChange)
-            LinkedLibraryMode.Folders -> LibraryFolderSortMenu(folderSortMode, onFolderSortModeChange)
-            LinkedLibraryMode.Playlists -> Unit
+            LinkedLibraryMode.Songs -> LibraryTrackSortMenu(selectedSortMode, onSortModeChange, onCustomize)
+            LinkedLibraryMode.Albums -> LibraryAlbumSortMenu(albumSortMode, onAlbumSortModeChange, onCustomize)
+            LinkedLibraryMode.Artists -> LibraryArtistSortMenu(artistSortMode, onArtistSortModeChange, onCustomize)
+            LinkedLibraryMode.Folders -> LibraryFolderSortMenu(folderSortMode, onFolderSortModeChange, onCustomize)
+            LinkedLibraryMode.Playlists -> LibraryCustomizeButton(onCustomize)
         }
     }
 }
@@ -1858,6 +1900,7 @@ private fun linkedPlaylistSubtitle(playlist: EchoRemotePlaylist): String {
 private fun LibraryTrackSortMenu(
     selectedSortMode: LibraryTrackSortMode,
     onSortModeChange: (LibraryTrackSortMode) -> Unit,
+    onCustomize: (() -> Unit)? = null,
 ) {
     LibrarySortMenu(
         selected = selectedSortMode,
@@ -1865,6 +1908,7 @@ private fun LibraryTrackSortMenu(
         label = { it.label() },
         contentDescription = stringResource(L10nR.string.feature_library_set_track_sort_order_4053c0),
         onSelect = onSortModeChange,
+        onCustomize = onCustomize,
     )
 }
 
@@ -1872,6 +1916,7 @@ private fun LibraryTrackSortMenu(
 private fun LibraryAlbumSortMenu(
     selectedSortMode: AlbumSortMode,
     onSortModeChange: (AlbumSortMode) -> Unit,
+    onCustomize: (() -> Unit)? = null,
 ) {
     LibrarySortMenu(
         selected = selectedSortMode,
@@ -1879,6 +1924,7 @@ private fun LibraryAlbumSortMenu(
         label = { it.label() },
         contentDescription = stringResource(L10nR.string.feature_library_set_album_sort_order_7c2d91),
         onSelect = onSortModeChange,
+        onCustomize = onCustomize,
     )
 }
 
@@ -1886,6 +1932,7 @@ private fun LibraryAlbumSortMenu(
 private fun LibraryArtistSortMenu(
     selectedSortMode: ArtistSortMode,
     onSortModeChange: (ArtistSortMode) -> Unit,
+    onCustomize: (() -> Unit)? = null,
 ) {
     LibrarySortMenu(
         selected = selectedSortMode,
@@ -1893,6 +1940,7 @@ private fun LibraryArtistSortMenu(
         label = { it.label() },
         contentDescription = stringResource(L10nR.string.feature_library_set_artist_sort_order_e15a06),
         onSelect = onSortModeChange,
+        onCustomize = onCustomize,
     )
 }
 
@@ -1900,6 +1948,7 @@ private fun LibraryArtistSortMenu(
 private fun LibraryFolderSortMenu(
     selectedSortMode: FolderSortMode,
     onSortModeChange: (FolderSortMode) -> Unit,
+    onCustomize: (() -> Unit)? = null,
 ) {
     LibrarySortMenu(
         selected = selectedSortMode,
@@ -1907,6 +1956,7 @@ private fun LibraryFolderSortMenu(
         label = { it.label() },
         contentDescription = stringResource(L10nR.string.feature_library_set_folder_sort_order_9a4f33),
         onSelect = onSortModeChange,
+        onCustomize = onCustomize,
     )
 }
 
@@ -1917,6 +1967,7 @@ private fun <T> LibrarySortMenu(
     label: @Composable (T) -> String,
     contentDescription: String,
     onSelect: (T) -> Unit,
+    onCustomize: (() -> Unit)? = null,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -1939,6 +1990,14 @@ private fun <T> LibrarySortMenu(
                         expanded = false
                         onSelect(mode)
                     },
+                )
+            }
+            if (onCustomize != null) {
+                androidx.compose.material3.HorizontalDivider()
+                EchoDropdownMenuItem(
+                    text = { Text(stringResource(L10nR.string.library_layout_title)) },
+                    selected = false,
+                    onClick = { expanded = false; onCustomize() },
                 )
             }
         }
@@ -1967,6 +2026,8 @@ private fun LibraryBrowserHeader(
     linkedLibraryAvailable: Boolean,
     onSelectSource: (LibrarySourceMode) -> Unit,
     selectedMode: LibraryViewMode,
+    modes: List<LibraryViewMode>,
+    onCustomize: (() -> Unit)?,
     selectedSortMode: LibraryTrackSortMode,
     albumSortMode: AlbumSortMode,
     artistSortMode: ArtistSortMode,
@@ -1983,17 +2044,18 @@ private fun LibraryBrowserHeader(
     if (selectedMode == LibraryViewMode.Radio) return
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.weight(1f)) {
-            LibraryPagerTabs(selectedMode, onSelectMode, cloudOnly = selectedSource == LibrarySourceMode.Cloud)
+            LibraryPagerTabs(selectedMode, onSelectMode, modes = modes)
         }
         when (selectedMode) {
             LibraryViewMode.Songs -> if (selectedSource == LibrarySourceMode.Local) {
-                LibraryTrackSortMenu(selectedSortMode, onSortModeChange)
+                LibraryTrackSortMenu(selectedSortMode, onSortModeChange, onCustomize)
             }
             LibraryViewMode.Albums, LibraryViewMode.Cloud ->
-                LibraryAlbumSortMenu(albumSortMode, onAlbumSortModeChange)
-            LibraryViewMode.Artists -> LibraryArtistSortMenu(artistSortMode, onArtistSortModeChange)
-            LibraryViewMode.Folders -> LibraryFolderSortMenu(folderSortMode, onFolderSortModeChange)
-            LibraryViewMode.Genres, LibraryViewMode.Composers, LibraryViewMode.Playlists, LibraryViewMode.Radio -> Unit
+                LibraryAlbumSortMenu(albumSortMode, onAlbumSortModeChange, onCustomize)
+            LibraryViewMode.Artists -> LibraryArtistSortMenu(artistSortMode, onArtistSortModeChange, onCustomize)
+            LibraryViewMode.Folders -> LibraryFolderSortMenu(folderSortMode, onFolderSortModeChange, onCustomize)
+            LibraryViewMode.Playlists -> LibraryCustomizeButton(onCustomize)
+            LibraryViewMode.Genres, LibraryViewMode.Composers, LibraryViewMode.Radio -> Unit
         }
     }
 }

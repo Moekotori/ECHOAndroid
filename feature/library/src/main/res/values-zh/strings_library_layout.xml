@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_layout_title">自定义分类</string>
+    <string name="library_layout_detail">把常用分类移到前面，也可以隐藏不用的分类，至少保留一项。</string>
+    <string name="library_layout_move_up">上移%1$s</string>
+    <string name="library_layout_move_down">下移%1$s</string>
+    <string name="library_layout_reset">恢复默认</string>
+    <string name="library_layout_cancel">取消</string>
+    <string name="library_layout_apply">保存</string>
+</resources>

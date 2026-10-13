@@ -7,6 +7,7 @@ internal object LocalAudioFileTypes {
         val lower = name.lowercase(Locale.ROOT)
         return when {
             lower.endsWith(".flac") -> "audio/flac"
+            lower.endsWith(".ape") -> "audio/ape"
             lower.endsWith(".mp3") -> "audio/mpeg"
             lower.endsWith(".mp2") -> "audio/mpeg"
             lower.endsWith(".m4a") || lower.endsWith(".m4b") -> "audio/mp4"
@@ -37,7 +38,6 @@ internal object LocalAudioFileTypes {
     fun isSupported(name: String, mimeType: String?): Boolean {
         if (isCueSheet(name, mimeType)) return false
         if (mimeType.isVideoMime()) return false
-        if (name.lowercase(Locale.ROOT).endsWith(".ape")) return false
         return mimeType.isAudioMime() || mimeTypeForFileName(name) != null
     }
 
@@ -76,7 +76,7 @@ internal object LocalAudioFileTypes {
 }
 
 internal val MediaStoreFallbackExtensions = listOf(
-    "dsf", "dff", "ac3", "eac3", "ec3", "dts", "amr", "aiff", "aif", "aifc",
+    "ape", "dsf", "dff", "ac3", "eac3", "ec3", "dts", "amr", "aiff", "aif", "aifc",
 )
 
 internal fun String?.isAudioMime(): Boolean {

@@ -24,6 +24,7 @@ data class EchoBackupDocument(
 
 data class EchoBackupSettings(
     val homeLayout: app.echo.android.model.settings.EchoHomeLayout? = null,
+    val libraryLayout: app.echo.android.model.settings.EchoLibraryLayout? = null,
     val playerPageStyle: String? = null,
     val playerTextScale: Float? = null,
     val playerArtworkScale: Float? = null,

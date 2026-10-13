@@ -65,6 +65,8 @@ internal fun EchoLibraryPage(
     val experienceActions = rememberLibraryExperienceActions(viewModel) { onScanFolder(appSettings.libraryScanOptions) }
     val shortcutContext = androidx.compose.ui.platform.LocalContext.current
     val libraryQuery by viewModel.libraryQuery.collectAsStateWithLifecycle()
+    val playbackMetadata by viewModel.playbackMetadata.collectAsStateWithLifecycle()
+    val remotePlayback by playbackRouter.remoteMode.collectAsStateWithLifecycle()
     val libraryTrackSortMode by viewModel.libraryTrackSortMode.collectAsStateWithLifecycle()
     val libraryAlbumSortMode by viewModel.libraryAlbumSortMode.collectAsStateWithLifecycle()
     val libraryArtistSortMode by viewModel.libraryArtistSortMode.collectAsStateWithLifecycle()
@@ -226,6 +228,8 @@ internal fun EchoLibraryPage(
     app.echo.android.feature.library.AlbumOnlineInfoProvider(application.albumOnlineInfo) {
     app.echo.android.feature.library.LibraryBatchProvider(batchActions, pageInteractive = pageInteractive) {
         LibraryScreen(
+            libraryLayout = appSettings.libraryLayout,
+            onLibraryLayoutChange = viewModel::setLibraryLayout,
             radioStations = radioStations,
             radioLoadFailed = radioLoadFailed,
             onRetryRadio = viewModel.radioController::reload,
@@ -276,6 +280,8 @@ internal fun EchoLibraryPage(
             onLibrarySourceChange = viewModel::setLibrarySelectedSource,
             onTrackSortModeChange = viewModel::updateLibraryTrackSortMode,
             onFindSongLetterIndex = viewModel::localTitleIndex,
+            playingTrackId = if (remotePlayback) null else playbackMetadata.track?.id,
+            onFindPlayingSongIndex = { id -> viewModel.localTrackIndex(id, libraryQuery, libraryTrackSortMode) },
             onAlbumSortModeChange = viewModel::updateLibraryAlbumSortMode,
             onArtistSortModeChange = viewModel::updateLibraryArtistSortMode,
             onFolderSortModeChange = viewModel::updateLibraryFolderSortMode,

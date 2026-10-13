@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_layout_title">Customize categories</string>
+    <string name="library_layout_detail">Move your favorites to the front or hide unused categories. Keep at least one visible.</string>
+    <string name="library_layout_move_up">Move %1$s up</string>
+    <string name="library_layout_move_down">Move %1$s down</string>
+    <string name="library_layout_reset">Reset</string>
+    <string name="library_layout_cancel">Cancel</string>
+    <string name="library_layout_apply">Save</string>
+</resources>

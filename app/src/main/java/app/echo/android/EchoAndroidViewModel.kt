@@ -438,6 +438,9 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     suspend fun localTitleIndex(letter: Char): Int = libraryController.localTitleIndex(letter)
 
+    suspend fun localTrackIndex(trackId: String, query: String, sort: LibraryTrackSortMode): Int? =
+        repository.localTrackIndex(trackId, query, sort)
+
     fun updateLibraryAlbumSortMode(sortMode: AlbumSortMode) {
         libraryController.updateAlbumSortMode(sortMode)
     }
@@ -1606,6 +1609,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         updateSettings {
             setUiFontScale(value)
         }
+    }
+
+    fun setLibraryLayout(value: app.echo.android.model.settings.EchoLibraryLayout) {
+        updateSettings { setLibraryLayout(value) }
     }
 
     fun setHomeLayout(value: app.echo.android.model.settings.EchoHomeLayout) {

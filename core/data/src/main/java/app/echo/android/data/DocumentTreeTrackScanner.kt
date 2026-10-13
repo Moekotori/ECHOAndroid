@@ -431,6 +431,15 @@ class DocumentTreeTrackScanner(
         displayName: String,
         persistArtwork: (ByteArray?) -> String?,
     ): DocumentAudioMetadata {
+        if (EchoApeMetadata.isApe(mimeType, displayName)) {
+            val ape = runCatching {
+                contentResolver.openInputStream(uri)?.use(EchoApeMetadata::read)
+            }.getOrNull()
+            if (ape != null) return DocumentAudioMetadata(
+                durationMs = ape.durationMs,
+                sampleRateHz = ape.sampleRateHz.takeIf { readSampleRate },
+            )
+        }
         val fileTags = if (LocalAudioTagReadPolicy.prefersFileTags(mimeType, displayName)) {
             runCatching { contentResolver.openInputStream(uri)?.use(::readLocalAudioTags) }.getOrNull()
         } else {

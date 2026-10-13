@@ -2,6 +2,7 @@ package app.echo.android.data
 
 import app.echo.android.model.library.LibraryScanOptions
 import app.echo.android.model.settings.EchoBackgroundStyle
+import app.echo.android.model.settings.EchoLibraryLayout
 import app.echo.android.model.settings.EchoHomeLayout
 
 import app.echo.android.i18n.echoAppLanguage
@@ -163,6 +164,7 @@ data class EchoAppSettings(
     val listenBrainzEnabled: Boolean = false,
     val listenBrainzToken: String? = null,
     val homeLayout: EchoHomeLayout = EchoHomeLayout(),
+    val libraryLayout: EchoLibraryLayout = EchoLibraryLayout(),
 )
 
 object EchoBackgroundMode {
@@ -257,6 +259,7 @@ class EchoSettingsStore(
             val lyricsStyle = PlayerAppearancePreferences.lyricsStyle(preferences)
             EchoAppSettings(
                 homeLayout = HomeLayoutPreferences.read(preferences),
+                libraryLayout = LibraryLayoutPreferences.read(preferences),
                 preferOffload = preferences[Keys.PreferOffload] ?: true,
                 lastOutputRoute = preferences[Keys.LastOutputRoute] ?: "system",
                 dynamicArtworkEnabled = preferences[Keys.DynamicArtworkEnabled] ?: true,
@@ -466,6 +469,10 @@ class EchoSettingsStore(
 
     private fun currentStartupThemeSnapshot(): EchoStartupThemeSnapshot =
         cachedStartupThemeSnapshot ?: context.readEchoStartupThemeSnapshot()
+
+    suspend fun setLibraryLayout(value: EchoLibraryLayout) {
+        context.echoSettings.edit { LibraryLayoutPreferences.write(it, value) }
+    }
 
     suspend fun setHomeLayout(value: EchoHomeLayout) {
         context.echoSettings.edit { HomeLayoutPreferences.write(it, value) }
@@ -1556,6 +1563,7 @@ class EchoSettingsStore(
     suspend fun applyBackupSettings(backup: app.echo.android.model.backup.EchoBackupSettings) {
         context.echoSettings.edit { prefs ->
             backup.themeMode?.let { prefs[Keys.ThemeMode] = it }
+            backup.libraryLayout?.let { LibraryLayoutPreferences.write(prefs, it) }
             backup.homeLayout?.let { HomeLayoutPreferences.write(prefs, it) }
             PlayerAppearancePreferences.restore(prefs, backup.playerPageStyle, backup.lyricsPageStyle,
                 backup.playerTextScale, backup.playerArtworkScale)
@@ -1916,7 +1924,7 @@ internal fun parseEqualizerFilters(value: String?): List<OpraEqBand> {
 
 fun EchoAppSettings.toBackupSettings(): app.echo.android.model.backup.EchoBackupSettings =
     app.echo.android.model.backup.EchoBackupSettings(
-        homeLayout = homeLayout, playerPageStyle = playerPageStyle, playerTextScale = playerTextScale, playerArtworkScale = playerArtworkScale,
+        libraryLayout = libraryLayout, homeLayout = homeLayout, playerPageStyle = playerPageStyle, playerTextScale = playerTextScale, playerArtworkScale = playerArtworkScale,
         backgroundMode = customBackgroundMode, backgroundBlur = customBackgroundBlur, backgroundBrightness = customBackgroundBrightness,
         backgroundGlass = customBackgroundGlass, backgroundScale = customBackgroundScale,
         themeMode = themeMode,

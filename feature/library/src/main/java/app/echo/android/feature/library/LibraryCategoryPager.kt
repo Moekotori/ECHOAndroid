@@ -9,6 +9,8 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import app.echo.android.model.settings.EchoLibraryCategory
+import app.echo.android.model.settings.EchoLibraryLayout
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.animateSilkToPage
 import app.echo.android.design.rememberContentPagerNestedScroll
@@ -20,14 +22,19 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlin.math.abs
 
-internal fun libraryPagerModes(cloudOnly: Boolean): List<LibraryViewMode> =
-    if (cloudOnly) listOf(LibraryViewMode.Albums) else listOf(
-        LibraryViewMode.Songs,
-        LibraryViewMode.Albums,
-        LibraryViewMode.Artists,
-        LibraryViewMode.Folders,
-        LibraryViewMode.Playlists,
-    )
+internal fun libraryPagerModes(
+    cloudOnly: Boolean,
+    layout: EchoLibraryLayout = EchoLibraryLayout(),
+): List<LibraryViewMode> = if (cloudOnly) listOf(LibraryViewMode.Albums)
+    else layout.visibleCategories().map { it.viewMode() }
+
+internal fun EchoLibraryCategory.viewMode(): LibraryViewMode = when (this) {
+    EchoLibraryCategory.Songs -> LibraryViewMode.Songs
+    EchoLibraryCategory.Albums -> LibraryViewMode.Albums
+    EchoLibraryCategory.Artists -> LibraryViewMode.Artists
+    EchoLibraryCategory.Folders -> LibraryViewMode.Folders
+    EchoLibraryCategory.Playlists -> LibraryViewMode.Playlists
+}
 
 /** Category paging stays in the library; each lazy page retains its saved scroll state. */
 @Composable

@@ -7,9 +7,10 @@ internal object LibraryTrackQueryBuilder {
         query: String,
         useFts: Boolean,
         sort: LibraryTrackSortMode,
+        idsOnly: Boolean = false,
     ): String {
         val sql = StringBuilder()
-        sql.append("SELECT library_tracks.* FROM library_tracks")
+        sql.append(if (idsOnly) "SELECT library_tracks.id FROM library_tracks" else "SELECT library_tracks.* FROM library_tracks")
         if (
             sort == LibraryTrackSortMode.FrequentlyPlayed ||
             sort == LibraryTrackSortMode.RecentlyPlayed
@@ -65,6 +66,8 @@ internal object LibraryTrackQueryBuilder {
             sql.appendLine()
         }
         sql.append(trackSortOrder(sort))
+        // Paging and locating must agree even when titles and other sort keys tie.
+        sql.append(", library_tracks.id ASC")
         return sql.toString()
     }
 

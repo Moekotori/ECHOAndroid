@@ -18,6 +18,17 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class EchoBackupCodecTest {
+    @Test fun libraryLayoutRoundTripsAndOldBackupsLeaveItUnspecified() {
+        val layout = app.echo.android.model.settings.EchoLibraryLayout(
+            order = app.echo.android.model.settings.EchoLibraryCategory.entries.reversed(),
+            hidden = setOf(app.echo.android.model.settings.EchoLibraryCategory.Songs),
+        )
+        val settings = EchoAppSettings(libraryLayout = layout).toBackupSettings()
+        val decoded = EchoBackupCodec.decode(EchoBackupCodec.encode(EchoBackupDocument(settings = settings))).settings
+        assertEquals(layout, decoded.libraryLayout)
+        assertEquals(null, EchoBackupCodec.decode("{\"version\":1,\"settings\":{}}").settings.libraryLayout)
+    }
+
     @Test fun shuffleModeRoundTripsAndOldSettingsKeepTheDefault() {
         val mode = app.echo.android.model.playback.EchoShuffleMode.PureRandom
         val settings = EchoAppSettings(shuffleOptions = app.echo.android.model.playback.EchoShuffleOptions(
