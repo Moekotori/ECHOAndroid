@@ -38,7 +38,8 @@ class EchoApeExtractorTest {
         assertEquals(92L, point.position)
         extractor.seek(point.position, point.timeUs)
         input = BufferExtractorInput(file, point.position.toInt())
-        while (extractor.read(input, seek) != Extractor.RESULT_END_OF_INPUT) Unit
+        assertEquals(Extractor.RESULT_CONTINUE, extractor.read(input, seek))
+        assertEquals(Extractor.RESULT_END_OF_INPUT, extractor.read(input, seek))
         assertArrayEquals(output.track.sampleBytes[1], output.track.sampleBytes[2])
     }
 

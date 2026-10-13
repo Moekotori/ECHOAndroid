@@ -26,14 +26,15 @@ public class FfmpegApeSmokeTest {
           .build();
       FfmpegAudioDecoder decoder = new FfmpegAudioDecoder(format, 2, 2, 64, false);
       try {
-        checkSilentFrame(decoder);
+        checkSilentFrame(decoder, 0);
         decoder.flush();
-        checkSilentFrame(decoder);
+        decoder.setOutputStartTimeUs(100000);
+        checkSilentFrame(decoder, 4410);
       } finally { decoder.release(); }
     }
   }
 
-  private static void checkSilentFrame(FfmpegAudioDecoder decoder) throws Exception {
+  private static void checkSilentFrame(FfmpegAudioDecoder decoder, int skippedSamples) throws Exception {
     long deadline = SystemClock.elapsedRealtime() + 5000;
     DecoderInputBuffer input;
     while ((input = decoder.dequeueInputBuffer()) == null) {
@@ -54,7 +55,8 @@ public class FfmpegApeSmokeTest {
     try {
       assertEquals(44100, decoder.getSampleRate());
       assertEquals(2, decoder.getChannelCount());
-      assertEquals(32768 * 2 * 2, output.data.remaining());
+      assertEquals((32768 - skippedSamples) * 2 * 2, output.data.remaining());
+      assertEquals(skippedSamples * 1000000L / 44100, output.timeUs);
       while (output.data.hasRemaining()) assertEquals(0, output.data.get());
     } finally { output.release(); }
   }

@@ -170,6 +170,28 @@ public final class FfmpegAudioDecoder
     outputData = checkNotNull(outputBuffer.data);
     outputData.position(0);
     outputData.limit(result);
+    // APE frames can span several seconds. Keep the PCM after a seek target
+    // instead of letting SimpleDecoder discard the whole enclosing frame.
+    if ("ape".equals(codecName) && !isAtLeastOutputStartTimeUs(inputBuffer.timeUs)) {
+      int frameSize = Util.getPcmFrameSize(encoding, channelCount);
+      int samples = result / frameSize;
+      if (samples > 0 && isAtLeastOutputStartTimeUs(
+          inputBuffer.timeUs + (samples - 1L) * 1000000 / sampleRate)) {
+        int low = 0;
+        int high = samples - 1;
+        while (low < high) {
+          int middle = low + (high - low) / 2;
+          if (isAtLeastOutputStartTimeUs(inputBuffer.timeUs + middle * 1000000L / sampleRate)) {
+            high = middle;
+          } else {
+            low = middle + 1;
+          }
+        }
+        outputData.position(low * frameSize);
+        outputBuffer.timeUs = inputBuffer.timeUs + low * 1000000L / sampleRate;
+        outputBuffer.shouldBeSkipped = false;
+      }
+    }
     return null;
   }
 

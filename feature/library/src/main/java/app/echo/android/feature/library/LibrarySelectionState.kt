@@ -1,8 +1,15 @@
 package app.echo.android.feature.library
 
-/** A restored cloud source must have a valid category before the first composition. */
-internal fun restoredLibraryViewMode(savedIndex: Int, cloudOnly: Boolean): LibraryViewMode {
+import app.echo.android.model.settings.EchoLibraryLayout
+
+/** Resolve restored and hidden categories before composing tabs or the pager. */
+internal fun restoredLibraryViewMode(
+    savedIndex: Int,
+    cloudOnly: Boolean,
+    layout: EchoLibraryLayout = EchoLibraryLayout(),
+): LibraryViewMode {
     if (cloudOnly) return LibraryViewMode.Albums
-    val saved = LibraryViewMode.entries.getOrNull(savedIndex) ?: LibraryViewMode.Songs
-    return if (saved == LibraryViewMode.Cloud) LibraryViewMode.Songs else saved
+    val modes = libraryPagerModes(false, layout)
+    val saved = LibraryViewMode.entries.getOrNull(savedIndex)
+    return if (saved == LibraryViewMode.Radio || saved in modes) saved!! else modes.first()
 }

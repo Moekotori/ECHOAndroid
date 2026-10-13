@@ -5,6 +5,16 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class LibrarySelectionStateTest {
+    @Test fun hidingTheSelectedCategoryFallsBackBeforeRenderingAndKeepsRadioAccessible() {
+        val layout = app.echo.android.model.settings.EchoLibraryLayout(
+            hidden = app.echo.android.model.settings.EchoLibraryCategory.entries.toSet() -
+                app.echo.android.model.settings.EchoLibraryCategory.Folders,
+        )
+        assertEquals(LibraryViewMode.Folders, restoredLibraryViewMode(LibraryViewMode.Songs.ordinal, false, layout))
+        assertEquals(LibraryViewMode.Albums, restoredLibraryViewMode(LibraryViewMode.Folders.ordinal, true, layout))
+        assertEquals(LibraryViewMode.Radio, restoredLibraryViewMode(LibraryViewMode.Radio.ordinal, false, layout))
+    }
+
     @Test fun pagerUsesTheCustomizedOrderAndCloudKeepsItsSupportedCategory() {
         val layout = app.echo.android.model.settings.EchoLibraryLayout(
             order = app.echo.android.model.settings.EchoLibraryCategory.entries.reversed(),

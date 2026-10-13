@@ -95,7 +95,9 @@ internal class EchoApeExtractor : Extractor {
 
     override fun seek(position: Long, timeUs: Long) {
         val current = layout ?: return
-        frame = current.frameAt(timeUs)
+        // SeekMap timestamps are rounded to microseconds; the byte position
+        // identifies the frame exactly even when converting time back loses a sample.
+        frame = current.positions.binarySearch(position).takeIf { it >= 0 } ?: current.frameAt(timeUs)
         frameBytesRead = 0
     }
 

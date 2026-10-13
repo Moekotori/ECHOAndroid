@@ -370,17 +370,11 @@ fun LibraryScreen(
     val layout = remember(libraryLayout) { libraryLayout.normalized() }
     var editingLayout by rememberSaveable { mutableStateOf(false) }
     val customizeLayout: (() -> Unit)? = if (onLibraryLayoutChange != null) ({ editingLayout = true }) else null
-    val localModes = remember(layout) { libraryPagerModes(false, layout) }
-    val restoredMode = restoredLibraryViewMode(
+    val selectedMode = restoredLibraryViewMode(
         selectedModeIndex,
         cloudOnly = selectedSource == LibrarySourceMode.Cloud,
+        layout = layout,
     )
-    val selectedMode = when {
-        selectedSource == LibrarySourceMode.Cloud -> LibraryViewMode.Albums
-        restoredMode == LibraryViewMode.Radio -> LibraryViewMode.Radio
-        restoredMode in localModes -> restoredMode
-        else -> localModes.first()
-    }
     LaunchedEffect(selectedMode) { selectedModeIndex = selectedMode.ordinal }
     if (editingLayout && onLibraryLayoutChange != null) LibraryLayoutEditor(
         layout = layout,
@@ -426,6 +420,7 @@ fun LibraryScreen(
         selectedModeIndex = restoredLibraryViewMode(
             selectedModeIndex,
             cloudOnly = persistedSource == LibrarySourceMode.Cloud,
+            layout = layout,
         ).ordinal
         if (persistedSource != selectedSource) {
             selectedSource = persistedSource
