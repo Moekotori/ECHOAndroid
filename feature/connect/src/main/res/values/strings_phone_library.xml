@@ -14,4 +14,5 @@
     <string name="phone_library_share_connect_first">Turn on to connect to a PC and share your library.</string>
     <string name="phone_library_share_waiting">Connect to a PC to start sharing. Turn off to cancel.</string>
     <string name="phone_library_share_off">Sharing is off</string>
+    <string name="phone_library_share_pc_hint">On your PC, open More → Switch library and select this phone to browse, search and play its local music. Original files stay unchanged.</string>
 </resources>

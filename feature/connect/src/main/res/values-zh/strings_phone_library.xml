@@ -14,4 +14,5 @@
     <string name="phone_library_share_connect_first">点击开关连接电脑并开启共享</string>
     <string name="phone_library_share_waiting">连接电脑后将开启共享，再次点击开关可取消</string>
     <string name="phone_library_share_off">共享已关闭</string>
+    <string name="phone_library_share_pc_hint">在电脑右上角“…”→“切换曲库”选择这台手机，即可浏览、搜索并在电脑播放。手机原文件不会被修改。</string>
 </resources>

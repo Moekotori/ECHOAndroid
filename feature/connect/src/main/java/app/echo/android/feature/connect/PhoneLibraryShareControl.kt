@@ -68,5 +68,12 @@ internal fun PhoneLibraryShareControl(
             !connected -> R.string.phone_library_share_connect_first
             else -> R.string.phone_library_share_off
         }), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (status == "sharing") {
+            Text(
+                stringResource(R.string.phone_library_share_pc_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
